@@ -1,0 +1,111 @@
+/**
+ * 디자인 토큰. docs/design/*.dc.html 에서 추출했다 (T046).
+ *
+ * 확정 디자인에 없는 화면(프로젝트 생성·키 관리·비밀 값·탭 선택)도 이 토큰을 써서
+ * 같은 시각 언어를 따른다 (spec 디자인 차이 3).
+ */
+:root {
+  /* 종이·잉크 — 따뜻한 오프화이트 배경에 거의 검정 잉크 */
+  --ink: #14130f;
+  --ink-soft: #2a2823;
+  --paper: #fffdf6;
+  --paper-alt: #f6f4ee;
+  --surface: #efebe0;
+  --surface-soft: #f5f2e9;
+
+  --muted: #6b675c;
+  --dim: #9a968a;
+  --faint: #8e897c;
+  --border: #dcd8cc;
+  --border-strong: #c9c4b4;
+
+  /* 상태 */
+  --pass: #2e9455;
+  --fail: #d9502f;
+  --fail-dark: #a83a22;
+  --fail-tint: #fbeeea;
+  --warn: #f5d000;
+  --warn-tint: #fff9d6;
+
+  /* AI — 사람 작성과 구분하는 유일한 색 (원칙 I: 구조는 같고 표시만 다르다) */
+  --ai: #7c4ddb;
+  --ai-dark: #5a31b8;
+  --ai-tint: #f0ebfc;
+
+  --font-display: "Black Han Sans", "Arial Black", Impact, sans-serif;
+  --font-body: "IBM Plex Sans KR", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --gap: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 7px 14px;
+}
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.secondary { background: var(--paper); color: var(--ink); border-color: var(--border-strong); }
+button.ghost { background: transparent; color: var(--muted); border-color: transparent; }
+button.danger { background: var(--fail); border-color: var(--fail); }
+
+input, select, textarea {
+  font: inherit;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+code, .mono { font-family: var(--font-mono); font-size: 12px; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+.badge.pass { color: #1c6b3b; border-color: #a9d9bd; background: #eaf6ef; }
+.badge.fail { color: var(--fail-dark); border-color: #efc0b3; background: var(--fail-tint); }
+.badge.ai { color: var(--ai-dark); border-color: #cdb9f2; background: var(--ai-tint); }
+.badge.warn { color: #6b5a00; border-color: #e8d888; background: var(--warn-tint); }
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+
+.muted { color: var(--muted); }
+.dim { color: var(--dim); }
+.row { display: flex; align-items: center; gap: 8px; }
+.spacer { flex: 1; }

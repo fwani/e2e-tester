@@ -54,7 +54,7 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 **Purpose**: 프로젝트 초기화와 기본 구조
 
-- [ ] T011 plan.md의 Project Structure대로 `backend/src/itb/{domain,locator,recording,execution,mirror,secrets,storage,generator,authoring,llm,schema,api}/` 와 `backend/tests/{unit,contract,integration,e2e}/` 디렉터리·`__init__.py` 를 만든다
+- [x] T011 plan.md의 Project Structure대로 `backend/src/itb/{domain,locator,recording,execution,mirror,secrets,storage,generator,authoring,llm,schema,api}/` 와 `backend/tests/{unit,contract,integration,e2e}/` 디렉터리·`__init__.py` 를 만든다
 - [x] T012 `backend/pyproject.toml` 을 확정한다 — fastapi, uvicorn, playwright, pydantic, pyyaml, pynacl, anthropic, pytest, pytest-asyncio, import-linter
 - [x] T013 [P] `frontend/` 를 React + Vite + TypeScript 로 초기화하고 `frontend/package.json` 에 vitest·json-schema-to-typescript 를 추가한다
 - [x] T014 [P] `backend/pyproject.toml` 에 린터·포매터 설정을 넣고 `frontend/` 에 동등한 설정을 넣는다
@@ -74,12 +74,12 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### 도메인 모델 — 원칙 I의 단일 Step 모델
 
-- [ ] T018 [P] `backend/src/itb/domain/locator.py` — `Candidate`(value, status: verified/unverified/not_collected), `TargetLocator`(7후보). **후보가 하나도 없으면 무효**라는 불변식 포함 (data-model §6, FR-017)
-- [ ] T019 [P] `backend/src/itb/domain/assertion.py` — `Assertion`(kind: visible/hidden/text/url, target, match, value). `url` 은 target 이 null, 나머지는 필수 (data-model §5, FR-013a)
-- [ ] T020 `backend/src/itb/domain/step.py` — `type` 판별 유니온으로 `ClickStep`/`FillStep`/`SelectStep`/`NavigateStep`/`AssertionStep`/`CloseTabStep`. 공통 필드 id·label·author·**tab**·timeout_ms·frame_url (data-model §4, FR-010·FR-012·FR-013·FR-030a) — T018, T019 의존
-- [ ] T021 [P] `backend/src/itb/domain/test_case.py` — `Project`, `Test`, `Variable`. **`sensitive and value is not None` 이면 검증 실패**하는 불변식 (data-model §3·§7, FR-082)
-- [ ] T022 [P] `backend/src/itb/domain/run_result.py` — `RunResult`, `StepResult`(tab, tab_wait_ms 포함), `LocatorAttempt`, `Artifacts`(trace는 항상 null) (data-model §9)
-- [ ] T023 `backend/tests/unit/test_domain_invariants.py` — 도메인 불변식 단위 테스트: 민감 변수 value null, Step 목록 1개 이상, 후보 최소 1개, timeout 범위, `TC-\d{3}` 패턴, 변수 이름 패턴, `{{변수}}` 참조 정의 여부 (contracts/step-dsl §검증 규칙)
+- [x] T018 [P] `backend/src/itb/domain/locator.py` — `Candidate`(value, status: verified/unverified/not_collected), `TargetLocator`(7후보). **후보가 하나도 없으면 무효**라는 불변식 포함 (data-model §6, FR-017)
+- [x] T019 [P] `backend/src/itb/domain/assertion.py` — `Assertion`(kind: visible/hidden/text/url, target, match, value). `url` 은 target 이 null, 나머지는 필수 (data-model §5, FR-013a)
+- [x] T020 `backend/src/itb/domain/step.py` — `type` 판별 유니온으로 `ClickStep`/`FillStep`/`SelectStep`/`NavigateStep`/`AssertionStep`/`CloseTabStep`. 공통 필드 id·label·author·**tab**·timeout_ms·frame_url (data-model §4, FR-010·FR-012·FR-013·FR-030a) — T018, T019 의존
+- [x] T021 [P] `backend/src/itb/domain/test_case.py` — `Project`, `Test`, `Variable`. **`sensitive and value is not None` 이면 검증 실패**하는 불변식 (data-model §3·§7, FR-082)
+- [x] T022 [P] `backend/src/itb/domain/run_result.py` — `RunResult`, `StepResult`(tab, tab_wait_ms 포함), `LocatorAttempt`, `Artifacts`(trace는 항상 null) (data-model §9)
+- [x] T023 `backend/tests/unit/test_domain_invariants.py` — 도메인 불변식 단위 테스트: 민감 변수 value null, Step 목록 1개 이상, 후보 최소 1개, timeout 범위, `TC-\d{3}` 패턴, 변수 이름 패턴, `{{변수}}` 참조 정의 여부 (contracts/step-dsl §검증 규칙)
 
 ### 스키마 파이프라인 — 헌법 Cross-language schema duty
 
@@ -89,8 +89,8 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### Locator 단일 지점 — 원칙 IV
 
-- [ ] T027 `backend/src/itb/locator/strategy.py` — **순수 함수 `choose_strategy(target) -> LocatorStrategy`**. 우선순위 testId → role+name → label → text → 고정속성 → CSS. 탭을 알지 못한다(그래야 Generator와 공유 가능, research R4) — T018 의존
-- [ ] T028 `backend/tests/unit/test_locator_strategy.py` — 후보 조합별 선택 결과, 우선순위 준수, 후보 없음 처리 단위 테스트 (FR-018)
+- [x] T027 `backend/src/itb/locator/strategy.py` — **순수 함수 `choose_strategy(target) -> LocatorStrategy`**. 우선순위 testId → role+name → label → text → 고정속성 → CSS. 탭을 알지 못한다(그래야 Generator와 공유 가능, research R4) — T018 의존
+- [x] T028 `backend/tests/unit/test_locator_strategy.py` — 후보 조합별 선택 결과, 우선순위 준수, 후보 없음 처리 단위 테스트 (FR-018)
 - [x] T029 `backend/src/itb/locator/collector.py` — 후보 수집 규칙과 **기록 시점 검증** 규칙(수집한 후보가 방금 조작한 그 요소를 가리키는지 확인해 status 부여) (research R4, FR-017)
 
 ### 저장 계층
@@ -117,7 +117,7 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 - [x] T043 `backend/src/itb/api/ws/session_events.py` — WebSocket 이벤트 송신기. **서버 → 클라이언트 단방향**, `type`+`seq`. 재연결 시 재전송하지 않는다 (contracts/websocket)
 - [x] T044 [P] `backend/src/itb/api/errors.py` — 공통 오류 응답 형태 `{error:{code,message,detail}}` 와 오류 코드 목록(`STEP_LIST_EMPTY`, `NOT_PAUSED`, `SESSION_ALREADY_ACTIVE` …) (contracts/rest-api)
 - [x] T045 [P] `frontend/src/api/client.ts` + `frontend/src/api/ws.ts` — REST 클라이언트와 WebSocket 구독. **재연결 시 `GET /api/sessions/{sid}` 로 전체 상태를 다시 받는다** (contracts/websocket)
-- [ ] T046 [P] `frontend/src/theme/` — 디자인 8화면에서 공통 시각 언어(색·타이포·간격·배지)를 추출한다. `docs/design/*.dc.html` 의 폰트·색 토큰을 따른다
+- [x] T046 [P] `frontend/src/theme/` — 디자인 8화면에서 공통 시각 언어(색·타이포·간격·배지)를 추출한다. `docs/design/*.dc.html` 의 폰트·색 토큰을 따른다
 
 **Checkpoint**: 도메인 모델·Locator 단일 지점·저장·비밀·세션 상태 기계가 준비됨. `lint-imports` 통과.
 사용자 스토리 구현을 시작할 수 있다
@@ -155,12 +155,12 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 - [x] T061 [US1] `backend/src/itb/api/routes/sessions.py` — `POST /api/sessions`(mode=record), `GET /api/sessions/{sid}`, `POST .../stop`, `POST .../save`. 활성 세션 중복 시 `409`(FR-043), Step 0개 저장 거절(FR-029) — T039, T042 의존
 - [x] T062 [US1] `backend/src/itb/execution/window.py` — 조작 국면에서 실제 브라우저 창·대상 탭을 앞으로 가져온다(`bring_to_front`). 창을 다시 앞으로 가져오는 수단 제공 (FR-023a·FR-030e, spec 엣지 케이스)
 - [x] T063 [US1] `backend/src/itb/api/routes/tabs.py` — `GET /api/sessions/{sid}/tabs` (FR-030f) — T055 의존
-- [ ] T064 [P] [US1] `frontend/src/pages/TestList.tsx` — `TestList.dc.html` 이식. 상태 배지·ID·이름·Step 수·작성 배지·마지막 실행·실패 요약 인라인 표시·검색·집계 (FR-002~FR-006·FR-002a)
-- [ ] T065 [P] [US1] `frontend/src/pages/CreateTest.tsx` — `CreateTest.dc.html` 이식. 직접 녹화 / AI로 만들기 선택, 시작 URL, 브라우저 선택, **"어느 쪽으로 만들어도 같은 Step 모델로 저장된다" 문구**(FR-009)
-- [ ] T066 [P] [US1] `frontend/src/pages/ProjectSetup.tsx` — **확정 디자인에 없는 화면.** 디렉터리 선택 + 프로젝트 메타 입력. 8화면의 시각 언어를 따른다 (spec 디자인 차이 3)
-- [ ] T067 [US1] `frontend/src/components/StepList.tsx` — 번호·표시 이름·동작 종류 배지·적용된 식별 정보 요약·작성 주체 배지·탭 표시. **사람·AI·자연어 경로가 같은 `step_added` 이벤트를 쓰므로 분기를 두지 않는다**(원칙 I, contracts/websocket) — T045 의존
-- [ ] T068 [US1] `frontend/src/pages/Runner.tsx` — `Main.dc.html` 이식(녹화 상태). 헤더 배지·테스트명·`step N / M`·정지 버튼, 좌측 브라우저 영역, 우측 Step 목록, 하단 "Step 추가" (FR-026)
-- [ ] T069 [US1] `frontend/src/components/TabStrip.tsx` — **확정 디자인에 없는 화면.** 미러 위 탭 표시·전환 (FR-030f, spec 디자인 차이 3)
+- [x] T064 [P] [US1] `frontend/src/pages/TestList.tsx` — `TestList.dc.html` 이식. 상태 배지·ID·이름·Step 수·작성 배지·마지막 실행·실패 요약 인라인 표시·검색·집계 (FR-002~FR-006·FR-002a)
+- [x] T065 [P] [US1] `frontend/src/pages/CreateTest.tsx` — `CreateTest.dc.html` 이식. 직접 녹화 / AI로 만들기 선택, 시작 URL, 브라우저 선택, **"어느 쪽으로 만들어도 같은 Step 모델로 저장된다" 문구**(FR-009)
+- [x] T066 [P] [US1] `frontend/src/pages/ProjectSetup.tsx` — **확정 디자인에 없는 화면.** 디렉터리 선택 + 프로젝트 메타 입력. 8화면의 시각 언어를 따른다 (spec 디자인 차이 3)
+- [x] T067 [US1] `frontend/src/components/StepList.tsx` — 번호·표시 이름·동작 종류 배지·적용된 식별 정보 요약·작성 주체 배지·탭 표시. **사람·AI·자연어 경로가 같은 `step_added` 이벤트를 쓰므로 분기를 두지 않는다**(원칙 I, contracts/websocket) — T045 의존
+- [x] T068 [US1] `frontend/src/pages/Runner.tsx` — `Main.dc.html` 이식(녹화 상태). 헤더 배지·테스트명·`step N / M`·정지 버튼, 좌측 브라우저 영역, 우측 Step 목록, 하단 "Step 추가" (FR-026)
+- [x] T069 [US1] `frontend/src/components/TabStrip.tsx` — **확정 디자인에 없는 화면.** 미러 위 탭 표시·전환 (FR-030f, spec 디자인 차이 3)
 - [x] T070 [US1] 녹화 이벤트 → Step 목록 반영 지연을 계측해 `backend/tests/integration/test_performance.py` 에 p95 < 200ms 검증을 추가한다 (research R8)
 
 - [x] T157 [US1] `backend/src/itb/recording/recorder.py` 에서 민감 값 치환이 `step_added` 이벤트 발행보다 **반드시 먼저** 일어나도록 파이프라인 순서를 고정한다. 리코더가 비밀번호 평문을 포착한 뒤 변수 참조로 치환하기 전에 이벤트가 나가면 평문이 프론트에 도달한다 (FR-083, FR-089d, 헌법 보안 요건) — analyze C2

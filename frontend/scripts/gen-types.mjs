@@ -38,18 +38,40 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-const indexLines = [];
+// 배럴 파일(index.ts)을 만들지 않는다. json-schema-to-typescript 가 스키마마다
+// `Name`·`Label`·`Tab` 같은 별칭 타입을 만들어서 한곳에 모으면 이름이 충돌한다.
+// 소비자는 파일을 직접 임포트한다: import type { Step } from "../types/generated/step";
+const generated = [];
 for (const file of files.sort()) {
   const base = file.replace(/\.schema\.json$/, "");
   const ts = await compileFromFile(join(schemaDir, file), options);
   await writeFile(join(outDir, `${base}.d.ts`), ts, "utf8");
-  indexLines.push(`export type * from "./${base}";`);
+  generated.push(base);
   console.log(`생성: src/types/generated/${base}.d.ts`);
 }
 
 await writeFile(
-  join(outDir, "index.ts"),
-  `${options.bannerComment}\n\n${indexLines.join("\n")}\n`,
+  join(outDir, "README.md"),
+  [
+    "# 생성된 타입 (손으로 고치지 마세요)",
+    "",
+    "권위 정의: `backend/src/itb/domain/*.py` (Pydantic v2). 헌법 Cross-language schema duty.",
+    "",
+    "재생성:",
+    "",
+    "```bash",
+    "cd backend && uv run python -m itb.schema.export",
+    "cd ../frontend && npm run gen:types",
+    "```",
+    "",
+    "배럴 파일을 두지 않는다 — 스키마마다 생성되는 별칭 타입(`Name`, `Label`, `Tab` 등)이",
+    "한곳에 모이면 이름이 충돌한다. 파일을 직접 임포트한다.",
+    "",
+    "## 파일",
+    "",
+    ...generated.map((b) => `- \`${b}.d.ts\``),
+    "",
+  ].join("\n"),
   "utf8",
 );
-console.log("생성: src/types/generated/index.ts");
+console.log("생성: src/types/generated/README.md");
