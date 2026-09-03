@@ -9,12 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class Outcome(StrEnum):
-    PASS = "pass"
+    # ruff S105 는 PASS 라는 이름을 비밀번호로 오인한다. 테스트 통과 여부다.
+    PASS = "pass"  # noqa: S105
     FAIL = "fail"
 
 
 class StepOutcome(StrEnum):
-    PASS = "pass"
+    PASS = "pass"  # noqa: S105
     FAIL = "fail"
     SKIPPED = "skipped"
     NOT_RUN = "not_run"
@@ -23,7 +24,7 @@ class StepOutcome(StrEnum):
 class LocatorAttempt(BaseModel):
     """요소 탐색 시도 하나. RunResult 화면의 "시도한 LOCATOR (우선순위 순)" 에 대응한다."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     candidate: str
     """후보 종류 이름. `test_id`, `role`, `label`, `text`, `stable_attr`, `css`."""
@@ -37,7 +38,7 @@ class LocatorAttempt(BaseModel):
 
 
 class StepResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     step_id: str
     index: int = Field(ge=0)
@@ -58,7 +59,7 @@ class StepResult(BaseModel):
 
 
 class Artifacts(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     failure_screenshot: str | None = None
     console_log: str | None = None
@@ -68,7 +69,7 @@ class Artifacts(BaseModel):
 
 
 class RunResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     test_id: str
     outcome: Outcome

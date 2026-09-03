@@ -36,7 +36,7 @@ class BrowserKind(StrEnum):
 class Variable(BaseModel):
     """테스트 안에서 값을 대신하는 이름."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     name: str = Field(pattern=VARIABLE_NAME_PATTERN, max_length=100)
     value: str | None = Field(default=None, max_length=4000)
@@ -61,7 +61,7 @@ class Variable(BaseModel):
 class Project(BaseModel):
     """테스트를 담는 최상위 단위. 프로젝트 하나 = 디렉터리 하나."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     name: str = Field(min_length=1, max_length=100)
     default_start_url: str = Field(pattern=URL_PATTERN, max_length=2000)
@@ -76,7 +76,7 @@ class Project(BaseModel):
 class Test(BaseModel):
     """하나의 테스트 시나리오. `tests/` 아래 YAML 파일 하나에 대응한다."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     dsl_version: int = DSL_VERSION
     id: str = Field(pattern=TEST_ID_PATTERN)

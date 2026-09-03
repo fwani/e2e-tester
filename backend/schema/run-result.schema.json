@@ -1,0 +1,291 @@
+{
+  "$defs": {
+    "Artifacts": {
+      "additionalProperties": false,
+      "properties": {
+        "console_log": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Console Log"
+        },
+        "failure_screenshot": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure Screenshot"
+        },
+        "network_log": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Network Log"
+        },
+        "trace": {
+          "default": null,
+          "title": "Trace",
+          "type": "null"
+        }
+      },
+      "required": [
+        "failure_screenshot",
+        "console_log",
+        "network_log",
+        "trace"
+      ],
+      "title": "Artifacts",
+      "type": "object"
+    },
+    "LocatorAttempt": {
+      "additionalProperties": false,
+      "description": "요소 탐색 시도 하나. RunResult 화면의 \"시도한 LOCATOR (우선순위 순)\" 에 대응한다.",
+      "properties": {
+        "candidate": {
+          "title": "Candidate",
+          "type": "string"
+        },
+        "expression": {
+          "title": "Expression",
+          "type": "string"
+        },
+        "match_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Match Count",
+          "type": "integer"
+        },
+        "matched": {
+          "title": "Matched",
+          "type": "boolean"
+        },
+        "waited_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Waited Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "candidate",
+        "expression",
+        "matched",
+        "match_count",
+        "waited_ms"
+      ],
+      "title": "LocatorAttempt",
+      "type": "object"
+    },
+    "Outcome": {
+      "enum": [
+        "pass",
+        "fail"
+      ],
+      "title": "Outcome",
+      "type": "string"
+    },
+    "StepOutcome": {
+      "enum": [
+        "pass",
+        "fail",
+        "skipped",
+        "not_run"
+      ],
+      "title": "StepOutcome",
+      "type": "string"
+    },
+    "StepResult": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_disagreement": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Candidate Disagreement",
+          "type": "array"
+        },
+        "duration_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Message"
+        },
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "locator_attempts": {
+          "items": {
+            "$ref": "#/$defs/LocatorAttempt"
+          },
+          "title": "Locator Attempts",
+          "type": "array"
+        },
+        "outcome": {
+          "$ref": "#/$defs/StepOutcome"
+        },
+        "resolved_candidate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved Candidate"
+        },
+        "step_id": {
+          "title": "Step Id",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "tab_wait_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab Wait Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "step_id",
+        "index",
+        "label",
+        "outcome",
+        "duration_ms",
+        "tab",
+        "tab_wait_ms",
+        "resolved_candidate",
+        "locator_attempts",
+        "error_message",
+        "candidate_disagreement"
+      ],
+      "title": "StepResult",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "$ref": "#/$defs/Artifacts"
+    },
+    "browser": {
+      "title": "Browser",
+      "type": "string"
+    },
+    "failed_step_index": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failed Step Index"
+    },
+    "finished_at": {
+      "format": "date-time",
+      "title": "Finished At",
+      "type": "string"
+    },
+    "outcome": {
+      "$ref": "#/$defs/Outcome"
+    },
+    "passed_count": {
+      "minimum": 0,
+      "title": "Passed Count",
+      "type": "integer"
+    },
+    "session_lost": {
+      "default": false,
+      "title": "Session Lost",
+      "type": "boolean"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/StepResult"
+      },
+      "title": "Steps",
+      "type": "array"
+    },
+    "test_id": {
+      "title": "Test Id",
+      "type": "string"
+    },
+    "total_count": {
+      "minimum": 0,
+      "title": "Total Count",
+      "type": "integer"
+    },
+    "total_ms": {
+      "minimum": 0,
+      "title": "Total Ms",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "test_id",
+    "outcome",
+    "started_at",
+    "finished_at",
+    "total_ms",
+    "passed_count",
+    "total_count",
+    "failed_step_index",
+    "browser",
+    "steps",
+    "artifacts",
+    "session_lost"
+  ],
+  "title": "RunResult",
+  "type": "object"
+}

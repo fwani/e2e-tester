@@ -1,0 +1,127 @@
+"""민감 값 보관소. FR-089b·FR-089c.
+
+암호문은 **테스트 정의 파일과 분리된** `secrets.local.yaml` 에 둔다. 정의 파일에는
+`{{변수명}}` 참조만 남으며 암호문조차 들어가지 않는다.
+
+봉인은 공개키만으로 가능하다 — 녹화·작성 단계는 비밀키를 요구하지 않는다 (FR-089b).
+"""
+
+from __future__ import annotations
+
+import base64
+import pathlib
+
+import yaml
+from nacl.exceptions import CryptoError
+from nacl.public import PrivateKey, PublicKey, SealedBox
+
+from itb.secrets.keys import KeyStoreError, fingerprint
+
+SECRETS_FILE_NAME = "secrets.local.yaml"
+
+
+class DecryptError(KeyStoreError):
+    """복호화 실패. 암호구 오류(`PassphraseError`)와 구분한다 (FR-089e-2)."""
+
+
+class FingerprintMismatchError(KeyStoreError):
+    """공개키가 교체되어 기존 암호문을 읽을 수 없다."""
+
+
+class SecretStore:
+    """변수 이름 → 암호문 맵. 공개키로 쓰고 비밀키로 읽는다."""
+
+    def __init__(self, path: pathlib.Path) -> None:
+        self.path = path
+        self._values: dict[str, str] = {}
+        self._fingerprint: str | None = None
+        if path.exists():
+            self._load()
+
+    # ─── 입출력 ─────────────────────────────────────────────────────────────
+
+    def _load(self) -> None:
+        raw = yaml.safe_load(self.path.read_text(encoding="utf-8")) or {}
+        if not isinstance(raw, dict):
+            msg = f"{self.path} 형식이 올바르지 않습니다. 최상위가 매핑이어야 합니다."
+            raise KeyStoreError(msg)
+        self._fingerprint = raw.get("public_key_fingerprint")
+        values = raw.get("values") or {}
+        if not isinstance(values, dict):
+            msg = f"{self.path} 의 values 가 매핑이 아닙니다."
+            raise KeyStoreError(msg)
+        self._values = {str(k): str(v) for k, v in values.items()}
+
+    def _save(self) -> None:
+        payload = {
+            "public_key_fingerprint": self._fingerprint,
+            "values": dict(sorted(self._values.items())),
+        }
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(
+            yaml.safe_dump(payload, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        self.path.chmod(0o600)
+
+    # ─── 조회 (값을 절대 노출하지 않는다) ───────────────────────────────────
+
+    @property
+    def stored_fingerprint(self) -> str | None:
+        return self._fingerprint
+
+    def names(self) -> list[str]:
+        """보관된 변수 이름 목록. **값은 반환하지 않는다.**"""
+        return sorted(self._values)
+
+    def has(self, name: str) -> bool:
+        return name in self._values
+
+    def matches_key(self, public: PublicKey) -> bool:
+        """저장된 지문이 현재 공개키와 같은가. 다르면 재입력이 필요하다."""
+        if self._fingerprint is None:
+            return True
+        return self._fingerprint == fingerprint(public)
+
+    # ─── 쓰기 — 공개키만 필요 (FR-089b) ────────────────────────────────────
+
+    def put(self, name: str, value: str, public: PublicKey) -> None:
+        """민감 값을 공개키로 봉인해 저장한다. 비밀키가 필요하지 않다."""
+        current = fingerprint(public)
+        if self._fingerprint is not None and self._fingerprint != current:
+            msg = (
+                "공개키가 교체되었습니다. 기존 암호문은 새 키로 읽을 수 없으므로 "
+                "모든 민감 값을 다시 입력해야 합니다."
+            )
+            raise FingerprintMismatchError(msg)
+        self._fingerprint = current
+        sealed = SealedBox(public).encrypt(value.encode("utf-8"))
+        self._values[name] = base64.b64encode(sealed).decode("ascii")
+        self._save()
+
+    def delete(self, name: str) -> bool:
+        if name not in self._values:
+            return False
+        del self._values[name]
+        self._save()
+        return True
+
+    # ─── 읽기 — 비밀키 필요 (실행 시점) ────────────────────────────────────
+
+    def get(self, name: str, private: PrivateKey) -> str:
+        """암호문을 복호화한다. 실행 시점에만 호출한다."""
+        if name not in self._values:
+            msg = f"민감 값이 보관되어 있지 않습니다: {name}"
+            raise KeyStoreError(msg)
+        if not self.matches_key(private.public_key):
+            msg = (
+                f"저장된 암호문의 공개키 지문({self._fingerprint})이 현재 키와 다릅니다. "
+                "민감 값을 다시 입력해야 합니다."
+            )
+            raise FingerprintMismatchError(msg)
+        try:
+            raw = SealedBox(private).decrypt(base64.b64decode(self._values[name]))
+        except (CryptoError, ValueError) as exc:
+            msg = f"민감 값 복호화에 실패했습니다: {name}"
+            raise DecryptError(msg) from exc
+        return raw.decode("utf-8")

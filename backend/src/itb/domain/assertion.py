@@ -35,7 +35,7 @@ class MatchMode(StrEnum):
 class Assertion(BaseModel):
     """검증 Step 의 조건."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     kind: AssertionKind
     target: TargetLocator | None = None

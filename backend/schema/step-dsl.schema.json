@@ -1,0 +1,842 @@
+{
+  "$defs": {
+    "Assertion": {
+      "additionalProperties": false,
+      "description": "검증 Step 의 조건.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/AssertionKind"
+        },
+        "match": {
+          "$ref": "#/$defs/MatchMode",
+          "default": "equals"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TargetLocator"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "kind",
+        "target",
+        "match",
+        "value"
+      ],
+      "title": "Assertion",
+      "type": "object"
+    },
+    "AssertionKind": {
+      "enum": [
+        "visible",
+        "hidden",
+        "text",
+        "url"
+      ],
+      "title": "AssertionKind",
+      "type": "string"
+    },
+    "AssertionStep": {
+      "additionalProperties": false,
+      "properties": {
+        "assertion": {
+          "$ref": "#/$defs/Assertion"
+        },
+        "author": {
+          "$ref": "#/$defs/Author",
+          "default": "human"
+        },
+        "frame_url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Url"
+        },
+        "id": {
+          "pattern": "^step-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "assertion",
+          "default": "assertion",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "author",
+        "tab",
+        "timeout_ms",
+        "frame_url",
+        "type",
+        "assertion"
+      ],
+      "title": "AssertionStep",
+      "type": "object"
+    },
+    "Author": {
+      "enum": [
+        "human",
+        "ai"
+      ],
+      "title": "Author",
+      "type": "string"
+    },
+    "AuthoringMode": {
+      "description": "작성 방식. **테스트를 시작한 방식**으로 결정하며 이후 바뀌지 않는다 (FR-002a).",
+      "enum": [
+        "record",
+        "ai"
+      ],
+      "title": "AuthoringMode",
+      "type": "string"
+    },
+    "BrowserKind": {
+      "enum": [
+        "chromium"
+      ],
+      "title": "BrowserKind",
+      "type": "string"
+    },
+    "Candidate": {
+      "additionalProperties": false,
+      "description": "식별 후보 하나.",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/CandidateStatus"
+        },
+        "value": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "status"
+      ],
+      "title": "Candidate",
+      "type": "object"
+    },
+    "CandidateStatus": {
+      "description": "기록 시점 검증 결과. research R4 실측으로 ``AMBIGUOUS`` 가 추가됐다.",
+      "enum": [
+        "verified",
+        "ambiguous",
+        "unverified",
+        "not_collected"
+      ],
+      "title": "CandidateStatus",
+      "type": "string"
+    },
+    "ClickStep": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/Author",
+          "default": "human"
+        },
+        "frame_url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Url"
+        },
+        "id": {
+          "pattern": "^step-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "target": {
+          "$ref": "#/$defs/TargetLocator"
+        },
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "click",
+          "default": "click",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "author",
+        "tab",
+        "timeout_ms",
+        "frame_url",
+        "type",
+        "target"
+      ],
+      "title": "ClickStep",
+      "type": "object"
+    },
+    "CloseTabStep": {
+      "additionalProperties": false,
+      "description": "탭 닫기 (FR-030c). 대상은 공통 ``tab`` 필드가 가리킨다.",
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/Author",
+          "default": "human"
+        },
+        "frame_url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Url"
+        },
+        "id": {
+          "pattern": "^step-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "close_tab",
+          "default": "close_tab",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "author",
+        "tab",
+        "timeout_ms",
+        "frame_url",
+        "type"
+      ],
+      "title": "CloseTabStep",
+      "type": "object"
+    },
+    "FillStep": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/Author",
+          "default": "human"
+        },
+        "frame_url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Url"
+        },
+        "id": {
+          "pattern": "^step-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "target": {
+          "$ref": "#/$defs/TargetLocator"
+        },
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "fill",
+          "default": "fill",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 4000,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "author",
+        "tab",
+        "timeout_ms",
+        "frame_url",
+        "type",
+        "target",
+        "value"
+      ],
+      "title": "FillStep",
+      "type": "object"
+    },
+    "MatchMode": {
+      "enum": [
+        "equals",
+        "contains"
+      ],
+      "title": "MatchMode",
+      "type": "string"
+    },
+    "NavigateStep": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/Author",
+          "default": "human"
+        },
+        "frame_url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Url"
+        },
+        "id": {
+          "pattern": "^step-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "navigate",
+          "default": "navigate",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "author",
+        "tab",
+        "timeout_ms",
+        "frame_url",
+        "type",
+        "url"
+      ],
+      "title": "NavigateStep",
+      "type": "object"
+    },
+    "SelectStep": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/Author",
+          "default": "human"
+        },
+        "frame_url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Url"
+        },
+        "id": {
+          "pattern": "^step-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "target": {
+          "$ref": "#/$defs/TargetLocator"
+        },
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "select",
+          "default": "select",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 2000,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "author",
+        "tab",
+        "timeout_ms",
+        "frame_url",
+        "type",
+        "target",
+        "value"
+      ],
+      "title": "SelectStep",
+      "type": "object"
+    },
+    "StableAttr": {
+      "additionalProperties": false,
+      "description": "`[name=\"value\"]` 형태로 쓰는 안정적 속성.",
+      "properties": {
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/CandidateStatus"
+        },
+        "value": {
+          "maxLength": 2000,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "status"
+      ],
+      "title": "StableAttr",
+      "type": "object"
+    },
+    "TargetLocator": {
+      "additionalProperties": false,
+      "description": "한 요소에 대한 식별 후보 묶음.\n\n**불변식**: 후보가 하나도 없는 ``TargetLocator`` 는 유효하지 않다.\n최소한 ``css`` 는 항상 수집된다.",
+      "properties": {
+        "accessible_name": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accessible Name"
+        },
+        "css": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Candidate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "label": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Candidate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "role": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "role_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CandidateStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "stable_attr": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StableAttr"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "maxLength": 50,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tag"
+        },
+        "test_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Candidate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Candidate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "tag",
+        "test_id",
+        "role",
+        "accessible_name",
+        "role_status",
+        "label",
+        "text",
+        "stable_attr",
+        "css"
+      ],
+      "title": "TargetLocator",
+      "type": "object"
+    },
+    "Variable": {
+      "additionalProperties": false,
+      "description": "테스트 안에서 값을 대신하는 이름.",
+      "properties": {
+        "name": {
+          "maxLength": 100,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sensitive": {
+          "default": false,
+          "title": "Sensitive",
+          "type": "boolean"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "sensitive"
+      ],
+      "title": "Variable",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "하나의 테스트 시나리오. `tests/` 아래 YAML 파일 하나에 대응한다.",
+  "properties": {
+    "ai_instruction": {
+      "anyOf": [
+        {
+          "maxLength": 8000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ai Instruction"
+    },
+    "authoring_mode": {
+      "$ref": "#/$defs/AuthoringMode"
+    },
+    "browser": {
+      "$ref": "#/$defs/BrowserKind",
+      "default": "chromium"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "dsl_version": {
+      "default": 1,
+      "title": "Dsl Version",
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^TC-\\d{3}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "start_url": {
+      "maxLength": 2000,
+      "pattern": "^https?://",
+      "title": "Start Url",
+      "type": "string"
+    },
+    "steps": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "assertion": "#/$defs/AssertionStep",
+            "click": "#/$defs/ClickStep",
+            "close_tab": "#/$defs/CloseTabStep",
+            "fill": "#/$defs/FillStep",
+            "navigate": "#/$defs/NavigateStep",
+            "select": "#/$defs/SelectStep"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ClickStep"
+          },
+          {
+            "$ref": "#/$defs/FillStep"
+          },
+          {
+            "$ref": "#/$defs/SelectStep"
+          },
+          {
+            "$ref": "#/$defs/NavigateStep"
+          },
+          {
+            "$ref": "#/$defs/AssertionStep"
+          },
+          {
+            "$ref": "#/$defs/CloseTabStep"
+          }
+        ]
+      },
+      "minItems": 1,
+      "title": "Steps",
+      "type": "array"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "variables": {
+      "items": {
+        "$ref": "#/$defs/Variable"
+      },
+      "title": "Variables",
+      "type": "array"
+    }
+  },
+  "required": [
+    "dsl_version",
+    "id",
+    "name",
+    "authoring_mode",
+    "start_url",
+    "browser",
+    "variables",
+    "steps",
+    "ai_instruction",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "Test",
+  "type": "object"
+}

@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "BrowserKind": {
+      "enum": [
+        "chromium"
+      ],
+      "title": "BrowserKind",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "테스트를 담는 최상위 단위. 프로젝트 하나 = 디렉터리 하나.",
+  "properties": {
+    "browser": {
+      "$ref": "#/$defs/BrowserKind",
+      "default": "chromium"
+    },
+    "default_start_url": {
+      "maxLength": 2000,
+      "pattern": "^https?://",
+      "title": "Default Start Url",
+      "type": "string"
+    },
+    "max_tabs": {
+      "default": 10,
+      "maximum": 50,
+      "minimum": 1,
+      "title": "Max Tabs",
+      "type": "integer"
+    },
+    "name": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "next_test_number": {
+      "default": 1,
+      "maximum": 999,
+      "minimum": 1,
+      "title": "Next Test Number",
+      "type": "integer"
+    },
+    "test_id_attribute": {
+      "default": "data-testid",
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Test Id Attribute",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "default_start_url",
+    "browser",
+    "test_id_attribute",
+    "next_test_number",
+    "max_tabs"
+  ],
+  "title": "Project",
+  "type": "object"
+}

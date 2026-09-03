@@ -34,9 +34,14 @@ class StepType(StrEnum):
 
 
 class _StepBase(BaseModel):
-    """모든 Step 이 공유하는 필드."""
+    """모든 Step 이 공유하는 필드.
 
-    model_config = ConfigDict(extra="forbid")
+    ``json_schema_serialization_defaults_required=True`` 는 직렬화 스키마에서 기본값이
+    있는 필드도 required 로 표기하게 한다. 직렬화된 Step 에는 기본값이 항상 채워져 있고,
+    ``type`` 이 옵셔널이면 생성된 TypeScript 가 판별 유니온으로 좁힐 수 없다 (research R6).
+    """
+
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     id: str = Field(pattern=STEP_ID_PATTERN)
     label: str = Field(min_length=1, max_length=200)

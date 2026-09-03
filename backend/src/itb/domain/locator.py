@@ -30,7 +30,7 @@ class CandidateStatus(StrEnum):
 class Candidate(BaseModel):
     """식별 후보 하나."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     value: str = Field(min_length=1, max_length=2000)
     status: CandidateStatus
@@ -47,7 +47,7 @@ class Candidate(BaseModel):
 class StableAttr(BaseModel):
     """`[name="value"]` 형태로 쓰는 안정적 속성."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     name: str = Field(min_length=1, max_length=100)
     value: str = Field(max_length=2000)
@@ -65,7 +65,7 @@ class TargetLocator(BaseModel):
     최소한 ``css`` 는 항상 수집된다.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
     tag: str | None = Field(default=None, max_length=50)
     """진단용. 우선순위 해석에는 쓰지 않는다."""
