@@ -177,3 +177,78 @@ def test_tab_limit_is_enforced(project_client: TestClient, fixture_app: str) -> 
         )
     finally:
         project_client.post(f"/api/sessions/{sid}/stop")
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_closing_a_tab_records_a_close_tab_step(
+    project_client: TestClient, fixture_app: str
+) -> None:
+    """T159·FR-030c — 탭을 닫으면 `close_tab` Step 이 기록된다.
+
+    이벤트(`tab_closed`)만 나가고 Step 이 없으면, 사용자가 브라우저 UI 로 탭을 닫은
+    동작은 재실행에서 재현되지 않는다. "팝업을 닫은 뒤 원래 탭 상태를 검증하는 흐름"이
+    성립하려면 닫기가 정의에 남아야 한다.
+    """
+    sid = _record_session(project_client, fixture_app)["session_id"]
+    try:
+        manager = project_client.app.state.itb.sessions
+        session = manager.require(sid)
+        page = session.tabs[0].page
+
+        async def act() -> None:
+            await _login(page)
+            await page.click("[data-testid=terms-link]")
+            await asyncio.sleep(0.9)
+            await session.tabs[1].page.close()  # 브라우저 UI 로 닫은 것과 같은 경로
+            await asyncio.sleep(0.6)
+
+        project_client.portal.call(act)  # type: ignore[attr-defined]
+
+        steps = _steps(project_client, sid)
+        closes = [s for s in steps if s["type"] == "close_tab"]
+        assert closes, (
+            "탭을 닫았는데 close_tab Step 이 없다 — FR-030c 위반. "
+            f"기록된 종류: {[s['type'] for s in steps]}"
+        )
+        assert closes[-1]["tab"] == 1, f"닫은 탭 번호가 어긋났다: {closes[-1]}"
+    finally:
+        project_client.post(f"/api/sessions/{sid}/stop")
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_new_tab_navigation_is_recorded(
+    project_client: TestClient, fixture_app: str
+) -> None:
+    """T159 부수 — 새 탭의 화면 이동도 기록된다 (FR-024).
+
+    새 탭에 네비게이션 감시가 붙지 않으면 그 탭의 이동이 Step 으로 남지 않는다.
+    리코더가 세션의 새 탭 통보를 받아야 성립한다.
+    """
+    sid = _record_session(project_client, fixture_app)["session_id"]
+    try:
+        manager = project_client.app.state.itb.sessions
+        session = manager.require(sid)
+        page = session.tabs[0].page
+
+        async def act() -> None:
+            await _login(page)
+            await page.click("[data-testid=terms-link]")
+            await asyncio.sleep(0.9)
+            tab1 = session.tabs[1].page
+            await tab1.wait_for_load_state()
+            # 새 탭 안에서 직접 주소를 옮긴다 — 클릭이 유발한 이동이 아니다.
+            await tab1.goto(f"{fixture_app}/analysis.html")
+            await asyncio.sleep(0.8)
+
+        project_client.portal.call(act)  # type: ignore[attr-defined]
+
+        steps = _steps(project_client, sid)
+        tab1_navs = [
+            s for s in steps if s["type"] == "navigate" and s["tab"] == 1
+        ]
+        assert tab1_navs, (
+            "새 탭의 화면 이동이 기록되지 않았다 — 새 탭에 네비게이션 감시가 붙지 않았다. "
+            f"기록된 (종류, 탭): {[(s['type'], s['tab']) for s in steps]}"
+        )
+    finally:
+        project_client.post(f"/api/sessions/{sid}/stop")

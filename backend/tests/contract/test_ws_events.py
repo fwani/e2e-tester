@@ -17,6 +17,14 @@ from fastapi.testclient import TestClient
 
 from itb.api.ws.session_events import MIRROR_EVENTS, SessionEventHub
 
+WS_PATH = "/api/sessions/{sid}/events"
+"""T160 에서 확정한 경로. 계약 문서와 구현이 같은 값을 쓴다."""
+
+STATE_EVENT_KEYS = {"state", "current_step_index", "active_tab"}
+"""contracts/websocket.md §상태 이벤트."""
+
+TAB_OPENED_KEYS = {"tab", "url", "title"}
+
 EXECUTION_EVENT_KEYS = {
     "step_started": {"step_id", "index", "tab"},
     "step_finished": {"step_id", "index", "outcome", "duration_ms", "resolved_candidate"},
@@ -101,7 +109,7 @@ def test_websocket_endpoint_delivers_events(client: TestClient) -> None:
     state = client.app.state.itb
     session_id = "contract-test-session"
 
-    with client.websocket_connect(f"/api/sessions/{session_id}/events") as ws:
+    with client.websocket_connect(WS_PATH.format(sid=session_id)) as ws:
         sink = state.broker.sink(session_id)
         client.portal.call(sink, "state_changed", {"state": "replaying"})  # type: ignore[attr-defined]
         client.portal.call(  # type: ignore[attr-defined]
@@ -150,3 +158,133 @@ def test_replay_emits_the_contracted_execution_events(
     summary = by_type["run_finished"][0]
     assert summary["outcome"] == "pass"
     assert summary["passed_count"] == summary["total_count"]
+
+
+# ─── T160: 계약과 구현의 일치 ───────────────────────────────────────────────
+
+
+def test_contract_document_declares_the_implemented_path() -> None:
+    """계약 문서의 경로가 구현 경로와 같아야 한다.
+
+    문서만 읽고 프론트를 만들었을 때 연결되지 않는 상황을 막는다. 이 테스트가 없으면
+    둘의 불일치는 사람이 두 파일을 나란히 놓고 볼 때만 드러난다.
+    """
+    import pathlib
+
+    contract = (
+        pathlib.Path(__file__).resolve().parents[3]
+        / "specs/001-interactive-ai-test-builder/contracts/websocket.md"
+    )
+    assert contract.exists(), f"계약 문서를 찾을 수 없다: {contract}"
+    body = contract.read_text(encoding="utf-8")
+    assert "/api/sessions/{session_id}/events" in body, (
+        "계약 문서의 경로가 구현과 다르다"
+    )
+    assert "/ws/sessions/{session_id}" not in body, (
+        "옛 경로 표기가 계약 문서에 남아 있다"
+    )
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_state_changed_carries_the_contracted_payload(
+    project_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+) -> None:
+    """`state_changed` 는 `state`·`current_step_index`·`active_tab` 을 담는다."""
+    created = project_client.post(
+        "/api/sessions",
+        json={"mode": "record", "start_url": f"{fixture_app}/login.html"},
+    )
+    sid = created.json()["session_id"]
+    try:
+        payloads = [p for name, p in event_log if name == "state_changed"]
+        assert payloads, f"state_changed 가 없다: {sorted({n for n, _ in event_log})}"
+        for payload in payloads:
+            missing = STATE_EVENT_KEYS - set(payload)
+            assert not missing, f"계약 키가 빠졌다: {sorted(missing)}"
+    finally:
+        project_client.post(f"/api/sessions/{sid}/stop")
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_tab_opened_carries_title(
+    project_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+) -> None:
+    """`tab_opened` 는 `title` 을 담는다. 막 열린 탭이면 빈 문자열일 수 있다.
+
+    **최초 탭(0)은 대상이 아니다.** 세션이 만들어지는 도중에 열리므로 이벤트 통로가 아직
+    붙지 않았고, 클라이언트는 세션 조회로 그 탭을 알게 된다. 이벤트가 의미를 갖는 것은
+    녹화 중 새로 열리는 탭이다 (FR-030a).
+    """
+    import asyncio
+    from typing import Any
+
+    created = project_client.post(
+        "/api/sessions",
+        json={"mode": "record", "start_url": f"{fixture_app}/login.html"},
+    )
+    sid = created.json()["session_id"]
+    try:
+        session = project_client.app.state.itb.sessions.require(sid)
+        page = session.tabs[0].page
+
+        async def act(p: Any = page) -> None:
+            await p.fill("#email", "tester@example.com")
+            await asyncio.sleep(0.2)
+            await p.fill("#password", "record-only-not-a-real-secret")
+            await asyncio.sleep(0.2)
+            await p.click("[data-testid=login-submit]")
+            await p.wait_for_url("**/projects.html")
+            await asyncio.sleep(0.4)
+            await p.click("[data-testid=terms-link]")
+            await asyncio.sleep(0.9)
+
+        project_client.portal.call(act)  # type: ignore[attr-defined]
+
+        payloads = [p for name, p in event_log if name == "tab_opened"]
+        assert payloads, "새 탭을 열었는데 tab_opened 이벤트가 없다"
+        for payload in payloads:
+            missing = TAB_OPENED_KEYS - set(payload)
+            assert not missing, f"계약 키가 빠졌다: {sorted(missing)}"
+            assert isinstance(payload["title"], str)
+    finally:
+        project_client.post(f"/api/sessions/{sid}/stop")
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_edit_warning_is_published_as_an_event(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+) -> None:
+    """FR-040b — 편집 경고는 REST 응답만이 아니라 이벤트로도 나간다.
+
+    편집을 요청한 클라이언트가 아닌 화면도 경고를 알아야 한다. 이벤트가 없으면 같은
+    세션을 보고 있는 다른 화면은 편집이 반영되지 않았다는 사실을 모른다.
+    """
+    from us2_support import record_login, start_replay, stop_quietly
+
+    test_id = record_login(keyed_client, fixture_app)
+    sid = start_replay(keyed_client, test_id)
+    try:
+        # 실행이 진행된 뒤 일시정지해 "이미 실행된 Step" 편집 상황을 만든다.
+        from us2_support import wait_for_run
+
+        wait_for_run(keyed_client, sid)
+        steps = keyed_client.get(f"/api/sessions/{sid}").json()["steps"]
+        assert steps
+
+        event_log.clear()
+        # 종료된 세션은 편집을 받지 않는다 — 경고 이벤트 경로만 직접 확인한다.
+        session = keyed_client.app.state.itb.sessions.require(sid)
+        session.add_edit_warning("step 01 은 이미 실행된 Step입니다.")
+        keyed_client.portal.call(session.publish_edit_warnings)  # type: ignore[attr-defined]
+
+        warnings = [p for name, p in event_log if name == "edit_warning"]
+        assert warnings, f"edit_warning 이 발행되지 않았다: {[n for n, _ in event_log]}"
+        assert warnings[0]["messages"], "경고 메시지가 비어 있다"
+    finally:
+        stop_quietly(keyed_client, sid)

@@ -79,6 +79,11 @@ class StepExecutor:
 
     async def execute(self, step: Step) -> StepExecution:
         """Step 을 실행한다. 실패하면 `StepFailure` 를 던진다."""
+        if isinstance(step, CloseTabStep):
+            # 탭 닫기는 대상 탭이 **없는 상태**를 목표로 한다. 다른 종류와 달리
+            # 대상이 없는 것이 실패가 아니므로 엄격한 탭 해석을 지나지 않는다.
+            return await self._close_tab(step)
+
         deadline = time.monotonic() + step.timeout_ms / 1000
 
         try:
@@ -119,8 +124,6 @@ class StepExecutor:
             case NavigateStep():
                 url = self._resolver.substitute(step.url)
                 await page.goto(url, timeout=self._left(deadline))
-            case CloseTabStep():
-                await page.close()
             case ClickStep():
                 located = await self._locate(page, step, deadline, record)
                 await located.locator.click(timeout=self._left(deadline))
@@ -137,6 +140,39 @@ class StepExecutor:
             case _:  # pragma: no cover - 판별 유니온이 모든 종류를 덮는다
                 msg = f"실행할 수 없는 Step 종류입니다: {type(step).__name__}"
                 raise StepFailure(msg, record.attempts, record.tab_wait_ms)
+
+    async def _close_tab(self, step: CloseTabStep) -> StepExecution:
+        """탭 닫기 (FR-030c).
+
+        **이미 닫혀 있거나 열리지 않았으면 통과한다.** 이 Step 의 목표는 대상 탭이 열려
+        있지 않은 상태이며, 그 상태는 이미 충족돼 있다. `hidden` 검증이 "처음부터 없던
+        경우도 통과" 하는 것과 같은 판정이다 (spec 엣지 케이스).
+
+        이 관용이 필요한 실제 흐름: 녹화 때 사용자가 "닫기" 버튼을 눌러 탭이 닫히면 클릭
+        Step 과 닫기 Step 이 함께 남을 수 있다. 재실행에서 클릭이 이미 탭을 닫으므로 닫기
+        Step 은 할 일이 없다 — 그것을 실패로 보면 정상 흐름이 실패한다.
+        """
+        record = StepExecution(tab=step.tab)
+        handle = self._session.find_tab(step.tab)
+
+        if handle is None:
+            # 아직 열리지 않았을 수 있다. 예산만큼 기다려 보고, 없으면 목표 달성으로 본다.
+            started = time.monotonic()
+            try:
+                handle = await self._session.wait_for_tab(step.tab, step.timeout_ms)
+            except TabNotFoundError:
+                record.tab_wait_ms = int((time.monotonic() - started) * 1000)
+                return record
+            record.tab_wait_ms = int((time.monotonic() - started) * 1000)
+
+        if handle.closed:
+            return record
+
+        try:
+            await handle.page.close()
+        except PlaywrightError as exc:
+            raise StepFailure(_humanize(exc, step), tab_wait_ms=record.tab_wait_ms) from exc
+        return record
 
     async def _locate(
         self, page: Page, step: Step, deadline: float, record: StepExecution

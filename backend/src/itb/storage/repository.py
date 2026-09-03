@@ -54,6 +54,15 @@ class ProjectError(Exception):
     """프로젝트 디렉터리 관련 오류."""
 
 
+class ResultUnreadableError(ProjectError):
+    """결과 파일이 있는데 읽을 수 없다.
+
+    "결과 없음" 과 **반드시 구분해야 한다**. 손상된 파일을 없는 것처럼 보고하면 사용자는
+    "먼저 실행하세요" 를 보고 방금 한 실행이 사라진 줄 안다 — 헌법 §보안의 명시적 오류
+    처리 요건이 막으려는 조용한 통과다.
+    """
+
+
 def slugify(name: str) -> str:
     """테스트 이름을 파일명 조각으로 만든다.
 
@@ -265,13 +274,33 @@ class ProjectRepository:
         return self.paths.run_dir(test_id) / "result.json"
 
     def read_result(self, test_id: str) -> RunResult | None:
+        """실행 결과 하나를 읽는다.
+
+        파일이 없으면 `None`. **있는데 읽을 수 없으면 `ResultUnreadableError`** 를 던진다.
+        단건 조회는 손상 사실을 사용자에게 전달해야 한다 (FR-087).
+        """
         p = self.result_path(test_id)
         if not p.exists():
             return None
         try:
             return RunResult.model_validate_json(p.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001 - 깨진 결과 파일이 목록을 막으면 안 된다
-            return None
+        except Exception as exc:
+            msg = (
+                f"{test_id} 의 실행 결과 파일을 읽을 수 없습니다: {p.name} "
+                f"({type(exc).__name__}). 다시 실행하면 새 결과로 덮어씁니다."
+            )
+            raise ResultUnreadableError(msg) from exc
+
+    def try_read_result(self, test_id: str) -> tuple[RunResult | None, str | None]:
+        """목록 경로용. (결과, 문제 사유) 를 돌려주고 예외를 던지지 않는다.
+
+        깨진 결과 파일 하나가 목록 전체를 못 보게 만들면 안 된다. 대신 사유를 함께
+        돌려주어 목록이 그 사실을 표시할 수 있게 한다 — `list_tests` 와 같은 방식이다.
+        """
+        try:
+            return self.read_result(test_id), None
+        except ResultUnreadableError as exc:
+            return None, str(exc)
 
     def write_result(self, result: RunResult) -> pathlib.Path:
         """실행 결과를 저장한다. 이전 결과를 덮어쓴다 — 최근 1건만 보관한다."""

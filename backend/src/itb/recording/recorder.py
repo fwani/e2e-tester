@@ -15,8 +15,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import pathlib
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -135,6 +137,8 @@ class Recorder:
     sensitive_captures: list[SensitiveCapture] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     _installed: bool = False
+    _watched: set[int] = field(default_factory=set)
+    """감시를 붙인 `Page` 의 id. 같은 탭에 핸들러를 두 번 붙이지 않기 위한 것이다."""
 
     # ─── 설치 ───────────────────────────────────────────────────────────────
 
@@ -161,7 +165,10 @@ class Recorder:
             with contextlib.suppress(Exception):
                 await tab.page.evaluate(INJECTED_SCRIPT.read_text(encoding="utf-8"))
         for tab in self.session.open_tabs():
-            self._watch_navigation(tab.page)
+            self.watch_page(tab.page)
+        # 이후 열리는 탭은 세션이 알려 준다. 이 등록이 없으면 새 탭의 화면 이동과
+        # 탭 닫힘이 기록되지 않는다 (FR-024·FR-030c).
+        self.session.attach_page_observer(self.watch_page)
         self._installed = True
 
     def _watch_navigation(self, page: Page) -> None:
@@ -171,9 +178,43 @@ class Recorder:
         """
         page.on("framenavigated", lambda frame: self._on_navigated(page, frame))
 
-    def watch_new_tab(self, page: Page) -> None:
-        """새 탭에도 네비게이션 감시를 붙인다. `context.on("page")` 에서 호출한다."""
+    def watch_page(self, page: Page) -> None:
+        """탭 하나에 네비게이션·닫힘 감시를 붙인다.
+
+        `BrowserSession.notify_page` 가 새 탭마다 호출한다. 이미 붙은 탭에 두 번
+        붙지 않도록 `_watched` 로 걸러 낸다 — 핸들러가 중복되면 Step 도 중복된다.
+        """
+        key = id(page)
+        if key in self._watched:
+            return
+        self._watched.add(key)
         self._watch_navigation(page)
+        page.on("close", lambda _p=page: self._on_tab_closed(_p))
+
+    def _on_tab_closed(self, page: Page) -> None:
+        """탭 닫힘 → `close_tab` Step (FR-030c).
+
+        **녹화 중일 때만 기록한다.** 재실행 중 `close_tab` Step 이 탭을 닫으면 이 핸들러가
+        다시 불리는데, 그때 Step 을 만들면 실행이 정의를 늘린다.
+
+        **그 탭의 클릭이 닫음을 유발한 경우는 기록하지 않는다.** 페이지 안의 "닫기" 버튼을
+        누른 것은 이미 클릭 Step 으로 남아 있고, 재실행 때 그 클릭이 같은 닫힘을 다시
+        만든다. 두 Step 을 모두 남기면 한 사건이 두 번 표현된다 — 클릭이 유발한 화면 이동을
+        억제하는 것(FR-030b)과 같은 판정이며, 같은 인과 플래그를 쓴다.
+        """
+        if not self.active:
+            return
+        handle = self.session.tab_of(page)
+        if handle is None:
+            return
+
+        clicked_at = self._nav_suppress.pop(handle.tab_index, None)
+        if clicked_at is not None and (time.monotonic() * 1000) - clicked_at < NAV_DEDUPE_MS:
+            return
+
+        asyncio.create_task(  # noqa: RUF006 - 이벤트 핸들러에서 대기할 수 없다
+            self._emit(self.record_tab_close(handle.tab_index))
+        )
 
     # ─── 녹화 제어 ─────────────────────────────────────────────────────────
 
@@ -330,8 +371,6 @@ class Recorder:
         `pointerdown` 과 `click` 이 같은 클릭에 대해 둘 다 도착한다. 먼저 온 쪽만 남긴다 —
         먼저 온 쪽이 화면 이동을 앞질러 후보를 검증했을 가능성이 높다.
         """
-        import time
-
         now_ms = time.monotonic() * 1000
         key = (tab, str(element.get("css") or ""))
         last = self._click_seen.get(key)
@@ -577,9 +616,6 @@ class Recorder:
         """
         if not self.active or frame != page.main_frame:
             return
-        import asyncio
-        import time
-
         tab = self.session.tab_of(page)
         if tab is None:
             return

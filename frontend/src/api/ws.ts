@@ -18,7 +18,12 @@ export interface SessionEventBase {
 }
 
 export type SessionEvent =
-  | (SessionEventBase & { type: "state_changed"; state: SessionState; active_tab: number })
+  | (SessionEventBase & {
+      type: "state_changed";
+      state: SessionState;
+      current_step_index: number;
+      active_tab: number;
+    })
   | (SessionEventBase & { type: "session_lost"; reason?: string })
   | (SessionEventBase & { type: "edit_warning"; messages: string[] })
   | (SessionEventBase & { type: "step_added"; step: Step; at_index: number })
@@ -33,13 +38,43 @@ export type SessionEvent =
       outcome: string;
       duration_ms: number;
     })
-  | (SessionEventBase & { type: "mirror_frame"; tab: number; data: string })
+  | (SessionEventBase & {
+      type: "step_failed";
+      step_id: string;
+      index: number;
+      error_message: string;
+      locator_attempts: unknown[];
+      tab_wait_ms: number;
+    })
+  | (SessionEventBase & {
+      type: "run_finished";
+      outcome: string;
+      total_ms: number;
+      passed_count: number;
+      total_count: number;
+      failed_step_index: number | null;
+    })
+  | (SessionEventBase & { type: "mirror_frame"; tab: number; data: string; width: number; height: number })
   | (SessionEventBase & { type: "mirror_tab_changed"; tab: number })
+  | (SessionEventBase & { type: "mirror_degraded"; mode: string; reason?: string })
   | (SessionEventBase & { type: "mirror_stopped"; reason?: string })
-  | (SessionEventBase & { type: "tab_opened"; tab: number; url: string })
+  /** 조용한 실패를 막는 진단 이벤트 (contracts/websocket.md §진단 이벤트). */
+  | (SessionEventBase & { type: "run_error"; reason: string })
+  | (SessionEventBase & { type: "artifact_note"; message: string })
+  | (SessionEventBase & { type: "tab_opened"; tab: number; url: string; title: string })
   | (SessionEventBase & { type: "tab_closed"; tab: number })
   | (SessionEventBase & { type: "tab_limit_reached"; limit: number; message?: string })
-  | (SessionEventBase & { type: string; [key: string]: unknown });
+  | (SessionEventBase & { type: "unknown_event" });
+/**
+ * **포괄 변형(`{ type: string; [key: string]: unknown }`)을 두지 않는다.**
+ *
+ * 그 변형이 있으면 `case "run_error"` 로 좁혀도 포괄 변형이 함께 남아 모든 필드가
+ * `unknown` 이 된다. 그러면 이벤트마다 캐스팅을 붙이게 되고, 캐스팅은 계약이 바뀐 것을
+ * 컴파일러가 알려 주지 못하게 만든다 — 타입을 둔 이유가 사라진다.
+ *
+ * 계약에 아직 없는 이벤트(AI 이벤트 등)는 `switch` 의 `default` 에서 전체 상태 재조회로
+ * 처리된다. 런타임은 안전하고, 새 이벤트를 쓰려면 여기 변형을 추가해야 한다.
+ */
 
 export interface SubscribeOptions {
   onEvent: (event: SessionEvent) => void;

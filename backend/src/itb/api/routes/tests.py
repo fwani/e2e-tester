@@ -11,7 +11,7 @@ from itb.api.errors import ErrorCode, bad_request, not_found, not_implemented
 from itb.api.state import AppState, get_state
 from itb.domain.run_result import Outcome, RunResult
 from itb.domain.test_case import AuthoringMode, Test
-from itb.storage.repository import ProjectError
+from itb.storage.repository import ProjectError, ResultUnreadableError
 from itb.storage.yaml_io import DefinitionError
 
 router = APIRouter(prefix="/api/tests", tags=["tests"])
@@ -74,7 +74,10 @@ async def list_tests(
     rows: list[TestListRow] = []
     passed = failed = 0
     for t in tests:
-        result = repo.read_result(t.id)
+        # 목록에서는 깨진 결과 파일 하나가 전체를 막지 않게 사유만 모은다 (FR-087).
+        result, problem = repo.try_read_result(t.id)
+        if problem is not None:
+            problems.append(problem)
         outcome = result.outcome if result else None
         if outcome is Outcome.PASS:
             passed += 1
@@ -150,8 +153,16 @@ async def delete_test(test_id: str, state: State) -> None:
 
 @router.get("/{test_id}/result")
 async def get_result(test_id: str, state: State) -> RunResult:
+    """최근 실행 결과.
+
+    **"결과 없음" 과 "결과를 읽을 수 없음" 을 구분한다.** 손상된 파일을 없는 것처럼
+    보고하면 사용자는 방금 한 실행이 사라진 줄 안다 (FR-087, 헌법 §보안).
+    """
     repo = state.require_repository()
-    result = repo.read_result(test_id)
+    try:
+        result = repo.read_result(test_id)
+    except ResultUnreadableError as exc:
+        raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
     if result is None:
         raise not_found(
             ErrorCode.TEST_NOT_FOUND,
@@ -173,7 +184,10 @@ async def get_artifact(
             ErrorCode.NOT_SUPPORTED,
             "실행 추적(Trace)은 이번 범위에 없습니다. TRACE 탭은 비활성입니다.",
         )
-    result = repo.read_result(test_id)
+    try:
+        result = repo.read_result(test_id)
+    except ResultUnreadableError as exc:
+        raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
     if result is None:
         raise not_found(ErrorCode.TEST_NOT_FOUND, f"{test_id} 의 실행 결과가 없습니다.")
     mapping = {

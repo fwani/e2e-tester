@@ -75,6 +75,9 @@ class TabHandle:
 EventSink = Callable[[str, dict[str, object]], Awaitable[None]]
 """세션이 이벤트를 내보내는 통로. (type, payload) 를 받는다."""
 
+PageObserver = Callable[[Page], None]
+"""새 탭을 관찰할 대상. 리코더가 네비게이션·탭 닫힘 감시를 붙이는 데 쓴다."""
+
 
 @dataclass(slots=True)
 class BrowserSession:
@@ -88,12 +91,25 @@ class BrowserSession:
     active_tab_index: int = 0
     mirrored_tab_index: int = 0
     test_id: str | None = None
+    current_step_index: int = 0
+    """다음에 실행할 Step 위치.
+
+    **세션이 소유한다.** 상태 전이 이벤트가 이 값을 함께 실어 보내야 하므로
+    (contracts/websocket.md `state_changed`), API 계층에 사본을 두면 두 값이 어긋난다.
+    """
+
     max_tabs: int = MAX_TABS_DEFAULT
     edit_warnings: list[str] = field(default_factory=list)
     _resume: asyncio.Event = field(default_factory=asyncio.Event)
     _next_tab_index: int = 0
     _sink: EventSink | None = None
     _tab_opened: asyncio.Event = field(default_factory=asyncio.Event)
+    _page_observer: PageObserver | None = None
+    """새 탭이 열렸을 때 알려 줄 대상. 리코더가 등록한다.
+
+    세션이 리코더를 직접 임포트하지 않는 이유는 방향이다 — 리코더가 세션을 임포트하므로
+    반대 방향을 두면 고리가 생긴다. 훅 하나로 방향을 유지한다.
+    """
 
     # ─── 이벤트 ─────────────────────────────────────────────────────────────
 
@@ -125,6 +141,7 @@ class BrowserSession:
         await self.emit(
             "state_changed",
             state=new_state.value,
+            current_step_index=self.current_step_index,
             active_tab=self.active_tab_index,
         )
         return new_state
@@ -167,6 +184,17 @@ class BrowserSession:
         self._tab_opened.set()
         self._tab_opened = asyncio.Event()
         return handle
+
+    def attach_page_observer(self, observer: PageObserver | None) -> None:
+        """새 탭 통보 대상을 등록한다. 리코더가 `install()` 에서 부른다."""
+        self._page_observer = observer
+
+    def notify_page(self, page: Page) -> None:
+        """새 탭이 열렸음을 관찰자에게 알린다. 실패해도 탭 등록에 영향을 주지 않는다."""
+        if self._page_observer is None:
+            return
+        with contextlib.suppress(Exception):
+            self._page_observer(page)
 
     def tab_of(self, page: Page) -> TabHandle | None:
         """페이지가 어느 탭인지. `expose_binding` 의 source 를 tab_index 로 바꿀 때 쓴다."""
@@ -231,6 +259,17 @@ class BrowserSession:
     def add_edit_warning(self, message: str) -> None:
         if message not in self.edit_warnings:
             self.edit_warnings.append(message)
+
+    async def publish_edit_warnings(self) -> None:
+        """쌓인 편집 경고를 이벤트로 내보낸다 (FR-040b, contracts/websocket.md).
+
+        REST 응답에도 같은 목록이 실린다. 이벤트가 별도로 필요한 이유는, 편집을 요청한
+        클라이언트가 아닌 화면(다른 탭에서 같은 세션을 보고 있는 경우)도 경고를 알아야
+        하기 때문이다.
+        """
+        if not self.edit_warnings:
+            return
+        await self.emit("edit_warning", messages=list(self.edit_warnings))
 
     def take_edit_warnings(self) -> list[str]:
         out = list(self.edit_warnings)
@@ -314,8 +353,10 @@ class SessionManager:
                 )
                 return
             page.on("close", lambda _p=page: self._on_tab_closed(session, _p))
+            # 리코더에게 새 탭을 알린다 — 네비게이션·탭 닫힘 감시가 여기서 붙는다.
+            session.notify_page(page)
             asyncio.create_task(  # noqa: RUF006
-                session.emit("tab_opened", tab=handle.tab_index, url=handle.url)
+                self._announce_tab(session, handle)
             )
 
         context.on("page", on_page)
@@ -329,6 +370,20 @@ class SessionManager:
         if test_id is not None:
             self._by_test[test_id] = session.session_id
         return session
+
+    @staticmethod
+    async def _announce_tab(session: BrowserSession, handle: TabHandle) -> None:
+        """`tab_opened` 를 계약 형태로 발행한다 (contracts/websocket.md).
+
+        제목은 await 가 필요하므로 태스크에서 읽는다. 막 열린 탭은 제목이 비어 있을 수
+        있다 — 빈 문자열을 그대로 보낸다. 없는 값을 채워 넣지 않는다.
+        """
+        await session.emit(
+            "tab_opened",
+            tab=handle.tab_index,
+            url=handle.url,
+            title=await handle.title(),
+        )
 
     def _on_tab_closed(self, session: BrowserSession, page: Page) -> None:
         handle = session.mark_closed(page)

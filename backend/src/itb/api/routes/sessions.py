@@ -58,7 +58,6 @@ class SessionWork:
     session: BrowserSession
     recorder: Recorder
     steps: list[Step] = field(default_factory=list)
-    current_step_index: int = 0
     start_url: str = ""
     authoring_mode: AuthoringMode = AuthoringMode.RECORD
     ai_instruction: str | None = None
@@ -71,6 +70,19 @@ class SessionWork:
     loss_watcher: SessionLossWatcher | None = None
     engine: ReplayEngine | None = None
     runner: RunnerTask | None = None
+
+    @property
+    def current_step_index(self) -> int:
+        """다음에 실행할 Step 위치. **세션이 소유한 값을 그대로 읽는다.**
+
+        여기에 사본을 두면 상태 전이 이벤트가 실어 보내는 값과 REST 응답의 값이
+        어긋난다 — 어느 쪽이 진실인지 모호해진다.
+        """
+        return self.session.current_step_index
+
+    @current_step_index.setter
+    def current_step_index(self, value: int) -> None:
+        self.session.current_step_index = value
 
 
 _WORK: dict[str, SessionWork] = {}

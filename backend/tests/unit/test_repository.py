@@ -12,6 +12,7 @@ from itb.domain.test_case import Project, Test
 from itb.storage.repository import (
     ProjectError,
     ProjectRepository,
+    ResultUnreadableError,
     slugify,
     validate_project_path,
 )
@@ -266,12 +267,38 @@ def test_read_result_missing_returns_none(repo: ProjectRepository) -> None:
     assert repo.read_result("TC-001") is None
 
 
-def test_read_result_corrupted_returns_none(repo: ProjectRepository) -> None:
-    """깨진 결과 파일이 목록 화면을 막으면 안 된다."""
+def test_read_result_corrupted_raises_with_reason(repo: ProjectRepository) -> None:
+    """T162 — 손상된 결과 파일을 "결과 없음" 으로 보고하지 않는다 (FR-087).
+
+    없는 것처럼 돌려주면 화면이 "먼저 실행하세요" 를 띄우고, 사용자는 방금 한 실행이
+    사라진 줄 안다. 파일이 있다는 사실과 읽을 수 없다는 사실을 모두 전달해야 한다.
+    """
     p = repo.result_path("TC-001")
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("{ not json", encoding="utf-8")
-    assert repo.read_result("TC-001") is None
+    with pytest.raises(ResultUnreadableError, match="읽을 수 없습니다"):
+        repo.read_result("TC-001")
+
+
+def test_try_read_result_tolerates_corruption_for_listing(
+    repo: ProjectRepository,
+) -> None:
+    """목록 경로는 깨진 파일 하나가 전체를 막지 않게 사유만 돌려준다."""
+    p = repo.result_path("TC-001")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("{ not json", encoding="utf-8")
+
+    result, problem = repo.try_read_result("TC-001")
+    assert result is None
+    assert problem is not None
+    assert "TC-001" in problem
+
+
+def test_try_read_result_reports_no_problem_when_missing(
+    repo: ProjectRepository,
+) -> None:
+    """파일이 없는 것은 문제가 아니다 — 아직 실행하지 않은 정상 상태다."""
+    assert repo.try_read_result("TC-001") == (None, None)
 
 
 def test_run_dir_rejects_bad_test_id(repo: ProjectRepository) -> None:

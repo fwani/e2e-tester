@@ -84,7 +84,9 @@ def _warn_if_already_executed(w: SessionWork, index: int) -> None:
         )
 
 
-def _response(w: SessionWork) -> StepsResponse:
+async def _response(w: SessionWork) -> StepsResponse:
+    """편집 결과 응답. 경고가 있으면 이벤트로도 알린다 (FR-040b)."""
+    await w.session.publish_edit_warnings()
     return StepsResponse(
         steps=w.steps,
         edit_warnings=list(w.session.edit_warnings),
@@ -119,7 +121,7 @@ async def insert_step(
     if at <= w.current_step_index:
         w.current_step_index += 1
     await w.session.emit("step_added", step=step.model_dump(mode="json"), at_index=at)
-    return _response(w)
+    return await _response(w)
 
 
 @router.patch("/{session_id}/steps/{step_id}")
@@ -148,7 +150,7 @@ async def patch_step(
     updated = current.model_copy(update=update)
     w.steps[index] = updated
     await w.session.emit("step_updated", step=updated.model_dump(mode="json"))
-    return _response(w)
+    return await _response(w)
 
 
 @router.delete("/{session_id}/steps/{step_id}")
@@ -166,7 +168,7 @@ async def delete_step(session_id: str, step_id: str) -> StepsResponse:
     if index < w.current_step_index:
         w.current_step_index -= 1
     await w.session.emit("step_removed", step_id=step_id)
-    return _response(w)
+    return await _response(w)
 
 
 @router.post("/{session_id}/steps:reorder")
@@ -191,7 +193,7 @@ async def reorder_steps(session_id: str, body: ReorderRequest) -> StepsResponse:
 
     w.steps = [by_id[i] for i in body.order]
     await w.session.emit("steps_reordered", order=body.order)
-    return _response(w)
+    return await _response(w)
 
 
 @router.post("/{session_id}/assertions")
@@ -224,7 +226,7 @@ async def add_assertion(
     if at <= w.current_step_index:
         w.current_step_index += 1
     await w.session.emit("step_added", step=step.model_dump(mode="json"), at_index=at)
-    return _response(w)
+    return await _response(w)
 
 
 def _assertion_label(assertion: Assertion) -> str:

@@ -48,6 +48,7 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
   const [mirrorStopped, setMirrorStopped] = useState<string | null>(null);
   const [mirrorDegraded, setMirrorDegraded] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string[]>([]);
   const [lost, setLost] = useState<string | null>(null);
   const [runningIndex, setRunningIndex] = useState<number | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
@@ -73,30 +74,28 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
       onEvent: (event: SessionEvent) => {
         switch (event.type) {
           case "mirror_frame":
-            setFrame(event.data as string);
+            setFrame(event.data);
             setMirrorStopped(null);
             break;
           case "mirror_tab_changed":
-            setMirrorTab(event.tab as number);
+            setMirrorTab(event.tab);
             break;
           case "mirror_degraded":
-            setMirrorDegraded((event.reason as string | undefined) ?? null);
+            setMirrorDegraded(event.reason ?? null);
             break;
           case "mirror_stopped":
-            setMirrorStopped((event.reason as string | undefined) ?? "미러가 중단됐습니다.");
+            setMirrorStopped(event.reason ?? "미러가 중단됐습니다.");
             break;
           case "session_lost":
-            setLost(
-              (event.reason as string | undefined) ?? "브라우저 세션이 유실됐습니다.",
-            );
+            setLost(event.reason ?? "브라우저 세션이 유실됐습니다.");
             void resync();
             break;
           case "step_started":
-            setRunningIndex(event.index as number);
+            setRunningIndex(event.index);
             break;
           case "step_finished": {
-            const stepId = event.step_id as string;
-            const durationMs = event.duration_ms as number;
+            const stepId = event.step_id;
+            const durationMs = event.duration_ms;
             durations.current[stepId] = durationMs;
             setProgress((prev) => ({
               ...prev,
@@ -109,17 +108,24 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
             setRunningIndex(null);
             setSummary(
               `${event.outcome === "pass" ? "PASS" : "FAIL"} · ` +
-                `${event.passed_count as number} / ${event.total_count as number} 통과 · ` +
-                `${((event.total_ms as number) / 1000).toFixed(2)} s`,
+                `${event.passed_count} / ${event.total_count} 통과 · ` +
+                `${(event.total_ms / 1000).toFixed(2)} s`,
             );
             void resync();
             break;
           case "run_error":
+            // 실행이 끝났는데 결과를 남기지 못한 경우 — 조용히 넘기면 실행이 없었던
+            // 것처럼 보인다 (contracts/websocket.md §진단 이벤트).
+            setError(event.reason);
+            break;
           case "artifact_note":
-            setError((event.reason as string) ?? (event.message as string) ?? null);
+            // 산출물 일부를 남기지 못한 사유. 실행 자체는 유효하므로 오류로 다루지 않는다.
+            setNotes((prev) =>
+              prev.includes(event.message) ? prev : [...prev, event.message],
+            );
             break;
           case "tab_limit_reached":
-            setError((event.message as string | undefined) ?? "탭 상한에 도달했습니다.");
+            setError(event.message ?? "탭 상한에 도달했습니다.");
             break;
           default:
             // step_added·step_updated·step_removed·state_changed 등은 전체 상태를 다시 받는다.
@@ -245,6 +251,12 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
       {view.recorder_warnings.map((w) => (
         <div key={w} style={{ padding: "8px 16px", background: "var(--surface-soft)" }} className="muted">
           {w}
+        </div>
+      ))}
+
+      {notes.map((n) => (
+        <div key={n} style={{ padding: "8px 16px", background: "var(--surface-soft)" }} className="muted">
+          {n}
         </div>
       ))}
 
