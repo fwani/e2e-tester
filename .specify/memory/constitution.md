@@ -1,6 +1,44 @@
 <!--
-Sync Impact Report
-==================
+Sync Impact Report — Amendment 2026-09-03
+=========================================
+Version change: 1.0.0 → 1.1.0
+Bump rationale: MINOR — existing guidance materially expanded. No principle was removed or
+                redefined in a backward-incompatible way; a satisfaction *deadline* was made
+                explicit and a new governance rule was added.
+
+Motivation: /speckit-analyze flagged a CRITICAL conflict (finding C1). Principle V stated the
+            Export requirement as an unconditional MUST, but the constitution had no notion of
+            incremental delivery. The MVP's documented deferral of Export (recorded in
+            specs/001-interactive-ai-test-builder/plan.md, Complexity Tracking) therefore remained
+            a MUST violation, and the same CRITICAL would recur on every analyze run. The gap is
+            general, not specific to Principle V: any incrementally built project hits it when the
+            end-state MUST is not distinguished from the state of each increment.
+
+Approved by: project maintainer, 2026-09-03.
+
+Modified principles:
+  - V. Asset Portability — added an explicit satisfaction deadline (release, not increment) plus
+    two obligations that hold during every increment. The principle is NOT weakened: shipping to
+    users without Export remains a violation.
+
+Added sections:
+  - Governance → Incremental delivery (new rule)
+  - Governance → Compliance review: pre-release deferral-recovery check
+
+Removed sections: none
+
+Unchanged: Principles I-IV (including the NON-NEGOTIABLE marks on I and II), Technology &
+           Security Constraints, Development Workflow & Quality Gates, amendment procedure,
+           versioning policy.
+
+Net effect on Principles I and II: **strengthened.** The new Incremental delivery rule states
+explicitly that NON-NEGOTIABLE principles can never be deferred, closing an argument that was
+previously only implicit.
+
+Prior report (initial ratification) follows.
+
+Sync Impact Report — Initial ratification
+==========================================
 Version change: (none / template) → 1.0.0
 Bump rationale: Initial ratification. The prior file was the unfilled scaffold with
                 unfilled bracket tokens, so this is a first definition rather than an amendment.
@@ -122,10 +160,27 @@ Generated tests MUST remain usable without this product.
 - The Test Step DSL MUST be stored in a documented, human-readable, plain-text format placed under
   version control by the user. No opaque binary or undocumented schema for user test assets.
 
+**Satisfaction deadline** (added in v1.1.0): Export MUST be implemented **by the time the product
+is released to users**. It MAY be absent during development increments. Two obligations hold in
+*every* increment regardless:
+
+- The Test Step DSL MUST be designed and maintained in a form that can be exported to a standard
+  Playwright project. A DSL change that forecloses export is a violation now, not later.
+- The DSL ↔ Playwright correspondence MUST be kept documented, and the locator-candidate selection
+  logic MUST live in a single point shared by the Runner and the Generator (see Principle IV).
+
+This clause names *when* the requirement is due; it does not lower it. **Shipping to users without
+Export is still a violation.** Deferring it requires the Incremental delivery rule in Governance.
+
 **Rationale**: PRD §13 makes this an explicit product promise: "사용자는 제품을 사용하지 않더라도
 생성한 테스트 자산을 계속 사용할 수 있다". Beyond adoption, it is a design constraint — a DSL that
 must compile to portable standard Playwright cannot quietly accumulate product-only semantics, which
 protects Principle II.
+
+The deadline is set at release rather than at each increment because the Generator is only as stable
+as the Step model it compiles. Fixing the Generator before the Step model has been validated by real
+use means rewriting it on every model change — which produces churn, not portability. What must not
+slip is the *design* obligation above, because that is what keeps the later implementation cheap.
 
 ## Technology & Security Constraints
 
@@ -198,6 +253,27 @@ a tool default, a habit, or a convenience conflicts with a principle here, the p
 4. Principles marked NON-NEGOTIABLE (I, II) require explicit justification of why the original
    rationale no longer holds. A deadline or convenience is not sufficient justification.
 
+**Incremental delivery** (added in v1.1.0):
+
+This constitution states the **end state** the product must reach. Work proceeds in increments, and
+an increment may not yet satisfy every principle. That gap is permitted only under this rule.
+
+Deferring a principle's satisfaction to a later increment requires **all three** of the following:
+
+1. The feature's `plan.md` records the deferral in Complexity Tracking with its rationale,
+   the mitigation taken now, and the recovery path.
+2. The recovery is registered as a **release-gate item**.
+3. The minimum obligations that still hold during the increment are stated explicitly — the
+   design must remain such that later satisfaction is cheap rather than a rewrite.
+
+**Principles marked NON-NEGOTIABLE (I. Unified Step Model, II. Deterministic Replay) can never be
+deferred.** They MUST hold in every increment, including the first. There is no deferral path for
+them; a gap in either is a defect to fix, not a deferral to record.
+
+An undocumented deferral is a violation. Deferral MUST NOT become practice by accumulation — if the
+same item is deferred across two increments, that is grounds for an amendment proposal or a scope
+decision, not a third deferral.
+
 **Versioning policy** (semantic):
 
 - **MAJOR** — a principle is removed or redefined in a backward-incompatible way; existing compliant
@@ -211,5 +287,8 @@ a tool default, a habit, or a convenience conflicts with a principle here, the p
 - Plans (`plan.md`) include a Constitution Check; unresolved violations block `tasks`/`implement`.
 - Deviations discovered after merge are recorded and either corrected or elevated to an amendment
   proposal. They are not left as undocumented precedent.
+- **Pre-release review MUST verify that every registered deferral has been recovered.** If any
+  release-gate item from the Incremental delivery rule is outstanding, the product is not shipped.
+  This is the check that makes a satisfaction deadline meaningful rather than indefinite.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-03 | **Last Amended**: 2026-09-03
+**Version**: 1.1.0 | **Ratified**: 2026-09-03 | **Last Amended**: 2026-09-03

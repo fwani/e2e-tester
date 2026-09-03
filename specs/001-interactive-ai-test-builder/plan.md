@@ -4,7 +4,7 @@
 
 **Input**: Feature specification from `/specs/001-interactive-ai-test-builder/spec.md`
 
-**Constitution**: v1.0.0 — 원칙 I·II는 NON-NEGOTIABLE
+**Constitution**: v1.1.0 — 원칙 I·II는 NON-NEGOTIABLE (이연 불가)
 
 **Phase 0/1 산출물**: [research.md](./research.md) · [data-model.md](./data-model.md) ·
 [contracts/](./contracts/) · [quickstart.md](./quickstart.md)
@@ -113,7 +113,7 @@ Step 대기 시간 기본 5000 ms.
 | **II. Deterministic Replay** | PASS | `import-linter` `forbidden` 계약으로 `itb.execution`→`itb.llm`/`anthropic` 차단, CI 빌드 실패. 동적 검증으로 재실행 중 클라이언트 생성 스파이 0건 확인. `itb.execution` 은 `ai_instruction` 을 읽지 않는다 |
 | **III. Stateful Interactive Runner** | PASS | 장수명 `BrowserContext` + `asyncio.Event`. 상태 기계 불변식 1(PAUSED·AI_BLOCKED에서 세션 종료 금지)·2(편집은 PAUSED에서만)·3(편집은 정의만 변경)을 data-model §8에 명문화하고 단위 테스트 대상으로 지정 |
 | **IV. Locator Resilience** | PASS | 순수 함수 `choose_strategy` 를 Runner·Generator가 공유(R4). 기록 시점 후보 검증으로 `Candidate.status` 가 실제 데이터가 되고 SC-008을 기록 시점에 측정 가능 |
-| **V. Asset Portability** | **CONDITIONAL** | DSL 요건 충족(평문 YAML·문서화·버전관리·검증 규칙 공개). Export 미구현은 아래 기록. 완화: `contracts/step-dsl.md` 에 DSL→Playwright 대응표를 명시하고 후보 선택을 `choose_strategy` 한 곳에 모아 두어 Export 추가 시 우선순위 로직을 다시 짜지 않게 했다 |
+| **V. Asset Portability** | **PASS (이연 등록)** | 헌법 v1.1.0의 Incremental delivery 규칙에 따라 정식 이연으로 등록했다. 증분 중 의무 2가지를 충족한다 — ① DSL이 표준 Playwright 프로젝트로 내보낼 수 있는 형태를 유지(`contracts/step-dsl.md` §Export 대비) ② DSL↔Playwright 대응표를 문서로 유지하고 후보 선택을 `choose_strategy` 단일 지점에 둠(T027·T143). 회수는 아래 릴리스 게이트에 등록 |
 | **Cross-language schema duty** | PASS | Pydantic v2 권위 정의 → JSON Schema → TS 생성. **CI 드리프트 테스트**가 커밋된 생성물과 새 생성물을 비교(R6) |
 | **보안 요건 전체** | PASS | PyNaCl SealedBox + 별도 비밀 파일 + 로그 스크러버(R7). 어떤 API 응답·WebSocket 이벤트도 복호화 값을 담지 않음(계약에 명문화). 민감 변수의 `value` 가 null이어야 한다는 **스키마 불변식**으로 정의 파일 유입을 차단 |
 | **품질 게이트 1 (원칙 준수 증거)** | PASS | `lint-imports` + `test_replay_no_llm` 이 원칙 II 증거를 자동으로 생산 |
@@ -237,13 +237,28 @@ fixtures/sample-app/     # 검증용 대상 앱 (로그인·프로젝트·새 �
 
 > Constitution Check의 조건부 판정 1건.
 
+**헌법 v1.1.0 Incremental delivery 규칙에 따른 정식 이연 등록.** 요건 3가지를 모두 충족한다:
+① 아래 표에 근거·완화 조치·회수 경로 기록 ② 아래 **릴리스 게이트**에 회수 등록
+③ 증분 중 최소 의무 명시(위 Constitution Check §V 행).
+
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | **원칙 V — Playwright Export 미구현** (MVP는 DSL 평문 저장까지만 충족) | Export는 PRD §14에서 P2로 분류되었고 사용자가 이번 사이클 범위를 P0+P1로 확정했다. PRD §20이 지정한 MVP 기술 검증 대상은 Recorder·Stateful Runner·Deterministic Compiler 셋이며, Export는 그중 어느 것도 검증하지 않는다. 검증되지 않은 Step 모델 위에 Export를 먼저 짜면 모델이 바뀔 때마다 다시 짜야 한다 | **지금 Export를 구현하는 대안**: 헌법 원칙 V를 완전히 충족하지만 범위 결정과 충돌하고, Step 모델이 아직 실사용으로 검증되지 않은 상태에서 생성기를 고정하게 된다. **완화 조치를 대신 취했다** — ① DSL을 평문·문서화·버전관리 가능한 형태로 저장해 원칙 V의 자산 이식성 요건 중 잠금 방지 부분은 지금 충족한다 ② `contracts/step-dsl.md` 에 DSL→Playwright 대응표를 확정해 둔다 ③ 후보 선택을 `choose_strategy` 순수 함수 한 곳에 모아 Runner와 Generator가 공유하게 하고, `generator/playwright_gen.py` 를 지금 자리 잡아 둔다. Export를 붙일 때 우선순위 로직을 다시 짜는 일이 없도록 하는 것이 이 완화의 목적이다 |
 
-**이 이연은 다음 사이클에서 반드시 회수해야 한다.** 회수하지 않은 상태로 제품을 사용자에게 내보내면
-원칙 V의 사용자 약속("제품을 쓰지 않더라도 자산을 계속 사용할 수 있다")이 지켜지지 않는다.
-헌법 개정으로 원칙을 낮추는 것이 아니라, P2에서 구현해 원칙을 충족시키는 것이 이 항목의 해소 경로다.
+### 릴리스 게이트 (헌법 v1.1.0 Incremental delivery 요건 2)
+
+| # | 게이트 항목 | 원칙 | 회수 시점 | 미회수 시 |
+|---|-------------|------|-----------|-----------|
+| RG-1 | **Playwright Export 구현** — 표준 실행 가능 Playwright 프로젝트(spec 파일·`playwright.config`·의존성 매니페스트) 생성 | V | P2 사이클 | **출하 금지** (헌법 Compliance review) |
+
+**회수 경로**: P2에서 `itb/generator/playwright_gen.py`(T143에서 이미 자리 잡음)를 Export 명령으로
+확장한다. 후보 선택은 `choose_strategy`(T027)를 그대로 쓰므로 우선순위 로직을 다시 짜지 않는다.
+
+**주의**: 헌법 v1.1.0은 같은 항목을 **두 증분 연속으로 이연하는 것을 금지한다.** P2에서도 회수하지
+못하면 세 번째 이연이 아니라 개정 제안 또는 범위 결정으로 처리해야 한다.
+
+**원칙을 낮춘 것이 아니다.** v1.1.0 개정은 충족 *시점*을 명시했을 뿐이며, Export 없이 사용자에게
+출하하는 것은 여전히 위반이다.
 
 ---
 
