@@ -1,93 +1,128 @@
-# 개발 문서
+# 개발 안내
 
-## 설계 결정을 읽는 순서
+`quickstart.md` §0 의 설치·실행 절차를 개발자 관점으로 정리한 문서다 (T153).
+제품을 **검증**하는 절차는 `specs/001-interactive-ai-test-builder/quickstart.md` 가 갖고,
+이 문서는 **개발할 때 반복하는 것들**을 갖는다.
 
-1. `.specify/memory/constitution.md` — 무엇이 타협 불가인지
-2. `specs/001-interactive-ai-test-builder/spec.md` — 무엇을 만드는지
-3. `.../research.md` — **왜 그렇게 만드는지.** 각 결정에 배제한 대안과 실측 결과가 있다
-4. `.../data-model.md` — 엔티티와 상태 기계 불변식
-5. `.../contracts/` — 경계
+## 확인된 환경
 
-## 알아 두면 시간을 아끼는 것들
+Python 3.13.0 (pyenv) · Node 23.7.0 / npm 10.9.2 · uv 0.9.7 · macOS 26.2 arm64
 
-### 일시정지는 브라우저 조작이 아니다
+Playwright 1.62.0 이 Python 3.13 에서 정상 동작함을 실측했다 (research R1 검증 항목).
+3.13 에서 설치가 깨지면 3.12 로 내리고 research.md R1 의 검증 항목을 갱신한다.
 
-장수명 `BrowserContext` 를 유지한 채 러너 태스크가 `asyncio.Event` 를 await 하는 것이
-전부다. 상태 저장·복원 로직이 없다. T003 스파이크로 25초 동안 DOM·입력값·모달 상태가
-보존되고 Resume 후 재시작 없이 이어짐을 확인했다.
-
-`itb/execution/state_machine.py` 는 Playwright 를 임포트하지 않는다 — 그래서 10상태 ×
-19명령 190 조합을 브라우저 없이 전수 테스트한다.
-
-### 제품이 입력 경로에 없다
-
-사용자는 **실제 브라우저 창**을 조작하고 제품은 입력을 전달하지 않는다. 전달하지 않으므로
-한글 IME 조합·hover·드래그에서 깨질 것이 없다. 제품 화면 왼쪽은 **관찰용 읽기 전용 미러**다.
-
-미러는 CDP `Page.startScreencast` 로 구동하며 `Input` 도메인을 호출하지 않는다. ack 를
-멈추면 프레임이 자연히 멈추고 예외가 없다 — FR-047b 가 백프레셔로 공짜 달성된다.
-
-### 입력은 키가 아니라 확정 값을 잡는다
-
-`change`/`blur` 로 잡으면 조합이 끝난 값이 온다. **다만 둘이 모두 발생하므로** 같은 요소
-기준 중복 제거가 필요하다 (T004 실측). "직전 이벤트" 기준으로는 부족하다 — 다른 요소를
-클릭하면 그 클릭이 blur 를 유발해 클릭 Step 이 사이에 끼기 때문이다.
-
-### 멀티 탭은 거의 공짜였다
-
-`add_init_script` 와 `expose_binding` 을 `Page` 가 아니라 **`BrowserContext`** 에 등록하면
-새 탭에 리코더가 자동 주입된다. 콜백의 `source["page"]` 로 발신 탭을 식별한다.
-`context.on("page")` 가 `target="_blank"` 와 `window.open` 양쪽에서 모두 발생함을
-T005 로 확인했다.
-
-**탭 번호는 재사용하지 않는다.** 재사용하면 저장된 Step 의 `tab` 참조가 다른 탭을 가리킨다.
-
-### 네비게이션 중복 제거는 인과로 판정한다
-
-클릭이 유발한 이동은 Step 으로 만들지 않는다 — 클릭 Step 이 재실행 시 같은 이동을
-만드므로 중복이다. 시간창만으로 판정하면 타이밍에 따라 결과가 흔들리므로, 탭별 플래그와
-**"클릭 뒤 다른 Step 이 기록되면 그 클릭은 이동을 만들지 않았다"** 는 조건을 함께 쓴다.
-
-### `exact=True` 는 선택이 아니다
-
-`get_by_role(name=...)` 의 기본 매칭은 **부분 일치**다 (T007 실측). `exact=True` 없이는
-`name="프로젝트"` 가 `"프로젝트 생성"` 버튼을 잡는다. 대체 후보가 조용히 다른 요소를 잡으면
-테스트가 잘못된 대상에 대해 통과한다 — 실패보다 나쁜 결과다.
-
-### 후보 상태는 4종이다
-
-`verified` / `ambiguous` / `unverified` / `not_collected`. `ambiguous` 는 실측으로 추가됐다 —
-`text`·`css` 후보가 각각 2·3개 요소를 매칭하는 경우가 실제로 나왔다. **`ambiguous` 를 확보된
-후보로 세면 SC-008 측정이 부풀려진다.**
-
-### 민감 값 파이프라인 순서가 보안 요건이다
-
-    수집 → 검증 → **치환** → Step 생성 → 이벤트 발행
-
-치환이 이벤트 발행보다 먼저 일어나야 한다. 순서가 뒤바뀌면 비밀번호 평문이 프론트에
-도달한다. `tests/unit/test_sensitive_ordering.py` 가 이 순서를 고정한다.
-
-변수 이름 생성에 `isalnum()` 을 쓰지 말 것 — 한글도 참이라 변수 이름 패턴을 깨뜨리고,
-저장 시 `Test` 검증이 실패한다.
-
-### 순환 임포트가 조용히 라우터를 지운다
-
-라우터가 `itb.api.app` 을 임포트하고 `app.py` 가 라우터를 임포트하면 고리가 생겨
-`include_router` 가 실패한다. 그래서 공유 상태를 `itb/api/state.py` 에 뒀다.
-**이 실패는 예외 없이 라우트만 사라지므로 알아채기 어렵다.**
-
-## 스파이크
-
-`scripts/spikes/` 의 스크립트는 research 의 가정을 실측한 기록이다. 설계 결정에 의문이
-생기면 해당 스파이크를 다시 돌려 보는 것이 가장 빠르다.
+## 설치
 
 ```bash
-cd backend && uv run python ../scripts/spikes/spike_session.py
+cd backend && uv sync && uv run playwright install chromium
+cd ../frontend && npm install
 ```
 
-## 미확인으로 남은 것
+스키마 생성물은 **커밋 대상**이다 (헌법 Cross-language schema duty). 도메인 모델을 고쳤으면
+다시 생성해서 함께 커밋한다.
 
-| 항목 | 이유 | 확인 시점 |
-|------|------|-----------|
-| 창 최소화·가려짐 시 스크린캐스트 동작 | 프로그램으로 창을 최소화할 수 없었다 | 개발 중 수동 확인 |
-| `tool_runner` 취소 반응, `fallbacks="default"` | 언어모델 자격 증명 없음 | Phase 6 (US4) 시작 시 |
+```bash
+cd backend && uv run python -m itb.schema.export
+cd ../frontend && npm run gen:types
+```
+
+생성물을 갱신하지 않으면 `tests/contract/test_schema_drift.py` 가 실패한다. 그 테스트는
+"손으로 타입을 만들기 시작하는 것" 을 막는 장치다.
+
+## 실행
+
+```bash
+# 1) 검증용 대상 앱 (표준 라이브러리만 쓴다)
+python fixtures/sample-app/serve.py --port 4300
+
+# 2) 백엔드 — 로컬 인터페이스에만 바인딩한다 (FR-088a)
+cd backend && uv run uvicorn itb.api.app:app --host 127.0.0.1 --port 4320
+
+# 3) 프론트엔드
+cd frontend && npm run dev            # http://127.0.0.1:4310
+```
+
+브라우저는 **headed 로 뜬다.** 조작 국면(녹화·사람 인수)은 실제 창을 요구하고, 스크린캐스트는
+headed 에서도 동작한다 (T006 실측). 모드를 하나로 유지하는 것이 의도된 설계다.
+
+### 언어모델 자격 증명 (US4~US6 을 손으로 써 볼 때만)
+
+```bash
+ant auth status        # 활성 프로필이 있으면 그대로 쓴다
+ant auth login         # 또는 export ANTHROPIC_API_KEY=...
+```
+
+**키를 코드·설정 파일에 넣지 않는다** (FR-084). SDK 가 환경 변수 → 프로필 순으로 해석한다.
+
+자동 테스트는 자격 증명을 쓰지 않는다 — `AuthoringAgent` 의 `driver` 자리에 대본대로 도구를
+부르는 가짜 모델을 끼운다 (`backend/tests/us4_support.py`).
+
+## 검증
+
+```bash
+# ★ 헌법 원칙 II (NON-NEGOTIABLE). 이것이 실패하면 다른 검사는 의미가 없다
+cd backend && uv run lint-imports
+
+cd backend && uv run ruff check src/ tests/
+cd backend && uv run pytest
+cd backend && uv run python -m itb.schema.export --check
+cd frontend && npx tsc --noEmit && npx vitest run
+```
+
+CI(`.github/workflows/ci.yml`)는 경계 검사 잡을 최우선으로 실행하고 실패하면 후속 잡을
+돌리지 않는다.
+
+### 테스트 계층
+
+| 경로 | 무엇을 보는가 | 브라우저 |
+|------|---------------|----------|
+| `tests/unit/` | 순수 로직 — 도메인 불변식, 상태 기계, 후보 우선순위, 생성기, 시도 상한 | 없음 |
+| `tests/contract/` | REST·WebSocket·DSL 계약, 스키마 드리프트 | 대부분 없음 |
+| `tests/integration/` | 픽스처 앱 대상 실제 동작 — 녹화·재실행·일시정지·AI·비밀값 | 있음 |
+| `tests/e2e/` | 사용자 스토리별 quickstart 절차 | 있음 |
+
+전체 실행은 6분 안팎이다. 브라우저를 띄우지 않는 계층만 빠르게 돌리려면:
+
+```bash
+cd backend && uv run pytest tests/unit tests/contract -q      # 30초 안팎
+```
+
+### 테스트를 지우거나 건너뛰지 않는다
+
+헌법 품질 게이트 4다. 깨진 테스트는 고치거나, 정말 낡았다면 **이유를 기록하고** 지운다.
+`skip` 으로 덮으면 검증하지 않은 것이 통과로 보인다.
+
+## 자주 겪는 문제
+
+**녹화한 Step 의 후보가 전부 `not_collected` 로 나온다**
+클릭이 화면 이동을 유발하면 후보 검증이 그 이동과 경쟁한다. CSS·testId 는 동작 시점에
+페이지 안에서 검증하므로 영향을 받지 않지만(`recorder.js` 의 `statusOf`), `role`·`label`·
+`text` 는 Playwright 로 검증하므로 놓칠 수 있다. 테스트에서는 사람처럼 조작한다 —
+`us2_support.click_like_a_person` 이 마우스를 올려 두고 잠깐 기다린 뒤 누른다.
+
+**통합 테스트가 "픽스처 앱이 뜨지 않았다" 로 실패한다**
+`fixtures/sample-app/serve.py` 가 쓰는 포트가 막혔거나 파이썬 실행 파일이 다르다.
+`conftest.py` 는 실패를 **건너뛰지 않고 명확한 사유로 실패시킨다** — 조용히 건너뛰면
+검증하지 않은 것을 통과로 오인하기 때문이다.
+
+**`lint-imports` 가 깨졌다**
+`itb.execution`(또는 `storage`·`generator`·`locator`·`domain`·`mirror`·`recording`)에서
+`itb.llm`·`itb.authoring`·`anthropic` 에 닿는 임포트가 생겼다는 뜻이다. 원칙 II 위반이므로
+런타임 가드가 아니라 **임포트를 없애서** 고친다.
+
+**AI 경로가 상한에 걸려 멈춘다**
+도구 호출 40회, 동일 요소 연속 실패 3회가 상한이다 (FR-066). 상한 도달은 예외가 아니라
+상태로 남고, 에이전트 루프가 매 턴 그 상태를 보고 끊는다 — SDK 가 도구 예외를 잡아 모델에게
+돌려주므로 예외로는 루프를 끊을 수 없기 때문이다.
+
+## 저장 레이아웃
+
+```text
+<프로젝트 디렉터리>/
+├── itb-project.yaml      # 커밋 대상
+├── tests/TC-001-*.yaml   # 커밋 대상 — 사용자 자산
+├── secrets.local.yaml    # .gitignore 대상 (암호문)
+└── .runs/                # .gitignore 대상 (실행 산출물)
+```
+
+키 쌍은 프로젝트 밖에 있다: `~/.config/itb/keys/`.

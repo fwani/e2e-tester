@@ -141,21 +141,14 @@ def test_failure_message_and_artifacts_are_scrubbed(
 def test_no_generated_code_surface_leaks_secrets() -> None:
     """FR-089d-1 — 생성 코드는 민감 변수를 **참조로만** 담는다.
 
-    코드 생성기는 이번 범위(US2)에 없다. 건너뛰는 대신 **생성 코드 표면이 아직 존재하지
-    않는다는 사실 자체를 검증**한다. 생성기가 들어오면 이 테스트가 자동으로 실제 검사로
-    바뀐다 — 조용히 통과하는 구멍을 남기지 않는다 (헌법 품질 게이트 4).
+    이 테스트는 생성기가 없던 때 "표면이 아직 없다" 를 확인하는 형태로 먼저 있었다
+    (헌법 품질 게이트 4 — 조용히 통과하는 구멍을 남기지 않는다). 생성기가 들어왔으므로
+    이제 실제 검사를 한다.
     """
-    import importlib.util
-
-    if importlib.util.find_spec("itb.generator.playwright_gen") is None:
-        assert importlib.util.find_spec("itb.generator") is not None, (
-            "generator 패키지 자체가 없다 — 프로젝트 구조가 어긋났다"
-        )
-        return
-
     from itb.domain.locator import Candidate, CandidateStatus, TargetLocator
     from itb.domain.step import FillStep
-    from itb.generator import playwright_gen  # type: ignore[attr-defined]
+    from itb.domain.test_case import Variable
+    from itb.generator.playwright_gen import ValueRenderer, step_lines
 
     step = FillStep(
         id="step-01",
@@ -166,5 +159,12 @@ def test_no_generated_code_surface_leaks_secrets() -> None:
         ),
         value="{{SECRET_VALUE_1}}",
     )
-    code = playwright_gen.generate_steps([step])  # type: ignore[attr-defined]
+    renderer = ValueRenderer(
+        {"SECRET_VALUE_1": Variable(name="SECRET_VALUE_1", value=None, sensitive=True)}
+    )
+    code = "\n".join(step_lines(step, renderer))
+
     assert "SECRET_VALUE_1" in code, "민감 변수 참조가 생성 코드에 없다"
+    # 참조는 **환경 변수 조회**로만 나타난다 — 값이 코드에 들어갈 자리가 없다.
+    assert "process.env.SECRET_VALUE_1" in code
+    assert SECRET not in code

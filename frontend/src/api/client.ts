@@ -206,6 +206,18 @@ export interface AddAssertionBody {
   tab?: number | null;
 }
 
+/** AI 실패 시 4선택지 (FR-071~FR-074). */
+export type AiChoice = "takeover" | "retry" | "skip" | "abort";
+
+export interface AiStepResponse {
+  created: boolean;
+  message: string;
+  step_id: string | null;
+  steps: Step[];
+  current_step_index: number;
+  state: SessionState;
+}
+
 /** 다시 집을 대상. `drag` 만 두 번째 값을 쓴다 (T166). */
 export type RepickSlot = "target" | "drop_target";
 
@@ -261,6 +273,17 @@ export const sessions = {
    * "다시 집기" (FR-020). `selector` 를 생략하면 브라우저에서 클릭할 때까지 대기한다 —
    * 그 클릭은 Step 으로 기록되지 않는다.
    */
+  /** AI 실패 시 선택 (FR-071~FR-074). `AI_BLOCKED` 에서만 받는다. */
+  aiChoice: (id: string, choice: AiChoice) =>
+    post<SessionView>(`/api/sessions/${id}/ai-choice`, { choice }),
+  /**
+   * 일시정지 중 자연어로 Step 하나 추가 (FR-078).
+   *
+   * 대상을 찾지 못하면 `created: false` 와 사유가 온다 — 실패해도 일시정지 상태가
+   * 유지된다 (FR-081).
+   */
+  aiStep: (id: string, instruction: string) =>
+    post<AiStepResponse>(`/api/sessions/${id}/ai-step`, { instruction }),
   repick: (id: string, stepId: string, body: { slot?: RepickSlot; selector?: string }) =>
     post<RepickResponse>(`/api/sessions/${id}/steps/${stepId}/repick`, {
       slot: body.slot ?? "target",

@@ -1,0 +1,276 @@
+"""오류 처리·진단 일관성. FR-087·헌법 §보안(명시적 오류 처리) (T152).
+
+헌법이 요구하는 것은 두 가지다.
+
+1. **실패한 Step 은 항상 진단 가능한 결과를 남긴다** — 사유·스크린샷·로그
+2. **처리되지 않은 오류로 러너 태스크가 죽지 않는다** — 조용한 실패도, 조용한 중단도 없다
+
+이 파일은 그 두 가지를 코드 구조와 동작 양쪽에서 본다. 구조 점검(모든 예외 경로가 사유를
+남기는가)은 브라우저 없이 할 수 있고, 그래서 전수로 볼 수 있다.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import inspect
+import pathlib
+
+import pytest
+
+from itb.api.errors import ApiError, ErrorCode, bad_request, conflict, not_found
+from itb.domain.run_result import LocatorAttempt, StepOutcome
+from itb.execution import runner as runner_mod
+from itb.execution.runner import RunnerTask
+from itb.execution.state_machine import Command, SessionState
+from itb.execution.step_executor import StepFailure
+
+EXECUTION_DIR = pathlib.Path(runner_mod.__file__).parent
+
+
+class _FakeSession:
+    """러너가 요구하는 최소 표면. 브라우저를 띄우지 않는다."""
+
+    def __init__(self, state: SessionState = SessionState.REPLAYING) -> None:
+        self.state = state
+        self.current_step_index = 0
+        self.events: list[tuple[str, dict]] = []
+        self._resume = asyncio.Event()
+        self._resume.set()
+
+    @property
+    def is_paused(self) -> bool:
+        return not self._resume.is_set()
+
+    def mark_running(self) -> None:
+        self._resume.set()
+
+    async def wait_until_resumed(self) -> None:
+        await self._resume.wait()
+
+    async def emit(self, event_type: str, **payload: object) -> None:
+        self.events.append((event_type, payload))
+
+    async def apply(self, command: Command) -> SessionState:
+        if command is Command.FINISH_PASS:
+            self.state = SessionState.COMPLETED
+        elif command is Command.FINISH_FAIL:
+            self.state = SessionState.FAILED
+        return self.state
+
+
+# ─── 1. 실패는 항상 진단 가능한 결과를 남긴다 ─────────────────────────────
+
+
+def test_step_failure_carries_diagnostics() -> None:
+    """FR-021·FR-054 — 실패 예외가 사유와 시도 내역을 함께 들고 있다.
+
+    사유만 있으면 "왜 못 찾았는지" 를 알 수 없고, 시도 내역만 있으면 사람이 읽을 문장이
+    없다. 둘 다 필요하다.
+    """
+    attempts = [
+        LocatorAttempt(
+            candidate="test_id", expression="testId=x", matched=False, waited_ms=5000
+        )
+    ]
+    failure = StepFailure("찾을 수 없습니다", attempts=attempts, tab_wait_ms=120)
+    assert str(failure)
+    assert failure.attempts == attempts
+    assert failure.tab_wait_ms == 120
+
+
+def test_unexpected_exception_in_a_step_becomes_a_run_error_event() -> None:
+    """FR-087 — 예상하지 못한 오류로 러너가 **죽지 않는다.**
+
+    태스크가 조용히 사라지면 화면은 "실행 중" 에 머문 채 아무 일도 일어나지 않는다.
+    """
+    session = _FakeSession()
+
+    async def boom(_session: object, _index: int) -> bool:
+        msg = "예상하지 못한 오류"
+        raise RuntimeError(msg)
+
+    task = RunnerTask(session=session, step_runner=boom, total_steps=1)  # type: ignore[arg-type]
+
+    async def run() -> None:
+        task.start()
+        await task.wait()
+
+    asyncio.run(run())
+
+    kinds = [k for k, _ in session.events]
+    assert "run_error" in kinds, kinds
+    reason = next(p["reason"] for k, p in session.events if k == "run_error")
+    assert "RuntimeError" in str(reason)
+    # 실패로 종료했다 — 통과로 넘어가지 않는다.
+    assert session.state is SessionState.FAILED
+
+
+def test_failure_to_record_the_result_is_reported() -> None:
+    """**결과를 남기지 못한 것도 알린다** (contracts/websocket.md §진단 이벤트).
+
+    조용히 넘기면 사용자는 "실행이 원래 없었다" 고 오인한다.
+    """
+    session = _FakeSession()
+
+    async def ok(_session: object, _index: int) -> bool:
+        return True
+
+    async def broken_finish(_passed: bool) -> None:
+        msg = "디스크가 가득 찼습니다"
+        raise OSError(msg)
+
+    task = RunnerTask(
+        session=session,  # type: ignore[arg-type]
+        step_runner=ok,
+        total_steps=1,
+        on_finished=broken_finish,
+    )
+
+    async def run() -> None:
+        task.start()
+        await task.wait()
+
+    asyncio.run(run())
+
+    reasons = [p["reason"] for k, p in session.events if k == "run_error"]
+    assert reasons, [k for k, _ in session.events]
+    assert "정리하지 못했습니다" in str(reasons[0])
+
+
+def test_cancellation_is_not_recorded_as_a_failure() -> None:
+    """중지는 실패가 아니다.
+
+    사용자가 멈춘 실행을 실패로 기록하면 목록 화면에 없던 실패가 생긴다.
+    """
+    session = _FakeSession()
+    started = asyncio.Event()
+
+    async def slow(_session: object, _index: int) -> bool:
+        started.set()
+        await asyncio.sleep(10)
+        return True  # pragma: no cover - 취소된다
+
+    finished_calls: list[bool] = []
+
+    async def on_finished(passed: bool) -> None:  # pragma: no cover - 불려선 안 된다
+        finished_calls.append(passed)
+
+    task = RunnerTask(
+        session=session,  # type: ignore[arg-type]
+        step_runner=slow,
+        total_steps=1,
+        on_finished=on_finished,
+    )
+
+    async def run() -> None:
+        task.start()
+        await started.wait()
+        await task.cancel()
+
+    asyncio.run(run())
+
+    assert finished_calls == [], "취소된 실행이 결과로 기록됐다"
+    assert session.state is SessionState.REPLAYING
+
+
+def test_skipped_steps_are_distinguished_from_not_run() -> None:
+    """FR-055 — `skipped` 와 `not_run` 을 구분한다.
+
+    둘을 합치면 "실패한 Step부터 실행" 의 결과에서 앞선 Step 이 왜 안 돌았는지 알 수 없다.
+    """
+    assert StepOutcome.SKIPPED != StepOutcome.NOT_RUN
+    assert {o.value for o in StepOutcome} == {"pass", "fail", "skipped", "not_run"}
+
+
+# ─── 2. 구조 점검 — 조용히 삼키는 경로가 없다 ─────────────────────────────
+
+
+EXPECTED_BARE_SUPPRESS: dict[str, int] = {
+    # 사유를 남길 수 없는 경로만 허용한다. 늘어나면 이 테스트가 알려 준다.
+    "session.py": 8,
+    "artifacts.py": 6,
+    "runner.py": 1,
+    "session_loss.py": 5,
+    "element_probe.py": 1,
+}
+"""`contextlib.suppress(Exception)` 이 허용된 횟수.
+
+정리·통보 경로에서는 실패를 삼키는 것이 맞다 — 탭을 닫다 실패한 것이 실행 결과를 바꾸면
+안 되고, 이벤트 전송 실패가 실행을 멈추면 안 된다 (FR-047b).
+
+**허용 횟수를 숫자로 고정한다.** 새로 생긴 `suppress` 는 이 테스트를 깨뜨리므로, 그때
+"이것도 정리 경로인가" 를 사람이 판단하게 된다. 판단 없이 늘어나는 것을 막는 것이 목적이다.
+"""
+
+
+def test_broad_suppression_is_bounded() -> None:
+    """`itb.execution` 에서 예외를 삼키는 지점이 늘지 않았는지 본다."""
+    counts: dict[str, int] = {}
+    for path in sorted(EXECUTION_DIR.glob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        found = text.count("contextlib.suppress(Exception)")
+        if found:
+            counts[path.name] = found
+
+    assert counts == EXPECTED_BARE_SUPPRESS, (
+        "예외를 삼키는 지점이 바뀌었다. 정리·통보 경로인지 확인하고 "
+        f"EXPECTED_BARE_SUPPRESS 를 갱신하라: {counts}"
+    )
+
+
+def test_every_broad_except_in_execution_has_a_reason_comment() -> None:
+    """`except Exception` 마다 **왜 넓게 잡는지** 가 적혀 있다.
+
+    이유 없는 광범위 포획은 조용한 실패의 출발점이다. 주석을 강제하면 최소한 판단이
+    기록된다.
+    """
+    offenders: list[str] = []
+    for path in sorted(EXECUTION_DIR.glob("*.py")):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            stripped = line.strip()
+            if not stripped.startswith("except Exception"):
+                continue
+            if "#" not in stripped:
+                offenders.append(f"{path.name}:{number}")
+    assert not offenders, f"이유가 적히지 않은 광범위 예외 포획: {offenders}"
+
+
+def test_step_executor_never_returns_silently_on_failure() -> None:
+    """실행기의 모든 실패 경로가 `StepFailure` 를 던진다.
+
+    `None` 을 돌려주거나 조용히 통과하면 실패가 통과로 기록된다 — 테스트 도구에서 가장
+    나쁜 결함이다.
+    """
+    from itb.execution import step_executor
+
+    source = inspect.getsource(step_executor)
+    # 실패를 표현하는 유일한 수단이 예외임을 확인한다.
+    assert "return False" not in source
+    assert source.count("raise StepFailure") >= 5
+
+
+# ─── API 오류 형태 ─────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("factory", "status"),
+    [(bad_request, 400), (not_found, 404), (conflict, 409)],
+)
+def test_api_errors_follow_the_contract_shape(factory: object, status: int) -> None:
+    """contracts/rest-api.md — `{error:{code,message,detail}}` 형태를 지킨다."""
+    error: ApiError = factory(ErrorCode.NOT_PAUSED, "메시지", state="paused")  # type: ignore[operator]
+    assert error.status_code == status
+    body = error.detail["error"]
+    assert body["code"] == "NOT_PAUSED"
+    assert body["message"] == "메시지"
+    assert body["detail"] == {"state": "paused"}
+
+
+def test_error_messages_do_not_leak_internal_paths() -> None:
+    """헌법 §보안 — 사용자에게 보여줄 메시지에 내부 경로·스택을 담지 않는다.
+
+    오류 코드 목록에 담긴 문자열은 모두 사용자에게 그대로 노출될 수 있다.
+    """
+    for code in ErrorCode:
+        assert "/Users/" not in code.value
+        assert "Traceback" not in code.value

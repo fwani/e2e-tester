@@ -64,6 +64,17 @@ export type SessionEvent =
   | (SessionEventBase & { type: "tab_opened"; tab: number; url: string; title: string })
   | (SessionEventBase & { type: "tab_closed"; tab: number })
   | (SessionEventBase & { type: "tab_limit_reached"; limit: number; message?: string })
+  /** AI 이벤트 — **작성 세션에서만 나간다** (contracts/websocket.md §AI 이벤트).
+   * `replay` 세션에서 관측되면 원칙 II 위반이며, 그것을 테스트로 고정한다 (SC-006). */
+  | (SessionEventBase & { type: "ai_progress"; message: string })
+  | (SessionEventBase & {
+      type: "ai_blocked";
+      attempted: string | null;
+      reason: string;
+      choices: string[];
+    })
+  | (SessionEventBase & { type: "ai_finished"; step_count: number })
+  | (SessionEventBase & { type: "ai_error"; reason: string })
   | (SessionEventBase & { type: "unknown_event" });
 /**
  * **포괄 변형(`{ type: string; [key: string]: unknown }`)을 두지 않는다.**
@@ -72,7 +83,7 @@ export type SessionEvent =
  * `unknown` 이 된다. 그러면 이벤트마다 캐스팅을 붙이게 되고, 캐스팅은 계약이 바뀐 것을
  * 컴파일러가 알려 주지 못하게 만든다 — 타입을 둔 이유가 사라진다.
  *
- * 계약에 아직 없는 이벤트(AI 이벤트 등)는 `switch` 의 `default` 에서 전체 상태 재조회로
+ * 계약에 아직 없는 이벤트는 `switch` 의 `default` 에서 전체 상태 재조회로
  * 처리된다. 런타임은 안전하고, 새 이벤트를 쓰려면 여기 변형을 추가해야 한다.
  */
 

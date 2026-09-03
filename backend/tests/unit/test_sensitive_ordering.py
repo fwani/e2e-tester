@@ -20,7 +20,8 @@ import pytest
 from nacl.public import PublicKey
 
 from itb.domain.step import Author, Step
-from itb.recording.recorder import SENSITIVE_VARIABLE_PREFIX, Recorder
+from itb.domain.test_case import SENSITIVE_VARIABLE_PREFIX
+from itb.recording.recorder import Recorder
 from itb.secrets.keys import KeyPaths, generate, load_public
 from itb.secrets.store import SecretStore
 

@@ -39,15 +39,11 @@ from itb.domain.step import (
     SelectStep,
     Step,
 )
-from itb.domain.test_case import (
-    fallback_variable_name,
-    make_variable_name,
-    variable_reference,
-)
 from itb.execution.element_probe import collect_and_verify
 from itb.execution.session import BrowserSession, TabLimitReachedError
 from itb.locator.strategy import ordered_strategies
 from itb.recording.repick import RepickController
+from itb.secrets.capture import SensitiveCapture, SensitiveCapturer
 from itb.secrets.store import SecretStore
 
 INJECTED_SCRIPT = pathlib.Path(__file__).parent / "injected" / "recorder.js"
@@ -85,19 +81,8 @@ CLICK_DEDUPE_MS = 700
 두 번 누르는 간격보다는 짧고, 한 클릭의 두 이벤트 간격보다는 넉넉하게 잡았다.
 """
 
-SENSITIVE_VARIABLE_PREFIX = "SECRET_"
-
 StepSink = Callable[[Step, int], Awaitable[None]]
 """(step, insert_index) 를 받아 Step 목록에 넣고 이벤트를 발행한다."""
-
-
-@dataclass(slots=True)
-class SensitiveCapture:
-    """민감 값 하나를 변수로 옮긴 기록."""
-
-    variable_name: str
-    sealed: bool
-    """공개키로 봉인해 비밀 파일에 저장했는가. 공개키가 없으면 False."""
 
 
 @dataclass(slots=True)
@@ -136,6 +121,7 @@ class Recorder:
     _last_click_ms: float = 0.0
     _last_fill_key: tuple[int, str] | None = None
     _last_step_id: str | None = None
+    _last_step_label: str | None = None
     _fill_step_ids: dict[tuple[int, str], str] = field(default_factory=dict)
     """(탭, CSS) → 그 요소의 최근 fill Step id. 중복 제거의 근거다."""
 
@@ -163,16 +149,16 @@ class Recorder:
     _click_seen: dict[tuple[int, str], float] = field(default_factory=dict)
     """(탭, CSS) → 그 요소의 클릭을 기록한 시각(ms). `pointerdown`·`click` 중복 제거용."""
 
-    _secret_names: dict[tuple[int, str], str] = field(default_factory=dict)
-    """(탭, CSS) → 그 요소에 부여한 민감 변수 이름.
-
-    같은 필드가 이벤트를 여러 번 내도 변수는 하나여야 한다. 없으면 한 번의 입력이
-    `SECRET_VALUE_1`, `SECRET_VALUE_2` … 로 늘어나 정의와 비밀 파일이 어긋난다.
-    """
-
     _nav_suppress: dict[int, float] = field(default_factory=dict)
     """탭 → 그 탭에서 클릭이 일어난 시각(ms). 다음 이동 하나를 억제하는 데 쓴다."""
-    sensitive_captures: list[SensitiveCapture] = field(default_factory=list)
+
+    capturer: SensitiveCapturer | None = None
+    """민감 값 포착기. 없으면 `install()` 에서 만든다.
+
+    **AI 작성 경로와 같은 객체를 공유할 수 있어야 한다** — 사람이 이어받아 입력한 값과
+    AI 가 입력한 값이 같은 변수 이름 공간을 쓰지 않으면 정의와 비밀 파일이 어긋난다.
+    """
+
     warnings: list[str] = field(default_factory=list)
     _installed: bool = False
     _watched: set[int] = field(default_factory=set)
@@ -187,6 +173,10 @@ class Recorder:
         """
         if self._installed:
             return
+        if self.capturer is None:
+            self.capturer = SensitiveCapturer(
+                store=self.store, public_key=self.public_key
+            )
         context = self.session.context
 
         # 바운드 메서드를 그대로 넘기지 않는다. Playwright 가 핸들러의 `__self__` 에
@@ -350,6 +340,16 @@ class Recorder:
             return
         await self.repick.deliver(target)
 
+    @property
+    def last_step_label(self) -> str | None:
+        """마지막으로 기록한 Step 의 표시 이름. 인수 요약에 쓴다 (FR-076)."""
+        return self._last_step_label
+
+    @property
+    def sensitive_captures(self) -> list[SensitiveCapture]:
+        """포착한 민감 값 목록. 저장 시 변수 정의를 만드는 근거다 (FR-082)."""
+        return self.capturer.captures if self.capturer is not None else []
+
     def _warn(self, message: str) -> None:
         if message not in self.warnings:
             self.warnings.append(message)
@@ -380,6 +380,7 @@ class Recorder:
     async def _emit(self, step: Step) -> None:
         index = self.insert_at if self.insert_at is not None else -1
         self._last_step_id = step.id
+        self._last_step_label = step.label
         await self.sink(step, index)
         if self.insert_at is not None:
             self.insert_at += 1
@@ -531,24 +532,6 @@ class Recorder:
             return step_id
         return None
 
-    def _sensitive_variable_name(self, element: dict[str, Any]) -> str:
-        """민감 변수 이름을 만든다.
-
-        이름 규칙 자체는 `itb.domain.test_case.make_variable_name` 이 갖는다 — 나중에
-        사용자가 민감으로 지정하는 경로(FR-082b)와 같은 이름을 만들어야 하기 때문이다.
-        여기서는 **무엇을 이름의 근거로 볼지** 만 정한다.
-        """
-        attrs = element.get("attributes") or {}
-        for base in (
-            attrs.get("name"),
-            attrs.get(self.test_id_attribute),
-            element.get("label"),
-        ):
-            name = make_variable_name(base)
-            if name is not None:
-                return name
-        return fallback_variable_name(len(self.sensitive_captures) + 1)
-
     def _element_key(self, element: dict[str, Any]) -> tuple[int, str]:
         """탭 정보 없이 요소를 구분하는 키. 호출자가 키를 주지 않을 때만 쓴다.
 
@@ -582,38 +565,31 @@ class Recorder:
 
         **평문을 돌려주지 않는다.** 이 함수의 반환값만 Step 에 들어가고, Step 만 이벤트로
         나가므로 평문이 프론트에 도달할 경로가 없다 (T157).
+
+        포착 자체는 `SensitiveCapturer` 가 한다 — AI 작성 경로(FR-061)도 같은 객체를 써야
+        변수 이름 공간이 갈라지지 않는다.
         """
         if not sensitive or not raw_value:
             return raw_value
+        if self.capturer is None:  # pragma: no cover - install() 이 먼저 돈다
+            self.capturer = SensitiveCapturer(
+                store=self.store, public_key=self.public_key
+            )
 
-        # 같은 필드는 이벤트를 여러 번 내도 변수 하나를 쓴다. 이름을 매번 새로 만들면
-        # 입력 한 번이 `SECRET_VALUE_1`, `SECRET_VALUE_2` … 로 늘어난다.
         cache_key = key if key is not None else self._element_key(element)
-        variable = self._secret_names.get(cache_key)
-        if variable is None:
-            variable = self._sensitive_variable_name(element)
-            self._secret_names[cache_key] = variable
-
-        sealed = False
-        if self.store is not None and self.public_key is not None:
-            with contextlib.suppress(Exception):
-                self.store.put(variable, raw_value, self.public_key)
-                sealed = True
-        if not sealed:
-            self._warn(
-                f"민감 값을 보관할 공개키가 없어 {variable} 의 값을 저장하지 못했습니다. "
-                "키를 만든 뒤 값을 다시 입력하거나 환경 변수로 공급하세요."
-            )
-        existing = next(
-            (c for c in self.sensitive_captures if c.variable_name == variable), None
+        attrs = element.get("attributes") or {}
+        stored = self.capturer.to_reference(
+            raw_value,
+            cache_key=repr(cache_key),
+            name_basis=(
+                attrs.get("name"),
+                attrs.get(self.test_id_attribute),
+                element.get("label"),
+            ),
         )
-        if existing is None:
-            self.sensitive_captures.append(
-                SensitiveCapture(variable_name=variable, sealed=sealed)
-            )
-        elif sealed:
-            existing.sealed = True
-        return variable_reference(variable)
+        for message in self.capturer.warnings:
+            self._warn(message)
+        return stored
 
     async def _record_hover(
         self, page: Page, tab: int, element: dict[str, Any]

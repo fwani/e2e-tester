@@ -15,7 +15,7 @@ from __future__ import annotations
 from playwright.async_api import Page
 
 from itb.domain.assertion import Assertion, AssertionKind, MatchMode
-from itb.domain.step import Author, AssertionStep
+from itb.domain.step import AssertionStep, Author
 from itb.execution.element_probe import collect_by_selector
 
 

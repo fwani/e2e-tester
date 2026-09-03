@@ -10,15 +10,24 @@
 
 ## 현재 상태
 
-MVP 개발 중. **증분 1(직접 녹화) 완료** — 녹화해서 Step 목록을 얻고 저장할 수 있다.
+MVP 개발 중. **사용자 스토리 7개(US1~US7)의 구현과 자동 검증을 마쳤다.** 남은 것은 자동
+테스트로 대체할 수 없는 항목뿐이다 — 사람이 수행하는 수동 측정과 리뷰다.
 
 | 증분 | 범위 | 상태 |
 |------|------|------|
 | 1 | 가정 검증 · 기반 · US1 직접 녹화 | **완료** |
-| 2 | US2 재실행과 실패 진단 | 미착수 |
-| 3 | US3 Pause → Edit → Resume | 미착수 |
-| 4 | US4~US6 AI 작성·사람 인수 | 미착수 |
-| 5 | US7 Locator 진단 · 마감 | 미착수 |
+| 2 | US2 재실행과 실패 진단 | **완료** |
+| 3 | US3 Pause → Edit → Resume | **완료** |
+| 4 | US4~US6 AI 작성·사람 인수·자연어 Step | **완료** |
+| 5 | US7 Locator 진단 · 마감 | **완료** (수동 측정·리뷰 제외) |
+
+**남은 항목** (사람이 해야 한다):
+
+- quickstart §12 완료 체크리스트 실수행 (T154)
+- SC-001·SC-002·SC-004·SC-005 수동 측정 세션 — 시나리오 20건 규모 (T155)
+- `checklists/design-review.md` 리뷰어 검토 (T156)
+- **릴리스 게이트 RG-1**: Playwright Export 구현 (P2). 생성기(`generator/playwright_gen.py`)는
+  준비돼 있고 Export 명령만 남았다. **회수 전에는 출하할 수 없다** (헌법 Compliance review)
 
 진행 상황은 `specs/001-interactive-ai-test-builder/tasks.md` 의 체크박스가 근거다.
 
@@ -34,6 +43,7 @@ MVP 개발 중. **증분 1(직접 녹화) 완료** — 녹화해서 Step 목록�
 | [`.../data-model.md`](specs/001-interactive-ai-test-builder/data-model.md) | 엔티티·상태 기계·불변식 |
 | [`.../contracts/`](specs/001-interactive-ai-test-builder/contracts/) | REST · WebSocket · **Test Step DSL** |
 | [`.../quickstart.md`](specs/001-interactive-ai-test-builder/quickstart.md) | 검증 절차 |
+| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | 개발 환경·검증 명령·자주 겪는 문제 |
 
 **`contracts/step-dsl.md` 가 사용자에게 가장 중요한 계약이다.** 제품 UI나 API는 바뀔 수 있지만
 그 형식으로 저장된 테스트는 사용자가 git에 커밋해 보관하는 자산이다.

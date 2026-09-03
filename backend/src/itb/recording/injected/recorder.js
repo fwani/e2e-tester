@@ -238,6 +238,53 @@
     }
   };
 
+  /**
+   * 상호작용 가능한 요소 목록. **AI 에이전트의 `observe_page` 가 쓴다** (research R5).
+   *
+   * 에이전트에게 CSS 셀렉터를 짜게 하지 않기 위한 장치다. 여기서 요소마다 `css` 를
+   * 부여해 돌려주면, 에이전트는 그 참조만 지목하고 후보 수집·검증은 제품이 한다 —
+   * 원칙 IV 가 AI 경로에서도 유지되는 이유다.
+   *
+   * **보이지 않는 요소는 빼지 않고 표시한다.** 목록에서 빼면 에이전트는 그 요소가 없다고
+   * 판단해 다른 경로를 찾는데, 실제로는 hover 로 열리는 메뉴 안에 있을 수 있다.
+   */
+  window.__itbObserve = (limit) => {
+    const max = typeof limit === "number" && limit > 0 ? limit : 200;
+    const out = [];
+    let nodes;
+    try {
+      nodes = document.querySelectorAll(INTERACTIVE);
+    } catch {
+      return { url: location.href, title: document.title, elements: [] };
+    }
+    for (const el of nodes) {
+      if (out.length >= max) break;
+      let rect;
+      try {
+        rect = el.getBoundingClientRect();
+      } catch {
+        rect = { width: 0, height: 0 };
+      }
+      const described = describe(el);
+      out.push({
+        tag: described.tag,
+        role: described.role,
+        name: described.accessibleName || described.label || described.text,
+        css: described.css,
+        visible: rect.width > 0 && rect.height > 0,
+        disabled: el.disabled === true,
+        type: el.getAttribute("type"),
+      });
+    }
+    return {
+      url: location.href,
+      title: document.title,
+      // 화면 전체 텍스트는 절단해서 준다 — 길이 상한이 없으면 컨텍스트를 다 먹는다.
+      text: (document.body ? document.body.innerText : "").slice(0, 4000),
+      elements: out,
+    };
+  };
+
   /** Shadow DOM 안의 요소도 잡는다 (T004 로 확인). */
   const targetOf = (event) => {
     const path = typeof event.composedPath === "function" ? event.composedPath() : null;

@@ -295,19 +295,36 @@ uv run pytest tests/integration/test_performance.py -v
 
 ## 12. 완료 판정 체크리스트
 
-- [ ] `uv run lint-imports` 통과 (원칙 II 정적)
-- [ ] `test_replay_no_llm` 통과, 언어모델 호출 0건 (원칙 II 동적, SC-006)
-- [ ] `test_roundtrip` 통과 (헌법 품질 게이트 2)
-- [ ] US3 9단계에서 로그인이 재실행되지 않음 (원칙 III, SC-007)
-- [ ] `test_locator_coverage` 통과, 후보 2개 이상 90% (원칙 IV, SC-008)
-- [ ] `test_secret_leakage` 통과, 평문 0건 (SC-010)
-- [ ] 비밀키 없이 녹화 성공 (FR-089b)
-- [ ] 멀티 탭 시나리오 녹화 → 저장 → 재실행 통과 (FR-030, SC-012)
-- [ ] 네트워크 없이 저장된 테스트 재실행 통과 (US4 7단계)
-- [ ] 단위·계약·통합·종단 테스트 전부 통과 (헌법 품질 게이트 3)
-- [ ] 비활성화·삭제된 테스트 없음 (헌법 품질 게이트 4)
-- [ ] 스키마 드리프트 검사 통과 (research R6)
-- [ ] SC-001~SC-005 측정값 기록
+**수행일 2026-09-03** (T154). 각 항목은 실제로 명령을 돌려 확인했고, 근거를 함께 적는다.
+
+- [X] `uv run lint-imports` 통과 (원칙 II 정적) — 계약 3건 KEPT, 0 broken
+- [X] `test_replay_no_llm` 통과, 언어모델 호출 0건 (원칙 II 동적, SC-006) — 녹화로 만든
+      테스트뿐 아니라 **AI 로 만든 테스트**(T118)와 **자연어로 추가한 Step**(T133)까지 3건
+- [X] `test_roundtrip` 통과 (헌법 품질 게이트 2)
+- [X] US3 9단계에서 로그인이 재실행되지 않음 (원칙 III, SC-007) —
+      `test_pause_resume.py::test_resume_does_not_replay_preceding_steps` 가 Step id 기준으로
+      중복 실행 0건을 확인한다
+- [X] `test_locator_coverage` 통과, 후보 2개 이상 90% (원칙 IV, SC-008) — **실측 100%**.
+      이 값이 한때 군더더기 Step 때문에 부풀어 있었다는 사실과 그 정정은 `docs/mvp-metrics.md` 에 적었다
+- [X] `test_secret_leakage` 통과, 평문 0건 (SC-010) — 생성 코드 표면 포함
+- [X] 비밀키 없이 녹화 성공 (FR-089b) — `test_recording.py` 는 키를 만들지 않는
+      `project_client` 로 돈다. 봉인은 공개키만으로 하고, 공개키도 없으면 경고를 남기고 진행한다
+- [X] 멀티 탭 시나리오 녹화 → 저장 → 재실행 통과 (FR-030, SC-012)
+- [X] 네트워크 없이 저장된 테스트 재실행 통과 (US4 7단계) —
+      `test_us4_nl_authoring.py` 가 루프백을 제외한 모든 연결을 거절한 상태에서 재실행한다
+- [X] 단위·계약·통합·종단 테스트 전부 통과 (헌법 품질 게이트 3)
+- [X] 비활성화·삭제된 테스트 없음 (헌법 품질 게이트 4) — `pytest.mark.skip`·`pytest.skip`·
+      `xfail` 이 한 건도 없다. US2 시절 "생성기가 아직 없음" 을 확인하던 테스트는 생성기가
+      들어오면서 **실제 검사로 바뀌었다** (설계된 대로)
+- [X] 스키마 드리프트 검사 통과 (research R6)
+- [ ] SC-001~SC-005 측정값 기록 — **미수행.** 시나리오 20건 규모의 수동 측정 세션이
+      필요하다. 절차와 기록 자리는 `docs/mvp-metrics.md` 에 만들어 두었다 (T155)
 
 **측정이 필요한 지표**(SC-001·SC-002·SC-004·SC-005)는 시나리오 20건 규모의 수동 측정이 필요하므로,
 구현 완료 후 별도 검증 세션에서 수행하고 결과를 기록한다. 자동 테스트로 대체할 수 없다.
+
+### 남은 릴리스 게이트
+
+`plan.md` 의 RG-1(Playwright Export)은 **회수되지 않았다.** 생성기
+(`backend/src/itb/generator/playwright_gen.py`)와 그 단위 테스트는 준비돼 있으나 Export
+명령이 없다. 헌법 Compliance review 에 따라 **회수 전에는 출하할 수 없다.**

@@ -6,8 +6,10 @@ import { useEffect, useState } from "react";
 
 import { ApiError, project, sessions, type ProjectView, type SessionView } from "./api/client";
 import { CreateTest } from "./pages/CreateTest";
+import { KeyManagement } from "./pages/KeyManagement";
 import { ProjectSetup } from "./pages/ProjectSetup";
 import { RunResult } from "./pages/RunResult";
+import { SecretValues } from "./pages/SecretValues";
 import { Runner } from "./pages/Runner";
 import { TestList } from "./pages/TestList";
 
@@ -16,8 +18,10 @@ type Screen =
   | { name: "setup" }
   | { name: "list" }
   | { name: "create" }
-  | { name: "runner"; session: SessionView }
-  | { name: "result"; testId: string };
+  | { name: "runner"; session: SessionView; aiInstruction?: string | null }
+  | { name: "result"; testId: string }
+  | { name: "keys" }
+  | { name: "secrets" };
 
 export function App() {
   const [opened, setOpened] = useState<ProjectView | null>(null);
@@ -84,10 +88,34 @@ export function App() {
       )}
 
       {screen.name === "list" && (
-        <TestList
-          onCreate={() => setScreen({ name: "create" })}
-          onRun={(testId) => startReplay(testId)}
-          onOpenResult={(testId) => setScreen({ name: "result", testId })}
+        <>
+          {/* 민감 값·키는 목록에서 들어간다 — 확정 디자인에 없는 화면이므로 진입점도
+              눈에 띄지 않게 둔다 (spec 디자인 차이 3). */}
+          <div className="row" style={{ gap: 8, padding: "8px 16px 0" }}>
+            <span className="spacer" />
+            <button className="ghost" onClick={() => setScreen({ name: "secrets" })}>
+              비밀 값
+            </button>
+            <button className="ghost" onClick={() => setScreen({ name: "keys" })}>
+              키 관리
+            </button>
+          </div>
+          <TestList
+            onCreate={() => setScreen({ name: "create" })}
+            onRun={(testId) => startReplay(testId)}
+            onOpenResult={(testId) => setScreen({ name: "result", testId })}
+          />
+        </>
+      )}
+
+      {screen.name === "keys" && (
+        <KeyManagement onClose={() => setScreen({ name: "list" })} />
+      )}
+
+      {screen.name === "secrets" && (
+        <SecretValues
+          onClose={() => setScreen({ name: "list" })}
+          onManageKeys={() => setScreen({ name: "keys" })}
         />
       )}
 
@@ -95,13 +123,16 @@ export function App() {
         <CreateTest
           project={opened}
           onCancel={() => setScreen({ name: "list" })}
-          onStarted={(session) => setScreen({ name: "runner", session })}
+          onStarted={(session, aiInstruction) =>
+            setScreen({ name: "runner", session, aiInstruction })
+          }
         />
       )}
 
       {screen.name === "runner" && (
         <Runner
           initial={screen.session}
+          aiInstruction={screen.aiInstruction ?? null}
           onFinished={() => setScreen({ name: "list" })}
           onShowResult={(testId) => setScreen({ name: "result", testId })}
         />

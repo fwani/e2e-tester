@@ -39,10 +39,10 @@ from itb.execution.assertion_builder import (
 from itb.execution.element_probe import collect_by_selector
 from itb.execution.step_edits import (
     EditResult,
-    allocate_step_id,
     ReorderMismatchError,
     StepNotFoundError,
     ValueNotSupportedError,
+    allocate_step_id,
     delete_step,
     find_index,
     insert_step,

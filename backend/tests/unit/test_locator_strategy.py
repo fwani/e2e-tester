@@ -5,12 +5,11 @@ from __future__ import annotations
 import pytest
 
 from itb.domain.locator import Candidate, CandidateStatus, StableAttr, TargetLocator
+from itb.locator.display import DisplayState, display_states
 from itb.locator.strategy import (
     PRIORITY,
-    DisplayState,
     StrategyKind,
     choose_strategy,
-    display_states,
     ordered_strategies,
 )
 

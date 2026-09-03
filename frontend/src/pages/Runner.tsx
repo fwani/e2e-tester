@@ -13,6 +13,7 @@ import {
   ApiError,
   sessions,
   type AddAssertionBody,
+  type AiChoice,
   type RepickSlot,
   type SessionView,
   type TabsResponse,
@@ -20,10 +21,14 @@ import {
 import { subscribeSessionEvents, type SessionEvent } from "../api/ws";
 import { AppHeader } from "../components/AppHeader";
 import { MirrorView, type MirrorPhase } from "../components/MirrorView";
+import { SessionLostBanner } from "../components/SessionLostBanner";
+import { StartingIndicator } from "../components/StartingIndicator";
 import { StepInspector } from "../components/StepInspector";
 import { StepList } from "../components/StepList";
 import { TabStrip } from "../components/TabStrip";
+import { AiRecord, type AiBlockedState } from "./AiRecord";
 import { PausedBanner, RunnerPaused } from "./RunnerPaused";
+import { Takeover, TakeoverBanner } from "./Takeover";
 
 const MANIPULATION_STATES = new Set(["recording", "takeover_recording"]);
 const OBSERVATION_STATES = new Set(["replaying", "ai_running"]);
@@ -34,6 +39,8 @@ const RESULT_STATES = new Set(["completed", "failed"]);
 
 export interface RunnerProps {
   initial: SessionView;
+  /** AI 세션이면 사용자가 준 지시문 원문. 화면에만 쓰고 저장은 서버가 한다 (FR-063). */
+  aiInstruction?: string | null;
   onFinished: () => void;
   /** 실행이 끝났을 때 결과 화면으로 이동한다 (FR-050). */
   onShowResult?: (testId: string) => void;
@@ -44,7 +51,12 @@ interface StepProgress {
   durationMs?: number;
 }
 
-export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
+export function Runner({
+  initial,
+  aiInstruction = null,
+  onFinished,
+  onShowResult,
+}: RunnerProps) {
   const [view, setView] = useState<SessionView>(initial);
   const [tabs, setTabs] = useState<TabsResponse | null>(null);
   const [frame, setFrame] = useState<string | null>(null);
@@ -66,6 +78,10 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
   const [reordering, setReordering] = useState(false);
   const [repickWaiting, setRepickWaiting] = useState<RepickSlot | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [aiMessages, setAiMessages] = useState<string[]>([]);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
+  const [aiStepCount, setAiStepCount] = useState(0);
 
   const resync = useCallback(async () => {
     try {
@@ -139,6 +155,28 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
           case "edit_warning":
             void resync();
             break;
+          case "ai_progress":
+            setAiMessages((prev) => [...prev, event.message]);
+            break;
+          case "ai_blocked":
+            // 세션은 유지된다. 사용자가 4선택지 중 하나를 고를 때까지 기다린다 (FR-069).
+            setAiBlocked({
+              attempted: event.attempted ?? null,
+              reason: event.reason ?? "AI 가 더 진행하지 못했습니다.",
+              choices: (event.choices ?? []) as AiChoice[],
+            });
+            void resync();
+            break;
+          case "ai_error":
+            // 실패해도 Step 은 보존된다 (FR-067). 오류 배너가 아니라 AI 패널에 남긴다.
+            setAiError(event.reason);
+            void resync();
+            break;
+          case "ai_finished":
+            setAiBlocked(null);
+            setAiStepCount(event.step_count);
+            void resync();
+            break;
           case "step_updated":
             // 다시 집기 결과가 도착했다 (FR-020). 대기 표시를 내린다.
             setRepickWaiting(null);
@@ -181,6 +219,8 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
     }
   };
 
+  const AI_STATES = ["ai_running", "ai_blocked"];
+  const isAiSession = AI_STATES.includes(view.state) || aiMessages.length > 0;
   const isPaused = view.state === "paused";
   const isManipulating = MANIPULATION_STATES.has(view.state);
   const isObserving = OBSERVATION_STATES.has(view.state);
@@ -246,15 +286,27 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
       </div>
 
       {lost !== null && (
-        <div
-          style={{
-            padding: "8px 16px",
-            background: "var(--warn-tint)",
-            borderBottom: "1px solid var(--warn)",
-            whiteSpace: "pre-wrap",
-          }}
-        >
-          ⚠ {lost}
+        <div style={{ padding: "8px 16px" }}>
+          <SessionLostBanner
+            reason={lost}
+            stepCount={view.steps.length}
+            busy={busy}
+            onClose={() => setLost(null)}
+            onSave={
+              saveName.trim() === ""
+                ? undefined
+                : () => {
+                    setBusy(true);
+                    void sessions
+                      .save(sessionId, saveName.trim())
+                      .then(() => resync())
+                      .catch((exc: unknown) =>
+                        setError(exc instanceof ApiError ? exc.message : String(exc)),
+                      )
+                      .finally(() => setBusy(false));
+                  }
+            }
+          />
         </div>
       )}
 
@@ -270,6 +322,8 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
           {error}
         </div>
       )}
+
+      {view.state === "takeover_recording" && <TakeoverBanner />}
 
       {isPaused && (
         <PausedBanner
@@ -329,6 +383,9 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
             />
           )}
 
+          {view.state === "starting" ? (
+            <StartingIndicator />
+          ) : (
           <MirrorView
             frame={frame}
             phase={phase}
@@ -336,6 +393,7 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
             degradedReason={mirrorDegraded}
             tabIndex={mirrorTab}
           />
+          )}
         </section>
 
         {/* 우측 — Step 목록 */}
@@ -380,6 +438,35 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
             />
           </div>
 
+          {isAiSession && (
+            <AiRecord
+              instruction={aiInstruction}
+              messages={aiMessages}
+              running={view.state === "ai_running"}
+              error={aiError}
+              blocked={aiBlocked}
+              stepCount={aiStepCount || view.steps.length}
+              busy={busy}
+              onChoose={(choice) => {
+                setAiBlocked(null);
+                void act(() => sessions.aiChoice(sessionId, choice));
+              }}
+            />
+          )}
+
+          {view.state === "takeover_recording" && (
+            <Takeover
+              blockedReason={aiBlocked?.reason ?? null}
+              recordedCount={view.steps.filter((s) => s.author === "human").length}
+              busy={busy}
+              onResume={() => void act(() => sessions.resume(sessionId))}
+              onStop={async () => {
+                await act(() => sessions.stop(sessionId));
+                onFinished();
+              }}
+            />
+          )}
+
           {isPaused && (
             <RunnerPaused
               currentStepIndex={view.current_step_index}
@@ -417,6 +504,21 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
               onDeleteStep={(stepId) =>
                 void edit(() => sessions.deleteStep(sessionId, stepId))
               }
+              onNaturalLanguage={(instruction) => {
+                setBusy(true);
+                setNotice(null);
+                void sessions
+                  .aiStep(sessionId, instruction)
+                  .then((resp) => {
+                    // 실패도 오류가 아니다 — 사유를 알리고 일시정지를 유지한다 (FR-081).
+                    setNotice(resp.message);
+                    return resync();
+                  })
+                  .catch((exc: unknown) =>
+                    setNotice(exc instanceof ApiError ? exc.message : String(exc)),
+                  )
+                  .finally(() => setBusy(false));
+              }}
               naturalLanguageNotice={notice}
               onDismissWarnings={() => setNotice(null)}
             />

@@ -10,7 +10,8 @@ import { ApiError, sessions, type ProjectView, type SessionView } from "../api/c
 
 export interface CreateTestProps {
   project: ProjectView;
-  onStarted: (session: SessionView) => void;
+  /** 세션과 함께 지시문을 넘긴다 — Runner 가 화면에 표시한다 (FR-064). */
+  onStarted: (session: SessionView, aiInstruction: string | null) => void;
   onCancel: () => void;
 }
 
@@ -27,12 +28,14 @@ export function CreateTest({ project, onStarted, onCancel }: CreateTestProps) {
     setBusy(true);
     setError(null);
     try {
+      const aiInstruction = mode === "ai" ? instruction.trim() : null;
       onStarted(
         await sessions.create({
           mode,
           start_url: startUrl.trim(),
-          ai_instruction: mode === "ai" ? instruction.trim() : null,
+          ai_instruction: aiInstruction,
         }),
+        aiInstruction,
       );
     } catch (exc) {
       setError(exc instanceof ApiError ? exc.message : String(exc));

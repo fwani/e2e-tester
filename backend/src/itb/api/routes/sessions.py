@@ -16,13 +16,12 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from itb.api.errors import ErrorCode, bad_request, conflict, not_found
 from itb.api.state import AppState, get_state
-from itb.domain.step import Author, Step
-from itb.domain.test_case import DSL_VERSION, AuthoringMode, BrowserKind, Test
+from itb.domain.step import Author, NavigateStep, Step
+from itb.domain.test_case import AuthoringMode, Test, Variable
 from itb.execution.artifacts import ArtifactCollector
 from itb.execution.runner import ReplayEngine, RunnerTask
 from itb.execution.session import BrowserSession, SessionError
 from itb.execution.session_loss import SessionLossWatcher
-from itb.execution.step_edits import allocate_step_id
 from itb.execution.state_machine import (
     TERMINAL_STATES,
     Command,
@@ -31,6 +30,7 @@ from itb.execution.state_machine import (
     is_manipulation_phase,
     state_label,
 )
+from itb.execution.step_edits import allocate_step_id
 from itb.execution.step_executor import StepExecutor
 from itb.mirror.tab_switch import MirrorController
 from itb.recording.inline_record import InlineRecording
@@ -66,6 +66,14 @@ class SessionWork:
 
     session: BrowserSession
     recorder: Recorder
+    store: SecretStore | None = None
+    """이 세션의 비밀 값 보관소. **세션 안에서 하나만 쓴다.**
+
+    `SecretStore` 는 생성 시점에 파일을 읽어 메모리에 들고 있다. 인스턴스를 둘 만들면
+    한쪽이 봉인한 값이 다른 쪽에 보이지 않아, 방금 만든 민감 변수를 실행기가 "보관되어
+    있지 않다" 로 거절한다 (AI 작성 테스트가 이것을 잡았다).
+    """
+
     steps: list[Step] = field(default_factory=list)
     start_url: str = ""
     authoring_mode: AuthoringMode = AuthoringMode.RECORD
@@ -83,6 +91,28 @@ class SessionWork:
     # ─── 일시정지 중 편집 (US3) ────────────────────────────────────────────
     inline: InlineRecording | None = None
     """일시정지 중 직접 동작 추가 (FR-036)."""
+
+    # ─── AI 작성 (US4·US5·US6) ─────────────────────────────────────────────
+    agent: object | None = None
+    """`AuthoringAgent`. 타입을 `object` 로 둔 이유는 임포트 방향이다 — 이 모듈은
+    `itb.authoring` 을 지연 임포트해 API 계층이 언어모델 경계를 항상 끌고 오지 않게 한다."""
+
+    compiler: object | None = None
+    toolbox: object | None = None
+    agent_task: asyncio.Task[None] | None = None
+    takeover: object | None = None
+    resolver: object | None = None
+    last_blocked: object | None = None
+    """마지막 `ai_blocked` 결과. `retry`·`skip` 이 무엇을 재시도할지의 근거다."""
+
+    base_variables: list[Variable] = field(default_factory=list)
+    """세션이 시작될 때 불러온 테스트의 변수 정의.
+
+    **다시 저장할 때 이것을 출발점으로 삼는다.** 세션에서 새로 포착한 것만 보고 정의를
+    다시 만들면, 불러온 테스트의 민감 변수가 "포착되지 않았다" 는 이유로 비민감·빈 값으로
+    강등된다. 그렇게 저장된 테스트는 재실행에서 빈 비밀번호를 채워 조용히 실패한다
+    (US6 통합 테스트가 잡았다).
+    """
 
     saved_snapshot: list[Step] = field(default_factory=list)
     """마지막 저장 시점의 Step 목록.
@@ -236,10 +266,14 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         except ProjectError as exc:
             raise not_found(ErrorCode.TEST_NOT_FOUND, str(exc)) from exc
 
-    if body.mode == "ai" and not body.ai_instruction:
-        raise bad_request(
-            ErrorCode.DEFINITION_INVALID, "ai 모드는 자연어 지시문이 필요합니다."
-        )
+    if body.mode == "ai":
+        # FR-085 — 경계에서 검증한다. 길이·공백 규칙은 작성 계층이 갖는다.
+        from itb.authoring.agent import validate_instruction
+
+        try:
+            validate_instruction(body.ai_instruction)
+        except ValueError as exc:
+            raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
 
     if body.test_id and state.sessions.active_session_for_test(body.test_id):
         raise conflict(
@@ -265,7 +299,7 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
 
     session.attach_sink(state.broker.sink(session.session_id))
 
-    store = _secret_store(repo)
+    store = _secret_store(repo)  # 이 세션 동안 공유한다
     public = None
     with contextlib.suppress(KeyMissingError):
         public = load_public(state.key_paths)
@@ -279,6 +313,7 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
             store=store,
             public_key=public,
         ),
+        store=store,
         start_url=start_url,
         authoring_mode=AuthoringMode.AI if body.mode == "ai" else AuthoringMode.RECORD,
         ai_instruction=body.ai_instruction,
@@ -288,6 +323,7 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         work.steps = list(existing_test.steps)
         work.recorder.seed_step_seq(len(existing_test.steps))
         work.saved_snapshot = list(existing_test.steps)
+        work.base_variables = list(existing_test.variables)
     work.inline = InlineRecording(session=session, recorder=work.recorder)
     # Step id 를 목록 기준으로 할당한다 — 리코더가 매긴 번호와 편집으로 추가한 번호가
     # 충돌하면 저장 시점에 `Test` 검증이 거절한다 (실제로 US3 종단 테스트가 잡았다).
@@ -313,6 +349,8 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         await _start_runner(work, start_index=0)
     else:
         await session.apply(Command.BEGIN_AI)
+        _build_agent(work, state)
+        _start_agent(work, body.ai_instruction)
 
     await work.mirror.show(0)
     return view_of(work)
@@ -341,7 +379,7 @@ def _build_engine(
 
     resolver = VariableResolver(
         test,
-        store=SecretStore(repo.paths.secrets_file),
+        store=work.store or _secret_store(repo),
         private_key=private,
     )
     collector = ArtifactCollector(work.session.context)
@@ -363,6 +401,159 @@ def _build_engine(
     )
     work.engine = engine
     return engine
+
+
+# ─── AI 작성 조립 (US4) ────────────────────────────────────────────────────
+
+
+def _build_agent(work: SessionWork, state: AppState) -> None:
+    """AI 작성에 필요한 것을 조립한다. FR-059~FR-067.
+
+    **`itb.authoring` 을 여기서 지연 임포트한다.** 모듈 최상단에서 임포트하면 재실행만
+    쓰는 경로에서도 언어모델 경계 모듈이 항상 함께 적재된다. 원칙 II 는 임포트 계약으로
+    강제되지만(`itb.execution` → `itb.llm` 금지), API 계층에서도 필요할 때만 끌어오는 것이
+    그 경계를 읽기 쉽게 만든다.
+
+    민감 값 포착기를 **리코더와 공유한다** — 사람이 이어받아 입력한 값(FR-071)과 AI 가
+    입력한 값이 같은 변수 이름 공간을 써야 정의와 비밀 파일이 어긋나지 않는다.
+    """
+    from itb.authoring.agent import AuthoringAgent
+    from itb.authoring.compiler import StepCompiler
+    from itb.authoring.tools import BrowserToolbox
+    from itb.secrets.capture import SensitiveCapturer
+
+    repo = state.require_repository()
+    private = None
+    with contextlib.suppress(KeyStoreError):
+        private = load_private(state.key_paths)
+
+    store = work.store or _secret_store(repo)
+    capturer = work.recorder.capturer or SensitiveCapturer(
+        store=store,
+        public_key=work.recorder.public_key,
+    )
+    work.recorder.capturer = capturer
+
+    resolver = VariableResolver(
+        _draft_test(work) if work.steps else _empty_draft(work),
+        store=store,
+        private_key=private,
+    )
+    work.resolver = resolver
+
+    compiler = StepCompiler(
+        place=lambda step, index: _accept_step(work.session.session_id, step, index)
+    )
+    work.compiler = compiler
+
+    toolbox = BrowserToolbox(
+        session=work.session,
+        executor=StepExecutor(work.session, resolver),
+        allocate_step_id=lambda: allocate_step_id(work.steps),
+        on_step=compiler.accept,
+        on_progress=lambda message: work.session.emit("ai_progress", message=message),
+        capturer=capturer,
+        on_variable=resolver.declare,
+        test_id_attribute=work.recorder.test_id_attribute,
+    )
+    work.toolbox = toolbox
+    work.agent = AuthoringAgent(
+        toolbox=toolbox,
+        compiler=compiler,
+        on_progress=lambda message: work.session.emit("ai_progress", message=message),
+    )
+
+
+def _empty_draft(work: SessionWork) -> Test:
+    """Step 이 없는 세션용 임시 정의.
+
+    `Test` 는 Step 1개 이상을 요구하므로(FR-029) 변수 해석기에 넘길 껍데기를 만들 수 없다.
+    해석기는 `variables` 만 보므로, 최소 Step 하나를 넣은 껍데기로 만족시킨다 —
+    **이 정의는 디스크에 쓰이지 않고 실행 대상도 아니다.**
+    """
+    return Test(
+        id=DRAFT_TEST_ID,
+        name="(작성 중)",
+        authoring_mode=work.authoring_mode,
+        start_url=work.start_url,
+        variables=[],
+        steps=[
+            NavigateStep(id="step-01", label="시작", tab=0, url=work.start_url),
+        ],
+    )
+
+
+async def _run_agent(session_id: str, instruction: str | None = None) -> None:
+    """에이전트를 돌리고 결과를 이벤트로 바꾼다 (FR-059·FR-063·FR-067·FR-069).
+
+    **취소는 결과로 기록하지 않는다** — 사용자가 일시정지·중지한 것이며 실패가 아니다.
+    """
+    from itb.authoring.agent import AgentStatus, AuthoringAgent
+    from itb.authoring.blocked import enter_blocked
+
+    work = _WORK.get(session_id)
+    if work is None or not isinstance(work.agent, AuthoringAgent):
+        return
+    agent: AuthoringAgent = work.agent
+
+    try:
+        if instruction is None:
+            takeover = work.takeover
+            note = takeover.summary() if takeover is not None else "사람이 이어받았습니다."
+            outcome = await agent.resume_after_takeover(note)
+        else:
+            outcome = await agent.run(instruction)
+    except asyncio.CancelledError:
+        raise
+
+    work.last_blocked = outcome
+    if outcome.status is AgentStatus.BLOCKED:
+        await enter_blocked(work.session, outcome)
+        return
+    if outcome.status is AgentStatus.ERROR:
+        # 세션을 닫지 않는다. 그때까지의 Step 은 보존된다 (FR-067).
+        await work.session.emit("ai_error", reason=outcome.reason)
+        await _hold_for_review(work)
+        return
+
+    await work.session.emit("ai_finished", step_count=outcome.step_count)
+    await _hold_for_review(work)
+
+
+async def _hold_for_review(work: SessionWork) -> None:
+    """AI 가 멈춘 뒤 세션을 **편집 가능한 상태로 유지한다**.
+
+    `COMPLETED` 로 보내지 않는 이유는 그 상태가 아무 명령도 받지 않기 때문이다. AI 작성은
+    끝나는 순간이 곧 사용자가 확인하고 손보는 시작점이다 — 검증 Step 을 더하거나(FR-037),
+    자연어로 Step 을 추가하거나(FR-078), 이름을 붙여 저장한다(FR-028). 종료 상태로 보내면
+    그 모든 것을 하려고 세션을 다시 만들어야 하고, 그때는 AI 가 만든 화면 상태가 없다.
+
+    재실행(`REPLAYING`)이 끝났을 때와 다른 판단이다. 그쪽은 결과를 보는 것으로 끝난다.
+    """
+    with contextlib.suppress(InvalidTransitionError):
+        await work.session.apply(Command.PAUSE)
+
+
+def _start_agent(work: SessionWork, instruction: str | None) -> None:
+    """에이전트 태스크를 띄우고 즉시 반환한다.
+
+    HTTP 요청 수명과 분리하는 이유는 재실행과 같다 (research R1) — 작성은 몇 분이 걸릴 수
+    있고, 그 사이 사용자는 일시정지·중지를 눌러야 한다 (FR-065).
+    """
+    work.agent_task = asyncio.create_task(
+        _run_agent(work.session.session_id, instruction)
+    )
+
+
+async def _cancel_agent(work: SessionWork) -> None:
+    """돌고 있는 에이전트를 세운다. 브라우저는 그대로 둔다 (FR-065)."""
+    task = work.agent_task
+    if task is None or task.done():
+        return
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError, Exception):
+        await task
+    work.agent_task = None
 
 
 DRAFT_TEST_ID = "TC-000"
@@ -558,6 +749,8 @@ async def pause(session_id: str) -> SessionView:
     w = work_of(session_id)
     _apply(w, Command.PAUSE)
     w.recorder.stop()
+    # AI 수행 중이면 루프를 세운다. 브라우저는 그대로 둔다 (FR-065·FR-032).
+    await _cancel_agent(w)
     await w.session.apply(Command.PAUSE)
     if w.runner is not None and w.runner.running:
         settled = await w.runner.wait_for_boundary(PAUSE_SETTLE_TIMEOUT_S)
@@ -586,6 +779,18 @@ async def resume(session_id: str, state: State) -> SessionView:
     _apply(w, Command.RESUME)
     if w.inline is not None:
         w.inline.stop()
+
+    # 사람 인수 후 "계속하기" 는 **AI 에게 돌려주는 것**이다 (FR-076·FR-077).
+    # 별도 엔드포인트를 두지 않는다 — 사용자가 누르는 버튼이 하나이므로 계약도 하나다.
+    if w.session.state is SessionState.TAKEOVER_RECORDING:
+        from itb.recording.takeover import TakeoverRecording
+
+        if isinstance(w.takeover, TakeoverRecording):
+            w.takeover.stop()
+        await w.session.apply(Command.RESUME)
+        _start_agent(w, None)
+        return view_of(w)
+
     engine = _ensure_engine(w, state)
     if engine is not None:
         # **편집된 목록을 실행 대상으로 삼는다.** 디스크의 정의를 계속 보면 사용자가 고친
@@ -656,6 +861,149 @@ async def record_actions_stop(session_id: str) -> SessionView:
     return view_of(w)
 
 
+# ─── AI 실패 시 선택 (US5) ────────────────────────────────────────────────
+
+
+class AiChoiceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    choice: Literal["takeover", "retry", "skip", "abort"]
+    """FR-071~FR-074. 정의되지 않은 값은 Pydantic 이 `422` 로 거절한다 (FR-043a)."""
+
+
+class AiStepRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    instruction: str = Field(min_length=1, max_length=8000)
+
+
+class AiStepResponse(BaseModel):
+    """FR-078~FR-081 — 만들어졌는지와 사유를 함께 돌려준다."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    created: bool
+    message: str
+    step_id: str | None
+    steps: list[Step]
+    current_step_index: int
+    state: SessionState
+
+
+@router.post("/{session_id}/ai-choice")
+async def ai_choice(session_id: str, body: AiChoiceRequest, state: State) -> SessionView:
+    """AI 실패 시 4선택지 (FR-071~FR-074).
+
+    **`AI_BLOCKED` 에서만 받는다.** 다른 상태에서 오면 상태 기계가 거절한다 (FR-043a).
+    어느 선택지에서도 브라우저를 되돌리지 않는다 — AI 가 남긴 화면이 출발점이다.
+    """
+    from itb.authoring.blocked import AiChoice, command_for
+
+    w = work_of(session_id)
+    choice = AiChoice(body.choice)
+    command = command_for(choice)
+    _apply(w, command)
+
+    if choice is AiChoice.TAKEOVER:
+        from itb.recording.takeover import TakeoverRecording
+
+        takeover = TakeoverRecording(session=w.session, recorder=w.recorder)
+        w.takeover = takeover
+        await w.session.apply(command)
+        await takeover.start()
+        return view_of(w)
+
+    if choice is AiChoice.ABORT:
+        # 세션을 닫는 것은 사용자가 저장 여부를 확인한 뒤다 (FR-074). 여기서는 상태만
+        # 옮기고, 실제 정리는 `stop` 이 한다 — 지금 닫으면 저장할 대상이 사라진다.
+        await w.session.apply(command)
+        return view_of(w)
+
+    # retry / skip — 현재 상태에서 AI 에게 돌려준다 (FR-072·FR-073).
+    await w.session.apply(command)
+    note = (
+        "같은 동작을 지금 화면 상태에서 다시 시도하세요."
+        if choice is AiChoice.RETRY
+        else (
+            "그 동작은 건너뜁니다. Step 으로 기록하지 말고 다음 지시를 이어서 수행하세요."
+        )
+    )
+    _start_agent_note(w, note)
+    return view_of(w)
+
+
+def _start_agent_note(work: SessionWork, note: str) -> None:
+    """에이전트에게 한 줄을 덧붙여 이어서 돌린다 (FR-072·FR-073).
+
+    새 지시문이 아니라 **같은 대화의 이어쓰기**다. 새로 시작하면 앞서 무엇을 했는지 잊고
+    처음부터 다시 한다.
+    """
+    from itb.authoring.agent import AuthoringAgent
+    from itb.authoring.tools import BrowserToolbox
+
+    if not isinstance(work.agent, AuthoringAgent):  # pragma: no cover - ai 세션에서만 온다
+        return
+    # 재시도·건너뛰기는 새 예산으로 시작한다. 앞선 시도가 쓴 호출까지 상한에 포함하면
+    # 사용자가 "다시" 를 누르는 순간 이미 상한에 닿아 있을 수 있다 (FR-066).
+    if isinstance(work.toolbox, BrowserToolbox):
+        work.toolbox.limits.reset()
+    work.agent_task = asyncio.create_task(
+        _run_agent(work.session.session_id, note)
+    )
+
+
+# ─── 자연어 Step 추가 (US6) ───────────────────────────────────────────────
+
+
+@router.post("/{session_id}/ai-step")
+async def ai_step(session_id: str, body: AiStepRequest, state: State) -> AiStepResponse:
+    """일시정지 중 자연어로 Step 하나를 추가한다 (FR-078·FR-079).
+
+    **`PAUSED` 게이트다.** 삽입 위치는 일시정지 위치다.
+
+    **대상을 찾지 못하면 Step 을 만들지 않고 일시정지 상태를 유지한다** (FR-081) —
+    실패할 것을 아는 Step 을 정의에 넣지 않는다.
+    """
+    from itb.authoring.agent import AuthoringAgent
+    from itb.authoring.compiler import StepCompiler
+    from itb.authoring.nl_step import add_step
+
+    w = work_of(session_id)
+    require_paused(w)
+
+    if not isinstance(w.agent, AuthoringAgent):
+        # 녹화로 시작한 세션에는 에이전트가 없다. 그때 만든다 — 자연어 Step 추가는
+        # 작성 방식과 무관하게 쓸 수 있어야 한다 (FR-078).
+        _build_agent(w, state)
+    agent = w.agent
+    compiler = w.compiler
+    if not isinstance(agent, AuthoringAgent) or not isinstance(compiler, StepCompiler):
+        raise bad_request(
+            ErrorCode.DEFINITION_INVALID, "자연어 Step 추가를 준비할 수 없습니다."
+        )
+
+    # 삽입 위치를 일시정지 위치로 맞춘다 (FR-079).
+    compiler.insert_at = w.current_step_index
+    try:
+        result = await add_step(agent, compiler, body.instruction)
+    except ValueError as exc:
+        raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
+    finally:
+        compiler.insert_at = None
+
+    if not result.created:
+        # 상태는 그대로 `PAUSED` 다. 실패를 이벤트로도 알린다.
+        await w.session.emit("ai_error", reason=result.message)
+    return AiStepResponse(
+        created=result.created,
+        message=result.message,
+        step_id=result.step_id,
+        steps=w.steps,
+        current_step_index=w.current_step_index,
+        state=w.session.state,
+    )
+
+
 # ─── 중지 / 저장 ────────────────────────────────────────────────────────────
 
 
@@ -673,6 +1021,7 @@ async def stop(session_id: str, state: State) -> SessionView:
         _apply(w, Command.STOP)
 
     w.recorder.stop()
+    await _cancel_agent(w)
     if w.mirror is not None:
         await w.mirror.stop("세션을 종료했습니다.")
     if w.runner is not None:
@@ -722,6 +1071,16 @@ async def save(session_id: str, body: SaveRequest, state: State) -> Test:
 def _variables_for(w: SessionWork) -> list[dict[str, object]]:
     """Step 이 참조하는 변수를 정의로 만든다.
 
+    **불러온 정의의 변수를 출발점으로 삼는다.** 세션에서 새로 포착한 것만 보면, 불러온
+    테스트의 민감 변수가 비민감·빈 값으로 강등되어 재실행이 빈 값을 채운다 (FR-082 위반이자
+    조용한 실패다).
+
+    새로 나타난 이름의 판정 순서:
+
+    1. 이 세션에서 민감 값으로 포착했다 → 민감 (값은 비밀 파일의 암호문에 있다)
+    2. 비밀 파일에 같은 이름의 암호문이 있다 → 민감 (앞선 세션이 만든 것이다)
+    3. 그 외 → 비민감. 값은 사용자가 정의 파일에서 채운다
+
     민감 변수는 **값을 갖지 않는다** — 실제 값은 비밀 파일의 암호문에 있다 (FR-082).
     """
     import re
@@ -732,14 +1091,21 @@ def _variables_for(w: SessionWork) -> list[dict[str, object]]:
         for text in (
             getattr(step, "value", None),
             getattr(getattr(step, "assertion", None), "value", None),
+            getattr(step, "url", None),
         ):
             if isinstance(text, str):
                 referenced.update(pattern.findall(text))
 
+    base = {v.name: v for v in w.base_variables}
     captured = {c.variable_name for c in w.recorder.sensitive_captures}
+    sealed = set(w.store.names()) if w.store is not None else set()
+
     out: list[dict[str, object]] = []
     for name in sorted(referenced):
-        if name in captured:
+        existing = base.get(name)
+        if existing is not None:
+            out.append(existing.model_dump(mode="json"))
+        elif name in captured or name in sealed:
             out.append({"name": name, "value": None, "sensitive": True})
         else:
             out.append({"name": name, "value": "", "sensitive": False})

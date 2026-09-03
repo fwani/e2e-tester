@@ -250,22 +250,22 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T106 [P] [US4] `backend/tests/unit/test_agent_tools.py` — 도구 표면이 Step 종류와 1:1 대응함을 확인. `execute_javascript` 류 도구 부재 확인 (research R5, FR-086)
-- [ ] T107 [P] [US4] `backend/tests/unit/test_attempt_limits.py` — 도구 호출 총 상한 40회, 동일 요소 연속 실패 상한 3회, 상한 도달 시 중단 (FR-066)
-- [ ] T108 [P] [US4] `backend/tests/integration/test_ai_authoring.py` — 성공 동작만 Step 기록(FR-061), 지시문이 실행 대상으로 저장되지 않음(FR-063), 언어모델 실패 시 Step 보존(FR-067)
-- [ ] T109 [P] [US4] `backend/tests/e2e/test_us4_nl_authoring.py` — 지시문 → 저장 → 네트워크 차단 재실행 통과 종단 테스트
+- [X] T106 [P] [US4] `backend/tests/unit/test_agent_tools.py` — 도구 표면이 Step 종류와 1:1 대응함을 확인. `execute_javascript` 류 도구 부재 확인 (research R5, FR-086)
+- [X] T107 [P] [US4] `backend/tests/unit/test_attempt_limits.py` — 도구 호출 총 상한 40회, 동일 요소 연속 실패 상한 3회, 상한 도달 시 중단 (FR-066)
+- [X] T108 [P] [US4] `backend/tests/integration/test_ai_authoring.py` — 성공 동작만 Step 기록(FR-061), 지시문이 실행 대상으로 저장되지 않음(FR-063), 언어모델 실패 시 Step 보존(FR-067) 자격 증명 없이 검증한다 — `AuthoringAgent.driver` 자리에 **대본대로 실제 도구 객체를 부르는 가짜 모델**을 끼운다(`tests/us4_support.py`). 대체되는 것은 판단뿐이고 도구 표면·후보 수집·Step 실행·컴파일·이벤트는 실제 경로를 지난다
+- [X] T109 [P] [US4] `backend/tests/e2e/test_us4_nl_authoring.py` — 지시문 → 저장 → 네트워크 차단 재실행 통과 종단 테스트
 
 ### Implementation for User Story 4
 
-- [ ] T110 [US4] `backend/src/itb/llm/client.py` — `AsyncAnthropic()` 인자 없는 생성자(env → `ant auth login` 프로필 순 해석, **키 하드코딩 금지** FR-084). 모델 `claude-opus-5`, `output_config={"effort":"xhigh"}`, `thinking` 파라미터 생략(Opus 5는 기본 adaptive), `betas=["server-side-fallback-2026-07-01"]` + `fallbacks="default"`, `content` 읽기 전 `stop_reason` 확인. **`budget_tokens`·`temperature`·프리필을 쓰지 않는다**(400) (research R5)
-- [ ] T111 [US4] `backend/src/itb/authoring/tools.py` — `@beta_async_tool` 로 `list_tabs`, `observe_page(tab)`, `click`, `fill`, `select`, `navigate`, `hover`, `drag`, `assert_condition`, `close_tab(tab)`, `report_blocked`. **`hover(element_ref)`·`drag(element_ref, drop_ref)` 는 T163 결정으로 추가됐다 — Step 종류 8종과 1:1 을 유지한다.** `element_ref` 는 `observe_page` 가 부여하며 **에이전트가 CSS 셀렉터를 짜지 않는다**(원칙 IV 유지). 도구 실행 시 후보 수집은 제품이 한다. 새 탭 열림을 도구 결과에 덧붙인다 (research R5) — T029, T080 의존
-- [ ] T112 [US4] `backend/src/itb/authoring/agent.py` — `client.beta.messages.tool_runner(...)` 를 `async for` 로 순회. **하드 루프 카운터가 1차 방어선**(T107 상한). 서버 도구를 쓰지 않으므로 `pause_turn` 을 다루지 않는다. 사용자 일시정지 시 취소 처리 (research R5, FR-060·FR-065·FR-066) — T110, T111 의존
-- [ ] T113 [US4] `backend/src/itb/authoring/compiler.py` — 성공한 도구 호출을 Step으로 확정. **도구 표면이 Step과 1:1이므로 변환 실패가 원리적으로 없다**(research R5, FR-061·FR-062). `hover`·`drag` 도 이 대응에 포함된다 (T163) — T111 의존
-- [ ] T114 [US4] `backend/src/itb/api/routes/sessions.py` 확장 — `mode=ai` 세션, 지시문 길이·내용 검증(FR-085), `ai_progress`/`ai_finished`/`ai_error` 이벤트 (FR-059·FR-067) — T098, T112 의존
-- [ ] T115 [US4] `backend/src/itb/storage/repository.py` 확장 — `ai_instruction` 을 정의 파일에 원문으로 보관. **`itb.execution` 은 이 필드를 읽지 않는다**(FR-063) — T031 의존
-- [ ] T116 [P] [US4] `frontend/src/pages/AiRecord.tsx` — `AiRecord.dc.html` 이식. 자연어 지시 박스, `AI 수행 중` 배지, AI CONTROL 표시, 기록된 Step 목록, **"지시문은 테스트로 저장되지 않습니다. 다시 돌릴 때는 AI를 쓰지 않습니다" 문구**(FR-064), "테스트로 저장"
-- [ ] T117 [US4] `frontend/src/components/AiProgress.tsx` — `ai_progress` 표시. AI가 무엇을 하는 중인지 (FR-060)
-- [ ] T118 [US4] `backend/tests/integration/test_replay_no_llm.py` 확장 — **AI로 만든 테스트**의 재실행에서도 호출 0건 확인. `replay` 모드 세션에서 `ai_*` 이벤트가 관측되지 않음을 확인 (SC-006, contracts/websocket)
+- [X] T110 [US4] `backend/src/itb/llm/client.py` — `AsyncAnthropic()` 인자 없는 생성자(env → `ant auth login` 프로필 순 해석, **키 하드코딩 금지** FR-084). 모델 `claude-opus-5`, `output_config={"effort":"xhigh"}`, `thinking` 파라미터 생략(Opus 5는 기본 adaptive), `betas=["server-side-fallback-2026-07-01"]` + `fallbacks="default"`, `content` 읽기 전 `stop_reason` 확인. **`budget_tokens`·`temperature`·프리필을 쓰지 않는다**(400) (research R5)
+- [X] T111 [US4] `backend/src/itb/authoring/tools.py` — `@beta_async_tool` 로 `list_tabs`, `observe_page(tab)`, `click`, `fill`, `select`, `navigate`, `hover`, `drag`, `assert_condition`, `close_tab(tab)`, `report_blocked`. **`hover(element_ref)`·`drag(element_ref, drop_ref)` 는 T163 결정으로 추가됐다 — Step 종류 8종과 1:1 을 유지한다.** `element_ref` 는 `observe_page` 가 부여하며 **에이전트가 CSS 셀렉터를 짜지 않는다**(원칙 IV 유지). 도구 실행 시 후보 수집은 제품이 한다. 새 탭 열림을 도구 결과에 덧붙인다 (research R5) — T029, T080 의존
+- [X] T112 [US4] `backend/src/itb/authoring/agent.py` — `client.beta.messages.tool_runner(...)` 를 `async for` 로 순회. **하드 루프 카운터가 1차 방어선**(T107 상한). 서버 도구를 쓰지 않으므로 `pause_turn` 을 다루지 않는다. 사용자 일시정지 시 취소 처리 (research R5, FR-060·FR-065·FR-066) — T110, T111 의존
+- [X] T113 [US4] `backend/src/itb/authoring/compiler.py` — 성공한 도구 호출을 Step으로 확정. **도구 표면이 Step과 1:1이므로 변환 실패가 원리적으로 없다**(research R5, FR-061·FR-062). `hover`·`drag` 도 이 대응에 포함된다 (T163) — T111 의존
+- [X] T114 [US4] `backend/src/itb/api/routes/sessions.py` 확장 — `mode=ai` 세션, 지시문 길이·내용 검증(FR-085), `ai_progress`/`ai_finished`/`ai_error` 이벤트 (FR-059·FR-067) — T098, T112 의존 **설계 결정**: AI 가 멈추면 세션을 `COMPLETED` 로 보내지 않고 `PAUSED` 로 유지한다(`_hold_for_review`). 작성이 끝나는 순간이 곧 확인·보완·저장의 시작점이며, 종료 상태는 아무 명령도 받지 않아 그 모든 것을 하려면 세션을 다시 만들어야 한다
+- [X] T115 [US4] `backend/src/itb/storage/repository.py` 확장 — `ai_instruction` 을 정의 파일에 원문으로 보관. **`itb.execution` 은 이 필드를 읽지 않는다**(FR-063) — T031 의존 코드 변경 없이 성립했다 — `Test.ai_instruction` 이 정의 파일에 그대로 직렬화되고 `itb.execution` 은 이 필드를 읽지 않는다. `test_ai_authoring.py::test_instruction_is_documentation_not_an_executable` 이 그 사실(원문 보존 + 어떤 Step 도 지시문을 실행하지 않음)을 고정한다
+- [X] T116 [P] [US4] `frontend/src/pages/AiRecord.tsx` — `AiRecord.dc.html` 이식. 자연어 지시 박스, `AI 수행 중` 배지, AI CONTROL 표시, 기록된 Step 목록, **"지시문은 테스트로 저장되지 않습니다. 다시 돌릴 때는 AI를 쓰지 않습니다" 문구**(FR-064), "테스트로 저장"
+- [X] T117 [US4] `frontend/src/components/AiProgress.tsx` — `ai_progress` 표시. AI가 무엇을 하는 중인지 (FR-060)
+- [X] T118 [US4] `backend/tests/integration/test_replay_no_llm.py` 확장 — **AI로 만든 테스트**의 재실행에서도 호출 0건 확인. `replay` 모드 세션에서 `ai_*` 이벤트가 관측되지 않음을 확인 (SC-006, contracts/websocket)
 
 **Checkpoint**: quickstart §6 통과. 7단계(네트워크 없이 재실행)가 원칙 II의 직관적 증거다
 
@@ -281,18 +281,18 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T119 [P] [US5] `backend/tests/unit/test_ai_blocked_transitions.py` — `AI_BLOCKED` 4선택지 각각의 전이, 그 상태에서 일시정지·저장 요청 처리(FR-043a) (data-model §8)
-- [ ] T120 [P] [US5] `backend/tests/integration/test_takeover.py` — 실패 시 세션 유지, 화면 상태 보존, HUMAN Step 기록, 계속하기 후 AI 재개 (FR-069~FR-077)
-- [ ] T121 [P] [US5] `backend/tests/e2e/test_us5_takeover.py` — quickstart §7 종단 테스트
+- [X] T119 [P] [US5] `backend/tests/unit/test_ai_blocked_transitions.py` — `AI_BLOCKED` 4선택지 각각의 전이, 그 상태에서 일시정지·저장 요청 처리(FR-043a) (data-model §8)
+- [X] T120 [P] [US5] `backend/tests/integration/test_takeover.py` — 실패 시 세션 유지, 화면 상태 보존, HUMAN Step 기록, 계속하기 후 AI 재개 (FR-069~FR-077) **발견한 결함**: 막힘 표시(`blocked_reason`)가 다음 시도까지 남아 재시도·건너뛰기·인수 후 재개가 첫 메시지에서 다시 막힌 것으로 판정됐다 — 매 시도 시작 시 지운다
+- [X] T121 [P] [US5] `backend/tests/e2e/test_us5_takeover.py` — quickstart §7 종단 테스트
 
 ### Implementation for User Story 5
 
-- [ ] T122 [US5] `backend/src/itb/authoring/blocked.py` — 도구 실패를 `AI_BLOCKED` 로 전이. **세션 유지**, 실패한 동작·이유·4선택지를 `ai_blocked` 이벤트로 전달 (FR-069·FR-070) — T040, T112 의존
-- [ ] T123 [US5] `backend/src/itb/api/routes/sessions.py` 확장 — `POST .../ai-choice` 4종. takeover → `TAKEOVER_RECORDING`(실제 창 전면, 세션 유지 표시), retry → 현재 상태에서 재시도, skip → Step 미기록 후 다음 지시, abort → 종료 + 저장 확인 (FR-071~FR-074) — T114, T122 의존
-- [ ] T124 [US5] `backend/src/itb/recording/takeover.py` — 사람 인수 녹화. AI가 남긴 화면 상태 그대로 기록 시작, Step에 `author=human` (FR-071·FR-075) — T054, T099 의존
-- [ ] T125 [US5] `backend/src/itb/authoring/agent.py` 확장 — 사람 인수 후 "계속하기" 시 현재 브라우저 상태에서 남은 지시를 이어서 수행 (FR-076) — T112, T124 의존
-- [ ] T126 [P] [US5] `frontend/src/pages/Takeover.tsx` — `Takeover.dc.html` 이식. `사람이 녹화 중` 배지, `세션 유지` 표시, REC 표시, HUMAN 배지, **"이어서 진행하면 AI가 남은 지시를 다시 맡습니다" 문구**(FR-077)
-- [ ] T127 [P] [US5] `frontend/src/components/AiBlockedCard.tsx` — 실패한 동작 + 이유 + 4선택지 버튼 (FR-070)
+- [X] T122 [US5] `backend/src/itb/authoring/blocked.py` — 도구 실패를 `AI_BLOCKED` 로 전이. **세션 유지**, 실패한 동작·이유·4선택지를 `ai_blocked` 이벤트로 전달 (FR-069·FR-070) — T040, T112 의존
+- [X] T123 [US5] `backend/src/itb/api/routes/sessions.py` 확장 — `POST .../ai-choice` 4종. takeover → `TAKEOVER_RECORDING`(실제 창 전면, 세션 유지 표시), retry → 현재 상태에서 재시도, skip → Step 미기록 후 다음 지시, abort → 종료 + 저장 확인 (FR-071~FR-074) — T114, T122 의존 **계약 유지**: 인수 후 재개는 별도 엔드포인트를 만들지 않고 `POST .../resume` 이 `TAKEOVER_RECORDING` 을 보고 분기한다. 사용자가 누르는 버튼이 하나이므로 계약도 하나다
+- [X] T124 [US5] `backend/src/itb/recording/takeover.py` — 사람 인수 녹화. AI가 남긴 화면 상태 그대로 기록 시작, Step에 `author=human` (FR-071·FR-075) — T054, T099 의존
+- [X] T125 [US5] `backend/src/itb/authoring/agent.py` 확장 — 사람 인수 후 "계속하기" 시 현재 브라우저 상태에서 남은 지시를 이어서 수행 (FR-076) — T112, T124 의존 대화 이력을 이어 쓰고 예산을 새로 준다. 재개 지시에 "지금 화면을 다시 확인하라" 를 명시한다 — 앞선 관찰 결과는 낡았다
+- [X] T126 [P] [US5] `frontend/src/pages/Takeover.tsx` — `Takeover.dc.html` 이식. `사람이 녹화 중` 배지, `세션 유지` 표시, REC 표시, HUMAN 배지, **"이어서 진행하면 AI가 남은 지시를 다시 맡습니다" 문구**(FR-077)
+- [X] T127 [P] [US5] `frontend/src/components/AiBlockedCard.tsx` — 실패한 동작 + 이유 + 4선택지 버튼 (FR-070)
 
 **Checkpoint**: PRD §20의 핵심 가설이 검증 가능해진다. quickstart §7 통과
 
@@ -307,15 +307,15 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### Tests for User Story 6 ⚠️
 
-- [ ] T128 [P] [US6] `backend/tests/integration/test_nl_step.py` — 자연어 → Step 삽입, 수동 Step과 구조 동일, 재실행 시 언어모델 미호출, 대상 미발견 시 Step 미생성·일시정지 유지 (FR-078~FR-081)
-- [ ] T129 [P] [US6] `backend/tests/e2e/test_us6_nl_step.py` — quickstart §8 종단 테스트
+- [X] T128 [P] [US6] `backend/tests/integration/test_nl_step.py` — 자연어 → Step 삽입, 수동 Step과 구조 동일, 재실행 시 언어모델 미호출, 대상 미발견 시 Step 미생성·일시정지 유지 (FR-078~FR-081) **발견한 결함**: 재실행 세션에서 저장할 때 불러온 정의의 민감 변수가 비민감·빈 값으로 강등됐다. 그렇게 저장된 테스트는 빈 비밀번호를 채워 조용히 실패한다 — 저장은 불러온 변수 정의를 출발점으로 삼는다
+- [X] T129 [P] [US6] `backend/tests/e2e/test_us6_nl_step.py` — quickstart §8 종단 테스트
 
 ### Implementation for User Story 6
 
-- [ ] T130 [US6] `backend/src/itb/authoring/nl_step.py` — 현재 브라우저 화면 분석 → 단일 Step 생성. **대상을 찾지 못하면 Step을 만들지 않고 알리며 일시정지 상태를 유지한다**(FR-081) — T111, T112 의존
-- [ ] T131 [US6] `backend/src/itb/api/routes/sessions.py` 확장 — `POST .../ai-step`. `PAUSED` 게이트, 삽입 위치는 일시정지 위치 (FR-078·FR-079) — T097, T130 의존
-- [ ] T132 [US6] `frontend/src/components/PauseActions.tsx` 확장 — 자연어 입력 처리와 실패 안내 연결 (FR-081) — T103 의존
-- [ ] T133 [US6] `backend/tests/integration/test_replay_no_llm.py` 확장 — 자연어로 추가한 Step의 재실행에서도 호출 0건 (FR-080)
+- [X] T130 [US6] `backend/src/itb/authoring/nl_step.py` — 현재 브라우저 화면 분석 → 단일 Step 생성. **대상을 찾지 못하면 Step을 만들지 않고 알리며 일시정지 상태를 유지한다**(FR-081) — T111, T112 의존
+- [X] T131 [US6] `backend/src/itb/api/routes/sessions.py` 확장 — `POST .../ai-step`. `PAUSED` 게이트, 삽입 위치는 일시정지 위치 (FR-078·FR-079) — T097, T130 의존 `PAUSED` 게이트. 녹화로 시작한 세션에는 그때 에이전트를 만든다 — 자연어 Step 추가는 작성 방식과 무관하게 쓸 수 있어야 한다
+- [X] T132 [US6] `frontend/src/components/PauseActions.tsx` 확장 — 자연어 입력 처리와 실패 안내 연결 (FR-081) — T103 의존
+- [X] T133 [US6] `backend/tests/integration/test_replay_no_llm.py` 확장 — 자연어로 추가한 Step의 재실행에서도 호출 0건 (FR-080)
 
 **Checkpoint**: quickstart §8 통과
 
@@ -330,18 +330,18 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### Tests for User Story 7 ⚠️
 
-- [ ] T134 [P] [US7] `backend/tests/unit/test_candidate_display.py` — 표시 상태 4종(`사용 중`/`대체 N`/`최후`/`수집되지 않음`)이 저장 상태 3값과 우선순위에서 파생되는 규칙. **표시 상태를 저장하지 않음**을 확인 (FR-019a)
-- [ ] T135 [P] [US7] `backend/tests/integration/test_repick.py` — 다시 집기로 후보 갱신 후 실행 통과 (FR-020)
-- [ ] T136 [P] [US7] `backend/tests/e2e/test_us7_step_inspector.py` — quickstart §9 종단 테스트
+- [X] T134 [P] [US7] `backend/tests/unit/test_candidate_display.py` — 표시 상태 4종(`사용 중`/`대체 N`/`최후`/`수집되지 않음`)이 저장 상태 3값과 우선순위에서 파생되는 규칙. **표시 상태를 저장하지 않음**을 확인 (FR-019a)
+- [X] T135 [P] [US7] `backend/tests/integration/test_repick.py` — 다시 집기로 후보 갱신 후 실행 통과 (FR-020) 셀렉터를 주는 경로와 **브라우저 클릭 대기** 경로를 모두 본다. 대기 중의 클릭이 Step 으로도 기록되면 정의에 없던 클릭이 늘어난다
+- [X] T136 [P] [US7] `backend/tests/e2e/test_us7_step_inspector.py` — quickstart §9 종단 테스트
 
 ### Implementation for User Story 7
 
-- [ ] T137 [US7] `backend/src/itb/locator/display.py` — 표시 상태 파생 함수 (FR-019a) — T018, T027 의존
-- [ ] T138 [US7] `backend/src/itb/recording/repick.py` — "다시 집기" 대기 상태 진입, 브라우저에서 요소 재지정 → 후보 재수집·재검증 → Step 갱신 (FR-020) — T029, T054 의존
-- [ ] T139 [US7] `backend/src/itb/api/routes/steps.py` 확장 — `POST .../steps/{step_id}/repick`, 표시 이름·입력값·타임아웃·민감 여부 수정(FR-082b) — T097, T138 의존
-- [ ] T140 [US7] `backend/src/itb/domain/test_case.py` 확장 — 민감 지정 시 기존 평문 값을 변수 참조로 이전하고 암호화해 옮긴다 (FR-082b) — T034, T036 의존
-- [ ] T141 [P] [US7] `frontend/src/components/StepInspector.tsx` — `StepInspector.dc.html` 이식. 후보 6단 우선순위 표, 수집된 원본 값, 테스트 DSL 미리보기, 저장·다시 집기 (FR-016·FR-019·FR-020)
-- [ ] T142 [P] [US7] `frontend/src/components/LocatorPriorityTable.tsx` — 순위·후보 종류·값·상태 배지 표시 (FR-019a)
+- [X] T137 [US7] `backend/src/itb/locator/display.py` — 표시 상태 파생 함수 (FR-019a) — T018, T027 의존
+- [X] T138 [US7] `backend/src/itb/recording/repick.py` — "다시 집기" 대기 상태 진입, 브라우저에서 요소 재지정 → 후보 재수집·재검증 → Step 갱신 (FR-020) — T029, T054 의존
+- [X] T139 [US7] `backend/src/itb/api/routes/steps.py` 확장 — `POST .../steps/{step_id}/repick`, 표시 이름·입력값·타임아웃·민감 여부 수정(FR-082b) — T097, T138 의존
+- [X] T140 [US7] `backend/src/itb/domain/test_case.py` 확장 — 민감 지정 시 기존 평문 값을 변수 참조로 이전하고 암호화해 옮긴다 (FR-082b) — T034, T036 의존 변수 이름 규칙을 `domain/test_case.py` 의 `make_variable_name`·`fallback_variable_name` 으로 단일화하고, 녹화(FR-082a)와 나중 민감 지정(FR-082b)이 같은 이름을 만들게 했다. 봉인 자체는 `secrets/capture.py` 가 맡는다 — 사람 녹화와 AI 작성이 같은 포착기를 공유한다
+- [X] T141 [P] [US7] `frontend/src/components/StepInspector.tsx` — `StepInspector.dc.html` 이식. 후보 6단 우선순위 표, 수집된 원본 값, 테스트 DSL 미리보기, 저장·다시 집기 (FR-016·FR-019·FR-020)
+- [X] T142 [P] [US7] `frontend/src/components/LocatorPriorityTable.tsx` — 순위·후보 종류·값·상태 배지 표시 (FR-019a)
 
 **Checkpoint**: quickstart §9 통과. 원칙 IV의 사용자 노출 지점이 완성됨
 
@@ -353,23 +353,23 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### 이번 범위에 있으나 스토리에 속하지 않는 것
 
-- [ ] T143 [P] `backend/src/itb/generator/playwright_gen.py` — Step → Playwright 코드 생성. `choose_strategy` 를 공유하고, **민감 변수는 변수 참조로만 생성**(FR-089d-1). 대상 화면 유래 텍스트를 **이스케이프**하고 문자열 접합으로 만들지 않는다(헌법 보안 요건). 탭은 `waitForEvent('page')` 패턴 (contracts/step-dsl §Export 대비) — T027 의존
-- [ ] T144 [P] `backend/tests/unit/test_generator.py` — 생성 코드 단위 테스트: 후보별 표현, 4종 검증, 멀티 탭, 민감 변수 참조, 이스케이프 (헌법 품질 게이트 3 필수 항목)
-- [ ] T145 [P] `frontend/src/pages/KeyManagement.tsx` — **확정 디자인에 없는 화면.** 키 상태·지문 표시, 생성, 권한 경고, 암호구 (FR-089a·FR-089e-1, spec 디자인 차이 3)
-- [ ] T146 [P] `frontend/src/pages/SecretValues.tsx` — **확정 디자인에 없는 화면.** 변수 목록(**값 미표시**), 값 입력·재입력, 지문 불일치 안내 (FR-082b·FR-089b, spec 디자인 차이 3)
-- [ ] T147 `backend/src/itb/api/routes/secrets.py` — `GET /api/keys/status`, `POST /api/keys/generate`, `GET /api/secrets`(이름·존재 여부만), `PUT /api/secrets/{name}`(공개키로 즉시 봉인, 값 미반환), `DELETE`. **복호화 값을 반환하는 응답이 없다** (contracts/rest-api §비밀 값과 키) — T033, T034 의존
-- [ ] T148 `backend/tests/contract/test_secrets_api.py` — 어떤 응답에도 값이 없음을 확인. 비밀키 없이 `PUT` 성공(FR-089b)
+- [X] T143 [P] `backend/src/itb/generator/playwright_gen.py` — Step → Playwright 코드 생성. `choose_strategy` 를 공유하고, **민감 변수는 변수 참조로만 생성**(FR-089d-1). 대상 화면 유래 텍스트를 **이스케이프**하고 문자열 접합으로 만들지 않는다(헌법 보안 요건). 탭은 `waitForEvent('page')` 패턴 (contracts/step-dsl §Export 대비) — T027 의존 **Export 명령은 만들지 않았다** — RG-1 은 P2 이고 이번 범위가 아니다. 생성기와 `playwright.config`·`package.json` 생성 함수까지 준비해 두어 회수를 명령 배선만 남겼다
+- [X] T144 [P] `backend/tests/unit/test_generator.py` — 생성 코드 단위 테스트: 후보별 표현, 4종 검증, 멀티 탭, 민감 변수 참조, 이스케이프 (헌법 품질 게이트 3 필수 항목) Step **8종 전부**를 표본으로 열거해 종류가 늘면 실패하게 했다. 이스케이프는 실제 적대적 문자열로 확인한다
+- [X] T145 [P] `frontend/src/pages/KeyManagement.tsx` — **확정 디자인에 없는 화면.** 키 상태·지문 표시, 생성, 권한 경고, 암호구 (FR-089a·FR-089e-1, spec 디자인 차이 3)
+- [X] T146 [P] `frontend/src/pages/SecretValues.tsx` — **확정 디자인에 없는 화면.** 변수 목록(**값 미표시**), 값 입력·재입력, 지문 불일치 안내 (FR-082b·FR-089b, spec 디자인 차이 3)
+- [X] T147 `backend/src/itb/api/routes/secrets.py` — `GET /api/keys/status`, `POST /api/keys/generate`, `GET /api/secrets`(이름·존재 여부만), `PUT /api/secrets/{name}`(공개키로 즉시 봉인, 값 미반환), `DELETE`. **복호화 값을 반환하는 응답이 없다** (contracts/rest-api §비밀 값과 키) — T033, T034 의존 **파일명 차이**: `secrets.py` 가 아니라 `secrets_routes.py` 다 — `itb.secrets` 패키지와 모듈명이 겹쳐 임포트가 모호해진다. 계약상 엔드포인트는 모두 구현돼 있다
+- [X] T148 `backend/tests/contract/test_secrets_api.py` — 어떤 응답에도 값이 없음을 확인. 비밀키 없이 `PUT` 성공(FR-089b)
 
 ### 마감 항목
 
-- [ ] T149 [P] `frontend/src/components/SessionLostBanner.tsx` — `LOST` 상태 표시와 허용 행동 안내(저장·처음부터 재실행만) (FR-041c)
-- [ ] T150 [P] `frontend/src/components/StartingIndicator.tsx` — `STARTING` 상태 표시 (spec 디자인 차이 3, data-model §8)
-- [ ] T151 [P] `frontend/tests/` — Vitest 로 Step 200개 목록 렌더 성능과 컴포넌트 단위 테스트 (research R8)
-- [ ] T152 `backend/src/itb/execution/` 전체와 `backend/src/itb/api/errors.py` 의 오류 처리·로깅 일관성을 점검하고 `backend/tests/unit/test_error_handling.py` 를 추가한다 — 실패한 Step이 항상 진단 가능한 결과(사유·스크린샷·로그)를 남기고, 처리되지 않은 오류로 러너 태스크가 죽지 않음을 확인 (FR-087)
-- [ ] T153 `README.md` 와 `docs/DEVELOPMENT.md` — quickstart.md §0의 설치·실행 절차를 개발자 문서로 정리한다
-- [ ] T154 `specs/001-interactive-ai-test-builder/quickstart.md` §12 완료 체크리스트 13항목을 실제로 수행하고, 결과를 그 파일의 체크박스에 반영한다
-- [ ] T155 SC-001·SC-002·SC-004·SC-005 수동 측정 세션 — 시나리오 20건 규모. **자동 테스트로 대체할 수 없다.** 표본 선정 기준과 측정 결과를 `docs/mvp-metrics.md` 에 기록한다 (quickstart §12)
-- [ ] T156 `specs/001-interactive-ai-test-builder/checklists/design-review.md` 의 미체크 55항목을 리뷰어가 검토하고 결과를 반영한다
+- [X] T149 [P] `frontend/src/components/SessionLostBanner.tsx` — `LOST` 상태 표시와 허용 행동 안내(저장·처음부터 재실행만) (FR-041c)
+- [X] T150 [P] `frontend/src/components/StartingIndicator.tsx` — `STARTING` 상태 표시 (spec 디자인 차이 3, data-model §8)
+- [X] T151 [P] `frontend/tests/` — Vitest 로 Step 200개 목록 렌더 성능과 컴포넌트 단위 테스트 (research R8) 후보 표(파생 규칙 12건)와 Step 200개 렌더 예산·선형성. **절대 시간이 아니라 항목 수에 대한 증가율**을 본다 — 절대 시간은 환경에 따라 흔들려 잡으려는 것(선형보다 나쁜 렌더)과 무관한 실패를 만든다
+- [X] T152 `backend/src/itb/execution/` 전체와 `backend/src/itb/api/errors.py` 의 오류 처리·로깅 일관성을 점검하고 `backend/tests/unit/test_error_handling.py` 를 추가한다 — 실패한 Step이 항상 진단 가능한 결과(사유·스크린샷·로그)를 남기고, 처리되지 않은 오류로 러너 태스크가 죽지 않음을 확인 (FR-087) 동작 검증(예상 못한 오류·결과 기록 실패·취소)과 **구조 점검**(예외를 삼키는 지점 수를 숫자로 고정, 광범위 포획에 이유 주석 강제)을 함께 둔다
+- [X] T153 `README.md` 와 `docs/DEVELOPMENT.md` — quickstart.md §0의 설치·실행 절차를 개발자 문서로 정리한다
+- [X] T154 `specs/001-interactive-ai-test-builder/quickstart.md` §12 완료 체크리스트 13항목을 실제로 수행하고, 결과를 그 파일의 체크박스에 반영한다 13항목 중 **12항목 확인 완료**. 마지막 항목(SC-001~SC-005 측정값)은 T155 의 수동 세션이 필요해 미수행으로 남겼다
+- [ ] T155 SC-001·SC-002·SC-004·SC-005 수동 측정 세션 — 시나리오 20건 규모. **자동 테스트로 대체할 수 없다.** 표본 선정 기준과 측정 결과를 `docs/mvp-metrics.md` 에 기록한다 (quickstart §12) **미수행 — 사람이 해야 한다.** 측정 절차·표본 선정 기준·기록 자리를 `docs/mvp-metrics.md` 에 만들어 두었고, 자동으로 재고 있는 지표(SC-003·006·007·008·010·011·012)와 수동이 필요한 지표를 구분해 적었다
+- [ ] T156 `specs/001-interactive-ai-test-builder/checklists/design-review.md` 의 미체크 55항목을 리뷰어가 검토하고 결과를 반영한다 **미수행 — 리뷰어가 해야 한다.** 구현자가 자기 구현을 체크하면 리뷰가 아니라 자기 확인이 된다. 65항목이 미체크로 남아 있다
 
 **Checkpoint**: 헌법 게이트 전부 통과. MVP 완료
 
@@ -533,10 +533,10 @@ Phase 2 완료 후, 프론트엔드와 백엔드를 나눠 진행할 수 있다.
 (원칙 I) 잔여 작업이다.** 코드 소비자(리코더·실행기·화면)는 그때 함께 반영했고, 여기 남은
 것은 아직 만들지 않은 소비자의 **작업 정의**와 설계 문서다.
 
-- [ ] T163 에이전트 도구 표면과 Step 종류의 1:1 관계를 회복한다 per `plan.md` 원칙 I 게이트 (contradicts) — **HIGH**. T111 의 도구 목록에 `hover`·`drag` 가 없다. plan 의 원칙 I 게이트 PASS 근거가 "도구 표면이 Step 종류와 1:1이라 컴파일 실패 경우가 원리적으로 없다"(research R5)이고 T113(컴파일러)이 그 근거에 의존하는데, Step 종류가 8종이 된 지금 그 주장은 참이 아니다. **US4(Phase 6) 를 시작하기 전에** 둘 중 하나를 한다 — ① 도구 표면에 `hover(element_ref)`·`drag(element_ref, drop_ref)` 를 더한다, ② 1:1 이 아님과 그때 컴파일 실패를 어떻게 다루는지를 `plan.md` 에 명시한다. ①을 고르면 T111·T113 의 범위가 늘어난다
-- [ ] T164 생성기와 그 테스트가 `hover`·`drag` 를 덮게 한다 per 원칙 V 증분 의무·`tasks: T144` (partial) — T143 은 종류를 열거하지 않아 그대로 두어도 되지만, T144 의 범위("후보별 표현, 4종 검증, 멀티 탭, 민감 변수 참조, 이스케이프")에 새 종류가 없다. 대응표는 `contracts/step-dsl.md` §Playwright Export 대비에 이미 적었다(`hover()`, `dragTo()`) — 그것이 테스트로 고정되지 않으면 Export 가 새 종류를 조용히 빠뜨린다
-- [ ] T165 `data-model.md` 의 Step 종류 열거를 8종으로 맞춘다 per `data-model.md` §Step (contradicts) — 93행의 `type` enum 이 6종만 열거하고, 109행의 종류별 추가 필드 표에 `hover`·`drag` 가 없다. 권위 정의는 Pydantic 이므로 코드가 맞고 문서가 틀렸다. `drag` 의 `drop_target` 을 추가 필드로 적는다
-- [ ] T166 StepInspector 가 `drag` 의 두 요소를 구분해 보여준다 per `tasks: T141`·FR-019·FR-020 (partial) — T141 은 후보 표 하나를 그린다. `drag` 는 `target`(끄는 대상)과 `drop_target`(놓는 위치)을 가지므로 놓는 위치의 후보를 볼 수 없고, "다시 집기"(FR-020)도 어느 쪽을 다시 집는지 지정할 수 없다. 두 요소를 구분한 표시와 재지정 대상 선택이 필요하다
+- [X] T163 에이전트 도구 표면과 Step 종류의 1:1 관계를 회복한다 per `plan.md` 원칙 I 게이트 (contradicts) — **HIGH**. T111 의 도구 목록에 `hover`·`drag` 가 없다. plan 의 원칙 I 게이트 PASS 근거가 "도구 표면이 Step 종류와 1:1이라 컴파일 실패 경우가 원리적으로 없다"(research R5)이고 T113(컴파일러)이 그 근거에 의존하는데, Step 종류가 8종이 된 지금 그 주장은 참이 아니다. **US4(Phase 6) 를 시작하기 전에** 둘 중 하나를 한다 — ① 도구 표면에 `hover(element_ref)`·`drag(element_ref, drop_ref)` 를 더한다, ② 1:1 이 아님과 그때 컴파일 실패를 어떻게 다루는지를 `plan.md` 에 명시한다. ①을 고르면 T111·T113 의 범위가 늘어난다 **완료 (①안)**: 도구 표면에 `hover(element_ref)`·`drag(element_ref, drop_ref)` 를 더해 Step 8종과 1:1 을 회복했다. `plan.md` 원칙 I 게이트 근거와 T111·T113 범위를 갱신했고, `tests/unit/test_agent_tools.py` 가 양방향(도구↔Step)으로 대응을 고정한다
+- [X] T164 생성기와 그 테스트가 `hover`·`drag` 를 덮게 한다 per 원칙 V 증분 의무·`tasks: T144` (partial) — T143 은 종류를 열거하지 않아 그대로 두어도 되지만, T144 의 범위("후보별 표현, 4종 검증, 멀티 탭, 민감 변수 참조, 이스케이프")에 새 종류가 없다. 대응표는 `contracts/step-dsl.md` §Playwright Export 대비에 이미 적었다(`hover()`, `dragTo()`) — 그것이 테스트로 고정되지 않으면 Export 가 새 종류를 조용히 빠뜨린다 `test_generator.py` 가 Step 종류 표본을 `StepType` 전체와 비교하므로, 종류가 늘고 생성기가 따라오지 않으면 실패한다. `hover()`·`dragTo()` 대응은 별도로 고정했다
+- [X] T165 `data-model.md` 의 Step 종류 열거를 8종으로 맞춘다 per `data-model.md` §Step (contradicts) — 93행의 `type` enum 이 6종만 열거하고, 109행의 종류별 추가 필드 표에 `hover`·`drag` 가 없다. 권위 정의는 Pydantic 이므로 코드가 맞고 문서가 틀렸다. `drag` 의 `drop_target` 을 추가 필드로 적는다 **완료**: `type` enum 을 8종으로, 종류별 추가 필드 표에 `hover`·`drag`(`drop_target` 포함)를 넣었다
+- [X] T166 StepInspector 가 `drag` 의 두 요소를 구분해 보여준다 per `tasks: T141`·FR-019·FR-020 (partial) — T141 은 후보 표 하나를 그린다. `drag` 는 `target`(끄는 대상)과 `drop_target`(놓는 위치)을 가지므로 놓는 위치의 후보를 볼 수 없고, "다시 집기"(FR-020)도 어느 쪽을 다시 집는지 지정할 수 없다. 두 요소를 구분한 표시와 재지정 대상 선택이 필요하다
 
 **Checkpoint**: Phase 12 가 끝나면 hover·drag 가 모든 소비자(리코더·실행기·화면·에이전트·
 생성기·설계 문서)에 일관되게 반영된다

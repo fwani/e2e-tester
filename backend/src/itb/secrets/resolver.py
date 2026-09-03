@@ -49,6 +49,19 @@ class VariableResolver:
         self._declared = {v.name: v for v in test.variables}
         self._cache: dict[str, str] = {}
 
+    def declare(self, name: str, sensitive: bool = True) -> None:
+        """실행 중 새로 포착된 변수를 등록한다 (AI 작성 경로, FR-082a).
+
+        AI 가 비밀번호 필드에 값을 넣으면 그 자리에서 변수가 생긴다. 저장 전이므로
+        `Test.variables` 에는 아직 없고, 그 상태로 Step 을 실행하면 "정의되지 않은 변수"
+        로 실패한다. 등록해 두면 봉인된 암호문에서 값을 찾는다.
+
+        **평문을 받지 않는다.** 값은 이미 비밀 파일에 봉인돼 있고 이 객체는 이름만 안다.
+        """
+        from itb.domain.test_case import Variable
+
+        self._declared[name] = Variable(name=name, value=None, sensitive=sensitive)
+
     def resolve(self, name: str) -> str:
         if name in self._cache:
             return self._cache[name]
