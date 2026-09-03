@@ -93,3 +93,40 @@ def project_client(
     )
     assert resp.status_code == 201, resp.text
     return client
+
+
+# ─── US2 (재실행) 공용 픽스처 ──────────────────────────────────────────────
+
+
+@pytest.fixture
+def keyed_client(project_client: TestClient) -> TestClient:
+    """비밀키가 준비된 클라이언트. 민감 값 봉인·복호화 경로를 지나는 테스트용."""
+    resp = project_client.post("/api/keys/generate", json={"passphrase": None})
+    assert resp.status_code == 201, resp.text
+    return project_client
+
+
+@pytest.fixture
+def event_log(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dict]]:
+    """세션이 발행한 모든 이벤트를 순서대로 담는다.
+
+    WebSocket 을 열어 읽지 않고 **발행 지점**에서 가로챈다. 세션 생성 즉시 실행이 시작되는
+    재실행 모드에서는 소켓을 붙이는 사이에 앞부분 이벤트를 놓칠 수 있기 때문이다.
+    소켓 계층(`seq` 부여·유실 허용)은 contract 테스트가 따로 본다.
+    """
+    from itb.api.ws.session_events import EventBroker
+
+    captured: list[tuple[str, dict]] = []
+    original = EventBroker.sink
+
+    def patched(self: EventBroker, session_id: str):  # noqa: ANN202
+        inner = original(self, session_id)
+
+        async def send(event_type: str, payload: dict) -> None:
+            captured.append((event_type, dict(payload)))
+            await inner(event_type, payload)
+
+        return send
+
+    monkeypatch.setattr(EventBroker, "sink", patched)
+    return captured

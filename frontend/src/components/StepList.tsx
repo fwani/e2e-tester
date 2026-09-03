@@ -14,6 +14,10 @@ export interface StepListProps {
   currentIndex?: number;
   /** 일시정지 상태에서만 구분선을 그린다. */
   showPauseMarker?: boolean;
+  /** 지금 실행 중인 Step 위치. 실행 중임을 표시한다 (FR-046). */
+  runningIndex?: number | null;
+  /** Step id → 실행 결과. 통과·실패를 목록에서 바로 보여준다 (FR-046). */
+  outcomes?: Record<string, "pass" | "fail">;
   selectedStepId?: string | null;
   durationsMs?: Record<string, number>;
   onSelect?: (stepId: string) => void;
@@ -47,6 +51,8 @@ export function StepList({
   steps,
   currentIndex = 0,
   showPauseMarker = false,
+  runningIndex = null,
+  outcomes = {},
   selectedStepId = null,
   durationsMs = {},
   onSelect,
@@ -77,7 +83,11 @@ export function StepList({
               padding: "10px 12px",
               borderBottom: "1px solid var(--border)",
               background:
-                step.id === selectedStepId ? "var(--surface-soft)" : "transparent",
+                index === runningIndex
+                  ? "var(--warn-tint)"
+                  : step.id === selectedStepId
+                    ? "var(--surface-soft)"
+                    : "transparent",
               cursor: onSelect ? "pointer" : "default",
             }}
           >
@@ -97,6 +107,16 @@ export function StepList({
               </div>
             </div>
             <div className="row" style={{ gap: 6 }}>
+              {index === runningIndex && (
+                <span className="badge warn" aria-label="실행 중">
+                  실행 중
+                </span>
+              )}
+              {outcomes[step.id] !== undefined && (
+                <span className={`badge ${outcomes[step.id]}`}>
+                  {outcomes[step.id] === "pass" ? "PASS" : "FAIL"}
+                </span>
+              )}
               {durationsMs[step.id] !== undefined && (
                 <span className="mono dim">{durationsMs[step.id]} ms</span>
               )}

@@ -6,10 +6,9 @@
 |------|------|-------------|
 | 녹화 이벤트 → Step 목록 반영 | p95 < 200 ms | 측정 |
 | 세션 시작 준비 시간 | < 2 s (브라우저 실행·첫 화면 로드 제외) | 측정 |
-| Step 실행 제품 오버헤드 | p95 < 50 ms | **Phase 4 (US2) 에서 측정** |
+| Step 실행 제품 오버헤드 | p95 < 50 ms | 측정 (T091) |
 | 미러 프레임률·지연 | 5~10 fps / p95 < 300 ms | **수동 실측** (T006 에서 확인) |
 
-Step 실행 오버헤드는 실행기가 이번 범위에 없어 측정하지 않는다. 목표만 문서에 고정돼 있다.
 """
 
 from __future__ import annotations
@@ -26,6 +25,12 @@ RECORD_LATENCY_P95_MS = 200.0
 """사람이 즉시성으로 느끼는 임계. 이보다 느리면 녹화 중 무엇이 잡혔는지 확신할 수 없다."""
 
 SESSION_READY_MS = 2000.0
+STEP_OVERHEAD_P95_MS = 50.0
+"""Step 하나를 실행할 때 **제품이 추가하는** 시간의 상한 (research R8).
+
+대상 앱의 응답 시간은 제품이 줄일 수 없다. 그래서 "Step 소요 시간"이 아니라
+**Step 소요 시간의 합과 실행 전체 시간의 차이**를 본다 — 그 차이가 제품 몫이다.
+"""
 STEP_LIST_SIZE = 200
 """spec Assumptions 의 "수십 개 규모" 에 여유를 둔 값."""
 
@@ -213,3 +218,31 @@ def test_mirror_disconnect_does_not_affect_recording(
         assert steps, "이벤트 통로가 끊기자 녹화가 멈췄다 — FR-047b 위반"
     finally:
         project_client.post(f"/api/sessions/{sid}/stop")
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_step_execution_overhead(keyed_client: TestClient, fixture_app: str) -> None:
+    """T091 — Step 실행에서 제품이 추가하는 오버헤드 (research R8, p95 < 50ms).
+
+    측정 방법: 실행 전체 시간에서 Step 별 소요 시간 합을 뺀다. 남는 것이 후보 해석·탭 해석·
+    결과 집계·이벤트 발행 등 **제품이 넣은 비용**이다. Step 소요 시간 자체를 재면 대상 앱의
+    응답 시간이 섞여 목표를 판정할 수 없다.
+    """
+    from us2_support import record_login, replay, result_of
+
+    test_id = record_login(keyed_client, fixture_app)
+
+    overheads: list[float] = []
+    for _ in range(5):
+        view = replay(keyed_client, test_id)
+        assert view["state"] == "completed", f"측정용 실행이 실패했다: {view['state']}"
+        result = result_of(keyed_client, test_id)
+        step_ms = sum(s["duration_ms"] for s in result["steps"])
+        step_count = max(len(result["steps"]), 1)
+        overheads.append(max(result["total_ms"] - step_ms, 0) / step_count)
+
+    p95 = _p95(overheads)
+    assert p95 < STEP_OVERHEAD_P95_MS, (
+        f"Step 실행 오버헤드 p95={p95:.1f}ms 가 목표 "
+        f"{STEP_OVERHEAD_P95_MS:.0f}ms 를 넘었다 (표본 {[round(o, 1) for o in overheads]})"
+    )

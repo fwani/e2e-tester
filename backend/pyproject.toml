@@ -56,7 +56,7 @@ select = ["E", "F", "I", "B", "UP", "S"]
 ignore = ["S101"]  # pytest 의 assert 사용 허용
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S105", "S106"]  # 테스트 픽스처의 더미 값
+"tests/**" = ["S105", "S106", "S107"]  # 테스트 픽스처의 더미 값
 # S105 는 이름에 PASS/PASSPHRASE/SECRET 이 들어간 문자열 대입을 비밀번호로 본다.
 # 아래 파일들은 StrEnum 멤버 정의뿐이며(테스트 결과, 오류 코드, 명령 이름) 비밀값이 아니다.
 # 실제 비밀값을 다루는 itb/secrets/ 는 이 목록에 넣지 않는다.

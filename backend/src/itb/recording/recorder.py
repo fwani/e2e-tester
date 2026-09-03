@@ -40,7 +40,7 @@ from itb.locator.collector import (
     build_unverified,
     candidate_strategies,
 )
-from itb.locator.strategy import StrategyKind
+from itb.locator.strategy import StrategyKind, ordered_strategies
 from itb.secrets.store import SecretStore
 
 INJECTED_SCRIPT = pathlib.Path(__file__).parent / "injected" / "recorder.js"
@@ -62,6 +62,13 @@ NAV_DEDUPE_MS = 3000
 
 조건 2가 핵심이다. 없으면 "이동을 유발하지 않은 클릭 → 다른 동작 → 뒤로 가기" 흐름에서
 정당한 이동이 잘못 억제된다.
+"""
+
+CLICK_DEDUPE_MS = 700
+"""같은 요소의 클릭을 한 번으로 접는 시간창.
+
+`pointerdown` 과 `click` 이 같은 클릭에 대해 둘 다 온다. 사람이 같은 버튼을 의도적으로
+두 번 누르는 간격보다는 짧고, 한 클릭의 두 이벤트 간격보다는 넉넉하게 잡았다.
 """
 
 SENSITIVE_VARIABLE_PREFIX = "SECRET_"
@@ -106,6 +113,23 @@ class Recorder:
     """(탭, CSS) → 그 요소의 최근 fill Step id. 중복 제거의 근거다."""
 
     _fill_values: dict[tuple[int, str], str] = field(default_factory=dict)
+    _fill_targets: dict[tuple[int, str], TargetLocator] = field(default_factory=dict)
+    """(탭, CSS) → 그 요소에 대해 **가장 잘 검증된** 후보 묶음.
+
+    같은 요소의 확정 이벤트가 화면 이동과 겹치면 재수집 결과가 전부 미수집으로 나온다.
+    그때 새 결과로 덮어쓰면 이미 확보한 후보를 잃는다 — 그래서 더 나은 쪽을 남긴다.
+    """
+
+    _click_seen: dict[tuple[int, str], float] = field(default_factory=dict)
+    """(탭, CSS) → 그 요소의 클릭을 기록한 시각(ms). `pointerdown`·`click` 중복 제거용."""
+
+    _secret_names: dict[tuple[int, str], str] = field(default_factory=dict)
+    """(탭, CSS) → 그 요소에 부여한 민감 변수 이름.
+
+    같은 필드가 이벤트를 여러 번 내도 변수는 하나여야 한다. 없으면 한 번의 입력이
+    `SECRET_VALUE_1`, `SECRET_VALUE_2` … 로 늘어나 정의와 비밀 파일이 어긋난다.
+    """
+
     _nav_suppress: dict[int, float] = field(default_factory=dict)
     """탭 → 그 탭에서 클릭이 일어난 시각(ms). 다음 이동 하나를 억제하는 데 쓴다."""
     sensitive_captures: list[SensitiveCapture] = field(default_factory=list)
@@ -198,7 +222,9 @@ class Recorder:
         kind = payload.get("kind")
         element = payload.get("element") or {}
 
-        if kind == "click":
+        if kind == "hover":
+            await self._prewarm(page, tab.tab_index, element)
+        elif kind == "click":
             await self._record_click(page, tab.tab_index, element)
         elif kind == "fill":
             await self._record_fill(page, tab.tab_index, element, payload)
@@ -217,18 +243,24 @@ class Recorder:
     # ─── 후보 수집 + 기록 시점 검증 (원칙 IV) ─────────────────────────────
 
     async def _collect_target(
-        self, page: Page, element: dict[str, Any]
+        self, page: Page, element: dict[str, Any], warn_on_failure: bool = True
     ) -> TargetLocator | None:
         """후보를 수집하고 **즉시 검증**해 상태를 채운다.
 
         검증이 없으면 `StepInspector` 표시가 추측이 되고 SC-008 을 기록 시점에 측정할 수
         없다 (research R4).
+
+        `warn_on_failure=False` 는 사전 수집(hover) 경로용이다 — 지나가는 요소마다 경고를
+        쌓으면 정작 Step 이 만들어지지 않은 경고가 묻힌다.
         """
         try:
             target = build_unverified(element, self.test_id_attribute)
         except ValueError:
             # CSS 조차 없는 경우. 기록할 수 없다.
-            self._warn("대상 요소를 식별할 정보를 전혀 수집하지 못해 Step 을 만들지 못했습니다.")
+            if warn_on_failure:
+                self._warn(
+                    "대상 요소를 식별할 정보를 전혀 수집하지 못해 Step 을 만들지 못했습니다."
+                )
             return None
 
         css = target.css.value if target.css else None
@@ -277,18 +309,47 @@ class Recorder:
         if self.insert_at is not None:
             self.insert_at += 1
 
+    async def _prewarm(self, page: Page, tab: int, element: dict[str, Any]) -> None:
+        """포인터가 올라간 요소의 후보를 미리 수집·검증해 둔다. Step 은 만들지 않는다.
+
+        클릭 시점 수집이 화면 이동과 경쟁하는 문제의 해법이다 (US2 재실행에서 드러났다).
+        여기서 확보한 결과는 `_best_target` 을 통해 클릭 Step 에 쓰인다.
+        """
+        key = (tab, str(element.get("css") or ""))
+        if not key[1]:
+            return
+        target = await self._collect_target(page, element, warn_on_failure=False)
+        if target is not None:
+            self._best_target(key, target)
+
     async def _record_click(
         self, page: Page, tab: int, element: dict[str, Any]
     ) -> None:
-        target = await self._collect_target(page, element)
-        if target is None:
-            return
+        """클릭을 기록한다.
+
+        `pointerdown` 과 `click` 이 같은 클릭에 대해 둘 다 도착한다. 먼저 온 쪽만 남긴다 —
+        먼저 온 쪽이 화면 이동을 앞질러 후보를 검증했을 가능성이 높다.
+        """
         import time
 
         now_ms = time.monotonic() * 1000
+        key = (tab, str(element.get("css") or ""))
+        last = self._click_seen.get(key)
+        if last is not None and now_ms - last < CLICK_DEDUPE_MS:
+            return
+        self._click_seen[key] = now_ms
         self._last_click_ms = now_ms
-        # 이 탭의 다음 이동 하나를 억제 대상으로 표시한다 (인과 플래그).
+        # ★ 수집을 기다리기 **전에** 억제 플래그를 세운다. 수집이 화면 이동과 겹치면
+        # 이동 이벤트가 먼저 처리되는데, 그때 플래그가 없으면 클릭이 유발한 이동이
+        # 별도 navigate Step 으로 남아 재실행 때 같은 이동을 두 번 하게 된다 (FR-030b).
         self._nav_suppress[tab] = now_ms
+
+        fresh = await self._collect_target(page, element)
+        if fresh is None:
+            self._click_seen.pop(key, None)
+            return
+        # 마우스가 올라간 시점에 확보해 둔 후보가 더 나으면 그것을 쓴다.
+        target = self._best_target(key, fresh)
         self._last_fill_key = None
         label = element.get("accessibleName") or element.get("text") or element.get("tag")
         await self._emit(
@@ -317,11 +378,12 @@ class Recorder:
 
         css = target.css.value if target.css else ""
         key = (tab, css)
+        target = self._best_target(key, target)
         raw_value = payload.get("value") or ""
         sensitive = bool(payload.get("sensitive"))
 
         # ★ 치환을 이벤트 발행보다 먼저 한다 (T157). 이 순서가 뒤바뀌면 평문이 프론트에 간다.
-        stored_value = self._to_variable_reference(raw_value, sensitive, element)
+        stored_value = self._to_variable_reference(raw_value, sensitive, element, key)
 
         # 이 탭에서 입력이 기록됐다 → 페이지가 살아 있으므로 앞선 클릭은 이동을 만들지
         # 않았다. 억제 플래그를 지운다 (NAV_DEDUPE_MS 문서의 조건 2).
@@ -362,6 +424,18 @@ class Recorder:
                 value=stored_value,
             )
         )
+
+    def _best_target(self, key: tuple[int, str], fresh: TargetLocator) -> TargetLocator:
+        """이번 수집 결과와 이전 결과 중 **더 잘 검증된** 쪽을 쓴다.
+
+        확정 이벤트(`change`/`blur`)가 화면 이동과 겹치면 재수집이 전부 미수집으로 돌아온다.
+        그때 새 결과로 덮어쓰면 이미 확보한 후보를 잃고, 저장된 테스트가 재실행 불가가 된다.
+        """
+        previous = self._fill_targets.get(key)
+        if previous is not None and _usable_count(previous) > _usable_count(fresh):
+            return previous
+        self._fill_targets[key] = fresh
+        return fresh
 
     def _find_recent_fill(self, key: tuple[int, str], new_value: str) -> str | None:
         """같은 요소의 기존 fill Step 을 찾는다. 갱신 대상이면 그 id, 아니면 None.
@@ -409,13 +483,34 @@ class Recorder:
         # ASCII 로 쓸 수 있는 근거가 없다. 순번으로 유일성을 확보한다.
         return f"{SENSITIVE_VARIABLE_PREFIX}VALUE_{len(self.sensitive_captures) + 1}"
 
+    def _element_key(self, element: dict[str, Any]) -> tuple[int, str]:
+        """탭 정보 없이 요소를 구분하는 키. 호출자가 키를 주지 않을 때만 쓴다.
+
+        CSS 가 있으면 그것이 가장 좁은 식별자다. 없으면 이름·라벨로 떨어진다 — 서로 다른
+        필드가 같은 변수를 공유하는 일을 막는 것이 목적이다.
+        """
+        attrs = element.get("attributes") or {}
+        basis = (
+            element.get("css")
+            or attrs.get("name")
+            or attrs.get(self.test_id_attribute)
+            or element.get("label")
+            or element.get("accessibleName")
+            or ""
+        )
+        return (-1, str(basis))
+
     @staticmethod
     def _fill_label(element: dict[str, Any], sensitive: bool) -> str:
         name = element.get("label") or element.get("accessibleName") or "입력"
         return f"{name} 입력" if not sensitive else f"{name} 입력 (민감)"
 
     def _to_variable_reference(
-        self, raw_value: str, sensitive: bool, element: dict[str, Any]
+        self,
+        raw_value: str,
+        sensitive: bool,
+        element: dict[str, Any],
+        key: tuple[int, str] | None = None,
     ) -> str:
         """민감 값을 변수 참조로 바꾸고 공개키로 봉인한다 (FR-082·FR-082a·FR-089b).
 
@@ -425,7 +520,13 @@ class Recorder:
         if not sensitive or not raw_value:
             return raw_value
 
-        variable = self._sensitive_variable_name(element)
+        # 같은 필드는 이벤트를 여러 번 내도 변수 하나를 쓴다. 이름을 매번 새로 만들면
+        # 입력 한 번이 `SECRET_VALUE_1`, `SECRET_VALUE_2` … 로 늘어난다.
+        cache_key = key if key is not None else self._element_key(element)
+        variable = self._secret_names.get(cache_key)
+        if variable is None:
+            variable = self._sensitive_variable_name(element)
+            self._secret_names[cache_key] = variable
 
         sealed = False
         if self.store is not None and self.public_key is not None:
@@ -437,9 +538,15 @@ class Recorder:
                 f"민감 값을 보관할 공개키가 없어 {variable} 의 값을 저장하지 못했습니다. "
                 "키를 만든 뒤 값을 다시 입력하거나 환경 변수로 공급하세요."
             )
-        self.sensitive_captures.append(
-            SensitiveCapture(variable_name=variable, sealed=sealed)
+        existing = next(
+            (c for c in self.sensitive_captures if c.variable_name == variable), None
         )
+        if existing is None:
+            self.sensitive_captures.append(
+                SensitiveCapture(variable_name=variable, sealed=sealed)
+            )
+        elif sealed:
+            existing.sealed = True
         return f"{{{{{variable}}}}}"
 
     async def _record_select(
@@ -506,3 +613,13 @@ class Recorder:
             author=self.author,
             tab=tab_index,
         )
+
+
+
+def _usable_count(target: TargetLocator) -> int:
+    """실행에 쓸 수 있는 후보 수. `verified` 만 센다 (원칙 IV).
+
+    후보 판정은 `itb.locator.strategy` 한 곳에만 둔다 — 여기서 상태를 다시 해석하면
+    Runner·Generator 와 갈라진다.
+    """
+    return len(ordered_strategies(target))

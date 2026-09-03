@@ -1,0 +1,170 @@
+"""T074 — 복호화된 민감 값이 어디에도 남지 않는다 (SC-010, FR-089d).
+
+**전수 검사다.** 한 경로만 막고 통과했다고 보면 안 된다 — 값은 정의 파일, 비밀 파일, 실행
+산출물(스크린샷·콘솔·네트워크), 실패 메시지, 임시 파일, API 응답, WebSocket 이벤트, 그리고
+생성된 코드 중 **어디로든** 샐 수 있다. 이 파일은 그 목록을 하나씩 훑는다.
+
+민감 값은 재실행 중 실제로 복호화되어 브라우저에 입력된다. 즉 이 테스트는 "값이 쓰이지
+않아서 새지 않은" 상태를 통과로 착각하지 않는다 — 값이 쓰였음을 먼저 확인한다.
+"""
+
+from __future__ import annotations
+
+import json
+import pathlib
+import tempfile
+
+import pytest
+from fastapi.testclient import TestClient
+from us2_support import record_login, replay, result_of
+
+SECRET = "Tr0ub4dor-3-not-a-real-password"
+"""픽스처 앱에 입력할 값. 짧으면 스크러버가 무시하므로 충분히 길게 잡는다."""
+
+
+def _all_text_under(root: pathlib.Path) -> list[tuple[pathlib.Path, str]]:
+    """디렉터리 아래 모든 파일의 내용을 텍스트로 읽는다.
+
+    바이너리(스크린샷 PNG 등)도 **바이트 그대로** 훑는다 — 메타데이터에 값이 남을 수 있다.
+    """
+    out: list[tuple[pathlib.Path, str]] = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        try:
+            data = path.read_bytes()
+        except OSError:  # pragma: no cover - 읽을 수 없는 파일은 검사 대상이 아니다
+            continue
+        out.append((path, data.decode("utf-8", errors="replace")))
+    return out
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_decrypted_secret_never_reaches_any_artifact(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+) -> None:
+    """FR-089d — 복호화된 값이 디스크·응답·이벤트 어디에도 남지 않는다."""
+    client = keyed_client
+    test_id = record_login(client, fixture_app, password=SECRET)
+
+    definition = client.get(f"/api/tests/{test_id}").json()
+    sensitive = [v for v in definition["variables"] if v["sensitive"]]
+    assert sensitive, (
+        "비밀번호 입력이 민감 변수로 옮겨지지 않았다 — 이 테스트가 무의미해진다"
+    )
+    assert all(v["value"] is None for v in sensitive), (
+        f"민감 변수가 정의 파일에 값을 갖고 있다: {sensitive}"
+    )
+
+    event_log.clear()
+    view = replay(client, test_id)
+    assert view["state"] == "completed", (
+        f"민감 값을 쓰는 재실행이 통과하지 않았다: {view['state']}. "
+        "값이 실제로 복호화되어 쓰였음을 먼저 확인해야 검사가 성립한다"
+    )
+
+    root = client.app.state.itb.repository.paths.root
+    leaks: list[str] = []
+
+    # 1·2·3. 정의 파일 · 비밀 파일 · 실행 산출물(스크린샷 메타데이터 포함)
+    for path, text in _all_text_under(root):
+        if SECRET in text:
+            leaks.append(f"파일 {path.relative_to(root)}")
+
+    # 4. 임시 디렉터리 — 실행 중 만들어진 파일이 남아 있으면 안 된다
+    tmp_root = pathlib.Path(tempfile.gettempdir())
+    for path in tmp_root.glob("itb-*"):
+        if not path.is_file():
+            continue
+        if SECRET in path.read_bytes().decode("utf-8", errors="replace"):
+            leaks.append(f"임시 파일 {path}")
+
+    # 5. API 응답 — 결과·정의·목록·비밀 목록
+    responses = {
+        "정의": client.get(f"/api/tests/{test_id}").text,
+        "결과": json.dumps(result_of(client, test_id), ensure_ascii=False),
+        "목록": client.get("/api/tests").text,
+        "비밀 목록": client.get("/api/secrets").text,
+    }
+    for label, body in responses.items():
+        if SECRET in body:
+            leaks.append(f"API 응답({label})")
+
+    # 6. WebSocket 이벤트 — 발행 지점에서 가로챈 전량
+    for name, payload in event_log:
+        if SECRET in json.dumps(payload, ensure_ascii=False, default=str):
+            leaks.append(f"WS 이벤트({name})")
+
+    assert not leaks, f"복호화된 민감 값이 다음 위치에 남았다: {sorted(set(leaks))}"
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_failure_message_and_artifacts_are_scrubbed(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+) -> None:
+    """FR-089d — 실패 경로에서도 마스킹된다.
+
+    실패 메시지에는 시도한 후보 표현과 대상 화면 텍스트가 들어간다. 성공 경로만 막고
+    실패 경로를 놓치는 것이 전형적인 누출 방식이다.
+    """
+    from us2_support import break_first_click
+
+    client = keyed_client
+    test_id = record_login(client, fixture_app, password=SECRET)
+    broken_index = break_first_click(client, test_id)
+
+    event_log.clear()
+    view = replay(client, test_id)
+    assert view["state"] == "failed", f"실패를 유도했는데 실패하지 않았다: {view['state']}"
+
+    result = result_of(client, test_id)
+    assert result["outcome"] == "fail"
+    assert result["failed_step_index"] == broken_index
+
+    blob = json.dumps(result, ensure_ascii=False, default=str)
+    assert SECRET not in blob, "실패 결과에 민감 값이 남았다"
+
+    root = client.app.state.itb.repository.paths.root
+    for path, text in _all_text_under(root):
+        assert SECRET not in text, f"실패 산출물에 민감 값이 남았다: {path.relative_to(root)}"
+
+    for name, payload in event_log:
+        assert SECRET not in json.dumps(payload, ensure_ascii=False, default=str), (
+            f"실패 이벤트에 민감 값이 남았다: {name}"
+        )
+
+
+def test_no_generated_code_surface_leaks_secrets() -> None:
+    """FR-089d-1 — 생성 코드는 민감 변수를 **참조로만** 담는다.
+
+    코드 생성기는 이번 범위(US2)에 없다. 건너뛰는 대신 **생성 코드 표면이 아직 존재하지
+    않는다는 사실 자체를 검증**한다. 생성기가 들어오면 이 테스트가 자동으로 실제 검사로
+    바뀐다 — 조용히 통과하는 구멍을 남기지 않는다 (헌법 품질 게이트 4).
+    """
+    import importlib.util
+
+    if importlib.util.find_spec("itb.generator.playwright_gen") is None:
+        assert importlib.util.find_spec("itb.generator") is not None, (
+            "generator 패키지 자체가 없다 — 프로젝트 구조가 어긋났다"
+        )
+        return
+
+    from itb.domain.locator import Candidate, CandidateStatus, TargetLocator
+    from itb.domain.step import FillStep
+    from itb.generator import playwright_gen  # type: ignore[attr-defined]
+
+    step = FillStep(
+        id="step-01",
+        label="비밀번호 입력",
+        target=TargetLocator(
+            tag="input",
+            label=Candidate(value="비밀번호", status=CandidateStatus.VERIFIED),
+        ),
+        value="{{SECRET_VALUE_1}}",
+    )
+    code = playwright_gen.generate_steps([step])  # type: ignore[attr-defined]
+    assert "SECRET_VALUE_1" in code, "민감 변수 참조가 생성 코드에 없다"

@@ -6,6 +6,7 @@
  * 타입은 backend/schema 에서 생성된 것만 쓴다 — 손으로 정의하면 원칙 I 의
  * Cross-language schema duty 를 위반한다.
  */
+import type { RunResult } from "../types/generated/run-result";
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
 
@@ -123,12 +124,19 @@ export interface TestListResponse {
   problems: string[];
 }
 
+/** 산출물 종류. `trace` 는 서버가 `501` 을 돌려준다 (spec 디자인 차이 1). */
+export type ArtifactKind = "screenshot" | "trace" | "console" | "network";
+
 export const tests = {
   list: (q?: string) =>
     get<TestListResponse>(`/api/tests${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   get: (id: string) => get<Test>(`/api/tests/${id}`),
   rename: (id: string, name: string) => patch<Test>(`/api/tests/${id}`, { name }),
   remove: (id: string) => del<void>(`/api/tests/${id}`),
+  /** 최근 실행 결과. 테스트당 1건만 보관된다 (FR-050~FR-054). */
+  result: (id: string) => get<RunResult>(`/api/tests/${id}/result`),
+  artifact: (id: string, kind: ArtifactKind) =>
+    get<{ kind: string; path: string }>(`/api/tests/${id}/result/artifacts/${kind}`),
 };
 
 // ─── 세션 ───────────────────────────────────────────────────────────────────

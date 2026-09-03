@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { ApiError, project, sessions, type ProjectView, type SessionView } from "./api/client";
 import { CreateTest } from "./pages/CreateTest";
 import { ProjectSetup } from "./pages/ProjectSetup";
+import { RunResult } from "./pages/RunResult";
 import { Runner } from "./pages/Runner";
 import { TestList } from "./pages/TestList";
 
@@ -15,7 +16,8 @@ type Screen =
   | { name: "setup" }
   | { name: "list" }
   | { name: "create" }
-  | { name: "runner"; session: SessionView };
+  | { name: "runner"; session: SessionView }
+  | { name: "result"; testId: string };
 
 export function App() {
   const [opened, setOpened] = useState<ProjectView | null>(null);
@@ -33,9 +35,16 @@ export function App() {
       .catch(() => setScreen({ name: "setup" }));
   }, []);
 
-  const startReplay = (testId: string) => {
+  const startReplay = (testId: string, fromStepIndex?: number) => {
     void sessions
       .create({ mode: "replay", test_id: testId })
+      .then(async (session) => {
+        // "실패한 Step부터 실행" — 세션을 만든 뒤 곧바로 실행 위치를 옮긴다 (FR-055).
+        if (fromStepIndex !== undefined && fromStepIndex > 0) {
+          return await sessions.runFrom(session.session_id, fromStepIndex);
+        }
+        return session;
+      })
       .then((session) => setScreen({ name: "runner", session }))
       .catch((exc: unknown) =>
         setError(exc instanceof ApiError ? exc.message : String(exc)),
@@ -77,8 +86,8 @@ export function App() {
       {screen.name === "list" && (
         <TestList
           onCreate={() => setScreen({ name: "create" })}
-          onRun={startReplay}
-          onOpenResult={startReplay}
+          onRun={(testId) => startReplay(testId)}
+          onOpenResult={(testId) => setScreen({ name: "result", testId })}
         />
       )}
 
@@ -91,7 +100,20 @@ export function App() {
       )}
 
       {screen.name === "runner" && (
-        <Runner initial={screen.session} onFinished={() => setScreen({ name: "list" })} />
+        <Runner
+          initial={screen.session}
+          onFinished={() => setScreen({ name: "list" })}
+          onShowResult={(testId) => setScreen({ name: "result", testId })}
+        />
+      )}
+
+      {screen.name === "result" && (
+        <RunResult
+          testId={screen.testId}
+          onRunAll={(testId) => startReplay(testId)}
+          onRunFrom={(testId, stepIndex) => startReplay(testId, stepIndex)}
+          onBack={() => setScreen({ name: "list" })}
+        />
       )}
     </>
   );

@@ -147,6 +147,10 @@ _TRANSITIONS: dict[SessionState, dict[Command, SessionState]] = {
     },
     SessionState.REPLAYING: {
         Command.PAUSE: SessionState.PAUSED,
+        # FR-039·FR-055 — 결과 화면의 "실패한 Step부터 실행" 은 새 세션을 만든 뒤 곧바로
+        # 실행 위치를 옮긴다. 그 사이에 일시정지를 끼우게 하면 브라우저가 한 번 더 멈췄다
+        # 풀리고, 사용자가 요청하지 않은 상태 전이가 화면에 보인다.
+        Command.RUN_FROM: SessionState.REPLAYING,
         Command.STOP: SessionState.STOPPED,
         Command.FINISH_PASS: SessionState.COMPLETED,
         Command.FINISH_FAIL: SessionState.FAILED,

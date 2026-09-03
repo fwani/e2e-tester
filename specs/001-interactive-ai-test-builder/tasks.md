@@ -180,30 +180,30 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T071 [P] [US2] `backend/tests/integration/test_replay_no_llm.py` — **재실행 중 `anthropic` 클라이언트 생성에 스파이를 심어 호출 0건 확인**(SC-006, 헌법 원칙 II 동적 검증)
-- [ ] T072 [P] [US2] `backend/tests/integration/test_roundtrip.py` — 녹화 → 저장 → 재실행 결과 일치. 10회 연속 실행 결정성 (헌법 품질 게이트 2, SC-003)
-- [ ] T073 [P] [US2] `backend/tests/integration/test_locator_coverage.py` — 픽스처 앱 녹화 결과에서 `verified` 후보 2개 이상 Step 비율 90% 이상 (SC-008)
-- [ ] T074 [P] [US2] `backend/tests/integration/test_secret_leakage.py` — 정의 파일·비밀 파일·로그·실패 메시지·스크린샷 메타데이터·임시 파일·API 응답·WS 이벤트·**생성 코드** 전수 grep 으로 평문 0건 (SC-010, FR-089d)
-- [ ] T075 [P] [US2] `backend/tests/integration/test_multitab_replay.py` — 탭 대기 후 실행, 탭 미개설 시 실패 사유, 탭 순서 불일치 (FR-030d, SC-012)
-- [ ] T076 [P] [US2] `backend/tests/contract/test_ws_events.py` — WebSocket 이벤트 형태·`seq` 단조 증가·`mirror_*` 유실 허용성 (contracts/websocket)
-- [ ] T077 [P] [US2] `backend/tests/e2e/test_us2_replay_and_diagnose.py` — 실행 → 실패 유도 → 결과 진단 → 실패 Step부터 재실행 종단 테스트
+- [X] T071 [P] [US2] `backend/tests/integration/test_replay_no_llm.py` — **재실행 중 `anthropic` 클라이언트 생성에 스파이를 심어 호출 0건 확인**(SC-006, 헌법 원칙 II 동적 검증)
+- [X] T072 [P] [US2] `backend/tests/integration/test_roundtrip.py` — 녹화 → 저장 → 재실행 결과 일치. 10회 연속 실행 결정성 (헌법 품질 게이트 2, SC-003)
+- [X] T073 [P] [US2] `backend/tests/integration/test_locator_coverage.py` — 픽스처 앱 녹화 결과에서 `verified` 후보 2개 이상 Step 비율 90% 이상 (SC-008)
+- [X] T074 [P] [US2] `backend/tests/integration/test_secret_leakage.py` — 정의 파일·비밀 파일·로그·실패 메시지·스크린샷 메타데이터·임시 파일·API 응답·WS 이벤트·**생성 코드** 전수 grep 으로 평문 0건 (SC-010, FR-089d)
+- [X] T075 [P] [US2] `backend/tests/integration/test_multitab_replay.py` — 탭 대기 후 실행, 탭 미개설 시 실패 사유, 탭 순서 불일치 (FR-030d, SC-012)
+- [X] T076 [P] [US2] `backend/tests/contract/test_ws_events.py` — WebSocket 이벤트 형태·`seq` 단조 증가·`mirror_*` 유실 허용성 (contracts/websocket)
+- [X] T077 [P] [US2] `backend/tests/e2e/test_us2_replay_and_diagnose.py` — 실행 → 실패 유도 → 결과 진단 → 실패 Step부터 재실행 종단 테스트
 
 ### Implementation for User Story 2
 
-- [ ] T078 [US2] `backend/src/itb/execution/tab_resolver.py` — Step의 `tab` 으로 대상 `Page` 해석. 없으면 `timeout_ms` 까지 `context.on("page")` 대기, 초과 시 **"탭 N이 열리기를 기다렸으나 열리지 않았다"** 로 실패 (FR-030d, research R2) — T039 의존
-- [ ] T079 [US2] `backend/src/itb/execution/locator_runtime.py` — `choose_strategy` 결과를 Playwright `Locator` 로 변환. 해석 알고리즘: 즉시 `count()` 순회 → 미발견 시 최상위 후보에 남은 예산 집중 → 채택 후보 기록 → **후보 간 불일치를 로그에 남긴다** (research R4, FR-018·FR-021) — T027, T078 의존
-- [ ] T080 [US2] `backend/src/itb/execution/step_executor.py` — Step 6종 실행. 변수 치환(T036 경유), 대기 시간 상한, `hidden` 검증은 처음부터 없던 경우도 통과 (FR-013a·FR-015·FR-057, spec 엣지 케이스) — T036, T079 의존
-- [ ] T081 [US2] `backend/src/itb/execution/artifacts.py` — 실패 시점 스크린샷, 콘솔 기록, 네트워크 기록 수집. **디스크 기록 직전 스크러버 통과**(FR-052·FR-053·FR-089d) — T035 의존
-- [ ] T082 [US2] `backend/src/itb/execution/runner.py` 확장 — 순차 실행, `step_started`/`step_finished`/`step_failed`/`run_finished` 이벤트, 실패 시 중단, 결과 집계(총 시간·통과/전체·멈춘 Step) (FR-046·FR-048~FR-051) — T042, T080 의존
-- [ ] T083 [US2] `backend/src/itb/execution/session_loss.py` — 세션 유실을 **모든 상태에서** 감지. 재실행 중 유실 → 실패 종료 + 부분 결과 보존(FR-041a), AI 수행 중 → 루프 중단 + 저장 확인(FR-041b), 이후 저장·처음부터 재실행만 허용(FR-041c) — T040 의존
-- [ ] T084 [US2] `backend/src/itb/mirror/screencast.py` — 전용 CDP 세션에서 `Page.startScreencast`(jpeg/q60/1280×800) → `mirror_frame` 이벤트 + `screencastFrameAck`. **`Input` 도메인을 임포트하지도 호출하지도 않는다**(FR-047a). WS 끊김 시 ack 중단·`stopScreencast`, 실행 무영향(FR-047b). 스크린캐스트 불가 시 1fps 스크린샷 강등 (research R3) — T039, T043 의존
-- [ ] T085 [US2] `backend/src/itb/mirror/tab_switch.py` — 한 번에 한 탭만 스트리밍. 탭 변경 시 이전 탭 stop → 새 탭 start. 실행 중에는 현재 Step 대상 탭을 따라간다. **모든 세션 상태에서 미러를 유지**하고 종료·유실 시 중단 (FR-030f·FR-047c~e, research R3) — T084 의존
-- [ ] T086 [US2] `backend/src/itb/api/routes/sessions.py` 확장 — `mode=replay` 세션, `POST .../run-from`, `POST .../mirror-tab` (FR-039·FR-055) — T061, T082 의존
-- [ ] T087 [US2] `backend/src/itb/api/routes/results.py` — `GET /api/tests/{id}/result`, `GET .../artifacts/{kind}`. **`trace` 는 `501`**(spec 디자인 차이 1) — T081 의존
-- [ ] T088 [P] [US2] `frontend/src/components/MirrorView.tsx` — 읽기 전용 프레임 표시. **사용자 입력을 대상 브라우저로 전달하지 않는다**(FR-047a). 조작 국면에서는 "실제 창에서 조작 중" 표시(FR-023b). 프레임 끊김·강등 표시 — T069 의존
-- [ ] T089 [P] [US2] `frontend/src/pages/RunResult.tsx` — `RunResult.dc.html` 이식. 요약 3항목, Step 결과 목록, 실패 상세(시도한 후보 우선순위 순 + timeout), `SCREENSHOT`/`CONSOLE`/`NETWORK` 탭, **`TRACE` 탭 비활성**, "실패한 Step부터 실행"/"처음부터 실행", "Step 고치기" (FR-050~FR-056·FR-058)
-- [ ] T090 [US2] `frontend/src/pages/Runner.tsx` 확장 — 실행 중 상태(`RUNNING` 배지, 현재 Step 강조, 소요 시간, 브라우저 오버레이) (FR-046·FR-047)
-- [ ] T091 [US2] Step 실행 제품 오버헤드 계측을 `backend/tests/integration/test_performance.py` 에 추가한다 — p95 < 50ms (research R8)
+- [X] T078 [US2] `backend/src/itb/execution/tab_resolver.py` — Step의 `tab` 으로 대상 `Page` 해석. 없으면 `timeout_ms` 까지 `context.on("page")` 대기, 초과 시 **"탭 N이 열리기를 기다렸으나 열리지 않았다"** 로 실패 (FR-030d, research R2) — T039 의존
+- [X] T079 [US2] `backend/src/itb/execution/locator_runtime.py` — `choose_strategy` 결과를 Playwright `Locator` 로 변환. 해석 알고리즘: 즉시 `count()` 순회 → 미발견 시 최상위 후보에 남은 예산 집중 → 채택 후보 기록 → **후보 간 불일치를 로그에 남긴다** (research R4, FR-018·FR-021) — T027, T078 의존
+- [X] T080 [US2] `backend/src/itb/execution/step_executor.py` — Step 6종 실행. 변수 치환(T036 경유), 대기 시간 상한, `hidden` 검증은 처음부터 없던 경우도 통과 (FR-013a·FR-015·FR-057, spec 엣지 케이스) — T036, T079 의존
+- [X] T081 [US2] `backend/src/itb/execution/artifacts.py` — 실패 시점 스크린샷, 콘솔 기록, 네트워크 기록 수집. **디스크 기록 직전 스크러버 통과**(FR-052·FR-053·FR-089d) — T035 의존
+- [X] T082 [US2] `backend/src/itb/execution/runner.py` 확장 — 순차 실행, `step_started`/`step_finished`/`step_failed`/`run_finished` 이벤트, 실패 시 중단, 결과 집계(총 시간·통과/전체·멈춘 Step) (FR-046·FR-048~FR-051) — T042, T080 의존
+- [X] T083 [US2] `backend/src/itb/execution/session_loss.py` — 세션 유실을 **모든 상태에서** 감지. 재실행 중 유실 → 실패 종료 + 부분 결과 보존(FR-041a), AI 수행 중 → 루프 중단 + 저장 확인(FR-041b), 이후 저장·처음부터 재실행만 허용(FR-041c) — T040 의존
+- [X] T084 [US2] `backend/src/itb/mirror/screencast.py` — 전용 CDP 세션에서 `Page.startScreencast`(jpeg/q60/1280×800) → `mirror_frame` 이벤트 + `screencastFrameAck`. **`Input` 도메인을 임포트하지도 호출하지도 않는다**(FR-047a). WS 끊김 시 ack 중단·`stopScreencast`, 실행 무영향(FR-047b). 스크린캐스트 불가 시 1fps 스크린샷 강등 (research R3) — T039, T043 의존
+- [X] T085 [US2] `backend/src/itb/mirror/tab_switch.py` — 한 번에 한 탭만 스트리밍. 탭 변경 시 이전 탭 stop → 새 탭 start. 실행 중에는 현재 Step 대상 탭을 따라간다. **모든 세션 상태에서 미러를 유지**하고 종료·유실 시 중단 (FR-030f·FR-047c~e, research R3) — T084 의존
+- [X] T086 [US2] `backend/src/itb/api/routes/sessions.py` 확장 — `mode=replay` 세션, `POST .../run-from`, `POST .../mirror-tab` (FR-039·FR-055) — T061, T082 의존
+- [X] T087 [US2] `GET /api/tests/{id}/result`, `GET .../artifacts/{kind}`. **`trace` 는 `501`**(spec 디자인 차이 1) — T081 의존. **구현 위치 차이**: 별도 `results.py` 를 만들지 않고 `api/routes/tests.py` 에 두었다 — 경로가 `/api/tests/{id}` 아래이고 목록 화면의 실패 요약과 같은 저장 계층을 읽으므로, 라우터를 쪼개면 같은 리소스가 두 파일로 갈린다
+- [X] T088 [P] [US2] `frontend/src/components/MirrorView.tsx` — 읽기 전용 프레임 표시. **사용자 입력을 대상 브라우저로 전달하지 않는다**(FR-047a). 조작 국면에서는 "실제 창에서 조작 중" 표시(FR-023b). 프레임 끊김·강등 표시 — T069 의존
+- [X] T089 [P] [US2] `frontend/src/pages/RunResult.tsx` — `RunResult.dc.html` 이식. 요약 3항목, Step 결과 목록, 실패 상세(시도한 후보 우선순위 순 + timeout), `SCREENSHOT`/`CONSOLE`/`NETWORK` 탭, **`TRACE` 탭 비활성**, "실패한 Step부터 실행"/"처음부터 실행", "Step 고치기" (FR-050~FR-056·FR-058)
+- [X] T090 [US2] `frontend/src/pages/Runner.tsx` 확장 — 실행 중 상태(`RUNNING` 배지, 현재 Step 강조, 소요 시간, 브라우저 오버레이) (FR-046·FR-047)
+- [X] T091 [US2] Step 실행 제품 오버헤드 계측을 `backend/tests/integration/test_performance.py` 에 추가한다 — p95 < 50ms (research R8)
 
 **Checkpoint**: 원칙 II가 정적·동적으로 검증된다. quickstart §4 절차를 통과한다
 

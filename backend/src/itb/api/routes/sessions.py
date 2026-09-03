@@ -18,16 +18,23 @@ from itb.api.errors import ErrorCode, bad_request, conflict, not_found
 from itb.api.state import AppState, get_state
 from itb.domain.step import Author, Step
 from itb.domain.test_case import AuthoringMode, Test
+from itb.execution.artifacts import ArtifactCollector
+from itb.execution.runner import ReplayEngine, RunnerTask
 from itb.execution.session import BrowserSession, SessionError
+from itb.execution.session_loss import SessionLossWatcher
 from itb.execution.state_machine import (
+    TERMINAL_STATES,
     Command,
     InvalidTransitionError,
     SessionState,
     is_manipulation_phase,
     state_label,
 )
+from itb.execution.step_executor import StepExecutor
+from itb.mirror.tab_switch import MirrorController
 from itb.recording.recorder import Recorder
-from itb.secrets.keys import KeyMissingError, load_public
+from itb.secrets.keys import KeyMissingError, KeyStoreError, load_private, load_public
+from itb.secrets.resolver import VariableResolver
 from itb.secrets.store import SecretStore
 from itb.storage.repository import ProjectError, ProjectRepository
 
@@ -57,6 +64,14 @@ class SessionWork:
     ai_instruction: str | None = None
     saved_test_id: str | None = None
 
+    # ─── 재실행 (US2) ──────────────────────────────────────────────────────
+    mirror: MirrorController | None = None
+    """미러는 **모든 활성 상태**에서 돈다 (FR-047d). 그래서 모드와 무관하게 붙인다."""
+
+    loss_watcher: SessionLossWatcher | None = None
+    engine: ReplayEngine | None = None
+    runner: RunnerTask | None = None
+
 
 _WORK: dict[str, SessionWork] = {}
 """세션 ID → 작업 상태. 앱 수명 동안만 유지된다."""
@@ -67,6 +82,16 @@ def work_of(session_id: str) -> SessionWork:
     if w is None:
         raise not_found(ErrorCode.SESSION_NOT_FOUND, f"세션을 찾을 수 없습니다: {session_id}")
     return w
+
+
+def mirror_of(session_id: str) -> MirrorController | None:
+    """미러 제어기. 탭 라우터가 표시 탭을 바꿀 때 쓴다 (FR-030f).
+
+    미러가 없어도(시작하지 못한 경우) 탭 전환 요청 자체는 성공해야 한다 — 미러 실패가
+    사용자 조작을 막으면 안 된다 (FR-047b).
+    """
+    w = _WORK.get(session_id)
+    return w.mirror if w is not None else None
 
 
 def require_paused(w: SessionWork) -> None:
@@ -220,16 +245,134 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
 
     await work.recorder.install()
 
+    # 미러와 유실 감지는 모드와 무관하게 붙인다 — 미러는 모든 활성 상태에서 돌아야 하고
+    # (FR-047d), 세션 유실은 어느 상태에서든 감지해야 한다 (FR-041).
+    work.loss_watcher = SessionLossWatcher(session, on_lost=_loss_handler(session.session_id))
+    work.loss_watcher.attach()
+    work.mirror = MirrorController(session)
+
     if body.mode == "record":
         await session.apply(Command.BEGIN_RECORD)
         work.recorder.start(author=Author.HUMAN)
         await session.bring_tab_to_front(0)
     elif body.mode == "replay":
+        assert existing_test is not None  # noqa: S101 - 위에서 이미 거절했다
         await session.apply(Command.BEGIN_REPLAY)
+        _build_engine(work, state, existing_test)
+        await _start_runner(work, start_index=0)
     else:
         await session.apply(Command.BEGIN_AI)
 
+    await work.mirror.show(0)
     return view_of(work)
+
+
+# ─── 재실행 조립 (US2) ─────────────────────────────────────────────────────
+
+
+def _build_engine(work: SessionWork, state: AppState, test: Test) -> ReplayEngine:
+    """재실행 엔진을 조립한다. FR-044·FR-045.
+
+    **여기서 만드는 것 중 어느 것도 언어모델을 알지 못한다.** 실행에 필요한 전부가 저장된
+    정의 안에 있다는 사실이 조립 과정에 드러난다.
+
+    비밀키는 **있으면 쓴다.** 암호구로 잠긴 키는 요청 맥락에서 열 수 없으므로 없는 것으로
+    본다 — 그 경우 민감 변수는 환경 변수로 공급되어야 하고, 아니면 해당 Step 이 사유와 함께
+    실패한다 (FR-089f). 조용히 빈 값으로 진행하지 않는다.
+    """
+    repo = state.require_repository()
+
+    private = None
+    with contextlib.suppress(KeyStoreError):
+        private = load_private(state.key_paths)
+
+    resolver = VariableResolver(
+        test,
+        store=SecretStore(repo.paths.secrets_file),
+        private_key=private,
+    )
+    collector = ArtifactCollector(work.session.context)
+    collector.attach()
+
+    engine = ReplayEngine(
+        session=work.session,
+        test=test,
+        executor=StepExecutor(work.session, resolver),
+        resolver=resolver,
+        collector=collector,
+        run_dir=repo.paths.run_dir(test.id),
+        project_root=repo.paths.root,
+        write_result=repo.write_result,
+        browser_label=f"Playwright · {test.browser.value.capitalize()}",
+    )
+    work.engine = engine
+    return engine
+
+
+async def _start_runner(work: SessionWork, start_index: int) -> None:
+    """러너 태스크를 (다시) 띄운다.
+
+    이미 돌고 있으면 **먼저 취소를 끝낸 뒤** 새로 시작한다. 취소를 기다리지 않으면 앞선
+    실행이 그 사이에 완료 상태를 올리고 결과를 써 버린다 — 사용자가 "실패한 Step부터
+    실행"을 눌렀는데 이전 실행의 결과가 최신으로 남는 상황이다.
+
+    돌고 있는 태스크의 인덱스만 바꾸는 방법도 쓰지 않는다. 지금 실행 중인 Step 이 끝난
+    뒤에야 위치가 반영되어, 사용자가 고른 Step 앞의 Step 이 한 번 더 돈다.
+    """
+    engine = work.engine
+    if engine is None:  # pragma: no cover - 호출자가 replay 모드에서만 부른다
+        return
+
+    if work.runner is not None:
+        await work.runner.cancel()
+
+    engine.reset(start_index)
+    work.current_step_index = start_index
+
+    async def run_one(session: BrowserSession, index: int) -> bool:
+        step = engine.test.steps[index]
+        work.current_step_index = index
+        if work.mirror is not None:
+            # 실행 중에는 현재 Step 대상 탭을 따라간다 (FR-030f).
+            await work.mirror.follow(step.tab)
+        outcome = await engine.run_step(session, index)
+        work.current_step_index = index + 1
+        return outcome
+
+    runner = RunnerTask(
+        session=work.session,
+        step_runner=run_one,
+        total_steps=len(engine.test.steps),
+        start_index=start_index,
+        on_finished=engine.finalize,
+    )
+    work.runner = runner
+    # 태스크만 띄우고 즉시 반환한다. 실제 Step 실행은 요청 수명과 분리된다 (research R1).
+    runner.start()
+
+
+def _loss_handler(session_id: str):  # noqa: ANN201 - LossHandler 를 만든다
+    """세션 유실 뒷정리. FR-041a~c.
+
+    실행 중이던 태스크를 세우고 **그때까지의 Step별 결과를 보존**한다. 결과를 버리면
+    사용자는 어디까지 갔는지 알 수 없고, 유실이 곧 진단 정보 상실이 된다.
+    """
+
+    async def handle(reason: str) -> None:
+        w = _WORK.get(session_id)
+        if w is None:
+            return
+        if w.runner is not None:
+            with contextlib.suppress(Exception):
+                await w.runner.cancel()
+        if w.engine is not None:
+            with contextlib.suppress(Exception):
+                await w.engine.finalize(False, session_lost=True)
+        if w.mirror is not None:
+            with contextlib.suppress(Exception):
+                await w.mirror.stop(reason)
+
+    return handle
 
 
 async def _accept_step(session_id: str, step: Step, index: int) -> None:
@@ -309,7 +452,7 @@ async def resume(session_id: str) -> SessionView:
 
 @router.post("/{session_id}/run-from")
 async def run_from(session_id: str, body: RunFromRequest) -> SessionView:
-    """FR-039 — 임의 Step 부터 실행. 브라우저 상태를 되돌리지 않는다 (FR-040c)."""
+    """FR-039·FR-055 — 임의 Step 부터 실행. 브라우저 상태를 되돌리지 않는다 (FR-040c)."""
     w = work_of(session_id)
     if body.step_index >= len(w.steps):
         raise bad_request(
@@ -319,6 +462,8 @@ async def run_from(session_id: str, body: RunFromRequest) -> SessionView:
     _apply(w, Command.RUN_FROM)
     w.current_step_index = body.step_index
     await w.session.apply(Command.RUN_FROM)
+    if w.engine is not None:
+        await _start_runner(w, body.step_index)
     return view_of(w)
 
 
@@ -349,11 +494,24 @@ async def record_actions_stop(session_id: str) -> SessionView:
 
 @router.post("/{session_id}/stop")
 async def stop(session_id: str, state: State) -> SessionView:
-    """FR-042 — 세션을 종료한다. 저장 여부는 클라이언트가 확인 후 별도로 호출한다."""
+    """FR-042 — 세션을 종료한다. 저장 여부는 클라이언트가 확인 후 별도로 호출한다.
+
+    **이미 종료 상태인 세션에도 응답한다.** 실행이 끝난 세션을 닫는 것은 상태 전이가 아니라
+    자원 정리다. 여기서 거절하면 브라우저와 세션 등록이 남아, 같은 테스트를 다시 실행할 때
+    "이미 실행 중" 으로 막힌다 (FR-043).
+    """
     w = work_of(session_id)
-    _apply(w, Command.STOP)
+    already_terminal = w.session.state in TERMINAL_STATES
+    if not already_terminal:
+        _apply(w, Command.STOP)
+
     w.recorder.stop()
-    await w.session.apply(Command.STOP)
+    if w.mirror is not None:
+        await w.mirror.stop("세션을 종료했습니다.")
+    if w.runner is not None:
+        await w.runner.cancel()
+    if not already_terminal:
+        await w.session.apply(Command.STOP)
     snapshot = view_of(w)
     await state.broker.drop(session_id)
     await state.sessions.close(session_id)

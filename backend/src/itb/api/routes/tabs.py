@@ -90,6 +90,14 @@ async def set_mirror_tab(
             f"탭 {body.tab_index} 은 닫혀 있습니다.",
         )
 
-    session.mirrored_tab_index = body.tab_index
-    await session.emit("mirror_tab_changed", tab=body.tab_index)
+    from itb.api.routes.sessions import mirror_of
+
+    mirror = mirror_of(session_id)
+    if mirror is not None:
+        # 사용자가 직접 고른 탭이다 — 이후 실행이 다른 탭으로 옮겨가도 이 선택을 유지한다.
+        await mirror.show(body.tab_index, pinned=True)
+    else:
+        # 미러가 아직 없거나 시작하지 못한 경우에도 선택 자체는 반영한다 (FR-047b).
+        session.mirrored_tab_index = body.tab_index
+        await session.emit("mirror_tab_changed", tab=body.tab_index)
     return await list_tabs(session_id, state)
