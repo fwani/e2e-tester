@@ -31,6 +31,11 @@ class StepType(StrEnum):
     NAVIGATE = "navigate"
     ASSERTION = "assertion"
     CLOSE_TAB = "close_tab"
+    HOVER = "hover"
+    """마우스를 올리는 동작 (FR-023c). hover 로만 열리는 메뉴가 있는 화면에 필요하다."""
+
+    DRAG = "drag"
+    """끌어다 놓는 동작 (FR-023c)."""
 
 
 class _StepBase(BaseModel):
@@ -86,6 +91,30 @@ class AssertionStep(_StepBase):
     assertion: Assertion
 
 
+class HoverStep(_StepBase):
+    """마우스를 올리는 동작 (FR-023c).
+
+    **화면을 바꾼 hover 만 기록한다.** 포인터가 지나간 모든 요소를 Step 으로 만들면 정의가
+    쓸모없이 길어지고, 어느 hover 가 의미 있었는지 사람이 다시 판단해야 한다. 리코더는
+    hover 직후 문서 변화가 관측된 경우만 이 Step 을 만든다 (contracts/step-dsl.md).
+    """
+
+    type: Literal[StepType.HOVER] = StepType.HOVER
+    target: TargetLocator
+
+
+class DragStep(_StepBase):
+    """끌어다 놓는 동작 (FR-023c).
+
+    ``target`` 이 끄는 대상이고 ``drop_target`` 이 놓는 위치다. 다른 Step 과 마찬가지로
+    ``target`` 이 주된 대상이므로 `target_of` 가 그대로 동작한다.
+    """
+
+    type: Literal[StepType.DRAG] = StepType.DRAG
+    target: TargetLocator
+    drop_target: TargetLocator
+
+
 class CloseTabStep(_StepBase):
     """탭 닫기 (FR-030c). 대상은 공통 ``tab`` 필드가 가리킨다."""
 
@@ -93,7 +122,14 @@ class CloseTabStep(_StepBase):
 
 
 Step = Annotated[
-    ClickStep | FillStep | SelectStep | NavigateStep | AssertionStep | CloseTabStep,
+    ClickStep
+    | FillStep
+    | SelectStep
+    | NavigateStep
+    | AssertionStep
+    | CloseTabStep
+    | HoverStep
+    | DragStep,
     Field(discriminator="type"),
 ]
 """판별 유니온. 이 하나가 제품 전체의 유일한 테스트 표현이다 (원칙 I)."""

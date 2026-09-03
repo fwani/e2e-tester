@@ -17,6 +17,7 @@ python fixtures/sample-app/serve.py --port 4300
 | `terms.html` | 새 탭으로 열리는 약관 화면 |
 | `data.html` | 파일 입력(네이티브 대화상자 한계 검증) |
 | `analysis.html` | 화면 이동 검증용 |
+| `interactions.html` | **hover 전용 메뉴와 끌어다 놓기** (FR-023c 검증용) |
 
 ## 후보 수집률 측정 설계 (SC-008)
 
@@ -38,6 +39,15 @@ python fixtures/sample-app/serve.py --port 4300
 testId 가 없는 요소도 label·role+name·text 중 하나 이상이 잡히도록 만들었다.
 `data-testid` 없는 요소가 전체의 약 40% 이므로 SC-008(후보 2개 이상 90%)이
 자동으로 통과하지 않는다 — 실제 수집 품질을 측정할 수 있다.
+
+## hover·drag 검증 설계 (FR-023c)
+
+`interactions.html` 은 **클릭만으로는 도달할 수 없는 요소**를 의도적으로 둔다.
+
+- `도구` 버튼의 하위 메뉴는 CSS `:hover` 로만 열린다. hover Step 이 없으면 `내보내기` 를
+  누를 수 없어 재실행이 실패한다 — hover 기록이 실제로 필요한지 이 화면이 판정한다.
+- `events` 칩을 `보관함` 으로 끌어다 놓으면 DOM 이 옮겨진다. 끌기 시작(`dragstart`)과
+  놓기(`drop`)가 모두 발생하므로 리코더가 두 요소를 함께 잡을 수 있다.
 
 ## 새 탭 경로 2종 (FR-030)
 

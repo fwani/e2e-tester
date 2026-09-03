@@ -48,6 +48,8 @@ def test_step_schema_keeps_discriminated_union() -> None:
         "navigate",
         "assertion",
         "close_tab",
+        "hover",
+        "drag",
     }
 
 

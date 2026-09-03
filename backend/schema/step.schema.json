@@ -293,6 +293,78 @@
       "title": "CloseTabStep",
       "type": "object"
     },
+    "DragStep": {
+      "additionalProperties": false,
+      "description": "끌어다 놓는 동작 (FR-023c).\n\n``target`` 이 끄는 대상이고 ``drop_target`` 이 놓는 위치다. 다른 Step 과 마찬가지로\n``target`` 이 주된 대상이므로 `target_of` 가 그대로 동작한다.",
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/Author",
+          "default": "human"
+        },
+        "drop_target": {
+          "$ref": "#/$defs/TargetLocator"
+        },
+        "frame_url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Url"
+        },
+        "id": {
+          "pattern": "^step-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "target": {
+          "$ref": "#/$defs/TargetLocator"
+        },
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "drag",
+          "default": "drag",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "author",
+        "tab",
+        "timeout_ms",
+        "frame_url",
+        "type",
+        "target",
+        "drop_target"
+      ],
+      "title": "DragStep",
+      "type": "object"
+    },
     "FillStep": {
       "additionalProperties": false,
       "properties": {
@@ -364,6 +436,74 @@
         "value"
       ],
       "title": "FillStep",
+      "type": "object"
+    },
+    "HoverStep": {
+      "additionalProperties": false,
+      "description": "마우스를 올리는 동작 (FR-023c).\n\n**화면을 바꾼 hover 만 기록한다.** 포인터가 지나간 모든 요소를 Step 으로 만들면 정의가\n쓸모없이 길어지고, 어느 hover 가 의미 있었는지 사람이 다시 판단해야 한다. 리코더는\nhover 직후 문서 변화가 관측된 경우만 이 Step 을 만든다 (contracts/step-dsl.md).",
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/Author",
+          "default": "human"
+        },
+        "frame_url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Url"
+        },
+        "id": {
+          "pattern": "^step-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "target": {
+          "$ref": "#/$defs/TargetLocator"
+        },
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "hover",
+          "default": "hover",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "author",
+        "tab",
+        "timeout_ms",
+        "frame_url",
+        "type",
+        "target"
+      ],
+      "title": "HoverStep",
       "type": "object"
     },
     "MatchMode": {
@@ -675,7 +815,9 @@
       "assertion": "#/$defs/AssertionStep",
       "click": "#/$defs/ClickStep",
       "close_tab": "#/$defs/CloseTabStep",
+      "drag": "#/$defs/DragStep",
       "fill": "#/$defs/FillStep",
+      "hover": "#/$defs/HoverStep",
       "navigate": "#/$defs/NavigateStep",
       "select": "#/$defs/SelectStep"
     },
@@ -699,6 +841,12 @@
     },
     {
       "$ref": "#/$defs/CloseTabStep"
+    },
+    {
+      "$ref": "#/$defs/HoverStep"
+    },
+    {
+      "$ref": "#/$defs/DragStep"
     }
   ],
   "title": "step"

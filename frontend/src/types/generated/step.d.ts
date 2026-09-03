@@ -5,7 +5,8 @@
  * 재생성: cd backend && uv run python -m itb.schema.export && cd ../frontend && npm run gen:types
  */
 
-export type Step = ClickStep | FillStep | SelectStep | NavigateStep | AssertionStep | CloseTabStep;
+export type Step =
+  ClickStep | FillStep | SelectStep | NavigateStep | AssertionStep | CloseTabStep | HoverStep | DragStep;
 export type Author = "human" | "ai";
 export type FrameUrl = string | null;
 export type Id = string;
@@ -64,6 +65,20 @@ export type Label5 = string;
 export type Tab5 = number;
 export type TimeoutMs5 = number;
 export type Type5 = "close_tab";
+export type Author6 = "human" | "ai";
+export type FrameUrl6 = string | null;
+export type Id6 = string;
+export type Label6 = string;
+export type Tab6 = number;
+export type TimeoutMs6 = number;
+export type Type6 = "hover";
+export type Author7 = "human" | "ai";
+export type FrameUrl7 = string | null;
+export type Id7 = string;
+export type Label7 = string;
+export type Tab7 = number;
+export type TimeoutMs7 = number;
+export type Type7 = "drag";
 
 export interface ClickStep {
   author: Author;
@@ -169,4 +184,38 @@ export interface CloseTabStep {
   tab: Tab5;
   timeout_ms: TimeoutMs5;
   type: Type5;
+}
+/**
+ * 마우스를 올리는 동작 (FR-023c).
+ *
+ * **화면을 바꾼 hover 만 기록한다.** 포인터가 지나간 모든 요소를 Step 으로 만들면 정의가
+ * 쓸모없이 길어지고, 어느 hover 가 의미 있었는지 사람이 다시 판단해야 한다. 리코더는
+ * hover 직후 문서 변화가 관측된 경우만 이 Step 을 만든다 (contracts/step-dsl.md).
+ */
+export interface HoverStep {
+  author: Author6;
+  frame_url: FrameUrl6;
+  id: Id6;
+  label: Label6;
+  tab: Tab6;
+  target: TargetLocator;
+  timeout_ms: TimeoutMs6;
+  type: Type6;
+}
+/**
+ * 끌어다 놓는 동작 (FR-023c).
+ *
+ * ``target`` 이 끄는 대상이고 ``drop_target`` 이 놓는 위치다. 다른 Step 과 마찬가지로
+ * ``target`` 이 주된 대상이므로 `target_of` 가 그대로 동작한다.
+ */
+export interface DragStep {
+  author: Author7;
+  drop_target: TargetLocator;
+  frame_url: FrameUrl7;
+  id: Id7;
+  label: Label7;
+  tab: Tab7;
+  target: TargetLocator;
+  timeout_ms: TimeoutMs7;
+  type: Type7;
 }

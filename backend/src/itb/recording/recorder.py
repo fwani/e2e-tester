@@ -31,7 +31,9 @@ from itb.domain.step import (
     Author,
     ClickStep,
     CloseTabStep,
+    DragStep,
     FillStep,
+    HoverStep,
     NavigateStep,
     SelectStep,
     Step,
@@ -64,6 +66,13 @@ NAV_DEDUPE_MS = 3000
 
 조건 2가 핵심이다. 없으면 "이동을 유발하지 않은 클릭 → 다른 동작 → 뒤로 가기" 흐름에서
 정당한 이동이 잘못 억제된다.
+"""
+
+HOVER_DEDUPE_MS = 1500
+"""같은 요소의 hover 를 한 번으로 접는 시간창.
+
+메뉴를 열었다 닫았다 하는 동안 같은 Step 이 쌓이는 것을 막는다. 클릭보다 길게 잡은
+이유는, hover 는 의도적으로 반복되는 동작이 아니기 때문이다.
 """
 
 CLICK_DEDUPE_MS = 700
@@ -121,6 +130,9 @@ class Recorder:
     같은 요소의 확정 이벤트가 화면 이동과 겹치면 재수집 결과가 전부 미수집으로 나온다.
     그때 새 결과로 덮어쓰면 이미 확보한 후보를 잃는다 — 그래서 더 나은 쪽을 남긴다.
     """
+
+    _hover_seen: dict[tuple[int, str], float] = field(default_factory=dict)
+    """(탭, CSS) → 그 요소의 hover 를 기록한 시각(ms). 반복 hover 를 접는 데 쓴다."""
 
     _click_seen: dict[tuple[int, str], float] = field(default_factory=dict)
     """(탭, CSS) → 그 요소의 클릭을 기록한 시각(ms). `pointerdown`·`click` 중복 제거용."""
@@ -265,6 +277,10 @@ class Recorder:
 
         if kind == "hover":
             await self._prewarm(page, tab.tab_index, element)
+        elif kind == "hover_action":
+            await self._record_hover(page, tab.tab_index, element)
+        elif kind == "drag":
+            await self._record_drag(page, tab.tab_index, element, payload)
         elif kind == "click":
             await self._record_click(page, tab.tab_index, element)
         elif kind == "fill":
@@ -587,6 +603,78 @@ class Recorder:
         elif sealed:
             existing.sealed = True
         return f"{{{{{variable}}}}}"
+
+    async def _record_hover(
+        self, page: Page, tab: int, element: dict[str, Any]
+    ) -> None:
+        """화면을 바꾼 hover 를 Step 으로 기록한다 (FR-023c).
+
+        판정은 주입 스크립트가 한다 — hover 직후 문서 변화가 있었는지는 페이지 안에서만
+        관측할 수 있다. 여기서는 이미 걸러진 것을 받아 Step 으로 만든다.
+
+        같은 요소의 hover 가 연달아 오면 하나로 접는다. 메뉴를 열었다 닫았다 하는 동안
+        같은 Step 이 여러 개 쌓이면 재실행이 무의미하게 길어진다.
+        """
+        key = (tab, str(element.get("css") or ""))
+        if not key[1]:
+            return
+        last = self._hover_seen.get(key)
+        now_ms = time.monotonic() * 1000
+        if last is not None and now_ms - last < HOVER_DEDUPE_MS:
+            return
+        self._hover_seen[key] = now_ms
+
+        fresh = await self._collect_target(page, element)
+        if fresh is None:
+            return
+        target = self._best_target(key, fresh)
+        self._last_fill_key = None
+        label = element.get("accessibleName") or element.get("text") or element.get("tag")
+        await self._emit(
+            HoverStep(
+                id=self._next_step_id(),
+                label=f"{label} 에 마우스 올리기",
+                author=self.author,
+                tab=tab,
+                target=target,
+            )
+        )
+
+    async def _record_drag(
+        self, page: Page, tab: int, element: dict[str, Any], payload: dict[str, Any]
+    ) -> None:
+        """끌어다 놓기를 Step 하나로 기록한다 (FR-023c).
+
+        **끄는 대상과 놓는 위치를 모두 확보해야 기록한다.** 한쪽만 있는 Step 은 재실행할
+        수 없으므로, 절반만 남기지 않고 사유를 경고로 남긴다.
+        """
+        drop_element = payload.get("dropElement") or {}
+        source = await self._collect_target(page, element)
+        destination = await self._collect_target(page, drop_element)
+        if source is None or destination is None:
+            self._warn(
+                "끌어다 놓기에서 끄는 대상 또는 놓는 위치를 식별하지 못해 Step 을 "
+                "만들지 못했습니다. 일시정지 중 직접 동작 추가로 보완하세요."
+            )
+            return
+
+        self._last_fill_key = None
+        source_label = element.get("accessibleName") or element.get("text") or element.get("tag")
+        drop_label = (
+            drop_element.get("accessibleName")
+            or drop_element.get("text")
+            or drop_element.get("tag")
+        )
+        await self._emit(
+            DragStep(
+                id=self._next_step_id(),
+                label=f"{source_label} 을 {drop_label} 으로 끌어다 놓기",
+                author=self.author,
+                tab=tab,
+                target=source,
+                drop_target=destination,
+            )
+        )
 
     async def _record_select(
         self, page: Page, tab: int, element: dict[str, Any], payload: dict[str, Any]

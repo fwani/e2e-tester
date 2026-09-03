@@ -193,10 +193,74 @@ steps:
 | `{{변수명}}` 참조가 `variables` 에 정의됨 | 로드 거부 |
 | `timeout_ms` 가 1~60000 | 로드 거부 |
 | `tab` 이 0 이상 정수 | 로드 거부 |
+| `type: drag` 에 `target` 과 `drop_target` 이 모두 있음 | 로드 거부 — 한쪽만 있으면 재실행할 수 없다 |
 | `dsl_version` 이 지원 범위 | 명확한 안내와 함께 거부 |
 
 로드 거부 시 **파일 경로와 문제 위치를 알려 사용자가 직접 고칠 수 있게 한다.** 사람이 읽고 편집할 수 있는
 평문 형식을 택한 이유가 이것이다.
+
+---
+
+## hover 와 drag (FR-023c, T161)
+
+`hover` 와 `drag` 는 클릭·입력만으로 도달할 수 없는 화면을 위해 있다. `:hover` 로만 열리는
+메뉴, 끌어다 놓아야 옮겨지는 목록이 그렇다.
+
+```yaml
+  - id: step-03
+    type: hover
+    label: 도구 에 마우스 올리기
+    tab: 0
+    target:
+      test_id: { value: tools-menu, status: verified }
+
+  - id: step-04
+    type: drag
+    label: events 을 보관함 으로 끌어다 놓기
+    tab: 0
+    target:
+      test_id: { value: chip-events, status: verified }
+    drop_target:
+      label: { value: 보관함, status: verified }
+```
+
+**`drag` 는 양 끝을 모두 요구한다.** 끄는 대상만 저장하면 요소가 어디로 떨어질지 정의에
+없고, 재실행에서 원위치로 돌아간 결과가 통과로 보일 수 있다 — 실패보다 나쁘다. 스키마가
+`drop_target` 을 필수로 두어 절반짜리 정의가 파일에 들어가지 않게 한다.
+
+### 기록 기준 — 어떤 hover 를 Step 으로 만드는가
+
+**포인터가 지나간 모든 요소를 기록하지 않는다.** 화면을 훑는 동안 스친 요소가 모두 Step 이
+되면 정의가 쓸모없이 길어지고, 어느 hover 가 의미 있었는지 사람이 다시 판단해야 한다.
+
+기준은 **그 hover 가 화면을 바꿨는가** 다. 리코더는 두 신호를 본다.
+
+1. **렌더된 텍스트가 "아무것도 올리지 않은 상태" 와 달라졌는가.** `innerText` 는 렌더되는
+   텍스트만 포함하므로 `display:none` 이던 메뉴가 열리면 늘어난다. CSS `:hover` 로만 열리는
+   메뉴는 DOM 을 바꾸지 않으므로 이 신호가 필요하다.
+2. **DOM 이 바뀌었는가** (MutationObserver). JS 로 노드를 넣어 메뉴를 만드는 구현을 잡는다.
+
+기준선은 **포인터가 아무 요소에도 올라 있지 않을 때** 갱신한다. `:hover` 규칙은 포인터가
+들어온 시점에 이미 적용되므로, 이벤트 핸들러 안에서 재면 "바뀐 뒤" 값을 기준선으로 잡는다.
+
+**알려진 한계**: 아이콘만 있는(텍스트 없는) hover 메뉴를 JS 없이 CSS 로만 여는 화면은 두
+신호 모두에 걸리지 않는다. 그 경우 일시정지 중 직접 동작 추가(FR-036)로 hover Step 을
+넣는다. 자동 감지를 더 밀어붙이면 오탐이 늘어 정의가 더 나빠진다.
+
+### 실행 시 판정
+
+- `hover` — 대상 요소에 마우스를 올린다. 요소를 못 찾으면 실패다.
+- `drag` — 양 끝을 각각 해석한 뒤 끌어다 놓는다. **놓는 위치를 못 찾은 것도 실패다.**
+
+`drag` 의 재실행은 실제 마우스 이동(누르기 → 이동 → 놓기)으로 수행되므로 HTML5 끌어놓기
+핸들러와 포인터 기반 핸들러 양쪽에서 동작한다.
+
+### 기록되지 않는 것
+
+**포인터를 눌러 끌고 다니는 자유 드래그**(슬라이더 조작, 캔버스 그리기)는 `drag` Step 으로
+표현하지 않는다. 그 동작은 시작·종료 요소가 아니라 좌표 경로가 의미를 갖기 때문이다.
+Step 모델에 좌표 경로를 넣는 것은 화면 크기에 의존하는 정의를 만들어 재실행 안정성을
+떨어뜨린다 — 원칙 IV 가 CSS 경로를 최후 수단으로 두는 것과 같은 이유다.
 
 ---
 
@@ -212,6 +276,8 @@ Export 자체는 이번 범위가 아니지만, DSL은 다음 대응이 성립�
 | `type: assertion, kind: hidden` | `await expect(...).toBeHidden()` |
 | `tab: 1` | `const [tab1] = await Promise.all([context.waitForEvent('page'), ...])` |
 | `type: close_tab, tab: 1` | `await tab1.close()` |
+| `type: hover` + `target` | `await page.getByTestId('tools-menu').hover()` |
+| `type: drag` + `target`·`drop_target` | `await source.dragTo(destination)` |
 
 후보 선택 규칙은 `choose_strategy` 순수 함수 하나에서 나오므로, Runner가 쓰는 판단과 생성되는 코드가
 같은 후보를 고른다 (FR-022, research R4). **Export를 나중에 붙일 때 우선순위 로직을 다시 짜지 않는다.**

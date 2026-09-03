@@ -5,7 +5,7 @@
  * `step_added` 이벤트를 쓰므로 이 컴포넌트에 작성 주체별 분기가 없다.
  * `author` 는 배지 표시에만 쓴다 (FR-014·FR-075).
  */
-import type { Step } from "../types/generated/step";
+import type { Step, TargetLocator } from "../types/generated/step";
 import { AuthorBadge, StepTypeBadge, TabBadge } from "./Badges";
 
 export interface StepListProps {
@@ -32,7 +32,15 @@ function locatorSummary(step: Step): string | null {
     const a = step.assertion;
     return a.value ? `${a.kind} ${a.value}` : a.kind;
   }
-  const t = step.target;
+  if (step.type === "drag") {
+    // 끄는 대상만 보여주면 어디로 놓는지 알 수 없다 — 두 요소를 함께 요약한다.
+    return `${describeTarget(step.target)} → ${describeTarget(step.drop_target)}`;
+  }
+  return describeTarget(step.target);
+}
+
+/** 한 요소의 적용될 식별 정보. `verified` 후보만 쓴다 (원칙 IV). */
+function describeTarget(t: TargetLocator): string {
   if (t.test_id?.status === "verified") return `testId=${t.test_id.value}`;
   if (t.role && t.accessible_name && t.role_status === "verified")
     return `role=${t.role} "${t.accessible_name}"`;

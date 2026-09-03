@@ -208,10 +208,123 @@
       const last = hovered.get(el);
       if (last !== undefined && now - last < HOVER_THROTTLE_MS) return;
       hovered.set(el, now);
-      send({ kind: "hover", element: describe(el) });
+      const described = describe(el);
+      // 후보 사전 수집(경합 회피)과, 이 hover 가 화면을 바꿨는지 관측하는 두 목적이다.
+      hoverCandidate = { element: described, mutated: false };
+      setTimeout(settleHover, HOVER_EFFECT_WINDOW_MS);
+      send({ kind: "hover", element: described });
     },
     true,
   );
+
+  /**
+   * hover 를 Step 으로 기록하는 기준 (FR-023c).
+   *
+   * **포인터가 지나간 모든 요소를 기록하지 않는다.** 화면을 훑는 동안 스친 요소가 모두
+   * Step 이 되면 정의가 쓸모없이 길어지고, 어느 hover 가 의미 있었는지 사람이 다시
+   * 판단해야 한다.
+   *
+   * 기준은 **그 hover 가 화면을 바꿨는가** 다. 두 신호를 함께 본다.
+   *
+   * 1. **렌더된 텍스트 길이가 "아무것도 올리지 않은 상태" 와 다른가.** `innerText` 는
+   *    렌더되는 텍스트만 포함하므로 `display:none` 이던 메뉴가 열리면 늘어난다.
+   *    **CSS `:hover` 로만 열리는 메뉴는 DOM 변화를 만들지 않기 때문에** 이 신호가
+   *    필요하다 — MutationObserver 만으로는 잡지 못한다.
+   * 2. **DOM 변화** (MutationObserver). JS 로 노드를 넣어 메뉴를 만드는 구현을 잡는다.
+   *
+   * **기준선을 hover 핸들러 안에서 재면 안 된다.** `:hover` 규칙은 포인터가 들어온
+   * 시점에 이미 적용되므로, 핸들러가 도는 시점의 값은 "바뀐 뒤" 값이다. 그래서 기준선은
+   * **포인터가 아무 요소에도 올라 있지 않을 때** 따로 갱신한다.
+   *
+   * 한계: **아이콘만 있는(텍스트 없는) hover 메뉴를 JS 없이 CSS 로만 여는 경우**는 두
+   * 신호 모두에 걸리지 않는다. 그 화면은 일시정지 중 직접 동작 추가(FR-036)로 hover Step
+   * 을 넣어야 한다. 자동 감지를 더 밀어붙이면 오탐이 늘어 정의가 더 나빠진다.
+   */
+  const HOVER_EFFECT_WINDOW_MS = 300;
+  const BASELINE_SETTLE_MS = 60;
+  let hoverCandidate = null;
+  let baselineTextLength = 0;
+
+  const renderedTextLength = () => {
+    try {
+      return document.body ? document.body.innerText.length : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  /** 포인터가 아무 요소에도 올라 있지 않은가. `html`·`body` 만 남으면 그렇다. */
+  const pointerIsIdle = () => {
+    try {
+      return document.querySelectorAll(":hover").length <= 2;
+    } catch {
+      return false;
+    }
+  };
+
+  const refreshBaseline = () => {
+    if (pointerIsIdle()) baselineTextLength = renderedTextLength();
+  };
+
+  document.addEventListener(
+    "pointerout",
+    () => setTimeout(refreshBaseline, BASELINE_SETTLE_MS),
+    true,
+  );
+
+  const settleHover = () => {
+    const candidate = hoverCandidate;
+    hoverCandidate = null;
+    if (candidate === null) return;
+    if (candidate.mutated || renderedTextLength() !== baselineTextLength) {
+      send({ kind: "hover_action", element: candidate.element });
+    }
+  };
+
+  const mutationObserver = new MutationObserver(() => {
+    if (hoverCandidate !== null) hoverCandidate.mutated = true;
+  });
+
+  const startObserving = () => {
+    if (!document.body) return;
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "aria-expanded", "aria-hidden"],
+    });
+  };
+  const initHoverDetection = () => {
+    startObserving();
+    baselineTextLength = renderedTextLength();
+  };
+  if (document.body) initHoverDetection();
+  else document.addEventListener("DOMContentLoaded", initHoverDetection, { once: true });
+
+  /** 끌어다 놓기 (FR-023c). 시작 요소와 놓은 요소를 함께 보낸다. */
+  let dragSource = null;
+
+  document.addEventListener(
+    "dragstart",
+    (event) => {
+      const el = targetOf(event);
+      dragSource = el ? describe(el) : null;
+    },
+    true,
+  );
+
+  document.addEventListener(
+    "drop",
+    (event) => {
+      const el = targetOf(event);
+      if (!el || dragSource === null) return;
+      send({ kind: "drag", element: dragSource, dropElement: describe(el) });
+      dragSource = null;
+    },
+    true,
+  );
+
+  document.addEventListener("dragend", () => { dragSource = null; }, true);
 
   // 키보드 조작 경로. Enter·Space 로 누르는 버튼은 포인터 이벤트를 내지 않으므로
   // 포커스가 들어온 시점에 같은 사전 수집을 한다.
@@ -232,6 +345,7 @@
       if (event.button !== undefined && event.button !== 0) return; // 좌클릭만
       const el = targetOf(event);
       if (!el) return;
+      hoverCandidate = null; // 클릭이 끼었으면 이후 변화의 원인은 hover 가 아니다
       send({ kind: "click", phase: "down", element: describe(el) });
     },
     true,

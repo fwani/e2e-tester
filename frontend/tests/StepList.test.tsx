@@ -147,4 +147,39 @@ describe("StepList", () => {
     expect(container.querySelectorAll("li").length).toBe(200);
     expect(elapsed).toBeLessThan(3000);
   });
+
+  it("hover Step 을 표시한다 (FR-023c)", () => {
+    const hover = {
+      type: "hover",
+      id: "step-01",
+      label: "도구 에 마우스 올리기",
+      author: "human",
+      tab: 0,
+      timeout_ms: 5000,
+      frame_url: null,
+      target: { test_id: { value: "tools-menu", status: "verified" as const } },
+    } as unknown as Step;
+    render(<StepList steps={[hover]} />);
+    expect(screen.getByText("HOVER")).toBeDefined();
+    expect(screen.getByText("도구 에 마우스 올리기")).toBeDefined();
+    expect(screen.getByText("testId=tools-menu")).toBeDefined();
+  });
+
+  it("drag Step 은 끄는 대상과 놓는 위치를 함께 보여준다 (FR-023c)", () => {
+    // 끄는 대상만 보여주면 어디로 놓는지 알 수 없다.
+    const drag = {
+      type: "drag",
+      id: "step-01",
+      label: "events 을 보관함 으로 끌어다 놓기",
+      author: "human",
+      tab: 0,
+      timeout_ms: 5000,
+      frame_url: null,
+      target: { test_id: { value: "chip-events", status: "verified" as const } },
+      drop_target: { label: { value: "보관함", status: "verified" as const } },
+    } as unknown as Step;
+    render(<StepList steps={[drag]} />);
+    expect(screen.getByText("DRAG")).toBeDefined();
+    expect(screen.getByText("testId=chip-events → label=보관함")).toBeDefined();
+  });
 });

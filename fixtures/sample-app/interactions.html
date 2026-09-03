@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>상호작용 · 데이터 플랫폼</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* hover 로만 열리는 메뉴 — 클릭으로는 열리지 않는다 */
+    .haspopup { position: relative; display: inline-block; }
+    .haspopup > .popup { display: none; position: absolute; left: 0; top: 100%;
+      background: #fff; border: 1px solid #d6dae1; padding: 6px; min-width: 160px; z-index: 5; }
+    .haspopup:hover > .popup { display: block; }
+    .dropzone { min-height: 90px; border: 2px dashed #b9c0cb; padding: 10px; margin-top: 8px; }
+    .dropzone.filled { border-color: #2e9455; }
+    .chip { display: inline-block; padding: 6px 10px; margin: 4px;
+      background: #eef1f5; border: 1px solid #d6dae1; cursor: grab; }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="brand">데이터 플랫폼</span>
+    <a href="projects.html" role="menuitem">프로젝트</a>
+    <a href="data.html" role="menuitem">데이터</a>
+    <a href="analysis.html" role="menuitem">분석</a>
+  </nav>
+  <main>
+    <div class="card">
+      <h1>상호작용</h1>
+
+      <!-- hover 전용 메뉴 (FR-023c). data-testid 있음 -->
+      <p>
+        <span class="haspopup">
+          <button type="button" data-testid="tools-menu" aria-haspopup="true">도구</button>
+          <span class="popup" role="menu">
+            <button type="button" data-testid="tools-export" role="menuitem">내보내기</button>
+            <button type="button" data-testid="tools-archive" role="menuitem">보관</button>
+          </span>
+        </span>
+        <span id="menu-result" class="muted"></span>
+      </p>
+
+      <!-- 끌어다 놓기 (FR-023c). 소스에 testid 있음, 목적지에 없음(후보 다양성 유지) -->
+      <h2>목록 정리</h2>
+      <div id="pool">
+        <span class="chip" draggable="true" data-testid="chip-events">events</span>
+        <span class="chip" draggable="true" data-testid="chip-users">users</span>
+      </div>
+      <div class="dropzone" id="archive" aria-label="보관함">
+        <strong>보관함</strong>
+        <div id="archived"></div>
+      </div>
+      <p id="drop-result" class="muted"></p>
+    </div>
+  </main>
+  <script src="app.js"></script>
+  <script>
+    // hover 로 열린 메뉴 항목을 누르면 결과가 바뀐다 — hover 없이는 누를 수 없다.
+    document.querySelectorAll('.popup [role=menuitem]').forEach((b) => {
+      b.addEventListener('click', () => {
+        document.getElementById('menu-result').textContent = b.textContent + ' 실행됨';
+      });
+    });
+
+    // HTML5 끌어놓기. Playwright 의 drag_to 가 만드는 마우스 이동으로도 발생한다.
+    let dragged = null;
+    document.getElementById('pool').addEventListener('dragstart', (e) => {
+      dragged = e.target.closest('.chip');
+      if (dragged) e.dataTransfer.setData('text/plain', dragged.dataset.testid || '');
+    });
+    const zone = document.getElementById('archive');
+    zone.addEventListener('dragover', (e) => e.preventDefault());
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!dragged) return;
+      document.getElementById('archived').appendChild(dragged);
+      zone.classList.add('filled');
+      document.getElementById('drop-result').textContent =
+        dragged.textContent + ' 보관됨';
+      dragged = null;
+    });
+  </script>
+</body>
+</html>

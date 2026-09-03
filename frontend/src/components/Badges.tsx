@@ -37,6 +37,8 @@ export function StepTypeBadge({ type }: { type: string }) {
     navigate: "GOTO",
     assertion: "ASSERT",
     close_tab: "CLOSE TAB",
+    hover: "HOVER",
+    drag: "DRAG",
   };
   return <span className="badge mono">{label[type] ?? type.toUpperCase()}</span>;
 }

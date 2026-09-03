@@ -24,7 +24,9 @@ from itb.domain.step import (
     AssertionStep,
     ClickStep,
     CloseTabStep,
+    DragStep,
     FillStep,
+    HoverStep,
     NavigateStep,
     SelectStep,
     Step,
@@ -135,6 +137,11 @@ class StepExecutor:
                 located = await self._locate(page, step, deadline, record)
                 value = self._resolver.substitute(step.value)
                 await located.locator.select_option(value, timeout=self._left(deadline))
+            case HoverStep():
+                located = await self._locate(page, step, deadline, record)
+                await located.locator.hover(timeout=self._left(deadline))
+            case DragStep():
+                await self._drag(step, page, deadline, record)
             case AssertionStep():
                 await self._assert(step.assertion, page, deadline, record)
             case _:  # pragma: no cover - 판별 유니온이 모든 종류를 덮는다
@@ -173,6 +180,30 @@ class StepExecutor:
         except PlaywrightError as exc:
             raise StepFailure(_humanize(exc, step), tab_wait_ms=record.tab_wait_ms) from exc
         return record
+
+    async def _drag(
+        self, step: DragStep, page: Page, deadline: float, record: StepExecution
+    ) -> None:
+        """끄는 대상과 놓는 위치를 각각 해석해 끌어다 놓는다 (FR-023c).
+
+        `drag_to` 는 실제 마우스 이동(누르기 → 이동 → 놓기)을 수행하므로 HTML5 끌어놓기
+        핸들러와 포인터 기반 핸들러 양쪽에서 동작한다.
+
+        **놓는 위치를 못 찾은 것도 실패다.** 끄는 대상만 찾고 진행하면 요소가 엉뚱한 곳에
+        떨어지거나 원위치로 돌아가는데, 그 결과는 통과로 보일 수 있다 — 실패보다 나쁘다.
+        """
+        source = await self._locate(page, step, deadline, record)
+        try:
+            destination = await resolve(page, step.drop_target, self._left(deadline))
+        except ElementNotFoundError as exc:
+            # 시도 내역을 합쳐 둔다. 어느 쪽을 못 찾았는지 결과 화면에서 보여야 한다.
+            record.attempts = [*record.attempts, *exc.attempts]
+            msg = f"놓을 위치를 찾을 수 없습니다. {exc}"
+            raise StepFailure(msg, record.attempts, record.tab_wait_ms) from exc
+
+        record.attempts = [*record.attempts, *destination.attempts]
+        record.disagreement = [*record.disagreement, *destination.disagreement]
+        await source.locator.drag_to(destination.locator, timeout=self._left(deadline))
 
     async def _locate(
         self, page: Page, step: Step, deadline: float, record: StepExecution
