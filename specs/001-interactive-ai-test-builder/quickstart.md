@@ -35,11 +35,15 @@ npm --prefix frontend run gen:types
 
 실제 웹 앱이 필요하다. 두 가지 중 하나를 준비한다.
 
-1. **권장 — 저장소에 포함된 픽스처 앱**: 로그인 화면, 프로젝트 목록·생성·삭제, 새 창으로 열리는 약관 화면을
-   가진 최소 정적 앱. `data-testid` 가 붙은 요소와 붙지 않은 요소를 섞어 두어 후보 수집을 검증할 수 있게 한다.
+1. **권장 — 저장소에 포함된 픽스처 앱**: 로그인 화면, 프로젝트 목록·생성·삭제(⋮ 메뉴 안 삭제),
+   새 창으로 열리는 약관 화면(`target="_blank"` 와 `window.open` 두 경로), 파일 입력을 가진 최소 정적 앱.
+   `data-testid` 가 붙은 요소와 붙지 않은 요소를 약 6:4로 섞어 두어 SC-008 이 자동으로 통과하지 않게 했다.
+
+   **표준 라이브러리만 쓰므로 npm 설치가 필요 없다.**
    ```bash
-   npm --prefix fixtures/sample-app run dev   # http://localhost:4300
+   python fixtures/sample-app/serve.py --port 4300   # http://127.0.0.1:4300/login.html
    ```
+   통합·종단 테스트는 이 서버를 자동으로 띄운다 (`backend/tests/conftest.py`).
 2. 사내 개발·스테이징 환경 (접근 권한 필요, spec Dependencies)
 
 **아래 시나리오는 픽스처 앱 기준으로 기술한다.** 사내 앱을 쓰면 요소 이름을 바꿔 읽는다.
@@ -57,7 +61,11 @@ ant auth login                   # 또는 export ANTHROPIC_API_KEY=...
 ### 실행
 
 ```bash
-uv run itb serve                 # 로컬 인터페이스에만 바인딩 (FR-088a)
+# 백엔드 — 로컬 인터페이스에만 바인딩 (FR-088a)
+cd backend && uv run uvicorn itb.api.app:app --host 127.0.0.1 --port 4320
+
+# 프론트엔드
+cd frontend && npm run dev       # http://127.0.0.1:4310
 ```
 
 ---
