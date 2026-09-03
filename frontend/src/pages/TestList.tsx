@@ -1,8 +1,11 @@
 /**
- * 테스트 목록 (T064). `TestList.dc.html` 이식.
+ * 테스트 목록 (T064·T167). `TestList.dc.html` 이식.
  *
  * FR-002~FR-006: 상태 배지·ID·이름·Step 수·작성 배지·마지막 실행·검색·집계.
  * FR-005: 실패한 테스트는 실패 Step 번호와 메시지 요약을 인라인으로 보여준다.
+ * FR-007: 이름 변경·삭제. **삭제는 되돌릴 수 없으므로 확인을 받는다** — 사용자가 만든
+ * 자산이 한 번의 오클릭으로 사라지면 안 된다. 확인은 브라우저 `confirm` 이 아니라 행
+ * 안에서 받는다: 어느 테스트를 지우는지 눈으로 보면서 결정하게 한다.
  */
 import { useEffect, useMemo, useState } from "react";
 
@@ -25,12 +28,22 @@ export interface TestListProps {
   onCreate: () => void;
   onOpenResult: (testId: string) => void;
   onRun: (testId: string) => void;
+  /** 정의 보기 (FR-016). 실행하지 않고 Step 목록·상세를 확인한다. */
+  onOpenDefinition?: (testId: string) => void;
 }
 
-export function TestList({ onCreate, onOpenResult, onRun }: TestListProps) {
+export function TestList({
+  onCreate,
+  onOpenResult,
+  onRun,
+  onOpenDefinition,
+}: TestListProps) {
   const [data, setData] = useState<TestListResponse | null>(null);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const reload = async (q: string) => {
     try {
@@ -38,6 +51,19 @@ export function TestList({ onCreate, onOpenResult, onRun }: TestListProps) {
       setError(null);
     } catch (exc) {
       setError(exc instanceof ApiError ? exc.message : String(exc));
+    }
+  };
+
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      await reload(query);
+    } catch (exc) {
+      setError(exc instanceof ApiError ? exc.message : String(exc));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -164,20 +190,92 @@ export function TestList({ onCreate, onOpenResult, onRun }: TestListProps) {
             <span className="dim" style={{ width: 90 }}>
               {relativeTime(row.last_run_at)}
             </span>
-            <span style={{ width: 96 }}>
-              {row.outcome === "fail" ? (
+            <span className="row" style={{ width: 300, gap: 6, justifyContent: "flex-end" }}>
+              {row.outcome === "fail" && (
                 <button className="secondary" onClick={() => onOpenResult(row.id)}>
-                  결과 보기
-                </button>
-              ) : (
-                <button className="secondary" onClick={() => onRun(row.id)}>
-                  ▶ 실행
+                  결과
                 </button>
               )}
+              {onOpenDefinition && (
+                <button className="ghost" onClick={() => onOpenDefinition(row.id)}>
+                  정의 보기
+                </button>
+              )}
+              <button className="ghost" onClick={() => setRenaming({ id: row.id, name: row.name })}>
+                이름
+              </button>
+              <button className="ghost" onClick={() => setConfirmingDelete(row.id)}>
+                삭제
+              </button>
+              <button className="secondary" onClick={() => onRun(row.id)}>
+                ▶ 실행
+              </button>
             </span>
           </div>
         ))}
       </div>
+
+      {renaming !== null && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <strong>이름 변경 — {renaming.id}</strong>
+          <div className="row" style={{ gap: 8, marginTop: 8 }}>
+            <input
+              aria-label="새 이름"
+              value={renaming.name}
+              onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
+              style={{ flex: 1 }}
+            />
+            <button
+              disabled={busy || renaming.name.trim() === ""}
+              onClick={() => {
+                const { id, name } = renaming;
+                setRenaming(null);
+                void act(() => tests.rename(id, name.trim()));
+              }}
+            >
+              저장
+            </button>
+            <button className="secondary" onClick={() => setRenaming(null)}>
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmingDelete !== null && (
+        <div
+          role="alertdialog"
+          aria-label="삭제 확인"
+          className="card"
+          style={{
+            marginTop: 16,
+            borderColor: "var(--fail)",
+            background: "var(--fail-tint)",
+          }}
+        >
+          <strong>{confirmingDelete} 을 삭제할까요?</strong>
+          <p style={{ margin: "6px 0 0", fontSize: 12.5 }}>
+            정의 파일과 실행 산출물이 함께 지워집니다. <strong>되돌릴 수 없습니다.</strong>{" "}
+            정의 파일을 git 에 커밋해 두었다면 그곳에서 되살릴 수 있습니다.
+          </p>
+          <div className="row" style={{ gap: 8, marginTop: 8 }}>
+            <button
+              className="danger"
+              disabled={busy}
+              onClick={() => {
+                const id = confirmingDelete;
+                setConfirmingDelete(null);
+                void act(() => tests.remove(id));
+              }}
+            >
+              삭제
+            </button>
+            <button className="secondary" onClick={() => setConfirmingDelete(null)}>
+              취소
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

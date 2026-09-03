@@ -78,6 +78,7 @@ export function Runner({
   const [reordering, setReordering] = useState(false);
   const [repickWaiting, setRepickWaiting] = useState<RepickSlot | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirmingStop, setConfirmingStop] = useState(false);
   const [aiMessages, setAiMessages] = useState<string[]>([]);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
@@ -277,6 +278,12 @@ export function Runner({
           className="danger"
           disabled={busy}
           onClick={async () => {
+            // FR-042 — 저장하지 않은 편집이 있으면 **끝내기 전에** 확인한다.
+            // 종료 뒤에는 저장할 대상이 사라진다.
+            if (!isDone && view.has_unsaved_changes) {
+              setConfirmingStop(true);
+              return;
+            }
             await act(() => sessions.stop(sessionId));
             onFinished();
           }}
@@ -320,6 +327,67 @@ export function Runner({
           }}
         >
           {error}
+        </div>
+      )}
+
+      {confirmingStop && (
+        <div
+          role="alertdialog"
+          aria-label="중지 확인"
+          style={{
+            padding: "10px 16px",
+            background: "var(--fail-tint)",
+            borderBottom: "3px solid var(--fail)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          <strong>저장하지 않은 편집이 있습니다</strong>
+          <p style={{ margin: 0, fontSize: 12.5 }}>
+            지금 중지하면 브라우저 세션이 종료되고 편집한 Step 이 사라집니다. 아래에서
+            이름을 붙여 먼저 저장할 수 있습니다.
+          </p>
+          <div className="row" style={{ gap: 8 }}>
+            <button
+              className="secondary"
+              disabled={busy || saveName.trim() === ""}
+              onClick={() => {
+                setBusy(true);
+                void sessions
+                  .save(sessionId, saveName.trim())
+                  .then(() => resync())
+                  .catch((exc: unknown) =>
+                    setError(exc instanceof ApiError ? exc.message : String(exc)),
+                  )
+                  .finally(() => {
+                    setBusy(false);
+                    setConfirmingStop(false);
+                  });
+              }}
+            >
+              저장하고 계속 열어 두기
+            </button>
+            <button
+              className="danger"
+              disabled={busy}
+              onClick={async () => {
+                setConfirmingStop(false);
+                await act(() => sessions.stop(sessionId));
+                onFinished();
+              }}
+            >
+              저장하지 않고 중지
+            </button>
+            <button className="secondary" onClick={() => setConfirmingStop(false)}>
+              취소
+            </button>
+          </div>
+          {saveName.trim() === "" && (
+            <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+              저장하려면 아래 「테스트 이름」을 먼저 입력하세요.
+            </p>
+          )}
         </div>
       )}
 

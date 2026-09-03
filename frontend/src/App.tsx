@@ -10,6 +10,7 @@ import { KeyManagement } from "./pages/KeyManagement";
 import { ProjectSetup } from "./pages/ProjectSetup";
 import { RunResult } from "./pages/RunResult";
 import { SecretValues } from "./pages/SecretValues";
+import { TestDefinition } from "./pages/TestDefinition";
 import { Runner } from "./pages/Runner";
 import { TestList } from "./pages/TestList";
 
@@ -20,6 +21,7 @@ type Screen =
   | { name: "create" }
   | { name: "runner"; session: SessionView; aiInstruction?: string | null }
   | { name: "result"; testId: string }
+  | { name: "definition"; testId: string; focusStepId?: string | null }
   | { name: "keys" }
   | { name: "secrets" };
 
@@ -104,8 +106,18 @@ export function App() {
             onCreate={() => setScreen({ name: "create" })}
             onRun={(testId) => startReplay(testId)}
             onOpenResult={(testId) => setScreen({ name: "result", testId })}
+            onOpenDefinition={(testId) => setScreen({ name: "definition", testId })}
           />
         </>
+      )}
+
+      {screen.name === "definition" && (
+        <TestDefinition
+          testId={screen.testId}
+          focusStepId={screen.focusStepId ?? null}
+          onRun={(testId) => startReplay(testId)}
+          onBack={() => setScreen({ name: "list" })}
+        />
       )}
 
       {screen.name === "keys" && (
@@ -143,6 +155,10 @@ export function App() {
           testId={screen.testId}
           onRunAll={(testId) => startReplay(testId)}
           onRunFrom={(testId, stepIndex) => startReplay(testId, stepIndex)}
+          onEditStep={(testId, stepId) =>
+            // FR-056 — 실패한 Step 의 상세로 바로 이동한다 (T170).
+            setScreen({ name: "definition", testId, focusStepId: stepId })
+          }
           onBack={() => setScreen({ name: "list" })}
         />
       )}
