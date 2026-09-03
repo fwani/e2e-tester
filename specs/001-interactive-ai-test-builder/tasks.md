@@ -35,16 +35,16 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 **⚠️ 이 단계의 결과를 research.md에 반영한 뒤 다음 단계로 간다.** 가정이 깨지면 해당 R 항목을 다시 결정한다.
 
-- [ ] T001 `backend/` 에 최소 pyproject.toml 을 만들고 Playwright for Python + Python 3.13 설치 가능 여부를 확인한다. 실패 시 3.12로 내리고 research.md R1의 검증 항목을 갱신한다
-- [ ] T002 [P] PyNaCl 이 Python 3.13 / macOS arm64 에서 휠로 설치되는지 확인하고 결과를 `specs/001-interactive-ai-test-builder/research.md` R7의 검증 필요 사항에 기록한다
-- [ ] T003 `scripts/spikes/spike_session.py` — `async_playwright().start()` 로 띄운 `BrowserContext` 를 10분 이상 유지하며 CDP 연결이 끊기지 않는지 확인한다 (research R1)
-- [ ] T004 [P] `scripts/spikes/spike_binding.py` — `add_init_script` + `expose_binding` 을 **컨텍스트 단위로** 등록해 새 탭·네비게이션 직후에도 콜백이 유실 없이 도착하는지, `source` 인자로 발신 페이지를 식별할 수 있는지 확인한다 (research R2)
-- [ ] T005 [P] `scripts/spikes/spike_tabs.py` — `context.on("page")` 가 `window.open` 팝업과 `target="_blank"` 링크 **양쪽에서** 발생하는지 확인한다. 한쪽만 잡히면 `page.on("popup")` 보완이 필요하다 (research R1)
-- [ ] T006 [P] `scripts/spikes/spike_screencast.py` — headed 모드에서 `Page.startScreencast` 프레임률·프레임 크기를 실측하고, **창이 최소화·가려졌을 때 프레임이 계속 오는지** 확인한다. 멈추면 그것을 정상 동작으로 문서화한다 (research R3)
-- [ ] T007 [P] `scripts/spikes/spike_locator.py` — `get_by_role(role, name=...)` 의 이름 매칭이 부분 일치인지 완전 일치인지 확인해 `exact` 인자 사용 여부를 결정하고, `selectors.set_test_id_attribute` 호출 위치를 확인한다 (research R4)
-- [ ] T008 [P] `scripts/spikes/spike_agent.py` — `@beta_async_tool` + `tool_runner` 의 async 반복이 장기 실행 중 취소(사용자 일시정지)에 어떻게 반응하는지, `fallbacks="default"` 를 tool_runner 경로로 전달할 수 있는지 확인한다 (research R5)
-- [ ] T009 [P] `scripts/spikes/spike_schema.py` — Pydantic v2 판별 유니온이 `json-schema-to-typescript` 에서 판별 유니온으로 떨어지는지 확인한다. 안 되면 스키마 후처리 단계가 필요하다 (research R6)
-- [ ] T010 T001~T009 결과를 `specs/001-interactive-ai-test-builder/research.md` 의 각 "검증 필요 사항" 절에 반영하고, 가정이 깨진 항목의 Decision 절을 다시 쓴다
+- [x] T001 `backend/` 에 최소 pyproject.toml 을 만들고 Playwright for Python + Python 3.13 설치 가능 여부를 확인한다. 실패 시 3.12로 내리고 research.md R1의 검증 항목을 갱신한다
+- [x] T002 [P] PyNaCl 이 Python 3.13 / macOS arm64 에서 휠로 설치되는지 확인하고 결과를 `specs/001-interactive-ai-test-builder/research.md` R7의 검증 필요 사항에 기록한다
+- [x] T003 `scripts/spikes/spike_session.py` — `async_playwright().start()` 로 띄운 `BrowserContext` 를 10분 이상 유지하며 CDP 연결이 끊기지 않는지 확인한다 (research R1)
+- [x] T004 [P] `scripts/spikes/spike_binding.py` — `add_init_script` + `expose_binding` 을 **컨텍스트 단위로** 등록해 새 탭·네비게이션 직후에도 콜백이 유실 없이 도착하는지, `source` 인자로 발신 페이지를 식별할 수 있는지 확인한다 (research R2)
+- [x] T005 [P] `scripts/spikes/spike_tabs.py` — `context.on("page")` 가 `window.open` 팝업과 `target="_blank"` 링크 **양쪽에서** 발생하는지 확인한다. 한쪽만 잡히면 `page.on("popup")` 보완이 필요하다 (research R1)
+- [x] T006 [P] `scripts/spikes/spike_screencast.py` — headed 모드에서 `Page.startScreencast` 프레임률·프레임 크기를 실측하고, **창이 최소화·가려졌을 때 프레임이 계속 오는지** 확인한다. 멈추면 그것을 정상 동작으로 문서화한다 (research R3)
+- [x] T007 [P] `scripts/spikes/spike_locator.py` — `get_by_role(role, name=...)` 의 이름 매칭이 부분 일치인지 완전 일치인지 확인해 `exact` 인자 사용 여부를 결정하고, `selectors.set_test_id_attribute` 호출 위치를 확인한다 (research R4)
+- [x] T008 [P] `scripts/spikes/spike_agent.py` — `@beta_async_tool` + `tool_runner` 의 async 반복이 장기 실행 중 취소(사용자 일시정지)에 어떻게 반응하는지, `fallbacks="default"` 를 tool_runner 경로로 전달할 수 있는지 확인한다 (research R5)
+- [x] T009 [P] `scripts/spikes/spike_schema.py` — Pydantic v2 판별 유니온이 `json-schema-to-typescript` 에서 판별 유니온으로 떨어지는지 확인한다. 안 되면 스키마 후처리 단계가 필요하다 (research R6)
+- [x] T010 T001~T009 결과를 `specs/001-interactive-ai-test-builder/research.md` 의 각 "검증 필요 사항" 절에 반영하고, 가정이 깨진 항목의 Decision 절을 다시 쓴다
 
 **Checkpoint**: 8개 가정이 확인되었고 설계 변경 사항이 research.md에 반영됨
 
@@ -60,7 +60,7 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 - [ ] T014 [P] `backend/pyproject.toml` 에 린터·포매터 설정을 넣고 `frontend/` 에 동등한 설정을 넣는다
 - [ ] T015 `backend/.importlinter` 에 `execution-no-llm` **forbidden 계약**을 작성한다 — `source_modules = itb.execution, itb.storage, itb.generator, itb.locator, itb.domain` / `forbidden_modules = itb.llm, itb.authoring, anthropic` (헌법 원칙 II, research R5)
 - [ ] T016 `.github/workflows/ci.yml` 을 만들고 `lint-imports` 를 **다른 검사보다 먼저** 실행하는 잡으로 넣는다. 실패 시 후속 잡을 실행하지 않고 빌드를 중단한다 (헌법 원칙 II)
-- [ ] T017 [P] `fixtures/sample-app/` 에 검증용 대상 앱을 만든다 — 로그인 화면, 프로젝트 목록·생성·삭제(⋮ 메뉴 안 삭제 포함), 새 창으로 열리는 약관 화면. **`data-testid` 가 붙은 요소와 붙지 않은 요소를 섞는다** (SC-008 측정이 이 구성에 의존, quickstart §0)
+- [x] T017 [P] `fixtures/sample-app/` 에 검증용 대상 앱을 만든다 — 로그인 화면, 프로젝트 목록·생성·삭제(⋮ 메뉴 안 삭제 포함), 새 창으로 열리는 약관 화면. **`data-testid` 가 붙은 요소와 붙지 않은 요소를 섞는다** (SC-008 측정이 이 구성에 의존, quickstart §0)
 
 **Checkpoint**: `lint-imports` 가 빈 프로젝트에서 통과하고, 픽스처 앱이 뜬다
 
@@ -162,6 +162,9 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 - [ ] T068 [US1] `frontend/src/pages/Runner.tsx` — `Main.dc.html` 이식(녹화 상태). 헤더 배지·테스트명·`step N / M`·정지 버튼, 좌측 브라우저 영역, 우측 Step 목록, 하단 "Step 추가" (FR-026)
 - [ ] T069 [US1] `frontend/src/components/TabStrip.tsx` — **확정 디자인에 없는 화면.** 미러 위 탭 표시·전환 (FR-030f, spec 디자인 차이 3)
 - [ ] T070 [US1] 녹화 이벤트 → Step 목록 반영 지연을 계측해 `backend/tests/integration/test_performance.py` 에 p95 < 200ms 검증을 추가한다 (research R8)
+
+- [ ] T157 [US1] `backend/src/itb/recording/recorder.py` 에서 민감 값 치환이 `step_added` 이벤트 발행보다 **반드시 먼저** 일어나도록 파이프라인 순서를 고정한다. 리코더가 비밀번호 평문을 포착한 뒤 변수 참조로 치환하기 전에 이벤트가 나가면 평문이 프론트에 도달한다 (FR-083, FR-089d, 헌법 보안 요건) — analyze C2
+- [ ] T158 [P] [US1] `backend/tests/unit/test_sensitive_ordering.py` — 치환 전 이벤트 발행을 깨뜨리는 회귀 테스트. 리코더 파이프라인에 평문이 이벤트 페이로드로 들어가는 경로가 없음을 확인한다 (FR-083, SC-010) — analyze C2
 
 **Checkpoint**: US1이 독립적으로 동작하고 검증 가능하다. quickstart §2·§3 절차를 통과한다
 

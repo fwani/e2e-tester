@@ -1,0 +1,50 @@
+[project]
+name = "itb"
+version = "0.1.0"
+description = "Interactive AI Test Builder — 브라우저 기반 E2E 테스트 자동화 도구"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "playwright>=1.49",
+    "pydantic>=2.9",
+    "pyyaml>=6.0",
+    "pynacl>=1.5",
+    "anthropic>=0.40",
+]
+
+[project.scripts]
+itb = "itb.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "import-linter>=2.1",
+    "ruff>=0.7",
+    "httpx>=0.27",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/itb"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S101"]  # pytest 의 assert 사용 허용
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]  # 테스트 픽스처의 더미 값

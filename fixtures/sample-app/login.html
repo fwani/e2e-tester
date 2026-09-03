@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>로그인 · 데이터 플랫폼</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav><span class="brand">데이터 플랫폼</span></nav>
+  <main>
+    <div class="card" style="max-width:380px;margin:40px auto">
+      <h1>로그인</h1>
+      <!-- 이메일: data-testid 있음 / 비밀번호: data-testid 없음 (후보 수집률 측정용) -->
+      <label for="email">이메일</label>
+      <input id="email" data-testid="login-email" type="email" autocomplete="username">
+      <label for="password">비밀번호</label>
+      <input id="password" type="password" autocomplete="current-password">
+      <div class="row">
+        <button type="button" data-testid="login-submit" id="submit">로그인</button>
+      </div>
+      <div class="error hidden" id="err">이메일과 비밀번호를 입력하세요.</div>
+    </div>
+  </main>
+  <script src="app.js"></script>
+  <script>
+    document.getElementById('submit').addEventListener('click', () => {
+      const email = document.getElementById('email').value.trim();
+      const pw = document.getElementById('password').value;
+      if (!email || !pw) {
+        document.getElementById('err').classList.remove('hidden');
+        return;
+      }
+      try { sessionStorage.setItem('itb-fixture-auth', '1'); } catch { /* noop */ }
+      location.href = 'projects.html';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "ClickStep": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "click",
+          "title": "Type",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "title": "Tab",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "title": "ClickStep",
+      "type": "object"
+    },
+    "CloseTabStep": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "close_tab",
+          "title": "Type",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "title": "Tab",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "title": "CloseTabStep",
+      "type": "object"
+    },
+    "FillStep": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "fill",
+          "title": "Type",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "value"
+      ],
+      "title": "FillStep",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "click": "#/$defs/ClickStep",
+      "close_tab": "#/$defs/CloseTabStep",
+      "fill": "#/$defs/FillStep"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ClickStep"
+    },
+    {
+      "$ref": "#/$defs/FillStep"
+    },
+    {
+      "$ref": "#/$defs/CloseTabStep"
+    }
+  ],
+  "title": "StepEnvelope"
+}

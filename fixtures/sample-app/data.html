@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>데이터 · 데이터 플랫폼</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <span class="brand">데이터 플랫폼</span>
+    <a href="projects.html" role="menuitem">프로젝트</a>
+    <a href="data.html" aria-current="page" role="menuitem">데이터</a>
+    <a href="analysis.html" role="menuitem">분석</a>
+  </nav>
+  <main>
+    <div class="card">
+      <h1>데이터</h1>
+      <p style="color:#5a6472">파일을 끌어다 놓으세요</p>
+      <!-- 파일 입력: 네이티브 대화상자 한계 검증용 -->
+      <input type="file" id="upload" data-testid="upload-file">
+      <table>
+        <thead><tr><th>파일</th><th>크기</th><th>업로드</th></tr></thead>
+        <tbody>
+          <tr><td>events_2026_08.csv</td><td>18.4 MB</td><td>3일 전</td></tr>
+          <tr><td>users_dim.parquet</td><td>2.1 MB</td><td>1주 전</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+  <script src="app.js"></script>
+  <script>requireLogin();</script>
+</body>
+</html>

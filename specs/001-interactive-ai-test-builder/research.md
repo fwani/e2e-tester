@@ -7,6 +7,37 @@
 패키지 미설치 상태의 신규 프로젝트.
 
 각 항목은 **Decision / Rationale / Alternatives considered / 검증 필요 사항** 순으로 기록한다.
+
+> ## 실측 결과 (2026-09-03, T001~T010 수행 완료)
+>
+> 스파이크 8건을 실제로 설치·실행해 확인했다. 스크립트는 `scripts/spikes/` 에 있다.
+>
+> | # | 가정 | 결과 |
+> |---|------|------|
+> | R1 | Playwright for Python 이 Python 3.13 지원 | **성립** — playwright 1.62.0 / Python 3.13.0 정상. 강등 불필요 |
+> | R1 | 장수명 `BrowserContext` 유지 | **성립** — 일시정지 25초 동안 CDP 연결·DOM·입력값·모달 상태 전부 보존, Resume 후 재시작 없이 이어서 실행 |
+> | R1 | `context.on("page")` 가 두 새 탭 경로 모두 포착 | **성립** — `target="_blank"` 와 `window.open` 모두 발생. `page.on("popup")` 보완 불필요 |
+> | R2 | 바인딩 유실 없음 / 발신 페이지 식별 | **성립** — 네비게이션 후 주입 유지, 새 탭 자동 주입, `source["page"]` 로 탭 구분 |
+> | R2 | Shadow DOM `composedPath()` | **성립** |
+> | R2 | `change`/`blur` 로 확정 값 1회 포착 | **부분 성립 → 설계 보강** — 둘이 **모두** 발생해 이벤트가 2건 온다. 같은 요소 기준 중복 제거가 필요하다 |
+> | R3 | 스크린캐스트 프레임률 | **성립** — headed·headless 모두 **9.5~10 fps**, 1280×800 JPEG q60, 프레임당 ~17KB (R8 목표 5~10 fps 충족) |
+> | R3 | 백그라운드 탭에서도 프레임 수신 | **성립 (중요)** — 앞에 없는 탭도 10 fps. 미러가 대상 탭을 따라갈 수 있다 |
+> | R3 | ack 중단 시 실행 무영향 | **성립** — 3프레임 후 자연히 멈추고 예외 없음. FR-047b가 백프레셔로 공짜 달성 |
+> | R3 | **창 최소화·가려짐 시 동작** | **미확인** — 프로그램으로 재현하지 못했다. 수동 확인 필요 |
+> | R4 | `get_by_role(name=...)` 매칭 방식 | **가정과 다름 → 설계 변경** — 기본이 **부분 일치**다. `exact=True` 필수 |
+> | R4 | `set_test_id_attribute` 위치 | **성립** — `playwright.selectors.set_test_id_attribute` |
+> | R4 | 후보 즉시 `count()` 순회 비용 | **성립** — 5종 총 **5.1ms** |
+> | R4 | 기록 시점 검증 가능 | **성립 + 모델 변경** — 후보가 **여러 요소를 매칭하는 경우**가 실측으로 나왔다. 상태 3값으로 표현 불가 → `ambiguous` 추가 |
+> | R5 | Anthropic SDK 표면 | **성립** — `beta_async_tool` 존재, `tool_runner` 가 `fallbacks`·`betas`·`output_config` 직접 수용, httpx2 기반 |
+> | R5 | **취소 반응 / `fallbacks="default"` 실동작** | **미확인** — 자격 증명 없음. Phase 6 에서 확인 |
+> | R6 | 판별 유니온이 TS 판별 유니온으로 | **성립 + 설계 보강** — `extra="forbid"` 를 붙여야 `additionalProperties: false` 가 나가고 TS 인덱스 시그니처가 사라진다 |
+> | R7 | PyNaCl 설치 / 공개키 봉인 | **성립** — 1.6.2 휠 설치, 공개키만으로 봉인·비밀키로 개봉 왕복 확인 |
+>
+> **설계가 바뀐 항목 4건**: R2(중복 제거 필요) · R4(`exact=True` 필수, `ambiguous` 상태 추가) ·
+> R6(`extra="forbid"` 필수). 아래 각 절의 Decision 에 반영했다.
+>
+> **미확인으로 남은 항목 2건**: R3의 창 가려짐 동작, R5의 취소·폴백 실동작. 각 절에 기록했다.
+
 "검증 필요 사항"은 구현 첫 작업에서 실제로 확인해야 하는 가정이다. 단정하지 않는다.
 
 ---
@@ -55,13 +86,17 @@ sync API를 쓰려면 전용 스레드 또는 별도 프로세스와 큐 통신�
 | 브라우저 상태 직렬화 후 복원 (`storage_state`) | 쿠키·localStorage만 복원한다. 화면 위치·DOM 상태·진행 중 입력은 복원되지 않아 FR-032를 만족하지 못한다 |
 | 별도 워커 프로세스 | 단독 로컬 도구(FR-088)에 프로세스 경계를 추가할 이유가 없다. 디버깅만 어려워진다 |
 
-### 검증 필요 사항
+### 검증 결과 (T001·T003·T005)
 
-- **Playwright for Python이 Python 3.13을 지원하는지 설치 시점에 확인.** 미지원이면 3.12로 내린다.
-- 장시간(수십 분) 유지되는 `BrowserContext`에서 CDP 연결이 끊기지 않는지 확인. 끊긴다면 FR-041(세션 유실
-  통보) 경로로 처리한다.
-- `context.on("page")` 가 `window.open` 팝업과 `target="_blank"` 링크 양쪽에서 모두 발생하는지 확인.
-  한쪽만 잡히면 놓친 경로를 `page.on("popup")` 로 보완한다.
+- ✅ **Playwright 1.62.0 이 Python 3.13.0 에서 정상 설치·동작한다.** 3.12 강등 불필요.
+  `requires-python = ">=3.12"` 로 두어 3.12 도 허용한다.
+- ✅ 장수명 `BrowserContext` 에서 일시정지 25초 동안 CDP 연결이 유지되고, DOM·입력값·모달 열림 상태가
+  전부 보존됐다. Resume 후 브라우저 재시작 없이 이어서 실행됐다. (`scripts/spikes/spike_session.py`)
+- ✅ `context.on("page")` 가 `target="_blank"` 와 `window.open` **양쪽 모두**에서 발생한다.
+  `page.on("popup")` 보완이 필요하지 않다. 탭 닫힘은 `page.on("close")` 로 잡힌다.
+  탭 번호 재사용 금지도 확인했다. (`scripts/spikes/spike_tabs.py`)
+- ⚠️ 수십 분 규모 장시간 유지는 아직 확인하지 않았다. 25초 규모에서 문제가 없었으므로 위험도는 낮다고
+  보되, 통합 테스트에서 더 긴 시간으로 다시 확인한다.
 
 ---
 
@@ -75,7 +110,7 @@ sync API를 쓰려면 전용 스레드 또는 별도 프로세스와 큐 통신�
 | 기록 대상 | 관찰 방법 |
 |-----------|-----------|
 | 클릭 | `document` 의 `click` 리스너 (capture 단계) |
-| 입력 | `change` + `blur` 리스너. **`keydown`/`input` 은 쓰지 않는다** |
+| 입력 | `change` + `blur` 리스너. **`keydown`/`input` 은 쓰지 않는다.** 같은 요소 기준 중복 제거 필수 (실측 결과) |
 | 선택 | `<select>` 의 `change` 리스너 |
 | 화면 이동 | Python 측 `page.on("framenavigated")` (main frame) |
 
@@ -104,6 +139,12 @@ sync API를 쓰려면 전용 스레드 또는 별도 프로세스와 큐 통신�
 않았다"는 사유로 실패시킨다. 조작 국면이면 그 탭에 `page.bring_to_front()` 를 호출한다 (FR-030e).
 
 ### Rationale
+
+**실측 보강 (T004)**: `change` 와 `blur` 가 **둘 다** 발생한다. 텍스트 입력 한 번이 이벤트 2건을 만든다.
+따라서 `change`/`blur` 선택만으로 FR-025(연속 입력 병합)가 자동 충족되지는 않는다 —
+**같은 요소를 대상으로 하는 연속된 입력 이벤트를 최종 값 하나로 접는 중복 제거가 필요하다.**
+구현 규칙: 입력 이벤트를 받으면 Step 목록 끝(또는 삽입 위치)의 마지막 Step이 같은 요소·같은 종류인지
+확인하고, 같으면 값을 갱신하고 새 Step을 만들지 않는다.
 
 **입력을 `change`/`blur` 로 잡는 결정이 한글 IME 문제를 없앤다.** 키 입력 단위로 기록하면 조합 중인
 자모(`ㅎ`, `하`, `한`)가 각각 이벤트로 들어와 조합 완료 값을 재구성해야 한다. `change`/`blur` 는
@@ -144,10 +185,16 @@ sync API를 쓰려면 전용 스레드 또는 별도 프로세스와 큐 통신�
   대상으로 하고, 하위 프레임에서 온 Step은 미지원으로 표시한다.
 - **Shadow DOM**: capture 단계 `click` 리스너에서 `event.composedPath()[0]` 을 대상 요소로 쓴다.
 
-### 검증 필요 사항
+### 검증 결과 (T004)
 
-- `expose_binding` 콜백이 네비게이션 도중 호출될 때 유실 없이 도착하는지 확인.
-- Shadow DOM 안의 요소에 대해 `composedPath()` 기반 locator 후보 수집이 유효한지 확인.
+`scripts/spikes/spike_binding.py` 로 확인했다.
+
+- ✅ `add_init_script` 를 **컨텍스트에** 등록하면 네비게이션 후에도 주입이 유지된다.
+- ✅ `expose_binding` 콜백이 유실 없이 도착한다 (총 15건 수신).
+- ✅ 콜백의 `source["page"]` 로 발신 탭을 식별할 수 있다 — 멀티 탭 `tab_index` 변환의 전제가 성립한다.
+  새 탭에도 리코더가 자동 주입됐다.
+- ✅ Shadow DOM 요소를 `event.composedPath()[0]` 로 포착했다.
+- ⚠️ **`change` 와 `blur` 가 모두 발생한다.** 위 Decision 에 중복 제거 규칙을 추가했다.
 
 ---
 
@@ -166,6 +213,8 @@ sync API를 쓰려면 전용 스레드 또는 별도 프로세스와 큐 통신�
 - **WebSocket이 끊기면 ack를 멈추고 `Page.stopScreencast` 를 호출한다. 러너 태스크는 영향받지 않는다.**
   FR-047b.
 - 폴백: 스크린캐스트를 시작할 수 없으면 1 fps `page.screenshot()` 으로 강등하고 사용자에게 알린다.
+- **실측 확인**: 앞에 없는 백그라운드 탭에서도 프레임이 정상 수신된다. 미러가 현재 Step 대상 탭을
+  따라가는 설계(FR-030f)가 성립한다.
 - **멀티 탭**: 스크린캐스트는 **한 번에 한 탭만** 돌린다. 사용자가 미러에서 탭을 바꾸면 이전 탭에
   `Page.stopScreencast` 를 보내고 새 탭에 `Page.startScreencast` 를 시작한다 (FR-030f, FR-047c).
   실행 중에는 현재 Step이 대상으로 하는 탭을 자동으로 따라간다. 모든 탭을 동시에 스트리밍하지 않는다 —
@@ -188,11 +237,26 @@ Chromium 전용 기능이지만 MVP는 Chromium만 지원하므로(spec Assumpti
 | Playwright `video` 녹화 | 파일로 떨어진다. 실시간 표시용이 아니다. 게다가 영상은 P2 |
 | CDP `Page.captureScreenshot` 반복 | 스크린캐스트와 같은 일을 폴링으로 하는 것 |
 
-### 검증 필요 사항
+### 검증 결과 (T006)
 
-- **headed 모드에서 창이 최소화·가려졌을 때 `screencastFrame` 이 계속 오는지 확인.** 멈춘다면 그것을
-  정상 동작으로 문서화하고 UI에 "창이 가려져 미러가 멈췄습니다"를 표시한다. (현재 단정하지 않는다)
-- 1280×800 JPEG q60 프레임 크기와 초당 프레임 수를 실측해 성능 목표(R8) 대비 확인.
+`scripts/spikes/spike_screencast.py` 로 실측했다.
+
+| 조건 | 프레임률 | 프레임 크기 |
+|------|----------|-------------|
+| headless · 앞에 있는 탭 | 9.7 fps | 평균 17,226 B |
+| headless · 백그라운드 탭 | 10.1 fps | 평균 16,836 B |
+| headed · 앞에 있는 탭 | 9.5 fps | 평균 17,231 B |
+| **headed · 백그라운드 탭** | **10.0 fps** | 평균 16,840 B |
+| ack 없음 (WS 끊김 모사) | 3프레임 후 정지 | — |
+
+- ✅ R8 목표(5~10 fps)를 충족한다. 대역폭은 약 170 KB/s — localhost 기준 문제없다.
+- ✅ **백그라운드 탭에서도 프레임이 온다.** 이것이 확인되지 않았다면 미러가 대상 탭을 따라가는 설계를
+  포기하고 "활성 탭만 표시"로 후퇴해야 했다.
+- ✅ **ack 를 멈추면 3프레임 후 자연히 정지하고 예외가 발생하지 않는다.** FR-047b(미러 끊김이 실행에
+  영향 없음)가 별도 처리 없이 CDP 의 백프레셔로 달성된다.
+- ❌ **미확인: 창이 최소화·가려졌을 때의 동작.** 프로그램으로 창을 최소화할 수 없어 재현하지 못했다.
+  백그라운드 탭이 정상 동작하므로 위험도는 낮다고 보되, **단정하지 않는다.** 개발 중 수동으로 확인하고
+  멈춘다면 UI에 "창이 가려져 미러가 멈췄습니다"를 표시하는 처리를 추가한다.
 
 ---
 
@@ -214,9 +278,9 @@ LocatorStrategy(kind, args)
 | 순위 | 후보 | Playwright 표현 |
 |------|------|-----------------|
 | 1 | testId | `page.get_by_test_id(v)` |
-| 2 | role + accessible name | `page.get_by_role(role, name=n)` |
+| 2 | role + accessible name | `page.get_by_role(role, name=n, exact=True)` — **`exact=True` 필수** (실측) |
 | 3 | label | `page.get_by_label(v)` |
-| 4 | text | `page.get_by_text(v)` |
+| 4 | text | `page.get_by_text(v, exact=True)` |
 | 5 | 고정 속성 | `page.locator(f'[{attr}="{val}"]')` |
 | 6 | CSS | `page.locator(css)` |
 
@@ -238,7 +302,18 @@ LocatorStrategy(kind, args)
 5. **후보들이 서로 다른 요소를 가리키면 불일치를 실행 로그에 남긴다** (spec 엣지 케이스).
 
 **수집 시점 검증 (record-time verification)**: 클릭을 기록한 직후, 수집한 각 후보가 **방금 클릭한 그 요소를
-실제로 가리키는지** 확인해 후보별로 `verified` / `unverified` / `not_collected` 상태를 남긴다.
+실제로 가리키는지** 확인해 후보별로 상태를 남긴다. 상태는 **4종**이다 (실측으로 `ambiguous` 가 추가됐다).
+
+| 상태 | 의미 | 판정 |
+|------|------|------|
+| `verified` | 그 후보로 찾은 요소가 기록 대상 요소와 동일 | `count()==1` 이고 요소 동일 |
+| `ambiguous` | 후보가 **여러 요소를 매칭한다** | `count()>1` |
+| `unverified` | 1개를 매칭하지만 다른 요소를 가리킨다 | `count()==1` 이고 요소 다름 |
+| `not_collected` | 후보 값을 확보하지 못했다 | 값 없음 또는 `count()==0` |
+
+`ambiguous` 는 실행 시 어느 요소를 잡을지 알 수 없으므로 **사용 가능한 후보로 세지 않는다.**
+실측에서 픽스처 앱의 "프로젝트 생성" 버튼에 대해 `text` 후보가 2개, `css` 후보가 3개를 매칭했다 —
+이 구분이 없으면 두 후보를 확보된 것으로 오인해 SC-008 측정이 부풀려진다.
 
 ### Rationale
 
@@ -264,11 +339,19 @@ name은 `aria-label` → `aria-labelledby` → 연결된 `<label>` → 텍스트
 | 후보별로 동일한 짧은 타임아웃 부여 | 요소가 늦게 나타나는 경우 모든 후보가 함께 실패한다. 최상위 후보에 예산을 집중하는 것이 맞다 |
 | CDP AX 트리로 매 클릭 role/name 계산 | 클릭마다 CDP 왕복. 수집 시점 검증이 있으면 이득이 근소하다 |
 
-### 검증 필요 사항
+### 검증 결과 (T007)
 
-- `get_by_role(role, name=...)` 의 이름 매칭이 기본 부분 일치인지 완전 일치인지 확인해 `exact` 인자 사용
-  여부를 결정한다. 이것이 어긋나면 대체 후보가 조용히 다른 요소를 잡을 수 있다.
-- `set_test_id_attribute` 를 `Playwright` 인스턴스에서 호출하는지, 모듈 수준에서 호출하는지 확인.
+`scripts/spikes/spike_locator.py` 로 확인했다.
+
+- ❌ **가정과 달랐다: `get_by_role(name=...)` 의 이름 매칭은 기본이 부분 일치다.**
+  픽스처 앱에서 `name="프로젝트"` 가 `"프로젝트 생성"` 버튼을 잡았다(count=1). `exact=True` 를 주면
+  0개가 된다. **`exact=True` 를 반드시 붙인다.** 붙이지 않으면 대체 후보가 조용히 다른 요소를 잡아
+  테스트가 잘못된 대상에 대해 통과할 수 있다 — 실패보다 나쁜 결과다.
+- ✅ `set_test_id_attribute` 는 `Playwright` 인스턴스의 `selectors` 에 있다:
+  `playwright.selectors.set_test_id_attribute("data-testid")`.
+- ✅ 후보 5종 즉시 `count()` 순회 총 **5.1ms**. 해석 알고리즘 1단계의 "저렴하다"는 전제가 성립한다.
+- ✅ 기록 시점 검증이 동작하며, **`ambiguous` 상태가 실제로 발생한다.** 위 Decision 에 4종 상태를
+  반영했다. `data-model.md` §6 의 `Candidate.status` 와 spec FR-019a 도 함께 갱신했다.
 
 ---
 
@@ -380,12 +463,17 @@ Step이므로, "AI 결과를 결정적 Step으로 컴파일"(FR-061)이 별도�
 | 로컬 모델(Ollama 등) | 작성 품질이 SC-002에 직결된다. 로컬 실행은 P2 이후 선택지 |
 | 서버 도구(web_search 등) 사용 | 필요 없다. 게다가 Python tool runner의 `pause_turn` 미재개 함정에 노출된다 |
 
-### 검증 필요 사항
+### 검증 결과 (T008 — 부분)
 
-- `@beta_async_tool` + `tool_runner` 의 async 반복이 장기 실행(수십 회 도구 호출) 중 취소(사용자 일시정지)에
-  어떻게 반응하는지 확인. 취소가 깨끗하지 않으면 도구 함수 안에서 취소 신호를 확인하는 방식으로 바꾼다.
-- `fallbacks="default"` 를 tool runner 경로에서도 전달할 수 있는지 확인. 불가하면 `stop_reason` 확인 후
-  수동 폴백으로 처리한다.
+`scripts/spikes/spike_agent.py` 로 확인했다. **자격 증명이 없어 API 호출은 하지 않았다.**
+
+- ✅ SDK 표면 확인: `anthropic` 1.3.0, `beta_tool`·`beta_async_tool`·`AsyncAnthropic` 존재.
+- ✅ `client.beta.messages.tool_runner` 가 `model`·`max_tokens`·`tools`·`messages`·`output_config`·
+  `betas`·`fallbacks`·`system` 을 **직접 받는다.** 거부 폴백과 effort 를 `extra_body` 없이 전달할 수 있다.
+- ✅ `httpx2` 설치 확인 — anthropic 1.x 전제와 일치한다.
+- ❌ **미확인: 장기 실행 중 취소 반응, `fallbacks="default"` 실동작.** 자격 증명이 필요하다.
+  **Phase 6(US4) 시작 시 반드시 확인한다.** 취소가 깨끗하지 않으면 도구 함수 안에서 취소 신호를
+  확인하는 방식으로 바꾼다. 이 미확인 항목은 Phase 0~3(녹화·기반)에는 영향이 없다.
 
 ---
 
@@ -408,6 +496,10 @@ itb/domain/*.py  (Pydantic v2)          ← 권위 정의, 손으로 관리하�
 
 - **저장 형식은 YAML.** PRD §9의 예시가 YAML이고, 사람이 읽을 수 있어야 하며(FR-011) git diff가 의미 있게
   나와야 한다(FR-088b). 안전 로더만 사용한다.
+- **모든 도메인 모델에 `model_config = ConfigDict(extra="forbid")` 를 붙인다** (실측으로 확정).
+  이유가 둘이다: ① JSON Schema 에 `additionalProperties: false` 가 나가 TypeScript 생성 시
+  `[k: string]: unknown` 인덱스 시그니처가 사라진다(없으면 필드명 오타가 타입 검사를 통과한다)
+  ② 디스크의 테스트 정의 파일에서 **미지 필드를 거절**해 FR-085 경계 검증을 겸한다.
 - **드리프트 방지**: CI 테스트가 스키마를 새로 생성해 커밋된 파일과 바이트 단위로 비교한다. 다르면 실패한다.
   생성물도 커밋한다 — 프론트 개발자가 Python 툴체인 없이 작업할 수 있어야 한다.
 
@@ -430,10 +522,16 @@ Pydantic v2는 표준 JSON Schema를 내보내므로 중간 포맷을 따로 정
 | Protobuf / JSON Schema + 코드 생성 양방향 | 로컬 단독 도구에 IDL 툴체인을 도입할 이유가 없다 |
 | 저장 형식을 JSON으로 | 사람이 읽기 어렵고 주석을 달 수 없다. PRD §9 예시와 어긋난다 |
 
-### 검증 필요 사항
+### 검증 결과 (T009)
 
-- Pydantic v2 판별 유니온(Step 종류별 서브모델)이 `json-schema-to-typescript` 에서 판별 유니온으로
-  제대로 떨어지는지 확인. 안 되면 스키마 후처리 단계를 넣는다.
+`scripts/spikes/spike_schema.py` + `json-schema-to-typescript@15` 로 확인했다.
+
+- ✅ Pydantic v2 판별 유니온이 JSON Schema 에 `oneOf` + `discriminator{propertyName, mapping}` 로
+  보존된다. 후처리 단계가 필요하지 않다.
+- ✅ 생성된 TypeScript 가 `type X = ClickStep | FillStep | CloseTabStep` 유니온이고 각 멤버가 리터럴
+  `type` 필드를 가지므로 TS 가 판별 유니온으로 좁힌다.
+- ⚠️ **`extra="forbid"` 가 없으면** 생성된 인터페이스에 `[k: string]: unknown` 이 붙어 타입 안전성이
+  사라진다. 붙이면 사라진다 — 실측으로 확인했다. 위 Decision 에 반영했다.
 
 ---
 
@@ -483,10 +581,13 @@ SealedBox(private_key).decrypt(ciphertext)
 | 대칭 암호화(AES-GCM) + 단일 키 | 사용자가 비대칭 방식을 지정했다. 또한 작성 단계가 복호화 키를 갖게 되어 FR-089b의 이점이 사라진다 |
 | 직접 구현 | 헌법 명문 금지 |
 
-### 검증 필요 사항
+### 검증 결과 (T002)
 
-- PyNaCl이 Python 3.13 / macOS arm64 에서 휠로 설치되는지 확인. 소스 빌드가 필요하면 개발 환경 문서에 반영.
-- 로그 스크러버가 부분 문자열·URL 인코딩된 형태의 민감 값까지 잡을 수 있는지 테스트로 확인.
+- ✅ PyNaCl 1.6.2 가 Python 3.13.0 / macOS arm64 에서 **휠로 설치된다.** 소스 빌드 불필요.
+- ✅ `SealedBox(public_key).encrypt(...)` → `SealedBox(private_key).decrypt(...)` 왕복 확인.
+  **공개키만으로 봉인이 가능하다** — FR-089b(녹화·작성이 비밀키 없이 동작)의 전제가 성립한다.
+- ⏳ 로그 스크러버의 형태 범위(부분 문자열·URL 인코딩·base64·JSON 이스케이프)는 T037 단위 테스트에서
+  확인한다. 라이브러리 선택과 무관한 구현 사항이다.
 
 ---
 
@@ -500,7 +601,7 @@ SealedBox(private_key).decrypt(ciphertext)
 | Step 실행 제품 오버헤드 | p95 < 50 ms (요소 탐색·앱 응답 제외) | 디자인의 Step 소요 시간이 103~581 ms 범위. 제품 오버헤드가 그 10%를 넘으면 측정값이 왜곡된다 |
 | Step 대기 시간 상한(기본값) | 5000 ms | `RunResult.dc.html` 의 `timeout 5000 ms` 표기 |
 | 녹화 이벤트 → Step 목록 반영 | p95 < 200 ms | 사람이 즉시성으로 느끼는 임계. 이보다 느리면 녹화 중 무엇이 잡혔는지 확신할 수 없다 |
-| 미러 뷰 프레임률 | 5~10 fps (JPEG q60, 최대 1280×800) | 관찰 목적. 조작하지 않으므로 높은 프레임률이 필요 없다 |
+| 미러 뷰 프레임률 | 5~10 fps (JPEG q60, 최대 1280×800) | **실측 9.5~10 fps 달성** (T006). 관찰 목적이므로 높은 프레임률이 필요 없다 |
 | 미러 뷰 프레임 지연 | p95 < 300 ms | 현재 실행 중인 Step과 화면이 어긋나 보이지 않을 정도 |
 | 세션 시작 준비 시간 | < 2 s (브라우저 실행·첫 화면 로드 제외) | 테스트 만들기를 누르고 기다리는 체감 |
 | Step 목록 UI 처리 규모 | Step 200개까지 지연 없이 | spec Assumptions의 "수십 개 규모" 에 여유를 둔 값 |
@@ -517,11 +618,11 @@ SealedBox(private_key).decrypt(ciphertext)
 | # | 항목 | 결정 |
 |---|------|------|
 | R1 | 브라우저 세션 | Playwright `async_api` + 장수명 `SessionManager`. 컨텍스트 1개에 탭 여러 개. Pause = `asyncio.Event` await |
-| R2 | 사용자 조작 기록 | `add_init_script` + `expose_binding` **컨텍스트 단위 등록** → 멀티 탭 자동 지원. `change`/`blur` 로 확정값 포착 (IME 회피) |
+| R2 | 사용자 조작 기록 | `add_init_script` + `expose_binding` **컨텍스트 단위 등록** → 멀티 탭 자동 지원. `change`/`blur` 로 확정값 포착 (IME 회피) + **같은 요소 중복 제거** |
 | R3 | 미러 뷰 | CDP `Page.startScreencast` 전용 세션 → WebSocket. 한 번에 한 탭만. Input 도메인 미사용 |
-| R4 | Locator | 순수 함수 `choose_strategy` 를 Runner·Generator 공유 + 수집 시점 후보 검증 |
+| R4 | Locator | 순수 함수 `choose_strategy` 를 Runner·Generator 공유 + 수집 시점 후보 검증(4종 상태, `ambiguous` 포함) + **`exact=True` 필수** |
 | R5 | LLM / Agent | `claude-opus-5` + `AsyncAnthropic` + tool runner. Step과 1:1 도구 표면. `import-linter` 로 원칙 II 강제 |
-| R6 | DSL 스키마 | Pydantic v2 권위 정의 → JSON Schema → TS 타입 생성. 저장은 YAML. CI 드리프트 검사 |
+| R6 | DSL 스키마 | Pydantic v2(**`extra="forbid"`**) 권위 정의 → JSON Schema → TS 타입 생성. 저장은 YAML. CI 드리프트 검사 |
 | R7 | 민감 값 | PyNaCl `SealedBox` (X25519). 별도 비밀 파일 + 로그 스크러버 |
 | R8 | 성능 | Step 오버헤드 p95<50ms, 녹화 반영 p95<200ms, 미러 5~10fps / p95<300ms |
 
@@ -530,5 +631,11 @@ SealedBox(private_key).decrypt(ciphertext)
 없다. spec 단계의 3건은 clarify에서 해소되었고, plan으로 이연된 2건(성능 목표, 언어모델 제공자)은 R8과 R5에서
 결정되었다.
 
-각 항목의 "검증 필요 사항"은 미해결 명세 항목이 아니라 **구현 첫 작업에서 실측할 가정**이다. tasks 단계에서
-검증 작업으로 편성한다.
+각 항목의 검증은 T001~T010 에서 **실제로 수행 완료**했다. 문서 머리의 실측 결과 표가 요약이다.
+
+**남은 미확인 2건** — 둘 다 Phase 0~3 에 영향이 없다.
+
+| 항목 | 미확인 이유 | 확인 시점 |
+|------|-------------|-----------|
+| R3 창 최소화·가려짐 시 스크린캐스트 동작 | 프로그램으로 창을 최소화할 수 없었다 | 개발 중 수동 확인 |
+| R5 tool_runner 취소 반응, `fallbacks="default"` 실동작 | 언어모델 자격 증명 없음 | Phase 6 (US4) 시작 시 |

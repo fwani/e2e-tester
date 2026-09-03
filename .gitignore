@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Node
+node_modules/
+frontend/dist/
+frontend/build/
+*.log
+
+# Interactive AI Test Builder — 사용자 자산 보호 (헌법 보안 요건, FR-088b/FR-089c)
+# 민감 값 암호문과 실행 산출물은 절대 커밋하지 않는다.
+secrets.local.yaml
+.runs/
+*.key
+!**/fixtures/**/*.key.example
+
+# 환경
+.env
+.env.*
+!.env.example
+
+# 도구·에디터
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/

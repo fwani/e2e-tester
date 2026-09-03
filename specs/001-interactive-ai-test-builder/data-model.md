@@ -4,6 +4,9 @@
 **Authority**: 이 문서의 모든 구조는 `itb/domain/*.py` 의 Pydantic v2 모델이 권위 정의다 (research R6).
 아래 표기는 그 모델의 설명이며, 불일치가 생기면 코드가 옳다.
 
+**모든 도메인 모델은 `model_config = ConfigDict(extra="forbid")` 를 갖는다** (research R6 실측 확정).
+미지 필드를 거절해 FR-085 경계 검증을 겸하고, 생성되는 TypeScript 에 인덱스 시그니처가 붙지 않게 한다.
+
 ---
 
 ## 1. 저장 레이아웃
@@ -162,14 +165,24 @@ TypeScript 판별 유니온으로 내려간다 (research R6).
 | 필드 | 타입 | 값 |
 |------|------|-----|
 | `value` | str | 수집된 값 |
-| `status` | enum | `verified` \| `unverified` \| `not_collected` |
+| `status` | enum | `verified` \| `ambiguous` \| `unverified` \| `not_collected` |
 
-`status` 는 **기록 시점 검증 결과**다 (research R4). `verified` 는 녹화 직후 그 후보로 찾은 요소가 실제
-클릭한 요소와 동일함을 확인했다는 뜻이다. `StepInspector` 화면의 `사용 중` / `대체 N` / `최후` /
-`수집되지 않음` 표시는 이 값과 우선순위 순서에서 파생된다 (FR-019).
+`status` 는 **기록 시점 검증 결과**다 (research R4). 상태는 **4종**이며 `ambiguous` 는 실측으로 추가됐다.
+
+| 상태 | 판정 | 사용 가능? |
+|------|------|-----------|
+| `verified` | `count()==1` 이고 그 요소가 기록 대상과 동일 | **예** |
+| `ambiguous` | `count()>1` — 여러 요소를 매칭한다 | **아니오** (어느 것을 잡을지 알 수 없다) |
+| `unverified` | `count()==1` 이지만 다른 요소를 가리킨다 | 아니오 |
+| `not_collected` | 값을 확보하지 못했거나 `count()==0` | 아니오 |
+
+`StepInspector` 화면의 `사용 중` / `대체 N` / `최후` / `모호(사용 불가)` / `검증 실패` /
+`수집되지 않음` 표시는 이 값과 우선순위 순서에서 파생된다 (FR-019a).
 
 **불변식**: 후보가 하나도 없는 `TargetLocator` 는 유효하지 않다. 최소한 `css` 는 항상 수집된다.
-SC-008(후보 2개 이상 확보 90%)은 `verified` 후보 수를 세어 측정한다.
+SC-008(후보 2개 이상 확보 90%)은 **`verified` 후보만** 세어 측정한다. `ambiguous` 를 확보된 것으로
+세면 측정값이 부풀려진다 — 실측에서 픽스처 앱의 한 버튼에 대해 `text`·`css` 후보가 각각 2·3개를
+매칭했다.
 
 ---
 
