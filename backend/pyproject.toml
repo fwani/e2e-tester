@@ -40,7 +40,12 @@ pythonpath = ["src"]
 # 도메인의 `Test` 클래스(테스트 시나리오 모델)를 pytest 가 수집하지 않게 한다.
 # 함수 기반 테스트만 쓰므로 클래스 수집 패턴을 좁힌다.
 python_classes = ["*Tests"]
-filterwarnings = ["error::DeprecationWarning"]
+filterwarnings = [
+    # 우리 코드의 deprecation 은 오류로 다룬다.
+    "error::DeprecationWarning",
+    # starlette 의 TestClient 가 deprecated 된 anyio 별칭을 쓴다. 우리가 고칠 수 없다.
+    "default:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100
@@ -52,3 +57,9 @@ ignore = ["S101"]  # pytest 의 assert 사용 허용
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]  # 테스트 픽스처의 더미 값
+# S105 는 이름에 PASS/PASSPHRASE/SECRET 이 들어간 문자열 대입을 비밀번호로 본다.
+# 아래 파일들은 StrEnum 멤버 정의뿐이며(테스트 결과, 오류 코드, 명령 이름) 비밀값이 아니다.
+# 실제 비밀값을 다루는 itb/secrets/ 는 이 목록에 넣지 않는다.
+"src/itb/api/errors.py" = ["S105"]
+"src/itb/execution/state_machine.py" = ["S105"]
+"src/itb/domain/run_result.py" = ["S105"]

@@ -55,11 +55,11 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 **Purpose**: 프로젝트 초기화와 기본 구조
 
 - [ ] T011 plan.md의 Project Structure대로 `backend/src/itb/{domain,locator,recording,execution,mirror,secrets,storage,generator,authoring,llm,schema,api}/` 와 `backend/tests/{unit,contract,integration,e2e}/` 디렉터리·`__init__.py` 를 만든다
-- [ ] T012 `backend/pyproject.toml` 을 확정한다 — fastapi, uvicorn, playwright, pydantic, pyyaml, pynacl, anthropic, pytest, pytest-asyncio, import-linter
-- [ ] T013 [P] `frontend/` 를 React + Vite + TypeScript 로 초기화하고 `frontend/package.json` 에 vitest·json-schema-to-typescript 를 추가한다
-- [ ] T014 [P] `backend/pyproject.toml` 에 린터·포매터 설정을 넣고 `frontend/` 에 동등한 설정을 넣는다
-- [ ] T015 `backend/.importlinter` 에 `execution-no-llm` **forbidden 계약**을 작성한다 — `source_modules = itb.execution, itb.storage, itb.generator, itb.locator, itb.domain` / `forbidden_modules = itb.llm, itb.authoring, anthropic` (헌법 원칙 II, research R5)
-- [ ] T016 `.github/workflows/ci.yml` 을 만들고 `lint-imports` 를 **다른 검사보다 먼저** 실행하는 잡으로 넣는다. 실패 시 후속 잡을 실행하지 않고 빌드를 중단한다 (헌법 원칙 II)
+- [x] T012 `backend/pyproject.toml` 을 확정한다 — fastapi, uvicorn, playwright, pydantic, pyyaml, pynacl, anthropic, pytest, pytest-asyncio, import-linter
+- [x] T013 [P] `frontend/` 를 React + Vite + TypeScript 로 초기화하고 `frontend/package.json` 에 vitest·json-schema-to-typescript 를 추가한다
+- [x] T014 [P] `backend/pyproject.toml` 에 린터·포매터 설정을 넣고 `frontend/` 에 동등한 설정을 넣는다
+- [x] T015 `backend/.importlinter` 에 `execution-no-llm` **forbidden 계약**을 작성한다 — `source_modules = itb.execution, itb.storage, itb.generator, itb.locator, itb.domain` / `forbidden_modules = itb.llm, itb.authoring, anthropic` (헌법 원칙 II, research R5)
+- [x] T016 `.github/workflows/ci.yml` 을 만들고 `lint-imports` 를 **다른 검사보다 먼저** 실행하는 잡으로 넣는다. 실패 시 후속 잡을 실행하지 않고 빌드를 중단한다 (헌법 원칙 II)
 - [x] T017 [P] `fixtures/sample-app/` 에 검증용 대상 앱을 만든다 — 로그인 화면, 프로젝트 목록·생성·삭제(⋮ 메뉴 안 삭제 포함), 새 창으로 열리는 약관 화면. **`data-testid` 가 붙은 요소와 붙지 않은 요소를 섞는다** (SC-008 측정이 이 구성에 의존, quickstart §0)
 
 **Checkpoint**: `lint-imports` 가 빈 프로젝트에서 통과하고, 픽스처 앱이 뜬다
@@ -83,40 +83,40 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### 스키마 파이프라인 — 헌법 Cross-language schema duty
 
-- [ ] T024 `backend/src/itb/schema/export.py` — Pydantic 모델에서 `schema/step-dsl.schema.json` 을 내보낸다 (research R6) — T020 의존
-- [ ] T025 `frontend/package.json` 에 `gen:types` 스크립트를 넣고 `frontend/src/types/generated/step-dsl.d.ts` 를 생성한다. **생성물도 커밋한다** — T024 의존
-- [ ] T026 `backend/tests/contract/test_schema_drift.py` — 스키마를 새로 생성해 커밋된 파일과 바이트 단위로 비교한다. 다르면 실패 (research R6)
+- [x] T024 `backend/src/itb/schema/export.py` — Pydantic 모델에서 `schema/step-dsl.schema.json` 을 내보낸다 (research R6) — T020 의존
+- [x] T025 `frontend/package.json` 에 `gen:types` 스크립트를 넣고 `frontend/src/types/generated/step-dsl.d.ts` 를 생성한다. **생성물도 커밋한다** — T024 의존
+- [x] T026 `backend/tests/contract/test_schema_drift.py` — 스키마를 새로 생성해 커밋된 파일과 바이트 단위로 비교한다. 다르면 실패 (research R6)
 
 ### Locator 단일 지점 — 원칙 IV
 
 - [ ] T027 `backend/src/itb/locator/strategy.py` — **순수 함수 `choose_strategy(target) -> LocatorStrategy`**. 우선순위 testId → role+name → label → text → 고정속성 → CSS. 탭을 알지 못한다(그래야 Generator와 공유 가능, research R4) — T018 의존
 - [ ] T028 `backend/tests/unit/test_locator_strategy.py` — 후보 조합별 선택 결과, 우선순위 준수, 후보 없음 처리 단위 테스트 (FR-018)
-- [ ] T029 `backend/src/itb/locator/collector.py` — 후보 수집 규칙과 **기록 시점 검증** 규칙(수집한 후보가 방금 조작한 그 요소를 가리키는지 확인해 status 부여) (research R4, FR-017)
+- [x] T029 `backend/src/itb/locator/collector.py` — 후보 수집 규칙과 **기록 시점 검증** 규칙(수집한 후보가 방금 조작한 그 요소를 가리키는지 확인해 status 부여) (research R4, FR-017)
 
 ### 저장 계층
 
-- [ ] T030 [P] `backend/src/itb/storage/yaml_io.py` — 안전 로더만 사용. 검증 실패 시 **파일 경로와 문제 위치를 알려** 사용자가 직접 고칠 수 있게 한다 (contracts/step-dsl, FR-085)
-- [ ] T031 `backend/src/itb/storage/repository.py` — 프로젝트 디렉터리 레이아웃 입출력. `itb-project.yaml`, `tests/*.yaml`, `.runs/<id>/`, **`.gitignore` 자동 작성**(`secrets.local.yaml`, `.runs/`, 키 경로) (data-model §1, FR-088b·FR-088c) — T030 의존
-- [ ] T032 `backend/tests/unit/test_repository.py` — 레이아웃 생성, 경로 검증(절대 경로·경로 탐색 문자 거절), `TC-001` 자동 부여, `.gitignore` 내용 단위 테스트
+- [x] T030 [P] `backend/src/itb/storage/yaml_io.py` — 안전 로더만 사용. 검증 실패 시 **파일 경로와 문제 위치를 알려** 사용자가 직접 고칠 수 있게 한다 (contracts/step-dsl, FR-085)
+- [x] T031 `backend/src/itb/storage/repository.py` — 프로젝트 디렉터리 레이아웃 입출력. `itb-project.yaml`, `tests/*.yaml`, `.runs/<id>/`, **`.gitignore` 자동 작성**(`secrets.local.yaml`, `.runs/`, 키 경로) (data-model §1, FR-088b·FR-088c) — T030 의존
+- [x] T032 `backend/tests/unit/test_repository.py` — 레이아웃 생성, 경로 검증(절대 경로·경로 탐색 문자 거절), `TC-001` 자동 부여, `.gitignore` 내용 단위 테스트
 
 ### 비밀 값 — FR-089
 
-- [ ] T033 [P] `backend/src/itb/secrets/keys.py` — 키 쌍 생성·적재, `~/.config/itb/keys/`, `0600` 권한 설정, 선택적 암호구(argon2id + SecretBox). **사용 전 권한 확인 후 과도 개방 시 경고**(FR-089e-1), 암호구 오류를 복호화 실패와 구분(FR-089e-2)
-- [ ] T034 `backend/src/itb/secrets/store.py` — `SealedBox` 봉인·개봉, `secrets.local.yaml` 입출력, 공개키 지문 기록·불일치 감지. **봉인은 공개키만으로 가능해야 한다**(FR-089b·FR-089c) — T033 의존
-- [ ] T035 [P] `backend/src/itb/secrets/scrubber.py` — 복호화 값 집합을 받아 산출물 기록 직전 마스킹. 부분 문자열·URL 인코딩·base64·JSON 이스케이프 형태까지 처리 (FR-089d, research R7)
-- [ ] T036 `backend/src/itb/secrets/resolver.py` — 값 해석 순서: 환경 변수 → 암호문 복호화 → 비민감 변수 값 → **없으면 명확한 사유로 실패**(빈 값 진행 금지) (data-model §7, FR-089f·FR-089g) — T034 의존
-- [ ] T037 `backend/tests/unit/test_secrets.py` — 봉인·개봉 왕복, 공개키만으로 봉인, 비밀키 없음, 복호화 실패, 암호구 오류, 권한 경고, 지문 불일치, 스크러버 형태 범위 단위 테스트 (SC-010·SC-011)
+- [x] T033 [P] `backend/src/itb/secrets/keys.py` — 키 쌍 생성·적재, `~/.config/itb/keys/`, `0600` 권한 설정, 선택적 암호구(argon2id + SecretBox). **사용 전 권한 확인 후 과도 개방 시 경고**(FR-089e-1), 암호구 오류를 복호화 실패와 구분(FR-089e-2)
+- [x] T034 `backend/src/itb/secrets/store.py` — `SealedBox` 봉인·개봉, `secrets.local.yaml` 입출력, 공개키 지문 기록·불일치 감지. **봉인은 공개키만으로 가능해야 한다**(FR-089b·FR-089c) — T033 의존
+- [x] T035 [P] `backend/src/itb/secrets/scrubber.py` — 복호화 값 집합을 받아 산출물 기록 직전 마스킹. 부분 문자열·URL 인코딩·base64·JSON 이스케이프 형태까지 처리 (FR-089d, research R7)
+- [x] T036 `backend/src/itb/secrets/resolver.py` — 값 해석 순서: 환경 변수 → 암호문 복호화 → 비민감 변수 값 → **없으면 명확한 사유로 실패**(빈 값 진행 금지) (data-model §7, FR-089f·FR-089g) — T034 의존
+- [x] T037 `backend/tests/unit/test_secrets.py` — 봉인·개봉 왕복, 공개키만으로 봉인, 비밀키 없음, 복호화 실패, 암호구 오류, 권한 경고, 지문 불일치, 스크러버 형태 범위 단위 테스트 (SC-010·SC-011)
 
 ### 세션과 상태 기계 — 원칙 III의 구현체
 
-- [ ] T038 `backend/src/itb/api/app.py` — FastAPI lifespan 에서 `async_playwright().start()` / `stop()`. **로컬 인터페이스에만 바인딩**(FR-088a). `async with` 컨텍스트 매니저를 쓰지 않는다 (research R1)
-- [ ] T039 `backend/src/itb/execution/session.py` — `SessionManager` 싱글턴. 세션 ID → `Browser`+`BrowserContext`+**여러 `Page`**. `TabHandle` 목록(tab_index 부여 후 불변, **번호 재사용 금지**), active/mirrored tab 추적, 동시 탭 상한 10 (data-model §8, research R1·R2, FR-030a·FR-030g) — T038 의존
-- [ ] T040 `backend/src/itb/execution/state_machine.py` — `RunSession` 10상태 전이. **불변식 1**(PAUSED·AI_BLOCKED에서 세션 종료 금지) **2**(편집은 PAUSED에서만) **3**(편집은 정의만 변경). **정의되지 않은 명령은 거절하고 현재 상태·가능한 행동을 알린다**(FR-043a) (data-model §8)
-- [ ] T041 `backend/tests/unit/test_state_machine.py` — **10상태 × 모든 명령 전수 테스트.** 불변식 3개, 정의되지 않은 전이 거절(FR-035a·FR-043a), `LOST` 진입과 그 후 허용 행동(FR-041c), `TAKEOVER_RECORDING` 중 일시정지 허용 여부 (헌법 품질 게이트 3 필수 항목)
-- [ ] T042 `backend/src/itb/execution/runner.py` — 세션당 러너 `asyncio.Task`. **Pause = `asyncio.Event` await, Resume = set.** 브라우저에 아무 명령도 보내지 않는다 (research R1, FR-031·FR-038) — T039, T040 의존
-- [ ] T043 `backend/src/itb/api/ws/session_events.py` — WebSocket 이벤트 송신기. **서버 → 클라이언트 단방향**, `type`+`seq`. 재연결 시 재전송하지 않는다 (contracts/websocket)
-- [ ] T044 [P] `backend/src/itb/api/errors.py` — 공통 오류 응답 형태 `{error:{code,message,detail}}` 와 오류 코드 목록(`STEP_LIST_EMPTY`, `NOT_PAUSED`, `SESSION_ALREADY_ACTIVE` …) (contracts/rest-api)
-- [ ] T045 [P] `frontend/src/api/client.ts` + `frontend/src/api/ws.ts` — REST 클라이언트와 WebSocket 구독. **재연결 시 `GET /api/sessions/{sid}` 로 전체 상태를 다시 받는다** (contracts/websocket)
+- [x] T038 `backend/src/itb/api/app.py` — FastAPI lifespan 에서 `async_playwright().start()` / `stop()`. **로컬 인터페이스에만 바인딩**(FR-088a). `async with` 컨텍스트 매니저를 쓰지 않는다 (research R1)
+- [x] T039 `backend/src/itb/execution/session.py` — `SessionManager` 싱글턴. 세션 ID → `Browser`+`BrowserContext`+**여러 `Page`**. `TabHandle` 목록(tab_index 부여 후 불변, **번호 재사용 금지**), active/mirrored tab 추적, 동시 탭 상한 10 (data-model §8, research R1·R2, FR-030a·FR-030g) — T038 의존
+- [x] T040 `backend/src/itb/execution/state_machine.py` — `RunSession` 10상태 전이. **불변식 1**(PAUSED·AI_BLOCKED에서 세션 종료 금지) **2**(편집은 PAUSED에서만) **3**(편집은 정의만 변경). **정의되지 않은 명령은 거절하고 현재 상태·가능한 행동을 알린다**(FR-043a) (data-model §8)
+- [x] T041 `backend/tests/unit/test_state_machine.py` — **10상태 × 모든 명령 전수 테스트.** 불변식 3개, 정의되지 않은 전이 거절(FR-035a·FR-043a), `LOST` 진입과 그 후 허용 행동(FR-041c), `TAKEOVER_RECORDING` 중 일시정지 허용 여부 (헌법 품질 게이트 3 필수 항목)
+- [x] T042 `backend/src/itb/execution/runner.py` — 세션당 러너 `asyncio.Task`. **Pause = `asyncio.Event` await, Resume = set.** 브라우저에 아무 명령도 보내지 않는다 (research R1, FR-031·FR-038) — T039, T040 의존
+- [x] T043 `backend/src/itb/api/ws/session_events.py` — WebSocket 이벤트 송신기. **서버 → 클라이언트 단방향**, `type`+`seq`. 재연결 시 재전송하지 않는다 (contracts/websocket)
+- [x] T044 [P] `backend/src/itb/api/errors.py` — 공통 오류 응답 형태 `{error:{code,message,detail}}` 와 오류 코드 목록(`STEP_LIST_EMPTY`, `NOT_PAUSED`, `SESSION_ALREADY_ACTIVE` …) (contracts/rest-api)
+- [x] T045 [P] `frontend/src/api/client.ts` + `frontend/src/api/ws.ts` — REST 클라이언트와 WebSocket 구독. **재연결 시 `GET /api/sessions/{sid}` 로 전체 상태를 다시 받는다** (contracts/websocket)
 - [ ] T046 [P] `frontend/src/theme/` — 디자인 8화면에서 공통 시각 언어(색·타이포·간격·배지)를 추출한다. `docs/design/*.dc.html` 의 폰트·색 토큰을 따른다
 
 **Checkpoint**: 도메인 모델·Locator 단일 지점·저장·비밀·세션 상태 기계가 준비됨. `lint-imports` 통과.
@@ -138,23 +138,23 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 - [ ] T047 [P] [US1] `backend/tests/contract/test_project_api.py` — 프로젝트 생성·열기·조회 계약 (contracts/rest-api §프로젝트)
 - [ ] T048 [P] [US1] `backend/tests/contract/test_tests_api.py` — 테스트 목록·조회·이름 변경·삭제 계약, `counts` 집계 (contracts/rest-api §테스트)
 - [ ] T049 [P] [US1] `backend/tests/contract/test_dsl_roundtrip.py` — contracts/step-dsl 의 단일 탭·멀티 탭 예제 YAML 을 적재→직렬화→비교. 검증 규칙 위반 케이스 전부 거절 확인
-- [ ] T050 [P] [US1] `backend/tests/integration/test_recording.py` — 픽스처 앱 대상 녹화 통합 테스트: 4종 동작 기록, 연속 입력 병합(FR-025), 한글 입력 최종값(research R2)
-- [ ] T051 [P] [US1] `backend/tests/integration/test_multitab_record.py` — 새 탭 조작 기록, `tab` 값 부여, 탭 닫기 Step, 탭 상한 도달 (FR-030a~c·FR-030g)
+- [x] T050 [P] [US1] `backend/tests/integration/test_recording.py` — 픽스처 앱 대상 녹화 통합 테스트: 4종 동작 기록, 연속 입력 병합(FR-025), 한글 입력 최종값(research R2)
+- [x] T051 [P] [US1] `backend/tests/integration/test_multitab_record.py` — 새 탭 조작 기록, `tab` 값 부여, 탭 닫기 Step, 탭 상한 도달 (FR-030a~c·FR-030g)
 - [ ] T052 [P] [US1] `backend/tests/e2e/test_us1_manual_record.py` — 녹화 → 저장 → 목록 표시 종단 테스트
 
 ### Implementation for User Story 1
 
-- [ ] T053 [US1] `backend/src/itb/recording/injected/recorder.js` — capture 단계 `click`(`composedPath()[0]` 사용), `change`+`blur`(입력), `<select>` `change`. **`keydown`/`input` 은 쓰지 않는다**(한글 IME 회피, FR-025 자동 충족). 후보 수집 + 기록 시점 검증 수행 후 `window.__itbRecord(payload)` 호출 (research R2·R4)
-- [ ] T054 [US1] `backend/src/itb/recording/recorder.py` — `context.add_init_script()` + `context.expose_binding("__itbRecord")` **컨텍스트 단위 등록**. `source` 로 발신 페이지 → `tab_index` 변환. 페이로드 → Step 변환 (research R2, FR-024·FR-027) — T029, T039, T053 의존
-- [ ] T055 [US1] `backend/src/itb/recording/tabs.py` — `context.on("page")` 로 열린 순서 `tab_index` 부여, `page.on("close")` → `close_tab` Step, 상한 초과 시 기록 중단. **새 탭 열림은 Step으로 만들지 않는다**(FR-030b) — T039 의존
-- [ ] T056 [US1] `backend/src/itb/recording/navigation.py` — `page.on("framenavigated")`(main frame) → navigate Step. **클릭 직후 1000ms 창 안의 네비게이션은 중복 제거**(research R2)
-- [ ] T057 [US1] `backend/src/itb/recording/file_input.py` — 파일 입력을 감지해 Step을 만들되 파일 경로는 Step 편집기에서 지정하게 한다. 미지원 사유를 사용자에게 알린다 (research R2 알려진 한계)
-- [ ] T058 [US1] `backend/src/itb/recording/sensitive.py` — 비밀번호 유형 필드 자동 민감 판정, 값을 변수 참조로 치환하고 공개키로 봉인 (FR-082a) — T034 의존
-- [ ] T059 [US1] `backend/src/itb/api/routes/project.py` — `GET /api/project`, `POST /api/project/create`(디렉터리 검증 + `.gitignore` 작성), `POST /api/project/open` (FR-001·FR-008) — T031, T044 의존
-- [ ] T060 [US1] `backend/src/itb/api/routes/tests.py` — 목록(검색 `q`, `counts` 집계, 실패 요약), 조회, 이름 변경, 삭제 (FR-002~FR-007) — T031 의존
-- [ ] T061 [US1] `backend/src/itb/api/routes/sessions.py` — `POST /api/sessions`(mode=record), `GET /api/sessions/{sid}`, `POST .../stop`, `POST .../save`. 활성 세션 중복 시 `409`(FR-043), Step 0개 저장 거절(FR-029) — T039, T042 의존
-- [ ] T062 [US1] `backend/src/itb/execution/window.py` — 조작 국면에서 실제 브라우저 창·대상 탭을 앞으로 가져온다(`bring_to_front`). 창을 다시 앞으로 가져오는 수단 제공 (FR-023a·FR-030e, spec 엣지 케이스)
-- [ ] T063 [US1] `backend/src/itb/api/routes/tabs.py` — `GET /api/sessions/{sid}/tabs` (FR-030f) — T055 의존
+- [x] T053 [US1] `backend/src/itb/recording/injected/recorder.js` — capture 단계 `click`(`composedPath()[0]` 사용), `change`+`blur`(입력), `<select>` `change`. **`keydown`/`input` 은 쓰지 않는다**(한글 IME 회피, FR-025 자동 충족). 후보 수집 + 기록 시점 검증 수행 후 `window.__itbRecord(payload)` 호출 (research R2·R4)
+- [x] T054 [US1] `backend/src/itb/recording/recorder.py` — `context.add_init_script()` + `context.expose_binding("__itbRecord")` **컨텍스트 단위 등록**. `source` 로 발신 페이지 → `tab_index` 변환. 페이로드 → Step 변환 (research R2, FR-024·FR-027) — T029, T039, T053 의존
+- [x] T055 [US1] `backend/src/itb/recording/tabs.py` — `context.on("page")` 로 열린 순서 `tab_index` 부여, `page.on("close")` → `close_tab` Step, 상한 초과 시 기록 중단. **새 탭 열림은 Step으로 만들지 않는다**(FR-030b) — T039 의존
+- [x] T056 [US1] `backend/src/itb/recording/navigation.py` — `page.on("framenavigated")`(main frame) → navigate Step. **클릭 직후 1000ms 창 안의 네비게이션은 중복 제거**(research R2)
+- [x] T057 [US1] `backend/src/itb/recording/file_input.py` — 파일 입력을 감지해 Step을 만들되 파일 경로는 Step 편집기에서 지정하게 한다. 미지원 사유를 사용자에게 알린다 (research R2 알려진 한계)
+- [x] T058 [US1] `backend/src/itb/recording/sensitive.py` — 비밀번호 유형 필드 자동 민감 판정, 값을 변수 참조로 치환하고 공개키로 봉인 (FR-082a) — T034 의존
+- [x] T059 [US1] `backend/src/itb/api/routes/project.py` — `GET /api/project`, `POST /api/project/create`(디렉터리 검증 + `.gitignore` 작성), `POST /api/project/open` (FR-001·FR-008) — T031, T044 의존
+- [x] T060 [US1] `backend/src/itb/api/routes/tests.py` — 목록(검색 `q`, `counts` 집계, 실패 요약), 조회, 이름 변경, 삭제 (FR-002~FR-007) — T031 의존
+- [x] T061 [US1] `backend/src/itb/api/routes/sessions.py` — `POST /api/sessions`(mode=record), `GET /api/sessions/{sid}`, `POST .../stop`, `POST .../save`. 활성 세션 중복 시 `409`(FR-043), Step 0개 저장 거절(FR-029) — T039, T042 의존
+- [x] T062 [US1] `backend/src/itb/execution/window.py` — 조작 국면에서 실제 브라우저 창·대상 탭을 앞으로 가져온다(`bring_to_front`). 창을 다시 앞으로 가져오는 수단 제공 (FR-023a·FR-030e, spec 엣지 케이스)
+- [x] T063 [US1] `backend/src/itb/api/routes/tabs.py` — `GET /api/sessions/{sid}/tabs` (FR-030f) — T055 의존
 - [ ] T064 [P] [US1] `frontend/src/pages/TestList.tsx` — `TestList.dc.html` 이식. 상태 배지·ID·이름·Step 수·작성 배지·마지막 실행·실패 요약 인라인 표시·검색·집계 (FR-002~FR-006·FR-002a)
 - [ ] T065 [P] [US1] `frontend/src/pages/CreateTest.tsx` — `CreateTest.dc.html` 이식. 직접 녹화 / AI로 만들기 선택, 시작 URL, 브라우저 선택, **"어느 쪽으로 만들어도 같은 Step 모델로 저장된다" 문구**(FR-009)
 - [ ] T066 [P] [US1] `frontend/src/pages/ProjectSetup.tsx` — **확정 디자인에 없는 화면.** 디렉터리 선택 + 프로젝트 메타 입력. 8화면의 시각 언어를 따른다 (spec 디자인 차이 3)
@@ -163,8 +163,8 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 - [ ] T069 [US1] `frontend/src/components/TabStrip.tsx` — **확정 디자인에 없는 화면.** 미러 위 탭 표시·전환 (FR-030f, spec 디자인 차이 3)
 - [ ] T070 [US1] 녹화 이벤트 → Step 목록 반영 지연을 계측해 `backend/tests/integration/test_performance.py` 에 p95 < 200ms 검증을 추가한다 (research R8)
 
-- [ ] T157 [US1] `backend/src/itb/recording/recorder.py` 에서 민감 값 치환이 `step_added` 이벤트 발행보다 **반드시 먼저** 일어나도록 파이프라인 순서를 고정한다. 리코더가 비밀번호 평문을 포착한 뒤 변수 참조로 치환하기 전에 이벤트가 나가면 평문이 프론트에 도달한다 (FR-083, FR-089d, 헌법 보안 요건) — analyze C2
-- [ ] T158 [P] [US1] `backend/tests/unit/test_sensitive_ordering.py` — 치환 전 이벤트 발행을 깨뜨리는 회귀 테스트. 리코더 파이프라인에 평문이 이벤트 페이로드로 들어가는 경로가 없음을 확인한다 (FR-083, SC-010) — analyze C2
+- [x] T157 [US1] `backend/src/itb/recording/recorder.py` 에서 민감 값 치환이 `step_added` 이벤트 발행보다 **반드시 먼저** 일어나도록 파이프라인 순서를 고정한다. 리코더가 비밀번호 평문을 포착한 뒤 변수 참조로 치환하기 전에 이벤트가 나가면 평문이 프론트에 도달한다 (FR-083, FR-089d, 헌법 보안 요건) — analyze C2
+- [x] T158 [P] [US1] `backend/tests/unit/test_sensitive_ordering.py` — 치환 전 이벤트 발행을 깨뜨리는 회귀 테스트. 리코더 파이프라인에 평문이 이벤트 페이로드로 들어가는 경로가 없음을 확인한다 (FR-083, SC-010) — analyze C2
 
 **Checkpoint**: US1이 독립적으로 동작하고 검증 가능하다. quickstart §2·§3 절차를 통과한다
 

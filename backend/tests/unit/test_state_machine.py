@@ -320,13 +320,18 @@ def test_only_ai_states_use_llm(state: SessionState) -> None:
 
 def test_replay_path_cannot_reach_ai_states() -> None:
     """REPLAYING 에서 어떤 명령으로도 AI 상태에 도달할 수 없어야 한다."""
-    reachable = {next_state(SessionState.REPLAYING, c) for c in allowed_commands(SessionState.REPLAYING)}
+    reachable = {
+        next_state(SessionState.REPLAYING, c)
+        for c in allowed_commands(SessionState.REPLAYING)
+    }
     assert not (reachable & {SessionState.AI_RUNNING, SessionState.AI_BLOCKED})
 
 
 def test_paused_from_replay_cannot_reach_ai_states() -> None:
     """일시정지를 경유해도 AI 상태로 넘어갈 수 없다."""
-    reachable = {next_state(SessionState.PAUSED, c) for c in allowed_commands(SessionState.PAUSED)}
+    reachable = {
+        next_state(SessionState.PAUSED, c) for c in allowed_commands(SessionState.PAUSED)
+    }
     assert not (reachable & {SessionState.AI_RUNNING, SessionState.AI_BLOCKED})
 
 

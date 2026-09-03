@@ -16,6 +16,7 @@ source_modules =
     itb.storage
     itb.generator
     itb.mirror
+    itb.recording
 forbidden_modules =
     itb.llm
     itb.authoring

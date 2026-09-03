@@ -9,13 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class Outcome(StrEnum):
-    # ruff S105 는 PASS 라는 이름을 비밀번호로 오인한다. 테스트 통과 여부다.
-    PASS = "pass"  # noqa: S105
+    PASS = "pass"
     FAIL = "fail"
 
 
 class StepOutcome(StrEnum):
-    PASS = "pass"  # noqa: S105
+    PASS = "pass"
     FAIL = "fail"
     SKIPPED = "skipped"
     NOT_RUN = "not_run"
