@@ -22,6 +22,47 @@ MAX_TABS_DEFAULT = 10
 """동시에 열린 탭 상한 (FR-030g)."""
 
 
+SENSITIVE_VARIABLE_PREFIX = "SECRET_"
+"""민감 값을 옮길 변수 이름의 접두사."""
+
+
+def make_variable_name(
+    basis: str | None, prefix: str = SENSITIVE_VARIABLE_PREFIX
+) -> str | None:
+    """이름 후보에서 변수 이름을 만든다. 쓸 수 없는 근거면 None.
+
+    반드시 `[A-Z][A-Z0-9_]*` 를 지켜야 한다. **`str.isalnum()` 을 쓸 수 없다** — 한글도
+    참이므로 "비밀번호" 같은 라벨이 그대로 통과해 변수 이름 패턴을 위반하고, 저장
+    시점에야 테스트 검증이 실패한다. ASCII 영숫자만 남기며, 남는 것이 없으면 None 이다.
+
+    **실패를 None 으로 알린다.** 여기서 순번 이름으로 대체하면 호출자가 "근거에서 만든
+    이름" 과 "순번 이름" 을 구분할 수 없다 — 호출자마다 순번의 근거가 다르다.
+
+    이 규칙이 도메인에 있는 이유는 **녹화(FR-082a)와 나중 민감 지정(FR-082b)이 같은
+    이름을 만들어야** 하기 때문이다. 두 곳에서 따로 만들면 같은 필드가 경로에 따라 다른
+    변수 이름을 얻고, 정의 파일과 비밀 파일이 어긋난다.
+    """
+    if not isinstance(basis, str):
+        return None
+    slug = "".join(
+        ch if ("a" <= ch.lower() <= "z" or ch.isdigit()) else "_" for ch in basis
+    ).upper()
+    slug = "_".join(part for part in slug.split("_") if part)
+    if not slug or slug[0].isdigit():
+        return None
+    return f"{prefix}{slug}"[:60]
+
+
+def fallback_variable_name(index: int, prefix: str = SENSITIVE_VARIABLE_PREFIX) -> str:
+    """근거에서 이름을 만들 수 없을 때 쓰는 순번 이름 (한글 전용 라벨 등)."""
+    return f"{prefix}VALUE_{index}"
+
+
+def variable_reference(name: str) -> str:
+    """`{{이름}}` 참조 문자열. 형식을 한 곳에서만 만든다."""
+    return f"{{{{{name}}}}}"
+
+
 class AuthoringMode(StrEnum):
     """작성 방식. **테스트를 시작한 방식**으로 결정하며 이후 바뀌지 않는다 (FR-002a)."""
 

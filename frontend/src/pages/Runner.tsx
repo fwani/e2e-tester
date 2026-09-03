@@ -12,14 +12,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiError,
   sessions,
+  type AddAssertionBody,
+  type RepickSlot,
   type SessionView,
   type TabsResponse,
 } from "../api/client";
 import { subscribeSessionEvents, type SessionEvent } from "../api/ws";
 import { AppHeader } from "../components/AppHeader";
 import { MirrorView, type MirrorPhase } from "../components/MirrorView";
+import { StepInspector } from "../components/StepInspector";
 import { StepList } from "../components/StepList";
 import { TabStrip } from "../components/TabStrip";
+import { PausedBanner, RunnerPaused } from "./RunnerPaused";
 
 const MANIPULATION_STATES = new Set(["recording", "takeover_recording"]);
 const OBSERVATION_STATES = new Set(["replaying", "ai_running"]);
@@ -57,6 +61,11 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
   const sessionId = initial.session_id;
   const [progress, setProgress] = useState<Record<string, StepProgress>>({});
   const durations = useRef<Record<string, number>>({});
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const [inspecting, setInspecting] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  const [repickWaiting, setRepickWaiting] = useState<RepickSlot | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const resync = useCallback(async () => {
     try {
@@ -127,8 +136,16 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
           case "tab_limit_reached":
             setError(event.message ?? "탭 상한에 도달했습니다.");
             break;
+          case "edit_warning":
+            void resync();
+            break;
+          case "step_updated":
+            // 다시 집기 결과가 도착했다 (FR-020). 대기 표시를 내린다.
+            setRepickWaiting(null);
+            void resync();
+            break;
           default:
-            // step_added·step_updated·step_removed·state_changed 등은 전체 상태를 다시 받는다.
+            // step_added·step_removed·state_changed 등은 전체 상태를 다시 받는다.
             // 로컬 도구이므로 이것이 싸고, 부분 갱신 버그가 생기지 않는다.
             void resync();
         }
@@ -144,6 +161,21 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
       setView(await fn());
     } catch (exc) {
       setError(exc instanceof ApiError ? exc.message : String(exc));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** 편집 요청 공통 처리. 응답의 `steps`·`edit_warnings` 로 화면을 갱신한다 (FR-040b). */
+  const edit = async (fn: () => Promise<{ steps: unknown; edit_warnings: string[] }>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      await resync();
+    } catch (exc) {
+      // 실패 사유를 그대로 보여 준다 — 대상을 찾지 못한 것도 여기로 온다 (FR-081).
+      setNotice(exc instanceof ApiError ? exc.message : String(exc));
     } finally {
       setBusy(false);
     }
@@ -239,20 +271,30 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
         </div>
       )}
 
-      {view.edit_warnings.map((w) => (
-        <div
-          key={w}
-          style={{ padding: "8px 16px", background: "var(--warn-tint)", borderTop: "1px solid var(--warn)" }}
-        >
-          ⚠ {w}
-        </div>
-      ))}
+      {isPaused && (
+        <PausedBanner
+          currentStepIndex={view.current_step_index}
+          totalSteps={view.steps.length}
+        />
+      )}
 
       {view.recorder_warnings.map((w) => (
         <div key={w} style={{ padding: "8px 16px", background: "var(--surface-soft)" }} className="muted">
           {w}
         </div>
       ))}
+
+      {notice !== null && (
+        <div
+          role="status"
+          style={{ padding: "8px 16px", background: "var(--warn-tint)", borderTop: "1px solid var(--warn)" }}
+        >
+          {notice}
+          <button className="ghost" onClick={() => setNotice(null)}>
+            닫기
+          </button>
+        </div>
+      )}
 
       {notes.map((n) => (
         <div key={n} style={{ padding: "8px 16px", background: "var(--surface-soft)" }} className="muted">
@@ -314,6 +356,8 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
               steps={view.steps}
               currentIndex={currentIndex}
               runningIndex={runningIndex}
+              selectedStepId={selectedStepId}
+              onSelect={(stepId) => setSelectedStepId(stepId)}
               outcomes={Object.fromEntries(
                 Object.entries(progress).flatMap(([id, p]) =>
                   p.outcome !== undefined ? [[id, p.outcome]] : [],
@@ -335,6 +379,96 @@ export function Runner({ initial, onFinished, onShowResult }: RunnerProps) {
               }
             />
           </div>
+
+          {isPaused && (
+            <RunnerPaused
+              currentStepIndex={view.current_step_index}
+              totalSteps={view.steps.length}
+              editWarnings={view.edit_warnings}
+              busy={busy}
+              tab={mirrorTab}
+              recording={false}
+              selectedStepId={selectedStepId}
+              selectedStepLabel={
+                view.steps.find((s) => s.id === selectedStepId)?.label ?? null
+              }
+              selectedStepIndex={
+                selectedStepId === null
+                  ? null
+                  : view.steps.findIndex((s) => s.id === selectedStepId)
+              }
+              onRecordActionsStart={() =>
+                void act(() => sessions.recordActionsStart(sessionId))
+              }
+              onRecordActionsStop={() =>
+                void act(() => sessions.recordActionsStop(sessionId))
+              }
+              onAddAssertion={(body: AddAssertionBody) =>
+                void edit(() => sessions.addAssertion(sessionId, body))
+              }
+              onEditStep={(stepId) => {
+                setSelectedStepId(stepId);
+                setInspecting(true);
+              }}
+              onReorder={() => setReordering((v) => !v)}
+              onRunFrom={(stepIndex) =>
+                void act(() => sessions.runFrom(sessionId, stepIndex))
+              }
+              onDeleteStep={(stepId) =>
+                void edit(() => sessions.deleteStep(sessionId, stepId))
+              }
+              naturalLanguageNotice={notice}
+              onDismissWarnings={() => setNotice(null)}
+            />
+          )}
+
+          {isPaused && reordering && (
+            <ReorderPanel
+              steps={view.steps.map((s) => ({ id: s.id, label: s.label }))}
+              busy={busy}
+              onApply={(order) => {
+                void edit(() => sessions.reorderSteps(sessionId, order));
+                setReordering(false);
+              }}
+              onCancel={() => setReordering(false)}
+            />
+          )}
+
+          {isPaused && inspecting && selectedStepId !== null && (() => {
+            const index = view.steps.findIndex((s) => s.id === selectedStepId);
+            const step = view.steps[index];
+            if (index < 0 || step === undefined) return null;
+            return (
+              <div style={{ padding: 12, borderTop: "1px solid var(--border)" }}>
+                <StepInspector
+                  step={step}
+                  index={index}
+                  busy={busy}
+                  repickWaiting={repickWaiting}
+                  onClose={() => setInspecting(false)}
+                  onSave={(patch) =>
+                    void edit(() =>
+                      sessions.patchStep(sessionId, selectedStepId, patch),
+                    )
+                  }
+                  onRepick={(slot) => {
+                    setRepickWaiting(slot);
+                    void sessions
+                      .repick(sessionId, selectedStepId, { slot })
+                      .then((resp) => {
+                        setNotice(resp.message);
+                        if (!resp.waiting) setRepickWaiting(null);
+                        return resync();
+                      })
+                      .catch((exc: unknown) => {
+                        setRepickWaiting(null);
+                        setNotice(exc instanceof ApiError ? exc.message : String(exc));
+                      });
+                  }}
+                />
+              </div>
+            );
+          })()}
 
           <div style={{ padding: 12, borderTop: "1px solid var(--border)" }}>
             <label htmlFor="save-name">테스트 이름</label>
@@ -385,4 +519,68 @@ function StateBadge({ state, label }: { state: string; label: string }) {
             ? "ai"
             : "";
   return <span className={`badge ${tone}`}>{label}</span>;
+}
+
+
+/**
+ * 순서 변경 패널 (FR-035).
+ *
+ * 드래그 앤 드롭을 쓰지 않는다. 목록이 200개까지 갈 수 있고(research R8) 드래그는 긴
+ * 목록에서 정확히 놓기 어렵다. 위·아래 이동 버튼이 느리지만 틀리지 않는다.
+ */
+function ReorderPanel({
+  steps,
+  busy,
+  onApply,
+  onCancel,
+}: {
+  steps: { id: string; label: string }[];
+  busy: boolean;
+  onApply: (order: string[]) => void;
+  onCancel: () => void;
+}) {
+  const [order, setOrder] = useState(steps.map((s) => s.id));
+  const labels = new Map(steps.map((s) => [s.id, s.label]));
+
+  const move = (index: number, delta: number) => {
+    const next = [...order];
+    const target = index + delta;
+    const a = next[index];
+    const b = next[target];
+    if (a === undefined || b === undefined) return;
+    next[index] = b;
+    next[target] = a;
+    setOrder(next);
+  };
+
+  return (
+    <div style={{ padding: 12, borderTop: "1px solid var(--border)" }}>
+      <strong style={{ fontSize: 13 }}>순서 변경</strong>
+      <ol style={{ paddingLeft: 20, margin: "8px 0" }}>
+        {order.map((id, i) => (
+          <li key={id} className="row" style={{ gap: 6, alignItems: "center" }}>
+            <span style={{ flex: 1 }}>{labels.get(id) ?? id}</span>
+            <button className="ghost" disabled={i === 0} onClick={() => move(i, -1)}>
+              ↑
+            </button>
+            <button
+              className="ghost"
+              disabled={i === order.length - 1}
+              onClick={() => move(i, 1)}
+            >
+              ↓
+            </button>
+          </li>
+        ))}
+      </ol>
+      <div className="row" style={{ gap: 8 }}>
+        <button disabled={busy} onClick={() => onApply(order)}>
+          적용
+        </button>
+        <button className="secondary" disabled={busy} onClick={onCancel}>
+          취소
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -26,6 +26,7 @@ from itb.domain.run_result import (
     StepOutcome,
     StepResult,
 )
+from itb.domain.step import Step
 from itb.domain.test_case import Test
 from itb.execution.artifacts import ArtifactCollector, ArtifactPaths
 from itb.execution.session import BrowserSession
@@ -66,17 +67,20 @@ class RunnerTask:
         self._session = session
         self._run_step = step_runner
         self._total = total_steps
-        self._index = start_index
         self._task: asyncio.Task[None] | None = None
         self._finished = asyncio.Event()
+        self._boundary = asyncio.Event()
         self._on_finished = on_finished
+        # **실행 위치는 세션이 소유한다.** 여기에 사본을 두면 편집이 한쪽을 고치는 동안
+        # 러너가 다른 쪽을 올려, 같은 Step 이 두 번 실행된다 (T093 이 잡은 결함).
+        session.current_step_index = max(0, min(start_index, total_steps))
 
     # ─── 진행 상태 ─────────────────────────────────────────────────────────
 
     @property
     def current_index(self) -> int:
         """다음에 실행할 Step 위치. 편집 경고 판정의 기준이다 (FR-040b)."""
-        return self._index
+        return self._session.current_step_index
 
     @property
     def total_steps(self) -> int:
@@ -86,13 +90,55 @@ class RunnerTask:
     def running(self) -> bool:
         return self._task is not None and not self._task.done()
 
-    def retarget(self, start_index: int, total_steps: int) -> None:
-        """편집 후 실행 위치를 다시 잡는다.
+    @property
+    def at_boundary(self) -> bool:
+        """Step 하나가 끝나고 다음 Step 을 시작하지 않은 상태인가.
 
-        Step 이 삽입·삭제되면 인덱스가 밀린다. 브라우저는 건드리지 않는다 (FR-040a).
+        편집은 이 지점에서만 안전하다. Step 이 도는 중에 목록을 고치면 방금 실행한
+        Step 이 어느 위치였는지에 대한 판단이 편집과 엇갈린다.
         """
-        self._index = max(0, min(start_index, total_steps))
+        return self._boundary.is_set() or self._finished.is_set()
+
+    async def wait_for_boundary(self, timeout_s: float) -> bool:
+        """Step 경계에 도달할 때까지 기다린다. 도달했으면 True.
+
+        일시정지 요청이 Step 중간에 도착하면 그 Step 은 끝까지 돈다 — 중간에 끊으면
+        브라우저가 반쯤 조작된 상태로 남고, 그것은 "화면 상태를 그대로 유지한다"(FR-032)
+        와 다른 결과다. 그래서 끊지 않고 **끝나기를 기다린다.**
+
+        기다림에 상한을 두는 이유는 Step 하나가 최대 60초까지 걸릴 수 있기 때문이다.
+        상한을 넘기면 False 를 돌려주고, 호출자가 그 사실을 사용자에게 알린다 —
+        멈춘 것처럼 보여 주고 실제로는 아직 도는 상태를 만들지 않는다.
+        """
+        if self.at_boundary:
+            return True
+        tasks = [
+            asyncio.create_task(self._boundary.wait()),
+            asyncio.create_task(self._finished.wait()),
+        ]
+        try:
+            done, pending = await asyncio.wait(
+                tasks, timeout=timeout_s, return_when=asyncio.FIRST_COMPLETED
+            )
+        finally:
+            for task in tasks:
+                task.cancel()
+            for task in tasks:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+        return bool(done)
+
+    def retarget(self, total_steps: int) -> None:
+        """편집 후 총 Step 수를 다시 잡는다.
+
+        **위치는 건드리지 않는다.** 위치는 편집 연산(`step_edits`)이 이미 옮겼고, 세션이
+        그것을 소유한다. 여기서 다시 쓰면 두 판단이 겹친다. 브라우저는 어느 쪽도 건드리지
+        않는다 (FR-040a).
+        """
         self._total = total_steps
+        self._session.current_step_index = max(
+            0, min(self._session.current_step_index, total_steps)
+        )
 
     # ─── 실행 ───────────────────────────────────────────────────────────────
 
@@ -101,6 +147,7 @@ class RunnerTask:
             msg = "이미 실행 중입니다."
             raise RuntimeError(msg)
         self._finished.clear()
+        self._boundary.clear()
         self._session.mark_running()
         self._task = asyncio.create_task(self._loop())
 
@@ -143,22 +190,30 @@ class RunnerTask:
             await self._settle(passed)
         finally:
             self._finished.set()
+            self._boundary.set()
 
     async def _advance(self) -> bool:
         """Step 을 순차로 실행한다. 전체 통과 여부를 돌려준다.
 
         **종료 상태로 옮기지 않는다.** 그 일은 결과 기록이 끝난 뒤 `_settle` 이 한다.
         """
-        while self._index < self._total:
+        while True:
             # 일시정지 지점 — 브라우저에 아무 명령도 보내지 않는다.
             if self._session.is_paused:
+                # 여기가 Step 경계다. 편집은 이 상태에서만 안전하다.
+                self._boundary.set()
                 await self._session.wait_until_resumed()
-                # 재개 시점에 편집으로 총 개수가 바뀌었을 수 있다.
-                if self._index >= self._total:
-                    break
+                self._boundary.clear()
 
-            should_continue = await self._run_step(self._session, self._index)
-            self._index += 1
+            index = self._session.current_step_index
+            if index >= self._total:
+                break
+
+            should_continue = await self._run_step(self._session, index)
+            # **상대 전진.** 실행 중에 편집이 들어와 위치가 밀렸어도 "방금 실행한 Step
+            # 다음" 으로 간다. 절대값을 다시 쓰면 밀린 편집이 되돌려져 같은 Step 이 두 번
+            # 돈다 (T093 이 잡은 결함).
+            self._session.current_step_index += 1
             if not should_continue:
                 return False
         return True
@@ -243,14 +298,52 @@ class ReplayEngine:
         self._failure_tab = 0
         self.skip_before(start_index)
 
+    def rebase(self, steps: list[Step]) -> None:
+        """편집된 Step 목록을 실행 대상으로 삼는다 (FR-035·FR-038, T101).
+
+        **이미 실행된 Step 의 결과를 보존한다.** 일시정지 중 편집한 뒤 이어서 실행하면
+        앞선 Step 들은 다시 돌지 않으므로(원칙 III), 그 결과를 버리면 최종 결과에서
+        통과 수가 0 으로 떨어지고 "무엇이 돌았는지" 를 알 수 없게 된다.
+
+        보존 기준은 **Step id** 다. 순서가 바뀌어도 같은 Step 의 결과는 따라간다.
+        새로 삽입된 Step 은 `not_run` 으로 시작한다 — 아직 돌지 않았다는 사실 그대로다.
+
+        `test` 를 갈아 끼우는 이유는 실행 대상이 **세션의 작업 중 목록** 이어야 하기
+        때문이다. 디스크의 정의를 계속 보면 편집이 실행에 반영되지 않아, 사용자는 고친
+        테스트가 아니라 고치기 전 테스트가 이어서 도는 것을 본다.
+        """
+        previous = {r.step_id: r for r in self.results}
+        self.test = self.test.model_copy(update={"steps": list(steps)})
+        rebuilt: list[StepResult] = []
+        for index, step in enumerate(self.test.steps):
+            old = previous.get(step.id)
+            if old is None:
+                rebuilt.append(
+                    StepResult(
+                        step_id=step.id,
+                        index=index,
+                        label=step.label,
+                        outcome=StepOutcome.NOT_RUN,
+                        tab=step.tab,
+                    )
+                )
+                continue
+            rebuilt.append(old.model_copy(update={"index": index, "label": step.label}))
+        self.results = rebuilt
+
     def skip_before(self, start_index: int) -> None:
-        """`start_index` 앞의 Step 을 건너뛴 것으로 표시한다 (FR-055).
+        """`start_index` 앞의 **아직 돌지 않은** Step 을 건너뛴 것으로 표시한다 (FR-055).
 
         "실패한 Step부터 실행" 은 앞선 Step 을 **실행하지 않는다**. 그것을 `pass` 로 적으면
         통과 수가 부풀고, `not_run` 으로 적으면 왜 안 돌았는지 알 수 없다.
+
+        **이미 결과가 있는 Step 은 건드리지 않는다.** 일시정지 후 이어서 실행할 때도 이
+        함수를 지나는데, 그때 앞선 Step 들은 이 실행에서 실제로 통과한 것이다. 덮어쓰면
+        같은 실행의 통과 기록이 사라진다.
         """
         for result in self.results[: min(start_index, len(self.results))]:
-            result.outcome = StepOutcome.SKIPPED
+            if result.outcome is StepOutcome.NOT_RUN:
+                result.outcome = StepOutcome.SKIPPED
 
     # ─── Step 하나 ─────────────────────────────────────────────────────────
 

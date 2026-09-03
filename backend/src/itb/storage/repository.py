@@ -120,6 +120,16 @@ class ProjectPaths:
             raise ProjectError(msg)
         return self.runs_dir / test_id
 
+    @property
+    def draft_run_dir(self) -> pathlib.Path:
+        """저장 전 초안 세션의 산출물 위치.
+
+        아직 테스트 ID 가 없는 세션도 실패 시 스크린샷·로그를 남겨야 진단할 수 있다
+        (FR-052·FR-053). 테스트 ID 를 가짜로 부여해 `.runs/TC-000/` 을 만들면 목록에
+        없는 테스트의 결과가 디스크에 생겨 사용자가 그것을 무엇으로 읽을지 알 수 없다.
+        """
+        return self.runs_dir / "_draft"
+
 
 class ProjectRepository:
     """열린 프로젝트 하나에 대한 파일 입출력."""

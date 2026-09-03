@@ -90,7 +90,7 @@ next_test_number: 5
 | 필드 | 타입 | 규칙 |
 |------|------|------|
 | `id` | str | 테스트 내 유일. `step-\d{2,}` |
-| `type` | enum | `click` \| `fill` \| `select` \| `navigate` \| `assertion` \| `close_tab` (FR-013) |
+| `type` | enum | `click` \| `fill` \| `select` \| `navigate` \| `assertion` \| `close_tab` \| `hover` \| `drag` (FR-013, FR-023c) |
 | `label` | str | 사람이 읽는 표시 이름. 목록·결과 화면에 나온다 |
 | `author` | enum | `human` \| `ai` (FR-014, FR-075) |
 | `tab` | int | **탭 참조.** 열린 순서. 최초 탭 = 0 (FR-030a) |
@@ -107,6 +107,12 @@ next_test_number: 5
 | `navigate` | `url: str` |
 | `assertion` | `assertion: Assertion` |
 | `close_tab` | 없음 — `tab` 필드가 대상을 가리킨다 (FR-030c) |
+| `hover` | `target: TargetLocator` (FR-023c) |
+| `drag` | `target: TargetLocator`(끄는 대상), `drop_target: TargetLocator`(놓는 위치) — **둘 다 필수** (FR-023c) |
+
+`drag` 만 대상 요소를 둘 가진다. 한쪽만 저장하면 요소가 어디로 떨어질지 정의에 없고, 재실행에서
+원위치로 돌아간 결과가 통과로 보일 수 있다 — 실패보다 나쁘다. 스키마가 `drop_target` 을 필수로
+두어 절반짜리 정의가 파일에 들어가지 않게 한다 (contracts/step-dsl.md §hover 와 drag).
 
 ### 탭 해석 규칙 (FR-030a~e)
 

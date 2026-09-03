@@ -109,7 +109,7 @@ Step 대기 시간 기본 5000 ms.
 
 | 게이트 | 판정 | 설계상 강제 수단 |
 |--------|------|-----------------|
-| **I. Unified Step Model** | PASS | 판별 유니온 `Step` 하나. `author` 는 부가 정보로 실행에 미영향(data-model §4). WebSocket `step_added` 이벤트가 사람·AI·자연어 경로에서 **동일**하므로 UI 계층에도 분기가 없다(contracts/websocket.md). 에이전트 도구 표면이 Step 종류와 1:1이라 컴파일 실패 경우가 원리적으로 없다(R5) |
+| **I. Unified Step Model** | PASS | 판별 유니온 `Step` 하나. `author` 는 부가 정보로 실행에 미영향(data-model §4). WebSocket `step_added` 이벤트가 사람·AI·자연어 경로에서 **동일**하므로 UI 계층에도 분기가 없다(contracts/websocket.md). 에이전트 도구 표면이 Step 종류와 1:1이라 컴파일 실패 경우가 원리적으로 없다(R5). **Step 종류가 8종이 된 뒤(T161) 도구 표면에 `hover`·`drag` 를 더해 1:1 을 회복했다(T163 결정, 2026-09-03)** — 이 대응이 깨지면 T113 컴파일러의 근거가 무너지므로 `tests/unit/test_agent_tools.py` 가 대응을 테스트로 고정한다 |
 | **II. Deterministic Replay** | PASS | `import-linter` `forbidden` 계약으로 `itb.execution`→`itb.llm`/`anthropic` 차단, CI 빌드 실패. 동적 검증으로 재실행 중 클라이언트 생성 스파이 0건 확인. `itb.execution` 은 `ai_instruction` 을 읽지 않는다 |
 | **III. Stateful Interactive Runner** | PASS | 장수명 `BrowserContext` + `asyncio.Event`. 상태 기계 불변식 1(PAUSED·AI_BLOCKED에서 세션 종료 금지)·2(편집은 PAUSED에서만)·3(편집은 정의만 변경)을 data-model §8에 명문화하고 단위 테스트 대상으로 지정 |
 | **IV. Locator Resilience** | PASS | 순수 함수 `choose_strategy` 를 Runner·Generator가 공유(R4). 기록 시점 후보 검증으로 `Candidate.status` 가 실제 데이터가 되고 SC-008을 기록 시점에 측정 가능 |

@@ -17,11 +17,12 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from itb.api.errors import ErrorCode, bad_request, conflict, not_found
 from itb.api.state import AppState, get_state
 from itb.domain.step import Author, Step
-from itb.domain.test_case import AuthoringMode, Test
+from itb.domain.test_case import DSL_VERSION, AuthoringMode, BrowserKind, Test
 from itb.execution.artifacts import ArtifactCollector
 from itb.execution.runner import ReplayEngine, RunnerTask
 from itb.execution.session import BrowserSession, SessionError
 from itb.execution.session_loss import SessionLossWatcher
+from itb.execution.step_edits import allocate_step_id
 from itb.execution.state_machine import (
     TERMINAL_STATES,
     Command,
@@ -32,6 +33,7 @@ from itb.execution.state_machine import (
 )
 from itb.execution.step_executor import StepExecutor
 from itb.mirror.tab_switch import MirrorController
+from itb.recording.inline_record import InlineRecording
 from itb.recording.recorder import Recorder
 from itb.secrets.keys import KeyMissingError, KeyStoreError, load_private, load_public
 from itb.secrets.resolver import VariableResolver
@@ -43,6 +45,13 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 State = Annotated[AppState, Depends(get_state)]
 
 STEP_ADAPTER = TypeAdapter(Step)
+
+PAUSE_SETTLE_TIMEOUT_S = 10.0
+"""일시정지가 Step 경계에 도달하기를 기다리는 상한.
+
+Step 기본 대기 시간이 5000ms 이므로(research R8) 보통 그 안에 끝난다. 상한을 Step
+최대치(60초)로 잡으면 사용자는 멈추기를 눌러 놓고 1분을 기다린다.
+"""
 
 
 # ─── 세션 작업 상태 (메모리 전용) ───────────────────────────────────────────
@@ -70,6 +79,28 @@ class SessionWork:
     loss_watcher: SessionLossWatcher | None = None
     engine: ReplayEngine | None = None
     runner: RunnerTask | None = None
+
+    # ─── 일시정지 중 편집 (US3) ────────────────────────────────────────────
+    inline: InlineRecording | None = None
+    """일시정지 중 직접 동작 추가 (FR-036)."""
+
+    saved_snapshot: list[Step] = field(default_factory=list)
+    """마지막 저장 시점의 Step 목록.
+
+    중지 요청에 "저장하지 않은 편집이 있다" 를 실어 보내기 위한 것이다 (FR-042).
+    개수만 세면 삭제와 삽입이 겹쳐 개수가 같은 경우를 놓친다.
+    """
+
+    @property
+    def has_unsaved_changes(self) -> bool:
+        """저장하지 않은 편집이 있는가 (FR-042).
+
+        중지는 세션을 끝내는 조작이므로, 사용자가 저장 여부를 결정할 수 있어야 한다.
+        서버가 대신 저장하지 않는다 — 저장은 이름을 요구하는 별개의 명령이다.
+        """
+        return [s.id for s in self.steps] != [s.id for s in self.saved_snapshot] or any(
+            a != b for a, b in zip(self.steps, self.saved_snapshot, strict=False)
+        )
 
     @property
     def current_step_index(self) -> int:
@@ -146,6 +177,8 @@ class SessionView(BaseModel):
     edit_warnings: list[str]
     recorder_warnings: list[str]
     allowed_commands: list[str]
+    has_unsaved_changes: bool = False
+    """저장하지 않은 편집이 있는가. 중지 확인 대화상자의 근거다 (FR-042)."""
 
 
 class SaveRequest(BaseModel):
@@ -176,6 +209,7 @@ def view_of(w: SessionWork) -> SessionView:
         edit_warnings=list(w.session.edit_warnings),
         recorder_warnings=list(w.recorder.warnings),
         allowed_commands=[c.value for c in allowed_commands(w.session.state)],
+        has_unsaved_changes=w.has_unsaved_changes,
     )
 
 
@@ -253,6 +287,11 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     if existing_test is not None:
         work.steps = list(existing_test.steps)
         work.recorder.seed_step_seq(len(existing_test.steps))
+        work.saved_snapshot = list(existing_test.steps)
+    work.inline = InlineRecording(session=session, recorder=work.recorder)
+    # Step id 를 목록 기준으로 할당한다 — 리코더가 매긴 번호와 편집으로 추가한 번호가
+    # 충돌하면 저장 시점에 `Test` 검증이 거절한다 (실제로 US3 종단 테스트가 잡았다).
+    work.recorder.id_allocator = lambda: allocate_step_id(work.steps)
     _WORK[session.session_id] = work
 
     await work.recorder.install()
@@ -282,7 +321,9 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
 # ─── 재실행 조립 (US2) ─────────────────────────────────────────────────────
 
 
-def _build_engine(work: SessionWork, state: AppState, test: Test) -> ReplayEngine:
+def _build_engine(
+    work: SessionWork, state: AppState, test: Test, draft: bool = False
+) -> ReplayEngine:
     """재실행 엔진을 조립한다. FR-044·FR-045.
 
     **여기서 만드는 것 중 어느 것도 언어모델을 알지 못한다.** 실행에 필요한 전부가 저장된
@@ -306,22 +347,67 @@ def _build_engine(work: SessionWork, state: AppState, test: Test) -> ReplayEngin
     collector = ArtifactCollector(work.session.context)
     collector.attach()
 
+    # 저장 전 초안은 결과 파일을 남기지 않는다 — 목록에 없는 테스트의 결과가 디스크에
+    # 생기면 사용자가 그것을 무엇으로 읽을지 알 수 없다. 실패 스크린샷·로그는 `_draft/`
+    # 에 남겨 진단은 가능하게 한다 (FR-052·FR-053).
     engine = ReplayEngine(
         session=work.session,
         test=test,
         executor=StepExecutor(work.session, resolver),
         resolver=resolver,
         collector=collector,
-        run_dir=repo.paths.run_dir(test.id),
+        run_dir=repo.paths.draft_run_dir if draft else repo.paths.run_dir(test.id),
         project_root=repo.paths.root,
-        write_result=repo.write_result,
+        write_result=(lambda _result: None) if draft else repo.write_result,
         browser_label=f"Playwright · {test.browser.value.capitalize()}",
     )
     work.engine = engine
     return engine
 
 
-async def _start_runner(work: SessionWork, start_index: int) -> None:
+DRAFT_TEST_ID = "TC-000"
+"""저장 전 초안 세션이 쓰는 임시 테스트 ID.
+
+`allocate_test_id` 는 1 부터 부여하므로 이 ID 는 실제 테스트와 충돌하지 않는다.
+초안은 결과 파일을 쓰지 않으므로 이 ID 로 디스크에 남는 것도 없다.
+"""
+
+
+def _draft_test(work: SessionWork) -> Test:
+    """세션의 작업 중 Step 목록을 실행 가능한 정의로 감싼다.
+
+    저장하지 않은 세션에서도 "이어서 실행"(FR-038)·"이 Step부터 실행"(FR-039)이 동작해야
+    한다. 실행 엔진은 `Test` 를 요구하므로 초안을 그 형태로 만든다 — **디스크에 쓰지
+    않는다.** 저장은 이름을 요구하는 별개의 명령이다 (FR-028).
+    """
+    return Test(
+        id=work.saved_test_id or DRAFT_TEST_ID,
+        name="(저장 전 초안)",
+        authoring_mode=work.authoring_mode,
+        start_url=work.start_url,
+        variables=_variables_for(work),  # type: ignore[arg-type]
+        steps=work.steps,
+        ai_instruction=work.ai_instruction,
+    )
+
+
+def _ensure_engine(work: SessionWork, state: AppState) -> ReplayEngine | None:
+    """실행 엔진을 확보한다. Step 이 없으면 만들지 않는다.
+
+    녹화로 시작한 세션에는 엔진이 없다 — 녹화는 사용자가 실제 창에서 하는 것이고 제품이
+    Step 을 돌리는 것이 아니기 때문이다. 그 세션에서 "계속하기" 를 누르면 그때 엔진이
+    필요해진다.
+    """
+    if work.engine is not None:
+        return work.engine
+    if not work.steps:
+        return None
+    return _build_engine(work, state, _draft_test(work), draft=work.saved_test_id is None)
+
+
+async def _start_runner(
+    work: SessionWork, start_index: int, reset: bool = True
+) -> None:
     """러너 태스크를 (다시) 띄운다.
 
     이미 돌고 있으면 **먼저 취소를 끝낸 뒤** 새로 시작한다. 취소를 기다리지 않으면 앞선
@@ -338,18 +424,28 @@ async def _start_runner(work: SessionWork, start_index: int) -> None:
     if work.runner is not None:
         await work.runner.cancel()
 
-    engine.reset(start_index)
+    if reset:
+        # "실패한 Step부터 실행" 은 **새 실행**이다. 앞선 실행의 기록을 남기면 통과한
+        # 실행이 실패로 보인다 (FR-055).
+        engine.reset(start_index)
+    else:
+        # 일시정지 후 이어서 실행이다. 이미 실행된 Step 의 결과를 보존한다 (원칙 III).
+        engine.rebase(work.steps)
     work.current_step_index = start_index
 
     async def run_one(session: BrowserSession, index: int) -> bool:
+        """Step 하나. **실행 위치를 여기서 쓰지 않는다** — 러너가 소유한다.
+
+        여기서 `current_step_index` 를 절대값으로 쓰면, 일시정지 중 편집이 옮긴 위치를
+        되돌려 같은 Step 이 두 번 실행된다 (T093 이 잡은 결함).
+        """
+        if index >= len(engine.test.steps):  # 편집으로 목록이 줄었다
+            return True
         step = engine.test.steps[index]
-        work.current_step_index = index
         if work.mirror is not None:
             # 실행 중에는 현재 Step 대상 탭을 따라간다 (FR-030f).
             await work.mirror.follow(step.tab)
-        outcome = await engine.run_step(session, index)
-        work.current_step_index = index + 1
-        return outcome
+        return await engine.run_step(session, index)
 
     runner = RunnerTask(
         session=work.session,
@@ -411,6 +507,14 @@ async def _accept_step(session_id: str, step: Step, index: int) -> None:
         w.steps.insert(index, step)
         at = index
 
+    # **리코더가 만든 Step 은 이미 수행된 동작이다.** 그래서 실행 위치를 그 뒤로 옮긴다 —
+    # 옮기지 않으면 "계속하기" 가 사용자가 방금 손으로 한 동작을 다시 실행한다. 로그인이
+    # 재실행되지 않아야 한다는 SC-007 이 정확히 이 지점에 걸려 있다.
+    #
+    # REST 로 삽입한 Step 은 반대다. 그것은 아직 수행되지 않은 **정의**이므로 실행 위치가
+    # 그것을 가리켜야 한다 (`step_edits.insert_step`).
+    w.current_step_index = max(w.current_step_index, at + 1)
+
     await w.session.emit(
         "step_added", step=step.model_dump(mode="json"), at_index=at
     )
@@ -446,25 +550,63 @@ def _apply(w: SessionWork, command: Command) -> None:
 
 @router.post("/{session_id}/pause")
 async def pause(session_id: str) -> SessionView:
+    """FR-031 — 언제든 멈춘다.
+
+    **브라우저에 아무 명령도 보내지 않는다.** 러너 태스크가 `asyncio.Event` 를 await 하게
+    만드는 것이 전부이며, 그래서 인증 상태·화면 위치·입력 내용이 그대로 남는다 (FR-032).
+    """
     w = work_of(session_id)
     _apply(w, Command.PAUSE)
     w.recorder.stop()
     await w.session.apply(Command.PAUSE)
+    if w.runner is not None and w.runner.running:
+        settled = await w.runner.wait_for_boundary(PAUSE_SETTLE_TIMEOUT_S)
+        if not settled:
+            # 멈춘 것처럼 보여 주고 실제로는 아직 도는 상태를 만들지 않는다 (FR-087).
+            w.session.add_edit_warning(
+                f"Step 하나가 {PAUSE_SETTLE_TIMEOUT_S:.0f}초 안에 끝나지 않아 아직 "
+                "실행 중입니다. 그 Step 이 끝나면 멈춥니다 — 지금 편집한 내용은 끝난 "
+                "뒤의 목록에 적용됩니다."
+            )
+            await w.session.publish_edit_warnings()
     return view_of(w)
 
 
 @router.post("/{session_id}/resume")
-async def resume(session_id: str) -> SessionView:
-    """FR-038 — 브라우저를 재시작하지 않고 현재 상태에서 이어서 실행한다."""
+async def resume(session_id: str, state: State) -> SessionView:
+    """FR-038·FR-040c — 브라우저를 재시작하지 않고 **현재 상태에서** 이어서 실행한다.
+
+    이어서 실행할 대상은 **편집된 목록**이다. 디스크의 정의를 계속 보면 사용자가 고친
+    테스트가 아니라 고치기 전 테스트가 이어서 돈다 (`ReplayEngine.rebase`).
+
+    러너가 이미 돌고 있으면(일시정지로 await 중) 새로 띄우지 않는다. 새로 띄우면 지금
+    실행 중이던 Step 이 한 번 더 돈다.
+    """
     w = work_of(session_id)
     _apply(w, Command.RESUME)
+    if w.inline is not None:
+        w.inline.stop()
+    engine = _ensure_engine(w, state)
+    if engine is not None:
+        # **편집된 목록을 실행 대상으로 삼는다.** 디스크의 정의를 계속 보면 사용자가 고친
+        # 테스트가 아니라 고치기 전 테스트가 이어서 돈다.
+        engine.rebase(w.steps)
+    running = w.runner is not None and w.runner.running
+    if running and w.runner is not None:
+        w.runner.retarget(len(w.steps))
     await w.session.apply(Command.RESUME)
+    if engine is not None and not running:
+        await _start_runner(w, w.current_step_index, reset=False)
     return view_of(w)
 
 
 @router.post("/{session_id}/run-from")
-async def run_from(session_id: str, body: RunFromRequest) -> SessionView:
-    """FR-039·FR-055 — 임의 Step 부터 실행. 브라우저 상태를 되돌리지 않는다 (FR-040c)."""
+async def run_from(session_id: str, body: RunFromRequest, state: State) -> SessionView:
+    """FR-039·FR-055 — 임의 Step 부터 실행. 브라우저 상태를 되돌리지 않는다 (FR-040c).
+
+    이것이 FR-040d 가 말하는 "어긋난 화면을 정상화하는 수단" 중 하나다. 되돌리는 대신
+    사용자가 고른 지점부터 다시 밟게 한다.
+    """
     w = work_of(session_id)
     if body.step_index >= len(w.steps):
         raise bad_request(
@@ -472,22 +614,32 @@ async def run_from(session_id: str, body: RunFromRequest) -> SessionView:
             f"Step {body.step_index} 이 없습니다. 총 {len(w.steps)}개입니다.",
         )
     _apply(w, Command.RUN_FROM)
+    if w.inline is not None:
+        w.inline.stop()
+    engine = _ensure_engine(w, state)
+    if engine is not None:
+        engine.rebase(w.steps)
     w.current_step_index = body.step_index
     await w.session.apply(Command.RUN_FROM)
-    if w.engine is not None:
+    if engine is not None:
         await _start_runner(w, body.step_index)
     return view_of(w)
 
 
 @router.post("/{session_id}/record-actions:start")
 async def record_actions_start(session_id: str) -> SessionView:
-    """FR-036 — 일시정지 중 직접 동작 추가. 실제 창을 앞으로 가져온다 (FR-023a)."""
+    """FR-036 — 일시정지 중 직접 동작 추가. 실제 창을 앞으로 가져온다 (FR-023a).
+
+    기록된 Step 은 **일시정지 위치에** 삽입된다. 목록 끝에 붙이면 사용자가 보고 있는
+    화면과 정의의 순서가 어긋난다.
+    """
     w = work_of(session_id)
     require_paused(w)
     _apply(w, Command.RECORD_ACTIONS_START)
     await w.session.apply(Command.RECORD_ACTIONS_START)
-    w.recorder.start(author=Author.HUMAN, insert_at=w.current_step_index)
-    if is_manipulation_phase(w.session.state):
+    if w.inline is not None:
+        await w.inline.start(w.current_step_index, author=Author.HUMAN)
+    elif is_manipulation_phase(w.session.state):  # pragma: no cover - 방어적 경로
         await w.session.bring_tab_to_front(w.session.active_tab_index)
     return view_of(w)
 
@@ -495,7 +647,10 @@ async def record_actions_start(session_id: str) -> SessionView:
 @router.post("/{session_id}/record-actions:stop")
 async def record_actions_stop(session_id: str) -> SessionView:
     w = work_of(session_id)
-    w.recorder.stop()
+    if w.inline is not None:
+        w.inline.stop()
+    else:  # pragma: no cover - 방어적 경로
+        w.recorder.stop()
     _apply(w, Command.PAUSE)
     await w.session.apply(Command.PAUSE)
     return view_of(w)
@@ -522,8 +677,12 @@ async def stop(session_id: str, state: State) -> SessionView:
         await w.mirror.stop("세션을 종료했습니다.")
     if w.runner is not None:
         await w.runner.cancel()
+    if w.inline is not None:
+        w.inline.stop()
     if not already_terminal:
         await w.session.apply(Command.STOP)
+    # 세션을 정리하기 **전에** 뷰를 만든다. 응답의 `has_unsaved_changes` 가 저장 확인
+    # 대화상자의 근거다 (FR-042) — 서버가 대신 저장하지 않는다.
     snapshot = view_of(w)
     await state.broker.drop(session_id)
     await state.sessions.close(session_id)
@@ -556,6 +715,7 @@ async def save(session_id: str, body: SaveRequest, state: State) -> Test:
     )
     repo.write_test(test)
     w.saved_test_id = test_id
+    w.saved_snapshot = list(w.steps)
     return test
 
 

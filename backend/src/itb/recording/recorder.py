@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import pathlib
 import time
 from collections.abc import Awaitable, Callable
@@ -26,7 +27,7 @@ from typing import Any
 from nacl.public import PublicKey
 from playwright.async_api import Frame, Page
 
-from itb.domain.locator import CandidateStatus, TargetLocator
+from itb.domain.locator import TargetLocator
 from itb.domain.step import (
     Author,
     ClickStep,
@@ -38,13 +39,15 @@ from itb.domain.step import (
     SelectStep,
     Step,
 )
-from itb.execution.session import BrowserSession, TabLimitReachedError
-from itb.locator.collector import (
-    apply_statuses,
-    build_unverified,
-    candidate_strategies,
+from itb.domain.test_case import (
+    fallback_variable_name,
+    make_variable_name,
+    variable_reference,
 )
-from itb.locator.strategy import StrategyKind, ordered_strategies
+from itb.execution.element_probe import collect_and_verify
+from itb.execution.session import BrowserSession, TabLimitReachedError
+from itb.locator.strategy import ordered_strategies
+from itb.recording.repick import RepickController
 from itb.secrets.store import SecretStore
 
 INJECTED_SCRIPT = pathlib.Path(__file__).parent / "injected" / "recorder.js"
@@ -110,6 +113,19 @@ class Recorder:
     test_id_attribute: str = "data-testid"
     store: SecretStore | None = None
     public_key: PublicKey | None = None
+    id_allocator: Callable[[], str] | None = None
+    """Step id 할당기. 주면 그것을 쓴다.
+
+    리코더는 Step 목록을 소유하지 않으므로(sink 로 넘긴다) 이미 쓰인 번호를 알 수 없다.
+    목록을 가진 쪽이 할당기를 주면 편집으로 추가된 Step 과 번호가 충돌하지 않는다.
+    """
+
+    repick: RepickController = field(default_factory=RepickController)
+    """다시 집기 대기 (FR-020).
+
+    **녹화가 꺼져 있어도 동작한다.** 다시 집기는 일시정지 중에 쓰는 기능이고, 그때
+    리코더는 멈춰 있다. `active` 게이트 앞에서 처리하는 이유가 이것이다.
+    """
 
     active: bool = False
     author: Author = Author.HUMAN
@@ -133,6 +149,16 @@ class Recorder:
 
     _hover_seen: dict[tuple[int, str], float] = field(default_factory=dict)
     """(탭, CSS) → 그 요소의 hover 를 기록한 시각(ms). 반복 hover 를 접는 데 쓴다."""
+
+    _select_step_ids: dict[tuple[int, str], str] = field(default_factory=dict)
+    """(탭, CSS) → 그 `<select>` 의 최근 select Step id.
+
+    `change` 와 `blur` 가 같은 선택에 대해 둘 다 도착한다 — 입력과 같은 상황이다
+    (FR-025). 접지 않으면 한 번의 선택이 Step 두 개가 되고, 재실행이 같은 값을 두 번
+    고른다. SC-008 측정이 이 중복을 드러냈다.
+    """
+
+    _select_values: dict[tuple[int, str], str] = field(default_factory=dict)
 
     _click_seen: dict[tuple[int, str], float] = field(default_factory=dict)
     """(탭, CSS) → 그 요소의 클릭을 기록한 시각(ms). `pointerdown`·`click` 중복 제거용."""
@@ -169,19 +195,32 @@ class Recorder:
             await self._on_record(source, payload)
 
         await context.expose_binding(BINDING_NAME, on_record)
-        await context.add_init_script(
-            script=INJECTED_SCRIPT.read_text(encoding="utf-8")
-        )
+        script = self._script()
+        await context.add_init_script(script=script)
         # 이미 열려 있는 탭에는 init script 가 적용되지 않았으므로 직접 평가한다.
         for tab in self.session.open_tabs():
             with contextlib.suppress(Exception):
-                await tab.page.evaluate(INJECTED_SCRIPT.read_text(encoding="utf-8"))
+                await tab.page.evaluate(script)
         for tab in self.session.open_tabs():
             self.watch_page(tab.page)
         # 이후 열리는 탭은 세션이 알려 준다. 이 등록이 없으면 새 탭의 화면 이동과
         # 탭 닫힘이 기록되지 않는다 (FR-024·FR-030c).
         self.session.attach_page_observer(self.watch_page)
         self._installed = True
+
+    def _script(self) -> str:
+        """주입할 스크립트. 앞에 설정을 붙인다.
+
+        `testId` 속성명은 대상 앱마다 다르므로(research R4) 스크립트가 알아야 한다 —
+        동작 시점 후보 검증을 페이지 안에서 하기 때문이다. 값은 프로젝트 설정에서 온
+        속성명이며 JSON 으로 직렬화해 넣는다: 문자열을 그대로 이어 붙이면 따옴표가 들어간
+        값에서 스크립트가 깨진다 (헌법 보안 요건 — 생성 코드를 문자열 접합으로 만들지
+        않는다).
+        """
+        config = json.dumps({"testIdAttribute": self.test_id_attribute})
+        return f"window.__itbConfig = {config};\n" + INJECTED_SCRIPT.read_text(
+            encoding="utf-8"
+        )
 
     def _watch_navigation(self, page: Page) -> None:
         """main frame 네비게이션을 Python 측에서 듣는다.
@@ -245,6 +284,8 @@ class Recorder:
         self._last_step_id = None
 
     def _next_step_id(self) -> str:
+        if self.id_allocator is not None:
+            return self.id_allocator()
         self._step_seq += 1
         return f"step-{self._step_seq:02d}"
 
@@ -260,9 +301,14 @@ class Recorder:
         `source["page"]` 로 발신 탭을 식별한다 (T004 로 확인). 페이지별 바인딩 이름을
         만들 필요가 없다.
         """
+        page: Page = source["page"]
+        if self.repick.armed:
+            # 다시 집기 대기 중이면 이 클릭은 **대상 지정**이며 Step 이 되지 않는다.
+            if payload.get("kind") == "click":
+                await self._deliver_repick(page, payload.get("element") or {})
+            return
         if not self.active:
             return
-        page: Page = source["page"]
         tab = self.session.tab_of(page)
         if tab is None:
             # on("page") 가 아직 처리되지 않은 탭. 상한을 넘겼으면 등록이 거절된다.
@@ -293,6 +339,17 @@ class Recorder:
                 "Step 편집에서 파일 경로를 직접 지정해야 합니다."
             )
 
+    async def _deliver_repick(self, page: Page, element: dict[str, Any]) -> None:
+        """다시 집기 대상을 재수집해 전달한다 (FR-020).
+
+        수집에 실패하면 **대기를 유지한다.** 사용자가 빈 영역이나 식별 불가한 요소를
+        눌렀을 뿐이므로, 대기를 풀면 다시 버튼을 눌러야 한다.
+        """
+        target = await self._collect_target(page, element)
+        if target is None:
+            return
+        await self.repick.deliver(target)
+
     def _warn(self, message: str) -> None:
         if message not in self.warnings:
             self.warnings.append(message)
@@ -304,58 +361,19 @@ class Recorder:
     ) -> TargetLocator | None:
         """후보를 수집하고 **즉시 검증**해 상태를 채운다.
 
-        검증이 없으면 `StepInspector` 표시가 추측이 되고 SC-008 을 기록 시점에 측정할 수
-        없다 (research R4).
+        수집·검증 자체는 `itb.execution.element_probe` 가 한다 — 편집·다시 집기·AI 도구가
+        같은 코드를 지나야 녹화된 Step 과 편집으로 만든 Step 의 후보가 갈리지 않는다
+        (원칙 IV). 리코더가 여기서 더하는 것은 **사용자에게 알릴 경고** 하나다.
 
         `warn_on_failure=False` 는 사전 수집(hover) 경로용이다 — 지나가는 요소마다 경고를
         쌓으면 정작 Step 이 만들어지지 않은 경고가 묻힌다.
         """
-        try:
-            target = build_unverified(element, self.test_id_attribute)
-        except ValueError:
-            # CSS 조차 없는 경우. 기록할 수 없다.
-            if warn_on_failure:
-                self._warn(
-                    "대상 요소를 식별할 정보를 전혀 수집하지 못해 Step 을 만들지 못했습니다."
-                )
-            return None
-
-        css = target.css.value if target.css else None
-        anchor = None
-        if css:
-            with contextlib.suppress(Exception):
-                anchor = await page.query_selector(css)
-
-        statuses: dict[StrategyKind, CandidateStatus] = {}
-        for kind, strategy in candidate_strategies(target):
-            statuses[kind] = await self._verify(page, strategy, anchor)
-        return apply_statuses(target, statuses)
-
-    async def _verify(
-        self, page: Page, strategy: Any, anchor: Any
-    ) -> CandidateStatus:
-        """후보 하나를 실제로 찾아 상태를 판정한다."""
-        from itb.execution.locator_runtime import to_locator
-
-        try:
-            locator = to_locator(page, strategy)
-            count = await locator.count()
-        except Exception:  # noqa: BLE001 - 잘못된 셀렉터는 미수집으로 본다
-            return CandidateStatus.NOT_COLLECTED
-
-        if count == 0:
-            return CandidateStatus.NOT_COLLECTED
-        if count > 1:
-            # 실측에서 text·css 후보가 각각 2·3개를 매칭했다 (FR-019b).
-            return CandidateStatus.AMBIGUOUS
-        if anchor is None:
-            return CandidateStatus.UNVERIFIED
-        try:
-            other = await locator.element_handle()
-            same = await page.evaluate("([a, b]) => a === b", [anchor, other])
-        except Exception:  # noqa: BLE001
-            return CandidateStatus.UNVERIFIED
-        return CandidateStatus.VERIFIED if same else CandidateStatus.UNVERIFIED
+        target = await collect_and_verify(page, element, self.test_id_attribute)
+        if target is None and warn_on_failure:
+            self._warn(
+                "대상 요소를 식별할 정보를 전혀 수집하지 못해 Step 을 만들지 못했습니다."
+            )
+        return target
 
     # ─── Step 기록 ─────────────────────────────────────────────────────────
 
@@ -514,29 +532,22 @@ class Recorder:
         return None
 
     def _sensitive_variable_name(self, element: dict[str, Any]) -> str:
-        """민감 변수 이름을 만든다. 반드시 `[A-Z][A-Z0-9_]*` 를 지켜야 한다.
+        """민감 변수 이름을 만든다.
 
-        `isalnum()` 은 한글도 참이므로 쓸 수 없다 — 한글 라벨("비밀번호")을 그대로 쓰면
-        변수 이름 패턴을 위반해 **저장 시 테스트 검증이 실패한다.** 그래서 ASCII 영숫자만
-        남기고, 남는 것이 없으면(한글 전용 라벨) 순번을 쓴다.
+        이름 규칙 자체는 `itb.domain.test_case.make_variable_name` 이 갖는다 — 나중에
+        사용자가 민감으로 지정하는 경로(FR-082b)와 같은 이름을 만들어야 하기 때문이다.
+        여기서는 **무엇을 이름의 근거로 볼지** 만 정한다.
         """
-        candidates = (
-            element.get("attributes", {}).get("name"),
-            element.get("attributes", {}).get(self.test_id_attribute),
+        attrs = element.get("attributes") or {}
+        for base in (
+            attrs.get("name"),
+            attrs.get(self.test_id_attribute),
             element.get("label"),
-        )
-        for base in candidates:
-            if not isinstance(base, str):
-                continue
-            slug = "".join(
-                ch if ("a" <= ch.lower() <= "z" or ch.isdigit()) else "_" for ch in base
-            ).upper()
-            slug = "_".join(part for part in slug.split("_") if part)
-            if slug and not slug[0].isdigit():
-                return f"{SENSITIVE_VARIABLE_PREFIX}{slug}"[:60]
-
-        # ASCII 로 쓸 수 있는 근거가 없다. 순번으로 유일성을 확보한다.
-        return f"{SENSITIVE_VARIABLE_PREFIX}VALUE_{len(self.sensitive_captures) + 1}"
+        ):
+            name = make_variable_name(base)
+            if name is not None:
+                return name
+        return fallback_variable_name(len(self.sensitive_captures) + 1)
 
     def _element_key(self, element: dict[str, Any]) -> tuple[int, str]:
         """탭 정보 없이 요소를 구분하는 키. 호출자가 키를 주지 않을 때만 쓴다.
@@ -602,7 +613,7 @@ class Recorder:
             )
         elif sealed:
             existing.sealed = True
-        return f"{{{{{variable}}}}}"
+        return variable_reference(variable)
 
     async def _record_hover(
         self, page: Page, tab: int, element: dict[str, Any]
@@ -679,21 +690,52 @@ class Recorder:
     async def _record_select(
         self, page: Page, tab: int, element: dict[str, Any], payload: dict[str, Any]
     ) -> None:
+        """선택을 기록한다.
+
+        **중복 제거**: `change` 와 `blur` 가 같은 선택에 대해 둘 다 도착하므로, 같은
+        요소에 같은 값이면 기존 Step 을 갱신한다 (FR-025 와 같은 판정). 값이 다르면 새
+        Step 이다 — 같은 셀렉트를 다시 다른 값으로 고른 것은 별개의 동작이다.
+        """
         target = await self._collect_target(page, element)
         if target is None:
             return
+        css = target.css.value if target.css else ""
+        key = (tab, css)
+        target = self._best_target(key, target)
+        value = str(payload.get("value") or "")
+
         self._last_fill_key = None
         # 선택이 기록됐다 → 페이지가 살아 있으므로 앞선 클릭은 이동을 만들지 않았다.
         self._nav_suppress.pop(tab, None)
         name = element.get("label") or element.get("accessibleName") or "선택"
+
+        existing_id = self._select_step_ids.get(key)
+        if existing_id is not None and self._select_values.get(key) == value:
+            await self.sink(
+                SelectStep(
+                    id=existing_id,
+                    label=f"{name} 선택",
+                    author=self.author,
+                    tab=tab,
+                    target=target,
+                    value=value,
+                ),
+                -2,  # -2 = 기존 Step 갱신
+            )
+            self._last_step_id = existing_id
+            return
+
+        new_id = self._next_step_id()
+        self._select_step_ids[key] = new_id
+        self._select_values[key] = value
         await self._emit(
             SelectStep(
-                id=self._next_step_id(),
+                id=new_id,
                 label=f"{name} 선택",
                 author=self.author,
                 tab=tab,
                 target=target,
-                value=str(payload.get("value") or ""),
+                value=value,
             )
         )
 

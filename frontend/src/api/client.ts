@@ -167,6 +167,8 @@ export interface SessionView {
   edit_warnings: string[];
   recorder_warnings: string[];
   allowed_commands: string[];
+  /** 저장하지 않은 편집이 있는가. 중지 확인의 근거다 (FR-042). */
+  has_unsaved_changes: boolean;
 }
 
 export interface TabView {
@@ -187,6 +189,30 @@ export interface StepsResponse {
   steps: Step[];
   edit_warnings: string[];
   current_step_index: number;
+}
+
+/** 검증 조건 4종 (FR-013a). 요소 갯수·입력값 검증은 범위 외 (FR-013c). */
+export type AssertionKind = "visible" | "hidden" | "text" | "url";
+export type MatchMode = "equals" | "contains";
+
+export interface AddAssertionBody {
+  kind: AssertionKind;
+  /** 대상 요소. **후보 수집은 제품이 한다** — 클라이언트는 셀렉터만 준다 (원칙 IV). */
+  target_selector?: string | null;
+  value?: string | null;
+  match?: MatchMode;
+  label?: string | null;
+  at?: number | null;
+  tab?: number | null;
+}
+
+/** 다시 집을 대상. `drag` 만 두 번째 값을 쓴다 (T166). */
+export type RepickSlot = "target" | "drop_target";
+
+export interface RepickResponse extends StepsResponse {
+  waiting: boolean;
+  slot: RepickSlot;
+  message: string;
 }
 
 export const sessions = {
@@ -214,6 +240,32 @@ export const sessions = {
     del<StepsResponse>(`/api/sessions/${id}/steps/${stepId}`),
   reorderSteps: (id: string, order: string[]) =>
     post<StepsResponse>(`/api/sessions/${id}/steps:reorder`, { order }),
+  /** Step 삽입. `at` 을 생략하면 일시정지 위치다 (FR-035). */
+  insertStep: (id: string, step: unknown, at?: number) =>
+    post<StepsResponse>(`/api/sessions/${id}/steps`, { step, at: at ?? null }),
+  /** 표시 이름·입력값·타임아웃·민감 여부 수정 (FR-035·FR-082b). */
+  patchStep: (
+    id: string,
+    stepId: string,
+    body: {
+      label?: string;
+      value?: string;
+      timeout_ms?: number;
+      sensitive?: boolean;
+    },
+  ) => patch<StepsResponse>(`/api/sessions/${id}/steps/${stepId}`, body),
+  /** 검증 Step 추가 (FR-037·FR-013a). */
+  addAssertion: (id: string, body: AddAssertionBody) =>
+    post<StepsResponse>(`/api/sessions/${id}/assertions`, body),
+  /**
+   * "다시 집기" (FR-020). `selector` 를 생략하면 브라우저에서 클릭할 때까지 대기한다 —
+   * 그 클릭은 Step 으로 기록되지 않는다.
+   */
+  repick: (id: string, stepId: string, body: { slot?: RepickSlot; selector?: string }) =>
+    post<RepickResponse>(`/api/sessions/${id}/steps/${stepId}/repick`, {
+      slot: body.slot ?? "target",
+      selector: body.selector ?? null,
+    }),
 };
 
 // ─── 비밀 값·키 ─────────────────────────────────────────────────────────────

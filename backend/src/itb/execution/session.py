@@ -104,6 +104,15 @@ class BrowserSession:
     _next_tab_index: int = 0
     _sink: EventSink | None = None
     _tab_opened: asyncio.Event = field(default_factory=asyncio.Event)
+    _all_closed_hook: Callable[[], None] | None = None
+    """열린 탭이 하나도 남지 않았을 때 알려 줄 대상. 유실 감시자가 등록한다 (FR-041).
+
+    `BrowserContext.on("close")` 는 **컨텍스트가 닫힐 때만** 온다. 사용자가 창을 하나씩
+    닫아 마지막 탭까지 닫아도 컨텍스트는 살아 있으므로 그 신호가 오지 않는다. 그 상태에서
+    이어서 실행하면 "탭 0 이 열리기를 기다렸으나" 같은 엉뚱한 실패로 끝난다 — 무엇이
+    일어났는지 알려 주는 것이 맞다.
+    """
+
     _page_observer: PageObserver | None = None
     """새 탭이 열렸을 때 알려 줄 대상. 리코더가 등록한다.
 
@@ -184,6 +193,17 @@ class BrowserSession:
         self._tab_opened.set()
         self._tab_opened = asyncio.Event()
         return handle
+
+    def attach_all_closed_hook(self, hook: Callable[[], None] | None) -> None:
+        """열린 탭이 모두 사라졌을 때의 통보 대상을 등록한다 (FR-041)."""
+        self._all_closed_hook = hook
+
+    def notify_if_no_tabs(self) -> None:
+        """열린 탭이 없으면 통보한다. 실패해도 탭 닫힘 처리에 영향을 주지 않는다."""
+        if self._all_closed_hook is None or self.open_tabs():
+            return
+        with contextlib.suppress(Exception):
+            self._all_closed_hook()
 
     def attach_page_observer(self, observer: PageObserver | None) -> None:
         """새 탭 통보 대상을 등록한다. 리코더가 `install()` 에서 부른다."""
@@ -391,6 +411,8 @@ class SessionManager:
             asyncio.create_task(  # noqa: RUF006
                 session.emit("tab_closed", tab=handle.tab_index)
             )
+        # 마지막 탭이 닫혔으면 세션은 더 이상 진행할 수 없다 (FR-041).
+        session.notify_if_no_tabs()
 
     async def close(self, session_id: str) -> None:
         """세션을 종료한다.

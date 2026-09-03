@@ -163,21 +163,79 @@
     "type",
   ];
 
+  /**
+   * **후보 검증을 페이지 안에서 즉시 한다 (CSS·testId 에 한해).**
+   *
+   * 문제: 클릭 후보 검증을 Python 이 하면 왕복 사이에 앱이 `location.href` 를 설정해
+   * 문서가 교체된다. 그러면 모든 후보가 `not_collected` 로 남아 저장된 Step 이 재실행
+   * 불가가 된다 — SC-008 측정이 이것을 잡았다.
+   *
+   * 여기서 재는 것은 **CSS 선택자와 testId 속성 선택자뿐이다.** 두 후보는
+   * `querySelectorAll` 과 Playwright 의 해석이 정확히 같다. `role`·`label`·`text` 는
+   * Playwright 가 고유한 매칭 규칙(접근 이름 계산, 텍스트 정규화, 완전 일치)을 쓰므로
+   * 여기서 근사하면 **다른 요소를 가리키는 후보를 `verified` 로 적을 수 있다** — 실패보다
+   * 나쁘다. 그 셋은 Python 이 Playwright 로 검증한다.
+   */
+  const statusOf = (selector, el) => {
+    if (!selector) return null;
+    let nodes;
+    try {
+      nodes = document.querySelectorAll(selector);
+    } catch {
+      return "not_collected";
+    }
+    if (nodes.length === 0) return "not_collected";
+    if (nodes.length > 1) return "ambiguous";
+    return nodes[0] === el ? "verified" : "unverified";
+  };
+
+  const testIdAttribute = () => {
+    const configured = window.__itbConfig && window.__itbConfig.testIdAttribute;
+    return typeof configured === "string" && configured ? configured : "data-testid";
+  };
+
+  const cssEscape = (value) =>
+    typeof CSS !== "undefined" && CSS.escape ? CSS.escape(value) : value.replace(/"/g, '\\"');
+
   const describe = (el) => {
     const attributes = {};
     for (const attr of COLLECTED_ATTRS) {
       const v = el.getAttribute(attr);
       if (v !== null) attributes[attr] = v;
     }
+    const css = cssPath(el);
+    const attr = testIdAttribute();
+    const testId = el.getAttribute(attr);
     return {
       tag: el.tagName.toLowerCase(),
       role: clean(el.getAttribute("role")) || implicitRole(el),
       accessibleName: accessibleName(el),
       label: associatedLabel(el),
       text: clean(el.textContent),
-      css: cssPath(el),
+      css,
       attributes,
+      // 동작이 일어난 **그 순간**의 검증 결과. 화면이 교체된 뒤에는 다시 잴 수 없다.
+      verified: {
+        css: statusOf(css, el),
+        test_id: testId ? statusOf(`[${attr}="${cssEscape(testId)}"]`, el) : null,
+      },
     };
+  };
+
+  /**
+   * 셀렉터로 요소를 설명한다. **Python 이 호출한다** — Assertion 대상 지정(FR-037)과
+   * "다시 집기"(FR-020)가 같은 후보 수집 규칙을 지나게 하는 통로다.
+   *
+   * 별도 수집 코드를 Python 에 두면 녹화가 만드는 후보와 편집이 만드는 후보가 갈린다.
+   * 원칙 IV 의 단일 지점은 우선순위 해석뿐 아니라 **수집 규칙**에도 적용된다.
+   */
+  window.__itbDescribe = (selector) => {
+    try {
+      const el = document.querySelector(selector);
+      return el ? describe(el) : null;
+    } catch {
+      return null;
+    }
   };
 
   /** Shadow DOM 안의 요소도 잡는다 (T004 로 확인). */
@@ -362,6 +420,16 @@
     true,
   );
 
+  /**
+   * 입력 Step 을 만들 수 있는 태그. **`"value" in el` 로는 부족하다.**
+   *
+   * `HTMLButtonElement` 도 `value` 를 가지므로, 버튼에서 포커스가 떠날 때(`blur`)
+   * 빈 값의 입력 Step 이 만들어진다. 그 Step 은 재실행에서 버튼에 `fill("")` 을 시도해
+   * 반드시 실패한다 — US3 종단 테스트가 이것을 잡았다. `type` 속성으로 걸러 낼 수도
+   * 없다: `<button>` 은 보통 `type` 을 쓰지 않아 빈 문자열로 읽힌다.
+   */
+  const FILLABLE_TAGS = ["input", "textarea"];
+
   const onSettled = (event) => {
     const el = targetOf(event);
     if (!el || !("value" in el)) return;
@@ -372,6 +440,7 @@
       send({ kind: "select", value: el.value, element: describe(el) });
       return;
     }
+    if (!FILLABLE_TAGS.includes(tag)) return;
     if (["checkbox", "radio", "button", "submit", "reset", "file"].includes(type)) {
       // 체크박스·라디오는 click 으로 이미 잡힌다. 파일 입력은 별도 처리한다.
       if (type === "file") {

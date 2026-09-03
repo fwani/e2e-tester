@@ -219,23 +219,23 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T092 [P] [US3] `backend/tests/integration/test_pause_resume.py` — 일시정지 중 세션·인증·화면 상태 유지, 계속하기 시 **사전 Step 재실행 없음**(SC-007), 브라우저 재시작 없음
-- [ ] T093 [P] [US3] `backend/tests/integration/test_edit_executed_step.py` — 이미 실행된 Step 편집 시 브라우저 미복원 + 경고 반환(FR-040a~c), 이후 계속하기가 현재 상태 기준으로 진행
-- [ ] T094 [P] [US3] `backend/tests/contract/test_step_edit_api.py` — 편집 엔드포인트 계약. **`PAUSED` 아닌 상태에서 `409 NOT_PAUSED`**(FR-035a), 정의되지 않은 명령 거절(FR-043a)
-- [ ] T095 [P] [US3] `backend/tests/e2e/test_us3_pause_edit_resume.py` — quickstart §5 13단계 종단 테스트
+- [X] T092 [P] [US3] `backend/tests/integration/test_pause_resume.py` — 일시정지 중 세션·인증·화면 상태 유지, 계속하기 시 **사전 Step 재실행 없음**(SC-007), 브라우저 재시작 없음
+- [X] T093 [P] [US3] `backend/tests/integration/test_edit_executed_step.py` — 이미 실행된 Step 편집 시 브라우저 미복원 + 경고 반환(FR-040a~c), 이후 계속하기가 현재 상태 기준으로 진행 **발견한 결함 2건을 함께 고쳤다**: ① 실행 중 편집이 러너의 위치 전진과 겹쳐 같은 Step 이 두 번 실행됐다 — 실행 위치를 세션 단일 소유로 바꾸고 러너를 상대 전진시켰다. ② 일시정지가 Step 중간에 반환돼 편집이 실행과 경쟁했다 — `RunnerTask.wait_for_boundary` 로 Step 경계까지 기다린다
+- [X] T094 [P] [US3] `backend/tests/contract/test_step_edit_api.py` — 편집 엔드포인트 계약. **`PAUSED` 아닌 상태에서 `409 NOT_PAUSED`**(FR-035a), 정의되지 않은 명령 거절(FR-043a)
+- [X] T095 [P] [US3] `backend/tests/e2e/test_us3_pause_edit_resume.py` — quickstart §5 13단계 종단 테스트 **발견한 결함 2건을 함께 고쳤다**: ① 주입 리코더가 `<button>` 의 `blur` 를 입력으로 기록해 빈 값 fill Step 을 만들었다(재실행 시 반드시 실패) — 입력 대상 태그를 `input`·`textarea` 로 제한했다. ② 마지막 탭을 닫아도 세션 유실이 감지되지 않았다(`BrowserContext.on("close")` 는 컨텍스트가 살아 있으면 오지 않는다) — 열린 탭 소진을 세 번째 감지 지점으로 추가했다
 
 ### Implementation for User Story 3
 
-- [ ] T096 [US3] `backend/src/itb/execution/step_edits.py` — 삽입·수정·삭제·순서 변경. **편집은 세션의 작업 중 Step 목록만 변경하고 브라우저에 명령을 보내지 않는다.** 편집 지점이 `current_step_index` 이전이면 `edit_warnings` 를 세운다 (FR-035·FR-040a~d) — T040 의존
-- [ ] T097 [US3] `backend/src/itb/api/routes/steps.py` — `POST/PATCH/DELETE .../steps`, `.../steps:reorder`, `.../assertions`. 모두 `PAUSED` 게이트. 응답에 `steps` + `edit_warnings` (contracts/rest-api) — T096 의존
-- [ ] T098 [US3] `backend/src/itb/api/routes/sessions.py` 확장 — `POST .../pause`, `POST .../resume`, `record-actions:start`/`stop`. 중지 시 편집 Step 저장 여부 확인 (FR-031·FR-038·FR-042) — T086 의존
-- [ ] T099 [US3] `backend/src/itb/recording/inline_record.py` — 일시정지 중 직접 동작 추가. 실제 창·대상 탭 전면 배치, 기록된 Step을 **일시정지 위치에 삽입** (FR-036·FR-023a) — T054, T062, T096 의존
-- [ ] T100 [US3] `backend/src/itb/execution/assertion_builder.py` — 4종 검증 조건 구성. 대상 요소 지정 시 후보 수집·검증 수행 (FR-037·FR-013a·FR-013b) — T029 의존
-- [ ] T101 [US3] `backend/src/itb/execution/runner.py` 확장 — 임의 Step부터 실행. 브라우저 상태를 되돌리지 않고 그 지점부터 시작 (FR-039, FR-040c와 일관) — T082 의존
-- [ ] T102 [P] [US3] `frontend/src/pages/RunnerPaused.tsx` — `RunnerPaused.dc.html` 이식. `PAUSED` 배지, "step N 이후 정지", **"브라우저 세션과 화면 상태를 그대로 유지하고 있습니다" 배너**(FR-033), 일시정지 위치 구분선(FR-034), 계속하기·중지
-- [ ] T103 [P] [US3] `frontend/src/components/PauseActions.tsx` — "지금 할 수 있는 것" 6개 액션(직접 동작 추가 / Assertion 추가 / Step 수정 / 순서 변경 / 이 Step부터 / Step 삭제) + 자연어 입력 박스 (FR-035~FR-039)
-- [ ] T104 [US3] `frontend/src/components/EditWarningBanner.tsx` — `edit_warning` 이벤트 표시. "이 편집은 현재 화면 상태에 적용되지 않았습니다" (FR-040b)
-- [ ] T105 [US3] `frontend/src/components/AssertionForm.tsx` — 4종 조건 선택 + 대상 지정 + 비교 값(변수 참조 가능) (FR-013a·FR-013b)
+- [X] T096 [US3] `backend/src/itb/execution/step_edits.py` — 삽입·수정·삭제·순서 변경. **편집은 세션의 작업 중 Step 목록만 변경하고 브라우저에 명령을 보내지 않는다.** 편집 지점이 `current_step_index` 이전이면 `edit_warnings` 를 세운다 (FR-035·FR-040a~d) — T040 의존
+- [X] T097 [US3] `backend/src/itb/api/routes/steps.py` — `POST/PATCH/DELETE .../steps`, `.../steps:reorder`, `.../assertions`. 모두 `PAUSED` 게이트. 응답에 `steps` + `edit_warnings` (contracts/rest-api) — T096 의존 **계약 차이**: `POST .../assertions` 는 `TargetLocator` 대신 **CSS 셀렉터**를 받는다. 후보 수집·검증을 제품이 하므로(원칙 IV) 클라이언트가 후보 묶음을 만들면 녹화가 만드는 것과 갈린다. `PATCH .../steps/{id}` 에 `sensitive` 를 더했다(FR-082b)
+- [X] T098 [US3] `backend/src/itb/api/routes/sessions.py` 확장 — `POST .../pause`, `POST .../resume`, `record-actions:start`/`stop`. 중지 시 편집 Step 저장 여부 확인 (FR-031·FR-038·FR-042) — T086 의존 중지 응답에 `has_unsaved_changes` 를 실어 저장 확인의 근거를 준다 (FR-042)
+- [X] T099 [US3] `backend/src/itb/recording/inline_record.py` — 일시정지 중 직접 동작 추가. 실제 창·대상 탭 전면 배치, 기록된 Step을 **일시정지 위치에 삽입** (FR-036·FR-023a) — T054, T062, T096 의존
+- [X] T100 [US3] `backend/src/itb/execution/assertion_builder.py` — 4종 검증 조건 구성. 대상 요소 지정 시 후보 수집·검증 수행 (FR-037·FR-013a·FR-013b) — T029 의존 대상 지정은 셀렉터로 받고 후보 수집·검증은 `execution/element_probe.py` 가 한다 — 녹화·편집·다시 집기·AI 도구가 같은 수집 코드를 지난다 (원칙 IV)
+- [X] T101 [US3] `backend/src/itb/execution/runner.py` 확장 — 임의 Step부터 실행. 브라우저 상태를 되돌리지 않고 그 지점부터 시작 (FR-039, FR-040c와 일관) — T082 의존 `ReplayEngine.rebase()` 로 **편집된 목록**을 실행 대상으로 삼고 이미 실행된 Step 의 결과를 보존한다. 저장 전 초안 세션에도 임시 엔진을 만들어 이어서 실행이 성립한다
+- [X] T102 [P] [US3] `frontend/src/pages/RunnerPaused.tsx` — `RunnerPaused.dc.html` 이식. `PAUSED` 배지, "step N 이후 정지", **"브라우저 세션과 화면 상태를 그대로 유지하고 있습니다" 배너**(FR-033), 일시정지 위치 구분선(FR-034), 계속하기·중지 **구성 차이**: 별도 화면으로 복제하지 않고 `Runner` 가 일시정지 상태에서 끼워 넣는 배너+패널로 만들었다. 미러·탭·Step 목록 배선이 두 벌이 되면 한쪽만 고치는 실수가 생긴다
+- [X] T103 [P] [US3] `frontend/src/components/PauseActions.tsx` — "지금 할 수 있는 것" 6개 액션(직접 동작 추가 / Assertion 추가 / Step 수정 / 순서 변경 / 이 Step부터 / Step 삭제) + 자연어 입력 박스 (FR-035~FR-039)
+- [X] T104 [US3] `frontend/src/components/EditWarningBanner.tsx` — `edit_warning` 이벤트 표시. "이 편집은 현재 화면 상태에 적용되지 않았습니다" (FR-040b)
+- [X] T105 [US3] `frontend/src/components/AssertionForm.tsx` — 4종 조건 선택 + 대상 지정 + 비교 값(변수 참조 가능) (FR-013a·FR-013b)
 
 **Checkpoint**: 원칙 III가 검증된다. quickstart §5의 9단계에서 로그인이 재실행되지 않는다
 
@@ -258,9 +258,9 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 ### Implementation for User Story 4
 
 - [ ] T110 [US4] `backend/src/itb/llm/client.py` — `AsyncAnthropic()` 인자 없는 생성자(env → `ant auth login` 프로필 순 해석, **키 하드코딩 금지** FR-084). 모델 `claude-opus-5`, `output_config={"effort":"xhigh"}`, `thinking` 파라미터 생략(Opus 5는 기본 adaptive), `betas=["server-side-fallback-2026-07-01"]` + `fallbacks="default"`, `content` 읽기 전 `stop_reason` 확인. **`budget_tokens`·`temperature`·프리필을 쓰지 않는다**(400) (research R5)
-- [ ] T111 [US4] `backend/src/itb/authoring/tools.py` — `@beta_async_tool` 로 `list_tabs`, `observe_page(tab)`, `click`, `fill`, `select`, `navigate`, `assert_condition`, `close_tab(tab)`, `report_blocked`. `element_ref` 는 `observe_page` 가 부여하며 **에이전트가 CSS 셀렉터를 짜지 않는다**(원칙 IV 유지). 도구 실행 시 후보 수집은 제품이 한다. 새 탭 열림을 도구 결과에 덧붙인다 (research R5) — T029, T080 의존
+- [ ] T111 [US4] `backend/src/itb/authoring/tools.py` — `@beta_async_tool` 로 `list_tabs`, `observe_page(tab)`, `click`, `fill`, `select`, `navigate`, `hover`, `drag`, `assert_condition`, `close_tab(tab)`, `report_blocked`. **`hover(element_ref)`·`drag(element_ref, drop_ref)` 는 T163 결정으로 추가됐다 — Step 종류 8종과 1:1 을 유지한다.** `element_ref` 는 `observe_page` 가 부여하며 **에이전트가 CSS 셀렉터를 짜지 않는다**(원칙 IV 유지). 도구 실행 시 후보 수집은 제품이 한다. 새 탭 열림을 도구 결과에 덧붙인다 (research R5) — T029, T080 의존
 - [ ] T112 [US4] `backend/src/itb/authoring/agent.py` — `client.beta.messages.tool_runner(...)` 를 `async for` 로 순회. **하드 루프 카운터가 1차 방어선**(T107 상한). 서버 도구를 쓰지 않으므로 `pause_turn` 을 다루지 않는다. 사용자 일시정지 시 취소 처리 (research R5, FR-060·FR-065·FR-066) — T110, T111 의존
-- [ ] T113 [US4] `backend/src/itb/authoring/compiler.py` — 성공한 도구 호출을 Step으로 확정. **도구 표면이 Step과 1:1이므로 변환 실패가 원리적으로 없다**(research R5, FR-061·FR-062) — T111 의존
+- [ ] T113 [US4] `backend/src/itb/authoring/compiler.py` — 성공한 도구 호출을 Step으로 확정. **도구 표면이 Step과 1:1이므로 변환 실패가 원리적으로 없다**(research R5, FR-061·FR-062). `hover`·`drag` 도 이 대응에 포함된다 (T163) — T111 의존
 - [ ] T114 [US4] `backend/src/itb/api/routes/sessions.py` 확장 — `mode=ai` 세션, 지시문 길이·내용 검증(FR-085), `ai_progress`/`ai_finished`/`ai_error` 이벤트 (FR-059·FR-067) — T098, T112 의존
 - [ ] T115 [US4] `backend/src/itb/storage/repository.py` 확장 — `ai_instruction` 을 정의 파일에 원문으로 보관. **`itb.execution` 은 이 필드를 읽지 않는다**(FR-063) — T031 의존
 - [ ] T116 [P] [US4] `frontend/src/pages/AiRecord.tsx` — `AiRecord.dc.html` 이식. 자연어 지시 박스, `AI 수행 중` 배지, AI CONTROL 표시, 기록된 Step 목록, **"지시문은 테스트로 저장되지 않습니다. 다시 돌릴 때는 AI를 쓰지 않습니다" 문구**(FR-064), "테스트로 저장"

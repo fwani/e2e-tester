@@ -4,12 +4,16 @@
 일시정지 중에도, AI 실패 대기 중에도 일어난다. 상태별로 감지 지점을 따로 두면 그중 하나가
 빠지고, 빠진 상태에서는 세션이 유실됐는데 화면은 살아 있는 것처럼 보인다.
 
-감지 지점은 두 개다.
+감지 지점은 세 개다.
 
 - `Browser.on("disconnected")` — 브라우저 프로세스가 사라졌다
-- `BrowserContext.on("close")` — 컨텍스트가 닫혔다 (창을 모두 닫은 경우)
+- `BrowserContext.on("close")` — 컨텍스트가 닫혔다
+- **열린 탭이 하나도 남지 않음** — 사용자가 창을 하나씩 닫아 마지막까지 닫은 경우.
+  이때 컨텍스트는 살아 있어 위 두 신호가 오지 않는다. 이 지점이 없으면 이어서 실행이
+  "탭 0 이 열리기를 기다렸으나" 같은 엉뚱한 실패로 끝나고, 사용자는 무엇이 일어났는지
+  알 수 없다.
 
-둘 중 무엇이 먼저 와도 **한 번만** 처리한다. 유실 통보가 두 번 나가면 화면이 두 번 놀란다.
+셋 중 무엇이 먼저 와도 **한 번만** 처리한다. 유실 통보가 두 번 나가면 화면이 두 번 놀란다.
 
 유실 뒤 허용되는 것은 **저장과 처음부터 재실행뿐이다** (FR-041c). 이것은 상태 기계가
 `LOST` 에서 `SAVE` 만 허용하는 것으로 이미 강제된다 — 이 모듈은 `LOST` 로 옮기는 일만 한다.
@@ -29,6 +33,7 @@ LossHandler = Callable[[str], Awaitable[None]]
 
 REASON_BROWSER_GONE = "브라우저가 종료되어 세션이 유실됐습니다."
 REASON_CONTEXT_CLOSED = "브라우저 창이 모두 닫혀 세션이 유실됐습니다."
+REASON_ALL_TABS_CLOSED = "열려 있던 탭이 모두 닫혀 세션이 유실됐습니다."
 
 
 class SessionLossWatcher:
@@ -62,6 +67,11 @@ class SessionLossWatcher:
             self._session.context.on(
                 "close", lambda _c=None: self._schedule(REASON_CONTEXT_CLOSED)
             )
+        # 세 번째 지점 — 창을 하나씩 닫아 마지막 탭까지 닫은 경우. 컨텍스트는 살아 있어
+        # `close` 가 오지 않으므로 이 신호가 없으면 유실을 감지하지 못한다.
+        self._session.attach_all_closed_hook(
+            lambda: self._schedule(REASON_ALL_TABS_CLOSED)
+        )
 
     def _schedule(self, reason: str) -> None:
         if self._fired:
