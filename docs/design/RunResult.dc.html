@@ -1,0 +1,173 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: #EFEBE0; color: #14130F; font-family: "IBM Plex Sans KR", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #7C4DDB; text-decoration: none; }
+    a:hover { color: #5A31B8; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #EFEBE0; display: flex; flex-direction: column;">
+
+  <div style="flex: 0 0 60px; border-bottom: 3px solid #14130F; background: #FFFDF6; display: flex; align-items: center; gap: 18px; padding: 0 24px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 34px; height: 34px; background: #14130F; color: #F5D000; display: flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 20 20"><rect x="2.5" y="2.5" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"></rect><circle cx="10" cy="10" r="3.5" fill="currentColor"></circle></svg>
+      </div>
+      <div style="font-family: 'Black Han Sans', 'Arial Black', Impact, sans-serif; font-size: 19px; letter-spacing: 0.01em;">TEST BUILDER</div>
+    </div>
+    <div style="width: 3px; height: 32px; background: #14130F;"></div>
+    <div style="display: flex; align-items: center; gap: 10px; font: 500 14px/1 'IBM Plex Sans KR', system-ui, sans-serif; color: #6B675C;">
+      테스트 <span style="color: #14130F;">/</span> <span style="color: #14130F; font-weight: 600; font-family: 'IBM Plex Mono', ui-monospace, monospace;">TC-003</span> <span style="color: #14130F;">/</span> 실행 결과
+    </div>
+    <div style="flex: 1;"></div>
+    <div style="font: 400 13px/1 'IBM Plex Mono', ui-monospace, monospace; color: #6B675C;">Playwright · Chromium</div>
+  </div>
+
+  <div style="flex: 0 0 74px; border-bottom: 3px solid #14130F; background: #EFEBE0; display: flex; align-items: center; gap: 16px; padding: 0 24px;">
+    <div style="font-family: 'Black Han Sans', 'Arial Black', Impact, sans-serif; font-size: 26px; line-height: 1;">데이터 업로드</div>
+    <div style="display: inline-flex; align-items: center; height: 30px; padding: 0 11px; background: #D9502F; color: #FFFDF6; border: 3px solid #14130F; font: 700 13px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.06em;">FAIL</div>
+    <div style="flex: 1;"></div>
+    <div style="display: inline-flex; align-items: center; gap: 9px; height: 46px; padding: 0 18px; border: 3px solid #14130F; background: #F5D000; box-shadow: 5px 5px 0 #14130F; font: 600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif;">
+      <svg width="15" height="15" viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z" fill="currentColor"></path></svg>
+      실패한 Step부터 실행
+    </div>
+    <div style="display: inline-flex; align-items: center; gap: 9px; height: 46px; padding: 0 18px; border: 3px solid #14130F; background: #FFFDF6; box-shadow: 5px 5px 0 #14130F; font: 600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif;">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M13.5 8a5.5 5.5 0 1 1-1.8-4.1M13.5 1.4V5h-3.6"></path></svg>
+      처음부터 실행
+    </div>
+  </div>
+
+  <div style="flex: 1; min-height: 0; display: flex;">
+
+    <div style="flex: 1; min-width: 0; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+
+      <div style="display: flex; gap: 0; border: 3px solid #14130F; background: #FFFDF6;">
+        <div style="flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 5px;">
+          <div style="font: 600 11px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.12em; color: #6B675C;">총 시간</div>
+          <div style="font: 700 20px/1 'IBM Plex Mono', ui-monospace, monospace;">6.41 s</div>
+        </div>
+        <div style="width: 3px; background: #14130F;"></div>
+        <div style="flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 5px;">
+          <div style="font: 600 11px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.12em; color: #6B675C;">통과 / 전체</div>
+          <div style="font: 700 20px/1 'IBM Plex Mono', ui-monospace, monospace;">4 / 5</div>
+        </div>
+        <div style="width: 3px; background: #14130F;"></div>
+        <div style="flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 5px;">
+          <div style="font: 600 11px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.12em; color: #6B675C;">멈춘 STEP</div>
+          <div style="font: 700 20px/1 'IBM Plex Mono', ui-monospace, monospace;">05</div>
+        </div>
+      </div>
+
+      <div style="border: 3px solid #14130F; background: #FFFDF6;">
+        <div style="height: 40px; display: flex; align-items: center; padding: 0 16px; background: #14130F; color: #EFEBE0; font: 600 12px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.12em;">STEP 결과</div>
+
+        <div style="display: flex; align-items: center; gap: 14px; height: 54px; padding: 0 16px; border-top: 2px solid #DCD8CC;">
+          <div style="width: 22px; height: 22px; background: #2E9455; color: #FFFDF6; display: flex; align-items: center; justify-content: center;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M3 8.5l3.5 3.5L13 4.5"></path></svg></div>
+          <div style="width: 30px; font: 700 14px/1 'IBM Plex Mono', ui-monospace, monospace; color: #9A968A;">01</div>
+          <div style="flex: 1; min-width: 0; font: 600 16px/1.3 'IBM Plex Sans KR', system-ui, sans-serif;">로그인</div>
+          <div style="width: 90px; text-align: right; font: 400 14px/1 'IBM Plex Mono', ui-monospace, monospace; color: #6B675C;">421 ms</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; height: 54px; padding: 0 16px; border-top: 2px solid #DCD8CC;">
+          <div style="width: 22px; height: 22px; background: #2E9455; color: #FFFDF6; display: flex; align-items: center; justify-content: center;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M3 8.5l3.5 3.5L13 4.5"></path></svg></div>
+          <div style="width: 30px; font: 700 14px/1 'IBM Plex Mono', ui-monospace, monospace; color: #9A968A;">02</div>
+          <div style="flex: 1; min-width: 0; font: 600 16px/1.3 'IBM Plex Sans KR', system-ui, sans-serif;">데이터 메뉴 이동</div>
+          <div style="width: 90px; text-align: right; font: 400 14px/1 'IBM Plex Mono', ui-monospace, monospace; color: #6B675C;">302 ms</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; height: 54px; padding: 0 16px; border-top: 2px solid #DCD8CC;">
+          <div style="width: 22px; height: 22px; background: #2E9455; color: #FFFDF6; display: flex; align-items: center; justify-content: center;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M3 8.5l3.5 3.5L13 4.5"></path></svg></div>
+          <div style="width: 30px; font: 700 14px/1 'IBM Plex Mono', ui-monospace, monospace; color: #9A968A;">03</div>
+          <div style="flex: 1; min-width: 0; font: 600 16px/1.3 'IBM Plex Sans KR', system-ui, sans-serif;">파일 선택</div>
+          <div style="width: 90px; text-align: right; font: 400 14px/1 'IBM Plex Mono', ui-monospace, monospace; color: #6B675C;">581 ms</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; height: 54px; padding: 0 16px; border-top: 2px solid #DCD8CC;">
+          <div style="width: 22px; height: 22px; background: #2E9455; color: #FFFDF6; display: flex; align-items: center; justify-content: center;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M3 8.5l3.5 3.5L13 4.5"></path></svg></div>
+          <div style="width: 30px; font: 700 14px/1 'IBM Plex Mono', ui-monospace, monospace; color: #9A968A;">04</div>
+          <div style="flex: 1; min-width: 0; font: 600 16px/1.3 'IBM Plex Sans KR', system-ui, sans-serif;">업로드 이름 입력</div>
+          <div style="width: 90px; text-align: right; font: 400 14px/1 'IBM Plex Mono', ui-monospace, monospace; color: #6B675C;">103 ms</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; height: 54px; padding: 0 16px; border-top: 3px solid #14130F; background: #FBEEEA;">
+          <div style="width: 22px; height: 22px; background: #D9502F; color: #FFFDF6; display: flex; align-items: center; justify-content: center;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M4 4l8 8M12 4l-8 8"></path></svg></div>
+          <div style="width: 30px; font: 700 14px/1 'IBM Plex Mono', ui-monospace, monospace;">05</div>
+          <div style="flex: 1; min-width: 0; font: 700 16px/1.3 'IBM Plex Sans KR', system-ui, sans-serif;">저장</div>
+          <div style="width: 90px; text-align: right; font: 700 14px/1 'IBM Plex Mono', ui-monospace, monospace; color: #A83A22;">5.00 s</div>
+        </div>
+      </div>
+
+      <div style="border: 3px solid #D9502F; background: #FFFDF6; box-shadow: 6px 6px 0 #14130F; display: flex; flex-direction: column;">
+        <div style="height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #D9502F; color: #FFFDF6; font: 700 12px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.12em;">STEP 05 실패</div>
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="font: 600 17px/1.4 'IBM Plex Sans KR', system-ui, sans-serif; text-wrap: pretty;">"저장" 버튼을 찾을 수 없습니다.</div>
+          <div style="display: flex; flex-direction: column; gap: 7px;">
+            <div style="font: 600 11px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.12em; color: #6B675C;">시도한 LOCATOR (우선순위 순)</div>
+            <div style="display: flex; align-items: center; gap: 10px; font: 400 13px/1 'IBM Plex Mono', ui-monospace, monospace;"><span style="color: #A83A22; font-weight: 700;">×</span> testId=save-dataset</div>
+            <div style="display: flex; align-items: center; gap: 10px; font: 400 13px/1 'IBM Plex Mono', ui-monospace, monospace;"><span style="color: #A83A22; font-weight: 700;">×</span> role=button name="저장"</div>
+            <div style="display: flex; align-items: center; gap: 10px; font: 400 13px/1 'IBM Plex Mono', ui-monospace, monospace;"><span style="color: #A83A22; font-weight: 700;">×</span> text="저장"</div>
+            <div style="font: 400 12px/1 'IBM Plex Mono', ui-monospace, monospace; color: #6B675C; padding-left: 20px;">timeout 5000 ms</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="flex: 0 0 640px; border-left: 3px solid #14130F; background: #FFFDF6; display: flex; flex-direction: column;">
+      <div style="flex: 0 0 52px; display: flex; border-bottom: 3px solid #14130F;">
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; background: #14130F; color: #EFEBE0; font: 600 13px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.06em;">SCREENSHOT</div>
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; border-left: 3px solid #14130F; font: 600 13px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.06em; color: #6B675C;">TRACE</div>
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; border-left: 3px solid #14130F; font: 600 13px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.06em; color: #6B675C;">CONSOLE</div>
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; border-left: 3px solid #14130F; font: 600 13px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: 0.06em; color: #6B675C;">NETWORK</div>
+      </div>
+
+      <div style="flex: 1; min-height: 0; padding: 20px; display: flex;">
+        <div style="flex: 1; min-width: 0; border: 3px solid #14130F; background: #FFFFFF; display: flex; flex-direction: column;">
+          <div style="flex: 1; min-height: 0; display: flex;">
+            <div style="flex: 0 0 132px; border-right: 2px solid #DCD8CC; padding: 14px 0; display: flex; flex-direction: column; gap: 2px;">
+              <div style="padding: 0 12px 12px; font: 700 12px/1 'IBM Plex Sans KR', system-ui, sans-serif;">데이터 플랫폼</div>
+              <div style="height: 36px; display: flex; align-items: center; padding: 0 16px; font: 400 13px/1 'IBM Plex Sans KR', system-ui, sans-serif; color: #6B675C;">프로젝트</div>
+              <div style="height: 36px; display: flex; align-items: center; padding: 0 12px; background: #EFEBE0; border-left: 4px solid #14130F; font: 600 13px/1 'IBM Plex Sans KR', system-ui, sans-serif;">데이터</div>
+              <div style="height: 36px; display: flex; align-items: center; padding: 0 16px; font: 400 13px/1 'IBM Plex Sans KR', system-ui, sans-serif; color: #6B675C;">분석</div>
+            </div>
+            <div style="flex: 1; min-width: 0; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+              <div style="font: 700 17px/1 'IBM Plex Sans KR', system-ui, sans-serif;">데이터</div>
+              <div style="border: 2px solid #14130F; background: #FFFFFF; display: flex; flex-direction: column;">
+                <div style="padding: 14px 16px; border-bottom: 2px solid #DCD8CC; font: 700 15px/1 'IBM Plex Sans KR', system-ui, sans-serif;">데이터 업로드</div>
+                <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                  <div style="font: 600 12px/1 'IBM Plex Sans KR', system-ui, sans-serif; color: #6B675C;">이름</div>
+                  <div style="display: flex; align-items: center; height: 40px; padding: 0 11px; border: 2px solid #DCD8CC; font: 500 14px/1 'IBM Plex Sans KR', system-ui, sans-serif;">events_2026_09</div>
+                </div>
+                <div style="padding: 0 16px 16px; display: flex; justify-content: flex-end; gap: 9px;">
+                  <div style="height: 40px; padding: 0 15px; display: flex; align-items: center; border: 2px solid #DCD8CC; font: 500 13px/1 'IBM Plex Sans KR', system-ui, sans-serif; color: #6B675C;">취소</div>
+                  <div style="height: 40px; padding: 0 19px; display: flex; align-items: center; background: #14130F; color: #FFFFFF; font: 600 13px/1 'IBM Plex Sans KR', system-ui, sans-serif; outline: 3px solid #D9502F; outline-offset: 3px;">적용</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 9px; align-items: flex-start; border-left: 4px solid #D9502F; padding-left: 11px;">
+                <div style="font: 600 13px/1.45 'IBM Plex Sans KR', system-ui, sans-serif; color: #A83A22; text-wrap: pretty;">버튼 이름이 "저장" → "적용"으로 바뀌었습니다. Step 05의 locator를 고쳐야 합니다.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top: 3px solid #14130F; padding: 13px 20px; background: #EFEBE0; display: flex; align-items: center; gap: 12px;">
+        <div style="font: 400 13px/1 'IBM Plex Mono', ui-monospace, monospace; color: #6B675C;">step 05 실패 시점</div>
+        <div style="flex: 1;"></div>
+        <div style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 15px; border: 3px solid #14130F; background: #FFFDF6; font: 600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M11 2.5l2.5 2.5-8 8H3v-2.5z"></path></svg>
+          Step 05 고치기
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
