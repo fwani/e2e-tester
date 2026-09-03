@@ -1,0 +1,56 @@
+[importlinter]
+root_packages =
+    itb
+include_external_packages = True
+
+# ─── 헌법 원칙 II (NON-NEGOTIABLE, 이연 불가) ───────────────────────────────
+# 저장된 테스트의 실행 경로에서 언어모델 호출이 코드 구조상 도달 불가능해야 한다.
+# 런타임 플래그가 아니라 임포트 경계로 막는다. 이 계약이 깨지면 빌드가 실패한다.
+[importlinter:contract:execution-no-llm]
+name = execution must not reach the LLM boundary (Constitution Principle II)
+type = forbidden
+source_modules =
+    itb.domain
+    itb.locator
+    itb.execution
+    itb.storage
+    itb.generator
+    itb.mirror
+forbidden_modules =
+    itb.llm
+    itb.authoring
+    anthropic
+
+# ─── 헌법 원칙 I — domain 은 순수해야 한다 ──────────────────────────────────
+# 도메인 모델이 무엇도 임포트하지 않으므로 단일 Step 모델이 다른 계층에 오염되지 않는다.
+[importlinter:contract:domain-is-pure]
+name = domain must not depend on any other itb layer
+type = forbidden
+source_modules =
+    itb.domain
+forbidden_modules =
+    itb.locator
+    itb.recording
+    itb.execution
+    itb.mirror
+    itb.secrets
+    itb.storage
+    itb.generator
+    itb.authoring
+    itb.llm
+    itb.api
+    playwright
+    fastapi
+
+# ─── 헌법 원칙 IV — locator 해석은 단일 지점 ────────────────────────────────
+# strategy 는 순수 함수여야 한다. Playwright 를 임포트하면 Generator 와 공유할 수 없다.
+[importlinter:contract:locator-strategy-is-pure]
+name = locator.strategy must stay framework-free so Runner and Generator can share it
+type = forbidden
+source_modules =
+    itb.locator.strategy
+forbidden_modules =
+    playwright
+    fastapi
+    itb.execution
+    itb.recording

@@ -37,6 +37,10 @@ packages = ["src/itb"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src"]
+# 도메인의 `Test` 클래스(테스트 시나리오 모델)를 pytest 가 수집하지 않게 한다.
+# 함수 기반 테스트만 쓰므로 클래스 수집 패턴을 좁힌다.
+python_classes = ["*Tests"]
+filterwarnings = ["error::DeprecationWarning"]
 
 [tool.ruff]
 line-length = 100

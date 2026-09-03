@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # 헌법 원칙 II (NON-NEGOTIABLE) 강제.
+  # 이 잡이 실패하면 나머지 잡을 실행하지 않는다. 실행 경로에서 언어모델 호출이
+  # 도달 가능해진 상태에서 다른 검사 결과는 의미가 없다.
+  # ─────────────────────────────────────────────────────────────────────────
+  constitution-boundaries:
+    name: 아키텍처 경계 (헌법 원칙 II·I·IV)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: 의존성 설치
+        working-directory: backend
+        run: uv sync
+      - name: lint-imports — execution 이 llm 에 도달하지 못함을 확인
+        working-directory: backend
+        run: uv run lint-imports
+
+  backend:
+    name: 백엔드 검사·테스트
+    needs: constitution-boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: 의존성 설치
+        working-directory: backend
+        run: uv sync
+      - name: 린트
+        working-directory: backend
+        run: uv run ruff check .
+      - name: Chromium 설치
+        working-directory: backend
+        run: uv run playwright install --with-deps chromium
+      - name: 픽스처 앱 기동
+        run: |
+          python fixtures/sample-app/serve.py --port 4300 &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4300/login.html >/dev/null && break
+            sleep 0.5
+          done
+      - name: 단위·계약 테스트
+        working-directory: backend
+        run: uv run pytest tests/unit tests/contract -q
+      - name: 통합·종단 테스트
+        working-directory: backend
+        run: uv run pytest tests/integration tests/e2e -q
+
+  schema-drift:
+    name: DSL 스키마 드리프트 (헌법 Cross-language schema duty)
+    needs: constitution-boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 의존성 설치
+        working-directory: backend
+        run: uv sync
+      - name: 프론트 의존성 설치
+        working-directory: frontend
+        run: npm ci
+      - name: 스키마·타입 재생성 후 커밋된 산출물과 비교
+        run: |
+          cd backend && uv run python -m itb.schema.export && cd ..
+          cd frontend && npm run gen:types && cd ..
+          git diff --exit-code -- \
+            backend/schema/step-dsl.schema.json \
+            frontend/src/types/generated/ \
+            || { echo "::error::스키마 생성물이 커밋된 내용과 다릅니다. 재생성 후 커밋하세요."; exit 1; }
+
+  frontend:
+    name: 프론트엔드 검사·테스트
+    needs: constitution-boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: 의존성 설치
+        working-directory: frontend
+        run: npm ci
+      - name: 타입 검사·테스트
+        working-directory: frontend
+        run: |
+          npm run typecheck
+          npm test -- --run
