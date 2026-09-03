@@ -524,3 +524,19 @@ Phase 2 완료 후, 프론트엔드와 백엔드를 나눠 진행할 수 있다.
 
 **Checkpoint**: 위 4건이 끝나면 spec·plan·contracts·헌법 대비 잔여 갭이 없다. Phase 5~10 은
 별도로 남아 있다
+
+---
+
+## Phase 12: Convergence (2회차)
+
+`/speckit-converge` 2회차. **Phase 11 의 hover·drag Step 추가가 만든 "소비자가 따라온다"
+(원칙 I) 잔여 작업이다.** 코드 소비자(리코더·실행기·화면)는 그때 함께 반영했고, 여기 남은
+것은 아직 만들지 않은 소비자의 **작업 정의**와 설계 문서다.
+
+- [ ] T163 에이전트 도구 표면과 Step 종류의 1:1 관계를 회복한다 per `plan.md` 원칙 I 게이트 (contradicts) — **HIGH**. T111 의 도구 목록에 `hover`·`drag` 가 없다. plan 의 원칙 I 게이트 PASS 근거가 "도구 표면이 Step 종류와 1:1이라 컴파일 실패 경우가 원리적으로 없다"(research R5)이고 T113(컴파일러)이 그 근거에 의존하는데, Step 종류가 8종이 된 지금 그 주장은 참이 아니다. **US4(Phase 6) 를 시작하기 전에** 둘 중 하나를 한다 — ① 도구 표면에 `hover(element_ref)`·`drag(element_ref, drop_ref)` 를 더한다, ② 1:1 이 아님과 그때 컴파일 실패를 어떻게 다루는지를 `plan.md` 에 명시한다. ①을 고르면 T111·T113 의 범위가 늘어난다
+- [ ] T164 생성기와 그 테스트가 `hover`·`drag` 를 덮게 한다 per 원칙 V 증분 의무·`tasks: T144` (partial) — T143 은 종류를 열거하지 않아 그대로 두어도 되지만, T144 의 범위("후보별 표현, 4종 검증, 멀티 탭, 민감 변수 참조, 이스케이프")에 새 종류가 없다. 대응표는 `contracts/step-dsl.md` §Playwright Export 대비에 이미 적었다(`hover()`, `dragTo()`) — 그것이 테스트로 고정되지 않으면 Export 가 새 종류를 조용히 빠뜨린다
+- [ ] T165 `data-model.md` 의 Step 종류 열거를 8종으로 맞춘다 per `data-model.md` §Step (contradicts) — 93행의 `type` enum 이 6종만 열거하고, 109행의 종류별 추가 필드 표에 `hover`·`drag` 가 없다. 권위 정의는 Pydantic 이므로 코드가 맞고 문서가 틀렸다. `drag` 의 `drop_target` 을 추가 필드로 적는다
+- [ ] T166 StepInspector 가 `drag` 의 두 요소를 구분해 보여준다 per `tasks: T141`·FR-019·FR-020 (partial) — T141 은 후보 표 하나를 그린다. `drag` 는 `target`(끄는 대상)과 `drop_target`(놓는 위치)을 가지므로 놓는 위치의 후보를 볼 수 없고, "다시 집기"(FR-020)도 어느 쪽을 다시 집는지 지정할 수 없다. 두 요소를 구분한 표시와 재지정 대상 선택이 필요하다
+
+**Checkpoint**: Phase 12 가 끝나면 hover·drag 가 모든 소비자(리코더·실행기·화면·에이전트·
+생성기·설계 문서)에 일관되게 반영된다
