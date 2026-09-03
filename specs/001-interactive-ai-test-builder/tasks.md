@@ -135,12 +135,12 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 
 ### Tests for User Story 1 ⚠️ 먼저 작성해 실패를 확인한다
 
-- [ ] T047 [P] [US1] `backend/tests/contract/test_project_api.py` — 프로젝트 생성·열기·조회 계약 (contracts/rest-api §프로젝트)
-- [ ] T048 [P] [US1] `backend/tests/contract/test_tests_api.py` — 테스트 목록·조회·이름 변경·삭제 계약, `counts` 집계 (contracts/rest-api §테스트)
-- [ ] T049 [P] [US1] `backend/tests/contract/test_dsl_roundtrip.py` — contracts/step-dsl 의 단일 탭·멀티 탭 예제 YAML 을 적재→직렬화→비교. 검증 규칙 위반 케이스 전부 거절 확인
+- [x] T047 [P] [US1] `backend/tests/contract/test_project_api.py` — 프로젝트 생성·열기·조회 계약 (contracts/rest-api §프로젝트)
+- [x] T048 [P] [US1] `backend/tests/contract/test_tests_api.py` — 테스트 목록·조회·이름 변경·삭제 계약, `counts` 집계 (contracts/rest-api §테스트)
+- [x] T049 [P] [US1] `backend/tests/contract/test_dsl_roundtrip.py` — contracts/step-dsl 의 단일 탭·멀티 탭 예제 YAML 을 적재→직렬화→비교. 검증 규칙 위반 케이스 전부 거절 확인
 - [x] T050 [P] [US1] `backend/tests/integration/test_recording.py` — 픽스처 앱 대상 녹화 통합 테스트: 4종 동작 기록, 연속 입력 병합(FR-025), 한글 입력 최종값(research R2)
 - [x] T051 [P] [US1] `backend/tests/integration/test_multitab_record.py` — 새 탭 조작 기록, `tab` 값 부여, 탭 닫기 Step, 탭 상한 도달 (FR-030a~c·FR-030g)
-- [ ] T052 [P] [US1] `backend/tests/e2e/test_us1_manual_record.py` — 녹화 → 저장 → 목록 표시 종단 테스트
+- [x] T052 [P] [US1] `backend/tests/e2e/test_us1_manual_record.py` — 녹화 → 저장 → 목록 표시 종단 테스트
 
 ### Implementation for User Story 1
 
@@ -161,7 +161,7 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 - [ ] T067 [US1] `frontend/src/components/StepList.tsx` — 번호·표시 이름·동작 종류 배지·적용된 식별 정보 요약·작성 주체 배지·탭 표시. **사람·AI·자연어 경로가 같은 `step_added` 이벤트를 쓰므로 분기를 두지 않는다**(원칙 I, contracts/websocket) — T045 의존
 - [ ] T068 [US1] `frontend/src/pages/Runner.tsx` — `Main.dc.html` 이식(녹화 상태). 헤더 배지·테스트명·`step N / M`·정지 버튼, 좌측 브라우저 영역, 우측 Step 목록, 하단 "Step 추가" (FR-026)
 - [ ] T069 [US1] `frontend/src/components/TabStrip.tsx` — **확정 디자인에 없는 화면.** 미러 위 탭 표시·전환 (FR-030f, spec 디자인 차이 3)
-- [ ] T070 [US1] 녹화 이벤트 → Step 목록 반영 지연을 계측해 `backend/tests/integration/test_performance.py` 에 p95 < 200ms 검증을 추가한다 (research R8)
+- [x] T070 [US1] 녹화 이벤트 → Step 목록 반영 지연을 계측해 `backend/tests/integration/test_performance.py` 에 p95 < 200ms 검증을 추가한다 (research R8)
 
 - [x] T157 [US1] `backend/src/itb/recording/recorder.py` 에서 민감 값 치환이 `step_added` 이벤트 발행보다 **반드시 먼저** 일어나도록 파이프라인 순서를 고정한다. 리코더가 비밀번호 평문을 포착한 뒤 변수 참조로 치환하기 전에 이벤트가 나가면 평문이 프론트에 도달한다 (FR-083, FR-089d, 헌법 보안 요건) — analyze C2
 - [x] T158 [P] [US1] `backend/tests/unit/test_sensitive_ordering.py` — 치환 전 이벤트 발행을 깨뜨리는 회귀 테스트. 리코더 파이프라인에 평문이 이벤트 페이로드로 들어가는 경로가 없음을 확인한다 (FR-083, SC-010) — analyze C2

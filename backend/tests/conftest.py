@@ -1,4 +1,4 @@
-"""통합 테스트 공용 픽스처.
+"""통합·종단 테스트 공용 픽스처.
 
 픽스처 앱을 띄우고, 프로젝트를 만들고, TestClient 를 준비한다.
 픽스처 앱이 없으면 테스트를 건너뛰지 않고 **명확한 사유로 실패**한다 — 조용히 건너뛰면
@@ -18,7 +18,7 @@ from urllib.request import urlopen
 import pytest
 from fastapi.testclient import TestClient
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 FIXTURE_APP = REPO_ROOT / "fixtures" / "sample-app" / "serve.py"
 STARTUP_TIMEOUT_S = 20.0
 
