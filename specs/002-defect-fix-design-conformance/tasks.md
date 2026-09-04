@@ -129,14 +129,14 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 
 ### 화면 골격 분리 (DC-008)
 
-- [ ] T032 [US6] `frontend/src/App.tsx` 의 화면 상태를 확정 디자인 8종 + 미대응 4종에 맞춰 늘린다. **세션 상태(`view.state`)와 화면 선택을 분리한다** — 지금은 `Runner` 하나가 세션 상태 조합으로 4개 화면을 그리고, 그 얽힘이 research R2 가 규명한 "AI 실패가 안 보이는" 원인이다
-- [ ] T033 [US6] `frontend/src/components/StepInspector.tsx` 를 `frontend/src/pages/StepInspector.tsx` 로 옮긴다. `canvas.json` 이 독립 artboard 로 정의했고 DC-008 이 독립 화면을 요구한다
+- [X] T032 [US6] `frontend/src/App.tsx` 의 화면 상태를 확정 디자인 8종 + 미대응 4종에 맞춰 늘린다. **세션 상태(`view.state`)와 화면 선택을 분리한다** — 지금은 `Runner` 하나가 세션 상태 조합으로 4개 화면을 그리고, 그 얽힘이 research R2 가 규명한 "AI 실패가 안 보이는" 원인이다
+- [X] T033 [US6] `frontend/src/components/StepInspector.tsx` 를 `frontend/src/pages/StepInspector.tsx` 로 옮긴다. `canvas.json` 이 독립 artboard 로 정의했고 DC-008 이 독립 화면을 요구한다
 
 ### 전사 — 8화면 (서로 다른 파일이므로 병렬 가능)
 
-- [ ] T034 [P] [US6] `frontend/src/pages/TestList.tsx` 를 `docs/design/TestList.dc.html`(1440×760) 로 전사한다. 헤더 60px·하단 테두리 3px, 검색행, 전체/PASS/FAIL 카운터, 테스트 목록 행
-- [ ] T035 [P] [US6] `frontend/src/pages/CreateTest.tsx` 를 `docs/design/CreateTest.dc.html`(1000×700) 로 전사한다
-- [ ] T036 [P] [US6] `frontend/src/pages/AiRecord.tsx` 를 `docs/design/AiRecord.dc.html`(1440×900) 로 전사하고 **독립 화면으로** 만든다. Runner 안의 조건부 패널에서 분리한다
+- [X] T034 [P] [US6] `frontend/src/pages/TestList.tsx` 를 `docs/design/TestList.dc.html`(1440×760) 로 전사한다. 헤더 60px·하단 테두리 3px, 검색행, 전체/PASS/FAIL 카운터, 테스트 목록 행
+- [X] T035 [P] [US6] `frontend/src/pages/CreateTest.tsx` 를 `docs/design/CreateTest.dc.html`(1000×700) 로 전사한다
+- [X] T036 [P] [US6] `frontend/src/pages/AiRecord.tsx` 를 `docs/design/AiRecord.dc.html`(1440×900) 로 전사하고 **독립 화면으로** 만든다. Runner 안의 조건부 패널에서 분리한다
 - [ ] T037 [P] [US6] `frontend/src/pages/Runner.tsx` 를 `docs/design/Main.dc.html`(1440×900) 로 전사한다 — 실행 중 화면
 - [ ] T038 [P] [US6] `frontend/src/pages/RunnerPaused.tsx` 를 `docs/design/RunnerPaused.dc.html`(1440×900) 로 전사하고 **독립 화면으로** 만든다
 - [ ] T039 [P] [US6] `frontend/src/pages/Takeover.tsx` 를 `docs/design/Takeover.dc.html`(1440×900) 로 전사하고 **독립 화면으로** 만든다
@@ -176,10 +176,10 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 
 ### Implementation for User Story 2
 
-- [ ] T052 [US2] `backend/src/itb/api/routes/sessions.py` 의 `stop` 에서 `state.sessions.close()`·`_WORK.pop()`·`broker.drop()` 을 **제거한다.** 리코더·에이전트·미러·러너·인라인 정리와 브라우저 종료는 그대로 두고 상태를 `review` 로 옮긴다 (contracts/rest-api-delta.md §6)
-- [ ] T053 [US2] `backend/src/itb/api/routes/sessions.py` 에 `review` 상태를 추가한다. **종료 상태가 아니다** — 기존 `stopped` 와 달리 명령을 받는다. 상태 기계에 전이를 정의한다
-- [ ] T054 [US2] `backend/src/itb/api/routes/sessions.py` 에 `POST /api/sessions/{id}/discard` 를 추가한다. **여기서 비로소 `SessionWork` 가 파괴된다.** 확인 대화상자는 화면의 책임이다 — 서버가 두 번 묻는 구조를 만들지 않는다
-- [ ] T055 [US2] `backend/src/itb/api/routes/sessions.py` 의 `save` 가 `review` 상태에서 동작하는지 확인하고, 저장 후 `SessionWork` 를 정리한다
+- [X] T052 [US2] `backend/src/itb/api/routes/sessions.py` 의 `stop` 에서 `state.sessions.close()`·`_WORK.pop()`·`broker.drop()` 을 **제거한다.** 리코더·에이전트·미러·러너·인라인 정리와 브라우저 종료는 그대로 두고 상태를 `review` 로 옮긴다 (contracts/rest-api-delta.md §6)
+- [X] T053 [US2] `backend/src/itb/api/routes/sessions.py` 에 `review` 상태를 추가한다. **종료 상태가 아니다** — 기존 `stopped` 와 달리 명령을 받는다. 상태 기계에 전이를 정의한다
+- [X] T054 [US2] `backend/src/itb/api/routes/sessions.py` 에 `POST /api/sessions/{id}/discard` 를 추가한다. **여기서 비로소 `SessionWork` 가 파괴된다.** 확인 대화상자는 화면의 책임이다 — 서버가 두 번 묻는 구조를 만들지 않는다
+- [X] T055 [US2] `backend/src/itb/api/routes/sessions.py` 의 `save` 가 `review` 상태에서 동작하는지 확인하고, 저장 후 `SessionWork` 를 정리한다
 - [ ] T056 [US2] 브라우저 창이 외부에서 닫혀 세션이 유실된 경우에도 Step 이 보존되어 `review` 로 가도록 한다 (DR-015)
 - [ ] T057 [US2] `frontend/src/api/client.ts` 에 `sessions.discard(id)` 를 추가한다
 - [ ] T058 [US2] `frontend/src/pages/Runner.tsx` 의 중지 버튼에서 **`onFinished()` 호출을 없앤다**(3곳: 기존 287·377·533 위치). 중지 후 화면에 머물러 Step 목록과 저장 수단을 보여준다 (DR-010·DR-013)
@@ -206,13 +206,13 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 
 ### Implementation for User Story 3
 
-- [ ] T064 [US3] `backend/src/itb/api/routes/ai.py` 신규 — `GET /api/ai/availability`. 자격 증명 **해석 가능 여부만** 본다. 언어모델을 호출하지 않는다 (contracts/rest-api-delta.md §8)
-- [ ] T065 [US3] `backend/src/itb/api/app.py` 에 `ai` 라우터를 등록한다. **`itb.api` 계층이므로 `.importlinter` 의 `execution-no-llm` 계약을 위반하지 않는다** — 등록 후 `lint-imports` 로 확인한다 (RG-004)
-- [ ] T066 [US3] `frontend/src/api/client.ts` 에 `ai.availability()` 를 추가한다
+- [X] T064 [US3] `backend/src/itb/api/routes/ai.py` 신규 — `GET /api/ai/availability`. 자격 증명 **해석 가능 여부만** 본다. 언어모델을 호출하지 않는다 (contracts/rest-api-delta.md §8)
+- [X] T065 [US3] `backend/src/itb/api/app.py` 에 `ai` 라우터를 등록한다. **`itb.api` 계층이므로 `.importlinter` 의 `execution-no-llm` 계약을 위반하지 않는다** — 등록 후 `lint-imports` 로 확인한다 (RG-004)
+- [X] T066 [US3] `frontend/src/api/client.ts` 에 `ai.availability()` 를 추가한다
 - [ ] T067 [US3] `frontend/src/pages/Runner.tsx`(또는 화면 분리 후의 상위)에서 **AI 세션 판정을 `view.state` 가 아니라 `authoring_mode` 로 바꾼다.** 그것이 세션의 불변 속성이다. `isAiSession` 이 `paused` 에서 거짓이 되는 것이 원인이었다 (research R2)
 - [ ] T068 [US3] `frontend/src/pages/AiRecord.tsx` 가 **실패 사유를 세션 상태와 무관하게** 렌더하게 한다 (DR-020)
 - [ ] T069 [US3] `ai_error` 수신 시 진행 로그에도 실패를 남긴다. 렌더 조건이 하나 어긋나도 사용자가 볼 경로가 둘이 되게 한다 (research R2 결정)
-- [ ] T070 [US3] `frontend/src/pages/CreateTest.tsx` 에서 AI 모드를 고르면 `ai.availability()` 를 확인하고, 사용할 수 없으면 **실행 전에** 무엇이 준비되지 않았고 무엇을 하면 되는지 안내한다 (DR-021)
+- [X] T070 [US3] `frontend/src/pages/CreateTest.tsx` 에서 AI 모드를 고르면 `ai.availability()` 를 확인하고, 사용할 수 없으면 **실행 전에** 무엇이 준비되지 않았고 무엇을 하면 되는지 안내한다 (DR-021)
 - [ ] T071 [US3] AI 실행 요청 접수 즉시 화면이 전환되게 한다. 화면에 아무 변화가 없는 상태로 끝나지 않아야 한다 (DR-016·SC-104)
 - [ ] T072 [US3] AI 수행 완료 시 Step 목록·저장 수단·"지시문은 저장되지 않으며 재실행 시 AI 를 쓰지 않는다" 안내를 표시한다 (DR-019, 001 FR-064)
 - [ ] T073 [P] [US3] `backend/tests/integration/test_ai_failure_visible.py` 신규 — 자격 증명 없이 AI 세션을 만들면 `ai_error` 가 발행되고 Step 이 보존되는지 (DR-020, 001 FR-067)

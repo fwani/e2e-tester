@@ -11,7 +11,8 @@ import { ProjectSetup } from "./pages/ProjectSetup";
 import { RunResult } from "./pages/RunResult";
 import { SecretValues } from "./pages/SecretValues";
 import { TestDefinition } from "./pages/TestDefinition";
-import { Runner } from "./pages/Runner";
+import { AiCompose } from "./pages/AiCompose";
+import { SessionScreen } from "./pages/SessionScreen";
 import { TestList } from "./pages/TestList";
 
 type Screen =
@@ -20,6 +21,8 @@ type Screen =
   | { name: "list" }
   | { name: "create" }
   | { name: "runner"; session: SessionView; aiInstruction?: string | null }
+  /** AI 지시문 작성. 확정 디자인이 독립 artboard 로 정의한다 (DC-008). */
+  | { name: "ai-compose"; startUrl: string }
   | { name: "result"; testId: string }
   | { name: "definition"; testId: string; focusStepId?: string | null }
   | { name: "keys" }
@@ -92,25 +95,15 @@ export function App() {
       )}
 
       {screen.name === "list" && (
-        <>
-          {/* 민감 값·키는 목록에서 들어간다 — 확정 디자인에 없는 화면이므로 진입점도
-              눈에 띄지 않게 둔다 (spec 디자인 차이 3). */}
-          <div className="row" style={{ gap: 8, padding: "8px 16px 0" }}>
-            <span className="spacer" />
-            <button className="ghost" onClick={() => setScreen({ name: "secrets" })}>
-              비밀 값
-            </button>
-            <button className="ghost" onClick={() => setScreen({ name: "keys" })}>
-              키 관리
-            </button>
-          </div>
-          <TestList
-            onCreate={() => setScreen({ name: "create" })}
-            onRun={(testId) => startReplay(testId)}
-            onOpenResult={(testId) => setScreen({ name: "result", testId })}
-            onOpenDefinition={(testId) => setScreen({ name: "definition", testId })}
-          />
-        </>
+        <TestList
+          projectName={opened.name}
+          onCreate={() => setScreen({ name: "create" })}
+          onRun={(testId) => startReplay(testId)}
+          onOpenResult={(testId) => setScreen({ name: "result", testId })}
+          onOpenDefinition={(testId) => setScreen({ name: "definition", testId })}
+          onOpenSecrets={() => setScreen({ name: "secrets" })}
+          onOpenKeys={() => setScreen({ name: "keys" })}
+        />
       )}
 
       {screen.name === "definition" && (
@@ -137,6 +130,23 @@ export function App() {
         <CreateTest
           project={opened}
           onCancel={() => setScreen({ name: "list" })}
+          onRecord={(startUrl) => {
+            void sessions
+              .create({ mode: "record", start_url: startUrl })
+              .then((session) => setScreen({ name: "runner", session }))
+              .catch((exc: unknown) =>
+                setError(exc instanceof ApiError ? exc.message : String(exc)),
+              );
+          }}
+          // 지시문은 다음 화면에서 쓴다 — 확정 디자인의 「지시문 쓰기」다 (DC-008).
+          onWriteInstruction={(startUrl) => setScreen({ name: "ai-compose", startUrl })}
+        />
+      )}
+
+      {screen.name === "ai-compose" && (
+        <AiCompose
+          startUrl={screen.startUrl}
+          onCancel={() => setScreen({ name: "create" })}
           onStarted={(session, aiInstruction) =>
             setScreen({ name: "runner", session, aiInstruction })
           }
@@ -144,7 +154,7 @@ export function App() {
       )}
 
       {screen.name === "runner" && (
-        <Runner
+        <SessionScreen
           initial={screen.session}
           aiInstruction={screen.aiInstruction ?? null}
           onFinished={() => setScreen({ name: "list" })}

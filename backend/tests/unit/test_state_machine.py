@@ -10,6 +10,7 @@ import pytest
 
 from itb.execution.state_machine import (
     ACTIVE_STATES,
+    REVIEW_STATES,
     PAUSABLE_STATES,
     SESSION_HELD_STATES,
     TERMINAL_STATES,
@@ -103,17 +104,30 @@ def test_terminal_states_hold_no_session(state: SessionState) -> None:
     assert holds_browser_session(state) is False
 
 
-def test_states_are_partitioned_into_active_and_terminal() -> None:
-    assert ACTIVE_STATES | TERMINAL_STATES == set(ALL_STATES)
+def test_states_are_partitioned_into_active_review_and_terminal() -> None:
+    """002 — `REVIEW` 가 제3의 범주로 더해졌다.
+
+    브라우저가 없으므로 활성이 아니고, 편집·저장을 받으므로 종료가 아니다. 세 범주가
+    서로 겹치지 않고 전체를 덮는다는 것이 여전히 불변식이다 (research R1).
+    """
+    assert ACTIVE_STATES | REVIEW_STATES | TERMINAL_STATES == set(ALL_STATES)
     assert not (ACTIVE_STATES & TERMINAL_STATES)
+    assert not (ACTIVE_STATES & REVIEW_STATES)
+    assert not (REVIEW_STATES & TERMINAL_STATES)
 
 
-# ─── 불변식 2: 편집은 PAUSED 에서만 (FR-035a) ──────────────────────────────
+# ─── 불변식 2: 편집은 PAUSED·REVIEW 에서만 (FR-035a·DR-012) ────────────────
 
 
 @pytest.mark.parametrize("state", ALL_STATES)
-def test_edit_only_in_paused(state: SessionState) -> None:
-    expected = state is SessionState.PAUSED
+def test_edit_only_in_paused_or_review(state: SessionState) -> None:
+    """002 — `REVIEW` 가 더해졌다.
+
+    중지 후 기록을 검토하며 고칠 수 있어야 한다(DR-012). 그러지 못하면 잘못 기록된
+    Step 하나 때문에 녹화 전체를 버려야 한다. **다른 어느 상태에서도 여전히 불가하다** —
+    이 단언의 요점은 그쪽이다.
+    """
+    expected = state in {SessionState.PAUSED, SessionState.REVIEW}
     assert can(state, Command.EDIT_STEPS) is expected
     assert is_editable(state) is expected
 
@@ -199,11 +213,21 @@ def test_record_actions_from_paused_enters_recording() -> None:
         (Command.CHOOSE_TAKEOVER, SessionState.TAKEOVER_RECORDING),
         (Command.CHOOSE_RETRY, SessionState.AI_RUNNING),
         (Command.CHOOSE_SKIP, SessionState.AI_RUNNING),
-        (Command.CHOOSE_ABORT, SessionState.STOPPED),
+        # 002 — REVIEW 로 바뀌었다. FR-074 는 "종료를 선택하면 세션을 종료하고
+        # **그때까지 성공한 Step 의 저장 여부를 확인해야 한다**" 고 요구하는데,
+        # STOPPED 는 아무 명령도 받지 않아 그 확인이 불가능했다 (research R1).
+        (Command.CHOOSE_ABORT, SessionState.REVIEW),
     ],
 )
 def test_four_choices(command: Command, expected: SessionState) -> None:
     assert next_state(SessionState.AI_BLOCKED, command) is expected
+
+
+def test_abort_can_still_save_what_the_ai_managed(  ) -> None:
+    """FR-074 — 종료해도 그때까지 성공한 Step 을 저장할 수 있어야 한다."""
+    after = next_state(SessionState.AI_BLOCKED, Command.CHOOSE_ABORT)
+    assert after is not None
+    assert can(after, Command.SAVE)
 
 
 @pytest.mark.parametrize(

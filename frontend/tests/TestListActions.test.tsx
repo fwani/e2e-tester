@@ -1,10 +1,15 @@
 /**
- * 목록의 이름 변경·삭제 (T167). FR-007.
+ * 목록의 이름 변경·삭제 (T167·T048). FR-007.
  *
  * **삭제 확인이 이 테스트의 요점이다.** 확인 없이 지우면 사용자가 만든 자산이 한 번의
  * 오클릭으로 사라진다 — 되돌릴 수 없는 조작이므로 확인은 기능이 아니라 요구사항이다.
+ *
+ * 002 조정: 이름 변경·삭제·정의 보기를 **`⋯` 메뉴를 열어야** 볼 수 있다.
+ * `docs/design/TestList.dc.html` 의 동작 열은 132px 이고 그 안에 `[실행]` 과 `[⋯]`
+ * 두 컨트롤만 있다. 버튼을 행에 늘어놓으면 확정 디자인에 없는 요소를 더하는 것이라
+ * DC-007 위반이다. **단언은 그대로다 — 메뉴를 여는 한 단계만 앞에 붙였다.**
  */
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TestList } from "../src/pages/TestList";
@@ -47,6 +52,12 @@ const noop = () => undefined;
 async function renderList() {
   render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
   await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
+  openMenu();
+}
+
+/** 확정 디자인의 `⋯` 버튼. 행의 추가 동작은 전부 이 뒤에 있다. */
+function openMenu() {
+  act(() => screen.getByRole("button", { name: "로그인 추가 동작" }).click());
 }
 
 describe("TestList — 이름 변경·삭제 (FR-007)", () => {
@@ -105,6 +116,7 @@ describe("TestList — 이름 변경·삭제 (FR-007)", () => {
     await renderList();
     expect(screen.queryByText("정의 보기")).toBeNull();
 
+    cleanup();
     const onOpenDefinition = vi.fn();
     render(
       <TestList
@@ -114,7 +126,10 @@ describe("TestList — 이름 변경·삭제 (FR-007)", () => {
         onOpenDefinition={onOpenDefinition}
       />,
     );
-    await waitFor(() => expect(screen.getAllByText("정의 보기").length).toBe(1));
+    await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
+    openMenu();
+
+    expect(screen.getAllByText("정의 보기").length).toBe(1);
     act(() => screen.getByText("정의 보기").click());
     expect(onOpenDefinition).toHaveBeenCalledWith("TC-001");
   });

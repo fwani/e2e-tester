@@ -52,6 +52,14 @@ class SessionState(StrEnum):
 
     COMPLETED = "completed"
     FAILED = "failed"
+    REVIEW = "review"
+    """중지 후 검토 (DR-010~DR-014).
+
+    **종료 상태가 아니다.** 브라우저는 닫혔지만 기록된 Step 은 살아 있어 보고·고치고
+    저장할 수 있다. 001 의 `STOPPED` 는 아무 명령도 받지 않아, 중지하는 순간 녹화 결과가
+    통째로 유실됐다 — 그것이 이 라운드가 고치는 결함이다 (research R1).
+    """
+
     STOPPED = "stopped"
     LOST = "lost"
     """브라우저 세션이 외부 요인으로 유실됐다 (FR-041)."""
@@ -83,6 +91,9 @@ class Command(StrEnum):
     SAVE = "save"
     """저장. 상태를 바꾸지 않지만 허용 여부가 상태에 따라 다르다."""
 
+    DISCARD = "discard"
+    """검토 중인 초안을 버린다 (DR-014). **여기서 비로소 세션이 파괴된다.**"""
+
 
 ACTIVE_STATES: frozenset[SessionState] = frozenset(
     {
@@ -96,6 +107,14 @@ ACTIVE_STATES: frozenset[SessionState] = frozenset(
     }
 )
 """브라우저 세션이 살아 있는 상태들."""
+
+REVIEW_STATES: frozenset[SessionState] = frozenset({SessionState.REVIEW})
+"""**브라우저는 없지만 기록은 살아 있는 상태** (DR-010~DR-014).
+
+`ACTIVE_STATES` 도 `TERMINAL_STATES` 도 아니다. 활성이 아닌 이유는 브라우저 세션이
+닫혔기 때문이고, 종료가 아닌 이유는 편집·저장 명령을 받기 때문이다. 001 에는 이 범주가
+없어 중지가 곧 기록 유실이었다.
+"""
 
 TERMINAL_STATES: frozenset[SessionState] = frozenset(
     {
@@ -136,12 +155,12 @@ _TRANSITIONS: dict[SessionState, dict[Command, SessionState]] = {
         Command.BEGIN_RECORD: SessionState.RECORDING,
         Command.BEGIN_REPLAY: SessionState.REPLAYING,
         Command.BEGIN_AI: SessionState.AI_RUNNING,
-        Command.STOP: SessionState.STOPPED,
+        Command.STOP: SessionState.REVIEW,
         Command.SESSION_LOST: SessionState.LOST,
     },
     SessionState.RECORDING: {
         Command.PAUSE: SessionState.PAUSED,
-        Command.STOP: SessionState.STOPPED,
+        Command.STOP: SessionState.REVIEW,
         Command.SAVE: SessionState.RECORDING,
         Command.SESSION_LOST: SessionState.LOST,
     },
@@ -151,7 +170,7 @@ _TRANSITIONS: dict[SessionState, dict[Command, SessionState]] = {
         # 실행 위치를 옮긴다. 그 사이에 일시정지를 끼우게 하면 브라우저가 한 번 더 멈췄다
         # 풀리고, 사용자가 요청하지 않은 상태 전이가 화면에 보인다.
         Command.RUN_FROM: SessionState.REPLAYING,
-        Command.STOP: SessionState.STOPPED,
+        Command.STOP: SessionState.REVIEW,
         Command.FINISH_PASS: SessionState.COMPLETED,
         Command.FINISH_FAIL: SessionState.FAILED,
         Command.SESSION_LOST: SessionState.LOST,
@@ -159,7 +178,7 @@ _TRANSITIONS: dict[SessionState, dict[Command, SessionState]] = {
     SessionState.AI_RUNNING: {
         Command.PAUSE: SessionState.PAUSED,
         Command.AI_BLOCK: SessionState.AI_BLOCKED,
-        Command.STOP: SessionState.STOPPED,
+        Command.STOP: SessionState.REVIEW,
         Command.FINISH_PASS: SessionState.COMPLETED,
         Command.FINISH_FAIL: SessionState.FAILED,
         Command.SESSION_LOST: SessionState.LOST,
@@ -169,18 +188,18 @@ _TRANSITIONS: dict[SessionState, dict[Command, SessionState]] = {
         Command.CHOOSE_TAKEOVER: SessionState.TAKEOVER_RECORDING,
         Command.CHOOSE_RETRY: SessionState.AI_RUNNING,
         Command.CHOOSE_SKIP: SessionState.AI_RUNNING,
-        Command.CHOOSE_ABORT: SessionState.STOPPED,
+        Command.CHOOSE_ABORT: SessionState.REVIEW,
         # CHK051 이 지적한 미정의 지점: 4선택지 대신 일시정지·저장을 요청하는 경우.
         Command.PAUSE: SessionState.PAUSED,
         Command.SAVE: SessionState.AI_BLOCKED,
-        Command.STOP: SessionState.STOPPED,
+        Command.STOP: SessionState.REVIEW,
         Command.SESSION_LOST: SessionState.LOST,
     },
     SessionState.TAKEOVER_RECORDING: {
         Command.RESUME: SessionState.AI_RUNNING,
         Command.PAUSE: SessionState.PAUSED,
         Command.RECORD_ACTIONS_STOP: SessionState.TAKEOVER_RECORDING,
-        Command.STOP: SessionState.STOPPED,
+        Command.STOP: SessionState.REVIEW,
         Command.SAVE: SessionState.TAKEOVER_RECORDING,
         Command.SESSION_LOST: SessionState.LOST,
     },
@@ -190,10 +209,16 @@ _TRANSITIONS: dict[SessionState, dict[Command, SessionState]] = {
         Command.RESUME: SessionState.REPLAYING,
         Command.RUN_FROM: SessionState.REPLAYING,
         Command.SAVE: SessionState.PAUSED,
-        Command.STOP: SessionState.STOPPED,
+        Command.STOP: SessionState.REVIEW,
         Command.SESSION_LOST: SessionState.LOST,
     },
     # 불변식 5 — 유실 후에는 저장만 허용한다. 이어서 실행·편집은 불가하다.
+    SessionState.REVIEW: {
+        # 브라우저가 없으므로 실행 계열 명령은 받지 않는다 (001 FR-043a). 편집·저장만.
+        Command.EDIT_STEPS: SessionState.REVIEW,
+        Command.SAVE: SessionState.REVIEW,
+        Command.DISCARD: SessionState.STOPPED,
+    },
     SessionState.LOST: {Command.SAVE: SessionState.LOST},
     SessionState.COMPLETED: {},
     SessionState.FAILED: {},
@@ -219,6 +244,7 @@ _COMMAND_LABELS: dict[Command, str] = {
     Command.FINISH_PASS: "실행 완료",
     Command.FINISH_FAIL: "실행 실패",
     Command.SESSION_LOST: "세션 유실",
+    Command.DISCARD: "버리기",
     Command.SAVE: "저장",
 }
 
@@ -232,6 +258,7 @@ _STATE_LABELS: dict[SessionState, str] = {
     SessionState.PAUSED: "일시정지",
     SessionState.COMPLETED: "완료",
     SessionState.FAILED: "실패",
+    SessionState.REVIEW: "검토 중",
     SessionState.STOPPED: "중지됨",
     SessionState.LOST: "세션 유실",
 }
@@ -287,8 +314,13 @@ def holds_browser_session(state: SessionState) -> bool:
 
 
 def is_editable(state: SessionState) -> bool:
-    """**불변식 2** — 편집은 `PAUSED` 에서만 (FR-035·FR-035a)."""
-    return state is SessionState.PAUSED
+    """**불변식 2** — 편집은 `PAUSED` 와 `REVIEW` 에서만 (FR-035·FR-035a·DR-012).
+
+    002 에서 `REVIEW` 가 더해졌다. 중지 후 기록을 검토하며 고칠 수 있어야 하고(DR-012),
+    그러지 못하면 사용자는 잘못 기록된 Step 하나 때문에 녹화 전체를 버려야 한다.
+    브라우저가 없다는 점은 실행 계열 명령을 막는 것으로 이미 지켜진다.
+    """
+    return state in {SessionState.PAUSED, SessionState.REVIEW}
 
 
 def mirror_should_run(state: SessionState) -> bool:

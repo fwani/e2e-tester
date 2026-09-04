@@ -154,6 +154,21 @@ export const fs = {
     ),
 };
 
+// ─── AI 사용 가능 여부 (DR-021) ─────────────────────────────────────────────
+//
+// **작성 경로 전용이다.** 재실행 경로는 이것을 읽지 않는다 (원칙 II).
+// 자격 증명의 조각은 오지 않는다 — 가능 여부와 안내 문구뿐이다.
+
+export interface AiAvailability {
+  available: boolean;
+  /** 쓸 수 없을 때 무엇이 준비되지 않았고 무엇을 하면 되는지. */
+  reason: string | null;
+}
+
+export const ai = {
+  availability: () => get<AiAvailability>("/api/ai/availability"),
+};
+
 // ─── 테스트 ─────────────────────────────────────────────────────────────────
 
 export interface FailureSummary {
@@ -204,6 +219,8 @@ export type SessionState =
   | "paused"
   | "completed"
   | "failed"
+  /** 중지 후 검토. **종료 상태가 아니다** — 편집·저장을 받는다 (DR-010). */
+  | "review"
   | "stopped"
   | "lost";
 
@@ -222,6 +239,13 @@ export interface SessionView {
   allowed_commands: string[];
   /** 저장하지 않은 편집이 있는가. 중지 확인의 근거다 (FR-042). */
   has_unsaved_changes: boolean;
+  /**
+   * 어떻게 만드는 세션인가. **세션의 불변 속성이다.**
+   *
+   * 화면이 AI 세션 여부를 `state` 로 판정하면 AI 가 실패해 `paused` 로 바뀌는 순간
+   * 실패 사유가 사라진다 — 001 의 "AI 로 만들기 무반응" 이 그것이다 (research R2).
+   */
+  authoring_mode: "record" | "ai";
 }
 
 export interface TabView {
@@ -296,7 +320,13 @@ export const sessions = {
     post<SessionView>(`/api/sessions/${id}/record-actions:start`),
   recordActionsStop: (id: string) =>
     post<SessionView>(`/api/sessions/${id}/record-actions:stop`),
+  /**
+   * 중지 — **브라우저만 정리한다.** 세션은 `review` 로 남아 Step 을 계속 보고 저장할
+   * 수 있다 (DR-010·DR-013). 001 은 여기서 세션을 파괴해 이후 저장이 불가능했다.
+   */
   stop: (id: string) => post<SessionView>(`/api/sessions/${id}/stop`),
+  /** 검토 중인 초안을 버린다. **여기서 비로소 세션이 파괴된다** (DR-014). */
+  discard: (id: string) => post<void>(`/api/sessions/${id}/discard`),
   save: (id: string, name: string) => post<Test>(`/api/sessions/${id}/save`, { name }),
   tabs: (id: string) => get<TabsResponse>(`/api/sessions/${id}/tabs`),
   setMirrorTab: (id: string, tabIndex: number) =>

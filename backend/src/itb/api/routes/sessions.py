@@ -210,6 +210,13 @@ class SessionView(BaseModel):
     has_unsaved_changes: bool = False
     """저장하지 않은 편집이 있는가. 중지 확인 대화상자의 근거다 (FR-042)."""
 
+    authoring_mode: AuthoringMode = AuthoringMode.RECORD
+    """어떻게 만드는 세션인가. **세션의 불변 속성이다.**
+
+    화면이 AI 세션 여부를 `state` 로 판정하면, AI 가 실패해 `paused` 로 바뀌는 순간
+    AI 화면과 실패 사유가 사라진다 — 001 에서 "AI 로 만들기가 아무 반응이 없다" 로
+    보인 것의 원인이다 (research R2·DR-020)."""
+
 
 class SaveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -240,6 +247,7 @@ def view_of(w: SessionWork) -> SessionView:
         recorder_warnings=list(w.recorder.warnings),
         allowed_commands=[c.value for c in allowed_commands(w.session.state)],
         has_unsaved_changes=w.has_unsaved_changes,
+        authoring_mode=w.authoring_mode,
     )
 
 
@@ -1009,7 +1017,17 @@ async def ai_step(session_id: str, body: AiStepRequest, state: State) -> AiStepR
 
 @router.post("/{session_id}/stop")
 async def stop(session_id: str, state: State) -> SessionView:
-    """FR-042 — 세션을 종료한다. 저장 여부는 클라이언트가 확인 후 별도로 호출한다.
+    """중지 — **브라우저만 정리하고 기록은 남긴다.** DR-010·DR-013·DR-015.
+
+    001 은 여기서 `sessions.close()` 와 `_WORK.pop()` 까지 했다. 그래서 중지 이후의
+    저장이 `SESSION_NOT_FOUND` 로 실패했고, 화면을 붙잡아 두더라도 저장할 수 없었다 —
+    사용자가 녹화한 것이 통째로 사라지는 결함의 절반이 이것이다 (research R1).
+
+    이제 세션은 `REVIEW` 로 남는다. 실제 브라우저 창을 남길 이유는 없으므로 리코더·
+    에이전트·미러·러너는 그대로 정리한다. **`SessionWork` 만 살려 둔다** — Step·변수·
+    저장 스냅샷이 거기 있고, 저장에 그것이 필요하다.
+
+    이벤트 채널도 닫지 않는다. 저장까지가 한 흐름이다.
 
     **이미 종료 상태인 세션에도 응답한다.** 실행이 끝난 세션을 닫는 것은 상태 전이가 아니라
     자원 정리다. 여기서 거절하면 브라우저와 세션 등록이 남아, 같은 테스트를 다시 실행할 때
@@ -1017,8 +1035,6 @@ async def stop(session_id: str, state: State) -> SessionView:
     """
     w = work_of(session_id)
     already_terminal = w.session.state in TERMINAL_STATES
-    if not already_terminal:
-        _apply(w, Command.STOP)
 
     w.recorder.stop()
     await _cancel_agent(w)
@@ -1028,15 +1044,40 @@ async def stop(session_id: str, state: State) -> SessionView:
         await w.runner.cancel()
     if w.inline is not None:
         w.inline.stop()
+
     if not already_terminal:
+        _apply(w, Command.STOP)
         await w.session.apply(Command.STOP)
-    # 세션을 정리하기 **전에** 뷰를 만든다. 응답의 `has_unsaved_changes` 가 저장 확인
-    # 대화상자의 근거다 (FR-042) — 서버가 대신 저장하지 않는다.
-    snapshot = view_of(w)
+
+    # 브라우저 자원은 놓아 준다. 기록은 `_WORK` 에 남는다.
+    await state.sessions.close(session_id)
+    return view_of(w)
+
+
+@router.post("/{session_id}/discard", status_code=204)
+async def discard(session_id: str, state: State) -> None:
+    """검토 중인 초안을 버린다. DR-014. **여기서 비로소 세션이 파괴된다.**
+
+    확인 대화상자는 화면이 띄운다. 서버가 두 번 물으면 어느 쪽이 진짜 확인인지 모호해진다
+    (contracts/rest-api-delta.md §7).
+    """
+    w = work_of(session_id)
+
+    w.recorder.stop()
+    await _cancel_agent(w)
+    if w.mirror is not None:
+        await w.mirror.stop("세션을 종료했습니다.")
+    if w.runner is not None:
+        await w.runner.cancel()
+    if w.inline is not None:
+        w.inline.stop()
+
+    with contextlib.suppress(InvalidTransitionError):
+        await w.session.apply(Command.DISCARD)
+
     await state.broker.drop(session_id)
     await state.sessions.close(session_id)
     _WORK.pop(session_id, None)
-    return snapshot
 
 
 @router.post("/{session_id}/save")

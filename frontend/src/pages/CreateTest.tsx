@@ -1,192 +1,381 @@
 /**
- * 테스트 만들기 (T065). `CreateTest.dc.html` 이식.
+ * 테스트 만들기. **`docs/design/CreateTest.dc.html`(1000×700) 전사.** DC-001~DC-007.
  *
- * FR-008·FR-009: 작성 방식·시작 URL·브라우저 선택. **두 방식이 같은 Step 모델로
- * 저장됨을 사용자에게 알린다** — 원칙 I 을 사용자에게 설명하는 지점이다.
+ * 확정 디자인에는 **자연어 지시 입력이 없다.** 「AI로 만들기」 카드의 버튼은
+ * 「지시문 쓰기」이고, 지시문은 `AiRecord.dc.html` 에서 쓴다. 001 구현이 이 화면에
+ * textarea 를 끼워 넣은 것은 확정 디자인에 없는 요소를 더한 것이라 DC-007 위반이다 —
+ * 여기서는 다음 화면으로 넘긴다 (DC-008).
+ *
+ * DR-021 — AI 를 쓸 수 없는 환경이면 **실행을 시도하기 전에** 무엇이 준비되지 않았고
+ * 무엇을 하면 되는지 알린다. 눌렀는데 아무 일도 없는 것이 이 라운드가 고치는 결함이다.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { ApiError, sessions, type ProjectView, type SessionView } from "../api/client";
+import { ai, ApiError, type ProjectView } from "../api/client";
 
 export interface CreateTestProps {
-  project: ProjectView;
-  /** 세션과 함께 지시문을 넘긴다 — Runner 가 화면에 표시한다 (FR-064). */
-  onStarted: (session: SessionView, aiInstruction: string | null) => void;
+  project: ProjectView | null;
   onCancel: () => void;
+  /** 직접 녹화 — 시작 URL 을 들고 녹화 세션으로 간다. */
+  onRecord: (startUrl: string) => void;
+  /** AI로 만들기 — 지시문은 다음 화면에서 쓴다 (DC-008). */
+  onWriteInstruction: (startUrl: string) => void;
 }
 
-type Mode = "record" | "ai";
+export function CreateTest({ project, onCancel, onRecord, onWriteInstruction }: CreateTestProps) {
+  const [startUrl, setStartUrl] = useState(project?.default_start_url ?? "");
+  const [aiReady, setAiReady] = useState<{ available: boolean; reason: string | null } | null>(null);
 
-export function CreateTest({ project, onStarted, onCancel }: CreateTestProps) {
-  const [mode, setMode] = useState<Mode>("record");
-  const [startUrl, setStartUrl] = useState(project.default_start_url);
-  const [instruction, setInstruction] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const start = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const aiInstruction = mode === "ai" ? instruction.trim() : null;
-      onStarted(
-        await sessions.create({
-          mode,
-          start_url: startUrl.trim(),
-          ai_instruction: aiInstruction,
+  // DR-021 — 화면에 들어오는 순간 확인한다. 눌러 봐야 아는 것은 늦다.
+  useEffect(() => {
+    void ai
+      .availability()
+      .then(setAiReady)
+      .catch((exc: unknown) =>
+        setAiReady({
+          available: false,
+          reason: exc instanceof ApiError ? exc.message : String(exc),
         }),
-        aiInstruction,
       );
-    } catch (exc) {
-      setError(exc instanceof ApiError ? exc.message : String(exc));
-    } finally {
-      setBusy(false);
-    }
-  };
+  }, []);
+
+  const urlReady = /^https?:\/\//.test(startUrl.trim());
 
   return (
-    <main style={{ maxWidth: 760, margin: "32px auto", padding: "0 16px" }}>
-      <div className="row">
-        <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: 0 }}>
-          테스트 만들기
-        </h1>
-        <span className="spacer" />
-        <button className="ghost" onClick={onCancel} aria-label="닫기">
-          ✕
-        </button>
-      </div>
-
-      <p className="muted">
-        만드는 방법을 고르세요. 어느 쪽으로 만들어도 <strong>같은 Step 모델</strong>로
-        저장되고, 실행은 Playwright 가 합니다.
-      </p>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <MethodCard
-          selected={mode === "record"}
-          onSelect={() => setMode("record")}
-          title="직접 녹화"
-          description="브라우저를 직접 조작해서 테스트를 만듭니다."
-          bullets={[
-            "클릭 · 입력 · 선택 · 화면 이동을 그대로 기록",
-            "기록 중 언제든 멈추고 고칠 수 있음",
-          ]}
-          cta="녹화 시작"
-        />
-        <MethodCard
-          selected={mode === "ai"}
-          onSelect={() => setMode("ai")}
-          title="✨ AI 로 만들기"
-          description="할 일을 말로 적으면 AI 가 브라우저에서 해봅니다."
-          bullets={["성공한 동작만 Step 으로 기록", "다시 돌릴 때는 AI 를 쓰지 않음"]}
-          cta="지시문 쓰기"
-          accent
-        />
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <label htmlFor="start-url">시작 URL</label>
-        <input
-          id="start-url"
-          value={startUrl}
-          onChange={(e) => setStartUrl(e.target.value)}
-        />
-
-        <label htmlFor="browser">브라우저</label>
-        <select id="browser" value={project.browser} disabled>
-          <option value="chromium">Chromium</option>
-        </select>
-        <p className="dim" style={{ fontSize: 12, marginTop: 4 }}>
-          MVP 는 Chromium 만 지원합니다.
-        </p>
-
-        {mode === "ai" && (
-          <>
-            <label htmlFor="instruction">자연어 지시</label>
-            <textarea
-              id="instruction"
-              rows={4}
-              value={instruction}
-              onChange={(e) => setInstruction(e.target.value)}
-              placeholder={
-                "로그인한 다음 프로젝트 메뉴로 이동해서\nTEST 라는 프로젝트를 생성하고\n" +
-                "프로젝트 목록에 TEST 가 있는지 확인해."
-              }
-            />
-            <p className="dim" style={{ fontSize: 12, marginTop: 4 }}>
-              지시문은 테스트로 저장되지 않습니다. AI 가 실제로 성공한 동작만 Step 으로
-              저장되고, 다시 돌릴 때는 AI 를 쓰지 않습니다.
-            </p>
-          </>
-        )}
-
-        {error !== null && (
-          <p style={{ color: "var(--fail-dark)", whiteSpace: "pre-wrap" }}>{error}</p>
-        )}
-
-        <div className="row" style={{ justifyContent: "flex-end", marginTop: 16 }}>
-          <button className="secondary" onClick={onCancel}>
-            취소
-          </button>
-          <button
-            disabled={
-              busy ||
-              startUrl.trim() === "" ||
-              (mode === "ai" && instruction.trim() === "")
-            }
-            onClick={() => void start()}
-          >
-            {mode === "record" ? "녹화 시작 →" : "AI 실행 →"}
-          </button>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-function MethodCard({
-  selected,
-  onSelect,
-  title,
-  description,
-  bullets,
-  cta,
-  accent = false,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  description: string;
-  bullets: string[];
-  cta: string;
-  accent?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className="secondary"
+    <div
       style={{
-        display: "block",
-        textAlign: "left",
-        padding: 18,
-        borderRadius: "var(--radius)",
-        borderWidth: 2,
-        borderColor: selected ? (accent ? "var(--ai)" : "var(--ink)") : "var(--border)",
-        background: selected && accent ? "var(--ai-tint)" : "var(--paper)",
+        width: "1000px",
+        minHeight: "700px",
+        background: "#EFEBE0",
+        padding: "40px",
+        display: "flex",
+        margin: "0 auto",
       }}
     >
-      <strong style={{ fontSize: 15 }}>{title}</strong>
-      <p className="muted" style={{ margin: "8px 0" }}>
-        {description}
-      </p>
-      <ul className="dim" style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
-        {bullets.map((b) => (
-          <li key={b}>{b}</li>
-        ))}
-      </ul>
-      <div style={{ marginTop: 12, fontWeight: 600 }}>{cta} →</div>
-    </button>
+      <div
+        style={{
+          flex: "1",
+          border: "3px solid #14130F",
+          background: "#FFFDF6",
+          boxShadow: "10px 10px 0 #14130F",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "14px",
+            padding: "22px 28px",
+            borderBottom: "3px solid #14130F",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif",
+              fontSize: "28px",
+              lineHeight: "1",
+            }}
+          >
+            테스트 만들기
+          </div>
+          <div style={{ flex: "1" }} />
+          <button
+            aria-label="닫기"
+            onClick={onCancel}
+            style={{
+              width: "44px",
+              height: "44px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "3px solid #14130F",
+              background: "#EFEBE0",
+              padding: 0,
+              boxShadow: "none",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#14130F" strokeWidth="2.6">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+          </button>
+        </div>
+
+        <div
+          style={{
+            padding: "26px 28px 28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "22px",
+          }}
+        >
+          <div
+            style={{
+              font: "500 15px/1.5 'IBM Plex Sans KR', system-ui, sans-serif",
+              color: "#4A473F",
+              maxWidth: "620px",
+              textWrap: "pretty",
+            }}
+          >
+            만드는 방법을 고르세요. 어느 쪽으로 만들어도 같은 Step 모델로 저장되고, 실행은
+            Playwright가 합니다.
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "20px" }}>
+            {/* 직접 녹화 */}
+            <div
+              style={{
+                border: "3px solid #14130F",
+                background: "#FFFDF6",
+                boxShadow: "6px 6px 0 #14130F",
+                padding: "22px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px",
+                minHeight: "232px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "46px",
+                    height: "46px",
+                    border: "3px solid #14130F",
+                    background: "#D9502F",
+                    color: "#FFFDF6",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 22 22">
+                    <circle cx="11" cy="11" r="6.5" fill="currentColor" />
+                  </svg>
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif",
+                    fontSize: "22px",
+                    lineHeight: "1",
+                  }}
+                >
+                  직접 녹화
+                </div>
+              </div>
+              <div style={{ font: "500 15px/1.55 'IBM Plex Sans KR', system-ui, sans-serif", textWrap: "pretty" }}>
+                브라우저를 직접 조작해서 테스트를 만듭니다.
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "7px",
+                  font: "400 13px/1.4 'IBM Plex Mono', ui-monospace, monospace",
+                  color: "#6B675C",
+                }}
+              >
+                <div>클릭 · 입력 · 선택 · 화면 이동을 그대로 기록</div>
+                <div>기록 중 언제든 멈추고 고칠 수 있음</div>
+              </div>
+              <div style={{ flex: "1" }} />
+              <button
+                disabled={!urlReady}
+                onClick={() => onRecord(startUrl.trim())}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "9px",
+                  height: "48px",
+                  background: "#14130F",
+                  color: "#F5F2E9",
+                  border: "3px solid #14130F",
+                  font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+                  boxShadow: "none",
+                }}
+              >
+                녹화 시작
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M3 8h9M8.5 4.5L12.5 8l-4 3.5" />
+                </svg>
+              </button>
+            </div>
+
+            {/* AI로 만들기 */}
+            <div
+              style={{
+                border: "3px solid #14130F",
+                background: "#F0EBFC",
+                boxShadow: "6px 6px 0 #14130F",
+                padding: "22px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px",
+                minHeight: "232px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "46px",
+                    height: "46px",
+                    border: "3px solid #14130F",
+                    background: "#7C4DDB",
+                    color: "#FFFDF6",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                    <path d="M12 3v5M12 16v5M3 12h5M16 12h5M6 6l3 3M15 15l3 3M18 6l-3 3M9 15l-3 3" />
+                  </svg>
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif",
+                    fontSize: "22px",
+                    lineHeight: "1",
+                  }}
+                >
+                  AI로 만들기
+                </div>
+              </div>
+              <div style={{ font: "500 15px/1.55 'IBM Plex Sans KR', system-ui, sans-serif", textWrap: "pretty" }}>
+                할 일을 말로 적으면 AI가 브라우저에서 해봅니다.
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "7px",
+                  font: "400 13px/1.4 'IBM Plex Mono', ui-monospace, monospace",
+                  color: "#55507A",
+                }}
+              >
+                <div>성공한 동작만 Step으로 기록</div>
+                <div>다시 돌릴 때는 AI를 쓰지 않음</div>
+              </div>
+
+              {/* DR-021 — 확정 디자인이 정의하지 않은 상태. 실행 전에 알린다. */}
+              {aiReady !== null && !aiReady.available && (
+                <div
+                  role="status"
+                  style={{
+                    border: "2px solid #14130F",
+                    background: "#FFF9D6",
+                    padding: "10px 12px",
+                    font: "500 13px/1.5 'IBM Plex Sans KR', system-ui, sans-serif",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {aiReady.reason ?? "AI 를 사용할 수 없습니다."}
+                </div>
+              )}
+
+              <div style={{ flex: "1" }} />
+              <button
+                disabled={!urlReady || aiReady === null || !aiReady.available}
+                onClick={() => onWriteInstruction(startUrl.trim())}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "9px",
+                  height: "48px",
+                  background: "#7C4DDB",
+                  color: "#FFFDF6",
+                  border: "3px solid #14130F",
+                  font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+                  boxShadow: "none",
+                }}
+              >
+                지시문 쓰기
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M3 8h9M8.5 4.5L12.5 8l-4 3.5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: "16px",
+              borderTop: "3px solid #14130F",
+              paddingTop: "22px",
+            }}
+          >
+            <div style={{ flex: "1", display: "flex", flexDirection: "column", gap: "8px" }}>
+              <label
+                htmlFor="start-url"
+                style={{
+                  font: "600 12px/1 'IBM Plex Mono', ui-monospace, monospace",
+                  letterSpacing: "0.12em",
+                  color: "#6B675C",
+                  margin: 0,
+                  textTransform: "none",
+                }}
+              >
+                시작 URL
+              </label>
+              <input
+                id="start-url"
+                value={startUrl}
+                onChange={(e) => setStartUrl(e.target.value)}
+                placeholder="https://[대상 앱 URL]/login"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  height: "48px",
+                  minHeight: "48px",
+                  padding: "0 14px",
+                  border: "3px solid #14130F",
+                  background: "#FFFDF6",
+                  font: "400 15px/1 'IBM Plex Mono', ui-monospace, monospace",
+                }}
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div
+                style={{
+                  font: "600 12px/1 'IBM Plex Mono', ui-monospace, monospace",
+                  letterSpacing: "0.12em",
+                  color: "#6B675C",
+                }}
+              >
+                브라우저
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  height: "48px",
+                  padding: "0 14px",
+                  border: "3px solid #14130F",
+                  background: "#FFFDF6",
+                  font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+                }}
+              >
+                Chromium
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#14130F" strokeWidth="2.4">
+                  <path d="M3.5 5L7 9l3.5-4" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* 확정 디자인이 정의하지 않은 상태 — URL 이 규격에 맞지 않을 때 (DC-009). */}
+          {startUrl.trim() !== "" && !urlReady && (
+            <div style={{ color: "#A83A22", font: "500 13px/1.5 'IBM Plex Sans KR', system-ui, sans-serif" }}>
+              시작 URL 은 http:// 또는 https:// 로 시작해야 합니다.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

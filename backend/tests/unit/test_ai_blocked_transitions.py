@@ -27,7 +27,9 @@ EXPECTED: dict[AiChoice, SessionState] = {
     AiChoice.TAKEOVER: SessionState.TAKEOVER_RECORDING,
     AiChoice.RETRY: SessionState.AI_RUNNING,
     AiChoice.SKIP: SessionState.AI_RUNNING,
-    AiChoice.ABORT: SessionState.STOPPED,
+    # 002 — FR-074 는 종료 시 "그때까지 성공한 Step 의 저장 여부를 확인" 을
+    # 요구한다. STOPPED 는 아무 명령도 받지 않아 그 확인이 불가능했다.
+    AiChoice.ABORT: SessionState.REVIEW,
 }
 
 
