@@ -35,7 +35,7 @@ from itb.execution.step_executor import StepExecutor
 from itb.mirror.tab_switch import MirrorController
 from itb.recording.inline_record import InlineRecording
 from itb.recording.recorder import Recorder
-from itb.secrets.keys import KeyMissingError, load_private_or_reason, load_public
+from itb.secrets.keys import load_private_or_reason, load_public_or_none
 from itb.secrets.resolver import VariableResolver
 from itb.secrets.store import SecretStore
 from itb.storage.repository import ProjectError, ProjectRepository
@@ -314,9 +314,9 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     session.attach_sink(state.broker.sink(session.session_id))
 
     store = _secret_store(repo)  # 이 세션 동안 공유한다
-    public = None
-    with contextlib.suppress(KeyMissingError):
-        public = load_public(state.key_paths)
+    # **공개키를 여기서 붙잡지 않는다.** 세션이 열려 있는 동안 사용자가 키 관리 화면에서
+    # 키를 만들거나 바꿀 수 있다. 붙잡아 두면 그 세션은 끝까지 옛 상태로 실패한다.
+    key_paths = state.key_paths
 
     work = SessionWork(
         session=session,
@@ -325,7 +325,7 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
             sink=lambda step, index: _accept_step(session.session_id, step, index),
             test_id_attribute=project.test_id_attribute,
             store=store,
-            public_key=public,
+            key_source=lambda: load_public_or_none(key_paths),
         ),
         store=store,
         start_url=start_url,
@@ -381,20 +381,23 @@ def _build_engine(
     **여기서 만드는 것 중 어느 것도 언어모델을 알지 못한다.** 실행에 필요한 전부가 저장된
     정의 안에 있다는 사실이 조립 과정에 드러난다.
 
-    비밀키는 **있으면 쓴다.** 못 열어도 세션은 시작한다 — 민감 변수를 쓰지 않는 테스트가
-    비밀키 때문에 막히면 안 된다. 대신 **못 연 사유를 그대로 들고 간다.** 예전에는 예외를
-    통째로 삼켜서, 암호구로 잠긴 키가 "비밀키가 없습니다" 로 보고됐다. 사용자는 있는 키를
-    찾아 헤맸다. 이제 잠긴 키는 잠겼다고 말하고 암호구 공급 방법을 알린다 (FR-089f).
+    비밀키를 **여기서 열지 않는다.** 여는 방법만 넘기고, 민감 변수를 실제로 요구하는
+    순간에 연다. 두 가지가 여기에 걸려 있다.
+
+    1. 민감 변수를 쓰지 않는 테스트는 비밀키 없이 실행돼야 한다.
+    2. 세션이 열려 있는 동안 키 관리 화면에서 키를 만들거나 바꿀 수 있다. 시작 시점에
+       붙잡아 두면 그 세션은 끝까지 옛 상태로 실패한다.
+
+    못 열면 사유를 그대로 보여준다 — 예전에는 예외를 통째로 삼켜 암호구로 잠긴 키가
+    "비밀키가 없습니다" 로 보고됐고, 사용자는 있는 키를 찾아 헤맸다 (FR-089f).
     """
     repo = state.require_repository()
 
-    private, key_reason = load_private_or_reason(state.key_paths)
-
+    key_paths = state.key_paths
     resolver = VariableResolver(
         test,
         store=work.store or _secret_store(repo),
-        private_key=private,
-        key_unavailable_reason=key_reason,
+        key_source=lambda: load_private_or_reason(key_paths),
     )
     collector = ArtifactCollector(work.session.context)
     collector.attach()
@@ -437,20 +440,19 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
     from itb.secrets.capture import SensitiveCapturer
 
     repo = state.require_repository()
-    private, key_reason = load_private_or_reason(state.key_paths)
+    key_paths = state.key_paths
 
     store = work.store or _secret_store(repo)
     capturer = work.recorder.capturer or SensitiveCapturer(
         store=store,
-        public_key=work.recorder.public_key,
+        key_source=lambda: load_public_or_none(key_paths),
     )
     work.recorder.capturer = capturer
 
     resolver = VariableResolver(
         _draft_test(work) if work.steps else _empty_draft(work),
         store=store,
-        private_key=private,
-        key_unavailable_reason=key_reason,
+        key_source=lambda: load_private_or_reason(key_paths),
     )
     work.resolver = resolver
 

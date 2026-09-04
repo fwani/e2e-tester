@@ -98,6 +98,9 @@ class Recorder:
     test_id_attribute: str = "data-testid"
     store: SecretStore | None = None
     public_key: PublicKey | None = None
+    key_source: Callable[[], PublicKey | None] | None = None
+    """봉인 시점의 공개키를 구한다. 포착기에 그대로 넘긴다 (`SensitiveCapturer.key_source`)."""
+
     id_allocator: Callable[[], str] | None = None
     """Step id 할당기. 주면 그것을 쓴다.
 
@@ -175,7 +178,7 @@ class Recorder:
             return
         if self.capturer is None:
             self.capturer = SensitiveCapturer(
-                store=self.store, public_key=self.public_key
+                store=self.store, public_key=self.public_key, key_source=self.key_source
             )
         context = self.session.context
 
@@ -573,7 +576,7 @@ class Recorder:
             return raw_value
         if self.capturer is None:  # pragma: no cover - install() 이 먼저 돈다
             self.capturer = SensitiveCapturer(
-                store=self.store, public_key=self.public_key
+                store=self.store, public_key=self.public_key, key_source=self.key_source
             )
 
         cache_key = key if key is not None else self._element_key(element)

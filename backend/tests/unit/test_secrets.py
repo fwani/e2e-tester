@@ -471,3 +471,107 @@ def test_purge_survives_a_reload(tmp_path: pathlib.Path, store: SecretStore) -> 
     reloaded = SecretStore(store.path)
     assert reloaded.names() == []
     assert reloaded.stored_fingerprint is None
+
+
+# ─── 세션 도중 키가 바뀌는 경우 (DR-031 회귀) ────────────────────────────────
+
+
+def test_capturer_seals_with_the_key_that_exists_at_capture_time(
+    tmp_path: pathlib.Path, store: SecretStore
+) -> None:
+    """사용자가 겪은 것: **키를 만들었는데도 민감 값이 저장되지 않는다.**
+
+    세션 시작 시점에 공개키를 붙잡아 두면, 그 사이 키 관리 화면에서 만든 키가 그 세션에
+    반영되지 않는다. 봉인하는 순간에 물어야 한다.
+    """
+    from itb.secrets.capture import SensitiveCapturer
+    from itb.secrets.keys import load_public_or_none
+
+    kp = KeyPaths(tmp_path / "keys")
+    # 세션이 시작될 때는 키가 없다.
+    capturer = SensitiveCapturer(store=store, key_source=lambda: load_public_or_none(kp))
+    assert load_public_or_none(kp) is None
+
+    # 사용자가 키 관리 화면에서 키를 만든다.
+    generate(kp)
+
+    ref = capturer.to_reference(SECRET_VALUE, cache_key="css:#pw")
+    assert ref == "{{SECRET_VALUE_1}}"
+    assert capturer.captures[0].sealed is True
+    assert store.get("SECRET_VALUE_1", load_private(kp)) == SECRET_VALUE
+    assert capturer.warnings == []
+
+
+def test_capturer_reports_the_real_reason_when_sealing_fails(
+    tmp_path: pathlib.Path, store: SecretStore
+) -> None:
+    """지문 불일치를 "공개키가 없다" 로 알리면 사용자는 엉뚱한 조치를 한다."""
+    from itb.secrets.capture import SensitiveCapturer
+
+    first = KeyPaths(tmp_path / "k1")
+    generate(first)
+    store.put("SEEDED", SECRET_VALUE, load_public(first))
+
+    second = KeyPaths(tmp_path / "k2")
+    generate(second)
+    capturer = SensitiveCapturer(store=store, public_key=load_public(second))
+
+    capturer.to_reference(SECRET_VALUE, cache_key="css:#pw")
+
+    assert capturer.captures[0].sealed is False
+    assert any("공개키가 교체" in w for w in capturer.warnings)
+    assert not any("공개키가 없어" in w for w in capturer.warnings)
+
+
+def test_resolver_opens_the_key_when_the_value_is_needed_not_at_build_time(
+    tmp_path: pathlib.Path, store: SecretStore
+) -> None:
+    """조립 시점에 키가 없어도, 값을 요구할 때 있으면 성공한다."""
+    from itb.secrets.keys import load_private_or_reason
+
+    kp = KeyPaths(tmp_path / "keys")
+    t = make_test(variables=[{"name": "LOGIN_PASSWORD", "sensitive": True}])
+    r = VariableResolver(t, store, env={}, key_source=lambda: load_private_or_reason(kp))
+
+    generate(kp)
+    store.put("LOGIN_PASSWORD", SECRET_VALUE, load_public(kp))
+
+    assert r.resolve("LOGIN_PASSWORD") == SECRET_VALUE
+
+
+def test_resolver_reports_the_live_reason_from_the_key_source(
+    tmp_path: pathlib.Path, store: SecretStore
+) -> None:
+    from itb.secrets.keys import load_private_or_reason
+
+    kp = KeyPaths(tmp_path / "keys")
+    generate(kp, passphrase="long-enough-phrase")
+    store.put("LOGIN_PASSWORD", SECRET_VALUE, load_public(kp))
+    t = make_test(variables=[{"name": "LOGIN_PASSWORD", "sensitive": True}])
+    r = VariableResolver(t, store, env={}, key_source=lambda: load_private_or_reason(kp))
+
+    with pytest.raises(VariableResolutionError, match="암호구로 보호"):
+        r.resolve("LOGIN_PASSWORD")
+
+
+def test_store_picks_up_a_purge_done_elsewhere(tmp_path: pathlib.Path) -> None:
+    """세션이 붙잡은 보관소가 키 관리 화면의 비우기를 못 보면 지운 값이 되살아난다."""
+    path = tmp_path / "secrets.local.yaml"
+    kp = KeyPaths(tmp_path / "k1")
+    generate(kp)
+
+    held = SecretStore(path)  # 세션이 붙잡은 것
+    held.put("OLD", SECRET_VALUE, load_public(kp))
+    assert held.names() == ["OLD"]
+
+    # 키 관리 화면이 키를 교체하며 같은 파일을 비운다.
+    SecretStore(path).purge()
+    new_keys = KeyPaths(tmp_path / "k2")
+    generate(new_keys)
+
+    assert held.names() == []
+    assert held.stored_fingerprint is None
+    held.put("NEW", SECRET_VALUE, load_public(new_keys))
+
+    reloaded = SecretStore(path)
+    assert reloaded.names() == ["NEW"]

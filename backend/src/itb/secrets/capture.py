@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from nacl.public import PublicKey
@@ -40,6 +41,14 @@ class SensitiveCapturer:
 
     store: SecretStore | None = None
     public_key: PublicKey | None = None
+    key_source: Callable[[], PublicKey | None] | None = None
+    """봉인하는 **그 순간의** 공개키를 구한다. 주면 `public_key` 스냅숏보다 우선한다.
+
+    세션 시작 시점에 키를 붙잡아 두면, 그 사이 키 관리 화면에서 키를 만들거나 바꿔도
+    그 세션은 없어진 키로 계속 봉인하려 든다. 사용자에게는 "키를 만들었는데도 민감
+    값이 저장되지 않는다" 로 보인다.
+    """
+
     captures: list[SensitiveCapture] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     _names: dict[str, str] = field(default_factory=dict)
@@ -60,17 +69,20 @@ class SensitiveCapturer:
             self._names[cache_key] = variable
 
         sealed = False
-        if self.store is not None and self.public_key is not None:
-            try:
-                self.store.put(variable, raw_value, self.public_key)
-                sealed = True
-            except Exception:  # noqa: BLE001 - 봉인 실패 사유는 아래 경고로 알린다
-                sealed = False
-        if not sealed:
+        public = self._public()
+        if self.store is None or public is None:
             self._warn(
                 f"민감 값을 보관할 공개키가 없어 {variable} 의 값을 저장하지 못했습니다. "
                 "키를 만든 뒤 값을 다시 입력하거나 환경 변수로 공급하세요."
             )
+        else:
+            try:
+                self.store.put(variable, raw_value, public)
+                sealed = True
+            except Exception as exc:  # noqa: BLE001 - 사유를 그대로 경고로 옮긴다
+                # 예전에는 사유를 버리고 "공개키가 없다" 로만 알렸다. 지문 불일치처럼
+                # 조치가 전혀 다른 실패가 같은 문장으로 보여 원인을 찾을 수 없었다.
+                self._warn(f"민감 값 {variable} 을 보관하지 못했습니다: {exc}")
 
         existing = next(
             (c for c in self.captures if c.variable_name == variable), None
@@ -80,6 +92,9 @@ class SensitiveCapturer:
         elif sealed:
             existing.sealed = True
         return variable_reference(variable)
+
+    def _public(self) -> PublicKey | None:
+        return self.key_source() if self.key_source is not None else self.public_key
 
     def _allocate_name(self, basis: tuple[str | None, ...]) -> str:
         for candidate in basis:

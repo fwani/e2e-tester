@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Callable
 
 from nacl.public import PrivateKey
 
@@ -32,9 +33,11 @@ class VariableResolver:
     """한 실행 동안의 변수 값 해석기.
 
     비밀키는 **민감 변수를 실제로 요구할 때만** 필요하다. 민감 변수가 없는 테스트는
-    비밀키 없이 실행된다. 그래서 조립부는 비밀키를 못 열어도 세션을 시작하고, 못 연
-    사유(`key_unavailable_reason`)만 넘긴다 — 그 사유는 민감 변수를 실제로 요구하는
-    순간에만 사용자에게 보인다.
+    비밀키 없이 실행된다. 그래서 조립부는 비밀키를 미리 열지 않고 `key_source` 만
+    넘기고, 실제로 필요한 순간에 연다. 못 열면 그 사유를 그대로 보여준다.
+
+    **키를 세션 시작 시점에 붙잡지 않는 것이 요점이다.** 붙잡아 두면 키 관리 화면에서
+    키를 만들거나 바꿔도 열려 있던 세션은 계속 옛 상태로 실패한다.
     """
 
     def __init__(
@@ -44,11 +47,13 @@ class VariableResolver:
         private_key: PrivateKey | None = None,
         env: object = None,
         key_unavailable_reason: str | None = None,
+        key_source: Callable[[], tuple[PrivateKey | None, str | None]] | None = None,
     ) -> None:
         self._test = test
         self._store = store
         self._private = private_key
         self._key_reason = key_unavailable_reason
+        self._key_source = key_source
         self._env = os.environ if env is None else env
         self._declared = {v.name: v for v in test.variables}
         self._cache: dict[str, str] = {}
@@ -105,6 +110,10 @@ class VariableResolver:
                 f"비밀 값을 입력하거나 환경 변수 {name} 을 설정하세요."
             )
             raise VariableResolutionError(msg)
+        if self._private is None and self._key_source is not None:
+            # 실행 중 한 번만 연다 — 한 번의 실행 도중 키가 바뀌는 것은 오히려 사고다.
+            self._private, self._key_reason = self._key_source()
+
         if self._private is None:
             # 사유가 있으면 그것을 쓴다 — "없는 키"와 "암호구로 잠긴 키"는 조치가 다르다.
             reason = self._key_reason or "비밀키가 없습니다."

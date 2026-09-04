@@ -234,3 +234,14 @@ def load_private_or_reason(
         return load_private(paths, passphrase), None
     except KeyStoreError as exc:
         return None, str(exc)
+
+
+def load_public_or_none(paths: KeyPaths) -> PublicKey | None:
+    """공개키를 읽되, 없으면 `None`. 봉인 시점마다 부르는 용도다.
+
+    세션이 공개키를 붙잡아 두지 않게 하는 것이 목적이다 — 붙잡으면 그 사이에 만든 키가
+    그 세션에 반영되지 않는다.
+    """
+    if not paths.public.exists():
+        return None
+    return load_public(paths)
