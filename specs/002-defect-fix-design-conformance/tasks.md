@@ -428,3 +428,11 @@ converge 1회차가 찾은 잔여 작업. 심각도 순.
 - [X] T102 `frontend/src/pages/RunnerPaused.tsx:467` 의 중복 `AssertionForm` 을 없애고 `components/AssertionForm.tsx` 를 쓴다 per DC-003 (unrequested). 기존 것은 테스트가 있고 `tab` 인자를 지원한다 — 전사하면서 같은 것을 두 번 쓴 것이라 한쪽만 고쳐지면 어긋난다
 - [X] T103 `frontend/src/pages/TestDefinition.tsx` 를 나머지 DC-010 화면과 같은 시각 언어로 맞춘다 per DC-010 (partial). 이 화면만 `className="card"` 3곳에 3px 테두리가 0곳이다. `SecretValues`·`KeyManagement` 는 3px 로 맞췄다
 - [X] T104 임포트되지 않는 옛 시각 언어 컴포넌트 6개를 제거하거나 남길 이유를 기록한다 per DC-001·DC-007 (unrequested): `components/AppHeader.tsx`·`PauseActions.tsx`·`AiProgress.tsx`·`EditWarningBanner.tsx`·`AiBlockedCard.tsx`·`StepList.tsx`. 전부 001 의 지어낸 시각 언어(1px 테두리·어두운 헤더)를 담고 있어, 남겨 두면 다음 편집에서 되살아날 수 있다. **T101 이 `StepList` 의 테스트를 실제 경로로 옮긴 뒤에 지운다** — 순서를 바꾸면 검증이 사라진다
+
+---
+
+## Phase 12: Convergence 2
+
+converge 2회차. 1회차 5건은 전부 닫혔고 아래 1건이 남았다.
+
+- [ ] T105 [US6] `frontend/src/pages/CreateTest.tsx` 와 `StepInspector` 겹침을 나머지 6화면처럼 `Artboard` 로 감싼다 per DC-011 (partial). 8화면 중 6개는 `overflowX: auto` + 기준 폭 컨테이너를 쓰는데 이 둘만 고정 폭을 맨몸으로 둔다. **`StepInspector` 가 특히 문제다** — `SessionScreen.tsx` 의 `position: fixed` 겹침 안에 있어 페이지 스크롤이 닿지 않는다. 창이 640px 보다 좁으면 잘린 채 접근할 수 없다. `CreateTest` 는 `width: 1000px; margin: 0 auto` 라 다른 화면과 동작이 갈린다. 임의 재배치를 하지 말고 기준 폭을 유지한 채 스크롤하게 한다
