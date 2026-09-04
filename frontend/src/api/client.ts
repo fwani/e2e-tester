@@ -373,6 +373,10 @@ export interface KeyStatus {
   passphrase_protected: boolean;
   public_key_fingerprint: string | null;
   permission_warning: string | null;
+  /** 키가 실제로 놓인 곳. 화면은 고정 문구 대신 이것을 찍는다 (UX U-09). */
+  key_dir: string;
+  /** 지금 키로 봉인된 값을 가진 프로젝트 이름들 — 키 교체·삭제의 실제 영향 범위. */
+  sealed_projects: string[];
 }
 
 export interface SecretsResponse {

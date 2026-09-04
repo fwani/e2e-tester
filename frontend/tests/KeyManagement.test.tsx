@@ -22,6 +22,8 @@ const NO_KEYS = {
   passphrase_protected: false,
   public_key_fingerprint: null,
   permission_warning: null,
+  key_dir: "/tmp/itb-test/keys",
+  sealed_projects: [],
 };
 
 function stub(routes: Record<string, { status: number; body: unknown }>) {

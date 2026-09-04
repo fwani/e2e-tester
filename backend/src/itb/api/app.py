@@ -32,7 +32,7 @@ from itb.api.routes import ai, fs, project, secrets_routes, sessions, steps, tab
 from itb.api.state import BIND_HOST, BIND_PORT, AppState, get_state
 from itb.api.ws.session_events import EventBroker
 from itb.execution.session import SessionManager
-from itb.secrets.keys import DEFAULT_KEY_DIR, KeyPaths
+from itb.secrets.keys import KeyPaths, default_key_dir
 
 # 처리되지 않은 오류는 응답에 스택을 싣지 않는다. 진단은 서버 로그가 맡는다 (003 EC-005).
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         playwright=playwright,
         sessions=SessionManager(playwright),
         broker=EventBroker(),
-        key_paths=KeyPaths(DEFAULT_KEY_DIR),
+        key_paths=KeyPaths(default_key_dir()),
     )
     app.state.itb = state
     try:

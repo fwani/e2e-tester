@@ -23,7 +23,8 @@ from nacl import pwhash, secret
 from nacl.exceptions import CryptoError
 from nacl.public import PrivateKey, PublicKey
 
-DEFAULT_KEY_DIR = pathlib.Path.home() / ".config" / "itb" / "keys"
+from itb.storage.paths import config_dir
+
 PRIVATE_KEY_NAME = "private.key"
 PUBLIC_KEY_NAME = "public.key"
 PRIVATE_KEY_MODE = 0o600
@@ -51,6 +52,20 @@ class PassphraseError(KeyStoreError):
 
 class PassphraseRequiredError(KeyStoreError):
     """암호구로 보호된 키인데 암호구가 주어지지 않았다."""
+
+
+def default_key_dir() -> pathlib.Path:
+    """키 쌍이 놓이는 곳. **설정 디렉터리와 같은 규칙을 따른다** — ``XDG_CONFIG_HOME``.
+
+    예전에는 ``Path.home() / ".config"`` 를 모듈 상수로 굳혀 두었다. 그러면 격리 실행
+    (테스트·CI·다중 체크아웃)이 ``XDG_CONFIG_HOME`` 을 돌려도 키만은 사용자의 실제 키를
+    읽고 **쓴다** — 그 인스턴스의 「키 교체」가 사용자의 실제 비밀값 전부를 날린다
+    (UX U-09 에서 실제로 그렇게 동작하는 것을 확인했다).
+
+    매번 계산한다. 상수로 두면 환경 변수를 바꿔도 따라오지 않는다 (`storage.paths` 와
+    같은 이유).
+    """
+    return config_dir() / "keys"
 
 
 @dataclass(frozen=True, slots=True)

@@ -179,9 +179,10 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         </dl>
 
         <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
-          키는 프로젝트 밖(<span className="mono">~/.config/itb/keys</span>)에 있습니다.
-          테스트 정의에는 민감 값이 들어가지 않으며, 암호문은 프로젝트의 비밀 파일에만
-          있습니다.
+          키는 프로젝트 밖(
+          <span className="mono">{status?.key_dir ?? "…"}</span>
+          )에 있습니다. 이 장비의 모든 ITB 프로젝트가 이 키 하나를 씁니다. 테스트 정의에는
+          민감 값이 들어가지 않으며, 암호문은 각 프로젝트의 비밀 파일에만 있습니다.
         </p>
       </section>
 
@@ -286,9 +287,23 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         >
           <strong style={{ color: "var(--fail-dark)" }}>키 교체·삭제</strong>
           <p style={{ margin: 0, fontSize: 12.5 }}>
-            <b>되돌릴 수 없습니다.</b> 지금 키로 봉인된 민감 값은 이후 어떤 방법으로도 읽을
-            수 없으므로, 이 프로젝트의 암호문도 함께 비웁니다. 교체 뒤에는 모든 민감 값을
-            다시 입력해야 합니다.
+            <b>되돌릴 수 없습니다.</b> 키는 장비에 하나이므로 <b>이 장비의 모든 ITB 프로젝트</b>
+            에서 지금 키로 봉인된 민감 값이 전부 못 읽게 됩니다. 열려 있는 프로젝트의 암호문은
+            함께 비우고, 다른 프로젝트의 암호문은 그 프로젝트를 열 때 재입력을 안내합니다.
+          </p>
+          {/* 영향 범위를 숫자와 이름으로 보인다 — "이 프로젝트" 라고만 말하면 나머지가
+              조용히 깨진다 (UX U-09). */}
+          <p style={{ margin: 0, fontSize: 12.5 }} data-sealed-projects>
+            {status === null ? (
+              "영향받는 프로젝트를 확인하는 중…"
+            ) : status.sealed_projects.length === 0 ? (
+              "지금 키로 봉인된 값을 가진 프로젝트는 없습니다."
+            ) : (
+              <>
+                영향받는 프로젝트 <b>{status.sealed_projects.length}개</b>:{" "}
+                {status.sealed_projects.join(", ")}
+              </>
+            )}
           </p>
 
           <label htmlFor="regen-passphrase">새 암호구 (선택, 교체할 때만 적용)</label>

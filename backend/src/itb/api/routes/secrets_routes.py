@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import pathlib
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -16,7 +17,9 @@ from itb.api.errors import ErrorCode, bad_request, conflict, not_found
 from itb.api.state import AppState, get_state
 from itb.secrets.keys import (
     KeyMissingError,
+    KeyPaths,
     KeyStoreError,
+    fingerprint,
     generate,
     load_public,
     permission_warning,
@@ -24,6 +27,8 @@ from itb.secrets.keys import (
     status,
 )
 from itb.secrets.store import FingerprintMismatchError, SecretStore
+from itb.storage import registry
+from itb.storage.repository import ProjectPaths
 
 router = APIRouter(prefix="/api", tags=["secrets"])
 
@@ -44,6 +49,16 @@ class KeyStatusResponse(BaseModel):
     public_key_fingerprint: str | None
     permission_warning: str | None
     """FR-089e-1 — 권한이 열려 있으면 경고. 권한을 임의로 바꾸지 않는다."""
+
+    key_dir: str
+    """키가 실제로 놓인 곳. 화면이 고정 문구(`~/.config/itb/keys`)를 찍으면 격리 실행에서
+    거짓이 된다 — 실제 경로를 준다 (UX U-09)."""
+
+    sealed_projects: list[str]
+    """지금 키로 봉인된 값을 가진 프로젝트 이름들 — **키 교체·삭제의 실제 영향 범위.**
+
+    키는 장비에 하나다. 경고가 "이 프로젝트" 라고만 말하면 나머지 프로젝트의 암호문이
+    아무 통보 없이 못 읽는 상태가 된다 (UX U-09). 그래서 영향 범위를 세어 준다."""
 
 
 class GenerateKeyRequest(BaseModel):
@@ -106,6 +121,35 @@ def _store(state: AppState) -> SecretStore:
     return SecretStore(repo.paths.secrets_file)
 
 
+def _sealed_projects(paths: KeyPaths) -> list[str]:
+    """지금 공개키로 봉인된 값을 하나라도 가진, 도구가 아는 프로젝트의 이름.
+
+    값을 열지 않는다 — 각 비밀 파일의 **지문과 이름 목록만** 읽는다. 남의 프로젝트 파일이
+    깨져 있어도 키 화면은 떠야 하므로 그 프로젝트는 건너뛴다.
+    """
+    if not paths.public.exists():
+        return []
+    try:
+        current = fingerprint(load_public(paths))
+    except KeyStoreError:
+        return []
+
+    entries, _warning = registry.list_projects()
+    return [
+        entry.name
+        for entry in entries
+        if entry.accessible and _sealed_with(pathlib.Path(entry.root), current)
+    ]
+
+
+def _sealed_with(root: pathlib.Path, current_fingerprint: str) -> bool:
+    store = SecretStore(ProjectPaths(root).secrets_file)
+    try:
+        return store.stored_fingerprint == current_fingerprint and bool(store.names())
+    except Exception:  # noqa: BLE001 - 남의 프로젝트의 비밀 파일 손상이 키 화면을 막으면 안 된다
+        return False
+
+
 @router.get("/keys/status")
 async def key_status(state: State) -> KeyStatusResponse:
     info = status(state.key_paths)
@@ -115,6 +159,8 @@ async def key_status(state: State) -> KeyStatusResponse:
         passphrase_protected=bool(info["passphrase_protected"]),
         public_key_fingerprint=info["public_key_fingerprint"],  # type: ignore[arg-type]
         permission_warning=info["permission_warning"],  # type: ignore[arg-type]
+        key_dir=str(state.key_paths.directory),
+        sealed_projects=_sealed_projects(state.key_paths),
     )
 
 
