@@ -6,7 +6,7 @@ import pathlib
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from itb.api.errors import ErrorCode, bad_request, conflict, not_found
 from itb.api.state import AppState, get_state
@@ -32,7 +32,9 @@ class CreateProjectRequest(BaseModel):
     # `path` 가 없다 (DR-001). 서버가 어느 경로에서 실행 중인지 사용자는 알 방법이
     # 없으므로 위치를 물으면 아무도 올바른 값을 넣을 수 없다. 도구가 관리하는 위치에
     # 만들고 그 위치를 응답으로 알려 준다 (DR-006).
-    name: str = Field(min_length=1, max_length=100)
+    # `min_length=1` 만으로는 공백뿐인 이름이 통과한다 — 사용자는 이름을 안 넣었는데
+    # 프로젝트가 만들어지고, 목록에 이름 없는 줄이 남는다 (003 AP-010).
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
     default_start_url: str = Field(pattern=r"^https?://", max_length=2000)
     test_id_attribute: str = Field(default="data-testid", min_length=1, max_length=100)
 

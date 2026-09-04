@@ -179,6 +179,23 @@ def _next_step_id(w: SessionWork) -> str:
 # ─── 삽입·수정·삭제·순서 ───────────────────────────────────────────────────
 
 
+def _missing_fields(exc: Exception) -> list[str]:
+    """검증 실패의 **위치만** 뽑는다. 값은 뽑지 않는다.
+
+    pydantic 오류에는 넘어온 값이 통째로 들어 있다. 그것을 사용자 대면 오류에 실으면
+    비밀 값이 화면·로그·저장된 결과로 샌다 (003 EC-005).
+    """
+    errors = getattr(exc, "errors", None)
+    if not callable(errors):
+        return []
+    out: list[str] = []
+    for err in errors():
+        loc = ".".join(str(p) for p in err.get("loc", ()) if not isinstance(p, int))
+        if loc:
+            out.append(loc)
+    return sorted(set(out))
+
+
 @router.post("/{session_id}/steps")
 async def insert(session_id: str, body: InsertStepRequest) -> StepsResponse:
     w = work_of(session_id)
@@ -186,8 +203,14 @@ async def insert(session_id: str, body: InsertStepRequest) -> StepsResponse:
     try:
         step = STEP_ADAPTER.validate_python(body.step)
     except Exception as exc:  # noqa: BLE001 - 검증 실패 사유를 그대로 전달한다
+        # 예외 원문을 그대로 싣지 않는다. pydantic 은 `input_value=...` 에 **넘어온 값을
+        # 통째로** 담는데, `fill` Step 이면 그 자리에 사용자가 입력한 비밀번호가 들어간다
+        # (003 EC-005·SC-209). 무엇이 잘못됐는지는 필드 이름으로 충분히 알린다.
         raise bad_request(
-            ErrorCode.DEFINITION_INVALID, f"Step 형식이 올바르지 않습니다: {exc}"
+            ErrorCode.DEFINITION_INVALID,
+            "Step 형식이 올바르지 않습니다.",
+            next_action="Step 종류와 필수 항목을 확인한 뒤 다시 시도하세요.",
+            fields=_missing_fields(exc),
         ) from exc
 
     result = insert_step(w.steps, w.current_step_index, step, body.at)

@@ -27,6 +27,7 @@ from itb.execution.state_machine import (
     Command,
     InvalidTransitionError,
     SessionState,
+    allowed_commands,
     is_manipulation_phase,
     state_label,
 )
@@ -864,9 +865,29 @@ async def record_actions_start(session_id: str) -> SessionView:
     return view_of(w)
 
 
+# 사람이 직접 조작을 기록 중인 상태. 이 둘이 아니면 "중지" 할 대상이 없다.
+RECORDING_STATES = frozenset({SessionState.RECORDING, SessionState.TAKEOVER_RECORDING})
+
+
+def _is_recording(work: SessionWork) -> bool:
+    return work.session.state in RECORDING_STATES
+
+
 @router.post("/{session_id}/record-actions:stop")
 async def record_actions_stop(session_id: str) -> SessionView:
+    """녹화를 멈춘다.
+
+    **녹화 중이 아니면 거절한다** (003 AP-020). 그러지 않으면 시작하지 않은 것을 멈추는
+    조작이 성공으로 보이고, 사용자는 무언가 기록됐다고 믿게 된다.
+    """
     w = work_of(session_id)
+    if not _is_recording(w):
+        raise conflict(
+            ErrorCode.INVALID_TRANSITION,
+            "지금 녹화 중이 아닙니다.",
+            next_action="먼저 녹화를 시작한 뒤 중지하세요.",
+            allowed=[c.value for c in allowed_commands(w.session.state)],
+        )
     if w.inline is not None:
         w.inline.stop()
     else:  # pragma: no cover - 방어적 경로

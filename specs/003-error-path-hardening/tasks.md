@@ -58,7 +58,7 @@ description: "Task list for 003 이상 경로 견고성 (비정상 조작 결함
 
 - [X] T008 [US1] `backend/tests/abnormal/catalogue.py` — `specs/003-error-path-hardening/contracts/abnormal-scenarios.json` 로더, 판정 3축 헬퍼(`assert_axis1/2/3`), 그리고 식별자로 실행 수단을 등록하는 레지스트리(`@driver("AS-001")`)를 만든다. 실패 메시지에 시나리오 식별자와 **어긋난 축**을 싣는다
 - [X] T009 [US1] `backend/tests/abnormal/test_catalogue.py` — ① 12개 조합이 각 3건 이상, 식별자 중복 없음, 필드 누락 없음 (SC-206) ② **목록의 모든 시나리오에 실행 수단이 등록되어 있는지** 확인한다. 등록되지 않은 항목은 실패다 (RG-106·SC-211)
-- [ ] T010 [P] [US4] `backend/tests/abnormal/fakes.py` — AI 클라이언트 대역(오류를 던지는 것 · 형식이 깨진 응답 · 시간을 끄는 것). `itb.llm.client.create_client` 를 대체한다. **제품에 실패 주입 스위치를 넣지 않는다** (헌법 원칙 II)
+- [X] T010 [P] [US4] `backend/tests/abnormal/fakes.py` — AI 클라이언트 대역(오류를 던지는 것 · 형식이 깨진 응답 · 시간을 끄는 것). `itb.llm.client.create_client` 를 대체한다. **제품에 실패 주입 스위치를 넣지 않는다** (헌법 원칙 II)
 - [ ] T011 [P] [US4] `fixtures/sample-app/` 에 지연·무응답·오류를 내는 경로를 더한다. 제품 코드가 아니다
 - [X] T012 [US3] `backend/tests/abnormal/product_ui.py` — **제품 UI 를 실제로 띄우는 세션 범위 픽스처** (RG-105). 격리된 작업 디렉터리로 제품 서버를 띄우고, 제품 화면을 띄우고(기존 개발 서버 설정이 이미 `/api`·`/ws` 를 넘긴다), 둘 다 응답할 때까지 기다린 뒤 주소를 넘긴다. 도구·포트가 없으면 **건너뛰지 않고 실패**로 알린다 (RG-106)
 
@@ -100,9 +100,21 @@ API 계층이 이미 계약을 일관되게 쓰고 있었다. 거부를 유발�
 
 각 작업은 **실행기 하나 + 그 면의 수단 전부**다. 시나리오마다 작업을 만들지 않는다.
 
-- [ ] T021 [US2] [US3] [US5] `backend/tests/abnormal/drivers/api_drivers.py` 와 `test_api_surface.py` — 요청 경계 **19건**(AS-001~006·018~023·033~036·043~045)의 수단을 등록하고, 실행기가 목록을 읽어 판정 3축으로 펼친다
+- [X] T021 [US2] [US3] [US5] `backend/tests/abnormal/drivers/api_drivers.py` 와 `test_api_surface.py` — 요청 경계 **19건**(AS-001~006·018~023·033~036·043~045)의 수단을 등록하고, 실행기가 목록을 읽어 판정 3축으로 펼친다
 - [ ] T022 [US4] [US5] `backend/tests/abnormal/drivers/boundary_drivers.py` 와 `test_boundary_surface.py` — 외부 경계 **14건**(AS-013~017·030~032·040~042·049~051)의 수단을 등록한다. T010·T011 의 대역을 쓴다
 - [ ] T023 [US2] [US3] [US4] [US5] `backend/tests/abnormal/drivers/ui_drivers.py` 와 `test_ui_surface.py` — 화면 **18건**(AS-007~012·024~029·037~039·046~048)의 수단을 등록한다. **T012 의 실브라우저 픽스처로 제품 화면을 실제로 조작한다.** 버튼 연타가 요청을 몇 번 내보내는지, 화면을 벗어났다 돌아오면 무엇이 보이는지, 두 창에서 조작하면 어떻게 되는지는 여기서만 판정된다 (RG-105)
+
+**요청 경계 19건 전건 통과** (T021). 이 과정에서 드러난 제품 결함 4건을 고쳤다.
+
+| 결함 | 무엇이 잘못됐나 | 근거 |
+|---|---|---|
+| Step 검증 실패 메시지가 **사용자 입력을 통째로 되돌려 보냈다** | pydantic 원문의 `input_value=` 에 넘어온 값이 그대로 실린다. `fill` Step 이면 그 자리가 비밀번호다 | EC-005·SC-209 |
+| 공백뿐인 이름으로 프로젝트가 **만들어졌다** | `min_length=1` 은 `"   "` 를 통과시킨다. 목록에 이름 없는 줄이 남는다 | AP-010 |
+| 녹화 중이 아닌데 **중지가 성공했다** | 시작하지 않은 것을 멈추는 조작이 성공으로 보였다 | AP-020 |
+| 없는 주소·허용되지 않은 방법이 **계약 밖 응답을 냈다** | `{"detail":"Not Found"}` 는 화면의 오류 추출기가 읽지 못한다. 002 가 422 에서 고친 것과 같은 구멍 | EC-008·RG-104 |
+
+시나리오 정의가 틀린 것 3건도 바로잡았다 (AS-005·AS-034·AS-035·AS-044) — 근거를 목록의
+`note` 에 적었다. 실패가 결함이면 고치고 정의가 틀린 것이면 목록을 고친다는 규칙대로다.
 
 **Checkpoint**: 51건 전부가 판정된다. 통과하지 못한 것이 이 라운드의 결함 목록이다.
 

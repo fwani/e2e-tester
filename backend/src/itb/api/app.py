@@ -19,6 +19,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from playwright.async_api import async_playwright
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from itb.api.errors import (
     ApiError,
@@ -89,6 +90,33 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=422,
             content=validation_error_response(list(exc.errors())).model_dump(),
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        """라우팅이 낸 오류(없는 경로 404, 허용되지 않은 방법 405)도 계약 형태로 낸다.
+
+        기본 동작은 `{"detail": "Not Found"}` 라 화면의 오류 추출기가 읽지 못한다. 002 가
+        422 에서 고친 것과 같은 구멍이며, 003 에서 이름에 경로 구분자를 넣은 요청이 이
+        경로로 빠지면서 드러났다 (AS-003).
+
+        `ApiError` 는 위에서 이미 처리되므로 여기 오지 않는다.
+        """
+        if exc.status_code == 405:
+            body = ErrorBody(
+                code=ErrorCode.NOT_SUPPORTED,
+                message="이 주소에서 지원하지 않는 요청 방법입니다.",
+                next_action="화면을 새로 고친 뒤 다시 시도하세요.",
+            )
+        else:
+            body = ErrorBody(
+                code=ErrorCode.INVALID_PATH,
+                message="요청한 주소를 찾을 수 없습니다.",
+                next_action="이름에 `/` 같은 경로 구분자가 들어가지 않았는지 확인하세요.",
+                detail={"status": exc.status_code},
+            )
+        return JSONResponse(
+            status_code=exc.status_code, content=ErrorResponse(error=body).model_dump()
         )
 
     @app.exception_handler(Exception)

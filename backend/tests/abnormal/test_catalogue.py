@@ -64,6 +64,7 @@ def test_catalogue_carries_no_expected_responses() -> None:
 
     기대 코드·메시지를 적으면 구현이 틀렸을 때 기대값도 같이 틀린다 (명세의 판정 규칙).
     """
+    # `note` 는 시나리오 정의의 근거를 적는 자리다 — 기대 응답이 아니다.
     forbidden = {"expect", "expected", "expected_code", "expected_status", "expected_message"}
     for raw in load_catalogue()["scenarios"]:
         leaked = forbidden & set(raw)
