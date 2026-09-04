@@ -160,6 +160,9 @@ def test_key_status_reports_fingerprint_and_permission(
         "passphrase_protected",
         "public_key_fingerprint",
         "permission_warning",
+        # UX U-09 — 실제 경로와 영향 범위. 화면이 고정 문구 대신 이것을 찍는다.
+        "key_dir",
+        "sealed_projects",
     }
 
 
