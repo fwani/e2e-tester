@@ -31,7 +31,7 @@ import { subscribeSessionEvents, type SessionEvent } from "../api/ws";
 import { MirrorView, type MirrorPhase } from "../components/MirrorView";
 import { SessionLostBanner } from "../components/SessionLostBanner";
 import { StartingIndicator } from "../components/StartingIndicator";
-import { StepInspector } from "../components/StepInspector";
+import { StepInspector } from "./StepInspector";
 import { TabStrip } from "../components/TabStrip";
 import type { StepOutcome } from "../components/design/DesignStepList";
 import type { Step } from "../types/generated/step";

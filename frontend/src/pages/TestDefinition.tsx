@@ -156,12 +156,11 @@ export function TestDefinition({
                 width: "100%",
                 gap: 10,
                 padding: "10px 14px",
-                borderTop: index === 0 ? "none" : "1px solid var(--border)",
+                borderTop: index === 0 ? "none" : "2px solid var(--border)",
                 background:
                   step.id === selected ? "var(--surface)" : "var(--paper)",
                 textAlign: "left",
                 border: "none",
-                borderRadius: 0,
                 boxShadow: "none",
                 cursor: "pointer",
               }}

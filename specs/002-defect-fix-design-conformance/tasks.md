@@ -137,24 +137,24 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 - [X] T034 [P] [US6] `frontend/src/pages/TestList.tsx` 를 `docs/design/TestList.dc.html`(1440×760) 로 전사한다. 헤더 60px·하단 테두리 3px, 검색행, 전체/PASS/FAIL 카운터, 테스트 목록 행
 - [X] T035 [P] [US6] `frontend/src/pages/CreateTest.tsx` 를 `docs/design/CreateTest.dc.html`(1000×700) 로 전사한다
 - [X] T036 [P] [US6] `frontend/src/pages/AiRecord.tsx` 를 `docs/design/AiRecord.dc.html`(1440×900) 로 전사하고 **독립 화면으로** 만든다. Runner 안의 조건부 패널에서 분리한다
-- [ ] T037 [P] [US6] `frontend/src/pages/Runner.tsx` 를 `docs/design/Main.dc.html`(1440×900) 로 전사한다 — 실행 중 화면
-- [ ] T038 [P] [US6] `frontend/src/pages/RunnerPaused.tsx` 를 `docs/design/RunnerPaused.dc.html`(1440×900) 로 전사하고 **독립 화면으로** 만든다
-- [ ] T039 [P] [US6] `frontend/src/pages/Takeover.tsx` 를 `docs/design/Takeover.dc.html`(1440×900) 로 전사하고 **독립 화면으로** 만든다
-- [ ] T040 [P] [US6] `frontend/src/pages/RunResult.tsx` 를 `docs/design/RunResult.dc.html`(1440×900) 로 전사한다 — FAIL 상태
-- [ ] T041 [P] [US6] `frontend/src/pages/StepInspector.tsx` 를 `docs/design/StepInspector.dc.html`(640×1140) 로 전사한다 — locator 우선순위 표
-- [ ] T042 [US6] 8화면의 인라인 `<svg>` 98개를 `viewBox`·`stroke-width`·`d` 까지 그대로 옮겼는지 확인한다. **아이콘 라이브러리로 대체하지 않는다** — 대체는 해석이다
+- [X] T037 [P] [US6] `frontend/src/pages/Runner.tsx` 를 `docs/design/Main.dc.html`(1440×900) 로 전사한다 — 실행 중 화면
+- [X] T038 [P] [US6] `frontend/src/pages/RunnerPaused.tsx` 를 `docs/design/RunnerPaused.dc.html`(1440×900) 로 전사하고 **독립 화면으로** 만든다
+- [X] T039 [P] [US6] `frontend/src/pages/Takeover.tsx` 를 `docs/design/Takeover.dc.html`(1440×900) 로 전사하고 **독립 화면으로** 만든다
+- [X] T040 [P] [US6] `frontend/src/pages/RunResult.tsx` 를 `docs/design/RunResult.dc.html`(1440×900) 로 전사한다 — FAIL 상태
+- [X] T041 [P] [US6] `frontend/src/pages/StepInspector.tsx` 를 `docs/design/StepInspector.dc.html`(640×1140) 로 전사한다 — locator 우선순위 표
+- [X] T042 [US6] 8화면의 인라인 `<svg>` 98개를 `viewBox`·`stroke-width`·`d` 까지 그대로 옮겼는지 확인한다. **아이콘 라이브러리로 대체하지 않는다** — 대체는 해석이다
 
 ### 미대응 화면의 시각 언어 정렬 (DC-010)
 
-- [ ] T043 [P] [US6] `frontend/src/pages/TestDefinition.tsx` 를 8화면의 시각 언어에 맞춘다. 1:1 대조 의무는 없다
-- [ ] T044 [P] [US6] `frontend/src/components/` 의 공용 컴포넌트(`Badges`·`StepList`·`MirrorView`·`TabStrip`·`LocatorPriorityTable` 등)를 전사된 화면의 시각 언어에 맞춘다. **미리 추상화하지 않는다** — 전사 결과를 보고 실제로 같은 것만 공유한다
+- [X] T043 [P] [US6] `frontend/src/pages/TestDefinition.tsx` 를 8화면의 시각 언어에 맞춘다. 1:1 대조 의무는 없다
+- [X] T044 [P] [US6] `frontend/src/components/` 의 공용 컴포넌트(`Badges`·`StepList`·`MirrorView`·`TabStrip`·`LocatorPriorityTable` 등)를 전사된 화면의 시각 언어에 맞춘다. **미리 추상화하지 않는다** — 전사 결과를 보고 실제로 같은 것만 공유한다
 
 ### 검증과 기록
 
-- [ ] T045 [US6] `frontend/src/` 전체에 `border-radius`·`--radius` 가 없음을 확인한다 (DC-004, quickstart §6)
-- [ ] T046 [US6] 8종 각각에 화면 전이로 도달 가능한지 확인한다. 특히 D3·D5·D6·D8 — 시작 시점에 Runner 안의 패널이었다 (SC-109)
-- [ ] T047 [US6] 전사 중 결정한 미정의 상태를 **전부** `design-conformance/undefined-states.md` 에 기록한다. 근거 없는 항목이 있으면 그것은 해석이고 DC-001 위반이다 (SC-110)
-- [ ] T048 [US6] `frontend/tests/` 의 기존 62건 중 문구 변경으로 깨진 것의 기대값을 **dc.html 의 문구로** 고친다. 각 수정에 "어느 파일의 어느 문구"를 근거로 남긴다. **그 밖의 이유로는 고치지 않는다** (RG-002)
+- [X] T045 [US6] `frontend/src/` 전체에 `border-radius`·`--radius` 가 없음을 확인한다 (DC-004, quickstart §6)
+- [X] T046 [US6] 8종 각각에 화면 전이로 도달 가능한지 확인한다. 특히 D3·D5·D6·D8 — 시작 시점에 Runner 안의 패널이었다 (SC-109)
+- [X] T047 [US6] 전사 중 결정한 미정의 상태를 **전부** `design-conformance/undefined-states.md` 에 기록한다. 근거 없는 항목이 있으면 그것은 해석이고 DC-001 위반이다 (SC-110)
+- [X] T048 [US6] `frontend/tests/` 의 기존 62건 중 문구 변경으로 깨진 것의 기대값을 **dc.html 의 문구로** 고친다. 각 수정에 "어느 파일의 어느 문구"를 근거로 남긴다. **그 밖의 이유로는 고치지 않는다** (RG-002)
 - [ ] T049 [US6] `design-conformance/<Screen>.md` 8개의 `관측값` 칸을 채운다. **`판정` 칸은 비워 둔다 — 구현자가 자기 구현을 판정하면 대조가 아니라 자기 확인이다** (001 T156 이 같은 이유로 미완이다)
 
 **Checkpoint**: `vitest run` 이 기준선(62) 이상. `tsc --noEmit` 통과.

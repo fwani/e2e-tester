@@ -98,10 +98,13 @@ describe("LocatorPriorityTable", () => {
     expect(screen.getByText("최후")).toBeTruthy();
   });
 
-  it("수집되지 않은 후보는 값 대신 — 를 보여 준다", () => {
+  it("수집되지 않은 후보는 값 칸에 '수집되지 않음' 을 보여 준다", () => {
+    // 002 — 문구를 확정 디자인에 맞췄다. `StepInspector.dc.html` 의 5행("고정 속성")은
+    // 값 칸에 "수집되지 않음" 을 흐린 색으로 쓰고 상태 배지를 두지 않는다. 배지를 또
+    // 두면 확정 디자인에 없는 요소를 더하는 것이라 DC-007 위반이다.
     render(<LocatorPriorityTable target={target({ css: verified(".x") })} />);
     // testId·role·label·text·stable_attr 5칸이 비어 있다.
-    expect(screen.getAllByText("—")).toHaveLength(5);
+    expect(screen.getAllByText("수집되지 않음")).toHaveLength(5);
   });
 
   it("사용 가능 후보 수를 표시한다 (SC-008 의 화면 대응)", () => {

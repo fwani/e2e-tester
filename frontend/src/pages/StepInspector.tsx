@@ -1,4 +1,8 @@
 /**
+ * Step 상세. **`docs/design/StepInspector.dc.html`(640×1140) 전사.** DC-001~DC-008.
+ *
+ * 확정 디자인이 독립 artboard 로 정의하므로 `SessionScreen` 이 겹침 화면으로 띄운다.
+ *
  * Step 상세 (T141). `StepInspector.dc.html` 이식.
  *
  * 두 가지를 한다 — **보여 주는 것**(어떤 기준으로 요소를 찾는지)과 **고치는 것**(표시
@@ -16,7 +20,7 @@ import { useEffect, useState } from "react";
 
 import type { RepickSlot } from "../api/client";
 import type { Step } from "../types/generated/step";
-import { LocatorPriorityTable } from "./LocatorPriorityTable";
+import { LocatorPriorityTable } from "../components/LocatorPriorityTable";
 
 export interface StepInspectorProps {
   step: Step;
@@ -77,24 +81,102 @@ export function StepInspector({
   return (
     <div
       style={{
-        border: "3px solid var(--ink)",
-        background: "var(--paper)",
-        padding: 14,
+        width: "640px",
+        minHeight: "1020px",
+        background: "#FFFDF6",
+        borderLeft: "3px solid #14130F",
         display: "flex",
         flexDirection: "column",
-        gap: 12,
       }}
     >
-      <div className="row" style={{ gap: 8 }}>
-        <strong className="mono" style={{ fontSize: 11, letterSpacing: "0.08em" }}>
-          STEP {String(index + 1).padStart(2, "0")} · {step.type.toUpperCase()}
-        </strong>
-        <span className="spacer" />
+      <div
+        style={{
+          flex: "0 0 56px",
+          background: "#14130F",
+          color: "#EFEBE0",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "0 20px",
+        }}
+      >
+        <div style={{ font: "600 12px/1 'IBM Plex Mono', ui-monospace, monospace", letterSpacing: "0.12em" }}>
+          STEP 상세
+        </div>
+        <div style={{ flex: "1" }} />
         {onClose && (
-          <button className="ghost" onClick={onClose}>
-            닫기
+          <button
+            aria-label="닫기"
+            onClick={onClose}
+            style={{
+              width: "44px",
+              height: "44px",
+              border: "2px solid #6B675C",
+              background: "transparent",
+              color: "inherit",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+              boxShadow: "none",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
           </button>
         )}
+      </div>
+
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "18px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ font: "700 15px/1 'IBM Plex Mono', ui-monospace, monospace", color: "#6B675C" }}>
+            {String(index + 1).padStart(2, "0")}
+          </div>
+          <div
+            style={{
+              padding: "5px 8px",
+              border: "2px solid #14130F",
+              background: "#EFEBE0",
+              font: "700 11px/1 'IBM Plex Mono', ui-monospace, monospace",
+              letterSpacing: "0.08em",
+            }}
+          >
+            {step.type.toUpperCase()}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "5px 8px",
+              border: "2px solid #14130F",
+              background: step.author === "ai" ? "#F0EBFC" : "#FFFDF6",
+              font: "700 11px/1 'IBM Plex Mono', ui-monospace, monospace",
+            }}
+          >
+            {step.author === "ai" ? (
+              <svg width="10" height="10" viewBox="0 0 18 18" fill="none" stroke="#7C4DDB" strokeWidth="2.4">
+                <path d="M9 1.5v4M9 12.5v4M1.5 9h4M12.5 9h4" />
+              </svg>
+            ) : (
+              <svg width="10" height="10" viewBox="0 0 12 12">
+                <circle cx="6" cy="6" r="4" fill="#D9502F" />
+              </svg>
+            )}
+            {step.author === "ai" ? "AI" : "RECORD"}
+          </div>
+        </div>
+        <div
+          style={{
+            fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif",
+            fontSize: "28px",
+            lineHeight: "1.1",
+          }}
+        >
+          {step.label}
+        </div>
       </div>
 
       <div>
@@ -195,7 +277,7 @@ export function StepInspector({
         )}
       </div>
 
-      <div className="row" style={{ gap: 8 }}>
+      <div style={{ display: "flex", gap: "10px" }}>
         <button
           disabled={busy}
           onClick={() =>
@@ -206,9 +288,47 @@ export function StepInspector({
               sensitive: sensitive || undefined,
             })
           }
+          style={{
+            flex: "1",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "9px",
+            height: "48px",
+            border: "3px solid #14130F",
+            background: "#14130F",
+            color: "#F5F2E9",
+            boxShadow: "5px 5px 0 #F5D000",
+            font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+          }}
         >
           저장
         </button>
+        {"target" in step && (
+          <button
+            disabled={busy || repickWaiting !== null}
+            onClick={() => onRepick("target")}
+            style={{
+              flex: "1",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "9px",
+              height: "48px",
+              border: "3px solid #14130F",
+              background: "#FFFDF6",
+              color: "#14130F",
+              boxShadow: "5px 5px 0 #14130F",
+              font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="5" fill="#D9502F" />
+            </svg>
+            다시 집기
+          </button>
+        )}
+      </div>
       </div>
     </div>
   );

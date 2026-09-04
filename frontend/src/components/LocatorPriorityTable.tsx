@@ -145,36 +145,77 @@ export function LocatorPriorityTable({
         </p>
       )}
 
-      <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+      {/*
+        `StepInspector.dc.html` 의 표. 행 높이 46px, 순번 20px, 후보 이름 118px,
+        구분선 2px, 바깥 테두리 3px + 6px 하드 그림자. 첫 행(사용 중)은 #EAF5EE,
+        최후 수단(CSS)은 #F6F4EE 로 구분한다.
+      */}
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          border: "3px solid #14130F",
+          background: "#FFFDF6",
+          boxShadow: "6px 6px 0 #14130F",
+        }}
+      >
         <thead>
-          <tr style={{ textAlign: "left", color: "var(--muted)" }}>
-            <th style={{ width: 28 }}>#</th>
-            <th style={{ width: 96 }}>후보</th>
-            <th>수집된 값</th>
-            <th style={{ width: 118 }}>상태</th>
+          <tr>
+            <th style={{ width: 20 }} />
+            <th style={{ width: 118 }} />
+            <th />
+            <th style={{ width: 118 }} />
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr key={row.kind} style={{ borderTop: "1px solid var(--border)" }}>
-              <td className="mono dim">{i + 1}</td>
-              <td className="mono">{row.label}</td>
-              <td
-                className="mono"
+          {rows.map((row, i) => {
+            const state = states[row.kind] ?? "수집되지 않음";
+            const inUse = state === "사용 중";
+            const last = i === rows.length - 1;
+            const missing = row.value === null;
+            return (
+              <tr
+                key={row.kind}
                 style={{
-                  wordBreak: "break-all",
-                  color: row.value === null ? "var(--dim)" : undefined,
+                  height: 46,
+                  borderTop: i === 0 ? "none" : "2px solid #DCD8CC",
+                  background: inUse ? "#EAF5EE" : last ? "#F6F4EE" : undefined,
                 }}
               >
-                {row.value ?? "—"}
-              </td>
-              <td>
-                <span className={`badge ${tone(states[row.kind] ?? "")}`}>
-                  {states[row.kind] ?? "수집되지 않음"}
-                </span>
-              </td>
-            </tr>
-          ))}
+                <td
+                  style={{
+                    padding: "0 0 0 14px",
+                    font: "700 13px/1 'IBM Plex Mono', ui-monospace, monospace",
+                    color: "#6B675C",
+                  }}
+                >
+                  {i + 1}
+                </td>
+                <td
+                  style={{
+                    padding: "0 12px",
+                    font: `${missing ? 600 : 700} 13px/1 'IBM Plex Sans KR', system-ui, sans-serif`,
+                    color: missing ? "#9A968A" : undefined,
+                  }}
+                >
+                  {row.label}
+                </td>
+                <td
+                  style={{
+                    padding: "0 12px",
+                    font: "400 13px/1 'IBM Plex Mono', ui-monospace, monospace",
+                    wordBreak: "break-all",
+                    color: missing ? "#9A968A" : undefined,
+                  }}
+                >
+                  {row.value ?? "수집되지 않음"}
+                </td>
+                <td style={{ padding: "0 14px 0 0", textAlign: "right" }}>
+                  {!missing && <span className={`badge ${tone(state)}`}>{state}</span>}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
