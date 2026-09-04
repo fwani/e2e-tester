@@ -31,8 +31,10 @@ class VariableResolutionError(Exception):
 class VariableResolver:
     """한 실행 동안의 변수 값 해석기.
 
-    비밀키는 **민감 변수를 실제로 요구할 때만** 로드한다. 민감 변수가 없는 테스트는
-    비밀키 없이 실행된다.
+    비밀키는 **민감 변수를 실제로 요구할 때만** 필요하다. 민감 변수가 없는 테스트는
+    비밀키 없이 실행된다. 그래서 조립부는 비밀키를 못 열어도 세션을 시작하고, 못 연
+    사유(`key_unavailable_reason`)만 넘긴다 — 그 사유는 민감 변수를 실제로 요구하는
+    순간에만 사용자에게 보인다.
     """
 
     def __init__(
@@ -41,10 +43,12 @@ class VariableResolver:
         store: SecretStore | None = None,
         private_key: PrivateKey | None = None,
         env: object = None,
+        key_unavailable_reason: str | None = None,
     ) -> None:
         self._test = test
         self._store = store
         self._private = private_key
+        self._key_reason = key_unavailable_reason
         self._env = os.environ if env is None else env
         self._declared = {v.name: v for v in test.variables}
         self._cache: dict[str, str] = {}
@@ -102,9 +106,11 @@ class VariableResolver:
             )
             raise VariableResolutionError(msg)
         if self._private is None:
+            # 사유가 있으면 그것을 쓴다 — "없는 키"와 "암호구로 잠긴 키"는 조치가 다르다.
+            reason = self._key_reason or "비밀키가 없습니다."
             msg = (
-                f"민감 변수 {name} 을 복호화할 비밀키가 없습니다. "
-                "키를 준비하거나 환경 변수로 값을 공급하세요 (FR-089f)."
+                f"민감 변수 {name} 을 복호화할 수 없습니다. {reason} "
+                f"또는 환경 변수 {name} 으로 값을 공급하세요 (FR-089f)."
             )
             raise VariableResolutionError(msg)
         try:

@@ -250,3 +250,98 @@ def test_unwritable_key_directory_is_reported_not_crashed(
         assert "권한" in resp.json()["error"]["message"] or "확인" in resp.json()["error"]["message"]
     finally:
         locked.chmod(0o700)
+
+
+# ─── 키 삭제·재생성 (DR-031) ────────────────────────────────────────────────
+
+
+def test_destroy_requires_the_exact_confirm_phrase(project_client: TestClient) -> None:
+    """되돌릴 수 없는 조작은 확인 문구 없이는 절대 진행하지 않는다."""
+    _generate_key(project_client)
+
+    resp = project_client.request("DELETE", "/api/keys", json={"confirm": "delete"})
+    assert resp.status_code == 400, resp.text
+    assert resp.json()["error"]["code"] == "DEFINITION_INVALID"
+    # 거절했으면 키는 그대로 있어야 한다.
+    assert project_client.get("/api/keys/status").json()["private_key_present"] is True
+
+
+def test_destroy_removes_keys_and_purges_sealed_values(project_client: TestClient) -> None:
+    """키를 지우면 읽을 수 없게 된 암호문도 함께 비운다.
+
+    남기면 사용자는 값을 읽을 수도, 새 값을 넣을 수도 없는 상태에 갇힌다.
+    """
+    _generate_key(project_client)
+    project_client.put("/api/secrets/LOGIN_PASSWORD", json={"value": SECRET_VALUE})
+
+    resp = project_client.request("DELETE", "/api/keys", json={"confirm": "DELETE"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["purged_secret_count"] == 1
+    assert body["project_open"] is True
+    assert body["status"]["private_key_present"] is False
+    assert body["status"]["public_key_present"] is False
+
+    listed = project_client.get("/api/secrets").json()
+    assert listed["names"] == []
+    assert listed["public_key_fingerprint"] is None
+
+
+def test_destroy_without_keys_is_not_found(project_client: TestClient) -> None:
+    resp = project_client.request("DELETE", "/api/keys", json={"confirm": "DELETE"})
+    assert resp.status_code == 404, resp.text
+    assert resp.json()["error"]["code"] == "KEY_MISSING"
+
+
+def test_regenerate_replaces_the_key_and_lets_values_be_re_entered(
+    project_client: TestClient,
+) -> None:
+    """교체 뒤 **새 값 저장이 곧바로 된다.**
+
+    지문만 남기고 값을 비우면 `PUT` 이 계속 409 로 거절한다 — 그 막다른 골목이 없는지
+    본다. `generate` 는 여전히 덮어쓰지 않는다는 규칙도 함께 확인한다.
+    """
+    _generate_key(project_client)
+    project_client.put("/api/secrets/LOGIN_PASSWORD", json={"value": SECRET_VALUE})
+    before = project_client.get("/api/keys/status").json()["public_key_fingerprint"]
+
+    resp = project_client.post("/api/keys/regenerate", json={"confirm": "DELETE"})
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["purged_secret_count"] == 1
+    after = body["status"]["public_key_fingerprint"]
+    assert after is not None
+    assert after != before
+
+    again = project_client.put("/api/secrets/LOGIN_PASSWORD", json={"value": SECRET_VALUE})
+    assert again.status_code == 204, again.text
+    assert project_client.post("/api/keys/generate", json={"passphrase": None}).status_code == 409
+
+
+def test_regenerate_can_switch_passphrase_protection_on_and_off(
+    project_client: TestClient,
+) -> None:
+    project_client.post("/api/keys/generate", json={"passphrase": "long-enough-phrase"})
+    assert project_client.get("/api/keys/status").json()["passphrase_protected"] is True
+
+    resp = project_client.post("/api/keys/regenerate", json={"confirm": "DELETE"})
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["status"]["passphrase_protected"] is False
+
+
+def test_regenerate_works_before_a_key_exists(project_client: TestClient) -> None:
+    """지울 것이 없어도 교체는 성공한다 — 사용자에겐 '키를 만든다' 와 같은 결과다."""
+    resp = project_client.post("/api/keys/regenerate", json={"confirm": "DELETE"})
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["status"]["private_key_present"] is True
+
+
+def test_destroy_and_regenerate_never_echo_a_value(project_client: TestClient) -> None:
+    _generate_key(project_client)
+    project_client.put("/api/secrets/LOGIN_PASSWORD", json={"value": SECRET_VALUE})
+
+    regen = project_client.post("/api/keys/regenerate", json={"confirm": "DELETE"})
+    assert SECRET_VALUE not in regen.text
+    project_client.put("/api/secrets/LOGIN_PASSWORD", json={"value": SECRET_VALUE})
+    destroyed = project_client.request("DELETE", "/api/keys", json={"confirm": "DELETE"})
+    assert SECRET_VALUE not in destroyed.text

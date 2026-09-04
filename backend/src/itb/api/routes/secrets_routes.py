@@ -20,6 +20,7 @@ from itb.secrets.keys import (
     generate,
     load_public,
     permission_warning,
+    remove,
     status,
 )
 from itb.secrets.store import FingerprintMismatchError, SecretStore
@@ -29,6 +30,9 @@ router = APIRouter(prefix="/api", tags=["secrets"])
 State = Annotated[AppState, Depends(get_state)]
 
 VARIABLE_NAME_PATTERN = r"^[A-Z][A-Z0-9_]*$"
+
+DESTROY_CONFIRM = "DELETE"
+"""키를 지우거나 교체할 때 클라이언트가 그대로 보내야 하는 문구 (FR-089a)."""
 
 
 class KeyStatusResponse(BaseModel):
@@ -46,6 +50,32 @@ class GenerateKeyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     passphrase: str | None = Field(default=None, min_length=8, max_length=200)
+
+
+class DestroyKeyRequest(BaseModel):
+    """되돌릴 수 없는 조작의 확인 문구. DR-031.
+
+    이 비밀키로 봉인된 암호문은 키를 지우는 순간 영구히 못 읽는다. 실수로 한 번 눌러
+    일어날 수 있는 일이 아니어야 하므로, 클라이언트가 사용자에게 정확한 문구를 입력받아
+    보낸다. `confirm: true` 같은 불리언은 UI 만 고치면 우회되므로 쓰지 않는다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    confirm: str = Field(description=f"정확히 '{DESTROY_CONFIRM}' 여야 한다")
+    passphrase: str | None = Field(default=None, min_length=8, max_length=200)
+    """재생성에만 쓴다. 삭제 요청에서는 무시한다."""
+
+
+class DestroyKeyResponse(BaseModel):
+    """삭제·재생성 결과. **무엇이 함께 사라졌는지 숫자로 알린다.**"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: KeyStatusResponse
+    purged_secret_count: int
+    project_open: bool
+    """False 면 다른 프로젝트에 남은 암호문은 비우지 못했다는 뜻이다."""
 
 
 class SecretNameView(BaseModel):
@@ -116,6 +146,75 @@ async def generate_key(body: GenerateKeyRequest, state: State) -> KeyStatusRespo
             f"저장 위치({state.key_paths.directory})를 확인하세요.",
         ) from exc
     return await key_status(state)
+
+
+def _require_confirm(body: DestroyKeyRequest) -> None:
+    if body.confirm != DESTROY_CONFIRM:
+        raise bad_request(
+            ErrorCode.DEFINITION_INVALID,
+            f"되돌릴 수 없는 조작입니다. 확인 문구로 '{DESTROY_CONFIRM}' 를 정확히 "
+            "입력해야 진행합니다.",
+        )
+
+
+def _purge_secrets(state: AppState) -> int:
+    """열린 프로젝트의 암호문을 전부 비운다. 프로젝트가 없으면 0.
+
+    키가 사라지면 이 암호문들은 어떤 방법으로도 못 읽는다. 남겨 두면 값은 못 읽는데
+    지문이 남아 새 값 저장까지 막는다 (`SecretStore.purge` 주석). **프로젝트가 열려
+    있지 않으면 지울 대상을 알 수 없다** — 그 경우 키만 지우고, 응답이 그 사실을 알린다.
+    """
+    if state.repository is None:
+        return 0
+    return SecretStore(state.repository.paths.secrets_file).purge()
+
+
+@router.delete("/keys")
+async def destroy_key(body: DestroyKeyRequest, state: State) -> DestroyKeyResponse:
+    """키 쌍을 지운다. DR-031.
+
+    **봉인된 값을 함께 비운다.** 읽을 수 없게 된 암호문을 남기면 사용자는 값을 볼 수도,
+    지울 수도, 새로 넣을 수도 없는 상태에 갇힌다.
+    """
+    _require_confirm(body)
+    if not remove(state.key_paths):
+        raise not_found(
+            ErrorCode.KEY_MISSING,
+            f"지울 키가 없습니다: {state.key_paths.directory}",
+        )
+    purged = _purge_secrets(state)
+    return DestroyKeyResponse(
+        status=await key_status(state),
+        purged_secret_count=purged,
+        project_open=state.repository is not None,
+    )
+
+
+@router.post("/keys/regenerate", status_code=201)
+async def regenerate_key(body: DestroyKeyRequest, state: State) -> DestroyKeyResponse:
+    """키 쌍을 교체한다. DR-031.
+
+    `generate` 는 기존 키를 절대 덮어쓰지 않는다 (FR-089a) — 그 규칙은 그대로 두고,
+    지우고 다시 만드는 것을 **한 번의 확인**으로 묶는다. 두 번 호출로 나누면 중간에
+    실패했을 때 키가 없는 상태로 남는다.
+    """
+    _require_confirm(body)
+    remove(state.key_paths)
+    purged = _purge_secrets(state)
+    try:
+        generate(state.key_paths, passphrase=body.passphrase)
+    except (PermissionError, OSError) as exc:
+        raise bad_request(
+            ErrorCode.INVALID_PATH,
+            f"새 키를 저장할 수 없습니다: {getattr(exc, 'strerror', None) or exc}. "
+            f"저장 위치({state.key_paths.directory})를 확인하세요. "
+            "이전 키는 이미 삭제되었습니다.",
+        ) from exc
+    return DestroyKeyResponse(
+        status=await key_status(state),
+        purged_secret_count=purged,
+        project_open=state.repository is not None,
+    )
 
 
 @router.get("/secrets")

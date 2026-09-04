@@ -106,6 +106,20 @@ class SecretStore:
         self._save()
         return True
 
+    def purge(self) -> int:
+        """모든 암호문과 **기록된 지문까지** 지운다. 지운 개수를 돌려준다.
+
+        키를 교체하면 기존 암호문은 어떤 방법으로도 못 읽는다. 그때 값만 지우고 지문을
+        남기면 `put` 이 계속 `FingerprintMismatchError` 로 거절해 새 값도 못 넣는 막다른
+        골목이 된다. 지문을 함께 비우는 것이 이 메서드의 핵심이다.
+        """
+        count = len(self._values)
+        self._values = {}
+        self._fingerprint = None
+        if count or self.path.exists():
+            self._save()
+        return count
+
     # ─── 읽기 — 비밀키 필요 (실행 시점) ────────────────────────────────────
 
     def get(self, name: str, private: PrivateKey) -> str:

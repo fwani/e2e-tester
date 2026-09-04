@@ -35,7 +35,7 @@ from itb.execution.step_executor import StepExecutor
 from itb.mirror.tab_switch import MirrorController
 from itb.recording.inline_record import InlineRecording
 from itb.recording.recorder import Recorder
-from itb.secrets.keys import KeyMissingError, KeyStoreError, load_private, load_public
+from itb.secrets.keys import KeyMissingError, load_private_or_reason, load_public
 from itb.secrets.resolver import VariableResolver
 from itb.secrets.store import SecretStore
 from itb.storage.repository import ProjectError, ProjectRepository
@@ -381,20 +381,20 @@ def _build_engine(
     **여기서 만드는 것 중 어느 것도 언어모델을 알지 못한다.** 실행에 필요한 전부가 저장된
     정의 안에 있다는 사실이 조립 과정에 드러난다.
 
-    비밀키는 **있으면 쓴다.** 암호구로 잠긴 키는 요청 맥락에서 열 수 없으므로 없는 것으로
-    본다 — 그 경우 민감 변수는 환경 변수로 공급되어야 하고, 아니면 해당 Step 이 사유와 함께
-    실패한다 (FR-089f). 조용히 빈 값으로 진행하지 않는다.
+    비밀키는 **있으면 쓴다.** 못 열어도 세션은 시작한다 — 민감 변수를 쓰지 않는 테스트가
+    비밀키 때문에 막히면 안 된다. 대신 **못 연 사유를 그대로 들고 간다.** 예전에는 예외를
+    통째로 삼켜서, 암호구로 잠긴 키가 "비밀키가 없습니다" 로 보고됐다. 사용자는 있는 키를
+    찾아 헤맸다. 이제 잠긴 키는 잠겼다고 말하고 암호구 공급 방법을 알린다 (FR-089f).
     """
     repo = state.require_repository()
 
-    private = None
-    with contextlib.suppress(KeyStoreError):
-        private = load_private(state.key_paths)
+    private, key_reason = load_private_or_reason(state.key_paths)
 
     resolver = VariableResolver(
         test,
         store=work.store or _secret_store(repo),
         private_key=private,
+        key_unavailable_reason=key_reason,
     )
     collector = ArtifactCollector(work.session.context)
     collector.attach()
@@ -437,9 +437,7 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
     from itb.secrets.capture import SensitiveCapturer
 
     repo = state.require_repository()
-    private = None
-    with contextlib.suppress(KeyStoreError):
-        private = load_private(state.key_paths)
+    private, key_reason = load_private_or_reason(state.key_paths)
 
     store = work.store or _secret_store(repo)
     capturer = work.recorder.capturer or SensitiveCapturer(
@@ -452,6 +450,7 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
         _draft_test(work) if work.steps else _empty_draft(work),
         store=store,
         private_key=private,
+        key_unavailable_reason=key_reason,
     )
     work.resolver = resolver
 

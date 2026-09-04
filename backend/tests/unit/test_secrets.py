@@ -15,6 +15,7 @@ import pytest
 
 from itb.domain.test_case import Test
 from itb.secrets.keys import (
+    PASSPHRASE_ENV,
     KeyMissingError,
     KeyPaths,
     KeyStoreError,
@@ -23,8 +24,10 @@ from itb.secrets.keys import (
     fingerprint,
     generate,
     load_private,
+    load_private_or_reason,
     load_public,
     permission_warning,
+    remove,
     status,
 )
 from itb.secrets.resolver import VariableResolutionError, VariableResolver
@@ -349,3 +352,122 @@ def test_no_private_key_needed_when_test_has_no_sensitive_vars() -> None:
     t = make_test(variables=[{"name": "PROJECT_NAME", "value": "TEST"}])
     r = VariableResolver(t, store=None, private_key=None, env={})
     assert r.resolve("PROJECT_NAME") == "TEST"
+
+
+# ─── 암호구로 잠긴 키 (FR-089e-3) ───────────────────────────────────────────
+
+
+def test_locked_key_reports_being_locked_not_missing(tmp_path: pathlib.Path) -> None:
+    """**"없다" 와 "잠겼다" 는 조치가 다르다.**
+
+    예전에는 조립부가 `KeyStoreError` 를 통째로 삼켜, 암호구로 잠긴 키가 "비밀키가
+    없습니다" 로 보고됐다. 사용자는 멀쩡히 있는 키를 찾아 헤맸다.
+    """
+    kp = KeyPaths(tmp_path / "keys")
+    generate(kp, passphrase="long-enough-phrase")
+
+    private, reason = load_private_or_reason(kp)
+    assert private is None
+    assert reason is not None
+    assert "없습니다" not in reason
+    assert "암호구로 보호" in reason
+    assert PASSPHRASE_ENV in reason
+
+
+def test_locked_key_opens_with_the_passphrase_from_env(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    kp = KeyPaths(tmp_path / "keys")
+    generate(kp, passphrase="long-enough-phrase")
+    monkeypatch.setenv(PASSPHRASE_ENV, "long-enough-phrase")
+
+    private, reason = load_private_or_reason(kp)
+    assert reason is None
+    assert private is not None
+
+    store = SecretStore(tmp_path / "secrets.local.yaml")
+    store.put("LOGIN_PASSWORD", SECRET_VALUE, load_public(kp))
+    assert store.get("LOGIN_PASSWORD", private) == SECRET_VALUE
+
+
+def test_wrong_env_passphrase_is_reported_as_a_passphrase_problem(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    kp = KeyPaths(tmp_path / "keys")
+    generate(kp, passphrase="long-enough-phrase")
+    monkeypatch.setenv(PASSPHRASE_ENV, "wrong-phrase-entirely")
+
+    private, reason = load_private_or_reason(kp)
+    assert private is None
+    assert reason is not None
+    assert "암호구가 올바르지" in reason
+
+
+def test_empty_env_passphrase_is_treated_as_absent(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """빈 문자열을 암호구로 넘기면 "보호되지 않은 키" 오류가 나 사유가 엉뚱해진다."""
+    kp = KeyPaths(tmp_path / "keys")
+    generate(kp)
+    monkeypatch.setenv(PASSPHRASE_ENV, "")
+
+    private, reason = load_private_or_reason(kp)
+    assert reason is None
+    assert private is not None
+
+
+def test_resolver_shows_the_key_reason_for_a_sensitive_variable(
+    tmp_path: pathlib.Path, store: SecretStore
+) -> None:
+    kp = KeyPaths(tmp_path / "keys")
+    generate(kp, passphrase="long-enough-phrase")
+    store.put("LOGIN_PASSWORD", SECRET_VALUE, load_public(kp))
+    private, reason = load_private_or_reason(kp)
+    assert private is None
+
+    t = make_test(variables=[{"name": "LOGIN_PASSWORD", "sensitive": True}])
+    r = VariableResolver(t, store, private_key=None, env={}, key_unavailable_reason=reason)
+    with pytest.raises(VariableResolutionError, match="암호구로 보호"):
+        r.resolve("LOGIN_PASSWORD")
+
+
+# ─── 키 삭제·교체 (DR-031) ──────────────────────────────────────────────────
+
+
+def test_remove_deletes_both_files_and_reports_whether_it_did(keys: KeyPaths) -> None:
+    assert remove(keys) is True
+    assert not keys.private.exists()
+    assert not keys.public.exists()
+    assert remove(keys) is False
+
+
+def test_purge_clears_the_fingerprint_so_new_values_can_be_stored(
+    tmp_path: pathlib.Path, store: SecretStore
+) -> None:
+    """지문을 남기면 새 키로도 값을 넣을 수 없는 막다른 골목이 된다."""
+    first = KeyPaths(tmp_path / "k1")
+    generate(first)
+    store.put("LOGIN_PASSWORD", SECRET_VALUE, load_public(first))
+
+    second = KeyPaths(tmp_path / "k2")
+    generate(second)
+    with pytest.raises(FingerprintMismatchError):
+        store.put("LOGIN_PASSWORD", SECRET_VALUE, load_public(second))
+
+    assert store.purge() == 1
+    assert store.names() == []
+    assert store.stored_fingerprint is None
+
+    store.put("LOGIN_PASSWORD", SECRET_VALUE, load_public(second))
+    assert store.get("LOGIN_PASSWORD", load_private(second)) == SECRET_VALUE
+
+
+def test_purge_survives_a_reload(tmp_path: pathlib.Path, store: SecretStore) -> None:
+    kp = KeyPaths(tmp_path / "keys")
+    generate(kp)
+    store.put("LOGIN_PASSWORD", SECRET_VALUE, load_public(kp))
+    store.purge()
+
+    reloaded = SecretStore(store.path)
+    assert reloaded.names() == []
+    assert reloaded.stored_fingerprint is None

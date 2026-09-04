@@ -28,6 +28,13 @@ PRIVATE_KEY_NAME = "private.key"
 PUBLIC_KEY_NAME = "public.key"
 PRIVATE_KEY_MODE = 0o600
 PASSPHRASE_MAGIC = b"itb-sealed-privkey-v1\n"
+PASSPHRASE_ENV = "ITB_KEY_PASSPHRASE"  # noqa: S105 - 변수 이름이지 값이 아니다
+"""실행 시점에 암호구를 공급하는 환경 변수 (FR-089e-3).
+
+암호구로 잠근 비밀키는 봉인(공개키만 필요)에는 지장이 없지만 재실행·AI 작성에는
+개봉이 필요하다. 요청 맥락에는 암호구가 없으므로 프로세스 환경에서 받는다 —
+비밀 값 자체와 같은 경로(FR-089g)를 쓰는 것이라 운용 방식이 하나로 유지된다.
+"""
 
 
 class KeyStoreError(Exception):
@@ -180,7 +187,11 @@ def load_private(paths: KeyPaths, passphrase: str | None = None) -> PrivateKey:
     blob = paths.private.read_bytes()
     if blob.startswith(PASSPHRASE_MAGIC):
         if not passphrase:
-            msg = "이 비밀키는 암호구로 보호되어 있습니다. 암호구가 필요합니다."
+            msg = (
+                "이 비밀키는 암호구로 보호되어 있습니다. "
+                f"백엔드 프로세스에 환경 변수 {PASSPHRASE_ENV} 로 암호구를 공급하거나, "
+                "키 관리에서 암호구 없는 키로 재생성하세요."
+            )
             raise PassphraseRequiredError(msg)
         blob = _unwrap_with_passphrase(blob[len(PASSPHRASE_MAGIC) :], passphrase)
     elif passphrase:
@@ -188,3 +199,38 @@ def load_private(paths: KeyPaths, passphrase: str | None = None) -> PrivateKey:
         raise PassphraseError(msg)
 
     return PrivateKey(blob)
+
+
+def remove(paths: KeyPaths) -> bool:
+    """키 쌍을 지운다. 하나라도 지웠으면 True.
+
+    **되돌릴 수 없다.** 이 비밀키로 봉인된 암호문은 이후 어떤 방법으로도 읽을 수 없다.
+    그래도 조작을 제공하는 이유는, 없으면 사용자가 파일 경로를 직접 뒤져 지우는 수밖에
+    없기 때문이다 — 그 편이 더 위험하다. 호출자가 확인 절차를 세운다.
+    """
+    removed = False
+    for path in (paths.private, paths.public):
+        if path.exists():
+            path.unlink()
+            removed = True
+    return removed
+
+
+def load_private_or_reason(
+    paths: KeyPaths, passphrase: str | None = None
+) -> tuple[PrivateKey | None, str | None]:
+    """비밀키를 열어 보고, 못 열면 **사유를 문자열로** 돌려준다.
+
+    실행 조립부는 비밀키가 없어도 세션을 시작해야 한다 — 민감 변수를 쓰지 않는 테스트가
+    비밀키 때문에 막히면 안 된다. 그렇다고 예외를 통째로 삼키면 "잠긴 키"와 "없는 키"가
+    같은 문구로 보고돼 사용자가 엉뚱한 조치를 한다(실제로 그랬다). 사유를 들고 다니다가
+    민감 변수를 실제로 요구하는 순간 그대로 보여준다 (FR-089f).
+
+    암호구는 인자로 받되, 없으면 ``ITB_KEY_PASSPHRASE`` 를 본다.
+    """
+    if passphrase is None:
+        passphrase = os.environ.get(PASSPHRASE_ENV) or None
+    try:
+        return load_private(paths, passphrase), None
+    except KeyStoreError as exc:
+        return None, str(exc)

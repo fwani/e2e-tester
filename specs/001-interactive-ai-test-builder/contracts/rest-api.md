@@ -135,6 +135,8 @@
 |--------|------|------|----------|
 | `GET` | `/api/keys/status` | 키 존재 여부, 공개키 지문, 암호구 보호 여부 | FR-089a, FR-089e |
 | `POST` | `/api/keys/generate` | 키 쌍 생성. 이미 있으면 `409` | FR-089a |
+| `DELETE` | `/api/keys` | `{ "confirm": "DELETE" }` — 키 쌍 삭제. 봉인된 값도 함께 비운다. 키가 없으면 `404` | FR-089a |
+| `POST` | `/api/keys/regenerate` | `{ "confirm": "DELETE", "passphrase": null }` — 지우고 새로 만든다 (`201`) | FR-089a |
 | `GET` | `/api/secrets` | **변수 이름 목록과 존재 여부만** | FR-089c |
 | `PUT` | `/api/secrets/{name}` | `{ "value": "..." }` — 즉시 공개키로 암호화해 저장. 값은 응답에 없다 | FR-089b |
 | `DELETE` | `/api/secrets/{name}` | 암호문 삭제 | — |
@@ -151,3 +153,22 @@
 (spec 엣지 케이스).
 
 `PUT /api/secrets/{name}` 은 비밀키를 요구하지 않는다 (FR-089b) — 이것이 비대칭 방식을 택한 실질적 이득이다.
+
+`DELETE /api/keys` 와 `POST /api/keys/regenerate` 응답:
+
+```json
+{ "status": { "private_key_present": false, "...": "..." },
+  "purged_secret_count": 2,
+  "project_open": true }
+```
+
+두 조작은 **되돌릴 수 없다.** 확인 문구 `DELETE` 가 정확히 오지 않으면 `400 DEFINITION_INVALID` 로
+거절한다. 성공하면 열린 프로젝트의 암호문과 **기록된 공개키 지문까지** 비운다 — 지문을 남기면
+새 키로도 값을 넣을 수 없는 상태가 된다. `project_open` 이 `false` 면 비울 대상을 몰라 키만 지웠다는 뜻이다.
+
+### 암호구로 잠긴 비밀키 (FR-089e-3)
+
+봉인은 공개키만으로 되지만 **재실행·AI 작성은 비밀키를 연다.** 암호구로 잠근 키는 요청 맥락에서
+열 수 없으므로, 백엔드 프로세스의 환경 변수 `ITB_KEY_PASSPHRASE` 로 암호구를 공급한다. 공급하지
+않으면 세션은 시작되지만 민감 변수를 실제로 요구하는 Step 이 **"잠겨 있다"** 는 사유와 함께 실패한다
+(FR-089f). "키가 없다" 와 구분해서 보고한다 — 조치가 다르다.

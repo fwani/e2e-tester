@@ -390,10 +390,28 @@ export interface SecretsResponse {
   names: { name: string; present: boolean }[];
 }
 
+/** 되돌릴 수 없는 키 조작의 확인 문구. 서버의 `DESTROY_CONFIRM` 과 같은 값이다. */
+export const DESTROY_CONFIRM = "DELETE";
+
+export interface DestroyKeyResult {
+  status: KeyStatus;
+  purged_secret_count: number;
+  project_open: boolean;
+}
+
 export const secrets = {
   keyStatus: () => get<KeyStatus>("/api/keys/status"),
   generateKey: (passphrase?: string) =>
     post<KeyStatus>("/api/keys/generate", { passphrase: passphrase ?? null }),
+  /** 키를 지운다. 봉인된 값도 함께 사라진다 — 호출 전에 사용자 확인을 받는다. */
+  destroyKey: () =>
+    del<DestroyKeyResult>("/api/keys", { confirm: DESTROY_CONFIRM, passphrase: null }),
+  /** 지우고 다시 만드는 것을 한 번의 확인으로 묶는다. */
+  regenerateKey: (passphrase?: string) =>
+    post<DestroyKeyResult>("/api/keys/regenerate", {
+      confirm: DESTROY_CONFIRM,
+      passphrase: passphrase ?? null,
+    }),
   list: () => get<SecretsResponse>("/api/secrets"),
   /** 값은 응답에 없다. 공개키만으로 봉인한다 (FR-089b). */
   put: (name: string, value: string) =>

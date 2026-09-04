@@ -144,3 +144,153 @@ describe("KeyManagement — 성공 (DR-031)", () => {
     await waitFor(() => expect(screen.getByText(/키 쌍을 만들었습니다/)).toBeTruthy());
   });
 });
+
+const WITH_KEYS = {
+  ...NO_KEYS,
+  private_key_present: true,
+  public_key_present: true,
+  public_key_fingerprint: "SHA256:aaaa",
+};
+
+const LOCKED = { ...WITH_KEYS, passphrase_protected: true };
+
+describe("KeyManagement — 잠긴 키 안내 (FR-089e-3)", () => {
+  it("암호구로 잠겼으면 실행 시 필요한 환경 변수를 미리 알린다", async () => {
+    // 사용자가 겪은 것: 스텝의 secret 은 저장되는데 재실행에서 "비밀키가 없다" 고 나온다.
+    // 실체는 키가 암호구로 잠겨 있었던 것이다. 실패한 뒤가 아니라 여기서 말해야 한다.
+    vi.stubGlobal("fetch", stub({ "GET /api/keys/status": { status: 200, body: LOCKED } }));
+    render(<KeyManagement />);
+
+    expect(await screen.findByText(/암호구로 잠긴 키입니다/)).toBeTruthy();
+    expect(document.body.textContent).toContain("ITB_KEY_PASSPHRASE");
+  });
+
+  it("잠기지 않은 키에는 그 안내를 띄우지 않는다", async () => {
+    vi.stubGlobal("fetch", stub({ "GET /api/keys/status": { status: 200, body: WITH_KEYS } }));
+    render(<KeyManagement />);
+
+    await screen.findByText("키 교체·삭제");
+    expect(screen.queryByText(/암호구로 잠긴 키입니다/)).toBeNull();
+  });
+});
+
+describe("KeyManagement — 교체·삭제 (DR-031)", () => {
+  const withKeys = (extra: Record<string, { status: number; body: unknown }> = {}) =>
+    stub({ "GET /api/keys/status": { status: 200, body: WITH_KEYS }, ...extra });
+
+  const button = (name: string) => screen.getByRole("button", { name }) as HTMLButtonElement;
+
+  it("확인 문구 전에는 두 버튼 모두 잠겨 있다", async () => {
+    vi.stubGlobal("fetch", withKeys());
+    render(<KeyManagement />);
+    await screen.findByText("키 교체·삭제");
+
+    expect(button("키 교체").disabled).toBe(true);
+    expect(button("키 삭제").disabled).toBe(true);
+  });
+
+  it("틀린 확인 문구는 열어 주지 않는다", async () => {
+    vi.stubGlobal("fetch", withKeys());
+    render(<KeyManagement />);
+    const input = await screen.findByLabelText(/확인 문구/);
+
+    fireEvent.change(input, { target: { value: "delete" } });
+
+    expect(button("키 교체").disabled).toBe(true);
+    expect(button("키 삭제").disabled).toBe(true);
+  });
+
+  it("정확한 확인 문구를 넣으면 열린다", async () => {
+    vi.stubGlobal("fetch", withKeys());
+    render(<KeyManagement />);
+    const input = await screen.findByLabelText(/확인 문구/);
+
+    fireEvent.change(input, { target: { value: "DELETE" } });
+
+    expect(button("키 교체").disabled).toBe(false);
+    expect(button("키 삭제").disabled).toBe(false);
+  });
+
+  it("교체하면 함께 비운 값의 개수를 알린다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      withKeys({
+        "POST /api/keys/regenerate": {
+          status: 201,
+          body: {
+            status: { ...WITH_KEYS, public_key_fingerprint: "SHA256:bbbb" },
+            purged_secret_count: 2,
+            project_open: true,
+          },
+        },
+      }),
+    );
+    render(<KeyManagement />);
+    fireEvent.change(await screen.findByLabelText(/확인 문구/), {
+      target: { value: "DELETE" },
+    });
+
+    fireEvent.click(button("키 교체"));
+
+    await waitFor(() => expect(screen.getByText(/봉인된 값 2개를 함께 비웠습니다/)).toBeTruthy());
+    expect(screen.getByText("SHA256:bbbb")).toBeTruthy();
+  });
+
+  it("삭제하면 상태가 '없음' 으로 돌아가고 위험 구역이 사라진다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      withKeys({
+        "DELETE /api/keys": {
+          status: 200,
+          body: { status: NO_KEYS, purged_secret_count: 1, project_open: true },
+        },
+      }),
+    );
+    render(<KeyManagement />);
+    fireEvent.change(await screen.findByLabelText(/확인 문구/), {
+      target: { value: "DELETE" },
+    });
+
+    fireEvent.click(button("키 삭제"));
+
+    await waitFor(() => expect(screen.getByText(/키를 지웠습니다/)).toBeTruthy());
+    expect(screen.queryByText("키 교체·삭제")).toBeNull();
+    expect(screen.getByRole("button", { name: "키 쌍 만들기" })).toBeTruthy();
+  });
+
+  it("교체 실패는 계약 메시지를 그대로 보여주고 키 상태를 바꾸지 않는다", async () => {
+    const message = "새 키를 저장할 수 없습니다: Permission denied.";
+    vi.stubGlobal(
+      "fetch",
+      withKeys({
+        "POST /api/keys/regenerate": {
+          status: 400,
+          body: { error: { code: "INVALID_PATH", message } },
+        },
+      }),
+    );
+    render(<KeyManagement />);
+    fireEvent.change(await screen.findByLabelText(/확인 문구/), {
+      target: { value: "DELETE" },
+    });
+
+    fireEvent.click(button("키 교체"));
+
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/요청이 실패했습니다 \(\d{3}\)/);
+  });
+
+  it("짧은 새 암호구로는 교체를 막는다 — 서버 왕복 없이 사유를 말한다", async () => {
+    vi.stubGlobal("fetch", withKeys());
+    render(<KeyManagement />);
+    fireEvent.change(await screen.findByLabelText(/확인 문구/), {
+      target: { value: "DELETE" },
+    });
+    fireEvent.change(screen.getByLabelText(/새 암호구/), { target: { value: "short" } });
+
+    expect(screen.getByText(/8자 이상이어야 합니다/)).toBeTruthy();
+    expect(button("키 교체").disabled).toBe(true);
+    // 삭제는 새 암호구와 무관하다.
+    expect(button("키 삭제").disabled).toBe(false);
+  });
+});
