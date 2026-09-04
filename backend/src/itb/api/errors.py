@@ -138,8 +138,15 @@ def _reason(err: dict[str, Any]) -> str:
 
 
 def _where(loc: list[Any]) -> str:
-    """오류 위치를 필드 이름으로 줄인다. `body` 접두어는 사용자에게 의미가 없다."""
-    parts = [str(p) for p in loc if p not in ("body", "query", "path")]
+    """오류 위치를 필드 이름으로 줄인다. `body` 접두어는 사용자에게 의미가 없다.
+
+    **맨 앞 하나만 벗긴다.** 모든 요소에서 걸러내면 `path` 라는 **이름의 필드**가
+    사라진다 — pydantic 이 주는 `("body", "path")` 에서 접두어와 필드 이름이 같은
+    문자열이기 때문이다.
+    """
+    parts = [str(p) for p in loc]
+    if parts and parts[0] in ("body", "query", "path", "header", "cookie"):
+        parts = parts[1:]
     return ".".join(parts) or "요청 본문"
 
 

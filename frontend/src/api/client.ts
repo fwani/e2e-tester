@@ -75,7 +75,12 @@ const post = <T,>(p: string, body?: unknown) =>
   request<T>(p, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
 const patch = <T,>(p: string, body: unknown) =>
   request<T>(p, { method: "PATCH", body: JSON.stringify(body) });
-const del = <T,>(p: string) => request<T>(p, { method: "DELETE" });
+// DELETE 에 본문을 실을 수 있게 한다 — 프로젝트를 목록에서 치울 때 `root` 를 보낸다.
+const del = <T,>(p: string, body?: unknown) =>
+  request<T>(p, {
+    method: "DELETE",
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
 
 // ─── 프로젝트 ───────────────────────────────────────────────────────────────
 
@@ -90,15 +95,63 @@ export interface ProjectView {
   secrets_file_present: boolean;
 }
 
+/** 도구가 알고 있는 프로젝트 하나. 첫 화면 목록의 항목이다 (DR-002·DR-003). */
+export interface ProjectListItem {
+  root: string;
+  name: string;
+  last_opened_at: string;
+  origin: "managed" | "external";
+  /** 지금 열 수 있는가. 조회 시점에 계산된다 — 파일 시스템은 도구 밖에서 바뀐다. */
+  accessible: boolean;
+  unavailable_reason: string | null;
+}
+
+export interface ProjectListResponse {
+  projects: ProjectListItem[];
+  /** 레지스트리를 읽지 못했을 때의 사유. 목록 조회 자체는 실패하지 않는다. */
+  warning: string | null;
+}
+
 export const project = {
   current: () => get<ProjectView>("/api/project"),
-  create: (body: {
-    path: string;
-    name: string;
-    default_start_url: string;
-    test_id_attribute?: string;
-  }) => post<ProjectView>("/api/project/create", body),
+  /** 첫 화면 목록. 관리 위치 스캔 ∪ 레지스트리를 최근 연 순으로 준다. */
+  list: () => get<ProjectListResponse>("/api/project/list"),
+  /**
+   * 새 프로젝트. **`path` 를 보내지 않는다** (DR-001) — 사용자는 서버의 실행 경로를
+   * 알 수 없다. 도구가 위치를 정하고 응답의 `root` 로 알려 준다.
+   */
+  create: (body: { name: string; default_start_url: string; test_id_attribute?: string }) =>
+    post<ProjectView>("/api/project/create", body),
+  /** 사용자가 폴더 선택기로 고른 경로를 연다. 위치를 지정하는 유일한 경로다 (DR-005). */
   open: (path: string) => post<ProjectView>("/api/project/open", { path }),
+  /** 목록에서만 치운다. **디스크의 프로젝트는 지우지 않는다** (DR-009). */
+  forget: (root: string) => del<void>("/api/project/registry", { root }),
+};
+
+// ─── 디렉터리 탐색 (DR-005) ─────────────────────────────────────────────────
+//
+// 브라우저는 임의 절대 경로를 줄 수 없다. 서버가 홈 하위 디렉터리 목록을 그린다.
+// **디렉터리만 온다 — 파일 이름은 오지 않는다.**
+
+export interface DirectoryEntry {
+  name: string;
+  path: string;
+  /** 유효한 프로젝트 구조인가. 사용자가 어디를 골라야 하는지 알려 준다. */
+  is_project: boolean;
+}
+
+export interface BrowseResponse {
+  path: string;
+  /** 홈 최상위에서는 `null`. 경계 밖으로 올라갈 수 없다. */
+  parent: string | null;
+  entries: DirectoryEntry[];
+}
+
+export const fs = {
+  browse: (path?: string) =>
+    get<BrowseResponse>(
+      path === undefined ? "/api/fs/browse" : `/api/fs/browse?path=${encodeURIComponent(path)}`,
+    ),
 };
 
 // ─── 테스트 ─────────────────────────────────────────────────────────────────

@@ -12,6 +12,8 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.conftest import pin_playwright_browsers
+
 from itb.api.app import create_app
 from itb.secrets.keys import KeyPaths
 
@@ -19,18 +21,31 @@ CLOSE_TAB = [{"type": "close_tab", "id": "step-01", "label": "탭 닫기"}]
 
 
 @pytest.fixture
-def client(tmp_path: pathlib.Path) -> Iterator[TestClient]:
+def client(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[TestClient]:
+    """이 파일은 conftest 의 `client` 를 덮으므로 홈 격리를 여기에도 둔다.
+
+    002 부터 프로젝트가 `~/.local/share/itb/projects/` 에 만들어진다 (DR-006).
+    격리하지 않으면 계약 테스트가 개발자의 실제 홈에 프로젝트를 남긴다.
+    """
+    pin_playwright_browsers(monkeypatch)
+    home = tmp_path / "home"
+    home.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(home / ".local" / "share"))
     with TestClient(create_app()) as c:
         c.app.state.itb.key_paths = KeyPaths(tmp_path / "keys")
         yield c
 
 
 @pytest.fixture
-def opened(client: TestClient, tmp_path: pathlib.Path) -> TestClient:
+def opened(client: TestClient) -> TestClient:
+    """`path` 를 보내지 않는다 — 002 에서 제거됐다 (DR-001)."""
     resp = client.post(
         "/api/project/create",
         json={
-            "path": str(tmp_path / "proj"),
             "name": "계약 프로젝트",
             "default_start_url": "http://127.0.0.1:4300/login.html",
         },
@@ -39,12 +54,17 @@ def opened(client: TestClient, tmp_path: pathlib.Path) -> TestClient:
     return client
 
 
+def _project_root(client: TestClient) -> pathlib.Path:
+    """열린 프로젝트의 실제 위치. 002 부터 도구가 정하므로 테스트가 가정할 수 없다."""
+    return pathlib.Path(client.get("/api/project").json()["root"])
+
+
 def _write_test(client: TestClient, tmp_path: pathlib.Path, test_id: str, name: str) -> None:
     """정의 파일을 직접 써서 목록 API 를 검증한다 (브라우저 불필요)."""
     from itb.domain.test_case import Test
     from itb.storage.repository import ProjectRepository
 
-    repo = ProjectRepository.open(tmp_path / "proj")
+    repo = ProjectRepository.open(_project_root(client))
     repo.write_test(
         Test(
             id=test_id,
@@ -87,20 +107,30 @@ def test_create_then_get_project(opened: TestClient, tmp_path: pathlib.Path) -> 
     body = opened.get("/api/project").json()
     assert body["name"] == "계약 프로젝트"
     assert body["gitignore_present"] is True
-    assert pathlib.Path(body["root"]) == (tmp_path / "proj").resolve()
+    # 002 — 사용자가 위치를 정하지 않는다. 도구가 관리하는 위치에 만들고 그 위치를
+    # 응답으로 알려 준다 (DR-006). 어디에 만들어졌는지가 사용자에게 보여야 한다.
+    root = pathlib.Path(body["root"])
+    assert root.is_dir()
+    assert (tmp_path / "home" / ".local" / "share" / "itb" / "projects") in root.parents
 
 
-def test_create_rejects_duplicate(opened: TestClient, tmp_path: pathlib.Path) -> None:
+def test_create_with_duplicate_name_allocates_a_new_location(opened: TestClient) -> None:
+    """같은 이름을 다시 만들면 **실패하지 않고** 옆자리에 만든다.
+
+    001 에서는 `PROJECT_ALREADY_EXISTS` 로 거절했다. 그때는 사용자가 경로를 직접
+    줬으므로 "그 자리에 이미 있다" 가 사용자가 고칠 수 있는 정보였다. 002 는 위치를
+    묻지 않으므로(DR-001) 위치 충돌로 실패시키면 사용자가 할 수 있는 일이 없다.
+    이름이 겹치면 `-2`·`-3` 을 붙인다 (contracts/rest-api-delta.md §2).
+    """
+    first = opened.get("/api/project").json()["root"]
+
     resp = opened.post(
         "/api/project/create",
-        json={
-            "path": str(tmp_path / "proj"),
-            "name": "중복",
-            "default_start_url": "http://127.0.0.1:4300/",
-        },
+        json={"name": "계약 프로젝트", "default_start_url": "http://127.0.0.1:4300/"},
     )
-    assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "PROJECT_ALREADY_EXISTS"
+
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["root"] != first, "같은 디렉터리를 덮어썼다"
 
 
 @pytest.mark.parametrize(
@@ -112,28 +142,45 @@ def test_create_rejects_non_http_start_url(
     """FR-085 — 경계에서 스킴을 검증한다."""
     resp = client.post(
         "/api/project/create",
-        json={"path": str(tmp_path / "p2"), "name": "x", "default_start_url": url},
+        json={"name": "x", "default_start_url": url},
     )
     assert resp.status_code == 422, resp.text
 
 
-def test_create_rejects_relative_path(client: TestClient) -> None:
+def test_create_rejects_path_field(client: TestClient) -> None:
+    """`path` 는 002 에서 제거됐다 (DR-001·SC-102).
+
+    사용자가 서버의 실행 경로를 알 방법이 없어 아무도 올바른 값을 넣을 수 없었다.
+    필드를 남겨 두면 화면이 다시 그것을 묻게 되므로 경계에서 거절한다.
+    """
     resp = client.post(
         "/api/project/create",
         json={
-            "path": "relative/dir",
+            "path": "/anywhere",
             "name": "x",
             "default_start_url": "http://127.0.0.1:4300/",
         },
     )
-    assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "INVALID_PATH"
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["error"]["detail"]["fields"][0]["loc"] == "path"
 
 
 def test_open_missing_project(client: TestClient, tmp_path: pathlib.Path) -> None:
-    resp = client.post("/api/project/open", json={"path": str(tmp_path / "nope")})
-    assert resp.status_code == 404
+    """홈 안이지만 프로젝트가 아닌 경로 — 무엇이 없어서 못 여는지 알려야 한다 (DR-008)."""
+    inside = tmp_path / "home" / "nope"
+    resp = client.post("/api/project/open", json={"path": str(inside)})
+
+    assert resp.status_code == 404, resp.text
     assert resp.json()["error"]["code"] == "PROJECT_NOT_FOUND"
+    assert "itb-project.yaml" in resp.json()["error"]["message"]
+
+
+def test_open_outside_home_is_rejected(client: TestClient) -> None:
+    """탐색·열기를 사용자 홈 아래로 한정한다 (헌법 보안 요구 · research R4)."""
+    resp = client.post("/api/project/open", json={"path": "/etc"})
+
+    assert resp.status_code == 400, resp.text
+    assert resp.json()["error"]["code"] == "INVALID_PATH"
 
 
 def test_unknown_field_is_rejected(client: TestClient, tmp_path: pathlib.Path) -> None:
@@ -141,7 +188,6 @@ def test_unknown_field_is_rejected(client: TestClient, tmp_path: pathlib.Path) -
     resp = client.post(
         "/api/project/create",
         json={
-            "path": str(tmp_path / "p3"),
             "name": "x",
             "default_start_url": "http://127.0.0.1:4300/",
             "typo_field": 1,
@@ -189,7 +235,7 @@ def test_list_surfaces_broken_definition_without_hiding_others(
 ) -> None:
     """깨진 파일 하나가 목록 전체를 막지 않는다."""
     _write_test(opened, tmp_path, "TC-001", "정상")
-    (tmp_path / "proj" / "tests" / "TC-002-broken.yaml").write_text(
+    (_project_root(opened) / "tests" / "TC-002-broken.yaml").write_text(
         "steps: []\n", encoding="utf-8"
     )
     body = opened.get("/api/tests").json()

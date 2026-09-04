@@ -8,15 +8,10 @@
  * 사람이 눈으로 잡기 어려운 종류의 이탈이라 자동으로 막는다. 기준(dc.html) 쪽이 바뀌면
  * `scripts/design_baseline.py` 가 먼저 멈춘다 — 양쪽에서 조인다.
  */
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-
 import { describe, expect, it } from "vitest";
 
-const read = (rel: string) =>
-  readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
-
-const tokens = read("../src/theme/tokens.css");
+// Vite 의 `?raw` 로 원문을 그대로 읽는다. node:fs 를 쓰면 @types/node 가 필요해진다.
+import tokens from "../src/theme/tokens.css?raw";
 
 /** 주석을 걷어낸 실제 선언부. 주석의 설명 문구가 단언을 통과시키면 안 된다. */
 const declarations = tokens.replace(/\/\*[\s\S]*?\*\//g, "");

@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import os
 import pathlib
 import socket
 import subprocess
@@ -64,8 +65,52 @@ def fixture_app() -> Iterator[str]:
         proc.wait(timeout=5)
 
 
+def pin_playwright_browsers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`HOME` 을 바꾸기 **전에** Playwright 브라우저 캐시 위치를 고정한다.
+
+    Playwright 는 설치된 브라우저를 `HOME` 기준으로 찾는다. 홈을 임시 경로로 돌리면
+    브라우저가 없다며 실패한다 — 테스트가 검증하려는 것과 무관한 실패다.
+
+    이미 지정돼 있으면 존중한다 (CI 가 캐시를 따로 두는 경우).
+    """
+    if os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
+        return
+
+    real_home = pathlib.Path(os.path.expanduser("~"))
+    cache = (
+        real_home / "Library" / "Caches" / "ms-playwright"
+        if sys.platform == "darwin"
+        else real_home / ".cache" / "ms-playwright"
+    )
+    if cache.is_dir():
+        monkeypatch.setenv("PLAYWRIGHT_BROWSERS_PATH", str(cache))
+
+
 @pytest.fixture
-def client(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def isolated_home(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> pathlib.Path:
+    """사용자 홈을 임시 경로로 돌린다.
+
+    002 부터 프로젝트가 **도구가 관리하는 위치**(`~/.local/share/itb/projects/`)에
+    만들어지고 레지스트리가 `~/.config/itb/` 에 쌓인다 (DR-006). 격리하지 않으면
+    테스트가 개발자의 실제 홈에 프로젝트를 남긴다.
+
+    `HOME` 도 함께 돌린다 — `resolve_within_home` 의 경계가 `Path.home()` 이라,
+    이것이 없으면 `tmp_path` 가 홈 밖이라 모든 열기가 거절된다.
+    """
+    pin_playwright_browsers(monkeypatch)
+
+    home = tmp_path / "home"
+    home.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(home / ".local" / "share"))
+    return home
+
+
+@pytest.fixture
+def client(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch, isolated_home: pathlib.Path
+) -> Iterator[TestClient]:
     """앱 클라이언트. 키 디렉터리를 임시 경로로 돌려 사용자 홈을 건드리지 않는다."""
     from itb.api import state as state_mod
     from itb.api.app import create_app
@@ -79,14 +124,15 @@ def client(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
 
 
 @pytest.fixture
-def project_client(
-    client: TestClient, tmp_path: pathlib.Path, fixture_app: str
-) -> TestClient:
-    """프로젝트가 열린 클라이언트."""
+def project_client(client: TestClient, fixture_app: str) -> TestClient:
+    """프로젝트가 열린 클라이언트.
+
+    `path` 를 보내지 않는다 — 002 에서 제거됐다 (DR-001). 사용자가 서버의 실행 경로를
+    알 수 없으므로 위치를 묻지 않고 도구가 정한다.
+    """
     resp = client.post(
         "/api/project/create",
         json={
-            "path": str(tmp_path / "proj"),
             "name": "픽스처 프로젝트",
             "default_start_url": f"{fixture_app}/login.html",
         },

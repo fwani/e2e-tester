@@ -87,28 +87,28 @@ US6 전사와 파일이 겹치지 않는다 — 먼저 해도 덮어쓰이지 �
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] `backend/tests/unit/test_registry.py` 신규 — 레지스트리 읽기·쓰기, 모르는 `version` 일 때 빈 목록 + 경고(덮어쓰지 않음), 중복 `root` 제거
-- [ ] T014 [P] [US1] `backend/tests/unit/test_project_slug.py` 신규 — 이름→슬러그 변환. 경로 구분자·`..`·제어 문자 제거, 빈 결과는 `project`, 충돌 시 `-2`·`-3`
-- [ ] T015 [P] [US1] `backend/tests/contract/test_fs_browse_api.py` 신규 — **경계 검증이 핵심이다.** 홈 밖 거절, `..` 정규화 후 거절, 심볼릭 링크 재검사, **응답에 파일 이름이 하나도 없음**, 숨김 디렉터리 제외, 홈 최상위에서 `parent` 가 `null`
-- [ ] T016 [P] [US1] `backend/tests/contract/test_project_list_api.py` 신규 — 스캔 ∪ 레지스트리 합집합, `last_opened_at` 내림차순, 빈 목록이 200, 접근 불가 항목의 `accessible:false` + 사유
+- [X] T013 [P] [US1] `backend/tests/unit/test_registry.py` 신규 — 레지스트리 읽기·쓰기, 모르는 `version` 일 때 빈 목록 + 경고(덮어쓰지 않음), 중복 `root` 제거
+- [X] T014 [P] [US1] 슬러그 변환 검증 — **`backend/tests/unit/test_paths.py` 에 넣었다** (슬러그가 `paths.py` 에 있어 파일을 나눌 이유가 없다). 이름→슬러그 변환. 경로 구분자·`..`·제어 문자 제거, 빈 결과는 `project`, 충돌 시 `-2`·`-3`
+- [X] T015 [P] [US1] `backend/tests/contract/test_fs_browse_api.py` 신규 — **경계 검증이 핵심이다.** 홈 밖 거절, `..` 정규화 후 거절, 심볼릭 링크 재검사, **응답에 파일 이름이 하나도 없음**, 숨김 디렉터리 제외, 홈 최상위에서 `parent` 가 `null`
+- [X] T016 [P] [US1] `backend/tests/contract/test_project_list_api.py` 신규 — 스캔 ∪ 레지스트리 합집합, `last_opened_at` 내림차순, 빈 목록이 200, 접근 불가 항목의 `accessible:false` + 사유
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] `backend/src/itb/storage/registry.py` 신규 — `ProjectRegistryEntry` 읽기·쓰기. `~/.config/itb/registry.json`, 필드 `root`·`name`·`last_opened_at`·`origin`. `accessible`·`unavailable_reason` 은 **저장하지 않고 조회 시 계산한다** (data-model.md §1)
-- [ ] T018 [US1] `backend/src/itb/storage/repository.py` 변경 — 프로젝트 생성 시 관리 위치(`~/.local/share/itb/projects/<슬러그>/`)를 쓰도록 한다. 슬러그 충돌은 `-2`·`-3` 으로 피하고 `PROJECT_ALREADY_EXISTS` 를 내지 않는다 — 사용자가 위치를 모르는데 위치 충돌로 실패시킬 수 없다
-- [ ] T019 [US1] `backend/src/itb/api/routes/fs.py` 신규 — `GET /api/fs/browse`. 홈 하위 한정, `resolve()` 후 경계 검사, 심볼릭 링크 추적 후 재검사, **디렉터리만 반환**, 숨김 제외, 각 항목에 `is_project` (contracts/rest-api-delta.md §4)
-- [ ] T020 [US1] `backend/src/itb/api/routes/project.py` 에 `GET /api/project/list` 를 추가한다. 관리 위치 스캔 ∪ 레지스트리, `root` 로 중복 제거, `last_opened_at` 내림차순
-- [ ] T021 [US1] `backend/src/itb/api/routes/project.py` 의 `POST /api/project/create` 에서 **`path` 필드를 제거한다** (DR-001). 관리 위치에 만들고 레지스트리에 `origin:"managed"` 로 등록한다
-- [ ] T022 [US1] `backend/src/itb/api/routes/project.py` 의 `POST /api/project/open` 에 경계 검증을 적용하고, 성공 시 레지스트리에 `origin:"external"` 로 등록·`last_opened_at` 갱신한다. 실패 시 **무엇이 없어서 열 수 없는지** 메시지에 담는다 (DR-008)
-- [ ] T023 [US1] `backend/src/itb/api/routes/project.py` 에 `DELETE /api/project/registry` 를 추가한다. **레지스트리 항목만 지운다. 디스크의 프로젝트는 지우지 않는다** (DR-009)
-- [ ] T024 [US1] `backend/src/itb/api/app.py` 에 `fs` 라우터를 등록한다
-- [ ] T025 [US1] `frontend/src/api/client.ts` 에 `project.list()`·`project.forget(root)`·`fs.browse(path)` 를 추가하고 `project.create` 에서 `path` 를 뺀다
-- [ ] T026 [US1] `frontend/src/pages/ProjectSetup.tsx` 를 재작성한다 — **경로 자유 입력란을 없애고**(DR-001) 프로젝트 목록 + "새 프로젝트 만들기" + "기존 프로젝트 열기" 세 갈래로 만든다. 확정 디자인에 대응이 없으므로 8화면의 시각 언어를 따른다 (DC-010)
-- [ ] T027 [US1] `frontend/src/pages/ProjectSetup.tsx` 에 폴더 선택기를 넣는다 — `GET /api/fs/browse` 로 홈 하위를 탐색하고 `is_project` 인 항목을 구분해 보여준다 (DR-005)
-- [ ] T028 [US1] `frontend/src/pages/ProjectSetup.tsx` 에 접근 불가 항목 표시와 목록에서 치우기를 넣는다 (DR-009). 치우기가 **자산 삭제가 아님**을 문구로 밝힌다
-- [ ] T029 [US1] `frontend/src/App.tsx` 의 최초 진입을 바꾼다 — `GET /api/project` 404 시 목록을 먼저 불러 보여준다. 새로 만든 프로젝트의 위치를 사용자에게 표시한다 (DR-006)
-- [ ] T030 [P] [US1] `frontend/tests/ProjectSetup.test.tsx` 신규 — 경로 자유 입력란이 **없음**을 단언하고(SC-102), 목록 렌더·선택·접근 불가 표시를 확인한다
-- [ ] T031 [US1] `specs/002-defect-fix-design-conformance/design-conformance/undefined-states.md` 에 ProjectSetup 의 미정의 상태(빈 목록·로딩·오류)와 근거를 기록한다 (DC-009)
+- [X] T017 [US1] `backend/src/itb/storage/registry.py` 신규 — `ProjectRegistryEntry` 읽기·쓰기. `~/.config/itb/registry.json`, 필드 `root`·`name`·`last_opened_at`·`origin`. `accessible`·`unavailable_reason` 은 **저장하지 않고 조회 시 계산한다** (data-model.md §1)
+- [X] T018 [US1] `backend/src/itb/storage/repository.py` 변경 — 프로젝트 생성 시 관리 위치(`~/.local/share/itb/projects/<슬러그>/`)를 쓰도록 한다. 슬러그 충돌은 `-2`·`-3` 으로 피하고 `PROJECT_ALREADY_EXISTS` 를 내지 않는다 — 사용자가 위치를 모르는데 위치 충돌로 실패시킬 수 없다
+- [X] T019 [US1] `backend/src/itb/api/routes/fs.py` 신규 — `GET /api/fs/browse`. 홈 하위 한정, `resolve()` 후 경계 검사, 심볼릭 링크 추적 후 재검사, **디렉터리만 반환**, 숨김 제외, 각 항목에 `is_project` (contracts/rest-api-delta.md §4)
+- [X] T020 [US1] `backend/src/itb/api/routes/project.py` 에 `GET /api/project/list` 를 추가한다. 관리 위치 스캔 ∪ 레지스트리, `root` 로 중복 제거, `last_opened_at` 내림차순
+- [X] T021 [US1] `backend/src/itb/api/routes/project.py` 의 `POST /api/project/create` 에서 **`path` 필드를 제거한다** (DR-001). 관리 위치에 만들고 레지스트리에 `origin:"managed"` 로 등록한다
+- [X] T022 [US1] `backend/src/itb/api/routes/project.py` 의 `POST /api/project/open` 에 경계 검증을 적용하고, 성공 시 레지스트리에 `origin:"external"` 로 등록·`last_opened_at` 갱신한다. 실패 시 **무엇이 없어서 열 수 없는지** 메시지에 담는다 (DR-008)
+- [X] T023 [US1] `backend/src/itb/api/routes/project.py` 에 `DELETE /api/project/registry` 를 추가한다. **레지스트리 항목만 지운다. 디스크의 프로젝트는 지우지 않는다** (DR-009)
+- [X] T024 [US1] `backend/src/itb/api/app.py` 에 `fs` 라우터를 등록한다
+- [X] T025 [US1] `frontend/src/api/client.ts` 에 `project.list()`·`project.forget(root)`·`fs.browse(path)` 를 추가하고 `project.create` 에서 `path` 를 뺀다
+- [X] T026 [US1] `frontend/src/pages/ProjectSetup.tsx` 를 재작성한다 — **경로 자유 입력란을 없애고**(DR-001) 프로젝트 목록 + "새 프로젝트 만들기" + "기존 프로젝트 열기" 세 갈래로 만든다. 확정 디자인에 대응이 없으므로 8화면의 시각 언어를 따른다 (DC-010)
+- [X] T027 [US1] `frontend/src/pages/ProjectSetup.tsx` 에 폴더 선택기를 넣는다 — `GET /api/fs/browse` 로 홈 하위를 탐색하고 `is_project` 인 항목을 구분해 보여준다 (DR-005)
+- [X] T028 [US1] `frontend/src/pages/ProjectSetup.tsx` 에 접근 불가 항목 표시와 목록에서 치우기를 넣는다 (DR-009). 치우기가 **자산 삭제가 아님**을 문구로 밝힌다
+- [X] T029 [US1] `frontend/src/App.tsx` 의 최초 진입을 바꾼다 — `GET /api/project` 404 시 목록을 먼저 불러 보여준다. 새로 만든 프로젝트의 위치를 사용자에게 표시한다 (DR-006)
+- [X] T030 [P] [US1] `frontend/tests/ProjectSetup.test.tsx` 신규 — 경로 자유 입력란이 **없음**을 단언하고(SC-102), 목록 렌더·선택·접근 불가 표시를 확인한다
+- [X] T031 [US1] `specs/002-defect-fix-design-conformance/design-conformance/undefined-states.md` 에 ProjectSetup 의 미정의 상태(빈 목록·로딩·오류)와 근거를 기록한다 (DC-009)
 
 **Checkpoint**: quickstart.md §1 이 통과해야 한다. 서버를 임의 디렉터리에서 띄워도 동작한다.
 

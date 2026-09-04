@@ -31,7 +31,9 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 이미 열린 프로젝트가 있으면 목록으로 간다. 없으면 프로젝트 화면부터.
+    // 이미 열린 프로젝트가 있으면 목록으로 간다. 없으면 프로젝트 선택 화면부터 —
+    // 그 화면이 기존 프로젝트를 자동으로 불러 보여준다 (DR-002). 서버를 재시작해도
+    // 사용자가 경로를 타이핑할 일이 없다.
     void project
       .current()
       .then((p) => {

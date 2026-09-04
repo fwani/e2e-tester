@@ -16,5 +16,9 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     include: ["tests/**/*.test.{ts,tsx}"],
+    // 기본값은 CSS 임포트를 빈 값으로 바꾼다. 그러면 DesignTokens.test.tsx 의
+    // "border-radius 가 없다" 류 단언이 **빈 문자열을 상대로 통과한다** — 가드가
+    // 조용히 가드를 멈춘다. 원문을 실제로 읽어야 대조가 성립한다 (DC-004).
+    css: true,
   },
 });
