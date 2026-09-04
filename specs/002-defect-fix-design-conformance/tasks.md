@@ -416,3 +416,15 @@ Phase 2 완료 후 두 갈래로 나뉜다.
 - **T099 는 구현자가 할 수 없다.** 리뷰어의 판정이 없으면 SC-108 이 미충족으로 남는다.
   이것을 구현자가 채우면 001 T156 과 같은 상태가 된다
 - Export(헌법 원칙 V)는 이 라운드의 범위가 아니다. release-gate 항목으로 여전히 남아 있다
+
+---
+
+## Phase 11: Convergence
+
+converge 1회차가 찾은 잔여 작업. 심각도 순.
+
+- [ ] T100 [US2] `frontend/src/pages/SessionScreen.tsx` 에서 `lost` 를 검토 화면으로 보낸다 — 브라우저가 유실돼도 이름을 붙여 저장할 수 있어야 한다 per DR-015·US2/AC7 (partial). 지금은 `lost` 가 `TERMINAL_STATES` 라 Main 화면으로 가고, 그 화면에는 저장 상자가 없다. `SessionLostBanner` 도 이름 입력이 없어 `onSave` 가 늘 `undefined` 다 — 배너는 "저장하거나" 라고 적어 두고 저장할 방법을 주지 않는다. `review` 와 같은 상황(브라우저 없음·Step 살아 있음)이므로 `RunnerPaused` 로 보내고, 배너는 사유만 알리게 한다
+- [ ] T101 200개 렌더 예산 가드를 **실제 렌더 경로로 옮긴다** per RG-001·plan(research R8) (contradicts). `frontend/tests/StepListPerformance.test.tsx` 와 `StepList.test.tsx` 18건이 `components/StepList.tsx` 를 재는데 어느 페이지도 그 모듈을 임포트하지 않는다. 실제 경로인 `components/design/DesignStepList.tsx` 의 `DesignStepRow` 에는 테스트가 0건이다. **테스트 수가 줄지 않아 RG-001 이 초록으로 보이지만 가드는 아무것도 지키지 않는다.** 예산 테스트를 `DesignStepRow` 기준으로 다시 쓰고, `StepList.test.tsx` 가 검증하던 동작(번호·표시 이름·동작 종류·식별 정보·일시정지 표식)도 실제 경로에서 확인한다. **기존 단언을 지우지 말고 옮긴다** (헌법 품질 게이트 4)
+- [ ] T102 `frontend/src/pages/RunnerPaused.tsx:467` 의 중복 `AssertionForm` 을 없애고 `components/AssertionForm.tsx` 를 쓴다 per DC-003 (unrequested). 기존 것은 테스트가 있고 `tab` 인자를 지원한다 — 전사하면서 같은 것을 두 번 쓴 것이라 한쪽만 고쳐지면 어긋난다
+- [ ] T103 `frontend/src/pages/TestDefinition.tsx` 를 나머지 DC-010 화면과 같은 시각 언어로 맞춘다 per DC-010 (partial). 이 화면만 `className="card"` 3곳에 3px 테두리가 0곳이다. `SecretValues`·`KeyManagement` 는 3px 로 맞췄다
+- [ ] T104 임포트되지 않는 옛 시각 언어 컴포넌트 6개를 제거하거나 남길 이유를 기록한다 per DC-001·DC-007 (unrequested): `components/AppHeader.tsx`·`PauseActions.tsx`·`AiProgress.tsx`·`EditWarningBanner.tsx`·`AiBlockedCard.tsx`·`StepList.tsx`. 전부 001 의 지어낸 시각 언어(1px 테두리·어두운 헤더)를 담고 있어, 남겨 두면 다음 편집에서 되살아날 수 있다. **T101 이 `StepList` 의 테스트를 실제 경로로 옮긴 뒤에 지운다** — 순서를 바꾸면 검증이 사라진다
