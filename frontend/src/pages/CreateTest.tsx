@@ -12,6 +12,7 @@
 import { useEffect, useState } from "react";
 
 import { ai, ApiError, type ProjectView } from "../api/client";
+import { Artboard } from "../components/design/Chrome";
 
 export interface CreateTestProps {
   project: ProjectView | null;
@@ -42,16 +43,15 @@ export function CreateTest({ project, onCancel, onRecord, onWriteInstruction }: 
   const urlReady = /^https?:\/\//.test(startUrl.trim());
 
   return (
-    <div
-      style={{
-        width: "1000px",
-        minHeight: "700px",
-        background: "#EFEBE0",
-        padding: "40px",
-        display: "flex",
-        margin: "0 auto",
-      }}
-    >
+    <Artboard width={1000} minHeight={700}>
+      <div
+        style={{
+          background: "#EFEBE0",
+          padding: "40px",
+          display: "flex",
+          flex: "1",
+        }}
+      >
       <div
         style={{
           flex: "1",
@@ -374,8 +374,9 @@ export function CreateTest({ project, onCancel, onRecord, onWriteInstruction }: 
               시작 URL 은 http:// 또는 https:// 로 시작해야 합니다.
             </div>
           )}
+          </div>
         </div>
       </div>
-    </div>
+    </Artboard>
   );
 }

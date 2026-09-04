@@ -700,7 +700,15 @@ function StepInspectorOverlay({
       }}
       onClick={onClose}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ overflowY: "auto" }}>
+      {/*
+        DC-011 — 창이 확정 디자인의 기준 폭(640px)보다 좁으면 **기준 폭을 유지한 채
+        스크롤한다.** 겹침이 `position: fixed` 라 페이지 스크롤이 닿지 않으므로 가로
+        스크롤을 여기서 준다. 없으면 좁은 창에서 판이 잘린 채 접근할 수 없다.
+      */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ overflowY: "auto", overflowX: "auto", maxWidth: "100%" }}
+      >
         <StepInspector
           step={step}
           index={index}

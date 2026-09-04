@@ -435,4 +435,4 @@ converge 1회차가 찾은 잔여 작업. 심각도 순.
 
 converge 2회차. 1회차 5건은 전부 닫혔고 아래 1건이 남았다.
 
-- [ ] T105 [US6] `frontend/src/pages/CreateTest.tsx` 와 `StepInspector` 겹침을 나머지 6화면처럼 `Artboard` 로 감싼다 per DC-011 (partial). 8화면 중 6개는 `overflowX: auto` + 기준 폭 컨테이너를 쓰는데 이 둘만 고정 폭을 맨몸으로 둔다. **`StepInspector` 가 특히 문제다** — `SessionScreen.tsx` 의 `position: fixed` 겹침 안에 있어 페이지 스크롤이 닿지 않는다. 창이 640px 보다 좁으면 잘린 채 접근할 수 없다. `CreateTest` 는 `width: 1000px; margin: 0 auto` 라 다른 화면과 동작이 갈린다. 임의 재배치를 하지 말고 기준 폭을 유지한 채 스크롤하게 한다
+- [X] T105 [US6] `frontend/src/pages/CreateTest.tsx` 와 `StepInspector` 겹침을 나머지 6화면처럼 `Artboard` 로 감싼다 per DC-011 (partial). 8화면 중 6개는 `overflowX: auto` + 기준 폭 컨테이너를 쓰는데 이 둘만 고정 폭을 맨몸으로 둔다. **`StepInspector` 가 특히 문제다** — `SessionScreen.tsx` 의 `position: fixed` 겹침 안에 있어 페이지 스크롤이 닿지 않는다. 창이 640px 보다 좁으면 잘린 채 접근할 수 없다. `CreateTest` 는 `width: 1000px; margin: 0 auto` 라 다른 화면과 동작이 갈린다. 임의 재배치를 하지 말고 기준 폭을 유지한 채 스크롤하게 한다
