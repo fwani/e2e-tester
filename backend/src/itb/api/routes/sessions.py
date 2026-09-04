@@ -756,6 +756,26 @@ async def _accept_step(session_id: str, step: Step, index: int) -> None:
 # ─── 조회 ───────────────────────────────────────────────────────────────────
 
 
+class SessionListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sessions: list[SessionView]
+
+
+@router.get("")
+async def list_sessions() -> SessionListResponse:
+    """살아 있는 세션 전부 (UX U-05).
+
+    새로고침 한 번에 화면은 목록으로 떨어지는데 서버에는 ``recording`` · Step 5개 ·
+    ``has_unsaved_changes`` 세션이 그대로 살아 있고 실제 브라우저 창도 떠 있었다. 화면
+    어디에도 그 세션으로 돌아가는 길이 없었고, 세션 id 를 알아낼 방법도 없었다 — 그 상태로
+    새 녹화를 시작하면 두 번째 창이 열리고 앞의 5개는 영원히 못 찾는다.
+
+    화면이 이 목록으로 진행 중 세션을 알리고 되찾게 한다.
+    """
+    return SessionListResponse(sessions=[view_of(w) for w in _WORK.values()])
+
+
 @router.get("/{session_id}")
 async def get_session(session_id: str) -> SessionView:
     return view_of(work_of(session_id))

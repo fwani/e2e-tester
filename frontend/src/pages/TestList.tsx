@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { tests, type TestListRow, type TestListResponse } from "../api/client";
+import { tests, type SessionView, type TestListRow, type TestListResponse } from "../api/client";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
 
 function relativeTime(iso: string | null): string {
@@ -42,6 +42,14 @@ export interface TestListProps {
   /** 확정 디자인에 없는 화면들로 가는 진입점 (DC-010). */
   onOpenSecrets?: () => void;
   onOpenKeys?: () => void;
+  /**
+   * 살아 있는 세션. 새로고침으로 화면만 잃은 녹화·실행을 되찾는 길이다 (UX U-05).
+   * 서버에는 Step 과 브라우저가 그대로 있는데 화면이 그것을 말하지 않으면 사용자는
+   * 새 녹화를 시작하고, 앞의 기록은 영영 못 찾는다.
+   */
+  activeSessions?: SessionView[];
+  onResumeSession?: (session: SessionView) => void;
+  onDiscardSession?: (sessionId: string) => void;
 }
 
 export function TestList({
@@ -52,6 +60,9 @@ export function TestList({
   onOpenDefinition,
   onOpenSecrets,
   onOpenKeys,
+  activeSessions = [],
+  onResumeSession,
+  onDiscardSession,
 }: TestListProps) {
   const [data, setData] = useState<TestListResponse | null>(null);
   const [query, setQuery] = useState("");
@@ -170,6 +181,13 @@ export function TestList({
           padding: "30px 40px 40px",
         }}
       >
+        {activeSessions.length > 0 && (
+          <ActiveSessionsBanner
+            sessions={activeSessions}
+            onResume={onResumeSession}
+            onDiscard={onDiscardSession}
+          />
+        )}
         <div style={{ display: "flex", alignItems: "flex-end", gap: "16px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             <div
@@ -726,6 +744,86 @@ function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
         <circle cx="6" cy="6" r="4" fill="#D9502F" />
       </svg>
       RECORD
+    </div>
+  );
+}
+
+// ─── 확정 디자인이 정의하지 않은 상태 (DC-009) ────────────────────────────
+
+/**
+ * 진행 중 세션 안내 (UX U-05).
+ *
+ * 무엇이 살아 있고(상태·Step 수·저장 여부) 무엇을 할 수 있는지(이어서 보기·버리기)를
+ * 말한다. 버리기는 되돌릴 수 없으므로 행 안에서 한 번 더 묻는다 — 삭제 확인과 같은 방식이다.
+ */
+function ActiveSessionsBanner({
+  sessions,
+  onResume,
+  onDiscard,
+}: {
+  sessions: SessionView[];
+  onResume?: (session: SessionView) => void;
+  onDiscard?: (sessionId: string) => void;
+}) {
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  return (
+    <div
+      role="status"
+      data-active-sessions
+      style={{
+        border: "3px solid #14130F",
+        background: "#FFF9D6",
+        boxShadow: "5px 5px 0 #14130F",
+        padding: "14px 18px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+      }}
+    >
+      <strong style={{ font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif" }}>
+        진행 중인 세션이 있습니다
+      </strong>
+      {sessions.map((s) => {
+        const label =
+          `${s.state_label} · Step ${s.steps.length}개` +
+          (s.test_id ? ` · ${s.test_id}` : "") +
+          (s.has_unsaved_changes ? " · 저장되지 않음" : "");
+        const asking = confirming === s.session_id;
+        return (
+          <div
+            key={s.session_id}
+            data-session-id={s.session_id}
+            style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}
+          >
+            <span style={{ flex: 1, font: "400 14px/1.4 'IBM Plex Sans KR', system-ui, sans-serif" }}>
+              {label}
+            </span>
+            {asking ? (
+              <>
+                <span style={{ color: "#A83A22" }}>
+                  Step {s.steps.length}개가 사라집니다. 정말 버릴까요?
+                </span>
+                <button className="danger" onClick={() => onDiscard?.(s.session_id)}>
+                  버리기
+                </button>
+                <button className="ghost" onClick={() => setConfirming(null)}>
+                  취소
+                </button>
+              </>
+            ) : (
+              <>
+                {onResume && <button onClick={() => onResume(s)}>이어서 보기</button>}
+                {onDiscard && (
+                  <button className="secondary" onClick={() => setConfirming(s.session_id)}>
+                    중지하고 버리기
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

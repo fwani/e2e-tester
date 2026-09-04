@@ -2,7 +2,7 @@
  * 화면 전환. 단독 로컬 도구이므로 라우터를 두지 않고 상태로 화면을 고른다 —
  * 화면이 4개이고 딥링크 요구가 없다.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { project, sessions, type ProjectView, type SessionView } from "./api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
@@ -35,6 +35,19 @@ export function App() {
   // 문자열이 아니라 ErrorInfo 를 담는다 — 문자열로 받으면 next_action 이 여기서 죽는다
   // (003 EC-004). "대상 앱에 연결할 수 없습니다" 뒤에 "떠 있는지 확인하세요" 가 따라와야 한다.
   const [error, setError] = useState<ErrorInfo | null>(null);
+  /** 살아 있는 세션. 목록 화면이 이것을 배너로 알린다 (UX U-05). */
+  const [active, setActive] = useState<SessionView[]>([]);
+
+  const refreshActive = useCallback(() => {
+    void sessions
+      .list()
+      .then((r) => setActive(r.sessions))
+      .catch(() => setActive([])); // 조회 실패가 목록 화면을 막을 이유는 없다
+  }, []);
+
+  useEffect(() => {
+    if (screen.name === "list") refreshActive();
+  }, [screen.name, refreshActive]);
 
   useEffect(() => {
     // 이미 열린 프로젝트가 있으면 목록으로 간다. 없으면 프로젝트 선택 화면부터 —
@@ -100,6 +113,14 @@ export function App() {
           onOpenDefinition={(testId) => setScreen({ name: "definition", testId })}
           onOpenSecrets={() => setScreen({ name: "secrets" })}
           onOpenKeys={() => setScreen({ name: "keys" })}
+          activeSessions={active}
+          onResumeSession={(session) => setScreen({ name: "runner", session })}
+          onDiscardSession={(sessionId) =>
+            void sessions
+              .discard(sessionId)
+              .catch((exc: unknown) => setError(describeError(exc)))
+              .finally(refreshActive)
+          }
         />
       )}
 
@@ -154,6 +175,7 @@ export function App() {
           aiInstruction={screen.aiInstruction ?? null}
           onFinished={() => setScreen({ name: "list" })}
           onShowResult={(testId) => setScreen({ name: "result", testId })}
+          onRerun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
         />
       )}
 
