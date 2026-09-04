@@ -368,8 +368,8 @@ contracts/ (4) · quickstart.md · 헌법 v1.0.0
 - [X] T152 `backend/src/itb/execution/` 전체와 `backend/src/itb/api/errors.py` 의 오류 처리·로깅 일관성을 점검하고 `backend/tests/unit/test_error_handling.py` 를 추가한다 — 실패한 Step이 항상 진단 가능한 결과(사유·스크린샷·로그)를 남기고, 처리되지 않은 오류로 러너 태스크가 죽지 않음을 확인 (FR-087) 동작 검증(예상 못한 오류·결과 기록 실패·취소)과 **구조 점검**(예외를 삼키는 지점 수를 숫자로 고정, 광범위 포획에 이유 주석 강제)을 함께 둔다
 - [X] T153 `README.md` 와 `docs/DEVELOPMENT.md` — quickstart.md §0의 설치·실행 절차를 개발자 문서로 정리한다
 - [X] T154 `specs/001-interactive-ai-test-builder/quickstart.md` §12 완료 체크리스트 13항목을 실제로 수행하고, 결과를 그 파일의 체크박스에 반영한다 13항목 중 **12항목 확인 완료**. 마지막 항목(SC-001~SC-005 측정값)은 T155 의 수동 세션이 필요해 미수행으로 남겼다
-- [ ] T155 SC-001·SC-002·SC-004·SC-005 수동 측정 세션 — 시나리오 20건 규모. **자동 테스트로 대체할 수 없다.** 표본 선정 기준과 측정 결과를 `docs/mvp-metrics.md` 에 기록한다 (quickstart §12) **미수행 — 사람이 해야 한다.** 측정 절차·표본 선정 기준·기록 자리를 `docs/mvp-metrics.md` 에 만들어 두었고, 자동으로 재고 있는 지표(SC-003·006·007·008·010·011·012)와 수동이 필요한 지표를 구분해 적었다
-- [ ] T156 `specs/001-interactive-ai-test-builder/checklists/design-review.md` 의 미체크 55항목을 리뷰어가 검토하고 결과를 반영한다 **미수행 — 리뷰어가 해야 한다.** 구현자가 자기 구현을 체크하면 리뷰가 아니라 자기 확인이 된다. 65항목이 미체크로 남아 있다
+- [ ] T155 SC-001·SC-002·SC-004·SC-005 수동 측정 세션 — 시나리오 20건 규모. **자동 테스트로 대체할 수 없다.** 표본 선정 기준과 측정 결과를 `docs/mvp-metrics.md` 에 기록한다 (quickstart §12) **미수행 — 사람이 해야 한다.** 측정 절차·표본 선정 기준·기록 자리를 `docs/mvp-metrics.md` 에 만들어 두었고, 자동으로 재고 있는 지표(SC-003·006·007·008·010·011·012)와 수동이 필요한 지표를 구분해 적었다. **측정 준비 완료 (2026-09-04)** — 표본 선정 기준 `docs/measurement/sample-selection.md`, 진행 대본 `docs/measurement/session-protocol.md`, 기록 시트 `docs/measurement/recording-sheet.csv`(20행 배분 기입), 집계 `scripts/mvp_metrics_report.py`. 시트를 채우고 집계를 돌리면 결과표가 나온다. 이 과정에서 SC-005 를 실패 진단 시간으로 잘못 적어 둔 것을 바로잡고 누락된 SC-009 를 더했다
+- [ ] T156 `specs/001-interactive-ai-test-builder/checklists/design-review.md` 의 미체크 55항목을 리뷰어가 검토하고 결과를 반영한다 **미수행 — 리뷰어가 해야 한다.** 구현자가 자기 구현을 체크하면 리뷰가 아니라 자기 확인이 된다. 65항목이 미체크로 남아 있다. **검토 준비 완료 (2026-09-04)** — 진행 안내 `docs/review/design-review-guide.md`(판정 기준·항목 분류·4회 세션 분할·기록 절차), 근거 위치표 `docs/review/design-review-pointers.md`(65항목 전부를 `파일:라인` 으로 해석, 미해결 0건, 생성기 `scripts/review_pointers.py`). **판정은 들어 있지 않다**
 
 **Checkpoint**: 헌법 게이트 전부 통과. MVP 완료
 
