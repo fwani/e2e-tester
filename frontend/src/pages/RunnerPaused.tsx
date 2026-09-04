@@ -11,8 +11,9 @@
  */
 import { useState, type ReactNode } from "react";
 
-import type { AddAssertionBody, AssertionKind, MatchMode } from "../api/client";
+import type { AddAssertionBody } from "../api/client";
 import type { Step } from "../types/generated/step";
+import { AssertionForm } from "../components/AssertionForm";
 import { BrowserFrame } from "../components/design/BrowserFrame";
 import {
   DesignStepRow,
@@ -40,6 +41,8 @@ export interface RunnerPausedProps {
   durationOf: (step: Step) => number | undefined;
   busy: boolean;
   currentUrl: string;
+  /** 지금 미러가 보고 있는 탭. 검증 Step 의 기본 대상이 된다 (FR-037). */
+  mirroredTab: number;
   mirror: ReactNode;
   tabs?: ReactNode;
   banners?: ReactNode;
@@ -76,6 +79,7 @@ export function RunnerPaused(props: RunnerPausedProps) {
     durationOf,
     busy,
     currentUrl,
+    mirroredTab,
     mirror,
     tabs,
     banners,
@@ -398,6 +402,7 @@ export function RunnerPaused(props: RunnerPausedProps) {
             {assertOpen && !review && (
               <AssertionForm
                 busy={busy}
+                tab={mirroredTab}
                 onSubmit={(body) => {
                   onAddAssertion(body);
                   setAssertOpen(false);
@@ -460,74 +465,6 @@ function ToolButton({
     >
       {children}
     </button>
-  );
-}
-
-/** 검증 Step 추가 (FR-013a·FR-037). 확정 디자인에 폼이 없어 도구 아래에 편다 (DC-009). */
-function AssertionForm({
-  busy,
-  onSubmit,
-  onCancel,
-}: {
-  busy: boolean;
-  onSubmit: (body: AddAssertionBody) => void;
-  onCancel: () => void;
-}) {
-  const [kind, setKind] = useState<AssertionKind>("visible");
-  const [selector, setSelector] = useState("");
-  const [value, setValue] = useState("");
-  const [match, setMatch] = useState<MatchMode>("equals");
-
-  const needsValue = kind === "text" || kind === "url";
-  const needsSelector = kind !== "url";
-
-  return (
-    <div style={{ border: "3px solid #14130F", background: "#FFFDF6", padding: 12, display: "grid", gap: 8 }}>
-      <label htmlFor="assert-kind">검증 조건</label>
-      <select id="assert-kind" value={kind} onChange={(e) => setKind(e.target.value as AssertionKind)}>
-        <option value="visible">요소가 보인다</option>
-        <option value="hidden">요소가 없거나 안 보인다</option>
-        <option value="text">텍스트가 일치·포함한다</option>
-        <option value="url">URL 이 일치·포함한다</option>
-      </select>
-
-      {needsSelector && (
-        <>
-          <label htmlFor="assert-selector">대상 요소</label>
-          <input id="assert-selector" value={selector} onChange={(e) => setSelector(e.target.value)} />
-        </>
-      )}
-
-      {needsValue && (
-        <>
-          <label htmlFor="assert-value">비교 값</label>
-          <input id="assert-value" value={value} onChange={(e) => setValue(e.target.value)} />
-          <select value={match} onChange={(e) => setMatch(e.target.value as MatchMode)}>
-            <option value="equals">일치</option>
-            <option value="contains">포함</option>
-          </select>
-        </>
-      )}
-
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-        <button className="secondary" onClick={onCancel}>
-          취소
-        </button>
-        <button
-          disabled={busy || (needsSelector && selector.trim() === "") || (needsValue && value.trim() === "")}
-          onClick={() =>
-            onSubmit({
-              kind,
-              target_selector: needsSelector ? selector.trim() : null,
-              value: needsValue ? value.trim() : null,
-              match,
-            })
-          }
-        >
-          추가
-        </button>
-      </div>
-    </div>
   );
 }
 

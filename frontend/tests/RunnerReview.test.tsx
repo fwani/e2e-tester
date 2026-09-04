@@ -43,6 +43,7 @@ const base = {
   durationOf: () => 120,
   busy: false,
   currentUrl: "https://x.test/",
+  mirroredTab: 0,
   mirror: <div />,
   selectedStepId: null,
   onSelectStep: () => undefined,
@@ -79,6 +80,13 @@ describe("중지 후 검토 (DR-010)", () => {
 
     fireEvent.click(screen.getByText("저장"));
     expect(onSave).toHaveBeenCalledOnce();
+  });
+
+  it("Step 이 없으면 그 사실을 안내한다", () => {
+    // 옛 StepList.test.tsx 에 있던 단언. 빈 목록 안내는 행이 아니라 패널의 몫이라
+    // 화면 테스트로 옮겼다 (T101).
+    render(<RunnerPaused {...base} review steps={[]} />);
+    expect(screen.getByText("기록된 Step 이 없습니다.")).toBeTruthy();
   });
 
   it("Step 이 없으면 저장할 수 없다 (001 FR-029)", () => {
@@ -123,6 +131,18 @@ describe("중지 후 검토 (DR-010)", () => {
 
     fireEvent.click(screen.getByText("Step 삭제"));
     expect(onDeleteStep).toHaveBeenCalledWith("step-01");
+  });
+
+  it("브라우저 유실 뒤에도 이름을 붙여 저장할 수 있다 (DR-015)", () => {
+    // converge 1회차가 잡은 구멍. 백엔드는 유실된 세션의 Step 을 보존하고 LOST 에서
+    // SAVE 를 허용하는데, 화면이 저장 상자가 없는 Main 으로 보내 저장할 방법이 없었다.
+    // `lost` 는 `review` 와 처지가 같으므로(브라우저 없음·Step 살아 있음) 같은 화면이 맡는다.
+    const onSave = vi.fn();
+    render(<RunnerPaused {...base} review saveName="유실 후 저장" onSave={onSave} />);
+
+    expect(screen.getByLabelText("테스트 이름")).toBeTruthy();
+    fireEvent.click(screen.getByText("저장"));
+    expect(onSave).toHaveBeenCalledOnce();
   });
 
   it("나가기 버튼의 문구가 검토 상태에서 달라진다", () => {

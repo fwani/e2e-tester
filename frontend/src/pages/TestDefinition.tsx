@@ -1,4 +1,8 @@
 /**
+ * **확정 디자인에 대응 화면이 없다** — 8종 artboard 어디에도 정의 보기가 없다.
+ * 1:1 대조 의무가 적용되지 않고(DC-010) 대신 8화면의 시각 언어를 따른다:
+ * 3px 잉크 테두리, 직각, 하드 오프셋 그림자.
+ *
  * 저장된 테스트 정의 보기 (T169). FR-016·FR-019.
  *
  * **실행하지 않고 볼 수 있어야 한다.** 이 화면이 생기기 전에는 Step 목록과 후보를 보려면
@@ -125,7 +129,13 @@ export function TestDefinition({
       </p>
 
       {test.ai_instruction && (
-        <div className="card" style={{ background: "var(--ai-tint)", borderColor: "var(--ai)" }}>
+        <div
+          style={{
+            border: "3px solid var(--ai)",
+            background: "var(--ai-tint)",
+            padding: 18,
+          }}
+        >
           <strong style={{ fontSize: 12 }}>작성 의도 (지시문)</strong>
           <p style={{ margin: "4px 0 0", fontSize: 13, whiteSpace: "pre-wrap" }}>
             {test.ai_instruction}
@@ -146,7 +156,14 @@ export function TestDefinition({
           alignItems: "start",
         }}
       >
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div
+          style={{
+            border: "3px solid var(--ink)",
+            background: "var(--paper)",
+            boxShadow: "6px 6px 0 var(--ink)",
+            overflow: "hidden",
+          }}
+        >
           {steps.map((step, index) => (
             <button
               key={step.id}
@@ -184,7 +201,14 @@ export function TestDefinition({
         </div>
 
         {current !== null && (
-          <div className="card">
+          <div
+            style={{
+              border: "3px solid var(--ink)",
+              background: "var(--paper)",
+              boxShadow: "6px 6px 0 var(--ink)",
+              padding: 18,
+            }}
+          >
             <div className="row" style={{ gap: 8 }}>
               <strong className="mono" style={{ fontSize: 11, letterSpacing: "0.08em" }}>
                 {current.id.toUpperCase()} · {current.type.toUpperCase()}

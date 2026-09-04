@@ -10,6 +10,7 @@
 import type { ReactNode } from "react";
 
 import type { Step } from "../../types/generated/step";
+import type { TargetLocator } from "../../types/generated/step";
 
 export type StepOutcome = "pass" | "fail" | "running" | "pending";
 
@@ -124,22 +125,41 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   );
 }
 
-/** 요소를 어떻게 찾는지 한 줄로. 확정 디자인의 `role=menuitem`·`testId=…` 형태. */
+/**
+ * 요소를 어떻게 찾는지 한 줄로. 확정 디자인의 `role=menuitem`·`testId=…` 형태.
+ *
+ * **`verified` 후보만 쓴다** (원칙 IV). 모호(`ambiguous`)하거나 검증에 실패한 후보를
+ * 요약에 넣으면 실제로 쓰이지 않을 후보를 "이걸로 찾습니다" 라고 보여 주는 셈이 된다.
+ */
 export function locatorSummary(step: Step): string {
-  const s = step as unknown as Record<string, unknown>;
-  const target = typeof s.target === "object" && s.target !== null ? (s.target as Record<string, unknown>) : null;
-  if (target === null) return typeof s.url === "string" ? String(s.url) : "";
-  for (const [key, label] of [
-    ["test_id", "testId"],
-    ["role", "role"],
-    ["label", "label"],
-    ["text", "text"],
-    ["css", "css"],
-  ] as const) {
-    const value = target[key];
-    if (typeof value === "string" && value !== "") return `${label}=${value}`;
+  if (step.type === "navigate") return step.url;
+  if (step.type === "close_tab") return `탭 ${step.tab}`;
+  if (step.type === "assertion") {
+    const a = step.assertion;
+    return a.value ? `${a.kind} ${a.value}` : a.kind;
   }
-  return "";
+  if (step.type === "drag") {
+    // 끄는 대상만 보여주면 어디로 놓는지 알 수 없다 — 두 요소를 함께 요약한다.
+    return `${describeTarget(step.target)} → ${describeTarget(step.drop_target)}`;
+  }
+  return describeTarget(step.target);
+}
+
+/** 한 요소의 적용될 식별 정보. `verified` 후보만 쓴다 (원칙 IV). */
+function describeTarget(t: TargetLocator): string {
+  if (t.test_id?.status === "verified") return `testId=${t.test_id.value}`;
+  if (t.role && t.accessible_name && t.role_status === "verified")
+    return `role=${t.role} "${t.accessible_name}"`;
+  if (t.label?.status === "verified") return `label=${t.label.value}`;
+  if (t.text?.status === "verified") return `text="${t.text.value}"`;
+  if (t.css?.status === "verified") return `css=${t.css.value}`;
+  return "식별 후보 없음";
+}
+
+/** 입력값. 민감 값은 `{{변수명}}` 참조로만 저장되므로 그대로 보여도 안전하다 (FR-083). */
+function stepValue(step: Step): string | null {
+  if (step.type === "fill" || step.type === "select") return step.value;
+  return null;
 }
 
 export function DesignStepRow({
@@ -201,9 +221,41 @@ export function DesignStepRow({
           >
             {step.type.toUpperCase()}
           </div>
+
+          {/*
+            FR-030a — 최초 탭이 아닌 Step 은 어느 탭에서 일어나는지 보여야 한다.
+            확정 디자인의 표본이 단일 탭이라 이 배지가 없다. 없는 상태를 정의하지 않은
+            것이지 요구를 없앤 것이 아니므로, 같은 칩 형태로 그린다 (DC-009).
+          */}
+          {step.tab > 0 && (
+            <div
+              style={{
+                padding: "4px 7px",
+                border: "2px solid #14130F",
+                background: "#FFFDF6",
+                font: "700 10px/1 'IBM Plex Mono', ui-monospace, monospace",
+                letterSpacing: "0.08em",
+              }}
+            >
+              탭 {step.tab}
+            </div>
+          )}
+
           <div style={{ font: "400 13px/1 'IBM Plex Mono', ui-monospace, monospace", color: "#6B675C" }}>
             {locatorSummary(step)}
           </div>
+
+          {/* FR-083 — 민감 값은 참조로만 저장되므로 표시해도 평문이 새지 않는다. */}
+          {stepValue(step) !== null && (
+            <div
+              style={{
+                font: "400 13px/1 'IBM Plex Mono', ui-monospace, monospace",
+                color: "#5A31B8",
+              }}
+            >
+              {stepValue(step)}
+            </div>
+          )}
         </div>
         {actions}
       </div>

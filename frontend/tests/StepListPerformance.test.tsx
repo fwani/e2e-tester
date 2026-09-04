@@ -1,5 +1,10 @@
 /**
- * Step 목록 렌더 성능 (T151). research R8.
+ * Step 목록 렌더 성능 (T151·T101). research R8.
+ *
+ * **002 에서 대상을 실제 렌더 경로로 옮겼다.** 전사 이후 어느 페이지도
+ * `components/StepList.tsx` 를 임포트하지 않는데 이 가드는 그것을 재고 있었다 —
+ * 통과하지만 아무것도 지키지 않는 상태였다 (converge 1회차가 잡았다).
+ * 이제 페이지가 실제로 쓰는 `DesignStepRow` 를 200개 그려 잰다.
  *
  * 테스트당 Step 200개까지가 설계 상한이다 (plan.md Scale/Scope). 그 규모에서 목록이
  * 느려지면 일시정지 중 편집이 실용적이지 않게 된다 — 사용자는 Step 을 고르고 지우고
@@ -12,8 +17,31 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { StepList } from "../src/components/StepList";
+import { DesignStepRow } from "../src/components/design/DesignStepList";
 import type { Step } from "../src/types/generated/step";
+
+/** 페이지가 목록을 그리는 방식과 같다 — 행 컴포넌트를 Step 수만큼 반복한다. */
+function StepPanel({
+  steps,
+  pausedIndex = null,
+}: {
+  steps: Step[];
+  pausedIndex?: number | null;
+}) {
+  return (
+    <>
+      {steps.map((step, index) => (
+        <DesignStepRow
+          key={step.id}
+          index={index}
+          step={step}
+          outcome="pending"
+          paused={index === pausedIndex}
+        />
+      ))}
+    </>
+  );
+}
 
 /** 200개 목록 한 번을 그리는 데 허용하는 시간. 넉넉하다 — 잡으려는 것은 배 이상 느린 구현이다. */
 const BUDGET_MS = 2000;
@@ -43,11 +71,11 @@ function makeSteps(count: number): Step[] {
 
 afterEach(cleanup);
 
-describe("StepList — 200개 규모", () => {
+describe("Step 패널 — 200개 규모 (실제 렌더 경로)", () => {
   it("설계 상한(200개)을 예산 안에 그린다", () => {
     const steps = makeSteps(200);
     const started = performance.now();
-    render(<StepList steps={steps} currentIndex={100} showPauseMarker />);
+    render(<StepPanel steps={steps} pausedIndex={100} />);
     const elapsed = performance.now() - started;
 
     expect(screen.getByText("200번째 클릭")).toBeTruthy();
@@ -57,20 +85,20 @@ describe("StepList — 200개 규모", () => {
   it("항목 수에 대해 선형 근처로 늘어난다", () => {
     // 50 → 200 은 4배다. 4배 이상 느려지면 항목마다 전체를 훑는 구현일 가능성이 높다.
     const small = performance.now();
-    render(<StepList steps={makeSteps(50)} />);
+    render(<StepPanel steps={makeSteps(50)} />);
     const smallElapsed = Math.max(performance.now() - small, 1);
     cleanup();
 
     const large = performance.now();
-    render(<StepList steps={makeSteps(200)} />);
+    render(<StepPanel steps={makeSteps(200)} />);
     const largeElapsed = performance.now() - large;
 
     expect(largeElapsed).toBeLessThan(smallElapsed * 12);
   });
 
-  it("일시정지 구분선을 한 번만 그린다 (FR-034)", () => {
-    render(<StepList steps={makeSteps(200)} currentIndex={100} showPauseMarker />);
-    // 구분선은 목록에서 정확히 한 곳이다 — 여러 개면 어디서 멈췄는지 알 수 없다.
-    expect(screen.getAllByText("PAUSE")).toHaveLength(1);
+  it("일시정지 위치를 한 곳만 구분한다 (FR-034)", () => {
+    const { container } = render(<StepPanel steps={makeSteps(200)} pausedIndex={100} />);
+    // 구분은 목록에서 정확히 한 곳이다 — 여러 개면 어디서 멈췄는지 알 수 없다.
+    expect(container.querySelectorAll('[style*="border-left"]')).toHaveLength(1);
   });
 });

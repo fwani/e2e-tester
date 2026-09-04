@@ -46,6 +46,14 @@ const OBSERVATION_STATES = new Set(["replaying", "ai_running"]);
 const TERMINAL_STATES = new Set(["completed", "failed", "stopped", "lost"]);
 /** 중지 후 검토 상태. 브라우저는 없지만 Step 은 살아 있다 (contracts §6). */
 const REVIEW_STATE = "review";
+/**
+ * **브라우저는 없지만 기록은 살아 있는 상태** (DR-015).
+ *
+ * `lost` 는 종료 상태이면서도 서버가 Step 을 보존하고 `SAVE` 를 허용한다. 검토(`review`)와
+ * 처지가 같으므로 같은 화면이 맡는다 — 이전에는 저장 상자가 없는 Main 화면으로 보내
+ * "기록된 Step 은 보존됐습니다" 라고 적어 두고 저장할 방법을 주지 않았다.
+ */
+const SAVEABLE_WITHOUT_BROWSER = new Set([REVIEW_STATE, "lost"]);
 
 interface StepProgress {
   outcome?: "pass" | "fail";
@@ -244,7 +252,8 @@ export function SessionScreen({
   /** **`authoring_mode` 로 판정한다** — 세션의 불변 속성이다 (research R2·DR-020). */
   const isAiSession = view.authoring_mode === "ai";
   const isPaused = view.state === "paused";
-  const isReview = view.state === REVIEW_STATE;
+  /** 브라우저 없이 검토·저장만 가능한 상태 — `review` 와 `lost` (DR-015). */
+  const isSaveableWithoutBrowser = SAVEABLE_WITHOUT_BROWSER.has(view.state);
   const isTakeover = view.state === "takeover_recording" || view.state === "ai_blocked";
   const isManipulating = MANIPULATION_STATES.has(view.state);
   const isObserving = OBSERVATION_STATES.has(view.state);
@@ -256,7 +265,7 @@ export function SessionScreen({
     ? "manipulation"
     : isPaused
       ? "paused"
-      : isDone || isReview
+      : isDone || isSaveableWithoutBrowser
         ? "terminated"
         : "observation";
 
@@ -346,7 +355,8 @@ export function SessionScreen({
           reason={lost}
           stepCount={view.steps.length}
           busy={busy}
-          onSave={saveName.trim() === "" ? undefined : save}
+          // 저장은 검토 화면의 저장 상자가 맡는다 — 배너에는 이름 입력이 없어
+          // 여기에 저장 버튼을 두면 이름 없이 누르게 된다 (DR-015).
           onClose={leave}
         />
       )}
@@ -419,6 +429,7 @@ export function SessionScreen({
     tabs: tabStrip,
     banners,
     currentUrl: tabs?.tabs[mirrorTab]?.url ?? "",
+    mirroredTab: mirrorTab,
     selectedStepId,
     onSelectStep: (stepId: string) => setSelectedStepId(stepId),
   };
@@ -440,7 +451,7 @@ export function SessionScreen({
           onSaveNameChange={setSaveName}
           onSave={save}
           onPause={view.state === "ai_running" ? () => void act(() => sessions.pause(sessionId)) : undefined}
-          onStop={isDone || isReview ? leave : stop}
+          onStop={isDone || isSaveableWithoutBrowser ? leave : stop}
           mirror={mirror}
           currentUrl={shared.currentUrl}
         />
@@ -476,13 +487,13 @@ export function SessionScreen({
     );
   }
 
-  if (isPaused || isReview) {
+  if (isPaused || isSaveableWithoutBrowser) {
     return (
       <>
         <RunnerPaused
           {...shared}
           title={testId ?? "새 테스트"}
-          review={isReview}
+          review={isSaveableWithoutBrowser}
           currentStepIndex={view.current_step_index}
           editWarnings={view.edit_warnings}
           reordering={reordering}
