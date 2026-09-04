@@ -1,0 +1,468 @@
+{
+  "$comment": "이상 조작 시나리오 권위 목록. SC-201 '전건 통과'의 분모이며 SC-206 커버리지의 대상이다. 백엔드 검증·화면 검증·커버리지 점검이 모두 이 파일 하나를 읽는다. 기대 응답 코드와 메시지 문구는 적지 않는다 — 판정은 3축이 한다 (data-model.md §2.3).",
+  "version": 1,
+  "faults": ["invalid-input", "order-violation", "external-failure", "concurrency"],
+  "surfaces": ["api", "ui", "boundary"],
+  "coverage_rule": { "min_per_combination": 3 },
+  "scenarios": [
+    {
+      "id": "AS-001",
+      "fault": "invalid-input",
+      "surface": "api",
+      "target": "POST /api/project/create",
+      "operation": "이름을 공백만으로 두고 프로젝트를 만든다",
+      "must_be_rejected": true,
+      "preserves": "project-registry"
+    },
+    {
+      "id": "AS-002",
+      "fault": "invalid-input",
+      "surface": "api",
+      "target": "POST /api/project/open",
+      "operation": "상위 디렉터리를 가리키는 경로(../../etc)로 프로젝트를 연다",
+      "must_be_rejected": true,
+      "preserves": "project-registry"
+    },
+    {
+      "id": "AS-003",
+      "fault": "invalid-input",
+      "surface": "api",
+      "target": "PUT /api/secrets/{name}",
+      "operation": "이름에 경로 구분자와 이모지를 넣어 비밀 값을 저장한다",
+      "must_be_rejected": true,
+      "preserves": "secret-store"
+    },
+    {
+      "id": "AS-004",
+      "fault": "invalid-input",
+      "surface": "api",
+      "target": "POST /api/sessions",
+      "operation": "형식이 아닌 문자열을 시작 주소로 넘겨 세션을 만든다",
+      "must_be_rejected": true,
+      "preserves": null
+    },
+    {
+      "id": "AS-005",
+      "fault": "invalid-input",
+      "surface": "api",
+      "target": "PATCH /api/tests/{test_id}",
+      "operation": "이미 있는 테스트 이름으로 다른 테스트의 이름을 바꾼다",
+      "must_be_rejected": true,
+      "preserves": "test-definition"
+    },
+    {
+      "id": "AS-006",
+      "fault": "invalid-input",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/steps",
+      "operation": "100,000자 문자열을 Step 입력값으로 넣는다",
+      "must_be_rejected": false,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-007",
+      "fault": "invalid-input",
+      "surface": "ui",
+      "target": "ProjectSetup",
+      "operation": "프로젝트 이름을 비운 채 만들기를 누른다",
+      "must_be_rejected": true,
+      "preserves": "form-input"
+    },
+    {
+      "id": "AS-008",
+      "fault": "invalid-input",
+      "surface": "ui",
+      "target": "TestDefinition",
+      "operation": "Step 하나 없이 테스트를 저장한다",
+      "must_be_rejected": true,
+      "preserves": "form-input"
+    },
+    {
+      "id": "AS-009",
+      "fault": "invalid-input",
+      "surface": "ui",
+      "target": "SecretValues",
+      "operation": "비밀 값 이름에 아주 긴 문자열을 넣고 저장한다",
+      "must_be_rejected": true,
+      "preserves": "form-input"
+    },
+    {
+      "id": "AS-010",
+      "fault": "invalid-input",
+      "surface": "ui",
+      "target": "KeyManagement",
+      "operation": "암호구 확인란에 다른 값을 넣고 키 쌍을 만든다",
+      "must_be_rejected": true,
+      "preserves": "form-input"
+    },
+    {
+      "id": "AS-011",
+      "fault": "invalid-input",
+      "surface": "ui",
+      "target": "AiCompose",
+      "operation": "지시문을 비운 채 AI에게 만들기를 요청한다",
+      "must_be_rejected": true,
+      "preserves": "form-input"
+    },
+    {
+      "id": "AS-012",
+      "fault": "invalid-input",
+      "surface": "ui",
+      "target": "StepInspector",
+      "operation": "Locator 후보를 모두 지우고 Step을 저장한다",
+      "must_be_rejected": true,
+      "preserves": "test-definition"
+    },
+    {
+      "id": "AS-013",
+      "fault": "invalid-input",
+      "surface": "boundary",
+      "target": "llm-response",
+      "operation": "AI가 형식이 깨진 응답(JSON이 아닌 본문)을 돌려준다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-014",
+      "fault": "invalid-input",
+      "surface": "boundary",
+      "target": "llm-response",
+      "operation": "AI가 존재하지 않는 Step 종류를 지시한다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-015",
+      "fault": "invalid-input",
+      "surface": "boundary",
+      "target": "target-site",
+      "operation": "대상 페이지가 아주 긴 텍스트와 제어문자를 담은 요소를 돌려준다",
+      "must_be_rejected": false,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-016",
+      "fault": "invalid-input",
+      "surface": "boundary",
+      "target": "target-site",
+      "operation": "대상 페이지가 접근 가능한 이름이 전혀 없는 요소만 담고 있다",
+      "must_be_rejected": false,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-017",
+      "fault": "invalid-input",
+      "surface": "boundary",
+      "target": "target-site",
+      "operation": "대상 사이트가 오류 상태와 함께 HTML이 아닌 본문을 돌려준다",
+      "must_be_rejected": false,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-018",
+      "fault": "order-violation",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/record-actions:stop",
+      "operation": "녹화를 시작하지 않은 세션에 녹화 중지를 보낸다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-019",
+      "fault": "order-violation",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/resume",
+      "operation": "이미 끝난 세션을 이어가기 한다",
+      "must_be_rejected": true,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-020",
+      "fault": "order-violation",
+      "surface": "api",
+      "target": "PATCH /api/sessions/{session_id}/steps/{step_id}",
+      "operation": "존재하지 않는 Step 식별자를 수정한다",
+      "must_be_rejected": true,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-021",
+      "fault": "order-violation",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/steps:reorder",
+      "operation": "목록에 없는 Step 식별자를 포함해 순서를 바꾼다",
+      "must_be_rejected": true,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-022",
+      "fault": "order-violation",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/pause",
+      "operation": "일시정지 상태인 세션을 다시 일시정지한다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-023",
+      "fault": "order-violation",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/save",
+      "operation": "이미 버린(discard) 세션을 저장한다",
+      "must_be_rejected": true,
+      "preserves": null
+    },
+    {
+      "id": "AS-024",
+      "fault": "order-violation",
+      "surface": "ui",
+      "target": "Runner",
+      "operation": "실행 버튼을 빠르게 두 번 누른다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-025",
+      "fault": "order-violation",
+      "surface": "ui",
+      "target": "RunnerPaused",
+      "operation": "일시정지가 풀린 뒤에도 남아 있는 편집 조작을 보낸다",
+      "must_be_rejected": true,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-026",
+      "fault": "order-violation",
+      "surface": "ui",
+      "target": "SessionScreen",
+      "operation": "세션 화면을 벗어났다가 세션이 끝난 뒤 돌아온다",
+      "must_be_rejected": false,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-027",
+      "fault": "order-violation",
+      "surface": "ui",
+      "target": "Takeover",
+      "operation": "인수(takeover) 화면에서 이미 종료된 세션에 조작을 보낸다",
+      "must_be_rejected": true,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-028",
+      "fault": "order-violation",
+      "surface": "ui",
+      "target": "TestList",
+      "operation": "삭제한 테스트의 결과 보기를 그대로 누른다",
+      "must_be_rejected": true,
+      "preserves": null
+    },
+    {
+      "id": "AS-029",
+      "fault": "order-violation",
+      "surface": "ui",
+      "target": "KeyManagement",
+      "operation": "키가 없는 상태에서 키 교체를 누른다",
+      "must_be_rejected": true,
+      "preserves": "secret-store"
+    },
+    {
+      "id": "AS-030",
+      "fault": "order-violation",
+      "surface": "boundary",
+      "target": "browser-tab",
+      "operation": "닫힌 탭을 대상으로 Step을 실행한다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-031",
+      "fault": "order-violation",
+      "surface": "boundary",
+      "target": "browser-page",
+      "operation": "요소를 찾는 도중 페이지가 다른 주소로 이동한다",
+      "must_be_rejected": false,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-032",
+      "fault": "order-violation",
+      "surface": "boundary",
+      "target": "mirror-stream",
+      "operation": "세션이 끝난 뒤에도 화면 미러 연결이 프레임을 요청한다",
+      "must_be_rejected": true,
+      "preserves": null
+    },
+    {
+      "id": "AS-033",
+      "fault": "external-failure",
+      "surface": "api",
+      "target": "GET /api/ai/availability",
+      "operation": "AI 자격이 없거나 잘못된 상태에서 가용성을 묻는다",
+      "must_be_rejected": false,
+      "preserves": null
+    },
+    {
+      "id": "AS-034",
+      "fault": "external-failure",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/ai-step",
+      "operation": "AI 요청이 오류를 돌려준다",
+      "must_be_rejected": true,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-035",
+      "fault": "external-failure",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/ai-choice",
+      "operation": "AI 응답이 제한 시간 안에 오지 않는다",
+      "must_be_rejected": true,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-036",
+      "fault": "external-failure",
+      "surface": "api",
+      "target": "GET /api/sessions/{session_id}",
+      "operation": "브라우저를 잃은 세션의 상태를 묻는다",
+      "must_be_rejected": false,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-037",
+      "fault": "external-failure",
+      "surface": "ui",
+      "target": "AiRecord",
+      "operation": "AI가 응답하지 않는 동안 화면을 본다",
+      "must_be_rejected": false,
+      "preserves": "form-input"
+    },
+    {
+      "id": "AS-038",
+      "fault": "external-failure",
+      "surface": "ui",
+      "target": "Runner",
+      "operation": "실행 중 브라우저가 사라진 상태를 화면이 받는다",
+      "must_be_rejected": false,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-039",
+      "fault": "external-failure",
+      "surface": "ui",
+      "target": "RunResult",
+      "operation": "결과 산출물(스크린샷)이 없는 실행 결과를 연다",
+      "must_be_rejected": false,
+      "preserves": null
+    },
+    {
+      "id": "AS-040",
+      "fault": "external-failure",
+      "surface": "boundary",
+      "target": "browser-session",
+      "operation": "세션이 쥔 브라우저를 바깥에서 강제로 닫는다",
+      "must_be_rejected": false,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-041",
+      "fault": "external-failure",
+      "surface": "boundary",
+      "target": "target-site",
+      "operation": "대상 사이트가 응답을 끝내지 않고 연결을 붙잡고 있다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-042",
+      "fault": "external-failure",
+      "surface": "boundary",
+      "target": "llm-transport",
+      "operation": "AI 호출이 연결 단계에서 실패한다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-043",
+      "fault": "concurrency",
+      "surface": "api",
+      "target": "POST /api/sessions",
+      "operation": "같은 테스트로 두 세션을 동시에 만든다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-044",
+      "fault": "concurrency",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/save",
+      "operation": "같은 세션에 저장을 동시에 두 번 보낸다",
+      "must_be_rejected": true,
+      "preserves": "test-definition"
+    },
+    {
+      "id": "AS-045",
+      "fault": "concurrency",
+      "surface": "api",
+      "target": "POST /api/sessions/{session_id}/steps:reorder",
+      "operation": "순서 변경과 Step 삭제를 동시에 보낸다",
+      "must_be_rejected": true,
+      "preserves": "recorded-steps"
+    },
+    {
+      "id": "AS-046",
+      "fault": "concurrency",
+      "surface": "ui",
+      "target": "TestList",
+      "operation": "두 화면에서 같은 테스트를 동시에 삭제한다",
+      "must_be_rejected": true,
+      "preserves": "project-registry"
+    },
+    {
+      "id": "AS-047",
+      "fault": "concurrency",
+      "surface": "ui",
+      "target": "SessionScreen",
+      "operation": "두 화면에서 같은 세션에 서로 다른 조작을 보낸다",
+      "must_be_rejected": true,
+      "preserves": "session"
+    },
+    {
+      "id": "AS-048",
+      "fault": "concurrency",
+      "surface": "ui",
+      "target": "SecretValues",
+      "operation": "저장이 끝나기 전에 화면을 떠난다",
+      "must_be_rejected": false,
+      "preserves": "secret-store"
+    },
+    {
+      "id": "AS-049",
+      "fault": "concurrency",
+      "surface": "boundary",
+      "target": "definition-write",
+      "operation": "테스트 정의를 쓰는 도중 쓰기가 중단된다",
+      "must_be_rejected": false,
+      "preserves": "test-definition"
+    },
+    {
+      "id": "AS-050",
+      "fault": "concurrency",
+      "surface": "boundary",
+      "target": "secret-store-write",
+      "operation": "비밀 값 저장소를 쓰는 도중 쓰기가 중단된다",
+      "must_be_rejected": false,
+      "preserves": "secret-store"
+    },
+    {
+      "id": "AS-051",
+      "fault": "concurrency",
+      "surface": "boundary",
+      "target": "browser-tab",
+      "operation": "탭 두 개에서 동시에 요소 조작 이벤트가 도착한다",
+      "must_be_rejected": false,
+      "preserves": "session"
+    }
+  ]
+}
