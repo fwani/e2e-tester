@@ -28,7 +28,12 @@ import {
   type SessionView,
   type TabsResponse,
 } from "../api/client";
-import { subscribeSessionEvents, type SessionEvent } from "../api/ws";
+import {
+  subscribeSessionEvents,
+  type SessionEvent,
+  type SessionSubscription,
+} from "../api/ws";
+import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
 import { MirrorView, type MirrorPhase } from "../components/MirrorView";
 import { SessionLostBanner } from "../components/SessionLostBanner";
 import { StartingIndicator } from "../components/StartingIndicator";
@@ -40,6 +45,13 @@ import { AiRecord, type AiBlockedState } from "./AiRecord";
 import { Runner } from "./Runner";
 import { RunnerPaused } from "./RunnerPaused";
 import { Takeover } from "./Takeover";
+
+/**
+ * 끊김을 알리기까지 기다리는 시간. 재연결이 700ms 마다 일어나므로 짧은 끊김은
+ * 배너가 깜빡이기만 하고 정보를 주지 않는다. 이 시간을 넘겨 못 붙으면 사용자가
+ * 알아야 하는 끊김이다.
+ */
+const OFFLINE_NOTICE_DELAY_MS = 1500;
 
 const MANIPULATION_STATES = new Set(["recording", "takeover_recording"]);
 const OBSERVATION_STATES = new Set(["replaying", "ai_running"]);
@@ -100,6 +112,9 @@ export function SessionScreen({
   const [aiMessages, setAiMessages] = useState<string[]>([]);
   const [aiError, setAiError] = useState<ErrorInfo | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
+  const [live, setLive] = useState(true);
+  const [showOffline, setShowOffline] = useState(false);
+  const subscription = useRef<SessionSubscription | null>(null);
 
   const resync = useCallback(async () => {
     try {
@@ -111,8 +126,9 @@ export function SessionScreen({
   }, [sessionId]);
 
   useEffect(() => {
-    const stop = subscribeSessionEvents(sessionId, {
+    const sub = subscribeSessionEvents(sessionId, {
       onResync: () => void resync(),
+      onConnectionChange: setLive,
       onEvent: (event: SessionEvent) => {
         switch (event.type) {
           case "mirror_frame":
@@ -223,8 +239,22 @@ export function SessionScreen({
         }
       },
     });
-    return stop;
+    subscription.current = sub;
+    return () => {
+      subscription.current = null;
+      sub.stop();
+    };
   }, [sessionId, resync]);
+
+  // 짧은 끊김으로 배너가 깜빡이지 않게 유예를 둔다. 붙는 순간 즉시 걷는다.
+  useEffect(() => {
+    if (live) {
+      setShowOffline(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowOffline(true), OFFLINE_NOTICE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [live]);
 
   const act = async (fn: () => Promise<SessionView>) => {
     setBusy(true);
@@ -363,6 +393,10 @@ export function SessionScreen({
 
   const banners = (
     <>
+      {/* 끊김을 맨 위에 둔다 — 아래 화면이 낡았다는 사실을 먼저 알아야 한다. */}
+      {showOffline && (
+        <LiveConnectionBanner onReconnect={() => subscription.current?.reconnect()} />
+      )}
       {error !== null && <ErrorNotice error={error} />}
       {lost !== null && (
         <SessionLostBanner

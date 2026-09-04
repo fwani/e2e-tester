@@ -92,19 +92,36 @@ export interface SubscribeOptions {
   onEvent: (event: SessionEvent) => void;
   /** 연결이 (재)수립될 때 호출된다. 전체 상태를 다시 받아야 한다. */
   onResync: () => void;
+  /**
+   * 연결 상태가 바뀔 때 호출된다.
+   *
+   * **화면이 이것을 반드시 그려야 한다.** 끊긴 채로 자동 재시도만 하면 사용자에게는
+   * "조작해도 아무 일도 일어나지 않는 제품" 으로 보인다 — 실제로는 서버가 다 기록하고
+   * 있다 (UX U-01 에서 실제로 겪었다).
+   */
+  onConnectionChange?: (connected: boolean) => void;
   onClosed?: () => void;
 }
 
 const RECONNECT_DELAY_MS = 700;
 
-/** 세션 이벤트를 구독한다. 반환된 함수를 호출하면 구독을 끊는다. */
+export interface SessionSubscription {
+  /** 구독을 끊는다. */
+  stop: () => void;
+  /** 자동 재시도를 기다리지 않고 지금 다시 붙는다. */
+  reconnect: () => void;
+}
+
+/** 세션 이벤트를 구독한다. */
 export function subscribeSessionEvents(
   sessionId: string,
   options: SubscribeOptions,
-): () => void {
+): SessionSubscription {
   let socket: WebSocket | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let closed = false;
+  /** 사용자가 「지금 다시 연결」을 눌렀다 — 다음 재시도는 기다리지 않는다. */
+  let immediate = false;
   let lastSeq = 0;
 
   const connect = (): void => {
@@ -115,6 +132,7 @@ export function subscribeSessionEvents(
     );
 
     socket.onopen = () => {
+      options.onConnectionChange?.(true);
       // 끊긴 사이의 이벤트는 복구할 수 없다. 전체 상태를 다시 받는다.
       options.onResync();
     };
@@ -140,7 +158,11 @@ export function subscribeSessionEvents(
         options.onClosed?.();
         return;
       }
-      timer = setTimeout(connect, RECONNECT_DELAY_MS);
+      // 첫 연결이 실패한 경우도 여기로 온다 — 프록시가 업그레이드를 막으면 그렇다.
+      options.onConnectionChange?.(false);
+      const delay = immediate ? 0 : RECONNECT_DELAY_MS;
+      immediate = false;
+      timer = setTimeout(connect, delay);
     };
 
     socket.onerror = () => socket?.close();
@@ -148,9 +170,27 @@ export function subscribeSessionEvents(
 
   connect();
 
-  return () => {
-    closed = true;
-    if (timer !== null) clearTimeout(timer);
-    socket?.close();
+  return {
+    stop: () => {
+      closed = true;
+      if (timer !== null) clearTimeout(timer);
+      socket?.close();
+    },
+    reconnect: () => {
+      if (closed) return;
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (socket === null) {
+        connect();
+        return;
+      }
+      // 붙어 있는 소켓은 **연결 중인 채로 멎어 있는** 것이다 (프록시가 업그레이드를
+      // 삼키면 그렇게 된다 — U-01 의 실제 모습). 닫아서 다시 건다. 닫기 처리가
+      // 재연결을 맡으므로 여기서 connect() 를 또 부르면 소켓이 둘이 된다.
+      immediate = true;
+      socket.close();
+    },
   };
 }
