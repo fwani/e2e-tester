@@ -26,7 +26,9 @@
 
 **Storage**: 로컬 파일 — 테스트 정의 YAML, 프로젝트 등록부 JSON, 비밀 값 저장소
 
-**Testing**: pytest (backend: unit · contract · integration · e2e), Vitest + Testing Library (frontend)
+**Testing**: pytest (backend: unit · contract · integration · e2e), Vitest + Testing Library (frontend).
+**실행은 `uv run python -m pytest` 여야 한다** — 실행 파일로 돌리면 현재 디렉터리가 경로에 들어가지 않아 공용 픽스처 임포트가 깨진다 (기존 조건, research R7).
+**제품 UI 를 실제로 띄우는 검증은 이 저장소에 없었다.** 이 라운드가 만든다 (RG-105)
 
 **Target Platform**: 단독 로컬 도구. 로컬 인터페이스에만 바인딩. 계정·인증·권한 없음
 
@@ -103,16 +105,20 @@ backend/
 ├── schema/
 │   └── error-response.schema.json       # 신설 (생성물)
 └── tests/abnormal/                      # 신설 — 이 라운드의 검증
-    ├── catalogue.py                     #   목록 로더 · 판정 3축 헬퍼
-    ├── test_catalogue.py                #   커버리지 규칙 (SC-206)
+    ├── catalogue.py                     #   목록 로더 · 판정 3축 헬퍼 · 수단 레지스트리
+    ├── product_ui.py                    #   제품 UI 실브라우저 픽스처 (RG-105) ★ 이 저장소에 없던 것
+    ├── fakes.py                         #   AI 대역 (검증 코드 전용)
+    ├── drivers/
+    │   ├── api_drivers.py               #   요청 경계 19건의 실행 수단
+    │   ├── ui_drivers.py                #   화면 18건의 실행 수단 (실브라우저)
+    │   └── boundary_drivers.py          #   외부 경계 14건의 실행 수단
+    ├── test_catalogue.py                #   커버리지(SC-206) + 수단 등록 전수성(RG-106)
     ├── test_error_contract.py           #   분류 전수성 · INTERNAL_ERROR (RG-104-1 · EC-003)
     ├── test_route_sweep.py              #   전 경로 훑기 (RG-104-2)
     ├── test_no_bypass.py                #   계약 우회 금지 (RG-104-3)
-    ├── test_invalid_input.py            #   AP-010~015
-    ├── test_order_violation.py          #   AP-020~024
-    ├── test_external_failure.py         #   AP-030~033
-    ├── test_concurrency.py              #   AP-040~041
-    └── test_atomic_write.py             #   AP-042
+    ├── test_api_surface.py              #   목록을 읽어 api 19건을 펼친다
+    ├── test_ui_surface.py               #   목록을 읽어 ui 18건을 펼친다
+    └── test_boundary_surface.py         #   목록을 읽어 boundary 14건을 펼친다
 
 frontend/
 ├── src/
@@ -126,8 +132,12 @@ fixtures/sample-app/                     # 수정 — 지연 · 무응답 · 오
 ```
 
 **Structure Decision**: 001·002 가 쓴 backend/frontend 2층 구조를 그대로 쓴다. 이 라운드가 더하는
-것은 **`tests/abnormal/` 두 벌과 `domain/error.py` 하나**다. 검증을 별도 디렉터리로 모으는 이유는
-RG-103(세 면 각각 검증이 존재해야 한다)의 충족 여부를 한눈에 셀 수 있게 하기 위해서다.
+것은 **`domain/error.py` 하나와 `tests/abnormal/` 한 벌**이다.
+
+화면 검증을 프런트엔드가 아니라 백엔드에 두는 이유는 **브라우저 자동화 수단이 이미 거기 있기**
+때문이다. 프런트엔드에 브라우저 테스트 도구를 새로 넣으면 의존성이 늘고, 이 라운드의 제약
+(새 의존성 0)에 걸린다. 기존 컴포넌트 검증 14건은 그대로 둔다 — 빠르고 촘촘해서 다른 값을
+가지며, 실브라우저 계층이 그것을 대체하지 않고 위에 얹힌다 (research R7).
 
 ## Phase 요약
 
@@ -141,19 +151,19 @@ RG-103(세 면 각각 검증이 존재해야 한다)의 충족 여부를 한눈�
 
 의존 관계상 아래 순서가 강제된다. tasks 는 이 순서를 지켜야 한다.
 
-1. **오류 계약을 도메인으로** — `domain/error.py` 신설, `category`·`next_action`·`INTERNAL_ERROR` 추가, 대응표. 스키마 내보내기 · 프런트 타입 생성. 이것이 없으면 나머지 검증이 판정할 기준을 갖지 못한다
-2. **화면 공용 오류 통로** — `ErrorNotice` 와 각 화면의 경유. 판정축 ②의 대상
-3. **원자적 쓰기 통합** — `storage/atomic.py` 추출과 세 곳 적용
-4. **시나리오 목록 로더와 판정 헬퍼** — `tests/abnormal/catalogue.py`. 이후 모든 검증이 이것을 쓴다
-5. **훑는 검증 넷** (RG-104-1~4) — 여기서 나오는 실패가 이 라운드의 결함 목록이 된다
-6. **고장 유형별 검증 4묶음** — 시나리오 51건을 판정 3축으로 돌린다
-7. **드러난 결함 수정** — 5·6 이 낸 실패를 고친다. 고치면서 기존 검증을 깨지 않는지 계속 확인한다
-8. **회귀 확인** (RG-102 · SC-207) — 001·002 검증 전부
+1. **오류 계약을 도메인으로** — `domain/error.py` 신설, `category`·`next_action`·`INTERNAL_ERROR`, 대응표, 스키마 내보내기, 프런트 타입 생성. **완료** (커밋 `9023506`)
+2. **검증 장치** — 목록 로더 · 판정 3축 헬퍼 · 수단 레지스트리 · **제품 UI 실브라우저 픽스처** · AI 대역 · 고정 앱 지연 경로. 이것이 없으면 시나리오를 한 건도 못 돌린다
+3. **훑는 검증 셋** (RG-104-1~3) — 여기서 나오는 실패가 결함 목록이 된다
+4. **화면 공용 오류 통로** — `ErrorNotice` 와 각 화면의 경유. 판정축 ②의 전제
+5. **면별 실행 수단 셋** — 목록을 읽어 51건을 펼친다. 시나리오마다 작업을 만들지 않는다 (research R8)
+6. **드러난 결함 수정** — 원자적 쓰기 통합, 가능한 명령 노출, 그리고 5 가 낸 실패
+7. **회귀 확인** (RG-102 · SC-207) — 001·002 검증 전부
 
 ## 위험과 대응
 
 | 위험 | 대응 |
 |---|---|
+| **제품 UI 실브라우저 계층이 이 저장소에 처음 생긴다.** 서버 둘을 띄우므로 느리고, 포트 충돌·도구 부재로 불안정할 수 있다 | 도구·포트가 없으면 **건너뛰지 않고 실패**로 알린다 (RG-106). 조용한 건너뛰기는 SC-201 을 거짓으로 만든다 |
 | **다른 세션이 같은 저장소를 동시에 수정 중이다** (2026-09-04 13:51 커밋 `725a9bb` 로 확인). 구현 단계는 `backend/`·`frontend/` 를 폭넓게 건드리므로 충돌 가능성이 실재한다 | 설계 단계 산출물은 `specs/003-error-path-hardening` 아래에만 썼다. **구현 착수 전에 사용자에게 확인이 필요하다** |
 | `category`·`next_action` 을 필수로 만들면 오류 생성 지점이 전부 깨진다 | 분류는 대응표에서 자동 결정, `next_action` 은 코드별 기본 문구. 호출부 변경을 최소화한다 |
 | 오류 모델 이동으로 기존 임포트가 깨진다 | `api/errors.py` 가 도메인 모델을 재수출한다 (RG-102) |
