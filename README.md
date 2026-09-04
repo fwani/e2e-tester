@@ -65,6 +65,21 @@ cd ../frontend && npm run gen:types
 확인된 환경: Python 3.13.0 · Node 23.7.0 · uv 0.9.7 · macOS 26.2 arm64.
 Playwright 1.62.0 이 Python 3.13 에서 정상 동작함을 실측했다.
 
+## 저장 위치
+
+서버를 **어느 디렉터리에서 띄우든 상관없다.** 도구가 위치를 알고 있다.
+
+| 대상 | 위치 |
+|---|---|
+| 프로젝트 (테스트 정의 YAML) | `~/.local/share/itb/projects/<프로젝트>/` |
+| 설정·키·프로젝트 목록 | `~/.config/itb/` |
+
+프로젝트는 첫 화면에 자동으로 목록화된다. 다른 곳에 있는 프로젝트는 「기존 프로젝트
+열기」로 찾아 열 수 있고, 한 번 열면 목록에 남는다.
+
+테스트 정의는 프로젝트 폴더의 `tests/` 에 평문 YAML 로 저장되므로 그대로 버전 관리에
+넣을 수 있다. 비밀 값과 실행 산출물은 `.gitignore` 로 제외된다.
+
 ## 실행
 
 ```bash
@@ -72,7 +87,7 @@ Playwright 1.62.0 이 Python 3.13 에서 정상 동작함을 실측했다.
 python fixtures/sample-app/serve.py --port 4300
 
 # 백엔드 (로컬 인터페이스 전용)
-cd backend && uv run uvicorn itb.api.app:app --host 127.0.0.1 --port 4320
+cd backend && uv run itb          # 또는: uv run uvicorn itb.api.app:app --host 127.0.0.1 --port 4320
 
 # 프론트엔드
 cd frontend && npm run dev     # http://127.0.0.1:4310

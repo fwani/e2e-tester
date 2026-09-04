@@ -56,6 +56,8 @@ export interface TakeoverProps {
   onChoose: (choice: AiChoice) => void;
   onStopRecording: () => void;
   onStop: () => void;
+  /** 사람이 이어받은 뒤 AI 에게 남은 지시를 넘긴다 (001 FR-076). */
+  onResume?: () => void;
 }
 
 export function Takeover({
@@ -76,6 +78,7 @@ export function Takeover({
   onChoose,
   onStopRecording,
   onStop,
+  onResume,
 }: TakeoverProps) {
   const humanSteps = steps.filter((s) => s.author === "human").length;
 
@@ -336,17 +339,54 @@ export function Takeover({
             ))}
           </div>
 
+          {/*
+            확정 디자인의 하단. 001 FR-076·FR-077 을 담는다 — 사람이 이어받은 뒤
+            AI 에게 남은 지시를 넘길 수 있고, 넘긴다는 사실을 미리 알린다.
+          */}
           <div
             style={{
               borderTop: "3px solid #14130F",
               background: "#EFEBE0",
-              padding: "14px 18px",
-              color: "#6B675C",
-              font: "500 13px/1.5 'IBM Plex Sans KR', system-ui, sans-serif",
+              padding: "15px 18px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
             }}
           >
-            사람이 이어받아 만든 Step {humanSteps}개. 작성 주체는 구분해 표시되지만 AI 가 만든
-            Step 과 **같은 모델**로 저장됩니다 (FR-075).
+            <div
+              style={{
+                font: "500 13px/1.45 'IBM Plex Sans KR', system-ui, sans-serif",
+                color: "#4A473F",
+                textWrap: "pretty",
+              }}
+            >
+              이어서 진행하면 AI가 남은 지시를 다시 맡습니다.
+            </div>
+            <button
+              disabled={busy || onResume === undefined}
+              onClick={onResume}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "9px",
+                height: "50px",
+                background: "#14130F",
+                color: "#F5F2E9",
+                border: "3px solid #14130F",
+                boxShadow: "5px 5px 0 #F5D000",
+                font: "600 16px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 16 16">
+                <path d="M4 2l10 6-10 6z" fill="currentColor" />
+              </svg>
+              계속하기
+            </button>
+            <div style={{ color: "#6B675C", font: "500 13px/1.5 'IBM Plex Sans KR', system-ui, sans-serif" }}>
+              사람이 이어받아 만든 Step {humanSteps}개. 작성 주체는 구분해 표시되지만 AI 가
+              만든 Step 과 같은 모델로 저장됩니다 (FR-075).
+            </div>
           </div>
         </div>
       </div>

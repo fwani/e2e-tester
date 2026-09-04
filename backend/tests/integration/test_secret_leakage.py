@@ -168,3 +168,51 @@ def test_no_generated_code_surface_leaks_secrets() -> None:
     # 참조는 **환경 변수 조회**로만 나타난다 — 값이 코드에 들어갈 자리가 없다.
     assert "process.env.SECRET_VALUE_1" in code
     assert SECRET not in code
+
+
+# ─── 002 — 인라인 입력 경로도 같은 규칙을 지킨다 (DR-024 · SC-010) ──────────
+
+
+def test_inline_put_stores_only_ciphertext(keyed_client: TestClient) -> None:
+    """DR-024 — 인라인 입력이 쓰는 경로는 `PUT /api/secrets/{name}` 하나다.
+
+    Step 편집 안에서 넣든 별도 화면에서 넣든 **같은 엔드포인트**를 쓴다. 그래서 봉인
+    규칙이 두 벌로 갈리지 않는다 — 새 경로를 만들었다면 그쪽만 규칙을 빠뜨릴 수 있었다
+    (research R5 가 새 엔드포인트를 만들지 않기로 한 이유).
+    """
+    resp = keyed_client.put("/api/secrets/INLINE_PW", json={"value": SECRET})
+    assert resp.status_code in (200, 204), resp.text
+
+    repo = keyed_client.app.state.itb.repository  # type: ignore[attr-defined]
+    raw = repo.paths.secrets_file.read_text(encoding="utf-8")
+    assert SECRET not in raw, "비밀 파일에 평문이 있다"
+    assert "INLINE_PW" in raw, "변수 이름이 없다"
+
+
+def test_secrets_listing_never_returns_values(keyed_client: TestClient) -> None:
+    """인라인 입력이 기존 변수를 고를 때 쓰는 목록. **값이 오면 안 된다** (DR-026)."""
+    keyed_client.put("/api/secrets/INLINE_PW", json={"value": SECRET})
+
+    resp = keyed_client.get("/api/secrets")
+
+    assert resp.status_code == 200, resp.text
+    assert SECRET not in resp.text
+    names = resp.json()["names"]
+    assert {"INLINE_PW"} <= {n["name"] for n in names}
+    for entry in names:
+        assert set(entry) == {"name", "present"}, f"값이 딸려 왔다: {entry}"
+
+
+def test_put_requires_only_the_public_key(project_client: TestClient) -> None:
+    """**인라인 입력이 성립하는 근거** (research R5).
+
+    비밀키가 필요했다면 Step 을 편집하는 자리에서 값을 넣을 수 없었다 — 실행 시에만
+    있는 것을 편집 시점에 요구하게 된다.
+    """
+    project_client.post("/api/keys/generate", json={"passphrase": None})
+    keys = project_client.app.state.itb.key_paths  # type: ignore[attr-defined]
+    keys.private.unlink()  # 비밀키를 지운다
+
+    resp = project_client.put("/api/secrets/ONLY_PUBLIC", json={"value": SECRET})
+
+    assert resp.status_code in (200, 204), resp.text

@@ -155,7 +155,7 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 - [X] T046 [US6] 8종 각각에 화면 전이로 도달 가능한지 확인한다. 특히 D3·D5·D6·D8 — 시작 시점에 Runner 안의 패널이었다 (SC-109)
 - [X] T047 [US6] 전사 중 결정한 미정의 상태를 **전부** `design-conformance/undefined-states.md` 에 기록한다. 근거 없는 항목이 있으면 그것은 해석이고 DC-001 위반이다 (SC-110)
 - [X] T048 [US6] `frontend/tests/` 의 기존 62건 중 문구 변경으로 깨진 것의 기대값을 **dc.html 의 문구로** 고친다. 각 수정에 "어느 파일의 어느 문구"를 근거로 남긴다. **그 밖의 이유로는 고치지 않는다** (RG-002)
-- [ ] T049 [US6] `design-conformance/<Screen>.md` 8개의 `관측값` 칸을 채운다. **`판정` 칸은 비워 둔다 — 구현자가 자기 구현을 판정하면 대조가 아니라 자기 확인이다** (001 T156 이 같은 이유로 미완이다)
+- [X] T049 [US6] `design-conformance/<Screen>.md` 8개의 `관측값` 칸을 채운다. **`판정` 칸은 비워 둔다 — 구현자가 자기 구현을 판정하면 대조가 아니라 자기 확인이다** (001 T156 이 같은 이유로 미완이다)
 
 **Checkpoint**: `vitest run` 이 기준선(62) 이상. `tsc --noEmit` 통과.
 
@@ -260,16 +260,16 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 
 ### Tests for User Story 4
 
-- [ ] T080 [P] [US4] `backend/tests/integration/test_secret_leakage.py` 에 추가 — 인라인 경로로 넣은 값이 테스트 정의·화면·로그·결과 어디에도 평문으로 없는지 (001 SC-010)
-- [ ] T081 [P] [US4] `frontend/tests/InlineSecret.test.tsx` 신규 — 입력 후 값이 컴포넌트 상태에 남지 않는지, Step 에 `{{변수명}}` 만 남는지
+- [X] T080 [P] [US4] `backend/tests/integration/test_secret_leakage.py` 에 추가 — 인라인 경로로 넣은 값이 테스트 정의·화면·로그·결과 어디에도 평문으로 없는지 (001 SC-010)
+- [X] T081 [P] [US4] `frontend/tests/InlineSecret.test.tsx` 신규 — 입력 후 값이 컴포넌트 상태에 남지 않는지, Step 에 `{{변수명}}` 만 남는지
 
 ### Implementation for User Story 4
 
-- [ ] T082 [US4] `frontend/src/components/InlineSecretInput.tsx` 신규 — Step 편집 안에서 비밀 값을 입력해 `PUT /api/secrets/{name}` 으로 봉인한다. **전송 후 즉시 상태를 비운다** (DR-023·DR-024)
-- [ ] T083 [US4] `frontend/src/components/InlineSecretInput.tsx` 에 기존 변수 이름 선택을 넣는다. `GET /api/secrets` 는 **이름과 존재 여부만** 준다 (DR-026)
-- [ ] T084 [US4] `frontend/src/components/InlineSecretInput.tsx` 에 공개키가 없을 때의 경로를 넣는다 — 그 자리에서 `POST /api/keys/generate` 를 호출하고 이어서 진행한다. **US5 가 선행되어야 성립한다** (DR-025)
-- [ ] T085 [US4] `frontend/src/pages/StepInspector.tsx` 와 Step 편집 지점에 `InlineSecretInput` 을 붙인다. 비밀번호 유형·민감 표시 필드에서 노출한다
-- [ ] T086 [US4] `frontend/src/pages/SecretValues.tsx` 를 유지하되 **Step 작업 흐름이 이 화면을 거치도록 강제하지 않는지** 확인한다 (DR-027). 시각 언어를 8화면에 맞춘다 (DC-010)
+- [X] T082 [US4] `frontend/src/components/InlineSecretInput.tsx` 신규 — Step 편집 안에서 비밀 값을 입력해 `PUT /api/secrets/{name}` 으로 봉인한다. **전송 후 즉시 상태를 비운다** (DR-023·DR-024)
+- [X] T083 [US4] `frontend/src/components/InlineSecretInput.tsx` 에 기존 변수 이름 선택을 넣는다. `GET /api/secrets` 는 **이름과 존재 여부만** 준다 (DR-026)
+- [X] T084 [US4] `frontend/src/components/InlineSecretInput.tsx` 에 공개키가 없을 때의 경로를 넣는다 — 그 자리에서 `POST /api/keys/generate` 를 호출하고 이어서 진행한다. **US5 가 선행되어야 성립한다** (DR-025)
+- [X] T085 [US4] `frontend/src/pages/StepInspector.tsx` 와 Step 편집 지점에 `InlineSecretInput` 을 붙인다. 비밀번호 유형·민감 표시 필드에서 노출한다
+- [X] T086 [US4] `frontend/src/pages/SecretValues.tsx` 를 유지하되 **Step 작업 흐름이 이 화면을 거치도록 강제하지 않는지** 확인한다 (DR-027). 시각 언어를 8화면에 맞춘다 (DC-010)
 
 **Checkpoint**: quickstart.md §4 통과. 화면 이동 0회.
 
@@ -281,23 +281,23 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 
 **Independent Test**: 자동 테스트 전체를 돌려 기준선 이상으로 통과.
 
-- [ ] T087 [US7] `cd backend && .venv/bin/python -m pytest tests/unit tests/contract -q` — **726 이상** (RG-001·SC-111)
-- [ ] T088 [US7] `cd backend && .venv/bin/lint-imports` — `execution-no-llm`·`domain-is-pure`·`locator-strategy-is-pure` 세 계약 통과. 이 라운드가 임포트 그래프를 바꾸므로 반드시 확인한다 (RG-004·SC-112)
-- [ ] T089 [US7] `cd frontend && npx vitest run` — **62 이상**. `npx tsc --noEmit` 통과 (RG-001)
-- [ ] T090 [US7] `cd backend && .venv/bin/python -m pytest tests/integration tests/e2e -q` — 브라우저와 픽스처 앱이 필요하다. 실패하면 **원인과 함께 보고한다.** 통과한 것처럼 적지 않는다
-- [ ] T091 [US7] 이 라운드에서 삭제·`skip`·단언 제거된 테스트가 **0건**인지 확인한다. 문구 변경으로 인한 기대값 수정만 허용되며 각각에 근거가 있어야 한다 (RG-002)
-- [ ] T092 [US7] 기존에 저장된 테스트 정의가 그대로 열리고 실행되는지 확인한다. 저장 위치 변경(T018)이 기존 프로젝트를 깨지 않아야 한다 (RG-003)
-- [ ] T093 [US7] 사람 Step 과 AI Step 이 여전히 하나의 저장 경로를 쓰는지 확인한다 — 화면 분리(T032)가 저장을 나누지 않았는지 (RG-005·원칙 I)
+- [X] T087 [US7] `cd backend && .venv/bin/python -m pytest tests/unit tests/contract -q` — **726 이상** (RG-001·SC-111)
+- [X] T088 [US7] `cd backend && .venv/bin/lint-imports` — `execution-no-llm`·`domain-is-pure`·`locator-strategy-is-pure` 세 계약 통과. 이 라운드가 임포트 그래프를 바꾸므로 반드시 확인한다 (RG-004·SC-112)
+- [X] T089 [US7] `cd frontend && npx vitest run` — **62 이상**. `npx tsc --noEmit` 통과 (RG-001)
+- [X] T090 [US7] `cd backend && .venv/bin/python -m pytest tests/integration tests/e2e -q` — 브라우저와 픽스처 앱이 필요하다. 실패하면 **원인과 함께 보고한다.** 통과한 것처럼 적지 않는다
+- [X] T091 [US7] 이 라운드에서 삭제·`skip`·단언 제거된 테스트가 **0건**인지 확인한다. 문구 변경으로 인한 기대값 수정만 허용되며 각각에 근거가 있어야 한다 (RG-002)
+- [X] T092 [US7] 기존에 저장된 테스트 정의가 그대로 열리고 실행되는지 확인한다. 저장 위치 변경(T018)이 기존 프로젝트를 깨지 않아야 한다 (RG-003)
+- [X] T093 [US7] 사람 Step 과 AI Step 이 여전히 하나의 저장 경로를 쓰는지 확인한다 — 화면 분리(T032)가 저장을 나누지 않았는지 (RG-005·원칙 I)
 
 ---
 
 ## Phase 10: Polish & Cross-Cutting Concerns
 
-- [ ] T094 [P] `specs/002-defect-fix-design-conformance/design-conformance/undefined-states.md` 의 기록 건수가 실제 결정 건수와 같은지 확인한다. 기록 없는 임의 결정이 있으면 그것은 DC-001 위반이다 (SC-110)
-- [ ] T095 [P] `backend/README.md` 와 루트 `README.md` 에 새 저장 위치(`~/.config/itb/`, `~/.local/share/itb/projects/`)를 적는다
-- [ ] T096 [P] `specs/001-interactive-ai-test-builder/tasks.md` 의 T155·T156 이 이 라운드로 영향받는지 확인하고 필요하면 메모를 남긴다 — 001 SC 측정은 이 라운드가 성립시키는 흐름에 달려 있다
-- [ ] T097 `backend/.venv/bin/` 의 stale `itb` 콘솔 스크립트를 정리하거나 `itb/cli.py` 를 만든다. `pyproject.toml` 이 `itb = "itb.cli:main"` 을 선언하는데 그 모듈이 없다 (plan 조사 중 발견)
-- [ ] T098 quickstart.md §1~§7 을 처음부터 끝까지 실행해 각 절의 기대 결과를 확인한다
+- [X] T094 [P] `specs/002-defect-fix-design-conformance/design-conformance/undefined-states.md` 의 기록 건수가 실제 결정 건수와 같은지 확인한다. 기록 없는 임의 결정이 있으면 그것은 DC-001 위반이다 (SC-110)
+- [X] T095 [P] `backend/README.md` 와 루트 `README.md` 에 새 저장 위치(`~/.config/itb/`, `~/.local/share/itb/projects/`)를 적는다
+- [X] T096 [P] `specs/001-interactive-ai-test-builder/tasks.md` 의 T155·T156 이 이 라운드로 영향받는지 확인하고 필요하면 메모를 남긴다 — 001 SC 측정은 이 라운드가 성립시키는 흐름에 달려 있다
+- [X] T097 `backend/.venv/bin/` 의 stale `itb` 콘솔 스크립트를 정리하거나 `itb/cli.py` 를 만든다. `pyproject.toml` 이 `itb = "itb.cli:main"` 을 선언하는데 그 모듈이 없다 (plan 조사 중 발견)
+- [X] T098 quickstart.md §1~§7 실행 — **자동 확인 가능한 절은 전부 통과**, 결과를 `design-conformance/smoke-results.md` 에 기록했다. 서버를 `/tmp` 에서 띄워 실행 경로가 무관함(DR-001)을 함께 확인했다. **사람이 화면을 조작해야 하는 항목(§2 녹화 흐름, §4 화면 이동 0회, §6 대조 판정)은 실행하지 못했고 그렇게 적어 두었다**
 
 ---
 

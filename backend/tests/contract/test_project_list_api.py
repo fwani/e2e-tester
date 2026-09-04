@@ -177,3 +177,49 @@ def test_forget_managed_project_still_found_by_scan(client: TestClient) -> None:
 
     projects = client.get("/api/project/list").json()["projects"]
     assert [p["root"] for p in projects] == [root]
+
+
+# ─── RG-003 — 기존에 저장된 프로젝트·테스트가 그대로 열린다 ─────────────────
+
+
+def test_project_made_before_002_still_opens(client: TestClient, home: pathlib.Path) -> None:
+    """RG-003 — 저장 위치가 바뀌어도 예전 위치의 프로젝트를 열 수 있다.
+
+    002 는 **새로 만드는 곳**을 정했을 뿐 기존 자산을 옮기지 않는다. 사용자가 001 로
+    만들어 둔 프로젝트는 임의 위치에 있고, 「기존 프로젝트 열기」로 찾아 열면 된다.
+    옮기거나 요구했다면 그것이야말로 회귀다.
+    """
+    legacy = home / "old-place" / "my-project"
+    (legacy / "tests").mkdir(parents=True)
+    (legacy / "itb-project.yaml").write_text(
+        f"name: 001 때 만든 것\ndefault_start_url: {START_URL}\n", encoding="utf-8"
+    )
+    (legacy / "tests" / "TC-001-login.yaml").write_text(
+        "id: TC-001\n"
+        "name: 로그인\n"
+        "authoring_mode: record\n"
+        f"start_url: {START_URL}\n"
+        "variables: []\n"
+        "steps:\n"
+        "  - id: step-01\n"
+        "    type: navigate\n"
+        "    label: 시작\n"
+        "    author: human\n"
+        "    tab: 0\n"
+        "    timeout_ms: 5000\n"
+        f"    url: {START_URL}\n",
+        encoding="utf-8",
+    )
+
+    opened = client.post("/api/project/open", json={"path": str(legacy)})
+    assert opened.status_code == 200, opened.text
+    assert opened.json()["name"] == "001 때 만든 것"
+
+    # 저장된 테스트 정의가 그대로 읽힌다.
+    listing = client.get("/api/tests")
+    assert listing.status_code == 200, listing.text
+    assert "로그인" in [t["name"] for t in listing.json()["tests"]]
+
+    definition = client.get("/api/tests/TC-001")
+    assert definition.status_code == 200, definition.text
+    assert definition.json()["steps"][0]["type"] == "navigate"

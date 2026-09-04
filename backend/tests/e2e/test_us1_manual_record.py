@@ -17,6 +17,15 @@ import yaml
 from fastapi.testclient import TestClient
 
 
+def _project_root(client) -> pathlib.Path:  # noqa: ANN001
+    """열린 프로젝트의 실제 위치.
+
+    002 부터 도구가 위치를 정하므로(DR-006) 테스트가 `tmp_path/"proj"` 를 가정할 수 없다.
+    """
+    return pathlib.Path(client.get("/api/project").json()["root"])
+
+
+
 @pytest.mark.usefixtures("fixture_app")
 def test_record_save_and_appear_in_list(
     project_client: TestClient, fixture_app: str, tmp_path: pathlib.Path
@@ -25,7 +34,7 @@ def test_record_save_and_appear_in_list(
     # 1. 프로젝트가 열려 있고 .gitignore 가 만들어졌다
     project = project_client.get("/api/project").json()
     assert project["gitignore_present"] is True
-    gitignore = (tmp_path / "proj" / ".gitignore").read_text(encoding="utf-8")
+    gitignore = (_project_root(project_client) / ".gitignore").read_text(encoding="utf-8")
     assert "secrets.local.yaml" in gitignore
     assert ".runs/" in gitignore
 
@@ -90,7 +99,7 @@ def test_record_save_and_appear_in_list(
     assert row["outcome"] is None  # 아직 실행하지 않았다
 
     # 7. 정의 파일이 사람이 읽을 수 있는 형태로 저장됐다 (FR-011·FR-088b)
-    files = list((tmp_path / "proj" / "tests").glob("TC-001-*.yaml"))
+    files = list((_project_root(project_client) / "tests").glob("TC-001-*.yaml"))
     assert len(files) == 1, f"정의 파일이 하나여야 한다: {files}"
     raw = files[0].read_text(encoding="utf-8")
     assert "프로젝트 생성" in raw
@@ -169,7 +178,7 @@ def test_multitab_flow_saves_tab_references(
     finally:
         project_client.post(f"/api/sessions/{sid}/stop")
 
-    files = list((tmp_path / "proj" / "tests").glob("*.yaml"))
+    files = list((_project_root(project_client) / "tests").glob("*.yaml"))
     parsed = yaml.safe_load(files[0].read_text(encoding="utf-8"))
     tabs_used = {s["tab"] for s in parsed["steps"]}
     assert 0 in tabs_used

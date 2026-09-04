@@ -126,7 +126,9 @@ def test_quickstart_section7_steps7_to_9_other_choices(
     for choice, expected_state in (
         ("retry", "paused"),
         ("skip", "paused"),
-        ("abort", "stopped"),
+        # 002 — FR-074 가 "종료 시 저장 여부 확인" 을 요구하는데 stopped 는
+        # 아무 명령도 받지 않아 그 확인이 불가능했다 (research R1).
+        ("abort", "review"),
     ):
         install_driver(monkeypatch, BLOCKED_AT_DELETE)
         event_log.clear()

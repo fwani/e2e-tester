@@ -463,6 +463,12 @@ export function SessionScreen({
             void act(() => sessions.aiChoice(sessionId, choice));
           }}
           onStopRecording={() => void act(() => sessions.recordActionsStop(sessionId))}
+          // 001 FR-076 — 사람이 이어받은 뒤 AI 가 남은 지시를 이어서 맡는다.
+          onResume={
+            view.state === "takeover_recording"
+              ? () => void act(() => sessions.resume(sessionId))
+              : undefined
+          }
           onStop={leave}
         />
         {overlays}

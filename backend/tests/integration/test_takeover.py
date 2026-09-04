@@ -211,7 +211,10 @@ def test_abort_keeps_steps_saveable(
     try:
         resp = keyed_client.post(f"/api/sessions/{sid}/ai-choice", json={"choice": "abort"})
         assert resp.status_code == 200, resp.text
-        assert resp.json()["state"] == "stopped"
+        # 002 — `review` 로 바뀌었다. 이 테스트의 docstring 이 요구하는 "저장 확인을
+        # 받을 대상" 이 바로 그 상태다. `stopped` 는 아무 명령도 받지 않아 저장 확인이
+        # 성립하지 않았다 (research R1).
+        assert resp.json()["state"] == "review"
 
         saved = keyed_client.post(
             f"/api/sessions/{sid}/save", json={"name": "중간까지 저장"}

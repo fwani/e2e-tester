@@ -20,6 +20,7 @@ import { useEffect, useState } from "react";
 
 import type { RepickSlot } from "../api/client";
 import type { Step } from "../types/generated/step";
+import { InlineSecretInput, referenceName } from "../components/InlineSecretInput";
 import { LocatorPriorityTable } from "../components/LocatorPriorityTable";
 
 export interface StepInspectorProps {
@@ -66,6 +67,8 @@ export function StepInspector({
   const [timeout, setTimeout] = useState(step.timeout_ms);
   const [sensitive, setSensitive] = useState(false);
   const [showDsl, setShowDsl] = useState(false);
+  /** DR-023 — 비밀 값을 이 자리에서 넣는다. 화면을 떠나지 않는다. */
+  const [secretOpen, setSecretOpen] = useState(false);
 
   // 다른 Step 을 고르면 입력값을 그 Step 기준으로 다시 잡는다.
   useEffect(() => {
@@ -197,10 +200,19 @@ export function StepInspector({
             onChange={(e) => setValue(e.target.value)}
           />
           {alreadyReference ? (
-            <p className="dim" style={{ fontSize: 11.5, margin: "4px 0 0" }}>
-              변수 참조입니다. 실제 값은 비밀 파일의 암호문에 있으며 화면에 표시되지
-              않습니다.
-            </p>
+            <>
+              <p className="dim" style={{ fontSize: 11.5, margin: "4px 0 0" }}>
+                변수 참조입니다. 실제 값은 비밀 파일의 암호문에 있으며 화면에 표시되지
+                않습니다.
+              </p>
+              <button
+                className="ghost"
+                style={{ padding: 0, height: 28 }}
+                onClick={() => setSecretOpen((v) => !v)}
+              >
+                {secretOpen ? "▾" : "▸"} 비밀 값 다시 넣기
+              </button>
+            </>
           ) : (
             <label className="row" style={{ gap: 6, marginTop: 6 }}>
               <input
@@ -212,6 +224,34 @@ export function StepInspector({
                 민감 값으로 지정 — 값을 변수 참조로 옮기고 봉인합니다 (되돌릴 수 없습니다)
               </span>
             </label>
+          )}
+
+          {/*
+            DR-023·SC-106 — 화면 이동 0회. 이전에는 비밀 값 입력이 별도 화면이라
+            Step 을 만들다 말고 나갔다 와야 했다.
+          */}
+          {!alreadyReference && (
+            <button
+              className="ghost"
+              style={{ padding: 0, height: 28, marginTop: 4 }}
+              onClick={() => setSecretOpen((v) => !v)}
+            >
+              {secretOpen ? "▾" : "▸"} 여기서 비밀 값 넣기
+            </button>
+          )}
+
+          {secretOpen && (
+            <div style={{ marginTop: 8 }}>
+              <InlineSecretInput
+                currentName={alreadyReference ? referenceName(value) : null}
+                busy={busy}
+                onLinked={(reference) => {
+                  // Step 에는 참조만 남는다. 값은 어느 순간에도 정의에 들어가지 않는다.
+                  setValue(reference);
+                  setSecretOpen(false);
+                }}
+              />
+            </div>
           )}
         </div>
       )}
