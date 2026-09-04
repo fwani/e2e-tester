@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from playwright.async_api import Browser, BrowserContext, Page, Playwright
+from playwright.async_api import Error as PlaywrightError
 
 from itb.domain.test_case import MAX_TABS_DEFAULT
 from itb.execution.state_machine import (
@@ -42,6 +43,24 @@ class TabLimitReachedError(SessionError):
 
 class TabNotFoundError(SessionError):
     """Step 이 참조하는 탭이 없다 (FR-030d)."""
+
+
+class TargetUnreachableError(SessionError):
+    """시작 주소를 열지 못했다. **대상 쪽 사정이다** (003 AP-031).
+
+    이것을 일반 오류로 흘려보내면 화면이 "예상하지 못한 오류가 발생했습니다. 서버 로그를
+    확인하세요." 라고 말한다 — 단독 로컬 도구에서 가장 흔한 첫 실패(대상 앱이 안 떠 있음)에
+    가장 다루기 어려운 문구를 주는 셈이다 (UX U-04 에서 실제로 겪었다).
+
+    원인은 완전히 특정된다. 주소를 문장에 담고 원문을 뒤에 붙인다.
+    """
+
+    def __init__(self, url: str, reason: str) -> None:
+        # 원문은 주소를 한 번 더 달고 온다 ("… at http://…"). 같은 주소를 두 번 읽게 하지 않는다.
+        reason = reason.removesuffix(f" at {url}").strip()
+        super().__init__(f"대상 앱에 연결할 수 없습니다: {url} ({reason})")
+        self.url = url
+        self.reason = reason
 
 
 @dataclass(slots=True)
@@ -384,7 +403,14 @@ class SessionManager:
         page = await context.new_page()
         if session.tab_of(page) is None:  # on_page 가 먼저 돌지 않은 경우 대비
             session.register_tab(page)
-        await page.goto(start_url)
+        try:
+            await page.goto(start_url)
+        except PlaywrightError as exc:
+            # 브라우저를 남기지 않는다. 세션은 만들어지지 않았는데 창만 떠 있으면
+            # 사용자는 그것을 제품 상태로 읽고, 창은 아무 데도 연결돼 있지 않다.
+            with contextlib.suppress(Exception):
+                await browser.close()
+            raise TargetUnreachableError(start_url, _short_reason(exc)) from exc
 
         self._sessions[session.session_id] = session
         if test_id is not None:
@@ -433,3 +459,14 @@ class SessionManager:
     async def close_all(self) -> None:
         for sid in list(self._sessions):
             await self.close(sid)
+
+
+def _short_reason(exc: PlaywrightError) -> str:
+    """Playwright 오류에서 **원인 한 줄**만 남긴다.
+
+    원문은 호출 로그까지 달고 온다. 그대로 화면에 보내면 사용자가 읽을 수 없고, 통째로
+    버리면 `net::ERR_CONNECTION_REFUSED` 같은 결정적인 단서를 잃는다 (003 EC-005).
+    """
+    first = str(exc.message).strip().splitlines()[0] if str(exc.message).strip() else ""
+    reason = first.removeprefix("Page.goto:").strip()
+    return reason[:200] if reason else "이유를 알 수 없습니다"

@@ -195,7 +195,9 @@ def test_skipped_steps_are_distinguished_from_not_run() -> None:
 
 EXPECTED_BARE_SUPPRESS: dict[str, int] = {
     # 사유를 남길 수 없는 경로만 허용한다. 늘어나면 이 테스트가 알려 준다.
-    "session.py": 8,
+    # 9번째: 시작 주소를 열지 못한 세션의 브라우저를 닫는 정리 경로 (UX U-04). 실패 사유는
+    # TargetUnreachableError 가 이미 들고 나가므로 닫기 실패까지 겹쳐 말할 것이 없다.
+    "session.py": 9,
     "artifacts.py": 6,
     "runner.py": 1,
     "session_loss.py": 5,

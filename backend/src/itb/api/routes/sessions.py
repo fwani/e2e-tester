@@ -27,7 +27,11 @@ from itb.domain.step import Author, NavigateStep, Step
 from itb.domain.test_case import AuthoringMode, Test, Variable
 from itb.execution.artifacts import ArtifactCollector
 from itb.execution.runner import ReplayEngine, RunnerTask
-from itb.execution.session import BrowserSession, SessionError
+from itb.execution.session import (
+    BrowserSession,
+    SessionError,
+    TargetUnreachableError,
+)
 from itb.execution.session_loss import SessionLossWatcher
 from itb.execution.state_machine import (
     TERMINAL_STATES,
@@ -320,6 +324,14 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
             max_tabs=project.max_tabs,
             test_id_attribute=project.test_id_attribute,
         )
+    except TargetUnreachableError as exc:
+        # SessionError 의 하위 형이므로 **먼저** 잡는다. 대상 앱이 안 떠 있는 것은
+        # 이 도구에서 가장 흔한 첫 실패다 — 원인이 완전히 특정되므로 그대로 말한다.
+        raise bad_request(
+            ErrorCode.TARGET_UNREACHABLE,
+            str(exc),
+            start_url=exc.url,
+        ) from exc
     except SessionError as exc:
         raise conflict(ErrorCode.SESSION_ALREADY_ACTIVE, str(exc)) from exc
 

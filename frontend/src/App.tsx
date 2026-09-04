@@ -4,7 +4,8 @@
  */
 import { useEffect, useState } from "react";
 
-import { ApiError, project, sessions, type ProjectView, type SessionView } from "./api/client";
+import { project, sessions, type ProjectView, type SessionView } from "./api/client";
+import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
 import { CreateTest } from "./pages/CreateTest";
 import { KeyManagement } from "./pages/KeyManagement";
 import { ProjectSetup } from "./pages/ProjectSetup";
@@ -31,7 +32,9 @@ type Screen =
 export function App() {
   const [opened, setOpened] = useState<ProjectView | null>(null);
   const [screen, setScreen] = useState<Screen>({ name: "loading" });
-  const [error, setError] = useState<string | null>(null);
+  // 문자열이 아니라 ErrorInfo 를 담는다 — 문자열로 받으면 next_action 이 여기서 죽는다
+  // (003 EC-004). "대상 앱에 연결할 수 없습니다" 뒤에 "떠 있는지 확인하세요" 가 따라와야 한다.
+  const [error, setError] = useState<ErrorInfo | null>(null);
 
   useEffect(() => {
     // 이미 열린 프로젝트가 있으면 목록으로 간다. 없으면 프로젝트 선택 화면부터 —
@@ -57,9 +60,7 @@ export function App() {
         return session;
       })
       .then((session) => setScreen({ name: "runner", session }))
-      .catch((exc: unknown) =>
-        setError(exc instanceof ApiError ? exc.message : String(exc)),
-      );
+      .catch((exc: unknown) => setError(describeError(exc)));
   };
 
   if (screen.name === "loading") {
@@ -80,14 +81,10 @@ export function App() {
   return (
     <>
       {error !== null && (
-        <div
-          style={{
-            padding: "8px 16px",
-            background: "var(--fail-tint)",
-            color: "var(--fail-dark)",
-          }}
-        >
-          {error}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 16px" }}>
+          <div style={{ flex: 1 }}>
+            <ErrorNotice error={error} />
+          </div>
           <button className="ghost" onClick={() => setError(null)}>
             닫기
           </button>
@@ -134,9 +131,7 @@ export function App() {
             void sessions
               .create({ mode: "record", start_url: startUrl })
               .then((session) => setScreen({ name: "runner", session }))
-              .catch((exc: unknown) =>
-                setError(exc instanceof ApiError ? exc.message : String(exc)),
-              );
+              .catch((exc: unknown) => setError(describeError(exc)));
           }}
           // 지시문은 다음 화면에서 쓴다 — 확정 디자인의 「지시문 쓰기」다 (DC-008).
           onWriteInstruction={(startUrl) => setScreen({ name: "ai-compose", startUrl })}
