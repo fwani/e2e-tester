@@ -38,7 +38,7 @@ async def availability() -> AvailabilityResponse:
     from itb.llm.client import LlmUnavailableError, create_client  # noqa: PLC0415
 
     try:
-        create_client()
+        client = create_client()
     except LlmUnavailableError as exc:
         return AvailabilityResponse(available=False, reason=str(exc))
     except Exception as exc:  # noqa: BLE001 - 어떤 실패든 사용자에게 알린다
@@ -47,6 +47,22 @@ async def availability() -> AvailabilityResponse:
             reason=(
                 "언어모델을 준비할 수 없습니다. "
                 f"({type(exc).__name__}) 직접 녹화로 테스트를 만들 수 있습니다."
+            ),
+        )
+    # SDK 는 자격 증명이 하나도 없어도 **만들어진다** — 실패는 첫 요청에서 난다. 그래서
+    # 생성 성공만 보면 자격 증명 없는 환경에서 `available: true` 를 돌려주고, 사용자는
+    # 「AI 실행」을 눌러야 실패를 알게 된다 (UX U-07 에서 실제로 그랬다). 생성자가 해석한
+    # 세 갈래(정적 키·토큰·프로필/연합 자격 증명)가 전부 비어 있으면 없는 것이다.
+    if (
+        getattr(client, "api_key", None) is None
+        and getattr(client, "auth_token", None) is None
+        and getattr(client, "credentials", None) is None
+    ):
+        return AvailabilityResponse(
+            available=False,
+            reason=(
+                "언어모델 자격 증명을 찾을 수 없습니다. `ANTHROPIC_API_KEY` 를 환경 변수로 "
+                "주거나 `ant auth login` 으로 로그인하세요. 직접 녹화로 테스트를 만들 수 있습니다."
             ),
         )
     return AvailabilityResponse(available=True, reason=None)

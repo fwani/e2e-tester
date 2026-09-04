@@ -31,6 +31,9 @@ import {
 
 export interface RunnerPausedProps {
   title: string;
+  /** 어떻게 만드는 세션인가. AI 세션이 멈춰도 배지는 `AI` 여야 한다 — `RECORD` 로 바뀌면
+   *  사용자는 다른 모드로 갈아탄 줄 안다 (UX U-07). */
+  authoring?: "record" | "ai";
   testId: string;
   /** 중지 후 검토 상태. 브라우저가 없으므로 브라우저 명령을 감춘다 (001 FR-043a). */
   review: boolean;
@@ -70,6 +73,7 @@ export interface RunnerPausedProps {
 export function RunnerPaused(props: RunnerPausedProps) {
   const {
     title,
+    authoring = "record",
     testId,
     review,
     currentStepIndex,
@@ -245,7 +249,7 @@ export function RunnerPaused(props: RunnerPausedProps) {
             flexDirection: "column",
           }}
         >
-          <StepPanelHeader authoring="record" count={steps.length} />
+          <StepPanelHeader authoring={authoring} count={steps.length} />
 
           <div style={{ flex: "1", minHeight: "0", overflowY: "auto" }}>
             {steps.length === 0 && (
