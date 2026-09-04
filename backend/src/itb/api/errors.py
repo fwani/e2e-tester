@@ -20,7 +20,16 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
-from itb.domain.error import CATEGORY, NEXT_ACTION, Category, ErrorBody, ErrorCode, ErrorResponse
+from itb.domain.error import (
+    CATEGORY,
+    NEXT_ACTION,
+    Category,
+    ErrorBody,
+    ErrorCode,
+    ErrorResponse,
+    error_body,
+    error_payload,
+)
 
 __all__ = [
     "CATEGORY",
@@ -33,6 +42,8 @@ __all__ = [
     "bad_request",
     "conflict",
     "not_found",
+    "error_body",
+    "error_payload",
     "not_implemented",
     "validation_error_response",
 ]

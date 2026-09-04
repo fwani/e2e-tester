@@ -23,6 +23,7 @@ from dataclasses import dataclass
 
 from itb.domain.run_result import RunResult
 from itb.domain.test_case import Project, Test
+from itb.storage import atomic
 from itb.storage.yaml_io import DefinitionError, dump_model, load_model
 
 PROJECT_FILE = "itb-project.yaml"
@@ -171,7 +172,7 @@ class ProjectRepository:
         """
         required = ("secrets.local.yaml", ".runs/", "*.key")
         if not self.paths.gitignore.exists():
-            self.paths.gitignore.write_text(GITIGNORE_BODY, encoding="utf-8")
+            atomic.write_text(self.paths.gitignore, GITIGNORE_BODY)
             return True
 
         current = self.paths.gitignore.read_text(encoding="utf-8")
@@ -180,7 +181,7 @@ class ProjectRepository:
             return False
         addition = "\n# Interactive AI Test Builder — 아래 항목이 빠져 있어 덧붙였다.\n"
         addition += "".join(f"{p}\n" for p in missing)
-        self.paths.gitignore.write_text(current.rstrip("\n") + "\n" + addition, encoding="utf-8")
+        atomic.write_text(self.paths.gitignore, current.rstrip("\n") + "\n" + addition)
         return True
 
     # ─── 프로젝트 메타 ─────────────────────────────────────────────────────
@@ -317,8 +318,7 @@ class ProjectRepository:
         run_dir = self.paths.run_dir(result.test_id)
         run_dir.mkdir(parents=True, exist_ok=True)
         p = run_dir / "result.json"
-        p.write_text(
-            result.model_dump_json(indent=2, exclude_none=False),
-            encoding="utf-8",
-        )
+        # 원자적으로 쓴다 (003 AP-042). 결과를 쓰다 끊기면 목록이 반쪽 JSON 을 만나
+        # "결과를 읽을 수 없다"로 표시된다 — 이전 결과까지 함께 사라진다.
+        atomic.write_text(p, result.model_dump_json(indent=2, exclude_none=False))
         return p

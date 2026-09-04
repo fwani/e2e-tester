@@ -19,6 +19,7 @@ from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Page
 
 from itb.domain.assertion import Assertion, AssertionKind, MatchMode
+from itb.domain.error import ErrorCode
 from itb.domain.run_result import LocatorAttempt
 from itb.domain.step import (
     AssertionStep,
@@ -44,17 +45,25 @@ MIN_ACTION_TIMEOUT_MS = 250
 
 
 class StepFailure(Exception):
-    """Step 실행 실패. 진단에 필요한 것을 함께 들고 있다 (FR-021·FR-054)."""
+    """Step 실행 실패. 진단에 필요한 것을 함께 들고 있다 (FR-021·FR-054).
+
+    **분류를 함께 든다** (003 AP-033). 실패 문장만으로는 "대상 사이트가 응답하지 않은
+    것"과 "제품이 깨진 것"을 받는 쪽이 구별할 수 없다. 문구를 해석하지 않고도 판별되어야
+    한다는 것이 US1 의 요구다.
+    """
 
     def __init__(
         self,
         message: str,
         attempts: list[LocatorAttempt] | None = None,
         tab_wait_ms: int = 0,
+        *,
+        code: ErrorCode = ErrorCode.STEP_FAILED,
     ) -> None:
         super().__init__(message)
         self.attempts = attempts or []
         self.tab_wait_ms = tab_wait_ms
+        self.code = code
 
 
 @dataclass(slots=True)
@@ -92,7 +101,9 @@ class StepExecutor:
             tab = await resolve_tab(self._session, step.tab, step.timeout_ms)
         except TabNotFoundError as exc:
             raise StepFailure(
-                describe_tab_failure(exc, step.tab), tab_wait_ms=step.timeout_ms
+                describe_tab_failure(exc, step.tab),
+                tab_wait_ms=step.timeout_ms,
+                code=ErrorCode.TAB_NOT_FOUND,
             ) from exc
 
         record = StepExecution(tab_wait_ms=tab.waited_ms, tab=step.tab)
@@ -108,7 +119,10 @@ class StepExecutor:
             raise StepFailure(str(exc), record.attempts, record.tab_wait_ms) from exc
         except PlaywrightError as exc:
             raise StepFailure(
-                _humanize(exc, step), record.attempts, record.tab_wait_ms
+                _humanize(exc, step),
+                record.attempts,
+                record.tab_wait_ms,
+                code=_classify(exc, step),
             ) from exc
         return record
 
@@ -344,13 +358,36 @@ def _clip(text: str, limit: int = 200) -> str:
     return collapsed if len(collapsed) <= limit else collapsed[:limit] + "…"
 
 
+def _classify(exc: PlaywrightError, step: Step) -> ErrorCode:
+    """실패의 출처를 가른다 (003 AP-031·AP-033).
+
+    페이지를 여는 도중 난 실패는 **대상 쪽 사정**이다. 그것을 요소 탐색 실패와 같은
+    코드로 내보내면 사용자는 자기 테스트 정의를 고치려 들고, 고칠 것이 없어 헤맨다.
+    """
+    if isinstance(step, NavigateStep) or "navigating to" in str(exc.message):
+        return ErrorCode.TARGET_UNREACHABLE
+    return ErrorCode.STEP_FAILED
+
+
 def _humanize(exc: PlaywrightError, step: Step) -> str:
     """Playwright 오류를 사용자 문장으로 바꾼다 (FR-054).
 
     원문을 버리지 않는다 — 사람이 읽을 문장을 앞에 두고 원인을 뒤에 붙인다.
+
+    **페이지 이동 실패를 요소 탐색 실패와 같은 문장으로 말하지 않는다** (003 AP-031).
+    "대상 요소가 나타나지 않았다" 는 대상 사이트가 응답을 끝내지 않은 상황을 잘못
+    설명하고, 사용자를 없는 문제로 보낸다.
     """
     raw = " ".join(str(exc.message).split())[:400]
-    if "Timeout" in raw or "timeout" in raw:
+    timed_out = "Timeout" in raw or "timeout" in raw
+    if _classify(exc, step) is ErrorCode.TARGET_UNREACHABLE:
+        what = (
+            f"{step.timeout_ms}ms 안에 응답을 끝내지 않았습니다"
+            if timed_out
+            else "페이지를 열 수 없었습니다"
+        )
+        return f"{step.label}: 대상 사이트가 {what}. ({raw})"
+    if timed_out:
         return (
             f"{step.label} 이(가) {step.timeout_ms}ms 안에 끝나지 않았습니다. "
             f"대상 요소가 나타나지 않았거나 동작이 막혔습니다. ({raw})"

@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 
 from playwright.async_api import Page
 
-from itb.domain.error import ErrorCode, error_payload
+from itb.domain.error import ErrorCode, error_body, error_payload
 from itb.domain.run_result import (
     Artifacts,
     Outcome,
@@ -385,9 +385,14 @@ class ReplayEngine:
                 "step_failed",
                 step_id=step.id,
                 index=index,
+                # `error_message` 는 001·002 의 화면과 검증이 읽는 이름이라 그대로 둔다.
+                # `error` 는 003 이 더한 것으로, **분류와 다음 행동**을 함께 싣는다 —
+                # 문구를 해석하지 않고도 "대상 쪽 사정" 과 "제품이 깨진 것" 이 갈린다
+                # (EC-008·AP-033).
                 error_message=result.error_message,
                 locator_attempts=[a.model_dump(mode="json") for a in exc.attempts],
                 tab_wait_ms=exc.tab_wait_ms,
+                error=error_body(exc.code, result.error_message),
             )
             await session.emit(
                 "step_finished",

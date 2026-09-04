@@ -72,6 +72,14 @@ class ErrorCode(StrEnum):
     FINGERPRINT_MISMATCH = "FINGERPRINT_MISMATCH"
     SECRET_NOT_FOUND = "SECRET_NOT_FOUND"
 
+    # 실행 — Step 을 수행하지 못했다 (003 AP-031·AP-033)
+    STEP_FAILED = "STEP_FAILED"
+    TARGET_UNREACHABLE = "TARGET_UNREACHABLE"
+
+    # 외부 환경 (003 AP-032·AP-042)
+    AI_FAILED = "AI_FAILED"
+    STORAGE_WRITE_FAILED = "STORAGE_WRITE_FAILED"
+
     # 미지원
     NOT_SUPPORTED = "NOT_SUPPORTED"
 
@@ -119,6 +127,16 @@ CATEGORY: dict[ErrorCode, Category] = {
     ErrorCode.DECRYPT_FAILED: Category.BLOCKED,
     ErrorCode.FINGERPRINT_MISMATCH: Category.BLOCKED,
     ErrorCode.SECRET_NOT_FOUND: Category.BLOCKED,
+    # 실행 — 정의를 고치거나 대상 화면을 확인하면 된다. **제품이 깨진 것이 아니다.**
+    # AP-031 이 이것을 직접 요구한다: 대상 쪽 사정에서 비롯된 실패를 제품 결함으로
+    # 보이게 해서는 안 된다.
+    ErrorCode.STEP_FAILED: Category.BLOCKED,
+    ErrorCode.TARGET_UNREACHABLE: Category.BLOCKED,
+    # 외부 환경 — 원인이 제품 밖에 있고, 사용자가 손댈 자리가 있다 (SESSION_LOST 와 같은
+    # 판단이다). AI 는 다시 시도하거나 직접 이어받을 수 있고, 저장 실패는 공간·권한을
+    # 확인하면 된다.
+    ErrorCode.AI_FAILED: Category.BLOCKED,
+    ErrorCode.STORAGE_WRITE_FAILED: Category.BLOCKED,
     # 미지원 — 다른 방법을 쓰면 된다
     ErrorCode.NOT_SUPPORTED: Category.BLOCKED,
     # 내부 — 사용자가 할 수 있는 일이 없다
@@ -145,6 +163,18 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ErrorCode.INVALID_TRANSITION: "지금 가능한 동작 중에서 고르세요.",
     ErrorCode.TAB_NOT_FOUND: "탭 목록을 새로 고친 뒤 다시 고르세요. 이미 닫혔을 수 있습니다.",
     ErrorCode.TAB_LIMIT_REACHED: "쓰지 않는 탭을 닫은 뒤 다시 시도하세요.",
+    ErrorCode.STEP_FAILED: (
+        "대상 화면이 녹화 때와 같은지 확인하고, 다르면 그 Step의 대상을 다시 집으세요."
+    ),
+    ErrorCode.TARGET_UNREACHABLE: (
+        "대상 사이트가 응답하는지 확인한 뒤 다시 실행하세요. 도구 문제가 아닙니다."
+    ),
+    ErrorCode.AI_FAILED: (
+        "다시 시도하거나 직접 이어받아 진행하세요. 그때까지 만들어진 Step은 남아 있습니다."
+    ),
+    ErrorCode.STORAGE_WRITE_FAILED: (
+        "저장 공간과 폴더 권한을 확인한 뒤 다시 시도하세요. 직전 내용은 그대로 있습니다."
+    ),
     ErrorCode.KEY_MISSING: "키 관리 화면에서 키 쌍을 먼저 만드세요.",
     ErrorCode.KEY_ALREADY_EXISTS: "기존 키를 쓰거나, 교체하려면 키 교체를 쓰세요.",
     ErrorCode.PASSPHRASE_REQUIRED: "암호구를 입력하세요.",
@@ -201,6 +231,14 @@ class ErrorResponse(BaseModel):
     error: ErrorBody
 
 
+def error_body(
+    code: ErrorCode, message: str, *, next_action: str | None = None, **detail: Any
+) -> dict[str, Any]:
+    """계약 형태 오류 본문 하나. 요청 응답이든 실시간 통로든 같은 것을 쓴다 (003 EC-008)."""
+    body = ErrorBody(code=code, message=message, next_action=next_action or "", detail=detail)
+    return body.model_dump(mode="json")  # type: ignore[no-any-return]
+
+
 def error_payload(
     code: ErrorCode, message: str, *, next_action: str | None = None, **detail: Any
 ) -> dict[str, Any]:
@@ -212,5 +250,7 @@ def error_payload(
     ``reason`` 을 함께 싣는다 — 001·002 의 화면과 검증이 그 이름을 읽는다. 새 소비자는
     ``error`` 를 읽으면 된다.
     """
-    body = ErrorBody(code=code, message=message, next_action=next_action or "", detail=detail)
-    return {"error": body.model_dump(mode="json"), "reason": message}
+    return {
+        "error": error_body(code, message, next_action=next_action, **detail),
+        "reason": message,
+    }

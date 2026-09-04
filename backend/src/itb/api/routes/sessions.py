@@ -14,7 +14,14 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
-from itb.api.errors import ErrorCode, bad_request, conflict, not_found
+from itb.api.errors import (
+    ErrorBody,
+    ErrorCode,
+    bad_request,
+    conflict,
+    error_payload,
+    not_found,
+)
 from itb.api.state import AppState, get_state
 from itb.domain.step import Author, NavigateStep, Step
 from itb.domain.test_case import AuthoringMode, Test, Variable
@@ -528,7 +535,10 @@ async def _run_agent(session_id: str, instruction: str | None = None) -> None:
         return
     if outcome.status is AgentStatus.ERROR:
         # 세션을 닫지 않는다. 그때까지의 Step 은 보존된다 (FR-067).
-        await work.session.emit("ai_error", reason=outcome.reason)
+        await work.session.emit(
+            "ai_error",
+            **error_payload(ErrorCode.AI_FAILED, outcome.reason or "AI 수행이 실패했습니다."),
+        )
         await _hold_for_review(work)
         return
 
@@ -925,6 +935,14 @@ class AiStepResponse(BaseModel):
     current_step_index: int
     state: SessionState
 
+    error: ErrorBody | None = None
+    """만들지 못한 경우의 계약 형태 오류 본문 (003 AP-032·AP-033).
+
+    이 응답은 200 이다 — 요청 자체는 제대로 처리됐고, 세션도 살아 있다. 그래서 실패를
+    HTTP 상태로 말할 수 없다. 그렇다고 `message` 문장만 주면 받는 쪽은 "AI 가 못한 것"과
+    "제품이 깨진 것"을 문구로 짐작해야 한다 — 이 라운드가 없애려는 상황이다.
+    """
+
 
 @router.post("/{session_id}/ai-choice")
 async def ai_choice(session_id: str, body: AiChoiceRequest, state: State) -> SessionView:
@@ -1027,9 +1045,17 @@ async def ai_step(session_id: str, body: AiStepRequest, state: State) -> AiStepR
     finally:
         compiler.insert_at = None
 
+    failure: ErrorBody | None = None
     if not result.created:
-        # 상태는 그대로 `PAUSED` 다. 실패를 이벤트로도 알린다.
-        await w.session.emit("ai_error", reason=result.message)
+        # 상태는 그대로 `PAUSED` 다. 실패를 이벤트로도 알리고, 응답에도 같은 본문을 싣는다.
+        failure = ErrorBody(
+            code=ErrorCode.AI_FAILED,
+            message=result.message,
+            detail={"session_id": session_id},
+        )
+        await w.session.emit(
+            "ai_error", **error_payload(ErrorCode.AI_FAILED, result.message)
+        )
     return AiStepResponse(
         created=result.created,
         message=result.message,
@@ -1037,6 +1063,7 @@ async def ai_step(session_id: str, body: AiStepRequest, state: State) -> AiStepR
         steps=w.steps,
         current_step_index=w.current_step_index,
         state=w.session.state,
+        error=failure,
     )
 
 

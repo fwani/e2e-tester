@@ -13,6 +13,8 @@ import pathlib
 import yaml
 from pydantic import BaseModel, ValidationError
 
+from itb.storage import atomic
+
 MAX_FILE_BYTES = 4 * 1024 * 1024
 """테스트 정의 파일 크기 상한. Step 200개 규모를 크게 넘는 파일은 거절한다."""
 
@@ -67,10 +69,11 @@ def dump_model(path: pathlib.Path, obj: BaseModel) -> None:
 
     ``sort_keys=False`` 로 모델의 필드 순서를 유지한다 — 정렬하면 git diff 가
     의미 없이 흔들리고 사람이 읽기도 어려워진다.
+
+    **원자적으로 쓴다** (003 AP-042). 이 함수가 테스트 정의를 쓰는 경로이므로, 쓰기가
+    중간에 끊기면 사용자가 만든 Step 목록이 반쪽으로 남는다.
     """
     payload = obj.model_dump(mode="json", exclude_none=False)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        yaml.safe_dump(payload, allow_unicode=True, sort_keys=False, width=100),
-        encoding="utf-8",
+    atomic.write_text(
+        path, yaml.safe_dump(payload, allow_unicode=True, sort_keys=False, width=100)
     )

@@ -27,6 +27,7 @@ import pathlib
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from itb.storage import atomic
 from itb.storage.paths import registry_file, workspace_dir
 from itb.storage.repository import PROJECT_FILE
 
@@ -146,11 +147,10 @@ def load(path: pathlib.Path | None = None) -> tuple[list[ProjectEntry], str | No
 
 def _save(entries: list[ProjectEntry], path: pathlib.Path | None = None) -> None:
     file = path or registry_file()
-    file.parent.mkdir(parents=True, exist_ok=True)
     body = {"version": FORMAT_VERSION, "projects": [e.stored() for e in entries]}
-    tmp = file.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(body, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(file)  # 쓰다 만 파일을 남기지 않는다
+    # 쓰다 만 파일을 남기지 않는다. 이 방식은 여기서 시작해 `storage/atomic.py` 로
+    # 옮겨졌다 — 자산을 쓰는 모든 경로가 같은 것을 지난다 (003 AP-042).
+    atomic.write_text(file, json.dumps(body, ensure_ascii=False, indent=2))
 
 
 # ─── 갱신 ──────────────────────────────────────────────────────────────────

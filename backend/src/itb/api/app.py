@@ -119,6 +119,26 @@ def create_app() -> FastAPI:
             status_code=exc.status_code, content=ErrorResponse(error=body).model_dump()
         )
 
+    @app.exception_handler(OSError)
+    async def _storage_failed(_request: Request, exc: OSError) -> JSONResponse:
+        """파일 계층이 실패했다 (003 AP-042).
+
+        디스크가 가득 찼거나 권한이 없거나 쓰기가 중간에 끊긴 경우다. **제품이 깨진 것이
+        아니라 환경이 지금 안 되는 것**이므로 `INTERNAL_ERROR`(broken) 로 내보내면
+        사용자는 할 수 있는 일이 없다고 읽는다 — 실제로는 공간을 비우거나 권한을 고치면
+        된다. `SESSION_LOST` 를 `blocked` 로 둔 것과 같은 판단이다.
+
+        **직전 내용은 남아 있다.** 자산을 쓰는 모든 경로가 `storage/atomic.py` 를
+        지나므로, 끊긴 쓰기는 임시 파일에만 남고 원본은 그대로다.
+        """
+        logger.warning("파일 쓰기 실패", exc_info=exc)
+        body = ErrorBody(
+            code=ErrorCode.STORAGE_WRITE_FAILED,
+            message="저장하지 못했습니다. 직전 내용은 그대로 남아 있습니다.",
+            detail={"kind": type(exc).__name__},
+        )
+        return JSONResponse(status_code=500, content=ErrorResponse(error=body).model_dump())
+
     @app.exception_handler(Exception)
     async def _unhandled(_request: Request, exc: Exception) -> JSONResponse:
         """처리되지 않은 오류도 계약 형태로 내보낸다 (FR-087).

@@ -16,6 +16,7 @@ from nacl.exceptions import CryptoError
 from nacl.public import PrivateKey, PublicKey, SealedBox
 
 from itb.secrets.keys import KeyStoreError, fingerprint
+from itb.storage import atomic
 
 SECRETS_FILE_NAME = "secrets.local.yaml"
 
@@ -82,12 +83,13 @@ class SecretStore:
             "public_key_fingerprint": self._fingerprint,
             "values": dict(sorted(self._values.items())),
         }
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
+        # 원자적으로 쓴다 (003 AP-042·AS-050). 쓰기가 끊기면 봉인해 둔 값 전부가
+        # 반쪽 파일과 함께 사라진다 — 복호화할 수 없으므로 되살릴 방법도 없다.
+        atomic.write_text(
+            self.path,
             yaml.safe_dump(payload, allow_unicode=True, sort_keys=False),
-            encoding="utf-8",
+            mode=0o600,
         )
-        self.path.chmod(0o600)
         self._mtime = self._stamp()
 
     # ─── 조회 (값을 절대 노출하지 않는다) ───────────────────────────────────

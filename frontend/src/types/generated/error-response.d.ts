@@ -35,6 +35,10 @@ export type ErrorCode =
   | "DECRYPT_FAILED"
   | "FINGERPRINT_MISMATCH"
   | "SECRET_NOT_FOUND"
+  | "STEP_FAILED"
+  | "TARGET_UNREACHABLE"
+  | "AI_FAILED"
+  | "STORAGE_WRITE_FAILED"
   | "NOT_SUPPORTED"
   | "INTERNAL_ERROR";
 export type Message = string;
