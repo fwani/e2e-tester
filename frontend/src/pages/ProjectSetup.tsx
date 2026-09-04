@@ -338,6 +338,11 @@ function CreateForm({
 
   const urlLooksValid = /^https?:\/\//.test(startUrl.trim());
   const ready = name.trim() !== "" && urlLooksValid;
+  /** 무엇이 빠져 있는가. 「만들기」가 눌리지 않는 이유를 그대로 화면에 쓴다 (003 AP-003). */
+  const missing = [
+    ...(name.trim() === "" ? ["프로젝트 이름"] : []),
+    ...(urlLooksValid ? [] : ["http:// 또는 https:// 로 시작하는 기본 시작 URL"]),
+  ];
 
   return (
     <div style={{ border: `3px solid ${ink}`, background: paper, padding: 24, boxShadow: `5px 5px 0 ${ink}` }}>
@@ -372,11 +377,26 @@ function CreateForm({
         흔합니다. 요소를 찾는 최우선 기준이 됩니다.
       </p>
 
+      {/*
+        003 AP-003 — **왜 지금 안 되는지 말한다.** 이 안내가 없어서 「만들기」가 눌리지
+        않는 이유가 화면에 없었고, 사용자는 무엇이 빠졌는지 눌러 봐도 알 수 없었다.
+        키 관리 화면이 암호구 규칙을 제출 전에 알리는 것과 같은 방식이다 (DR-029).
+      */}
+      <p
+        id="create-blockers"
+        style={{ margin: "16px 0 0", fontSize: 12.5, color: ready ? muted : fail }}
+      >
+        {ready
+          ? "만들 준비가 되었습니다."
+          : `아직 만들 수 없습니다 — ${missing.join(", ")}을 채우세요.`}
+      </p>
+
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
         <button className="secondary" onClick={onCancel} disabled={busy}>
           취소
         </button>
         <button
+          aria-describedby="create-blockers"
           disabled={busy || !ready}
           onClick={() =>
             onSubmit({

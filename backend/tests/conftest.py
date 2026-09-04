@@ -107,6 +107,24 @@ def isolated_home(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> pa
     return home
 
 
+@pytest.fixture(autouse=True)
+def _no_session_leaks_between_tests() -> Iterator[None]:
+    """세션 작업 상태를 테스트마다 비운다.
+
+    `routes/sessions._WORK` 는 **모듈 전역**이다. `client` 픽스처가 앱을 새로 만들어도
+    그 사전은 프로세스 전체에서 하나이므로, 앞 테스트가 남긴 세션이 다음 테스트의
+    `GET /api/sessions` 에 그대로 보인다 — "살아 있는 세션이 없다" 를 전제하는 검증이
+    앞 테스트의 잔여물 때문에 실패한다.
+
+    브라우저 정리는 앱의 lifespan 이 이미 맡는다. 여기서는 **사전만** 비운다 —
+    닫힌 세션의 껍데기가 남아 있는 것이 문제다.
+    """
+    yield
+    from itb.api.routes.sessions import _WORK
+
+    _WORK.clear()
+
+
 @pytest.fixture
 def client(
     tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch, isolated_home: pathlib.Path

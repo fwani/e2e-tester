@@ -137,16 +137,30 @@ cd backend && uv run python -m pytest tests/abnormal/test_boundary_surface.py -k
 **기대**: 쓰기 도중 실패해도 (a) 조각난 파일이 남지 않고 (b) 원본이 그대로다. 대상은 테스트 정의
 쓰기, 비밀 값 저장소 쓰기, 프로젝트 등록 쓰기 셋 모두.
 
-직접 확인하려면 — 테스트 하나를 저장한 뒤 정의 파일을 읽어 온전한지 본다:
+직접 확인하려면 — 저장된 정의 파일을 읽어 온전한지 본다. 정의는 저장소가 아니라 **도구가
+관리하는 위치**에 있다 (002 DR-006). 저장소 안을 훑으면 아무것도 못 찾는다:
 
 ```bash
 cd backend && uv run python -c "
-import yaml, pathlib, sys
-p = sorted(pathlib.Path('.').rglob('*/tests/*.yaml'))
-print('정의 파일', len(p), '개')
-for f in p:
+import yaml
+from itb.storage.paths import workspace_dir
+root = workspace_dir().expanduser()
+files = sorted(root.rglob('tests/TC-*.yaml'))
+print(f'{root} 아래 정의 파일 {len(files)} 개')
+for f in files:
     yaml.safe_load(f.read_text())   # 조각난 파일이면 여기서 실패한다
-print('모두 온전함')
+print('모두 온전함' if files else '아직 저장된 정의가 없다 — 먼저 테스트를 하나 저장하세요')
+"
+```
+
+임시 파일이 남아 있지 않은지도 함께 본다 — 원자적 쓰기는 실패하면 임시 파일을 치운다:
+
+```bash
+cd backend && uv run python -c "
+from itb.storage.atomic import SUFFIX
+from itb.storage.paths import workspace_dir
+left = list(workspace_dir().expanduser().rglob(f'*{SUFFIX}'))
+print('남은 임시 파일', len(left), '개', left[:5])
 "
 ```
 
@@ -179,7 +193,8 @@ cd backend && uv run python -m pytest tests/abnormal/test_ui_surface.py -v
 |---|---|
 | 버튼 연타가 **실제로** 요청을 몇 번 내보내는가 | AS-024 (AP-022) |
 | 화면을 벗어났다 돌아오면 무엇이 보이는가 | AS-026 (AP-023) |
-| 두 창에서 같은 세션을 조작하면 어떻게 되는가 | AS-047 (AP-041) |
+| 낡은 화면이 보낸 조작이 조용히 무시되는가 | AS-047 (AP-041) |
+| 막힌 조작이 왜 막혔는지 화면에 있는가 | AS-007·AS-008·AS-010 (AP-003) |
 | 화면이 멈추는가 | 판정축 ② 전부 |
 
 느리다 (서버 둘을 띄운다). 그래도 컴포넌트 층을 **대체하지 않고 위에 얹는다** — 둘은 잡는
@@ -216,6 +231,7 @@ cd backend && uv run python -m pytest tests/abnormal/ -v --tb=short
 
 ## 확인이 필요한 사항
 
-- **다른 세션이 같은 저장소를 동시에 수정 중이었다** (커밋 `725a9bb`·`8fb3fa6`). 구현 착수 전에 `git status` 와 최근 커밋을 확인한다
-- `SESSION_LOST` 의 분류(`blocked`/`broken`)는 구현 단계에서 정한다. 브라우저가 사라진 원인이 외부인지 제품인지에 따라 갈린다 (`data-model.md §1.3`)
+- **다른 세션이 같은 저장소를 동시에 수정 중이었다** (커밋 `725a9bb`·`8fb3fa6`, 그리고 구현 중에도 `d285449`~`81569b0`). 구현 착수 전에 `git status` 와 최근 커밋을 확인한다
+- `SESSION_LOST` 의 분류는 **`blocked` 로 정했다.** 브라우저가 사라진 원인은 대개 바깥 사정이고, 사용자에게는 할 일이 있다(기록한 Step 을 저장하고 새 세션을 연다). 제품이 스스로 브라우저를 잃은 경우는 그 지점에서 `INTERNAL_ERROR` 로 드러난다 (`data-model.md §1.3`)
+- **오류 코드가 4종 늘었다** — `STEP_FAILED`·`TARGET_UNREACHABLE`·`AI_FAILED`·`STORAGE_WRITE_FAILED`. 판정 결과 분류할 자리가 없는 실패가 드러나서다. 근거는 [outcome.md](./outcome.md) 에 적었다
 - 판정축 ②는 "무엇이 잘못됐는지와 다음 행동이 화면에 존재하는가"로 좁혀 자동 판정한다. 문구의 품질 평가는 이 라운드 범위 밖이다

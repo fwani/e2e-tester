@@ -122,6 +122,18 @@ class Attempt:
     no_response: bool = False
     """응답이 오지 않았는가 (시간 초과·연결 끊김)."""
 
+    prevented: bool = False
+    """화면이 요청을 **아예 보내지 못하게** 막았는가 (제출 버튼 비활성, 조작 자체 부재).
+
+    이때는 서버에 닿지 않았으므로 계약 형태 오류 본문이 존재하지 않는다 — 그것이 정상이다.
+    보내고 나서 거절하는 것보다 보내지 못하게 막는 편이 낫고, 그 자리에 오류 본문을
+    요구하면 더 나은 설계를 결함으로 판정하게 된다.
+
+    **면제가 아니다.** 판정축 ②는 그대로 적용되어, 무엇이 막고 있는지가 화면에 보이지
+    않으면 실패한다. 아무 설명 없이 눌리지 않는 버튼은 "조작이 삼켜진 것"과 구별되지
+    않는다 (AP-003).
+    """
+
     notes: list[str] = field(default_factory=list)
 
     @classmethod
@@ -183,7 +195,7 @@ def check_axis1_shape(sc: Scenario, at: Attempt) -> None:
         raise AxisFailure(sc, "①", "정상 조작인데 제품이 깨졌다 (category=broken)")
 
     if at.error is None:
-        if at.rejected:
+        if at.rejected and not at.prevented:
             raise AxisFailure(sc, "①", "거부되었는데 계약 형태 오류 본문이 없다")
         return
 

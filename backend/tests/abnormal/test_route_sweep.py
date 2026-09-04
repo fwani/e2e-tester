@@ -53,6 +53,9 @@ NO_REJECTION: dict[tuple[str, str], str] = {
     ("GET", "/api/keys/status"): "키가 없다는 것도 상태다. 없는 것이 오류가 아니다",
     ("GET", "/api/keys/permission-check"): "권한 여부를 알려주는 것이 이 경로의 결과다",
     ("GET", "/api/ai/availability"): "AI 를 쓸 수 없다는 것도 가용성 답변이다",
+    ("GET", "/api/sessions"): (
+        "살아 있는 세션 목록이다. 하나도 없으면 빈 목록이며 거절할 대상이 없다"
+    ),
 }
 
 

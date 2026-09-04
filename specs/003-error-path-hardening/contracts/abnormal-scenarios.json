@@ -103,9 +103,10 @@
       "fault": "invalid-input",
       "surface": "ui",
       "target": "KeyManagement",
-      "operation": "암호구 확인란에 다른 값을 넣고 키 쌍을 만든다",
+      "operation": "암호구를 규칙(8자 이상)에 맞지 않게 넣고 키 쌍을 만든다",
       "must_be_rejected": true,
-      "preserves": "form-input"
+      "preserves": "form-input",
+      "note": "목록은 '암호구 확인란에 다른 값'이라고 적었으나 **화면에 확인란이 없다** — 암호구는 한 번만 받는다. 같은 자리의 실재하는 규칙(8자 이상, 서버의 min_length 와 같은 값)으로 바꿔 적었다. 재려는 것(규칙에 어긋난 입력이 거부되고 무엇을 고칠지 나오는가)은 같다."
     },
     {
       "id": "AS-011",
@@ -121,9 +122,10 @@
       "fault": "invalid-input",
       "surface": "ui",
       "target": "StepInspector",
-      "operation": "Locator 후보를 모두 지우고 Step을 저장한다",
+      "operation": "쓸 수 있는 후보가 하나도 없는 Step 을 화면에서 연다",
       "must_be_rejected": true,
-      "preserves": "test-definition"
+      "preserves": "test-definition",
+      "note": "목록은 '후보를 모두 지우고 저장한다'고 적었으나 **화면에 후보를 지우는 조작이 없다** — 후보는 기록 시점에 수집되고 화면은 표시만 한다 (FR-019a). 그래서 후보가 하나도 쓸 수 없는 정의를 두고, 화면이 그것을 말없이 정상처럼 보여 주는지를 본다."
     },
     {
       "id": "AS-013",
@@ -348,9 +350,10 @@
       "fault": "external-failure",
       "surface": "ui",
       "target": "AiRecord",
-      "operation": "AI가 응답하지 않는 동안 화면을 본다",
+      "operation": "AI 수행이 실패한 뒤 화면을 본다",
       "must_be_rejected": false,
-      "preserves": "form-input"
+      "preserves": "recorded-steps",
+      "note": "목록은 '응답하지 않는 동안'이라고 적었다. 화면 면은 제품을 **다른 프로세스로** 띄우므로 언어모델 대역을 끼워 넣을 수 없고, 제품에 지연 스위치를 넣는 것은 헌법 원칙 II 가 금지한다 (research R4 가 같은 이유로 그 대안을 기각했다). 그래서 밖에서 실제로 만들어지는 상태 — 자격 증명이 없는 환경의 즉시 실패 — 를 쓴다. 보존 대상도 지시문이 아니라 기록된 Step 으로 바꿨다 — AP-032·FR-067 이 보존을 요구하는 것이 그것이다. 재려는 것(실패가 화면에 드러나고 기록이 남는가)은 같다."
     },
     {
       "id": "AS-038",
@@ -439,9 +442,10 @@
       "fault": "concurrency",
       "surface": "ui",
       "target": "SessionScreen",
-      "operation": "두 화면에서 같은 세션에 서로 다른 조작을 보낸다",
+      "operation": "다른 곳에서 이미 옮겨 놓은 세션에 화면이 조작을 보낸다",
       "must_be_rejected": true,
-      "preserves": "session"
+      "preserves": "session",
+      "note": "목록은 '두 화면에서'라고 적었으나 **제품 화면에 주소가 없어** 두 번째 창을 같은 세션 화면으로 데려갈 수 없다 — 상태로 화면을 고르는 설계라 딥링크가 없다 (App.tsx). 두 번째 조작 주체를 다른 클라이언트로 두었다. 재려는 것(반영되지 않은 조작이 조용히 무시되지 않는가, AP-041)은 같다."
     },
     {
       "id": "AS-048",
