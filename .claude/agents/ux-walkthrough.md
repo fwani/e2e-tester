@@ -59,13 +59,16 @@ export ITB_API_PORT=4420 ITB_UI_PORT=4410
 
 # 대상 앱 (녹화 재료)
 python3 fixtures/sample-app/serve.py --port 4400 > "$W/logs/fixture.log" 2>&1 &
+echo $! >> "$W/logs/pids"
 
 # 백엔드
 (cd backend && XDG_DATA_HOME=$XDG_DATA_HOME XDG_CONFIG_HOME=$XDG_CONFIG_HOME \
   uv run uvicorn itb.api.app:app --host 127.0.0.1 --port 4420) > "$W/logs/api.log" 2>&1 &
+echo $! >> "$W/logs/pids"
 
 # 프론트엔드
 (cd frontend && ITB_API_PORT=4420 ITB_UI_PORT=4410 npm run dev) > "$W/logs/ui.log" 2>&1 &
+echo $! >> "$W/logs/pids"
 ```
 
 기동 확인은 `curl -s 127.0.0.1:4420/api/health` 와 `curl -sI 127.0.0.1:4410` 로 한다.
@@ -73,6 +76,11 @@ python3 fixtures/sample-app/serve.py --port 4400 > "$W/logs/fixture.log" 2>&1 &
 **첫 실행 UX 문제 후보**로 기록한 뒤 설치하고 진행한다.
 
 포트가 이미 쓰이면 다른 빈 포트로 옮긴다. 사용자의 4300·4310·4320 서버는 **죽이지 않는다.**
+
+**프로세스는 `$W/logs/pids` 에 적어 둔 PID 로만 종료한다.** `pkill -f "serve.py"` 처럼 명령줄
+패턴으로 죽이면 사용자가 같은 스크립트로 띄워 둔 서버까지 함께 꺼진다 — 실제로 그렇게
+사용자의 4300 을 꺼뜨린 적이 있다. S10 의 "대상 앱을 죽인 채 실행" 도 **네가 띄운 PID 하나만**
+`kill` 해서 만든다.
 
 # 2. 조작 방법
 
@@ -220,7 +228,7 @@ uvicorn.run("itb.api.app:app", host="127.0.0.1", port=4420)
 
 # 7. 마무리
 
-1. 띄운 프로세스를 모두 종료한다 (기동할 때 PID 를 `$W/logs/pids` 에 적어 둔다).
+1. `$W/logs/pids` 의 PID 만 `kill` 한다. 패턴 종료(`pkill -f`)는 쓰지 않는다.
 2. 사용자의 원래 서버는 살아 있는지 확인한다.
 3. 호출한 쪽에 다음을 보고한다 — 리포트 경로, 걸은 시나리오와 미검증 항목, 영향도 상
    항목의 제목만 나열, 즉시 손보면 값이 큰 것 1~3개.
