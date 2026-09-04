@@ -171,7 +171,14 @@ async def open_project(body: OpenProjectRequest, state: State) -> ProjectView:
     try:
         root = resolve_within_home(body.path)
     except PathOutsideHomeError as exc:
-        raise bad_request(ErrorCode.INVALID_PATH, str(exc)) from exc
+        known = _known_root_outside_home(body.path)
+        if known is None:
+            raise bad_request(
+                ErrorCode.INVALID_PATH,
+                "사용자 홈 디렉터리 아래의 경로, 또는 도구가 만들었거나 이전에 연 "
+                "프로젝트만 열 수 있습니다.",
+            ) from exc
+        root = known
 
     try:
         repo = ProjectRepository.open(root)
@@ -200,6 +207,33 @@ async def forget_project(body: ForgetProjectRequest) -> None:
     다시 걸려 목록에 남는다 — `GET /list` 가 스캔 ∪ 레지스트리이기 때문이다.
     """
     registry.forget(pathlib.Path(body.root))
+
+
+def _known_root_outside_home(raw: str) -> pathlib.Path | None:
+    """홈 밖이어도 **도구가 아는 위치**면 연다 (UX U-08).
+
+    홈 경계는 임의 파일 시스템 탐색을 막기 위한 것이다 (DR-005). 도구가 스스로 만들어
+    목록에 띄운 프로젝트(관리 위치 아래)와 사용자가 이미 한 번 연 프로젝트(레지스트리)는
+    그 경계가 지키려는 것과 무관하다. 둘을 막으면 "만들기는 되는데 열기는 안 되는"
+    비대칭이 생긴다 — ``XDG_DATA_HOME`` 이 홈 밖을 가리킬 때 실제로 그랬고, 사용자는
+    입력한 적도 없는 경로를 "지정하세요" 라는 지시를 받았다.
+    """
+    resolved = _resolved_or_none(pathlib.Path(raw))
+    if resolved is None:
+        return None
+    workspace = workspace_dir().expanduser().resolve()
+    if resolved == workspace or workspace in resolved.parents:
+        return resolved
+    stored, _warning = registry.load()
+    known = {_resolved_or_none(pathlib.Path(e.root)) for e in stored}
+    return resolved if resolved in known else None
+
+
+def _resolved_or_none(path: pathlib.Path) -> pathlib.Path | None:
+    try:
+        return path.expanduser().resolve()
+    except (OSError, RuntimeError):  # 순환 심볼릭 링크 등 — 해석 불가는 "모르는 경로" 다
+        return None
 
 
 def _origin_of(root: pathlib.Path) -> registry.Origin:
