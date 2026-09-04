@@ -72,9 +72,13 @@ T008·T009·T012 완료 (커밋 `fdfb4e4`). 제품 UI 스모크 통과 — 제�
 
 ## Phase 3: 훑는 검증 (RG-104) — 여기서 나오는 실패가 결함 목록이다
 
-- [ ] T013 [P] [US1] `backend/tests/abnormal/test_error_contract.py` — ① 모든 `ErrorCode` 가 `CATEGORY`·`NEXT_ACTION` 에 있다 (RG-104-1) ② 처리되지 않은 오류가 정상 거부와 **코드만으로** 구별된다 (EC-003) ③ 오류 어디에도 내부 경로·스택·비밀 값이 없다 (EC-005·SC-209)
-- [ ] T014 [US1] `backend/tests/abnormal/test_route_sweep.py` — 앱에 등록된 **모든** 요청 경로를 열거해 각각 거부를 유발하고, 응답이 오류 스키마를 만족하며 `category`·`next_action` 을 담는지 확인한다. 거부 유발 방법이 등록되지 않은 새 경로는 실패로 취급한다 (RG-104-2)
-- [ ] T015 [P] [US1] `backend/tests/abnormal/test_no_bypass.py` — `backend/src/itb/api/` 를 훑어 오류 계약을 우회해 응답을 만드는 곳이 `api/errors.py` 밖에 없는지 확인한다 (RG-104-3)
+**완료.** 오류 계약 31건·계약 우회 17건·전 경로 45건 통과. 계약을 우회하는 지점 0건 —
+API 계층이 이미 계약을 일관되게 쓰고 있었다. 거부를 유발할 수 없는 경로 4건(상태 조회)은
+**이유를 적어 선언**하고 다른 방식으로 검사한다. 건너뛰기가 아니다.
+
+- [X] T013 [P] [US1] `backend/tests/abnormal/test_error_contract.py` — ① 모든 `ErrorCode` 가 `CATEGORY`·`NEXT_ACTION` 에 있다 (RG-104-1) ② 처리되지 않은 오류가 정상 거부와 **코드만으로** 구별된다 (EC-003) ③ 오류 어디에도 내부 경로·스택·비밀 값이 없다 (EC-005·SC-209)
+- [X] T014 [US1] `backend/tests/abnormal/test_route_sweep.py` — 앱에 등록된 **모든** 요청 경로를 열거해 각각 거부를 유발하고, 응답이 오류 스키마를 만족하며 `category`·`next_action` 을 담는지 확인한다. 거부 유발 방법이 등록되지 않은 새 경로는 실패로 취급한다 (RG-104-2)
+- [X] T015 [P] [US1] `backend/tests/abnormal/test_no_bypass.py` — `backend/src/itb/api/` 를 훑어 오류 계약을 우회해 응답을 만드는 곳이 `api/errors.py` 밖에 없는지 확인한다 (RG-104-3)
 
 ---
 
