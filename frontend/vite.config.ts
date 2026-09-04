@@ -12,8 +12,10 @@ export default defineConfig({
     host: "127.0.0.1",
     port: Number(process.env.ITB_UI_PORT ?? 4310),
     proxy: {
-      "/api": { target: `http://127.0.0.1:${apiPort}`, changeOrigin: true },
-      "/ws": { target: `ws://127.0.0.1:${apiPort}`, ws: true },
+      // WebSocket 도 이 규칙을 탄다 — 세션 이벤트 경로가 `/api/sessions/{sid}/events` 다
+      // (contracts/websocket.md T160: 전송 방식을 리소스 이름에 섞지 않는다). `ws` 를 빼면
+      // 업그레이드 요청이 프록시에서 멎고, 화면은 녹화한 Step 을 하나도 받지 못한다.
+      "/api": { target: `http://127.0.0.1:${apiPort}`, changeOrigin: true, ws: true },
     },
   },
   test: {
