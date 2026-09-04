@@ -12,8 +12,10 @@
  * 모르고 실행하면 "값이 없다" 는 실패만 보게 된다 (spec 엣지 케이스).
  */
 import { useCallback, useEffect, useState } from "react";
+import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { ApiError, secrets, type SecretsResponse } from "../api/client";
+import { secrets, type SecretsResponse } from "../api/client";
 
 export interface SecretValuesProps {
   /** 테스트 정의가 참조하는 민감 변수 이름들. 아직 값이 없는 것을 보여 주기 위한 것이다. */
@@ -31,7 +33,7 @@ export function SecretValues({
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -39,7 +41,7 @@ export function SecretValues({
       .list()
       .then(setData)
       .catch((exc: unknown) =>
-        setError(exc instanceof ApiError ? exc.message : String(exc)),
+        setError(describeError(exc)),
       );
   }, []);
 
@@ -59,7 +61,7 @@ export function SecretValues({
         load();
       })
       .catch((exc: unknown) =>
-        setError(exc instanceof ApiError ? exc.message : String(exc)),
+        setError(describeError(exc)),
       )
       .finally(() => setBusy(false));
   };
@@ -111,7 +113,7 @@ export function SecretValues({
             border: "2px solid var(--fail)",
           }}
         >
-          {error}
+          <ErrorNotice error={error} />
         </p>
       )}
 
@@ -170,7 +172,7 @@ export function SecretValues({
                       .remove(entry.name)
                       .then(load)
                       .catch((exc: unknown) =>
-                        setError(exc instanceof ApiError ? exc.message : String(exc)),
+                        setError(describeError(exc)),
                       )
                       .finally(() => setBusy(false));
                   }}

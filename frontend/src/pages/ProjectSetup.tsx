@@ -13,9 +13,10 @@
  * 자기 파일을 찾는다 (DR-005).
  */
 import { useCallback, useEffect, useState } from "react";
+import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
 
 import {
-  ApiError,
   fs,
   project,
   type DirectoryEntry,
@@ -61,7 +62,7 @@ export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void 
   const [mode, setMode] = useState<Mode>({ kind: "list" });
   const [projects, setProjects] = useState<ProjectListItem[] | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(() => {
@@ -74,7 +75,7 @@ export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void 
       .catch((exc: unknown) => {
         // 목록을 못 불러와도 새로 만들기는 되어야 한다 — 여기서 막히면 끝이다.
         setProjects([]);
-        setError(exc instanceof ApiError ? exc.message : String(exc));
+        setError(describeError(exc));
       });
   }, []);
 
@@ -86,7 +87,7 @@ export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void 
     try {
       onOpened(await action());
     } catch (exc) {
-      setError(exc instanceof ApiError ? exc.message : String(exc));
+      setError(describeError(exc));
     } finally {
       setBusy(false);
     }
@@ -135,7 +136,7 @@ export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void 
         </div>
 
         {warning !== null && <Notice tone="warn">{warning}</Notice>}
-        {error !== null && <Notice tone="fail">{error}</Notice>}
+        {error !== null && <ErrorNotice error={error} />}
 
         {mode.kind === "list" && (
           <ProjectList
@@ -161,7 +162,7 @@ export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void 
                 .create(body)
                 .then((p) => setMode({ kind: "created", project: p }))
                 .catch((exc: unknown) =>
-                  setError(exc instanceof ApiError ? exc.message : String(exc)),
+                  setError(describeError(exc)),
                 )
                 .finally(() => setBusy(false));
             }}
@@ -453,7 +454,7 @@ function FolderPicker({
   const [here, setHere] = useState<string | null>(null);
   const [parent, setParent] = useState<string | null>(null);
   const [entries, setEntries] = useState<DirectoryEntry[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
 
   const go = useCallback((path?: string) => {
     setError(null);
@@ -464,7 +465,7 @@ function FolderPicker({
         setParent(r.parent);
         setEntries(r.entries);
       })
-      .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)));
+      .catch((exc: unknown) => setError(describeError(exc)));
   }, []);
 
   useEffect(() => go(), [go]);
@@ -478,7 +479,7 @@ function FolderPicker({
         </div>
       </div>
 
-      {error !== null && <Notice tone="fail">{error}</Notice>}
+      {error !== null && <ErrorNotice error={error} />}
 
       <div style={{ maxHeight: 360, overflowY: "auto" }}>
         {parent !== null && (

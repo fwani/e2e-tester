@@ -84,10 +84,14 @@ API 계층이 이미 계약을 일관되게 쓰고 있었다. 거부를 유발�
 
 ## Phase 4: 화면 공용 오류 통로 (판정축 ②의 전제)
 
-- [ ] T016 [US1] `frontend/src/components/ErrorNotice.tsx` — 오류 표시의 **공용 통로**. `message` 와 `next_action` 을 **함께** 보여주고, `broken` 을 사용자가 고칠 수 있는 것처럼 보이지 않게 한다. 계약 형태가 아닌 응답(연결 실패)도 같은 통로로 표시한다
-- [ ] T017 [US1] `frontend/src/pages/` 14개 화면이 오류를 `ErrorNotice` 로 표시하게 고친다. 화면이 `err.message` 를 직접 그리지 않는다
-- [ ] T018 [P] [US1] `frontend/tests/abnormal/error-notice.test.tsx` — 공용 통로가 두 필드를 함께 보여주는지, `broken`/`blocked` 를 구분하는지, 그리고 **각 화면이 공용 통로를 지나는지** 훑어 확인한다 (RG-104-4)
-- [ ] T019 [US1] `backend/src/itb/api/ws/session_events.py` 가 실시간 통로로 보내는 오류에 같은 `ErrorBody` 를 싣게 한다 (EC-008)
+**완료** (T020 문서 갱신만 남음). 화면 14개가 오류를 `ErrorNotice` 로 지나고, 오류 상태가
+문자열이 아니라 `ErrorInfo` 를 담는다 — 문자열로 납작하게 만들면 다음 행동이 그 자리에서
+사라진다. 실시간 통로도 같은 본문을 싣는다. 프런트 156건 통과, typecheck 0건.
+
+- [X] T016 [US1] `frontend/src/components/ErrorNotice.tsx` — 오류 표시의 **공용 통로**. `message` 와 `next_action` 을 **함께** 보여주고, `broken` 을 사용자가 고칠 수 있는 것처럼 보이지 않게 한다. 계약 형태가 아닌 응답(연결 실패)도 같은 통로로 표시한다
+- [X] T017 [US1] `frontend/src/pages/` 14개 화면이 오류를 `ErrorNotice` 로 표시하게 고친다. 화면이 `err.message` 를 직접 그리지 않는다
+- [X] T018 [P] [US1] `frontend/tests/abnormal/error-notice.test.tsx` — 공용 통로가 두 필드를 함께 보여주는지, `broken`/`blocked` 를 구분하는지, 그리고 **각 화면이 공용 통로를 지나는지** 훑어 확인한다 (RG-104-4)
+- [X] T019 [US1] `backend/src/itb/api/ws/session_events.py` 가 실시간 통로로 보내는 오류에 같은 `ErrorBody` 를 싣게 한다 (EC-008)
 - [ ] T020 [P] [US1] `specs/001-interactive-ai-test-builder/contracts/rest-api.md` 의 오류 응답 공통 형태를 새 필드 둘을 포함하도록 갱신하고 `contracts/error-contract.md` 를 참조로 건다
 
 ---

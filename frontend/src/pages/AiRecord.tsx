@@ -13,6 +13,8 @@
  * 가 그린다 — 확정 디자인의 표본 화면(프로젝트 목록)을 우리가 그리면 안 된다.
  */
 import { useState } from "react";
+import { ErrorNotice } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
 
 import type { Step } from "../types/generated/step";
 import {
@@ -41,7 +43,7 @@ export interface AiRecordProps {
   /** AI 진행 로그. 실패도 여기 남는다 — 볼 경로를 둘로 만든다 (research R2). */
   messages: string[];
   /** **세션 상태와 무관하게** 그린다. 이것이 이 라운드의 핵심 수정이다. */
-  error: string | null;
+  error: ErrorInfo | null;
   blocked: AiBlockedState | null;
 
   busy?: boolean;
@@ -374,9 +376,7 @@ export function AiRecord({
               <div style={{ font: "700 13px/1 'IBM Plex Mono', ui-monospace, monospace", letterSpacing: "0.06em" }}>
                 AI 수행 실패
               </div>
-              <div style={{ font: "500 14px/1.5 'IBM Plex Sans KR', system-ui, sans-serif", whiteSpace: "pre-wrap" }}>
-                {error}
-              </div>
+              <ErrorNotice error={error} compact />
               <div style={{ font: "400 13px/1.4 'IBM Plex Sans KR', system-ui, sans-serif", color: "#6B675C" }}>
                 그때까지 기록된 Step {steps.length}개는 보존됐습니다. 이름을 붙여 저장하거나
                 직접 이어서 만들 수 있습니다.
@@ -518,7 +518,7 @@ function statusLabel({
 }: {
   composing: boolean;
   running: boolean;
-  error: string | null;
+  error: ErrorInfo | null;
   blocked: AiBlockedState | null;
 }): string {
   // 확정 디자인은 「AI 수행 중」 하나만 보여준다. 나머지는 DC-009 기록 대상이다.

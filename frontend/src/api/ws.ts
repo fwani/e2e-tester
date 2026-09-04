@@ -10,6 +10,7 @@
  * 영향을 주지 않는다 (FR-047b).
  */
 import type { Step } from "../types/generated/step";
+import type { ErrorBody } from "../types/generated/error-response";
 import type { SessionState } from "./client";
 
 export interface SessionEventBase {
@@ -24,7 +25,7 @@ export type SessionEvent =
       current_step_index: number;
       active_tab: number;
     })
-  | (SessionEventBase & { type: "session_lost"; reason?: string })
+  | (SessionEventBase & { type: "session_lost"; reason?: string; error?: ErrorBody })
   | (SessionEventBase & { type: "edit_warning"; messages: string[] })
   | (SessionEventBase & { type: "step_added"; step: Step; at_index: number })
   | (SessionEventBase & { type: "step_updated"; step: Step })
@@ -59,7 +60,7 @@ export type SessionEvent =
   | (SessionEventBase & { type: "mirror_degraded"; mode: string; reason?: string })
   | (SessionEventBase & { type: "mirror_stopped"; reason?: string })
   /** 조용한 실패를 막는 진단 이벤트 (contracts/websocket.md §진단 이벤트). */
-  | (SessionEventBase & { type: "run_error"; reason: string })
+  | (SessionEventBase & { type: "run_error"; reason: string; error?: ErrorBody })
   | (SessionEventBase & { type: "artifact_note"; message: string })
   | (SessionEventBase & { type: "tab_opened"; tab: number; url: string; title: string })
   | (SessionEventBase & { type: "tab_closed"; tab: number })

@@ -12,8 +12,10 @@
  * DR-016 — 실행하면 화면이 **즉시** 바뀐다. 아무 변화 없이 끝나지 않는다.
  */
 import { useState } from "react";
+import { describeError } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { ApiError, sessions, type SessionView } from "../api/client";
+import { sessions, type SessionView } from "../api/client";
 import { AiRecord } from "./AiRecord";
 
 export function AiCompose({
@@ -27,7 +29,7 @@ export function AiCompose({
 }) {
   const [instruction, setInstruction] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
 
   const start = () => {
     setBusy(true);
@@ -37,7 +39,7 @@ export function AiCompose({
       .then((session) => onStarted(session, instruction.trim()))
       .catch((exc: unknown) => {
         // DR-016·DR-022 — 조용히 끝나지 않는다. 사유를 화면에 남긴다.
-        setError(exc instanceof ApiError ? exc.message : String(exc));
+        setError(describeError(exc));
       })
       .finally(() => setBusy(false));
   };

@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 
 from playwright.async_api import Page
 
+from itb.domain.error import ErrorCode, error_payload
 from itb.domain.run_result import (
     Artifacts,
     Outcome,
@@ -172,7 +173,14 @@ class RunnerTask:
             except Exception as exc:  # noqa: BLE001 - 예상 못한 실패도 결과로 남겨야 한다
                 passed = False
                 await self._session.emit(
-                    "run_error", reason=f"실행 중 예상하지 못한 오류: {type(exc).__name__}"
+                    "run_error",
+                    **error_payload(
+                        ErrorCode.INTERNAL_ERROR,
+                        "실행 중 예상하지 못한 오류가 발생했습니다.",
+                        next_action="Step 목록은 그대로 있습니다. 다시 실행하고, 계속 "
+                        "발생하면 서버 로그와 함께 알려주세요.",
+                        kind=type(exc).__name__,
+                    ),
                 )
 
             if self._on_finished is not None:
@@ -184,7 +192,12 @@ class RunnerTask:
                     # 결과를 남기지 못했다는 사실을 조용히 넘기지 않는다.
                     await self._session.emit(
                         "run_error",
-                        reason=f"실행 결과를 정리하지 못했습니다: {type(exc).__name__}: {exc}",
+                        **error_payload(
+                            ErrorCode.INTERNAL_ERROR,
+                            "실행은 끝났지만 결과를 정리하지 못했습니다.",
+                            next_action="결과 화면이 비어 있을 수 있습니다. 다시 실행하세요.",
+                            kind=type(exc).__name__,
+                        ),
                     )
 
             await self._settle(passed)
@@ -429,7 +442,12 @@ class ReplayEngine:
             # 결과를 못 남기면 사용자는 실행이 아예 없었던 것처럼 본다. 화면에 알린다.
             await self.session.emit(
                 "run_error",
-                reason=f"실행 결과를 저장하지 못했습니다: {type(exc).__name__}: {exc}",
+                **error_payload(
+                    ErrorCode.INTERNAL_ERROR,
+                    "실행 결과를 저장하지 못했습니다.",
+                    next_action="이 실행의 결과는 남지 않았습니다. 다시 실행하세요.",
+                    kind=type(exc).__name__,
+                ),
             )
 
         await self.session.emit(

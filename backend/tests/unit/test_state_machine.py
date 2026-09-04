@@ -10,8 +10,8 @@ import pytest
 
 from itb.execution.state_machine import (
     ACTIVE_STATES,
-    REVIEW_STATES,
     PAUSABLE_STATES,
+    REVIEW_STATES,
     SESSION_HELD_STATES,
     TERMINAL_STATES,
     Command,

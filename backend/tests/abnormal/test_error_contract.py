@@ -11,10 +11,10 @@ import json
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from itb.api.app import create_app
 from itb.domain.error import CATEGORY, NEXT_ACTION, Category, ErrorBody, ErrorCode
 from tests.abnormal.catalogue import _LEAK
-
 
 # ─── 대응표 전수성 (RG-104-1) ───────────────────────────────────────────────
 

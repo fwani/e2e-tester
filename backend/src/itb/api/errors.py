@@ -1,6 +1,9 @@
 """API 오류 응답의 FastAPI 결합부. 계약 정의는 :mod:`itb.domain.error` 에 있다.
 
-    { "error": { "code": "...", "category": "...", "message": "...", "next_action": "...", "detail": {} } }
+    { "error": {
+        "code": "...", "category": "...", "message": "...",
+        "next_action": "...", "detail": {}
+    } }
 
 **모델은 여기에 없다.** ``ErrorCode``·``Category``·``ErrorBody``·``ErrorResponse`` 는
 ``itb.domain.error`` 가 권위 정의이며 거기서 JSON Schema 가 내보내진다 (헌법 Cross-language

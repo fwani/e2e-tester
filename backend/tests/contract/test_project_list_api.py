@@ -13,10 +13,9 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import pin_playwright_browsers
-
 from itb.api.app import create_app
 from itb.secrets.keys import KeyPaths
+from tests.conftest import pin_playwright_browsers
 
 START_URL = "http://127.0.0.1:4300/login.html"
 

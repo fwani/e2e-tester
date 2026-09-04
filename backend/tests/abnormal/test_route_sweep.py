@@ -21,8 +21,9 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+
 from itb.api.app import create_app
-from tests.abnormal.catalogue import REQUIRED_ERROR_FIELDS, _LEAK
+from tests.abnormal.catalogue import _LEAK, REQUIRED_ERROR_FIELDS
 
 # 훑기에서 뺀다 — 오류를 낼 일이 없는 관찰용 경로다.
 EXEMPT = {("GET", "/api/health")}
@@ -132,7 +133,9 @@ def test_every_route_rejects_within_the_contract(
     assert str(err["next_action"]).strip(), f"{method} {path}: next_action 이 비었다 (EC-004)"
 
     leak = _LEAK.search(resp.text)
-    assert leak is None, f"{method} {path}: 내부 경로·스택이 노출됐다 — {leak.group(0) if leak else ''}"
+    assert leak is None, (
+        f"{method} {path}: 내부 경로·스택이 노출됐다 — {leak.group(0) if leak else ''}"
+    )
 
 
 def test_the_sweep_actually_covers_something() -> None:

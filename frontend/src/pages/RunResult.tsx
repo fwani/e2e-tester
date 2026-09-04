@@ -11,8 +11,10 @@
  * 확정 디자인에 있는 것을 빼지 않으려고 그리되(DC-007), 비활성으로 둔다.
  */
 import { useCallback, useEffect, useState } from "react";
+import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { ApiError, tests, type ArtifactKind } from "../api/client";
+import { tests, type ArtifactKind } from "../api/client";
 import type { RunResult as RunResultData, StepResult } from "../types/generated/run-result";
 import {
   Artboard,
@@ -56,16 +58,16 @@ export function RunResult({
   onBack,
 }: RunResultProps) {
   const [result, setResult] = useState<RunResultData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
   const [tab, setTab] = useState<ArtifactKind>("screenshot");
   const [artifactPath, setArtifactPath] = useState<string | null>(null);
-  const [artifactError, setArtifactError] = useState<string | null>(null);
+  const [artifactError, setArtifactError] = useState<ErrorInfo | null>(null);
 
   useEffect(() => {
     void tests
       .result(testId)
       .then(setResult)
-      .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)));
+      .catch((exc: unknown) => setError(describeError(exc)));
   }, [testId]);
 
   const loadArtifact = useCallback(
@@ -78,7 +80,7 @@ export function RunResult({
         .artifact(testId, kind)
         .then((a) => setArtifactPath(a.path))
         .catch((exc: unknown) =>
-          setArtifactError(exc instanceof ApiError ? exc.message : String(exc)),
+          setArtifactError(describeError(exc)),
         );
     },
     [testId],
@@ -205,7 +207,7 @@ export function RunResult({
             padding: "12px 24px",
           }}
         >
-          {error}
+          <ErrorNotice error={error} />
         </div>
       )}
 
@@ -406,7 +408,9 @@ export function RunResult({
                   트레이스는 이 버전에서 제공하지 않습니다.
                 </p>
               ) : artifactError !== null ? (
-                <p style={{ padding: 20, color: "#A83A22" }}>{artifactError}</p>
+                <div style={{ padding: 20 }}>
+                  <ErrorNotice error={artifactError} compact />
+                </div>
               ) : artifactPath === null ? (
                 <p style={{ padding: 20, color: "#9A968A" }}>불러오는 중…</p>
               ) : tab === "screenshot" ? (

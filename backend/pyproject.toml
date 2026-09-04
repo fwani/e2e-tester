@@ -60,6 +60,7 @@ ignore = ["S101"]  # pytest 의 assert 사용 허용
 # S105 는 이름에 PASS/PASSPHRASE/SECRET 이 들어간 문자열 대입을 비밀번호로 본다.
 # 아래 파일들은 StrEnum 멤버 정의뿐이며(테스트 결과, 오류 코드, 명령 이름) 비밀값이 아니다.
 # 실제 비밀값을 다루는 itb/secrets/ 는 이 목록에 넣지 않는다.
-"src/itb/api/errors.py" = ["S105"]
+# 003 에서 오류 코드가 domain/error.py 로 옮겨졌다 (EC-006 단일 출처).
+"src/itb/domain/error.py" = ["S105"]
 "src/itb/execution/state_machine.py" = ["S105"]
 "src/itb/domain/run_result.py" = ["S105"]

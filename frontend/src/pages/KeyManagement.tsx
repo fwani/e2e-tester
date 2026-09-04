@@ -15,8 +15,10 @@
  *    환경 변수 공급 방법을 알린다.
  */
 import { useCallback, useEffect, useState } from "react";
+import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { ApiError, DESTROY_CONFIRM, secrets, type KeyStatus } from "../api/client";
+import { DESTROY_CONFIRM, secrets, type KeyStatus } from "../api/client";
 
 const PASSPHRASE_ENV = "ITB_KEY_PASSPHRASE";
 
@@ -30,7 +32,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
   const [newPassphrase, setNewPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -38,7 +40,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       .keyStatus()
       .then(setStatus)
       .catch((exc: unknown) =>
-        setError(exc instanceof ApiError ? exc.message : String(exc)),
+        setError(describeError(exc)),
       );
   }, []);
 
@@ -55,7 +57,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         onDone(result);
       })
       .catch((exc: unknown) =>
-        setError(exc instanceof ApiError ? exc.message : String(exc)),
+        setError(describeError(exc)),
       )
       .finally(() => setBusy(false));
   };
@@ -118,17 +120,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       </div>
 
       {error !== null && (
-        <p
-          role="alert"
-          style={{
-            padding: "8px 10px",
-            background: "var(--fail-tint)",
-            color: "var(--fail-dark)",
-            border: "2px solid var(--fail)",
-          }}
-        >
-          {error}
-        </p>
+        <ErrorNotice error={error} />
       )}
 
       {notice !== null && (

@@ -12,10 +12,9 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import pin_playwright_browsers
-
 from itb.api.app import create_app
 from itb.secrets.keys import KeyPaths
+from tests.conftest import pin_playwright_browsers
 
 CLOSE_TAB = [{"type": "close_tab", "id": "step-01", "label": "탭 닫기"}]
 

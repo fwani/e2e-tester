@@ -13,8 +13,10 @@
  * `design-conformance/undefined-states.md` 에 근거와 함께 기록했다 (DC-009).
  */
 import { useEffect, useMemo, useState } from "react";
+import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { ApiError, tests, type TestListRow, type TestListResponse } from "../api/client";
+import { tests, type TestListRow, type TestListResponse } from "../api/client";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
 
 function relativeTime(iso: string | null): string {
@@ -53,7 +55,7 @@ export function TestList({
 }: TestListProps) {
   const [data, setData] = useState<TestListResponse | null>(null);
   const [query, setQuery] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export function TestList({
       setData(await tests.list(q.trim() || undefined));
       setError(null);
     } catch (exc) {
-      setError(exc instanceof ApiError ? exc.message : String(exc));
+      setError(describeError(exc));
     }
   };
 
@@ -75,7 +77,7 @@ export function TestList({
       await fn();
       await reload(query);
     } catch (exc) {
-      setError(exc instanceof ApiError ? exc.message : String(exc));
+      setError(describeError(exc));
     } finally {
       setBusy(false);
     }
@@ -291,7 +293,7 @@ export function TestList({
             }}
             role="alert"
           >
-            {error}
+            <ErrorNotice error={error} />
           </div>
         )}
 

@@ -17,15 +17,24 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import type { ErrorInfo } from "../src/components/ErrorNotice";
 
 import { AiRecord } from "../src/pages/AiRecord";
+
+/** 003 에서 오류 prop 이 문자열에서 ErrorInfo 로 바뀌었다 — 다음 행동을 함께 나르기 위해서다. */
+const failure = (message: string): ErrorInfo => ({
+  message,
+  nextAction: "다시 시도하거나 직접 이어받으세요.",
+  category: "blocked",
+  code: "UNKNOWN",
+});
 
 const base = {
   instruction: "로그인한 다음 프로젝트를 만들어",
   running: false,
   steps: [],
   messages: [] as string[],
-  error: null as string | null,
+  error: null as ErrorInfo | null,
   blocked: null,
   saveName: "",
   onSaveNameChange: () => undefined,
@@ -40,7 +49,7 @@ afterEach(cleanup);
 describe("AiRecord — 실패는 언제나 보인다 (DR-020)", () => {
   it("진행 메시지가 하나도 없어도 실패 사유를 그린다", () => {
     // 001 이 못 그리던 바로 그 조합이다: 메시지 0건 + 세션이 이미 paused.
-    render(<AiRecord {...base} error={REASON} />);
+    render(<AiRecord {...base} error={failure(REASON)} />);
 
     expect(screen.getByText(REASON)).toBeTruthy();
     // 헤더 알약과 실패 영역 제목 둘 다 같은 문구를 쓴다.
@@ -48,17 +57,17 @@ describe("AiRecord — 실패는 언제나 보인다 (DR-020)", () => {
   });
 
   it("running 이 아니어도 실패 사유를 그린다", () => {
-    render(<AiRecord {...base} running={false} error={REASON} />);
+    render(<AiRecord {...base} running={false} error={failure(REASON)} />);
     expect(screen.getByText(REASON)).toBeTruthy();
   });
 
   it("실패해도 그때까지의 Step 이 보존됨을 알린다 (001 FR-067)", () => {
-    render(<AiRecord {...base} error={REASON} steps={[]} />);
+    render(<AiRecord {...base} error={failure(REASON)} steps={[]} />);
     expect(screen.getByText(/보존됐습니다/)).toBeTruthy();
   });
 
   it("오류는 alert 역할로 노출된다 — 조용히 지나가지 않는다", () => {
-    render(<AiRecord {...base} error={REASON} />);
+    render(<AiRecord {...base} error={failure(REASON)} />);
     expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
   });
 
@@ -70,7 +79,7 @@ describe("AiRecord — 실패는 언제나 보인다 (DR-020)", () => {
 
 describe("AiRecord — 상태 표시 (DR-016)", () => {
   it("실패하면 상태 알약이 실패를 말한다", () => {
-    render(<AiRecord {...base} error={REASON} />);
+    render(<AiRecord {...base} error={failure(REASON)} />);
     // 헤더의 알약과 실패 영역 제목 둘 다 "AI 수행 실패" 를 쓴다.
     expect(screen.getAllByText("AI 수행 실패").length).toBe(2);
   });

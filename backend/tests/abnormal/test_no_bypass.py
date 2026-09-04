@@ -56,8 +56,8 @@ def test_api_layer_does_not_bypass_the_error_contract() -> None:
     assert not offenders, (
         "오류 계약을 우회하는 지점이 있다 (RG-104-3):\n  "
         + "\n  ".join(offenders)
-        + f"\n\n`itb.api.errors` 의 생성자(bad_request/not_found/conflict/…)를 쓰세요. "
-        f"계약을 거치지 않으면 분류와 다음 행동이 빠진 채 나갑니다."
+        + "\n\n`itb.api.errors` 의 생성자(bad_request/not_found/conflict/…)를 쓰세요. "
+        "계약을 거치지 않으면 분류와 다음 행동이 빠진 채 나갑니다."
     )
 
 

@@ -17,9 +17,10 @@
  * 불변 속성이고, 상태가 `paused` 로 바뀌어도 AI 화면과 실패 사유가 유지된다 (DR-020).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ErrorNotice, describeError, fromEvent, localError } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
 
 import {
-  ApiError,
   sessions,
   type AddAssertionBody,
   type AiChoice,
@@ -80,7 +81,7 @@ export function SessionScreen({
   const [mirrorTab, setMirrorTab] = useState<number>(initial.mirrored_tab_index);
   const [mirrorStopped, setMirrorStopped] = useState<string | null>(null);
   const [mirrorDegraded, setMirrorDegraded] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [lost, setLost] = useState<string | null>(null);
   const [runningIndex, setRunningIndex] = useState<number | null>(null);
@@ -94,10 +95,10 @@ export function SessionScreen({
   const [inspecting, setInspecting] = useState(false);
   const [reordering, setReordering] = useState(false);
   const [repickWaiting, setRepickWaiting] = useState<RepickSlot | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<ErrorInfo | null>(null);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [aiMessages, setAiMessages] = useState<string[]>([]);
-  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<ErrorInfo | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
 
   const resync = useCallback(async () => {
@@ -105,7 +106,7 @@ export function SessionScreen({
       setView(await sessions.get(sessionId));
       setTabs(await sessions.tabs(sessionId));
     } catch (exc) {
-      setError(exc instanceof ApiError ? exc.message : String(exc));
+      setError(describeError(exc));
     }
   }, [sessionId]);
 
@@ -157,7 +158,10 @@ export function SessionScreen({
           case "run_error":
             // 실행이 끝났는데 결과를 남기지 못한 경우 — 조용히 넘기면 실행이 없었던
             // 것처럼 보인다 (contracts/websocket.md §진단 이벤트).
-            setError(event.reason);
+            // 서버가 계약 본문을 실어 보내면 그것을 쓴다 (003 EC-008). 없으면
+            // 실시간 통로가 아직 옛 형태인 경우이므로 다음 행동을 화면이 붙인다.
+            setError(fromEvent(event.error, event.reason,
+              "이 실행의 결과는 남지 않았습니다. 다시 실행하거나 Step을 확인하세요."));
             break;
           case "artifact_note":
             // 산출물 일부를 남기지 못한 사유. 실행 자체는 유효하므로 오류로 다루지 않는다.
@@ -166,7 +170,12 @@ export function SessionScreen({
             );
             break;
           case "tab_limit_reached":
-            setError(event.message ?? "탭 상한에 도달했습니다.");
+            setError(
+              localError(
+                event.message ?? "탭 상한에 도달했습니다.",
+                "쓰지 않는 탭을 닫은 뒤 다시 시도하세요.",
+              ),
+            );
             break;
           case "edit_warning":
             void resync();
@@ -189,7 +198,12 @@ export function SessionScreen({
             // **진행 로그에도 남긴다** (002). 렌더 조건이 하나 어긋나도 사용자가 볼
             // 경로가 둘이 되게 한다 — 001 에서는 이 값이 상태에만 담기고 그것을 그리는
             // 컴포넌트가 세션 상태 조건 뒤에 숨어 화면에 도달하지 못했다 (research R2).
-            setAiError(event.reason);
+            setAiError(
+              localError(
+                event.reason,
+                "다시 시도하거나, 직접 이어받아 Step을 만들 수 있습니다. 기록된 Step은 남아 있습니다.",
+              ),
+            );
             setAiMessages((prev) => [...prev, `실패: ${event.reason}`]);
             void resync();
             break;
@@ -218,7 +232,7 @@ export function SessionScreen({
     try {
       setView(await fn());
     } catch (exc) {
-      setError(exc instanceof ApiError ? exc.message : String(exc));
+      setError(describeError(exc));
     } finally {
       setBusy(false);
     }
@@ -232,7 +246,7 @@ export function SessionScreen({
       await fn();
       await resync();
     } catch (exc) {
-      setNotice(exc instanceof ApiError ? exc.message : String(exc));
+      setNotice(describeError(exc));
     } finally {
       setBusy(false);
     }
@@ -243,7 +257,7 @@ export function SessionScreen({
     void sessions
       .save(sessionId, saveName.trim())
       .then(() => resync())
-      .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
+      .catch((exc: unknown) => setError(describeError(exc)))
       .finally(() => setBusy(false));
   };
 
@@ -343,13 +357,13 @@ export function SessionScreen({
         setConfirmingLeave(false);
         onFinished();
       })
-      .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
+      .catch((exc: unknown) => setError(describeError(exc)))
       .finally(() => setBusy(false));
   };
 
   const banners = (
     <>
-      {error !== null && <Banner tone="fail">{error}</Banner>}
+      {error !== null && <ErrorNotice error={error} />}
       {lost !== null && (
         <SessionLostBanner
           reason={lost}
@@ -367,7 +381,7 @@ export function SessionScreen({
       ))}
       {notice !== null && (
         <Banner tone="warn" onDismiss={() => setNotice(null)}>
-          {notice}
+          <ErrorNotice error={notice} compact />
         </Banner>
       )}
       {notes.map((n) => (
@@ -405,13 +419,13 @@ export function SessionScreen({
             void sessions
               .repick(sessionId, selectedStepId, { slot })
               .then((resp) => {
-                setNotice(resp.message);
+                setNotice(localError(resp.message, "표시된 내용을 확인한 뒤 이어서 진행하세요."));
                 if (!resp.waiting) setRepickWaiting(null);
                 return resync();
               })
               .catch((exc: unknown) => {
                 setRepickWaiting(null);
-                setNotice(exc instanceof ApiError ? exc.message : String(exc));
+                setNotice(describeError(exc));
               });
           }}
         />
@@ -522,10 +536,10 @@ export function SessionScreen({
             void sessions
               .aiStep(sessionId, instruction)
               .then((resp) => {
-                setNotice(resp.message);
+                setNotice(localError(resp.message, "표시된 내용을 확인한 뒤 이어서 진행하세요."));
                 return resync();
               })
-              .catch((exc: unknown) => setNotice(exc instanceof ApiError ? exc.message : String(exc)))
+              .catch((exc: unknown) => setNotice(describeError(exc)))
               .finally(() => setBusy(false));
           }}
           onShowResult={

@@ -17,8 +17,10 @@
  * 표시 상태는 그 값에서 파생된다 (FR-019a) — 저장된 값이 아니다.
  */
 import { useEffect, useState } from "react";
+import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { ApiError, tests } from "../api/client";
+import { tests } from "../api/client";
 import { LocatorPriorityTable } from "../components/LocatorPriorityTable";
 import { AuthoringBadge, AuthorBadge, StepTypeBadge, TabBadge } from "../components/Badges";
 import type { Step } from "../types/generated/step";
@@ -50,7 +52,7 @@ export function TestDefinition({
   onRun,
 }: TestDefinitionProps) {
   const [test, setTest] = useState<Test | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
   const [selected, setSelected] = useState<string | null>(focusStepId);
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export function TestDefinition({
         setError(null);
       })
       .catch((exc: unknown) =>
-        setError(exc instanceof ApiError ? exc.message : String(exc)),
+        setError(describeError(exc)),
       );
   }, [testId]);
 
@@ -70,9 +72,7 @@ export function TestDefinition({
   if (error !== null) {
     return (
       <main style={{ maxWidth: 900, margin: "32px auto", padding: "0 16px" }}>
-        <p role="alert" style={{ color: "var(--fail-dark)", whiteSpace: "pre-wrap" }}>
-          {error}
-        </p>
+        <ErrorNotice error={error} />
         <button className="secondary" onClick={onBack}>
           목록으로
         </button>

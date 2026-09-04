@@ -199,3 +199,18 @@ class ErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     error: ErrorBody
+
+
+def error_payload(
+    code: ErrorCode, message: str, *, next_action: str | None = None, **detail: Any
+) -> dict[str, Any]:
+    """실시간 통로로 보내는 오류를 **요청 응답과 같은 본문**으로 만든다 (003 EC-008).
+
+    화면은 요청 응답으로 온 오류와 실시간 통로로 온 오류를 같은 통로로 표시한다. 본문이
+    다르면 한쪽에만 다음 행동이 붙고, 그 차이는 사용자가 겪을 때까지 드러나지 않는다.
+
+    ``reason`` 을 함께 싣는다 — 001·002 의 화면과 검증이 그 이름을 읽는다. 새 소비자는
+    ``error`` 를 읽으면 된다.
+    """
+    body = ErrorBody(code=code, message=message, next_action=next_action or "", detail=detail)
+    return {"error": body.model_dump(mode="json"), "reason": message}

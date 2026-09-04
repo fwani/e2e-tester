@@ -25,6 +25,7 @@ import asyncio
 import contextlib
 from collections.abc import Awaitable, Callable
 
+from itb.domain.error import ErrorCode, error_payload
 from itb.execution.session import BrowserSession
 from itb.execution.state_machine import Command, SessionState, uses_llm
 
@@ -94,7 +95,10 @@ class SessionLossWatcher:
         message = f"{reason} {_guidance(state)}"
         with contextlib.suppress(Exception):
             await self._session.apply(Command.SESSION_LOST)
-        await self._session.emit("session_lost", reason=message)
+        await self._session.emit(
+            "session_lost",
+            **error_payload(ErrorCode.SESSION_LOST, message),
+        )
 
         if self._on_lost is not None:
             with contextlib.suppress(Exception):

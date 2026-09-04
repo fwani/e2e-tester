@@ -99,8 +99,16 @@ def test_unexpected_exception_in_a_step_becomes_a_run_error_event() -> None:
 
     kinds = [k for k, _ in session.events]
     assert "run_error" in kinds, kinds
-    reason = next(p["reason"] for k, p in session.events if k == "run_error")
-    assert "RuntimeError" in str(reason)
+    payload = next(p for k, p in session.events if k == "run_error")
+
+    # 003 — 진단 정보는 사용자 메시지가 아니라 `detail` 에 담긴다. 예외 원문을 사용자에게
+    # 그대로 보내면 내부 경로가 새어 나갈 수 있다 (EC-005). 무엇이 났는지는 여전히 남는다.
+    assert payload["error"]["detail"]["kind"] == "RuntimeError"
+    assert payload["error"]["code"] == "INTERNAL_ERROR"
+    assert payload["error"]["category"] == "broken"
+    assert payload["error"]["next_action"], "다음 행동이 비어 있다 (EC-004)"
+    # 사용자 메시지에는 내부 타입 이름이 없다.
+    assert "RuntimeError" not in payload["reason"]
     # 실패로 종료했다 — 통과로 넘어가지 않는다.
     assert session.state is SessionState.FAILED
 

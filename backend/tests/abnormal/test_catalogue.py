@@ -14,6 +14,7 @@ from __future__ import annotations
 import collections
 
 import pytest
+
 from tests.abnormal.catalogue import (
     CATALOGUE_PATH,
     DRIVERS,
