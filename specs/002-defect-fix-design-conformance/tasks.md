@@ -171,8 +171,8 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 
 ### Tests for User Story 2
 
-- [ ] T050 [P] [US2] `backend/tests/contract/test_session_review_api.py` 신규 — 중지 후 세션이 **살아 있고** `state:"review"` 인지, `GET`·스텝 편집·`save`·`discard` 를 받고 실행·이어서·다시집기·탭전환을 `409 INVALID_TRANSITION` 으로 거절하는지 (001 FR-043a)
-- [ ] T051 [P] [US2] `backend/tests/integration/test_stop_then_save.py` 신규 — **이 라운드의 핵심 회귀 테스트다.** 녹화 → 중지 → 저장이 성공하는지. 시작 시점에는 `SESSION_NOT_FOUND` 로 실패했다
+- [X] T050 [P] [US2] `backend/tests/contract/test_session_review_api.py` 신규 — 중지 후 세션이 **살아 있고** `state:"review"` 인지, `GET`·스텝 편집·`save`·`discard` 를 받고 실행·이어서·다시집기·탭전환을 `409 INVALID_TRANSITION` 으로 거절하는지 (001 FR-043a)
+- [X] T051 [P] [US2] `backend/tests/integration/test_stop_then_save.py` 신규 — **이 라운드의 핵심 회귀 테스트다.** 녹화 → 중지 → 저장이 성공하는지. 시작 시점에는 `SESSION_NOT_FOUND` 로 실패했다
 
 ### Implementation for User Story 2
 
@@ -180,12 +180,12 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 - [X] T053 [US2] `backend/src/itb/api/routes/sessions.py` 에 `review` 상태를 추가한다. **종료 상태가 아니다** — 기존 `stopped` 와 달리 명령을 받는다. 상태 기계에 전이를 정의한다
 - [X] T054 [US2] `backend/src/itb/api/routes/sessions.py` 에 `POST /api/sessions/{id}/discard` 를 추가한다. **여기서 비로소 `SessionWork` 가 파괴된다.** 확인 대화상자는 화면의 책임이다 — 서버가 두 번 묻는 구조를 만들지 않는다
 - [X] T055 [US2] `backend/src/itb/api/routes/sessions.py` 의 `save` 가 `review` 상태에서 동작하는지 확인하고, 저장 후 `SessionWork` 를 정리한다
-- [ ] T056 [US2] 브라우저 창이 외부에서 닫혀 세션이 유실된 경우에도 Step 이 보존되어 `review` 로 가도록 한다 (DR-015)
-- [ ] T057 [US2] `frontend/src/api/client.ts` 에 `sessions.discard(id)` 를 추가한다
-- [ ] T058 [US2] `frontend/src/pages/Runner.tsx` 의 중지 버튼에서 **`onFinished()` 호출을 없앤다**(3곳: 기존 287·377·533 위치). 중지 후 화면에 머물러 Step 목록과 저장 수단을 보여준다 (DR-010·DR-013)
-- [ ] T059 [US2] `frontend/src/pages/Runner.tsx` 의 `review` 상태에서 Step 삭제·수정·순서 변경이 되게 한다 (DR-012)
-- [ ] T060 [US2] `frontend/src/pages/Runner.tsx` 에 화면 이탈 시 유실 경고를 넣는다. `has_unsaved_changes` 로 판단하고, 확인 후 `discard` 를 호출한다 (DR-014)
-- [ ] T061 [P] [US2] `frontend/tests/RunnerReview.test.tsx` 신규 — 중지 후 Step 목록이 보이고 저장 수단이 있으며 이탈 시 경고가 뜨는지
+- [X] T056 [US2] 브라우저 창이 외부에서 닫혀 세션이 유실된 경우에도 Step 이 보존되어 `review` 로 가도록 한다 (DR-015)
+- [X] T057 [US2] `frontend/src/api/client.ts` 에 `sessions.discard(id)` 를 추가한다
+- [X] T058 [US2] `frontend/src/pages/Runner.tsx` 의 중지 버튼에서 **`onFinished()` 호출을 없앤다**(3곳: 기존 287·377·533 위치). 중지 후 화면에 머물러 Step 목록과 저장 수단을 보여준다 (DR-010·DR-013)
+- [X] T059 [US2] `frontend/src/pages/Runner.tsx` 의 `review` 상태에서 Step 삭제·수정·순서 변경이 되게 한다 (DR-012)
+- [X] T060 [US2] `frontend/src/pages/Runner.tsx` 에 화면 이탈 시 유실 경고를 넣는다. `has_unsaved_changes` 로 판단하고, 확인 후 `discard` 를 호출한다 (DR-014)
+- [X] T061 [P] [US2] `frontend/tests/RunnerReview.test.tsx` 신규 — 중지 후 Step 목록이 보이고 저장 수단이 있으며 이탈 시 경고가 뜨는지
 
 **Checkpoint**: quickstart.md §2 통과. 특히 2번(화면 유지)과 4번(저장 성공).
 
@@ -201,21 +201,21 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 
 ### Tests for User Story 3
 
-- [ ] T062 [P] [US3] `backend/tests/contract/test_ai_availability_api.py` 신규 — `GET /api/ai/availability` 가 자격 증명 조각을 **반환하지 않고**, 언어모델을 호출하지 않으며, 점검 실패 시에도 200 + `available:false` 로 답하는지
-- [ ] T063 [P] [US3] `frontend/tests/AiRecord.test.tsx` 신규 — **세션 상태와 무관하게** 실패 사유가 렌더되는지. `state:"paused"` + `aiMessages:[]` 조합에서도 오류가 보여야 한다. 이것이 시작 시점의 결함이다
+- [X] T062 [P] [US3] `backend/tests/contract/test_ai_availability_api.py` 신규 — `GET /api/ai/availability` 가 자격 증명 조각을 **반환하지 않고**, 언어모델을 호출하지 않으며, 점검 실패 시에도 200 + `available:false` 로 답하는지
+- [X] T063 [P] [US3] `frontend/tests/AiRecord.test.tsx` 신규 — **세션 상태와 무관하게** 실패 사유가 렌더되는지. `state:"paused"` + `aiMessages:[]` 조합에서도 오류가 보여야 한다. 이것이 시작 시점의 결함이다
 
 ### Implementation for User Story 3
 
 - [X] T064 [US3] `backend/src/itb/api/routes/ai.py` 신규 — `GET /api/ai/availability`. 자격 증명 **해석 가능 여부만** 본다. 언어모델을 호출하지 않는다 (contracts/rest-api-delta.md §8)
 - [X] T065 [US3] `backend/src/itb/api/app.py` 에 `ai` 라우터를 등록한다. **`itb.api` 계층이므로 `.importlinter` 의 `execution-no-llm` 계약을 위반하지 않는다** — 등록 후 `lint-imports` 로 확인한다 (RG-004)
 - [X] T066 [US3] `frontend/src/api/client.ts` 에 `ai.availability()` 를 추가한다
-- [ ] T067 [US3] `frontend/src/pages/Runner.tsx`(또는 화면 분리 후의 상위)에서 **AI 세션 판정을 `view.state` 가 아니라 `authoring_mode` 로 바꾼다.** 그것이 세션의 불변 속성이다. `isAiSession` 이 `paused` 에서 거짓이 되는 것이 원인이었다 (research R2)
-- [ ] T068 [US3] `frontend/src/pages/AiRecord.tsx` 가 **실패 사유를 세션 상태와 무관하게** 렌더하게 한다 (DR-020)
-- [ ] T069 [US3] `ai_error` 수신 시 진행 로그에도 실패를 남긴다. 렌더 조건이 하나 어긋나도 사용자가 볼 경로가 둘이 되게 한다 (research R2 결정)
+- [X] T067 [US3] `frontend/src/pages/Runner.tsx`(또는 화면 분리 후의 상위)에서 **AI 세션 판정을 `view.state` 가 아니라 `authoring_mode` 로 바꾼다.** 그것이 세션의 불변 속성이다. `isAiSession` 이 `paused` 에서 거짓이 되는 것이 원인이었다 (research R2)
+- [X] T068 [US3] `frontend/src/pages/AiRecord.tsx` 가 **실패 사유를 세션 상태와 무관하게** 렌더하게 한다 (DR-020)
+- [X] T069 [US3] `ai_error` 수신 시 진행 로그에도 실패를 남긴다. 렌더 조건이 하나 어긋나도 사용자가 볼 경로가 둘이 되게 한다 (research R2 결정)
 - [X] T070 [US3] `frontend/src/pages/CreateTest.tsx` 에서 AI 모드를 고르면 `ai.availability()` 를 확인하고, 사용할 수 없으면 **실행 전에** 무엇이 준비되지 않았고 무엇을 하면 되는지 안내한다 (DR-021)
-- [ ] T071 [US3] AI 실행 요청 접수 즉시 화면이 전환되게 한다. 화면에 아무 변화가 없는 상태로 끝나지 않아야 한다 (DR-016·SC-104)
-- [ ] T072 [US3] AI 수행 완료 시 Step 목록·저장 수단·"지시문은 저장되지 않으며 재실행 시 AI 를 쓰지 않는다" 안내를 표시한다 (DR-019, 001 FR-064)
-- [ ] T073 [P] [US3] `backend/tests/integration/test_ai_failure_visible.py` 신규 — 자격 증명 없이 AI 세션을 만들면 `ai_error` 가 발행되고 Step 이 보존되는지 (DR-020, 001 FR-067)
+- [X] T071 [US3] AI 실행 요청 접수 즉시 화면이 전환되게 한다. 화면에 아무 변화가 없는 상태로 끝나지 않아야 한다 (DR-016·SC-104)
+- [X] T072 [US3] AI 수행 완료 시 Step 목록·저장 수단·"지시문은 저장되지 않으며 재실행 시 AI 를 쓰지 않는다" 안내를 표시한다 (DR-019, 001 FR-064)
+- [X] T073 [P] [US3] `backend/tests/integration/test_ai_failure_visible.py` 신규 — 자격 증명 없이 AI 세션을 만들면 `ai_error` 가 발행되고 Step 이 보존되는지 (DR-020, 001 FR-067)
 
 **Checkpoint**: quickstart.md §3 통과. 자격 증명 없는 상태에서 먼저 확인한다.
 
@@ -235,15 +235,15 @@ DOM 순서대로 옮기고 → 인라인 style 을 손대지 않고 → SVG 를 
 
 ### Tests for User Story 5
 
-- [ ] T074 [P] [US5] `backend/tests/contract/test_secrets_api.py` 에 추가 — 8자 미만 암호구절이 **계약 형태**로 거절되는지. `{"detail":[...]}` 가 나오면 실패 (research R3)
+- [X] T074 [P] [US5] `backend/tests/contract/test_secrets_api.py` 에 추가 — 8자 미만 암호구절이 **계약 형태**로 거절되는지. `{"detail":[...]}` 가 나오면 실패 (research R3)
 
 ### Implementation for User Story 5
 
-- [ ] T075 [US5] `backend/src/itb/api/routes/secrets_routes.py` 의 키 파일 쓰기 권한 부족을 500 이 아니라 `400` + 권한 문제임을 밝히는 문장으로 바꾼다 (DR-030)
-- [ ] T076 [US5] `frontend/src/pages/KeyManagement.tsx` 에 암호구절 제약(8~200자)을 **입력 시점에** 안내하고, 제약에 맞지 않으면 제출 자체를 막는다 (DR-029)
-- [ ] T077 [US5] `frontend/src/pages/KeyManagement.tsx` 의 실패 표시가 원시 상태 코드가 아닌 서버의 계약 메시지를 보여주는지 확인한다 (DR-030·SC-107)
-- [ ] T078 [US5] `frontend/src/pages/KeyManagement.tsx` 를 8화면의 시각 언어에 맞춘다 (DC-010)
-- [ ] T079 [P] [US5] `frontend/tests/KeyManagement.test.tsx` 신규 — 제약 안내가 제출 전에 보이고, 실패 시 HTTP 상태 코드가 화면에 노출되지 않는지
+- [X] T075 [US5] `backend/src/itb/api/routes/secrets_routes.py` 의 키 파일 쓰기 권한 부족을 500 이 아니라 `400` + 권한 문제임을 밝히는 문장으로 바꾼다 (DR-030)
+- [X] T076 [US5] `frontend/src/pages/KeyManagement.tsx` 에 암호구절 제약(8~200자)을 **입력 시점에** 안내하고, 제약에 맞지 않으면 제출 자체를 막는다 (DR-029)
+- [X] T077 [US5] `frontend/src/pages/KeyManagement.tsx` 의 실패 표시가 원시 상태 코드가 아닌 서버의 계약 메시지를 보여주는지 확인한다 (DR-030·SC-107)
+- [X] T078 [US5] `frontend/src/pages/KeyManagement.tsx` 를 8화면의 시각 언어에 맞춘다 (DC-010)
+- [X] T079 [P] [US5] `frontend/tests/KeyManagement.test.tsx` 신규 — 제약 안내가 제출 전에 보이고, 실패 시 HTTP 상태 코드가 화면에 노출되지 않는지
 
 **Checkpoint**: quickstart.md §5 통과. `curl` 로 422 응답이 계약 형태인지 확인한다.
 

@@ -168,8 +168,14 @@ def mirror_of(session_id: str) -> MirrorController | None:
 
 
 def require_paused(w: SessionWork) -> None:
-    """FR-035a — 편집 명령은 일시정지에서만 받는다."""
-    if w.session.state is not SessionState.PAUSED:
+    """FR-035a·DR-012 — 편집 명령은 `PAUSED` 와 `REVIEW` 에서만 받는다.
+
+    **상태 기계의 판정을 그대로 쓴다.** 여기에 상태 목록을 다시 적으면 두 곳이 어긋난다 —
+    002 에서 `REVIEW` 를 더했을 때 상태 기계는 편집을 허용하는데 이 게이트가 막고 있었다.
+    """
+    from itb.execution.state_machine import is_editable  # noqa: PLC0415
+
+    if not is_editable(w.session.state):
         raise conflict(
             ErrorCode.NOT_PAUSED,
             f"현재 상태가 '{state_label(w.session.state)}' 이므로 Step 을 편집할 수 없습니다. "

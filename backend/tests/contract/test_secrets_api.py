@@ -184,3 +184,69 @@ def test_fingerprint_mismatch_is_reported(project_client: TestClient) -> None:
     assert resp.status_code == 409, resp.text
     assert resp.json()["error"]["code"] == "FINGERPRINT_MISMATCH"
     assert SECRET_VALUE not in resp.text
+
+
+# ─── 002 — 키 쌍 생성 실패를 읽을 수 있게 (DR-028~DR-031) ──────────────────
+
+
+def test_short_passphrase_is_rejected_in_contract_shape(client: TestClient) -> None:
+    """사용자가 겪은 "422 에러" 의 실체.
+
+    제약 자체는 유지한다 — 8자 미만 암호구절을 받아들이는 것은 개선이 아니다. 바뀌는
+    것은 **알리는 방식**이다. 이전에는 FastAPI 기본 형태가 나가 프런트엔드가 읽지
+    못했고, 사용자에게는 "요청이 실패했습니다 (422)." 한 문장만 남았다 (research R3).
+    """
+    resp = client.post("/api/keys/generate", json={"passphrase": "short"})
+
+    assert resp.status_code == 422, resp.text
+    body = resp.json()
+    assert "error" in body, f"계약 형태가 아니다: {body}"
+    assert body["error"]["code"] == "DEFINITION_INVALID"
+    assert "8자 이상" in body["error"]["message"], body["error"]["message"]
+    assert "422" not in body["error"]["message"], "원시 상태 코드를 노출했다 (SC-107)"
+
+
+def test_generate_without_passphrase_succeeds(client: TestClient) -> None:
+    """DR-028 — 기본 경로가 성공한다."""
+    resp = client.post("/api/keys/generate", json={"passphrase": None})
+
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["private_key_present"] is True
+    assert resp.json()["passphrase_protected"] is False
+
+
+def test_generate_with_valid_passphrase_succeeds(client: TestClient) -> None:
+    resp = client.post("/api/keys/generate", json={"passphrase": "long-enough-pass"})
+
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["passphrase_protected"] is True
+
+
+def test_duplicate_generate_is_readable(client: TestClient) -> None:
+    """DR-030 — 이미 있다는 사실을 사람이 읽을 수 있는 문장으로."""
+    client.post("/api/keys/generate", json={"passphrase": None})
+
+    resp = client.post("/api/keys/generate", json={"passphrase": None})
+
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "KEY_ALREADY_EXISTS"
+    assert resp.json()["error"]["message"], "사유가 비어 있다"
+
+
+def test_unwritable_key_directory_is_reported_not_crashed(
+    client: TestClient, tmp_path: pathlib.Path
+) -> None:
+    """DR-030 — 권한 문제가 500 "예상하지 못한 오류" 로 나가면 조치할 수 없다."""
+    from itb.secrets.keys import KeyPaths
+
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0o500)
+    client.app.state.itb.key_paths = KeyPaths(locked / "keys")
+    try:
+        resp = client.post("/api/keys/generate", json={"passphrase": None})
+
+        assert resp.status_code == 400, resp.text
+        assert "권한" in resp.json()["error"]["message"] or "확인" in resp.json()["error"]["message"]
+    finally:
+        locked.chmod(0o700)

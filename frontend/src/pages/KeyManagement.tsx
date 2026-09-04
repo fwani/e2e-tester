@@ -58,6 +58,8 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
   };
 
   const hasKeys = status?.private_key_present === true;
+  /** 서버의 제약과 같은 값이다 (`GenerateKeyRequest.passphrase`, min_length=8). */
+  const tooShort = passphrase !== "" && passphrase.length < 8;
 
   return (
     <main style={{ maxWidth: 720, margin: "32px auto", padding: "0 16px" }}>
@@ -167,13 +169,27 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
             value={passphrase}
             onChange={(e) => setPassphrase(e.target.value)}
             placeholder="비워 두면 암호구 없이 저장합니다"
+            aria-describedby="passphrase-rule"
           />
+          {/*
+            DR-029 — 제약을 **제출 전에** 알린다. 이 안내가 없어서 사용자가 짧은
+            암호구를 넣고 원인을 알 수 없는 422 를 받았다 (research R3).
+          */}
+          <p
+            id="passphrase-rule"
+            style={{ margin: 0, fontSize: 12, color: tooShort ? "#A83A22" : "#6B675C" }}
+          >
+            {tooShort
+              ? `암호구는 8자 이상이어야 합니다. 지금 ${passphrase.length}자입니다.`
+              : "암호구를 걸려면 8자 이상 200자 이하로 적으세요."}
+          </p>
           <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
             암호구를 걸면 비밀키 파일이 잠깁니다. 잊으면 보관된 값을 읽을 수 없고, 제품이
             복구해 줄 방법은 없습니다.
           </p>
           <div>
-            <button disabled={busy} onClick={generate}>
+            {/* 제약에 맞지 않으면 제출 자체를 막는다 — 실패를 겪게 할 이유가 없다. */}
+            <button disabled={busy || tooShort} onClick={generate}>
               키 쌍 만들기
             </button>
           </div>

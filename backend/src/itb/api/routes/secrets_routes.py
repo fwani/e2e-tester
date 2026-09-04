@@ -90,10 +90,31 @@ async def key_status(state: State) -> KeyStatusResponse:
 
 @router.post("/keys/generate", status_code=201)
 async def generate_key(body: GenerateKeyRequest, state: State) -> KeyStatusResponse:
+    """키 쌍을 만든다. DR-028·DR-030.
+
+    **실패를 사용자가 조치할 수 있는 문장으로 돌려준다.** 이전에는 쓰기 권한이 없으면
+    `OSError` 가 그대로 올라가 500 + "예상하지 못한 오류" 가 됐고, 사용자는 무엇이
+    문제인지 알 수 없었다.
+
+    암호구절 길이 위반(8자 미만)은 요청 검증에서 걸린다. 그쪽은 `app.py` 의
+    `RequestValidationError` 핸들러가 계약 형태로 바꾼다 (research R3).
+    """
     try:
         generate(state.key_paths, passphrase=body.passphrase)
     except KeyStoreError as exc:
         raise conflict(ErrorCode.KEY_ALREADY_EXISTS, str(exc)) from exc
+    except PermissionError as exc:
+        raise bad_request(
+            ErrorCode.INVALID_PATH,
+            f"키를 저장할 권한이 없습니다: {state.key_paths.directory}. "
+            "이 디렉터리의 쓰기 권한을 확인하세요.",
+        ) from exc
+    except OSError as exc:
+        raise bad_request(
+            ErrorCode.INVALID_PATH,
+            f"키를 저장할 수 없습니다: {exc.strerror or exc}. "
+            f"저장 위치({state.key_paths.directory})를 확인하세요.",
+        ) from exc
     return await key_status(state)
 
 
