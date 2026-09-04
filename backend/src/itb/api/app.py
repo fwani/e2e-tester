@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -31,6 +32,9 @@ from itb.api.state import BIND_HOST, BIND_PORT, AppState, get_state
 from itb.api.ws.session_events import EventBroker
 from itb.execution.session import SessionManager
 from itb.secrets.keys import DEFAULT_KEY_DIR, KeyPaths
+
+# 처리되지 않은 오류는 응답에 스택을 싣지 않는다. 진단은 서버 로그가 맡는다 (003 EC-005).
+logger = logging.getLogger(__name__)
 
 ROUTERS = (
     project.router,
@@ -91,10 +95,16 @@ def create_app() -> FastAPI:
     async def _unhandled(_request: Request, exc: Exception) -> JSONResponse:
         """처리되지 않은 오류도 계약 형태로 내보낸다 (FR-087).
 
+        코드는 **``INTERNAL_ERROR`` 전용이다** (003 EC-003). 003 이전에는
+        ``DEFINITION_INVALID`` 를 썼는데, 그 코드는 사용자가 잘못된 정의를 넣어
+        **정상적으로 거부당했을 때**도 쓰인다. 받는 쪽은 "내가 고칠 수 있는 것" 과
+        "제품이 깨진 것" 을 구별할 수 없었다 — 이 라운드가 존재하는 이유다.
+
         스택이나 내부 경로를 노출하지 않는다. 서버 로그에는 남는다.
         """
+        logger.exception("처리되지 않은 오류", exc_info=exc)
         body = ErrorBody(
-            code=ErrorCode.DEFINITION_INVALID,
+            code=ErrorCode.INTERNAL_ERROR,
             message="예상하지 못한 오류가 발생했습니다. 서버 로그를 확인하세요.",
             detail={"kind": type(exc).__name__},
         )

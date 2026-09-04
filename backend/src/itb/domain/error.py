@@ -1,0 +1,201 @@
+"""오류 계약의 **유일한 권위 정의**. 헌법 Cross-language schema duty.
+
+    { "error": {
+        "code": "STEP_LIST_EMPTY",
+        "category": "blocked",
+        "message": "Step이 없어 저장할 수 없습니다.",
+        "next_action": "브라우저에서 동작을 기록하거나 Step을 추가한 뒤 다시 저장하세요.",
+        "detail": {}
+    } }
+
+여기서 JSON Schema 를 내보내고 프론트엔드는 그것으로 TypeScript 타입을 생성한다
+(`itb.schema.export` → `backend/schema/error-response.schema.json`). 프론트엔드가
+`ErrorCode` 목록을 손으로 복제하던 것을 이 파이프라인이 대체한다 (003 EC-006).
+
+**분류(`category`)는 호출부가 정하지 않는다.** `code` 로부터 `CATEGORY` 대응표를 통해
+결정된다 — 손으로 적으면 코드와 어긋나고, 어긋난 분류는 분류가 없는 것보다 나쁘다.
+
+메시지는 **사용자에게 그대로 보여줄 수 있어야 한다.** 내부 스택이나 경로를 노출하지 않고,
+무엇을 해야 하는지 알려준다 (003 EC-005).
+"""
+
+from __future__ import annotations
+
+from enum import StrEnum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, model_validator
+
+
+class Category(StrEnum):
+    """오류가 "내가 고칠 수 있는 것"인지에 답한다 (003 EC-001).
+
+    값이 둘뿐인 것은 의도적이다. 목적이 "사용자가 할 일이 있는가"에 답하는 것이고
+    답은 예/아니오 둘뿐이다. 판단이 서지 않는 오류는 ``BROKEN`` 이다 — 제품이 스스로를
+    설명하지 못한 것이므로.
+    """
+
+    BLOCKED = "blocked"
+    """제품이 규칙에 따라 **의도적으로 거절**했다. 사용자가 고쳐 다시 하면 된다."""
+
+    BROKEN = "broken"
+    """제품이 **처리하지 못했다**. 사용자가 할 수 있는 일이 없다."""
+
+
+class ErrorCode(StrEnum):
+    # 프로젝트
+    PROJECT_NOT_OPEN = "PROJECT_NOT_OPEN"
+    PROJECT_ALREADY_EXISTS = "PROJECT_ALREADY_EXISTS"
+    PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND"
+    INVALID_PATH = "INVALID_PATH"
+
+    # 테스트
+    TEST_NOT_FOUND = "TEST_NOT_FOUND"
+    STEP_LIST_EMPTY = "STEP_LIST_EMPTY"
+    DEFINITION_INVALID = "DEFINITION_INVALID"
+
+    # 세션
+    SESSION_NOT_FOUND = "SESSION_NOT_FOUND"
+    SESSION_ALREADY_ACTIVE = "SESSION_ALREADY_ACTIVE"
+    SESSION_LOST = "SESSION_LOST"
+    NOT_PAUSED = "NOT_PAUSED"
+    INVALID_TRANSITION = "INVALID_TRANSITION"
+    TAB_NOT_FOUND = "TAB_NOT_FOUND"
+    TAB_LIMIT_REACHED = "TAB_LIMIT_REACHED"
+
+    # 비밀 값·키
+    KEY_MISSING = "KEY_MISSING"
+    KEY_ALREADY_EXISTS = "KEY_ALREADY_EXISTS"
+    PASSPHRASE_REQUIRED = "PASSPHRASE_REQUIRED"
+    PASSPHRASE_INVALID = "PASSPHRASE_INVALID"
+    DECRYPT_FAILED = "DECRYPT_FAILED"
+    FINGERPRINT_MISMATCH = "FINGERPRINT_MISMATCH"
+    SECRET_NOT_FOUND = "SECRET_NOT_FOUND"
+
+    # 미지원
+    NOT_SUPPORTED = "NOT_SUPPORTED"
+
+    # 내부 — 처리되지 않은 오류 (003 EC-003)
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+    """처리되지 않은 오류 **전용**.
+
+    003 이전에는 최종 처리기가 ``DEFINITION_INVALID`` 를 썼다. 그 코드는 사용자가
+    잘못된 정의를 넣어 **정상적으로 거부당했을 때**도 쓰인다. 하나의 코드가 두 분류에
+    걸치면 분류 자체가 성립하지 않으므로 코드를 나눈다.
+    """
+
+
+# ─── 코드 → 분류 전수 대응표 (003 EC-001·RG-104-1) ─────────────────────────
+#
+# 모든 ErrorCode 가 정확히 하나의 분류를 가진다. 코드를 추가하고 여기에 넣지 않으면
+# tests/abnormal/test_error_contract.py 가 실패한다.
+
+CATEGORY: dict[ErrorCode, Category] = {
+    # 프로젝트 — 사용자가 대상을 고르거나 만들면 된다
+    ErrorCode.PROJECT_NOT_OPEN: Category.BLOCKED,
+    ErrorCode.PROJECT_ALREADY_EXISTS: Category.BLOCKED,
+    ErrorCode.PROJECT_NOT_FOUND: Category.BLOCKED,
+    ErrorCode.INVALID_PATH: Category.BLOCKED,
+    # 테스트 — 사용자가 내용을 고치면 된다
+    ErrorCode.TEST_NOT_FOUND: Category.BLOCKED,
+    ErrorCode.STEP_LIST_EMPTY: Category.BLOCKED,
+    ErrorCode.DEFINITION_INVALID: Category.BLOCKED,
+    # 세션 — 순서를 바꾸거나 기다리면 된다
+    ErrorCode.SESSION_NOT_FOUND: Category.BLOCKED,
+    ErrorCode.SESSION_ALREADY_ACTIVE: Category.BLOCKED,
+    ErrorCode.NOT_PAUSED: Category.BLOCKED,
+    ErrorCode.INVALID_TRANSITION: Category.BLOCKED,
+    ErrorCode.TAB_NOT_FOUND: Category.BLOCKED,
+    ErrorCode.TAB_LIMIT_REACHED: Category.BLOCKED,
+    # 세션 상실 — 브라우저가 사라진 것은 대개 바깥 사정이다. 제품은 그것을 옮겨 전할 뿐이고
+    # 사용자에게는 할 일이 있다(기록한 Step 을 저장하고 새 세션을 연다). 그래서 BLOCKED 다.
+    # 제품이 스스로 브라우저를 잃은 경우는 그 지점에서 INTERNAL_ERROR 로 드러난다.
+    ErrorCode.SESSION_LOST: Category.BLOCKED,
+    # 비밀 값·키 — 사용자가 키·암호구를 다루면 된다
+    ErrorCode.KEY_MISSING: Category.BLOCKED,
+    ErrorCode.KEY_ALREADY_EXISTS: Category.BLOCKED,
+    ErrorCode.PASSPHRASE_REQUIRED: Category.BLOCKED,
+    ErrorCode.PASSPHRASE_INVALID: Category.BLOCKED,
+    ErrorCode.DECRYPT_FAILED: Category.BLOCKED,
+    ErrorCode.FINGERPRINT_MISMATCH: Category.BLOCKED,
+    ErrorCode.SECRET_NOT_FOUND: Category.BLOCKED,
+    # 미지원 — 다른 방법을 쓰면 된다
+    ErrorCode.NOT_SUPPORTED: Category.BLOCKED,
+    # 내부 — 사용자가 할 수 있는 일이 없다
+    ErrorCode.INTERNAL_ERROR: Category.BROKEN,
+}
+
+
+# ─── 코드 → 기본 다음 행동 (003 EC-004) ────────────────────────────────────
+#
+# 호출부가 상황에 맞는 문구로 덮어쓸 수 있다. 비어 있을 수는 없다.
+
+NEXT_ACTION: dict[ErrorCode, str] = {
+    ErrorCode.PROJECT_NOT_OPEN: "먼저 프로젝트를 열거나 새로 만드세요.",
+    ErrorCode.PROJECT_ALREADY_EXISTS: "다른 이름을 쓰거나 기존 프로젝트를 여세요.",
+    ErrorCode.PROJECT_NOT_FOUND: "경로를 확인하거나 목록에서 다른 프로젝트를 고르세요.",
+    ErrorCode.INVALID_PATH: "프로젝트 폴더 안의 경로를 지정하세요.",
+    ErrorCode.TEST_NOT_FOUND: "목록을 새로 고친 뒤 다시 고르세요. 이미 지워졌을 수 있습니다.",
+    ErrorCode.STEP_LIST_EMPTY: "브라우저에서 동작을 기록하거나 Step을 추가한 뒤 다시 저장하세요.",
+    ErrorCode.DEFINITION_INVALID: "표시된 항목을 규격에 맞게 고친 뒤 다시 시도하세요.",
+    ErrorCode.SESSION_NOT_FOUND: "세션이 이미 끝났습니다. 새 세션을 시작하세요.",
+    ErrorCode.SESSION_ALREADY_ACTIVE: "진행 중인 세션을 끝내거나 그 세션으로 이동하세요.",
+    ErrorCode.SESSION_LOST: "기록된 Step은 남아 있습니다. 저장한 뒤 새 세션을 시작하세요.",
+    ErrorCode.NOT_PAUSED: "먼저 일시정지한 뒤 다시 시도하세요.",
+    ErrorCode.INVALID_TRANSITION: "지금 가능한 동작 중에서 고르세요.",
+    ErrorCode.TAB_NOT_FOUND: "탭 목록을 새로 고친 뒤 다시 고르세요. 이미 닫혔을 수 있습니다.",
+    ErrorCode.TAB_LIMIT_REACHED: "쓰지 않는 탭을 닫은 뒤 다시 시도하세요.",
+    ErrorCode.KEY_MISSING: "키 관리 화면에서 키 쌍을 먼저 만드세요.",
+    ErrorCode.KEY_ALREADY_EXISTS: "기존 키를 쓰거나, 교체하려면 키 교체를 쓰세요.",
+    ErrorCode.PASSPHRASE_REQUIRED: "암호구를 입력하세요.",
+    ErrorCode.PASSPHRASE_INVALID: "암호구를 다시 확인해 입력하세요.",
+    ErrorCode.DECRYPT_FAILED: "이 값을 암호화한 키와 암호구가 맞는지 확인하세요.",
+    ErrorCode.FINGERPRINT_MISMATCH: "이 값은 다른 키로 암호화됐습니다. 해당 키로 여세요.",
+    ErrorCode.SECRET_NOT_FOUND: "비밀 값 화면에서 이 이름의 값을 먼저 등록하세요.",
+    ErrorCode.NOT_SUPPORTED: "지원되는 다른 방법을 쓰세요.",
+    ErrorCode.INTERNAL_ERROR: (
+        "작업 내용은 그대로 있습니다. 화면을 새로 고쳐 이어서 진행하고, "
+        "계속 발생하면 서버 로그와 함께 알려주세요."
+    ),
+}
+
+
+class ErrorBody(BaseModel):
+    """오류 하나. ``category`` 는 ``code`` 에서 자동으로 채워진다."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: ErrorCode
+    category: Category
+    message: str
+    next_action: str
+    detail: dict[str, Any] = {}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _derive(cls, data: Any) -> Any:
+        """``code`` 에서 ``category`` 를 채우고 ``next_action`` 의 기본값을 넣는다.
+
+        ``category`` 는 호출부가 넘긴 값이 있어도 **대응표 값으로 덮어쓴다.** 이 필드의
+        값은 계약이 정하는 것이지 호출부가 정하는 것이 아니다 (003 EC-002).
+        """
+        if not isinstance(data, dict):
+            return data
+
+        raw = data.get("code")
+        try:
+            code = ErrorCode(raw)
+        except ValueError:
+            return data  # 코드가 유효하지 않으면 pydantic 이 그 자체를 오류로 알린다
+
+        out = dict(data)
+        out["category"] = CATEGORY[code]
+        if not out.get("next_action"):
+            out["next_action"] = NEXT_ACTION[code]
+        return out
+
+
+class ErrorResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    error: ErrorBody

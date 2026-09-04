@@ -6,41 +6,29 @@
  * 타입은 backend/schema 에서 생성된 것만 쓴다 — 손으로 정의하면 원칙 I 의
  * Cross-language schema duty 를 위반한다.
  */
+import type { Category, ErrorBody, ErrorCode } from "../types/generated/error-response";
 import type { RunResult } from "../types/generated/run-result";
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
 
-export type ErrorCode =
-  | "PROJECT_NOT_OPEN"
-  | "PROJECT_ALREADY_EXISTS"
-  | "PROJECT_NOT_FOUND"
-  | "INVALID_PATH"
-  | "TEST_NOT_FOUND"
-  | "STEP_LIST_EMPTY"
-  | "DEFINITION_INVALID"
-  | "SESSION_NOT_FOUND"
-  | "SESSION_ALREADY_ACTIVE"
-  | "SESSION_LOST"
-  | "NOT_PAUSED"
-  | "INVALID_TRANSITION"
-  | "TAB_NOT_FOUND"
-  | "TAB_LIMIT_REACHED"
-  | "KEY_MISSING"
-  | "KEY_ALREADY_EXISTS"
-  | "PASSPHRASE_REQUIRED"
-  | "PASSPHRASE_INVALID"
-  | "DECRYPT_FAILED"
-  | "FINGERPRINT_MISMATCH"
-  | "SECRET_NOT_FOUND"
-  | "NOT_SUPPORTED";
+// ErrorCode·Category 는 backend/src/itb/domain/error.py 에서 생성된다. 손으로 쓰지 않는다.
+export type { Category, ErrorBody, ErrorCode } from "../types/generated/error-response";
 
-/** 서버가 계약 형태로 보낸 오류. 메시지를 그대로 사용자에게 보여줄 수 있다. */
+/**
+ * 서버가 계약 형태로 보낸 오류. 메시지를 그대로 사용자에게 보여줄 수 있다.
+ *
+ * `category` 는 이 오류가 **막은 것**(사용자가 고칠 수 있다)인지 **깨진 것**(할 수 있는
+ * 일이 없다)인지를 말한다. 상태 코드로 유추하지 않는다 — 둘은 일대일이 아니다 (003 EC-002).
+ * 계약 형태가 아닌 응답(연결 실패 등)은 `code: "UNKNOWN"` 에 `category: "broken"` 이다.
+ */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: ErrorCode | "UNKNOWN",
     message: string,
     readonly detail: Record<string, unknown> = {},
+    readonly category: Category = "broken",
+    readonly nextAction: string = "",
   ) {
     super(message);
     this.name = "ApiError";
@@ -59,12 +47,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const body: unknown = text ? JSON.parse(text) : null;
 
   if (!resp.ok) {
-    const err = (body as { error?: { code?: ErrorCode; message?: string; detail?: Record<string, unknown> } })?.error;
+    const err = (body as { error?: Partial<ErrorBody> })?.error;
     throw new ApiError(
       resp.status,
       err?.code ?? "UNKNOWN",
       err?.message ?? `요청이 실패했습니다 (${resp.status}).`,
-      err?.detail ?? {},
+      (err?.detail ?? {}) as Record<string, unknown>,
+      // 계약 형태가 아니면 제품이 스스로를 설명하지 못한 것이므로 "깨진 것" 이다.
+      err?.category ?? "broken",
+      err?.next_action ?? "화면을 새로 고쳐 다시 시도하세요. 계속 발생하면 서버 로그를 확인하세요.",
     );
   }
   return body as T;

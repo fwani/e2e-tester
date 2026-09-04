@@ -1,0 +1,88 @@
+{
+  "$defs": {
+    "Category": {
+      "description": "오류가 \"내가 고칠 수 있는 것\"인지에 답한다 (003 EC-001).\n\n값이 둘뿐인 것은 의도적이다. 목적이 \"사용자가 할 일이 있는가\"에 답하는 것이고\n답은 예/아니오 둘뿐이다. 판단이 서지 않는 오류는 ``BROKEN`` 이다 — 제품이 스스로를\n설명하지 못한 것이므로.",
+      "enum": [
+        "blocked",
+        "broken"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "ErrorBody": {
+      "additionalProperties": false,
+      "description": "오류 하나. ``category`` 는 ``code`` 에서 자동으로 채워진다.",
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "detail": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Detail",
+          "type": "object"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "next_action": {
+          "title": "Next Action",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "category",
+        "message",
+        "next_action"
+      ],
+      "title": "ErrorBody",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "enum": [
+        "PROJECT_NOT_OPEN",
+        "PROJECT_ALREADY_EXISTS",
+        "PROJECT_NOT_FOUND",
+        "INVALID_PATH",
+        "TEST_NOT_FOUND",
+        "STEP_LIST_EMPTY",
+        "DEFINITION_INVALID",
+        "SESSION_NOT_FOUND",
+        "SESSION_ALREADY_ACTIVE",
+        "SESSION_LOST",
+        "NOT_PAUSED",
+        "INVALID_TRANSITION",
+        "TAB_NOT_FOUND",
+        "TAB_LIMIT_REACHED",
+        "KEY_MISSING",
+        "KEY_ALREADY_EXISTS",
+        "PASSPHRASE_REQUIRED",
+        "PASSPHRASE_INVALID",
+        "DECRYPT_FAILED",
+        "FINGERPRINT_MISMATCH",
+        "SECRET_NOT_FOUND",
+        "NOT_SUPPORTED",
+        "INTERNAL_ERROR"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "error": {
+      "$ref": "#/$defs/ErrorBody"
+    }
+  },
+  "required": [
+    "error"
+  ],
+  "title": "ErrorResponse",
+  "type": "object"
+}

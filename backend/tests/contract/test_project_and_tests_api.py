@@ -80,13 +80,22 @@ def _write_test(client: TestClient, tmp_path: pathlib.Path, test_id: str, name: 
 
 
 def test_error_shape_is_contract_compliant(client: TestClient) -> None:
+    """003 에서 `category` 와 `next_action` 이 계약에 더해졌다.
+
+    분류는 이 오류가 **막은 것**(사용자가 고칠 수 있다)인지 **깨진 것**(할 수 있는 일이
+    없다)인지를 말한다. 상태 코드로 유추하지 않고 응답에서 읽는다 (003 EC-002).
+    """
     resp = client.get("/api/project")
     assert resp.status_code == 404
     body = resp.json()
     assert set(body) == {"error"}
-    assert set(body["error"]) == {"code", "message", "detail"}
+    assert set(body["error"]) == {"code", "category", "message", "next_action", "detail"}
     assert body["error"]["code"] == "PROJECT_NOT_OPEN"
     assert body["error"]["message"]
+    # 프로젝트가 열려 있지 않은 것은 사용자가 고칠 수 있는 일이다.
+    assert body["error"]["category"] == "blocked"
+    # 다음 행동은 비어 있을 수 없다 (003 EC-004).
+    assert body["error"]["next_action"]
 
 
 def test_operations_without_project_are_rejected(client: TestClient) -> None:

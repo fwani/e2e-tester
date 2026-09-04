@@ -14,6 +14,7 @@ cd ../frontend && npm run gen:types
 
 ## 파일
 
+- `error-response.d.ts`
 - `project.d.ts`
 - `run-result.d.ts`
 - `step-dsl.d.ts`
