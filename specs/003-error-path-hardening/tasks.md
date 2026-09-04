@@ -56,13 +56,17 @@ description: "Task list for 003 이상 경로 견고성 (비정상 조작 결함
 
 **이 단계가 없으면 시나리오를 한 건도 돌릴 수 없다.**
 
-- [ ] T008 [US1] `backend/tests/abnormal/catalogue.py` — `specs/003-error-path-hardening/contracts/abnormal-scenarios.json` 로더, 판정 3축 헬퍼(`assert_axis1/2/3`), 그리고 식별자로 실행 수단을 등록하는 레지스트리(`@driver("AS-001")`)를 만든다. 실패 메시지에 시나리오 식별자와 **어긋난 축**을 싣는다
-- [ ] T009 [US1] `backend/tests/abnormal/test_catalogue.py` — ① 12개 조합이 각 3건 이상, 식별자 중복 없음, 필드 누락 없음 (SC-206) ② **목록의 모든 시나리오에 실행 수단이 등록되어 있는지** 확인한다. 등록되지 않은 항목은 실패다 (RG-106·SC-211)
+- [X] T008 [US1] `backend/tests/abnormal/catalogue.py` — `specs/003-error-path-hardening/contracts/abnormal-scenarios.json` 로더, 판정 3축 헬퍼(`assert_axis1/2/3`), 그리고 식별자로 실행 수단을 등록하는 레지스트리(`@driver("AS-001")`)를 만든다. 실패 메시지에 시나리오 식별자와 **어긋난 축**을 싣는다
+- [X] T009 [US1] `backend/tests/abnormal/test_catalogue.py` — ① 12개 조합이 각 3건 이상, 식별자 중복 없음, 필드 누락 없음 (SC-206) ② **목록의 모든 시나리오에 실행 수단이 등록되어 있는지** 확인한다. 등록되지 않은 항목은 실패다 (RG-106·SC-211)
 - [ ] T010 [P] [US4] `backend/tests/abnormal/fakes.py` — AI 클라이언트 대역(오류를 던지는 것 · 형식이 깨진 응답 · 시간을 끄는 것). `itb.llm.client.create_client` 를 대체한다. **제품에 실패 주입 스위치를 넣지 않는다** (헌법 원칙 II)
 - [ ] T011 [P] [US4] `fixtures/sample-app/` 에 지연·무응답·오류를 내는 경로를 더한다. 제품 코드가 아니다
-- [ ] T012 [US3] `backend/tests/abnormal/product_ui.py` — **제품 UI 를 실제로 띄우는 세션 범위 픽스처** (RG-105). 격리된 작업 디렉터리로 제품 서버를 띄우고, 제품 화면을 띄우고(기존 개발 서버 설정이 이미 `/api`·`/ws` 를 넘긴다), 둘 다 응답할 때까지 기다린 뒤 주소를 넘긴다. 도구·포트가 없으면 **건너뛰지 않고 실패**로 알린다 (RG-106)
+- [X] T012 [US3] `backend/tests/abnormal/product_ui.py` — **제품 UI 를 실제로 띄우는 세션 범위 픽스처** (RG-105). 격리된 작업 디렉터리로 제품 서버를 띄우고, 제품 화면을 띄우고(기존 개발 서버 설정이 이미 `/api`·`/ws` 를 넘긴다), 둘 다 응답할 때까지 기다린 뒤 주소를 넘긴다. 도구·포트가 없으면 **건너뛰지 않고 실패**로 알린다 (RG-106)
 
 **Checkpoint**: 시나리오를 목록에서 읽어 세 면 모두에서 돌릴 수 있다.
+
+T008·T009·T012 완료 (커밋 `fdfb4e4`). 제품 UI 스모크 통과 — 제목 `Interactive AI Test Builder`,
+실제 ProjectSetup 화면 텍스트를 읽었다. **이 저장소가 자기 UI 를 브라우저로 연 첫 사례다.**
+수단 등록 게이트는 현재 51건 전부에 대해 실패하고 있다 — 의도된 상태다 (RG-106).
 
 ---
 
