@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pathlib
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from itb.api.errors import ErrorCode, bad_request, not_found, not_implemented
@@ -171,12 +173,26 @@ async def get_result(test_id: str, state: State) -> RunResult:
     return result
 
 
+_ARTIFACT_MEDIA_TYPE = {
+    "screenshot": "image/png",
+    "console": "text/plain; charset=utf-8",
+    "network": "text/plain; charset=utf-8",
+}
+
+
 @router.get("/{test_id}/result/artifacts/{kind}")
 async def get_artifact(
     test_id: str,
     kind: Literal["screenshot", "console", "network", "trace"],
     state: State,
-) -> dict[str, str]:
+) -> FileResponse:
+    """산출물 **내용**을 돌려준다 — 경로가 아니다 (UX U-03).
+
+    예전에는 ``{"kind", "path"}`` JSON 을 돌려줬다. 화면은 그 경로를 ``<img src>`` 에
+    넣어 깨진 이미지를 그렸고, 로그 탭은 ``.runs/TC-001/console.log`` 라는 상대 경로 한
+    줄만 보여줬다. 결과 화면의 나머지는 다 살아 있는데 눈으로 확인하는 증거만 전부
+    죽어 있었다. 사용자는 프로젝트 폴더 절대 경로를 따로 기억해 파인더로 찾아야 했다.
+    """
     repo = state.require_repository()
     if kind == "trace":
         # MVP 미지원. `TRACE` 탭은 비활성으로 표시한다 (spec 디자인 차이 1).
@@ -198,4 +214,17 @@ async def get_artifact(
     path = mapping[kind]
     if path is None:
         raise not_found(ErrorCode.TEST_NOT_FOUND, f"{kind} 산출물이 없습니다.")
-    return {"kind": kind, "path": path}
+
+    # 결과 파일의 경로는 프로젝트 루트 기준 상대 경로다. 루트 밖을 가리키면 — 결과 파일이
+    # 손으로 고쳐졐 경우다 — 서빙하지 않는다 (FR-085 의 경계와 같은 이유).
+    root = repo.paths.root.resolve()
+    file = (root / path).resolve() if not pathlib.Path(path).is_absolute() else pathlib.Path(path)
+    if root not in file.parents:
+        raise bad_request(ErrorCode.INVALID_PATH, f"{kind} 산출물 경로가 프로젝트 밖을 가리킵니다.")
+    if not file.is_file():
+        raise not_found(
+            ErrorCode.TEST_NOT_FOUND,
+            f"{kind} 산출물 파일이 없습니다: {path}",
+            next_action="실행 산출물(.runs/)이 지워졌을 수 있습니다. 다시 실행하면 새로 남습니다.",
+        )
+    return FileResponse(file, media_type=_ARTIFACT_MEDIA_TYPE[kind])

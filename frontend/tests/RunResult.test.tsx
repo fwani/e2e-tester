@@ -94,13 +94,9 @@ function stubFetch(result: RunResultData) {
       );
     }
     if (url.includes("/artifacts/")) {
+      // 서버는 산출물 **본문**을 돌려준다 — 경로 JSON 이 아니다 (UX U-03).
       const kind = url.split("/artifacts/")[1];
-      return Promise.resolve(
-        new Response(
-          JSON.stringify({ kind, path: `.runs/TC-003/${kind}` }),
-          { status: 200 },
-        ),
-      );
+      return Promise.resolve(new Response(`${kind} 기록 첫 줄`, { status: 200 }));
     }
     return Promise.resolve(new Response("{}", { status: 200 }));
   });

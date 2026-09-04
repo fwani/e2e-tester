@@ -44,21 +44,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (resp.status === 204) return undefined as T;
 
   const text = await resp.text();
-  const body: unknown = text ? JSON.parse(text) : null;
+  if (!resp.ok) throw apiErrorFromBody(resp.status, text);
+  return (text ? JSON.parse(text) : null) as T;
+}
 
-  if (!resp.ok) {
-    const err = (body as { error?: Partial<ErrorBody> })?.error;
-    throw new ApiError(
-      resp.status,
-      err?.code ?? "UNKNOWN",
-      err?.message ?? `요청이 실패했습니다 (${resp.status}).`,
-      (err?.detail ?? {}) as Record<string, unknown>,
-      // 계약 형태가 아니면 제품이 스스로를 설명하지 못한 것이므로 "깨진 것" 이다.
-      err?.category ?? "broken",
-      err?.next_action ?? "화면을 새로 고쳐 다시 시도하세요. 계속 발생하면 서버 로그를 확인하세요.",
-    );
+/** 실패 응답 본문을 `ApiError` 로 바꾼다. 계약 형태가 아니어도 던질 수 있는 것을 만든다. */
+function apiErrorFromBody(status: number, text: string): ApiError {
+  let body: unknown = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = null; // 계약 형태가 아닌 본문(HTML 오류 페이지 등)
   }
-  return body as T;
+  const err = (body as { error?: Partial<ErrorBody> } | null)?.error;
+  return new ApiError(
+    status,
+    err?.code ?? "UNKNOWN",
+    err?.message ?? `요청이 실패했습니다 (${status}).`,
+    (err?.detail ?? {}) as Record<string, unknown>,
+    // 계약 형태가 아니면 제품이 스스로를 설명하지 못한 것이므로 "깨진 것" 이다.
+    err?.category ?? "broken",
+    err?.next_action ?? "화면을 새로 고쳐 다시 시도하세요. 계속 발생하면 서버 로그를 확인하세요.",
+  );
 }
 
 const get = <T,>(p: string) => request<T>(p);
@@ -194,8 +201,19 @@ export const tests = {
   remove: (id: string) => del<void>(`/api/tests/${id}`),
   /** 최근 실행 결과. 테스트당 1건만 보관된다 (FR-050~FR-054). */
   result: (id: string) => get<RunResult>(`/api/tests/${id}/result`),
-  artifact: (id: string, kind: ArtifactKind) =>
-    get<{ kind: string; path: string }>(`/api/tests/${id}/result/artifacts/${kind}`),
+  /**
+   * 산출물 주소. 서버가 **바이트**를 돌려주므로 스크린샷은 `<img src>` 에 그대로 넣는다.
+   * 예전에는 `{kind, path}` JSON 을 받아 그 상대 경로를 `src` 에 넣었고, 화면에는 깨진
+   * 이미지와 경로 문자열만 남았다 (UX U-03).
+   */
+  artifactUrl: (id: string, kind: ArtifactKind) => `/api/tests/${id}/result/artifacts/${kind}`,
+  /** 로그 산출물 본문. 실패는 계약 형태 오류로 온다. */
+  artifactText: async (id: string, kind: ArtifactKind): Promise<string> => {
+    const resp = await fetch(`/api/tests/${id}/result/artifacts/${kind}`);
+    const text = await resp.text();
+    if (!resp.ok) throw apiErrorFromBody(resp.status, text);
+    return text;
+  },
 };
 
 // ─── 세션 ───────────────────────────────────────────────────────────────────
@@ -295,7 +313,13 @@ export interface RepickResponse extends StepsResponse {
   message: string;
 }
 
+export interface SessionListResponse {
+  sessions: SessionView[];
+}
+
 export const sessions = {
+  /** 살아 있는 세션 전부. 새로고침으로 놓친 세션을 되찾는 길이다 (UX U-05). */
+  list: () => get<SessionListResponse>("/api/sessions"),
   create: (body: {
     mode: "record" | "replay" | "ai";
     test_id?: string | null;

@@ -11,7 +11,7 @@
  * 확정 디자인에 있는 것을 빼지 않으려고 그리되(DC-007), 비활성으로 둔다.
  */
 import { useCallback, useEffect, useState } from "react";
-import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import { ErrorNotice, describeError, localError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { tests, type ArtifactKind } from "../api/client";
@@ -60,7 +60,8 @@ export function RunResult({
   const [result, setResult] = useState<RunResultData | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [tab, setTab] = useState<ArtifactKind>("screenshot");
-  const [artifactPath, setArtifactPath] = useState<string | null>(null);
+  /** 스크린샷은 주소(`src`), 로그는 본문(`text`). 경로를 그리지 않는다 (UX U-03). */
+  const [artifact, setArtifact] = useState<{ src?: string; text?: string } | null>(null);
   const [artifactError, setArtifactError] = useState<ErrorInfo | null>(null);
 
   useEffect(() => {
@@ -73,12 +74,17 @@ export function RunResult({
   const loadArtifact = useCallback(
     (kind: ArtifactKind) => {
       setTab(kind);
-      setArtifactPath(null);
+      setArtifact(null);
       setArtifactError(null);
       if (kind === "trace") return; // 비활성 탭은 요청하지 않는다
+      if (kind === "screenshot") {
+        // 이미지는 브라우저가 직접 받는다. 실패는 <img onError> 가 잡는다.
+        setArtifact({ src: tests.artifactUrl(testId, kind) });
+        return;
+      }
       void tests
-        .artifact(testId, kind)
-        .then((a) => setArtifactPath(a.path))
+        .artifactText(testId, kind)
+        .then((text) => setArtifact({ text }))
         .catch((exc: unknown) =>
           setArtifactError(describeError(exc)),
         );
@@ -411,17 +417,29 @@ export function RunResult({
                 <div style={{ padding: 20 }}>
                   <ErrorNotice error={artifactError} compact />
                 </div>
-              ) : artifactPath === null ? (
+              ) : artifact === null ? (
                 <p style={{ padding: 20, color: "#9A968A" }}>불러오는 중…</p>
               ) : tab === "screenshot" ? (
                 <img
-                  src={artifactPath}
+                  src={artifact.src}
                   alt={`step ${failedIndex === null ? "—" : String(failedIndex + 1).padStart(2, "0")} 실패 시점`}
                   style={{ width: "100%", height: "auto", display: "block" }}
+                  onError={() =>
+                    // 깨진 이미지 아이콘을 남기지 않는다 — 무엇이 없는지 말한다.
+                    setArtifactError(
+                      localError(
+                        "실패 시점 스크린샷 파일을 불러올 수 없습니다.",
+                        "실행 산출물(.runs/)이 지워졌을 수 있습니다. 다시 실행하면 새로 남습니다.",
+                      ),
+                    )
+                  }
                 />
               ) : (
-                <pre style={{ margin: 0, padding: 16, font: `400 12px/1.6 ${MONO}`, whiteSpace: "pre-wrap" }}>
-                  {artifactPath}
+                <pre
+                  data-artifact-text
+                  style={{ margin: 0, padding: 16, font: `400 12px/1.6 ${MONO}`, whiteSpace: "pre-wrap" }}
+                >
+                  {artifact.text === "" ? "(기록이 비어 있습니다)" : artifact.text}
                 </pre>
               )}
             </div>
