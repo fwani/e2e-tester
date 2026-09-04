@@ -1,47 +1,80 @@
 /**
- * 디자인 토큰. docs/design/*.dc.html 에서 추출했다 (T046).
+ * 디자인 토큰. `docs/design/*.dc.html` 8종에서 **기계적으로 추출한 값만** 담는다.
  *
- * 확정 디자인에 없는 화면(프로젝트 생성·키 관리·비밀 값·탭 선택)도 이 토큰을 써서
- * 같은 시각 언어를 따른다 (spec 디자인 차이 3).
+ * 002 라운드에서 재작성했다. 이전 판은 팔레트를 정확히 옮겨 놓고 기하(모서리·테두리
+ * 두께·그림자)를 지어냈다 — 확정 디자인에 `border-radius` 가 0회인데 `--radius: 10px`
+ * 를 두었고, 테두리가 3px·2px 인데 1px 을 썼고, 하드 오프셋 그림자 26회를 통째로
+ * 빠뜨렸다. 그것이 "개발자만의 해석" 의 실체다 (research R6).
+ *
+ * **규칙: dc.html 에 나타나지 않는 값을 토큰으로 만들지 않는다** (DC-001·DC-007).
+ * `--radius` 가 그렇게 들어왔다. 값을 추가하려면 먼저 확정 디자인에서 그 값을 찾아라.
+ *
+ * 값의 출처는 `scripts/design_baseline.py --json` 으로 언제든 다시 확인할 수 있다.
  */
+
 :root {
-  /* 종이·잉크 — 따뜻한 오프화이트 배경에 거의 검정 잉크 */
-  --ink: #14130f;
+  /* ─── 종이·잉크 ─────────────────────────────────────────────────────────
+     확정 디자인 8종 실측 등장 횟수를 주석에 남긴다. 팔레트는 이전 판에서
+     이미 정확했다 — 이 블록은 값이 바뀌지 않았다. */
+  --ink: #14130f;            /* 253회 — 텍스트·테두리·그림자 */
   --ink-soft: #2a2823;
-  --paper: #fffdf6;
+  --paper: #fffdf6;          /* 98회 — 카드 표면 */
   --paper-alt: #f6f4ee;
-  --surface: #efebe0;
+  --surface: #efebe0;        /* 45회 — 화면 배경 */
   --surface-soft: #f5f2e9;
 
-  --muted: #6b675c;
-  --dim: #9a968a;
+  --muted: #6b675c;          /* 95회 — 보조 텍스트 */
+  --dim: #9a968a;            /* 33회 — 흐린 텍스트 */
   --faint: #8e897c;
-  --border: #dcd8cc;
+  --border: #dcd8cc;         /* 49회 — 약한 구분선 */
   --border-strong: #c9c4b4;
 
   /* 상태 */
-  --pass: #2e9455;
-  --fail: #d9502f;
+  --pass: #2e9455;           /* 26회 */
+  --fail: #d9502f;           /* 24회 */
   --fail-dark: #a83a22;
   --fail-tint: #fbeeea;
-  --warn: #f5d000;
+  --warn: #f5d000;           /* 24회 — 강조 노랑 */
   --warn-tint: #fff9d6;
 
   /* AI — 사람 작성과 구분하는 유일한 색 (원칙 I: 구조는 같고 표시만 다르다) */
-  --ai: #7c4ddb;
+  --ai: #7c4ddb;             /* 20회 */
   --ai-dark: #5a31b8;
   --ai-tint: #f0ebfc;
 
+  /* ─── 기하 ────────────────────────────────────────────────────────────
+     여기가 이전 판에서 어긋난 곳이다. */
+
+  /* 테두리 — 확정 디자인은 3px(67회)와 2px(43회) 두 가지만 쓴다. 1px 은 없다. */
+  --rule: 3px;               /* 주 구획: 화면 영역, 카드, 버튼, 입력 */
+  --rule-sub: 2px;           /* 부 구획: 뱃지, 칩, 내부 분할 */
+
+  /* 하드 오프셋 그림자 — 26회 등장하는 핵심 시각 장치다.
+     `0 2px 6px rgba(...)` 같은 부드러운 그림자가 아니다. 흐림 반경이 0이다. */
+  --lift: 5px 5px 0 var(--ink);          /* 11회 — 가장 흔하다 */
+  --lift-accent: 5px 5px 0 var(--warn);  /*  5회 — 주 동작 버튼 */
+  --lift-sm: 4px 4px 0 var(--ink);       /*  4회 */
+  --lift-lg: 6px 6px 0 var(--ink);       /*  4회 */
+
+  /* 떠 있는 요소 전용 부드러운 그림자. 확정 디자인에서 딱 두 번 쓰인다. */
+  --float: 0 18px 40px rgba(20, 19, 15, 0.22);
+  --float-sm: 0 12px 26px rgba(20, 19, 15, 0.2);
+
+  /* ─── 글꼴 ────────────────────────────────────────────────────────────
+     대체 글꼴 순서를 확정 디자인 그대로 쓴다. 웹폰트를 못 불러올 때
+     무엇으로 떨어지는지도 디자인의 일부다. */
   --font-display: "Black Han Sans", "Arial Black", Impact, sans-serif;
-  --font-body: "IBM Plex Sans KR", system-ui, -apple-system, sans-serif;
+  --font-body: "IBM Plex Sans KR", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --radius: 10px;
-  --radius-sm: 6px;
   --gap: 12px;
 }
 
-* { box-sizing: border-box; }
+/* `--radius` 는 없다. 확정 디자인 8종에 `radius` 라는 문자열이 0회 등장한다.
+   모든 모서리가 직각이다. 이것은 누락이 아니라 디자인이다 (DC-004).
+   회귀 가드: frontend/tests/DesignTokens.test.tsx */
+
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -49,59 +82,100 @@ body {
   font-size: 14px;
   line-height: 1.55;
   color: var(--ink);
-  background: var(--paper);
+  background: var(--surface); /* dc.html 의 화면 배경은 #EFEBE0 다 (--paper 가 아니다) */
   -webkit-font-smoothing: antialiased;
 }
 
+a { color: var(--ai); text-decoration: none; }
+a:hover { color: var(--ai-dark); }
+
+/* ─── 기본 컨트롤 ──────────────────────────────────────────────────────────
+   dc.html 의 버튼은 높이 44~46px, 좌우 여백 18px, 3px 테두리, 하드 그림자다.
+   예: `height: 44px; padding: 0 18px; background: #14130F; color: #F5F2E9;
+        border: 3px solid #14130F; box-shadow: 5px 5px 0 #F5D000` */
+
 button {
-  font: inherit;
+  font: 600 15px/1 var(--font-body);
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--ink);
+  height: 44px;
+  padding: 0 18px;
+  border: var(--rule) solid var(--ink);
   background: var(--ink);
-  color: var(--paper);
-  padding: 7px 14px;
+  color: var(--surface-soft);
+  box-shadow: var(--lift-accent);
 }
-button:disabled { opacity: 0.45; cursor: not-allowed; }
-button.secondary { background: var(--paper); color: var(--ink); border-color: var(--border-strong); }
-button.ghost { background: transparent; color: var(--muted); border-color: transparent; }
-button.danger { background: var(--fail); border-color: var(--fail); }
+button:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--warn); }
+button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+button.secondary {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--lift);
+}
+button.secondary:active { box-shadow: 3px 3px 0 var(--ink); }
+
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+  border-color: transparent;
+  box-shadow: none;
+}
+button.ghost:active { transform: none; }
+
+button.danger {
+  background: var(--fail);
+  color: var(--paper);
+  box-shadow: var(--lift);
+}
+button.danger:active { box-shadow: 3px 3px 0 var(--ink); }
 
 input, select, textarea {
-  font: inherit;
+  font: 400 15px/1.4 var(--font-body);
   width: 100%;
-  padding: 7px 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  min-height: 46px;
+  padding: 0 14px;
+  border: var(--rule) solid var(--ink);
   background: var(--paper);
   color: var(--ink);
 }
+textarea { padding: 12px 14px; line-height: 1.5; }
+input::placeholder, textarea::placeholder { color: var(--dim); }
 
-label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+label {
+  display: block;
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin: 14px 0 6px;
+  text-transform: uppercase;
+}
+
 code, .mono { font-family: var(--font-mono); font-size: 12px; }
+
+/* ─── 뱃지 ────────────────────────────────────────────────────────────────
+   dc.html 의 상태 칩은 채운 배경 + 2px 테두리 + 직각이다.
+   예: `background: #D9502F; color: #FFFDF6; border: 2px solid #14130F;
+        font: 700 10px/1 'IBM Plex Mono'; letter-spacing: 0.06em` */
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  padding: 2px 7px;
-  border-radius: 999px;
-  border: 1px solid var(--border-strong);
+  font: 700 10px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  padding: 5px 8px;
+  border: var(--rule-sub) solid var(--ink);
   background: var(--surface-soft);
-  color: var(--muted);
+  color: var(--ink);
 }
-.badge.pass { color: #1c6b3b; border-color: #a9d9bd; background: #eaf6ef; }
-.badge.fail { color: var(--fail-dark); border-color: #efc0b3; background: var(--fail-tint); }
-.badge.ai { color: var(--ai-dark); border-color: #cdb9f2; background: var(--ai-tint); }
-.badge.warn { color: #6b5a00; border-color: #e8d888; background: var(--warn-tint); }
+.badge.pass { background: var(--pass); color: var(--paper); }
+.badge.fail { background: var(--fail); color: var(--paper); }
+.badge.ai { background: var(--ai); color: var(--paper); }
+.badge.warn { background: var(--warn); color: var(--ink); }
 
 .card {
   background: var(--paper);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: var(--rule) solid var(--ink);
   padding: 18px;
 }
 

@@ -15,10 +15,17 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from playwright.async_api import async_playwright
 
-from itb.api.errors import ApiError, ErrorBody, ErrorCode, ErrorResponse
+from itb.api.errors import (
+    ApiError,
+    ErrorBody,
+    ErrorCode,
+    ErrorResponse,
+    validation_error_response,
+)
 from itb.api.routes import project, secrets_routes, sessions, steps, tabs, tests
 from itb.api.state import BIND_HOST, BIND_PORT, AppState, get_state
 from itb.api.ws.session_events import EventBroker
@@ -64,6 +71,19 @@ def create_app() -> FastAPI:
     @app.exception_handler(ApiError)
     async def _api_error(_request: Request, exc: ApiError) -> JSONResponse:
         return JSONResponse(status_code=exc.status_code, content=exc.detail)
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation(_request: Request, exc: RequestValidationError) -> JSONResponse:
+        """요청 검증 실패도 계약 형태로 내보낸다 (DR-022·DR-030).
+
+        기본 동작은 `{"detail": [...]}` 이라 프런트엔드의 오류 추출기가 읽지 못하고,
+        결과적으로 앱의 **모든** 422 가 원인을 알 수 없는 한 문장이 된다. 사용자가
+        "키 쌍 만들기를 하면 422 가 난다" 고 겪은 것의 실체가 이것이다 (research R3).
+        """
+        return JSONResponse(
+            status_code=422,
+            content=validation_error_response(list(exc.errors())).model_dump(),
+        )
 
     @app.exception_handler(Exception)
     async def _unhandled(_request: Request, exc: Exception) -> JSONResponse:

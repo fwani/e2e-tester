@@ -40,10 +40,10 @@ spec RG-001·RG-002 가 기준선 유지와 테스트 무약화를 요구한다.
 **목적**: 디자인 대조의 기준값을 기계적으로 확보한다. 이것이 없으면 DC-012 판정이
 "보고 비슷한가"로 되돌아간다.
 
-- [ ] T001 [P] `scripts/design_baseline.py` 를 만든다. `docs/design/*.dc.html` 8종에서 루트 치수·색 목록·글꼴·테두리 두께·그림자·주요 영역 높이를 추출해 JSON 으로 출력한다. **판정하지 않는다 — 사실만 뽑는다** (contracts/design-conformance.md §4)
-- [ ] T002 `scripts/design_baseline.py` 로 `specs/002-defect-fix-design-conformance/design-conformance/<Screen>.md` 8개를 생성한다. 축 6개(구조·컴포넌트·치수·타이포색·상태·가감)의 `기준값` 칸만 채우고 `관측값`·`판정` 은 비워 둔다
-- [ ] T003 [P] `specs/002-defect-fix-design-conformance/design-conformance/undefined-states.md` 를 빈 표로 만든다 (화면·상태·근거·결정 4열, DC-009)
-- [ ] T004 [P] `scripts/design_baseline.py` 검증 — `docs/design` 에 `border-radius` 가 0회임을 재확인하는 단언을 스크립트에 넣는다. 기준이 바뀌면 즉시 드러나야 한다
+- [X] T001 [P] `scripts/design_baseline.py` 를 만든다. `docs/design/*.dc.html` 8종에서 루트 치수·색 목록·글꼴·테두리 두께·그림자·주요 영역 높이를 추출해 JSON 으로 출력한다. **판정하지 않는다 — 사실만 뽑는다** (contracts/design-conformance.md §4)
+- [X] T002 `scripts/design_baseline.py` 로 `specs/002-defect-fix-design-conformance/design-conformance/<Screen>.md` 8개를 생성한다. 축 6개(구조·컴포넌트·치수·타이포색·상태·가감)의 `기준값` 칸만 채우고 `관측값`·`판정` 은 비워 둔다
+- [X] T003 [P] `specs/002-defect-fix-design-conformance/design-conformance/undefined-states.md` 를 빈 표로 만든다 (화면·상태·근거·결정 4열, DC-009)
+- [X] T004 [P] `scripts/design_baseline.py` 검증 — `docs/design` 에 `border-radius` 가 0회임을 재확인하는 단언을 스크립트에 넣는다. 기준이 바뀌면 즉시 드러나야 한다
 
 ---
 
@@ -56,20 +56,20 @@ spec RG-001·RG-002 가 기준선 유지와 테스트 무약화를 요구한다.
 
 ### 전역 오류 표현 (DR-022·DR-030 — US5·US4 의 선행 조건)
 
-- [ ] T005 `backend/src/itb/api/app.py` 에 `RequestValidationError` 핸들러를 등록한다. 응답을 계약 형태 `{error:{code,message,detail}}` 로 바꾼다. `code` 는 **기존 `DEFINITION_INVALID` 를 재사용한다** — 새 코드를 만들면 프런트엔드 유니온과 계약 문서를 함께 늘려야 하는데 의미가 이미 같다 (contracts/rest-api-delta.md §0)
-- [ ] T006 `backend/src/itb/api/app.py` 의 핸들러가 `error.message` 에 **어느 필드가 왜 거절됐는지** 한국어 한 문장으로 담게 한다. `error.detail.fields` 에 `[{loc, reason}]` 배열을 넣는다
-- [ ] T007 [P] `backend/tests/contract/test_validation_errors.py` 신규 — 잘못된 본문을 여러 엔드포인트에 보내 **모두** 계약 형태로 오는지 확인한다. `{"detail":[...]}` 가 나오면 실패
+- [X] T005 `backend/src/itb/api/app.py` 에 `RequestValidationError` 핸들러를 등록한다. 응답을 계약 형태 `{error:{code,message,detail}}` 로 바꾼다. `code` 는 **기존 `DEFINITION_INVALID` 를 재사용한다** — 새 코드를 만들면 프런트엔드 유니온과 계약 문서를 함께 늘려야 하는데 의미가 이미 같다 (contracts/rest-api-delta.md §0)
+- [X] T006 `backend/src/itb/api/app.py` 의 핸들러가 `error.message` 에 **어느 필드가 왜 거절됐는지** 한국어 한 문장으로 담게 한다. `error.detail.fields` 에 `[{loc, reason}]` 배열을 넣는다
+- [X] T007 [P] `backend/tests/contract/test_validation_errors.py` 신규 — 잘못된 본문을 여러 엔드포인트에 보내 **모두** 계약 형태로 오는지 확인한다. `{"detail":[...]}` 가 나오면 실패
 
 ### 저장 위치 (US1 의 선행 조건)
 
-- [ ] T008 [P] `backend/src/itb/storage/paths.py` 신규 — XDG 경로를 결정한다. `~/.config/itb/`(설정·키·레지스트리), `~/.local/share/itb/projects/`(사용자 자산). 기존 `secrets/keys.py:26` 의 `~/.config/itb/keys` 선례를 잇는다 (research R4)
-- [ ] T009 [P] `backend/tests/unit/test_paths.py` 신규 — 경로 결정과 `HOME` 이 바뀌었을 때의 동작을 확인한다
+- [X] T008 [P] `backend/src/itb/storage/paths.py` 신규 — XDG 경로를 결정한다. `~/.config/itb/`(설정·키·레지스트리), `~/.local/share/itb/projects/`(사용자 자산). 기존 `secrets/keys.py:26` 의 `~/.config/itb/keys` 선례를 잇는다 (research R4)
+- [X] T009 [P] `backend/tests/unit/test_paths.py` 신규 — 경로 결정과 `HOME` 이 바뀌었을 때의 동작을 확인한다
 
 ### 디자인 토큰 (US6 의 기반 · 모든 화면에 영향)
 
-- [ ] T010 `frontend/src/theme/tokens.css` 를 확정 디자인 실측값으로 재작성한다. **`--radius`·`--radius-sm` 을 삭제한다** — dc.html 8종에 `radius` 문자열이 0회다. 테두리 기본을 `3px`(강조)·`2px`(보조)로, `body` 배경을 `#EFEBE0` 로 바꾸고 하드 오프셋 그림자를 도입한다 (contracts/design-conformance.md §3)
-- [ ] T011 `frontend/src/theme/tokens.css` 의 `button`·`input`·`select`·`textarea` 기본 스타일에서 둥근 모서리와 1px 테두리를 없앤다. 팔레트는 이미 정확하므로 색 값을 바꾸지 않는다
-- [ ] T012 [P] `frontend/tests/DesignTokens.test.tsx` 신규 — `tokens.css` 에 `border-radius`·`--radius` 가 없음을 단언한다. 회귀 가드다 (DC-004)
+- [X] T010 `frontend/src/theme/tokens.css` 를 확정 디자인 실측값으로 재작성한다. **`--radius`·`--radius-sm` 을 삭제한다** — dc.html 8종에 `radius` 문자열이 0회다. 테두리 기본을 `3px`(강조)·`2px`(보조)로, `body` 배경을 `#EFEBE0` 로 바꾸고 하드 오프셋 그림자를 도입한다 (contracts/design-conformance.md §3)
+- [X] T011 `frontend/src/theme/tokens.css` 의 `button`·`input`·`select`·`textarea` 기본 스타일에서 둥근 모서리와 1px 테두리를 없앤다. 팔레트는 이미 정확하므로 색 값을 바꾸지 않는다
+- [X] T012 [P] `frontend/tests/DesignTokens.test.tsx` 신규 — `tokens.css` 에 `border-radius`·`--radius` 가 없음을 단언한다. 회귀 가드다 (DC-004)
 
 **Checkpoint**: T005~T012 완료 후 `pytest tests/unit tests/contract` 와 `vitest run` 이 기준선 이상이어야 한다.
 
