@@ -4,11 +4,30 @@
 **바인딩**: 로컬 인터페이스 전용, 인증 없음 (FR-088a).
 **검증**: 모든 요청 본문은 Pydantic 모델로 검증한다 (FR-085). 검증 실패는 `422`.
 
-오류 응답 공통 형태:
+오류 응답 공통 형태 (권위 정의: [003 오류 계약](../../003-error-path-hardening/contracts/error-contract.md)):
 
 ```json
-{ "error": { "code": "STEP_LIST_EMPTY", "message": "Step이 없어 저장할 수 없습니다.", "detail": {} } }
+{ "error": {
+    "code": "STEP_LIST_EMPTY",
+    "category": "blocked",
+    "message": "Step이 없어 저장할 수 없습니다.",
+    "next_action": "브라우저에서 동작을 기록하거나 Step을 추가한 뒤 다시 저장하세요.",
+    "detail": {} } }
 ```
+
+| 필드 | 설명 |
+|------|------|
+| `code` | 오류 식별자. 이름·값은 개명하지 않는다 |
+| `category` | `blocked`(제품이 규칙대로 거절) 또는 `broken`(제품이 처리하지 못함). **호출부가 정하지 않는다** — `code` 에서 대응표로 자동 결정된다 |
+| `message` | 사람이 읽는 이유. 그대로 화면에 보여줄 수 있다 |
+| `next_action` | 사용자가 지금 할 수 있는 일. 비어 있을 수 없다 |
+| `detail` | 기계가 읽는 부가 정보 (기본 `{}`) |
+
+`message`·`next_action`·`detail` 어디에도 내부 파일 경로, 호출 스택, 비밀 값, 사용자 입력
+원본이 들어가지 않는다. 처리되지 않은 오류는 `INTERNAL_ERROR`·`broken` 으로 나온다 —
+정상 거부와 코드만으로 구별된다.
+
+실시간 통로(WebSocket)로 전달되는 오류도 **같은 본문**을 싣는다. 봉투만 다르다.
 
 ---
 

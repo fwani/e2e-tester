@@ -59,7 +59,7 @@ description: "Task list for 003 이상 경로 견고성 (비정상 조작 결함
 - [X] T008 [US1] `backend/tests/abnormal/catalogue.py` — `specs/003-error-path-hardening/contracts/abnormal-scenarios.json` 로더, 판정 3축 헬퍼(`assert_axis1/2/3`), 그리고 식별자로 실행 수단을 등록하는 레지스트리(`@driver("AS-001")`)를 만든다. 실패 메시지에 시나리오 식별자와 **어긋난 축**을 싣는다
 - [X] T009 [US1] `backend/tests/abnormal/test_catalogue.py` — ① 12개 조합이 각 3건 이상, 식별자 중복 없음, 필드 누락 없음 (SC-206) ② **목록의 모든 시나리오에 실행 수단이 등록되어 있는지** 확인한다. 등록되지 않은 항목은 실패다 (RG-106·SC-211)
 - [X] T010 [P] [US4] `backend/tests/abnormal/fakes.py` — AI 클라이언트 대역(오류를 던지는 것 · 형식이 깨진 응답 · 시간을 끄는 것). `itb.llm.client.create_client` 를 대체한다. **제품에 실패 주입 스위치를 넣지 않는다** (헌법 원칙 II)
-- [ ] T011 [P] [US4] `fixtures/sample-app/` 에 지연·무응답·오류를 내는 경로를 더한다. 제품 코드가 아니다
+- [X] T011 [P] [US4] `fixtures/sample-app/` 에 지연·무응답·오류를 내는 경로를 더한다. 제품 코드가 아니다
 - [X] T012 [US3] `backend/tests/abnormal/product_ui.py` — **제품 UI 를 실제로 띄우는 세션 범위 픽스처** (RG-105). 격리된 작업 디렉터리로 제품 서버를 띄우고, 제품 화면을 띄우고(기존 개발 서버 설정이 이미 `/api`·`/ws` 를 넘긴다), 둘 다 응답할 때까지 기다린 뒤 주소를 넘긴다. 도구·포트가 없으면 **건너뛰지 않고 실패**로 알린다 (RG-106)
 
 **Checkpoint**: 시나리오를 목록에서 읽어 세 면 모두에서 돌릴 수 있다.
@@ -92,7 +92,7 @@ API 계층이 이미 계약을 일관되게 쓰고 있었다. 거부를 유발�
 - [X] T017 [US1] `frontend/src/pages/` 14개 화면이 오류를 `ErrorNotice` 로 표시하게 고친다. 화면이 `err.message` 를 직접 그리지 않는다
 - [X] T018 [P] [US1] `frontend/tests/abnormal/error-notice.test.tsx` — 공용 통로가 두 필드를 함께 보여주는지, `broken`/`blocked` 를 구분하는지, 그리고 **각 화면이 공용 통로를 지나는지** 훑어 확인한다 (RG-104-4)
 - [X] T019 [US1] `backend/src/itb/api/ws/session_events.py` 가 실시간 통로로 보내는 오류에 같은 `ErrorBody` 를 싣게 한다 (EC-008)
-- [ ] T020 [P] [US1] `specs/001-interactive-ai-test-builder/contracts/rest-api.md` 의 오류 응답 공통 형태를 새 필드 둘을 포함하도록 갱신하고 `contracts/error-contract.md` 를 참조로 건다
+- [X] T020 [P] [US1] `specs/001-interactive-ai-test-builder/contracts/rest-api.md` 의 오류 응답 공통 형태를 새 필드 둘을 포함하도록 갱신하고 `contracts/error-contract.md` 를 참조로 건다
 
 ---
 

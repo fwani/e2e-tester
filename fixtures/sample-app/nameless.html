@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>이름 없는 화면</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- AS-016: 접근 가능한 이름이 전혀 없는 요소만 둔다.
+       data-testid 도, label 도, 텍스트도, aria-label 도 없다. 남는 후보는 css 뿐이다.
+       후보가 하나뿐이어도 제품이 깨지지 않고 그 하나를 쓰는지 판정한다. -->
+  <main>
+    <div class="card">
+      <div class="row">
+        <button></button>
+        <button></button>
+        <input type="text">
+        <input type="checkbox">
+        <select><option value="a"></option><option value="b"></option></select>
+        <a href="#"></a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
