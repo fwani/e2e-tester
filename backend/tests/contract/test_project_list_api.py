@@ -67,7 +67,9 @@ def test_created_project_appears_in_list(client: TestClient) -> None:
     assert projects[0]["accessible"] is True
 
 
-def test_list_survives_restart(client: TestClient, tmp_path: pathlib.Path, home: pathlib.Path) -> None:
+def test_list_survives_restart(
+    client: TestClient, tmp_path: pathlib.Path, home: pathlib.Path
+) -> None:
     """**이것이 이 라운드의 핵심이다.** 서버를 다시 띄워도 목록이 남아야 한다.
 
     이전에는 열린 프로젝트가 프로세스 메모리에만 있어 재시작하면 사라졌다.
@@ -109,7 +111,9 @@ def test_inaccessible_project_is_marked_not_hidden(client: TestClient, home: pat
     """DR-009 — 사라진 프로젝트를 조용히 빼지 않는다. 왜 못 여는지 알려준다."""
     outside = home / "gone"
     outside.mkdir()
-    (outside / "itb-project.yaml").write_text(f"name: 사라질 것\ndefault_start_url: {START_URL}\n", encoding="utf-8")
+    (outside / "itb-project.yaml").write_text(
+        f"name: 사라질 것\ndefault_start_url: {START_URL}\n", encoding="utf-8"
+    )
     client.post("/api/project/open", json={"path": str(outside)})
 
     shutil.rmtree(outside)  # 열면서 .gitignore·tests/ 가 생기므로 통째로 지운다
@@ -158,7 +162,9 @@ def test_forget_removes_external_entry_but_keeps_files(
     """목록 정리와 자산 삭제는 다른 조작이다."""
     outside = home / "keepme"
     outside.mkdir()
-    (outside / "itb-project.yaml").write_text(f"name: 유지\ndefault_start_url: {START_URL}\n", encoding="utf-8")
+    (outside / "itb-project.yaml").write_text(
+        f"name: 유지\ndefault_start_url: {START_URL}\n", encoding="utf-8"
+    )
     client.post("/api/project/open", json={"path": str(outside)})
 
     resp = client.request("DELETE", "/api/project/registry", json={"root": str(outside)})

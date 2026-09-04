@@ -65,7 +65,9 @@ def test_config_and_data_are_separate(monkeypatch: pytest.MonkeyPatch) -> None:
 # ─── 경계 검증 (보안) ───────────────────────────────────────────────────────
 
 
-def test_path_inside_home_is_accepted(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_path_inside_home_is_accepted(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(pathlib.Path, "home", classmethod(lambda cls: tmp_path))
     target = tmp_path / "work" / "proj"
     target.mkdir(parents=True)
@@ -79,7 +81,9 @@ def test_home_itself_is_accepted(tmp_path: pathlib.Path, monkeypatch: pytest.Mon
     assert resolve_within_home(tmp_path) == tmp_path.resolve()
 
 
-def test_path_outside_home_is_rejected(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_path_outside_home_is_rejected(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(pathlib.Path, "home", classmethod(lambda cls: tmp_path / "home"))
     (tmp_path / "home").mkdir()
 
@@ -97,7 +101,9 @@ def test_dotdot_escape_is_rejected(tmp_path: pathlib.Path, monkeypatch: pytest.M
         resolve_within_home(str(home / ".." / ".." / "etc"))
 
 
-def test_symlink_out_of_home_is_rejected(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_symlink_out_of_home_is_rejected(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """심볼릭 링크는 따라간 뒤 **실제 위치로** 판정한다."""
     home = tmp_path / "home"
     home.mkdir()

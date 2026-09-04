@@ -250,7 +250,8 @@ def test_unwritable_key_directory_is_reported_not_crashed(
         resp = client.post("/api/keys/generate", json={"passphrase": None})
 
         assert resp.status_code == 400, resp.text
-        assert "권한" in resp.json()["error"]["message"] or "확인" in resp.json()["error"]["message"]
+        message = resp.json()["error"]["message"]
+        assert "권한" in message or "확인" in message
     finally:
         locked.chmod(0o700)
 

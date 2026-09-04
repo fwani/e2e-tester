@@ -213,7 +213,9 @@ def test_list_propagates_registry_warning(tmp_path: pathlib.Path, reg: pathlib.P
     assert warning is not None
 
 
-def test_default_paths_are_used_when_omitted(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> None:
+def test_default_paths_are_used_when_omitted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
     """인자를 생략하면 XDG 경로를 쓴다 — 실제 서버가 도는 방식이다."""
     monkeypatch.setattr(registry, "registry_file", lambda: tmp_path / "r.json")
     monkeypatch.setattr(registry, "workspace_dir", lambda: tmp_path / "ws")
