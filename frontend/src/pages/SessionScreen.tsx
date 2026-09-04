@@ -79,6 +79,8 @@ export interface SessionScreenProps {
   aiInstruction?: string | null;
   onFinished: () => void;
   onShowResult?: (testId: string) => void;
+  /** 다시 실행 — 이 세션을 버리고 같은 테스트로 새 세션을 연다 (UX U-02). */
+  onRerun?: (testId: string, fromStepIndex?: number) => void;
 }
 
 export function SessionScreen({
@@ -86,6 +88,7 @@ export function SessionScreen({
   aiInstruction = null,
   onFinished,
   onShowResult,
+  onRerun,
 }: SessionScreenProps) {
   const [view, setView] = useState<SessionView>(initial);
   const [tabs, setTabs] = useState<TabsResponse | null>(null);
@@ -98,6 +101,8 @@ export function SessionScreen({
   const [lost, setLost] = useState<string | null>(null);
   const [runningIndex, setRunningIndex] = useState<number | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  /** 실패한 Step 의 사유. 실행이 끝난 화면이 이유를 말하려면 이것을 잡아 둬야 한다 (UX U-02). */
+  const [failure, setFailure] = useState<{ index: number; message: string } | null>(null);
   const [saveName, setSaveName] = useState("");
   const [busy, setBusy] = useState(false);
   const sessionId = initial.session_id;
@@ -162,6 +167,12 @@ export function SessionScreen({
             setRunningIndex(null);
             break;
           }
+          case "step_failed":
+            // 예전에는 default 로 흘러 전체 상태만 다시 받았다 — 사유는 어디에도 남지
+            // 않았고, 실행이 끝난 화면은 빨간 ✕ 만 보여줬다 (UX U-02).
+            setFailure({ index: event.index, message: event.error_message });
+            setRunningIndex(null);
+            break;
           case "run_finished":
             setRunningIndex(null);
             setSummary(
@@ -305,6 +316,30 @@ export function SessionScreen({
   const testId = view.test_id;
   const currentIndex = runningIndex ?? view.current_step_index;
 
+  // 저장하지 않은 기록이 있는 동안 새로고침·닫기를 한 번 묻는다 (UX U-05). 서버의 세션은
+  // 남지만 화면이 사라지면 사용자는 기록이 사라진 줄 안다 — 새로고침은 막혔다고 느낄 때
+  // 가장 먼저 누르는 키다.
+  useEffect(() => {
+    if (!view.has_unsaved_changes || isDone) return;
+    const guard = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [view.has_unsaved_changes, isDone]);
+
+  /**
+   * AI 화면이 지금 그려지는가.
+   *
+   * 이것을 이름으로 두는 이유는 **AI 실패 사유가 이 조건 뒤에 갇히지 않게** 하려는
+   * 것이다. 001 은 `ai_error` 를 렌더하는 유일한 컴포넌트가 `isAiSession` 뒤에 있어
+   * 실패가 화면에 닿지 못했다. 002 가 그것을 고쳤지만 구멍이 옮겨졌을 뿐이다 —
+   * AI 수행이 실패하면 세션이 검토를 위해 `paused` 로 가고, 그러면 이 조건이 거짓이
+   * 되어 다시 사유가 사라진다 (003 AP-032·DR-020).
+   */
+  const showsAiScreen = isAiSession && !isPaused && !isTakeover;
+
   const phase: MirrorPhase = isManipulating
     ? "manipulation"
     : isPaused
@@ -371,6 +406,16 @@ export function SessionScreen({
       .finally(onFinished);
   };
 
+  /** 이 세션을 버리고 다시 실행한다. 같은 테스트에 세션이 둘일 수는 없다 (FR-043). */
+  const rerun = (fromStepIndex?: number) => {
+    if (testId === null || onRerun === undefined) return;
+    setBusy(true);
+    void sessions
+      .discard(sessionId)
+      .catch(() => undefined)
+      .finally(() => onRerun(testId, fromStepIndex));
+  };
+
   const leaveConfirmed = () => {
     setConfirmingLeave(false);
     void sessions
@@ -398,6 +443,19 @@ export function SessionScreen({
         <LiveConnectionBanner onReconnect={() => subscription.current?.reconnect()} />
       )}
       {error !== null && <ErrorNotice error={error} />}
+      {/*
+        003 AP-032·DR-020 — **AI 실패 사유를 화면에 붙들어 둔다.**
+        AI 화면이 이것을 스스로 그리지만, 실패한 세션은 검토를 위해 `paused` 로 옮겨가
+        그 화면을 떠난다. 여기서 한 번 더 내보내지 않으면 사용자에게는 "아무 일도
+        일어나지 않음" 으로 보인다 — 그 화면이 실패를 말하는 유일한 자리였기 때문이다.
+        AI 화면이 그리는 동안은 두 번 나오지 않게 막는다.
+      */}
+      {aiError !== null && !showsAiScreen && <ErrorNotice error={aiError} />}
+      {/* 지시문도 같은 이유로 붙들어 둔다 (UX U-07). AI 화면을 떠난 순간 사용자가 무엇을
+          시켰는지가 화면에서 사라지면, 실패 없이 다른 모드로 갈아탄 것처럼 보인다. */}
+      {isAiSession && !showsAiScreen && aiInstruction !== null && aiInstruction !== "" && (
+        <Banner tone="info">AI 지시문: {aiInstruction}</Banner>
+      )}
       {lost !== null && (
         <SessionLostBanner
           reason={lost}
@@ -484,7 +542,7 @@ export function SessionScreen({
 
   // ─── 화면 선택 — 정확히 하나를 고른다 (DC-008) ────────────────────────────
 
-  if (isAiSession && !isPaused && !isTakeover) {
+  if (showsAiScreen) {
     return (
       <>
         <AiRecord
@@ -541,6 +599,7 @@ export function SessionScreen({
         <RunnerPaused
           {...shared}
           title={testId ?? "새 테스트"}
+          authoring={view.authoring_mode}
           review={isSaveableWithoutBrowser}
           currentStepIndex={view.current_step_index}
           editWarnings={view.edit_warnings}
@@ -596,6 +655,25 @@ export function SessionScreen({
         canPause={!isDone}
         onPause={() => void act(() => sessions.pause(sessionId))}
         onStop={isDone ? leave : stop}
+        finished={
+          isDone
+            ? {
+                summary: summary ?? view.state_label,
+                failureReason: failure?.message ?? null,
+                onShowResult:
+                  testId !== null && onShowResult !== undefined
+                    ? () => onShowResult(testId)
+                    : undefined,
+                onRerunFromFailure:
+                  testId !== null && onRerun !== undefined && failure !== null
+                    ? () => rerun(failure.index)
+                    : undefined,
+                onRerunAll:
+                  testId !== null && onRerun !== undefined ? () => rerun() : undefined,
+                onBack: leave,
+              }
+            : undefined
+        }
       />
       {overlays}
     </>

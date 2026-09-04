@@ -50,6 +50,24 @@ export interface RunnerProps {
   banners?: ReactNode;
   /** 확정 디자인의 「Step 추가」 버튼. 실행 중에는 비활성이다. */
   onAddStep?: () => void;
+  /**
+   * 실행이 끝난 뒤의 **다음 행동** (UX U-02). 없으면 아직 실행 중이다.
+   *
+   * 실행이 끝난 화면에 사용자가 서 있다. 요약(`FAIL · 3/5 통과`)과 빨간 ✕ 만 있고 이유도
+   * 갈 곳도 없으면 새로고침을 누르게 되고, 그러면 목록으로 튕긴다. 결과 화면에 이유와
+   * 행동이 다 있으므로 거기로 가는 길을 여기서 준다.
+   */
+  finished?: RunFinished;
+}
+
+export interface RunFinished {
+  summary: string;
+  /** 실패한 Step 의 사유 한 줄. 통과했으면 null. */
+  failureReason: string | null;
+  onShowResult?: () => void;
+  onRerunFromFailure?: () => void;
+  onRerunAll?: () => void;
+  onBack: () => void;
 }
 
 export function Runner({
@@ -72,6 +90,7 @@ export function Runner({
   tabs,
   banners,
   onAddStep,
+  finished,
 }: RunnerProps) {
   return (
     <Artboard width={1440} height={900}>
@@ -157,6 +176,8 @@ export function Runner({
 
       {banners}
 
+      {finished && <FinishedBar {...finished} />}
+
       <div style={{ flex: "1", minHeight: "0", display: "flex" }}>
         <div style={{ flex: "1", minWidth: "0", padding: "20px", display: "flex", flexDirection: "column" }}>
           {tabs}
@@ -233,5 +254,75 @@ export function Runner({
         </div>
       </div>
     </Artboard>
+  );
+}
+
+// ─── 확정 디자인이 정의하지 않은 상태 (DC-009) ────────────────────────────
+
+const ACTION_BUTTON: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  height: "40px",
+  padding: "0 16px",
+  border: "3px solid #14130F",
+  boxShadow: "4px 4px 0 #14130F",
+  font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+};
+
+function FinishedBar({
+  summary,
+  failureReason,
+  onShowResult,
+  onRerunFromFailure,
+  onRerunAll,
+  onBack,
+}: RunFinished) {
+  const failed = failureReason !== null;
+  return (
+    <div
+      role="status"
+      data-run-finished
+      style={{
+        borderBottom: "3px solid #14130F",
+        background: failed ? "#FBEEEA" : "#F5F2E9",
+        padding: "12px 24px",
+        display: "flex",
+        alignItems: "center",
+        gap: "14px",
+        flexWrap: "wrap",
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 240, display: "flex", flexDirection: "column", gap: 4 }}>
+        <strong style={{ font: "700 14px/1.2 'IBM Plex Mono', ui-monospace, monospace" }}>
+          {summary}
+        </strong>
+        {failed && (
+          <span
+            data-failure-reason
+            style={{ font: "400 13px/1.5 'IBM Plex Sans KR', system-ui, sans-serif", color: "#A83A22" }}
+          >
+            {failureReason}
+          </span>
+        )}
+      </div>
+      {onShowResult && (
+        <button onClick={onShowResult} style={{ ...ACTION_BUTTON, background: "#14130F", color: "#F5F2E9" }}>
+          결과 자세히 보기
+        </button>
+      )}
+      {failed && onRerunFromFailure && (
+        <button onClick={onRerunFromFailure} style={{ ...ACTION_BUTTON, background: "#F5D000", color: "#14130F" }}>
+          실패한 Step부터 다시 실행
+        </button>
+      )}
+      {onRerunAll && (
+        <button onClick={onRerunAll} style={{ ...ACTION_BUTTON, background: "#FFFDF6", color: "#14130F" }}>
+          처음부터 다시 실행
+        </button>
+      )}
+      <button className="ghost" onClick={onBack}>
+        목록으로
+      </button>
+    </div>
   );
 }
