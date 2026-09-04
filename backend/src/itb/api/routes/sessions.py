@@ -189,6 +189,10 @@ def require_paused(w: SessionWork) -> None:
             f"현재 상태가 '{state_label(w.session.state)}' 이므로 Step 을 편집할 수 없습니다. "
             "먼저 일시정지하세요.",
             state=w.session.state.value,
+            # **지금 무엇이 가능한지**를 함께 싣는다 (003 AP-020). "안 된다" 만 말하면
+            # 사용자는 되는 것을 하나씩 눌러 보며 찾아야 한다. 목록은 상태 기계가
+            # 소유한 것을 읽어 오므로 여기서 다시 적어 어긋날 일이 없다.
+            allowed=[c.value for c in allowed_commands(w.session.state)],
         )
 
 
@@ -762,6 +766,7 @@ def _apply(w: SessionWork, command: Command) -> None:
             ErrorCode.INVALID_TRANSITION,
             str(exc),
             state=w.session.state.value,
+            allowed=[c.value for c in allowed_commands(w.session.state)],
         ) from exc
 
 

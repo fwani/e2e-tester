@@ -112,3 +112,48 @@ def test_validation_failure_follows_the_contract(client: TestClient) -> None:
     assert body["category"] == "blocked"
     assert body["next_action"].strip()
     assert body["message"].strip()
+
+
+# ─── 상태 위반 거부는 지금 무엇이 가능한지 함께 말한다 (003 AP-020) ─────────
+
+
+def test_state_violation_says_what_is_possible_now(project_client: TestClient) -> None:
+    """"안 된다" 만 말하는 거부를 남기지 않는다.
+
+    가능한 명령을 함께 주지 않으면 사용자는 되는 것을 하나씩 눌러 보며 찾아야 한다.
+    목록은 상태 기계가 소유한 것을 그대로 읽으므로 여기와 어긋날 수 없다.
+
+    상태 위반 거부는 두 갈래다 — 편집 게이트(`NOT_PAUSED`)와 전이 게이트
+    (`INVALID_TRANSITION`). **둘 다** 본다. 한쪽만 고치면 다른 쪽에서 같은 막다른 골목이
+    남는다.
+    """
+    from itb.execution.state_machine import SessionState, allowed_commands
+
+    created = project_client.post(
+        "/api/sessions",
+        json={"mode": "record", "start_url": project_client.get("/api/project").json()[
+            "default_start_url"
+        ]},
+    )
+    assert created.status_code == 201, created.text
+    sid = created.json()["session_id"]
+    try:
+        # ① 편집 게이트 — 녹화 중에는 Step 을 편집할 수 없다
+        edit = project_client.post(
+            f"/api/sessions/{sid}/steps",
+            json={"step": {"type": "close_tab", "id": "step-01", "label": "탭 닫기"}},
+        )
+        assert edit.status_code == 409, edit.text
+        detail = edit.json()["error"]["detail"]
+        assert detail.get("allowed"), f"가능한 명령이 실리지 않았다: {detail}"
+        assert set(detail["allowed"]) == {
+            c.value for c in allowed_commands(SessionState(detail["state"]))
+        }, "실린 목록이 상태 기계의 판정과 다르다"
+
+        # ② 전이 게이트 — 녹화 중에는 이어서 실행할 것이 없다
+        resumed = project_client.post(f"/api/sessions/{sid}/resume")
+        assert resumed.status_code == 409, resumed.text
+        detail = resumed.json()["error"]["detail"]
+        assert detail.get("allowed"), f"가능한 명령이 실리지 않았다: {detail}"
+    finally:
+        project_client.post(f"/api/sessions/{sid}/stop")

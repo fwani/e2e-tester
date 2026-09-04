@@ -137,7 +137,7 @@ API 계층이 이미 계약을 일관되게 쓰고 있었다. 거부를 유발�
 ## Phase 6: 드러난 결함 수정
 
 - [X] T024 [US5] `backend/src/itb/storage/atomic.py` 를 만들어 `registry.py:151-153` 의 임시 파일 + 바꿔치기 방식을 꺼내고, `yaml_io.py` `dump_model()`(**Step DSL 을 쓰는 경로이며 현재 곧바로 덮어쓴다**) · `secrets/store.py` · `repository.py` · `registry.py` 가 모두 그것을 지나게 한다 (AP-042·AS-049·AS-050)
-- [ ] T025 [US3] `backend/src/itb/api/routes/sessions.py` 의 상태 위반 거부가 `execution/state_machine.py` 의 `allowed_commands(state)` 를 `detail` 에 실어 "지금 무엇이 가능한지"를 알리게 한다. 상태 기계 자체는 바꾸지 않는다 (AP-020)
+- [X] T025 [US3] `backend/src/itb/api/routes/sessions.py` 의 상태 위반 거부가 `execution/state_machine.py` 의 `allowed_commands(state)` 를 `detail` 에 실어 "지금 무엇이 가능한지"를 알리게 한다. 상태 기계 자체는 바꾸지 않는다 (AP-020)
 - [ ] T026 [US2] [US3] T021 이 낸 요청 경계 실패를 고친다 — 경계 검증 누락, 경로 탈출·중복 이름 미거부(AP-013·014), 거부 메시지가 원본 입력을 되돌려 화면을 훼손하는 것(AP-015), 거부가 세션을 못 쓰게 만드는 것(AP-024)
 - [ ] T027 [US2] [US3] [US5] T023 이 낸 화면 실패를 고친다 — 연타로 요청이 두 번 나가는 것(AP-022), 화면 복귀 시 옛 상태로 멈춘 것(AP-023·AS-026), 반영되지 않은 조작이 조용히 무시되는 것(AP-041)
 - [X] T028 [US4] T022 가 낸 외부 경계 실패를 고친다 — 대상 무응답에 무한정 기다리는 것(AP-031), AI 실패 뒤 만들어진 Step 유실(AP-032), 브라우저 상실 뒤 저장 불가(AP-030). `SESSION_LOST` 의 분류가 실제 동작과 맞는지 확인하고 근거를 `data-model.md §1.3` 에 반영한다 (AP-033)
