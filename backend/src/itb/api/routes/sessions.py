@@ -1545,7 +1545,11 @@ async def session_events(websocket: WebSocket, session_id: str) -> None:
     """서버 → 클라이언트 단방향. 클라이언트는 아무것도 보내지 않는다."""
     state: AppState = websocket.app.state.itb
     hub = state.broker.hub(session_id)
-    await hub.connect(websocket)
+    # 005 FR-162 — 구독이 붙는 순간 현재 화면을 함께 준다. 화면이 변할 때까지
+    # 기다리면 정적 화면에서는 영원히 비어 있다 (U-24).
+    work = _WORK.get(session_id)
+    current_frame = work.mirror.last_frame() if work is not None and work.mirror else None
+    await hub.connect(websocket, current_frame)
     try:
         while True:
             # 수신은 연결 유지 확인 목적이며 내용은 무시한다 — 명령 경로가 아니다.

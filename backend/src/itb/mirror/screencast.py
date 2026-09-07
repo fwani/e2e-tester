@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import time
 from typing import Any
 
 from playwright.async_api import CDPSession, Page
@@ -28,6 +29,21 @@ EVERY_NTH_FRAME = 1
 
 FALLBACK_INTERVAL_S = 1.0
 """스크린캐스트를 시작할 수 없을 때의 강등 주기. 1 fps (research R3 폴백)."""
+
+IDLE_INTERVAL_S = 2.0
+"""무프레임 감시 주기 (005 FR-160).
+
+**CDP `Page.startScreencast` 는 화면이 변할 때만 프레임을 만든다.** 정적 화면에서는 시작
+직후 한 장이 전부이고 그 뒤로는 아무것도 오지 않는다 — 실측으로 확인했다(구독 후 정적 화면
+5초에 0건, 화면을 한 번 바꾸면 1건, 계속 변하면 약 10 fps).
+
+그래서 마지막 프레임 후 이 시간이 지나면 스크린샷 한 장을 같은 이벤트로 보낸다. 대상 앱을
+막 열었을 때와 오래 기다리는 Step 에서 미러가 비던 것이 이것으로 잡힌다 — 정확히 사용자가
+화면을 가장 보고 싶은 두 순간이다 (U-24).
+
+강등(1 fps)보다 느린 주기다. 강등은 스크린캐스트를 **못 쓰는** 경우이고 이것은 잘 쓰고
+있지만 화면이 조용한 경우다.
+"""
 
 _ALLOWED_COMMANDS = frozenset(
     {"Page.startScreencast", "Page.stopScreencast", "Page.screencastFrameAck"}
@@ -67,6 +83,19 @@ class TabScreencast:
         self._acking = True
         self._degraded_task: asyncio.Task[None] | None = None
         self._running = False
+        self._last_frame: dict[str, object] | None = None
+        """마지막으로 보낸 프레임 (005 FR-162).
+
+        **구독이 뒤늦게 붙어도 현재 화면을 줄 수 있게** 들고 있는다. 이전에는 유일한 초기
+        프레임이 `POST /api/sessions` 안에서 발행되고, 프론트의 WebSocket 은 그 응답을
+        받은 뒤에 붙었다. 구독자가 없는 동안 허브가 조용히 버렸으므로 정적 화면에서는
+        한 장도 도달하지 않았다 (U-24).
+
+        한 장만 들고 있는다 — 계약이 이미 "유실 가능 · 마지막 프레임만 그리면 된다" 이므로
+        버퍼를 쌓을 이유가 없다.
+        """
+        self._idle_task: asyncio.Task[None] | None = None
+        self._last_sent_at: float = 0.0
 
     @property
     def tab_index(self) -> int:
@@ -104,6 +133,16 @@ class TabScreencast:
                     "everyNthFrame": EVERY_NTH_FRAME,
                 },
             )
+            # 005 FR-161 — **첫 프레임을 기다리지 않는다.**
+            #
+            # 스크린캐스트는 화면이 변할 때만 프레임을 만들고, 그 초기 한 장은 구독자가
+            # 붙기 전에 발행되어 버려진다. 그래서 시작 직후 한 장을 직접 찍어 캐시에
+            # 넣어 둔다 — 구독이 뒤늦게 붙어도 그 장을 받는다.
+            #
+            # 실패해도 무시한다. 감시 루프가 곧 다시 시도한다.
+            with contextlib.suppress(Exception):
+                await self._shoot_once()
+            self._idle_task = asyncio.create_task(self._idle_loop())
             return True
         except MirrorInputForbiddenError:
             raise
@@ -117,6 +156,13 @@ class TabScreencast:
                     f"({type(exc).__name__})"
                 ),
             )
+            # 005 FR-161 — 강등 경로도 **첫 장을 즉시 보장한다.**
+            #
+            # 루프에 맡기면 첫 프레임이 다음 이벤트 루프 차례로 밀린다. 정상 경로와
+            # 강등 경로가 첫 프레임 보장에서 달라지면, 강등된 환경에서만 미리보기가
+            # 늦게 뜨는 차이가 생기고 그것은 재현하기 어려운 결함이 된다.
+            with contextlib.suppress(Exception):
+                await self._shoot_once()
             self._degraded_task = asyncio.create_task(self._screenshot_loop())
             return False
 
@@ -132,6 +178,12 @@ class TabScreencast:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._degraded_task
             self._degraded_task = None
+
+        if self._idle_task is not None:
+            self._idle_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._idle_task
+            self._idle_task = None
 
         if self._cdp is not None:
             with contextlib.suppress(Exception):
@@ -157,14 +209,32 @@ class TabScreencast:
         with contextlib.suppress(RuntimeError):
             asyncio.create_task(self._forward(params))  # noqa: RUF006
 
+    async def _send_frame(self, data: str, width: int, height: int) -> None:
+        """프레임 하나를 보내고 **마지막 프레임으로 기억한다** (005 FR-162).
+
+        전송 경로를 한 곳으로 모으는 이유는 캐시가 빠지는 경로를 만들지 않기 위해서다 —
+        스크린캐스트·강등 루프·무프레임 감시 셋이 모두 여기를 지난다.
+        """
+        payload: dict[str, object] = {
+            "tab": self._tab_index,
+            "data": data,
+            "width": width,
+            "height": height,
+        }
+        self._last_frame = payload
+        self._last_sent_at = time.monotonic()
+        await self._emit("mirror_frame", **payload)
+
+    def last_frame(self) -> dict[str, object] | None:
+        """구독이 붙을 때 보낼 마지막 프레임. 아직 한 장도 없으면 `None` (005 FR-162)."""
+        return self._last_frame
+
     async def _forward(self, params: dict[str, Any]) -> None:
         metadata = params.get("metadata") or {}
-        await self._emit(
-            "mirror_frame",
-            tab=self._tab_index,
-            data=params.get("data", ""),
-            width=int(metadata.get("deviceWidth") or MAX_WIDTH),
-            height=int(metadata.get("deviceHeight") or MAX_HEIGHT),
+        await self._send_frame(
+            params.get("data", ""),
+            int(metadata.get("deviceWidth") or MAX_WIDTH),
+            int(metadata.get("deviceHeight") or MAX_HEIGHT),
         )
         if not self._acking or self._cdp is None:
             return
@@ -177,21 +247,53 @@ class TabScreencast:
 
     async def _screenshot_loop(self) -> None:
         """강등 경로. 1초에 한 장씩 찍어 같은 이벤트로 보낸다."""
-        import base64
-
         while self._running:
-            try:
-                shot = await self._page.screenshot(type="jpeg", quality=QUALITY, timeout=3000)
-            except asyncio.CancelledError:
-                raise
-            except Exception:  # noqa: BLE001 - 화면이 닫혔거나 이동 중이다
+            if not await self._shoot_once():
                 await asyncio.sleep(FALLBACK_INTERVAL_S)
                 continue
-            await self._emit(
-                "mirror_frame",
-                tab=self._tab_index,
-                data=base64.b64encode(shot).decode("ascii"),
-                width=MAX_WIDTH,
-                height=MAX_HEIGHT,
-            )
             await asyncio.sleep(FALLBACK_INTERVAL_S)
+
+    async def _idle_loop(self) -> None:
+        """무프레임 감시 (005 FR-160).
+
+        스크린캐스트가 정상인데 **화면이 조용한** 구간을 메운다. 마지막 프레임 후
+        `IDLE_INTERVAL_S` 가 지났으면 한 장 찍어 보낸다.
+
+        **강등이 아니다** — `mirror_degraded` 를 발행하지 않는다. 강등 배너를 띄우면
+        사용자는 문제가 있다고 읽는데, 이것은 정상 동작의 보완이다.
+
+        **예외를 삼킨다.** 미러가 실행에 영향을 주지 않는다는 성질(FR-047b)을 이 루프가
+        깨서는 안 된다.
+        """
+        while self._running:
+            await asyncio.sleep(IDLE_INTERVAL_S / 2)
+            if not self._running or self.degraded:
+                continue
+            quiet_for = time.monotonic() - self._last_sent_at
+            if quiet_for < IDLE_INTERVAL_S:
+                continue
+            try:
+                await self._shoot_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 - 미러 실패는 실행에 영향을 주지 않는다
+                continue
+
+    async def _shoot_once(self) -> bool:
+        """현재 화면을 한 장 찍어 보낸다. 보냈으면 True.
+
+        **Playwright `page.screenshot` 을 쓴다** — CDP 가 아니다. 그래서 미러의 허용 CDP
+        명령 목록(`_ALLOWED_COMMANDS`)에 아무것도 추가되지 않는다 (FR-047a).
+        """
+        import base64
+
+        try:
+            shot = await self._page.screenshot(type="jpeg", quality=QUALITY, timeout=3000)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - 화면이 닫혔거나 이동 중이다
+            return False
+        await self._send_frame(
+            base64.b64encode(shot).decode("ascii"), MAX_WIDTH, MAX_HEIGHT
+        )
+        return True

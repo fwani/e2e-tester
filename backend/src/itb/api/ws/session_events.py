@@ -39,9 +39,33 @@ class SessionEventHub:
     def subscriber_count(self) -> int:
         return len(self._sockets)
 
-    async def connect(self, socket: WebSocket) -> None:
+    async def connect(
+        self, socket: WebSocket, current_frame: dict[str, Any] | None = None
+    ) -> None:
+        """구독을 받는다. **현재 화면 한 장을 함께 준다** (005 FR-162).
+
+        스크린캐스트는 화면이 변할 때만 프레임을 만들고, 그 초기 한 장은 이 구독이 붙기
+        전에 발행된다. `publish` 는 구독자가 없으면 조용히 버리므로, 정적 화면에서는
+        미리보기에 한 장도 도달하지 않았다 — 실측 0건 (U-24).
+
+        **이것은 재전송이 아니라 현재 상태 전달이다.** 이 모듈이 "재전송하지 않는다" 로
+        정한 것은 순서 있는 상태 이벤트를 두고 한 말이고, `mirror_frame` 은 이미
+        "유실 가능 · 마지막 프레임만 그리면 된다" 로 정의돼 있다.
+
+        보낼 프레임이 없으면 아무것도 보내지 않는다. 없는 것을 빈 프레임으로 채우면
+        화면이 검은 화면을 대상 앱의 모습으로 그린다.
+        """
         await socket.accept()
         self._sockets.append(socket)
+        if current_frame is None:
+            return
+        message = {"type": "mirror_frame", "seq": next(self._seq), **current_frame}
+        try:
+            await socket.send_json(message)
+        except Exception:  # noqa: BLE001 - 첫 프레임 실패가 구독을 막지 않는다
+            # 미러 실패는 실행에 영향을 주지 않는다 (FR-047b). 구독은 살려 둔다 —
+            # `step_*` 이벤트는 계속 흘러야 한다.
+            return
 
     def disconnect(self, socket: WebSocket) -> None:
         with contextlib.suppress(ValueError):

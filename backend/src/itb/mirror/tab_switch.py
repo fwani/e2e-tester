@@ -80,6 +80,15 @@ class MirrorController:
 
     # ─── 정지 ──────────────────────────────────────────────────────────────
 
+    def last_frame(self) -> dict[str, object] | None:
+        """지금 표시 중인 탭의 마지막 프레임 (005 FR-162).
+
+        새 구독자에게 현재 화면을 주기 위한 것이다. 표시 중인 탭이 없으면 `None`.
+        """
+        if self._current is None:
+            return None
+        return self._current.last_frame()
+
     async def on_transport_lost(self) -> None:
         """이벤트 통로가 끊겼다. ack 를 멈춰 프레임 밀기를 자연히 세운다 (FR-047b)."""
         if self._current is not None:
