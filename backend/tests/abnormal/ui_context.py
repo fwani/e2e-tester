@@ -520,12 +520,18 @@ class UiContext:
     # ─── 화면 이동 ──────────────────────────────────────────────────────────
 
     async def open_definition(self, page: Page, name: str) -> bool:
-        """목록에서 그 테스트의 정의 화면으로 들어간다. ⋮ 메뉴 → 정의 보기."""
+        """목록에서 그 테스트의 편집 화면으로 들어간다. ⋮ 메뉴 → 편집.
+
+        **006 에서 메뉴 항목이 바뀌었다** — 「정의 보기」가 「편집」으로 대체됐다
+        (006 FR-175). 보기 전용 항목을 남기면 사용자는 다시 "고치려면 어디로 가지" 를
+        묻게 되고, 그것이 006 이 없앤 E-01·E-03 이다. 편집 화면은 저장하지 않으면 아무것도
+        바꾸지 않으므로 이 드라이버가 정의를 건드릴 위험은 없다.
+        """
         menu = page.get_by_role("button", name=f"{name} 추가 동작", exact=False).first
         if await menu.count() == 0:
             return False
         await menu.click(timeout=ACT_TIMEOUT_MS)
-        opened = await self.click_if_present(page, "정의 보기")
+        opened = await self.click_if_present(page, "편집")
         await self.settle(page, ms=800)
         return opened
 
