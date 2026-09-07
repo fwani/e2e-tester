@@ -15,8 +15,11 @@
 import { describe, expect, it } from "vitest";
 
 import { ACTION_IDS, type ActionId } from "../src/lib/actions";
+import { PHASES } from "../src/lib/phase";
 import {
   ACTION_LABEL,
+  PHASE_LABEL,
+  sessionPhaseLabel,
   runFromStepLabel,
   saveEditsLabel,
   sessionSaveLabel,
@@ -107,5 +110,40 @@ describe("라벨↔조작 대응 (T067 · FR-235)", () => {
     expect(labels).toContain("닫기");
     expect(labels).toContain("나가기");
     expect(labels).toContain("중지 중…");
+  });
+});
+
+/**
+ * 007 T091 걷기(W-1)가 잡은 것 — **끝난 실행은 「실행 중」이 아니다.**
+ *
+ * 국면 알약이 「실행 중」이라고 말하는 옆에서 결말 요약이 「실패 · Step 06 에서 실패」
+ * 라고 말했다. 한 화면이 두 가지를 주장하는 것이 005 U-20 이다.
+ */
+describe("국면 표시가 상태와 어긋나지 않는다 (T091 W-1 · FR-219 · 005 U-20)", () => {
+  const still = { finished: false, review: false, pausing: false };
+
+  it("끝난 실행은 「실행 종료」다", () => {
+    expect(sessionPhaseLabel("running", { ...still, finished: true })).toBe("실행 종료");
+    expect(sessionPhaseLabel("running", { ...still, finished: true })).not.toBe(
+      PHASE_LABEL.running,
+    );
+  });
+
+  it("검토와 전이 중도 자기 말을 한다", () => {
+    expect(sessionPhaseLabel("running", { ...still, review: true })).toBe("검토");
+    expect(sessionPhaseLabel("running", { ...still, pausing: true })).toBe("일시정지 중…");
+  });
+
+  it("돌고 있으면 「실행 중」이다 — 표시를 없애는 것이 목적이 아니다", () => {
+    expect(sessionPhaseLabel("running", still)).toBe(PHASE_LABEL.running);
+  });
+
+  it("다른 국면의 표시는 사전 그대로다 — 한 국면만 특별해지지 않는다", () => {
+    for (const phase of PHASES) {
+      if (phase === "running") continue;
+      expect(sessionPhaseLabel(phase, { ...still, finished: true }), phase).toBe(
+        PHASE_LABEL[phase],
+      );
+    }
   });
 });

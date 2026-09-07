@@ -287,6 +287,7 @@ function Field({
   maxLength,
   mono = false,
   multiline = false,
+  placeholder,
   onRemedy,
 }: {
   action: ActionId;
@@ -297,6 +298,14 @@ function Field({
   maxLength: number;
   mono?: boolean;
   multiline?: boolean;
+  /**
+   * 빈 칸이 무엇을 받는지 말한다.
+   *
+   * 라벨만 두면 칸이 비었을 때 무엇을 넣어야 하는지가 라벨 하나에 달린다 —
+   * 실브라우저 계층(AS-008)이 이 자리를 `placeholder` 로 찾는 것도 그것이 사용자가
+   * 칸을 알아보는 방식이기 때문이다.
+   */
+  placeholder?: string;
   onRemedy: (action: ActionId) => void;
 }) {
   if (capability.kind === "not_applicable") return null;
@@ -305,6 +314,7 @@ function Field({
   const common = {
     "data-action": action,
     "aria-label": label,
+    placeholder: placeholder ?? label,
     value,
     disabled,
     maxLength,

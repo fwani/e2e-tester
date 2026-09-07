@@ -110,3 +110,76 @@ describe("실행 종료 표시", () => {
     expect(close.style.boxShadow).toBe("none");
   });
 });
+
+/**
+ * 007 T091 걷기(W-1)가 잡은 것 — **이벤트를 놓친 화면도 결말을 말한다.**
+ *
+ * 걷기에서 실제로 만난 화면: 목록의 「실행 화면 보기」로 이미 끝난 세션에 돌아오면
+ * 국면 표시는 「실행 종료」, 중지 버튼은 「닫기」인데 **무엇이 끝났는지는 어디에도
+ * 없었다.** 결말 요약이 `run_finished` 이벤트로만 채워지기 때문이다.
+ *
+ * 005 FR-171 이 Step별 결과에서 이미 고친 것과 같은 종류다 — 실시간 이벤트에만 사는
+ * 값은 그 이벤트를 못 받은 화면에서 없는 것이 된다.
+ */
+describe("이벤트를 놓친 화면의 결말 복원 (T091 W-1 · 005 FR-171)", () => {
+  const finishedView = (state: "completed" | "failed" | "stopped" | "review") =>
+    sessionView({ state, steps, current_step_index: 0 });
+
+  it("요약 이벤트를 못 받았어도 결말이 화면에 있다", () => {
+    render(
+      <SessionWorkbench
+        {...props({ view: finishedView("failed"), summary: null, outcomeOf: () => "fail" })}
+      />,
+    );
+    const summary = document.querySelector("[data-run-summary]");
+    expect(summary, "끝난 실행인데 결말을 말하지 않는다").not.toBeNull();
+    expect(summary!.textContent).toContain("실패");
+  });
+
+  it("상태마다 다른 결말을 말한다 — 전부 실패로 뭉개지 않는다", () => {
+    const seen: string[] = [];
+    for (const [state, outcome] of [
+      ["completed", "pass"],
+      ["failed", "fail"],
+      ["stopped", "pass"],
+    ] as const) {
+      const view = render(
+        <SessionWorkbench
+          {...props({ view: finishedView(state), summary: null, outcomeOf: () => outcome })}
+        />,
+      );
+      seen.push(document.querySelector("[data-run-summary]")?.textContent ?? "");
+      view.unmount();
+    }
+    expect(new Set(seen).size, `결말이 구별되지 않는다: ${seen.join(" / ")}`).toBe(3);
+  });
+
+  it("실시간 이벤트를 우선한다 — 뷰는 폴링 스냅샷이라 더 오래됐을 수 있다", () => {
+    render(
+      <SessionWorkbench
+        {...props({
+          view: finishedView("failed"),
+          summary: "실패 · Step 01 에서 실패 · 3 / 5 통과 · 0.23 s",
+          outcomeOf: () => "fail",
+        })}
+      />,
+    );
+    // 총 소요 시간은 뷰에 없다. 이벤트의 문장이 그대로 남아야 그것을 잃지 않는다.
+    expect(document.querySelector("[data-run-summary]")!.textContent).toContain("0.23 s");
+  });
+
+  it("아무 Step 도 확정되지 않았으면 지어내지 않는다", () => {
+    render(
+      <SessionWorkbench
+        {...props({ view: finishedView("completed"), summary: null, outcomeOf: () => "pending" })}
+      />,
+    );
+    // 모르는 것을 말하는 것이 비워 두는 것보다 나쁘다.
+    expect(document.querySelector("[data-run-summary]")).toBeNull();
+  });
+
+  it("돌고 있는 실행에는 결말을 붙이지 않는다", () => {
+    render(<SessionWorkbench {...props({ summary: null, outcomeOf: () => "running" })} />);
+    expect(document.querySelector("[data-run-summary]")).toBeNull();
+  });
+});

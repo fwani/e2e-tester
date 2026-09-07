@@ -72,6 +72,7 @@ import {
   editSavedNotice,
   pausedAfterLabel,
   progressLabel as progressText,
+  sessionPhaseLabel,
   runFromStepLabel,
   runSummary,
   sessionSaveLabel,
@@ -303,6 +304,50 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   const failedStepIndex = (() => {
     const at = steps.findIndex((s) => s.outcome === "fail");
     return at < 0 ? null : at;
+  })();
+
+  /**
+   * 007 T091 걷기(W-1)가 잡은 것 — **이벤트를 놓친 화면도 결말을 말한다.**
+   *
+   * 결말 요약은 `run_finished` 이벤트로만 채워진다. 그래서 목록의 「실행 화면 보기」로
+   * **이미 끝난 세션에 돌아오면** 화면이 「실행 종료」·「닫기」라고 말하면서 무엇이
+   * 끝났는지는 말하지 못한다. 걷기에서 실제로 그 화면을 만났다.
+   *
+   * 005 FR-171 이 Step별 결과에서 이미 고친 것과 **같은 종류**다 — 실시간 이벤트에만
+   * 사는 값은 그 이벤트를 못 받은 화면에서 없는 것이 된다. 세션 뷰가 아는 것으로
+   * 되살린다: 상태가 결말을 말하고, `step_results` 가 개수를 말한다.
+   *
+   * **실시간 이벤트를 우선한다.** 뷰는 폴링 시점의 스냅샷이므로 방금 온 이벤트보다
+   * 오래됐을 수 있고, 총 소요 시간처럼 뷰에 없는 값도 있다.
+   */
+  const restoredSummary = (() => {
+    if (summary !== null) return summary;
+    if (!finished || steps.length === 0) return null;
+    const outcome: Outcome | null =
+      view.state === "completed"
+        ? "pass"
+        : view.state === "failed" || view.state === "lost"
+          ? "fail"
+          : view.state === "stopped" || view.state === REVIEW_STATE
+            ? "stopped"
+            : null;
+    if (outcome === null) return null;
+    const attempted = steps.filter(
+      (s) => s.outcome !== "pending" && s.outcome !== "not_run" && s.outcome !== "skipped",
+    ).length;
+    // 아무 Step 도 확정되지 않았으면 지어내지 않는다 — 모르는 것을 말하는 것이 더 나쁘다.
+    if (attempted === 0) return null;
+    return runSummary({
+      outcome,
+      passedCount: steps.filter((s) => s.outcome === "pass").length,
+      attemptedCount: attempted,
+      totalCount: steps.length,
+      totalMs: null,
+      scope: view.run_scope ?? null,
+      startIndex: view.run_start_index ?? null,
+      failedStepIndex,
+      stoppedStepIndex: outcome === "stopped" ? view.current_step_index : null,
+    });
   })();
   const selectedIndex = steps.findIndex((s) => s.id === focusedStepId);
 
@@ -818,9 +863,11 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       hasUnsavedChanges: view.has_unsaved_changes,
     }),
     phaseBar: {
-      phaseLabel: PHASE_LABEL[phase],
+      // 걷기 W-1 이 잡은 것 — 끝난 실행에서 「실행 중」이라고 말하면 그 옆의 결말
+      // 요약과 한 화면이 두 가지를 주장한다 (005 U-20).
+      phaseLabel: sessionPhaseLabel(phase, { finished: isDone, review, pausing }),
       phaseTone,
-      runSummary: summary,
+      runSummary: restoredSummary,
       progressLabel,
     },
     target: {

@@ -484,6 +484,32 @@ export const PHASE_LABEL: Record<Phase, string> = {
 };
 
 /**
+ * 세션 국면의 국면 표시 (007 T091 걷기가 잡은 것 · FR-219 · 005 FR-141·U-20).
+ *
+ * **끝난 실행은 「실행 중」이 아니다.** `phaseOfSession()` 은 종료 상태(`completed`·
+ * `failed`·`stopped`)를 `running` 으로 판정한다 — 그것은 옳다. 세션이 아직 열려 있고
+ * 화면이 마지막 미러와 Step 목록을 그대로 보여 주므로, 사용자가 있는 위치는 여전히
+ * 실행 국면이다.
+ *
+ * 그러나 **표시**는 다르다. 걷기(W-1)가 본 것은 국면 알약이 「실행 중」이라고 말하는
+ * 옆에서 결말 요약이 「실패 · Step 06 에서 실패」라고 말하는 화면이었다. 한 화면이 두
+ * 가지를 주장하는 것이 005 U-20 이고, 그것을 없애려고 어휘를 한 곳에 모았다.
+ *
+ * 판정을 고치지 않고 **표시만** 고치는 이유: 국면이 바뀌면 권한표가 통째로 갈린다.
+ * 끝난 실행에서 무엇을 할 수 있는지는 지금 표가 정확히 말하고 있다(덮어쓰기 O5).
+ */
+export function sessionPhaseLabel(
+  phase: Phase,
+  state: { finished: boolean; review: boolean; pausing: boolean },
+): string {
+  if (phase !== "running") return PHASE_LABEL[phase];
+  if (state.review) return "검토";
+  if (state.finished) return "실행 종료";
+  if (state.pausing) return "일시정지 중…";
+  return PHASE_LABEL.running;
+}
+
+/**
  * 조작의 기본 라벨.
  *
  * 상황에 따라 바뀌는 것(`run.stop` 의 「중지」/「닫기」/「나가기」, `run.from` 의 시작
