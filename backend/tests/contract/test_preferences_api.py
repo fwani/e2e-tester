@@ -140,3 +140,64 @@ def test_unknown_session_is_not_found(client: TestClient) -> None:
     resp = client.post("/api/sessions/does-not-exist/pacing", json={"pacing": "slow"})
     assert resp.status_code == 404, resp.text
     assert resp.json()["error"]["code"] == "SESSION_NOT_FOUND"
+
+
+def test_lost_session_rejects_pacing_change(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """유실된 세션의 속도는 바꿀 수 없다 (contracts/rest-api.md §2).
+
+    유실 후에는 저장과 처음부터 재실행만 허용된다는 기존 불변식을 따른다
+    (state_machine 불변식 5). 속도를 받아 주면 사용자는 다음 실행에 반영될 것으로
+    믿지만, 그 세션에는 다음 실행이 없다.
+    """
+    from itb.execution.state_machine import Command
+
+    test_id = record_login(keyed_client, fixture_app)
+    sid = start_replay(keyed_client, test_id)
+    try:
+        session = keyed_client.app.state.itb.sessions.require(sid)  # type: ignore[attr-defined]
+        keyed_client.portal.call(  # type: ignore[attr-defined]
+            lambda: session.apply(Command.SESSION_LOST)
+        )
+        resp = keyed_client.post(
+            f"/api/sessions/{sid}/pacing", json={"pacing": RunPacing.SLOW.value}
+        )
+        assert resp.status_code == 409, resp.text
+        assert resp.json()["error"]["code"] == "SESSION_LOST"
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+def test_finished_session_rejects_pacing_change(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """끝난 세션의 속도도 바꿀 수 없다 (contracts/rest-api.md §2).
+
+    거부는 **지금 무엇이 가능한지 함께 알린다** — "안 된다"만 말하면 사용자가 되는 것을
+    하나씩 눌러 찾아야 한다 (003 AP-020).
+    """
+    import time
+
+    test_id = record_login(keyed_client, fixture_app)
+    sid = start_replay(keyed_client, test_id)
+    try:
+        deadline = time.monotonic() + 90.0
+        while time.monotonic() < deadline:
+            state = keyed_client.get(f"/api/sessions/{sid}").json()["state"]
+            if state in ("completed", "failed"):
+                break
+            time.sleep(0.05)
+        else:
+            pytest.fail("측정용 실행이 끝나지 않았다")
+
+        resp = keyed_client.post(
+            f"/api/sessions/{sid}/pacing", json={"pacing": RunPacing.SLOW.value}
+        )
+        assert resp.status_code == 409, resp.text
+        body = resp.json()["error"]
+        assert body["code"] == "INVALID_TRANSITION"
+        assert body["detail"]["state"] in ("completed", "failed")
+        assert "allowed" in body["detail"], "지금 가능한 동작을 함께 알려야 한다"
+    finally:
+        stop_quietly(keyed_client, sid)

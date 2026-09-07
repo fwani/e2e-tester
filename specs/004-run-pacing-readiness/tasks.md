@@ -319,6 +319,6 @@ US2 만으로도 값이 있다 — 정상 동작해야 할 테스트가 실패�
 
 수렴 판정에서 남은 것. CRITICAL·HIGH 없음.
 
-- [ ] T071 `backend/tests/contract/test_preferences_api.py` 에 세션 속도 변경의 거부 경로 둘을 더한다 — 유실된 세션은 409 `SESSION_LOST`, 종료된 세션은 409 `INVALID_TRANSITION`. `sessions.py` 의 두 분기가 아직 한 번도 실행되지 않았다 per contracts/rest-api.md §2 (missing)
-- [ ] T072 `frontend/tests/` 에 Runner 화면 테스트를 더한다 — 마지막 이벤트가 `step_finished` 인 상태(= Step 간 간격)에서 방금 끝난 Step 과 그 결과가 보인다. 지금은 "간격 중에는 `step_started` 가 발행되지 않는다"는 암묵적 성질에 기대고 있어, 누군가 간격 중 이벤트를 추가하면 조용히 깨진다 per FR-107 (partial)
-- [ ] T073 AI **작성 중** 실행되는 Step 에는 속도가 적용되지 않는다는 한계를 `specs/004-run-pacing-readiness/outcome.md` 와 `docs/DEVELOPMENT.md` 에 적는다 — 작성 경로가 `RunnerTask` 를 쓰지 않기 때문이며, 저장된 AI 테스트의 재실행에는 정상 적용된다. 구현 확대는 작성 루프의 재설계를 요구하므로 이번 범위 밖이다 per spec 엣지 케이스 "AI 작성 세션에도 속도 설정이 적용되는가" (partial)
+- [X] T071 `backend/tests/contract/test_preferences_api.py` 에 세션 속도 변경의 거부 경로 둘을 더한다 — 유실된 세션은 409 `SESSION_LOST`, 종료된 세션은 409 `INVALID_TRANSITION`. `sessions.py` 의 두 분기가 아직 한 번도 실행되지 않았다 per contracts/rest-api.md §2 (missing)
+- [X] T072 `frontend/tests/` 에 Runner 화면 테스트를 더한다 — 마지막 이벤트가 `step_finished` 인 상태(= Step 간 간격)에서 방금 끝난 Step 과 그 결과가 보인다. 지금은 "간격 중에는 `step_started` 가 발행되지 않는다"는 암묵적 성질에 기대고 있어, 누군가 간격 중 이벤트를 추가하면 조용히 깨진다 per FR-107 (partial)
+- [X] T073 AI **작성 중** 실행되는 Step 에는 속도가 적용되지 않는다는 한계를 `specs/004-run-pacing-readiness/outcome.md` 와 `docs/DEVELOPMENT.md` 에 적는다 — 작성 경로가 `RunnerTask` 를 쓰지 않기 때문이며, 저장된 AI 테스트의 재실행에는 정상 적용된다. 구현 확대는 작성 루프의 재설계를 요구하므로 이번 범위 밖이다 per spec 엣지 케이스 "AI 작성 세션에도 속도 설정이 적용되는가" (partial)
