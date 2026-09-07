@@ -83,7 +83,11 @@ export function App() {
         if (at.name === "result" && at.testId) {
           setScreen({ name: "result", testId: at.testId });
         } else if (at.name === "definition" && at.testId) {
-          setScreen({ name: "definition", testId: at.testId });
+          setScreen({
+            name: "definition",
+            testId: at.testId,
+            focusStepId: at.stepId ?? null,
+          });
         } else if (at.name === "keys") {
           setScreen({ name: "keys" });
         } else if (at.name === "secrets") {
@@ -108,12 +112,19 @@ export function App() {
       name: screen.name,
       testId: "testId" in screen ? screen.testId : null,
       sessionId: screen.name === "runner" ? screen.session.session_id : null,
+      // 006 FR-181 — 지목된 Step 도 주소에 남긴다. 새로고침해도 고치러 온 Step 을 잃지
+      // 않는다.
+      stepId: screen.name === "definition" ? (screen.focusStepId ?? null) : null,
     },
     (loc) => {
       if (loc.name === "result" && loc.testId) {
         setScreen({ name: "result", testId: loc.testId });
       } else if (loc.name === "definition" && loc.testId) {
-        setScreen({ name: "definition", testId: loc.testId });
+        setScreen({
+          name: "definition",
+          testId: loc.testId,
+          focusStepId: loc.stepId ?? null,
+        });
       } else if (loc.name === "keys") {
         setScreen({ name: "keys" });
       } else if (loc.name === "secrets") {
@@ -154,6 +165,27 @@ export function App() {
       .catch((exc: unknown) => setError(describeError(exc)))
       // 성공해도 놓는다. 화면이 이미 바뀌었으므로 남겨 두면 그 테스트를 다시 실행할 수
       // 없게 되고, 그것은 고치려던 것과 같은 종류의 막힘이다.
+      .finally(() => setPendingRun(null));
+  };
+
+  /**
+   * 편집을 위해 브라우저를 열고 지정한 Step **직전**에서 멈춘다 (006 FR-200·FR-201).
+   *
+   * 실행 진입과 **같은 가드**를 지난다 — `pendingRun` 이 세션 중복 생성을 막는다.
+   * 여기에 별도 경로를 만들면 편집 쪽에서만 연타로 브라우저가 둘 뜬다 (005 U-06 과
+   * 같은 종류의 결함).
+   *
+   * 도달한 뒤의 편집은 지금의 일시정지 팔레트 그대로다 — 새 편집 UI 를 만들지 않는다
+   * (FR-205).
+   */
+  const openBrowserAt = (testId: string, stepIndex: number) => {
+    if (pendingRun !== null) return;
+    setPendingRun(testId);
+    setError(null);
+    void sessions
+      .create({ mode: "replay", test_id: testId, pause_before_index: stepIndex })
+      .then((session) => setScreen({ name: "runner", session }))
+      .catch((exc: unknown) => setError(describeError(exc)))
       .finally(() => setPendingRun(null));
   };
 
@@ -238,11 +270,19 @@ export function App() {
         />
       )}
 
+      {/*
+        006 — 편집 화면. 진입점 3개(목록 행 메뉴, 결과 화면 「Step nn 고치기」, 주소)가
+        모두 이 **한 화면**으로 온다 (FR-179). 실행 진입과 세션 이동은 005 가 만든
+        단일 경로(`startRun`·`openSession`)를 그대로 쓴다 — 화면마다 새로 만들면
+        U-01·U-06 이 되살아난다.
+      */}
       {screen.name === "definition" && (
         <TestDefinition
           testId={screen.testId}
           focusStepId={screen.focusStepId ?? null}
-          onRun={(testId) => startReplay(testId)}
+          onRun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
+          onOpenBrowserAt={openBrowserAt}
+          onOpenSession={openSession}
           onBack={() => setScreen({ name: "list" })}
         />
       )}

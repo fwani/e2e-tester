@@ -47,7 +47,26 @@ describe("URL → 화면 (FR-166·FR-167)", () => {
       name: "result",
       testId: "TC-002",
       sessionId: null,
+      stepId: null,
     });
+  });
+
+  /**
+   * 006 T046 · FR-181 — 편집 화면은 지목된 Step 도 주소에 싣는다.
+   *
+   * 결과 화면의 「Step nn 고치기」로 들어온 뒤 새로고침하면 그 Step 이 다시 펼쳐져야
+   * 한다. 지목을 잃으면 사용자는 어느 Step 을 고치러 왔는지부터 다시 찾는다.
+   */
+  it("편집 화면의 지목된 Step 을 복원한다 (006 FR-181)", () => {
+    expect(searchToLocation("?screen=definition&test=TC-001&step=step-06")).toEqual({
+      name: "definition",
+      testId: "TC-001",
+      sessionId: null,
+      stepId: "step-06",
+    });
+    expect(
+      locationToSearch({ name: "definition", testId: "TC-001", stepId: "step-06" }),
+    ).toBe("?screen=definition&test=TC-001&step=step-06");
   });
 
   it("알 수 없는 화면 이름은 목록으로 떨어진다 — 앱을 이탈하지 않는다", () => {

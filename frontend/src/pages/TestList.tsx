@@ -18,7 +18,13 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { tests, type SessionView, type TestListRow, type TestListResponse } from "../api/client";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
-import { outcomeChip, outcomeLabel, outcomeTone, stepLabel } from "../lib/wording";
+import {
+  EDIT_ENTRY_LABEL,
+  outcomeChip,
+  outcomeLabel,
+  outcomeTone,
+  stepLabel,
+} from "../lib/wording";
 import type { Outcome } from "../types/generated/run-result";
 
 
@@ -716,9 +722,15 @@ function Row({
               minWidth: "160px",
             }}
           >
+            {/*
+              006 FR-175 — 「정의 보기」를 **「편집」으로 대체한다.** 보기만 하는 별도
+              항목을 남기면 사용자는 다시 "고치려면 어디로 가지" 를 묻게 되고, 그것이
+              006 이 없앤 E-01·E-03 이다. 편집 화면은 저장하지 않으면 아무것도 바꾸지
+              않으므로 보기 위해 들어가도 안전하다.
+            */}
             {onOpenDefinition && (
               <button className="ghost" onClick={onOpenDefinition} style={{ justifyContent: "flex-start" }}>
-                정의 보기
+                {EDIT_ENTRY_LABEL}
               </button>
             )}
             <button className="ghost" onClick={onRenameStart} style={{ justifyContent: "flex-start" }}>

@@ -226,3 +226,77 @@ export function partialRunDiagnosis(startIndex: number): string | null {
     `먼저 「처음부터 실행」으로 확인하세요.`
   );
 }
+
+// ─── 편집 어휘 (006 T034 · contracts/ui-contract.md §9) ─────────────────────
+//
+// 화면 파일에 문장을 직접 쓰지 않는다. 005 가 결말 어휘를 여기 모은 것과 같은 이유다 —
+// 문구가 화면마다 흩어지면 같은 것을 다른 말로 부르게 되고, 그것을 고칠 때 한 곳을
+// 빠뜨린다.
+//
+// Step 번호는 반드시 위의 `stepLabel()`·`stepNumber()` 를 쓴다. 여기서 다시
+// `index + 1` 을 쓰면 U-07(목록의 실패 Step 번호가 1 작았다)이 되살아난다.
+
+/** 편집 진입점 라벨 (FR-175). 「정의 보기」를 대체한다. */
+export const EDIT_ENTRY_LABEL = "편집";
+
+/**
+ * 저장 버튼 라벨 (FR-195 · 005 FR-156).
+ *
+ * 저장할 것이 없으면 버튼은 비활성이고, 라벨은 그대로 「변경 저장」이다 — 라벨을 바꾸면
+ * 사용자가 무엇을 누를 수 있는지 배운 것이 흔들린다.
+ */
+export function saveEditsLabel(pendingCount: number, saving: boolean): string {
+  if (saving) return "저장 중…";
+  return pendingCount > 0 ? `변경 저장 (${pendingCount}건)` : "변경 저장";
+}
+
+/** 저장 성공 확인줄 (FR-194 · 005 FR-158). 화면을 옮기지 않고 알린다. */
+export function editSavedNotice(testName: string): string {
+  return `저장했습니다 · ${testName}`;
+}
+
+/** 실행 중이어서 편집할 수 없다 (FR-206). 세션 식별자를 넣지 않는다 (005 FR-135). */
+export const EDIT_BLOCKED_BY_RUN = "실행 중이어서 편집할 수 없습니다";
+
+/** 그 실행으로 가는 버튼. 005 와 **같은 문구를 재사용한다** (FR-126). */
+export const OPEN_RUNNING_SESSION = "실행 중인 세션 보기";
+
+/** 브라우저를 열어 지정한 Step 직전에서 멈춘다 (FR-200). 시작점을 라벨에 박는다. */
+export function openBrowserAtStepLabel(index: number): string {
+  return `브라우저 열어 ${stepLabel(index)} 에서 멈추기`;
+}
+
+/** 저장하지 않은 변경이 있는 상태에서 브라우저를 열려 할 때 (FR-203). */
+export const SAVE_THEN_OPEN_BROWSER = "저장하고 열기";
+export const SAVE_BEFORE_OPEN_BROWSER =
+  "먼저 저장해야 합니다. 저장한 내용으로 브라우저를 엽니다.";
+
+/** 이탈 확인 (FR-208). 건수를 밝힌다 — 무엇을 잃는지 알아야 고를 수 있다. */
+export function unsavedLeaveWarning(pendingCount: number): string {
+  return `저장하지 않은 변경 ${pendingCount}건이 있습니다`;
+}
+
+/** 편집 불가 항목의 문구 (FR-191 · ui-contract §4). 이유 키를 문장으로 바꾼다. */
+export function lockedFieldNotice(
+  reason: "live_browser_required" | "delete_and_insert_instead" | "record_only",
+): string {
+  switch (reason) {
+    case "live_browser_required":
+      return "이 대상은 살아 있는 화면에서만 다시 집을 수 있습니다.";
+    case "delete_and_insert_instead":
+      return "Step 종류는 바꿀 수 없습니다. 지우고 새로 넣으세요.";
+    case "record_only":
+      return "기록입니다. 편집 대상이 아닙니다.";
+  }
+}
+
+/** 민감 참조 값 칸의 안내 (FR-212·FR-213). 평문이 이 화면에 들어올 자리를 만들지 않는다. */
+export const SENSITIVE_VALUE_NOTICE =
+  "민감 값은 참조로만 다룹니다. 실제 값은 「비밀 값」 화면에서 바꾸세요.";
+
+/** 외부 변경 충돌의 두 선택 (FR-209 · ui-contract §7). 무엇을 버리는지 라벨에 적는다. */
+export function staleReloadLabel(pendingCount: number): string {
+  return `바뀐 내용으로 다시 읽기 (내 편집 ${pendingCount}건을 버립니다)`;
+}
+
+export const STALE_OVERWRITE_LABEL = "내 편집으로 덮어쓰기 (파일의 변경을 버립니다)";

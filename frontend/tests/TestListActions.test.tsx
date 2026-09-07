@@ -112,8 +112,17 @@ describe("TestList — 이름 변경·삭제 (FR-007)", () => {
     );
   });
 
-  it("정의 보기는 핸들러가 있을 때만 그린다 (FR-016)", async () => {
+  /**
+   * 006 T025·FR-175 — 「정의 보기」가 **「편집」으로 대체됐다.**
+   *
+   * 보기만 하는 별도 항목을 남기면 사용자는 다시 "고치려면 어디로 가지" 를 묻게 되고,
+   * 그것이 006 이 없앤 E-01·E-03 이다. 편집 화면은 저장하지 않으면 아무것도 바꾸지
+   * 않으므로 보기 위해 들어가도 안전하다.
+   */
+  it("편집 진입점은 핸들러가 있을 때만 그린다 (FR-016·006 FR-175)", async () => {
     await renderList();
+    expect(screen.queryByText("편집")).toBeNull();
+    // 「정의 보기」는 더 이상 없다 — 편집 경로가 하나여야 한다.
     expect(screen.queryByText("정의 보기")).toBeNull();
 
     cleanup();
@@ -129,8 +138,9 @@ describe("TestList — 이름 변경·삭제 (FR-007)", () => {
     await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
     openMenu();
 
-    expect(screen.getAllByText("정의 보기").length).toBe(1);
-    act(() => screen.getByText("정의 보기").click());
+    expect(screen.queryByText("정의 보기")).toBeNull();
+    expect(screen.getAllByText("편집").length).toBe(1);
+    act(() => screen.getByText("편집").click());
     expect(onOpenDefinition).toHaveBeenCalledWith("TC-001");
   });
 });

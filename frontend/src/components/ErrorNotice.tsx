@@ -31,6 +31,15 @@ export interface ErrorInfo {
    * 여기로만 나른다.
    */
   sessionId?: string | null;
+  /**
+   * 지금 저장된 정의의 지문 (006 FR-209, contracts/rest-api.md §2).
+   *
+   * `DEFINITION_STALE` 은 "내 편집으로 덮어쓰기" 를 선택지로 준다. 그 선택은 **이 값을
+   * 실어 같은 요청을 다시 보내는 것**이다 — 서버에 강제 플래그를 두지 않았기 때문이다.
+   * `sessionId` 와 같은 이유로 여기로만 나른다: 사용자에게 보이는 문구에 식별자를 넣지
+   * 않는다.
+   */
+  staleRevision?: string | null;
 }
 
 const FALLBACK_ACTION = "화면을 새로 고쳐 다시 시도하세요. 계속 발생하면 서버 로그를 확인하세요.";
@@ -38,6 +47,12 @@ const FALLBACK_ACTION = "화면을 새로 고쳐 다시 시도하세요. 계속 
 /** 오류 상세에서 이동할 세션을 꺼낸다. 없으면 `null` (005 FR-126). */
 function sessionIdIn(detail: Record<string, unknown> | undefined): string | null {
   const value = detail?.session_id;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/** 오류 상세에서 현재 정의 지문을 꺼낸다. 없으면 `null` (006 FR-209). */
+function revisionIn(detail: Record<string, unknown> | undefined): string | null {
+  const value = detail?.revision;
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
@@ -55,6 +70,7 @@ export function describeError(exc: unknown): ErrorInfo {
       category: exc.category,
       code: exc.code,
       sessionId: sessionIdIn(exc.detail),
+      staleRevision: revisionIn(exc.detail),
     };
   }
   return {

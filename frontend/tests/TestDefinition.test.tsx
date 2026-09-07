@@ -1,17 +1,18 @@
 /**
- * 정의 보기 화면 (T169). FR-016·FR-019.
+ * 편집 화면 (T169 · 006 T024·T057·T069·T070·T079). FR-016·FR-019 · 006 US1·US3·US4·US5.
  *
- * **실행하지 않고 볼 수 있는가**가 이 화면의 존재 이유이므로, 세션을 만들지 않고
- * `GET /api/tests/{id}` 하나로 그려지는지를 본다.
+ * **실행하지 않고 볼 수 있는가**가 이 화면의 존재 이유였고, 006 이 그것을 편집까지
+ * 연장했다. 그래서 이 파일은 세션을 만들지 않고 `GET /api/tests/{id}/definition` 하나로
+ * 편집·저장이 되는지를 본다 (FR-182 · SC-302).
  */
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TestDefinition } from "../src/pages/TestDefinition";
 
 const verified = (value: string) => ({ value, status: "verified" });
 
-const DEFINITION = {
+const TEST = {
   dsl_version: 1,
   id: "TC-001",
   name: "로그인",
@@ -67,69 +68,338 @@ const DEFINITION = {
   updated_at: "2026-09-03T00:00:00Z",
 };
 
-beforeEach(() => {
+const LOCKED = [
+  { field: "steps[].target", reason: "live_browser_required" },
+  { field: "steps[].type", reason: "delete_and_insert_instead" },
+  { field: "ai_instruction", reason: "record_only" },
+];
+
+function view(overrides: Record<string, unknown> = {}) {
+  return {
+    test: TEST,
+    revision: "rev-1",
+    editable: true,
+    blocked_by: null,
+    blocking_session_id: null,
+    locked_fields: LOCKED,
+    warnings: [],
+    ...overrides,
+  };
+}
+
+/** 요청을 기록하는 가짜 서버. 저장 응답은 새 `revision` 을 준다 (계약 §2). */
+function stubFetch(
+  first: Record<string, unknown> = view(),
+  onSave?: (body: unknown) => Response,
+) {
+  const calls: { url: string; method: string; body: unknown }[] = [];
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => new Response(JSON.stringify(DEFINITION), { status: 200 })),
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(String(init.body)) : null;
+      calls.push({ url: String(url), method, body });
+      if (method === "PUT") {
+        if (onSave) return onSave(body);
+        return new Response(
+          JSON.stringify({ ...view(), revision: "rev-2" }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify(first), { status: 200 });
+    }),
   );
-});
+  return calls;
+}
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("TestDefinition", () => {
-  it("세션을 만들지 않고 정의를 그린다 (FR-016)", async () => {
-    render(<TestDefinition testId="TC-001" onBack={() => undefined} />);
+async function renderScreen(props: Record<string, unknown> = {}) {
+  render(<TestDefinition testId="TC-001" onBack={() => undefined} {...props} />);
+  await waitFor(() => expect(screen.getByText("비밀번호 입력")).toBeTruthy());
+}
 
-    await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
-    expect(screen.getByText("비밀번호 입력")).toBeTruthy();
+describe("편집 화면 — 브라우저 없이 (US1)", () => {
+  beforeEach(() => stubFetch());
+
+  it("세션을 만들지 않고 정의를 그린다 (FR-016·FR-182)", async () => {
+    const calls = stubFetch();
+    await renderScreen();
+
     expect(screen.getByText("로그인 클릭")).toBeTruthy();
-
-    // 세션 엔드포인트를 부르지 않았다 — 실행 없이 볼 수 있어야 한다.
-    const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls.every(([url]) => !String(url).includes("/api/sessions"))).toBe(true);
+    // 세션 엔드포인트를 부르지 않았다 — 편집도 실행 없이 되어야 한다 (SC-302).
+    expect(calls.every((c) => !c.url.includes("/api/sessions"))).toBe(true);
+    expect(calls.some((c) => c.url.includes("/definition"))).toBe(true);
   });
 
-  it("민감 값을 표시하지 않고 참조만 보여 준다 (FR-082)", async () => {
-    render(<TestDefinition testId="TC-001" onBack={() => undefined} />);
-    await waitFor(() => expect(screen.getByText("비밀번호 입력")).toBeTruthy());
-
+  it("민감 값을 표시하지 않고 참조만 보여 준다 (FR-082·FR-212)", async () => {
+    await renderScreen();
     expect(screen.getByText("{{LOGIN_PASSWORD}}")).toBeTruthy();
     expect(screen.getByText(/값은 표시되지 않습니다/)).toBeTruthy();
   });
 
+  it("민감 참조 값 칸은 읽기 전용이고 이유를 밝힌다 (FR-213)", async () => {
+    await renderScreen();
+    act(() => screen.getByText("비밀번호 입력").click());
+    await waitFor(() => expect(screen.getByLabelText("Step 입력값")).toBeTruthy());
+
+    const input = screen.getByLabelText("Step 입력값") as HTMLInputElement;
+    expect(input.disabled).toBe(true);
+    expect(screen.getByText(/「비밀 값」 화면에서 바꾸세요/)).toBeTruthy();
+  });
+
   it("지시문을 '실행 대상이 아님' 과 함께 보여 준다 (FR-063·FR-064)", async () => {
-    render(<TestDefinition testId="TC-001" onBack={() => undefined} />);
-    await waitFor(() =>
-      expect(screen.getByText("로그인해서 프로젝트 화면으로 가")).toBeTruthy(),
-    );
+    await renderScreen();
     expect(screen.getByText(/실행 대상이 아닙니다/)).toBeTruthy();
+    expect(screen.getByText(/기록입니다. 편집 대상이 아닙니다/)).toBeTruthy();
   });
 
   it("Step 을 고르면 후보 우선순위 표를 보여 준다 (FR-019)", async () => {
-    render(<TestDefinition testId="TC-001" onBack={() => undefined} />);
-    await waitFor(() => expect(screen.getByText("로그인 클릭")).toBeTruthy());
-
-    // 상태 갱신을 act 로 감싼다 — 감싸지 않으면 React 가 경고하고, 그 경고는 실제
-    // 사용자가 보는 동작과 테스트가 어긋날 수 있다는 신호다.
+    await renderScreen();
     act(() => screen.getByText("로그인 클릭").click());
     await waitFor(() => expect(screen.getByText("login-submit")).toBeTruthy());
     expect(screen.getByText("사용 중")).toBeTruthy();
   });
 
-  it("결과 화면에서 지목한 Step 을 처음부터 펼친다 (FR-056)", async () => {
+  it("결과 화면에서 지목한 Step 을 처음부터 펼친다 (FR-056·FR-180)", async () => {
     render(
       <TestDefinition testId="TC-001" focusStepId="step-02" onBack={() => undefined} />,
     );
     await waitFor(() => expect(screen.getByText("login-submit")).toBeTruthy());
   });
+});
 
-  it("다시 집기는 여기서 제공하지 않고 그 이유를 알린다 (FR-020)", async () => {
+describe("변경 건수와 되돌리기 (FR-188~FR-190)", () => {
+  it("변경할 때마다 건수가 늘고, 같은 Step 의 연속 편집은 하나로 센다", async () => {
+    stubFetch();
+    await renderScreen();
+    act(() => screen.getByText("비밀번호 입력").click());
+    await waitFor(() => expect(screen.getByLabelText("Step 표시 이름")).toBeTruthy());
+
+    const label = screen.getByLabelText("Step 표시 이름");
+    fireEvent.change(label, { target: { value: "비번" } });
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+
+    // 같은 Step 을 한 번 더 고쳐도 1건이다 — 사용자가 센 것과 맞아야 한다.
+    fireEvent.change(label, { target: { value: "비번 입력" } });
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+
+    // 같은 Step 의 다른 필드도 그 Step 의 한 연산으로 합쳐진다 — 여전히 1건이다.
+    const timeout = screen.getByLabelText("Step 대기 시간 (ms)");
+    fireEvent.change(timeout, { target: { value: "30000" } });
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+
+    // 다른 종류의 변경은 따로 센다.
+    const name = screen.getByLabelText("테스트 이름");
+    fireEvent.change(name, { target: { value: "로그인 흐름" } });
+    await waitFor(() => expect(screen.getByText("변경 저장 (2건)")).toBeTruthy());
+  });
+
+  it("변경이 없으면 저장 버튼이 비활성이다 (FR-195)", async () => {
+    stubFetch();
+    await renderScreen();
+    const save = screen.getByText("변경 저장") as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+  });
+
+  it("개별 되돌리기가 건수를 줄인다 (FR-190)", async () => {
+    stubFetch();
+    await renderScreen();
+
+    act(() => screen.getByLabelText("Step 02 삭제").click());
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+    // 삭제는 미리보기에도 반영된다.
+    expect(screen.queryByText("로그인 클릭")).toBeNull();
+
+    act(() => screen.getByText("변경 전부 되돌리기").click());
+    await waitFor(() => expect(screen.getByText("로그인 클릭")).toBeTruthy());
+    expect((screen.getByText("변경 저장") as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("저장 (FR-193·FR-194)", () => {
+  it("연산 목록을 보내고, 성공을 화면을 옮기지 않고 알린다", async () => {
+    const calls = stubFetch();
+    await renderScreen();
+
+    act(() => screen.getByLabelText("Step 02 삭제").click());
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+    act(() => screen.getByText("변경 저장 (1건)").click());
+
+    await waitFor(() => expect(screen.getByText(/저장했습니다 · 로그인/)).toBeTruthy());
+
+    const put = calls.find((c) => c.method === "PUT");
+    expect(put).toBeTruthy();
+    // **편집 결과가 아니라 연산 목록을 보낸다** (research R3).
+    expect(put?.body).toEqual({
+      revision: "rev-1",
+      edits: [{ op: "delete", step_id: "step-02" }],
+    });
+    // 화면이 그대로다 — 목록으로 튀지 않는다.
+    expect(screen.getByText("비밀번호 입력")).toBeTruthy();
+  });
+
+  it("저장 뒤 응답의 새 revision 을 쓴다 — 다시 조회하지 않는다", async () => {
+    const calls = stubFetch();
+    await renderScreen();
+
+    act(() => screen.getByLabelText("Step 02 삭제").click());
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+    act(() => screen.getByText("변경 저장 (1건)").click());
+    await waitFor(() => expect(screen.getByText(/저장했습니다/)).toBeTruthy());
+
+    act(() => screen.getByLabelText("Step 02 삭제").click());
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+    act(() => screen.getByText("변경 저장 (1건)").click());
+    await waitFor(() => {
+      const puts = calls.filter((c) => c.method === "PUT");
+      expect(puts).toHaveLength(2);
+      expect((puts[1]?.body as { revision: string }).revision).toBe("rev-2");
+    });
+  });
+
+  it("저장 뒤 그 자리에서 다시 실행을 걸 수 있다 (US2)", async () => {
+    stubFetch();
+    const onRun = vi.fn();
     render(
-      <TestDefinition testId="TC-001" focusStepId="step-02" onBack={() => undefined} />,
+      <TestDefinition
+        testId="TC-001"
+        focusStepId="step-02"
+        onRun={onRun}
+        onBack={() => undefined}
+      />,
     );
     await waitFor(() => expect(screen.getByText("login-submit")).toBeTruthy());
 
-    expect(screen.queryByText("다시 집기")).toBeNull();
-    expect(screen.getByText(/살아 있는 브라우저가 필요합니다/)).toBeTruthy();
+    const label = screen.getByLabelText("Step 표시 이름");
+    fireEvent.change(label, { target: { value: "로그인" } });
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+    act(() => screen.getByText("변경 저장 (1건)").click());
+    await waitFor(() => expect(screen.getByText(/저장했습니다/)).toBeTruthy());
+
+    expect(screen.getByText("Step 02부터 실행")).toBeTruthy();
+    act(() => screen.getByText("Step 02부터 실행").click());
+    expect(onRun).toHaveBeenCalledWith("TC-001", 1);
+  });
+});
+
+describe("브라우저가 필요한 편집 (US3 · FR-202·FR-203)", () => {
+  it("이유와 가는 길을 같은 자리에 준다 — 회색 버튼만 두지 않는다", async () => {
+    stubFetch();
+    const onOpenBrowserAt = vi.fn();
+    await renderScreen({ onOpenBrowserAt });
+    act(() => screen.getByText("로그인 클릭").click());
+    await waitFor(() => expect(screen.getByText("login-submit")).toBeTruthy());
+
+    expect(
+      screen.getByText(/살아 있는 화면에서만 다시 집을 수 있습니다/),
+    ).toBeTruthy();
+    const button = screen.getByText("브라우저 열어 Step 02 에서 멈추기");
+    act(() => button.click());
+    expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1);
+  });
+
+  it("저장하지 않은 변경이 있으면 먼저 저장한 뒤 세션을 연다 (FR-203)", async () => {
+    const calls = stubFetch();
+    const onOpenBrowserAt = vi.fn();
+    await renderScreen({ onOpenBrowserAt });
+    act(() => screen.getByText("로그인 클릭").click());
+    await waitFor(() => expect(screen.getByText("login-submit")).toBeTruthy());
+
+    const label = screen.getByLabelText("Step 표시 이름");
+    fireEvent.change(label, { target: { value: "로그인" } });
+    await waitFor(() => expect(screen.getByText("저장하고 열기")).toBeTruthy());
+    expect(screen.getByText(/먼저 저장해야 합니다/)).toBeTruthy();
+
+    act(() => screen.getByText("저장하고 열기").click());
+    await waitFor(() => expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1));
+    // 저장이 먼저 나갔다 — 두 경로가 같은 Step 을 다르게 들고 있지 않다.
+    expect(calls.some((c) => c.method === "PUT")).toBe(true);
+  });
+});
+
+describe("저장하지 않은 변경 보호 (US4 · FR-208)", () => {
+  it("변경이 있으면 이탈 시 건수를 밝힌 확인을 거친다", async () => {
+    stubFetch();
+    const onBack = vi.fn();
+    render(<TestDefinition testId="TC-001" onBack={onBack} />);
+    await waitFor(() => expect(screen.getByText("비밀번호 입력")).toBeTruthy());
+
+    act(() => screen.getByLabelText("Step 02 삭제").click());
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+
+    act(() => screen.getByText("목록으로").click());
+    expect(onBack).not.toHaveBeenCalled();
+    expect(screen.getByText("저장하지 않은 변경 1건이 있습니다")).toBeTruthy();
+
+    act(() => screen.getByText("버리고 나가기").click());
+    expect(onBack).toHaveBeenCalled();
+  });
+
+  it("변경이 없으면 확인 없이 바로 나간다 — 물어볼 것이 없을 때 묻지 않는다", async () => {
+    stubFetch();
+    const onBack = vi.fn();
+    render(<TestDefinition testId="TC-001" onBack={onBack} />);
+    await waitFor(() => expect(screen.getByText("비밀번호 입력")).toBeTruthy());
+
+    act(() => screen.getByText("목록으로").click());
+    expect(onBack).toHaveBeenCalled();
+    expect(screen.queryByText(/저장하지 않은 변경/)).toBeNull();
+  });
+});
+
+describe("외부 변경 충돌 (US4 · FR-209)", () => {
+  it("두 선택을 주고 각각 무엇을 버리는지 라벨에 적는다", async () => {
+    stubFetch(view(), () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "DEFINITION_STALE",
+            category: "blocked",
+            message: "이 테스트의 정의 파일이 편집을 시작한 뒤에 바뀌었습니다.",
+            next_action: "다시 읽거나 덮어쓸지 고르세요.",
+            detail: { revision: "rev-outside" },
+          },
+        }),
+        { status: 409 },
+      ),
+    );
+    await renderScreen();
+
+    act(() => screen.getByLabelText("Step 02 삭제").click());
+    await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
+    act(() => screen.getByText("변경 저장 (1건)").click());
+
+    await waitFor(() =>
+      expect(screen.getByText(/편집을 시작한 뒤에 바뀌었습니다/)).toBeTruthy(),
+    );
+    expect(screen.getByText("바뀐 내용으로 다시 읽기 (내 편집 1건을 버립니다)")).toBeTruthy();
+    expect(screen.getByText("내 편집으로 덮어쓰기 (파일의 변경을 버립니다)")).toBeTruthy();
+  });
+});
+
+describe("실행 중이면 읽기 전용 (US5 · FR-206)", () => {
+  it("화면은 열리고, 컨트롤을 감추지 않고 비활성으로 두고 이유를 붙인다", async () => {
+    stubFetch(
+      view({
+        editable: false,
+        blocked_by: "running",
+        blocking_session_id: "s-1",
+      }),
+    );
+    const onOpenSession = vi.fn();
+    await renderScreen({ onOpenSession });
+
+    expect(screen.getByText("실행 중이어서 편집할 수 없습니다")).toBeTruthy();
+    // 감추지 않았다 — 비활성이다.
+    expect((screen.getByLabelText("Step 02 삭제") as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect((screen.getByLabelText("테스트 이름") as HTMLInputElement).disabled).toBe(
+      true,
+    );
+
+    act(() => screen.getByText("실행 중인 세션 보기").click());
+    expect(onOpenSession).toHaveBeenCalledWith("s-1");
   });
 });

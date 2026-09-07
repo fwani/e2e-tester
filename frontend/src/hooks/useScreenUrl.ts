@@ -19,6 +19,13 @@ export interface ScreenLocation {
   name: string;
   testId?: string | null;
   sessionId?: string | null;
+  /**
+   * 편집 화면에서 지목된 Step (006 FR-181).
+   *
+   * 결과 화면의 「Step nn 고치기」로 들어온 뒤 새로고침하면 그 Step 이 다시 펼쳐져야
+   * 한다 — 지목을 잃으면 사용자는 어느 Step 을 고치러 왔는지부터 다시 찾는다.
+   */
+  stepId?: string | null;
 }
 
 const PARAM = "screen";
@@ -30,6 +37,7 @@ export function locationToSearch(loc: ScreenLocation): string {
   params.set(PARAM, loc.name);
   if (loc.testId) params.set("test", loc.testId);
   if (loc.sessionId) params.set("session", loc.sessionId);
+  if (loc.stepId) params.set("step", loc.stepId);
   return `?${params.toString()}`;
 }
 
@@ -42,6 +50,7 @@ export function searchToLocation(search: string): ScreenLocation {
     name,
     testId: params.get("test"),
     sessionId: params.get("session"),
+    stepId: params.get("step"),
   };
 }
 
@@ -65,6 +74,18 @@ export function useScreenUrl(
   // 화면 → URL
   useEffect(() => {
     if (typeof window === "undefined") return;
+    /**
+     * **앱이 아직 화면을 정하지 못했으면 주소를 건드리지 않는다** (006 T046 · FR-181).
+     *
+     * 재점검 리포트 N-01 의 원인이 이것이었다 — 결과·편집 화면에서 새로고침하면 목록으로
+     * 튀고 주소창까지 `/` 로 바뀌었다. `ScreenUrl.test.ts` 의 변환 함수 테스트는 통과하는데
+     * 실제 새로고침이 복원되지 않은 이유는, 첫 렌더의 화면이 `loading` 이고 그 화면의
+     * 질의 문자열이 빈 문자열이어서, **프로젝트 조회가 끝나 `initialLocation()` 을 읽기
+     * 전에** 이 효과가 주소를 지워 버렸기 때문이다.
+     *
+     * 변환 함수를 고칠 문제가 아니다. 아직 모르는 것을 주소에 쓰지 않는 것이 맞다.
+     */
+    if (current.name === "loading") return;
     const search = locationToSearch(current);
     if (lastSearch.current === search) return;
     const first = lastSearch.current === null;

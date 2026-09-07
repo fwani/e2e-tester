@@ -228,6 +228,62 @@ export const tests = {
   },
 };
 
+// ─── 정의 편집 (006) ────────────────────────────────────────────────────────
+//
+// **저장 요청은 편집 결과가 아니라 편집 연산 목록이다** (006 research R3). 결과를 보내면
+// "어느 Step 종류가 값을 갖는가" 같은 판정이 화면으로 넘어오고, 그것이 규칙의 두 번째
+// 구현이 된다. 연산을 보내면 서버의 `step_edits` 가 유일한 구현으로 남는다.
+
+/** 편집 불가 항목의 이유. **문구가 아니라 키다** — 문장은 `lib/wording.ts` 가 만든다. */
+export type LockedReason =
+  | "live_browser_required"
+  | "delete_and_insert_instead"
+  | "record_only";
+
+export interface LockedField {
+  field: string;
+  reason: LockedReason;
+}
+
+export interface DefinitionView {
+  test: Test;
+  /** 정의 파일 내용의 지문. 저장 요청에 되돌려 보낸다 (FR-209). */
+  revision: string;
+  editable: boolean;
+  /** 편집할 수 없는 이유. `null` 이면 편집 가능. */
+  blocked_by: "running" | null;
+  /** 화면이 「실행 중인 세션 보기」 버튼을 만들기 위한 값 (005 FR-135). */
+  blocking_session_id: string | null;
+  locked_fields: LockedField[];
+  /** 저장을 막지 않는 것들 (FR-216 · 순서 변경 경고). */
+  warnings: string[];
+}
+
+/** 편집 연산 하나. 이 목록의 길이가 곧 「저장할 변경 건수」다 (FR-189). */
+export type EditOp =
+  | {
+      op: "update";
+      step_id: string;
+      label?: string;
+      value?: string;
+      timeout_ms?: number;
+      tab?: number;
+      url?: string;
+      assertion_value?: string;
+    }
+  | { op: "delete"; step_id: string }
+  | { op: "reorder"; order: string[] }
+  | { op: "set_name"; name: string }
+  | { op: "set_start_url"; url: string };
+
+export const definition = {
+  /** 편집을 위한 조회. **브라우저를 만들지 않는다** (FR-182). */
+  get: (testId: string) => get<DefinitionView>(`/api/tests/${testId}/definition`),
+  /** 편집 저장. 응답의 새 `revision` 을 받아 다음 저장에 쓴다 — 다시 조회하지 않는다. */
+  save: (testId: string, revision: string, edits: EditOp[]) =>
+    put<DefinitionView>(`/api/tests/${testId}/definition`, { revision, edits }),
+};
+
 // ─── 세션 ───────────────────────────────────────────────────────────────────
 
 export type SessionState =
@@ -403,6 +459,14 @@ export const sessions = {
     ai_instruction?: string | null;
     /** 생략하면 저장된 취향, 그것도 없으면 서버 기본값 (FR-109). */
     pacing?: RunPacing;
+    /**
+     * 편집을 위해 멈출 지점 (006 FR-200·FR-201). `replay` 모드에서만 쓴다.
+     *
+     * 선행 Step 을 실행한 뒤 이 인덱스의 Step 을 실행하기 **전에** 멈춘다. 이것이
+     * 없으면 사용자는 편집 상태에 닿기 위해 달리는 실행을 「일시정지」로 잡아야 했고,
+     * 빠르게 통과하는 테스트에서는 잡을 창이 사실상 없었다 (006 E-06).
+     */
+    pause_before_index?: number;
   }) => post<SessionView>("/api/sessions", body),
   get: (id: string) => get<SessionView>(`/api/sessions/${id}`),
   /**
