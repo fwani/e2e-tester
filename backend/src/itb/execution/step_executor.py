@@ -32,15 +32,20 @@ from itb.domain.step import (
     SelectStep,
     Step,
 )
-from itb.execution.locator_runtime import ElementNotFoundError, Resolution, resolve
+from itb.execution.locator_runtime import (
+    MIN_ACTION_TIMEOUT_MS,
+    ElementNotFoundError,
+    Resolution,
+    resolve,
+)
 from itb.execution.session import BrowserSession, TabNotFoundError
 from itb.execution.tab_resolver import describe_tab_failure, resolve_tab
 from itb.secrets.resolver import VariableResolutionError, VariableResolver
 
-MIN_ACTION_TIMEOUT_MS = 250
-"""탭 대기에 예산을 거의 다 쓴 경우에도 동작 자체에 남겨 두는 최소 시간.
-
-0 을 넘기면 Playwright 가 "무한 대기"로 해석한다 — 상한이 사라져 FR-057 이 깨진다.
+__all__ = ["MIN_ACTION_TIMEOUT_MS", "StepExecution", "StepExecutor", "StepFailure"]
+"""`MIN_ACTION_TIMEOUT_MS` 는 `locator_runtime` 이 정의한다 — 요소 탐색이 언제 포기하고
+채택할지와 동작에 얼마를 남길지가 **같은 값**이어야 하기 때문이다 (004). 여기서 다시
+내보내는 것은 기존 임포트 경로를 깨지 않기 위해서다.
 """
 
 
@@ -59,11 +64,15 @@ class StepFailure(Exception):
         tab_wait_ms: int = 0,
         *,
         code: ErrorCode = ErrorCode.STEP_FAILED,
+        element_wait_ms: int = 0,
     ) -> None:
         super().__init__(message)
         self.attempts = attempts or []
         self.tab_wait_ms = tab_wait_ms
         self.code = code
+        self.element_wait_ms = element_wait_ms
+        """요소를 기다린 시간 (004 FR-121). 실패 사유가 "얼마나 기다렸는지" 를 담아야
+        사용자가 예산을 늘릴지 정의를 고칠지 판단할 수 있다."""
 
 
 @dataclass(slots=True)
@@ -74,6 +83,9 @@ class StepExecution:
     attempts: list[LocatorAttempt] = field(default_factory=list)
     disagreement: list[str] = field(default_factory=list)
     tab_wait_ms: int = 0
+    element_wait_ms: int = 0
+    """요소가 나타나기를 기다린 시간 (004 FR-114). 성공 경로에서도 남긴다."""
+
     tab: int = 0
 
 
@@ -113,7 +125,14 @@ class StepExecutor:
         except StepFailure:
             raise
         except ElementNotFoundError as exc:
-            raise StepFailure(str(exc), exc.attempts, record.tab_wait_ms) from exc
+            record.element_wait_ms = exc.waited_ms
+            raise StepFailure(
+                str(exc),
+                exc.attempts,
+                record.tab_wait_ms,
+                code=_classify_lookup(exc),
+                element_wait_ms=exc.waited_ms,
+            ) from exc
         except VariableResolutionError as exc:
             # FR-089f — 값을 구하지 못하면 빈 값으로 진행하지 않고 사유를 밝히며 멈춘다.
             raise StepFailure(str(exc), record.attempts, record.tab_wait_ms) from exc
@@ -212,11 +231,20 @@ class StepExecutor:
         except ElementNotFoundError as exc:
             # 시도 내역을 합쳐 둔다. 어느 쪽을 못 찾았는지 결과 화면에서 보여야 한다.
             record.attempts = [*record.attempts, *exc.attempts]
+            record.element_wait_ms += exc.waited_ms
             msg = f"놓을 위치를 찾을 수 없습니다. {exc}"
-            raise StepFailure(msg, record.attempts, record.tab_wait_ms) from exc
+            raise StepFailure(
+                msg,
+                record.attempts,
+                record.tab_wait_ms,
+                code=_classify_lookup(exc),
+                element_wait_ms=record.element_wait_ms,
+            ) from exc
 
         record.attempts = [*record.attempts, *destination.attempts]
         record.disagreement = [*record.disagreement, *destination.disagreement]
+        # 두 요소를 각각 기다렸으므로 더한다 — 이 Step 이 실제로 대기에 쓴 시간이다.
+        record.element_wait_ms += destination.waited_ms
         await source.locator.drag_to(destination.locator, timeout=self._left(deadline))
 
     async def _locate(
@@ -231,10 +259,12 @@ class StepExecutor:
             located = await resolve(page, target, self._left(deadline))
         except ElementNotFoundError as exc:
             record.attempts = exc.attempts
+            record.element_wait_ms = exc.waited_ms
             raise
         record.attempts = located.attempts
         record.disagreement = located.disagreement
         record.resolved_candidate = located.strategy.kind.value
+        record.element_wait_ms = located.waited_ms
         return located
 
     # ─── 검증 4종 (FR-013a) ────────────────────────────────────────────────
@@ -333,6 +363,7 @@ class StepExecutor:
         record.attempts = located.attempts
         record.disagreement = located.disagreement
         record.resolved_candidate = located.strategy.kind.value
+        record.element_wait_ms = located.waited_ms
         return located
 
     # ─── 시간 예산 ─────────────────────────────────────────────────────────
@@ -356,6 +387,25 @@ def _matches(actual: str, expected: str, mode: MatchMode) -> bool:
 def _clip(text: str, limit: int = 200) -> str:
     collapsed = " ".join(text.split())
     return collapsed if len(collapsed) <= limit else collapsed[:limit] + "…"
+
+
+def _classify_lookup(exc: ElementNotFoundError) -> ErrorCode:
+    """요소 탐색 실패의 세 갈래 (004 FR-120·FR-123).
+
+    **문구가 아니라 예외가 든 사실로 가른다.** 화면이 메시지를 파싱해 분류하게 두면
+    문구를 다듬는 순간 분류가 깨진다.
+
+    | 상황 | 코드 | 사용자가 할 일 |
+    |---|---|---|
+    | 시도할 후보가 없다 | `STEP_FAILED` | 정의를 고친다. 기다려도 달라지지 않는다 |
+    | 예산 안에 아무도 하나를 못 가리켰다 | `ELEMENT_NOT_READY` | 예산을 늘리거나 화면을 확인한다 |
+    | 예산 안에 여러 개만 매칭됐다 | `ELEMENT_AMBIGUOUS` | 대상을 다시 집는다 |
+    """
+    if exc.ambiguous:
+        return ErrorCode.ELEMENT_AMBIGUOUS
+    if exc.timed_out:
+        return ErrorCode.ELEMENT_NOT_READY
+    return ErrorCode.STEP_FAILED
 
 
 def _classify(exc: PlaywrightError, step: Step) -> ErrorCode:

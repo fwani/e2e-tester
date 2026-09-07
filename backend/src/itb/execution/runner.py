@@ -376,6 +376,7 @@ class ReplayEngine:
             result.outcome = StepOutcome.FAIL
             result.duration_ms = int((time.monotonic() - started) * 1000)
             result.tab_wait_ms = exc.tab_wait_ms
+            result.element_wait_ms = exc.element_wait_ms
             result.locator_attempts = exc.attempts
             result.error_message = self._scrubber().scrub(str(exc))
             self.failed_index = index
@@ -392,6 +393,7 @@ class ReplayEngine:
                 error_message=result.error_message,
                 locator_attempts=[a.model_dump(mode="json") for a in exc.attempts],
                 tab_wait_ms=exc.tab_wait_ms,
+                element_wait_ms=exc.element_wait_ms,
                 error=error_body(exc.code, result.error_message),
             )
             await session.emit(
@@ -400,6 +402,7 @@ class ReplayEngine:
                 index=index,
                 outcome=StepOutcome.FAIL.value,
                 duration_ms=result.duration_ms,
+                element_wait_ms=exc.element_wait_ms,
                 resolved_candidate=None,
             )
             return False
@@ -407,6 +410,7 @@ class ReplayEngine:
         result.outcome = StepOutcome.PASS
         result.duration_ms = int((time.monotonic() - started) * 1000)
         result.tab_wait_ms = record.tab_wait_ms
+        result.element_wait_ms = record.element_wait_ms
         result.locator_attempts = record.attempts
         result.resolved_candidate = record.resolved_candidate
         result.candidate_disagreement = record.disagreement
@@ -417,6 +421,7 @@ class ReplayEngine:
             index=index,
             outcome=StepOutcome.PASS.value,
             duration_ms=result.duration_ms,
+            element_wait_ms=record.element_wait_ms,
             resolved_candidate=record.resolved_candidate,
         )
         return True

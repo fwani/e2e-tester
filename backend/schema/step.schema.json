@@ -96,7 +96,7 @@
           "type": "integer"
         },
         "timeout_ms": {
-          "default": 5000,
+          "default": 10000,
           "maximum": 60000,
           "minimum": 1,
           "title": "Timeout Ms",
@@ -203,7 +203,7 @@
           "$ref": "#/$defs/TargetLocator"
         },
         "timeout_ms": {
-          "default": 5000,
+          "default": 10000,
           "maximum": 60000,
           "minimum": 1,
           "title": "Timeout Ms",
@@ -268,7 +268,7 @@
           "type": "integer"
         },
         "timeout_ms": {
-          "default": 5000,
+          "default": 10000,
           "maximum": 60000,
           "minimum": 1,
           "title": "Timeout Ms",
@@ -338,7 +338,7 @@
           "$ref": "#/$defs/TargetLocator"
         },
         "timeout_ms": {
-          "default": 5000,
+          "default": 10000,
           "maximum": 60000,
           "minimum": 1,
           "title": "Timeout Ms",
@@ -406,7 +406,7 @@
           "$ref": "#/$defs/TargetLocator"
         },
         "timeout_ms": {
-          "default": 5000,
+          "default": 10000,
           "maximum": 60000,
           "minimum": 1,
           "title": "Timeout Ms",
@@ -480,7 +480,7 @@
           "$ref": "#/$defs/TargetLocator"
         },
         "timeout_ms": {
-          "default": 5000,
+          "default": 10000,
           "maximum": 60000,
           "minimum": 1,
           "title": "Timeout Ms",
@@ -552,7 +552,7 @@
           "type": "integer"
         },
         "timeout_ms": {
-          "default": 5000,
+          "default": 10000,
           "maximum": 60000,
           "minimum": 1,
           "title": "Timeout Ms",
@@ -625,7 +625,7 @@
           "$ref": "#/$defs/TargetLocator"
         },
         "timeout_ms": {
-          "default": 5000,
+          "default": 10000,
           "maximum": 60000,
           "minimum": 1,
           "title": "Timeout Ms",

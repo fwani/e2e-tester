@@ -84,30 +84,30 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 
 > **먼저 쓰고, 구현 전에 실패하는 것을 확인한다.**
 
-- [ ] T012 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_element_appears_after_delay` — 2초 뒤 등장 요소로 Step 통과 (SC-001)
-- [ ] T013 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_lower_candidate_appears_late` — 최상위 후보(testId)가 끝내 안 맞고 하위 후보(role)만 2초 뒤 맞는 경우 통과 (SC-002). **이 테스트가 구현 전 실패해야 한다**
-- [ ] T014 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_attached_but_invisible_waits` — DOM 에 붙었지만 1초 뒤 보이는 요소를 기다린 뒤 조작 (FR-112)
-- [ ] T015 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_ambiguous_does_not_silently_pick_first` — 후보가 2개를 매칭할 때 `.first` 로 통과하지 않고 `ELEMENT_AMBIGUOUS` 로 실패 (research R2)
-- [ ] T016 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_budget_exhausted_reports_not_ready` — 예산 초과 시 `ELEMENT_NOT_READY` 와 실제 대기 시간
-- [ ] T017 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_hidden_assertion_still_passes_when_absent` — 처음부터 없는 요소에 대한 `hidden` 검증이 대기 정책 변경 후에도 통과 (FR-119)
-- [ ] T018 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_immediate_element_does_not_poll` — 요소가 즉시 존재하면 폴링 루프에 들어가지 않는다 (FR-113)
-- [ ] T019 [P] [US2] `backend/tests/integration/test_performance.py` 에 정상 경로 비용 테스트를 더한다 — 즉시 존재하는 요소의 Step 소요가 100ms 미만 증가 (SC-003)
-- [ ] T019a [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_step_never_exceeds_budget` — 요소가 끝내 나타나지 않는 화면에서 Step 소요가 `timeout_ms` 를 넘지 않는다. 탭 대기·요소 탐색·동작이 하나의 예산을 나눠 쓴다 (FR-117)
-- [ ] T019b [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_candidate_disagreement_still_recorded` — 두 후보가 서로 다른 요소를 매칭할 때 불일치가 실행 기록에 남는다. `resolve()` 재작성이 이 기능을 떨어뜨리지 않았음을 고정한다 (spec 엣지 케이스, T020a 와 짝)
+- [X] T012 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_element_appears_after_delay` — 2초 뒤 등장 요소로 Step 통과 (SC-001)
+- [X] T013 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_lower_candidate_appears_late` — 최상위 후보(testId)가 끝내 안 맞고 하위 후보(role)만 2초 뒤 맞는 경우 통과 (SC-002). **이 테스트가 구현 전 실패해야 한다**
+- [X] T014 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_attached_but_invisible_waits` — DOM 에 붙었지만 1초 뒤 보이는 요소를 기다린 뒤 조작 (FR-112)
+- [X] T015 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_ambiguous_does_not_silently_pick_first` — 후보가 2개를 매칭할 때 `.first` 로 통과하지 않고 `ELEMENT_AMBIGUOUS` 로 실패 (research R2)
+- [X] T016 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_budget_exhausted_reports_not_ready` — 예산 초과 시 `ELEMENT_NOT_READY` 와 실제 대기 시간
+- [X] T017 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_hidden_assertion_still_passes_when_absent` — 처음부터 없는 요소에 대한 `hidden` 검증이 대기 정책 변경 후에도 통과 (FR-119)
+- [X] T018 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_immediate_element_does_not_poll` — 요소가 즉시 존재하면 폴링 루프에 들어가지 않는다 (FR-113)
+- [X] T019 [P] [US2] `backend/tests/integration/test_performance.py` 에 정상 경로 비용 테스트를 더한다 — 즉시 존재하는 요소의 Step 소요가 100ms 미만 증가 (SC-003)
+- [X] T019a [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_step_never_exceeds_budget` — 요소가 끝내 나타나지 않는 화면에서 Step 소요가 `timeout_ms` 를 넘지 않는다. 탭 대기·요소 탐색·동작이 하나의 예산을 나눠 쓴다 (FR-117)
+- [X] T019b [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_candidate_disagreement_still_recorded` — 두 후보가 서로 다른 요소를 매칭할 때 불일치가 실행 기록에 남는다. `resolve()` 재작성이 이 기능을 떨어뜨리지 않았음을 고정한다 (spec 엣지 케이스, T020a 와 짝)
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 를 폴링 알고리즘으로 바꾼다 — 1라운드에서 즉시 채택되면 반환하고, 아니면 `POLL_INTERVAL_MS` 주기로 **모든 후보를 다시 확인**한다 (FR-111, research R1)
-- [ ] T020a [US2] `backend/src/itb/execution/locator_runtime.py` 의 재작성에서 `_detect_disagreement()` 호출을 **보존한다** — 후보들이 서로 다른 요소를 가리킨 기록이 사라지면 나중에 테스트가 엉뚱한 요소에 대해 통과했을 때 단서가 없다 (spec 엣지 케이스 "여러 후보가 서로 다른 시점에")
-- [ ] T021 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 에서 `locator.first.wait_for(state="attached")` 폴백을 제거한다 — 후보가 여러 개를 매칭할 때 조용히 첫 번째를 잡던 경로다 (research R2)
-- [ ] T022 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 에 보임 선호 채택 규칙을 넣는다 — `count()==1` 이고 보이는 후보를 우선순위 순으로 즉시 채택하고, 보이지 않는 것만 있으면 계속 폴링하되, **남은 예산이 `MIN_ACTION_TIMEOUT_MS`(250ms) 이하가 되는 라운드에서** `count()==1` 인 최상위 후보를 채택한다 (research R3, FR-119 를 위해 실패시키지 않는다)
-- [ ] T023 [US2] `ElementNotFoundError` 가 `timed_out`·`waited_ms`·`ambiguous` 를 들도록 확장한다 — 호출부가 문구를 파싱하지 않고 분류할 수 있어야 한다 (`backend/src/itb/execution/locator_runtime.py`)
-- [ ] T024 [US2] `backend/src/itb/execution/locator_runtime.py` 에서 폴링 라운드마다 `LocatorAttempt` 를 갱신한다 — `waited_ms` 는 모든 후보가 총 대기 시간을 갖고, `match_count` 는 마지막 라운드 값이다 (data-model §4)
-- [ ] T025 [US2] `backend/src/itb/execution/step_executor.py` 에서 `ElementNotFoundError` 를 신규 오류 코드로 매핑한다 — `timed_out` → `ELEMENT_NOT_READY`, `ambiguous` → `ELEMENT_AMBIGUOUS`, 후보 없음 → 기존 `STEP_FAILED` (T023 이후, contracts/error-contract.md §2)
-- [ ] T026 [US2] `StepExecution` 에 `element_wait_ms` 를 더하고 `_locate`·`_locate_target`·`_drag` 가 채우게 한다 (`backend/src/itb/execution/step_executor.py`)
-- [ ] T027 [US2] `backend/src/itb/execution/runner.py` 의 `ReplayEngine.run_step` 이 성공·실패 양쪽에서 `element_wait_ms` 를 `StepResult` 와 `step_finished`·`step_failed` 이벤트에 싣는다 (contracts/websocket.md §2·§3)
-- [ ] T028 [US2] `_humanize` 와 신규 코드의 메시지가 **실제 기다린 시간과 후보별 시도 내역**을 담게 한다 (`backend/src/itb/execution/step_executor.py`, FR-121)
-- [ ] T029 [US2] `backend/src/itb/schema/export.py` 를 돌려 `backend/schema/*.json` 을 갱신하고, `cd frontend && npm run gen:types` 로 TypeScript 타입을 재생성한다. 생성 파일을 손으로 고치지 않는다 (헌법 Cross-language schema duty)
+- [X] T020 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 를 폴링 알고리즘으로 바꾼다 — 1라운드에서 즉시 채택되면 반환하고, 아니면 `POLL_INTERVAL_MS` 주기로 **모든 후보를 다시 확인**한다 (FR-111, research R1)
+- [X] T020a [US2] `backend/src/itb/execution/locator_runtime.py` 의 재작성에서 `_detect_disagreement()` 호출을 **보존한다** — 후보들이 서로 다른 요소를 가리킨 기록이 사라지면 나중에 테스트가 엉뚱한 요소에 대해 통과했을 때 단서가 없다 (spec 엣지 케이스 "여러 후보가 서로 다른 시점에")
+- [X] T021 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 에서 `locator.first.wait_for(state="attached")` 폴백을 제거한다 — 후보가 여러 개를 매칭할 때 조용히 첫 번째를 잡던 경로다 (research R2)
+- [X] T022 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 에 보임 선호 채택 규칙을 넣는다 — `count()==1` 이고 보이는 후보를 우선순위 순으로 즉시 채택하고, 보이지 않는 것만 있으면 계속 폴링하되, **남은 예산이 `MIN_ACTION_TIMEOUT_MS`(250ms) 이하가 되는 라운드에서** `count()==1` 인 최상위 후보를 채택한다 (research R3, FR-119 를 위해 실패시키지 않는다)
+- [X] T023 [US2] `ElementNotFoundError` 가 `timed_out`·`waited_ms`·`ambiguous` 를 들도록 확장한다 — 호출부가 문구를 파싱하지 않고 분류할 수 있어야 한다 (`backend/src/itb/execution/locator_runtime.py`)
+- [X] T024 [US2] `backend/src/itb/execution/locator_runtime.py` 에서 폴링 라운드마다 `LocatorAttempt` 를 갱신한다 — `waited_ms` 는 모든 후보가 총 대기 시간을 갖고, `match_count` 는 마지막 라운드 값이다 (data-model §4)
+- [X] T025 [US2] `backend/src/itb/execution/step_executor.py` 에서 `ElementNotFoundError` 를 신규 오류 코드로 매핑한다 — `timed_out` → `ELEMENT_NOT_READY`, `ambiguous` → `ELEMENT_AMBIGUOUS`, 후보 없음 → 기존 `STEP_FAILED` (T023 이후, contracts/error-contract.md §2)
+- [X] T026 [US2] `StepExecution` 에 `element_wait_ms` 를 더하고 `_locate`·`_locate_target`·`_drag` 가 채우게 한다 (`backend/src/itb/execution/step_executor.py`)
+- [X] T027 [US2] `backend/src/itb/execution/runner.py` 의 `ReplayEngine.run_step` 이 성공·실패 양쪽에서 `element_wait_ms` 를 `StepResult` 와 `step_finished`·`step_failed` 이벤트에 싣는다 (contracts/websocket.md §2·§3)
+- [X] T028 [US2] `_humanize` 와 신규 코드의 메시지가 **실제 기다린 시간과 후보별 시도 내역**을 담게 한다 (`backend/src/itb/execution/step_executor.py`, FR-121)
+- [X] T029 [US2] `backend/src/itb/schema/export.py` 를 돌려 `backend/schema/*.json` 을 갱신하고, `cd frontend && npm run gen:types` 로 TypeScript 타입을 재생성한다. 생성 파일을 손으로 고치지 않는다 (헌법 Cross-language schema duty)
 
 **Checkpoint**: US2 완료. 지연 로딩 화면에서 Step 이 통과하고, 실패 시 분류가 갈린다.
 `uv run python -m pytest tests/integration/test_lazy_loading.py -v` 가 전부 통과한다.

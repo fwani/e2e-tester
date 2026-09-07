@@ -295,7 +295,8 @@ def test_element_codes_are_blocked_not_broken() -> None:
     분류는 "내가 고칠 수 있는가"에만 답한다 (003 EC-001). 대상 화면이 느린 것도, 요소가
     모호해진 것도 사용자가 할 일이 있는 상황이므로 `broken` 이 아니다.
     """
-    from itb.domain.error import CATEGORY, Category, ErrorCode as DomainErrorCode
+    from itb.domain.error import CATEGORY, Category
+    from itb.domain.error import ErrorCode as DomainErrorCode
 
     assert CATEGORY[DomainErrorCode.ELEMENT_NOT_READY] is Category.BLOCKED
     assert CATEGORY[DomainErrorCode.ELEMENT_AMBIGUOUS] is Category.BLOCKED

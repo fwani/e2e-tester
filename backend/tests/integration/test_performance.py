@@ -246,3 +246,66 @@ def test_step_execution_overhead(keyed_client: TestClient, fixture_app: str) -> 
         f"Step 실행 오버헤드 p95={p95:.1f}ms 가 목표 "
         f"{STEP_OVERHEAD_P95_MS:.0f}ms 를 넘었다 (표본 {[round(o, 1) for o in overheads]})"
     )
+
+
+# ─── 004 — 대기 정책이 정상 경로를 느리게 만들지 않는가 (SC-003) ────────────
+
+PACING_IMMEDIATE_LIMIT_MS = 100.0
+"""SC-003 — 요소가 즉시 존재하는 Step 의 탐색 소요 상한.
+
+004 는 요소 탐색을 폴링으로 바꿨다. 폴링은 **못 찾았을 때만** 도는 루프이므로 정상
+경로에는 비용이 없어야 한다 — 그 주장을 여기서 잰다. 실측 근거는 research R4(후보 5종
+1라운드 14.8ms)와 R7(보임 확인 4.7ms)이다.
+"""
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_immediate_element_resolution_is_not_slowed_by_polling(
+    project_client: TestClient, fixture_app: str
+) -> None:
+    """SC-003 — 이미 있는 요소를 찾는 데 폴링 주기만큼도 쓰지 않는다.
+
+    폴링 주기(100ms)보다 빨리 끝나는 것이 **루프에 들어가지 않았다는 관측 가능한 증거**다.
+    루프에 한 번이라도 들어갔다면 최소 한 주기를 잤을 것이다.
+    """
+    from itb.domain.locator import Candidate, CandidateStatus, TargetLocator
+    from itb.execution.locator_runtime import resolve
+    from itb.locator.strategy import POLL_INTERVAL_MS
+
+    created = project_client.post(
+        "/api/sessions",
+        json={"mode": "record", "start_url": f"{fixture_app}/login.html"},
+    )
+    assert created.status_code == 201, created.text
+    sid = str(created.json()["session_id"])
+    try:
+        page = project_client.app.state.itb.sessions.require(sid).tabs[0].page  # type: ignore[attr-defined]
+        target = TargetLocator(
+            test_id=Candidate(value="login-submit", status=CandidateStatus.VERIFIED),
+            role="button",
+            accessible_name="로그인",
+            role_status=CandidateStatus.VERIFIED,
+            css=Candidate(value="[data-testid=login-submit]", status=CandidateStatus.VERIFIED),
+        )
+
+        samples: list[float] = []
+        for _ in range(5):
+            started = time.perf_counter()
+            found = project_client.portal.call(  # type: ignore[attr-defined]
+                lambda t=target: resolve(page, t, 10_000)
+            )
+            samples.append((time.perf_counter() - started) * 1000)
+            assert found.waited_ms == 0, "즉시 찾았으면 대기 기록이 0이어야 한다"
+
+        worst = max(samples)
+        assert worst < PACING_IMMEDIATE_LIMIT_MS, (
+            f"즉시 존재하는 요소 탐색에 최대 {worst:.0f}ms 가 들었다 "
+            f"(상한 {PACING_IMMEDIATE_LIMIT_MS:.0f}ms)"
+        )
+        assert worst < POLL_INTERVAL_MS, (
+            f"폴링 주기({POLL_INTERVAL_MS}ms)를 넘겼다 — 루프에 들어간 것으로 보인다"
+        )
+    finally:
+        from us2_support import stop_quietly
+
+        stop_quietly(project_client, sid)

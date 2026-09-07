@@ -127,6 +127,12 @@
           "title": "Duration Ms",
           "type": "integer"
         },
+        "element_wait_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Element Wait Ms",
+          "type": "integer"
+        },
         "error_message": {
           "anyOf": [
             {
@@ -195,6 +201,7 @@
         "duration_ms",
         "tab",
         "tab_wait_ms",
+        "element_wait_ms",
         "resolved_candidate",
         "locator_attempts",
         "error_message",

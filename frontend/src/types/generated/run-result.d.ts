@@ -18,6 +18,7 @@ export type SessionLost = boolean;
 export type StartedAt = string;
 export type CandidateDisagreement = string[];
 export type DurationMs = number;
+export type ElementWaitMs = number;
 export type ErrorMessage = string | null;
 export type Index = number;
 export type Label = string;
@@ -60,6 +61,7 @@ export interface Artifacts {
 export interface StepResult {
   candidate_disagreement: CandidateDisagreement;
   duration_ms: DurationMs;
+  element_wait_ms: ElementWaitMs;
   error_message: ErrorMessage;
   index: Index;
   label: Label;
