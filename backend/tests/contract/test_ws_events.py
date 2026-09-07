@@ -27,8 +27,23 @@ TAB_OPENED_KEYS = {"tab", "url", "title"}
 
 EXECUTION_EVENT_KEYS = {
     "step_started": {"step_id", "index", "tab"},
-    "step_finished": {"step_id", "index", "outcome", "duration_ms", "resolved_candidate"},
-    "step_failed": {"step_id", "index", "error_message", "locator_attempts", "tab_wait_ms"},
+    "step_finished": {
+        "step_id",
+        "index",
+        "outcome",
+        "duration_ms",
+        "resolved_candidate",
+        # 004 FR-114 — 실행 중에도 "이 Step 이 왜 오래 걸렸는지" 가 보인다.
+        "element_wait_ms",
+    },
+    "step_failed": {
+        "step_id",
+        "index",
+        "error_message",
+        "locator_attempts",
+        "tab_wait_ms",
+        "element_wait_ms",
+    },
     "run_finished": {
         "outcome",
         "total_ms",
@@ -288,3 +303,45 @@ def test_edit_warning_is_published_as_an_event(
         assert warnings[0]["messages"], "경고 메시지가 비어 있다"
     finally:
         stop_quietly(keyed_client, sid)
+
+
+# ─── 004: 실행 속도 변경 이벤트 (contracts/websocket.md §1) ─────────────────
+
+PACING_CHANGED_KEYS = {"pacing", "delay_ms", "auto_pause", "preference_saved"}
+
+
+def test_pacing_changed_carries_the_contracted_payload(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+) -> None:
+    """속도 변경이 **계산된 값까지** 실어 보낸다 (004).
+
+    화면이 간격 대응표를 따로 들고 있으면 서버와 갈린다 — 화면이 "1.5초 쉽니다" 라고
+    말하는 동안 러너가 0.5초를 쉬는 상태가 만들어진다. 값을 함께 보내면 대응표가 서버
+    한 곳에만 남는다.
+    """
+    from us2_support import record_login, start_replay, stop_quietly
+
+    from itb.domain.run_pacing import RunPacing, auto_pause, delay_ms
+
+    test_id = record_login(keyed_client, fixture_app)
+    sid = start_replay(keyed_client, test_id)
+    event_log.clear()
+    try:
+        resp = keyed_client.post(
+            f"/api/sessions/{sid}/pacing", json={"pacing": RunPacing.SLOW.value}
+        )
+        assert resp.status_code == 200, resp.text
+    finally:
+        stop_quietly(keyed_client, sid)
+
+    events = [p for name, p in event_log if name == "pacing_changed"]
+    assert events, f"pacing_changed 가 없다. 관측: {sorted({n for n, _ in event_log})}"
+
+    payload = events[0]
+    missing = PACING_CHANGED_KEYS - set(payload)
+    assert not missing, f"계약 키가 빠졌다: {sorted(missing)}"
+    assert payload["pacing"] == RunPacing.SLOW.value
+    assert payload["delay_ms"] == delay_ms(RunPacing.SLOW)
+    assert payload["auto_pause"] is auto_pause(RunPacing.SLOW)

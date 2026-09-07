@@ -149,3 +149,59 @@ def _write_definition(client: TestClient, test_id: str, definition: dict) -> Non
     path.write_text(
         yaml.safe_dump(definition, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
+
+
+# ─── 004 US1: 속도가 판정을 바꾸지 않는다 (SC-005·FR-104) ───────────────────
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_all_pacing_levels_judge_identically(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """SC-005 — 네 속도로 각각 실행해 통과/실패 판정과 실패 Step 위치가 모두 같다.
+
+    **이것이 속도 조절의 전제다.** 사람이 보려고 느리게 돌린 실행이 다른 결과를 내면,
+    빠르게 돌린 결과를 믿을 수 없어진다 — 느린 실행으로 확인한 것이 무의미해진다.
+
+    `한 스텝씩` 은 사용자 지시로만 진행하므로 매 경계에서 이어하기를 눌러 준다.
+    """
+    import time
+
+    from itb.domain.run_pacing import RunPacing, auto_pause
+
+    test_id = record_login(keyed_client, fixture_app)
+    verdicts: dict[str, tuple[str, object, int]] = {}
+
+    for pacing in RunPacing:
+        created = keyed_client.post(
+            "/api/sessions",
+            json={"mode": "replay", "test_id": test_id, "pacing": pacing.value},
+        )
+        assert created.status_code == 201, created.text
+        sid = str(created.json()["session_id"])
+        try:
+            deadline = time.monotonic() + 90.0
+            state = ""
+            while time.monotonic() < deadline:
+                state = keyed_client.get(f"/api/sessions/{sid}").json()["state"]
+                if state in ("completed", "failed"):
+                    break
+                if state == "paused" and auto_pause(pacing):
+                    # 한 스텝씩 — 사용자가 진행을 지시할 때까지 기다리는 것이 정상이다.
+                    keyed_client.post(f"/api/sessions/{sid}/resume")
+                time.sleep(0.03)
+            assert state in ("completed", "failed"), (
+                f"{pacing.value} 실행이 끝나지 않았다 (state={state})"
+            )
+        finally:
+            stop_quietly(keyed_client, sid)
+
+        result = result_of(keyed_client, test_id)
+        verdicts[pacing.value] = (
+            state,
+            result["failed_step_index"],
+            result["passed_count"],
+        )
+
+    distinct = set(verdicts.values())
+    assert len(distinct) == 1, f"속도에 따라 판정이 갈렸다: {verdicts}"

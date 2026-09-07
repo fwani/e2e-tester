@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from playwright.async_api import Page
 
 from itb.domain.error import ErrorCode, error_body, error_payload
+from itb.domain.run_pacing import auto_pause, delay_ms
 from itb.domain.run_result import (
     Artifacts,
     Outcome,
@@ -31,7 +32,7 @@ from itb.domain.step import Step
 from itb.domain.test_case import Test
 from itb.execution.artifacts import ArtifactCollector, ArtifactPaths
 from itb.execution.session import BrowserSession
-from itb.execution.state_machine import Command, SessionState
+from itb.execution.state_machine import Command, InvalidTransitionError, SessionState
 from itb.execution.step_executor import StepExecutor, StepFailure
 from itb.secrets.resolver import VariableResolver
 from itb.secrets.scrubber import Scrubber
@@ -229,7 +230,52 @@ class RunnerTask:
             self._session.current_step_index += 1
             if not should_continue:
                 return False
+
+            await self._pace(self._session.current_step_index)
         return True
+
+    async def _pace(self, next_index: int) -> None:
+        """Step 하나를 마친 뒤 사람이 따라올 시간을 준다 (004 FR-101·FR-105·FR-106).
+
+        **다음 Step 이 있을 때만 쉰다.** 마지막 Step 뒤에 쉬면 실행이 끝났는데도 끝나지
+        않은 것처럼 보인다 (spec 엣지 케이스).
+
+        **저장된 Step 을 실행하는 구간에만 적용한다** (FR-045 구간). AI 가 다음 동작을
+        판단하는 시간은 Step 실행이 아니며, 거기에 간격을 더하면 이미 느린 것을 더 느리게
+        만들 뿐 사람이 볼 것이 늘지 않는다 (spec 엣지 케이스).
+
+        **속도는 매 경계에서 다시 읽는다.** 실행 중 변경이 다음 Step 부터 반영되는 것이
+        FR-103 의 요구이며, 값을 루프 시작 때 잡아 두면 그 요구가 깨진다.
+
+        간격은 Step 의 대기 예산 **밖**이다 (FR-105). 여기서 잔 시간은 어느 Step 의
+        `duration_ms` 에도 들어가지 않는다 — 이 함수가 Step 실행 사이에 있기 때문이다.
+        """
+        if next_index >= self._total or self._session.is_paused:
+            return
+        if self._session.state is not SessionState.REPLAYING:
+            return
+
+        pacing = self._session.pacing
+        if auto_pause(pacing):
+            # 새 상태를 만들지 않는다. 기존 `PAUSED` 에 들어가므로 편집·조작 허용 규칙이
+            # 이미 검증된 경로를 그대로 쓴다 (research R7, FR-108).
+            #
+            # **좁게 삼킨다.** 이 경계에 도달하는 사이 상태가 옮겨졌다면(중지·유실) PAUSE 는
+            # 유효하지 않은 전이이고, 그때는 멈출 이유도 사라진 것이므로 그냥 넘어가면 된다.
+            # `Exception` 을 통째로 삼키면 그 밖의 결함이 조용히 묻힌다.
+            with contextlib.suppress(InvalidTransitionError):
+                await self._session.apply(Command.PAUSE)
+            return
+
+        delay_s = delay_ms(pacing) / 1000
+        if delay_s <= 0:
+            return
+        # 일시정지가 요청되면 즉시 깨어난다. 간격이 끝나기를 기다리지 않는다 (FR-106).
+        # 중지는 태스크 취소이고 `wait_for` 는 취소 가능하므로 역시 즉시 반영된다.
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(
+                self._session.wait_pause_requested(), timeout=delay_s
+            )
 
     async def _settle(self, passed: bool) -> None:
         """실행을 종료 상태로 옮긴다. 결과가 이미 기록된 뒤에만 호출된다."""

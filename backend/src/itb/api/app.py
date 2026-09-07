@@ -28,7 +28,17 @@ from itb.api.errors import (
     ErrorResponse,
     validation_error_response,
 )
-from itb.api.routes import ai, fs, project, secrets_routes, sessions, steps, tabs, tests
+from itb.api.routes import (
+    ai,
+    fs,
+    preferences_routes,
+    project,
+    secrets_routes,
+    sessions,
+    steps,
+    tabs,
+    tests,
+)
 from itb.api.state import BIND_HOST, BIND_PORT, AppState, get_state
 from itb.api.ws.session_events import EventBroker
 from itb.execution.session import SessionManager
@@ -46,6 +56,7 @@ ROUTERS = (
     steps.router,
     tabs.router,
     secrets_routes.router,
+    preferences_routes.router,
 )
 
 

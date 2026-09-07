@@ -351,3 +351,37 @@ def test_error_message_names_the_failing_field(tmp_path: pathlib.Path) -> None:
     with pytest.raises(DefinitionError) as exc:
         load_model(_write(tmp_path, body), Test)
     assert "steps" in str(exc.value)
+
+
+# ─── 004: 실행 속도는 테스트 자산이 아니다 (FR-110, 헌법 원칙 V) ─────────────
+
+
+def test_pacing_never_reaches_the_stored_definition(tmp_path: pathlib.Path) -> None:
+    """저장된 테스트 정의에 속도 관련 키가 없다.
+
+    **구조로 이미 막혀 있다** — 속도는 `~/.config/itb/preferences.json` 에 있고 테스트
+    자산 트리 밖이다. 그럼에도 이 단언을 두는 이유는, 나중에 누군가 편의로 "이 테스트는
+    느리게 돌려야 한다" 를 정의에 넣고 싶어질 때 여기서 걸리게 하려는 것이다.
+
+    정의에 들어가면 두 가지가 깨진다. 개인 취향이 팀 저장소에 커밋되고, 내보낸 Playwright
+    프로젝트가 제품 고유 개념을 들고 다니게 된다 (헌법 원칙 V).
+    """
+    from itb.domain.run_pacing import RunPacing
+
+    forbidden = {"pacing", "run_pacing", "delay_ms", "auto_pause", "speed"}
+
+    import json
+
+    # 스키마는 pydantic 내부 표현을 섞어 갖고 있어 YAML 로 못 찍는다. JSON 으로 본다.
+    schema = json.dumps(Test.model_json_schema(), ensure_ascii=False)
+    for key in forbidden:
+        assert f'"{key}"' not in schema, (
+            f"Step DSL 스키마에 실행 속도 개념({key})이 들어갔다 — FR-110 위반"
+        )
+
+    # 실제 정의를 왕복시켜도 속도 값이 어디에도 나타나지 않는다.
+    for example in (SINGLE_TAB, MULTI_TAB, AI_AUTHORED):
+        loaded = load_model(_write(tmp_path, example), Test)
+        body = yaml.safe_dump(loaded.model_dump(mode="json"), allow_unicode=True)
+        for pacing in RunPacing:
+            assert f"pacing: {pacing.value}" not in body

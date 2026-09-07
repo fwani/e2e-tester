@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 from playwright.async_api import Browser, BrowserContext, Page, Playwright
 from playwright.async_api import Error as PlaywrightError
 
+from itb.domain.run_pacing import DEFAULT_PACING, RunPacing
 from itb.domain.test_case import MAX_TABS_DEFAULT
 from itb.execution.state_machine import (
     Command,
@@ -118,8 +119,28 @@ class BrowserSession:
     """
 
     max_tabs: int = MAX_TABS_DEFAULT
+
+    pacing: RunPacing = DEFAULT_PACING
+    """이 세션의 실행 속도 (004 FR-103).
+
+    **실행 중에 바뀔 수 있다.** 진행 중인 Step 을 끊지 않고 다음 경계부터 적용된다 —
+    러너가 매 경계에서 이 값을 다시 읽기 때문이다. 브라우저에는 아무 명령도 보내지
+    않는다 (원칙 III 계열).
+    """
+
     edit_warnings: list[str] = field(default_factory=list)
     _resume: asyncio.Event = field(default_factory=asyncio.Event)
+    _pause_requested: asyncio.Event = field(default_factory=asyncio.Event)
+    """일시정지가 **요청**되었다 (004 FR-106, research R6).
+
+    `_resume` 만으로는 부족하다. 그 이벤트는 일시정지에서 `clear()` 되는데,
+    `asyncio.Event` 는 set 을 기다릴 수 있을 뿐 clear 를 기다릴 수 없다. Step 간 간격
+    도중에 일시정지를 즉시 감지하려면 **set 되는 방향의 이벤트**가 따로 있어야 한다.
+
+    두 이벤트는 항상 반대 상태다. 어긋나지 않도록 `apply()` 와 `mark_running()` 에서만
+    조작한다.
+    """
+
     _next_tab_index: int = 0
     _sink: EventSink | None = None
     _tab_opened: asyncio.Event = field(default_factory=asyncio.Event)
@@ -164,8 +185,10 @@ class BrowserSession:
         self.state = new_state
         if command is Command.PAUSE:
             self._resume.clear()
+            self._pause_requested.set()
         elif command in (Command.RESUME, Command.RUN_FROM):
             self._resume.set()
+            self._pause_requested.clear()
         await self.emit(
             "state_changed",
             state=new_state.value,
@@ -183,12 +206,22 @@ class BrowserSession:
         """
         await self._resume.wait()
 
+    async def wait_pause_requested(self) -> None:
+        """일시정지 **요청**을 기다린다 (004 FR-106).
+
+        Step 간 간격이 `asyncio.wait_for(..., timeout=간격)` 으로 이것을 기다린다.
+        일시정지가 들어오면 즉시 반환하므로 간격이 끝나기를 기다리지 않는다. 중지는
+        태스크 취소이고 `wait_for` 는 취소 가능하므로 역시 즉시 반영된다.
+        """
+        await self._pause_requested.wait()
+
     @property
     def is_paused(self) -> bool:
         return not self._resume.is_set()
 
     def mark_running(self) -> None:
         self._resume.set()
+        self._pause_requested.clear()
 
     # ─── 탭 (FR-030) ───────────────────────────────────────────────────────
 

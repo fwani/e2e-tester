@@ -23,6 +23,7 @@ from itb.api.errors import (
     not_found,
 )
 from itb.api.state import AppState, get_state
+from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.step import Author, NavigateStep, Step
 from itb.domain.test_case import AuthoringMode, Test, Variable
 from itb.execution.artifacts import ArtifactCollector
@@ -50,6 +51,7 @@ from itb.recording.recorder import Recorder
 from itb.secrets.keys import load_private_or_reason, load_public_or_none
 from itb.secrets.resolver import VariableResolver
 from itb.secrets.store import SecretStore
+from itb.storage import preferences
 from itb.storage.repository import ProjectError, ProjectRepository
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -88,6 +90,9 @@ class SessionWork:
 
     steps: list[Step] = field(default_factory=list)
     start_url: str = ""
+    # 속도 사본을 여기 두지 않는다. **세션이 소유한다** (`BrowserSession.pacing`) —
+    # `current_step_index` 를 세션이 소유하는 것과 같은 이유다. 두 곳에 두면 한쪽만
+    # 갱신되는 순간 화면이 말하는 속도와 러너가 쉬는 시간이 갈린다.
     authoring_mode: AuthoringMode = AuthoringMode.RECORD
     ai_instruction: str | None = None
     saved_test_id: str | None = None
@@ -211,6 +216,19 @@ class CreateSessionRequest(BaseModel):
     start_url: str | None = Field(default=None, pattern=r"^https?://", max_length=2000)
     ai_instruction: str | None = Field(default=None, max_length=8000)
 
+    pacing: RunPacing | None = None
+    """실행 속도 (004 FR-102). 없으면 저장된 취향, 그것도 없으면 기본값.
+
+    **무인 실행은 명시해야 한다.** 저장된 취향이 CI 를 느리게 만들지 않는 유일한 방법이
+    요청에 `fast` 를 넣는 것이다 (contracts/rest-api.md §1).
+    """
+
+
+class PacingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pacing: RunPacing
+
 
 class SessionView(BaseModel):
     """WebSocket 재연결 시 전체 상태 동기화에 쓴다 (contracts/websocket.md)."""
@@ -231,6 +249,14 @@ class SessionView(BaseModel):
     allowed_commands: list[str]
     has_unsaved_changes: bool = False
     """저장하지 않은 편집이 있는가. 중지 확인 대화상자의 근거다 (FR-042)."""
+
+    pacing: RunPacing = DEFAULT_PACING
+    """이 세션의 실행 속도.
+
+    재연결 시 전체 상태를 동기화하는 것이 `SessionView` 의 목적이므로 여기 실린다.
+    화면은 이 값으로 `paused` 의 **문구를 가른다** — `step` 이면 "한 스텝씩", 아니면
+    "일시정지됨". 상태가 같고 의미가 다른 두 경우를 구별하는 유일한 근거다 (research R7).
+    """
 
     authoring_mode: AuthoringMode = AuthoringMode.RECORD
     """어떻게 만드는 세션인가. **세션의 불변 속성이다.**
@@ -269,6 +295,7 @@ def view_of(w: SessionWork) -> SessionView:
         recorder_warnings=list(w.recorder.warnings),
         allowed_commands=[c.value for c in allowed_commands(w.session.state)],
         has_unsaved_changes=w.has_unsaved_changes,
+        pacing=w.session.pacing,
         authoring_mode=w.authoring_mode,
     )
 
@@ -334,6 +361,11 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         ) from exc
     except SessionError as exc:
         raise conflict(ErrorCode.SESSION_ALREADY_ACTIVE, str(exc)) from exc
+
+    # 요청 → 저장된 취향 → 기본값 (FR-109, contracts/rest-api.md §1).
+    session.pacing = (
+        body.pacing if body.pacing is not None else preferences.load().run_pacing
+    )
 
     session.attach_sink(state.broker.sink(session.session_id))
 
@@ -779,6 +811,56 @@ async def list_sessions() -> SessionListResponse:
 @router.get("/{session_id}")
 async def get_session(session_id: str) -> SessionView:
     return view_of(work_of(session_id))
+
+
+# ─── 실행 속도 (004 US1) ────────────────────────────────────────────────────
+
+
+@router.post("/{session_id}/pacing")
+async def set_pacing(session_id: str, body: PacingRequest) -> SessionView:
+    """실행 속도를 바꾼다 (004 FR-103).
+
+    **실행 중에도 부를 수 있다.** 진행 중인 Step 을 끊지 않으며, 러너가 다음 Step 경계에서
+    이 값을 다시 읽는다. 브라우저에는 아무 명령도 보내지 않는다 (원칙 III 계열).
+
+    취향 파일에도 남긴다 — FR-109 의 "다음 실행에서 마지막 선택이 기본값" 은 실행 중
+    변경까지 반영되어야 성립한다. **다만 그 쓰기 실패로 이 호출이 실패하지는 않는다.**
+    속도는 이미 바뀌었고, 취향을 못 남긴 것 때문에 실행을 방해할 이유가 없다. 대신
+    조용히 넘기지 않고 `preference_saved: false` 로 알린다.
+    """
+    w = work_of(session_id)
+    if w.session.state is SessionState.LOST:
+        raise conflict(
+            ErrorCode.SESSION_LOST,
+            "세션이 유실되어 실행 속도를 바꿀 수 없습니다.",
+            state=w.session.state.value,
+        )
+    if w.session.state in TERMINAL_STATES:
+        raise conflict(
+            ErrorCode.INVALID_TRANSITION,
+            "이미 끝난 세션의 실행 속도는 바꿀 수 없습니다.",
+            state=w.session.state.value,
+            allowed=[c.value for c in allowed_commands(w.session.state)],
+        )
+
+    w.session.pacing = body.pacing
+
+    saved = True
+    try:
+        preferences.save(body.pacing)
+    except preferences.PreferencesWriteError:
+        saved = False
+
+    await w.session.emit(
+        "pacing_changed",
+        pacing=body.pacing.value,
+        # 대응표를 화면이 따로 들고 있으면 서버와 갈린다. 계산한 값을 함께 보낸다
+        # (contracts/websocket.md §1).
+        delay_ms=delay_ms(body.pacing),
+        auto_pause=auto_pause(body.pacing),
+        preference_saved=saved,
+    )
+    return view_of(w)
 
 
 # ─── 일시정지 / 이어서 실행 (원칙 III) ─────────────────────────────────────
