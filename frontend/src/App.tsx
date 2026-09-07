@@ -4,6 +4,8 @@
  */
 import { useCallback, useEffect, useState } from "react";
 
+import { initialLocation, useScreenUrl } from "./hooks/useScreenUrl";
+
 import { project, sessions, type ProjectView, type SessionView } from "./api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
 import { CreateTest } from "./pages/CreateTest";
@@ -54,7 +56,15 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (screen.name === "list") refreshActive();
+    if (screen.name !== "list") return;
+    refreshActive();
+    // 005 FR-169 (U-17) — 목록에 머무는 동안 세션 상태를 따라간다.
+    //
+    // 리포트는 실행이 끝난 뒤 25초를 더 기다려도 배너가 "실행 중" 으로 남아 있는 것을
+    // 봤다. 5초 주기는 로컬 단독 도구에서 충분히 싸고, 25초 안에 반영된다는 요구를
+    // 여유 있게 만족한다.
+    const timer = window.setInterval(refreshActive, 5000);
+    return () => window.clearInterval(timer);
   }, [screen.name, refreshActive]);
 
   useEffect(() => {
@@ -65,10 +75,54 @@ export function App() {
       .current()
       .then((p) => {
         setOpened(p);
-        setScreen({ name: "list" });
+        // 005 FR-166 (U-15) — 주소가 가리키는 화면으로 복원한다.
+        //
+        // 이전에는 결과 화면에서 새로고침하면 목록으로 되돌아갔다. 결과 자체는 남아
+        // 있어 다시 열 수는 있었지만, 사용자는 자기가 보던 화면을 잃었다.
+        const at = initialLocation();
+        if (at.name === "result" && at.testId) {
+          setScreen({ name: "result", testId: at.testId });
+        } else if (at.name === "definition" && at.testId) {
+          setScreen({ name: "definition", testId: at.testId });
+        } else if (at.name === "keys") {
+          setScreen({ name: "keys" });
+        } else if (at.name === "secrets") {
+          setScreen({ name: "secrets" });
+        } else {
+          // 실행 화면(`runner`)은 복원하지 않는다 — 세션 객체가 필요하고, 그것은
+          // 목록의 세션 배너가 「이어서 보기」로 되찾는다(FR-168). URL 만으로
+          // 되살리면 죽은 세션 화면을 그릴 수 있다.
+          setScreen({ name: "list" });
+        }
       })
       .catch(() => setScreen({ name: "setup" }));
   }, []);
+
+  /**
+   * 005 FR-166·FR-167 — 화면 상태를 주소에 반영하고 뒤로가기를 앱 안에 붙잡는다.
+   *
+   * 뒤로가기가 `about:blank` 로 나가 앱을 이탈하던 것이 U-15 였다.
+   */
+  useScreenUrl(
+    {
+      name: screen.name,
+      testId: "testId" in screen ? screen.testId : null,
+      sessionId: screen.name === "runner" ? screen.session.session_id : null,
+    },
+    (loc) => {
+      if (loc.name === "result" && loc.testId) {
+        setScreen({ name: "result", testId: loc.testId });
+      } else if (loc.name === "definition" && loc.testId) {
+        setScreen({ name: "definition", testId: loc.testId });
+      } else if (loc.name === "keys") {
+        setScreen({ name: "keys" });
+      } else if (loc.name === "secrets") {
+        setScreen({ name: "secrets" });
+      } else {
+        setScreen({ name: "list" });
+      }
+    },
+  );
 
   /**
    * 실행을 거는 **유일한 경로** (005 T021 · FR-125·FR-127·FR-129).
@@ -140,6 +194,7 @@ export function App() {
           onCreate={() => setScreen({ name: "create" })}
           onRun={(testId) => startRun(testId)}
           pendingRunId={pendingRun}
+          onRefreshSessions={refreshActive}
           onOpenResult={(testId) => setScreen({ name: "result", testId })}
           onOpenDefinition={(testId) => setScreen({ name: "definition", testId })}
           onOpenSecrets={() => setScreen({ name: "secrets" })}

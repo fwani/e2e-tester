@@ -18,7 +18,8 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { tests, type SessionView, type TestListRow, type TestListResponse } from "../api/client";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
-import { stepLabel } from "../lib/wording";
+import { outcomeChip, outcomeLabel, outcomeTone, stepLabel } from "../lib/wording";
+import type { Outcome } from "../types/generated/run-result";
 
 
 function relativeTime(iso: string | null): string {
@@ -59,6 +60,13 @@ export interface TestListProps {
   activeSessions?: SessionView[];
   onResumeSession?: (session: SessionView) => void;
   onDiscardSession?: (sessionId: string) => void;
+  /**
+   * 세션 상태를 다시 읽는다 (005 FR-169 · U-17).
+   *
+   * 배너가 스스로 갱신되지 않아 끝난 실행이 계속 "실행 중" 으로 남았다. 주기 갱신은
+   * 부모가 걸고, 이 버튼은 그것이 실패하는 환경의 탈출구다.
+   */
+  onRefreshSessions?: () => void;
 }
 
 export function TestList({
@@ -71,6 +79,7 @@ export function TestList({
   onOpenSecrets,
   onOpenKeys,
   activeSessions = [],
+  onRefreshSessions,
   onResumeSession,
   onDiscardSession,
 }: TestListProps) {
@@ -196,6 +205,7 @@ export function TestList({
             sessions={activeSessions}
             onResume={onResumeSession}
             onDiscard={onDiscardSession}
+            onRefresh={onRefreshSessions}
           />
         )}
         <div style={{ display: "flex", alignItems: "flex-end", gap: "16px" }}>
@@ -432,6 +442,15 @@ export function TestList({
               onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}
               onRun={() => onRun(row.id)}
               runPending={pendingRunId === row.id}
+              /*
+                005 FR-168 (U-16) — 지금 돌고 있다는 사실이 **행에도** 보인다.
+
+                실행 중 새로고침하면 목록으로 떨어지는데, 상단 배너는 "실행 중" 을
+                알려도 그 행의 상태 칩은 **이전 실행의 FAIL** 이었고 버튼도 이전
+                결과를 가리켰다. 회수 장치는 있었지만 행이 거짓을 말했다.
+              */
+              liveSession={activeSessions.find((s) => s.test_id === row.id) ?? null}
+              onOpenSession={onResumeSession}
               onOpenResult={() => onOpenResult(row.id)}
               onOpenDefinition={onOpenDefinition ? () => onOpenDefinition(row.id) : undefined}
             />
@@ -462,6 +481,8 @@ function Row({
   onOpenResult,
   onOpenDefinition,
   runPending = false,
+  liveSession = null,
+  onOpenSession,
 }: {
   row: TestListRow;
   busy: boolean;
@@ -481,6 +502,9 @@ function Row({
   onOpenDefinition?: () => void;
   /** 이 테스트의 실행 요청이 진행 중인가 (005 FR-127·FR-129). */
   runPending?: boolean;
+  /** 이 테스트로 지금 돌고 있는 세션 (005 FR-168). 없으면 `null`. */
+  liveSession?: SessionView | null;
+  onOpenSession?: (session: SessionView) => void;
 }) {
   const failed = row.outcome === "fail";
   /** 열어 볼 결과가 있는가 (005 FR-130). 결말 종류와 무관하다 — U-13 이 이것이었다. */
@@ -499,7 +523,7 @@ function Row({
       }}
     >
       <div style={{ width: "92px" }}>
-        <OutcomeChip outcome={row.outcome} />
+        <OutcomeChip outcome={row.outcome} running={liveSession !== null} />
       </div>
 
       <div style={{ width: "108px", font: "600 14px/1 'IBM Plex Mono', ui-monospace, monospace" }}>
@@ -577,7 +601,7 @@ function Row({
           color: "#6B675C",
         }}
       >
-        {relativeTime(row.last_run_at)}
+        {liveSession !== null ? "실행 중" : relativeTime(row.last_run_at)}
       </div>
 
       {/*
@@ -589,7 +613,27 @@ function Row({
         결과에 도달할 길이 아예 없었다(U-13) — 결과 화면이 실패 전용 화면이 되어 있었다.
       */}
       <div style={{ width: "196px", display: "flex", justifyContent: "flex-end", gap: "8px", position: "relative" }}>
-        {hasResult && (
+        {/* 005 FR-168 — 실행 중이면 그 사실과 복귀 수단이 먼저 온다. */}
+        {liveSession !== null && (
+          <button
+            onClick={() => onOpenSession?.(liveSession)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              height: "44px",
+              padding: "0 12px",
+              border: "3px solid #14130F",
+              background: "#F5D000",
+              color: "#14130F",
+              boxShadow: "4px 4px 0 #14130F",
+              font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+            }}
+          >
+            실행 화면 보기
+          </button>
+        )}
+        {hasResult && liveSession === null && (
           <button
             onClick={onOpenResult}
             style={{
@@ -692,7 +736,50 @@ function Row({
 
 // ─── 확정 디자인의 칩 ───────────────────────────────────────────────────────
 
-function OutcomeChip({ outcome }: { outcome: "pass" | "fail" | null }) {
+const CHIP_COLOR: Record<string, string> = {
+  success: "#2E9455",
+  danger: "#D9502F",
+  neutral: "#6B675C",
+  warn: "#B8860B",
+  unknown: "#9A968A",
+};
+
+/**
+ * 목록 행의 결말 칩 (005 FR-141).
+ *
+ * **네 결말을 전부 다룬다.** `outcome === "pass" ? 초록 : 붉은` 이분법은 사용자가 누른
+ * 중지를 실패 색으로, 부분 성공도 실패 색으로 칠했다.
+ *
+ * 실행 중인 테스트에는 `RUNNING` 을 보여준다 (FR-168) — 이전 실행의 결말을 그대로
+ * 두면 지금 돌고 있다는 사실이 행에서 사라진다 (U-16).
+ */
+function OutcomeChip({
+  outcome,
+  running = false,
+}: {
+  outcome: Outcome | null;
+  running?: boolean;
+}) {
+  if (running) {
+    return (
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          height: "28px",
+          padding: "0 10px",
+          background: "#F5D000",
+          color: "#14130F",
+          border: "2px solid #14130F",
+          font: "700 12px/1 'IBM Plex Mono', ui-monospace, monospace",
+          letterSpacing: "0.06em",
+        }}
+      >
+        RUNNING
+      </div>
+    );
+  }
   if (outcome === null) {
     // 확정 디자인에 "실행한 적 없음" 표현이 없다. undefined-states.md 참조.
     return (
@@ -722,14 +809,16 @@ function OutcomeChip({ outcome }: { outcome: "pass" | "fail" | null }) {
         gap: "6px",
         height: "28px",
         padding: "0 10px",
-        background: outcome === "pass" ? "#2E9455" : "#D9502F",
+        background: CHIP_COLOR[outcomeTone(outcome)],
         color: "#FFFDF6",
         border: "2px solid #14130F",
         font: "700 12px/1 'IBM Plex Mono', ui-monospace, monospace",
         letterSpacing: "0.06em",
       }}
+      // 색만으로 구분하지 않는다 — 스크린리더에는 한국어 문장을 준다.
+      title={outcomeLabel(outcome)}
     >
-      {outcome === "pass" ? "PASS" : "FAIL"}
+      {outcomeChip(outcome)}
     </div>
   );
 }
@@ -789,10 +878,13 @@ function ActiveSessionsBanner({
   sessions,
   onResume,
   onDiscard,
+  onRefresh,
 }: {
   sessions: SessionView[];
   onResume?: (session: SessionView) => void;
   onDiscard?: (sessionId: string) => void;
+  /** 세션 상태를 다시 읽는다 (005 FR-169 · U-17). */
+  onRefresh?: () => void;
 }) {
   const [confirming, setConfirming] = useState<string | null>(null);
 
@@ -810,9 +902,25 @@ function ActiveSessionsBanner({
         gap: "10px",
       }}
     >
-      <strong style={{ font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif" }}>
-        진행 중인 세션이 있습니다
-      </strong>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <strong style={{ font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif" }}>
+          진행 중인 세션이 있습니다
+        </strong>
+        <div style={{ flex: 1 }} />
+        {/*
+          005 FR-169 (U-17) — 배너가 실제 상태를 따라간다.
+
+          리포트는 실행이 끝난 뒤 25초를 더 기다려도 배너가 "실행 중" 으로 남아 있는
+          것을 봤다. 새로고침해야 바뀌었다. 짧은 주기로 다시 읽는 것과 손으로 새로
+          고치는 수단을 함께 둔다 — 주기 갱신이 실패하는 환경에서도 사용자가 막히지
+          않아야 한다.
+        */}
+        {onRefresh && (
+          <button className="ghost" onClick={onRefresh} aria-label="세션 상태 새로 고침">
+            새로 고침
+          </button>
+        )}
+      </div>
       {sessions.map((s) => {
         /**
          * 005 FR-159 (U-10) — **저장된 세션은 "사라진다" 고 말하지 않는다.**
@@ -822,9 +930,23 @@ function ActiveSessionsBanner({
          * 상태(U-09)에서 그 문장을 만나면 "저장이 안 된 건가?" 하고 손을 멈춘다.
          */
         const saved = s.saved_at != null;
+        /*
+          005 FR-170 (U-06) — 같은 테스트의 세션이 여럿일 때 **구분할 정보**를 준다.
+
+          연타로 세션이 둘 만들어졌을 때 목록에 구분 불가능한 배너가 두 줄로 떴다.
+          어느 것이 어느 실행인지 알 수 없어 사용자는 아무거나 골라야 했다.
+
+          세션 짧은 ID 를 쓴다 — 시작 시각은 세션 뷰에 없고, 짧은 ID 로도 두 줄을
+          가릴 수 있다. 사용자에게 보이는 오류 문구에 식별자를 넣지 않는 규칙
+          (FR-135)은 **오류 문구**에 대한 것이며, 여기는 사용자가 골라야 하는
+          목록이므로 구분자가 필요하다.
+        */
+        const shortId = s.session_id.slice(0, 6);
+        const duplicated = sessions.filter((o) => o.test_id === s.test_id).length > 1;
         const label =
           `${s.state_label} · Step ${s.steps.length}개` +
           (s.test_id ? ` · ${s.test_id}` : "") +
+          (duplicated ? ` · #${shortId}` : "") +
           (s.has_unsaved_changes ? " · 저장되지 않음" : saved ? " · 저장됨" : "");
         const asking = confirming === s.session_id;
         return (

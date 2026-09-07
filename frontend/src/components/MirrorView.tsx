@@ -130,13 +130,21 @@ function PhaseNotice({ phase, tabIndex }: { phase: MirrorPhase; tabIndex?: numbe
 }
 
 function emptyMessage(phase: MirrorPhase): string {
+  // 005 FR-163 (U-24) — **곧 올 것처럼 말하지 않는다.**
+  //
+  // 기존 문구 "미러 프레임을 기다리고 있습니다" 는 기다리면 온다고 말했지만, 정적
+  // 화면에서는 한 장도 오지 않았다(실측 0건). 사용자는 화면을 보며 무한정 기다렸다.
+  //
+  // 이제는 실제로 온다(마지막 프레임 캐시 + 무프레임 감시). 그래서 이 문구는 짧게만
+  // 보이지만, 문구 자체도 사실에 맞춘다 — 대상 브라우저 창이 이미 열려 있다는 사실을
+  // 함께 말해 "아무것도 안 뜬다" 는 오해를 막는다.
   switch (phase) {
     case "observation":
-      return "미러 프레임을 기다리고 있습니다.";
+      return "대상 화면이 표시되기를 기다리고 있습니다. 대상 브라우저 창은 이미 열려 있습니다.";
     case "manipulation":
       return "실제 브라우저 창에서 조작하세요. 이 영역은 관찰용입니다.";
     case "paused":
-      return "일시정지 중입니다. 마지막 화면을 기다리고 있습니다.";
+      return "일시정지 중입니다. 마지막 화면을 표시합니다.";
     case "terminated":
       return "세션이 종료되어 미러가 중단됐습니다.";
   }

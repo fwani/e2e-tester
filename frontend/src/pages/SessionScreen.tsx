@@ -878,6 +878,11 @@ export function SessionScreen({
             busy={busy}
             disabled={isDone}
             preferenceSaved={pacingSaved}
+            /*
+              005 FR-174 (U-23) — 녹화·인수 국면에서는 「다음 실행 속도」로 밝힌다.
+              지금 실행에 쓰이는 값이 아니라는 사실을 라벨이 말한다.
+            */
+            manipulationPhase={isManipulating}
             onChange={changePacing}
           />
         }

@@ -26,6 +26,18 @@ export interface PacingControlProps {
    * 유지되지 않는다는 사실만 알린다.
    */
   preferenceSaved?: boolean;
+  /**
+   * 사람이 직접 조작하는 국면인가 (005 FR-174 · U-23).
+   *
+   * 녹화·사람 인수 중에는 재생 속도가 **지금 실행에 쓰이지 않는다.** 004 명세는
+   * 실행 국면만 말했고(FR-101~FR-110), 지금의 노출은 헤더 컨트롤을 국면 구분 없이
+   * 둔 결과다.
+   *
+   * **감추지 않는다.** 004 FR-109 가 "속도 선택은 실행 간에 유지되고 다음 실행의
+   * 기본값" 이므로 녹화 중에 고른 값도 쓰인다 — 감추면 그 정보를 잃는다.
+   * 대신 무엇에 쓰이는 값인지 라벨로 밝힌다.
+   */
+  manipulationPhase?: boolean;
 }
 
 export function PacingControl({
@@ -34,6 +46,7 @@ export function PacingControl({
   busy = false,
   disabled = false,
   preferenceSaved = true,
+  manipulationPhase = false,
 }: PacingControlProps) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -44,7 +57,7 @@ export function PacingControl({
           letterSpacing: "0.04em",
         }}
       >
-        속도
+        {manipulationPhase ? "다음 실행 속도" : "속도"}
       </span>
       <div
         role="group"

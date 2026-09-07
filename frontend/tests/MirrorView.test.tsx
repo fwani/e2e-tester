@@ -60,7 +60,13 @@ describe("MirrorView", () => {
 
   it("프레임이 아직 없으면 국면에 맞는 안내를 보여준다", () => {
     render(<MirrorView frame={null} phase="observation" />);
-    expect(screen.getByText("미러 프레임을 기다리고 있습니다.")).toBeDefined();
+    // 005 FR-163 (U-24) — 문구가 사실에 맞게 바뀌었다. 기존 문구는 "기다리면 온다"고
+    // 말했지만 정적 화면에서는 한 장도 오지 않았다(실측 0건). 단정은 그대로 —
+    // 국면에 맞는 안내가 있는지 확인한다 (헌법 Quality Gate 4).
+    expect(
+      screen.getByText(/대상 화면이 표시되기를 기다리고 있습니다/),
+    ).toBeDefined();
+    expect(screen.getByText(/대상 브라우저 창은 이미 열려 있습니다/)).toBeDefined();
   });
 
   it("최초 탭이 아니면 어느 탭을 보고 있는지 알려 준다 (FR-030f)", () => {

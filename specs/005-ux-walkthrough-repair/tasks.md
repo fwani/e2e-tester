@@ -243,7 +243,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 - [X] T089 [US6] `backend/src/itb/mirror/screencast.py` 에 **무프레임 감시**를 넣는다 — 마지막 프레임 후 `MIRROR_IDLE_S`(2초) 조용하면 스크린샷 한 장을 같은 이벤트로 보낸다. 기존 `_screenshot_loop` 코드를 재사용하고 주기만 바꾼다 (FR-160, research R6-B)
 - [X] T090 [US6] 무프레임 감시가 `mirror_degraded` 를 발행하지 않게 한다 — 강등이 아니라 정상 동작의 보완이다 (contracts/websocket.md §1-b)
 - [X] T091 [US6] 미러 허브를 세션에 잇는 지점을 확인해 캐시가 탭 전환 시에도 올바른 탭의 프레임을 주게 한다 — `backend/src/itb/mirror/tab_switch.py` (FR-162)
-- [ ] T092 [P] [US6] `frontend/src/components/MirrorView.tsx` 의 빈 상태 문구를 ui-contract §10 으로 바꾼다 — 곧 올 것처럼 말하지 않고 표시 조건을 사실대로 말한다 (FR-163)
+- [X] T092 [P] [US6] `frontend/src/components/MirrorView.tsx` 의 빈 상태 문구를 ui-contract §10 으로 바꾼다 — 곧 올 것처럼 말하지 않고 표시 조건을 사실대로 말한다 (FR-163)
 
 **Checkpoint**: 제품 안에서 대상 화면이 보인다
 
@@ -259,16 +259,16 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Tests for User Story 7
 
-- [ ] T093 [P] [US7] `frontend/tests/useScreenUrl.test.ts` — 화면 상태 ↔ URL 양방향 변환과 `popstate` 처리가 앱 내부 이동인지 단정한다 (FR-166·FR-167·SC-219)
-- [ ] T094 [P] [US7] `frontend/tests/RunningRowState.test.tsx` — 실행 중인 테스트의 행이 `RUNNING` 칩과 복귀 수단을 갖는지, 같은 테스트의 배너가 여럿일 때 구분 정보가 있는지 단정한다 (FR-168·FR-170)
+- [X] T093 [P] [US7] `frontend/tests/useScreenUrl.test.ts` — 화면 상태 ↔ URL 양방향 변환과 `popstate` 처리가 앱 내부 이동인지 단정한다 (FR-166·FR-167·SC-219)
+- [X] T094 [P] [US7] `frontend/tests/RunningRowState.test.tsx` — 실행 중인 테스트의 행이 `RUNNING` 칩과 복귀 수단을 갖는지, 같은 테스트의 배너가 여럿일 때 구분 정보가 있는지 단정한다 (FR-168·FR-170)
 
 ### Implementation for User Story 7
 
-- [ ] T095 [US7] `frontend/src/hooks/useScreenUrl.ts` 를 만든다 — `history.pushState`/`popstate` 로 `Screen` 상태를 잇는 얇은 훅. **라우팅 라이브러리를 추가하지 않는다** (research R8). 먼저 뒤로가기 이탈 방지만 넣어 값을 일찍 낸다 (FR-167)
-- [ ] T096 [US7] `frontend/src/App.tsx` 에 훅을 붙여 결과·실행·정의 화면을 URL 로 복원한다 — ui-contract §14 의 URL 표 (FR-166)
-- [ ] T097 [P] [US7] `frontend/src/pages/TestList.tsx` 에 실행 중 행 표시를 넣는다 — `RUNNING` 칩 + 「실행 화면 보기」 (FR-168)
-- [ ] T098 [P] [US7] 목록의 세션 배너가 실제 상태를 따라 갱신되게 한다 — 세션 이벤트를 붙이거나 짧은 주기로 다시 읽는다 (FR-169, U-17)
-- [ ] T099 [P] [US7] 같은 테스트의 배너가 여럿일 때 시작 시각으로 구분한다 (FR-170, U-06)
+- [X] T095 [US7] `frontend/src/hooks/useScreenUrl.ts` 를 만든다 — `history.pushState`/`popstate` 로 `Screen` 상태를 잇는 얇은 훅. **라우팅 라이브러리를 추가하지 않는다** (research R8). 먼저 뒤로가기 이탈 방지만 넣어 값을 일찍 낸다 (FR-167)
+- [X] T096 [US7] `frontend/src/App.tsx` 에 훅을 붙여 결과·실행·정의 화면을 URL 로 복원한다 — ui-contract §14 의 URL 표 (FR-166)
+- [X] T097 [P] [US7] `frontend/src/pages/TestList.tsx` 에 실행 중 행 표시를 넣는다 — `RUNNING` 칩 + 「실행 화면 보기」 (FR-168)
+- [X] T098 [P] [US7] 목록의 세션 배너가 실제 상태를 따라 갱신되게 한다 — 세션 이벤트를 붙이거나 짧은 주기로 다시 읽는다 (FR-169, U-17)
+- [X] T099 [P] [US7] 같은 테스트의 배너가 여럿일 때 시작 시각으로 구분한다 (FR-170, U-06)
 
 **Checkpoint**: 브라우저 기본 조작이 앱을 날리지 않는다
 
@@ -283,13 +283,13 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Tests for User Story 8
 
-- [ ] T100 [P] [US8] `frontend/tests/EvidenceTabs.test.tsx` — 비활성 탭에 이유가 붙고, 기록 없는 탭이 없다는 사실을 긍정문으로 말하는지 단정한다 (FR-172·FR-173)
-- [ ] T101 [P] [US8] `frontend/tests/PacingLabel.test.tsx` — 녹화·인수 국면에서 속도 라벨이 「다음 실행 속도」인지 단정한다 (FR-174)
+- [X] T100 [P] [US8] `frontend/tests/EvidenceTabs.test.tsx` — 비활성 탭에 이유가 붙고, 기록 없는 탭이 없다는 사실을 긍정문으로 말하는지 단정한다 (FR-172·FR-173)
+- [X] T101 [P] [US8] `frontend/tests/PacingLabel.test.tsx` — 녹화·인수 국면에서 속도 라벨이 「다음 실행 속도」인지 단정한다 (FR-174)
 
 ### Implementation for User Story 8
 
-- [ ] T102 [P] [US8] `frontend/src/pages/RunResult.tsx` 의 증거 탭 문구를 ui-contract §11 로 바꾼다 (FR-172·FR-173)
-- [ ] T103 [P] [US8] `frontend/src/components/PacingControl.tsx` 이 국면에 따라 라벨을 바꾸게 한다 — 녹화·인수에서 「다음 실행 속도」. 감추지 않는 이유는 004 FR-109 다 (FR-174, research R10)
+- [X] T102 [P] [US8] `frontend/src/pages/RunResult.tsx` 의 증거 탭 문구를 ui-contract §11 로 바꾼다 (FR-172·FR-173)
+- [X] T103 [P] [US8] `frontend/src/components/PacingControl.tsx` 이 국면에 따라 라벨을 바꾸게 한다 — 녹화·인수에서 「다음 실행 속도」. 감추지 않는 이유는 004 FR-109 다 (FR-174, research R10)
 
 **Checkpoint**: 모든 스토리가 독립적으로 동작한다
 

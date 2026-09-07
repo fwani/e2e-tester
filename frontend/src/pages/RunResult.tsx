@@ -531,6 +531,18 @@ export function RunResult({
                 <button
                   key={t.kind}
                   disabled={t.kind === "trace"}
+                  /*
+                    005 FR-172 (U-22) — 비활성인 이유를 말한다.
+
+                    이전에는 `TRACE` 만 비활성이고 `title` 도 없어 왜 못 누르는지 알
+                    수 없었다. 누를 수 없는 것은 왜 누를 수 없는지 말해야 한다.
+                  */
+                  title={
+                    t.kind === "trace"
+                      ? "이 실행에는 trace 가 남지 않았습니다 (MVP 미지원)."
+                      : undefined
+                  }
+                  aria-describedby={t.kind === "trace" ? "trace-disabled-reason" : undefined}
                   onClick={() => loadArtifact(t.kind)}
                   style={{
                     flex: "1",
@@ -553,6 +565,21 @@ export function RunResult({
               );
             })}
           </div>
+
+          {/* title 은 마우스를 올려야 보인다. 이유를 화면에도 남긴다 (FR-172). */}
+          {tab !== "trace" && (
+            <div
+              id="trace-disabled-reason"
+              style={{
+                padding: "6px 20px",
+                borderBottom: "2px solid #DCD8CC",
+                font: `400 12px/1.4 ${MONO}`,
+                color: "#9A968A",
+              }}
+            >
+              TRACE 는 이 실행에 남지 않았습니다 (MVP 미지원).
+            </div>
+          )}
 
           <div style={{ flex: "1", minHeight: "0", padding: "20px", display: "flex" }}>
             <div
@@ -597,7 +624,11 @@ export function RunResult({
                   data-artifact-text
                   style={{ margin: 0, padding: 16, font: `400 12px/1.6 ${MONO}`, whiteSpace: "pre-wrap" }}
                 >
-                  {artifact.text === "" ? "(기록이 비어 있습니다)" : artifact.text}
+                  {/*
+                    005 FR-173 (U-22) — 없다는 사실을 **긍정문**으로 말하고 수집 조건을
+                    덧붙인다. "(기록 없음)" 은 무엇이 없는지 알려 주지 않는다.
+                  */}
+                  {artifact.text === "" ? emptyArtifactMessage(tab) : artifact.text}
                 </pre>
               )}
             </div>
@@ -740,4 +771,24 @@ function StepRow({ step, onOpen }: { step: StepResult; onOpen?: () => void }) {
       </div>
     </div>
   );
+}
+
+
+/**
+ * 기록이 없는 증거 탭의 문구 (005 FR-173 · U-22).
+ *
+ * 리포트는 `CONSOLE`·`NETWORK` 가 큰 빈 상자에 "(기록 없음)" 한 줄만 두는 것을 봤다.
+ * 사용자는 그것이 "수집을 안 했다" 인지 "수집했는데 비었다" 인지 알 수 없다.
+ */
+function emptyArtifactMessage(kind: ArtifactKind): string {
+  switch (kind) {
+    case "console":
+      return "콘솔 오류가 없었습니다.\n\n실행 중 대상 페이지가 남긴 콘솔 메시지를 모읍니다.";
+    case "network":
+      return "실패한 네트워크 요청이 없었습니다.\n\n실행 중 실패한 요청(4xx·5xx·차단)을 모읍니다.";
+    case "trace":
+      return "이 실행에는 trace 가 남지 않았습니다 (MVP 미지원).";
+    case "screenshot":
+      return "실패 시점 스크린샷이 없습니다.\n\n실패한 실행에서만 수집합니다.";
+  }
 }
