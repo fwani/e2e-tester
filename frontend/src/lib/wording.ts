@@ -14,6 +14,9 @@
  */
 
 import type { Outcome, RunScope, StepOutcome } from "../types/generated/run-result";
+import type { ActionId } from "./actions";
+import type { Phase } from "./phase";
+import type { StepOutcome as WorkbenchStepOutcome } from "../components/workbench/model";
 
 /** 사용자에게 보이는 결말 문장 (ui-contract §1). */
 export function outcomeLabel(outcome: Outcome | null | undefined): string {
@@ -448,4 +451,207 @@ export function skipFailureNotice(failedIndex: number): string {
     `그 Step 에 걸려 있던 화면 상태가 없으므로 뒤따르는 Step 도 실패할 수 있고, ` +
     `이 실행의 결말은 「${outcomeLabel("partial_pass")}」이 됩니다.`
   );
+}
+
+/* ─── 007 통합 작업 화면 (T013 · contracts/ui-contract.md §5) ────────────────
+ *
+ * 국면 이름 · 조작 라벨 · 비활성 이유 · 해소 방법을 여기 둔다. 컴포넌트에 문자열
+ * 리터럴을 두지 않는다.
+ *
+ * **왜 문구까지 한 곳인가.** 007 이 고치는 것 중 하나가 "같은 조작이 국면마다 다른
+ * 라벨을 갖는" 것이다 — 실행 진입이 목록에서는 「실행」, 편집에서는 「▶ 실행」,
+ * 결과에서는 「처음부터 실행」이었다 (S-07). 문구가 화면에 흩어져 있으면 그 어긋남을
+ * 검사로 잡을 수 없다.
+ */
+
+
+/** 국면 이름. 화면 상단의 국면 표시에 그대로 쓴다 (FR-219). */
+export const PHASE_LABEL: Record<Phase, string> = {
+  recording: "녹화 중",
+  ai_authoring: "AI 작성 중",
+  takeover: "사람이 직접 조작",
+  running: "실행 중",
+  paused: "일시정지",
+  result: "결과",
+  editing: "편집",
+};
+
+/**
+ * 조작의 기본 라벨.
+ *
+ * 상황에 따라 바뀌는 것(`run.stop` 의 「중지」/「닫기」/「나가기」, `run.from` 의 시작
+ * 지점)은 여기 기본형을 두고 전용 함수가 상황형을 만든다. **라벨이 바뀌는 것이 규칙을
+ * 지키는 방법이다** — 같은 자리의 같은 라벨이 두 동작을 갖지 않게 한다 (FR-235 ·
+ * 005 FR-147).
+ */
+export const ACTION_LABEL: Record<ActionId, string> = {
+  "run.all": "처음부터 실행",
+  "run.from": "이 Step 부터 실행",
+  "run.fromHere": "이 Step 부터 이어 실행",
+  "run.pause": "일시정지",
+  "run.resume": "계속하기",
+  "run.resumeSkipFailure": RESUME_SKIPPING_FAILURE,
+  "run.stop": "중지",
+  "run.pacing": "실행 속도",
+  "browser.openAt": "브라우저 열어 이 Step 에서 멈추기",
+  "session.open": OPEN_RUNNING_SESSION,
+  "step.recordStart": "직접 조작으로 Step 추가",
+  "step.recordStop": "기록 멈추기",
+  "step.addNaturalLanguage": "자연어로 Step 추가",
+  "step.addAssertion": "검증 추가",
+  "step.select": "Step 상세 보기",
+  "step.update": "Step 고치기",
+  "step.markSensitive": "민감 값으로 지정",
+  "step.repick": "요소 다시 집기",
+  "step.delete": "Step 삭제",
+  "step.reorder": "순서 변경",
+  "test.rename": "테스트 이름",
+  "test.setStartUrl": "시작 주소",
+  save: "저장",
+  "save.overwriteStale": STALE_OVERWRITE_LABEL,
+  "edits.revert": "변경 전부 되돌리기",
+  "ai.compose": "지시문 쓰기",
+  "ai.start": "AI 시작",
+  "ai.chooseBlocked": "어떻게 할지 고르기",
+  "artifact.select": "산출물 보기",
+  "result.show": SHOW_RESULT_DETAIL,
+  "nav.editStep": "이 Step 고치기",
+  "nav.back": "목록으로",
+  "tab.select": "탭 고르기",
+};
+
+/**
+ * 비활성 이유 (ui-contract §3-5 의 조건 C1~C13 · §3-6 의 덮어쓰기 O1~O4).
+ *
+ * 키가 조건 번호인 이유는 계약과 코드가 같은 이름을 쓰게 하는 것이다. 문구를 고치면
+ * 계약의 어느 줄인지 즉시 찾을 수 있다.
+ */
+export const DISABLED_REASON = {
+  C1: "실행 중인 세션이 열려 있습니다",
+  C2: "브라우저가 닫혔습니다",
+  C3: "건너뛸 실패가 없습니다",
+  C4: "사람이 조작하는 동안에는 실행 속도가 적용되지 않습니다",
+  C5: "실행 중인 세션이 없습니다",
+  C6: "기록 중이 아닙니다",
+  C7: EDIT_BLOCKED_BY_RUN,
+  C8: "Step 이 없으면 저장할 수 없습니다",
+  C9: "바꾼 것이 없습니다",
+  C10: "정의 파일이 밖에서 바뀌지 않았습니다",
+  C11: "고를 선택지가 없습니다",
+  C12: "실행이 끝나면 볼 수 있습니다",
+  C13: "아직 실행한 적이 없습니다",
+  O1: "실행을 준비하는 중…",
+  O2: "요청을 보내는 중…",
+  O3: "브라우저 세션이 유실됐습니다",
+  O4: "Step 이 없습니다",
+  /** 국면 자체가 그 조작을 허용하지 않는 경우. 조건이 아니라 국면의 성질이다. */
+  RUNNING_NO_EDIT: EDIT_BLOCKED_BY_RUN,
+  RESULT_NO_EDIT: "끝난 실행의 기록은 고칠 수 없습니다",
+  NEEDS_BROWSER: "살아 있는 브라우저가 필요합니다",
+  NEEDS_PAUSE: "실행을 멈춘 뒤에 할 수 있습니다",
+  AI_RUNNING: "AI 가 수행하는 동안에는 할 수 없습니다",
+  NO_SESSION: "브라우저 세션이 없습니다",
+  /**
+   * 시작 주소처럼 **세션이 다룰 수 없는** 테스트 속성.
+   *
+   * 세션의 편집 경로(`/api/sessions/{id}/steps`)는 Step 만 다루고, 시작 주소는 정의
+   * 파일의 속성이다. 세션이 이미 그 주소로 이동한 뒤이므로 도중에 바꾸는 것은 뜻이
+   * 없다. 그래서 해소 방법은 「브라우저 열기」가 아니라 **중지**다 — 세션을 끝내야
+   * 편집 국면에 갈 수 있다.
+   *
+   * 이 이유 키가 따로 있는 까닭은 T012 의 검사가 잡아냈기 때문이다. 처음에는
+   * 「브라우저가 필요합니다 → 브라우저 열어 Step nn 에서 멈추기」로 적었는데, 일시정지
+   * 국면에는 그 조작이 **이미 충족되어 존재하지 않는다.** 화면에 없는 조작을 지시하는
+   * 것이 006 E-03 이었다.
+   */
+  EDIT_AFTER_SESSION: "세션을 끝낸 뒤 편집에서 바꿀 수 있습니다",
+} as const;
+
+export type DisabledReasonKey = keyof typeof DISABLED_REASON;
+
+/**
+ * 「해당 없음」의 근거 (ui-contract §4-2 의 닫힌 목록).
+ *
+ * `–` 를 쓸 수 있는 경우는 셋뿐이다. 근거 없이 조작을 그리지 않으면 그것은 **감춘
+ * 조작**이며 FR-234 위반이다.
+ */
+export const NOT_APPLICABLE_REASON = {
+  /** N1 이미 충족됨 — 그 조작의 목적이 이 국면에서 이미 이루어져 있다 */
+  N1: "이미 충족되어 있습니다",
+  /** N2 대상이 없음 — 그 조작이 다룰 대상이 이 국면에 존재하지 않는다 */
+  N2: "이 국면에는 그 대상이 없습니다",
+  /** N3 세션이 없음 — 세션 명령인데 이 국면에는 세션이 없다 */
+  N3: "세션 명령이며 이 국면에는 세션이 없습니다",
+} as const;
+
+export type NotApplicableKey = keyof typeof NOT_APPLICABLE_REASON;
+
+/**
+ * 중지 계열 버튼의 라벨 (005 FR-147 · U-08).
+ *
+ * 같은 위치의 같은 라벨이 두 동작을 갖지 않게 하는 장치다. 끝난 실행에서 이 버튼은
+ * 실행을 멈추는 것이 아니라 세션을 정리하고 화면을 떠나는 것이다.
+ */
+export function stopLabel(input: {
+  finished: boolean;
+  pending: boolean;
+  review: boolean;
+}): string {
+  if (input.pending) return "중지 중…";
+  if (input.review) return "나가기";
+  if (input.finished) return "닫기";
+  return ACTION_LABEL["run.stop"];
+}
+
+/**
+ * 결과가 그때의 정의와 어긋났다는 알림 (007 FR-254 A5 · research R3).
+ *
+ * 결과 스냅샷에는 Step DSL 이 없어 통합 Step 행의 구조 정보를 **현재 정의**에서 끌어온다.
+ * `step_id` 매칭이 실패하면 그 사이에 정의가 바뀐 것이고, 사용자는 지금 보고 있는 대상
+ * 요약이 그때의 것이 아님을 알아야 한다. **지금은 알 방법조차 없다.**
+ */
+export function resultDefinitionDrift(unmatchedCount: number): string {
+  return (
+    `이 결과 이후 정의가 바뀌었습니다 — Step ${unmatchedCount}개가 지금 정의에 없습니다. ` +
+    `결말과 소요 시간은 그때의 기록이고, 동작 종류·대상 요약은 지금 정의를 보여줍니다.`
+  );
+}
+
+/**
+ * 통합 Step 행의 결말 표식 라벨 (007 T015 · research R4 · FR-225·FR-226).
+ *
+ * `stepOutcomeLabel` 과 **다른 함수인 이유**: 그것은 생성 타입
+ * (`run-result.d.ts` 의 `pass|fail|skipped|not_run`)을 받고, 이것은 화면의 표시 값
+ * (`components/workbench/model.ts` 의 `StepOutcome`)을 받는다. 표시 값에는 저장되지
+ * 않는 상태(`running`·`pending`·`recorded`)가 있다.
+ *
+ * **「기록됨」이 「통과」와 다른 값인 것이 이 라운드의 수정이다.** AI 작성 화면은 Step
+ * 행의 결말 자리에 **항상 체크 표식**을 그렸다 (S-09) — 결말을 모르는 국면인데 통과처럼
+ * 보였다. 005 가 `skipped`(건너뜀)와 `not_run`(미실행)을 `pending` 에서 갈라낸 것과
+ * 같은 종류의 구별이다 (U-21).
+ *
+ * **색·형태만으로 구분하지 않는다.** 이 라벨이 표식과 항상 함께 있다 (005 FR-141·FR-151).
+ */
+export function displayOutcomeLabel(outcome: WorkbenchStepOutcome): string {
+  switch (outcome) {
+    case "pass":
+      return "통과";
+    case "fail":
+      return "실패";
+    case "running":
+      return "실행 중";
+    case "pending":
+      return "대기";
+    case "skipped":
+      return "건너뜀";
+    case "not_run":
+      return "미실행";
+    case "recorded":
+      return "기록됨";
+  }
+}
+
+/** 그 결말이 **재생 통과**를 뜻하는가. 「기록됨」은 아니다 (FR-225). */
+export function meansPassed(outcome: WorkbenchStepOutcome): boolean {
+  return outcome === "pass";
 }

@@ -53,34 +53,34 @@ description: "Task list template for feature implementation"
 
 ### 국면 판정과 권한
 
-- [ ] T006 국면 판정 함수 in `frontend/src/lib/phase.ts` — `data-model.md` §1 의 판정표와 우선순위. **AI 세션 판정은 `authoring_mode` 로 한다 — `state` 가 아니다**
-- [ ] T007 [P] `frontend/tests/Phase.test.ts` — 세션 상태 × `authoring_mode` 조합이 기대 국면을 낸다. `takeover_recording` 이 AI 세션이면서 TKO 로 판정되는 우선순위 포함
-- [ ] T008 조작 식별자 33개 in `frontend/src/lib/actions.ts` — `contracts/ui-contract.md` §2 의 목록. 타입으로 고정해 오타가 컴파일에서 잡히게 한다
-- [ ] T009 정적 권한표 in `frontend/src/lib/capabilities.ts` — `ui-contract.md` §3-1~3-4 의 7×33. `–` 셀은 N1·N2·N3 근거를 값으로 함께 갖는다
-- [ ] T010 런타임 조건 C1~C13 평가 in `frontend/src/lib/capabilities.ts`
-- [ ] T011 전 국면 덮어쓰기 O1~O4 in `frontend/src/lib/capabilities.ts` — `pendingRun` · `busy` · 세션 유실 · Step 0개. **표보다 먼저 적용된다** (005 U-06 회귀 방지)
-- [ ] T012 [P] `frontend/tests/CapabilityCoverage.test.ts` — 33개 전부 표에 있음 · 모든 `–` 이 근거를 가짐 · 모든 `○` 이 이유를 가짐 · 모든 `Remedy.action` 이 33개 안에 있음 (006 E-03 회귀 방지)
-- [ ] T013 이유·해소 방법 문구를 `frontend/src/lib/wording.ts` 로 모은다 — 컴포넌트에 문자열 리터럴을 두지 않는다
+- [X] T006 국면 판정 함수 in `frontend/src/lib/phase.ts` — `data-model.md` §1 의 판정표와 우선순위. **AI 세션 판정은 `authoring_mode` 로 한다 — `state` 가 아니다**
+- [X] T007 [P] `frontend/tests/Phase.test.ts` — 세션 상태 × `authoring_mode` 조합이 기대 국면을 낸다. `takeover_recording` 이 AI 세션이면서 TKO 로 판정되는 우선순위 포함
+- [X] T008 조작 식별자 33개 in `frontend/src/lib/actions.ts` — `contracts/ui-contract.md` §2 의 목록. 타입으로 고정해 오타가 컴파일에서 잡히게 한다
+- [X] T009 정적 권한표 in `frontend/src/lib/capabilities.ts` — `ui-contract.md` §3-1~3-4 의 7×33. `–` 셀은 N1·N2·N3 근거를 값으로 함께 갖는다
+- [X] T010 런타임 조건 C1~C13 평가 in `frontend/src/lib/capabilities.ts`
+- [X] T011 전 국면 덮어쓰기 O1~O4 in `frontend/src/lib/capabilities.ts` — `pendingRun` · `busy` · 세션 유실 · Step 0개. **표보다 먼저 적용된다** (005 U-06 회귀 방지)
+- [X] T012 [P] `frontend/tests/CapabilityCoverage.test.ts` — 33개 전부 표에 있음 · 모든 `–` 이 근거를 가짐 · 모든 `○` 이 이유를 가짐 · 모든 `Remedy.action` 이 33개 안에 있음 (006 E-03 회귀 방지)
+- [X] T013 이유·해소 방법 문구를 `frontend/src/lib/wording.ts` 로 모은다 — 컴포넌트에 문자열 리터럴을 두지 않는다
 
 ### 표시 모델과 껍데기
 
-- [ ] T014 `WorkbenchModel` 타입 in `frontend/src/components/workbench/model.ts` — `data-model.md` §2 그대로
-- [ ] T015 `StepOutcome` 에 `recorded` 추가 in `frontend/src/components/workbench/model.ts` — 「기록됨」 중립 표식 + 텍스트 라벨. **옛 `components/design/DesignStepList.tsx` 를 고치지 않는다** — T021 이 그 파일을 흡수·삭제하므로 같은 값을 두 곳에 두면 흡수 시점에 어느 쪽이 진실인지 알 수 없다. 근거를 `undefined-states.md` 에 기록
-- [ ] T016 [P] `frontend/tests/OutcomeVocabulary.test.tsx` · `frontend/tests/UnknownOutcome.test.ts` 갱신 — `recorded` 가 `pass` 와 구별되고 텍스트 라벨을 병기하며, 알 수 없는 결말 처리가 새 값으로 깨지지 않는다
-- [ ] T017 `ActionButton` in `frontend/src/components/workbench/ActionButton.tsx` — `CapabilityState` 를 받아 그린다. `disabled` 이유를 접근 가능한 설명으로 연결하고 `Remedy` 를 버튼으로 붙인다
-- [ ] T018 3층 껍데기 `Workbench` in `frontend/src/components/workbench/Workbench.tsx` — 60px 헤더 · 74px 국면 띠 · 본문(좌 유연 / 우 460 고정) · 최소 기준 폭 1440. **데이터를 읽지 않고 명령을 만들지 않는다**
-- [ ] T019 [P] `PhaseBar` in `frontend/src/components/workbench/PhaseBar.tsx` — 국면 표시 → 테스트 이름 → 결말 요약 → 주요 조작. 결말 요약은 화면에 하나뿐이다
-- [ ] T020 [P] `NoticeStack` in `frontend/src/components/workbench/NoticeStack.tsx` — `role` 과 `nextAction` 을 별도 칸으로 (003 EC-004)
-- [ ] T021 **단일 Step 목록** `StepList` in `frontend/src/components/workbench/StepList.tsx` — `DesignStepRow` · `StepPanelHeader` · `OutcomeMark` · `locatorSummary` 를 흡수하고 **`frontend/src/components/design/DesignStepList.tsx` 를 삭제한다.** 칸 순서 고정: 번호 26px / 이름·동작 칩·탭 배지·대상 요약·값 / 소요 시간 / 결말 표식 24px. 남겨 두면 `ImplementationCount` 가 두 구현을 센다
-- [ ] T022 **단일 Step 상세** `StepDetail` in `frontend/src/components/workbench/StepDetail.tsx` — 우측 겹침 640px. `attempts`(그때 시도) 와 `candidates`(정의의 후보)를 두 축으로 둔다. `pages/StepInspector.tsx` 의 내용을 이식
-- [ ] T023 [P] `TargetPane` in `frontend/src/components/workbench/TargetPane.tsx` — `mirror` / `artifacts` / `open_browser` / `empty` 네 내용, 한 자리
-- [ ] T024 [P] `PhaseAside` in `frontend/src/components/workbench/PhaseAside.tsx` — 5종. **`error` · `blocked` 는 값이 있으면 조건 없이 그린다** (001 R2 회귀 방지)
+- [X] T014 `WorkbenchModel` 타입 in `frontend/src/components/workbench/model.ts` — `data-model.md` §2 그대로
+- [X] T015 `StepOutcome` 에 `recorded` 추가 in `frontend/src/components/workbench/model.ts` — 「기록됨」 중립 표식 + 텍스트 라벨. **옛 `components/design/DesignStepList.tsx` 를 고치지 않는다** — T021 이 그 파일을 흡수·삭제하므로 같은 값을 두 곳에 두면 흡수 시점에 어느 쪽이 진실인지 알 수 없다. 근거를 `undefined-states.md` 에 기록
+- [X] T016 [P] `frontend/tests/OutcomeVocabulary.test.tsx` · `frontend/tests/UnknownOutcome.test.ts` 갱신 — `recorded` 가 `pass` 와 구별되고 텍스트 라벨을 병기하며, 알 수 없는 결말 처리가 새 값으로 깨지지 않는다
+- [X] T017 `ActionButton` in `frontend/src/components/workbench/ActionButton.tsx` — `CapabilityState` 를 받아 그린다. `disabled` 이유를 접근 가능한 설명으로 연결하고 `Remedy` 를 버튼으로 붙인다
+- [X] T018 3층 껍데기 `Workbench` in `frontend/src/components/workbench/Workbench.tsx` — 60px 헤더 · 74px 국면 띠 · 본문(좌 유연 / 우 460 고정) · 최소 기준 폭 1440. **데이터를 읽지 않고 명령을 만들지 않는다**
+- [X] T019 [P] `PhaseBar` in `frontend/src/components/workbench/PhaseBar.tsx` — 국면 표시 → 테스트 이름 → 결말 요약 → 주요 조작. 결말 요약은 화면에 하나뿐이다
+- [X] T020 [P] `NoticeStack` in `frontend/src/components/workbench/NoticeStack.tsx` — `role` 과 `nextAction` 을 별도 칸으로 (003 EC-004)
+- [X] T021 **단일 Step 목록** `StepList` in `frontend/src/components/workbench/StepList.tsx` — `DesignStepRow` · `StepPanelHeader` · `OutcomeMark` · `locatorSummary` 를 흡수하고 **`frontend/src/components/design/DesignStepList.tsx` 를 삭제한다.** 칸 순서 고정: 번호 26px / 이름·동작 칩·탭 배지·대상 요약·값 / 소요 시간 / 결말 표식 24px. 남겨 두면 `ImplementationCount` 가 두 구현을 센다
+- [X] T022 **단일 Step 상세** `StepDetail` in `frontend/src/components/workbench/StepDetail.tsx` — 우측 겹침 640px. `attempts`(그때 시도) 와 `candidates`(정의의 후보)를 두 축으로 둔다. `pages/StepInspector.tsx` 의 내용을 이식
+- [X] T023 [P] `TargetPane` in `frontend/src/components/workbench/TargetPane.tsx` — `mirror` / `artifacts` / `open_browser` / `empty` 네 내용, 한 자리
+- [X] T024 [P] `PhaseAside` in `frontend/src/components/workbench/PhaseAside.tsx` — 5종. **`error` · `blocked` 는 값이 있으면 조건 없이 그린다** (001 R2 회귀 방지)
 
 ### 검사 골격
 
-- [ ] T025 [P] `frontend/tests/WorkbenchShell.test.tsx` — 껍데기 치수와 영역 배치가 7국면에서 같다. **창을 최소 기준 폭보다 넓혔을 때 늘어나는 것이 좌측 대상 앱 영역뿐임을 함께 검사한다** (FR-218a)
-- [ ] T026 [P] `frontend/tests/StepRowLayout.test.tsx` — 7국면에서 Step 행의 칸 순서·개수가 같고, 값 없는 칸이 다른 칸을 당기지 않는다. **더불어 ① Step 을 지목하는 조작이 7국면에서 같은 방식임(FR-227) ② 작성 주체(사람·AI)가 배지로만 드러나고 행 구조를 바꾸지 않음(FR-228) 을 검사한다**
-- [ ] T027 `frontend/tests/ImplementationCount.test.tsx` — Step 목록 구현 1개 · Step 상세 구현 1개. **이 시점에는 실패한다.** Phase 3 이 끝나면 통과한다
+- [X] T025 [P] `frontend/tests/WorkbenchShell.test.tsx` — 껍데기 치수와 영역 배치가 7국면에서 같다. **창을 최소 기준 폭보다 넓혔을 때 늘어나는 것이 좌측 대상 앱 영역뿐임을 함께 검사한다** (FR-218a)
+- [X] T026 [P] `frontend/tests/StepRowLayout.test.tsx` — 7국면에서 Step 행의 칸 순서·개수가 같고, 값 없는 칸이 다른 칸을 당기지 않는다. **더불어 ① Step 을 지목하는 조작이 7국면에서 같은 방식임(FR-227) ② 작성 주체(사람·AI)가 배지로만 드러나고 행 구조를 바꾸지 않음(FR-228) 을 검사한다**
+- [X] T027 `frontend/tests/ImplementationCount.test.tsx` — Step 목록 구현 1개 · Step 상세 구현 1개. **이 시점에는 실패한다.** Phase 3 이 끝나면 통과한다
 
 ### 확정 디자인 artboard
 

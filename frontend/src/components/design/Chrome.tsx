@@ -77,18 +77,32 @@ export function Artboard({
   width,
   minHeight,
   height,
+  grow = false,
   children,
 }: {
   width: number;
   minHeight?: number;
   height?: number;
+  /**
+   * 창이 기준 폭보다 **넓을 때** 늘어나는가 (007 FR-218a).
+   *
+   * 확정 디자인 8종은 고정 폭이고 그것이 DC-011 의 전제다. 007 의 통합 화면만 이 값을
+   * 켠다 — 껍데기(헤더 구성·영역 배치·최소 기준 폭)는 고정하고 **좌측 대상 앱 영역만**
+   * 남는 폭을 가져간다. 좁은 창 정책은 그대로다: 재배치하지 않고 스크롤한다.
+   *
+   * 이 값이 켜진 화면은 승인 대상 A3 에 걸려 있다
+   * (`specs/007-unify-test-screens/design-conformance/undefined-states.md`).
+   */
+  grow?: boolean;
   children: ReactNode;
 }) {
   return (
     <div style={{ overflowX: "auto", background: "#EFEBE0", minHeight: "100vh" }}>
       <div
         style={{
-          width: `${width}px`,
+          ...(grow
+            ? { minWidth: `${width}px`, width: "100%" }
+            : { width: `${width}px` }),
           ...(height !== undefined ? { height: `${height}px` } : {}),
           ...(minHeight !== undefined ? { minHeight: `${minHeight}px` } : {}),
           background: "#EFEBE0",
