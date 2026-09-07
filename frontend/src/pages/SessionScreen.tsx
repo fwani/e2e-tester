@@ -347,7 +347,16 @@ export function SessionScreen({
     setBusy(true);
     void sessions
       .save(sessionId, saveName.trim())
-      .then(() => resync())
+      .then(() => {
+        // 005 FR-158 (U-09) — 성공 시 이전 오류 배너를 걷어낸다.
+        //
+        // 리포트는 저장 성공 시점에 앞선 경고("세션을 찾을 수 없습니다: …")가 그대로
+        // 남아 있어 **새로 뜬 것이 없다는 인상이 더 강해지는** 것을 봤다.
+        setError(null);
+        setNotice(null);
+        return resync();
+      })
+      // 005 FR-157 — 실패는 사실과 사유를 화면에 남긴다.
       .catch((exc: unknown) => setError(describeError(exc)))
       .finally(() => setBusy(false));
   };
@@ -757,6 +766,12 @@ export function SessionScreen({
           authoring={view.authoring_mode}
           review={isSaveableWithoutBrowser}
           savedAt={view.saved_at ?? null}
+          /*
+            005 FR-156 — 저장할 변경이 남아 있는가. 저장 직후에는 거짓이므로 「변경
+            저장」이 비활성이 되고, 사용자는 같은 내용을 다시 저장하도록 유도받지 않는다.
+          */
+          hasChangesToSave={view.saved_at === null || view.has_unsaved_changes}
+          onShowList={onFinished}
           pausing={isPausing}
           pausingBudgetMs={view.steps[currentIndex]?.timeout_ms ?? null}
           finishedWhilePausing={

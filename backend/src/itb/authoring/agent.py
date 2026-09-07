@@ -19,6 +19,7 @@ Step 목록을 건드리지 않는다 — 목록은 세션이 소유하고, 확�
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -100,6 +101,34 @@ def _sdk_driver(
     return runner.__aiter__()
 
 
+DRIVER_ENV = "ITB_AI_DRIVER"
+"""드라이버를 고르는 환경 변수. **개발용 스위치이므로 화면에 두지 않는다** — 확정
+디자인에 없는 요소를 더하는 것이고(DC-007), 제품 설정이 되면 사용자가 실수로 바꾼다."""
+
+DRIVER_CLAUDE_CODE = "claude-code"
+"""이미 로그인된 Claude Code 로 돈다. 개발·수동 확인 전용 (`claude_code_driver`)."""
+
+ToolBuilder = Callable[[Any], list[Any]]
+"""도구 표면을 만드는 것. 드라이버와 짝이다 — 감싸는 방식이 SDK 마다 다르다."""
+
+
+def select_driver() -> tuple[Driver, ToolBuilder]:
+    """드라이버와 도구 빌더를 고른다. **기본은 Messages API 다.**
+
+    인식하지 못한 값은 기본으로 떨어진다 — 오타가 조용히 개발용 경로를 켜면, 개발자는
+    자기가 무엇을 보고 있는지 모른 채 결과를 품질 근거로 쓴다.
+
+    `_sdk_driver` 를 **모듈 전역으로 읽는다.** 테스트가 그 이름 하나를 monkeypatch 해서
+    자격 증명 없이 AI 경로 전체를 검증하기 때문이다 (`backend/tests/us4_support.py`).
+    """
+    if os.environ.get(DRIVER_ENV, "").strip() == DRIVER_CLAUDE_CODE:
+        from itb.authoring.claude_code_driver import claude_code_driver  # noqa: PLC0415
+        from itb.authoring.tools import build_mcp_tools  # noqa: PLC0415
+
+        return claude_code_driver, build_mcp_tools
+    return _sdk_driver, build_tools
+
+
 def validate_instruction(text: str | None) -> str:
     """지시문을 경계에서 검증한다 (FR-085).
 
@@ -174,10 +203,13 @@ class AuthoringAgent:
         # 인수 후 재개가 첫 메시지에서 곧바로 다시 막힌 것으로 판정된다 (US5 통합 테스트가
         # 잡았다). 앞선 결과는 이미 호출자에게 보고됐으므로 여기서 들고 있을 이유가 없다.
         self.toolbox.blocked_reason = None
-        driver = self.driver or _sdk_driver
         try:
-            tools = build_tools(self.toolbox)
-        except ImportError as exc:  # pragma: no cover - SDK 는 설치되어 있다
+            selected, build = select_driver()
+            driver = self.driver or selected
+            tools = build(self.toolbox)
+        except ImportError as exc:
+            # 기본 경로의 SDK 는 설치되어 있다. 여기 닿는 것은 개발용 드라이버를 켜 놓고
+            # 선택 의존성을 설치하지 않은 경우다 (`uv sync --extra claude-code`).
             return AgentOutcome(
                 AgentStatus.ERROR,
                 reason=f"도구를 준비할 수 없습니다: {exc}",

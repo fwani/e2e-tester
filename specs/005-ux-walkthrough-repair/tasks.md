@@ -205,18 +205,18 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Tests for User Story 5
 
-- [ ] T074 [P] [US5] `frontend/tests/SaveFeedback.test.tsx` — 저장 성공 후 인라인 확인과 저장된 이름이 보이고, 제목에 「초안」이 없고, 버튼이 「변경 저장」이며 변경 없으면 비활성인지 단정한다. **저장 여부 확인에 추가 화면 이동이 필요하지 않은지**도 단정한다 (FR-154·FR-155·FR-156·SC-217)
-- [ ] T075 [P] [US5] 같은 파일에서 저장 실패 시 사실과 사유가 표시되고, 성공 시 이전 오류 배너가 걷히는지 단정한다 (FR-157·FR-158)
-- [ ] T076 [P] [US5] `backend/tests/contract/test_session_saved_at.py` — 저장 후 세션 뷰의 `saved_at` 이 채워지는지 단정한다 (FR-154)
+- [X] T074 [P] [US5] `frontend/tests/SaveFeedback.test.tsx` — 저장 성공 후 인라인 확인과 저장된 이름이 보이고, 제목에 「초안」이 없고, 버튼이 「변경 저장」이며 변경 없으면 비활성인지 단정한다. **저장 여부 확인에 추가 화면 이동이 필요하지 않은지**도 단정한다 (FR-154·FR-155·FR-156·SC-217)
+- [X] T075 [P] [US5] 같은 파일에서 저장 실패 시 사실과 사유가 표시되고, 성공 시 이전 오류 배너가 걷히는지 단정한다 (FR-157·FR-158)
+- [X] T076 [P] [US5] `backend/tests/contract/test_session_saved_at.py` — 저장 후 세션 뷰의 `saved_at` 이 채워지는지 단정한다 (FR-154)
 
 ### Implementation for User Story 5
 
 - [X] T077 [US5] `backend/src/itb/api/routes/sessions.py` 의 저장 경로가 세션에 저장 시각을 남기고 `SessionView.saved_at` 에 싣게 한다 (FR-154, data-model.md §4)
-- [ ] T078 [US5] `frontend/src/pages/RunnerPaused.tsx` 의 저장 영역에 성공 확인을 붙인다 — ui-contract §9 의 구성(`저장했습니다 · TC-001` + 「목록에서 보기」) (FR-154)
-- [ ] T079 [US5] `frontend/src/pages/SessionScreen.tsx` 의 제목에서 저장 후 「초안」을 떼고 `TC-001 · 저장됨` 으로 바꾼다 (FR-155)
-- [ ] T080 [US5] 저장 버튼 라벨을 「변경 저장」으로 바꾸고 변경이 없으면 비활성으로 둔다 (FR-156)
-- [ ] T081 [US5] 저장 실패 표시를 확인하고, 성공 시 이전 오류 배너를 걷어낸다 (FR-157·FR-158)
-- [ ] T082 [P] [US5] `frontend/src/pages/TestList.tsx` 의 세션 정리 확인 문구를 저장 이력에 따라 갈라 쓴다 — 저장된 세션에는 ui-contract §9-6 문구 (FR-159, U-10)
+- [X] T078 [US5] `frontend/src/pages/RunnerPaused.tsx` 의 저장 영역에 성공 확인을 붙인다 — ui-contract §9 의 구성(`저장했습니다 · TC-001` + 「목록에서 보기」) (FR-154)
+- [X] T079 [US5] `frontend/src/pages/SessionScreen.tsx` 의 제목에서 저장 후 「초안」을 떼고 `TC-001 · 저장됨` 으로 바꾼다 (FR-155)
+- [X] T080 [US5] 저장 버튼 라벨을 「변경 저장」으로 바꾸고 변경이 없으면 비활성으로 둔다 (FR-156)
+- [X] T081 [US5] 저장 실패 표시를 확인하고, 성공 시 이전 오류 배너를 걷어낸다 (FR-157·FR-158)
+- [X] T082 [P] [US5] `frontend/src/pages/TestList.tsx` 의 세션 정리 확인 문구를 저장 이력에 따라 갈라 쓴다 — 저장된 세션에는 ui-contract §9-6 문구 (FR-159, U-10)
 
 **Checkpoint**: 작성 흐름의 끝이 확실하게 끝난다
 

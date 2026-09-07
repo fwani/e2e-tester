@@ -65,6 +65,17 @@ def fixture_app() -> Iterator[str]:
         proc.wait(timeout=5)
 
 
+@pytest.fixture(autouse=True)
+def _default_ai_driver(monkeypatch: pytest.MonkeyPatch) -> None:
+    """테스트는 **언제나 기본 드라이버(Messages API)를 지난다.**
+
+    개발자가 셸에 `ITB_AI_DRIVER=claude-code` 를 켜 둔 채 pytest 를 돌리면, 가짜 모델이
+    받는 도구 표면이 MCP 쪽으로 바뀌어 `tool.call(...)` 대본이 통째로 무너진다. 그 실패는
+    원인이 환경 변수라는 것을 드러내지 않는다 — 그래서 여기서 지운다.
+    """
+    monkeypatch.delenv("ITB_AI_DRIVER", raising=False)
+
+
 def pin_playwright_browsers(monkeypatch: pytest.MonkeyPatch) -> None:
     """`HOME` 을 바꾸기 **전에** Playwright 브라우저 캐시 위치를 고정한다.
 

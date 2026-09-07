@@ -814,10 +814,18 @@ function ActiveSessionsBanner({
         진행 중인 세션이 있습니다
       </strong>
       {sessions.map((s) => {
+        /**
+         * 005 FR-159 (U-10) — **저장된 세션은 "사라진다" 고 말하지 않는다.**
+         *
+         * 리포트는 저장에 성공해 TC-001 이 목록에 있는데도 정리 버튼이 "Step 6개가
+         * 사라집니다. 정말 버릴까요?" 를 띄우는 것을 봤다. 저장 확인 표시가 없는
+         * 상태(U-09)에서 그 문장을 만나면 "저장이 안 된 건가?" 하고 손을 멈춘다.
+         */
+        const saved = s.saved_at != null;
         const label =
           `${s.state_label} · Step ${s.steps.length}개` +
           (s.test_id ? ` · ${s.test_id}` : "") +
-          (s.has_unsaved_changes ? " · 저장되지 않음" : "");
+          (s.has_unsaved_changes ? " · 저장되지 않음" : saved ? " · 저장됨" : "");
         const asking = confirming === s.session_id;
         return (
           <div
@@ -830,11 +838,16 @@ function ActiveSessionsBanner({
             </span>
             {asking ? (
               <>
-                <span style={{ color: "#A83A22" }}>
-                  Step {s.steps.length}개가 사라집니다. 정말 버릴까요?
+                <span style={{ color: saved ? "#6B675C" : "#A83A22" }}>
+                  {saved
+                    ? `${s.test_id ?? "테스트"} 로 저장돼 있습니다. 이 작업 창만 닫습니다.`
+                    : `Step ${s.steps.length}개가 사라집니다. 정말 버릴까요?`}
                 </span>
-                <button className="danger" onClick={() => onDiscard?.(s.session_id)}>
-                  버리기
+                <button
+                  className={saved ? "secondary" : "danger"}
+                  onClick={() => onDiscard?.(s.session_id)}
+                >
+                  {saved ? "닫기" : "버리기"}
                 </button>
                 <button className="ghost" onClick={() => setConfirming(null)}>
                   취소
@@ -845,7 +858,8 @@ function ActiveSessionsBanner({
                 {onResume && <button onClick={() => onResume(s)}>이어서 보기</button>}
                 {onDiscard && (
                   <button className="secondary" onClick={() => setConfirming(s.session_id)}>
-                    중지하고 버리기
+                    {/* 저장된 세션에는 파괴적으로 읽히는 이름을 쓰지 않는다 (FR-159). */}
+                    {saved ? "닫기" : "중지하고 버리기"}
                   </button>
                 )}
               </>

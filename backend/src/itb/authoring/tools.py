@@ -703,3 +703,141 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         close_tab,
         report_blocked,
     ]
+
+
+# ─── 개발용 Claude Code 드라이버의 도구 표면 (ITB_AI_DRIVER=claude-code) ────────
+# `build_tools` 와 **같은 `BrowserToolbox` 메서드**를 부른다. 도구 표면이 둘로 갈라지면
+# 개발 중에 본 동작이 제품 동작과 달라지므로, 감싸는 방식만 다르고 부르는 것은 같다.
+
+MCP_SERVER_NAME = "itb"
+"""in-process MCP 서버 이름. 도구는 `mcp__itb__<이름>` 으로 노출된다."""
+
+_REF = {"type": "string", "description": "observe_page 가 준 element_ref"}
+
+TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
+    "list_tabs": (
+        "열린 탭 목록과 활성 탭을 돌려준다. 화면을 조작하지 않는다.",
+        {"type": "object", "properties": {}, "required": []},
+    ),
+    "observe_page": (
+        "지정 탭의 상호작용 가능한 요소 목록과 화면 텍스트를 돌려준다. "
+        "각 요소에 element_ref 가 붙는다. 다른 도구에는 이 참조만 넘길 수 있다.",
+        {
+            "type": "object",
+            "properties": {"tab": {"type": "integer", "minimum": 0, "default": 0}},
+            "required": [],
+        },
+    ),
+    "click": (
+        "요소를 클릭한다. 성공하면 클릭 Step 으로 기록된다.",
+        {"type": "object", "properties": {"element_ref": _REF}, "required": ["element_ref"]},
+    ),
+    "fill": (
+        "입력 필드에 값을 넣는다. 성공하면 입력 Step 으로 기록된다.",
+        {
+            "type": "object",
+            "properties": {"element_ref": _REF, "value": {"type": "string"}},
+            "required": ["element_ref", "value"],
+        },
+    ),
+    "select": (
+        "셀렉트 박스에서 값을 고른다. 성공하면 선택 Step 으로 기록된다.",
+        {
+            "type": "object",
+            "properties": {"element_ref": _REF, "value": {"type": "string"}},
+            "required": ["element_ref", "value"],
+        },
+    ),
+    "navigate": (
+        "주소로 이동한다. http·https 만 허용된다.",
+        {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]},
+    ),
+    "hover": (
+        "요소에 마우스를 올린다. hover 로만 열리는 메뉴에 쓴다.",
+        {"type": "object", "properties": {"element_ref": _REF}, "required": ["element_ref"]},
+    ),
+    "drag": (
+        "요소를 다른 요소 위로 끌어다 놓는다. 양 끝 참조가 모두 필요하다.",
+        {
+            "type": "object",
+            "properties": {"element_ref": _REF, "drop_ref": _REF},
+            "required": ["element_ref", "drop_ref"],
+        },
+    ),
+    "assert_condition": (
+        "화면 상태를 검증한다. kind 는 visible / hidden / text / url 중 하나다. "
+        "visible·hidden 은 element_ref 가 필요하고 url 은 요소를 보지 않는다.",
+        {
+            "type": "object",
+            "properties": {
+                "kind": {"type": "string", "enum": ["visible", "hidden", "text", "url"]},
+                "element_ref": _REF,
+                "value": {"type": "string"},
+                "match": {"type": "string", "default": "equals"},
+            },
+            "required": ["kind"],
+        },
+    ),
+    "close_tab": (
+        "탭을 닫는다. 성공하면 탭 닫기 Step 으로 기록된다.",
+        {
+            "type": "object",
+            "properties": {"tab": {"type": "integer", "minimum": 0}},
+            "required": ["tab"],
+        },
+    ),
+    "report_blocked": (
+        "지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다.",
+        {"type": "object", "properties": {"reason": {"type": "string"}}, "required": ["reason"]},
+    ),
+}
+"""도구 이름 → (설명, 입력 스키마). `build_tools` 의 도구 11종과 같은 목록이다.
+
+**이 목록이 곧 허용 목록이다.** 개발용 드라이버는 여기 없는 도구를 전부 거부한다 —
+Claude Code 가 기본으로 주는 파일 읽기·쓰기·Bash 가 그 대상이다 (FR-086).
+"""
+
+QUALIFIED_TOOL_NAMES = [f"mcp__{MCP_SERVER_NAME}__{name}" for name in TOOL_SCHEMAS]
+"""Claude Code 가 부르는 이름. 권한 게이트가 이 목록만 허용한다."""
+
+
+def build_mcp_tools(toolbox: BrowserToolbox) -> list[Any]:
+    """개발용 Claude Code 드라이버에 넘길 in-process MCP 도구 목록 (`ITB_AI_DRIVER`).
+
+    `claude_agent_sdk` 를 여기서만 쓴다 — `BrowserToolbox` 는 어느 SDK 도 모른다.
+    **선택 의존성이므로 미설치 환경에서는 `ImportError` 가 난다.** 기본 경로(Messages
+    API)는 이 함수를 부르지 않으므로 영향받지 않는다.
+    """
+    import json  # noqa: PLC0415 - 이 경로 전용
+
+    from claude_agent_sdk import tool  # noqa: PLC0415 - SDK 경계를 함수 안에 둔다
+
+    handlers: dict[str, Callable[..., Awaitable[dict[str, Any]]]] = {
+        "list_tabs": toolbox.list_tabs,
+        "observe_page": toolbox.observe_page,
+        "click": toolbox.click,
+        "fill": toolbox.fill,
+        "select": toolbox.select,
+        "navigate": toolbox.navigate,
+        "hover": toolbox.hover,
+        "drag": toolbox.drag,
+        "assert_condition": toolbox.assert_condition,
+        "close_tab": toolbox.close_tab,
+        "report_blocked": toolbox.report_blocked,
+    }
+
+    def wrap(name: str) -> Any:
+        description, schema = TOOL_SCHEMAS[name]
+        handler = handlers[name]
+
+        @tool(name, description, schema)
+        async def run(args: dict[str, Any]) -> dict[str, Any]:
+            # MCP 는 결과를 텍스트로 실어 보낸다. 도구가 돌려준 dict 를 그대로 JSON 으로
+            # 넘긴다 — 요약하면 모델이 element_ref 를 잃는다.
+            result = await handler(**args)
+            payload = json.dumps(result, ensure_ascii=False)
+            return {"content": [{"type": "text", "text": payload}]}
+
+        return run
+
+    return [wrap(name) for name in TOOL_SCHEMAS]

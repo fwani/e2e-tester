@@ -41,6 +41,14 @@ export interface RunnerPausedProps {
    */
   savedAt?: string | null;
   /**
+   * 저장할 변경이 남아 있는가 (005 FR-156).
+   *
+   * 저장 직후에는 거짓이다 — 같은 내용을 다시 저장하도록 유도하지 않는다.
+   */
+  hasChangesToSave?: boolean;
+  /** 목록으로 이동 (005 FR-154 의 「목록에서 보기」). */
+  onShowList?: () => void;
+  /**
    * 중지로 끝난 실행의 결말과 다음 행동 (005 FR-133 · U-03).
    *
    * 중지는 화면을 떠나지 않는다(DR-010). 다만 그 화면이 **저장 프롬프트**여서는 안
@@ -124,6 +132,8 @@ export function RunnerPaused(props: RunnerPausedProps) {
   const {
     title,
     savedAt = null,
+    hasChangesToSave = true,
+    onShowList,
     pausing = false,
     pausingBudgetMs = null,
     finishedWhilePausing = null,
@@ -648,10 +658,60 @@ export function RunnerPaused(props: RunnerPausedProps) {
                 placeholder="테스트 이름"
                 style={{ flex: 1, minHeight: "46px", border: "3px solid #14130F" }}
               />
-              <button disabled={busy || steps.length === 0 || saveName.trim() === ""} onClick={onSave}>
-                저장
+              {/*
+                005 FR-156 (U-09) — 저장 후에는 「변경 저장」이고, 바뀐 것이 없으면
+                비활성이다.
+
+                이전에는 저장 성공 뒤에도 「저장」이 그대로 활성이었다. 성공 표시가
+                없으니 사용자는 저장됐는지 알 수 없었고, 버튼이 눌리므로 계속 다시
+                눌렀다. 중복 저장은 in-flight 가드가 막았지만, **연타할 이유가 계속
+                생기는 것** 자체가 결함이었다.
+              */}
+              <button
+                disabled={busy || steps.length === 0 || saveName.trim() === "" || !hasChangesToSave}
+                onClick={onSave}
+              >
+                {savedAt !== null ? "변경 저장" : "저장"}
               </button>
             </div>
+
+            {/*
+              005 FR-154·FR-158 (U-09) — **저장 성공을 화면을 옮기지 않고 알 수 있다.**
+
+              리포트가 본 것은 이랬다 — `POST …/save` 는 30 ms 에 200 으로 성공하는데
+              화면의 유일한 변화는 빵부스러기가 "새 테스트" → "TC-001" 로 바뀐 것
+              하나였다. 토스트도, 이동도, 체크 표시도 없었다. 저장 여부를 확인하려면
+              목록으로 나가야 했다.
+
+              토스트로 끝내지 않는 이유는 사라지면 근거가 남지 않기 때문이다.
+            */}
+            {savedAt !== null && (
+              <div
+                role="status"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  border: "3px solid #2E9455",
+                  background: "#F0F7F2",
+                  padding: "10px 14px",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2E9455" strokeWidth="2.8">
+                  <path d="M3 8.5l3.5 3.5L13 4.5" />
+                </svg>
+                <span style={{ font: "600 14px/1.3 'IBM Plex Sans KR', system-ui, sans-serif" }}>
+                  {`저장했습니다 · ${title}`}
+                </span>
+                <div style={{ flex: 1 }} />
+                {onShowList && (
+                  <button className="ghost" onClick={onShowList} disabled={busy}>
+                    목록에서 보기
+                  </button>
+                )}
+              </div>
+            )}
+
             {steps.length === 0 && (
               <div style={{ color: "#6B675C", fontSize: 13 }}>Step 이 없으면 저장할 수 없습니다.</div>
             )}
