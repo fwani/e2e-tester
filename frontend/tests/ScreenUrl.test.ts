@@ -7,11 +7,14 @@
  * 라우팅 라이브러리를 넣지 않았으므로(research R8) 변환 규칙 자체를 테스트가 지킨다.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { renderHook } from "@testing-library/react";
 
 import {
   locationToSearch,
   searchToLocation,
+  useScreenUrl,
   type WorkbenchLocation,
 } from "../src/hooks/useScreenUrl";
 
@@ -131,5 +134,69 @@ describe("왕복 변환 (007 T076 · FR-240)", () => {
   it("목록은 파라미터가 없고, 없는 주소는 목록으로 떨어진다", () => {
     expect(locationToSearch({ name: "list" })).toBe("");
     expect(searchToLocation("")).toEqual({ name: "list" });
+  });
+});
+
+/**
+ * 007 T094 (converge 1회차) — **뒤로 가기는 앱을 이탈하지 않는다** (FR-241 · 005 FR-167).
+ *
+ * 005 U-15 가 본 것: 뒤로 가기를 누르면 `about:blank` 로 나가 앱을 완전히 이탈했다.
+ *
+ * **변환만 재는 검사는 이 결함을 못 잡는다.** 005 N-01 이 정확히 그 형태였다 — 변환
+ * 함수 테스트는 초록인데 실제 새로 고침이 복원되지 않았고, 틀린 것은 변환이 아니라 첫
+ * 렌더의 국면이었다. 그래서 여기서는 **훅을 실제로 걸고 `popstate` 를 쏜다.**
+ */
+describe("뒤로 가기가 앱 안에 머문다 (T094 · FR-241)", () => {
+  const at = (search: string) =>
+    window.history.replaceState({}, "", `${window.location.pathname}${search}`);
+
+  afterEach(() => at(""));
+
+  it("`popstate` 가 주소의 국면으로 화면을 되돌린다", () => {
+    const seen: WorkbenchLocation[] = [];
+    at("?screen=result&test=TC-001&step=st-2");
+    renderHook(() =>
+      useScreenUrl({ name: "definition", testId: "TC-001", stepId: "st-2" }, (loc) =>
+        seen.push(loc),
+      ),
+    );
+
+    // 브라우저가 뒤로 갔다 — 주소가 먼저 바뀌고 그 다음 이벤트가 온다.
+    at("?screen=result&test=TC-001&step=st-2");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(seen, "뒤로 가기가 앱 안의 이동으로 이어지지 않는다").toHaveLength(1);
+    expect(seen[0]).toEqual({
+      name: "result",
+      testId: "TC-001",
+      sessionId: null,
+      stepId: "st-2",
+    });
+  });
+
+  it("빈 주소로 돌아가면 목록이다 — 앱 밖으로 나가지 않는다", () => {
+    const seen: WorkbenchLocation[] = [];
+    renderHook(() => useScreenUrl({ name: "result", testId: "TC-001" }, (loc) => seen.push(loc)));
+
+    at("");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(seen[0]?.name, "빈 주소가 앱 밖으로 읽혔다").toBe("list");
+  });
+
+  it("지목한 Step 도 뒤로 가기로 되돌아온다 (FR-239 와 같은 값)", () => {
+    const seen: WorkbenchLocation[] = [];
+    renderHook(() => useScreenUrl({ name: "list" }, (loc) => seen.push(loc)));
+
+    at("?screen=definition&test=TC-009&step=st-7");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(seen[0]?.stepId).toBe("st-7");
+  });
+
+  it("첫 렌더는 히스토리에 항목을 쌓지 않는다 — 첫 뒤로 가기가 헛돌지 않는다", () => {
+    const before = window.history.length;
+    renderHook(() => useScreenUrl({ name: "result", testId: "TC-001" }, () => undefined));
+    expect(window.history.length).toBe(before);
   });
 });
