@@ -8,53 +8,22 @@
 **시나리오는 목록 순서대로 돈다.** 프로젝트 선택 화면(AS-007)은 프로젝트가 열리기 전에만
 닿을 수 있고, 제품에 프로젝트를 닫는 경로가 없기 때문이다. 순서가 어긋나면 그 수단이
 사유와 함께 실패한다 — 조용히 지나가지 않는다.
+
+**그 제약은 이 파일 안의 순서만이 아니다** (005 T126). `product_ui` 는 세션 범위이므로
+**같은 패키지의 다른 파일**이 먼저 돌아 프로젝트를 열면 AS-007 은 그대로 실패한다.
+그래서 하니스를 쓰는 파일은 이름이 `test_ui_surface` 뒤에 와야 한다 —
+`test_ui_surface_restore.py` 가 그 이유로 그 이름을 갖는다.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-
 import pytest
-from playwright.async_api import async_playwright
 
 import tests.abnormal.drivers  # noqa: F401  (수단 등록 부작용)
 from tests.abnormal.catalogue import DRIVERS, Scenario, judge, scenarios
-from tests.abnormal.product_ui import ProductUI
 from tests.abnormal.ui_context import UiContext
 
 UI_SCENARIOS = scenarios("ui")
-
-
-@pytest.fixture
-async def ui_browser() -> AsyncIterator[object]:
-    """제품 화면을 조작할 브라우저. 제품이 대상 사이트를 여는 브라우저와 별개다.
-
-    **시나리오마다 새로 띄운다.** 세션 범위로 두면 픽스처가 테스트와 다른 이벤트 루프에
-    놓여 첫 `await` 에서 영원히 멈춘다 — 실패도 아니고 통과도 아닌 상태가 되어 무엇이
-    잘못됐는지 알 수 없다. 브라우저 기동은 1초 미만이라 그 값을 여기에 쓰지 않는다.
-    (제품 서버·제품 화면은 `product_ui` 가 세션 동안 한 번만 띄운다 — 그쪽이 비싸다.)
-    """
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch()
-        try:
-            yield browser
-        finally:
-            await browser.close()
-
-
-@pytest.fixture
-async def ui_context(
-    product_ui: ProductUI, ui_browser: object, fixture_app: str
-) -> AsyncIterator[UiContext]:
-    ctx = UiContext(ui=product_ui, browser=ui_browser, fixture_app=fixture_app)  # type: ignore[arg-type]
-    # 제품 서버는 세션 동안 하나다. 앞 시나리오가 남긴 세션을 치우지 않으면 다음
-    # 시나리오가 다른 화면을 보게 되고, 그 차이가 있지도 않은 결함처럼 보인다.
-    ctx.clear_sessions()
-    try:
-        yield ctx
-    finally:
-        ctx.clear_sessions()
-        await ctx.close_all()
 
 
 @pytest.mark.parametrize("scenario", UI_SCENARIOS, ids=[s.id for s in UI_SCENARIOS])

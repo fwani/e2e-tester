@@ -666,8 +666,19 @@ export function SessionScreen({
 
         확정 디자인(docs/design/Main.dc.html)에 얇은 띠는 정의돼 있지 않다 — 구현 과정에서
         쌓인 것이다. 끝난 실행에서는 결말 바가 요약을 갖는다.
+
+        **`finishedWhilePausing` 도 "요약을 가진 화면" 이다** (T123). 조건이 `!isDone`
+        하나였고 멈추기 전에 실행이 끝난 세션은 `paused` 이므로 `isDone` 이 거짓이다 —
+        그래서 이 배너와 `RunnerPaused` 의 결말 블록이 같은 문장을 나란히 그렸다.
+        T042 가 없앤 것과 같은 결함이 다른 조건으로 남아 있었다.
+
+        조건을 "실행 화면이 요약을 스스로 그리지 않는 경우" 로 읽어야 한다 — 종료
+        상태(`Runner` 의 결말 바)와 멈추기 전 종료(`RunnerPaused` 의 결말 블록)가
+        그렇고, 그 둘을 뺀 나머지가 이 배너의 자리다.
       */}
-      {summary !== null && !isDone && <Banner tone="info">{summary}</Banner>}
+      {summary !== null && !isDone && !finishedWhilePausing && (
+        <Banner tone="info">{summary}</Banner>
+      )}
     </>
   );
 
@@ -889,6 +900,8 @@ export function SessionScreen({
             `resume` 과 같은 엔드포인트이고 `skip_failed` 만 다르다. 화면에서 두 조작을
             가르는 이유는 결말이 달라지기 때문이다 — 이 경로의 결말은 `partial_pass` 이고
             그것을 만들 방법이 여태 없었다.
+
+            **인덱스를 넘기지 않는다** (T129). 건너뛸 Step 은 서버가 스스로 찾는다.
           */
           onResumeSkippingFailure={() => void act(() => sessions.resume(sessionId, true))}
           onStop={leave}

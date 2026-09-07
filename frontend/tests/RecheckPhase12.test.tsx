@@ -364,8 +364,11 @@ describe("T121 실패한 Step 을 건너뛰는 별도 조작이 화면에 있다
     const skip = screen.getByRole("button", { name: "실패한 Step 건너뛰고 계속" });
     expect((skip as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(skip);
-    // 실패한 Step 의 인덱스를 넘긴다 — 화면이 그것을 다시 계산하지 않게 한다.
-    expect(onSkip).toHaveBeenCalledWith(5);
+    // **인자를 넘기지 않는다** (T129). 건너뛸 Step 은 서버가 스스로 찾으므로
+    // (`sessions.py:resume` 의 `first_failed_index()`) 화면이 인덱스를 실어 보내면
+    // 그것이 반영되는 것처럼 읽히고 실제로는 무시된다.
+    expect(onSkip).toHaveBeenCalledTimes(1);
+    expect(onSkip.mock.calls[0]?.length ?? 0).toBe(0);
   });
 
   it("누르기 전에 결말이 「부분 성공」이 된다는 사실을 말한다", () => {

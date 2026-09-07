@@ -93,8 +93,14 @@ export interface RunnerPausedProps {
    * 그래서 백엔드는 `resume` 에 `skip_failed` 를 **별도 필드**로 뒀다. 재점검 N-04 가
    * 본 것은 그 필드를 보내는 화면이 하나도 없어 `partial_pass` 결말에 도달할 경로가
    * 아예 없다는 것이었다 — 계약의 절반만 서 있었다.
+   *
+   * **인자를 받지 않는다** (T129). 처음에는 실패 Step 인덱스를 넘겼는데 받는 쪽이
+   * 그것을 버렸다 — 건너뛸 Step 은 서버가 스스로 찾는다
+   * (`sessions.py:resume` 의 `w.engine.first_failed_index()`)고, `skip_failed` 는 순수한
+   * 불리언이다. 받고 버리는 인자는 다음 사람에게 "이 인덱스가 반영된다" 고 거짓말하고,
+   * 그것을 믿고 다른 인덱스를 넘기는 화면이 생기면 조용히 무시된다.
    */
-  onResumeSkippingFailure?: (failedStepIndex: number) => void;
+  onResumeSkippingFailure?: () => void;
   /**
    * 멈추기 전에 실행이 끝난 경우의 결말 (005 FR-146).
    *
@@ -402,7 +408,9 @@ export function RunnerPaused(props: RunnerPausedProps) {
             className="secondary"
             disabled={busy || pausing}
             title={skipFailureNotice(failedStepIndex)}
-            onClick={() => onResumeSkippingFailure(failedStepIndex)}
+            // `onClick={fn}` 으로 두면 React 가 이벤트 객체를 첫 인자로 넘긴다 —
+            // 인자를 받지 않는다는 계약(T129)이 호출 자리에서 깨진다.
+            onClick={() => onResumeSkippingFailure()}
           >
             {RESUME_SKIPPING_FAILURE}
           </button>

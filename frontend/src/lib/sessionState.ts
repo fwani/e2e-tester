@@ -46,15 +46,20 @@ export function isRunning(state: SessionState): boolean {
   }
 }
 
-/**
- * 돌아갈 화면이 남아 있는가 — 열린 세션인가.
+/*
+ * ─── 「돌아갈 수 있는가」를 여기 두지 않는 이유 (T128) ──────────────────────
  *
- * 실행이 끝났어도 `review`·`failed` 세션에는 기록·저장·결과 경로가 있으므로 복귀
- * 수단(FR-168 의 「실행 화면 보기」)은 **계속 있어야 한다.** 칩이 사실을 말하는 것과
- * 복귀 수단을 주는 것은 다른 요구사항이며, 하나의 조건으로 둘 다 처리하려 한 것이
- * N-02 였다.
+ * 처음에는 `isResumable(state)` 를 함께 뒀다. `stopped` 를 제외하는 판정이었고, 목록
+ * 행의 복귀 수단(「실행 화면 보기」)이 그것을 써야 하는 것처럼 보였다.
+ *
+ * **그 판정은 성립하지 않는다.** `stopped` 로 가는 유일한 길은 `discard` 이고
+ * (`state_machine.py`: `Command.DISCARD → STOPPED`), 그 경로는 세션 등록을 함께
+ * 지운다(`sessions.py`: `_WORK.pop(session_id, None)`). 그래서 `GET /api/sessions` 가
+ * 돌려주는 목록에 `stopped` 는 **나타날 수 없다.** 목록에 있는 세션은 전부 돌아갈 수
+ * 있고, 행의 조건 `liveSession !== null` 이 이미 그 사실을 정확히 말한다.
+ *
+ * 쓰지 않는 판정 함수를 남기면 다음 사람이 그것을 **이미 적용된 규칙**으로 읽는다.
+ * 여기에 없다는 것이 "복귀는 세션 존재로 판정한다" 는 결정의 기록이다.
+ *
+ * 상태 하나가 등록에 남게 바뀌면 그때 다시 만든다 — 그때는 판정이 실제로 갈린다.
  */
-export function isResumable(state: SessionState): boolean {
-  // 등록에 남아 있는 세션은 전부 열어 볼 수 있다. `lost` 도 기록을 보존한다 (DR-015).
-  return state !== "stopped";
-}
