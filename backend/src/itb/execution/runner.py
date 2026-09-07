@@ -22,15 +22,14 @@ from playwright.async_api import Page
 from itb.domain.error import ErrorCode, error_body, error_payload
 from itb.domain.run_pacing import auto_pause, delay_ms
 from itb.domain.run_result import (
-    scope_of,
-    decide_outcome,
-    attempted_of,
-    RunScope,
     Artifacts,
     Outcome,
     RunResult,
     StepOutcome,
     StepResult,
+    attempted_of,
+    decide_outcome,
+    scope_of,
 )
 from itb.domain.step import Step
 from itb.domain.test_case import Test
@@ -69,10 +68,20 @@ class RunnerTask:
         total_steps: int,
         start_index: int = 0,
         on_finished: RunCompletion | None = None,
+        pause_before_index: int | None = None,
     ) -> None:
         self._session = session
         self._run_step = step_runner
         self._total = total_steps
+        self._pause_before = pause_before_index
+        """멈출 지점 (006 FR-200).
+
+        선행 Step 을 **실행한 뒤** 이 인덱스의 Step 을 실행하기 **전에** 멈춘다. 고치려는
+        Step 은 대개 실패하는 Step 이므로, 실행한 뒤에 멈추면 고치기 전에 실패가 먼저 난다.
+
+        새 상태를 만들지 않는다 — 004 의 `한 스텝씩` 과 **같은 경계에서 같은 `PAUSED`** 로
+        들어간다 (006 research R7).
+        """
         self._task: asyncio.Task[None] | None = None
         self._finished = asyncio.Event()
         self._boundary = asyncio.Event()
@@ -226,6 +235,22 @@ class RunnerTask:
             index = self._session.current_step_index
             if index >= self._total:
                 break
+
+            # 006 FR-200 — 편집을 위해 지정된 지점이다. 이 Step 을 **실행하기 전에**
+            # 멈춘다: 고치려는 Step 은 대개 실패하는 Step 이므로, 실행한 뒤에 멈추면
+            # 고치기 전에 실패가 먼저 난다.
+            #
+            # **여기 두는 이유**: `_pace()` 는 Step 을 마친 뒤에만 불리므로 인덱스 0 을
+            # 놓친다. 이 자리는 모든 인덱스를 지나고, 다음 반복의 `is_paused` 분기가
+            # 경계를 세우고 기다린다 — 새 상태도, 새 대기 코드도 필요 없다 (research R7).
+            #
+            # **한 번만 멈춘다.** 사용자가 「계속하기」를 누른 뒤 같은 자리에 다시 걸리면
+            # 실행이 앞으로 나아가지 못한다.
+            if self._pause_before is not None and index == self._pause_before:
+                self._pause_before = None
+                with contextlib.suppress(InvalidTransitionError):
+                    await self._session.apply(Command.PAUSE)
+                continue
 
             should_continue = await self._run_step(self._session, index)
             # **상대 전진.** 실행 중에 편집이 들어와 위치가 밀렸어도 "방금 실행한 Step

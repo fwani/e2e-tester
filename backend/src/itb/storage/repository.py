@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import pathlib
 import re
 import shutil
@@ -232,6 +233,23 @@ class ProjectRepository:
             msg = f"테스트를 찾을 수 없습니다: {test_id}"
             raise ProjectError(msg)
         return load_model(p, Test)
+
+    def definition_revision(self, test_id: str) -> str:
+        """정의 파일 내용의 지문 (006 FR-209 · research R4).
+
+        편집 화면이 정의를 읽을 때 함께 받아 두고, 저장 요청에 되돌려 보낸다. 값이 다르면
+        읽은 뒤에 파일이 밖에서 바뀐 것이다 — 사용자가 편집기로 YAML 을 직접 고치는 것은
+        이 제품에서 정상 사용이므로(헌법 원칙 V) 실제로 일어난다.
+
+        **mtime 을 쓰지 않는다.** 초 단위 해상도 파일시스템과 복사·체크아웃 때문에 내용이
+        같아도 값이 바뀐다. 거짓 충돌은 사용자가 곧 무시하게 되고, 그러면 감지 자체가
+        무의미해진다. 내용 해시는 같으면 같고 다르면 다르다.
+        """
+        p = self.find_test_path(test_id)
+        if p is None:
+            msg = f"테스트를 찾을 수 없습니다: {test_id}"
+            raise ProjectError(msg)
+        return hashlib.sha256(p.read_bytes()).hexdigest()[:16]
 
     def write_test(self, test: Test) -> pathlib.Path:
         """테스트를 저장한다. 이름이 바뀌어 파일명이 달라지면 이전 파일을 지운다."""

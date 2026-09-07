@@ -53,6 +53,14 @@ class ErrorCode(StrEnum):
     TEST_NOT_FOUND = "TEST_NOT_FOUND"
     STEP_LIST_EMPTY = "STEP_LIST_EMPTY"
     DEFINITION_INVALID = "DEFINITION_INVALID"
+    DEFINITION_STALE = "DEFINITION_STALE"
+    """편집을 시작한 뒤 정의 파일이 밖에서 바뀌었다 (006 FR-209).
+
+    ``DEFINITION_INVALID`` 와 갈라 두는 이유는 **사용자가 할 일이 다르기 때문**이다.
+    ``DEFINITION_INVALID`` 는 내 편집이 잘못된 것이고, 이것은 내 편집은 멀쩡한데 바탕이
+    바뀐 것이다. 같은 코드로 내보내면 사용자는 멀쩡한 편집을 고치려 들고, 고칠 것이 없어
+    헤맨다 — ``ELEMENT_NOT_READY`` 를 ``STEP_FAILED`` 와 갈라 둔 것과 같은 판단이다.
+    """
 
     # 세션
     SESSION_NOT_FOUND = "SESSION_NOT_FOUND"
@@ -130,6 +138,8 @@ CATEGORY: dict[ErrorCode, Category] = {
     ErrorCode.TEST_NOT_FOUND: Category.BLOCKED,
     ErrorCode.STEP_LIST_EMPTY: Category.BLOCKED,
     ErrorCode.DEFINITION_INVALID: Category.BLOCKED,
+    # 006 — 사용자가 두 선택(다시 읽기·덮어쓰기) 중 하나를 고르면 된다.
+    ErrorCode.DEFINITION_STALE: Category.BLOCKED,
     # 세션 — 순서를 바꾸거나 기다리면 된다
     ErrorCode.SESSION_NOT_FOUND: Category.BLOCKED,
     ErrorCode.SESSION_ALREADY_ACTIVE: Category.BLOCKED,
@@ -183,6 +193,9 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ErrorCode.TEST_NOT_FOUND: "목록을 새로 고친 뒤 다시 고르세요. 이미 지워졌을 수 있습니다.",
     ErrorCode.STEP_LIST_EMPTY: "브라우저에서 동작을 기록하거나 Step을 추가한 뒤 다시 저장하세요.",
     ErrorCode.DEFINITION_INVALID: "표시된 항목을 규격에 맞게 고친 뒤 다시 시도하세요.",
+    ErrorCode.DEFINITION_STALE: (
+        "바뀐 내용을 확인한 뒤 다시 읽거나 내 편집으로 덮어쓸지 고르세요."
+    ),
     ErrorCode.SESSION_NOT_FOUND: "세션이 이미 끝났습니다. 새 세션을 시작하세요.",
     ErrorCode.SESSION_ALREADY_ACTIVE: "진행 중인 세션을 끝내거나 그 세션으로 이동하세요.",
     ErrorCode.SESSION_LOST: "기록된 Step은 남아 있습니다. 저장한 뒤 새 세션을 시작하세요.",

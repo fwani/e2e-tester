@@ -7,10 +7,10 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 import contextlib
-from datetime import UTC, datetime
+import uuid
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
@@ -28,7 +28,7 @@ from itb.api.state import AppState, get_state
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.run_result import RunScope, StepOutcome, scope_of
 from itb.domain.step import Author, NavigateStep, Step
-from itb.domain.test_case import AuthoringMode, Test, Variable
+from itb.domain.test_case import AuthoringMode, Test, Variable, derive_variables
 from itb.execution.artifacts import ArtifactCollector
 from itb.execution.runner import ReplayEngine, RunnerTask
 from itb.execution.session import (
@@ -237,6 +237,16 @@ class CreateSessionRequest(BaseModel):
 
     **무인 실행은 명시해야 한다.** 저장된 취향이 CI 를 느리게 만들지 않는 유일한 방법이
     요청에 `fast` 를 넣는 것이다 (contracts/rest-api.md §1).
+    """
+
+    pause_before_index: int | None = Field(default=None, ge=0)
+    """편집을 위해 멈출 지점 (006 FR-200·FR-201). `replay` 모드에서만 쓴다.
+
+    선행 Step 을 실행한 뒤 이 인덱스의 Step 을 실행하기 **전에** 멈춘다. 이것이 없으면
+    사용자는 편집 상태에 닿기 위해 **달리는 실행을 「일시정지」로 잡아야** 했고, 빠르게
+    통과하는 테스트에서는 잡을 창이 사실상 없었다 (006 E-06).
+
+    생략하면 지금과 완전히 같다 — 기존 클라이언트에 영향이 없다.
     """
 
 
@@ -586,7 +596,19 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         assert existing_test is not None  # noqa: S101 - 위에서 이미 거절했다
         await session.apply(Command.BEGIN_REPLAY)
         _build_engine(work, state, existing_test)
-        await _start_runner(work, start_index=0)
+        # 006 FR-200 — 범위를 경계에서 검증한다 (FR-211). 벗어난 값을 그대로 넘기면
+        # 러너가 영원히 만나지 못하는 지점을 기다리며 끝까지 돈다.
+        if body.pause_before_index is not None and body.pause_before_index >= len(
+            existing_test.steps
+        ):
+            raise bad_request(
+                ErrorCode.DEFINITION_INVALID,
+                f"멈출 Step 위치가 범위를 벗어났습니다: {body.pause_before_index} "
+                f"(Step {len(existing_test.steps)}개)",
+            )
+        await _start_runner(
+            work, start_index=0, pause_before_index=body.pause_before_index
+        )
     else:
         await session.apply(Command.BEGIN_AI)
         _build_agent(work, state)
@@ -845,7 +867,10 @@ def _ensure_engine(work: SessionWork, state: AppState) -> ReplayEngine | None:
 
 
 async def _start_runner(
-    work: SessionWork, start_index: int, reset: bool = True
+    work: SessionWork,
+    start_index: int,
+    reset: bool = True,
+    pause_before_index: int | None = None,
 ) -> None:
     """러너 태스크를 (다시) 띄운다.
 
@@ -892,6 +917,7 @@ async def _start_runner(
         total_steps=len(engine.test.steps),
         start_index=start_index,
         on_finished=engine.finalize,
+        pause_before_index=pause_before_index,
     )
     work.runner = runner
     # 태스크만 띄우고 즉시 반환한다. 실제 Step 실행은 요청 수명과 분리된다 (research R1).
@@ -1505,47 +1531,21 @@ async def save(session_id: str, body: SaveRequest, state: State) -> Test:
 
 
 def _variables_for(w: SessionWork) -> list[dict[str, object]]:
-    """Step 이 참조하는 변수를 정의로 만든다.
+    """세션의 Step 이 참조하는 변수를 정의로 만든다.
 
-    **불러온 정의의 변수를 출발점으로 삼는다.** 세션에서 새로 포착한 것만 보면, 불러온
-    테스트의 민감 변수가 비민감·빈 값으로 강등되어 재실행이 빈 값을 채운다 (FR-082 위반이자
-    조용한 실패다).
+    **판정은 `itb.domain.test_case.derive_variables()` 가 한다** (006 T005·T006). 이 함수는
+    세션에서 재료를 꺼내 넘기는 얇은 껍데기다.
 
-    새로 나타난 이름의 판정 순서:
-
-    1. 이 세션에서 민감 값으로 포착했다 → 민감 (값은 비밀 파일의 암호문에 있다)
-    2. 비밀 파일에 같은 이름의 암호문이 있다 → 민감 (앞선 세션이 만든 것이다)
-    3. 그 외 → 비민감. 값은 사용자가 정의 파일에서 채운다
-
-    민감 변수는 **값을 갖지 않는다** — 실제 값은 비밀 파일의 암호문에 있다 (FR-082).
+    옮긴 이유: 정의 편집(`PUT /api/tests/{id}/definition`)도 같은 판정을 해야 한다. 두 벌이면
+    한쪽에서 민감 표시가 강등되고, 재실행이 빈 값을 채운다 (006 FR-214 · research R5).
     """
-    import re
+    return derive_variables(
+        w.steps,
+        base_variables=w.base_variables,
+        captured_names={c.variable_name for c in w.recorder.sensitive_captures},
+        sealed_names=w.store.names() if w.store is not None else (),
+    )
 
-    pattern = re.compile(r"\{\{([A-Z][A-Z0-9_]*)\}\}")
-    referenced: set[str] = set()
-    for step in w.steps:
-        for text in (
-            getattr(step, "value", None),
-            getattr(getattr(step, "assertion", None), "value", None),
-            getattr(step, "url", None),
-        ):
-            if isinstance(text, str):
-                referenced.update(pattern.findall(text))
-
-    base = {v.name: v for v in w.base_variables}
-    captured = {c.variable_name for c in w.recorder.sensitive_captures}
-    sealed = set(w.store.names()) if w.store is not None else set()
-
-    out: list[dict[str, object]] = []
-    for name in sorted(referenced):
-        existing = base.get(name)
-        if existing is not None:
-            out.append(existing.model_dump(mode="json"))
-        elif name in captured or name in sealed:
-            out.append({"name": name, "value": None, "sensitive": True})
-        else:
-            out.append({"name": name, "value": "", "sensitive": False})
-    return out
 
 
 # ─── WebSocket (관찰, 단방향) ──────────────────────────────────────────────

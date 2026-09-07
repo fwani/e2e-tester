@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Collection, Sequence
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Self
@@ -61,6 +63,90 @@ def fallback_variable_name(index: int, prefix: str = SENSITIVE_VARIABLE_PREFIX) 
 def variable_reference(name: str) -> str:
     """`{{이름}}` 참조 문자열. 형식을 한 곳에서만 만든다."""
     return f"{{{{{name}}}}}"
+
+
+VARIABLE_REFERENCE_PATTERN = re.compile(r"\{\{([A-Z][A-Z0-9_]*)\}\}")
+"""`{{이름}}` 참조를 값에서 찾아내는 패턴. `variable_reference()` 의 역방향이다."""
+
+
+def referenced_variable_names(steps: Sequence[Step]) -> set[str]:
+    """Step 목록이 참조하는 변수 이름 (006 T005).
+
+    값을 가질 수 있는 자리를 **모두** 본다 — 입력값, 검증 기대값, `navigate` 주소.
+    한 자리를 빠뜨리면 그 자리의 참조가 변수 정의에 반영되지 않고, 실행 시 빈 값이
+    채워진다 (조용한 실패다).
+    """
+    found: set[str] = set()
+    for step in steps:
+        for text in (
+            getattr(step, "value", None),
+            getattr(getattr(step, "assertion", None), "value", None),
+            getattr(step, "url", None),
+        ):
+            if isinstance(text, str):
+                found.update(VARIABLE_REFERENCE_PATTERN.findall(text))
+    return found
+
+
+def derive_variables(
+    steps: Sequence[Step],
+    *,
+    base_variables: Sequence[Variable] = (),
+    captured_names: Collection[str] = (),
+    sealed_names: Collection[str] = (),
+) -> list[dict[str, object]]:
+    """Step 이 참조하는 이름에서 변수 정의를 만든다 (FR-082 · 006 FR-214).
+
+    **여기 있는 이유**: 세션 저장(`POST /api/sessions/{id}/save`)과 정의 저장
+    (`PUT /api/tests/{id}/definition`)이 **같은 판정**을 써야 한다. 두 벌이면 한쪽에서
+    민감 표시가 비민감으로 강등되고, 그러면 재실행이 빈 값을 채운다 — FR-082 위반이자
+    조용한 실패다 (006 research R5).
+
+    **불러온 정의의 변수를 출발점으로 삼는다.** 이 세션·이 편집에서 새로 포착한 것만 보면,
+    불러온 테스트의 민감 변수가 비민감·빈 값으로 강등된다.
+
+    새로 나타난 이름의 판정 순서:
+
+    1. 이 세션에서 민감 값으로 포착했다 → 민감 (값은 비밀 파일의 암호문에 있다)
+    2. 비밀 파일에 같은 이름의 암호문이 있다 → 민감 (앞선 세션이 만든 것이다)
+    3. 그 외 → 비민감. 값은 사용자가 정의 파일에서 채운다
+
+    민감 변수는 **값을 갖지 않는다** — 실제 값은 비밀 파일의 암호문에 있다 (FR-082).
+    """
+    referenced = referenced_variable_names(steps)
+    base = {v.name: v for v in base_variables}
+    captured = set(captured_names)
+    sealed = set(sealed_names)
+
+    out: list[dict[str, object]] = []
+    for name in sorted(referenced):
+        existing = base.get(name)
+        if existing is not None:
+            out.append(existing.model_dump(mode="json"))
+        elif name in captured or name in sealed:
+            out.append({"name": name, "value": None, "sensitive": True})
+        else:
+            out.append({"name": name, "value": "", "sensitive": False})
+    return out
+
+
+def undefined_variable_references(
+    steps: Sequence[Step], variables: Sequence[Variable]
+) -> list[str]:
+    """참조되지만 값이 없는 **비민감** 변수 이름 (006 FR-216).
+
+    민감 변수는 정의에 값을 갖지 않는 것이 정상이므로(FR-082) 여기 들어오지 않는다.
+    비민감 변수의 빈 값은 실행 시 빈 문자열이 채워지는 것을 뜻하므로 사용자가 알아야
+    한다 — 막지는 않고 경고로 알린다.
+    """
+    referenced = referenced_variable_names(steps)
+    by_name = {v.name: v for v in variables}
+    out: list[str] = []
+    for name in sorted(referenced):
+        v = by_name.get(name)
+        if v is None or (not v.sensitive and not v.value):
+            out.append(name)
+    return out
 
 
 class AuthoringMode(StrEnum):

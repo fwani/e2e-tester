@@ -50,6 +50,20 @@ class ValueNotSupportedError(Exception):
         super().__init__(f"{step_type} Step 은 입력값을 갖지 않습니다.")
 
 
+class FieldNotSupportedError(Exception):
+    """그 Step 종류가 갖지 않는 필드를 고치려 했다 (006 FR-183).
+
+    `ValueNotSupportedError` 와 갈라 두지 않고 하나로 합칠 수도 있었지만, 기존 예외의
+    메시지("입력값을 갖지 않습니다")가 이미 세션 편집 계약에 나가 있다. 그것을 일반화하면
+    이미 나간 문구가 바뀐다.
+    """
+
+    def __init__(self, step_type: str, field: str) -> None:
+        self.step_type = step_type
+        self.field = field
+        super().__init__(f"{step_type} Step 은 {field} 를 갖지 않습니다.")
+
+
 @dataclass(slots=True)
 class EditResult:
     """편집 결과. 원본을 바꾸지 않고 새 상태를 돌려준다.
@@ -137,11 +151,22 @@ def update_step(
     label: str | None = None,
     value: str | None = None,
     timeout_ms: int | None = None,
+    tab: int | None = None,
+    url: str | None = None,
+    assertion_value: str | None = None,
 ) -> EditResult:
-    """표시 이름·입력값·타임아웃을 고친다 (FR-035·FR-082b).
+    """표시 이름·입력값·타임아웃·탭·주소·기대값을 고친다 (FR-035·FR-082b·006 FR-183).
 
     Step 종류를 바꾸지 않는다. 종류가 바뀌면 대상 요소의 의미도 바뀌므로 그것은 삭제와
     삽입이며, 편집으로 위장하면 후보 묶음이 엉뚱한 종류에 남는다.
+
+    **006 이 인자를 늘렸다** — `tab`·`url`·`assertion_value`. 정의 편집(세션 없는 편집)이
+    이 세 가지를 요구하는데(006 FR-183), 그것을 위한 두 번째 편집 함수를 만들면 규칙이 두
+    벌이 된다. 편집 핵심은 한 곳이므로 인자를 여기 더한다 (006 research R2·R3).
+
+    **`target` 을 받지 않는 것은 의도다.** 요소 후보는 살아 있는 페이지에서만 수집·검증되며
+    (헌법 원칙 IV), 손으로 넣은 후보는 검증 상태를 얻을 수 없다. 다시 집기는
+    `itb.recording.repick` 이 담당한다 (006 FR-187 제외 결정).
     """
     index = find_index(steps, step_id)
     current = steps[index]
@@ -151,10 +176,21 @@ def update_step(
         update["label"] = label
     if timeout_ms is not None:
         update["timeout_ms"] = timeout_ms
+    if tab is not None:
+        update["tab"] = tab
     if value is not None:
         if not hasattr(current, "value"):
             raise ValueNotSupportedError(str(current.type))
         update["value"] = value
+    if url is not None:
+        if not hasattr(current, "url"):
+            raise FieldNotSupportedError(str(current.type), "url")
+        update["url"] = url
+    if assertion_value is not None:
+        assertion = getattr(current, "assertion", None)
+        if assertion is None:
+            raise FieldNotSupportedError(str(current.type), "assertion_value")
+        update["assertion"] = assertion.model_copy(update={"value": assertion_value})
 
     updated = current.model_copy(update=update)
     new_steps = [*steps]

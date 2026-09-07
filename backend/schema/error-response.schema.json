@@ -52,6 +52,7 @@
         "TEST_NOT_FOUND",
         "STEP_LIST_EMPTY",
         "DEFINITION_INVALID",
+        "DEFINITION_STALE",
         "SESSION_NOT_FOUND",
         "SESSION_ALREADY_ACTIVE",
         "SESSION_LOST",
