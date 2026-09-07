@@ -337,3 +337,17 @@ Task: "replacement-map.md"
 - 총 91개 작업. Setup 5 · Foundational 26 · US1 26 · US2 11 · US3 8 · US4 5 · Polish 10
 - 마지막 3개(T067·T068·T074)는 `analyze` 가 찾은 커버리지 공백을 닫으려고 추가한 것이다 —
   FR-235(같은 라벨 = 같은 동작) · FR-252(민감 값 7국면) · FR-220(자동 국면 전환 알림)
+
+---
+
+## Phase 8: Convergence
+
+`/speckit-converge` 1회차가 찾은 잔여 작업이다. CRITICAL·HIGH 는 없다 — 명세가 요구한
+기능은 전부 서 있고, 남은 것은 **기록이 실제와 어긋난 곳 하나**와 **세어 두기로 한 것을
+아직 세지 않은 곳 넷**이다.
+
+- [ ] T092 대체 관계 기록을 실제 자리로 고친다 in `specs/007-unify-test-screens/design-conformance/replacement-map.md` §2 per FR-254b (contradicts) — 기록은 「RunnerPaused 편집 도구 격자·검증 추가 폼·순서 변경 패널·저장 영역 → ③ 좌 아래 국면 보조 영역」인데, 구현은 **조작 팔레트를 Step 패널 바닥(③ 우)** 에 뒀고 보조 영역에는 검증 추가 폼과 순서 변경 패널만 펼친다. 자리를 그렇게 정한 근거(확정 디자인 3종이 460px 패널 아래에 조작 블록을 갖는다)도 함께 적는다. **기록이 실제와 다르면 대조가 성립하지 않는다**
+- [ ] T093 SC-009 의 통합 후 값을 재어 기록 in `specs/007-unify-test-screens/design-conformance/baseline.md` per SC-009 (missing) — 기준선 §3 이 「전환 3회 + 재탐색 1회」와 판정 기준(3회 이하)을 적어 뒀는데 이후 값이 없다. 결과 확인 → 수정 → 재실행 → 결과 확인 한 바퀴를 `App.tsx` 의 국면 전환으로 세고, SC-005 의 재탐색 0회(걷기 W-3 에서 관측)와 함께 적는다
+- [ ] T094 뒤로 가기 회귀 검사 in `frontend/tests/ScreenUrl.test.ts` per FR-241 · 005 FR-167 (missing) — `popstate` 가 `src/hooks/useScreenUrl.ts` 에만 있고 검사가 없다. **변환만 재는 검사는 이 결함을 못 잡는다** — 005 N-01 이 정확히 「변환은 옳은데 첫 렌더의 화면이 틀린」 형태였다. 뒤로 가기가 앱 안의 이전 국면으로 돌아가고 `about:blank` 로 이탈하지 않는지 센다
+- [ ] T095 판정 모듈이 규칙만으로 이루어짐을 검사 in `frontend/tests/DeterministicPhase.test.ts` (신설) per FR-251 · Constitution II (missing) — `lib/phase.ts`·`lib/capabilities.ts`·`lib/actions.ts` 가 값 임포트를 갖지 않고(타입만) 언어모델·네트워크를 부르지 않는지 원문으로 센다. 지금 실제로 그러하나 **그 성질을 지키는 것이 없다** — 백엔드의 `lint-imports` 가 하는 일을 화면 쪽 판정 모듈에 대해 하는 것이다
+- [ ] T096 W-6 을 사람 판정 항목으로 등록 in `docs/PENDING-HUMAN-VERIFICATION.md` per quickstart W-6 · FR-253 (missing) — 걷기에서 **확인 불가(환경)** 로 남았다. 자격 증명이 없어 AI 작성 국면에 도달할 수 없었고, 제품이 누르기 전에 그 사실을 말하는 것(AP-003)까지가 관측의 전부다. 준비물(`AiFailureVisible.test.tsx` 가 다섯 세션 상태를 이미 센다)과 남은 것(실브라우저에서 실제 실패를 만들었을 때도 같은가)을 적는다
