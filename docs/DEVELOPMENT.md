@@ -45,6 +45,42 @@ cd frontend && npm run dev            # http://127.0.0.1:4310
 브라우저는 **headed 로 뜬다.** 조작 국면(녹화·사람 인수)은 실제 창을 요구하고, 스크린캐스트는
 headed 에서도 동작한다 (T006 실측). 모드를 하나로 유지하는 것이 의도된 설계다.
 
+### 미리보기(미러)가 정적 화면에서도 나온다 (005)
+
+CDP `Page.startScreencast` 는 **화면이 변할 때만** 프레임을 만든다. 그래서 미러에는 두 가지
+장치가 있다 — 마지막 프레임 캐시(구독이 뒤늦게 붙어도 현재 화면을 준다)와 무프레임 감시
+(마지막 프레임 후 2초 조용하면 스크린샷 한 장). **감시가 도는 것은 정상 동작이며 강등이
+아니다** — `mirror_degraded` 를 발행하지 않는다.
+
+이 장치가 없던 동안 정적 화면에서는 프레임이 한 장도 도달하지 않았다(실측 0건).
+
+### 실행 결말은 네 값이다 (005)
+
+`Outcome` 은 `pass · fail · stopped · partial_pass` 다.
+
+| 값 | 언제 | 실패 집계 |
+|---|---|---|
+| `pass` | 실행 대상 Step 전부 통과 | 아니오 |
+| `fail` | 실패 Step 이 있다 · 세션 유실 | 예 |
+| `stopped` | 사용자가 중지를 요청했다 | **아니오** |
+| `partial_pass` | 실패 Step 을 건너뛰고 나머지를 마쳤다 | 아니오 |
+
+판정은 `itb.domain.run_result.decide_outcome()` **한 곳**이 한다. 화면·목록이 각자
+`outcome == "fail"` 로 갈리면 결말이 늘 때 한 곳이 빠뜨린다.
+
+`partial_pass` 라는 이름은 `RunScope.PARTIAL`(부분 실행 = 실행 **범위**)과 구별하기
+위한 것이다. 결말과 범위는 다른 축이다 — Step 06~07 만 돌아 전부 통과하면 결말은 `pass`
+이고 범위가 `partial` 이다.
+
+**결말 값을 추가하면 스키마를 다시 생성해야 한다.** 순서는 아래를 지킨다.
+
+```bash
+cd backend && uv run python -m itb.schema.export
+cd ../frontend && npm run gen:types
+```
+
+어기면 `tests/contract/test_schema_drift.py` 가 실패한다.
+
 ### 암호구로 잠근 비밀키
 
 키 관리 화면에서 암호구를 걸어 키를 만들었으면, **백엔드를 다시 띄운 뒤에는 그 화면에서 잠금을
@@ -75,6 +111,39 @@ ant auth login         # 또는 export ANTHROPIC_API_KEY=...
 
 자동 테스트는 자격 증명을 쓰지 않는다 — `AuthoringAgent` 의 `driver` 자리에 대본대로 도구를
 부르는 가짜 모델을 끼운다 (`backend/tests/us4_support.py`).
+
+### 키 없이 AI 경로를 눈으로 보기 (개발용, 선택)
+
+API 키가 없어도 **이미 로그인된 Claude Code** 로 AI 작성 경로를 끝까지 돌려 볼 수 있다.
+UX 워크스루에서 S6·S7 이 자격 증명 때문에 미검증으로 남는 것이 이 스위치가 있는 이유다.
+
+```bash
+uv sync --extra claude-code    # 선택 의존성. 한 번만
+claude                          # 로그인돼 있는지 확인
+
+cd backend
+ITB_AI_DRIVER=claude-code uv run uvicorn itb.api.app:app --host 127.0.0.1 --port 4320
+```
+
+| | 기본 (미설정) | `ITB_AI_DRIVER=claude-code` |
+|---|---|---|
+| 경로 | Messages API (`anthropic`) | 로그인된 Claude Code (`claude-agent-sdk`) |
+| 자격 증명 | API 키 / `ant` 프로필 | `claude` 로그인 |
+| 도구 | `build_tools` (`@beta_async_tool`) | `build_mcp_tools` (in-process MCP) |
+| 모델·effort | `LlmConfig` 대로 | **Claude Code 기본값** (`config` 무시) |
+
+**결과를 품질 근거로 쓰지 않는다.** `output_config.effort`·`betas`/`fallbacks`·
+`stop_reason: "refusal"` 은 Messages API 전용이라 이 경로에서 전달되지 않고 모델도 다르다.
+SC-002 같은 성공 기준 측정은 **기본 드라이버로만** 한다.
+
+이 경로에서도 에이전트는 브라우저 도구 11종만 쓴다 — Claude Code 가 기본으로 주는
+`Read`·`Write`·`Bash` 등은 권한 콜백이 거부한다 (FR-086,
+`backend/src/itb/authoring/claude_code_driver.py`). `setting_sources=[]` 로 개발자의
+`settings`·`CLAUDE.md`·훅도 읽지 않는다.
+
+정확히 `claude-code` 한 값만 스위치를 켠다. 오타·대문자는 기본으로 떨어지며, 그것을
+`backend/tests/unit/test_driver_selection.py` 가 고정한다. 테스트는 이 환경 변수를 항상
+지우고 돌린다 (`backend/tests/conftest.py`).
 
 ## 검증
 
