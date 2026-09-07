@@ -92,6 +92,34 @@
 
 ---
 
+## 3-b. `POST /api/sessions/{id}/resume` — 요청 본문이 생긴다
+
+지금은 본문이 없다. **선택 필드 하나가 생긴다.**
+
+```json
+{ "skip_failed": false }
+```
+
+| 필드 | 형 | 기본값 | 뜻 |
+|---|---|---|---|
+| `skip_failed` | `bool` | `false` | 실패한 Step 을 건너뛰고 다음 Step 부터 이어간다 |
+
+본문을 보내지 않으면 `{"skip_failed": false}` 와 같다 — 기존 클라이언트가 그대로 동작한다.
+
+### 거절 조건
+
+| 상황 | 응답 |
+|---|---|
+| 실패 Step 이 있고 `skip_failed=false` | **409** `CANNOT_RESUME_PAST_FAILURE`. `detail.failed_step_index` 를 싣는다. 화면은 그 자리에 이유와 대안(그 Step 고치기 / 그 Step 부터 실행)을 보여준다 (FR-136) |
+| 실패 Step 이 있고 `skip_failed=true` | 200. 다음 Step 부터 이어가고 **결말은 `partial_pass`** 다 (FR-137) |
+| 실패 Step 이 없고 `skip_failed=true` | 200. 건너뛸 것이 없으므로 무해하게 무시한다. 결말은 평소와 같다 |
+
+**두 경로를 한 필드로 가르는 이유**: 사용자가 누르는 버튼이 둘이고(「계속하기」·「실패한
+Step 건너뛰고 계속」) 그 둘은 같은 재개다. 엔드포인트를 둘로 나누면 재개 규칙(편집된 목록을
+대상으로 삼는 것, 러너를 새로 띄우지 않는 것)이 두 벌이 된다.
+
+---
+
 ## 4. `POST /api/sessions/{id}/stop` — 결말이 `stopped` 로 기록된다
 
 형태는 그대로다. 바뀌는 것은 **저장되는 결과**다.
@@ -117,7 +145,7 @@
 
 ## 6. `GET /api/tests` — 행 요약에 결말 4값이 실린다
 
-행 요약(`last_run` 계열)의 결말은 `pass · fail · stopped · partial` 중 하나다.
+행 요약(`last_run` 계열)의 결말은 `pass · fail · stopped · partial_pass` 중 하나다.
 클라이언트가 알 수 없는 값을 만나면 `fail` 로 취급한다 (보수적 기본값).
 
 `failure_summary.step_index` 는 **0-기반 그대로 유지한다.** 표시 변환은 클라이언트 책임이며
@@ -141,8 +169,13 @@
 
 ## 8. 오류 코드
 
-새 코드를 만들지 않는다. `SESSION_ALREADY_ACTIVE` 의 `message`·`next_action`·`detail` 만
-바뀐다 (§1).
+| 코드 | `category` | 언제 | `next_action` |
+|---|---|---|---|
+| `CANNOT_RESUME_PAST_FAILURE` | `blocked` | 실패 Step 이 있는데 `skip_failed` 없이 재개를 요청했다 | 그 Step 을 고친 뒤 이어가거나, 그 Step 부터 다시 실행하세요. |
+
+`SESSION_ALREADY_ACTIVE` 는 코드가 그대로이고 `message`·`next_action`·`detail` 만 바뀐다 (§1).
+
+`blocked` 인 것은 의도적이다 — **사용자가 할 일이 있다.**
 
 ---
 
@@ -154,4 +187,6 @@
 | 결과 응답 `last_full_run` 추가 | 없음 |
 | `Outcome` 값 2개 추가 | **있음** — `fail` 로 취급하는 기본값이 필요하다 |
 | `POST /sessions` 거절 조건 축소 | 없음 (거절이 줄어드는 방향) |
+| `POST /resume` 선택 필드 추가 | 없음 (미전송 = `false`) |
+| `POST /resume` 가 실패 Step 앞에서 409 | **있음** — 지금은 조용히 건너뛰어 200 이었다. 그 조용한 건너뜀이 U-05 의 결함이므로 의도된 변경이다 |
 | 중지 결말이 `stopped` | **있음** — `fail` 로만 분기하던 화면은 중지를 통과로 오인할 수 있다. 이 라운드에서 화면을 함께 고친다 |

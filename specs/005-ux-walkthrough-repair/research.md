@@ -30,14 +30,14 @@
 
 ## R1. 실행 결말 — 두 값에서 네 값으로
 
-**결정**: `Outcome` 을 `pass · fail · stopped · partial` 네 값으로 넓힌다.
+**결정**: `Outcome` 을 `pass · fail · stopped · partial_pass` 네 값으로 넓힌다.
 
 | 값 | 언제 | 사용자 표시 |
 |---|---|---|
 | `pass` | 모든 Step 이 통과 | 통과 |
 | `fail` | 실패한 Step 이 있다 | 실패 |
 | `stopped` | 사용자가 중지를 요청해 끝났다 | 중지 |
-| `partial` | 실패 Step 을 건너뛰고 나머지를 마쳤다 | 부분 성공 |
+| `partial_pass` | 실패 Step 을 건너뛰고 나머지를 마쳤다 | 부분 성공 |
 
 **부분 실행(범위가 좁은 실행)은 결말이 아니라 범위다.** Step 06~07 만 돌아 전부 통과하면
 결말은 `pass` 이고, 범위가 부분이라는 사실은 별도 필드로 남긴다(R2). 이 둘을 한 값에
@@ -255,7 +255,7 @@ FR-166(결과 화면 새로고침 복원)과 FR-167(뒤로가기가 앱을 이�
 
 ## R9. 어휘 단일화 — 사전 하나, 규칙 하나
 
-**결정**: 프론트에 `frontend/src/theme/wording.ts`(가칭) 를 두고 **결말 어휘와 Step 표기를
+**결정**: 프론트에 `frontend/src/lib/wording.ts` 를 두고 **결말 어휘와 Step 표기를
 전부 여기서만** 만든다.
 
 - `outcomeLabel(outcome)` → 「통과 / 실패 / 중지 / 부분 성공」

@@ -63,7 +63,7 @@ CDP 스크린캐스트가 만든 프레임을 그때그때 발행했다. 구독�
 ```json
 {
   "type": "run_finished",
-  "outcome": "pass | fail | stopped | partial",
+  "outcome": "pass | fail | stopped | partial_pass",
   "total_ms": 3210,
   "passed_count": 5,
   "total_count": 7,
@@ -76,7 +76,7 @@ CDP 스크린캐스트가 만든 프레임을 그때그때 발행했다. 구독�
 
 | 필드 | 상태 |
 |---|---|
-| `outcome` | **값 2개 추가** — `stopped`, `partial` |
+| `outcome` | **값 2개 추가** — `stopped`, `partial_pass` |
 | `attempted_count` | **신규** — 실행 대상 Step 수 (전체 − 건너뜀) |
 | `scope`·`start_index` | **신규** — 부분 실행 여부와 시작 지점 |
 

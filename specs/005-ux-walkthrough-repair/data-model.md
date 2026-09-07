@@ -16,7 +16,7 @@
 `backend/src/itb/domain/run_result.py`
 
 ```
-pass | fail | stopped | partial      ← stopped, partial 추가
+pass | fail | stopped | partial_pass      ← stopped, partial 추가
 ```
 
 | 값 | 판정 조건 | 사용자 표시 | 실패 집계 |
@@ -24,12 +24,12 @@ pass | fail | stopped | partial      ← stopped, partial 추가
 | `pass` | 실행 대상 Step 전부 통과 | 통과 | 아니오 |
 | `fail` | 실패한 Step 이 있다 · 세션 유실로 끝났다 | 실패 | 예 |
 | `stopped` | 사용자가 중지를 요청해 끝났다 | 중지 | **아니오** (FR-131) |
-| `partial` | 실패 Step 을 건너뛰고 나머지를 마쳤다 | 부분 성공 | 아니오 |
+| `partial_pass` | 실패 Step 을 건너뛰고 나머지를 마쳤다 | 부분 성공 | 아니오 |
 
 **판정 우선순위** (위에서부터 먼저 걸리는 것이 이긴다):
 
 1. 사용자 중지 요청이 있었다 → `stopped`
-2. 실패 Step 을 명시적으로 건너뛰고 계속했다 → `partial`
+2. 실패 Step 을 명시적으로 건너뛰고 계속했다 → `partial_pass`
 3. 실패 Step 이 남아 있다 → `fail`
 4. 그 외 → `pass`
 

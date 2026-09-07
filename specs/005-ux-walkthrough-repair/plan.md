@@ -16,7 +16,7 @@
 
 바로잡을 네 곳:
 
-1. **실행 결말을 두 값에서 네 값으로** — `pass·fail·stopped·partial`. 사용자가 누른 중지가
+1. **실행 결말을 두 값에서 네 값으로** — `pass·fail·stopped·partial_pass`. 사용자가 누른 중지가
    실패로 기록되는 것(U-03)과 실패를 건너뛴 실행이 「완료」로 표시되는 것(U-05)이 여기서
    갈린다
 2. **세션 생존 판정** — 종료된 세션이 다음 실행을 막지 않게 하고, 생성 경계에 락·예약을
@@ -130,7 +130,7 @@ backend/
 
 frontend/
 ├── src/
-│   ├── theme/
+│   ├── lib/
 │   │   └── wording.ts             # 신규. 결말 어휘 + stepLabel 유일 변환점
 │   ├── hooks/
 │   │   └── useScreenUrl.ts        # 신규. history.pushState ↔ Screen 상태
@@ -150,7 +150,7 @@ frontend/
 ```
 
 **Structure Decision**: 기존 backend + frontend 분리 구조를 그대로 쓴다. **신규 디렉터리는
-`frontend/src/hooks/` 하나**이고 신규 파일은 `wording.ts`·`useScreenUrl.ts` 둘이다.
+`frontend/src/lib/`·`frontend/src/hooks/` 둘**이고 (`theme/` 는 CSS 자리이므로 쓰지 않는다) 신규 파일은 `wording.ts`·`useScreenUrl.ts` 둘이다.
 새 화면·새 엔드포인트·새 이벤트 타입은 없다.
 
 ## Phase 요약
