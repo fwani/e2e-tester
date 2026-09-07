@@ -9,7 +9,11 @@
 
 import { describe, expect, it } from "vitest";
 
-import { locationToSearch, searchToLocation } from "../src/hooks/useScreenUrl";
+import {
+  locationToSearch,
+  searchToLocation,
+  type WorkbenchLocation,
+} from "../src/hooks/useScreenUrl";
 
 describe("화면 → URL (FR-166)", () => {
   it("목록은 파라미터를 남기지 않는다", () => {
@@ -21,6 +25,19 @@ describe("화면 → URL (FR-166)", () => {
   it("결과 화면은 테스트를 주소에 싣는다", () => {
     expect(locationToSearch({ name: "result", testId: "TC-002" })).toBe(
       "?screen=result&test=TC-002",
+    );
+  });
+
+  /**
+   * 007 T076 (FR-239·FR-240) — **결과 국면도 지목한 Step 을 싣는다.**
+   *
+   * 006 은 편집 국면에만 실었다. 007 이 국면을 넘어 지목을 잇기로 했으므로, 새로
+   * 고침을 견디는 자리도 함께 넓어져야 한다 — 넓히지 않으면 결과 국면에서 새로
+   * 고치는 순간만 지목이 사라지고, 그 한 자리를 사용자는 예측할 수 없다.
+   */
+  it("결과 화면도 지목한 Step 을 싣는다 (007 FR-239)", () => {
+    expect(locationToSearch({ name: "result", testId: "TC-002", stepId: "st-3" })).toBe(
+      "?screen=result&test=TC-002&step=st-3",
     );
   });
 
@@ -87,5 +104,32 @@ describe("URL → 화면 (FR-166·FR-167)", () => {
       expect(back.name).toBe(loc.name);
       if ("testId" in loc) expect(back.testId).toBe(loc.testId);
     }
+  });
+});
+
+/**
+ * 007 T076 — **국면 · 테스트 · Step 셋이 왕복을 견딘다** (FR-240).
+ *
+ * 한쪽 방향만 재면 "쓰기는 맞는데 읽기가 틀린" 상태를 놓친다 — 그때 사용자는 주소가
+ * 옳게 보이는 화면에서 새로 고쳐 다른 곳에 떨어진다.
+ */
+describe("왕복 변환 (007 T076 · FR-240)", () => {
+  const CASES: WorkbenchLocation[] = [
+    { name: "result", testId: "TC-001", sessionId: null, stepId: "st-2" },
+    { name: "result", testId: "TC-001", sessionId: null, stepId: null },
+    { name: "definition", testId: "TC-001", sessionId: null, stepId: "st-2" },
+    { name: "definition", testId: "TC-009", sessionId: null, stepId: null },
+    { name: "runner", testId: null, sessionId: "s-1", stepId: null },
+    { name: "keys", testId: null, sessionId: null, stepId: null },
+    { name: "secrets", testId: null, sessionId: null, stepId: null },
+  ];
+
+  it.each(CASES)("$name · $testId · $stepId 을 그대로 되찾는다", (at) => {
+    expect(searchToLocation(locationToSearch(at))).toEqual(at);
+  });
+
+  it("목록은 파라미터가 없고, 없는 주소는 목록으로 떨어진다", () => {
+    expect(locationToSearch({ name: "list" })).toBe("");
+    expect(searchToLocation("")).toEqual({ name: "list" });
   });
 });

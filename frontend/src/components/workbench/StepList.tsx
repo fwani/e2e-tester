@@ -316,6 +316,28 @@ export function StepList({
       </StepPanelHeader>
 
       <div style={{ flex: "1", minHeight: "0", overflowY: "auto" }}>
+        {/*
+          007 T071 (FR-243) — **지목한 Step 이 더 이상 없다.**
+
+          결과 국면에서 편집으로 갔다가 그 Step 을 지우고 돌아오는 길에 생긴다. 사실을
+          밝히고 목록은 **정상으로** 보여 준다 — 조용히 첫 Step 을 고르면 사용자는
+          자기가 보던 것이 그것이라고 믿고, 빈 화면을 주면 목록을 잃는다.
+        */}
+        {focusedStepId !== null && !steps.some((s) => s.id === focusedStepId) && (
+          <div
+            role="status"
+            data-focus-missing
+            style={{
+              padding: "12px 18px",
+              borderBottom: "2px solid #DCD8CC",
+              background: "#FFF9D6",
+              font: `400 12.5px/1.6 ${SANS}`,
+            }}
+          >
+            보고 있던 Step 이 이 목록에 없습니다. 그 사이에 지워졌거나 순서가 바뀌었을 수
+            있습니다.
+          </div>
+        )}
         {steps.length === 0 && (
           <div style={{ padding: "18px", color: "#9A968A", font: `400 13px/1.5 ${SANS}` }}>
             {emptyNotice ?? "아직 Step 이 없습니다."}

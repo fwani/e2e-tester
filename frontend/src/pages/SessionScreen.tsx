@@ -148,6 +148,13 @@ export interface SessionWorkbenchProps {
   stopRequested?: boolean;
   /** 실행 요청이 진행 중 (005 FR-127). */
   runPending?: boolean;
+  /**
+   * 사용자가 누르지 않았는데 국면이 바뀌었다 (007 T074 · FR-220).
+   *
+   * 실행이 끝나 결과를 보여 주게 되는 순간이 그것이다. 화면이 말없이 바뀌면 사용자는
+   * 자기가 무엇을 눌렀는지 되짚게 되고, 보던 Step 을 다시 찾는다.
+   */
+  autoTransition?: string | null;
   pacingSaved?: boolean;
 
   error?: ErrorInfo | null;
@@ -227,6 +234,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     pausing = false,
     stopRequested = false,
     runPending = false,
+    autoTransition = null,
     pacingSaved = true,
     error = null,
     notice = null,
@@ -435,6 +443,25 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
 
   const notices: Notice[] = [];
   const push = (n: Notice) => notices.push(n);
+
+  /*
+    007 FR-220 (T074) — **사용자 조작 없이 국면이 바뀌면 무엇이 바뀌었는지 알린다.**
+
+    화면이 하나가 되면서 생긴 새 위험이다. 화면이 통째로 갈리던 때는 전환이 그 자체로
+    보였지만, 지금은 같은 껍데기 안에서 국면만 바뀐다 — 알리지 않으면 사용자는 자기가
+    무엇을 눌렀는지 되짚는다. 보던 Step 과 스크롤은 그대로 둔다 (FR-239).
+  */
+  if (autoTransition !== null) {
+    push({
+      id: "auto-transition",
+      tone: "info",
+      role: "status",
+      message: autoTransition,
+      nextAction: "보고 있던 Step 은 그대로 있습니다.",
+      action: null,
+      dismissible: true,
+    });
+  }
 
   if (error !== null) {
     push({
@@ -1020,6 +1047,8 @@ export function SessionScreen({
   /** 일시정지 요청을 보냈고 아직 확정되지 않았다 (005 FR-142 · U-04). */
   const [pauseRequested, setPauseRequested] = useState(false);
   const [stopRequested, setStopRequested] = useState(false);
+  /** 사용자 조작 없이 바뀐 국면의 알림 (FR-220). 사용자가 닫을 수 있다. */
+  const [autoTransition, setAutoTransition] = useState<string | null>(null);
   const [live, setLive] = useState(true);
   const [showOffline, setShowOffline] = useState(false);
   const subscription = useRef<SessionSubscription | null>(null);
@@ -1171,6 +1200,23 @@ export function SessionScreen({
       sub.stop();
     };
   }, [sessionId, resync]);
+
+  /**
+   * 007 FR-220 — 국면이 **사용자 조작 없이** 바뀐 순간을 잡는다.
+   *
+   * "조작 없이" 를 판정하는 근거는 요청 중이 아니라는 것이다 — 중지·일시정지를 누른
+   * 전환에는 사용자가 이미 무엇을 했는지 안다. 남는 것이 서버가 스스로 넘긴 전환이고,
+   * 그것이 알려야 하는 것이다.
+   */
+  const lastPhase = useRef<Phase>(phaseOfSession(initial));
+  useEffect(() => {
+    const next = phaseOfSession(view);
+    const previous = lastPhase.current;
+    lastPhase.current = next;
+    if (next === previous) return;
+    if (busy || stopRequested || pauseRequested) return;
+    setAutoTransition(`화면이 「${PHASE_LABEL[previous]}」에서 「${PHASE_LABEL[next]}」로 바뀌었습니다.`);
+  }, [view, busy, stopRequested, pauseRequested]);
 
   useEffect(() => {
     if (live) {
@@ -1395,6 +1441,7 @@ export function SessionScreen({
         pausing={isPausing}
         stopRequested={stopRequested}
         pacingSaved={pacingSaved}
+        autoTransition={autoTransition}
         error={error}
         notice={notice}
         notes={notes}
@@ -1498,6 +1545,7 @@ export function SessionScreen({
         onReconnect={() => subscription.current?.reconnect()}
         onDismissNotice={(id) => {
           if (id === "notice") setNotice(null);
+          if (id === "auto-transition") setAutoTransition(null);
         }}
       />
 

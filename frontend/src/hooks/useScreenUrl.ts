@@ -14,24 +14,45 @@
 
 import { useEffect, useRef } from "react";
 
-/** URL 로 표현할 수 있는 화면. 세션처럼 수명이 짧은 것은 식별자만 싣는다. */
-export interface ScreenLocation {
+/**
+ * 주소가 나르는 것 — **국면 · 테스트 · Step** 셋이다 (007 T069 · FR-239·FR-240).
+ *
+ * 007 이 이름을 바꾼 이유: 007 이전에는 화면 이름이 곧 위치였다. 이제 화면은 하나이고
+ * 위치는 **한 테스트를 놓고 사용자가 지금 있는 국면**이다. 새로 고침으로 되찾아야 하는
+ * 것도 화면이 아니라 그 위치다 — 어느 테스트의 어느 국면에서 어느 Step 을 보고 있었나.
+ *
+ * `name` 의 값은 007 이전 그대로 둔다. 주소 문자열을 바꾸면 사용자가 열어 둔 탭과
+ * 북마크가 끊기는데, 그것은 이 라운드가 고치려는 문제와 무관하다.
+ *
+ *   `runner`     → 세션 다섯 국면 (녹화·AI 작성·사람이 직접 조작·실행 중·일시정지)
+ *   `result`     → 결과 국면
+ *   `definition` → 편집 국면
+ *
+ * 세션처럼 수명이 짧은 것은 식별자만 싣는다 — URL 만으로 되살리면 죽은 세션을 그린다.
+ */
+export interface WorkbenchLocation {
   name: string;
   testId?: string | null;
   sessionId?: string | null;
   /**
-   * 편집 화면에서 지목된 Step (006 FR-181).
+   * 지목한 Step (006 FR-181 · 007 FR-239).
    *
    * 결과 화면의 「Step nn 고치기」로 들어온 뒤 새로고침하면 그 Step 이 다시 펼쳐져야
    * 한다 — 지목을 잃으면 사용자는 어느 Step 을 고치러 왔는지부터 다시 찾는다.
+   *
+   * **007 이 이것을 결과 국면까지 넓혔다.** 국면을 넘어도 보던 Step 을 잃지 않는 것이
+   * US3 이고, 주소는 그 유지가 새로 고침을 견디게 하는 자리다.
    */
   stepId?: string | null;
 }
 
+/** 007 이전 이름. 부르는 곳이 남아 있어도 같은 것을 가리킨다. */
+export type ScreenLocation = WorkbenchLocation;
+
 const PARAM = "screen";
 
 /** 화면 상태를 질의 문자열로. 목록은 `/` 다 — 기본 화면에 파라미터를 남기지 않는다. */
-export function locationToSearch(loc: ScreenLocation): string {
+export function locationToSearch(loc: WorkbenchLocation): string {
   if (loc.name === "list" || loc.name === "loading" || loc.name === "setup") return "";
   const params = new URLSearchParams();
   params.set(PARAM, loc.name);
@@ -42,7 +63,7 @@ export function locationToSearch(loc: ScreenLocation): string {
 }
 
 /** 질의 문자열을 화면 상태로. 알 수 없는 값은 목록으로 떨어뜨린다. */
-export function searchToLocation(search: string): ScreenLocation {
+export function searchToLocation(search: string): WorkbenchLocation {
   const params = new URLSearchParams(search);
   const name = params.get(PARAM);
   if (!name) return { name: "list" };
@@ -64,8 +85,8 @@ export function searchToLocation(search: string): ScreenLocation {
  * 뒤로가기를 두 번 눌러야 이전 화면으로 간다.
  */
 export function useScreenUrl(
-  current: ScreenLocation,
-  onPopState: (loc: ScreenLocation) => void,
+  current: WorkbenchLocation,
+  onPopState: (loc: WorkbenchLocation) => void,
 ): void {
   const lastSearch = useRef<string | null>(null);
   const handler = useRef(onPopState);
@@ -124,7 +145,7 @@ export function useScreenUrl(
  * 새로고침 복원의 근거다 (FR-166). 결과 화면에서 새로고침하면 같은 결과 화면으로
  * 돌아온다.
  */
-export function initialLocation(): ScreenLocation {
+export function initialLocation(): WorkbenchLocation {
   if (typeof window === "undefined") return { name: "list" };
   return searchToLocation(window.location.search);
 }
