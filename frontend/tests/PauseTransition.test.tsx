@@ -14,7 +14,7 @@
  * 컨트롤이었고, 누르면 확인 없이 세션을 폐기하며 목록으로 튀었다.
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -130,20 +130,62 @@ describe("일시정지 전이 (FR-142~FR-145 · U-04)", () => {
         {...pausedProps({
           pausing: true,
           finishedWhilePausing: {
-            summary: "멈추기 전에 실행이 끝났습니다 · 실패 · Step 06 에서 실패 · 5 / 7 통과",
+            // 제목은 화면이 사전에서 받는다 — 요약에 접두로 섞지 않는다 (FR-140).
+            summary: "실패 · Step 06 에서 실패 · 5 / 7 통과",
             failureReason: "요소를 찾을 수 없습니다",
             onShowResult: noop,
           },
         })}
       />,
     );
-    expect(screen.getByText(/멈추기 전에 실행이 끝났습니다/)).toBeTruthy();
+    // 제목은 **한 번만** 나온다. 요약과 함께 두 번 쓰면 U-19 가 되살아난다 (FR-140).
+    expect(screen.getByText("멈추기 전에 실행이 끝났습니다")).toBeTruthy();
     // `PAUSED` 배지와 결말이 동시에 뜨지 않는다.
     expect(screen.queryByText("PAUSED")).toBeNull();
     expect(screen.queryByText("일시정지 중…")).toBeNull();
     // 헤더 배지와 미러 배지 둘 다 같은 말을 한다 — 한 화면에서 두 배지가 다른 말을
     // 하는 것이 U-20 이었다.
     expect(screen.getAllByText("실행 종료").length).toBeGreaterThanOrEqual(1);
+  });
+
+  /**
+   * 재점검 U-04-c (T117) — 그 화면에 **진단 경로**가 있어야 한다.
+   *
+   * 배지와 부제는 고쳐졌지만 요약 한 줄만 있었다. 실패 사유도, 결과로 가는 길도 없어서
+   * 사용자는 왜 실패했는지 보려고 세션을 닫아야 했고, 닫는 순간 이 화면이 사라졌다.
+   */
+  it("멈추기 전에 끝난 실행이 실패 사유와 결과 경로를 준다 (FR-146 · U-04-c)", () => {
+    const onShowResult = vi.fn();
+    render(
+      <RunnerPaused
+        {...pausedProps({
+          finishedWhilePausing: {
+            summary: "실패 · Step 06 에서 실패 · 5 / 7 통과",
+            failureReason: "요소를 찾을 수 없습니다: #submit",
+            onShowResult,
+          },
+        })}
+      />,
+    );
+    expect(screen.getByText(/요소를 찾을 수 없습니다: #submit/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "결과 자세히 보기" }));
+    expect(onShowResult).toHaveBeenCalledTimes(1);
+  });
+
+  it("실패 사유가 없으면 그 자리를 비워 둔다 — 없는 사유를 지어내지 않는다", () => {
+    render(
+      <RunnerPaused
+        {...pausedProps({
+          finishedWhilePausing: {
+            summary: "통과 · 7 / 7 통과",
+            failureReason: null,
+            onShowResult: noop,
+          },
+        })}
+      />,
+    );
+    expect(screen.getByText("통과 · 7 / 7 통과")).toBeTruthy();
+    expect(screen.getByText("멈추기 전에 실행이 끝났습니다")).toBeTruthy();
   });
 });
 

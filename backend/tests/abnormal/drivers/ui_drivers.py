@@ -300,7 +300,23 @@ async def _leave_the_session_screen_and_come_back_after_it_ended(ctx: Any) -> At
 
 @driver("AS-027")
 async def _act_on_a_session_that_already_ended(ctx: Any) -> Attempt:
-    """이미 종료된 세션에 조작을 보낸다 (AP-023)."""
+    """이미 종료된 세션에 조작을 보낸다 (AP-023).
+
+    **누르지 못한 것을 `prevented` 로 기록한다** (005 T114).
+
+    이 드라이버는 한동안 `click_if_present` 의 결과를 버리고 있었고, 그래도 통과했다 —
+    화면에 오류 배너가 떠 있었기 때문이다. 그런데 그 배너의 출처는 이 조작이 아니라
+    **종료된 세션에 대한 `GET …/tabs` 의 404** 였다. 사용자가 한 일(중지)의 정상적인
+    결과를 오류로 말하던 그 배너이고, FR-135 가 없애라고 한 것이다(재점검 U-03-b,
+    실측 404 3건). 즉 이 시나리오는 **결함에 기대어 통과**하고 있었다.
+
+    배너가 사라지자 실제 처리가 드러났다 — 화면이 종료를 반영해 「일시정지」를 거두어
+    간다. 그것은 거부보다 강한 처리이며(003 AP-020: 안 되는 것을 누르게 두지 않는다)
+    `AS-028` 이 이미 같은 형태를 쓴다.
+
+    단정을 약화하지 않는다: 조작이 **실제로 전달된 경우**에는 계약 형태의 오류 본문이
+    있어야 하고(판정축 ①), 그것은 `prevented=False` 로 남아 그대로 요구된다.
+    """
     ctx.ensure_project()
     page = await ctx.open()
     session_id = await ctx.start_session_from_ui(page, ctx.fixture("/login.html"))
@@ -308,13 +324,14 @@ async def _act_on_a_session_that_already_ended(ctx: Any) -> Attempt:
 
     steps_before = ctx.step_count(session_id)
     ctx.api("POST", f"/api/sessions/{session_id}/stop")
-    # 화면은 아직 살아 있다고 믿는다. 그 상태에서 조작을 보낸다.
-    await ctx.click_if_present(page, "일시정지")
+    # 화면은 아직 살아 있다고 믿을 수 있다. 그 상태에서 조작을 보낸다.
+    sent = await ctx.click_if_present(page, "일시정지")
     await ctx.wait_for_notice(page)
 
     return await ctx.from_screen(
         page,
         rejected=True,
+        prevented=not sent,
         preserved=ctx.step_count(session_id) >= steps_before,
         surfaced=await ctx.status_summary(page),
     )

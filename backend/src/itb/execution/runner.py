@@ -214,8 +214,24 @@ class RunnerTask:
                         ),
                     )
 
+            # 005 FR-146 — **전이 안내를 걷는다.**
+            #
+            # 일시정지 요청이 10초 안에 성립하지 않으면 "아직 실행 중입니다" 안내가
+            # 붙는다. 그 실행이 끝나면 그 문장은 거짓이 되는데, 재점검 리포트 U-04-a
+            # 는 실행 종료 후에도 그것이 화면에 남아 같은 화면의 배지(「실행 종료」)와
+            # 반대되는 말을 하는 것을 봤다.
+            #
+            # `_settle` 보다 **앞에** 둔다 — `_settle` 은 일시정지 상태에서 그냥
+            # 돌아가므로(멈추기 전에 끝난 바로 그 경우) 거기 두면 실행되지 않는다.
+            if self._session.clear_transient_edit_warnings():
+                with contextlib.suppress(Exception):
+                    await self._session.publish_edit_warnings_now()
+
             await self._settle(passed)
         finally:
+            # **`finally` 는 신호만 올린다.** 여기서 세션의 메서드를 부르면 그것이
+            # 실패하는 순간 아래 두 이벤트가 올라가지 않고, 완료를 기다리는 모든 것이
+            # 영구히 멈춘다 — 취소 도중에 await 하지 않는 것과 같은 이유다.
             self._finished.set()
             self._boundary.set()
 

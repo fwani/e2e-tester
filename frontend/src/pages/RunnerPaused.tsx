@@ -15,7 +15,17 @@ import type { AddAssertionBody, RunPacing } from "../api/client";
 import type { Step } from "../types/generated/step";
 import { AssertionForm } from "../components/AssertionForm";
 import { BrowserFrame } from "../components/design/BrowserFrame";
-import { sessionSaveLabel, stepLabel, stepNumber } from "../lib/wording";
+import {
+  FINISHED_WHILE_PAUSING_TITLE,
+  RESUME_SKIPPING_FAILURE,
+  SHOW_RESULT_DETAIL,
+  pausedAfterLabel,
+  sessionSaveLabel,
+  sessionTitle,
+  skipFailureNotice,
+  stepLabel,
+  stepNumber,
+} from "../lib/wording";
 
 import {
   DesignStepRow,
@@ -40,6 +50,16 @@ export interface RunnerPausedProps {
    * 세션까지 「초안」으로 보여 사용자는 작성 중인 것으로 오해했다 (U-03).
    */
   savedAt?: string | null;
+  /**
+   * 이 세션의 대상이 **이미 정의 파일로 존재하는가** (005 재점검 U-03-a).
+   *
+   * `savedAt` 은 "이 세션에서 저장했는가" 이고 이것은 "저장된 테스트인가" 다. 둘을
+   * 같은 것으로 다뤄서 저장된 테스트를 재실행하는 세션이 「TC-001 초안」이 됐다 —
+   * 재실행 세션은 저장을 한 적이 없지만 파일은 처음부터 있다.
+   */
+  persisted?: boolean;
+  /** 저장하지 않은 편집이 남아 있는가. 제목이 「저장됨」을 단정하지 않게 하는 근거다. */
+  hasUnsavedChanges?: boolean;
   /**
    * 저장할 변경이 남아 있는가 (005 FR-156).
    *
@@ -66,6 +86,15 @@ export interface RunnerPausedProps {
   pausing?: boolean;
   /** 대기 중인 Step 의 대기 예산(ms). 남은 시간을 보여 주는 근거다 (FR-145). */
   pausingBudgetMs?: number | null;
+  /**
+   * 실패한 Step 을 **건너뛰고** 이어간다 (005 FR-137 · ui-contract §6-5).
+   *
+   * 「계속하기」와 다른 조작이다. 같은 버튼이 실패를 조용히 지나가던 것이 U-05 였고,
+   * 그래서 백엔드는 `resume` 에 `skip_failed` 를 **별도 필드**로 뒀다. 재점검 N-04 가
+   * 본 것은 그 필드를 보내는 화면이 하나도 없어 `partial_pass` 결말에 도달할 경로가
+   * 아예 없다는 것이었다 — 계약의 절반만 서 있었다.
+   */
+  onResumeSkippingFailure?: (failedStepIndex: number) => void;
   /**
    * 멈추기 전에 실행이 끝난 경우의 결말 (005 FR-146).
    *
@@ -132,10 +161,13 @@ export function RunnerPaused(props: RunnerPausedProps) {
   const {
     title,
     savedAt = null,
+    persisted = false,
+    hasUnsavedChanges = false,
     hasChangesToSave = true,
     onShowList,
     pausing = false,
     pausingBudgetMs = null,
+    onResumeSkippingFailure,
     finishedWhilePausing = null,
     stopResult = null,
     authoring = "record",
@@ -184,6 +216,15 @@ export function RunnerPaused(props: RunnerPausedProps) {
    * 한 스텝씩으로 돌리던 사용자는 왜 멈췄는지 몰라 중지를 누른다.
    */
   const stepByStep = !review && pacing === "step";
+
+  /**
+   * 지금 이 화면이 **결말 화면**인가 (005 FR-133 · ui-contract §8).
+   *
+   * 중지 결과와 「멈추기 전에 실행이 끝났습니다」는 둘 다 "실행은 끝났고 세션은 아직
+   * 여기 있다" 는 처지다. §8 의 금지 목록은 그 화면에 대한 것이며, 일시정지 중 편집하는
+   * 화면에는 적용되지 않는다.
+   */
+  const showsOutcome = stopResult !== null || finishedWhilePausing !== null;
 
   const selectedIndex = steps.findIndex((s) => s.id === selectedStepId);
   /**
@@ -258,12 +299,20 @@ export function RunnerPaused(props: RunnerPausedProps) {
             저장된 테스트를 재실행하다 중지했을 뿐인데 제목이 「TC-002 초안」이 되고
             하단에 이름 입력칸과 「저장」이 떴다 — 사용자는 작성 중인 초안으로 읽었다
             (U-03). 저장 성공 뒤에도 「초안」이 남아 저장 여부를 알 수 없었다 (U-09).
+
+            재점검 U-03-a — 그때 고친 것은 **이 세션에서 저장한 경우**뿐이었다. 저장된
+            테스트를 재실행하는 세션은 저장을 한 적이 없어 여전히 「초안」이었다.
+            판정 규칙은 사전이 소유한다.
           */}
-          {savedAt !== null ? `${title} · 저장됨` : `${title} 초안`}
+          {sessionTitle({ title, persisted, savedAt, hasUnsavedChanges })}
         </div>
         <div style={{ font: "400 14px/1 'IBM Plex Mono', ui-monospace, monospace", color: "#6B675C" }}>
+          {/*
+            005 FR-140 — 결말 요약은 한 화면에 **한 번만** 나온다. 요약과 실패 사유는
+            아래 결말 블록이 갖는다. 여기서 또 쓰면 재점검이 지적한 U-19 가 되살아난다.
+          */}
           {finishedWhilePausing !== null
-            ? finishedWhilePausing.summary
+            ? FINISHED_WHILE_PAUSING_TITLE
             : pausing
               ? // 005 FR-142·FR-145 — 기다리는 이유와 남은 예산을 **즉시** 말한다.
                 // 이전에는 10초가 지나서야 노란 배너로 알렸다.
@@ -271,7 +320,10 @@ export function RunnerPaused(props: RunnerPausedProps) {
                 (pausingBudgetMs ? ` (최대 ${Math.round(pausingBudgetMs / 1000)}s)` : "")
               : review
                 ? `기록된 Step ${steps.length}개 · 브라우저 종료됨`
-                : `${stepLabel(currentStepIndex)} 이후 정지`}
+                : // 재점검 N-06 — `currentStepIndex` 는 **다음에 실행할** Step 이다.
+                  // 그대로 넘겨 5개를 녹화하고 멈춘 화면이 「Step 06 이후 정지」라고
+                  // 말했다. 인덱스를 옮기는 일은 사전이 한다.
+                  pausedAfterLabel(currentStepIndex)}
         </div>
         <div style={{ flex: "1" }} />
         {/* 멈춘 상태에서도 다음 Step 의 속도를 미리 고를 수 있다. 검토 상태에는
@@ -301,6 +353,12 @@ export function RunnerPaused(props: RunnerPausedProps) {
           >
             {`${stepLabel(failedStepIndex)} 이 실패해 이어서 갈 수 없습니다. ` +
               `「${stepLabel(failedStepIndex)} 고치기」 또는 「${stepLabel(failedStepIndex)}부터 실행」을 쓰세요.`}
+            {/* 건너뛰는 길이 있다면 그 대가를 **누르기 전에** 말한다 (FR-137). */}
+            {onResumeSkippingFailure && (
+              <span style={{ display: "block", marginTop: 4 }}>
+                {skipFailureNotice(failedStepIndex)}
+              </span>
+            )}
           </span>
         )}
         {!review && (
@@ -324,6 +382,29 @@ export function RunnerPaused(props: RunnerPausedProps) {
               <path d="M4 2l10 6-10 6z" fill="currentColor" />
             </svg>
             계속하기
+          </button>
+        )}
+
+        {/*
+          005 FR-137 (ui-contract §6-5) — 실패를 **건너뛰는 별도 조작**.
+
+          재점검 N-04: 백엔드는 `resume` 에 `skip_failed` 를 갖고 계약도 그 결말을
+          `partial_pass` 로 정해 뒀는데, 그 필드를 보내는 화면이 하나도 없었다. 계약의
+          절반만 서 있어 `부분 성공` 결말에 도달할 경로가 아예 없었고, quickstart S3-6
+          은 확인 불가로 남았다.
+
+          「계속하기」와 **다른 버튼**인 것이 요구사항이다 — 같은 버튼이 실패를 조용히
+          지나가던 것이 U-05 였다. 강조를 주지 않고 보조 버튼으로 둔다: 이것은 권하는
+          길이 아니라 알고 고르는 길이다.
+        */}
+        {!review && failedStepIndex !== null && onResumeSkippingFailure && (
+          <button
+            className="secondary"
+            disabled={busy || pausing}
+            title={skipFailureNotice(failedStepIndex)}
+            onClick={() => onResumeSkippingFailure(failedStepIndex)}
+          >
+            {RESUME_SKIPPING_FAILURE}
           </button>
         )}
 
@@ -382,6 +463,61 @@ export function RunnerPaused(props: RunnerPausedProps) {
             둔다. 이전에는 화면이 세션 유실 오류와 저장 프롬프트로 바뀌고, 배너가 권하는
             행동을 그 화면에서 할 수 없었다.
           */}
+          {/*
+            005 FR-146 (재점검 U-04-c) — **멈추기 전에 끝난 실행의 결말 화면.**
+
+            배지와 부제는 「실행 종료」로 고쳐졌지만 그 화면에는 요약 한 줄만 있었다.
+            실패 사유도, 결과로 가는 길도 없었다 — 사용자는 왜 실패했는지 보려고 세션을
+            닫아야 했고, 닫는 순간 이 화면이 사라졌다.
+
+            중지 결과 화면(§8)과 **같은 형태**를 쓴다. 둘은 "실행이 끝났고 세션은 아직
+            여기 있다" 는 같은 처지이며, 다른 모양을 주면 사용자가 두 번 배운다.
+          */}
+          {finishedWhilePausing !== null && (
+            <div
+              style={{
+                border: "3px solid #14130F",
+                background: "#FFFDF6",
+                padding: "14px 18px",
+                marginBottom: 12,
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 240 }}>
+                <strong
+                  className="mono"
+                  style={{ font: "600 14px/1.3 'IBM Plex Mono', ui-monospace, monospace" }}
+                >
+                  {finishedWhilePausing.summary}
+                </strong>
+                {/* 실패 사유는 이 화면이 붙들어 둔다. 여기 없으면 어디에도 없다. */}
+                {finishedWhilePausing.failureReason !== null && (
+                  <span
+                    role="status"
+                    style={{
+                      font: "400 13px/1.45 'IBM Plex Sans KR', system-ui, sans-serif",
+                      color: "#A83A22",
+                    }}
+                  >
+                    {finishedWhilePausing.failureReason}
+                  </span>
+                )}
+              </div>
+              {finishedWhilePausing.onShowResult && (
+                <button
+                  className="secondary"
+                  onClick={finishedWhilePausing.onShowResult}
+                  disabled={busy}
+                >
+                  {SHOW_RESULT_DETAIL}
+                </button>
+              )}
+            </div>
+          )}
+
           {stopResult !== null && (
             <div
               style={{
@@ -408,7 +544,7 @@ export function RunnerPaused(props: RunnerPausedProps) {
               </div>
               {onShowResult && (
                 <button className="secondary" onClick={onShowResult} disabled={busy}>
-                  결과 자세히 보기
+                  {SHOW_RESULT_DETAIL}
                 </button>
               )}
               {stopResult.onRerunAll && (
@@ -649,7 +785,25 @@ export function RunnerPaused(props: RunnerPausedProps) {
               />
             )}
 
-            {/* 확정 디자인에 저장 영역이 없다 — 저장에는 이름이 필요하다 (FR-028·DC-009). */}
+            {/*
+              005 FR-133 (ui-contract §8 금지 4 · 재점검 U-03-a) — **결말 화면에 저장
+              프롬프트를 두지 않는다.**
+
+              저장된 테스트를 재실행하다 중지하면 이 자리에 「테스트 이름」 입력칸과
+              「저장」이 떴다. 저장할 것이 없는 상태였고(파일은 이미 있고 편집도 없다)
+              버튼은 비활성이었는데, 결말 화면의 가장 아래 자리를 차지해 사용자는 이것이
+              지금 해야 할 일이라고 읽었다.
+
+              **결말 화면에서만 걷는다.** 일시정지 중 편집하는 화면에서는 이 자리가
+              저장의 유일한 경로이고, ui-contract §9(FR-156)는 저장 후에도 「변경 저장」이
+              **비활성으로 남아 있을 것**을 요구한다 — 감추면 그 요구를 어긴다. §8 이
+              금지한 것은 저장 프롬프트를 **결말 화면의 요소로 두는 것**이다.
+
+              **기록을 잃을 수 있는 경우에는 결말 화면에서도 남긴다.** 이름 없는 녹화를
+              중지한 세션은 저장이 유일한 보존 수단이므로 감추면 작업이 사라진다
+              (DR-010·DR-015).
+            */}
+            {(!showsOutcome || !(persisted || savedAt !== null)) && (
             <div style={{ display: "flex", gap: "10px", borderTop: "2px solid #DCD8CC", paddingTop: 12 }}>
               <input
                 aria-label="테스트 이름"
@@ -674,6 +828,7 @@ export function RunnerPaused(props: RunnerPausedProps) {
                 {sessionSaveLabel(savedAt !== null)}
               </button>
             </div>
+            )}
 
             {/*
               005 FR-154·FR-158 (U-09) — **저장 성공을 화면을 옮기지 않고 알 수 있다.**

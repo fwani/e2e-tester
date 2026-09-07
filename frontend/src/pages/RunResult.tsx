@@ -108,12 +108,27 @@ export function RunResult({
   }, [testId]);
 
   const loadArtifact = useCallback(
-    (kind: ArtifactKind) => {
+    (kind: ArtifactKind, hasFailure: boolean) => {
       setTab(kind);
       setArtifact(null);
       setArtifactError(null);
       if (kind === "trace") return; // 비활성 탭은 요청하지 않는다
       if (kind === "screenshot") {
+        /*
+          005 FR-173 (재점검 N-03) — **없는 것을 없다고 말한다.**
+
+          스크린샷은 실패 시점에만 남는다. 통과한 실행에는 파일이 없는 것이 정상인데,
+          이전 코드는 그래도 주소를 요청하고 `<img onError>` 가 잡아 「불러올 수
+          없습니다 / 산출물(.runs/)이 지워졌을 수 있습니다」를 띄웠다 — 아무 문제 없는
+          실행을 보러 온 사용자에게 산출물이 지워졌다고 말하는 화면이었다.
+
+          실패가 없으면 **요청하지 않는다.** 요청하지 않으면 오류도 없고, 아래 빈 상태
+          문구가 수집 조건과 함께 사실을 말한다.
+        */
+        if (!hasFailure) {
+          setArtifact({ text: "" });
+          return;
+        }
         // 이미지는 브라우저가 직접 받는다. 실패는 <img onError> 가 잡는다.
         setArtifact({ src: tests.artifactUrl(testId, kind) });
         return;
@@ -128,11 +143,11 @@ export function RunResult({
     [testId],
   );
 
-  useEffect(() => {
-    if (result !== null) loadArtifact("screenshot");
-  }, [result, loadArtifact]);
-
   const failedIndex = result?.failed_step_index ?? null;
+
+  useEffect(() => {
+    if (result !== null) loadArtifact("screenshot", failedIndex !== null);
+  }, [result, failedIndex, loadArtifact]);
   const failedStep =
     failedIndex !== null ? (result?.steps.find((s) => s.index === failedIndex) ?? null) : null;
   /**
@@ -545,7 +560,7 @@ export function RunResult({
                       : undefined
                   }
                   aria-describedby={t.kind === "trace" ? "trace-disabled-reason" : undefined}
-                  onClick={() => loadArtifact(t.kind)}
+                  onClick={() => loadArtifact(t.kind, failedIndex !== null)}
                   style={{
                     flex: "1",
                     display: "flex",
@@ -606,6 +621,14 @@ export function RunResult({
                 </div>
               ) : artifact === null ? (
                 <p style={{ padding: 20, color: "#9A968A" }}>불러오는 중…</p>
+              ) : tab === "screenshot" && artifact.src === undefined ? (
+                // 실패가 없어 파일 자체를 요청하지 않았다 — 없다는 사실을 긍정문으로.
+                <pre
+                  data-artifact-text
+                  style={{ margin: 0, padding: 16, font: `400 12px/1.6 ${MONO}`, whiteSpace: "pre-wrap" }}
+                >
+                  {emptyArtifactMessage("screenshot")}
+                </pre>
               ) : tab === "screenshot" ? (
                 <img
                   src={artifact.src}

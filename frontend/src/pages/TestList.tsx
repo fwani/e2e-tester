@@ -18,6 +18,7 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { tests, type SessionView, type TestListRow, type TestListResponse } from "../api/client";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
+import { isRunning } from "../lib/sessionState";
 import {
   EDIT_ENTRY_LABEL,
   outcomeChip,
@@ -529,7 +530,17 @@ function Row({
       }}
     >
       <div style={{ width: "92px" }}>
-        <OutcomeChip outcome={row.outcome} running={liveSession !== null} />
+        {/*
+          005 FR-169 (재점검 N-02) — 칩은 세션의 **상태**를 본다.
+
+          이전에는 세션의 **존재**를 봤다(`liveSession !== null`). 실행이 끝나도 세션은
+          `failed`·`review` 로 등록에 남으므로 행은 영원히 `RUNNING` 이었고, 같은 화면의
+          배너는 「실패」로 갱신됐다 — 배너와 행이 다른 말을 했다.
+        */}
+        <OutcomeChip
+          outcome={row.outcome}
+          running={liveSession !== null && isRunning(liveSession.state)}
+        />
       </div>
 
       <div style={{ width: "108px", font: "600 14px/1 'IBM Plex Mono', ui-monospace, monospace" }}>
@@ -607,7 +618,9 @@ function Row({
           color: "#6B675C",
         }}
       >
-        {liveSession !== null ? "실행 중" : relativeTime(row.last_run_at)}
+        {liveSession !== null && isRunning(liveSession.state)
+          ? "실행 중"
+          : relativeTime(row.last_run_at)}
       </div>
 
       {/*
@@ -639,7 +652,14 @@ function Row({
             실행 화면 보기
           </button>
         )}
-        {hasResult && liveSession === null && (
+        {/*
+          005 FR-130·FR-169 — **돌고 있는 동안만** 결과를 감춘다.
+
+          이전 조건은 세션이 열려 있으면 결과 버튼을 지웠다. 중지한 뒤 목록으로 나오면
+          세션은 `review` 로 남으므로, 방금 남은 결과에 목록에서 도달할 길이 없었다 —
+          U-13(결과에 도달할 길이 없다)이 다른 자리에서 되살아난 형태다.
+        */}
+        {hasResult && (liveSession === null || !isRunning(liveSession.state)) && (
           <button
             onClick={onOpenResult}
             style={{

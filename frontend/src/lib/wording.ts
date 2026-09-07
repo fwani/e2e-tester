@@ -311,3 +311,141 @@ export function staleReloadLabel(pendingCount: number): string {
 }
 
 export const STALE_OVERWRITE_LABEL = "내 편집으로 덮어쓰기 (파일의 변경을 버립니다)";
+
+// ─── 세션 화면 어휘 (005 Phase 12 · ui-contract §7·§8·§10) ──────────────────
+//
+// 재점검(docs/ux/ux-recheck-005.md)이 남긴 U-03·U-04 의 곁가지는 전부 **문구가 화면
+// 파일에 박혀 있어서** 생겼다. 배지는 고쳐졌는데 같은 화면의 부제·오버레이가 낡은 말을
+// 그대로 했다 — 한 곳을 고치고 다른 곳을 빠뜨리는, 이 사전이 없애려는 그 실수다.
+
+/**
+ * 세션 화면의 제목 (FR-134·FR-155 · ui-contract §8 금지 1).
+ *
+ * **「초안」은 아직 파일이 없는 것에만 붙인다.** 재점검 U-03-a: 저장 경로(T079)는
+ * 고쳐졌지만 재실행 세션은 여전히 「TC-001 초안」이었다 — 이 세션에서 저장한 적이 없다는
+ * 것(`savedAt === null`)을 "저장된 적 없다" 로 읽었기 때문이다. 둘은 다르다. 저장된
+ * 테스트를 재실행하는 세션은 처음부터 파일이 있다.
+ */
+export function sessionTitle(input: {
+  title: string;
+  /** 이 세션의 대상이 이미 정의 파일로 존재하는가. 재실행이면 참이다. */
+  persisted: boolean;
+  /** 이 세션에서 저장한 시각. 없으면 이 세션은 저장을 하지 않았다. */
+  savedAt: string | null;
+  /** 저장하지 않은 편집이 남아 있는가. */
+  hasUnsavedChanges: boolean;
+}): string {
+  const saved = input.persisted || input.savedAt !== null;
+  if (!saved) return `${input.title} 초안`;
+  if (input.hasUnsavedChanges) return `${input.title} · 저장하지 않은 변경 있음`;
+  return `${input.title} · 저장됨`;
+}
+
+/**
+ * 일시정지에서 멈춘 지점 (FR-138 · 재점검 N-06).
+ *
+ * `current_step_index` 는 **다음에 실행할 Step** 이다 (`execution/session.py`). 그것을
+ * 그대로 `stepLabel()` 에 넘기면 5개를 녹화하고 멈춘 화면이 「Step 06 이후 정지」라고
+ * 말한다 — 존재하지 않는 Step 번호다. 멈춘 지점은 **직전** Step 이다.
+ *
+ * `stepLabel` 은 옳고 인자가 틀렸던 것이므로, 변환을 다시 쓰지 않고 여기서 인덱스를
+ * 옮긴 뒤 같은 함수를 지난다.
+ */
+export function pausedAfterLabel(nextIndex: number | null | undefined): string {
+  const at = (nextIndex ?? 0) - 1;
+  if (at < 0) return "첫 Step 실행 전 정지";
+  return `${stepLabel(at)} 이후 정지`;
+}
+
+/**
+ * 미리보기(미러) 상단 안내 (ui-contract §10 · FR-142·FR-146).
+ *
+ * 재점검 U-04-b: 전이 중과 실행 종료 후에도 「일시정지 · 브라우저 세션과 화면 상태를
+ * 그대로 유지하고 있습니다」로 **단정했다.** 전이 중에는 아직 멈추지 않았고, 실행이
+ * 끝난 뒤에는 일시정지가 아니다. 같은 화면의 배지는 이미 그 사실을 말하고 있었으므로
+ * 한 화면이 두 가지를 주장했다.
+ */
+export type MirrorNoticePhase =
+  | "manipulation"
+  | "observation"
+  | "pausing"
+  | "paused"
+  | "finished"
+  | "terminated";
+
+export interface MirrorNotice {
+  /** 굵은 상태 이름. 배지와 같은 말을 쓴다. */
+  title: string;
+  /** 그 상태에서 참인 사실. 단정할 수 없으면 단정하지 않는다. */
+  detail: string;
+}
+
+export function mirrorNotice(phase: MirrorNoticePhase): MirrorNotice | null {
+  switch (phase) {
+    case "manipulation":
+      return {
+        title: "실제 브라우저 창에서 조작 중",
+        detail: "이 영역은 관찰용이며 조작 대상이 아닙니다.",
+      };
+    case "pausing":
+      return {
+        title: "일시정지 중…",
+        detail: "현재 Step 이 끝나면 멈춥니다. 아직 실행 중입니다.",
+      };
+    case "paused":
+      return {
+        title: "일시정지",
+        detail: "브라우저 세션과 화면 상태를 그대로 유지하고 있습니다.",
+      };
+    case "finished":
+      return {
+        title: "실행 종료",
+        detail: "브라우저 창은 아직 열려 있습니다. 마지막 화면을 표시합니다.",
+      };
+    case "observation":
+      return { title: "읽기 전용", detail: "실행 중인 화면을 관찰합니다" };
+    case "terminated":
+      return null;
+  }
+}
+
+/** 프레임을 한 장도 못 받은 미리보기의 안내 (FR-163). */
+export function mirrorEmptyMessage(phase: MirrorNoticePhase): string {
+  switch (phase) {
+    case "observation":
+      return "대상 화면이 표시되기를 기다리고 있습니다. 대상 브라우저 창은 이미 열려 있습니다.";
+    case "manipulation":
+      return "실제 브라우저 창에서 조작하세요. 이 영역은 관찰용입니다.";
+    case "pausing":
+      return "현재 Step 이 끝나기를 기다리고 있습니다. 멈추면 마지막 화면을 표시합니다.";
+    case "paused":
+      return "일시정지 중입니다. 마지막 화면을 표시합니다.";
+    case "finished":
+      return "실행이 끝났습니다. 마지막 화면을 받지 못했습니다.";
+    case "terminated":
+      return "세션이 종료되어 미러가 중단됐습니다.";
+  }
+}
+
+/** 멈추기 전에 실행이 끝난 화면의 제목 (FR-146). */
+export const FINISHED_WHILE_PAUSING_TITLE = "멈추기 전에 실행이 끝났습니다";
+
+/** 결과 화면으로 가는 버튼. ui-contract §8 의 첫 번째 다음 행동이다. */
+export const SHOW_RESULT_DETAIL = "결과 자세히 보기";
+
+/**
+ * 실패한 Step 을 건너뛰고 이어가는 별도 조작 (FR-137 · ui-contract §6-5).
+ *
+ * 「계속하기」와 **다른 버튼이어야 한다.** 같은 버튼이 실패를 조용히 지나가던 것이
+ * U-05 였다. 라벨에 "건너뛰고" 를 박아 무엇을 포기하는지 누르기 전에 알게 한다.
+ */
+export const RESUME_SKIPPING_FAILURE = "실패한 Step 건너뛰고 계속";
+
+/** 그 버튼 옆 보조 문구 (quickstart §3 S3-7). 결말이 달라진다는 사실을 미리 말한다. */
+export function skipFailureNotice(failedIndex: number): string {
+  return (
+    `${stepLabel(failedIndex)} 을 건너뛰고 다음 Step 부터 이어갑니다. ` +
+    `그 Step 에 걸려 있던 화면 상태가 없으므로 뒤따르는 Step 도 실패할 수 있고, ` +
+    `이 실행의 결말은 「${outcomeLabel("partial_pass")}」이 됩니다.`
+  );
+}

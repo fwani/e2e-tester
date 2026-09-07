@@ -476,7 +476,21 @@ export const sessions = {
   setPacing: (id: string, pacing: RunPacing) =>
     post<SessionView>(`/api/sessions/${id}/pacing`, { pacing }),
   pause: (id: string) => post<SessionView>(`/api/sessions/${id}/pause`),
-  resume: (id: string) => post<SessionView>(`/api/sessions/${id}/resume`),
+  /**
+   * 이어서 실행 (FR-038).
+   *
+   * `skipFailed` 는 **실패한 Step 을 건너뛰고** 다음 Step 부터 이어가는 별도 경로다
+   * (005 FR-137 · rest-api.md §3-b). 붙이지 않으면 실패 Step 이 있는 재개는 409
+   * `CANNOT_RESUME_PAST_FAILURE` 로 거절된다 — 조용히 지나가지 않는 것이 요구사항이다.
+   *
+   * 본문을 아예 보내지 않는 기존 동작을 유지한다: `skip_failed=false` 와 같으므로
+   * 필드를 항상 실으면 계약은 같지만 요청 로그가 달라져 회귀를 읽기 어려워진다.
+   */
+  resume: (id: string, skipFailed = false) =>
+    post<SessionView>(
+      `/api/sessions/${id}/resume`,
+      skipFailed ? { skip_failed: true } : undefined,
+    ),
   runFrom: (id: string, stepIndex: number) =>
     post<SessionView>(`/api/sessions/${id}/run-from`, { step_index: stepIndex }),
   recordActionsStart: (id: string) =>

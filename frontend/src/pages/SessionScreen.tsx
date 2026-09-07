@@ -72,6 +72,13 @@ const REVIEW_STATE = "review";
  * "기록된 Step 은 보존됐습니다" 라고 적어 두고 저장할 방법을 주지 않았다.
  */
 const SAVEABLE_WITHOUT_BROWSER = new Set([REVIEW_STATE, "lost"]);
+/**
+ * 브라우저가 없어 **탭을 물을 대상이 없는** 상태 (005 FR-135 · 재점검 U-03-b).
+ *
+ * `TERMINAL_STATES` 에 `review` 를 더한 집합이다. `review` 는 편집·저장을 받으므로
+ * 종료 상태가 아니지만, 브라우저는 이미 정리됐다 — 탭 조회는 404 다.
+ */
+const TABLESS_STATES = new Set([...TERMINAL_STATES, REVIEW_STATE]);
 
 interface StepProgress {
   /**
@@ -163,11 +170,31 @@ export function SessionScreen({
   const subscription = useRef<SessionSubscription | null>(null);
 
   const resync = useCallback(async () => {
+    let fresh: SessionView;
     try {
-      setView(await sessions.get(sessionId));
-      setTabs(await sessions.tabs(sessionId));
+      fresh = await sessions.get(sessionId);
+      setView(fresh);
     } catch (exc) {
       setError(describeError(exc));
+      return;
+    }
+    /*
+      005 FR-135 (재점검 U-03-b) — **끝난 세션에는 탭을 묻지 않는다.**
+
+      탭은 살아 있는 브라우저의 속성이다. 중지하면 브라우저가 정리되므로
+      `GET /api/sessions/{id}/tabs` 는 404 를 돌려주는데, 이전 코드는 그것을 오류 배너로
+      띄웠다 — 실측 404 3건, 그리고 그 배너에는 세션 UUID 가 들어 있었다. 사용자가
+      한 일(중지)의 정상적인 결과를 오류로 말하는 화면이었다.
+
+      **조회 실패도 오류로 다루지 않는다.** 탭 목록은 미러가 어느 탭을 보는지 알려 주는
+      보조 정보이고, 그것 하나 때문에 화면이 붉은 배너를 띄울 이유가 없다. 마지막으로
+      알던 목록을 그대로 두면 종료된 화면에서도 어느 탭이었는지 남는다.
+    */
+    if (TABLESS_STATES.has(fresh.state)) return;
+    try {
+      setTabs(await sessions.tabs(sessionId));
+    } catch {
+      // 조용히 넘긴다 — 위 주석. 세션 자체의 실패는 이미 위에서 잡았다.
     }
   }, [sessionId]);
 
@@ -442,13 +469,28 @@ export function SessionScreen({
    */
   const showsAiScreen = isAiSession && !isPaused && !isTakeover;
 
+  /*
+    005 재점검 U-04-b — 미리보기 국면이 **전이와 종료를 구분한다.**
+
+    이전에는 `isPaused` 하나로 「일시정지 · 브라우저 세션과 화면 상태를 그대로 유지하고
+    있습니다」를 단정했다. 전이 중에는 아직 멈추지 않았고, 멈추기 전에 실행이 끝난 뒤에는
+    일시정지가 아니다 — 같은 화면의 배지는 이미 「일시정지 중…」·「실행 종료」라고 말하고
+    있었으므로 한 화면이 두 가지를 주장했다.
+
+    **순서가 판정이다.** 조작 > 종료(브라우저 없음) > 실행 끝남 > 전이 중 > 일시정지.
+    전이보다 "실행이 끝났다" 를 먼저 보는 이유는 그것이 더 최근의 사실이기 때문이다.
+  */
   const phase: MirrorPhase = isManipulating
     ? "manipulation"
-    : isPaused
-      ? "paused"
-      : isDone || isSaveableWithoutBrowser
-        ? "terminated"
-        : "observation";
+    : isDone || isSaveableWithoutBrowser
+      ? "terminated"
+      : finishedWhilePausing
+        ? "finished"
+        : isPausing
+          ? "pausing"
+          : isPaused
+            ? "paused"
+            : "observation";
 
   /**
    * 005 FR-171 (U-18·U-05) — 이벤트를 못 받은 화면도 결과를 복원한다.
@@ -790,6 +832,13 @@ export function SessionScreen({
           review={isSaveableWithoutBrowser}
           savedAt={view.saved_at ?? null}
           /*
+            005 FR-134 (재점검 U-03-a) — **저장된 테스트인가**는 `saved_at` 이 아니라
+            대상 테스트의 존재로 판정한다. `test_id` 가 있으면 정의 파일이 있다 —
+            재실행 세션은 저장을 한 적이 없어도 초안이 아니다.
+          */
+          persisted={testId !== null}
+          hasUnsavedChanges={view.has_unsaved_changes}
+          /*
             005 FR-156 — 저장할 변경이 남아 있는가. 저장 직후에는 거짓이므로 「변경
             저장」이 비활성이 되고, 사용자는 같은 내용을 다시 저장하도록 유도받지 않는다.
           */
@@ -800,7 +849,10 @@ export function SessionScreen({
           finishedWhilePausing={
             finishedWhilePausing
               ? {
-                  summary: `멈추기 전에 실행이 끝났습니다 · ${summary ?? ""}`,
+                  // 제목("멈추기 전에 실행이 끝났습니다")은 화면이 사전에서 받는다.
+                  // 여기서 접두로 붙이면 제목과 요약이 한 문장에 섞여, 아래 결말
+                  // 블록과 헤더 부제 중 어디에 무엇을 둘지 화면이 정할 수 없다.
+                  summary: summary ?? "",
                   failureReason: failure?.message ?? null,
                   onShowResult:
                     testId !== null && onShowResult !== undefined
@@ -831,6 +883,14 @@ export function SessionScreen({
           onSaveNameChange={setSaveName}
           onSave={save}
           onResume={() => void act(() => sessions.resume(sessionId))}
+          /*
+            005 FR-137 (재점검 N-04) — 실패한 Step 을 **건너뛰고** 이어간다.
+
+            `resume` 과 같은 엔드포인트이고 `skip_failed` 만 다르다. 화면에서 두 조작을
+            가르는 이유는 결말이 달라지기 때문이다 — 이 경로의 결말은 `partial_pass` 이고
+            그것을 만들 방법이 여태 없었다.
+          */
+          onResumeSkippingFailure={() => void act(() => sessions.resume(sessionId, true))}
           onStop={leave}
           onRecordActionsStart={() => void act(() => sessions.recordActionsStart(sessionId))}
           onRecordActionsStop={() => void act(() => sessions.recordActionsStop(sessionId))}
@@ -858,8 +918,20 @@ export function SessionScreen({
               .catch((exc: unknown) => setNotice(describeError(exc)))
               .finally(() => setBusy(false));
           }}
+          /*
+            005 FR-133 (재점검 U-03-a) — 중지 결과 화면의 **네 번째 다음 행동**.
+
+            ui-contract §8 은 「결과 자세히 보기」·「처음부터 실행」·「Step nn부터 실행」·
+            「목록으로」 넷을 요구하는데 화면에는 셋만 있었다. 조건이 `isDone` 이었고
+            중지 후 상태(`review`)는 종료 상태 집합에 **없기 때문**이다 — 편집·저장을
+            받으려고 일부러 뺀 것이고(DR-010), 그 결정이 결과 경로를 함께 지웠다.
+
+            판단 근거는 "세션이 끝났는가" 가 아니라 **"볼 결과가 남았는가"** 다.
+          */
           onShowResult={
-            testId !== null && onShowResult && isDone ? () => onShowResult(testId) : undefined
+            testId !== null && onShowResult && (isDone || isSaveableWithoutBrowser)
+              ? () => onShowResult(testId)
+              : undefined
           }
           pacing={view.pacing}
           pacingControl={

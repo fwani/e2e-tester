@@ -1101,10 +1101,15 @@ async def pause(session_id: str) -> SessionView:
         settled = await w.runner.wait_for_boundary(PAUSE_SETTLE_TIMEOUT_S)
         if not settled:
             # 멈춘 것처럼 보여 주고 실제로는 아직 도는 상태를 만들지 않는다 (FR-087).
+            # 005 FR-146 — **전이 안내로 표시한다.** 실행이 끝나면 러너가 걷는다.
+            #
+            # 재점검 U-04-a: 실행이 끝난 뒤에도 이 문장이 남아, 같은 화면의 배지가
+            # 「실행 종료」라고 말하는 옆에서 「아직 실행 중」이라고 말했다.
             w.session.add_edit_warning(
                 f"Step 하나가 {PAUSE_SETTLE_TIMEOUT_S:.0f}초 안에 끝나지 않아 아직 "
                 "실행 중입니다. 그 Step 이 끝나면 멈춥니다 — 지금 편집한 내용은 끝난 "
-                "뒤의 목록에 적용됩니다."
+                "뒤의 목록에 적용됩니다.",
+                transient=True,
             )
             await w.session.publish_edit_warnings()
     return view_of(w)
@@ -1457,6 +1462,14 @@ async def stop(session_id: str, state: State) -> SessionView:
         await w.runner.cancel()
     if w.inline is not None:
         w.inline.stop()
+
+    # 005 FR-146 — 중지로 끝난 실행에서도 전이 안내를 걷는다.
+    #
+    # 러너가 정상 종료 경로에서 이것을 하지만, 취소는 그 경로를 지나지 않는다. 러너의
+    # `finally` 에 두지 않는 이유는 그 블록이 완료 신호만 올려야 하기 때문이다 —
+    # 거기서 실패하면 실행 완료를 기다리는 모든 것이 영구히 멈춘다.
+    if w.session.clear_transient_edit_warnings():
+        await w.session.publish_edit_warnings_now()
 
     if not already_terminal:
         _apply(w, Command.STOP)

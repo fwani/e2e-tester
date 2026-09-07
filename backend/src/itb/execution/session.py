@@ -130,6 +130,13 @@ class BrowserSession:
     """
 
     edit_warnings: list[str] = field(default_factory=list)
+    transient_edit_warnings: set[str] = field(default_factory=set)
+    """`edit_warnings` 중 **실행이 끝나면 사실이 아니게 되는** 것 (005 FR-146).
+
+    문구를 여기 복사해 두는 이유는 경고가 문자열 목록이고 그 형태를 바꾸면 REST 응답과
+    `edit_warning` 이벤트의 계약이 함께 바뀌기 때문이다. 계약을 건드리지 않고 "이건
+    전이 안내였다" 를 서버 안에서만 기억한다.
+    """
     _resume: asyncio.Event = field(default_factory=asyncio.Event)
     _pause_requested: asyncio.Event = field(default_factory=asyncio.Event)
     """일시정지가 **요청**되었다 (004 FR-106, research R6).
@@ -329,9 +336,38 @@ class BrowserSession:
 
     # ─── 편집 경고 (FR-040b) ───────────────────────────────────────────────
 
-    def add_edit_warning(self, message: str) -> None:
+    def add_edit_warning(self, message: str, *, transient: bool = False) -> None:
+        """편집 경고를 쌓는다.
+
+        `transient=True` 는 **지금 진행 중인 무언가를 설명하는 안내**다 (005 FR-146).
+        일시정지 전이 안내("아직 실행 중입니다")가 그것이며, 그 실행이 끝나면 사실이
+        아니게 되므로 걷어내야 한다. 재점검 리포트 U-04-a 가 본 것은 실행이 끝난 뒤에도
+        이 문장이 화면에 남아, 같은 화면의 배지가 「실행 종료」라고 말하는 옆에서
+        「아직 실행 중」이라고 말하는 상태였다.
+
+        보통의 편집 경고는 **남아야 한다** — "이 편집은 이미 실행된 Step 에 적용된다"
+        같은 사실은 시간이 지나도 그대로다.
+        """
         if message not in self.edit_warnings:
             self.edit_warnings.append(message)
+        if transient:
+            self.transient_edit_warnings.add(message)
+        else:
+            self.transient_edit_warnings.discard(message)
+
+    def clear_transient_edit_warnings(self) -> bool:
+        """전이 안내를 걷는다 (005 FR-146). 걷은 것이 있으면 True.
+
+        돌려주는 값으로 호출자가 **재발행이 필요한지** 안다. 아무것도 걷지 않았는데
+        이벤트를 내보내면 화면이 같은 목록을 다시 그린다.
+        """
+        if not self.transient_edit_warnings:
+            return False
+        self.edit_warnings = [
+            m for m in self.edit_warnings if m not in self.transient_edit_warnings
+        ]
+        self.transient_edit_warnings.clear()
+        return True
 
     async def publish_edit_warnings(self) -> None:
         """쌓인 편집 경고를 이벤트로 내보낸다 (FR-040b, contracts/websocket.md).
@@ -339,14 +375,28 @@ class BrowserSession:
         REST 응답에도 같은 목록이 실린다. 이벤트가 별도로 필요한 이유는, 편집을 요청한
         클라이언트가 아닌 화면(다른 탭에서 같은 세션을 보고 있는 경우)도 경고를 알아야
         하기 때문이다.
+
+        **비어 있으면 내보내지 않는다.** 이 함수는 편집 응답마다 불리므로, 빈 목록을
+        내보내면 경고가 없는 편집마다 이벤트가 하나씩 늘고 화면은 그때마다 전체 상태를
+        다시 받는다. 걷어낸 사실을 알려야 하는 경우는 `publish_edit_warnings_now()` 를
+        쓴다 (005 FR-146).
         """
         if not self.edit_warnings:
             return
+        await self.publish_edit_warnings_now()
+
+    async def publish_edit_warnings_now(self) -> None:
+        """현재 목록을 **비어 있어도** 내보낸다 (005 FR-146).
+
+        전이 안내를 걷은 뒤에 쓴다 — 걷었다는 사실은 빈 목록으로만 전달되므로, 비어
+        있으면 보내지 않는 규칙에 걸리면 화면은 낡은 문장을 계속 들고 있는다.
+        """
         await self.emit("edit_warning", messages=list(self.edit_warnings))
 
     def take_edit_warnings(self) -> list[str]:
         out = list(self.edit_warnings)
         self.edit_warnings.clear()
+        self.transient_edit_warnings.clear()
         return out
 
 

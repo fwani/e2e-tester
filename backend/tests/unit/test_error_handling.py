@@ -23,32 +23,26 @@ from itb.execution import runner as runner_mod
 from itb.execution.runner import RunnerTask
 from itb.execution.state_machine import Command, SessionState
 from itb.execution.step_executor import StepFailure
+from tests.unit.test_runner_pacing import _FakeSession as _PacingFakeSession
 
 EXECUTION_DIR = pathlib.Path(runner_mod.__file__).parent
 
 
-class _FakeSession:
-    """러너가 요구하는 최소 표면. 브라우저를 띄우지 않는다."""
+class _FakeSession(_PacingFakeSession):
+    """러너가 요구하는 최소 표면. 브라우저를 띄우지 않는다.
+
+    **004 의 가짜를 그대로 물려받는다** (`tests.unit.test_runner_pacing._FakeSession`).
+    이 파일은 한동안 자기 벌을 따로 갖고 있었고, 그것이 정확히 `test_pause_before_index.py`
+    가 경고한 결과를 냈다 — 005 가 러너에 세션 메서드 하나를 더했을 때 이 가짜만 낡아
+    러너의 종료 경로가 여기서만 터졌다. 실패는 제품이 아니라 낡은 가짜를 가리켰다.
+
+    여기서 좁히는 것은 상태 전이뿐이다. 이 파일의 대상은 **예외 경로**이므로 일시정지를
+    흉내 낼 필요가 없고, `PAUSE` 를 받아 상태를 옮기면 "러너가 죽지 않는가" 를 보는
+    단정이 일시정지에 가려진다.
+    """
 
     def __init__(self, state: SessionState = SessionState.REPLAYING) -> None:
-        self.state = state
-        self.current_step_index = 0
-        self.events: list[tuple[str, dict]] = []
-        self._resume = asyncio.Event()
-        self._resume.set()
-
-    @property
-    def is_paused(self) -> bool:
-        return not self._resume.is_set()
-
-    def mark_running(self) -> None:
-        self._resume.set()
-
-    async def wait_until_resumed(self) -> None:
-        await self._resume.wait()
-
-    async def emit(self, event_type: str, **payload: object) -> None:
-        self.events.append((event_type, payload))
+        super().__init__(state=state)
 
     async def apply(self, command: Command) -> SessionState:
         if command is Command.FINISH_PASS:
@@ -199,7 +193,10 @@ EXPECTED_BARE_SUPPRESS: dict[str, int] = {
     # TargetUnreachableError 가 이미 들고 나가므로 닫기 실패까지 겹쳐 말할 것이 없다.
     "session.py": 9,
     "artifacts.py": 6,
-    "runner.py": 1,
+    # 2번째: 실행 종료 시 전이 안내를 걷은 뒤의 **재발행**이다 (005 FR-146). 통보 경로이며,
+    # 이벤트 전송 실패가 실행 종료 자체를 막으면 안 된다 — 상태 전이와 같은 블록에 묶지
+    # 않은 이유도 그것이다. 목록은 이미 서버에서 걷혔으므로 REST 조회가 진실을 준다.
+    "runner.py": 2,
     "session_loss.py": 5,
     "element_probe.py": 1,
 }

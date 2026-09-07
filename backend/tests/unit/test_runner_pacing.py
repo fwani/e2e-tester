@@ -29,6 +29,11 @@ class _FakeSession:
         self.pacing = pacing
         self.current_step_index = 0
         self.events: list[tuple[str, dict]] = []
+        # 005 FR-146 — 러너가 실행 종료 시 전이 안내를 걷는다. 가짜도 그 표면을
+        # 가져야 한다: 없으면 러너의 종료 경로가 가짜에서만 터지고, 그 실패는 제품이
+        # 아니라 가짜의 낡음을 알린다.
+        self.edit_warnings: list[str] = []
+        self.transient_edit_warnings: set[str] = set()
         self._resume = asyncio.Event()
         self._resume.set()
         self._pause_requested = asyncio.Event()
@@ -54,6 +59,24 @@ class _FakeSession:
 
     async def emit(self, event_type: str, **payload: object) -> None:
         self.events.append((event_type, payload))
+
+    def add_edit_warning(self, message: str, *, transient: bool = False) -> None:
+        if message not in self.edit_warnings:
+            self.edit_warnings.append(message)
+        if transient:
+            self.transient_edit_warnings.add(message)
+
+    def clear_transient_edit_warnings(self) -> bool:
+        if not self.transient_edit_warnings:
+            return False
+        self.edit_warnings = [
+            m for m in self.edit_warnings if m not in self.transient_edit_warnings
+        ]
+        self.transient_edit_warnings.clear()
+        return True
+
+    async def publish_edit_warnings_now(self) -> None:
+        await self.emit("edit_warning", messages=list(self.edit_warnings))
 
     async def apply(self, command: Command) -> SessionState:
         if command is Command.PAUSE:

@@ -13,6 +13,17 @@ from itb.execution.session import SessionError
 
 router = APIRouter(prefix="/api/sessions", tags=["tabs"])
 
+SESSION_GONE = "세션이 이미 끝났습니다."
+"""005 FR-135 — 사용자에게 보이는 문구에 세션 식별자를 넣지 않는다.
+
+`SessionError` 의 문장에는 진단을 위해 세션 UUID 가 들어 있다. 그것을 그대로 `detail`
+로 올리면 화면이 "세션을 찾을 수 없습니다: f345e93a…" 를 배너로 띄운다 — 재점검
+U-03-b 가 그것을 봤다. 식별자가 필요한 화면은 `detail.session_id` 에서 받는다.
+
+`sessions.py` 의 `work_of` 와 **같은 문장을 쓴다.** 같은 사실을 두 엔드포인트가 다른
+말로 부르면 사용자는 다른 일이 일어난 줄 안다 (FR-141).
+"""
+
 State = Annotated[AppState, Depends(get_state)]
 
 
@@ -45,7 +56,9 @@ async def list_tabs(session_id: str, state: State) -> TabsResponse:
     try:
         session = state.sessions.require(session_id)
     except SessionError as exc:
-        raise not_found(ErrorCode.SESSION_NOT_FOUND, str(exc)) from exc
+        raise not_found(
+            ErrorCode.SESSION_NOT_FOUND, SESSION_GONE, session_id=session_id
+        ) from exc
 
     views = [
         TabView(
@@ -76,7 +89,9 @@ async def set_mirror_tab(
     try:
         session = state.sessions.require(session_id)
     except SessionError as exc:
-        raise not_found(ErrorCode.SESSION_NOT_FOUND, str(exc)) from exc
+        raise not_found(
+            ErrorCode.SESSION_NOT_FOUND, SESSION_GONE, session_id=session_id
+        ) from exc
 
     handle = session.find_tab(body.tab_index)
     if handle is None:
