@@ -438,3 +438,21 @@ Task: "T085 미러 입력 금지 단위 테스트 (backend/tests/unit/test_mirro
 - 작업 또는 논리적 묶음마다 커밋한다
 - 검증이 실패한 채 커밋하면 제목에 `wip:` 를 붙이고 본문에 실패 출력을 적는다 (거짓 보고 금지)
 - 어느 체크포인트에서든 멈춰 스토리를 독립적으로 검증할 수 있다
+
+---
+
+## Phase 13: Convergence
+
+**출처**: `/speckit-converge` (Phase 12 완료 후). 요구사항·성공 기준 62건, plan 결정 11건,
+헌법 원칙 5건을 코드와 대조했다. **헌법 위반 없음.**
+
+Phase 12 가 재점검 11건을 닫는 과정에서 남은 이음매와, 수정 이후 **아직 사람이 걸어
+확인하지 않은 것**이 여기 모인다.
+
+- [ ] T123 `frontend/src/pages/SessionScreen.tsx:670` 의 결말 요약 배너를 `finishedWhilePausing` 에서도 걷는다 per FR-140 (contradicts). 조건이 `summary !== null && !isDone` 이고, 멈추기 전에 실행이 끝난 경우는 `paused` 이므로 `isDone` 이 거짓이다 — 배너와 `RunnerPaused` 의 결말 블록이 **같은 요약을 한 화면에 두 번** 그린다. T042 가 얇은 회색 띠를 없앤 것과 같은 결함이 다른 조건으로 남아 있었다(그때는 헤더 부제가 상대였고 지금은 결말 블록이다). `frontend/tests/OutcomeVocabulary.test.tsx` 가 이 조합을 보지 않아 통과했다 — 단정을 그 조합까지 넓힌다
+- [ ] T124 [quickstart.md](./quickstart.md) §2 의 S1~S8 을 **사람이 다시 걸어** 「상」 9건이 전부 해소됐는지 확정한다 per SC-221 (missing). T110 은 그 시점의 관측(해소 7 · 부분 재발 2)이고 Phase 12 가 그 2건을 닫았다. **자동 테스트로 대체할 수 없다** — T121 이 그 증거다: 계약·백엔드·자동 테스트가 모두 통과하는데도 화면 절반이 없었고, 그것은 사람이 걸어야 드러났다. 결과는 `docs/ux/ux-recheck-005.md` 형식으로 남기고, 재발이 있으면 U 번호를 들어 등록한다
+- [ ] T125 quickstart §3 의 S3-5·S3-6 을 걸어 **「실패한 Step 건너뛰고 계속」의 결말이 `부분 성공`** 인지 확인한다 per FR-137 · quickstart S3-6 (missing). 재점검의 「미검증」 사유(UI 컨트롤 부재)는 T121 이 없앴으나, 그 결말을 **제품을 통해 관측한 적이 아직 없다.** 백엔드 경로는 `backend/tests/integration/test_resume_with_failed_step.py`(T030)가 지키고 화면은 `frontend/tests/RecheckPhase12.test.tsx` 가 지키지만, 둘을 잇는 한 바퀴는 아무도 돌지 않았다
+- [ ] T126 실브라우저에서 **결과 화면 새로고침 복원**을 단정한다 per FR-166 · SC-219 (partial). 자동 커버리지가 jsdom 수준(변환 함수 · `initialLocation()`)뿐이어서 N-01 을 잡지 못했다 — 원인은 첫 렌더의 `loading` 국면이었고 변환은 처음부터 옳았다. 수단은 이미 있다: `backend/tests/abnormal/ui_context.py` 의 실브라우저 하니스(`AS-026` 이 `page.reload()` 를 쓴다). 결과 화면에서 새로고침 후 주소와 화면이 유지되는지 보는 항목을 넣는다
+- [ ] T127 [P] `frontend/tests/` 에 `resume` 요청 본문이 실제로 `{"skip_failed": true}` 를 싣는지 단정하는 테스트를 넣는다 per FR-137 (partial). 지금 단정은 콜백이 불렸는지까지다. **N-04 가 드러낸 이음매가 정확히 이 자리다** — 계약(rest-api.md §3-b)과 백엔드는 서 있었고 전선만 없었으며, 그것을 보는 테스트가 없어 아무도 몰랐다. 건너뛰지 않는 재개가 본문을 **보내지 않는** 것도 함께 단정한다(기존 클라이언트 동작 유지)
+- [ ] T128 [P] `frontend/src/lib/sessionState.ts` 의 `isResumable()` 을 쓰거나 지운다 per plan: 구조 결정 (unrequested). 「실행 화면 보기」의 조건이 `liveSession !== null` 인데 이 함수는 `stopped` 를 제외한다 — 둘 중 어느 것이 맞는지 정해야 한다. 쓰지 않는 판정 함수를 남기면 다음 사람이 그것이 이미 적용된 규칙이라고 읽는다
+- [ ] T129 [P] `onResumeSkippingFailure` 의 시그니처를 실제와 맞춘다 per FR-137 (partial). 인자로 실패 Step 인덱스를 받지만 `SessionScreen.tsx` 의 구현은 그것을 버린다 — 백엔드가 실패 Step 을 스스로 찾기 때문이다(`resume` 의 `skip_failed`). 인자를 지우거나, 백엔드가 그것을 쓰게 한다. 받고 버리는 인자는 다음 사람에게 "이 인덱스가 반영된다" 고 거짓말한다
