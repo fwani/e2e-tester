@@ -67,9 +67,24 @@ export function outcomeTone(outcome: Outcome | null | undefined): OutcomeTone {
   }
 }
 
-/** 실패로 집계하는 결말인가 (FR-131). 중지와 부분 성공은 실패가 아니다. */
+/**
+ * 실패로 집계하는 결말인가 (FR-131). 중지와 부분 성공은 실패가 **아니다.**
+ *
+ * 아는 세 값(`pass`·`stopped`·`partial_pass`)만 실패가 아니라고 말한다. 그 밖의 값은
+ * 실패로 센다 — `outcomeLabel`·`outcomeChip`·`outcomeTone` 과 같은 보수적 기본값이다
+ * (data-model.md §1). 여기만 `=== "fail"` 로 두면 화면이 「실패」라고 쓰고 그 옆에서
+ * 실패 집계는 0 이 되는, 자기와 어긋나는 화면이 만들어진다.
+ */
 export function countsAsFailure(outcome: Outcome | null | undefined): boolean {
-  return outcome === "fail";
+  if (outcome == null) return false;
+  switch (outcome) {
+    case "pass":
+    case "stopped":
+    case "partial_pass":
+      return false;
+    default:
+      return true;
+  }
 }
 
 /**

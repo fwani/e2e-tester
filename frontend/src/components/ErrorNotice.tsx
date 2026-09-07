@@ -22,9 +22,24 @@ export interface ErrorInfo {
   nextAction: string;
   category: Category;
   code: string;
+  /**
+   * 이 오류를 해소할 수 있는 세션 (005 FR-126, contracts/rest-api.md §1).
+   *
+   * 실행 거절(`SESSION_ALREADY_ACTIVE`)은 "실행 중인 세션으로 이동한 뒤 중지하세요" 를
+   * 다음 행동으로 말한다. **그 이동 수단이 화면에 없으면 안내가 없는 조작을 지시하는
+   * 것이다** — U-01 이 그랬다. 사용자에게 보이는 문구에는 식별자를 넣지 않고(FR-135)
+   * 여기로만 나른다.
+   */
+  sessionId?: string | null;
 }
 
 const FALLBACK_ACTION = "화면을 새로 고쳐 다시 시도하세요. 계속 발생하면 서버 로그를 확인하세요.";
+
+/** 오류 상세에서 이동할 세션을 꺼낸다. 없으면 `null` (005 FR-126). */
+function sessionIdIn(detail: Record<string, unknown> | undefined): string | null {
+  const value = detail?.session_id;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
 
 /**
  * 잡은 것이 무엇이든 표시 가능한 형태로 바꾼다.
@@ -39,6 +54,7 @@ export function describeError(exc: unknown): ErrorInfo {
       nextAction: exc.nextAction || FALLBACK_ACTION,
       category: exc.category,
       code: exc.code,
+      sessionId: sessionIdIn(exc.detail),
     };
   }
   return {
@@ -91,10 +107,18 @@ const TONE: Record<Category, { border: string; bg: string; label: string }> = {
 export function ErrorNotice({
   error,
   compact = false,
+  action = null,
 }: {
   error: ErrorInfo | null;
   /** 좁은 자리에서 제목 줄을 생략한다. 다음 행동은 생략하지 않는다. */
   compact?: boolean;
+  /**
+   * 다음 행동을 **실제로 할 수 있는 버튼** (005 FR-126).
+   *
+   * 안내가 "실행 중인 세션으로 이동하세요" 라고 말하면 이동할 수단이 같은 자리에
+   * 있어야 한다. 없으면 사용자는 안내를 읽고도 어디로 가야 할지 모른다 (U-01).
+   */
+  action?: { label: string; onClick: () => void } | null;
 }) {
   if (error === null) return null;
 
@@ -147,6 +171,13 @@ export function ErrorNotice({
       >
         {error.nextAction}
       </div>
+      {action !== null && (
+        <div>
+          <button data-error-action onClick={action.onClick}>
+            {action.label}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

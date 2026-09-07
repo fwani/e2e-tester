@@ -11,6 +11,7 @@
  */
 import type { Step } from "../types/generated/step";
 import type { ErrorBody } from "../types/generated/error-response";
+import type { RunScope } from "../types/generated/run-result";
 import type { RunPacing, SessionState } from "./client";
 
 export interface SessionEventBase {
@@ -65,12 +66,24 @@ export type SessionEvent =
       /** 취향 파일에 남겼는가. false 면 다음 실행에 유지되지 않는다. */
       preference_saved: boolean;
     })
+  /**
+   * 실행이 끝났다 (contracts/websocket.md §2).
+   *
+   * 005 에서 세 필드가 늘었다 — 화면이 **결말 요약을 스스로 조립하지 않고**
+   * `runSummary()` 에 그대로 넘길 수 있어야 하기 때문이다. 분모가 `total_count` 면
+   * 5개를 건너뛴 부분 실행이 `0 / 7` 로 보인다 (U-02).
+   */
   | (SessionEventBase & {
       type: "run_finished";
       outcome: string;
       total_ms: number;
       passed_count: number;
       total_count: number;
+      /** 실제로 시도한 Step 수 (전체 − 건너뜀). 요약의 **분모**다. */
+      attempted_count?: number;
+      scope?: RunScope;
+      start_index?: number;
+      stopped_step_index?: number | null;
       failed_step_index: number | null;
     })
   | (SessionEventBase & { type: "mirror_frame"; tab: number; data: string; width: number; height: number })

@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { RunResult } from "../src/pages/RunResult";
 import { TestList } from "../src/pages/TestList";
+import { pendingFetch } from "./helpers/pending";
 import type { RunResult as RunResultData } from "../src/types/generated/run-result";
 
 const noop = () => undefined;
@@ -128,6 +129,26 @@ describe("결과 화면의 실행 버튼 (US1)", () => {
     }
 
     expect(onRunAll).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("응답이 오기 전의 화면 (FR-129 · U-11)", () => {
+  it("결과가 도착하기 전에는 실행 버튼을 내주지 않는다", async () => {
+    // T003 헬퍼로 응답을 붙잡아 둔다. 응답 **뒤** 화면만 단정하면 "요청과 응답 사이" 에
+    // 사는 결함을 볼 수 없다 — U-11 이 정확히 그 구간이었다.
+    const api = pendingFetch({ "/result": failedResult() });
+    vi.stubGlobal("fetch", api.fetch);
+
+    render(<RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
+    await api.waitFor("/result");
+
+    // 아직 결말을 모른다. 모르는 채로 「Step 06부터 실행」을 내주면 사용자는 존재하지
+    // 않는 실패 지점부터 실행을 걸 수 있다.
+    expect(screen.getByText("결과를 불러오는 중…")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Step 06부터 실행/ })).toBeNull();
+
+    await api.settle("/result");
+    expect(await screen.findByRole("button", { name: /Step 06부터 실행/ })).toBeTruthy();
   });
 });
 

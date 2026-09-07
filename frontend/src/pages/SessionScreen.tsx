@@ -42,12 +42,13 @@ import { StepInspector } from "./StepInspector";
 import { TabStrip } from "../components/TabStrip";
 import type { StepOutcome } from "../components/design/DesignStepList";
 import type { Step } from "../types/generated/step";
+import type { Outcome } from "../types/generated/run-result";
 import { AiRecord, type AiBlockedState } from "./AiRecord";
 import { PacingControl } from "../components/PacingControl";
 import { Runner } from "./Runner";
 import { RunnerPaused } from "./RunnerPaused";
 import { Takeover } from "./Takeover";
-import { progressLabel } from "../lib/wording";
+import { progressLabel, runSummary } from "../lib/wording";
 
 
 /**
@@ -207,10 +208,24 @@ export function SessionScreen({
             break;
           case "run_finished":
             setRunningIndex(null);
+            // 005 FR-140·FR-141 (U-19·U-20·U-03) — 요약을 **사전에서 받는다.**
+            //
+            // 이전에는 여기서 `outcome === "pass" ? "PASS" : "FAIL"` 로 조립했다.
+            // 결말이 넷으로 늘어난 뒤에도 이 줄이 남아 있어서, 사용자가 누른 중지가
+            // 실행 화면에서 `FAIL` 로 보였다 — 저장된 결과는 `stopped` 인데 화면만
+            // 실패라고 말하는, 005 가 없애려던 바로 그 어긋남이다.
             setSummary(
-              `${event.outcome === "pass" ? "PASS" : "FAIL"} · ` +
-                `${event.passed_count} / ${event.total_count} 통과 · ` +
-                `${(event.total_ms / 1000).toFixed(2)} s`,
+              runSummary({
+                outcome: event.outcome as Outcome,
+                passedCount: event.passed_count,
+                attemptedCount: event.attempted_count ?? event.total_count,
+                totalCount: event.total_count,
+                totalMs: event.total_ms,
+                scope: event.scope ?? null,
+                startIndex: event.start_index ?? null,
+                failedStepIndex: event.failed_step_index,
+                stoppedStepIndex: event.stopped_step_index ?? null,
+              }),
             );
             void resync();
             break;

@@ -157,6 +157,27 @@ export function App() {
       .finally(() => setPendingRun(null));
   };
 
+  /**
+   * 거절 안내가 가리킨 세션으로 이동한다 (005 T024 · FR-126).
+   *
+   * 거절은 목록에서도 결과 화면에서도 날 수 있고 배너는 두 화면 **위**에 있다. 그래서
+   * 이동 수단도 여기 한 곳에 둔다 — 화면마다 두면 한쪽이 빠지고, 빠진 화면에서는 안내가
+   * 다시 "화면에 없는 조작" 을 지시하게 된다.
+   */
+  const openSession = (sessionId: string) => {
+    void sessions
+      .get(sessionId)
+      .then((session) => {
+        setError(null);
+        setScreen({ name: "runner", session });
+      })
+      // 그 사이에 끝났다면 이동할 곳이 없다. 목록이 현재 상태를 보여준다.
+      .catch(() => {
+        setError(null);
+        setScreen({ name: "list" });
+      });
+  };
+
   /** 이전 이름을 쓰는 화면이 남아 있어도 같은 경로를 지나게 한다. */
   const startReplay = startRun;
 
@@ -180,7 +201,14 @@ export function App() {
       {error !== null && (
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 16px" }}>
           <div style={{ flex: 1 }}>
-            <ErrorNotice error={error} />
+            <ErrorNotice
+              error={error}
+              action={
+                error.sessionId
+                  ? { label: "실행 중인 세션 보기", onClick: () => openSession(error.sessionId!) }
+                  : null
+              }
+            />
           </div>
           <button className="ghost" onClick={() => setError(null)}>
             닫기

@@ -311,6 +311,8 @@ export function RunResult({
                 건너뛴 부분 실행이 직전 전체 실행(5/7)보다 나빠진 것으로 읽혔다.
               */}
               <div
+                // 이 화면의 **결말 요약 자리**. 한 화면에 하나뿐이어야 한다 (FR-140·U-19).
+                data-run-summary
                 style={{
                   border: "3px solid #14130F",
                   background: "#FFFDF6",

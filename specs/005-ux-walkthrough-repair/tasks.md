@@ -35,7 +35,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 - [X] T001 [P] `fixtures/sample-app` 위에서 도는 검증용 테스트 정의 두 개를 픽스처로 만든다 — `backend/tests/fixtures/tc_fail_midstep.yaml` (7 Step, Step 06 이 존재하지 않는 `testId` 로 대기 예산을 소진하며 실패, Step 07 은 미실행으로 남는다) 와 `backend/tests/fixtures/tc_pass.yaml` (5 Step, 항상 통과). quickstart.md §0 의 재료 표와 일치시킨다
 - [X] T002 [P] 정적 페이지 세션에서 미러 프레임 도달을 재는 통합 테스트 하니스를 `backend/tests/integration/conftest.py` 에 추가한다 — 세션을 만들고 **구독을 늦게 붙이는** 픽스처. U-24 검증(FR-161)의 전제다
-- [ ] T003 [P] 프론트 컴포넌트 테스트에서 응답을 지연시킬 수 있는 헬퍼를 `frontend/tests/helpers/pending.ts` 에 추가한다 — 클릭 직후(응답 전) 화면을 단정하기 위한 pending Promise. FR-129·FR-142 검증의 전제다
+- [X] T003 [P] 프론트 컴포넌트 테스트에서 응답을 지연시킬 수 있는 헬퍼를 `frontend/tests/helpers/pending.ts` 에 추가한다 — 클릭 직후(응답 전) 화면을 단정하기 위한 pending Promise. FR-129·FR-142 검증의 전제다
 
 **Checkpoint**: 재료 준비 완료 — 실패·통과·전이·미러를 각각 재현할 수 있다
 
@@ -86,7 +86,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 - [X] T021 [P] [US1] `frontend/src/App.tsx` 에 `startRun(testId, { fromIndex })` 단일 실행 경로를 만든다. 진행 중 상태(pending)를 여기서 관리해 in-flight 가드가 한 곳에 있게 한다. 결과 화면과 실행 화면이 이것만 부른다 (FR-127, research R4-C)
 - [X] T022 [US1] `frontend/src/pages/RunResult.tsx` 의 재실행 버튼 두 개를 `startRun` 으로 옮긴다. 클릭 즉시 비활성 + 「실행을 준비하는 중…」 (FR-125·FR-129, ui-contract §5)
 - [X] T023 [US1] `frontend/src/pages/SessionScreen.tsx` 의 `rerun` 도 `startRun` 을 쓰게 한다. 종료 세션이 다음 실행을 막지 않으므로 `discard` 선행이 필요 없어진다 (FR-125)
-- [ ] T024 [US1] 실행 거절 시 화면에 **이동 수단**을 붙인다 — `detail.session_id` 로 그 세션 화면으로 가는 버튼. `RunResult.tsx` 와 `TestList.tsx` 양쪽 (FR-126)
+- [X] T024 [US1] 실행 거절 시 화면에 **이동 수단**을 붙인다 — `detail.session_id` 로 그 세션 화면으로 가는 버튼. `RunResult.tsx` 와 `TestList.tsx` 양쪽 (FR-126)
 - [X] T025 [P] [US1] `frontend/src/pages/TestList.tsx` 의 행 액션을 고친다 — 「실행」은 항상, 결과가 있으면 「결과 보기」도. 한 자리에 둘 중 하나만 두는 분기를 없앤다 (FR-130, U-12·U-13)
 - [X] T026 [P] [US1] 목록 행의 실행 버튼에도 in-flight 가드와 「준비 중…」 라벨을 적용한다 (FR-127·FR-129)
 
@@ -109,8 +109,8 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 - [X] T029 [P] [US2] `backend/tests/unit/test_session_loss_guard.py` — 유실 감지 가드가 `REVIEW` 를 정상 종료로 취급하는지 단정한다 (FR-132)
 - [X] T030 [P] [US2] `backend/tests/integration/test_resume_with_failed_step.py` — 실패 Step 이 있는 일시정지에서 재개가 그 Step 을 지나가지 않는지, 건너뛰기 경로의 결말이 `partial_pass` 인지 단정한다 (FR-136·FR-137)
 - [X] T031 [P] [US2] `backend/tests/abnormal/test_stop_twice.py` — 이미 끝난 세션에 중지가 다시 도착하면 오류가 아니라 현재 뷰를 돌려주는지 단정한다 (contracts/rest-api.md §4, 엣지 케이스)
-- [ ] T032 [P] [US2] `frontend/tests/StepNumberConsistency.test.tsx` — 목록 행·결과 화면·실행 화면이 같은 실패 Step 번호를 내는지 단정한다. 모두 `stepLabel()` 을 지나야 한다 (FR-138·SC-216)
-- [ ] T033 [P] [US2] `frontend/tests/OutcomeVocabulary.test.tsx` — 한 화면에 결말 어휘 체계가 하나만 나타나는지, 결말 요약이 한 번만 나오는지 단정한다 (FR-140·FR-141·SC-222)
+- [X] T032 [P] [US2] `frontend/tests/StepNumberConsistency.test.tsx` — 목록 행·결과 화면·실행 화면이 같은 실패 Step 번호를 내는지 단정한다. 모두 `stepLabel()` 을 지나야 한다 (FR-138·SC-216)
+- [X] T033 [P] [US2] `frontend/tests/OutcomeVocabulary.test.tsx` — 한 화면에 결말 어휘 체계가 하나만 나타나는지, 결말 요약이 한 번만 나오는지 단정한다 (FR-140·FR-141·SC-222)
 
 ### Implementation for User Story 2
 
@@ -301,7 +301,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 - [ ] T104 결말 값 추가로 단정이 바뀌는 기존 테스트를 갱신한다. **약화하지 않는다** — 중지가 `fail` 이던 단정은 `stopped` 로 고치되 삭제·skip 하지 않는다 (헌법 Quality Gate 4)
 - [X] T105 [P] 프론트에서 결말을 읽는 모든 분기가 4값을 다루는지 확인한다 — `outcome === "fail"` 로만 갈리는 곳을 `switch` 로 바꿔 타입 검사가 누락을 잡게 한다 (plan 위험표)
-- [ ] T106 [P] 알 수 없는 결말 값을 만난 프론트가 `fail` 로 취급하는지 확인하는 테스트를 `frontend/tests/UnknownOutcome.test.ts` 에 추가한다 (data-model.md §1 보수적 기본값)
+- [X] T106 [P] 알 수 없는 결말 값을 만난 프론트가 `fail` 로 취급하는지 확인하는 테스트를 `frontend/tests/UnknownOutcome.test.ts` 에 추가한다 (data-model.md §1 보수적 기본값)
 - [ ] T107 [P] `docs/DEVELOPMENT.md` 에 결말 4값과 스키마 재생성 순서를 적는다. 미러 무프레임 감시가 정상 동작임을 한 줄 남긴다
 - [ ] T108 `backend` 전체 테스트와 스키마 드리프트를 돌린다 — `uv run pytest` · `uv run python -m itb.schema.export && git diff --exit-code schema/`
 - [ ] T109 `frontend` 전체 테스트를 돌린다 — `npm run gen:types && npm test`
