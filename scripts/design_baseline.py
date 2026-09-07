@@ -38,7 +38,24 @@ SCREENS: dict[str, tuple[str, str]] = {
     "Takeover": ("Takeover.dc.html", "frontend/src/pages/Takeover.tsx"),
     "RunResult": ("RunResult.dc.html", "frontend/src/pages/RunResult.tsx"),
     "StepInspector": ("StepInspector.dc.html", "frontend/src/pages/StepInspector.tsx"),
+    # 007 — 통합 작업 화면. 위 6종(TestList·CreateTest 제외)을 대체한다.
+    # 이 항목의 대조 기록은 007 의 디렉터리로 나간다 (OUT_DIR_007) — 002 의 기록은
+    # 그 라운드의 판정이므로 덮어쓰지 않는다.
+    "Workbench": ("Workbench.dc.html", "frontend/src/components/workbench/Workbench.tsx"),
 }
+
+# 007 의 대조 기록 위치. `Workbench` 만 여기로 나간다.
+OUT_DIR_007 = ROOT / "specs" / "007-unify-test-screens" / "design-conformance"
+SCREENS_007 = {"Workbench"}
+
+
+def out_dir_for(name: str) -> Path:
+    """화면 식별자 → 대조 기록을 쓸 디렉터리.
+
+    라운드마다 기록이 갈리는 이유는 판정이 그 라운드의 것이기 때문이다. 002 의
+    `RunResult.md` 판정을 007 이 덮어쓰면 왜 그렇게 정했는지의 이력이 사라진다.
+    """
+    return OUT_DIR_007 if name in SCREENS_007 else OUT_DIR
 
 
 # ─── 추출 ───────────────────────────────────────────────────────────────────
@@ -87,6 +104,10 @@ def collect() -> dict[str, Any]:
     for name, (dc_name, target) in SCREENS.items():
         path = DESIGN / dc_name
         if not path.exists():
+            if name in SCREENS_007:
+                # 007 의 통합 화면 artboard 는 초안이 만들어지기 전까지 없다. 없는
+                # 것을 오류로 세우면 002 의 8종 기준값 추출까지 함께 막힌다.
+                continue
             sys.exit(f"확정 디자인 파일이 없습니다: {path}")
         facts = extract(path)
         frame = frames.get(dc_name, {})
@@ -184,13 +205,14 @@ def _rows(name: str, s: dict[str, Any]) -> list[tuple[str, str, str]]:
 
 
 def write_tables(data: dict[str, Any]) -> list[Path]:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
 
     for name, s in data["screens"].items():
+        target_dir = out_dir_for(name)
+        target_dir.mkdir(parents=True, exist_ok=True)
         rows = _rows(name, s)
         body = "\n".join(f"| {a} | {i} | {v} |  | 미판정 |  |" for a, i, v in rows)
-        out = OUT_DIR / f"{name}.md"
+        out = target_dir / f"{name}.md"
         out.write_text(
             f"""# 디자인 대조 — {name} ({s["title"]})
 

@@ -34,11 +34,11 @@ description: "Task list template for feature implementation"
 **Purpose**: 기록 자리와 검사 골격을 먼저 만든다. 근거 없는 결정이 생기지 않게 하는 것이
 목적이다
 
-- [ ] T001 기록 파일 골격 3개 생성 in `specs/007-unify-test-screens/design-conformance/` — `replacement-map.md`(표 머리만) · `Workbench.md`(6축 표 머리만) · `undefined-states.md`(표 머리만)
-- [ ] T002 [P] `scripts/design_baseline.py` 가 `docs/design/Workbench.dc.html` 을 추출 대상에 포함하도록 확장
-- [ ] T003 [P] `docs/PENDING-HUMAN-VERIFICATION.md` 에 007 항목 2건 자리 추가 — artboard 승인 · 대조 판정
-- [ ] T004 [P] 국면별 `WorkbenchModel` 픽스처 팩토리 in `frontend/tests/helpers/workbench.ts` — 7국면을 한 줄로 만들 수 있게 한다
-- [ ] T005 기준선 기록 in `specs/007-unify-test-screens/design-conformance/baseline.md` — ① `cd frontend && npm run typecheck && npm test` 의 통과·실패 목록 ② **현재의 왕복 화면 전환 수** (결과 확인 → 수정 → 재실행 → 결과 확인). ②가 없으면 SC-009 를 판정할 수 없다
+- [X] T001 기록 파일 골격 3개 생성 in `specs/007-unify-test-screens/design-conformance/` — `replacement-map.md`(표 머리만) · `Workbench.md`(6축 표 머리만) · `undefined-states.md`(표 머리만)
+- [X] T002 [P] `scripts/design_baseline.py` 가 `docs/design/Workbench.dc.html` 을 추출 대상에 포함하도록 확장
+- [X] T003 [P] `docs/PENDING-HUMAN-VERIFICATION.md` 에 007 항목 2건 자리 추가 — artboard 승인 · 대조 판정
+- [X] T004 [P] 국면별 `WorkbenchModel` 픽스처 팩토리 in `frontend/tests/helpers/workbench.ts` — 7국면을 한 줄로 만들 수 있게 한다
+- [X] T005 기준선 기록 in `specs/007-unify-test-screens/design-conformance/baseline.md` — ① `cd frontend && npm run typecheck && npm test` 의 통과·실패 목록 ② **현재의 왕복 화면 전환 수** (결과 확인 → 수정 → 재실행 → 결과 확인). ②가 없으면 SC-009 를 판정할 수 없다
 
 **Checkpoint**: 기록 자리와 검사 도구 준비 완료
 
