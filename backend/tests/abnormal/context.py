@@ -19,6 +19,32 @@ from itb.llm.client import LlmUnavailableError
 
 CLOSE_TAB = [{"type": "close_tab", "id": "step-01", "label": "탭 닫기"}]
 
+SLOW_ASSERT = [
+    {
+        "type": "assertion",
+        "id": "step-01",
+        "label": "오래 기다리는 확인",
+        "timeout_ms": 30_000,
+        "assertion": {
+            "kind": "visible",
+            "target": {
+                "tag": "div",
+                "test_id": {"value": "never-appears-005", "status": "verified"},
+                "css": {"value": '[data-testid="never-appears-005"]', "status": "verified"},
+            },
+        },
+    }
+]
+"""실행이 **끝나지 않는** Step 하나 (005).
+
+동시성 시나리오(AS-043)가 필요로 하는 것은 "첫 세션이 아직 살아 있는 상태" 다.
+`CLOSE_TAB` 은 즉시 끝나므로 두 세션이 실제로는 겹치지 않았다 — 그런데도 그 시나리오가
+통과했던 이유는 종료된 세션까지 등록만으로 다음 실행을 막았기 때문이다(U-01 의 결함).
+
+005 가 그것을 고치면서 이 드라이버가 **주장한 것과 실제로 검증하던 것의 차이**가 드러났다.
+FR-043(테스트당 동시 실행 1건) 검증을 잃지 않으려면 첫 세션이 살아 있어야 한다.
+"""
+
 
 @dataclass
 class ApiContext:
@@ -96,6 +122,31 @@ class ApiContext:
                 authoring_mode="record",
                 start_url=f"{self.fixture_app}/login.html",
                 steps=CLOSE_TAB,
+            )
+        )
+        return test_id
+
+    def slow_test(self) -> str:
+        """실행이 오래 걸리는 테스트 (005).
+
+        동시성 시나리오에서 **첫 세션이 살아 있음을 보장**하기 위한 것이다.
+        """
+        import pathlib
+
+        from itb.domain.test_case import Test
+        from itb.storage.repository import ProjectRepository
+
+        root = pathlib.Path(self.client.get("/api/project").json()["root"])
+        repo = ProjectRepository.open(root)
+        existing = {t["id"] for t in self.client.get("/api/tests").json()["tests"]}
+        test_id = f"TC-{len(existing) + 1:03d}"
+        repo.write_test(
+            Test(
+                id=test_id,
+                name=f"오래 도는 {test_id}",
+                authoring_mode="record",
+                start_url=f"{self.fixture_app}/login.html",
+                steps=SLOW_ASSERT,
             )
         )
         return test_id

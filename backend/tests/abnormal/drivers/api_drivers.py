@@ -208,13 +208,31 @@ def _read_a_session_that_lost_its_browser(ctx: Any) -> Attempt:
 
 @driver("AS-043")
 def _two_sessions_for_the_same_test(ctx: Any) -> Attempt:
-    test_id = ctx.saved_test()
+    """FR-043 — 테스트당 동시 실행 1건.
+
+    **오래 도는 테스트를 쓴다** (005). 이전에는 `CLOSE_TAB` 한 Step 짜리를 써서 첫 실행이
+    즉시 끝났고, 두 세션이 실제로는 겹치지 않았다. 그런데도 이 시나리오가 통과했던 이유는
+    종료된 세션까지 **등록만으로** 다음 실행을 막았기 때문이다 — 그것이 U-01 의 결함이고,
+    사용자는 방금 끝난 실행 뒤 재실행이 항상 거절되는 것을 만났다.
+
+    005 가 판정을 살아 있는 세션으로 좁히면서 이 드라이버가 **주장한 것과 실제로 검증하던
+    것의 차이**가 드러났다. 단정(거절되어야 한다)은 그대로 두고 전제를 실제로 만든다.
+    """
+    test_id = ctx.slow_test()
     first = ctx.client.post("/api/sessions", json={"mode": "replay", "test_id": test_id})
+    assert first.status_code < 400, f"전제 실패 — 첫 세션을 만들지 못했다: {first.text}"
+    first_id = first.json()["session_id"]
+
+    # 첫 세션이 **정말 살아 있는지** 확인한다. 끝났다면 이 시나리오는 동시성을 검증하지
+    # 못하며, 그때 두 번째가 성공하는 것은 결함이 아니라 FR-124 의 의도다.
+    state = ctx.client.get(f"/api/sessions/{first_id}").json().get("state")
+    assert state in {"starting", "replaying", "paused"}, (
+        f"전제 실패 — 첫 실행이 이미 끝났다({state}). 동시성을 검증할 수 없다"
+    )
+
     second = ctx.client.post("/api/sessions", json={"mode": "replay", "test_id": test_id})
     # 두 번째가 첫 실행을 방해하지 않아야 한다 (AP-040).
-    first_alive = first.status_code < 400 and _session_usable(
-        ctx.client, first.json()["session_id"]
-    )
+    first_alive = _session_usable(ctx.client, first_id)
     return Attempt.from_response(second, preserved=first_alive)
 
 
