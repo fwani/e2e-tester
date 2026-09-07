@@ -14,6 +14,12 @@ dependencies = [
     "anthropic>=0.40",
 ]
 
+[project.optional-dependencies]
+# 개발용 드라이버 전용 (`ITB_AI_DRIVER=claude-code`). 이미 로그인된 Claude Code 로
+# AI 작성 경로를 눈으로 확인할 때만 쓴다 — 기본 경로는 이것 없이 동작한다.
+# 설치: uv sync --extra claude-code
+claude-code = ["claude-agent-sdk>=0.2.152"]
+
 [project.scripts]
 itb = "itb.cli:main"
 

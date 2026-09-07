@@ -21,6 +21,7 @@ forbidden_modules =
     itb.llm
     itb.authoring
     anthropic
+    claude_agent_sdk
 
 # ─── 헌법 원칙 I — domain 은 순수해야 한다 ──────────────────────────────────
 # 도메인 모델이 무엇도 임포트하지 않으므로 단일 Step 모델이 다른 계층에 오염되지 않는다.

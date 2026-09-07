@@ -195,8 +195,8 @@ cd backend && uv run pytest tests/unit tests/contract -q      # 30초 안팎
 
 **`lint-imports` 가 깨졌다**
 `itb.execution`(또는 `storage`·`generator`·`locator`·`domain`·`mirror`·`recording`)에서
-`itb.llm`·`itb.authoring`·`anthropic` 에 닿는 임포트가 생겼다는 뜻이다. 원칙 II 위반이므로
-런타임 가드가 아니라 **임포트를 없애서** 고친다.
+`itb.llm`·`itb.authoring`·`anthropic`·`claude_agent_sdk` 에 닿는 임포트가 생겼다는 뜻이다.
+원칙 II 위반이므로 런타임 가드가 아니라 **임포트를 없애서** 고친다.
 
 **AI 경로가 상한에 걸려 멈춘다**
 도구 호출 40회, 동일 요소 연속 실패 3회가 상한이다 (FR-066). 상한 도달은 예외가 아니라

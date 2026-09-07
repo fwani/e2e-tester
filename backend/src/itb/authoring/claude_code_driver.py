@@ -165,10 +165,16 @@ async def claude_code_driver(
                     if isinstance(block, TextBlock)
                 ]
                 yield _Message(content=blocks)
-            elif isinstance(message, ResultMessage) and message.subtype != "success":
-                reason = message.terminal_reason or message.subtype
-                msg = f"Claude Code 가 작업을 끝내지 못했습니다: {reason}"
-                raise RuntimeError(msg)
+            elif isinstance(message, ResultMessage):
+                if message.subtype != "success":
+                    reason = message.terminal_reason or message.subtype
+                    msg = f"Claude Code 가 작업을 끝내지 못했습니다: {reason}"
+                    raise RuntimeError(msg)
+                # **마지막으로 한 번 더 흘린다.** 상한·막힘 판정은 호출자가 매 메시지마다
+                # 하는데(`AuthoringAgent._drive`), 모델이 `report_blocked` 를 부른 직후
+                # 턴이 끝나면 그 뒤에 흘릴 메시지가 없다. 그러면 막힌 실행이 "끝냈다"
+                # 로 보고된다 (FR-069). 빈 메시지는 진행 알림을 만들지 않는다.
+                yield _Message()
     finally:
         close = getattr(stream, "aclose", None)
         if close is not None:

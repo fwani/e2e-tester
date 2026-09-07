@@ -7,7 +7,9 @@
 from __future__ import annotations
 
 import pathlib
+import shutil
 from collections.abc import Iterator
+from importlib.util import find_spec
 
 import pytest
 from fastapi.testclient import TestClient
@@ -99,3 +101,68 @@ def test_replay_path_does_not_import_the_llm_boundary() -> None:
     }
     assert not any(name.startswith("itb.llm") for name in module_names)
     assert not any(name.startswith("itb.authoring") for name in module_names)
+
+
+# ─── 개발용 드라이버 (ITB_AI_DRIVER=claude-code) ──────────────────────────────
+# 이 분기가 없으면 개발용 드라이버로 돌려도 화면은 "자격 증명 없음" 을 계속 보여주고
+# 버튼이 잠긴 채로 남는다 — 백엔드는 되는데 화면에서 안 되는 상태다.
+
+
+def test_claude_code_driver_ignores_api_credentials(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """개발용 드라이버가 켜져 있으면 **API 자격 증명을 보지 않는다.**
+
+    키가 하나도 없어도 `claude` 가 있으면 쓸 수 있다 — 그것이 이 스위치의 목적이다.
+    """
+    for name in CREDENTIAL_ENV:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("HOME", "/nonexistent-home-for-this-test")
+    monkeypatch.setenv("ITB_AI_DRIVER", "claude-code")
+
+    body = client.get("/api/ai/availability").json()
+
+    if shutil.which("claude") is not None and find_spec("claude_agent_sdk") is not None:
+        assert body["available"] is True
+        assert body["reason"] is None
+    else:
+        # 준비가 안 된 환경에서는 **무엇을 하면 되는지** 말해야 한다 (DR-021).
+        assert body["available"] is False
+        assert body["reason"]
+
+
+def test_claude_code_driver_reports_missing_executable(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`claude` 가 없으면 사유가 그것을 지목한다."""
+    monkeypatch.setenv("ITB_AI_DRIVER", "claude-code")
+    monkeypatch.setattr("itb.api.routes.ai.shutil.which", lambda _name: None)
+
+    body = client.get("/api/ai/availability").json()
+
+    assert body["available"] is False
+    assert "claude" in body["reason"]
+
+
+def test_claude_code_driver_shape_stays_closed(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """드라이버를 바꿔도 응답 모양은 그대로다 — REST 계약을 건드리지 않았다."""
+    monkeypatch.setenv("ITB_AI_DRIVER", "claude-code")
+
+    resp = client.get("/api/ai/availability")
+
+    assert resp.status_code == 200, resp.text
+    assert set(resp.json()) == {"available", "reason"}
+
+
+def test_unrecognised_driver_value_uses_the_default_path(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """오타는 개발용 분기를 켜지 않는다. 자격 증명을 실제로 해석해야 한다."""
+    monkeypatch.setenv("ITB_AI_DRIVER", "claude_code")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-placeholder-for-resolution-only")
+
+    body = client.get("/api/ai/availability").json()
+
+    assert body["available"] is True

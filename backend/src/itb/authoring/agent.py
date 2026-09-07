@@ -3,6 +3,11 @@
 `client.beta.messages.tool_runner(...)` 를 `async for` 로 돈다. 루프를 직접 짜지 않는다 —
 직접 짜서 얻을 것이 없고, 개입 지점은 `async for` 본문에서 확보된다.
 
+**드라이버는 갈아 끼울 수 있다** (`select_driver`). 기본은 위의 Messages API 이고,
+`ITB_AI_DRIVER=claude-code` 는 이미 로그인된 Claude Code 로 도는 **개발용** 경로다
+(`claude_code_driver`). 이 본문은 어느 쪽이든 그대로 돈다 — 드라이버가 다루는 것은
+"다음에 무엇을 할지 정하는 판단" 뿐이고, 상한·막힘 판정은 여기가 소유한다.
+
 **하드 루프 카운터가 1차 방어선이다** (FR-066). 도구 호출 총 상한과 동일 요소 연속 실패
 상한을 `BrowserToolbox` 가 세고, 상한에 닿으면 예외로 루프를 끊는다. 모델에게 페이스
 조절을 맡기는 장치(task budget)는 권고적이며 이것을 대체하지 못한다.
@@ -19,6 +24,7 @@ Step 목록을 건드리지 않는다 — 목록은 세션이 소유하고, 확�
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
@@ -118,8 +124,9 @@ def select_driver() -> tuple[Driver, ToolBuilder]:
     인식하지 못한 값은 기본으로 떨어진다 — 오타가 조용히 개발용 경로를 켜면, 개발자는
     자기가 무엇을 보고 있는지 모른 채 결과를 품질 근거로 쓴다.
 
-    `_sdk_driver` 를 **모듈 전역으로 읽는다.** 테스트가 그 이름 하나를 monkeypatch 해서
-    자격 증명 없이 AI 경로 전체를 검증하기 때문이다 (`backend/tests/us4_support.py`).
+    `_sdk_driver` 를 **모듈 전역으로 읽는다.** 검증이 그 이름 하나만 갈아 끼워서 자격
+    증명 없이 AI 경로 전체를 확인하기 때문이다 (`backend/tests/us4_support.py`). 이 함수가
+    임포트 시점에 전역을 붙잡아 두면 그 방식이 조용히 멈춘다.
     """
     if os.environ.get(DRIVER_ENV, "").strip() == DRIVER_CLAUDE_CODE:
         from itb.authoring.claude_code_driver import claude_code_driver  # noqa: PLC0415
@@ -217,6 +224,7 @@ class AuthoringAgent:
             )
 
         stopped: str | None = None
+        iterator: AsyncIterator[Any] | None = None
         try:
             iterator = driver(tools, self.messages, self.config)
             async for message in iterator:
@@ -251,6 +259,17 @@ class AuthoringAgent:
                 step_count=self._count(),
                 tool_calls=self.toolbox.limits.calls,
             )
+        finally:
+            # 상한·막힘으로 `break` 하면 루프가 다 돌지 않은 채 나온다. 그때 드라이버가
+            # 쥔 것을 **여기서 놓는다** — 개발용 드라이버는 `claude` 프로세스를 띄우므로,
+            # 수거를 가비지 컬렉터에 맡기면 개발 중 프로세스가 쌓인다.
+            # `_sdk_driver` 의 반복자에는 `aclose` 가 없다 (무해한 no-op).
+            close = getattr(iterator, "aclose", None)
+            if close is not None:
+                # 수거 실패가 결과를 덮지 않게 삼킨다. `CancelledError` 는 `Exception` 이
+                # 아니므로 여기서 삼켜지지 않는다 — 취소는 그대로 올라가야 한다 (FR-065).
+                with contextlib.suppress(Exception):
+                    await close()
 
         if stopped is not None:
             return AgentOutcome(
