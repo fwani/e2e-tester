@@ -23,7 +23,21 @@ type Screen =
   | { name: "setup" }
   | { name: "list" }
   | { name: "create" }
-  | { name: "runner"; session: SessionView; aiInstruction?: string | null }
+  | {
+      name: "runner";
+      session: SessionView;
+      aiInstruction?: string | null;
+      /**
+       * 이 세션이 끝나면 돌아갈 편집 화면 (006 FR-204 · converge T094).
+       *
+       * 편집 화면에서 「브라우저 열어 Step nn 에서 멈추기」로 출발한 경우에만 있다.
+       * 없으면 목록으로 간다 — 실행 버튼으로 시작한 세션은 돌아갈 편집 화면이 없다.
+       *
+       * **왜 필요한가**: 편집하다 브라우저를 열었는데 끝나고 목록에 떨어지면 사용자는
+       * 자기가 출발한 화면을 잃는다. 고치던 Step 을 다시 찾아 들어가야 한다.
+       */
+      returnToEdit?: { testId: string; stepId: string | null } | null;
+    }
   /** AI 지시문 작성. 확정 디자인이 독립 artboard 로 정의한다 (DC-008). */
   | { name: "ai-compose"; startUrl: string }
   | { name: "result"; testId: string }
@@ -178,13 +192,24 @@ export function App() {
    * 도달한 뒤의 편집은 지금의 일시정지 팔레트 그대로다 — 새 편집 UI 를 만들지 않는다
    * (FR-205).
    */
-  const openBrowserAt = (testId: string, stepIndex: number) => {
+  const openBrowserAt = (
+    testId: string,
+    stepIndex: number,
+    stepId: string | null = null,
+  ) => {
     if (pendingRun !== null) return;
     setPendingRun(testId);
     setError(null);
     void sessions
       .create({ mode: "replay", test_id: testId, pause_before_index: stepIndex })
-      .then((session) => setScreen({ name: "runner", session }))
+      .then((session) =>
+        setScreen({
+          name: "runner",
+          session,
+          // 006 FR-204 — 끝나면 출발한 편집 화면으로 돌아온다.
+          returnToEdit: { testId, stepId },
+        }),
+      )
       .catch((exc: unknown) => setError(describeError(exc)))
       .finally(() => setPendingRun(null));
   };
@@ -281,7 +306,9 @@ export function App() {
           testId={screen.testId}
           focusStepId={screen.focusStepId ?? null}
           onRun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
-          onOpenBrowserAt={openBrowserAt}
+          onOpenBrowserAt={(testId, stepIndex, stepId) =>
+            openBrowserAt(testId, stepIndex, stepId)
+          }
           onOpenSession={openSession}
           onBack={() => setScreen({ name: "list" })}
         />
@@ -327,7 +354,23 @@ export function App() {
         <SessionScreen
           initial={screen.session}
           aiInstruction={screen.aiInstruction ?? null}
-          onFinished={() => setScreen({ name: "list" })}
+          /*
+            006 FR-204 — 편집 화면에서 출발한 세션은 그 화면으로 돌아온다. 편집 화면은
+            마운트마다 `GET /definition` 을 다시 읽으므로 세션에서 저장한 내용이 반영된
+            상태로 보인다.
+          */
+          onFinished={() => {
+            const back = screen.returnToEdit;
+            setScreen(
+              back
+                ? {
+                    name: "definition",
+                    testId: back.testId,
+                    focusStepId: back.stepId,
+                  }
+                : { name: "list" },
+            );
+          }}
           onShowResult={(testId) => setScreen({ name: "result", testId })}
           onRerun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
         />

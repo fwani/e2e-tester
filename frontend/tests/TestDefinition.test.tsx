@@ -296,7 +296,8 @@ describe("브라우저가 필요한 편집 (US3 · FR-202·FR-203)", () => {
     ).toBeTruthy();
     const button = screen.getByText("브라우저 열어 Step 02 에서 멈추기");
     act(() => button.click());
-    expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1);
+    // 세션이 끝난 뒤 이 Step 으로 돌아오기 위해 id 도 함께 넘긴다 (FR-204).
+    expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1, "step-02");
   });
 
   it("저장하지 않은 변경이 있으면 먼저 저장한 뒤 세션을 연다 (FR-203)", async () => {
@@ -312,7 +313,9 @@ describe("브라우저가 필요한 편집 (US3 · FR-202·FR-203)", () => {
     expect(screen.getByText(/먼저 저장해야 합니다/)).toBeTruthy();
 
     act(() => screen.getByText("저장하고 열기").click());
-    await waitFor(() => expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1));
+    await waitFor(() =>
+      expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1, "step-02"),
+    );
     // 저장이 먼저 나갔다 — 두 경로가 같은 Step 을 다르게 들고 있지 않다.
     expect(calls.some((c) => c.method === "PUT")).toBe(true);
   });

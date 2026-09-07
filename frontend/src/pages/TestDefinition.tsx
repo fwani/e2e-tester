@@ -61,8 +61,18 @@ export interface TestDefinitionProps {
   focusStepId?: string | null;
   onBack: () => void;
   onRun?: (testId: string, fromStepIndex?: number) => void;
-  /** 브라우저 편집 세션을 연다 (FR-200). 지정한 Step 직전에서 멈춘다. */
-  onOpenBrowserAt?: (testId: string, stepIndex: number) => void;
+  /**
+   * 브라우저 편집 세션을 연다 (FR-200). 지정한 Step 직전에서 멈춘다.
+   *
+   * `stepId` 를 함께 넘기는 이유는 세션이 끝난 뒤 **이 화면의 이 Step 으로** 돌아오기
+   * 위해서다 (FR-204). 인덱스가 아니라 id 로 넘긴다 — 세션에서 Step 을 지우거나 순서를
+   * 바꿨으면 인덱스는 다른 Step 을 가리킨다.
+   */
+  onOpenBrowserAt?: (
+    testId: string,
+    stepIndex: number,
+    stepId: string | null,
+  ) => void;
   /** 실행 중이라는 안내가 가리킨 세션으로 이동한다 (005 FR-126). */
   onOpenSession?: (sessionId: string) => void;
 }
@@ -279,8 +289,8 @@ export function TestDefinition({
   };
 
   const openBrowserHere = () => {
-    if (currentIndex < 0 || onOpenBrowserAt === undefined) return;
-    onOpenBrowserAt(testId, currentIndex);
+    if (current === null || currentIndex < 0 || onOpenBrowserAt === undefined) return;
+    onOpenBrowserAt(testId, currentIndex, current.id);
   };
 
   return (
@@ -629,22 +639,43 @@ export function TestDefinition({
               }
             />
 
+            {/*
+              FR-191 — 잠긴 대상은 **모두** 이유를 밝힌다. 서버가 `locked_fields` 로 세
+              가지(`target`·`drop_target`·`assertion.target`)를 보내는데 화면이 하나만
+              쓰면, `drag`·`assertion` Step 을 고른 사용자는 왜 못 고치는지 알 수 없다
+              (converge T095).
+            */}
             {"target" in current && (
               <div style={{ marginTop: 14 }}>
                 <LocatorPriorityTable
                   target={current.target}
                   title={current.type === "drag" ? "끄는 대상" : "대상 요소"}
                 />
+                <p className="dim" style={{ fontSize: 11.5, margin: "4px 0 0" }}>
+                  {lockedFieldNotice(
+                    lockedReason("steps[].target") ?? "live_browser_required",
+                  )}
+                </p>
               </div>
             )}
             {current.type === "drag" && (
               <div style={{ marginTop: 12 }}>
                 <LocatorPriorityTable target={current.drop_target} title="놓는 위치" />
+                <p className="dim" style={{ fontSize: 11.5, margin: "4px 0 0" }}>
+                  {lockedFieldNotice(
+                    lockedReason("steps[].drop_target") ?? "live_browser_required",
+                  )}
+                </p>
               </div>
             )}
             {current.type === "assertion" && current.assertion.target && (
               <div style={{ marginTop: 12 }}>
                 <LocatorPriorityTable target={current.assertion.target} title="검증 대상" />
+                <p className="dim" style={{ fontSize: 11.5, margin: "4px 0 0" }}>
+                  {lockedFieldNotice(
+                    lockedReason("steps[].assertion.target") ?? "live_browser_required",
+                  )}
+                </p>
               </div>
             )}
 
@@ -660,10 +691,8 @@ export function TestDefinition({
               }}
             >
               <p className="dim" style={{ fontSize: 11.5, margin: 0 }}>
-                {lockedFieldNotice(
-                  lockedReason("steps[].target") ?? "live_browser_required",
-                )}{" "}
-                직접 조작으로 Step 추가·자연어 추가·검증 추가도 같습니다.
+                요소 다시 집기, 직접 조작으로 Step 추가, 자연어로 Step 추가, 검증 추가는
+                살아 있는 화면에서만 됩니다.
               </p>
               {onOpenBrowserAt && (
                 <div style={{ marginTop: 8 }}>
