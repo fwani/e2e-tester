@@ -145,7 +145,10 @@ def test_attempted_of_full_pass_is_total() -> None:
     assert attempted_of(ALL_PASS) == len(ALL_PASS)
 
 
-@pytest.mark.parametrize(("start", "expected"), [(0, RunScope.FULL), (1, RunScope.PARTIAL), (5, RunScope.PARTIAL)])
+@pytest.mark.parametrize(
+    ("start", "expected"),
+    [(0, RunScope.FULL), (1, RunScope.PARTIAL), (5, RunScope.PARTIAL)],
+)
 def test_scope_from_start_index(start: int, expected: RunScope) -> None:
     assert scope_of(start) is expected
 

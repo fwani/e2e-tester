@@ -154,7 +154,10 @@ def passing_steps() -> list[Step]:
     ]
 
 
-def failing_test(test_id: str = "TC-901", start_url: str = "http://127.0.0.1:4300/login.html") -> Test:
+def failing_test(
+    test_id: str = "TC-901",
+    start_url: str = "http://127.0.0.1:4300/login.html",
+) -> Test:
     """TC-FAIL — Step 06 에서 반드시 실패한다."""
     return Test(
         id=test_id,
@@ -165,7 +168,10 @@ def failing_test(test_id: str = "TC-901", start_url: str = "http://127.0.0.1:430
     )
 
 
-def passing_test(test_id: str = "TC-902", start_url: str = "http://127.0.0.1:4300/login.html") -> Test:
+def passing_test(
+    test_id: str = "TC-902",
+    start_url: str = "http://127.0.0.1:4300/login.html",
+) -> Test:
     """TC-PASS — 항상 통과한다."""
     return Test(
         id=test_id,

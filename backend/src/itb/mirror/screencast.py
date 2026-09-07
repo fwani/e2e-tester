@@ -276,7 +276,10 @@ class TabScreencast:
                 await self._shoot_once()
             except asyncio.CancelledError:
                 raise
-            except Exception:  # noqa: BLE001 - 미러 실패는 실행에 영향을 주지 않는다
+            # BLE001·S112 — 미러 실패는 실행에 영향을 주지 않는다 (FR-047b). 사유를
+            # 남기지 않는 것도 의도다: 찍히지 않는 화면은 매 주기 같은 예외를 내므로
+            # 로그를 채워 정작 봐야 할 실행 로그를 밀어낸다.
+            except Exception:  # noqa: BLE001, S112
                 continue
 
     async def _shoot_once(self) -> bool:

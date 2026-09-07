@@ -101,7 +101,8 @@ def test_partial_run_denominator_excludes_skipped(
 
         skipped = [s for s in result["steps"] if s["outcome"] == "skipped"]
         assert len(skipped) == last_index, (
-            f"앞선 {last_index}개가 건너뜀으로 기록되지 않았다: {[s['outcome'] for s in result['steps']]}"
+            f"앞선 {last_index}개가 건너뜀으로 기록되지 않았다: "
+            f"{[s['outcome'] for s in result['steps']]}"
         )
         assert result["attempted_count"] == result["total_count"] - len(skipped)
         assert result["attempted_count"] < result["total_count"], (
