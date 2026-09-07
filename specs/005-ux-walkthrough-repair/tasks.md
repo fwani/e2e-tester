@@ -303,8 +303,8 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 - [X] T105 [P] 프론트에서 결말을 읽는 모든 분기가 4값을 다루는지 확인한다 — `outcome === "fail"` 로만 갈리는 곳을 `switch` 로 바꿔 타입 검사가 누락을 잡게 한다 (plan 위험표)
 - [X] T106 [P] 알 수 없는 결말 값을 만난 프론트가 `fail` 로 취급하는지 확인하는 테스트를 `frontend/tests/UnknownOutcome.test.ts` 에 추가한다 (data-model.md §1 보수적 기본값)
 - [X] T107 [P] `docs/DEVELOPMENT.md` 에 결말 4값과 스키마 재생성 순서를 적는다. 미러 무프레임 감시가 정상 동작임을 한 줄 남긴다
-- [ ] T108 `backend` 전체 테스트와 스키마 드리프트를 돌린다 — `uv run pytest` · `uv run python -m itb.schema.export && git diff --exit-code schema/`
-- [ ] T109 `frontend` 전체 테스트를 돌린다 — `npm run gen:types && npm test`
+- [X] T108 `backend` 전체 테스트와 스키마 드리프트를 돌린다 — `uv run pytest` · `uv run python -m itb.schema.export && git diff --exit-code schema/`
+- [X] T109 `frontend` 전체 테스트를 돌린다 — `npm run gen:types && npm test`
 - [ ] T110 [quickstart.md](./quickstart.md) §2 의 S1~S8 을 사람이 직접 걸어 **상 9건 재발 여부**를 확인한다. 하나라도 재발하면 U 번호를 들어 남은 작업으로 등록한다 (SC-221)
 - [X] T111 quickstart.md §3 의 기존 성질 8개가 유지되는지 확인한다 — 특히 재실행 경로에 언어모델 없음(원칙 II), 일시정지가 브라우저 상태 유지(원칙 III), 미러가 입력 전달 없음(FR-047a)
 
