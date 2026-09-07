@@ -50,6 +50,13 @@ EXECUTION_EVENT_KEYS = {
         "passed_count",
         "total_count",
         "failed_step_index",
+        # 005 (T037·T104) — 화면이 요약을 **스스로 조립하지 않게** 하는 네 값이다.
+        # 분모가 `total_count` 면 5개를 건너뛴 부분 실행이 `0 / 7` 로 보이고(U-02),
+        # `stopped_step_index` 가 없으면 어디서 멈췄는지 말할 수 없다.
+        "attempted_count",
+        "scope",
+        "start_index",
+        "stopped_step_index",
     },
 }
 """contracts/websocket.md §실행 이벤트 의 페이로드."""

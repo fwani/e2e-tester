@@ -42,7 +42,7 @@ import { StepInspector } from "./StepInspector";
 import { TabStrip } from "../components/TabStrip";
 import type { StepOutcome } from "../components/design/DesignStepList";
 import type { Step } from "../types/generated/step";
-import type { Outcome } from "../types/generated/run-result";
+import type { Outcome, StepOutcome as RunStepOutcome } from "../types/generated/run-result";
 import { AiRecord, type AiBlockedState } from "./AiRecord";
 import { PacingControl } from "../components/PacingControl";
 import { Runner } from "./Runner";
@@ -74,7 +74,15 @@ const REVIEW_STATE = "review";
 const SAVEABLE_WITHOUT_BROWSER = new Set([REVIEW_STATE, "lost"]);
 
 interface StepProgress {
-  outcome?: "pass" | "fail";
+  /**
+   * 이벤트로 확정된 Step 결말 (005 FR-151).
+   *
+   * **네 값 전부를 받는다.** 이전에는 `"pass" | "fail"` 로 좁혀 두고 이벤트 값을 그리로
+   * 단언(`as`)했다. 런타임 값은 그대로 흘렀지만 타입이 거짓말을 해서, 실행 중 화면이
+   * `skipped` 를 다루는지 타입 검사가 물어보지 않았다 — 건너뜀과 미실행을 구분해야
+   * 하는 화면에서(U-21) 그 침묵은 위험하다.
+   */
+  outcome?: RunStepOutcome;
   durationMs?: number;
 }
 
@@ -195,7 +203,7 @@ export function SessionScreen({
             durations.current[stepId] = durationMs;
             setProgress((prev) => ({
               ...prev,
-              [stepId]: { outcome: event.outcome as "pass" | "fail", durationMs },
+              [stepId]: { outcome: event.outcome as RunStepOutcome, durationMs },
             }));
             setRunningIndex(null);
             break;

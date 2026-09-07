@@ -79,7 +79,15 @@ cd backend && uv run python -m itb.schema.export
 cd ../frontend && npm run gen:types
 ```
 
-어기면 `tests/contract/test_schema_drift.py` 가 실패한다.
+어기면 `tests/contract/test_schema_drift.py` 가 실패한다. 드리프트 검사는 **권위 정의에서
+스키마 파일까지**만 본다 — 프론트 타입 생성물이 낡았는지는
+`tests/contract/test_run_outcome_contract.py` 가 본다. 둘 다 있어야 양쪽 끝이 맞는다.
+
+화면 쪽 어휘는 `frontend/src/lib/wording.ts` 한 곳에서 나온다. 결말 문장·칩·색 역할·
+Step 번호 변환이 전부 여기 있고, **알 수 없는 값은 실패로 취급한다**(보수적 기본값) —
+통과로 보이면 사용자가 확인하지 않고 넘어가기 때문이다. 사전 밖에서 어휘를 만들지
+않는지는 `frontend/tests/OutcomeVocabulary.test.tsx` 와
+`frontend/tests/StepNumberConsistency.test.tsx` 가 원문을 훑어 확인한다.
 
 ### 암호구로 잠근 비밀키
 

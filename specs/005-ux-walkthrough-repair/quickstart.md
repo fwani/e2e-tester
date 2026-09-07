@@ -167,16 +167,29 @@ cd frontend && npm run gen:types && npm test
 이 기능은 동작하는 제품을 고친다. 아래는 **깨지면 안 되는 기존 성질**이며, 각각 기존
 테스트가 있다.
 
-| 성질 | 근거 |
-|---|---|
-| 재실행 경로에 언어모델이 없다 | 헌법 원칙 II. 새 진단 문구는 전부 규칙 기반이다 |
-| 일시정지가 브라우저 상태를 유지한다 | 헌법 원칙 III. 경계 대기 로직을 바꾸지 않는다 |
-| 테스트당 동시 실행 1건 | FR-043. 이 기능은 그것을 **지키기 위한** 수정이다 |
-| 중지가 화면을 떠나지 않는다 | DR-010. 결말 화면으로 남기되 화면 전환은 하지 않는다 |
-| 미러가 입력을 전달하지 않는다 | FR-047a. 송신 쪽만 만진다 |
-| 미러 실패가 실행에 무영향 | FR-047b |
-| 저장된 정의에 속도가 기록되지 않는다 | 004 FR-110 |
-| Step 간 간격이 대기 예산에 포함되지 않는다 | 004 FR-105 |
+**T111 에서 성질마다 지키는 테스트를 확인해 적었다.** 아래 한 줄로 여덟 개를 함께 돌린다.
+
+```bash
+cd backend && uv run pytest \
+  tests/integration/test_replay_no_llm.py \
+  tests/integration/test_pause_resume.py \
+  tests/integration/test_rerun_after_finish.py \
+  tests/integration/test_stop_then_save.py \
+  tests/unit/test_mirror_frame_delivery.py \
+  tests/contract/test_dsl_roundtrip.py \
+  tests/unit/test_runner_pacing.py -q
+```
+
+| 성질 | 근거 | 지키는 테스트 |
+|---|---|---|
+| 재실행 경로에 언어모델이 없다 | 헌법 원칙 II. 새 진단 문구는 전부 규칙 기반이다 | `integration/test_replay_no_llm.py::test_replay_never_constructs_an_llm_client` |
+| 일시정지가 브라우저 상태를 유지한다 | 헌법 원칙 III. 경계 대기 로직을 바꾸지 않는다 | `integration/test_pause_resume.py::test_pause_keeps_browser_session_and_screen` · `::test_resume_reuses_the_same_browser` |
+| 테스트당 동시 실행 1건 | FR-043. 이 기능은 그것을 **지키기 위한** 수정이다 | `integration/test_rerun_after_finish.py::test_concurrent_create_yields_exactly_one_session` · `::test_asyncio_gather_create_is_also_serialized` |
+| 중지가 화면을 떠나지 않는다 | DR-010. 결말 화면으로 남기되 화면 전환은 하지 않는다 | `integration/test_stop_then_save.py::test_stop_keeps_the_recording_and_save_succeeds` · `::test_steps_can_be_edited_after_stop` |
+| 미러가 입력을 전달하지 않는다 | FR-047a. 송신 쪽만 만진다 | `unit/test_mirror_frame_delivery.py::test_allowed_commands_are_exactly_three` · `::test_mirror_module_does_not_import_input_domain` |
+| 미러 실패가 실행에 무영향 | FR-047b | `unit/test_mirror_frame_delivery.py::test_screenshot_failure_does_not_raise` |
+| 저장된 정의에 속도가 기록되지 않는다 | 004 FR-110 | `contract/test_dsl_roundtrip.py` §004 (Step DSL 스키마에 속도 개념 없음) |
+| Step 간 간격이 대기 예산에 포함되지 않는다 | 004 FR-105 | `unit/test_runner_pacing.py` |
 
 ---
 
