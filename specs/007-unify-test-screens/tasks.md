@@ -351,3 +351,11 @@ Task: "replacement-map.md"
 - [X] T094 뒤로 가기 회귀 검사 in `frontend/tests/ScreenUrl.test.ts` per FR-241 · 005 FR-167 (missing) — `popstate` 가 `src/hooks/useScreenUrl.ts` 에만 있고 검사가 없다. **변환만 재는 검사는 이 결함을 못 잡는다** — 005 N-01 이 정확히 「변환은 옳은데 첫 렌더의 화면이 틀린」 형태였다. 뒤로 가기가 앱 안의 이전 국면으로 돌아가고 `about:blank` 로 이탈하지 않는지 센다
 - [X] T095 판정 모듈이 규칙만으로 이루어짐을 검사 in `frontend/tests/DeterministicPhase.test.ts` (신설) per FR-251 · Constitution II (missing) — `lib/phase.ts`·`lib/capabilities.ts`·`lib/actions.ts` 가 값 임포트를 갖지 않고(타입만) 언어모델·네트워크를 부르지 않는지 원문으로 센다. 지금 실제로 그러하나 **그 성질을 지키는 것이 없다** — 백엔드의 `lint-imports` 가 하는 일을 화면 쪽 판정 모듈에 대해 하는 것이다
 - [X] T096 W-6 을 사람 판정 항목으로 등록 in `docs/PENDING-HUMAN-VERIFICATION.md` per quickstart W-6 · FR-253 (missing) — 걷기에서 **확인 불가(환경)** 로 남았다. 자격 증명이 없어 AI 작성 국면에 도달할 수 없었고, 제품이 누르기 전에 그 사실을 말하는 것(AP-003)까지가 관측의 전부다. 준비물(`AiFailureVisible.test.tsx` 가 다섯 세션 상태를 이미 센다)과 남은 것(실브라우저에서 실제 실패를 만들었을 때도 같은가)을 적는다
+
+---
+
+## Phase 9: Convergence (2회차)
+
+1회차의 5건은 전부 닫혔다. 2회차가 찾은 것은 하나이며 **판정 주체**에 관한 것이다.
+
+- [X] T097 SC-008 을 사람 재확인 항목으로 등록 in `docs/PENDING-HUMAN-VERIFICATION.md` per SC-008 (missing) — 걷기(`docs/ux/ux-walkthrough-007.md`)는 **구현자가** 걸었고 「지금 무엇을 할 수 있는지 몰랐다 / 화면이 바뀌어 보던 것을 잃었다 0건」도 구현자의 판정이다. 이 저장소의 규칙은 그것을 검증으로 세지 않는다 (`PENDING-HUMAN-VERIFICATION.md` 서문 · 002 T099 · 001 T156 이 같은 이유로 열려 있다). 005 T124(「상」 9건 재확인)와 같은 형태로 등록한다 — 무엇을 다시 걷는지, 판정 값이 무엇인지, 구현자의 관측이 무엇이었는지
