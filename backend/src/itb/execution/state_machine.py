@@ -211,6 +211,20 @@ _TRANSITIONS: dict[SessionState, dict[Command, SessionState]] = {
         Command.SAVE: SessionState.PAUSED,
         Command.STOP: SessionState.REVIEW,
         Command.SESSION_LOST: SessionState.LOST,
+        # 005 FR-146 에 관한 결정 — **여기에 `FINISH_*` 를 넣지 않는다.**
+        #
+        # 처음에는 "결말이 일시정지를 이긴다" 로 보고 `PAUSED → COMPLETED/FAILED` 전이를
+        # 더했다. 불변식 1 테스트가 그것을 거절했고, 그 거절이 옳다 —
+        # `PAUSED` 에서 브라우저 세션은 절대 종료되지 않는다 (FR-032, 헌법 원칙 III).
+        # 실행이 끝났다고 해서 사용자가 고쳐서 다시 돌릴 세션을 빼앗을 이유가 없다.
+        #
+        # 문제의 정체는 전이가 아니라 **두 축을 한 값으로 읽은 것**이었다. 실행 결말과
+        # 세션 상태는 다른 축이다 — 실행은 끝났고(결말 있음), 세션은 일시정지다(브라우저
+        # 살아 있음, 편집 가능). U-04 가 본 "PAUSED 배지와 FAIL 요약이 동시에" 는 사실
+        # 둘 다 참이었고, 화면이 그 관계를 설명하지 않은 것이 결함이었다.
+        #
+        # 그래서 FR-146 은 화면에서 이행한다 — "멈추기 전에 실행이 끝났습니다" 를 말하고
+        # 실패 사유·결과 보기 경로를 붙이며 낡은 전이 안내를 걷는다.
     },
     # 불변식 5 — 유실 후에는 저장만 허용한다. 이어서 실행·편집은 불가하다.
     SessionState.REVIEW: {

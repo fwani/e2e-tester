@@ -144,22 +144,22 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Tests for User Story 3
 
-- [ ] T048 [P] [US3] `backend/tests/integration/test_pause_transition.py` — 오래 걸리는 Step 중 pause 요청 시 세션 뷰의 `pause_settled` 가 `false` 이고, 경계 도달 후 `true` 가 되는지 단정한다 (FR-142)
-- [ ] T049 [P] [US3] 같은 파일에서 전이 중 실행이 끝나면 응답 `state` 가 `paused` 가 아니라 종료 상태인지 단정한다 — **결말이 일시정지를 이긴다** (FR-146, research R7)
-- [ ] T050 [P] [US3] `frontend/tests/PauseTransition.test.tsx` — pause 응답 지연 중 전이 배지·즉시 안내 문구가 보이고, Step 편집 팔레트가 열려 있지 않으며, 「중지」가 활성인지 단정한다 (FR-142·FR-143·FR-144). T003 헬퍼를 쓴다
-- [ ] T051 [P] [US3] `frontend/tests/TerminalControls.test.tsx` — 종료 상태에서 「중지」가 아니라 「닫기」이고 강조가 없으며, 결과 접근을 끊는 조작에 확인이 붙는지 단정한다 (FR-147·FR-148·SC-220)
+- [X] T048 [P] [US3] `backend/tests/integration/test_pause_transition.py` — 오래 걸리는 Step 중 pause 요청 시 세션 뷰의 `pause_settled` 가 `false` 이고, 경계 도달 후 `true` 가 되는지 단정한다 (FR-142)
+- [X] T049 [P] [US3] 같은 파일에서 전이 중 실행이 끝나면 응답 `state` 가 `paused` 가 아니라 종료 상태인지 단정한다 — **결말이 일시정지를 이긴다** (FR-146, research R7)
+- [X] T050 [P] [US3] `frontend/tests/PauseTransition.test.tsx` — pause 응답 지연 중 전이 배지·즉시 안내 문구가 보이고, Step 편집 팔레트가 열려 있지 않으며, 「중지」가 활성인지 단정한다 (FR-142·FR-143·FR-144). T003 헬퍼를 쓴다
+- [X] T051 [P] [US3] `frontend/tests/TerminalControls.test.tsx` — 종료 상태에서 「중지」가 아니라 「닫기」이고 강조가 없으며, 결과 접근을 끊는 조작에 확인이 붙는지 단정한다 (FR-147·FR-148·SC-220)
 
 ### Implementation for User Story 3
 
-- [ ] T052 [US3] `backend/src/itb/execution/state_machine.py` 의 전이표에 `PAUSED + FINISH_PASS/FINISH_FAIL` 을 허용한다. 전이 중 실행 종료가 결말 상태로 가야 한다 (FR-146, research R7)
-- [ ] T053 [US3] `backend/src/itb/api/routes/sessions.py` 의 `pause` 가 `pause_settled` 를 뷰에 싣게 하고, 러너 종료가 일시정지를 이기는 순서를 명시한다 (FR-142·FR-146)
-- [ ] T054 [US3] `frontend/src/pages/SessionScreen.tsx` 에 전이 상태를 넣는다 — 요청 직후 낙관적으로 켜고 응답의 `pause_settled` 로 확정한다. 응답 실패 시에도 전이 표시를 걷는다 (FR-142, plan 위험표)
-- [ ] T055 [US3] 전이 중 표시를 ui-contract §7 대로 구성한다 — 배지 `일시정지 중…`, `현재 Step 이 끝나면 멈춥니다` **즉시** 표시, 남은 대기 시간 (FR-142·FR-145)
-- [ ] T056 [US3] 전이 중 Step 편집 팔레트를 열지 않고 `정지되면 편집할 수 있습니다` 를 대신 보여준다 (FR-143)
-- [ ] T057 [US3] 전이 중에도 「중지」를 활성으로 유지한다. 나머지 컨트롤만 비활성 (FR-144)
-- [ ] T058 [US3] 전이 중 실행이 끝난 경우의 표시를 만든다 — 배지를 결말로 바꾸고 `멈추기 전에 실행이 끝났습니다` 와 실패 사유·「결과 자세히 보기」를 붙이고 낡은 전이 안내를 지운다 (FR-146)
-- [ ] T059 [US3] `frontend/src/pages/SessionScreen.tsx` 의 종료 후 버튼을 「닫기」로 바꾼다 — 라벨·위치·강조를 실행 중 「중지」와 구분한다. 중지 요청 중에는 `중지 중…` 전이 상태를 준다 (FR-147, ui-contract §6)
-- [ ] T060 [US3] 세션 정리가 결과 접근을 끊을 수 있으면 확인을 붙인다 — ui-contract §6-3 문구 (FR-148)
+- [X] T052 [US3] ~~전이표에 `PAUSED + FINISH_*` 를 허용한다~~ → **하지 않기로 결정했다.** 불변식 1 테스트(`test_session_held_states_do_not_auto_terminate`)가 거절했고 그 거절이 옳다 — `PAUSED` 에서 브라우저 세션은 종료되지 않는다(FR-032, 헌법 원칙 III). 실행 결말과 세션 상태는 다른 축이며, FR-146 은 화면에서 이행했다(T058). 결정 근거를 `state_machine.py` 의 `PAUSED` 항목에 남겼다
+- [X] T053 [US3] `backend/src/itb/api/routes/sessions.py` 의 `pause` 가 `pause_settled` 를 뷰에 싣게 하고, 러너 종료가 일시정지를 이기는 순서를 명시한다 (FR-142·FR-146)
+- [X] T054 [US3] `frontend/src/pages/SessionScreen.tsx` 에 전이 상태를 넣는다 — 요청 직후 낙관적으로 켜고 응답의 `pause_settled` 로 확정한다. 응답 실패 시에도 전이 표시를 걷는다 (FR-142, plan 위험표)
+- [X] T055 [US3] 전이 중 표시를 ui-contract §7 대로 구성한다 — 배지 `일시정지 중…`, `현재 Step 이 끝나면 멈춥니다` **즉시** 표시, 남은 대기 시간 (FR-142·FR-145)
+- [X] T056 [US3] 전이 중 Step 편집 팔레트를 열지 않고 `정지되면 편집할 수 있습니다` 를 대신 보여준다 (FR-143)
+- [X] T057 [US3] 전이 중에도 「중지」를 활성으로 유지한다. 나머지 컨트롤만 비활성 (FR-144)
+- [X] T058 [US3] 전이 중 실행이 끝난 경우의 표시를 만든다 — 배지를 결말로 바꾸고 `멈추기 전에 실행이 끝났습니다` 와 실패 사유·「결과 자세히 보기」를 붙이고 낡은 전이 안내를 지운다 (FR-146)
+- [X] T059 [US3] `frontend/src/pages/SessionScreen.tsx` 의 종료 후 버튼을 「닫기」로 바꾼다 — 라벨·위치·강조를 실행 중 「중지」와 구분한다. 중지 요청 중에는 `중지 중…` 전이 상태를 준다 (FR-147, ui-contract §6)
+- [X] T060 [US3] 세션 정리가 결과 접근을 끊을 수 있으면 확인을 붙인다 — ui-contract §6-3 문구 (FR-148)
 
 **Checkpoint**: 화면이 아직 아닌 것을 됐다고 말하지 않는다
 
@@ -178,7 +178,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 - [ ] T061 [P] [US4] `backend/tests/integration/test_partial_run_result.py` — 부분 실행 후 `scope == "partial"`·`start_index` 가 저장되고, `result-full.json` 의 이전 전체 실행이 **덮이지 않는지** 단정한다 (FR-152·U-02)
 - [ ] T062 [P] [US4] 같은 파일에서 요약 분모가 `attempted_count` 인지 단정한다 — 5개를 건너뛴 부분 실행이 `0 / 7` 이 아니라 `0 / 2` 다 (FR-152)
 - [ ] T063 [P] [US4] `backend/tests/unit/test_partial_diagnosis.py` — 부분 실행에서 요소를 찾지 못한 실패의 진단 첫 줄이 선행 Step 건너뜀을 먼저 지시하는지, 그 함수가 **순수 함수이며 언어모델을 부르지 않는지** 단정한다 (FR-153, 헌법 원칙 II)
-- [ ] T064 [P] [US4] `frontend/tests/SkippedVsNotRun.test.tsx` — `skipped` 와 `not_run` 이 서로 다른 표시이고 각각 텍스트 라벨을 갖는지 단정한다 (FR-151·U-21)
+- [X] T064 [P] [US4] `frontend/tests/SkippedVsNotRun.test.tsx` — `skipped` 와 `not_run` 이 서로 다른 표시이고 각각 텍스트 라벨을 갖는지 단정한다 (FR-151·U-21)
 - [ ] T065 [P] [US4] `frontend/tests/PartialRunLabels.test.tsx` — 재실행 버튼 라벨에 시작 Step 번호가 있고, 보조 문구에 건너뛰는 구간과 선행 상태 경고가 있는지 단정한다 (FR-149·FR-150)
 
 ### Implementation for User Story 4

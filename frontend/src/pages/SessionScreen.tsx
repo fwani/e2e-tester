@@ -118,6 +118,14 @@ export function SessionScreen({
   const [repickWaiting, setRepickWaiting] = useState<RepickSlot | null>(null);
   const [notice, setNotice] = useState<ErrorInfo | null>(null);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
+  /**
+   * 끝난 실행 화면을 닫기 전 확인 (005 FR-148 · U-08).
+   *
+   * 미저장 변경이 없으면 확인 없이 세션을 폐기했다. 저장된 테스트의 재실행에는 미저장
+   * 변경이 없으므로 **항상** 무확인 경로를 탔고, 그 클릭 한 번으로 결과 화면에 도달할
+   * 길이 사라졌다.
+   */
+  const [confirmingClose, setConfirmingClose] = useState(false);
   const [aiMessages, setAiMessages] = useState<string[]>([]);
   const [aiError, setAiError] = useState<ErrorInfo | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
@@ -128,6 +136,19 @@ export function SessionScreen({
    * 않는다 — 다음 실행에 유지되지 않는다는 사실을 사용자가 알아야 한다.
    */
   const [pacingSaved, setPacingSaved] = useState(true);
+  /**
+   * 일시정지 요청을 보냈고 아직 확정되지 않았다 (005 FR-142 · U-04).
+   *
+   * **응답을 기다리지 않고 즉시 켠다.** `POST /pause` 는 Step 경계를 최대 10초 기다린
+   * 뒤 응답하므로, 응답을 기다리면 그 10초간 화면이 아무 말도 못 한다. 리포트가 본
+   * 것은 그것보다 나빴다 — 화면은 0.12초에 이미 `PAUSED` 라고 말했고 모든 버튼이
+   * 비활성이었으며 실측 19초간 실행이 계속됐다.
+   *
+   * 확정은 응답의 `pause_settled` 가 한다.
+   */
+  const [pauseRequested, setPauseRequested] = useState(false);
+  /** 중지 요청이 진행 중인가 (005 FR-147). 「중지 중…」 전이 상태의 근거다. */
+  const [stopRequested, setStopRequested] = useState(false);
   const [live, setLive] = useState(true);
   const [showOffline, setShowOffline] = useState(false);
   const subscription = useRef<SessionSubscription | null>(null);
@@ -336,6 +357,26 @@ export function SessionScreen({
   /** **`authoring_mode` 로 판정한다** — 세션의 불변 속성이다 (research R2·DR-020). */
   const isAiSession = view.authoring_mode === "ai";
   const isPaused = view.state === "paused";
+  /**
+   * 005 FR-142~FR-146 — 일시정지 **전이 중**인가 (U-04).
+   *
+   * 두 근거를 함께 본다.
+   * - `pauseRequested`: 우리가 방금 요청을 보냈다(낙관적 표시)
+   * - `pause_settled === false`: 서버가 아직 Step 경계에 닿지 않았다고 말한다
+   *
+   * 둘 중 하나라도 참이면 전이 중이다. 낙관적 표시만 쓰면 응답이 온 뒤 새로고침한
+   * 화면이 전이 사실을 잃고, 서버 값만 쓰면 요청 직후 최대 10초간 화면이 침묵한다.
+   */
+  const isPausing =
+    (pauseRequested || view.pause_settled === false) && !TERMINAL_STATES.has(view.state);
+  /**
+   * 멈추기 전에 실행이 끝났다 (005 FR-146).
+   *
+   * 실행 결말과 세션 상태는 **다른 축**이다. 실행은 끝났고(요약 있음) 세션은 일시정지다
+   * (브라우저 살아 있음, 편집 가능) — 둘 다 참이다. 이전 화면은 그 관계를 설명하지
+   * 않아 `PAUSED` 배지와 `FAIL` 요약이 나란히 떠 있었다.
+   */
+  const finishedWhilePausing = isPaused && summary !== null;
   /** 브라우저 없이 검토·저장만 가능한 상태 — `review` 와 `lost` (DR-015). */
   const isSaveableWithoutBrowser = SAVEABLE_WITHOUT_BROWSER.has(view.state);
   const isTakeover = view.state === "takeover_recording" || view.state === "ai_blocked";
@@ -446,6 +487,21 @@ export function SessionScreen({
       setConfirmingLeave(true);
       return;
     }
+    // 005 FR-148 — 끝난 실행을 닫는 것은 **결과 접근을 끊을 수 있는** 조작이다.
+    // 한 번 묻고, 결과를 다시 볼 경로를 안내한다. FR-130 으로 목록의 「결과 보기」가
+    // 결말과 무관하게 항상 있으므로 그 안내가 사실이다.
+    if (TERMINAL_STATES.has(view.state) && testId !== null) {
+      setConfirmingClose(true);
+      return;
+    }
+    void sessions
+      .discard(sessionId)
+      .catch(() => undefined)
+      .finally(onFinished);
+  };
+
+  const closeConfirmed = () => {
+    setConfirmingClose(false);
     void sessions
       .discard(sessionId)
       .catch(() => undefined)
@@ -554,6 +610,49 @@ export function SessionScreen({
           onCancel={() => setConfirmingLeave(false)}
         />
       )}
+      {confirmingClose && (
+        <div
+          role="dialog"
+          aria-label="실행 화면 닫기 확인"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(20, 19, 15, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 20,
+          }}
+        >
+          <div
+            style={{
+              width: 520,
+              border: "3px solid #14130F",
+              background: "#FFFDF6",
+              boxShadow: "10px 10px 0 #14130F",
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif",
+                fontSize: 24,
+              }}
+            >
+              실행 화면을 닫습니다
+            </div>
+            <p style={{ color: "#6B675C" }}>
+              결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+              <button className="secondary" onClick={() => setConfirmingClose(false)}>
+                돌아가기
+              </button>
+              <button onClick={closeConfirmed}>닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
       {inspecting && selectedStepId !== null && (
         <StepInspectorOverlay
           steps={view.steps}
@@ -658,6 +757,20 @@ export function SessionScreen({
           authoring={view.authoring_mode}
           review={isSaveableWithoutBrowser}
           savedAt={view.saved_at ?? null}
+          pausing={isPausing}
+          pausingBudgetMs={view.steps[currentIndex]?.timeout_ms ?? null}
+          finishedWhilePausing={
+            finishedWhilePausing
+              ? {
+                  summary: `멈추기 전에 실행이 끝났습니다 · ${summary ?? ""}`,
+                  failureReason: failure?.message ?? null,
+                  onShowResult:
+                    testId !== null && onShowResult !== undefined
+                      ? () => onShowResult(testId)
+                      : undefined,
+                }
+              : null
+          }
           stopResult={
             view.state === "review"
               ? {
@@ -753,8 +866,35 @@ export function SessionScreen({
             onChange={changePacing}
           />
         }
-        onPause={() => void act(() => sessions.pause(sessionId))}
-        onStop={isDone ? leave : stop}
+        onPause={() => {
+          // 005 FR-142 — 요청 즉시 전이 표시를 켠다. 응답이 오면 아래 effect 가
+          // `pause_settled` 로 확정하거나 걷는다.
+          setPauseRequested(true);
+          void act(() => sessions.pause(sessionId)).finally(() => {
+            // 응답이 실패해도 전이 표시를 걷는다. 남기면 정지하지 않았는데
+            // 「일시정지 중…」이 영구히 붙는다 (plan 위험표).
+            setPauseRequested(false);
+          });
+        }}
+        /*
+          005 FR-147 (U-08) — 실행 중 「중지」와 종료 후 「닫기」는 **다른 버튼**이다.
+
+          이전에는 같은 위치의 같은 라벨이 두 동작을 가졌다. 종료 후에도 「중지」만
+          활성으로 남아 화면에서 가장 눈에 띄는 컨트롤이었고, 누르면 확인 없이 세션을
+          폐기하며 목록으로 튀었다. PASS 한 실행의 결과는 목록에서 열 수 없었으므로
+          (U-13) 그 클릭 한 번으로 결과에 도달할 길이 사라졌다.
+        */
+        onStop={
+          isDone
+            ? leave
+            : () => {
+                setStopRequested(true);
+                void Promise.resolve(stop()).finally(() => setStopRequested(false));
+              }
+        }
+        stopLabel={isDone ? "닫기" : stopRequested ? "중지 중…" : "중지"}
+        stopDisabled={stopRequested}
+        stopEmphasis={!isDone}
         finished={
           isDone
             ? {

@@ -48,6 +48,22 @@ export interface RunnerPausedProps {
    * "저장하거나 처음부터 다시 실행할 수 있습니다" 를 **그 화면에서는 할 수 없는** 것을
    * 봤다. 저장은 비활성이고 실행 버튼은 없었다.
    */
+  /**
+   * 일시정지 전이 중인가 (005 FR-142~FR-145 · U-04).
+   *
+   * 일시정지는 Step 경계에서만 걸린다. 요청과 성립 사이에 최대 10초가 있고, 리포트는
+   * 그 구간에 화면이 이미 `PAUSED` 라고 말하면서 **모든 버튼을 비활성으로 두고 아무
+   * 설명도 하지 않는** 것을 봤다. 실측 19초 뒤 실행이 끝났다.
+   */
+  pausing?: boolean;
+  /** 대기 중인 Step 의 대기 예산(ms). 남은 시간을 보여 주는 근거다 (FR-145). */
+  pausingBudgetMs?: number | null;
+  /**
+   * 멈추기 전에 실행이 끝난 경우의 결말 (005 FR-146).
+   *
+   * 실행 결말과 세션 상태는 다른 축이다 — 둘 다 참이므로 관계를 설명해야 한다.
+   */
+  finishedWhilePausing?: { summary: string; failureReason: string | null; onShowResult?: () => void } | null;
   stopResult?: {
     summary: string;
     stoppedStepIndex: number | null;
@@ -108,6 +124,9 @@ export function RunnerPaused(props: RunnerPausedProps) {
   const {
     title,
     savedAt = null,
+    pausing = false,
+    pausingBudgetMs = null,
+    finishedWhilePausing = null,
     stopResult = null,
     authoring = "record",
     testId,
@@ -157,6 +176,16 @@ export function RunnerPaused(props: RunnerPausedProps) {
   const stepByStep = !review && pacing === "step";
 
   const selectedIndex = steps.findIndex((s) => s.id === selectedStepId);
+  /**
+   * 실패한 Step 의 인덱스 (005 FR-136). 없으면 `null`.
+   *
+   * 표시 상태에서 읽는다 — 세션 뷰의 `step_results` 로 복원된 값도 여기 반영된다
+   * (FR-171). 이벤트를 놓친 화면이 실패를 없었던 것처럼 보이면 차단도 풀린다.
+   */
+  const failedStepIndex = (() => {
+    const at = steps.findIndex((step, index) => outcomeOf(step, index) === "fail");
+    return at < 0 ? null : at;
+  })();
 
   return (
     <Artboard width={1440} height={900}>
@@ -165,12 +194,33 @@ export function RunnerPaused(props: RunnerPausedProps) {
         <HeaderDivider />
         <Breadcrumb testId={testId} />
         <div style={{ flex: "1" }} />
-        <StatusPill background={review ? "#FFFDF6" : "#F5D000"} color="#14130F">
-          <svg width="13" height="13" viewBox="0 0 16 16">
-            <rect x="3" y="2" width="3.5" height="12" fill="currentColor" />
-            <rect x="9.5" y="2" width="3.5" height="12" fill="currentColor" />
-          </svg>
-          {review ? "REVIEW" : stepByStep ? "STEP" : "PAUSED"}
+        {/*
+          005 FR-142·FR-146 — 헤더 배지도 전이와 종료를 반영한다.
+
+          미러 위 배지만 고치고 이것을 남겨 두면 한 화면에서 두 배지가 다른 말을 한다 —
+          U-20 이 지적한 "같은 결말을 화면마다 다른 말로 부른다" 를 그대로 재생산한다.
+        */}
+        <StatusPill
+          background={
+            finishedWhilePausing !== null ? "#EDEAE0" : review ? "#FFFDF6" : pausing ? "#EDEAE0" : "#F5D000"
+          }
+          color="#14130F"
+        >
+          {finishedWhilePausing === null && (
+            <svg width="13" height="13" viewBox="0 0 16 16">
+              <rect x="3" y="2" width="3.5" height="12" fill="currentColor" />
+              <rect x="9.5" y="2" width="3.5" height="12" fill="currentColor" />
+            </svg>
+          )}
+          {finishedWhilePausing !== null
+            ? "실행 종료"
+            : pausing
+              ? "일시정지 중…"
+              : review
+                ? "REVIEW"
+                : stepByStep
+                  ? "STEP"
+                  : "PAUSED"}
         </StatusPill>
       </HeaderBar>
 
@@ -202,9 +252,16 @@ export function RunnerPaused(props: RunnerPausedProps) {
           {savedAt !== null ? `${title} · 저장됨` : `${title} 초안`}
         </div>
         <div style={{ font: "400 14px/1 'IBM Plex Mono', ui-monospace, monospace", color: "#6B675C" }}>
-          {review
-            ? `기록된 Step ${steps.length}개 · 브라우저 종료됨`
-            : `${stepLabel(currentStepIndex)} 이후 정지`}
+          {finishedWhilePausing !== null
+            ? finishedWhilePausing.summary
+            : pausing
+              ? // 005 FR-142·FR-145 — 기다리는 이유와 남은 예산을 **즉시** 말한다.
+                // 이전에는 10초가 지나서야 노란 배너로 알렸다.
+                `현재 Step 이 끝나면 멈춥니다 · ${stepLabel(currentStepIndex)} 대기 중` +
+                (pausingBudgetMs ? ` (최대 ${Math.round(pausingBudgetMs / 1000)}s)` : "")
+              : review
+                ? `기록된 Step ${steps.length}개 · 브라우저 종료됨`
+                : `${stepLabel(currentStepIndex)} 이후 정지`}
         </div>
         <div style={{ flex: "1" }} />
         {/* 멈춘 상태에서도 다음 Step 의 속도를 미리 고를 수 있다. 검토 상태에는
@@ -217,10 +274,28 @@ export function RunnerPaused(props: RunnerPausedProps) {
           </button>
         )}
 
-        {/* 검토 상태에는 브라우저가 없으므로 「계속하기」를 그리지 않는다 (001 FR-043a). */}
+        {/*
+          005 FR-136 (U-05) — 실패한 Step 이 있으면 「계속하기」를 잠그고 이유를 준다.
+
+          이전에는 「계속하기」가 실패한 Step 을 조용히 지나가고 배지를 「완료」로 바꿨다.
+          저장된 결과는 실패인데 화면은 완료라고 말했다 — 사용자는 실패를 못 본 채
+          통과했다고 믿고 넘어갈 수 있었다.
+
+          005 FR-144 — 전이 중에도 「계속하기」는 잠근다(아직 멈추지 않았다). 대신
+          「중지」는 살린다 — 기다리다 포기하는 것이 가장 자연스러운 다음 행동이다.
+        */}
+        {!review && failedStepIndex !== null && (
+          <span
+            className="muted"
+            style={{ maxWidth: 320, font: "400 12px/1.45 'IBM Plex Sans KR', system-ui, sans-serif" }}
+          >
+            {`${stepLabel(failedStepIndex)} 이 실패해 이어서 갈 수 없습니다. ` +
+              `「${stepLabel(failedStepIndex)} 고치기」 또는 「${stepLabel(failedStepIndex)}부터 실행」을 쓰세요.`}
+          </span>
+        )}
         {!review && (
           <button
-            disabled={busy}
+            disabled={busy || pausing || failedStepIndex !== null}
             onClick={onResume}
             style={{
               display: "inline-flex",
@@ -243,7 +318,12 @@ export function RunnerPaused(props: RunnerPausedProps) {
         )}
 
         <button
-          disabled={busy}
+          /*
+            005 FR-144 — 전이 중에도 누를 수 있다. `busy` 는 pause 요청이 진행 중이라는
+            뜻인데, 그 10초 동안 중지까지 잠그면 사용자는 기다리는 것 말고 할 일이
+            없다 — 리포트가 본 "10초간 모든 버튼 비활성, 아무 설명 없음" 이 그것이다.
+          */
+          disabled={busy && !pausing}
           onClick={onStop}
           style={{
             display: "inline-flex",
@@ -342,7 +422,13 @@ export function RunnerPaused(props: RunnerPausedProps) {
           <BrowserFrame
             url={currentUrl}
             badge={
-              review
+              finishedWhilePausing !== null
+                ? // 005 FR-146 — 멈추기 전에 끝났으면 일시정지가 아니라 결말을 말한다.
+                  { label: "실행 종료", background: "#6B675C", color: "#FFFDF6" }
+                : pausing
+                  ? // 005 FR-142 — 아직 정지가 아니다. 그 사실을 배지가 말한다.
+                    { label: "일시정지 중…", background: "#EDEAE0", color: "#14130F" }
+                  : review
                 ? { label: "SESSION ENDED", background: "#6B675C", color: "#FFFDF6" }
                 : stepByStep
                   ? {
@@ -464,6 +550,26 @@ export function RunnerPaused(props: RunnerPausedProps) {
               </div>
             )}
 
+            {/*
+              005 FR-143 (U-04) — 전이 중에는 편집 팔레트를 **열지 않는다.**
+
+              리포트는 요청 0.12초 뒤에 편집 팔레트가 전부 노출되는 것을 봤다. 그 상태에서
+              Step 을 고치면 무엇에 적용되는지 알 수 없다 — 실행은 아직 돌고 있었다.
+              여기서 "정지되면 편집할 수 있습니다" 를 대신 보여 준다.
+            */}
+            {pausing && finishedWhilePausing === null ? (
+              <div
+                style={{
+                  border: "3px dashed #9A968A",
+                  background: "#F5F2E9",
+                  padding: "16px 18px",
+                  color: "#6B675C",
+                  font: "400 14px/1.5 'IBM Plex Sans KR', system-ui, sans-serif",
+                }}
+              >
+                정지되면 편집할 수 있습니다. 현재 Step 이 끝나기를 기다리고 있습니다.
+              </div>
+            ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px" }}>
               {!review && (
                 <ToolButton onClick={onRecordActionsStart} disabled={busy}>
@@ -519,6 +625,7 @@ export function RunnerPaused(props: RunnerPausedProps) {
                 Step 삭제
               </ToolButton>
             </div>
+            )}
 
             {assertOpen && !review && (
               <AssertionForm

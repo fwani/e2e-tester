@@ -41,6 +41,17 @@ export interface RunnerProps {
   canPause: boolean;
   onPause: () => void;
   onStop: () => void;
+  /**
+   * 중지 계열 버튼의 라벨 (005 FR-147 · U-08).
+   *
+   * 실행 중이면 「중지」, 요청 중이면 「중지 중…」, 끝난 실행이면 **「닫기」**다.
+   * 같은 위치의 같은 라벨이 두 동작을 갖지 않는다 — 끝난 실행에서 이 버튼은 실행을
+   * 멈추는 것이 아니라 세션을 정리하고 화면을 떠나는 것이다.
+   */
+  stopLabel?: string;
+  stopDisabled?: boolean;
+  /** 강조 여부. 끝난 실행에서는 강조를 뺀다 — 파괴적 동작이 가장 눈에 띌 이유가 없다. */
+  stopEmphasis?: boolean;
   onSelectStep?: (stepId: string) => void;
   selectedStepId?: string | null;
   /** 대상 앱 미러 (FR-047a). 확정 디자인의 흰 영역. */
@@ -90,6 +101,9 @@ export function Runner({
   canPause,
   onPause,
   onStop,
+  stopLabel = "중지",
+  stopDisabled = false,
+  stopEmphasis = true,
   onSelectStep,
   selectedStepId = null,
   mirror,
@@ -160,7 +174,7 @@ export function Runner({
           일시정지
         </button>
         <button
-          disabled={busy}
+          disabled={busy || stopDisabled}
           onClick={onStop}
           style={{
             display: "inline-flex",
@@ -168,17 +182,22 @@ export function Runner({
             gap: "9px",
             height: "46px",
             padding: "0 18px",
-            border: "3px solid #14130F",
-            background: "#FFFDF6",
-            color: "#14130F",
-            boxShadow: "5px 5px 0 #14130F",
+            border: `3px solid ${stopEmphasis ? "#14130F" : "#9A968A"}`,
+            background: stopDisabled ? "#EDEAE0" : "#FFFDF6",
+            color: stopEmphasis ? "#14130F" : "#6B675C",
+            // 005 FR-147 — 끝난 실행에서는 강조를 뺀다. 파괴적 동작이 화면에서 가장
+            // 눈에 띄는 컨트롤이던 것이 U-08 이었다.
+            boxShadow: stopEmphasis && !stopDisabled ? "5px 5px 0 #14130F" : "none",
             font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+            cursor: stopDisabled ? "progress" : "pointer",
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16">
-            <rect x="3" y="3" width="10" height="10" fill="currentColor" />
-          </svg>
-          중지
+          {stopEmphasis && (
+            <svg width="14" height="14" viewBox="0 0 16 16">
+              <rect x="3" y="3" width="10" height="10" fill="currentColor" />
+            </svg>
+          )}
+          {stopLabel}
         </button>
       </div>
 
