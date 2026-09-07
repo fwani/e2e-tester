@@ -287,6 +287,40 @@ export interface SessionView {
    * 직접 누른 일시정지는 상태가 같고 의미가 다르다 — 상태로는 구별할 수 없다.
    */
   pacing: RunPacing;
+
+  /**
+   * 이 세션에서 지금까지 확정된 Step별 결과 (005 FR-171).
+   *
+   * **이벤트 없이도 화면이 복원되게 하는 것이 목적이다.** 이전에는 Step별 결과가
+   * WebSocket 이벤트로만 채워지는 컴포넌트 로컬 상태에 있어, 화면을 다시 그리면
+   * 모든 Step 이 빈 체크박스가 됐다 (U-18). 같은 뿌리가 U-05 의 "실패한 Step 이
+   * 화면에서 지워지는" 증상이다.
+   */
+  step_results?: StepProgress[];
+
+  /**
+   * 일시정지가 **실제로** 걸렸는가 (005 FR-142).
+   *
+   * `false` 면 요청은 갔지만 아직 Step 경계에 닿지 않은 전이 중이다. 이전 화면은
+   * 요청 즉시 `PAUSED` 라고 말했는데 실제로는 19초를 더 돌았다 (U-04).
+   */
+  pause_settled?: boolean;
+
+  /** 현재 실행의 범위 (005 FR-152). */
+  run_scope?: "full" | "partial";
+
+  /** 현재 실행이 시작한 Step (005 FR-149·FR-150). 0-기반. */
+  run_start_index?: number;
+
+  /** 마지막 저장 시각 (005 FR-154). `null` 이면 미저장 — U-09 가 이것이었다. */
+  saved_at?: string | null;
+}
+
+/** 화면 복원에 필요한 최소 Step 결과 (005 FR-171). */
+export interface StepProgress {
+  step_id: string;
+  outcome: "pass" | "fail" | "skipped" | "not_run";
+  duration_ms: number;
 }
 
 export interface TabView {

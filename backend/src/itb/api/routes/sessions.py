@@ -175,7 +175,18 @@ _WORK: dict[str, SessionWork] = {}
 def work_of(session_id: str) -> SessionWork:
     w = _WORK.get(session_id)
     if w is None:
-        raise not_found(ErrorCode.SESSION_NOT_FOUND, f"세션을 찾을 수 없습니다: {session_id}")
+        # 005 FR-135 — 사용자에게 보이는 문구에 세션 식별자를 넣지 않는다.
+        #
+        # 리포트는 중지 직후 화면에 "세션을 찾을 수 없습니다: f345e93a…" 라는 배너가
+        # 뜨는 것을 봤다 (U-03). 내부 UUID 는 사용자가 할 수 있는 일과 아무 관계가
+        # 없고, 화면을 읽는 사람에게는 잡음이자 불안 신호다.
+        #
+        # 식별자가 필요한 화면(그 세션으로 이동 등)은 `detail` 에서 받는다.
+        raise not_found(
+            ErrorCode.SESSION_NOT_FOUND,
+            "세션이 이미 끝났습니다.",
+            session_id=session_id,
+        )
     return w
 
 

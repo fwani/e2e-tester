@@ -214,7 +214,10 @@ describe("RunResult", () => {
       />,
     );
 
-    await userEvent.click(await screen.findByText("실패한 Step부터 실행"));
+    // 005 FR-149 — 라벨에 시작 Step 번호가 박혔다. 실패 인덱스 4 → 「Step 05부터 실행」.
+    // 어디서 시작하는지 말하지 않던 옛 라벨은 사용자가 시작점을 예측할 수 없게 했다(U-02).
+    // **단정은 그대로다** — 같은 인덱스로 호출되는지 확인한다 (헌법 Quality Gate 4).
+    await userEvent.click(await screen.findByText("Step 05부터 실행"));
     expect(onRunFrom).toHaveBeenCalledWith("TC-003", 4);
 
     await userEvent.click(screen.getByText("처음부터 실행"));

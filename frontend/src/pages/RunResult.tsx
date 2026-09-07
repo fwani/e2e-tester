@@ -18,11 +18,26 @@ import { tests, type ArtifactKind } from "../api/client";
 import type { RunResult as RunResultData, StepResult } from "../types/generated/run-result";
 import {
   outcomeChip,
+  outcomeTone,
   partialRunNotice,
   runFromLabel,
   stepLabel,
   stepNumber,
 } from "../lib/wording";
+import type { OutcomeTone } from "../lib/wording";
+
+/**
+ * 결말 색 역할 → 실제 색 (005 FR-141).
+ *
+ * 색은 **보조**다. 칩에는 항상 텍스트 라벨이 함께 있다(ui-contract §1-4).
+ */
+const TONE_COLOR: Record<OutcomeTone, string> = {
+  success: "#2E9455",
+  danger: "#D9502F",
+  neutral: "#6B675C",
+  warn: "#B8860B",
+  unknown: "#9A968A",
+};
 
 import {
   Artboard,
@@ -116,7 +131,13 @@ export function RunResult({
   const failedIndex = result?.failed_step_index ?? null;
   const failedStep =
     failedIndex !== null ? (result?.steps.find((s) => s.index === failedIndex) ?? null) : null;
-  const failed = result?.outcome === "fail";
+  /**
+   * 005 T105 — 결말 색을 **네 값 전부**에서 정한다.
+   *
+   * `failed ? 붉은색 : 초록색` 이분법은 중지와 부분 성공을 통과 색으로 칠한다. 사용자가
+   * 멈춘 실행이 초록 `PASS` 색으로 보이면 결과를 잘못 읽는다.
+   */
+  const outcomeColor = TONE_COLOR[outcomeTone(result?.outcome)];
 
   return (
     <Artboard width={1440} height={900}>
@@ -130,7 +151,7 @@ export function RunResult({
         </button>
         {result !== null && (
           <StatusPill
-            background={failed ? "#D9502F" : "#2E9455"}
+            background={outcomeColor}
             color="#FFFDF6"
           >
             {outcomeChip(result?.outcome)}
@@ -165,14 +186,14 @@ export function RunResult({
               alignItems: "center",
               height: "30px",
               padding: "0 11px",
-              background: failed ? "#D9502F" : "#2E9455",
+              background: outcomeColor,
               color: "#FFFDF6",
               border: "3px solid #14130F",
               font: `700 13px/1 ${MONO}`,
               letterSpacing: "0.06em",
             }}
           >
-            {failed ? "FAIL" : "PASS"}
+            {outcomeChip(result?.outcome)}
           </div>
         )}
         <div style={{ flex: "1" }} />

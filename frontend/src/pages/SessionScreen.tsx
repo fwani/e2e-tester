@@ -377,13 +377,30 @@ export function SessionScreen({
         ? "terminated"
         : "observation";
 
+  /**
+   * 005 FR-171 (U-18·U-05) — 이벤트를 못 받은 화면도 결과를 복원한다.
+   *
+   * Step별 결과가 WebSocket 이벤트로만 채워지는 화면 로컬 상태에 있어서, 화면을 다시
+   * 그리면 모든 Step 이 빈 체크박스가 됐다. 같은 뿌리가 "실패한 Step 이 화면에서
+   * 지워지는" 증상이다 — 실패 이벤트를 놓친 화면은 실패가 없었던 것처럼 보인다.
+   *
+   * 실시간 이벤트를 **우선한다.** 세션 뷰는 폴링 시점의 스냅샷이므로 방금 온 이벤트보다
+   * 오래됐을 수 있다.
+   */
+  const restored = new Map(
+    (view.step_results ?? []).map((r) => [r.step_id, r] as const),
+  );
+
   const outcomeOf = (step: Step, index: number): StepOutcome => {
     const recorded = progress[step.id]?.outcome;
     if (recorded !== undefined) return recorded;
+    const fromView = restored.get(step.id)?.outcome;
+    if (fromView !== undefined && fromView !== "not_run") return fromView;
     if (runningIndex === index) return "running";
     return "pending";
   };
-  const durationOf = (step: Step) => durations.current[step.id];
+  const durationOf = (step: Step) =>
+    durations.current[step.id] ?? restored.get(step.id)?.duration_ms;
 
   const mirror =
     view.state === "starting" ? (
@@ -510,7 +527,17 @@ export function SessionScreen({
           {n}
         </Banner>
       ))}
-      {summary !== null && <Banner tone="info">{summary}</Banner>}
+      {/*
+        005 FR-140 (U-19) — 결말 요약은 **한 화면에 한 번만** 나온다.
+
+        이전에는 이 얇은 띠와 아래 결말 바에 같은 문장이 동시에 있었다. 같은 값이 두 번
+        나오면 사용자는 둘이 다른 것인지 확인하느라 멈추고, 세로 공간도 배너 쌓임과 겹쳐
+        Step 목록을 밀어냈다(중지 직후에는 배너 3개 + 요약 2개로 Step 이 2개만 보였다).
+
+        확정 디자인(docs/design/Main.dc.html)에 얇은 띠는 정의돼 있지 않다 — 구현 과정에서
+        쌓인 것이다. 끝난 실행에서는 결말 바가 요약을 갖는다.
+      */}
+      {summary !== null && !isDone && <Banner tone="info">{summary}</Banner>}
     </>
   );
 
@@ -630,6 +657,22 @@ export function SessionScreen({
           title={testId ?? "새 테스트"}
           authoring={view.authoring_mode}
           review={isSaveableWithoutBrowser}
+          savedAt={view.saved_at ?? null}
+          stopResult={
+            view.state === "review"
+              ? {
+                  summary: summary ?? view.state_label,
+                  stoppedStepIndex: view.current_step_index,
+                  onRerunAll:
+                    testId !== null && onRerun !== undefined ? () => rerun() : undefined,
+                  onRerunFromStop:
+                    testId !== null && onRerun !== undefined
+                      ? () => rerun(view.current_step_index)
+                      : undefined,
+                  onBack: leave,
+                }
+              : null
+          }
           currentStepIndex={view.current_step_index}
           editWarnings={view.edit_warnings}
           reordering={reordering}
@@ -687,7 +730,17 @@ export function SessionScreen({
       <Runner
         {...shared}
         title={testId ?? "새 테스트"}
-        progressLabel={progressLabel(currentIndex, view.steps.length)}
+        /*
+          005 FR-139 (U-14) — 끝난 실행에서는 진행 표시를 쓰지 않는다.
+
+          step 06 에서 실패해 07 이 돌지 않았는데 헤더가 `step 07 / 07` 이면 전부 처리한
+          것으로 읽힌다. 실패 Step 번호는 아래 요약에서 따로 찾아야 했다.
+        */
+        progressLabel={
+          isDone && summary !== null
+            ? summary
+            : progressLabel(currentIndex, view.steps.length)
+        }
         statusLabel={isObserving ? "RUNNING" : view.state_label}
         authoring={view.authoring_mode}
         canPause={!isDone}

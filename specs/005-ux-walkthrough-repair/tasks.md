@@ -104,11 +104,11 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Tests for User Story 2
 
-- [ ] T027 [P] [US2] `backend/tests/integration/test_stop_outcome.py` — 실행 중 중지 후 저장된 `outcome == "stopped"` 이고 `stopped_step_index` 가 채워지며 실패 집계에 없는지 단정한다 (FR-131·SC-215)
-- [ ] T028 [P] [US2] 같은 파일에서 의도적 중지가 `session_lost` 이벤트를 **발행하지 않는지** 단정한다. 진짜 유실(탭 전부 닫힘)에서는 발행되는지도 함께 단정한다 (FR-132, U-03)
-- [ ] T029 [P] [US2] `backend/tests/unit/test_session_loss_guard.py` — 유실 감지 가드가 `REVIEW` 를 정상 종료로 취급하는지 단정한다 (FR-132)
-- [ ] T030 [P] [US2] `backend/tests/integration/test_resume_with_failed_step.py` — 실패 Step 이 있는 일시정지에서 재개가 그 Step 을 지나가지 않는지, 건너뛰기 경로의 결말이 `partial_pass` 인지 단정한다 (FR-136·FR-137)
-- [ ] T031 [P] [US2] `backend/tests/abnormal/test_stop_twice.py` — 이미 끝난 세션에 중지가 다시 도착하면 오류가 아니라 현재 뷰를 돌려주는지 단정한다 (contracts/rest-api.md §4, 엣지 케이스)
+- [X] T027 [P] [US2] `backend/tests/integration/test_stop_outcome.py` — 실행 중 중지 후 저장된 `outcome == "stopped"` 이고 `stopped_step_index` 가 채워지며 실패 집계에 없는지 단정한다 (FR-131·SC-215)
+- [X] T028 [P] [US2] 같은 파일에서 의도적 중지가 `session_lost` 이벤트를 **발행하지 않는지** 단정한다. 진짜 유실(탭 전부 닫힘)에서는 발행되는지도 함께 단정한다 (FR-132, U-03)
+- [X] T029 [P] [US2] `backend/tests/unit/test_session_loss_guard.py` — 유실 감지 가드가 `REVIEW` 를 정상 종료로 취급하는지 단정한다 (FR-132)
+- [X] T030 [P] [US2] `backend/tests/integration/test_resume_with_failed_step.py` — 실패 Step 이 있는 일시정지에서 재개가 그 Step 을 지나가지 않는지, 건너뛰기 경로의 결말이 `partial_pass` 인지 단정한다 (FR-136·FR-137)
+- [X] T031 [P] [US2] `backend/tests/abnormal/test_stop_twice.py` — 이미 끝난 세션에 중지가 다시 도착하면 오류가 아니라 현재 뷰를 돌려주는지 단정한다 (contracts/rest-api.md §4, 엣지 케이스)
 - [ ] T032 [P] [US2] `frontend/tests/StepNumberConsistency.test.tsx` — 목록 행·결과 화면·실행 화면이 같은 실패 Step 번호를 내는지 단정한다. 모두 `stepLabel()` 을 지나야 한다 (FR-138·SC-216)
 - [ ] T033 [P] [US2] `frontend/tests/OutcomeVocabulary.test.tsx` — 한 화면에 결말 어휘 체계가 하나만 나타나는지, 결말 요약이 한 번만 나오는지 단정한다 (FR-140·FR-141·SC-222)
 
@@ -121,15 +121,15 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 - [X] T036c [US2] 호출부를 갱신한다 — `_loss_handler`(`api/routes/sessions.py`)·`stop` 경로·러너 종료 경로가 각각 맞는 인자를 넘기게 한다. 중지 경로가 `stop_requested=True` 를 넘기는 것이 U-03 수정의 마지막 조각이다 (FR-131)
 - [X] T037 [US2] 같은 파일에서 `attempted_count` 를 계산해 싣고(`total_count` − 건너뜀), `run_finished` 이벤트에 `attempted_count`·`scope`·`start_index` 를 더한다 (contracts/websocket.md §2)
 - [X] T038 [US2] `backend/src/itb/api/routes/sessions.py` 의 `resume` 이 실패 Step 을 지나 재개하지 않게 한다. 실패 Step 이 있으면 거절하고 사유를 준다. 「건너뛰고 계속」은 **별도 요청 필드**로 분리하고 그 경로의 결말을 `partial_pass` 로 만든다 (FR-136·FR-137)
-- [ ] T039 [P] [US2] `frontend/src/components/Badges.tsx` 의 결말 칩을 4값으로 넓히고 `wording.ts` 에서만 라벨을 받게 한다 (FR-141, ui-contract §1)
+- [X] T039 [P] [US2] `frontend/src/components/Badges.tsx` 의 결말 칩을 4값으로 넓히고 `wording.ts` 에서만 라벨을 받게 한다 (FR-141, ui-contract §1)
 - [X] T040 [P] [US2] `frontend/src/pages/TestList.tsx` 의 실패 Step 번호를 `stepLabel()` 로 바꾼다. 0-기반을 그대로 쓰던 곳을 없앤다 (FR-138, U-07)
 - [X] T041 [US2] 저장소 전역에서 `index + 1` 을 직접 하는 Step 표시를 `stepLabel()` 로 모은다 — `RunResult.tsx`·`StepInspector.tsx`·`TestDefinition.tsx`·`SessionScreen.tsx` (FR-138)
-- [ ] T042 [US2] `frontend/src/pages/SessionScreen.tsx` 에서 결말 요약 **중복을 없앤다** — 얇은 회색 띠를 제거하고 결말 바 하나만 남긴다. 확정 디자인에 얇은 띠는 없다 (FR-140, research R10)
-- [ ] T043 [US2] 같은 파일의 진행 표시를 끝난 실행에서는 **결말 표시로 바꾼다.** `Step 07 / 07` 을 쓰지 않는다 (FR-139, ui-contract §4)
-- [ ] T044 [US2] 중지 결과 화면을 만든다 — `SessionScreen.tsx`/`RunnerPaused.tsx` 에서 중지 후 저장 프롬프트 대신 ui-contract §8 의 구성(중지 요약 + 네 개의 다음 행동)을 보여준다 (FR-133)
-- [ ] T045 [US2] 저장된 테스트를 실행하는 세션에서 「초안」 표기를 없앤다 (FR-134, U-03)
-- [ ] T046 [US2] 종료된 세션 조회 실패(404)를 오류 배너로 띄우지 않게 한다. 사용자 문구에서 세션 식별자를 뺀다 (FR-135)
-- [ ] T047 [P] [US2] `frontend/src/pages/SessionScreen.tsx` 가 `step_results` 로 Step별 결과를 복원하게 한다 — WebSocket 이벤트가 없어도 그때까지의 결과가 남는다. U-05 의 "실패가 사라지는" 현상이 여기서 함께 잡힌다 (FR-171·U-18)
+- [X] T042 [US2] `frontend/src/pages/SessionScreen.tsx` 에서 결말 요약 **중복을 없앤다** — 얇은 회색 띠를 제거하고 결말 바 하나만 남긴다. 확정 디자인에 얇은 띠는 없다 (FR-140, research R10)
+- [X] T043 [US2] 같은 파일의 진행 표시를 끝난 실행에서는 **결말 표시로 바꾼다.** `Step 07 / 07` 을 쓰지 않는다 (FR-139, ui-contract §4)
+- [X] T044 [US2] 중지 결과 화면을 만든다 — `SessionScreen.tsx`/`RunnerPaused.tsx` 에서 중지 후 저장 프롬프트 대신 ui-contract §8 의 구성(중지 요약 + 네 개의 다음 행동)을 보여준다 (FR-133)
+- [X] T045 [US2] 저장된 테스트를 실행하는 세션에서 「초안」 표기를 없앤다 (FR-134, U-03)
+- [X] T046 [US2] 종료된 세션 조회 실패(404)를 오류 배너로 띄우지 않게 한다. 사용자 문구에서 세션 식별자를 뺀다 (FR-135)
+- [X] T047 [P] [US2] `frontend/src/pages/SessionScreen.tsx` 가 `step_results` 로 Step별 결과를 복원하게 한다 — WebSocket 이벤트가 없어도 그때까지의 결과가 남는다. U-05 의 "실패가 사라지는" 현상이 여기서 함께 잡힌다 (FR-171·U-18)
 
 **Checkpoint**: 결말이 정직하다. 화면과 저장된 결과가 어긋나지 않는다
 
@@ -300,7 +300,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 **Purpose**: 여러 스토리에 걸친 마무리와 회귀 확인
 
 - [ ] T104 결말 값 추가로 단정이 바뀌는 기존 테스트를 갱신한다. **약화하지 않는다** — 중지가 `fail` 이던 단정은 `stopped` 로 고치되 삭제·skip 하지 않는다 (헌법 Quality Gate 4)
-- [ ] T105 [P] 프론트에서 결말을 읽는 모든 분기가 4값을 다루는지 확인한다 — `outcome === "fail"` 로만 갈리는 곳을 `switch` 로 바꿔 타입 검사가 누락을 잡게 한다 (plan 위험표)
+- [X] T105 [P] 프론트에서 결말을 읽는 모든 분기가 4값을 다루는지 확인한다 — `outcome === "fail"` 로만 갈리는 곳을 `switch` 로 바꿔 타입 검사가 누락을 잡게 한다 (plan 위험표)
 - [ ] T106 [P] 알 수 없는 결말 값을 만난 프론트가 `fail` 로 취급하는지 확인하는 테스트를 `frontend/tests/UnknownOutcome.test.ts` 에 추가한다 (data-model.md §1 보수적 기본값)
 - [ ] T107 [P] `docs/DEVELOPMENT.md` 에 결말 4값과 스키마 재생성 순서를 적는다. 미러 무프레임 감시가 정상 동작임을 한 줄 남긴다
 - [ ] T108 `backend` 전체 테스트와 스키마 드리프트를 돌린다 — `uv run pytest` · `uv run python -m itb.schema.export && git diff --exit-code schema/`

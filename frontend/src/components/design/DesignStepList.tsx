@@ -14,7 +14,21 @@ import type { TargetLocator } from "../../types/generated/step";
 import { stepNumber } from "../../lib/wording";
 
 
-export type StepOutcome = "pass" | "fail" | "running" | "pending";
+/**
+ * Step 하나의 표시 상태.
+ *
+ * `skipped`(건너뜀)와 `not_run`(미실행)이 **서로 다른 값**인 것이 005 FR-151 이다.
+ * 이전에는 둘 다 `pending` 으로 뭉개져 "안 돌린 것" 과 "앞선 실패로 도달 못한 것" 을
+ * 구분할 수 없었다 (U-21). 부분 실행 결과에서 건너뛴 01~05 와 실패로 도달하지 못한
+ * 07 이 똑같이 "빈 체크박스 + —" 였다.
+ */
+export type StepOutcome =
+  | "pass"
+  | "fail"
+  | "running"
+  | "pending"
+  | "skipped"
+  | "not_run";
 
 /** 확정 디자인의 헤더 바 (잉크 배경 + TEST STEPS + 작성 배지 + 개수). */
 export function StepPanelHeader({
@@ -72,6 +86,45 @@ export function StepPanelHeader({
 
 /** 확정 디자인의 결과 표식. 통과는 초록 체크, 실패는 붉은 ×, 대기는 빈 테두리. */
 export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
+  if (outcome === "skipped") {
+    // 005 FR-151 — 건너뜀. **색만으로 구분하지 않는다** — 텍스트 라벨을 병기한다.
+    return (
+      <div
+        aria-label="건너뜀"
+        title="건너뜀 — 이 실행에서 실행 대상이 아니었습니다"
+        style={{
+          width: "24px",
+          height: "24px",
+          border: "2px solid #9A968A",
+          background: "#EDEAE0",
+          color: "#6B675C",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          font: "600 11px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+        }}
+      >
+        건너뜀
+      </div>
+    );
+  }
+  if (outcome === "not_run") {
+    // 005 FR-151 — 미실행. 점선으로 "도달하지 못했다" 를 건너뜀과 구별한다.
+    return (
+      <div
+        aria-label="미실행"
+        title="미실행 — 앞선 Step 이 실패해 도달하지 못했습니다"
+        style={{
+          width: "24px",
+          height: "24px",
+          border: "2px dashed #9A968A",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      />
+    );
+  }
   if (outcome === "pending") {
     return (
       <div

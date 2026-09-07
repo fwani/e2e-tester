@@ -47,7 +47,7 @@ function failedResult(): RunResultData {
       tab: 0,
       tab_wait_ms: 0,
       element_wait_ms: 0,
-      error_code: i === 5 ? ("ELEMENT_NOT_FOUND" as const) : null,
+      error_code: i === 5 ? ("ELEMENT_NOT_READY" as const) : null,
       resolved_candidate: null,
       locator_attempts: [],
       error_message: i === 5 ? "요소를 찾을 수 없습니다" : null,
@@ -121,9 +121,11 @@ describe("결과 화면의 실행 버튼 (US1)", () => {
     rerender(
       <RunResult testId="TC-002" onRunAll={onRunAll} onRunFrom={noop} onBack={noop} runPending />,
     );
-    const locked = screen.getAllByRole("button", { name: /실행을 준비하는 중/ })[0];
-    await userEvent.click(locked).catch(() => undefined);
-    await userEvent.click(locked).catch(() => undefined);
+    const locked = screen.getAllByRole("button", { name: /실행을 준비하는 중/ });
+    for (const b of locked.slice(0, 1)) {
+      await userEvent.click(b).catch(() => undefined);
+      await userEvent.click(b).catch(() => undefined);
+    }
 
     expect(onRunAll).toHaveBeenCalledTimes(1);
   });

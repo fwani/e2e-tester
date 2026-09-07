@@ -33,6 +33,28 @@ import {
 
 export interface RunnerPausedProps {
   title: string;
+  /**
+   * 마지막 저장 시각 (005 FR-155·FR-134). `null` 이면 아직 저장하지 않았다.
+   *
+   * 이 값이 있으면 제목에 「초안」을 쓰지 않는다. 저장된 테스트를 재실행하다 중지한
+   * 세션까지 「초안」으로 보여 사용자는 작성 중인 것으로 오해했다 (U-03).
+   */
+  savedAt?: string | null;
+  /**
+   * 중지로 끝난 실행의 결말과 다음 행동 (005 FR-133 · U-03).
+   *
+   * 중지는 화면을 떠나지 않는다(DR-010). 다만 그 화면이 **저장 프롬프트**여서는 안
+   * 된다 — 리포트는 중지 직후 화면이 「TC-002 초안」 저장 화면이 되고, 배너가 권하는
+   * "저장하거나 처음부터 다시 실행할 수 있습니다" 를 **그 화면에서는 할 수 없는** 것을
+   * 봤다. 저장은 비활성이고 실행 버튼은 없었다.
+   */
+  stopResult?: {
+    summary: string;
+    stoppedStepIndex: number | null;
+    onRerunAll?: () => void;
+    onRerunFromStop?: () => void;
+    onBack?: () => void;
+  } | null;
   /** 어떻게 만드는 세션인가. AI 세션이 멈춰도 배지는 `AI` 여야 한다 — `RECORD` 로 바뀌면
    *  사용자는 다른 모드로 갈아탄 줄 안다 (UX U-07). */
   authoring?: "record" | "ai";
@@ -85,6 +107,8 @@ export interface RunnerPausedProps {
 export function RunnerPaused(props: RunnerPausedProps) {
   const {
     title,
+    savedAt = null,
+    stopResult = null,
     authoring = "record",
     testId,
     review,
@@ -168,7 +192,14 @@ export function RunnerPaused(props: RunnerPausedProps) {
             lineHeight: "1",
           }}
         >
-          {title} 초안
+          {/*
+            005 FR-134·FR-155 — 저장된 것은 「초안」이 아니다.
+
+            저장된 테스트를 재실행하다 중지했을 뿐인데 제목이 「TC-002 초안」이 되고
+            하단에 이름 입력칸과 「저장」이 떴다 — 사용자는 작성 중인 초안으로 읽었다
+            (U-03). 저장 성공 뒤에도 「초안」이 남아 저장 여부를 알 수 없었다 (U-09).
+          */}
+          {savedAt !== null ? `${title} · 저장됨` : `${title} 초안`}
         </div>
         <div style={{ font: "400 14px/1 'IBM Plex Mono', ui-monospace, monospace", color: "#6B675C" }}>
           {review
@@ -254,6 +285,60 @@ export function RunnerPaused(props: RunnerPausedProps) {
       <div style={{ flex: "1", minHeight: "0", display: "flex" }}>
         <div style={{ flex: "1", minWidth: "0", padding: "20px", display: "flex", flexDirection: "column" }}>
           {tabs}
+          {/*
+            005 FR-133 (U-03) — 중지 결과 화면.
+
+            "중지했습니다" 와 결말 요약, 그리고 **그 자리에서 할 수 있는 다음 행동**을
+            둔다. 이전에는 화면이 세션 유실 오류와 저장 프롬프트로 바뀌고, 배너가 권하는
+            행동을 그 화면에서 할 수 없었다.
+          */}
+          {stopResult !== null && (
+            <div
+              style={{
+                border: "3px solid #14130F",
+                background: "#FFFDF6",
+                padding: "14px 18px",
+                marginBottom: 12,
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 240 }}>
+                <strong style={{ font: "600 15px/1.2 'IBM Plex Sans KR', system-ui, sans-serif" }}>
+                  실행을 중지했습니다.
+                </strong>
+                <span
+                  className="mono"
+                  style={{ font: "400 13px/1.3 'IBM Plex Mono', ui-monospace, monospace", color: "#6B675C" }}
+                >
+                  {stopResult.summary}
+                </span>
+              </div>
+              {onShowResult && (
+                <button className="secondary" onClick={onShowResult} disabled={busy}>
+                  결과 자세히 보기
+                </button>
+              )}
+              {stopResult.onRerunAll && (
+                <button className="secondary" onClick={stopResult.onRerunAll} disabled={busy}>
+                  처음부터 실행
+                </button>
+              )}
+              {stopResult.onRerunFromStop && stopResult.stoppedStepIndex !== null && (
+                <button className="secondary" onClick={stopResult.onRerunFromStop} disabled={busy}>
+                  {`${stepLabel(stopResult.stoppedStepIndex)}부터 실행`}
+                </button>
+              )}
+              {stopResult.onBack && (
+                <button className="ghost" onClick={stopResult.onBack} disabled={busy}>
+                  목록으로
+                </button>
+              )}
+            </div>
+          )}
+
           <BrowserFrame
             url={currentUrl}
             badge={
