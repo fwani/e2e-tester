@@ -56,6 +56,30 @@ export interface TargetPaneProps {
   onRemedy?: (action: keyof CapabilityMap) => void;
 }
 
+/**
+ * 조작이 이 국면에 있지만 지금은 쓸 수 없을 때, **그 자리에** 이유를 남긴다 (FR-234).
+ *
+ * 자리를 비우면 "이 화면에는 원래 없는 것" 과 구별되지 않는다.
+ */
+function Unavailable({
+  action,
+  capabilities,
+}: {
+  action: keyof CapabilityMap;
+  capabilities: CapabilityMap;
+}) {
+  const state = capabilities[action];
+  if (state.kind !== "disabled") return null;
+  return (
+    <span
+      data-disabled-reason={action}
+      style={{ font: `400 12px/1.5 ${SANS}`, color: "#6B675C" }}
+    >
+      {state.reason}
+    </span>
+  );
+}
+
 export function TargetPane({
   target,
   capabilities,
@@ -78,7 +102,14 @@ export function TargetPane({
     >
       {target.kind === "mirror" && (
         <>
-          {target.tabs}
+          {/*
+            탭 고르기의 **자리** (`tab.select`). 목록을 아직 받지 못했어도 자리는 남고,
+            왜 고를 수 없는지 그 자리에서 말한다 (FR-234) — 자리가 사라지면 사용자는
+            탭이라는 것이 없는 줄 안다.
+          */}
+          <div data-action="tab.select">
+            {target.tabs ?? <Unavailable action="tab.select" capabilities={capabilities} />}
+          </div>
           <div style={{ flex: 1, minHeight: 0, display: "flex" }}>{target.mirror}</div>
         </>
       )}
@@ -100,6 +131,8 @@ export function TargetPane({
             (DC-007). `TRACE` 는 서버가 501 을 준다 (001 의 알려진 차이).
           */}
           <div
+            /* 산출물 고르기의 자리 (`artifact.select`). */
+            data-action="artifact.select"
             style={{
               flex: "0 0 46px",
               display: "flex",
@@ -181,6 +214,10 @@ export function TargetPane({
         </div>
       )}
 
+      {/*
+        007 T077 — 빈 이유 4종을 구별한다 (FR-245 · 005 FR-173). "아직 시작하지 않음" 과
+        "수집되지 않음" 과 "세션 유실" 은 사용자에게 **서로 다른 다음 행동**을 요구한다.
+      */}
       {target.kind === "empty" && (
         <div
           data-target-empty={target.reason}

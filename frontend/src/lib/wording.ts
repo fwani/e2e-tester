@@ -206,18 +206,13 @@ export function partialRunNotice(startIndex: number): string | null {
   return `${skipped} 는 건너뜁니다. 로그인 같은 앞선 상태가 필요하면 「처음부터 실행」을 쓰세요.`;
 }
 
-/** 실행 트리거 라벨 (FR-149). 시작점이 라벨에 드러난다. */
-export function runFromLabel(startIndex: number): string {
-  return startIndex > 0 ? `${stepLabel(startIndex)}부터 실행` : "처음부터 실행";
-}
-
 /**
- * 통합 작업 화면의 `run.from` 라벨 (007 FR-235·FR-236).
+ * `run.from` 의 라벨 (005 FR-149 · 007 FR-235·FR-236). 시작점이 라벨에 드러난다.
  *
- * `runFromLabel()` 과 **다른 함수인 이유**: 그것은 0번을 「처음부터 실행」이라고 부른다.
- * 통합 화면에는 `run.all`(「처음부터 실행」)이 **같은 자리에 함께** 있으므로, 0번에서
- * 같은 라벨이 되면 한 라벨이 두 조작을 갖게 된다 — FR-235 가 금지하는 것이 정확히
- * 그것이고 `LabelUniqueness` 검사가 그것을 센다. 그래서 여기서는 0번도 번호로 부른다.
+ * **0번도 번호로 부른다.** 005 의 `runFromLabel()` 은 0번을 「처음부터 실행」이라고
+ * 불렀는데, 통합 화면에는 `run.all`(「처음부터 실행」)이 **같은 자리에 함께** 있다.
+ * 0번에서 같은 라벨이 되면 한 라벨이 두 조작을 갖고, 그것이 FR-235 가 금지하는 것이며
+ * 005 U-08 이 같은 형태였다. `LabelUniqueness` 검사가 이 성질을 센다.
  */
 export function runFromStepLabel(index0: number): string {
   return `${stepLabel(index0)}부터 실행`;
@@ -574,6 +569,14 @@ export const DISABLED_REASON = {
   NEEDS_BROWSER: "살아 있는 브라우저가 필요합니다",
   NEEDS_PAUSE: "실행을 멈춘 뒤에 할 수 있습니다",
   AI_RUNNING: "AI 가 수행하는 동안에는 할 수 없습니다",
+  /**
+   * 지시문은 **기록**이다 (001 FR-063·FR-064 · 006 의 결정).
+   *
+   * 저장되지 않고 실행 대상도 아니다. 「끝난 실행의 기록은 고칠 수 없습니다」로 뭉개면
+   * 사용자는 "언젠가 고칠 수 있는 것" 으로 읽는다 — 그런 때는 없다.
+   */
+  AI_INSTRUCTION_RECORD:
+    "이 문장은 기록일 뿐 실행 대상이 아닙니다. 다시 돌릴 때는 Step 만 실행합니다",
   NO_SESSION: "브라우저 세션이 없습니다",
   /**
    * 시작 주소처럼 **세션이 다룰 수 없는** 테스트 속성.

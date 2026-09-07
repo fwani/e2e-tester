@@ -29,6 +29,8 @@ const MIN_HEIGHT = 42;
 
 export interface PhaseAsideProps {
   aside: PhaseAsideModel;
+  /** AI 선택지 조작의 상태. 고를 것이 없어도 자리와 이유는 남는다 (FR-234) */
+  chooseBlocked?: { kind: "enabled" } | { kind: "disabled"; reason: string } | { kind: "not_applicable" };
   onChooseBlocked?: (choice: string) => void;
   onReload?: () => void;
   onOverwriteStale?: () => void;
@@ -37,6 +39,7 @@ export interface PhaseAsideProps {
 
 export function PhaseAside({
   aside,
+  chooseBlocked,
   onChooseBlocked,
   onReload,
   onOverwriteStale,
@@ -60,14 +63,20 @@ export function PhaseAside({
     >
       {aside.kind === "ai_progress" && (
         <>
-          <Section title="지시문">
-            <p style={{ margin: 0, font: `400 13px/1.6 ${SANS}`, whiteSpace: "pre-wrap" }}>
-              {aside.instruction}
-            </p>
-          </Section>
+          {/*
+            **지시문은 여기 없다.** 그것은 `ai.compose` 조작이고 집은 조작 팔레트다
+            (FR-235). 두 자리에 두면 같은 값이 화면에 두 번 나오고, 사용자는 둘이 다른
+            것인지 확인하느라 멈춘다 — 005 U-19 가 결말 요약에서 겪은 것과 같다.
 
-          {/* 실패는 **먼저** 온다. 로그 아래로 밀면 스크롤에 묻힌다. */}
-          <AlwaysVisibleFailure error={aside.error} blocked={aside.blocked} onChoose={onChooseBlocked} busy={busy} />
+            실패는 **먼저** 온다. 로그 아래로 밀면 스크롤에 묻힌다.
+          */}
+          <AlwaysVisibleFailure
+            error={aside.error}
+            blocked={aside.blocked}
+            choose={chooseBlocked}
+            onChoose={onChooseBlocked}
+            busy={busy}
+          />
 
           <Section title="진행">
             {aside.messages.length === 0 ? (
@@ -105,7 +114,13 @@ export function PhaseAside({
               ? "사람이 조작하는 중입니다 — 지금 하는 조작이 Step 으로 기록됩니다."
               : "AI 가 멈췄습니다. 직접 조작해 이어가거나 AI 에게 돌려줄 수 있습니다."}
           </div>
-          <AlwaysVisibleFailure error={aside.error} blocked={aside.blocked} onChoose={onChooseBlocked} busy={busy} />
+          <AlwaysVisibleFailure
+            error={aside.error}
+            blocked={aside.blocked}
+            choose={chooseBlocked}
+            onChoose={onChooseBlocked}
+            busy={busy}
+          />
         </>
       )}
 
@@ -222,7 +237,9 @@ export function PhaseAside({
                 <button className="secondary" onClick={onReload}>
                   {staleReloadLabel(aside.pendingCount)}
                 </button>
-                <button onClick={onOverwriteStale}>{STALE_OVERWRITE_LABEL}</button>
+                <button data-action="save.overwriteStale" onClick={onOverwriteStale}>
+                  {STALE_OVERWRITE_LABEL}
+                </button>
               </div>
             </div>
           )}
@@ -252,15 +269,32 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function AlwaysVisibleFailure({
   error,
   blocked,
+  choose,
   onChoose,
   busy,
 }: {
   error: import("../ErrorNotice").ErrorInfo | null;
   blocked: AiBlockedState | null;
+  choose?: PhaseAsideProps["chooseBlocked"];
   onChoose?: (choice: string) => void;
   busy: boolean;
 }) {
-  if (error === null && blocked === null) return null;
+  /*
+    **선택지 조작의 자리는 여기다** (`ai.chooseBlocked` · ui-contract §4-1). 고를 것이
+    없어도 자리와 이유를 남긴다 — 비우면 사용자는 AI 가 막혔을 때 무엇을 할 수 있는지
+    화면에서 배울 수 없다 (FR-234).
+  */
+  const placeholder =
+    error === null && blocked === null && choose !== undefined && choose.kind === "disabled" ? (
+      <span
+        data-action="ai.chooseBlocked"
+        data-disabled-reason="ai.chooseBlocked"
+        style={{ font: `400 12px/1.4 ${SANS}`, color: "#6B675C" }}
+      >
+        {choose.reason}
+      </span>
+    ) : null;
+  if (error === null && blocked === null) return placeholder;
   return (
     <div data-always-visible-failure style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {error !== null && <ErrorNotice error={error} />}
@@ -278,7 +312,7 @@ function AlwaysVisibleFailure({
             </p>
           )}
           <p style={{ margin: "6px 0 10px", font: `400 13px/1.6 ${SANS}` }}>{blocked.reason}</p>
-          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          <div className="row" data-action="ai.chooseBlocked" style={{ gap: 8, flexWrap: "wrap" }}>
             {blocked.choices.map((c) => (
               <button key={c} className="secondary" disabled={busy} onClick={() => onChoose?.(c)}>
                 {c}

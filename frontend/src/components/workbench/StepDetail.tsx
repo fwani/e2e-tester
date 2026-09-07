@@ -231,6 +231,22 @@ export function StepDetail({
           </div>
         )}
 
+        {/*
+          **민감 값 지정의 자리는 값 칸 옆이다.** 값을 갖지 않는 Step 에서도 자리를
+          비우지 않고 이유를 남긴다 (FR-234) — 비우면 사용자는 그 조작이 이 제품에
+          없는 줄 안다.
+        */}
+        {step !== null && !hasValue(step) && capabilities["step.markSensitive"].kind !== "not_applicable" && (
+          <span
+            id="reason-step-sensitive"
+            data-action="step.markSensitive"
+            data-disabled-reason="step.markSensitive"
+            style={{ font: `400 12px/1.4 ${SANS}`, color: "#6B675C" }}
+          >
+            이 Step 은 입력값을 갖지 않아 민감 값으로 지정할 것이 없습니다.
+          </span>
+        )}
+
         {step === null ? (
           <p className="dim" style={{ font: `400 13px/1.6 ${SANS}` }}>
             이 실행에는 있었지만 지금 정의에는 없는 Step 입니다. 결말과 소요 시간은 그때의
@@ -277,6 +293,8 @@ export function StepDetail({
                   <label className="row" style={{ gap: 6, marginTop: 6 }}>
                     <input
                       type="checkbox"
+                      data-action="step.markSensitive"
+                      aria-describedby={canMarkSensitive ? undefined : "reason-step-sensitive"}
                       checked={sensitive}
                       disabled={!canMarkSensitive}
                       onChange={(e) => setSensitive(e.target.checked)}

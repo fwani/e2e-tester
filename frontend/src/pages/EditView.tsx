@@ -25,10 +25,15 @@ import { ErrorNotice, describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { StepEditFields } from "../components/StepEditFields";
 import { ActionButton } from "../components/workbench/ActionButton";
+import { ActionPalette } from "../components/workbench/ActionPalette";
 import { Workbench } from "../components/workbench/Workbench";
 import type { Notice, WorkbenchModel, WorkbenchStep } from "../components/workbench/model";
 import type { ActionId } from "../lib/actions";
-import { capabilitiesFor, type CapabilityFacts } from "../lib/capabilities";
+import {
+  capabilitiesFor,
+  type CapabilityFacts,
+  type CapabilityState,
+} from "../lib/capabilities";
 import {
   EDIT_BLOCKED_BY_RUN,
   OPEN_RUNNING_SESSION,
@@ -45,8 +50,6 @@ import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
 
 const INK = "#14130F";
-const MONO = "'IBM Plex Mono', ui-monospace, monospace";
-const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
 export interface EditViewProps {
   testId: string;
@@ -365,12 +368,25 @@ export function EditView({
       case "step.delete":
         if (current !== null) apply({ op: "delete", step_id: current.id });
         break;
+      case "step.reorder":
+        if (currentIndex >= 0) move(currentIndex, -1);
+        break;
       default:
         break;
     }
   }
 
   /** 지목한 Step 이 있어야 뜻이 있는 조작. 표는 국면을, 이것은 화면이 아는 사실을 본다. */
+  const STEP_SCOPED: ActionId[] = ["step.reorder", "step.delete", "browser.openAt"];
+  const narrowByPick = (id: ActionId, base: CapabilityState) =>
+    STEP_SCOPED.includes(id) && currentIndex < 0 && base.kind === "enabled"
+      ? ({
+          kind: "disabled",
+          reason: "먼저 Step 을 고르세요",
+          remedy: { action: "step.select" as ActionId },
+        } as const)
+      : base;
+
   const needsTarget = (id: ActionId) =>
     currentIndex < 0 && capabilities[id].kind === "enabled"
       ? ({
@@ -387,21 +403,6 @@ export function EditView({
   */
   const phaseActions = (
     <>
-      <ActionButton
-        action="edits.revert"
-        capability={capabilities["edits.revert"]}
-        compact
-        onRun={() => runAction("edits.revert")}
-        onRemedy={runAction}
-      />
-      <ActionButton
-        action="save"
-        capability={capabilities.save}
-        label={saveEditsLabel(pending, saving)}
-        emphasis
-        onRun={() => runAction("save")}
-        onRemedy={runAction}
-      />
       <ActionButton
         action="run.all"
         capability={capabilities["run.all"]}
@@ -521,18 +522,7 @@ export function EditView({
       stale,
       savedName,
       fields: (
-        <EditFields
-          test={test}
-          sensitiveNames={sensitiveNames}
-          editable={editable}
-          ops={ops}
-          steps={dslSteps}
-          capabilities={capabilities}
-          onRename={(name) => apply({ op: "set_name", name })}
-          onSetStartUrl={(url) => apply({ op: "set_start_url", url })}
-          onRevert={revert}
-          onRemedy={runAction}
-        />
+        <EditFields sensitiveNames={sensitiveNames} ops={ops} steps={dslSteps} onRevert={revert} />
       ),
     },
     steps,
@@ -569,13 +559,26 @@ export function EditView({
         headerActions={headerActions}
         stepEmptyNotice="이 테스트에는 Step 이 없습니다."
         stepFooter={
-          <EditTools
+          <ActionPalette
             capabilities={capabilities}
-            index={currentIndex}
-            stepCount={dslSteps.length}
-            onMove={move}
-            onDelete={() => runAction("step.delete")}
+            onRun={runAction}
             onRemedy={runAction}
+            narrow={narrowByPick}
+            labels={{ "step.reorder": "위로 옮기기" }}
+            /*
+              이 국면에서 자리가 다른 둘 — 브라우저 열기는 대상 앱 영역(T079), 충돌
+              중의 덮어쓰기는 「다시 읽기」와 짝을 이루는 보조 영역(FR-209)이 갖는다.
+            */
+            hidden={stale !== null ? ["browser.openAt", "save.overwriteStale"] : ["browser.openAt"]}
+            nl={{ value: "", onChange: () => undefined, onSubmit: () => undefined }}
+            name={test.name}
+            onNameChange={(v) => apply({ op: "set_name", name: v })}
+            startUrl={test.start_url}
+            onStartUrlChange={(v) => apply({ op: "set_start_url", url: v })}
+            instruction={test.ai_instruction ?? null}
+            saveLabel={saveEditsLabel(pending, saving)}
+            stepCount={dslSteps.length}
+            emptyHint="이 테스트에는 Step 이 없습니다."
           />
         }
         onSelectStep={(stepId) => {
@@ -698,165 +701,31 @@ export function EditView({
   );
 }
 
-/** Step 패널 바닥 — Step 을 대상으로 하는 조작 (FR-235 의 같은 자리). */
-function EditTools({
-  capabilities,
-  index,
-  stepCount,
-  onMove,
-  onDelete,
-  onRemedy,
-}: {
-  capabilities: ReturnType<typeof capabilitiesFor>;
-  index: number;
-  stepCount: number;
-  onMove: (index: number, delta: number) => void;
-  onDelete: () => void;
-  onRemedy: (action: ActionId) => void;
-}) {
-  const picked = index >= 0;
-  const narrow = (id: ActionId) =>
-    !picked && capabilities[id].kind === "enabled"
-      ? ({
-          kind: "disabled",
-          reason: "먼저 Step 을 고르세요",
-          remedy: { action: "step.select" as ActionId },
-        } as const)
-      : capabilities[id];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ font: `600 11px/1 ${MONO}`, letterSpacing: "0.1em", color: "#6B675C" }}>
-        지금 할 수 있는 것
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
-        <ActionButton
-          action="step.reorder"
-          capability={narrow("step.reorder")}
-          label="위로"
-          compact
-          onRun={() => onMove(index, -1)}
-          onRemedy={onRemedy}
-        />
-        <ActionButton
-          action="step.delete"
-          capability={narrow("step.delete")}
-          compact
-          onRun={onDelete}
-          onRemedy={onRemedy}
-        />
-        <ActionButton
-          action="step.recordStart"
-          capability={capabilities["step.recordStart"]}
-          compact
-          onRemedy={onRemedy}
-        />
-        <ActionButton
-          action="step.addNaturalLanguage"
-          capability={capabilities["step.addNaturalLanguage"]}
-          compact
-          onRemedy={onRemedy}
-        />
-        <ActionButton
-          action="step.addAssertion"
-          capability={capabilities["step.addAssertion"]}
-          compact
-          onRemedy={onRemedy}
-        />
-        <ActionButton
-          action="step.repick"
-          capability={capabilities["step.repick"]}
-          compact
-          onRemedy={onRemedy}
-        />
-      </div>
-      {/*
-        006 FR-202 — 브라우저가 필요한 편집은 **왜 필요한지와 가는 길**을 함께 준다.
-        회색 버튼만 두지 않는다. 그 「가는 길」 버튼은 **대상 앱 영역**이 갖는다 (T079) —
-        같은 라벨이 두 자리에 있으면 사용자는 둘이 다른 것인지 확인하느라 멈춘다 (FR-235).
-      */}
-      <div style={{ font: `400 11.5px/1.5 ${SANS}`, color: "#6B675C" }}>
-        {`Step ${stepCount}개 · 위·아래 이동과 삭제는 브라우저 없이 됩니다. ` +
-          "요소 다시 집기·직접 조작으로 Step 추가·자연어로 Step 추가·검증 추가는 " +
-          "살아 있는 화면에서만 됩니다."}
-      </div>
-    </div>
-  );
-}
-
-/** 국면 보조 영역의 편집 국면 고유 필드 — 테스트에 속한 것들. */
+/**
+ * 국면 보조 영역의 편집 국면 고유 내용.
+ *
+ * 테스트 이름·시작 주소·지시문은 **조작 팔레트**가 갖는다 (FR-235 — 조작마다 집이
+ * 하나다). 여기 남는 것은 조작이 아닌 것 둘 — 민감 변수 공개와 개별 되돌리기다.
+ */
 function EditFields({
-  test,
   sensitiveNames,
-  editable,
   ops,
   steps,
-  capabilities,
-  onRename,
-  onSetStartUrl,
   onRevert,
-  onRemedy,
 }: {
-  test: Test;
   sensitiveNames: string[];
-  editable: boolean;
   ops: EditOp[];
   steps: Step[];
-  capabilities: ReturnType<typeof capabilitiesFor>;
-  onRename: (name: string) => void;
-  onSetStartUrl: (url: string) => void;
   onRevert: (index: number) => void;
-  onRemedy: (action: ActionId) => void;
 }) {
-  void capabilities;
-  void onRemedy;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <label className="row" style={{ gap: 8, fontSize: 12.5 }}>
-        <span className="dim" style={{ width: 72 }}>
-          테스트 이름
-        </span>
-        <input
-          aria-label="테스트 이름"
-          value={test.name}
-          disabled={!editable}
-          maxLength={200}
-          onChange={(e) => onRename(e.target.value)}
-        />
-      </label>
-      <label className="row" style={{ gap: 8, fontSize: 12.5 }}>
-        <span className="dim" style={{ width: 72 }}>
-          시작 주소
-        </span>
-        <input
-          aria-label="시작 주소"
-          className="mono"
-          value={test.start_url}
-          disabled={!editable}
-          maxLength={2000}
-          onChange={(e) => onSetStartUrl(e.target.value)}
-        />
-      </label>
-
       {/* FR-212 — 어떤 변수가 민감인지 밝히고, 값은 화면에 오지 않는다고 말한다. */}
       {sensitiveNames.length > 0 && (
         <p className="dim" style={{ fontSize: 11.5, margin: 0 }}>
           민감 변수 <span className="mono">{sensitiveNames.join(", ")}</span> (값은 표시되지
           않습니다)
         </p>
-      )}
-
-      {test.ai_instruction && (
-        <div style={{ border: "3px solid var(--ai)", background: "var(--ai-tint)", padding: 12 }}>
-          <strong style={{ fontSize: 12 }}>작성 의도 (지시문)</strong>
-          <p style={{ margin: "4px 0 0", fontSize: 13, whiteSpace: "pre-wrap" }}>
-            {test.ai_instruction}
-          </p>
-          <p className="dim" style={{ margin: "6px 0 0", fontSize: 11.5 }}>
-            이 문장은 기록일 뿐 실행 대상이 아닙니다. 다시 돌릴 때는 아래 Step 만
-            실행합니다. {lockedFieldNotice("record_only")}
-          </p>
-        </div>
       )}
 
       {/* 개별 되돌리기 (006 FR-190). 되돌리기는 연산을 목록에서 빼는 것이다. */}

@@ -298,6 +298,11 @@ export function StepList({
   return (
     <div
       data-workbench-step-panel
+      /*
+        Step 지목(`step.select`)의 **자리**는 이 패널이다 (ui-contract §4-1). 행마다
+        표시하면 자리가 200개가 되고, "한 조작에 한 자리" 를 셀 수 없다 (FR-235).
+      */
+      data-action="step.select"
       style={{
         flex: "0 0 460px",
         borderLeft: `3px solid ${INK}`,

@@ -172,8 +172,14 @@ describe("편집 화면 — 브라우저 없이 (US1)", () => {
 
   it("지시문을 '실행 대상이 아님' 과 함께 보여 준다 (FR-063·FR-064)", async () => {
     await renderScreen();
-    expect(screen.getByText(/실행 대상이 아닙니다/)).toBeTruthy();
-    expect(screen.getByText(/기록입니다. 편집 대상이 아닙니다/)).toBeTruthy();
+    // 지시문의 집은 `ai.compose` 조작 칸이다 (FR-235). 읽기 전용인 **이유**가 그 자리에서
+    // 「기록일 뿐」이라고 말한다 — 「끝난 실행이라 못 고친다」로 뭉개면 사용자는 언젠가
+    // 고칠 수 있는 것으로 읽는다.
+    const field = screen.getByLabelText("AI 지시문") as HTMLTextAreaElement;
+    expect(field.disabled).toBe(true);
+    expect(
+      document.querySelector("[data-disabled-reason='ai.compose']")?.textContent,
+    ).toMatch(/실행 대상이 아닙니다/);
   });
 
   it("Step 을 고르면 후보 우선순위 표를 보여 준다 (FR-019)", async () => {

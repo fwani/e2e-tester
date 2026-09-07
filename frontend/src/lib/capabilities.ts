@@ -535,7 +535,7 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     save: na("N2"),
     "save.overwriteStale": na("N2"),
     "edits.revert": na("N2"),
-    "ai.compose": off("RESULT_NO_EDIT", "nav.editStep"),
+    "ai.compose": off("AI_INSTRUCTION_RECORD"),
     "ai.start": na("N2"),
     "ai.chooseBlocked": na("N2"),
     "artifact.select": ON,
@@ -574,7 +574,7 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "save.overwriteStale": cond("C10"),
     "edits.revert": cond("C9"),
     // 지시문은 기록일 뿐 실행 대상이 아니므로 읽기 전용이다 (006 의 결정).
-    "ai.compose": off("RESULT_NO_EDIT"),
+    "ai.compose": off("AI_INSTRUCTION_RECORD"),
     "ai.start": na("N2"),
     "ai.chooseBlocked": na("N2"),
     "artifact.select": na("N2"),

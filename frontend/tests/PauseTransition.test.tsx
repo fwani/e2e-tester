@@ -95,15 +95,15 @@ describe("일시정지 전이 (FR-142~FR-145 · U-04)", () => {
   it("전이 중에는 편집 조작을 잠그고 언제 되는지 말한다 (FR-143)", () => {
     render(<SessionWorkbench {...paused({ pausing: true })} />);
     // 리포트가 본 것 — 요청 0.12초 뒤 팔레트가 전부 **눌리는 상태로** 노출됐다.
-    expect(act("step.update").disabled).toBe(true);
     expect(act("step.delete").disabled).toBe(true);
     expect(act("step.recordStart").disabled).toBe(true);
+    expect(act("step.addAssertion").disabled).toBe(true);
     expect(screen.getAllByText(/정지되면 할 수 있습니다/).length).toBeGreaterThan(0);
   });
 
   it("정지가 성립하면 편집 조작이 열린다", () => {
     render(<SessionWorkbench {...paused({ pausing: false, focusedStepId: "step-01" })} />);
-    expect(act("step.update").disabled).toBe(false);
+    expect(act("step.delete").disabled).toBe(false);
     expect(screen.queryByText(/정지되면 할 수 있습니다/)).toBeNull();
   });
 

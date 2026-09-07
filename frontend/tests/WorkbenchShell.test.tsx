@@ -128,6 +128,30 @@ describe("결말 요약은 화면에 하나뿐이다 (FR-218d · 005 FR-140 · U
     expect(document.querySelectorAll("[data-run-summary]")).toHaveLength(1);
   });
 
+  it("일곱 국면 전부에서 자리가 하나를 넘지 않는다 (T063)", () => {
+    // 요약을 **갖는** 국면과 **갖지 않는** 국면을 함께 돈다. 갖지 않는 국면에서 자리가
+    // 생기면 빈 문장이 화면에 남고, 갖는 국면에서 둘이 되면 U-19 가 되살아난다.
+    for (const phase of PHASES) {
+      for (const runSummary of [null, "실패 · Step 02 에서 실패 · 1 / 2 통과"]) {
+        const view = renderShell(
+          workbenchModel(phase, {
+            phaseBar: {
+              phaseLabel: PHASE_LABEL[phase],
+              phaseTone: "neutral",
+              runSummary,
+              progressLabel: null,
+            },
+          }),
+        );
+        const found = document.querySelectorAll("[data-run-summary]").length;
+        expect(found, `${phase} · runSummary=${String(runSummary)}`).toBe(
+          runSummary === null ? 0 : 1,
+        );
+        view.unmount();
+      }
+    }
+  });
+
   it("실패 상세가 보조 영역에 있어도 결말 요약은 늘지 않는다", () => {
     renderShell(
       workbenchModel("result", {

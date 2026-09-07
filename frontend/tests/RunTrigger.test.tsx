@@ -16,6 +16,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ResultView } from "../src/pages/ResultView";
+import { capabilityOf } from "../src/lib/capabilities";
+import { PHASES } from "../src/lib/phase";
+import { ALL_FACTS } from "./helpers/model";
 import { TestList } from "../src/pages/TestList";
 import { pendingFetch } from "./helpers/pending";
 import type { RunResult as RunResultData } from "../src/types/generated/run-result";
@@ -139,6 +142,36 @@ describe("결과 화면의 실행 버튼 (US1)", () => {
     await userEvent.click(locked).catch(() => undefined);
 
     expect(onRunAll).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * 007 T066 — **실행 진입이 국면과 무관하게 한 경로다** (FR-248·FR-249).
+ *
+ * 005 U-06 은 화면마다 in-flight 가드를 따로 두어 생겼다. 한 화면이 빠뜨리면 그
+ * 화면에서만 연타로 브라우저 창이 둘 떴다. 007 은 그 가드를 **권한표의 덮어쓰기 O1**
+ * 로 옮겼다 — 국면마다 적지 않으므로 빠뜨릴 국면이 없다.
+ */
+describe("실행 진입 중복 방지가 국면과 무관하다 (T066 · FR-248·FR-249)", () => {
+  const RUN_ACTIONS = ["run.all", "run.from"] as const;
+
+  it("실행 요청 중이면 어느 국면의 실행도 눌리지 않는다 (덮어쓰기 O1)", () => {
+    // 화면을 그려서 세지 않는다 — 국면마다 그리면 한 국면을 빠뜨리고, 빠뜨린 것이
+    // 정확히 U-06 의 형태다. 표를 직접 훑는다.
+    for (const phase of PHASES) {
+      for (const action of RUN_ACTIONS) {
+        const base = capabilityOf(phase, action, ALL_FACTS);
+        if (base.kind === "not_applicable") continue;
+        const pending = capabilityOf(phase, action, { ...ALL_FACTS, runPending: true });
+        expect(pending.kind, `${phase} × ${action}`).toBe("disabled");
+        if (pending.kind === "disabled") expect(pending.reason).toContain("준비");
+      }
+    }
+  });
+
+  it("브라우저 편집 세션도 같은 가드를 지난다 — 별도 경로를 만들지 않는다", () => {
+    const state = capabilityOf("editing", "browser.openAt", { ...ALL_FACTS, runPending: true });
+    expect(state.kind).toBe("disabled");
   });
 });
 

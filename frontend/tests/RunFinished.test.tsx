@@ -103,8 +103,10 @@ describe("실행 종료 표시", () => {
         })}
       />,
     );
-    const close = button("닫기");
+    // 라벨로 찾으면 **해소 방법 링크**와 부딪힌다 — 비활성 조작의 이유 옆에 붙는 그
+    // 링크는 가리키는 조작과 같은 라벨을 쓴다. 주 조작은 식별자로 집는다.
+    const close = document.querySelector('button[data-action="run.stop"]') as HTMLButtonElement;
+    expect(close.textContent).toBe("닫기");
     expect(close.style.boxShadow).toBe("none");
-    expect(screen.queryByRole("button", { name: "중지" })).toBeNull();
   });
 });

@@ -93,7 +93,12 @@ describe("AI 작성 국면 — 상태 표시 (DR-016)", () => {
 
   it("지시문이 화면에 남는다 — 무엇을 시켰는지 잃지 않는다 (UX U-07)", () => {
     render(<SessionWorkbench {...ai()} />);
-    expect(screen.getByText("로그인한 다음 프로젝트를 만들어")).toBeTruthy();
+    // 지시문의 집은 `ai.compose` 조작 칸 **하나**다 (FR-235). 수행 중에는 고칠 수 없고
+    // 기록으로 계속 보인다 (001 FR-063).
+    const field = screen.getByLabelText("AI 지시문") as HTMLTextAreaElement;
+    expect(field.value).toBe("로그인한 다음 프로젝트를 만들어");
+    expect(field.disabled).toBe(true);
+    expect(document.querySelector("[data-disabled-reason='ai.compose']")).not.toBeNull();
   });
 });
 

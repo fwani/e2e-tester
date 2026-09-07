@@ -25,6 +25,7 @@ import type { RunResultView as RunResultData } from "../api/client";
 import { ErrorNotice, describeError, localError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { ActionButton } from "../components/workbench/ActionButton";
+import { ActionPalette } from "../components/workbench/ActionPalette";
 import { Workbench } from "../components/workbench/Workbench";
 import type {
   Notice,
@@ -88,9 +89,13 @@ export function ResultView({
   const [artifact, setArtifact] = useState<{ src?: string; text?: string } | null>(null);
   const [artifactError, setArtifactError] = useState<ErrorInfo | null>(null);
   const [focused, setFocused] = useState<string | null>(focusStepId);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(focusStepId !== null);
 
-  useEffect(() => setFocused(focusStepId), [focusStepId]);
+  // 007 FR-239 — 지목해 들어왔으면 그 Step 을 **펼쳐서** 준다. 다시 찾게 하지 않는다.
+  useEffect(() => {
+    setFocused(focusStepId);
+    setDetailOpen(focusStepId !== null);
+  }, [focusStepId]);
 
   useEffect(() => {
     void tests
@@ -462,6 +467,26 @@ export function ResultView({
       phaseActions={phaseActions}
       headerActions={headerActions}
       stepEmptyNotice="이 실행에는 Step 이 없습니다."
+      /*
+        **끝난 실행에서 할 수 없는 것들도 같은 자리에 남는다** (FR-234·FR-238).
+        전부 「이 Step 고치기」로 가는 길을 달고 있으므로, 감추는 것보다 이쪽이
+        사용자를 덜 막는다 — 감추면 "여기서는 원래 안 되는 일" 로 읽힌다.
+      */
+      stepFooter={
+        <ActionPalette
+          capabilities={capabilities}
+          onRun={runAction}
+          onRemedy={runAction}
+          nl={{ value: "", onChange: () => undefined, onSubmit: () => undefined }}
+          name={defn?.test.name ?? testId}
+          onNameChange={() => undefined}
+          startUrl={defn?.test.start_url ?? ""}
+          onStartUrlChange={() => undefined}
+          instruction={defn?.test.ai_instruction ?? null}
+          saveLabel="저장"
+          stepCount={steps.length}
+        />
+      }
       onSelectStep={(stepId) => {
         setFocused(stepId);
         setDetailOpen(true);

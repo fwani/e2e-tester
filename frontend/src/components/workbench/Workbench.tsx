@@ -176,6 +176,7 @@ export function Workbench({
           {model.aside !== null && (
             <PhaseAside
               aside={model.aside}
+              chooseBlocked={capabilities["ai.chooseBlocked"]}
               onChooseBlocked={onChooseBlocked}
               onReload={onReloadDefinition}
               onOverwriteStale={onOverwriteStale}

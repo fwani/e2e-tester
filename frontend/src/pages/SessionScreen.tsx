@@ -47,6 +47,7 @@ import { PacingControl } from "../components/PacingControl";
 import { TabStrip } from "../components/TabStrip";
 import { BrowserFrame } from "../components/design/BrowserFrame";
 import { ActionButton } from "../components/workbench/ActionButton";
+import { ActionPalette } from "../components/workbench/ActionPalette";
 import { Workbench } from "../components/workbench/Workbench";
 import type {
   AiBlockedState,
@@ -92,8 +93,6 @@ export type { AiBlockedState } from "../components/workbench/model";
  */
 const OFFLINE_NOTICE_DELAY_MS = 1500;
 
-const INK = "#14130F";
-const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
 const MANIPULATION_STATES = new Set(["recording", "takeover_recording"]);
@@ -212,6 +211,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     상태를 둘의 공통 조상인 여기서 갖는다.
   */
   const [assertOpen, setAssertOpen] = useState(false);
+  /** 자연어 Step 입력. 팔레트가 아니라 어댑터가 갖는다 — 보내는 것은 어댑터다. */
+  const [nl, setNl] = useState("");
   const {
     view,
     aiInstruction = null,
@@ -589,6 +590,15 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       case "step.reorder":
         onToggleReorder?.();
         break;
+      case "step.addAssertion":
+        setAssertOpen((v) => !v);
+        break;
+      case "step.addNaturalLanguage":
+        if (nl.trim() !== "") {
+          onNaturalLanguage?.(nl.trim());
+          setNl("");
+        }
+        break;
       case "step.delete":
         if (focusedStepId !== null) onDeleteStep?.(focusedStepId);
         break;
@@ -624,6 +634,19 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         ? view.current_step_index
         : -1);
 
+  /**
+   * 표를 화면이 아는 사실로 한 겹 더 좁힌다.
+   *
+   * 표는 **국면**을 말한다. "지목한 Step 이 없다" 는 국면이 아니므로 표에 담을 수 없고,
+   * 담지 않으면 무엇에 걸지 모르는 조작이 활성으로 남아 눌러도 아무 일이 없다.
+   */
+  const narrowByPick = (id: ActionId, base: CapabilityState): CapabilityState =>
+    // `run.from` 은 여기서 제외한다 — 지목이 없어도 실패한 자리·멈춘 자리를 쓸 수 있고,
+    // 그 판단은 `runFromIndex` 가 한다.
+    id !== "run.from" && STEP_SCOPED.has(id) && focusedStepId === null && base.kind === "enabled"
+      ? { kind: "disabled", reason: "먼저 Step 을 고르세요", remedy: { action: "step.select" } }
+      : base;
+
   const action = (
     id: ActionId,
     extra: { label?: string; emphasis?: boolean | "quiet" } = {},
@@ -632,14 +655,10 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       key={id}
       action={id}
       capability={
-        /*
-          표는 **국면**을 말한다. "지목한 Step 이 없다" 는 국면이 아니라 화면이 아는
-          사실이므로 여기서 한 겹 더 좁힌다 — 좁히지 않으면 `run.from` 이 어디서부터
-          실행할지 모르는 채 활성으로 남는다.
-        */
-        STEP_SCOPED.has(id) && runFromIndex < 0 && capabilities[id].kind === "enabled"
+        // `run.from` 은 지목이 없어도 **끝난 세션이 멈춘 자리**를 쓸 수 있다.
+        id === "run.from" && runFromIndex < 0 && capabilities[id].kind === "enabled"
           ? { kind: "disabled", reason: "먼저 Step 을 고르세요", remedy: { action: "step.select" } }
-          : capabilities[id]
+          : narrowByPick(id, capabilities[id])
       }
       onRun={() => runAction(id)}
       onRemedy={onRemedy}
@@ -680,17 +699,28 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   const phaseActions = (
     <>
       {capabilities["run.pacing"].kind !== "not_applicable" && (
-        <PacingControl
-          value={view.pacing}
-          busy={busy}
-          disabled={capabilities["run.pacing"].kind === "disabled"}
-          preferenceSaved={pacingSaved}
-          // 005 FR-174 (U-23) — 녹화·인수 국면에서는 「다음 실행 속도」로 밝힌다 (T041).
-          manipulationPhase={manipulating}
-          onChange={(next) => onPacingChange?.(next)}
-        />
+        /* 실행 속도의 **자리**. 잠겨도 자리와 이유는 남는다 (FR-234). */
+        <span data-action="run.pacing" style={{ display: "inline-flex", flexDirection: "column", gap: 4 }}>
+          <PacingControl
+            value={view.pacing}
+            busy={busy}
+            disabled={capabilities["run.pacing"].kind === "disabled"}
+            preferenceSaved={pacingSaved}
+            // 005 FR-174 (U-23) — 녹화·인수 국면에서는 「다음 실행 속도」로 밝힌다 (T041).
+            manipulationPhase={manipulating}
+            onChange={(next) => onPacingChange?.(next)}
+          />
+          {capabilities["run.pacing"].kind === "disabled" && (
+            <span
+              data-disabled-reason="run.pacing"
+              style={{ font: `400 11.5px/1.3 ${SANS}`, color: "#6B675C" }}
+            >
+              {capabilities["run.pacing"].reason}
+            </span>
+          )}
+        </span>
       )}
-      {action("step.recordStop")}
+      {/* `step.recordStop` 의 집은 조작 팔레트다 (FR-235). 여기 두면 자리가 둘이 된다. */}
       {action("run.resume", { emphasis: true })}
       {action("run.resumeSkipFailure")}
       {action("run.pause", { emphasis: !isDone })}
@@ -703,6 +733,52 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       })}
     </>
   );
+
+  /**
+   * 저장할 수 있는가 (005 FR-156).
+   *
+   * 표는 국면을 말하고(Step 이 있는가·실행 중인가), 이름과 변경 유무는 화면이 안다.
+   * 라벨은 바뀌지 않는다 — 「변경 저장」이 상황마다 다른 말이 되면 배운 것이 흔들린다.
+   */
+  const hasChangesToSave = view.saved_at == null || view.has_unsaved_changes;
+  const saveCapability: CapabilityState =
+    capabilities.save.kind !== "enabled"
+      ? capabilities.save
+      : saveName.trim() === ""
+        ? { kind: "disabled", reason: "테스트 이름을 입력하세요", remedy: null }
+        : !hasChangesToSave
+          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null }
+          : { kind: "enabled" };
+
+  /*
+    005 FR-154·FR-158 (U-09) — **저장 성공을 화면을 옮기지 않고 알 수 있다.**
+    토스트로 끝내지 않는 이유는 사라지면 근거가 남지 않기 때문이다.
+  */
+  const savedNotice =
+    view.saved_at != null ? (
+      <div
+        role="status"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          border: "3px solid #2E9455",
+          background: "#F0F7F2",
+          padding: "8px 12px",
+        }}
+      >
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#2E9455" strokeWidth="2.8">
+          <path d="M3 8.5l3.5 3.5L13 4.5" />
+        </svg>
+        <span style={{ font: `600 13px/1.3 ${SANS}` }}>{editSavedNotice(title)}</span>
+        <div style={{ flex: 1 }} />
+        {onShowList && (
+          <button className="ghost" onClick={onShowList} disabled={busy}>
+            목록에서 보기
+          </button>
+        )}
+      </div>
+    ) : null;
 
   const model: WorkbenchModel = {
     phase,
@@ -767,29 +843,38 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         phase === "running" ? "아직 기록된 Step 이 없습니다." : "기록된 Step 이 없습니다."
       }
       stepFooter={
-        <SessionTools
+        <ActionPalette
           capabilities={capabilities}
-          title={title}
+          onRun={runAction}
+          onRemedy={onRemedy}
+          narrow={narrowByPick}
+          labels={{
+            "run.fromHere":
+              selectedIndex >= 0 ? `${stepLabel(selectedIndex)} 부터 이어 실행` : undefined,
+            "step.addAssertion": assertOpen ? "검증 추가 닫기" : undefined,
+          }}
+          nl={{
+            value: nl,
+            onChange: setNl,
+            onSubmit: () => {
+              onNaturalLanguage?.(nl.trim());
+              setNl("");
+            },
+          }}
+          /*
+            세션에서 테스트 이름은 **저장 이름을 겸한다** — 세션이 저장될 때 그 이름으로
+            파일이 생긴다. 조작을 둘로 나누면 같은 값을 두 칸에 넣게 된다.
+          */
+          name={saveName}
+          onNameChange={(v) => onSaveNameChange?.(v)}
+          startUrl={view.steps[0]?.type === "navigate" ? view.steps[0].url : ""}
+          onStartUrlChange={() => undefined}
+          instruction={aiInstruction}
+          saveLabel={sessionSaveLabel(view.saved_at != null)}
+          saveCapability={saveCapability}
+          saveNotice={savedNotice}
           stepCount={steps.length}
-          selectedStepId={focusedStepId}
-          selectedIndex={selectedIndex}
-          busy={busy}
-          saveName={saveName}
-          savedAt={view.saved_at ?? null}
-          hasChangesToSave={view.saved_at == null || view.has_unsaved_changes}
-          assertOpen={assertOpen}
-          onAction={onRemedy}
-          onSaveNameChange={onSaveNameChange}
-          onSave={onSave}
-          onShowList={onShowList}
-          onOpenDetail={onOpenDetail}
-          onDeleteStep={onDeleteStep}
-          onToggleReorder={onToggleReorder}
-          onToggleAssert={() => setAssertOpen((v) => !v)}
-          onRunFromHere={onRunFromHere}
-          onNaturalLanguage={onNaturalLanguage}
-          onRecordStart={onRecordStart}
-          onRecordStop={onRecordStop}
+          emptyHint="Step 이 없으면 저장할 수 없습니다."
         />
       }
       onSelectStep={onSelectStep}
@@ -813,244 +898,6 @@ function candidatesOf(step: Step | undefined) {
 function dropCandidatesOf(step: Step | undefined) {
   if (step === undefined) return null;
   return step.type === "drag" ? step.drop_target : null;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Step 패널 바닥의 조작 팔레트 (T036)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Step 을 대상으로 하는 조작과 저장 (007 T036 · ui-contract §3-2).
- *
- * 옛 `RunnerPaused` 의 「지금 할 수 있는 것」 팔레트를 옮긴 것이다. **자리가 일곱
- * 국면에서 같아진 것**이 007 의 수정이다 — 이전에는 실행 중 화면에 「Step 추가」
- * 하나, 일시정지 화면에 여섯 개, 사람이 직접 조작 화면에 「계속하기」 하나가 각각
- * 다른 모양으로 있었다.
- *
- * **조작은 하나도 잃지 않는다** (FR-247). 그리고 국면에 따라 감추는 대신 권한표가 정한
- * 대로 비활성 + 이유로 남는다 (FR-234).
- */
-function SessionTools({
-  capabilities,
-  title,
-  stepCount,
-  selectedStepId,
-  selectedIndex,
-  busy,
-  saveName,
-  savedAt,
-  hasChangesToSave,
-  assertOpen,
-  onAction,
-  onSaveNameChange,
-  onSave,
-  onShowList,
-  onOpenDetail,
-  onDeleteStep,
-  onToggleReorder,
-  onToggleAssert,
-  onRunFromHere,
-  onNaturalLanguage,
-  onRecordStart,
-  onRecordStop,
-}: {
-  capabilities: ReturnType<typeof capabilitiesFor>;
-  title: string;
-  stepCount: number;
-  selectedStepId: string | null;
-  selectedIndex: number;
-  busy: boolean;
-  saveName: string;
-  savedAt: string | null;
-  hasChangesToSave: boolean;
-  assertOpen: boolean;
-  onAction: (action: ActionId) => void;
-  onSaveNameChange?: (name: string) => void;
-  onSave?: () => void;
-  onShowList?: () => void;
-  onOpenDetail?: (stepId: string) => void;
-  onDeleteStep?: (stepId: string) => void;
-  onToggleReorder?: () => void;
-  onToggleAssert?: () => void;
-  onRunFromHere?: (index: number) => void;
-  onNaturalLanguage?: (instruction: string) => void;
-  onRecordStart?: () => void;
-  onRecordStop?: () => void;
-}) {
-  const [nl, setNl] = useState("");
-
-  const nlUsable = capabilities["step.addNaturalLanguage"].kind === "enabled";
-  const canPickStep = selectedStepId !== null;
-
-  /**
-   * 저장할 수 있는가 (005 FR-156).
-   *
-   * 표는 국면을 말하고(Step 이 있는가·실행 중인가), 이름과 변경 유무는 화면이 안다.
-   * 라벨은 바뀌지 않는다 — 「변경 저장」이 상황마다 다른 말이 되면 사용자가 배운 것이
-   * 흔들린다.
-   */
-  const saveCapability: CapabilityState =
-    capabilities.save.kind !== "enabled"
-      ? capabilities.save
-      : saveName.trim() === ""
-        ? { kind: "disabled", reason: "테스트 이름을 입력하세요", remedy: null }
-        : !hasChangesToSave
-          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null }
-          : { kind: "enabled" };
-
-  const tool = (id: ActionId, run: () => void, extra: { label?: string } = {}) => (
-    <ActionButton
-      key={id}
-      action={id}
-      capability={
-        /*
-          표는 **국면**을 말한다. "지목한 Step 이 없다" 는 국면이 아니라 화면이 아는
-          사실이므로 여기서 한 겹 더 좁힌다 — 좁히지 않으면 무엇에 걸지 모르는 조작이
-          활성으로 남고, 누르면 아무 일도 일어나지 않는다.
-        */
-        STEP_SCOPED.has(id) && !canPickStep && capabilities[id].kind === "enabled"
-          ? { kind: "disabled", reason: "먼저 Step 을 고르세요", remedy: { action: "step.select" } }
-          : capabilities[id]
-      }
-      compact
-      onRun={run}
-      onRemedy={onAction}
-      {...extra}
-    />
-  );
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{
-          font: `600 11px/1 ${MONO}`,
-          letterSpacing: "0.1em",
-          color: "#6B675C",
-        }}
-      >
-        지금 할 수 있는 것
-      </div>
-
-      {/* 자연어로 Step 추가 (FR-078). 쓸 수 없으면 입력칸을 잠그고 이유는 버튼이 말한다. */}
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-        <input
-          aria-label="자연어로 Step 추가"
-          value={nl}
-          disabled={!nlUsable}
-          onChange={(e) => setNl(e.target.value)}
-          placeholder="생성된 프로젝트가 목록에 있는지 확인해."
-          style={{
-            flex: "1",
-            minWidth: 0,
-            height: 40,
-            minHeight: 40,
-            padding: "0 12px",
-            border: "3px solid #7C4DDB",
-            background: nlUsable ? "#FFFDF6" : "#EDEAE0",
-            font: `400 13px/1 ${SANS}`,
-          }}
-        />
-        <ActionButton
-          action="step.addNaturalLanguage"
-          capability={capabilities["step.addNaturalLanguage"]}
-          /*
-            **라벨을 줄이지 않는다** (FR-235). 「추가」는 무엇을 더하는지 말하지 않고,
-            같은 화면의 다른 「추가」와 구별되지 않는다. 실브라우저 계층(AS-025)이 이
-            자리에서 「Step 추가」를 찾는 것도 그 라벨이 조작의 이름이기 때문이다.
-          */
-          compact
-          onRemedy={onAction}
-          onRun={() => {
-            if (nl.trim() === "") return;
-            onNaturalLanguage?.(nl.trim());
-            setNl("");
-          }}
-        />
-      </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-        {tool("step.recordStart", () => onRecordStart?.())}
-        {tool("step.recordStop", () => onRecordStop?.())}
-        {tool("step.addAssertion", () => onToggleAssert?.(), {
-          label: assertOpen ? "검증 추가 닫기" : undefined,
-        })}
-        {tool("step.update", () => selectedStepId !== null && onOpenDetail?.(selectedStepId))}
-        {tool("step.reorder", () => onToggleReorder?.())}
-        {tool("run.fromHere", () => selectedIndex >= 0 && onRunFromHere?.(selectedIndex), {
-          label: selectedIndex >= 0 ? `${stepLabel(selectedIndex)} 부터 이어 실행` : undefined,
-        })}
-        {tool("step.delete", () => selectedStepId !== null && onDeleteStep?.(selectedStepId))}
-      </div>
-
-      {/*
-        005 FR-155·FR-156 — 저장 상자. 라벨이 「저장」/「변경 저장」으로 갈리고, 저장할
-        것이 없으면 **비활성으로 남는다** (감추지 않는다).
-
-        007 이 바꾼 것 하나: 005 ui-contract §8 금지 4 는 **결말 화면**에 저장 프롬프트를
-        두지 말라고 했다. 통합 뒤에는 결말 화면이 따로 없고 저장은 이 팔레트에 산다 —
-        「지금 해야 할 일」로 읽히던 자리(결말 화면 맨 아래)가 사라졌으므로 금지의 이유가
-        해소됐고, 대신 FR-234 가 요구하는 대로 이유를 붙여 남긴다.
-      */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          borderTop: "2px solid #DCD8CC",
-          paddingTop: 12,
-          alignItems: "flex-start",
-        }}
-      >
-        <input
-          aria-label="테스트 이름"
-          value={saveName}
-          onChange={(e) => onSaveNameChange?.(e.target.value)}
-          placeholder="테스트 이름"
-          style={{ flex: 1, minWidth: 0, minHeight: 40, height: 40, border: `3px solid ${INK}` }}
-        />
-        <ActionButton
-          action="save"
-          capability={saveCapability}
-          label={sessionSaveLabel(savedAt !== null)}
-          compact
-          onRemedy={onAction}
-          onRun={onSave}
-        />
-      </div>
-
-      {/*
-        005 FR-154·FR-158 (U-09) — **저장 성공을 화면을 옮기지 않고 알 수 있다.**
-        토스트로 끝내지 않는 이유는 사라지면 근거가 남지 않기 때문이다.
-      */}
-      {savedAt !== null && (
-        <div
-          role="status"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            border: "3px solid #2E9455",
-            background: "#F0F7F2",
-            padding: "8px 12px",
-          }}
-        >
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#2E9455" strokeWidth="2.8">
-            <path d="M3 8.5l3.5 3.5L13 4.5" />
-          </svg>
-          <span style={{ font: `600 13px/1.3 ${SANS}` }}>{editSavedNotice(title)}</span>
-          <div style={{ flex: 1 }} />
-          {onShowList && (
-            <button className="ghost" onClick={onShowList} disabled={busy}>
-              목록에서 보기
-            </button>
-          )}
-        </div>
-      )}
-
-      {stepCount === 0 && (
-        <div style={{ color: "#6B675C", fontSize: 12.5 }}>Step 이 없으면 저장할 수 없습니다.</div>
-      )}
-    </div>
-  );
 }
 
 /** 지목한 Step 이 있어야 뜻이 있는 조작. */
