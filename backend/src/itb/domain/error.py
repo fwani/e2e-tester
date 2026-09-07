@@ -59,6 +59,12 @@ class ErrorCode(StrEnum):
     SESSION_ALREADY_ACTIVE = "SESSION_ALREADY_ACTIVE"
     SESSION_LOST = "SESSION_LOST"
     NOT_PAUSED = "NOT_PAUSED"
+    CANNOT_RESUME_PAST_FAILURE = "CANNOT_RESUME_PAST_FAILURE"
+    """실패한 Step 앞에서 재개를 요청했다 (005 FR-136).
+
+    조용히 건너뛰면 화면은 「완료」라고 말하고 저장된 결과는 실패인 상태가 된다 (U-05).
+    """
+
     INVALID_TRANSITION = "INVALID_TRANSITION"
     TAB_NOT_FOUND = "TAB_NOT_FOUND"
     TAB_LIMIT_REACHED = "TAB_LIMIT_REACHED"
@@ -128,6 +134,7 @@ CATEGORY: dict[ErrorCode, Category] = {
     ErrorCode.SESSION_NOT_FOUND: Category.BLOCKED,
     ErrorCode.SESSION_ALREADY_ACTIVE: Category.BLOCKED,
     ErrorCode.NOT_PAUSED: Category.BLOCKED,
+    ErrorCode.CANNOT_RESUME_PAST_FAILURE: Category.BLOCKED,
     ErrorCode.INVALID_TRANSITION: Category.BLOCKED,
     ErrorCode.TAB_NOT_FOUND: Category.BLOCKED,
     ErrorCode.TAB_LIMIT_REACHED: Category.BLOCKED,
@@ -180,6 +187,9 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ErrorCode.SESSION_ALREADY_ACTIVE: "진행 중인 세션을 끝내거나 그 세션으로 이동하세요.",
     ErrorCode.SESSION_LOST: "기록된 Step은 남아 있습니다. 저장한 뒤 새 세션을 시작하세요.",
     ErrorCode.NOT_PAUSED: "먼저 일시정지한 뒤 다시 시도하세요.",
+    ErrorCode.CANNOT_RESUME_PAST_FAILURE: (
+        "그 Step 을 고친 뒤 이어가거나, 그 Step 부터 다시 실행하세요."
+    ),
     ErrorCode.INVALID_TRANSITION: "지금 가능한 동작 중에서 고르세요.",
     ErrorCode.TAB_NOT_FOUND: "탭 목록을 새로 고친 뒤 다시 고르세요. 이미 닫혔을 수 있습니다.",
     ErrorCode.TAB_LIMIT_REACHED: "쓰지 않는 탭을 닫은 뒤 다시 시도하세요.",

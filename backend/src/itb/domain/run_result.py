@@ -11,8 +11,43 @@ from itb.domain.error import ErrorCode
 
 
 class Outcome(StrEnum):
+    """실행이 어떻게 끝났는가 (005 FR-131·FR-137).
+
+    **네 값이 필요한 이유는 두 값이 서로 다른 것을 뭉갰기 때문이다.** 사용자가 누른 중지가
+    `FAIL` 로 기록되어 사고처럼 보이고(U-03), 실패 Step 을 건너뛴 실행이 통과처럼 보였다
+    (U-05).
+
+    판정 우선순위는 `decide_outcome()` 이 갖는다. 여기서 값을 늘리기만 하고 판정을 여러
+    곳에 흩으면 화면과 저장된 결과가 다시 어긋난다.
+    """
+
     PASS = "pass"
     FAIL = "fail"
+
+    STOPPED = "stopped"
+    """사용자가 중지를 요청해 끝났다. **실패 집계에 넣지 않는다** (FR-131).
+
+    세션 유실은 여기가 아니라 `FAIL` 이다 — 사고이며 사용자가 요청한 중단이 아니다.
+    """
+
+    PARTIAL_PASS = "partial_pass"
+    """실패 Step 을 명시적으로 건너뛰고 나머지를 마쳤다 (FR-137).
+
+    이름이 `partial` 이 아닌 이유는 `RunScope.PARTIAL`(부분 실행 = 실행 범위)과 구별하기
+    위해서다. 같은 리터럴로 두 뜻을 표현하면 판정 코드에서 섞이고, 섞인 것을 테스트로
+    잡기 어렵다.
+    """
+
+
+class RunScope(StrEnum):
+    """이 실행이 전체였는가 부분이었는가 (005 FR-152).
+
+    결말과 **다른 축**이다. Step 06~07 만 돌아 전부 통과하면 결말은 `PASS` 이고 범위가
+    `PARTIAL` 이다. 한 값에 섞으면 "부분 구간을 전부 통과한 실행" 을 부를 이름이 없어진다.
+    """
+
+    FULL = "full"
+    PARTIAL = "partial"
 
 
 class StepOutcome(StrEnum):
@@ -106,3 +141,88 @@ class RunResult(BaseModel):
     artifacts: Artifacts = Field(default_factory=Artifacts)
     session_lost: bool = False
     """세션 유실로 종료된 실행인지 (FR-041a)."""
+
+    start_index: int = Field(default=0, ge=0)
+    """이 실행이 시작한 Step (005 FR-152). 0 이면 처음부터 돌았다."""
+
+    scope: RunScope = RunScope.FULL
+    """전체 실행인가 부분 실행인가 (005 FR-152).
+
+    `start_index > 0` 에서 파생되지만 **저장한다.** 읽는 쪽이 매번 해석하면 같은 규칙이
+    여러 곳에 복제되고, 한 곳이 빠뜨린다.
+    """
+
+    attempted_count: int = Field(default=0, ge=0)
+    """실제 실행 대상이던 Step 수 = 전체 − 건너뜀 (005 FR-152).
+
+    **요약 문장의 분모는 이것이다.** `total_count` 를 분모로 쓰면 5개를 건너뛴 부분 실행이
+    `0 / 7` 로 보여, 사용자는 직전 전체 실행(5/7)보다 나빠진 줄 안다 (U-02).
+    """
+
+    stopped_step_index: int | None = Field(default=None, ge=0)
+    """사용자가 중지한 시점의 Step (005 FR-131). `STOPPED` 일 때만 채운다."""
+
+
+# ─── 결말 판정 (005 T036a·T036b) ─────────────────────────────────────────────
+
+
+def decide_outcome(
+    steps: list[StepResult],
+    *,
+    session_lost: bool = False,
+    stop_requested: bool = False,
+    skipped_failures: bool = False,
+) -> Outcome:
+    """실행 결말을 정한다. **순수 함수다** (005 FR-131·FR-137).
+
+    판정을 여기 한 곳에 두는 이유는 이전 구현이
+    `Outcome.PASS if passed and not session_lost else Outcome.FAIL` 한 줄로 모든 결말을
+    만들었고, 그 `passed` 불리언을 호출자마다 다르게 계산했기 때문이다. 그래서 사용자가
+    누른 중지가 실패가 됐고(U-03), 실패 Step 을 건너뛴 실행이 완료로 보였다(U-05).
+
+    우선순위는 위에서부터 먼저 걸리는 것이 이긴다 (data-model.md §1):
+
+    1. 세션 유실 → `FAIL`. **사고이며 사용자가 요청한 중단이 아니다.** 중지보다 먼저
+       보는 이유는, 유실 뒤에 도착한 중지 요청이 사고를 정상 중단으로 바꿔 적지 않게
+       하려는 것이다.
+    2. 중지 요청 → `STOPPED`
+    3. 실패 Step 을 명시적으로 건너뛰고 계속함 → `PARTIAL_PASS`
+    4. 실패 Step 이 남아 있음 → `FAIL`
+    5. 그 외 → `PASS`
+
+    `skipped_failures` 는 **사용자가 「실패한 Step 건너뛰고 계속」을 골랐는지**다.
+    `StepOutcome.SKIPPED` 가 결과에 있는 것만으로는 알 수 없다 — 부분 실행도 앞선 Step 을
+    건너뜀으로 적기 때문이다. 그 둘을 구분하지 않으면 부분 실행이 전부 `PARTIAL_PASS` 가
+    된다.
+    """
+    if session_lost:
+        return Outcome.FAIL
+    if stop_requested:
+        return Outcome.STOPPED
+    if skipped_failures:
+        return Outcome.PARTIAL_PASS
+    if any(r.outcome is StepOutcome.FAIL for r in steps):
+        return Outcome.FAIL
+    return Outcome.PASS
+
+
+def counts_as_failure(outcome: Outcome) -> bool:
+    """실패로 집계하는 결말인가 (005 FR-131).
+
+    화면과 목록이 각자 `outcome == FAIL` 을 쓰면 결말이 늘 때마다 한 곳이 빠뜨린다.
+    """
+    return outcome is Outcome.FAIL
+
+
+def attempted_of(steps: list[StepResult]) -> int:
+    """실행 대상이던 Step 수 = 전체 − 건너뜀 (005 FR-152).
+
+    `NOT_RUN` 은 **뺀다** — 실행 대상이었지만 앞선 실패로 도달하지 못한 것이므로 분모에
+    남아야 한다. 그것을 빼면 실패한 실행이 `5 / 5` 로 보인다.
+    """
+    return sum(1 for r in steps if r.outcome is not StepOutcome.SKIPPED)
+
+
+def scope_of(start_index: int) -> RunScope:
+    """시작 지점에서 실행 범위를 정한다 (005 FR-152)."""
+    return RunScope.FULL if start_index <= 0 else RunScope.PARTIAL

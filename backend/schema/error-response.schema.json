@@ -56,6 +56,7 @@
         "SESSION_ALREADY_ACTIVE",
         "SESSION_LOST",
         "NOT_PAUSED",
+        "CANNOT_RESUME_PAST_FAILURE",
         "INVALID_TRANSITION",
         "TAB_NOT_FOUND",
         "TAB_LIMIT_REACHED",

@@ -67,6 +67,7 @@
         "SESSION_ALREADY_ACTIVE",
         "SESSION_LOST",
         "NOT_PAUSED",
+        "CANNOT_RESUME_PAST_FAILURE",
         "INVALID_TRANSITION",
         "TAB_NOT_FOUND",
         "TAB_LIMIT_REACHED",
@@ -129,11 +130,23 @@
       "type": "object"
     },
     "Outcome": {
+      "description": "실행이 어떻게 끝났는가 (005 FR-131·FR-137).\n\n**네 값이 필요한 이유는 두 값이 서로 다른 것을 뭉갰기 때문이다.** 사용자가 누른 중지가\n`FAIL` 로 기록되어 사고처럼 보이고(U-03), 실패 Step 을 건너뛴 실행이 통과처럼 보였다\n(U-05).\n\n판정 우선순위는 `decide_outcome()` 이 갖는다. 여기서 값을 늘리기만 하고 판정을 여러\n곳에 흩으면 화면과 저장된 결과가 다시 어긋난다.",
       "enum": [
         "pass",
-        "fail"
+        "fail",
+        "stopped",
+        "partial_pass"
       ],
       "title": "Outcome",
+      "type": "string"
+    },
+    "RunScope": {
+      "description": "이 실행이 전체였는가 부분이었는가 (005 FR-152).\n\n결말과 **다른 축**이다. Step 06~07 만 돌아 전부 통과하면 결말은 `PASS` 이고 범위가\n`PARTIAL` 이다. 한 값에 섞으면 \"부분 구간을 전부 통과한 실행\" 을 부를 이름이 없어진다.",
+      "enum": [
+        "full",
+        "partial"
+      ],
+      "title": "RunScope",
       "type": "string"
     },
     "StepOutcome": {
@@ -264,6 +277,12 @@
     "artifacts": {
       "$ref": "#/$defs/Artifacts"
     },
+    "attempted_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Attempted Count",
+      "type": "integer"
+    },
     "browser": {
       "title": "Browser",
       "type": "string"
@@ -294,10 +313,20 @@
       "title": "Passed Count",
       "type": "integer"
     },
+    "scope": {
+      "$ref": "#/$defs/RunScope",
+      "default": "full"
+    },
     "session_lost": {
       "default": false,
       "title": "Session Lost",
       "type": "boolean"
+    },
+    "start_index": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Start Index",
+      "type": "integer"
     },
     "started_at": {
       "format": "date-time",
@@ -310,6 +339,19 @@
       },
       "title": "Steps",
       "type": "array"
+    },
+    "stopped_step_index": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stopped Step Index"
     },
     "test_id": {
       "title": "Test Id",
@@ -338,7 +380,11 @@
     "browser",
     "steps",
     "artifacts",
-    "session_lost"
+    "session_lost",
+    "start_index",
+    "scope",
+    "attempted_count",
+    "stopped_step_index"
   ],
   "title": "RunResult",
   "type": "object"

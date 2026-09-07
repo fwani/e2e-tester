@@ -28,6 +28,7 @@ from playwright.async_api import Error as PlaywrightError
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing
 from itb.domain.test_case import MAX_TABS_DEFAULT
 from itb.execution.state_machine import (
+    ACTIVE_STATES,
     Command,
     SessionState,
     next_state,
@@ -360,6 +361,8 @@ class SessionManager:
         self._pw = playwright
         self._sessions: dict[str, BrowserSession] = {}
         self._by_test: dict[str, str] = {}
+        self._reserved: dict[str, str] = {}
+        """생성 중인 테스트의 예약 (005 FR-128). 값은 요청마다 다른 토큰이다."""
 
     # ─── 조회 ───────────────────────────────────────────────────────────────
 
@@ -374,8 +377,57 @@ class SessionManager:
         return s
 
     def active_session_for_test(self, test_id: str) -> str | None:
-        """FR-043 — 테스트당 동시 실행 1건."""
-        return self._by_test.get(test_id)
+        """FR-043 — 테스트당 동시 실행 1건. **살아 있는 세션만 센다** (005 FR-124).
+
+        이전에는 등록 여부만 보고 돌려줬다. 실행이 끝나도 세션은 `failed` 상태로 등록에
+        남으므로, 방금 끝난 실행 뒤의 재실행이 **항상** 거절됐다 — 그리고 거절 문구는
+        "먼저 중지하세요" 였는데 그 화면에는 중지가 없었다 (U-01).
+
+        종료된 세션이 다음 실행을 막을 이유가 없다. 판정 근거는 이미 있는 `ACTIVE_STATES`
+        를 쓴다 — 새 목록을 만들면 두 개의 진실이 생기고, 상태가 늘 때 한쪽이 빠뜨린다.
+
+        살아 있지 않은 세션은 **등록에서 떼어낸다.** 남겨 두면 같은 판정을 매 호출마다
+        다시 해야 하고, 판정을 부르지 않는 경로가 하나라도 있으면 그곳에서 옛 결함이
+        되살아난다.
+        """
+        session_id = self._by_test.get(test_id)
+        if session_id is None:
+            return None
+        session = self._sessions.get(session_id)
+        if session is None or session.state not in ACTIVE_STATES:
+            self._by_test.pop(test_id, None)
+            return None
+        return session_id
+
+    def reservation_for_test(self, test_id: str) -> str | None:
+        """예약을 포함해 이 테스트가 점유돼 있는가 (005 FR-128).
+
+        세션 생성은 브라우저를 띄우는 동안(약 1초) await 경계를 지난다. 그 사이 도착한
+        요청이 `active_session_for_test()` 만 보면 아직 세션이 없으므로 모두 통과한다 —
+        다섯 번 연타에 브라우저 창이 둘 떴던 것이 그것이다 (U-06).
+
+        그래서 **생성 전에 자리를 예약**하고, 이 함수가 예약까지 본다.
+        """
+        if test_id in self._reserved:
+            return self._reserved[test_id]
+        return self.active_session_for_test(test_id)
+
+    def reserve_for_test(self, test_id: str, token: str) -> None:
+        """세션 생성 전에 자리를 잡는다 (005 FR-128).
+
+        호출자는 **락 안에서** 확인과 예약을 함께 해야 한다. 예약만 두고 확인을 락 밖에서
+        하면 경쟁 구간이 그대로 남는다.
+        """
+        self._reserved[test_id] = token
+
+    def release_reservation(self, test_id: str, token: str) -> None:
+        """예약을 놓는다. **자기 예약만 놓는다.**
+
+        토큰을 확인하는 이유는, 예약이 세션으로 승격된 뒤 앞선 실패 경로가 뒤늦게
+        정리하며 남의 자리를 비우는 것을 막기 위해서다.
+        """
+        if self._reserved.get(test_id) == token:
+            self._reserved.pop(test_id, None)
 
     def all_sessions(self) -> list[BrowserSession]:
         return list(self._sessions.values())
@@ -395,7 +447,9 @@ class SessionManager:
         `headless=False` 가 기본이다 — 조작 국면은 실제 창을 요구하고(clarify 결정 3),
         스크린캐스트는 headed 에서도 동작한다(T006 실측). 모드를 하나로 유지한다.
         """
-        if test_id is not None and test_id in self._by_test:
+        if test_id is not None and self.active_session_for_test(test_id) is not None:
+            # 005 FR-124 — 종료된 세션은 막지 않는다. 판정을 한 곳에 모아 둔 덕에
+            # 이 검사와 API 경계의 검사가 같은 답을 낸다.
             msg = f"이미 실행 중인 세션이 있습니다: {test_id}"
             raise SessionError(msg)
 

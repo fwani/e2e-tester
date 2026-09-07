@@ -37,6 +37,26 @@ REASON_CONTEXT_CLOSED = "브라우저 창이 모두 닫혀 세션이 유실됐�
 REASON_ALL_TABS_CLOSED = "열려 있던 탭이 모두 닫혀 세션이 유실됐습니다."
 
 
+NORMAL_END_STATES: frozenset[SessionState] = frozenset(
+    {
+        SessionState.COMPLETED,
+        SessionState.FAILED,
+        SessionState.STOPPED,
+        SessionState.LOST,
+        SessionState.REVIEW,
+    }
+)
+"""정상 종료 과정에서 close 이벤트가 오는 상태들. 유실이 아니다.
+
+**`REVIEW` 가 빠져 있던 것이 U-03 이었다.** `STOP` 은 세션을 `REVIEW` 로 남긴 뒤
+브라우저를 놓는다(DR-010). 그 close 가 가드를 지나 `session_lost` 를 발행하고, 후처리가
+`finalize(session_lost=True)` 를 불러 **사용자가 누른 중지를 실패로 확정**했다.
+
+화면에는 "브라우저 세션이 유실됐습니다" 라는 오류가 떴다 — 사용자는 자기가 누른 버튼의
+결과를 사고로 통보받았다.
+"""
+
+
 class SessionLossWatcher:
     """세션 하나의 유실 감시자.
 
@@ -49,11 +69,21 @@ class SessionLossWatcher:
         self._on_lost = on_lost
         self._fired = False
         self._attached = False
+        self._disarmed = False
         self._task: asyncio.Task[None] | None = None
 
     @property
     def fired(self) -> bool:
         return self._fired
+
+    def disarm(self) -> None:
+        """감지를 끈다. **의도적 종료 경로에서 먼저 부른다** (005 FR-132).
+
+        가드(`NORMAL_END_STATES`)만으로도 막히지만, 그것은 그물이고 이것은 원인 제거다.
+        중지는 상태를 `REVIEW` 로 옮긴 **뒤** 브라우저를 놓으므로, 두 동작 사이에 close
+        이벤트가 끼어들 여지가 남는다. 먼저 끄면 그 여지가 없다.
+        """
+        self._disarmed = True
 
     def attach(self) -> None:
         """감지를 시작한다. 두 번 붙이지 않는다."""
@@ -82,13 +112,11 @@ class SessionLossWatcher:
             self._task = asyncio.create_task(self._handle(reason))
 
     async def _handle(self, reason: str) -> None:
+        if self._disarmed:
+            # 005 FR-132 — 의도적 중지가 감지기를 먼저 껐다. 원인 제거 쪽이다.
+            return
         state = self._session.state
-        if state in (
-            SessionState.COMPLETED,
-            SessionState.FAILED,
-            SessionState.STOPPED,
-            SessionState.LOST,
-        ):
+        if state in NORMAL_END_STATES:
             # 정상 종료 과정에서도 close 이벤트가 온다. 그것은 유실이 아니다.
             return
 

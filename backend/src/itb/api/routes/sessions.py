@@ -7,7 +7,9 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 import contextlib
+from datetime import UTC, datetime
 from dataclasses import dataclass, field
 from typing import Annotated, Literal
 
@@ -24,6 +26,7 @@ from itb.api.errors import (
 )
 from itb.api.state import AppState, get_state
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
+from itb.domain.run_result import RunScope, StepOutcome, scope_of
 from itb.domain.step import Author, NavigateStep, Step
 from itb.domain.test_case import AuthoringMode, Test, Variable
 from itb.execution.artifacts import ArtifactCollector
@@ -96,6 +99,8 @@ class SessionWork:
     authoring_mode: AuthoringMode = AuthoringMode.RECORD
     ai_instruction: str | None = None
     saved_test_id: str | None = None
+    saved_at: datetime | None = None
+    """마지막 저장 시각 (005 FR-154). 화면이 저장 성공을 스스로 알 수 있게 한다."""
 
     # ─── 재실행 (US2) ──────────────────────────────────────────────────────
     mirror: MirrorController | None = None
@@ -230,6 +235,20 @@ class PacingRequest(BaseModel):
     pacing: RunPacing
 
 
+class StepProgress(BaseModel):
+    """세션에서 지금까지 확정된 Step 결과 하나 (005 FR-171).
+
+    `StepResult` 전체가 아니라 **화면 복원에 필요한 최소**다. 진단 정보(로케이터 시도·
+    오류 본문)는 결과 조회로 가져온다 — 세션 뷰는 폴링 대상이므로 가볍게 유지한다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    step_id: str
+    outcome: StepOutcome
+    duration_ms: int = Field(default=0, ge=0)
+
+
 class SessionView(BaseModel):
     """WebSocket 재연결 시 전체 상태 동기화에 쓴다 (contracts/websocket.md)."""
 
@@ -265,6 +284,46 @@ class SessionView(BaseModel):
     AI 화면과 실패 사유가 사라진다 — 001 에서 "AI 로 만들기가 아무 반응이 없다" 로
     보인 것의 원인이다 (research R2·DR-020)."""
 
+    step_results: list[StepProgress] = Field(default_factory=list)
+    """이 세션에서 지금까지 확정된 Step별 결과 (005 FR-171).
+
+    **이벤트 없이도 화면이 복원되게 하는 것이 목적이다.** 이전에는 Step별 결과가
+    WebSocket 이벤트로만 채워지는 화면 로컬 상태에 있어, 화면을 다시 그리면 사라졌다
+    (U-18). 같은 뿌리가 U-05 의 "실패한 Step 이 화면에서 지워지는" 증상이다 — 실패
+    이벤트를 놓친 화면은 실패가 없었던 것처럼 보인다.
+
+    WebSocket 계약은 이미 "끊기면 세션 조회로 전체 상태를 다시 받는다" 인데, 그 전체
+    상태에 Step 결과가 빠져 있던 것이 계약의 구멍이었다. 재전송 버퍼를 만드는 대신
+    스냅샷을 채운다.
+    """
+
+    pause_settled: bool = True
+    """일시정지가 **실제로** 걸렸는가 (005 FR-142).
+
+    `False` 면 요청은 갔지만 아직 Step 경계에 닿지 않은 **전이 중**이다. 값은 러너의
+    `at_boundary` 에서 온다.
+
+    `SessionState` 에 새 상태를 넣지 않은 이유는 두 가지다 — 전이표 전체와 004 의
+    `한 스텝씩` 재사용 결정을 흔들게 되고, "요청은 갔고 아직 경계에 닿지 않았다" 는
+    상태가 아니라 러너의 사실이다 (research R7).
+
+    이전에는 요청 즉시 `paused` 로 보이는데 실제로는 19초를 더 돌았다 (U-04).
+    """
+
+    run_scope: RunScope = RunScope.FULL
+    """현재 실행의 범위 (005 FR-152)."""
+
+    run_start_index: int = Field(default=0, ge=0)
+    """현재 실행이 시작한 Step (005 FR-149·FR-150). 화면이 건너뛴 구간을 말하는 근거다."""
+
+    saved_at: datetime | None = None
+    """마지막 저장 시각 (005 FR-154). `None` 이면 미저장.
+
+    저장 성공을 화면이 **스스로** 알 수 있게 한다. 이전에는 저장 응답 말고는 저장 여부를
+    알 방법이 없어, 화면을 다시 그리면 다시 미저장처럼 보였고 사용자는 목록으로 나가
+    확인해야 했다 (U-09).
+    """
+
 
 class SaveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -272,10 +331,45 @@ class SaveRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
 
 
+class ResumeRequest(BaseModel):
+    """재개 요청 (005 FR-136·FR-137, contracts/rest-api.md §3-b).
+
+    본문을 보내지 않으면 `skip_failed=False` 와 같다 — 기존 클라이언트가 그대로 동작한다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    skip_failed: bool = False
+    """실패한 Step 을 건너뛰고 다음 Step 부터 이어간다.
+
+    **버튼이 둘이지만 엔드포인트는 하나다.** 나누면 재개 규칙(편집된 목록을 대상으로
+    삼는 것, 러너를 새로 띄우지 않는 것)이 두 벌이 되고, 한쪽이 뒤처진다.
+    """
+
+
 class RunFromRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     step_index: int = Field(ge=0)
+
+
+_CREATE_LOCKS: dict[str, asyncio.Lock] = {}
+"""테스트별 세션 생성 락 (005 FR-128).
+
+**전역 락 하나를 쓰지 않는다.** 그러면 서로 다른 테스트의 실행이 브라우저 기동 동안
+직렬화되어, 고치려던 것(중복 생성)보다 눈에 띄는 지연을 만든다.
+
+락은 프로세스 수명 동안 남는다 — 테스트 수는 사람이 만드는 규모이므로 정리 정책을 둘
+이유가 없다. 정리 로직을 두면 정리와 획득 사이에 또 다른 경쟁이 생긴다.
+"""
+
+
+def _create_lock(test_id: str) -> asyncio.Lock:
+    lock = _CREATE_LOCKS.get(test_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _CREATE_LOCKS[test_id] = lock
+    return lock
 
 
 def view_of(w: SessionWork) -> SessionView:
@@ -297,7 +391,46 @@ def view_of(w: SessionWork) -> SessionView:
         has_unsaved_changes=w.has_unsaved_changes,
         pacing=w.session.pacing,
         authoring_mode=w.authoring_mode,
+        step_results=_progress_of(w),
+        pause_settled=_pause_settled(w),
+        run_scope=scope_of(w.engine.start_index if w.engine is not None else 0),
+        run_start_index=w.engine.start_index if w.engine is not None else 0,
+        saved_at=w.saved_at,
     )
+
+
+def _progress_of(w: SessionWork) -> list[StepProgress]:
+    """엔진이 들고 있는 Step 결과를 화면 복원용 형태로 옮긴다 (005 FR-171).
+
+    **아직 돌지 않은 Step 은 싣지 않는다.** `not_run` 을 그대로 보내면 화면은 "결과가
+    있다" 와 "아직 없다" 를 구분하지 못하고, 실행 전에도 모든 Step 이 결과를 가진 것처럼
+    보인다. 없는 것은 없는 채로 둔다.
+    """
+    if w.engine is None:
+        return []
+    return [
+        StepProgress(
+            step_id=r.step_id, outcome=r.outcome, duration_ms=r.duration_ms
+        )
+        for r in w.engine.results
+        if r.outcome is not StepOutcome.NOT_RUN
+    ]
+
+
+def _pause_settled(w: SessionWork) -> bool:
+    """일시정지가 실제로 걸렸는가 (005 FR-142).
+
+    일시정지 상태가 아니면 **`True` 로 둔다** — "전이 중이 아니다" 가 맞는 답이다.
+    `False` 를 기본으로 두면 실행 중 화면이 전이 표시를 켠다.
+
+    러너가 없거나 이미 끝났으면 기다릴 것이 없으므로 걸린 것으로 본다.
+    """
+    if w.session.state is not SessionState.PAUSED:
+        return True
+    runner = w.runner
+    if runner is None or not runner.running:
+        return True
+    return runner.at_boundary
 
 
 # ─── 생성 ───────────────────────────────────────────────────────────────────
@@ -332,11 +465,29 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         except ValueError as exc:
             raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
 
-    if body.test_id and state.sessions.active_session_for_test(body.test_id):
-        raise conflict(
-            ErrorCode.SESSION_ALREADY_ACTIVE,
-            f"{body.test_id} 에 이미 실행 중인 세션이 있습니다. 먼저 중지하세요.",
-        )
+    # 005 FR-128 — 확인과 예약을 **한 락 안에서** 함께 한다.
+    #
+    # 이전에는 확인 뒤 `create()` 까지 사이에 await 경계가 있었고 락이 없었다. 그래서
+    # 100 ms 안에 도착한 다섯 요청이 모두 확인을 통과해 브라우저 창이 둘 떴다 (U-06).
+    # FR-043(테스트당 동시 실행 1건)이 경계에서 지켜지지 않았던 것이다.
+    #
+    # 락은 **짧게 쥐고 놓는다.** 브라우저 기동(약 1초)을 락 안에 두면 다른 테스트의
+    # 실행까지 직렬화된다. 대신 자리를 예약해 긴 구간을 보호한다.
+    reservation: tuple[str, str] | None = None
+    if body.test_id:
+        async with _create_lock(body.test_id):
+            held = state.sessions.reservation_for_test(body.test_id)
+            if held:
+                raise conflict(
+                    ErrorCode.SESSION_ALREADY_ACTIVE,
+                    f"{body.test_id} 가 지금 실행 중입니다.",
+                    next_action="실행 중인 세션으로 이동한 뒤 중지하세요.",
+                    test_id=body.test_id,
+                    session_id=held,
+                )
+            token = uuid.uuid4().hex
+            state.sessions.reserve_for_test(body.test_id, token)
+            reservation = (body.test_id, token)
 
     start_url = (
         existing_test.start_url
@@ -361,6 +512,14 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         ) from exc
     except SessionError as exc:
         raise conflict(ErrorCode.SESSION_ALREADY_ACTIVE, str(exc)) from exc
+    finally:
+        # 005 FR-128 — 예약은 여기서 반드시 놓는다.
+        #
+        # 성공했으면 세션이 등록됐으므로 예약은 더 이상 필요 없고, 실패했으면 남겨 두면
+        # 그 테스트가 프로세스가 끝날 때까지 "실행 중" 으로 잠긴다 — 고치려던 결함보다
+        # 나쁜 상태다. 그래서 두 경우를 `finally` 하나로 합친다.
+        if reservation is not None:
+            state.sessions.release_reservation(*reservation)
 
     # 요청 → 저장된 취향 → 기본값 (FR-109, contracts/rest-api.md §1).
     session.pacing = (
@@ -915,7 +1074,9 @@ async def pause(session_id: str) -> SessionView:
 
 
 @router.post("/{session_id}/resume")
-async def resume(session_id: str, state: State) -> SessionView:
+async def resume(
+    session_id: str, state: State, body: ResumeRequest | None = None
+) -> SessionView:
     """FR-038·FR-040c — 브라우저를 재시작하지 않고 **현재 상태에서** 이어서 실행한다.
 
     이어서 실행할 대상은 **편집된 목록**이다. 디스크의 정의를 계속 보면 사용자가 고친
@@ -925,6 +1086,31 @@ async def resume(session_id: str, state: State) -> SessionView:
     실행 중이던 Step 이 한 번 더 돈다.
     """
     w = work_of(session_id)
+    skip_failed = body.skip_failed if body is not None else False
+
+    # 005 FR-136 — 실패한 Step 을 **조용히** 지나가지 않는다.
+    #
+    # 이전에는 재개가 실패 Step 을 건너뛰고 다음 Step 만 돌린 뒤 「완료」로 표시했다.
+    # 저장된 결과는 실패인데 화면은 완료라고 말했고, 사용자는 실패를 못 본 채 통과했다고
+    # 믿고 넘어갈 수 있었다 (U-05). 결과 화면의 신뢰가 여기서 무너졌다.
+    #
+    # 넘기고 싶으면 `skip_failed` 로 **명시**한다. 그 경로의 결말은 `partial_pass` 다.
+    if w.engine is not None and w.engine.has_failed_step():
+        failed_index = w.engine.first_failed_index()
+        if not skip_failed:
+            raise conflict(
+                ErrorCode.CANNOT_RESUME_PAST_FAILURE,
+                f"Step {(failed_index or 0) + 1:02d} 이 실패해 이어서 갈 수 없습니다.",
+                next_action=(
+                    "그 Step 을 고친 뒤 이어가거나, 그 Step 부터 다시 실행하세요."
+                ),
+                failed_step_index=failed_index,
+            )
+        # 실패를 **지우지 않고** 건너뜀으로 남긴다. 지우면 결과에서 그 Step 이 왜 안
+        # 돌았는지 알 수 없다.
+        w.engine.note_skipped_failures()
+        w.engine.clear_failed_steps()
+
     _apply(w, Command.RESUME)
     if w.inline is not None:
         w.inline.stop()
@@ -1214,6 +1400,18 @@ async def stop(session_id: str, state: State) -> SessionView:
     w = work_of(session_id)
     already_terminal = w.session.state in TERMINAL_STATES
 
+    # 005 FR-132 — **감지기를 먼저 끈다.** 아래에서 브라우저를 놓으면 close 이벤트가
+    # 오는데, 그것은 사고가 아니라 우리가 시킨 일이다. 가드도 `REVIEW` 를 정상 종료로
+    # 보지만(session_loss.NORMAL_END_STATES) 여기서 끄는 것이 원인 제거다.
+    if w.loss_watcher is not None:
+        w.loss_watcher.disarm()
+
+    # 005 FR-131 — 결말을 정하기 전에 "사용자가 중지했다" 는 사실을 엔진에 남긴다.
+    # 러너 취소와 유실 후처리가 각각 finalize 를 부를 수 있으므로, 인자로만 넘기면
+    # 한쪽이 이 사실을 모른 채 실패로 확정한다.
+    if w.engine is not None and not already_terminal:
+        w.engine.note_stop_requested(w.current_step_index)
+
     w.recorder.stop()
     await _cancel_agent(w)
     if w.mirror is not None:
@@ -1226,6 +1424,11 @@ async def stop(session_id: str, state: State) -> SessionView:
     if not already_terminal:
         _apply(w, Command.STOP)
         await w.session.apply(Command.STOP)
+        # 중지도 결말이다 (005 FR-131). 결과를 남기지 않으면 "여기까지의 결과" 를 볼
+        # 길이 없고, 사용자는 자기가 멈춘 실행이 있었다는 사실만 남는다.
+        if w.engine is not None and not w.engine.finalized:
+            with contextlib.suppress(Exception):
+                await w.engine.finalize(False)
 
     # 브라우저 자원은 놓아 준다. 기록은 `_WORK` 에 남는다.
     await state.sessions.close(session_id)
@@ -1283,6 +1486,9 @@ async def save(session_id: str, body: SaveRequest, state: State) -> Test:
     )
     repo.write_test(test)
     w.saved_test_id = test_id
+    # 005 FR-154 — 저장 시각을 세션에 남긴다. 화면이 응답 하나에만 의존하지 않고
+    # 저장 여부를 스스로 알 수 있어야, 다시 그려도 미저장으로 되돌아가지 않는다 (U-09).
+    w.saved_at = datetime.now(UTC)
     w.saved_snapshot = list(w.steps)
     return test
 

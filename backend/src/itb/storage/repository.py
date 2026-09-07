@@ -16,12 +16,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import pathlib
 import re
 import shutil
 from dataclasses import dataclass
 
-from itb.domain.run_result import RunResult
+from itb.domain.run_result import RunResult, RunScope
 from itb.domain.test_case import Project, Test
 from itb.storage import atomic
 from itb.storage.yaml_io import DefinitionError, dump_model, load_model
@@ -284,6 +285,17 @@ class ProjectRepository:
     def result_path(self, test_id: str) -> pathlib.Path:
         return self.paths.run_dir(test_id) / "result.json"
 
+    def full_result_path(self, test_id: str) -> pathlib.Path:
+        """최근 **전체** 실행 결과의 자리 (005 FR-152).
+
+        부분 실행이 전체 실행 결과를 덮으면 사용자는 `5 / 7` → `0 / 7` 을 보고 "고치다 더
+        망가뜨렸다" 고 읽는다 (U-02). 파일을 하나 더 두는 것으로 그 오해를 없앤다.
+
+        **이력이 아니다.** 최근 전체 실행 한 건만 보관한다 — 요구된 것은 "부분 실행이
+        전체 실행 결과를 지우지 않는 것" 하나이며, 이력에는 목록·정리·용량 정책이 따라온다.
+        """
+        return self.paths.run_dir(test_id) / "result-full.json"
+
     def read_result(self, test_id: str) -> RunResult | None:
         """실행 결과 하나를 읽는다.
 
@@ -302,6 +314,20 @@ class ProjectRepository:
             )
             raise ResultUnreadableError(msg) from exc
 
+    def read_full_result(self, test_id: str) -> RunResult | None:
+        """최근 전체 실행 결과를 읽는다 (005 FR-152).
+
+        **읽을 수 없어도 예외를 던지지 않는다.** 이것은 보조 표시이며, 보조가 깨져서
+        주 결과를 못 보게 만들면 안 된다. 없으면 `None` 이고 화면은 보조 표시를 생략한다.
+        """
+        p = self.full_result_path(test_id)
+        if not p.exists():
+            return None
+        try:
+            return RunResult.model_validate_json(p.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 - 보조 표시는 조용히 생략한다
+            return None
+
     def try_read_result(self, test_id: str) -> tuple[RunResult | None, str | None]:
         """목록 경로용. (결과, 문제 사유) 를 돌려주고 예외를 던지지 않는다.
 
@@ -314,11 +340,21 @@ class ProjectRepository:
             return None, str(exc)
 
     def write_result(self, result: RunResult) -> pathlib.Path:
-        """실행 결과를 저장한다. 이전 결과를 덮어쓴다 — 최근 1건만 보관한다."""
+        """실행 결과를 저장한다. 이전 결과를 덮어쓴다 — 최근 1건만 보관한다.
+
+        **전체 실행이면 `result-full.json` 도 함께 갱신한다** (005 FR-152). 부분 실행은
+        `result.json` 만 쓰므로 직전 전체 실행 결과가 남는다.
+        """
         run_dir = self.paths.run_dir(result.test_id)
         run_dir.mkdir(parents=True, exist_ok=True)
         p = run_dir / "result.json"
+        body = result.model_dump_json(indent=2, exclude_none=False)
         # 원자적으로 쓴다 (003 AP-042). 결과를 쓰다 끊기면 목록이 반쪽 JSON 을 만나
         # "결과를 읽을 수 없다"로 표시된다 — 이전 결과까지 함께 사라진다.
-        atomic.write_text(p, result.model_dump_json(indent=2, exclude_none=False))
+        atomic.write_text(p, body)
+        if result.scope is RunScope.FULL:
+            # 보조 사본이 실패해도 주 결과는 이미 저장됐다. 조용히 넘긴다 —
+            # 보조 때문에 실행 결과를 잃는 것이 더 나쁘다.
+            with contextlib.suppress(Exception):
+                atomic.write_text(self.full_result_path(result.test_id), body)
         return p

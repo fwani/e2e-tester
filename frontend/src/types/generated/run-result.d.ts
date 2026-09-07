@@ -9,12 +9,31 @@ export type ConsoleLog = string | null;
 export type FailureScreenshot = string | null;
 export type NetworkLog = string | null;
 export type Trace = null;
+export type AttemptedCount = number;
 export type Browser = string;
 export type FailedStepIndex = number | null;
 export type FinishedAt = string;
-export type Outcome = "pass" | "fail";
+/**
+ * 실행이 어떻게 끝났는가 (005 FR-131·FR-137).
+ *
+ * **네 값이 필요한 이유는 두 값이 서로 다른 것을 뭉갰기 때문이다.** 사용자가 누른 중지가
+ * `FAIL` 로 기록되어 사고처럼 보이고(U-03), 실패 Step 을 건너뛴 실행이 통과처럼 보였다
+ * (U-05).
+ *
+ * 판정 우선순위는 `decide_outcome()` 이 갖는다. 여기서 값을 늘리기만 하고 판정을 여러
+ * 곳에 흩으면 화면과 저장된 결과가 다시 어긋난다.
+ */
+export type Outcome = "pass" | "fail" | "stopped" | "partial_pass";
 export type PassedCount = number;
+/**
+ * 이 실행이 전체였는가 부분이었는가 (005 FR-152).
+ *
+ * 결말과 **다른 축**이다. Step 06~07 만 돌아 전부 통과하면 결말은 `PASS` 이고 범위가
+ * `PARTIAL` 이다. 한 값에 섞으면 "부분 구간을 전부 통과한 실행" 을 부를 이름이 없어진다.
+ */
+export type RunScope = "full" | "partial";
 export type SessionLost = boolean;
+export type StartIndex = number;
 export type StartedAt = string;
 export type CandidateDisagreement = string[];
 export type DurationMs = number;
@@ -31,6 +50,7 @@ export type ErrorCode =
   | "SESSION_ALREADY_ACTIVE"
   | "SESSION_LOST"
   | "NOT_PAUSED"
+  | "CANNOT_RESUME_PAST_FAILURE"
   | "INVALID_TRANSITION"
   | "TAB_NOT_FOUND"
   | "TAB_LIMIT_REACHED"
@@ -64,20 +84,25 @@ export type StepId = string;
 export type Tab = number;
 export type TabWaitMs = number;
 export type Steps = StepResult[];
+export type StoppedStepIndex = number | null;
 export type TestId = string;
 export type TotalCount = number;
 export type TotalMs = number;
 
 export interface RunResult {
   artifacts: Artifacts;
+  attempted_count: AttemptedCount;
   browser: Browser;
   failed_step_index: FailedStepIndex;
   finished_at: FinishedAt;
   outcome: Outcome;
   passed_count: PassedCount;
+  scope: RunScope;
   session_lost: SessionLost;
+  start_index: StartIndex;
   started_at: StartedAt;
   steps: Steps;
+  stopped_step_index: StoppedStepIndex;
   test_id: TestId;
   total_count: TotalCount;
   total_ms: TotalMs;

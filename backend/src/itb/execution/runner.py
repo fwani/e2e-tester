@@ -22,6 +22,10 @@ from playwright.async_api import Page
 from itb.domain.error import ErrorCode, error_body, error_payload
 from itb.domain.run_pacing import auto_pause, delay_ms
 from itb.domain.run_result import (
+    scope_of,
+    decide_outcome,
+    attempted_of,
+    RunScope,
     Artifacts,
     Outcome,
     RunResult,
@@ -330,6 +334,23 @@ class ReplayEngine:
     finalized: bool = False
     _failure_tab: int = 0
 
+    start_index: int = 0
+    """이 실행이 시작한 Step (005 FR-152). `reset()` 이 갱신한다."""
+
+    stop_requested: bool = False
+    """사용자가 중지를 요청했는가 (005 FR-131).
+
+    **엔진이 이것을 들고 있는 이유**는 결말 판정의 입력이기 때문이다. 중지 경로가
+    `finalize()` 인자로만 넘기면, 유실 감지와 러너 종료가 각자 `finalize()` 를 부르는
+    경로에서 한쪽이 이 사실을 모른 채 실패로 확정한다 — 그것이 U-03 이었다.
+    """
+
+    skipped_failures: bool = False
+    """사용자가 「실패한 Step 건너뛰고 계속」을 골랐는가 (005 FR-137)."""
+
+    stopped_index: int | None = None
+    """중지 시점의 Step (005 FR-131)."""
+
     def __post_init__(self) -> None:
         self.results = [
             StepResult(
@@ -355,6 +376,11 @@ class ReplayEngine:
         self.failed_index = None
         self.finalized = False
         self._failure_tab = 0
+        # 005 FR-152 — 이 실행의 범위를 결과에 남기기 위해 시작 지점을 기억한다.
+        self.start_index = max(0, start_index)
+        self.stop_requested = False
+        self.skipped_failures = False
+        self.stopped_index = None
         self.skip_before(start_index)
 
     def rebase(self, steps: list[Step]) -> None:
@@ -389,6 +415,43 @@ class ReplayEngine:
                 continue
             rebuilt.append(old.model_copy(update={"index": index, "label": step.label}))
         self.results = rebuilt
+
+    def note_stop_requested(self, step_index: int | None = None) -> None:
+        """사용자가 중지를 요청했다 (005 FR-131).
+
+        **결말 판정 전에 불러야 한다.** 이 사실을 모르는 판정은 중지를 실패로 적고, 그것이
+        U-03 의 마지막 조각이었다.
+        """
+        self.stop_requested = True
+        if step_index is not None:
+            self.stopped_index = step_index
+
+    def note_skipped_failures(self) -> None:
+        """사용자가 「실패한 Step 건너뛰고 계속」을 골랐다 (005 FR-137)."""
+        self.skipped_failures = True
+
+    def has_failed_step(self) -> bool:
+        """지금까지의 결과에 실패한 Step 이 있는가 (005 FR-136).
+
+        재개를 거절할지 판단하는 근거다. 실패를 조용히 지나가면 화면은 「완료」라고
+        말하고 저장된 결과는 실패인 상태가 된다(U-05).
+        """
+        return any(r.outcome is StepOutcome.FAIL for r in self.results)
+
+    def first_failed_index(self) -> int | None:
+        """가장 앞선 실패 Step 의 인덱스 (005 FR-136 의 안내에 쓴다)."""
+        return next((r.index for r in self.results if r.outcome is StepOutcome.FAIL), None)
+
+    def clear_failed_steps(self) -> None:
+        """실패 Step 을 건너뜀으로 바꾼다 (005 FR-137).
+
+        「실패한 Step 건너뛰고 계속」의 의미가 이것이다 — 실패를 **지우지 않고** 건너뛴
+        것으로 남긴다. 지우면 결과에서 그 Step 이 왜 안 돌았는지 알 수 없다.
+        """
+        for result in self.results:
+            if result.outcome is StepOutcome.FAIL:
+                result.outcome = StepOutcome.SKIPPED
+        self.failed_index = None
 
     def skip_before(self, start_index: int) -> None:
         """`start_index` 앞의 **아직 돌지 않은** Step 을 건너뛴 것으로 표시한다 (FR-055).
@@ -513,6 +576,10 @@ class ReplayEngine:
             total_ms=result.total_ms,
             passed_count=result.passed_count,
             total_count=result.total_count,
+            attempted_count=result.attempted_count,
+            scope=result.scope.value,
+            start_index=result.start_index,
+            stopped_step_index=result.stopped_step_index,
             failed_step_index=result.failed_step_index,
         )
         for note in artifacts.notes:
@@ -527,14 +594,30 @@ class ReplayEngine:
     ) -> RunResult:
         finished_at = datetime.now(UTC)
         passed_count = sum(1 for r in self.results if r.outcome is StepOutcome.PASS)
+        # 005 T036b — 결말은 순수 함수가 정한다. `passed` 를 그대로 쓰지 않는 이유는
+        # 호출자마다 그것을 다르게 계산했고, 그래서 사용자가 누른 중지가 실패가 됐다(U-03).
+        outcome = decide_outcome(
+            self.results,
+            session_lost=session_lost,
+            stop_requested=self.stop_requested,
+            skipped_failures=self.skipped_failures,
+        )
+        # `passed=False` 인데 실패 Step 이 없는 경우가 있다 — 러너가 중단된 경로다.
+        # 그때 결말을 통과로 적으면 실행이 성공한 것처럼 보인다.
+        if outcome is Outcome.PASS and not passed:
+            outcome = Outcome.FAIL
         return RunResult(
             test_id=self.test.id,
-            outcome=Outcome.PASS if passed and not session_lost else Outcome.FAIL,
+            outcome=outcome,
             started_at=self.started_at,
             finished_at=finished_at,
             total_ms=int((finished_at - self.started_at).total_seconds() * 1000),
             passed_count=passed_count,
             total_count=len(self.results),
+            attempted_count=attempted_of(self.results),
+            start_index=self.start_index,
+            scope=scope_of(self.start_index),
+            stopped_step_index=self.stopped_index if outcome is Outcome.STOPPED else None,
             failed_step_index=self.failed_index,
             browser=self.browser_label,
             steps=self.results,
