@@ -51,10 +51,10 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 - [X] T004 `backend/src/itb/domain/run_result.py` 에서 `Outcome` 을 `pass·fail·stopped·partial_pass` 로 넓히고 `RunScope`(`full·partial`) 를 추가한다. data-model.md §1·§2 의 판정 우선순위를 docstring 에 적는다
 - [X] T005 같은 파일의 `RunResult` 에 `start_index`·`scope`·`attempted_count`·`stopped_step_index` 를 추가한다. `total_count`·`passed_count` 의 뜻은 바꾸지 않는다 (data-model.md §2)
 - [X] T006 스키마 생성물을 갱신한다 — `cd backend && uv run python -m itb.schema.export` 로 `backend/schema/run-result.schema.json` 을 재생성하고, `cd frontend && npm run gen:types` 로 `frontend/src/types/` 를 재생성해 **함께 커밋한다**
-- [ ] T007 [P] `backend/tests/contract/test_schema_drift.py` 가 통과하는지 확인하고, 새 결말 값이 스키마에 실렸음을 단정하는 계약 테스트를 `backend/tests/contract/test_run_outcome_contract.py` 에 추가한다 (FR-131·FR-137)
+- [X] T007 [P] `backend/tests/contract/test_schema_drift.py` 가 통과하는지 확인하고, 새 결말 값이 스키마에 실렸음을 단정하는 계약 테스트를 `backend/tests/contract/test_run_outcome_contract.py` 에 추가한다 (FR-131·FR-137)
 - [X] T008 [P] `backend/tests/unit/test_outcome_decision.py` — 결말 판정 우선순위를 순수 함수로 고정한다: 중지 > 실패 건너뜀 > 실패 > 통과. 세션 유실은 `fail` (data-model.md §1)
 - [X] T009 `backend/src/itb/api/routes/sessions.py` 의 `SessionView` 에 `step_results: list[StepProgress]`·`pause_settled: bool`·`run_scope`·`run_start_index`·`saved_at` 을 추가하고 `StepProgress` 모델을 정의한다. `view_of()` 가 러너의 `results` 와 `at_boundary` 에서 값을 채운다 (contracts/rest-api.md §2)
-- [ ] T010 [P] `backend/tests/contract/test_session_view_contract.py` — 세션 뷰가 다섯 필드를 싣는지, `step_results` 의 `outcome` 이 `StepOutcome` 네 값인지 단정한다 (FR-171)
+- [X] T010 [P] `backend/tests/contract/test_session_view_contract.py` — 세션 뷰가 다섯 필드를 싣는지, `step_results` 의 `outcome` 이 `StepOutcome` 네 값인지 단정한다 (FR-171)
 - [X] T011 [P] `frontend/src/lib/wording.ts` 를 만든다 — `outcomeLabel()`·`outcomeChip()`·`stepLabel(index0)`·`runSummary()`. contracts/ui-contract.md §1~§4 의 표를 그대로 구현한다. **`stepLabel` 이 0-기반 → 표시 변환의 유일한 지점**이다 (FR-138·FR-141)
 - [X] T012 [P] `frontend/tests/wording.test.ts` — `stepLabel(5) === "Step 06"`, 결말 4값이 각각 한 문장·한 칩으로만 대응하는지, 요약 문장의 분모가 `attempted_count` 인지 단정한다 (FR-138·FR-141·U-02)
 
