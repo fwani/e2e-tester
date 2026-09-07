@@ -15,8 +15,22 @@ from itb.domain.assertion import Assertion
 from itb.domain.locator import TargetLocator
 
 STEP_ID_PATTERN = r"^step-\d{2,}$"
-DEFAULT_TIMEOUT_MS = 5000
-"""디자인 RunResult 의 `timeout 5000 ms` 표기와 research R8 을 따른다."""
+DEFAULT_TIMEOUT_MS = 10_000
+"""Step 하나가 쓸 수 있는 총 시간의 기본값 (004 FR-115, research R5).
+
+001 의 5000ms 에서 올렸다. **결함 수정이 아니라 여유 확보다** — 004 가 고친 로딩 오탐의
+원인은 예산 부족이 아니라 예산을 쓰는 방식이었다(research R1). 다만 실제 앱의 목록·표는
+API 왕복과 렌더에 3~5초가 드물지 않고, 5초는 그 경계에 걸쳐 있어 환경 속도에 따라 통과와
+실패가 갈린다 — 재실행 성공률 ≥95% 목표(PRD §18)를 직접 위협한다.
+
+15초 이상으로 두지 않는 이유: 실패를 확인하는 시간이 그만큼 늘어난다. `느림` 으로 돌리며
+디버깅할 때 한 Step 이 15초씩 매달리면 속도 조절의 이득이 상쇄된다.
+
+**이 값은 여기 한 곳에만 있다.** 생성기가 `step.timeout_ms` 를 그대로 읽으므로 내보낸
+Playwright 코드에도 자동으로 반영된다 (FR-118). `locator.strategy` 로 옮기지 않는 이유는
+`.importlinter` 의 `domain-is-pure` 계약이 `itb.domain` → `itb.locator` 임포트를 금지하기
+때문이다 (data-model §8).
+"""
 
 
 class Author(StrEnum):

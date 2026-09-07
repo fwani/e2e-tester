@@ -44,9 +44,9 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 **Purpose**: 결함을 재현하는 픽스처를 먼저 만든다. 고치기 전에 실패를 봐야 무엇을 고쳤는지
 알 수 있다 (quickstart §1).
 
-- [ ] T001 [P] 지연 로딩 화면을 `fixtures/sample-app/lazy.html` 에 추가한다 — 2초 뒤 목록을 그리고, 그 전에는 같은 텍스트의 스켈레톤 행 2개를 보여준다 (research R1·R2 의 재현 조건)
-- [ ] T002 [P] 늦게 보이게 되는 요소 화면을 `fixtures/sample-app/late-visible.html` 에 추가한다 — DOM 에는 즉시 붙지만 1초 뒤 `display:block` 이 되는 버튼 (research R3)
-- [ ] T003 `fixtures/sample-app/README.md` 에 두 화면의 용도와 지연 시간을 적는다 — 픽스처가 왜 이 값인지 모르면 나중에 누군가 "느리다" 며 줄인다
+- [X] T001 [P] 지연 로딩 화면을 `fixtures/sample-app/lazy.html` 에 추가한다 — 2초 뒤 목록을 그리고, 그 전에는 같은 텍스트의 스켈레톤 행 2개를 보여준다 (research R1·R2 의 재현 조건)
+- [X] T002 [P] 늦게 보이게 되는 요소 화면을 `fixtures/sample-app/late-visible.html` 에 추가한다 — DOM 에는 즉시 붙지만 1초 뒤 `display:block` 이 되는 버튼 (research R3)
+- [X] T003 `fixtures/sample-app/README.md` 에 두 화면의 용도와 지연 시간을 적는다 — 픽스처가 왜 이 값인지 모르면 나중에 누군가 "느리다" 며 줄인다
 
 **Checkpoint**: 결함 재현 조건이 파일로 고정됐다.
 
@@ -59,14 +59,14 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 
 **⚠️ CRITICAL**: 아래 모든 작업이 끝나야 US1·US2 작업을 시작한다.
 
-- [ ] T004 [P] `RunPacing` 열거형과 간격 대응표를 `backend/src/itb/domain/run_pacing.py` 에 만든다 — `FAST/NORMAL/SLOW/STEP`, `delay_ms`·`auto_pause`·표시 이름을 이 한 곳에서만 낸다 (data-model §1)
-- [ ] T005 [P] `ELEMENT_NOT_READY`·`ELEMENT_AMBIGUOUS` 를 `backend/src/itb/domain/error.py` 의 `ErrorCode` 와 `CATEGORY` 대응표에 더한다 — 둘 다 `blocked` (contracts/error-contract.md §1)
-- [ ] T006 [P] `DEFAULT_TIMEOUT_MS` 를 `backend/src/itb/domain/step.py` 에서 5000 → 10000 으로 바꾸고, 독스트링의 근거를 research R5 참조로 갱신한다. **파일을 옮기지 않는다** — `domain-is-pure` 계약이 `itb.domain` → `itb.locator` 임포트를 금지한다 (data-model §8)
-- [ ] T007 [P] `POLL_INTERVAL_MS = 100` 과 대기 정책 문서를 `backend/src/itb/locator/strategy.py` 에 더한다 — Runner 와 Generator 의 공유 지점이므로 여기 둔다. 순수성을 깨는 임포트를 더하지 않는다 (data-model §8)
-- [ ] T008 [P] `StepResult` 에 `element_wait_ms: int = 0` 을 `backend/src/itb/domain/run_result.py` 에 더한다 — 기존 필드 이름·의미를 바꾸지 않는다 (data-model §3)
-- [ ] T009 [P] `RunPacing` 대응표 단위 테스트를 `backend/tests/unit/test_run_pacing.py` 에 쓴다 — 네 값의 `delay_ms`·`auto_pause`, `SLOW >= 1000ms`(SC-004), 열거형 밖 값 거절
-- [ ] T010 [P] 신규 오류 코드의 분류·다음 행동 테스트를 `backend/tests/unit/test_error_handling.py` 에 더한다 — `category == "blocked"`, `next_action` 이 비어 있지 않음
-- [ ] T011 `uv run lint-imports` 가 세 계약 모두 통과하는지 확인한다 — `domain-is-pure` 가 `run_pacing.py` 에서, `locator-strategy-is-pure` 가 `strategy.py` 변경에서 깨지지 않아야 한다 (T004·T007 이후)
+- [X] T004 [P] `RunPacing` 열거형과 간격 대응표를 `backend/src/itb/domain/run_pacing.py` 에 만든다 — `FAST/NORMAL/SLOW/STEP`, `delay_ms`·`auto_pause`·표시 이름을 이 한 곳에서만 낸다 (data-model §1)
+- [X] T005 [P] `ELEMENT_NOT_READY`·`ELEMENT_AMBIGUOUS` 를 `backend/src/itb/domain/error.py` 의 `ErrorCode` 와 `CATEGORY` 대응표에 더한다 — 둘 다 `blocked` (contracts/error-contract.md §1)
+- [X] T006 [P] `DEFAULT_TIMEOUT_MS` 를 `backend/src/itb/domain/step.py` 에서 5000 → 10000 으로 바꾸고, 독스트링의 근거를 research R5 참조로 갱신한다. **파일을 옮기지 않는다** — `domain-is-pure` 계약이 `itb.domain` → `itb.locator` 임포트를 금지한다 (data-model §8)
+- [X] T007 [P] `POLL_INTERVAL_MS = 100` 과 대기 정책 문서를 `backend/src/itb/locator/strategy.py` 에 더한다 — Runner 와 Generator 의 공유 지점이므로 여기 둔다. 순수성을 깨는 임포트를 더하지 않는다 (data-model §8)
+- [X] T008 [P] `StepResult` 에 `element_wait_ms: int = 0` 을 `backend/src/itb/domain/run_result.py` 에 더한다 — 기존 필드 이름·의미를 바꾸지 않는다 (data-model §3)
+- [X] T009 [P] `RunPacing` 대응표 단위 테스트를 `backend/tests/unit/test_run_pacing.py` 에 쓴다 — 네 값의 `delay_ms`·`auto_pause`, `SLOW >= 1000ms`(SC-004), 열거형 밖 값 거절
+- [X] T010 [P] 신규 오류 코드의 분류·다음 행동 테스트를 `backend/tests/unit/test_error_handling.py` 에 더한다 — `category == "blocked"`, `next_action` 이 비어 있지 않음
+- [X] T011 `uv run lint-imports` 가 세 계약 모두 통과하는지 확인한다 — `domain-is-pure` 가 `run_pacing.py` 에서, `locator-strategy-is-pure` 가 `strategy.py` 변경에서 깨지지 않아야 한다 (T004·T007 이후)
 
 **Checkpoint**: 도메인 정의 완료. US1·US2 를 병렬로 시작할 수 있다.
 

@@ -284,3 +284,52 @@ def test_error_messages_do_not_leak_internal_paths() -> None:
     for code in ErrorCode:
         assert "/Users/" not in code.value
         assert "Traceback" not in code.value
+
+
+# ─── 004 — 요소 탐색 실패의 세 갈래 (FR-120·FR-123) ─────────────────────────
+
+
+def test_element_codes_are_blocked_not_broken() -> None:
+    """신규 코드 둘 다 `blocked` 다.
+
+    분류는 "내가 고칠 수 있는가"에만 답한다 (003 EC-001). 대상 화면이 느린 것도, 요소가
+    모호해진 것도 사용자가 할 일이 있는 상황이므로 `broken` 이 아니다.
+    """
+    from itb.domain.error import CATEGORY, Category, ErrorCode as DomainErrorCode
+
+    assert CATEGORY[DomainErrorCode.ELEMENT_NOT_READY] is Category.BLOCKED
+    assert CATEGORY[DomainErrorCode.ELEMENT_AMBIGUOUS] is Category.BLOCKED
+
+
+def test_element_failure_codes_are_distinct_from_step_failed() -> None:
+    """FR-120 — 세 실패가 서로 다른 코드로 나가야 한다.
+
+    같은 코드로 내보내면 사용자는 문구를 읽어 구별해야 하고, 그것이 FR-123 이 막으려는
+    것이다. "정의 문제"와 "화면이 느린 문제"는 할 일이 정반대다 — 하나는 Step 을 고치고
+    하나는 기다리면 된다.
+    """
+    from itb.domain.error import ErrorCode as DomainErrorCode
+
+    codes = {
+        DomainErrorCode.STEP_FAILED,
+        DomainErrorCode.ELEMENT_NOT_READY,
+        DomainErrorCode.ELEMENT_AMBIGUOUS,
+    }
+    assert len(codes) == 3
+
+
+def test_element_codes_carry_a_next_action() -> None:
+    """FR-122 — 시간 초과 실패는 다음 행동을 함께 준다.
+
+    `error_body` 가 코드별 기본 안내를 갖고 있어야 한다. 호출부가 매번 문구를 적으면
+    같은 상황에 다른 안내가 나간다.
+    """
+    from itb.domain.error import ErrorCode as DomainErrorCode
+    from itb.domain.error import error_body
+
+    for code in (
+        DomainErrorCode.ELEMENT_NOT_READY,
+        DomainErrorCode.ELEMENT_AMBIGUOUS,
+    ):
+        body = error_body(code, "요소를 찾을 수 없습니다.")
+        assert body["next_action"], f"{code} 에 다음 행동 안내가 없다"

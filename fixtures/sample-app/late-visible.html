@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>늦게 보이는 요소 · 데이터 플랫폼</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <span class="brand">데이터 플랫폼</span>
+    <a href="projects.html" role="menuitem">프로젝트</a>
+    <a href="late-visible.html" aria-current="page" role="menuitem">늦게 보임</a>
+  </nav>
+  <main>
+    <div class="card">
+      <h1>보고서 보내기</h1>
+      <!--
+        004 FR-112 검증용.
+
+        버튼은 **DOM 에 처음부터 붙어 있다.** count() 는 즉시 1을 돌려준다. 다만 1초
+        동안 보이지 않는다.
+
+        이 구별이 필요한 이유: DOM 존재만으로 "찾음" 을 판정하면 그 뒤 동작이 아직
+        조작할 수 없는 요소에 수행된다. 실측(research R3)에서 Playwright 의 click 이
+        actionability 를 스스로 1410ms 기다리는 것을 확인했으므로, 이 화면은 그 자동
+        대기가 예산 안에서 실제로 일어나는지를 본다.
+      -->
+      <button type="button" data-testid="send-report" id="send-report"
+              style="display:none">보내기</button>
+      <p data-testid="late-note">잠시 후 버튼이 나타납니다.</p>
+    </div>
+  </main>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var delay = parseInt(params.get('ms') || '1000', 10);
+      if (isNaN(delay) || delay < 0) { delay = 1000; }
+      if (delay > 30000) { delay = 30000; }
+
+      setTimeout(function () {
+        document.getElementById('send-report').style.display = 'inline-block';
+      }, delay);
+    })();
+  </script>
+</body>
+</html>

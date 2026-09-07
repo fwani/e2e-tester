@@ -72,9 +72,25 @@ class ErrorCode(StrEnum):
     FINGERPRINT_MISMATCH = "FINGERPRINT_MISMATCH"
     SECRET_NOT_FOUND = "SECRET_NOT_FOUND"
 
-    # 실행 — Step 을 수행하지 못했다 (003 AP-031·AP-033)
+    # 실행 — Step 을 수행하지 못했다 (003 AP-031·AP-033, 004 FR-120·FR-123)
     STEP_FAILED = "STEP_FAILED"
     TARGET_UNREACHABLE = "TARGET_UNREACHABLE"
+    ELEMENT_NOT_READY = "ELEMENT_NOT_READY"
+    """대기 예산 안에 어느 후보도 요소 하나를 가리키지 못했다 (004 FR-120).
+
+    ``STEP_FAILED`` 와 갈라 두는 이유는 **사용자가 할 일이 다르기 때문**이다. 후보가
+    애초에 없는 것은 정의 문제라 기다려도 달라지지 않지만, 이것은 대상 화면이 느린
+    것이고 예산을 늘리면 통과한다. 두 경우를 같은 코드로 내보내면 사용자는 멀쩡한
+    정의를 고치려 들고, 고칠 것이 없어 헤맨다.
+    """
+
+    ELEMENT_AMBIGUOUS = "ELEMENT_AMBIGUOUS"
+    """대기 예산 안에 여러 요소만 매칭됐다 (004 FR-120).
+
+    **자동으로 하나를 고르지 않는다.** 첫 번째를 골라 진행하면 잘못된 요소에 대해
+    테스트가 통과할 수 있고, 그것은 실패보다 나쁘다 — 다음 회귀를 못 잡는다.
+    004 이전 코드가 실제로 그렇게 동작했다 (research R2 실측).
+    """
 
     # 외부 환경 (003 AP-032·AP-042)
     AI_FAILED = "AI_FAILED"
@@ -132,6 +148,10 @@ CATEGORY: dict[ErrorCode, Category] = {
     # 보이게 해서는 안 된다.
     ErrorCode.STEP_FAILED: Category.BLOCKED,
     ErrorCode.TARGET_UNREACHABLE: Category.BLOCKED,
+    # 004 — 셋 다 BLOCKED 인 것은 의도적이다. 분류는 "내가 고칠 수 있는가"에만 답하고
+    # (003 EC-001), 무엇을 할지는 code 와 next_action 이 말한다 (FR-123).
+    ErrorCode.ELEMENT_NOT_READY: Category.BLOCKED,
+    ErrorCode.ELEMENT_AMBIGUOUS: Category.BLOCKED,
     # 외부 환경 — 원인이 제품 밖에 있고, 사용자가 손댈 자리가 있다 (SESSION_LOST 와 같은
     # 판단이다). AI 는 다시 시도하거나 직접 이어받을 수 있고, 저장 실패는 공간·권한을
     # 확인하면 된다.
@@ -168,6 +188,17 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ),
     ErrorCode.TARGET_UNREACHABLE: (
         "대상 사이트가 응답하는지 확인한 뒤 다시 실행하세요. 도구 문제가 아닙니다."
+    ),
+    # 004 — 시간 문제와 정의 문제의 안내가 정반대여야 한다. 위 STEP_FAILED 는 "대상을
+    # 다시 집으세요" 라고 말하는데, 화면이 느렸을 뿐인 사용자에게 그 말을 하면 고칠 것이
+    # 없는 정의를 들여다보게 만든다 (FR-122).
+    ErrorCode.ELEMENT_NOT_READY: (
+        "대상 화면이 느릴 수 있습니다. 실행 속도를 '느림'으로 낮춰 화면을 확인하거나, "
+        "Step 상세에서 대기 시간을 늘린 뒤 그 Step부터 다시 실행하세요."
+    ),
+    ErrorCode.ELEMENT_AMBIGUOUS: (
+        "이 식별 정보가 더 이상 요소 하나를 가리키지 않습니다. "
+        "Step 상세에서 대상을 다시 집으세요."
     ),
     ErrorCode.AI_FAILED: (
         "다시 시도하거나 직접 이어받아 진행하세요. 그때까지 만들어진 Step은 남아 있습니다."

@@ -48,6 +48,17 @@ class StepResult(BaseModel):
     tab_wait_ms: int = Field(default=0, ge=0)
     """대상 탭이 열리기를 기다린 시간 (FR-030d)."""
 
+    element_wait_ms: int = Field(default=0, ge=0)
+    """요소가 나타나기를 폴링하며 기다린 시간 (004 FR-114).
+
+    **성공한 Step 에도 기록한다.** 실패했을 때만 남기면 "왜 이 Step 만 느린가" 를 볼 수
+    없고, 예산을 얼마로 잡아야 하는지 판단할 근거가 사라진다.
+
+    `tab_wait_ms` 와 함께 `duration_ms` 를 나눠 쓴다 — 셋의 관계는
+    `tab_wait_ms + element_wait_ms <= duration_ms` 다. **Step 간 간격은 포함되지 않는다**
+    (FR-105). 간격은 Step 실행 밖의 시간이며 시간 초과 판정에 들어가지 않는다.
+    """
+
     resolved_candidate: str | None = None
     """어느 후보로 요소를 찾았는지."""
 

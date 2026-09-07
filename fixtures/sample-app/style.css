@@ -56,3 +56,14 @@ th { font-size: 12px; color: #5a6472; font-weight: 600; }
    앞에 두면 같은 특이도에서 소스 순서에 밀려 숨김이 무효화되고,
    투명한 backdrop 이 클릭을 가로챈다. */
 .hidden { display: none; }
+
+/* 004 지연 로딩 화면의 스켈레톤 행.
+   보이는 요소여야 한다 — 안 보이면 후보가 2개를 매칭해도 보임 선호 규칙이 걸러내
+   버려서, `.first` 폴백이 잘못된 요소를 잡는 결함이 재현되지 않는다. */
+.skeleton {
+  background: #eef1f5;
+  color: #97a0ad;
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 6px 0;
+}
