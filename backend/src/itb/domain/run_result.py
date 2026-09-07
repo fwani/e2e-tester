@@ -7,6 +7,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from itb.domain.error import ErrorCode
+
 
 class Outcome(StrEnum):
     PASS = "pass"
@@ -47,6 +49,16 @@ class StepResult(BaseModel):
     tab: int = Field(default=0, ge=0)
     tab_wait_ms: int = Field(default=0, ge=0)
     """대상 탭이 열리기를 기다린 시간 (FR-030d)."""
+
+    error_code: ErrorCode | None = None
+    """실패의 분류 (004 FR-123).
+
+    **결과 화면이 문구를 해석하지 않고 분기할 수 있어야 한다.** 003 이 실시간 이벤트에
+    `error` 본문을 실었지만 저장된 결과에는 코드가 남지 않았다 — 그래서 결과 화면은
+    "요소를 찾을 수 없습니다" 라는 문장을 읽는 것 말고 할 수 있는 일이 없었다.
+
+    문구는 다듬을 수 있어야 하고, 다듬는 순간 분류가 깨지면 안 된다.
+    """
 
     element_wait_ms: int = Field(default=0, ge=0)
     """요소가 나타나기를 폴링하며 기다린 시간 (004 FR-114).

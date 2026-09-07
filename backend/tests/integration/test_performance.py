@@ -227,14 +227,34 @@ def test_step_execution_overhead(keyed_client: TestClient, fixture_app: str) -> 
     측정 방법: 실행 전체 시간에서 Step 별 소요 시간 합을 뺀다. 남는 것이 후보 해석·탭 해석·
     결과 집계·이벤트 발행 등 **제품이 넣은 비용**이다. Step 소요 시간 자체를 재면 대상 앱의
     응답 시간이 섞여 목표를 판정할 수 없다.
+
+    **`빠름` 으로 고정해서 잰다** (004). 004 부터 기본 속도가 `보통`(Step 간 500ms)이라
+    간격이 여기 "오버헤드" 로 잡힌다. 간격은 사람이 따라오라고 **일부러 준 시간**이지
+    제품이 낭비한 시간이 아니므로, 이 측정에서는 빼야 한다. 무인 실행이 `fast` 를
+    명시해야 하는 것과 같은 이유다 (contracts/rest-api.md §1).
     """
-    from us2_support import record_login, replay, result_of
+    from us2_support import record_login, result_of, stop_quietly, wait_for_run
+
+    from itb.domain.run_pacing import RunPacing
 
     test_id = record_login(keyed_client, fixture_app)
 
     overheads: list[float] = []
     for _ in range(5):
-        view = replay(keyed_client, test_id)
+        created = keyed_client.post(
+            "/api/sessions",
+            json={
+                "mode": "replay",
+                "test_id": test_id,
+                "pacing": RunPacing.FAST.value,
+            },
+        )
+        assert created.status_code == 201, created.text
+        sid = str(created.json()["session_id"])
+        try:
+            view = wait_for_run(keyed_client, sid)
+        finally:
+            stop_quietly(keyed_client, sid)
         assert view["state"] == "completed", f"측정용 실행이 실패했다: {view['state']}"
         result = result_of(keyed_client, test_id)
         step_ms = sum(s["duration_ms"] for s in result["steps"])

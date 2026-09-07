@@ -11,7 +11,7 @@
  */
 import { useState, type ReactNode } from "react";
 
-import type { AddAssertionBody } from "../api/client";
+import type { AddAssertionBody, RunPacing } from "../api/client";
 import type { Step } from "../types/generated/step";
 import { AssertionForm } from "../components/AssertionForm";
 import { BrowserFrame } from "../components/design/BrowserFrame";
@@ -68,6 +68,16 @@ export interface RunnerPausedProps {
   onDeleteStep: (stepId: string) => void;
   onNaturalLanguage: (instruction: string) => void;
   onShowResult?: () => void;
+  /**
+   * 이 세션의 실행 속도 (004).
+   *
+   * **`한 스텝씩` 의 자동 일시정지와 사용자가 직접 누른 일시정지를 가르는 유일한
+   * 근거다.** 둘은 상태가 `paused` 로 같아서 상태로는 구별할 수 없다. 구별하지 않으면
+   * 한 스텝씩으로 돌리던 사용자는 왜 멈췄는지 몰라 중지를 누르게 된다.
+   */
+  pacing?: RunPacing;
+  /** 실행 속도 컨트롤 (004). 멈춘 상태에서도 다음 Step 의 속도를 미리 고를 수 있다. */
+  pacingControl?: ReactNode;
 }
 
 export function RunnerPaused(props: RunnerPausedProps) {
@@ -104,10 +114,21 @@ export function RunnerPaused(props: RunnerPausedProps) {
     onDeleteStep,
     onNaturalLanguage,
     onShowResult,
+    pacing,
+    pacingControl,
   } = props;
 
   const [nl, setNl] = useState("");
   const [assertOpen, setAssertOpen] = useState(false);
+
+  /**
+   * 자동 일시정지인가 (004 FR-108, research R7).
+   *
+   * `한 스텝씩` 의 멈춤과 사용자가 직접 누른 멈춤은 **상태가 같다** (`paused`). 새 상태를
+   * 만들지 않는 것이 설계이므로, 구별의 근거는 상태가 아니라 속도다. 구별하지 않으면
+   * 한 스텝씩으로 돌리던 사용자는 왜 멈췄는지 몰라 중지를 누른다.
+   */
+  const stepByStep = !review && pacing === "step";
 
   const selectedIndex = steps.findIndex((s) => s.id === selectedStepId);
 
@@ -123,7 +144,7 @@ export function RunnerPaused(props: RunnerPausedProps) {
             <rect x="3" y="2" width="3.5" height="12" fill="currentColor" />
             <rect x="9.5" y="2" width="3.5" height="12" fill="currentColor" />
           </svg>
-          {review ? "REVIEW" : "PAUSED"}
+          {review ? "REVIEW" : stepByStep ? "STEP" : "PAUSED"}
         </StatusPill>
       </HeaderBar>
 
@@ -153,6 +174,9 @@ export function RunnerPaused(props: RunnerPausedProps) {
             : `step ${String(currentStepIndex).padStart(2, "0")} 이후 정지`}
         </div>
         <div style={{ flex: "1" }} />
+        {/* 멈춘 상태에서도 다음 Step 의 속도를 미리 고를 수 있다. 검토 상태에는
+            브라우저가 없어 적용할 실행이 없으므로 그리지 않는다. */}
+        {!review && pacingControl}
 
         {onShowResult && (
           <button className="secondary" onClick={onShowResult} disabled={busy}>
@@ -233,7 +257,13 @@ export function RunnerPaused(props: RunnerPausedProps) {
             badge={
               review
                 ? { label: "SESSION ENDED", background: "#6B675C", color: "#FFFDF6" }
-                : { label: "PAUSED", background: "#F5D000", color: "#14130F" }
+                : stepByStep
+                  ? {
+                      label: "한 스텝씩 — 다음 Step 을 기다립니다",
+                      background: "#F5D000",
+                      color: "#14130F",
+                    }
+                  : { label: "PAUSED", background: "#F5D000", color: "#14130F" }
             }
           >
             {mirror}

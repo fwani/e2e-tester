@@ -51,6 +51,12 @@ export interface RunnerProps {
   /** 확정 디자인의 「Step 추가」 버튼. 실행 중에는 비활성이다. */
   onAddStep?: () => void;
   /**
+   * 실행 속도 컨트롤 (004 US1). 확정 디자인에 없는 요소이므로 헤더 우측에 얹는다
+   * (DC-009 와 같은 판단). 실행 중에도 활성이다 — 속도를 바꾸는 이유가 대개
+   * "지금 너무 빨라서 못 보겠다" 이기 때문이다.
+   */
+  pacing?: ReactNode;
+  /**
    * 실행이 끝난 뒤의 **다음 행동** (UX U-02). 없으면 아직 실행 중이다.
    *
    * 실행이 끝난 화면에 사용자가 서 있다. 요약(`FAIL · 3/5 통과`)과 빨간 ✕ 만 있고 이유도
@@ -90,6 +96,7 @@ export function Runner({
   tabs,
   banners,
   onAddStep,
+  pacing,
   finished,
 }: RunnerProps) {
   return (
@@ -129,6 +136,7 @@ export function Runner({
           {progressLabel}
         </div>
         <div style={{ flex: "1" }} />
+        {pacing}
         <button
           disabled={busy || !canPause}
           onClick={onPause}

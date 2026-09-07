@@ -73,6 +73,8 @@ const post = <T,>(p: string, body?: unknown) =>
   request<T>(p, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
 const patch = <T,>(p: string, body: unknown) =>
   request<T>(p, { method: "PATCH", body: JSON.stringify(body) });
+const put = <T,>(p: string, body: unknown) =>
+  request<T>(p, { method: "PUT", body: JSON.stringify(body) });
 // DELETE 에 본문을 실을 수 있게 한다 — 프로젝트를 목록에서 치울 때 `root` 를 보낸다.
 const del = <T,>(p: string, body?: unknown) =>
   request<T>(p, {
@@ -233,6 +235,29 @@ export type SessionState =
   | "stopped"
   | "lost";
 
+/**
+ * 실행 속도 (004 FR-102). 값과 간격의 대응표는 **서버가 갖는다** —
+ * `pacing_changed` 이벤트가 `delay_ms` 와 `auto_pause` 를 함께 실어 보낸다.
+ * 화면이 대응표를 복제하면 서버와 갈린다.
+ */
+export type RunPacing = "fast" | "normal" | "slow" | "step";
+
+/** 화면 표기. 값 → 이름은 표기일 뿐이라 여기 둬도 서버와 갈리지 않는다. */
+export const PACING_LABEL: Record<RunPacing, string> = {
+  fast: "빠름",
+  normal: "보통",
+  slow: "느림",
+  step: "한 스텝씩",
+};
+
+export const PACING_ORDER: RunPacing[] = ["fast", "normal", "slow", "step"];
+
+export interface PreferencesView {
+  run_pacing: RunPacing;
+  /** 설정을 읽지 못한 사유. **조회 자체는 실패하지 않는다.** */
+  warning: string | null;
+}
+
 export interface SessionView {
   session_id: string;
   state: SessionState;
@@ -255,6 +280,13 @@ export interface SessionView {
    * 실패 사유가 사라진다 — 001 의 "AI 로 만들기 무반응" 이 그것이다 (research R2).
    */
   authoring_mode: "record" | "ai";
+  /**
+   * 이 세션의 실행 속도 (004).
+   *
+   * `paused` 의 **문구를 가르는 유일한 근거**다. 자동 일시정지(`한 스텝씩`)와 사용자가
+   * 직접 누른 일시정지는 상태가 같고 의미가 다르다 — 상태로는 구별할 수 없다.
+   */
+  pacing: RunPacing;
 }
 
 export interface TabView {
@@ -325,8 +357,16 @@ export const sessions = {
     test_id?: string | null;
     start_url?: string | null;
     ai_instruction?: string | null;
+    /** 생략하면 저장된 취향, 그것도 없으면 서버 기본값 (FR-109). */
+    pacing?: RunPacing;
   }) => post<SessionView>("/api/sessions", body),
   get: (id: string) => get<SessionView>(`/api/sessions/${id}`),
+  /**
+   * 실행 속도 변경 (FR-103). **실행 중에도 부를 수 있다** — 진행 중인 Step 을 끊지
+   * 않고 다음 Step 경계부터 적용된다.
+   */
+  setPacing: (id: string, pacing: RunPacing) =>
+    post<SessionView>(`/api/sessions/${id}/pacing`, { pacing }),
   pause: (id: string) => post<SessionView>(`/api/sessions/${id}/pause`),
   resume: (id: string) => post<SessionView>(`/api/sessions/${id}/resume`),
   runFrom: (id: string, stepIndex: number) =>
@@ -436,6 +476,14 @@ export const secrets = {
   put: (name: string, value: string) =>
     request<void>(`/api/secrets/${name}`, { method: "PUT", body: JSON.stringify({ value }) }),
   remove: (name: string) => del<void>(`/api/secrets/${name}`),
+};
+
+// ─── 사용자 취향 (004) ──────────────────────────────────────────────────────
+
+export const preferences = {
+  get: () => get<PreferencesView>("/api/preferences"),
+  put: (runPacing: RunPacing) =>
+    put<PreferencesView>("/api/preferences", { run_pacing: runPacing }),
 };
 
 export const health = () =>

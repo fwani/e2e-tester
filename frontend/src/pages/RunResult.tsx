@@ -312,6 +312,23 @@ export function RunResult({
                       {failedStep.error_message ?? "실패 이유가 기록되지 않았습니다."}
                     </div>
 
+                    {/* 004 FR-122·FR-123 — **`code` 로 분기한다.** 문구를 파싱하지
+                        않는다. 문구는 다듬을 수 있어야 하고, 다듬는 순간 분류가 깨지면
+                        안 된다. */}
+                    {failureAdvice(failedStep.error_code) && (
+                      <div
+                        style={{
+                          padding: "10px 12px",
+                          background: "#FFF9D6",
+                          border: "2px solid #14130F",
+                          font: `500 13px/1.5 ${SANS}`,
+                          textWrap: "pretty",
+                        }}
+                      >
+                        {failureAdvice(failedStep.error_code)}
+                      </div>
+                    )}
+
                     {failedStep.locator_attempts.length > 0 && (
                       <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
                         <div
@@ -335,7 +352,10 @@ export function RunResult({
                           </div>
                         ))}
                         <div style={{ font: `400 12px/1 ${MONO}`, color: "#6B675C", paddingLeft: "20px" }}>
-                          {`timeout ${Math.max(...failedStep.locator_attempts.map((a) => a.waited_ms), 0)} ms`}
+                          {/* 004 FR-121 — **실제로 기다린 시간**이다. 예전에는 후보별
+                              대기 중 최댓값을 "timeout" 으로 적었는데, 그것은 설정값도
+                              실측값도 아닌 값이었다. */}
+                          {`요소를 ${failedStep.element_wait_ms} ms 기다렸습니다`}
                         </div>
                       </div>
                     )}
@@ -462,6 +482,34 @@ export function RunResult({
       </div>
     </Artboard>
   );
+}
+
+/**
+ * 실패 분류별 다음 행동 (004 FR-122·FR-123).
+ *
+ * **`code` 로만 판단한다.** 문구를 읽어 분기하면 문구를 다듬는 순간 분류가 깨진다.
+ * 서버의 `next_action` 과 같은 내용을 말하되, 결과 화면은 "이 Step 을 고치기" 버튼을
+ * 바로 옆에 두고 있으므로 그 맥락에 맞춰 다시 쓴다.
+ */
+function failureAdvice(code: StepResult["error_code"]): string | null {
+  switch (code) {
+    case "ELEMENT_NOT_READY":
+      return (
+        "기다렸지만 요소가 나타나지 않았습니다. 대상 화면이 느릴 수 있습니다 — " +
+        "실행 속도를 '느림'으로 낮춰 화면을 눈으로 확인하거나, 아래에서 이 Step 의 " +
+        "대기 시간을 늘린 뒤 이 Step부터 다시 실행하세요."
+      );
+    case "ELEMENT_AMBIGUOUS":
+      return (
+        "이 식별 정보가 더 이상 요소 하나를 가리키지 않습니다. 기다려도 달라지지 " +
+        "않으므로 아래에서 대상을 다시 집으세요."
+      );
+    case "TARGET_UNREACHABLE":
+      return "대상 사이트가 응답하지 않았습니다. 사이트를 확인한 뒤 다시 실행하세요.";
+    default:
+      // STEP_FAILED 와 미기록(옛 결과)은 기존 실패 사유 문장으로 충분하다.
+      return null;
+  }
 }
 
 function Summary({ label, value }: { label: string; value: string }) {

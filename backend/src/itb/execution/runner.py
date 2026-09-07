@@ -423,6 +423,7 @@ class ReplayEngine:
             result.duration_ms = int((time.monotonic() - started) * 1000)
             result.tab_wait_ms = exc.tab_wait_ms
             result.element_wait_ms = exc.element_wait_ms
+            result.error_code = exc.code
             result.locator_attempts = exc.attempts
             result.error_message = self._scrubber().scrub(str(exc))
             self.failed_index = index

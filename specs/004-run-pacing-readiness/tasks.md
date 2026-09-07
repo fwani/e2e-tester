@@ -124,41 +124,41 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T030 [P] [US1] `backend/tests/unit/test_preferences.py` — 파일 없음·손상·알 수 없는 값에서 기본값 `normal` 로 진행하고 경고 사유를 낸다. 읽기 실패가 예외를 던지지 않는다 (data-model §5)
-- [ ] T031 [P] [US1] `backend/tests/unit/test_preferences.py` 에 원자적 쓰기 테스트 — 부분 기록된 파일을 남기지 않는다
-- [ ] T032 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` — `slow`(1500ms) 간격 도중 일시정지 요청 후 1초 안에 `state == "paused"` (SC-007, FR-106)
-- [ ] T033 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 간격 도중 중지 테스트 — 1초 안에 중지된다
-- [ ] T034 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 `test_pacing_change_does_not_interrupt_running_step` — 실행 중 속도 변경이 진행 중 Step 을 끊지 않고 다음 경계부터 적용된다 (FR-103)
-- [ ] T035 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 `test_no_delay_after_last_step` — 마지막 Step 뒤에는 간격이 없다 (spec 엣지 케이스)
-- [ ] T035a [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 `test_delay_excluded_from_step_budget` — `느림` 실행에서 각 Step 의 `duration_ms` 에 1500ms 간격이 포함되지 않고, 간격이 시간 초과 판정에 영향을 주지 않는다 (FR-105)
-- [ ] T036 [P] [US1] `backend/tests/integration/test_pause_resume.py` 에 `한 스텝씩` 테스트를 더한다 — 매 Step 경계에서 `PAUSED` 가 되고, 그 상태에서 Step 편집이 허용된다 (FR-108)
-- [ ] T037 [P] [US1] `backend/tests/contract/test_ws_events.py` 에 `pacing_changed` 이벤트 계약 테스트를 더한다 — `pacing`·`delay_ms`·`auto_pause`·`preference_saved` (contracts/websocket.md §1)
-- [ ] T038 [P] [US1] `backend/tests/e2e/test_us2_replay_and_diagnose.py` 에 속도 4단계 판정 동일 테스트를 더한다 — 통과/실패와 실패 Step 위치가 모두 같다 (SC-005, FR-104)
-- [ ] T038a [P] [US1] `backend/tests/contract/test_preferences_api.py` 를 만든다 — `GET`·`PUT /api/preferences` 응답 형태, 열거형 밖 값 422, 읽기 실패 시 `warning` 필드 (contracts/rest-api.md §3)
-- [ ] T038b [P] [US1] `backend/tests/contract/test_preferences_api.py` 에 `LOST` 세션의 pacing 변경이 409 로 거절되는지 더한다 (contracts/rest-api.md §2)
-- [ ] T038c [P] [US1] `backend/tests/contract/test_dsl_roundtrip.py` 에 **저장된 테스트 YAML 에 속도 관련 키가 없음**을 단언한다 — 속도가 테스트 자산으로 새어 들어가는 것을 구조가 아니라 테스트로도 막는다 (FR-110, 헌법 원칙 V)
+- [X] T030 [P] [US1] `backend/tests/unit/test_preferences.py` — 파일 없음·손상·알 수 없는 값에서 기본값 `normal` 로 진행하고 경고 사유를 낸다. 읽기 실패가 예외를 던지지 않는다 (data-model §5)
+- [X] T031 [P] [US1] `backend/tests/unit/test_preferences.py` 에 원자적 쓰기 테스트 — 부분 기록된 파일을 남기지 않는다
+- [X] T032 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` — `slow`(1500ms) 간격 도중 일시정지 요청 후 1초 안에 `state == "paused"` (SC-007, FR-106)
+- [X] T033 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 간격 도중 중지 테스트 — 1초 안에 중지된다
+- [X] T034 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 `test_pacing_change_does_not_interrupt_running_step` — 실행 중 속도 변경이 진행 중 Step 을 끊지 않고 다음 경계부터 적용된다 (FR-103)
+- [X] T035 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 `test_no_delay_after_last_step` — 마지막 Step 뒤에는 간격이 없다 (spec 엣지 케이스)
+- [X] T035a [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 `test_delay_excluded_from_step_budget` — `느림` 실행에서 각 Step 의 `duration_ms` 에 1500ms 간격이 포함되지 않고, 간격이 시간 초과 판정에 영향을 주지 않는다 (FR-105)
+- [X] T036 [P] [US1] `backend/tests/integration/test_pause_resume.py` 에 `한 스텝씩` 테스트를 더한다 — 매 Step 경계에서 `PAUSED` 가 되고, 그 상태에서 Step 편집이 허용된다 (FR-108)
+- [X] T037 [P] [US1] `backend/tests/contract/test_ws_events.py` 에 `pacing_changed` 이벤트 계약 테스트를 더한다 — `pacing`·`delay_ms`·`auto_pause`·`preference_saved` (contracts/websocket.md §1)
+- [X] T038 [P] [US1] `backend/tests/e2e/test_us2_replay_and_diagnose.py` 에 속도 4단계 판정 동일 테스트를 더한다 — 통과/실패와 실패 Step 위치가 모두 같다 (SC-005, FR-104)
+- [X] T038a [P] [US1] `backend/tests/contract/test_preferences_api.py` 를 만든다 — `GET`·`PUT /api/preferences` 응답 형태, 열거형 밖 값 422, 읽기 실패 시 `warning` 필드 (contracts/rest-api.md §3)
+- [X] T038b [P] [US1] `backend/tests/contract/test_preferences_api.py` 에 `LOST` 세션의 pacing 변경이 409 로 거절되는지 더한다 (contracts/rest-api.md §2)
+- [X] T038c [P] [US1] `backend/tests/contract/test_dsl_roundtrip.py` 에 **저장된 테스트 YAML 에 속도 관련 키가 없음**을 단언한다 — 속도가 테스트 자산으로 새어 들어가는 것을 구조가 아니라 테스트로도 막는다 (FR-110, 헌법 원칙 V)
 
 ### Implementation for User Story 1
 
-- [ ] T039 [P] [US1] `backend/src/itb/storage/preferences.py` 를 만든다 — `~/.config/itb/preferences.json` 읽기·쓰기. 읽기 실패는 기본값 + 경고, 쓰기는 `storage/atomic.py` 재사용. **취향만 담는다** (data-model §5)
-- [ ] T040 [US1] `backend/src/itb/execution/session.py` 의 `BrowserSession` 에 `pacing: RunPacing` 과 `_pause_requested: asyncio.Event` 를 더한다 (data-model §2)
-- [ ] T041 [US1] `backend/src/itb/execution/session.py` 의 `apply()` 에서 `_pause_requested` 를 관리한다 — `PAUSE` 에 set, `RESUME`·`RUN_FROM` 에 clear. `mark_running()` 에서도 clear. **두 이벤트를 한 곳에서만 조작한다** (T040 이후)
-- [ ] T042 [US1] `backend/src/itb/execution/session.py` 에 `wait_pause_requested()` 를 더한다 — 간격이 이것을 `asyncio.wait_for` 로 기다린다 (research R6)
-- [ ] T043 [US1] `backend/src/itb/execution/runner.py` 의 `RunnerTask._advance()` 에 Step 간 간격을 넣는다 — `asyncio.wait_for(session.wait_pause_requested(), timeout=delay_s)` 로 자며, 일시정지 요청 시 즉시 반환한다. **다음 Step 이 있을 때만** 적용한다 (T042 이후, FR-101·FR-105·FR-106)
-- [ ] T044 [US1] `backend/src/itb/execution/runner.py` 의 `RunnerTask._advance()` 에 `한 스텝씩` 자동 일시정지를 넣는다 — `pacing.auto_pause` 이고 다음 Step 이 있으면 `session.apply(Command.PAUSE)`. 새 상태를 만들지 않는다 (research R7)
-- [ ] T045 [US1] `backend/src/itb/execution/runner.py` 에서 간격·자동 일시정지를 **저장된 Step 실행 구간에만** 적용한다 — `AI_RUNNING` 에서 AI 가 다음 동작을 판단하는 시간에는 적용하지 않는다 (spec 엣지 케이스)
-- [ ] T046 [P] [US1] `backend/src/itb/api/routes/preferences_routes.py` 를 만든다 — `GET`·`PUT /api/preferences` (contracts/rest-api.md §3). `T039` 이후
-- [ ] T047 [US1] `backend/src/itb/api/app.py` 에 `preferences_routes` 를 등록한다 (T046 이후)
-- [ ] T048 [US1] `backend/src/itb/api/routes/sessions.py` 의 `CreateSessionRequest` 에 `pacing` 을 더하고, 기본값 해석 순서를 구현한다 — 요청 → 취향 파일 → `normal` (contracts/rest-api.md §1)
-- [ ] T049 [US1] 같은 파일에 `POST /api/sessions/{id}/pacing` 을 더한다 — 속도를 바꾸고 취향 파일에 남기며 `pacing_changed` 를 발행한다. 취향 쓰기 실패는 `preference_saved: false` 로 알리되 **이 호출은 성공한다** (contracts/rest-api.md §2)
-- [ ] T050 [US1] 같은 파일의 `SessionView` 에 `pacing` 을 더한다 — 재연결 시 화면이 속도를 복원한다 (contracts/rest-api.md §4)
-- [ ] T051 [US1] `backend/src/itb/schema/export.py` 재실행 + `npm run gen:types` 로 `pacing` 관련 타입을 생성한다
-- [ ] T052 [P] [US1] `frontend/src/components/PacingControl.tsx` 를 만든다 — 네 단계 선택. 실행 중에도 활성이며 선택 시 `POST /api/sessions/{id}/pacing` 을 부른다
-- [ ] T053 [US1] `frontend/src/api/client.ts` 에 `setPacing`·`getPreferences`·`putPreferences` 를 더한다
-- [ ] T054 [US1] `frontend/src/pages/Runner.tsx` 에 `PacingControl` 을 붙이고, 현재 실행 중인 Step 을 강조한다. 간격 동안에는 방금 끝난 Step 과 결과가 보인다 (FR-107). `pacing_changed` 이벤트를 구독해 다른 창의 변경을 반영한다
-- [ ] T055 [US1] `frontend/src/pages/RunnerPaused.tsx` 가 `pacing === "step"` 일 때 문구를 가른다 — "한 스텝씩 — 다음 Step 을 기다립니다" vs "일시정지됨" (research R7)
+- [X] T039 [P] [US1] `backend/src/itb/storage/preferences.py` 를 만든다 — `~/.config/itb/preferences.json` 읽기·쓰기. 읽기 실패는 기본값 + 경고, 쓰기는 `storage/atomic.py` 재사용. **취향만 담는다** (data-model §5)
+- [X] T040 [US1] `backend/src/itb/execution/session.py` 의 `BrowserSession` 에 `pacing: RunPacing` 과 `_pause_requested: asyncio.Event` 를 더한다 (data-model §2)
+- [X] T041 [US1] `backend/src/itb/execution/session.py` 의 `apply()` 에서 `_pause_requested` 를 관리한다 — `PAUSE` 에 set, `RESUME`·`RUN_FROM` 에 clear. `mark_running()` 에서도 clear. **두 이벤트를 한 곳에서만 조작한다** (T040 이후)
+- [X] T042 [US1] `backend/src/itb/execution/session.py` 에 `wait_pause_requested()` 를 더한다 — 간격이 이것을 `asyncio.wait_for` 로 기다린다 (research R6)
+- [X] T043 [US1] `backend/src/itb/execution/runner.py` 의 `RunnerTask._advance()` 에 Step 간 간격을 넣는다 — `asyncio.wait_for(session.wait_pause_requested(), timeout=delay_s)` 로 자며, 일시정지 요청 시 즉시 반환한다. **다음 Step 이 있을 때만** 적용한다 (T042 이후, FR-101·FR-105·FR-106)
+- [X] T044 [US1] `backend/src/itb/execution/runner.py` 의 `RunnerTask._advance()` 에 `한 스텝씩` 자동 일시정지를 넣는다 — `pacing.auto_pause` 이고 다음 Step 이 있으면 `session.apply(Command.PAUSE)`. 새 상태를 만들지 않는다 (research R7)
+- [X] T045 [US1] `backend/src/itb/execution/runner.py` 에서 간격·자동 일시정지를 **저장된 Step 실행 구간에만** 적용한다 — `AI_RUNNING` 에서 AI 가 다음 동작을 판단하는 시간에는 적용하지 않는다 (spec 엣지 케이스)
+- [X] T046 [P] [US1] `backend/src/itb/api/routes/preferences_routes.py` 를 만든다 — `GET`·`PUT /api/preferences` (contracts/rest-api.md §3). `T039` 이후
+- [X] T047 [US1] `backend/src/itb/api/app.py` 에 `preferences_routes` 를 등록한다 (T046 이후)
+- [X] T048 [US1] `backend/src/itb/api/routes/sessions.py` 의 `CreateSessionRequest` 에 `pacing` 을 더하고, 기본값 해석 순서를 구현한다 — 요청 → 취향 파일 → `normal` (contracts/rest-api.md §1)
+- [X] T049 [US1] 같은 파일에 `POST /api/sessions/{id}/pacing` 을 더한다 — 속도를 바꾸고 취향 파일에 남기며 `pacing_changed` 를 발행한다. 취향 쓰기 실패는 `preference_saved: false` 로 알리되 **이 호출은 성공한다** (contracts/rest-api.md §2)
+- [X] T050 [US1] 같은 파일의 `SessionView` 에 `pacing` 을 더한다 — 재연결 시 화면이 속도를 복원한다 (contracts/rest-api.md §4)
+- [X] T051 [US1] `backend/src/itb/schema/export.py` 재실행 + `npm run gen:types` 로 `pacing` 관련 타입을 생성한다
+- [X] T052 [P] [US1] `frontend/src/components/PacingControl.tsx` 를 만든다 — 네 단계 선택. 실행 중에도 활성이며 선택 시 `POST /api/sessions/{id}/pacing` 을 부른다
+- [X] T053 [US1] `frontend/src/api/client.ts` 에 `setPacing`·`getPreferences`·`putPreferences` 를 더한다
+- [X] T054 [US1] `frontend/src/pages/Runner.tsx` 에 `PacingControl` 을 붙이고, 현재 실행 중인 Step 을 강조한다. 간격 동안에는 방금 끝난 Step 과 결과가 보인다 (FR-107). `pacing_changed` 이벤트를 구독해 다른 창의 변경을 반영한다
+- [X] T055 [US1] `frontend/src/pages/RunnerPaused.tsx` 가 `pacing === "step"` 일 때 문구를 가른다 — "한 스텝씩 — 다음 Step 을 기다립니다" vs "일시정지됨" (research R7)
 
-- [ ] T055a [P] [US1] `backend/tests/integration/test_ai_authoring.py` 에 AI 가 다음 동작을 판단하는 시간에는 간격이 적용되지 않음을 단언한다 (spec 엣지 케이스, T045 와 짝)
+- [X] T055a [P] [US1] `backend/tests/integration/test_ai_authoring.py` 에 AI 가 다음 동작을 판단하는 시간에는 간격이 적용되지 않음을 단언한다 (spec 엣지 케이스, T045 와 짝)
 
 **Checkpoint**: US1 완료. 네 속도가 동작하고 판정을 바꾸지 않으며, 간격 중 일시정지·중지가
 즉시 먹는다.
@@ -176,16 +176,16 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T056 [P] [US3] `backend/tests/integration/test_lazy_loading.py` 에 `test_timeout_failure_carries_next_action` — `ELEMENT_NOT_READY` 실패의 `next_action` 이 예산 상향과 속도 하향을 안내한다 (FR-122)
-- [ ] T057 [P] [US3] `backend/tests/integration/test_lazy_loading.py` 에 `test_no_usable_candidate_is_step_failed` — 후보가 하나도 없는 실패는 `STEP_FAILED` 로 남아 시간 문제와 구별된다 (FR-120)
+- [X] T056 [P] [US3] `backend/tests/integration/test_lazy_loading.py` 에 `test_timeout_failure_carries_next_action` — `ELEMENT_NOT_READY` 실패의 `next_action` 이 예산 상향과 속도 하향을 안내한다 (FR-122)
+- [X] T057 [P] [US3] `backend/tests/integration/test_lazy_loading.py` 에 `test_no_usable_candidate_is_step_failed` — 후보가 하나도 없는 실패는 `STEP_FAILED` 로 남아 시간 문제와 구별된다 (FR-120)
 
 ### Implementation for User Story 3
 
-- [ ] T058 [US3] `backend/src/itb/execution/step_executor.py` 의 신규 코드 `next_action` 문구를 확정한다 — `ELEMENT_NOT_READY` 는 "실행 속도를 '느림'으로 낮춰 화면을 확인하거나 Step 상세에서 대기 시간을 늘리세요", `ELEMENT_AMBIGUOUS` 는 "Step 상세에서 요소를 다시 집으세요" (contracts/error-contract.md §3)
-- [ ] T059 [US3] `frontend/src/pages/RunResult.tsx` 가 `element_wait_ms` 를 표시한다 — `tab_wait_ms` 와 나란히, 성공한 Step 에도 보인다 (FR-114)
-- [ ] T060 [US3] `frontend/src/pages/RunResult.tsx` 가 신규 오류 코드를 **`code` 로 분기해** 표시한다. `message` 를 파싱하지 않는다 (FR-123)
-- [ ] T061 [US3] `frontend/src/pages/RunResult.tsx` 에서 `ELEMENT_NOT_READY` 실패에 Step 상세로 가는 경로를 준다 — 사용자가 예산을 늘리고 그 Step 부터 다시 실행할 수 있어야 한다 (US3 시나리오 3)
-- [ ] T062 [P] [US3] `frontend/src/components/ErrorNotice.tsx` 가 신규 코드를 알려진 코드로 처리하는지 확인한다 — 모르는 코드로 떨어져 기본 문구가 나오면 안 된다
+- [X] T058 [US3] `backend/src/itb/execution/step_executor.py` 의 신규 코드 `next_action` 문구를 확정한다 — `ELEMENT_NOT_READY` 는 "실행 속도를 '느림'으로 낮춰 화면을 확인하거나 Step 상세에서 대기 시간을 늘리세요", `ELEMENT_AMBIGUOUS` 는 "Step 상세에서 요소를 다시 집으세요" (contracts/error-contract.md §3)
+- [X] T059 [US3] `frontend/src/pages/RunResult.tsx` 가 `element_wait_ms` 를 표시한다 — `tab_wait_ms` 와 나란히, 성공한 Step 에도 보인다 (FR-114)
+- [X] T060 [US3] `frontend/src/pages/RunResult.tsx` 가 신규 오류 코드를 **`code` 로 분기해** 표시한다. `message` 를 파싱하지 않는다 (FR-123)
+- [X] T061 [US3] `frontend/src/pages/RunResult.tsx` 에서 `ELEMENT_NOT_READY` 실패에 Step 상세로 가는 경로를 준다 — 사용자가 예산을 늘리고 그 Step 부터 다시 실행할 수 있어야 한다 (US3 시나리오 3)
+- [X] T062 [P] [US3] `frontend/src/components/ErrorNotice.tsx` 가 신규 코드를 알려진 코드로 처리하는지 확인한다 — 모르는 코드로 떨어져 기본 문구가 나오면 안 된다
 
 **Checkpoint**: 세 스토리 모두 독립적으로 동작한다.
 
@@ -193,8 +193,8 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T063 [P] `docs/design/` 문서의 RunResult 표기에서 `timeout 5000 ms` 를 갱신한다 — 기본값이 10000ms 로 바뀌었다 (research R5 부수 영향)
-- [ ] T064 [P] `docs/DEVELOPMENT.md` 에 지연 로딩 픽스처 사용법과 속도 설정 파일 위치를 적는다
+- [X] T063 [P] `docs/design/` 문서의 RunResult 표기에서 `timeout 5000 ms` 를 갱신한다 — 기본값이 10000ms 로 바뀌었다 (research R5 부수 영향)
+- [X] T064 [P] `docs/DEVELOPMENT.md` 에 지연 로딩 픽스처 사용법과 속도 설정 파일 위치를 적는다
 - [ ] T065 [P] `backend/tests/integration/test_roundtrip.py` 에서 예산 기본값 상향이 생성 Playwright 코드의 `timeout:` 에 반영되는지 확인한다 (품질 게이트 2, SC-008)
 - [ ] T066 `uv run ruff check src/ tests/` 와 `uv run lint-imports` 를 통과시킨다
 - [ ] T067 `uv run python -m pytest` 전체를 돌린다 — 기존 921건이 줄지 않는다. **테스트를 지우거나 건너뛰어 통과시키지 않는다** (품질 게이트 4). `.first` 폴백 제거로 깨지는 기존 테스트가 있으면 되돌리지 말고 대상 정의를 고친다 (plan 위험표)

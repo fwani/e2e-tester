@@ -40,6 +40,9 @@ function failedResult(): RunResultData {
       {
         ...step(4, "저장", "fail", 5000),
         error_message: '"저장" 버튼을 찾을 수 없습니다.',
+        // 004 — 예산을 다 쓰고 못 찾은 실패다. 분류와 실제 대기 시간이 함께 남는다.
+        error_code: "ELEMENT_NOT_READY",
+        element_wait_ms: 5000,
         locator_attempts: [
           attempt("test_id", "testId=save-dataset", 5000),
           attempt("role", 'role=button name="저장"', 0),
@@ -64,6 +67,8 @@ function step(
     duration_ms: durationMs,
     tab: 0,
     tab_wait_ms: 0,
+    element_wait_ms: 0,
+    error_code: null,
     resolved_candidate: outcome === "pass" ? "test_id" : null,
     locator_attempts: [],
     error_message: null,
@@ -150,7 +155,33 @@ describe("RunResult", () => {
     expect(screen.getByText("시도한 LOCATOR (우선순위 순)")).toBeDefined();
     expect(screen.getByText("testId=save-dataset")).toBeDefined();
     expect(screen.getByText('role=button name="저장"')).toBeDefined();
-    expect(screen.getByText("timeout 5000 ms")).toBeDefined();
+    // 004 — "timeout" 이 아니라 **실제로 기다린 시간**이다. 예전 표기는 후보별 대기
+    // 중 최댓값을 timeout 이라 불렀는데, 그것은 설정값도 실측값도 아닌 값이었다.
+    expect(screen.getByText("요소를 5000 ms 기다렸습니다")).toBeDefined();
+  });
+
+  it("시간 초과 실패에는 다음 행동이 함께 나온다 (004 FR-122·FR-123)", async () => {
+    vi.stubGlobal("fetch", stubFetch(failedResult()));
+    render(
+      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+    );
+    await screen.findByText('"저장" 버튼을 찾을 수 없습니다.');
+    // **`code` 로 갈린다.** 문구를 파싱해 판단하지 않는다.
+    expect(screen.getByText(/실행 속도를 '느림'으로 낮춰/)).toBeDefined();
+  });
+
+  it("정의 문제에는 시간 안내를 붙이지 않는다 (004 FR-120)", async () => {
+    const base = failedResult();
+    const steps = base.steps.map((s) =>
+      s.outcome === "fail" ? { ...s, error_code: "STEP_FAILED" as const } : s,
+    );
+    vi.stubGlobal("fetch", stubFetch({ ...base, steps }));
+    render(
+      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+    );
+    await screen.findByText('"저장" 버튼을 찾을 수 없습니다.');
+    // 기다려도 달라지지 않는 문제에 "속도를 낮춰 보세요" 라고 하면 사용자를 헤매게 한다.
+    expect(screen.queryByText(/실행 속도를 '느림'으로 낮춰/)).toBeNull();
   });
 
   it("TRACE 탭은 비활성이다 (spec 디자인 차이 1)", async () => {

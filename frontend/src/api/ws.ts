@@ -11,7 +11,7 @@
  */
 import type { Step } from "../types/generated/step";
 import type { ErrorBody } from "../types/generated/error-response";
-import type { SessionState } from "./client";
+import type { RunPacing, SessionState } from "./client";
 
 export interface SessionEventBase {
   type: string;
@@ -38,6 +38,8 @@ export type SessionEvent =
       index: number;
       outcome: string;
       duration_ms: number;
+      /** 요소가 나타나기를 기다린 시간 (004 FR-114). 옛 서버에는 없다. */
+      element_wait_ms?: number;
     })
   | (SessionEventBase & {
       type: "step_failed";
@@ -46,6 +48,22 @@ export type SessionEvent =
       error_message: string;
       locator_attempts: unknown[];
       tab_wait_ms: number;
+      element_wait_ms?: number;
+      error?: ErrorBody;
+    })
+  /**
+   * 실행 속도가 바뀌었다 (004).
+   *
+   * **간격 값을 함께 싣는다.** 화면이 대응표를 따로 들고 있으면 서버와 갈린다 —
+   * 화면이 "1.5초 쉽니다" 라고 말하는 동안 러너가 0.5초를 쉬는 상태가 만들어진다.
+   */
+  | (SessionEventBase & {
+      type: "pacing_changed";
+      pacing: RunPacing;
+      delay_ms: number;
+      auto_pause: boolean;
+      /** 취향 파일에 남겼는가. false 면 다음 실행에 유지되지 않는다. */
+      preference_saved: boolean;
     })
   | (SessionEventBase & {
       type: "run_finished";

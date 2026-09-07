@@ -19,6 +19,36 @@ export type StartedAt = string;
 export type CandidateDisagreement = string[];
 export type DurationMs = number;
 export type ElementWaitMs = number;
+export type ErrorCode =
+  | "PROJECT_NOT_OPEN"
+  | "PROJECT_ALREADY_EXISTS"
+  | "PROJECT_NOT_FOUND"
+  | "INVALID_PATH"
+  | "TEST_NOT_FOUND"
+  | "STEP_LIST_EMPTY"
+  | "DEFINITION_INVALID"
+  | "SESSION_NOT_FOUND"
+  | "SESSION_ALREADY_ACTIVE"
+  | "SESSION_LOST"
+  | "NOT_PAUSED"
+  | "INVALID_TRANSITION"
+  | "TAB_NOT_FOUND"
+  | "TAB_LIMIT_REACHED"
+  | "KEY_MISSING"
+  | "KEY_ALREADY_EXISTS"
+  | "PASSPHRASE_REQUIRED"
+  | "PASSPHRASE_INVALID"
+  | "DECRYPT_FAILED"
+  | "FINGERPRINT_MISMATCH"
+  | "SECRET_NOT_FOUND"
+  | "STEP_FAILED"
+  | "TARGET_UNREACHABLE"
+  | "ELEMENT_NOT_READY"
+  | "ELEMENT_AMBIGUOUS"
+  | "AI_FAILED"
+  | "STORAGE_WRITE_FAILED"
+  | "NOT_SUPPORTED"
+  | "INTERNAL_ERROR";
 export type ErrorMessage = string | null;
 export type Index = number;
 export type Label = string;
@@ -62,6 +92,7 @@ export interface StepResult {
   candidate_disagreement: CandidateDisagreement;
   duration_ms: DurationMs;
   element_wait_ms: ElementWaitMs;
+  error_code: ErrorCode | null;
   error_message: ErrorMessage;
   index: Index;
   label: Label;

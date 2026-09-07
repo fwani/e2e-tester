@@ -25,6 +25,7 @@ import {
   type AddAssertionBody,
   type AiChoice,
   type RepickSlot,
+  type RunPacing,
   type SessionView,
   type TabsResponse,
 } from "../api/client";
@@ -42,6 +43,7 @@ import { TabStrip } from "../components/TabStrip";
 import type { StepOutcome } from "../components/design/DesignStepList";
 import type { Step } from "../types/generated/step";
 import { AiRecord, type AiBlockedState } from "./AiRecord";
+import { PacingControl } from "../components/PacingControl";
 import { Runner } from "./Runner";
 import { RunnerPaused } from "./RunnerPaused";
 import { Takeover } from "./Takeover";
@@ -117,6 +119,13 @@ export function SessionScreen({
   const [aiMessages, setAiMessages] = useState<string[]>([]);
   const [aiError, setAiError] = useState<ErrorInfo | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
+  /**
+   * 속도 변경을 취향 파일에 남겼는가 (004).
+   *
+   * 남기지 못해도 속도 자체는 바뀌었으므로 실행을 막지 않는다. 다만 조용히 넘기지도
+   * 않는다 — 다음 실행에 유지되지 않는다는 사실을 사용자가 알아야 한다.
+   */
+  const [pacingSaved, setPacingSaved] = useState(true);
   const [live, setLive] = useState(true);
   const [showOffline, setShowOffline] = useState(false);
   const subscription = useRef<SessionSubscription | null>(null);
@@ -189,6 +198,12 @@ export function SessionScreen({
             // 실시간 통로가 아직 옛 형태인 경우이므로 다음 행동을 화면이 붙인다.
             setError(fromEvent(event.error, event.reason,
               "이 실행의 결과는 남지 않았습니다. 다시 실행하거나 Step을 확인하세요."));
+            break;
+          case "pacing_changed":
+            // 다른 창에서 바꾼 속도를 반영한다. 값 자체는 전체 상태 동기화로 오므로
+            // 여기서는 취향 저장 여부만 잡아 둔다 — 그것은 세션 뷰에 없는 정보다.
+            setPacingSaved(event.preference_saved);
+            void resync();
             break;
           case "artifact_note":
             // 산출물 일부를 남기지 못한 사유. 실행 자체는 유효하므로 오류로 다루지 않는다.
@@ -277,6 +292,18 @@ export function SessionScreen({
     } finally {
       setBusy(false);
     }
+  };
+
+  /**
+   * 실행 속도 변경 (004 FR-103).
+   *
+   * **낙관적으로 반영하지 않는다.** 서버가 돌려주는 세션 뷰가 권위이며, 실패하면 이전
+   * 값이 그대로 보여야 한다 — 화면이 먼저 바뀌면 사용자는 적용되지 않은 속도를 적용된
+   * 것으로 믿는다.
+   */
+  const changePacing = (next: RunPacing) => {
+    setPacingSaved(true);
+    void act(() => sessions.setPacing(sessionId, next));
   };
 
   /** 편집 요청 공통 처리. 실패 사유를 알리되 화면을 떠나지 않는다 (FR-081). */
@@ -638,6 +665,15 @@ export function SessionScreen({
           onShowResult={
             testId !== null && onShowResult && isDone ? () => onShowResult(testId) : undefined
           }
+          pacing={view.pacing}
+          pacingControl={
+            <PacingControl
+              value={view.pacing}
+              busy={busy}
+              preferenceSaved={pacingSaved}
+              onChange={changePacing}
+            />
+          }
         />
         {overlays}
       </>
@@ -653,6 +689,15 @@ export function SessionScreen({
         statusLabel={isObserving ? "RUNNING" : view.state_label}
         authoring={view.authoring_mode}
         canPause={!isDone}
+        pacing={
+          <PacingControl
+            value={view.pacing}
+            busy={busy}
+            disabled={isDone}
+            preferenceSaved={pacingSaved}
+            onChange={changePacing}
+          />
+        }
         onPause={() => void act(() => sessions.pause(sessionId))}
         onStop={isDone ? leave : stop}
         finished={
