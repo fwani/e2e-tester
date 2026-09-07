@@ -38,7 +38,7 @@ description: "Task list template for feature implementation"
 - [ ] T002 [P] `scripts/design_baseline.py` 가 `docs/design/Workbench.dc.html` 을 추출 대상에 포함하도록 확장
 - [ ] T003 [P] `docs/PENDING-HUMAN-VERIFICATION.md` 에 007 항목 2건 자리 추가 — artboard 승인 · 대조 판정
 - [ ] T004 [P] 국면별 `WorkbenchModel` 픽스처 팩토리 in `frontend/tests/helpers/workbench.ts` — 7국면을 한 줄로 만들 수 있게 한다
-- [ ] T005 기준선 기록 — `cd frontend && npm run typecheck && npm test` 결과를 `specs/007-unify-test-screens/design-conformance/baseline.md` 에 남긴다. 이행 중 무엇이 새로 깨졌는지 가릴 근거다
+- [ ] T005 기준선 기록 in `specs/007-unify-test-screens/design-conformance/baseline.md` — ① `cd frontend && npm run typecheck && npm test` 의 통과·실패 목록 ② **현재의 왕복 화면 전환 수** (결과 확인 → 수정 → 재실행 → 결과 확인). ②가 없으면 SC-009 를 판정할 수 없다
 
 **Checkpoint**: 기록 자리와 검사 도구 준비 완료
 
@@ -65,21 +65,21 @@ description: "Task list template for feature implementation"
 ### 표시 모델과 껍데기
 
 - [ ] T014 `WorkbenchModel` 타입 in `frontend/src/components/workbench/model.ts` — `data-model.md` §2 그대로
-- [ ] T015 `StepOutcome` 에 `recorded` 추가 in `frontend/src/components/design/DesignStepList.tsx` — 「기록됨」 중립 표식 + 텍스트 라벨. 근거를 `undefined-states.md` 에 기록
-- [ ] T016 [P] `frontend/tests/OutcomeVocabulary.test.tsx` 갱신 — `recorded` 가 `pass` 와 구별되고 텍스트 라벨을 병기한다
+- [ ] T015 `StepOutcome` 에 `recorded` 추가 in `frontend/src/components/workbench/model.ts` — 「기록됨」 중립 표식 + 텍스트 라벨. **옛 `components/design/DesignStepList.tsx` 를 고치지 않는다** — T021 이 그 파일을 흡수·삭제하므로 같은 값을 두 곳에 두면 흡수 시점에 어느 쪽이 진실인지 알 수 없다. 근거를 `undefined-states.md` 에 기록
+- [ ] T016 [P] `frontend/tests/OutcomeVocabulary.test.tsx` · `frontend/tests/UnknownOutcome.test.ts` 갱신 — `recorded` 가 `pass` 와 구별되고 텍스트 라벨을 병기하며, 알 수 없는 결말 처리가 새 값으로 깨지지 않는다
 - [ ] T017 `ActionButton` in `frontend/src/components/workbench/ActionButton.tsx` — `CapabilityState` 를 받아 그린다. `disabled` 이유를 접근 가능한 설명으로 연결하고 `Remedy` 를 버튼으로 붙인다
 - [ ] T018 3층 껍데기 `Workbench` in `frontend/src/components/workbench/Workbench.tsx` — 60px 헤더 · 74px 국면 띠 · 본문(좌 유연 / 우 460 고정) · 최소 기준 폭 1440. **데이터를 읽지 않고 명령을 만들지 않는다**
 - [ ] T019 [P] `PhaseBar` in `frontend/src/components/workbench/PhaseBar.tsx` — 국면 표시 → 테스트 이름 → 결말 요약 → 주요 조작. 결말 요약은 화면에 하나뿐이다
 - [ ] T020 [P] `NoticeStack` in `frontend/src/components/workbench/NoticeStack.tsx` — `role` 과 `nextAction` 을 별도 칸으로 (003 EC-004)
-- [ ] T021 **단일 Step 목록** `StepList` in `frontend/src/components/workbench/StepList.tsx` — `DesignStepRow` 를 흡수한다. 칸 순서 고정: 번호 26px / 이름·동작 칩·탭 배지·대상 요약·값 / 소요 시간 / 결말 표식 24px
+- [ ] T021 **단일 Step 목록** `StepList` in `frontend/src/components/workbench/StepList.tsx` — `DesignStepRow` · `StepPanelHeader` · `OutcomeMark` · `locatorSummary` 를 흡수하고 **`frontend/src/components/design/DesignStepList.tsx` 를 삭제한다.** 칸 순서 고정: 번호 26px / 이름·동작 칩·탭 배지·대상 요약·값 / 소요 시간 / 결말 표식 24px. 남겨 두면 `ImplementationCount` 가 두 구현을 센다
 - [ ] T022 **단일 Step 상세** `StepDetail` in `frontend/src/components/workbench/StepDetail.tsx` — 우측 겹침 640px. `attempts`(그때 시도) 와 `candidates`(정의의 후보)를 두 축으로 둔다. `pages/StepInspector.tsx` 의 내용을 이식
 - [ ] T023 [P] `TargetPane` in `frontend/src/components/workbench/TargetPane.tsx` — `mirror` / `artifacts` / `open_browser` / `empty` 네 내용, 한 자리
 - [ ] T024 [P] `PhaseAside` in `frontend/src/components/workbench/PhaseAside.tsx` — 5종. **`error` · `blocked` 는 값이 있으면 조건 없이 그린다** (001 R2 회귀 방지)
 
 ### 검사 골격
 
-- [ ] T025 [P] `frontend/tests/WorkbenchShell.test.tsx` — 껍데기 치수와 영역 배치가 7국면에서 같다
-- [ ] T026 [P] `frontend/tests/StepRowLayout.test.tsx` — 7국면에서 Step 행의 칸 순서·개수가 같고, 값 없는 칸이 다른 칸을 당기지 않는다
+- [ ] T025 [P] `frontend/tests/WorkbenchShell.test.tsx` — 껍데기 치수와 영역 배치가 7국면에서 같다. **창을 최소 기준 폭보다 넓혔을 때 늘어나는 것이 좌측 대상 앱 영역뿐임을 함께 검사한다** (FR-218a)
+- [ ] T026 [P] `frontend/tests/StepRowLayout.test.tsx` — 7국면에서 Step 행의 칸 순서·개수가 같고, 값 없는 칸이 다른 칸을 당기지 않는다. **더불어 ① Step 을 지목하는 조작이 7국면에서 같은 방식임(FR-227) ② 작성 주체(사람·AI)가 배지로만 드러나고 행 구조를 바꾸지 않음(FR-228) 을 검사한다**
 - [ ] T027 `frontend/tests/ImplementationCount.test.tsx` — Step 목록 구현 1개 · Step 상세 구현 1개. **이 시점에는 실패한다.** Phase 3 이 끝나면 통과한다
 
 ### 확정 디자인 artboard
@@ -136,7 +136,7 @@ description: "Task list template for feature implementation"
 - [ ] T047 [US1] `ResultView` 어댑터 신설 in `frontend/src/pages/ResultView.tsx` — 결과 조회 + 정의 조회를 함께 읽고 `step_id` 로 매칭해 행을 채운다 (research R3)
 - [ ] T048 [US1] 매칭 실패 알림 「이 결과 이후 정의가 바뀌었습니다」 in `frontend/src/pages/ResultView.tsx` + 문구는 `lib/wording.ts`
 - [ ] T049 [US1] 결과 국면 좌측을 산출물로 in `frontend/src/pages/ResultView.tsx` — `TargetPane` 의 `artifacts` (FR-244)
-- [ ] T050 [US1] `frontend/src/pages/RunResult.tsx` **삭제** + `frontend/tests/RunResult.test.tsx` 갱신 + `App.tsx` 배선 교체
+- [ ] T050 [US1] `frontend/src/pages/RunResult.tsx` **삭제** + `frontend/tests/RunResult.test.tsx` 갱신 + `frontend/src/App.tsx` 배선 교체. **통합 대상이 아닌 화면(목록·테스트 만들기)에서 결과 국면으로 들어오는 진입점이 그대로 동작하는지 확인한다** (FR-217a)
 - [ ] T051 [US1] 부분 실행 표시 유지 확인 in `frontend/src/pages/ResultView.tsx` + `frontend/tests/RecheckPhase12.test.tsx` 갱신 — 건너뜀/미실행 구별 · 부분 실행 진단 · 직전 전체 실행 (005 FR-151·FR-152·FR-153 회귀 금지)
 
 ### 이행 6 — 편집 국면 + Step 상세
@@ -145,7 +145,7 @@ description: "Task list template for feature implementation"
 - [ ] T053 [US1] 편집 국면을 `Workbench` 껍데기로 in `frontend/src/pages/EditView.tsx` — 최대 폭 1080 가운데 정렬 본문을 버린다 (S-06 해소)
 - [ ] T054 [US1] Step 상세를 `StepDetail` 하나로 in `frontend/src/pages/EditView.tsx` — 인라인 패널을 만들지 않고 `frontend/src/components/workbench/StepDetail.tsx` 의 겹침 패널을 쓴다 (FR-230)
 - [ ] T055 [US1] `frontend/src/pages/TestDefinition.tsx` · `frontend/src/pages/StepInspector.tsx` **삭제** + 참조 0건 확인
-- [ ] T056 [US1] 기존 테스트 갱신 — `frontend/tests/TestDefinition.test.tsx` · `EditEntryPoints.test.tsx` · `LocatorPriorityTable.test.tsx` · `InlineSecret.test.tsx`
+- [ ] T056 [US1] 기존 테스트 갱신 — `frontend/tests/TestDefinition.test.tsx` · `EditEntryPoints.test.tsx` · `LocatorPriorityTable.test.tsx` · `InlineSecret.test.tsx` · `TestListActions.test.tsx`. **목록 행 메뉴와 결과 화면에서 편집 국면으로 들어오는 진입점 3개가 모두 동작해야 한다** (FR-217a · 006 FR-179)
 - [ ] T057 [US1] `frontend/tests/ImplementationCount.test.tsx` **통과** 확인 — Step 목록 1개 · Step 상세 1개 (SC-001)
 
 **Checkpoint**: 일곱 국면이 하나의 껍데기를 쓴다. `WorkbenchShell` · `StepRowLayout` ·
@@ -172,6 +172,8 @@ description: "Task list template for feature implementation"
 - [ ] T064 [US2] 비활성 이유의 접근성 연결 in `frontend/src/components/workbench/ActionButton.tsx` — 이유가 접근 가능한 이름 또는 설명으로 전달된다
 - [ ] T065 [US2] `frontend/tests/CapabilityUI.test.tsx` 신설 — 7국면 각각에서 `○` 조작이 화면에 존재하고 이유를 가진다. 감춰진 조작 0건 (SC-004)
 - [ ] T066 [US2] `frontend/tests/RunTrigger.test.tsx` · `RunRejectNavigation.test.tsx` 갱신 — 실행 진입 단일 경로와 중복 방지가 모든 국면에서 유지된다 (FR-248·FR-249)
+- [ ] T067 [US2] 라벨↔동작 대응의 유일성 보장 in `frontend/src/lib/wording.ts` + `frontend/tests/LabelUniqueness.test.ts` 신설 — 한 라벨이 두 `ActionId` 에 쓰이지 않는다. `run.stop` 처럼 상황에 따라 라벨이 바뀌는 조작은 **라벨 집합이 다른 조작과 겹치지 않아야** 한다 (FR-235 · 005 FR-147)
+- [ ] T068 [US2] 민감 값 표시 검사 in `frontend/tests/SensitiveAcrossPhases.test.tsx` 신설 — 일곱 국면 전부에서 민감 변수를 참조하는 값이 `{{NAME}}` 형태로만 보이고 평문이 화면·요청 본문에 없다 (FR-252 · 006 FR-212·FR-215)
 
 **Checkpoint**: 권한표가 화면의 유일한 근거다. 감춰진 조작 0건
 
@@ -184,13 +186,14 @@ description: "Task list template for feature implementation"
 **Independent Test**: 실패 Step 을 지목해 한 바퀴 돌린 뒤 그 Step 을 다시 찾는 조작이
 0회인지 센다 (`quickstart.md` W-3)
 
-- [ ] T067 [US3] `WorkbenchLocation`(국면 · testId · stepId)로 주소 반영 정리 in `frontend/src/hooks/useScreenUrl.ts`
-- [ ] T068 [US3] 세션 → 결과 구간의 지목 Step 전달 in `frontend/src/App.tsx` — `onShowResult` 가 Step 식별자를 함께 넘긴다 (S-10 해소)
-- [ ] T069 [US3] 지목한 Step 이 더 이상 없을 때의 진입 처리 in `frontend/src/components/workbench/StepList.tsx` — 사실을 밝히고 목록을 정상 표시 (FR-243)
-- [ ] T070 [US3] 저장하지 않은 변경이 있을 때 국면 이동 확인 절차 유지 in `frontend/src/pages/EditView.tsx` (006 FR-208 · FR-242)
-- [ ] T071 [US3] 뒤로 가기가 앱 안의 이전 국면으로 돌아가는지 확인 in `frontend/src/hooks/useScreenUrl.ts` (005 FR-167 · FR-241)
-- [ ] T072 [US3] `frontend/tests/PhaseContext.test.tsx` 신설 — 왕복 전 구간 지목 유지 + 새로 고침 복원 10/10 (SC-005·SC-006)
-- [ ] T073 [US3] `frontend/tests/ScreenUrl.test.ts` 갱신 — 국면·stepId 왕복 변환
+- [ ] T069 [US3] `WorkbenchLocation`(국면 · testId · stepId)로 주소 반영 정리 in `frontend/src/hooks/useScreenUrl.ts`
+- [ ] T070 [US3] 세션 → 결과 구간의 지목 Step 전달 in `frontend/src/App.tsx` — `onShowResult` 가 Step 식별자를 함께 넘긴다 (S-10 해소)
+- [ ] T071 [US3] 지목한 Step 이 더 이상 없을 때의 진입 처리 in `frontend/src/components/workbench/StepList.tsx` — 사실을 밝히고 목록을 정상 표시 (FR-243)
+- [ ] T072 [US3] 저장하지 않은 변경이 있을 때 국면 이동 확인 절차 유지 in `frontend/src/pages/EditView.tsx` (006 FR-208 · FR-242)
+- [ ] T073 [US3] 뒤로 가기가 앱 안의 이전 국면으로 돌아가는지 확인 in `frontend/src/hooks/useScreenUrl.ts` (005 FR-167 · FR-241)
+- [ ] T074 [US3] 사용자 조작 없는 국면 전환 처리 in `frontend/src/pages/SessionScreen.tsx` + `frontend/src/components/workbench/NoticeStack.tsx` — 실행이 끝나 결과 국면으로 넘어가는 순간 무엇이 바뀌었는지 알리고 보던 대상(지목 Step·스크롤 위치)을 잃지 않는다 (FR-220)
+- [ ] T075 [US3] `frontend/tests/PhaseContext.test.tsx` 신설 — 왕복 전 구간 지목 유지 + 새로 고침 복원 10/10 (SC-005·SC-006)
+- [ ] T076 [US3] `frontend/tests/ScreenUrl.test.ts` 갱신 — 국면·stepId 왕복 변환
 
 **Checkpoint**: 지목한 Step 을 다시 찾는 조작 0회
 
@@ -206,11 +209,11 @@ description: "Task list template for feature implementation"
 > 결과 국면의 좌측 전환 자체는 이행 5(T049)에서 구조적으로 이루어진다. 이 단계는 그 영역의
 > 남은 요구 — 빈 이유 구별 · 선택 조작 위치 · 비어 있는 국면 — 를 완성한다
 
-- [ ] T074 [US4] 빈 이유 4종 구별 in `frontend/src/components/workbench/TargetPane.tsx` — 아직 시작하지 않음 / 수집되지 않음 / 세션 유실 / 지원되지 않음 (FR-245 · 005 FR-173)
-- [ ] T075 [US4] 산출물 선택 조작을 좌측 영역 안에 배치하고 TRACE 를 비활성 + 이유로 유지 in `frontend/src/components/workbench/TargetPane.tsx` (FR-246 · DC-007)
-- [ ] T076 [US4] 편집 국면 좌측의 「브라우저 열어 Step nn 에서 멈추기」 배치 in `frontend/src/components/workbench/TargetPane.tsx`
-- [ ] T077 [US4] 국면 보조 영역이 빈 국면에서 자리를 차지하지 않되 다른 영역의 자리를 바꾸지 않음 in `frontend/src/components/workbench/Workbench.tsx` (FR-218e)
-- [ ] T078 [US4] `frontend/tests/TargetPane.test.tsx` 신설 — 네 내용이 같은 자리를 쓰고 빈 이유가 구별된다
+- [ ] T077 [US4] 빈 이유 4종 구별 in `frontend/src/components/workbench/TargetPane.tsx` — 아직 시작하지 않음 / 수집되지 않음 / 세션 유실 / 지원되지 않음 (FR-245 · 005 FR-173)
+- [ ] T078 [US4] 산출물 선택 조작을 좌측 영역 안에 배치하고 TRACE 를 비활성 + 이유로 유지 in `frontend/src/components/workbench/TargetPane.tsx` (FR-246 · DC-007)
+- [ ] T079 [US4] 편집 국면 좌측의 「브라우저 열어 Step nn 에서 멈추기」 배치 in `frontend/src/components/workbench/TargetPane.tsx`
+- [ ] T080 [US4] 국면 보조 영역이 빈 국면에서 자리를 차지하지 않되 다른 영역의 자리를 바꾸지 않음 in `frontend/src/components/workbench/Workbench.tsx` (FR-218e)
+- [ ] T081 [US4] `frontend/tests/TargetPane.test.tsx` 신설 — 네 내용이 같은 자리를 쓰고 빈 이유가 구별된다
 
 **Checkpoint**: 좌측 영역이 한 자리다
 
@@ -220,16 +223,16 @@ description: "Task list template for feature implementation"
 
 **Purpose**: 기록을 남기고 회귀를 확인한다. **기록 없는 임의 결정 0건**이 목표다
 
-- [ ] T079 [P] `specs/007-unify-test-screens/design-conformance/undefined-states.md` 작성 — 007 이 정한 모든 미정의 상태와 **근거**. 최소 목록은 `contracts/design-conformance-007.md` §6
-- [ ] T080 [P] 대조 기록 기준값 채우기 in `specs/007-unify-test-screens/design-conformance/Workbench.md` — `scripts/design_baseline.py` 로 추출. **판정 칸은 비워 둔다 — 사람이 채운다**
-- [ ] T081 [P] `docs/DEVELOPMENT.md` 갱신 — 화면 구조 설명을 7국면 하나의 화면으로 고친다
-- [ ] T082 [P] `contracts/ui-contract.md` 최종화 — T037·T041 의 실측 대조 결과를 반영한 표가 정본임을 확인
-- [ ] T083 타입 검사 통과 — `cd frontend && npm run typecheck` (`frontend/tsconfig.json` 의 `noUncheckedIndexedAccess` 아래)
-- [ ] T084 전량 테스트 — `cd frontend && npm test` · `cd backend && bash scripts/test-backend.sh`. **삭제·건너뛰기로 통과시키지 않는다** (헌법 게이트 4)
-- [ ] T085 `quickstart.md` §1 자동 검사 4종 전부 통과 확인 — `ImplementationCount` · `StepRowLayout` · `WorkbenchShell` · `CapabilityCoverage`
-- [ ] T086 성능 확인 — Step 200개 목록에서 `frontend/tests/StepListPerformance.test.tsx` 기준을 낮추지 않고 통과
-- [ ] T087 `docs/PENDING-HUMAN-VERIFICATION.md` 최종 갱신 — 사람 판정 2건(artboard 승인 · 대조 판정)의 준비물 위치와 남은 판정 칸 수를 적는다
-- [ ] T088 `quickstart.md` §2 의 걷기 항목 W-1~W-6 을 실제로 걸어 `docs/ux/` 에 기록 (W-7 은 사람 판정 대기)
+- [ ] T082 [P] `specs/007-unify-test-screens/design-conformance/undefined-states.md` 작성 — 007 이 정한 모든 미정의 상태와 **근거**. 최소 목록은 `contracts/design-conformance-007.md` §6
+- [ ] T083 [P] 대조 기록 기준값 채우기 in `specs/007-unify-test-screens/design-conformance/Workbench.md` — `scripts/design_baseline.py` 로 추출. **판정 칸은 비워 둔다 — 사람이 채운다**
+- [ ] T084 [P] `docs/DEVELOPMENT.md` 갱신 — 화면 구조 설명을 7국면 하나의 화면으로 고친다
+- [ ] T085 [P] `contracts/ui-contract.md` 최종화 — T037·T041 의 실측 대조 결과를 반영한 표가 정본임을 확인
+- [ ] T086 타입 검사 통과 — `cd frontend && npm run typecheck` (`frontend/tsconfig.json` 의 `noUncheckedIndexedAccess` 아래)
+- [ ] T087 전량 테스트 — `cd frontend && npm test` · `cd backend && bash scripts/test-backend.sh`. **삭제·건너뛰기로 통과시키지 않는다** (헌법 게이트 4)
+- [ ] T088 `quickstart.md` §1 자동 검사 4종 전부 통과 확인 — `ImplementationCount` · `StepRowLayout` · `WorkbenchShell` · `CapabilityCoverage`
+- [ ] T089 성능 확인 — Step 200개 목록에서 `frontend/tests/StepListPerformance.test.tsx` 기준을 낮추지 않고 통과
+- [ ] T090 `docs/PENDING-HUMAN-VERIFICATION.md` 최종 갱신 — 사람 판정 2건(artboard 승인 · 대조 판정)의 준비물 위치와 남은 판정 칸 수를 적는다
+- [ ] T091 `quickstart.md` §2 의 걷기 항목 W-1~W-6 을 실제로 걸어 `docs/ux/` 에 기록 (W-7 은 사람 판정 대기)
 
 ---
 
@@ -268,7 +271,7 @@ description: "Task list template for feature implementation"
 - Phase 3 내부는 **병렬 불가**. 같은 파일(`SessionScreen.tsx`)을 연속으로 고치고 순서가
   설계의 일부다
 - Phase 4·5·6 은 서로 병렬 가능
-- Phase 7: T079·T080·T081·T082 병렬
+- Phase 7: T082·T083·T084·T085 병렬
 
 ---
 
@@ -331,5 +334,6 @@ Task: "replacement-map.md"
 - 이행 묶음마다 커밋한다. 되돌릴 지점을 남기는 것이 목적이다
 - 권한표와 코드가 어긋나면 **코드를 고친다.** 단 현재 쓸 수 있는 조작이 표에서 `–` 이면
   표가 틀린 것이다 (UC-401 · FR-247)
-- 총 88개 작업. US1 26개 · US2 9개 · US3 7개 · US4 5개 · Setup 5개 · Foundational 26개 ·
-  Polish 10개
+- 총 91개 작업. Setup 5 · Foundational 26 · US1 26 · US2 11 · US3 8 · US4 5 · Polish 10
+- 마지막 3개(T067·T068·T074)는 `analyze` 가 찾은 커버리지 공백을 닫으려고 추가한 것이다 —
+  FR-235(같은 라벨 = 같은 동작) · FR-252(민감 값 7국면) · FR-220(자동 국면 전환 알림)

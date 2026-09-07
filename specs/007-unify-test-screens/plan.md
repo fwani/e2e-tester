@@ -135,10 +135,12 @@ frontend/src/
 ├── hooks/useScreenUrl.ts      # WorkbenchLocation(국면·testId·stepId) 반영
 ├── lib/
 │   ├── capabilities.ts        # 신규 — 국면 × 조작 권한표 + 런타임 덮어쓰기 (FR-233)
+│   ├── actions.ts             # 신규 — 조작 식별자 33개 (ui-contract §2)
 │   ├── phase.ts               # 신규 — 국면 판정 한 곳 (data-model §1)
 │   ├── wording.ts             # 확장 — 이유·해소 방법 문구 단일 출처
 │   └── sessionState.ts        # 유지
 ├── components/workbench/      # 신규 — 통합 화면의 표시 층
+│   ├── model.ts               #   WorkbenchModel 타입 + StepOutcome (data-model §2)
 │   ├── Workbench.tsx          #   3층 껍데기. 데이터를 읽지 않는다
 │   ├── PhaseBar.tsx           #   층② 74px 국면 띠
 │   ├── TargetPane.tsx         #   층③ 좌 — 미러 / 산출물 / 브라우저 열기 / 빈 이유
@@ -149,7 +151,8 @@ frontend/src/
 │   └── ActionButton.tsx       #   CapabilityState 를 받아 그린다. disabled 이유 부착
 ├── components/design/
 │   ├── Chrome.tsx             # 유지 (헤더 조각)
-│   ├── DesignStepList.tsx     # StepOutcome 에 `recorded` 추가 → StepList 로 흡수
+│   ├── DesignStepList.tsx     # ← 삭제. StepList 로 흡수 (T021). `recorded` 는 새
+│   │                          #   model.ts 에서 정의한다 — 같은 값을 두 곳에 두지 않는다
 │   └── BrowserFrame.tsx       # 유지 (TargetPane 이 쓴다)
 └── pages/
     ├── SessionScreen.tsx      # 세션 5국면 어댑터. 소유 구조 유지 (research R2)
