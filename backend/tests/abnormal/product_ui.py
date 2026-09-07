@@ -137,6 +137,10 @@ def product_ui(tmp_path_factory: pytest.TempPathFactory) -> Iterator[ProductUI]:
         # 화면 개발 서버가 이 둘을 읽어 자기 포트와 프록시 대상을 맞춘다.
         ITB_API_PORT=str(backend_port),
         ITB_UI_PORT=str(frontend_port),
+        # 제품 서버를 **별도 프로세스**로 띄우므로 `tests/conftest.py` 의 monkeypatch 가
+        # 닿지 않는다. 여기서 넘기지 않으면 화면 면 시나리오가 창을 띄워 개발자의
+        # 화면을 빼앗는다.
+        ITB_HEADLESS="1",
         PYTHONUNBUFFERED="1",
     )
     cache = _playwright_browser_cache()

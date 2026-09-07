@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -33,6 +34,34 @@ from itb.execution.state_machine import (
     SessionState,
     next_state,
 )
+
+HEADLESS_ENV = "ITB_HEADLESS"
+"""브라우저를 **창 없이** 띄우게 하는 환경 변수.
+
+기본값(변수 없음)은 창을 띄우는 것이다 — 녹화·인수인계는 사람이 실제로 조작하는
+국면이고, 창이 없으면 그 국면 자체가 성립하지 않는다 (clarify 결정 3).
+
+창이 없어야 하는 실행이 두 가지 있다.
+
+1. **자동 검증** — 창이 뜨면 개발자의 화면을 빼앗아 초점을 가져간다. 검증이 도는
+   동안 다른 작업을 할 수 없고, 초점이 옮겨 가면 `blur` 에 기대는 녹화 검증이
+   엉뚱하게 실패하기도 한다.
+2. **화면 없는 장비** — CI 러너·원격 서버에는 X 서버가 없다.
+
+`ITB_HEADLESS=1` (또는 `true`·`yes`·`on`) 로 켠다. **켜면 수동 조작·인수인계는 쓸 수
+없다** — 볼 창이 없다. 그래서 기본값으로 두지 않는다.
+"""
+
+_TRUE = frozenset({"1", "true", "yes", "on"})
+
+
+def headless_default() -> bool:
+    """환경 변수로 정한 창 없음 여부. 값이 없거나 알 수 없으면 창을 띄운다.
+
+    알 수 없는 값을 창 없음으로 읽지 않는다 — 오타 하나로 사람이 조작할 창이 사라지고,
+    그 실패는 원인이 오타라는 것을 드러내지 않는다.
+    """
+    return os.environ.get(HEADLESS_ENV, "").strip().lower() in _TRUE
 
 
 class SessionError(Exception):
@@ -488,15 +517,20 @@ class SessionManager:
         self,
         start_url: str,
         test_id: str | None = None,
-        headless: bool = False,
+        headless: bool | None = None,
         max_tabs: int = MAX_TABS_DEFAULT,
         test_id_attribute: str = "data-testid",
     ) -> BrowserSession:
         """세션을 만든다.
 
-        `headless=False` 가 기본이다 — 조작 국면은 실제 창을 요구하고(clarify 결정 3),
+        창을 띄우는 것이 기본이다 — 조작 국면은 실제 창을 요구하고(clarify 결정 3),
         스크린캐스트는 headed 에서도 동작한다(T006 실측). 모드를 하나로 유지한다.
+
+        `headless=None` 이면 `ITB_HEADLESS` 를 본다 (`headless_default`). 자동 검증과
+        화면 없는 장비를 위한 통로다 — 명시로 넘긴 값이 있으면 그것이 이긴다.
         """
+        if headless is None:
+            headless = headless_default()
         if test_id is not None and self.active_session_for_test(test_id) is not None:
             # 005 FR-124 — 종료된 세션은 막지 않는다. 판정을 한 곳에 모아 둔 덕에
             # 이 검사와 API 경계의 검사가 같은 답을 낸다.
