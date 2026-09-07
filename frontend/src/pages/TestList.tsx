@@ -39,6 +39,13 @@ export interface TestListProps {
   onCreate: () => void;
   onOpenResult: (testId: string) => void;
   onRun: (testId: string) => void;
+  /**
+   * 실행 요청이 진행 중인 테스트 ID (005 FR-127·FR-129).
+   *
+   * 그 행의 「실행」이 비활성이 되고 「준비 중…」으로 바뀐다. 브라우저를 띄우는 약 1초
+   * 동안 화면이 침묵해 사용자가 다시 눌렀고, 그것이 세션 중복이 됐다 (U-11 → U-06).
+   */
+  pendingRunId?: string | null;
   /** 정의 보기 (FR-016). 실행하지 않고 Step 목록·상세를 확인한다. */
   onOpenDefinition?: (testId: string) => void;
   /** 확정 디자인에 없는 화면들로 가는 진입점 (DC-010). */
@@ -59,6 +66,7 @@ export function TestList({
   onCreate,
   onOpenResult,
   onRun,
+  pendingRunId = null,
   onOpenDefinition,
   onOpenSecrets,
   onOpenKeys,
@@ -423,6 +431,7 @@ export function TestList({
               }
               onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}
               onRun={() => onRun(row.id)}
+              runPending={pendingRunId === row.id}
               onOpenResult={() => onOpenResult(row.id)}
               onOpenDefinition={onOpenDefinition ? () => onOpenDefinition(row.id) : undefined}
             />
@@ -452,6 +461,7 @@ function Row({
   onRun,
   onOpenResult,
   onOpenDefinition,
+  runPending = false,
 }: {
   row: TestListRow;
   busy: boolean;
@@ -469,8 +479,12 @@ function Row({
   onRun: () => void;
   onOpenResult: () => void;
   onOpenDefinition?: () => void;
+  /** 이 테스트의 실행 요청이 진행 중인가 (005 FR-127·FR-129). */
+  runPending?: boolean;
 }) {
   const failed = row.outcome === "fail";
+  /** 열어 볼 결과가 있는가 (005 FR-130). 결말 종류와 무관하다 — U-13 이 이것이었다. */
+  const hasResult = row.outcome != null || row.last_run_at != null;
 
   return (
     <div
@@ -566,8 +580,16 @@ function Row({
         {relativeTime(row.last_run_at)}
       </div>
 
-      <div style={{ width: "132px", display: "flex", justifyContent: "flex-end", gap: "8px", position: "relative" }}>
-        {failed ? (
+      {/*
+        005 FR-130 — 「실행」은 **항상** 두고, 결과가 있으면 「결과 보기」도 함께 둔다.
+        (U-12·U-13)
+
+        이전에는 한 자리에 둘 중 하나만 뒀다. 실패한 테스트는 「결과 보기」로 바뀌어
+        목록에서 다시 실행할 수 없었고(U-12), 통과한 테스트는 「실행」뿐이라 그 실행의
+        결과에 도달할 길이 아예 없었다(U-13) — 결과 화면이 실패 전용 화면이 되어 있었다.
+      */}
+      <div style={{ width: "196px", display: "flex", justifyContent: "flex-end", gap: "8px", position: "relative" }}>
+        {hasResult && (
           <button
             onClick={onOpenResult}
             style={{
@@ -575,9 +597,9 @@ function Row({
               alignItems: "center",
               gap: "7px",
               height: "44px",
-              padding: "0 14px",
+              padding: "0 12px",
               border: "3px solid #14130F",
-              background: "#F5D000",
+              background: failed ? "#F5D000" : "#FFFDF6",
               color: "#14130F",
               boxShadow: "4px 4px 0 #14130F",
               font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
@@ -585,28 +607,33 @@ function Row({
           >
             결과 보기
           </button>
-        ) : (
-          <button
-            onClick={onRun}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "7px",
-              height: "44px",
-              padding: "0 14px",
-              border: "3px solid #14130F",
-              background: "#FFFDF6",
-              color: "#14130F",
-              boxShadow: "4px 4px 0 #14130F",
-              font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
-            }}
-          >
+        )}
+        <button
+          onClick={onRun}
+          disabled={runPending}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "7px",
+            height: "44px",
+            padding: "0 12px",
+            border: "3px solid #14130F",
+            background: runPending ? "#EDEAE0" : "#FFFDF6",
+            color: "#14130F",
+            boxShadow: runPending ? "none" : "4px 4px 0 #14130F",
+            font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
+            cursor: runPending ? "progress" : "pointer",
+          }}
+        >
+          {!runPending && (
             <svg width="13" height="13" viewBox="0 0 16 16">
               <path d="M4 2l10 6-10 6z" fill="currentColor" />
             </svg>
-            실행
-          </button>
-        )}
+          )}
+          {/* 005 FR-129 — 클릭 직후 0.3초 안에 화면이 변한다. 이전에는 0.8~1.2초간
+              완전히 그대로여서 사용자가 다시 눌렀다 (U-11 → U-06). */}
+          {runPending ? "준비 중…" : "실행"}
+        </button>
 
         <button
           aria-label={`${row.name} 추가 동작`}

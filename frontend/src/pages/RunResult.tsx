@@ -16,7 +16,13 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { tests, type ArtifactKind } from "../api/client";
 import type { RunResult as RunResultData, StepResult } from "../types/generated/run-result";
-import { stepLabel, stepNumber } from "../lib/wording";
+import {
+  outcomeChip,
+  partialRunNotice,
+  runFromLabel,
+  stepLabel,
+  stepNumber,
+} from "../lib/wording";
 
 import {
   Artboard,
@@ -49,6 +55,14 @@ export interface RunResultProps {
   /** 실패한 Step 상세로 이동 (FR-056). */
   onEditStep?: (testId: string, stepId: string) => void;
   onBack: () => void;
+  /**
+   * 실행 요청이 진행 중인가 (005 FR-127·FR-129).
+   *
+   * 이 값이 참이면 두 실행 버튼이 비활성이고 라벨이 「실행을 준비하는 중…」으로
+   * 바뀐다. 이전에는 클릭 직후 0.38초까지 화면이 완전히 그대로였고 버튼도 전부
+   * 활성이라, 사용자가 다시 눌러 브라우저 창이 둘 떴다 (U-06·U-11).
+   */
+  runPending?: boolean;
 }
 
 export function RunResult({
@@ -58,6 +72,7 @@ export function RunResult({
   onRunFrom,
   onEditStep,
   onBack,
+  runPending = false,
 }: RunResultProps) {
   const [result, setResult] = useState<RunResultData | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
@@ -118,7 +133,7 @@ export function RunResult({
             background={failed ? "#D9502F" : "#2E9455"}
             color="#FFFDF6"
           >
-            {failed ? "FAIL" : "PASS"}
+            {outcomeChip(result?.outcome)}
           </StatusPill>
         )}
       </HeaderBar>
@@ -162,29 +177,46 @@ export function RunResult({
         )}
         <div style={{ flex: "1" }} />
         {failedIndex !== null && (
-          <button
-            onClick={() => onRunFrom(testId, failedIndex)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "9px",
-              height: "46px",
-              padding: "0 18px",
-              border: "3px solid #14130F",
-              background: "#F5D000",
-              color: INK,
-              boxShadow: "5px 5px 0 #14130F",
-              font: `600 15px/1 ${SANS}`,
-            }}
-          >
-            <svg width="15" height="15" viewBox="0 0 16 16">
-              <path d="M4 2l10 6-10 6z" fill="currentColor" />
-            </svg>
-            실패한 Step부터 실행
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
+            <button
+              onClick={() => onRunFrom(testId, failedIndex)}
+              disabled={runPending}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "9px",
+                height: "46px",
+                padding: "0 18px",
+                border: "3px solid #14130F",
+                background: runPending ? "#EDEAE0" : "#F5D000",
+                color: INK,
+                boxShadow: runPending ? "none" : "5px 5px 0 #14130F",
+                font: `600 15px/1 ${SANS}`,
+                cursor: runPending ? "progress" : "pointer",
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 16 16">
+                <path d="M4 2l10 6-10 6z" fill="currentColor" />
+              </svg>
+              {/* 005 FR-149 — 시작점이 라벨에 드러난다. 「실패한 Step부터 실행」은
+                  어디서 시작하는지 말하지 않아 사용자가 예측할 수 없었다 (U-02). */}
+              {runPending ? "실행을 준비하는 중…" : runFromLabel(failedIndex)}
+            </button>
+            {/* 005 FR-150 — 누르기 전에 건너뛰는 구간과 선행 상태를 알린다.
+                모달로 막지 않는다 — 보조 문구로 충분하다. */}
+            {partialRunNotice(failedIndex) !== null && (
+              <span
+                className="muted"
+                style={{ maxWidth: 340, textAlign: "right", font: `400 12px/1.45 ${SANS}` }}
+              >
+                {partialRunNotice(failedIndex)}
+              </span>
+            )}
+          </div>
         )}
         <button
           onClick={() => onRunAll(testId)}
+          disabled={runPending}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -192,16 +224,17 @@ export function RunResult({
             height: "46px",
             padding: "0 18px",
             border: "3px solid #14130F",
-            background: "#FFFDF6",
+            background: runPending ? "#EDEAE0" : "#FFFDF6",
             color: INK,
-            boxShadow: "5px 5px 0 #14130F",
+            boxShadow: runPending ? "none" : "5px 5px 0 #14130F",
             font: `600 15px/1 ${SANS}`,
+            cursor: runPending ? "progress" : "pointer",
           }}
         >
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.3">
             <path d="M13.5 8a5.5 5.5 0 1 1-1.8-4.1M13.5 1.4V5h-3.6" />
           </svg>
-          처음부터 실행
+          {runPending ? "실행을 준비하는 중…" : "처음부터 실행"}
         </button>
       </div>
 

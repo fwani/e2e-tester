@@ -35,6 +35,14 @@ export function App() {
   // 문자열이 아니라 ErrorInfo 를 담는다 — 문자열로 받으면 next_action 이 여기서 죽는다
   // (003 EC-004). "대상 앱에 연결할 수 없습니다" 뒤에 "떠 있는지 확인하세요" 가 따라와야 한다.
   const [error, setError] = useState<ErrorInfo | null>(null);
+  /**
+   * 실행 요청이 진행 중인 테스트 ID (005 FR-127·FR-129).
+   *
+   * `null` 이 아니면 어느 화면의 실행 버튼도 눌리지 않는다. 브라우저를 띄우는 데 약
+   * 1초가 걸리는데 그 동안 화면이 아무 말도 하지 않아 사용자가 다시 눌렀고(U-11),
+   * 그것이 세션 중복으로 직결됐다(U-06).
+   */
+  const [pendingRun, setPendingRun] = useState<string | null>(null);
   /** 살아 있는 세션. 목록 화면이 이것을 배너로 알린다 (UX U-05). */
   const [active, setActive] = useState<SessionView[]>([]);
 
@@ -62,7 +70,23 @@ export function App() {
       .catch(() => setScreen({ name: "setup" }));
   }, []);
 
-  const startReplay = (testId: string, fromStepIndex?: number) => {
+  /**
+   * 실행을 거는 **유일한 경로** (005 T021 · FR-125·FR-127·FR-129).
+   *
+   * 이전에는 결과 화면이 이것을 직접 부르고 실행 화면은 `discard` 후 새로 만드는 다른
+   * 경로를 썼다. 같은 이름의 버튼이 두 화면에서 다르게 동작했고, 결과 화면 쪽은 종료된
+   * 세션 때문에 **항상 409 로 거부**됐다 (U-01).
+   *
+   * `pendingRun` 을 여기서 관리하는 이유는 in-flight 가드가 한 곳에 있어야 하기
+   * 때문이다. 화면마다 두면 한 화면이 빠뜨리고, 그 화면에서 연타하면 브라우저 창이
+   * 둘 뜬다 (U-06 — 실측 5회 클릭에 201 이 2건이었다).
+   */
+  const startRun = (testId: string, fromStepIndex?: number) => {
+    // 첫 클릭만 받는다. 0.3초 안에 화면이 변해야 하므로(FR-129) 응답을 기다리지 않고
+    // 즉시 상태를 세운다 — 버튼은 이 값을 보고 비활성이 된다.
+    if (pendingRun !== null) return;
+    setPendingRun(testId);
+    setError(null);
     void sessions
       .create({ mode: "replay", test_id: testId })
       .then(async (session) => {
@@ -73,8 +97,14 @@ export function App() {
         return session;
       })
       .then((session) => setScreen({ name: "runner", session }))
-      .catch((exc: unknown) => setError(describeError(exc)));
+      .catch((exc: unknown) => setError(describeError(exc)))
+      // 성공해도 놓는다. 화면이 이미 바뀌었으므로 남겨 두면 그 테스트를 다시 실행할 수
+      // 없게 되고, 그것은 고치려던 것과 같은 종류의 막힘이다.
+      .finally(() => setPendingRun(null));
   };
+
+  /** 이전 이름을 쓰는 화면이 남아 있어도 같은 경로를 지나게 한다. */
+  const startReplay = startRun;
 
   if (screen.name === "loading") {
     return <main style={{ padding: 32 }} className="muted">불러오는 중…</main>;
@@ -108,7 +138,8 @@ export function App() {
         <TestList
           projectName={opened.name}
           onCreate={() => setScreen({ name: "create" })}
-          onRun={(testId) => startReplay(testId)}
+          onRun={(testId) => startRun(testId)}
+          pendingRunId={pendingRun}
           onOpenResult={(testId) => setScreen({ name: "result", testId })}
           onOpenDefinition={(testId) => setScreen({ name: "definition", testId })}
           onOpenSecrets={() => setScreen({ name: "secrets" })}
@@ -182,8 +213,9 @@ export function App() {
       {screen.name === "result" && (
         <RunResult
           testId={screen.testId}
-          onRunAll={(testId) => startReplay(testId)}
-          onRunFrom={(testId, stepIndex) => startReplay(testId, stepIndex)}
+          onRunAll={(testId) => startRun(testId)}
+          onRunFrom={(testId, stepIndex) => startRun(testId, stepIndex)}
+          runPending={pendingRun !== null}
           onEditStep={(testId, stepId) =>
             // FR-056 — 실패한 Step 의 상세로 바로 이동한다 (T170).
             setScreen({ name: "definition", testId, focusStepId: stepId })

@@ -33,7 +33,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 **Purpose**: 22건을 검증할 재료를 먼저 만든다. 재료 없이는 어느 스토리도 검증할 수 없다.
 
-- [ ] T001 [P] `fixtures/sample-app` 위에서 도는 검증용 테스트 정의 두 개를 픽스처로 만든다 — `backend/tests/fixtures/tc_fail_midstep.yaml` (7 Step, Step 06 이 존재하지 않는 `testId` 로 대기 예산을 소진하며 실패, Step 07 은 미실행으로 남는다) 와 `backend/tests/fixtures/tc_pass.yaml` (5 Step, 항상 통과). quickstart.md §0 의 재료 표와 일치시킨다
+- [X] T001 [P] `fixtures/sample-app` 위에서 도는 검증용 테스트 정의 두 개를 픽스처로 만든다 — `backend/tests/fixtures/tc_fail_midstep.yaml` (7 Step, Step 06 이 존재하지 않는 `testId` 로 대기 예산을 소진하며 실패, Step 07 은 미실행으로 남는다) 와 `backend/tests/fixtures/tc_pass.yaml` (5 Step, 항상 통과). quickstart.md §0 의 재료 표와 일치시킨다
 - [ ] T002 [P] 정적 페이지 세션에서 미러 프레임 도달을 재는 통합 테스트 하니스를 `backend/tests/integration/conftest.py` 에 추가한다 — 세션을 만들고 **구독을 늦게 붙이는** 픽스처. U-24 검증(FR-161)의 전제다
 - [ ] T003 [P] 프론트 컴포넌트 테스트에서 응답을 지연시킬 수 있는 헬퍼를 `frontend/tests/helpers/pending.ts` 에 추가한다 — 클릭 직후(응답 전) 화면을 단정하기 위한 pending Promise. FR-129·FR-142 검증의 전제다
 
@@ -48,15 +48,15 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 **⚠️ CRITICAL**: T004~T006 은 **한 흐름으로 끝낸다.** 부분적으로 재생성하면
 `test_schema_drift.py` 가 중간 상태에서 실패해 원인을 가린다 (헌법 Cross-language schema duty).
 
-- [ ] T004 `backend/src/itb/domain/run_result.py` 에서 `Outcome` 을 `pass·fail·stopped·partial_pass` 로 넓히고 `RunScope`(`full·partial`) 를 추가한다. data-model.md §1·§2 의 판정 우선순위를 docstring 에 적는다
-- [ ] T005 같은 파일의 `RunResult` 에 `start_index`·`scope`·`attempted_count`·`stopped_step_index` 를 추가한다. `total_count`·`passed_count` 의 뜻은 바꾸지 않는다 (data-model.md §2)
-- [ ] T006 스키마 생성물을 갱신한다 — `cd backend && uv run python -m itb.schema.export` 로 `backend/schema/run-result.schema.json` 을 재생성하고, `cd frontend && npm run gen:types` 로 `frontend/src/types/` 를 재생성해 **함께 커밋한다**
+- [X] T004 `backend/src/itb/domain/run_result.py` 에서 `Outcome` 을 `pass·fail·stopped·partial_pass` 로 넓히고 `RunScope`(`full·partial`) 를 추가한다. data-model.md §1·§2 의 판정 우선순위를 docstring 에 적는다
+- [X] T005 같은 파일의 `RunResult` 에 `start_index`·`scope`·`attempted_count`·`stopped_step_index` 를 추가한다. `total_count`·`passed_count` 의 뜻은 바꾸지 않는다 (data-model.md §2)
+- [X] T006 스키마 생성물을 갱신한다 — `cd backend && uv run python -m itb.schema.export` 로 `backend/schema/run-result.schema.json` 을 재생성하고, `cd frontend && npm run gen:types` 로 `frontend/src/types/` 를 재생성해 **함께 커밋한다**
 - [ ] T007 [P] `backend/tests/contract/test_schema_drift.py` 가 통과하는지 확인하고, 새 결말 값이 스키마에 실렸음을 단정하는 계약 테스트를 `backend/tests/contract/test_run_outcome_contract.py` 에 추가한다 (FR-131·FR-137)
-- [ ] T008 [P] `backend/tests/unit/test_outcome_decision.py` — 결말 판정 우선순위를 순수 함수로 고정한다: 중지 > 실패 건너뜀 > 실패 > 통과. 세션 유실은 `fail` (data-model.md §1)
-- [ ] T009 `backend/src/itb/api/routes/sessions.py` 의 `SessionView` 에 `step_results: list[StepProgress]`·`pause_settled: bool`·`run_scope`·`run_start_index`·`saved_at` 을 추가하고 `StepProgress` 모델을 정의한다. `view_of()` 가 러너의 `results` 와 `at_boundary` 에서 값을 채운다 (contracts/rest-api.md §2)
+- [X] T008 [P] `backend/tests/unit/test_outcome_decision.py` — 결말 판정 우선순위를 순수 함수로 고정한다: 중지 > 실패 건너뜀 > 실패 > 통과. 세션 유실은 `fail` (data-model.md §1)
+- [X] T009 `backend/src/itb/api/routes/sessions.py` 의 `SessionView` 에 `step_results: list[StepProgress]`·`pause_settled: bool`·`run_scope`·`run_start_index`·`saved_at` 을 추가하고 `StepProgress` 모델을 정의한다. `view_of()` 가 러너의 `results` 와 `at_boundary` 에서 값을 채운다 (contracts/rest-api.md §2)
 - [ ] T010 [P] `backend/tests/contract/test_session_view_contract.py` — 세션 뷰가 다섯 필드를 싣는지, `step_results` 의 `outcome` 이 `StepOutcome` 네 값인지 단정한다 (FR-171)
-- [ ] T011 [P] `frontend/src/lib/wording.ts` 를 만든다 — `outcomeLabel()`·`outcomeChip()`·`stepLabel(index0)`·`runSummary()`. contracts/ui-contract.md §1~§4 의 표를 그대로 구현한다. **`stepLabel` 이 0-기반 → 표시 변환의 유일한 지점**이다 (FR-138·FR-141)
-- [ ] T012 [P] `frontend/tests/wording.test.ts` — `stepLabel(5) === "Step 06"`, 결말 4값이 각각 한 문장·한 칩으로만 대응하는지, 요약 문장의 분모가 `attempted_count` 인지 단정한다 (FR-138·FR-141·U-02)
+- [X] T011 [P] `frontend/src/lib/wording.ts` 를 만든다 — `outcomeLabel()`·`outcomeChip()`·`stepLabel(index0)`·`runSummary()`. contracts/ui-contract.md §1~§4 의 표를 그대로 구현한다. **`stepLabel` 이 0-기반 → 표시 변환의 유일한 지점**이다 (FR-138·FR-141)
+- [X] T012 [P] `frontend/tests/wording.test.ts` — `stepLabel(5) === "Step 06"`, 결말 4값이 각각 한 문장·한 칩으로만 대응하는지, 요약 문장의 분모가 `attempted_count` 인지 단정한다 (FR-138·FR-141·U-02)
 
 **Checkpoint**: 계약과 어휘가 준비됐다 — 스토리 구현을 병렬로 시작할 수 있다
 
@@ -72,23 +72,23 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] `backend/tests/integration/test_rerun_after_finish.py` — 종료된 세션(`failed`)이 등록에 남아 있어도 같은 테스트의 `POST /api/sessions` 가 201 인지 단정한다 (FR-124·SC-212). 현재는 409 다
-- [ ] T014 [P] [US1] `backend/tests/integration/test_concurrent_session_create.py` — 같은 `test_id` 로 동시 생성 5건을 보내 **정확히 1건만 201**, 나머지는 409 `SESSION_ALREADY_ACTIVE` 인지 단정한다 (FR-128·SC-213)
-- [ ] T015 [P] [US1] `backend/tests/abnormal/test_session_reject_payload.py` — 정말 실행 중일 때의 409 본문이 `detail.session_id` 를 싣고, `message`·`next_action` 에는 세션 식별자가 **없는지** 단정한다 (FR-126·FR-135)
-- [ ] T016 [P] [US1] `frontend/tests/RunTrigger.test.tsx` — 실행 버튼 클릭 직후(응답 전) 버튼이 비활성이고 준비 문구가 보이는지, 100 ms 안에 5회 클릭해도 호출이 1회인지 단정한다 (FR-127·FR-129·SC-213·SC-214). T003 헬퍼를 쓴다
-- [ ] T017 [P] [US1] `frontend/tests/TestListRowActions.test.tsx` — 결말이 실패·통과·중지·부분 성공 각각일 때 행에서 「실행」에 항상 도달하고, 결과가 있으면 「결과 보기」에도 도달하는지 단정한다 (FR-130)
+- [X] T013 [P] [US1] `backend/tests/integration/test_rerun_after_finish.py` — 종료된 세션(`failed`)이 등록에 남아 있어도 같은 테스트의 `POST /api/sessions` 가 201 인지 단정한다 (FR-124·SC-212). 현재는 409 다
+- [X] T014 [P] [US1] `backend/tests/integration/test_concurrent_session_create.py` — 같은 `test_id` 로 동시 생성 5건을 보내 **정확히 1건만 201**, 나머지는 409 `SESSION_ALREADY_ACTIVE` 인지 단정한다 (FR-128·SC-213)
+- [X] T015 [P] [US1] `backend/tests/abnormal/test_session_reject_payload.py` — 정말 실행 중일 때의 409 본문이 `detail.session_id` 를 싣고, `message`·`next_action` 에는 세션 식별자가 **없는지** 단정한다 (FR-126·FR-135)
+- [X] T016 [P] [US1] `frontend/tests/RunTrigger.test.tsx` — 실행 버튼 클릭 직후(응답 전) 버튼이 비활성이고 준비 문구가 보이는지, 100 ms 안에 5회 클릭해도 호출이 1회인지 단정한다 (FR-127·FR-129·SC-213·SC-214). T003 헬퍼를 쓴다
+- [X] T017 [P] [US1] `frontend/tests/TestListRowActions.test.tsx` — 결말이 실패·통과·중지·부분 성공 각각일 때 행에서 「실행」에 항상 도달하고, 결과가 있으면 「결과 보기」에도 도달하는지 단정한다 (FR-130)
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] `backend/src/itb/execution/session.py` 의 `active_session_for_test()` 가 **살아 있는 세션만** 돌려주게 한다. 판정은 기존 `ACTIVE_STATES` 를 쓰고 새 목록을 만들지 않는다. 종료 상태에 도달한 세션은 `_by_test` 등록에서 떼어낸다 (FR-124, research R4-A)
-- [ ] T019 [US1] `backend/src/itb/api/routes/sessions.py` 의 세션 생성에 **테스트별 락과 예약**을 넣는다. 락 안에서 확인과 예약을 함께 하고, 브라우저 기동은 락 밖에서 한다. 생성 실패 시 예약을 되돌린다 (FR-128, research R4-B)
-- [ ] T020 [US1] 같은 파일의 거절 응답 본문을 contracts/rest-api.md §1 형태로 바꾼다 — `detail.session_id` 를 싣고 사용자 문구에서 식별자를 뺀다 (FR-126·FR-135)
-- [ ] T021 [P] [US1] `frontend/src/App.tsx` 에 `startRun(testId, { fromIndex })` 단일 실행 경로를 만든다. 진행 중 상태(pending)를 여기서 관리해 in-flight 가드가 한 곳에 있게 한다. 결과 화면과 실행 화면이 이것만 부른다 (FR-127, research R4-C)
-- [ ] T022 [US1] `frontend/src/pages/RunResult.tsx` 의 재실행 버튼 두 개를 `startRun` 으로 옮긴다. 클릭 즉시 비활성 + 「실행을 준비하는 중…」 (FR-125·FR-129, ui-contract §5)
-- [ ] T023 [US1] `frontend/src/pages/SessionScreen.tsx` 의 `rerun` 도 `startRun` 을 쓰게 한다. 종료 세션이 다음 실행을 막지 않으므로 `discard` 선행이 필요 없어진다 (FR-125)
+- [X] T018 [US1] `backend/src/itb/execution/session.py` 의 `active_session_for_test()` 가 **살아 있는 세션만** 돌려주게 한다. 판정은 기존 `ACTIVE_STATES` 를 쓰고 새 목록을 만들지 않는다. 종료 상태에 도달한 세션은 `_by_test` 등록에서 떼어낸다 (FR-124, research R4-A)
+- [X] T019 [US1] `backend/src/itb/api/routes/sessions.py` 의 세션 생성에 **테스트별 락과 예약**을 넣는다. 락 안에서 확인과 예약을 함께 하고, 브라우저 기동은 락 밖에서 한다. 생성 실패 시 예약을 되돌린다 (FR-128, research R4-B)
+- [X] T020 [US1] 같은 파일의 거절 응답 본문을 contracts/rest-api.md §1 형태로 바꾼다 — `detail.session_id` 를 싣고 사용자 문구에서 식별자를 뺀다 (FR-126·FR-135)
+- [X] T021 [P] [US1] `frontend/src/App.tsx` 에 `startRun(testId, { fromIndex })` 단일 실행 경로를 만든다. 진행 중 상태(pending)를 여기서 관리해 in-flight 가드가 한 곳에 있게 한다. 결과 화면과 실행 화면이 이것만 부른다 (FR-127, research R4-C)
+- [X] T022 [US1] `frontend/src/pages/RunResult.tsx` 의 재실행 버튼 두 개를 `startRun` 으로 옮긴다. 클릭 즉시 비활성 + 「실행을 준비하는 중…」 (FR-125·FR-129, ui-contract §5)
+- [X] T023 [US1] `frontend/src/pages/SessionScreen.tsx` 의 `rerun` 도 `startRun` 을 쓰게 한다. 종료 세션이 다음 실행을 막지 않으므로 `discard` 선행이 필요 없어진다 (FR-125)
 - [ ] T024 [US1] 실행 거절 시 화면에 **이동 수단**을 붙인다 — `detail.session_id` 로 그 세션 화면으로 가는 버튼. `RunResult.tsx` 와 `TestList.tsx` 양쪽 (FR-126)
-- [ ] T025 [P] [US1] `frontend/src/pages/TestList.tsx` 의 행 액션을 고친다 — 「실행」은 항상, 결과가 있으면 「결과 보기」도. 한 자리에 둘 중 하나만 두는 분기를 없앤다 (FR-130, U-12·U-13)
-- [ ] T026 [P] [US1] 목록 행의 실행 버튼에도 in-flight 가드와 「준비 중…」 라벨을 적용한다 (FR-127·FR-129)
+- [X] T025 [P] [US1] `frontend/src/pages/TestList.tsx` 의 행 액션을 고친다 — 「실행」은 항상, 결과가 있으면 「결과 보기」도. 한 자리에 둘 중 하나만 두는 분기를 없앤다 (FR-130, U-12·U-13)
+- [X] T026 [P] [US1] 목록 행의 실행 버튼에도 in-flight 가드와 「준비 중…」 라벨을 적용한다 (FR-127·FR-129)
 
 **Checkpoint**: 실패 → 진단 → 재실행 왕복이 성립한다. **여기까지가 MVP다.**
 
@@ -114,16 +114,16 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Implementation for User Story 2
 
-- [ ] T034 [US2] `backend/src/itb/execution/session_loss.py` 의 "정상 종료면 유실이 아니다" 가드에 `REVIEW` 를 더한다 (FR-132, U-03)
-- [ ] T035 [US2] 같은 파일과 `api/routes/sessions.py` 의 `stop` 경로에서 **의도적 중지 시 감지기를 먼저 떼어낸다.** 가드는 그물이고 이것이 원인 제거다 (FR-132, data-model.md §6)
-- [ ] T036a [US2] **결말 판정의 입력 계약을 먼저 정한다** — `backend/src/itb/execution/runner.py` 의 `finalize(passed: bool, session_lost: bool)` 를 `finalize(*, session_lost: bool = False, stop_requested: bool = False, skipped_failures: bool = False)` 로 바꾸고, 결말을 그 세 값과 `results` 에서 계산하는 **순수 함수**로 분리한다. `passed` 불리언을 넘기던 호출부가 판정을 나눠 갖지 않게 한다 (FR-131·FR-137, F6)
-- [ ] T036b [US2] 그 순수 함수를 data-model.md §1 의 우선순위로 구현한다 — 중지 > 실패 건너뜀 > 실패 > 통과. 세션 유실은 `fail`. T008 단위 테스트가 이것을 고정한다 (FR-131·FR-137)
-- [ ] T036c [US2] 호출부를 갱신한다 — `_loss_handler`(`api/routes/sessions.py`)·`stop` 경로·러너 종료 경로가 각각 맞는 인자를 넘기게 한다. 중지 경로가 `stop_requested=True` 를 넘기는 것이 U-03 수정의 마지막 조각이다 (FR-131)
-- [ ] T037 [US2] 같은 파일에서 `attempted_count` 를 계산해 싣고(`total_count` − 건너뜀), `run_finished` 이벤트에 `attempted_count`·`scope`·`start_index` 를 더한다 (contracts/websocket.md §2)
-- [ ] T038 [US2] `backend/src/itb/api/routes/sessions.py` 의 `resume` 이 실패 Step 을 지나 재개하지 않게 한다. 실패 Step 이 있으면 거절하고 사유를 준다. 「건너뛰고 계속」은 **별도 요청 필드**로 분리하고 그 경로의 결말을 `partial_pass` 로 만든다 (FR-136·FR-137)
+- [X] T034 [US2] `backend/src/itb/execution/session_loss.py` 의 "정상 종료면 유실이 아니다" 가드에 `REVIEW` 를 더한다 (FR-132, U-03)
+- [X] T035 [US2] 같은 파일과 `api/routes/sessions.py` 의 `stop` 경로에서 **의도적 중지 시 감지기를 먼저 떼어낸다.** 가드는 그물이고 이것이 원인 제거다 (FR-132, data-model.md §6)
+- [X] T036a [US2] **결말 판정의 입력 계약을 먼저 정한다** — `backend/src/itb/execution/runner.py` 의 `finalize(passed: bool, session_lost: bool)` 를 `finalize(*, session_lost: bool = False, stop_requested: bool = False, skipped_failures: bool = False)` 로 바꾸고, 결말을 그 세 값과 `results` 에서 계산하는 **순수 함수**로 분리한다. `passed` 불리언을 넘기던 호출부가 판정을 나눠 갖지 않게 한다 (FR-131·FR-137, F6)
+- [X] T036b [US2] 그 순수 함수를 data-model.md §1 의 우선순위로 구현한다 — 중지 > 실패 건너뜀 > 실패 > 통과. 세션 유실은 `fail`. T008 단위 테스트가 이것을 고정한다 (FR-131·FR-137)
+- [X] T036c [US2] 호출부를 갱신한다 — `_loss_handler`(`api/routes/sessions.py`)·`stop` 경로·러너 종료 경로가 각각 맞는 인자를 넘기게 한다. 중지 경로가 `stop_requested=True` 를 넘기는 것이 U-03 수정의 마지막 조각이다 (FR-131)
+- [X] T037 [US2] 같은 파일에서 `attempted_count` 를 계산해 싣고(`total_count` − 건너뜀), `run_finished` 이벤트에 `attempted_count`·`scope`·`start_index` 를 더한다 (contracts/websocket.md §2)
+- [X] T038 [US2] `backend/src/itb/api/routes/sessions.py` 의 `resume` 이 실패 Step 을 지나 재개하지 않게 한다. 실패 Step 이 있으면 거절하고 사유를 준다. 「건너뛰고 계속」은 **별도 요청 필드**로 분리하고 그 경로의 결말을 `partial_pass` 로 만든다 (FR-136·FR-137)
 - [ ] T039 [P] [US2] `frontend/src/components/Badges.tsx` 의 결말 칩을 4값으로 넓히고 `wording.ts` 에서만 라벨을 받게 한다 (FR-141, ui-contract §1)
-- [ ] T040 [P] [US2] `frontend/src/pages/TestList.tsx` 의 실패 Step 번호를 `stepLabel()` 로 바꾼다. 0-기반을 그대로 쓰던 곳을 없앤다 (FR-138, U-07)
-- [ ] T041 [US2] 저장소 전역에서 `index + 1` 을 직접 하는 Step 표시를 `stepLabel()` 로 모은다 — `RunResult.tsx`·`StepInspector.tsx`·`TestDefinition.tsx`·`SessionScreen.tsx` (FR-138)
+- [X] T040 [P] [US2] `frontend/src/pages/TestList.tsx` 의 실패 Step 번호를 `stepLabel()` 로 바꾼다. 0-기반을 그대로 쓰던 곳을 없앤다 (FR-138, U-07)
+- [X] T041 [US2] 저장소 전역에서 `index + 1` 을 직접 하는 Step 표시를 `stepLabel()` 로 모은다 — `RunResult.tsx`·`StepInspector.tsx`·`TestDefinition.tsx`·`SessionScreen.tsx` (FR-138)
 - [ ] T042 [US2] `frontend/src/pages/SessionScreen.tsx` 에서 결말 요약 **중복을 없앤다** — 얇은 회색 띠를 제거하고 결말 바 하나만 남긴다. 확정 디자인에 얇은 띠는 없다 (FR-140, research R10)
 - [ ] T043 [US2] 같은 파일의 진행 표시를 끝난 실행에서는 **결말 표시로 바꾼다.** `Step 07 / 07` 을 쓰지 않는다 (FR-139, ui-contract §4)
 - [ ] T044 [US2] 중지 결과 화면을 만든다 — `SessionScreen.tsx`/`RunnerPaused.tsx` 에서 중지 후 저장 프롬프트 대신 ui-contract §8 의 구성(중지 요약 + 네 개의 다음 행동)을 보여준다 (FR-133)
@@ -183,10 +183,10 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Implementation for User Story 4
 
-- [ ] T066 [US4] `backend/src/itb/execution/runner.py` 가 `.runs/<테스트ID>/result-full.json` 을 전체 실행에서만 갱신하게 한다. 부분 실행은 `result.json` 만 쓴다 (FR-152, data-model.md §5)
+- [X] T066 [US4] `backend/src/itb/execution/runner.py` 가 `.runs/<테스트ID>/result-full.json` 을 전체 실행에서만 갱신하게 한다. 부분 실행은 `result.json` 만 쓴다 (FR-152, data-model.md §5)
 - [ ] T067 [US4] `backend/src/itb/api/routes/tests.py` 의 결과 조회에 `last_full_run` 을 싣는다. 파일이 없으면 `null` (contracts/rest-api.md §7)
 - [ ] T068 [US4] 부분 실행 실패 진단 문구 생성을 규칙 기반 순수 함수로 만든다 — `backend/src/itb/domain/` 또는 결과 조립부. 첫 줄이 선행 Step 건너뜀 가능성을 지시한다 (FR-153)
-- [ ] T069 [P] [US4] `frontend/src/pages/RunResult.tsx` 의 재실행 버튼 라벨에 시작점을 박고(`Step 06부터 실행`) 보조 문구를 붙인다 (FR-149·FR-150, ui-contract §5)
+- [X] T069 [P] [US4] `frontend/src/pages/RunResult.tsx` 의 재실행 버튼 라벨에 시작점을 박고(`Step 06부터 실행`) 보조 문구를 붙인다 (FR-149·FR-150, ui-contract §5)
 - [ ] T070 [P] [US4] 같은 파일의 Step 목록에서 `skipped`·`not_run` 을 ui-contract §3 대로 구분해 표시한다. 색만이 아니라 텍스트 라벨을 병기한다 (FR-151)
 - [ ] T071 [US4] 부분 실행 요약을 ui-contract §1 의 문장으로 만든다 — **결말이 앞에 온다**: `실패 · 부분 실행 Step 06~07 · 0 / 2 · (01~05 건너뜀)`. 분모는 `attempted_count`. spec.md US4-4 의 예시는 어순이 다르므로 **ui-contract 표를 권위로 삼는다** (FR-152·FR-141)
 - [ ] T072 [US4] 결과 화면에 「최근 전체 실행」 보조 표시를 붙인다. `last_full_run` 이 `null` 이면 생략한다 (FR-152)
@@ -211,7 +211,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Implementation for User Story 5
 
-- [ ] T077 [US5] `backend/src/itb/api/routes/sessions.py` 의 저장 경로가 세션에 저장 시각을 남기고 `SessionView.saved_at` 에 싣게 한다 (FR-154, data-model.md §4)
+- [X] T077 [US5] `backend/src/itb/api/routes/sessions.py` 의 저장 경로가 세션에 저장 시각을 남기고 `SessionView.saved_at` 에 싣게 한다 (FR-154, data-model.md §4)
 - [ ] T078 [US5] `frontend/src/pages/RunnerPaused.tsx` 의 저장 영역에 성공 확인을 붙인다 — ui-contract §9 의 구성(`저장했습니다 · TC-001` + 「목록에서 보기」) (FR-154)
 - [ ] T079 [US5] `frontend/src/pages/SessionScreen.tsx` 의 제목에서 저장 후 「초안」을 떼고 `TC-001 · 저장됨` 으로 바꾼다 (FR-155)
 - [ ] T080 [US5] 저장 버튼 라벨을 「변경 저장」으로 바꾸고 변경이 없으면 비활성으로 둔다 (FR-156)
@@ -231,18 +231,18 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Tests for User Story 6
 
-- [ ] T083 [P] [US6] `backend/tests/integration/test_mirror_late_subscribe.py` — 정적 페이지 세션에서 **구독을 늦게 붙여도 3초 안에** `mirror_frame` 이 도달하는지 단정한다 (FR-161·FR-162·SC-218). T002 하니스를 쓴다. 현재는 0건이다
+- [X] T083 [P] [US6] `backend/tests/integration/test_mirror_late_subscribe.py` — 정적 페이지 세션에서 **구독을 늦게 붙여도 3초 안에** `mirror_frame` 이 도달하는지 단정한다 (FR-161·FR-162·SC-218). T002 하니스를 쓴다. 현재는 0건이다
 - [ ] T084 [P] [US6] 같은 파일에서 화면이 5초 이상 변하지 않아도 프레임이 계속 오는지(무프레임 감시) 단정한다 (FR-160)
-- [ ] T085 [P] [US6] `backend/tests/unit/test_mirror_no_input.py` — 미러 모듈이 CDP `Input.*` 을 보내지 않고 허용 명령 화이트리스트가 3개로 유지되는지 단정한다 (FR-165, 헌법 FR-047a)
-- [ ] T086 [P] [US6] `backend/tests/unit/test_mirror_failure_isolation.py` — 감시 태스크의 예외가 실행에 전파되지 않는지 단정한다 (FR-164, FR-047b)
+- [X] T085 [P] [US6] `backend/tests/unit/test_mirror_no_input.py` — 미러 모듈이 CDP `Input.*` 을 보내지 않고 허용 명령 화이트리스트가 3개로 유지되는지 단정한다 (FR-165, 헌법 FR-047a)
+- [X] T086 [P] [US6] `backend/tests/unit/test_mirror_failure_isolation.py` — 감시 태스크의 예외가 실행에 전파되지 않는지 단정한다 (FR-164, FR-047b)
 
 ### Implementation for User Story 6
 
-- [ ] T087 [US6] `backend/src/itb/mirror/screencast.py` 의 `TabScreencast` 가 **마지막 프레임을 캐시**하게 한다. 캐시는 미러 모듈 안에 둔다 (FR-162, research R6-A)
-- [ ] T088 [US6] `backend/src/itb/api/ws/session_events.py` 의 `SessionEventHub.connect()` 가 새 구독자에게 **마지막 프레임 한 장**을 보내게 한다. 보낼 것이 없으면 아무것도 보내지 않는다 (FR-162, contracts/websocket.md §1-a)
-- [ ] T089 [US6] `backend/src/itb/mirror/screencast.py` 에 **무프레임 감시**를 넣는다 — 마지막 프레임 후 `MIRROR_IDLE_S`(2초) 조용하면 스크린샷 한 장을 같은 이벤트로 보낸다. 기존 `_screenshot_loop` 코드를 재사용하고 주기만 바꾼다 (FR-160, research R6-B)
-- [ ] T090 [US6] 무프레임 감시가 `mirror_degraded` 를 발행하지 않게 한다 — 강등이 아니라 정상 동작의 보완이다 (contracts/websocket.md §1-b)
-- [ ] T091 [US6] 미러 허브를 세션에 잇는 지점을 확인해 캐시가 탭 전환 시에도 올바른 탭의 프레임을 주게 한다 — `backend/src/itb/mirror/tab_switch.py` (FR-162)
+- [X] T087 [US6] `backend/src/itb/mirror/screencast.py` 의 `TabScreencast` 가 **마지막 프레임을 캐시**하게 한다. 캐시는 미러 모듈 안에 둔다 (FR-162, research R6-A)
+- [X] T088 [US6] `backend/src/itb/api/ws/session_events.py` 의 `SessionEventHub.connect()` 가 새 구독자에게 **마지막 프레임 한 장**을 보내게 한다. 보낼 것이 없으면 아무것도 보내지 않는다 (FR-162, contracts/websocket.md §1-a)
+- [X] T089 [US6] `backend/src/itb/mirror/screencast.py` 에 **무프레임 감시**를 넣는다 — 마지막 프레임 후 `MIRROR_IDLE_S`(2초) 조용하면 스크린샷 한 장을 같은 이벤트로 보낸다. 기존 `_screenshot_loop` 코드를 재사용하고 주기만 바꾼다 (FR-160, research R6-B)
+- [X] T090 [US6] 무프레임 감시가 `mirror_degraded` 를 발행하지 않게 한다 — 강등이 아니라 정상 동작의 보완이다 (contracts/websocket.md §1-b)
+- [X] T091 [US6] 미러 허브를 세션에 잇는 지점을 확인해 캐시가 탭 전환 시에도 올바른 탭의 프레임을 주게 한다 — `backend/src/itb/mirror/tab_switch.py` (FR-162)
 - [ ] T092 [P] [US6] `frontend/src/components/MirrorView.tsx` 의 빈 상태 문구를 ui-contract §10 으로 바꾼다 — 곧 올 것처럼 말하지 않고 표시 조건을 사실대로 말한다 (FR-163)
 
 **Checkpoint**: 제품 안에서 대상 화면이 보인다
