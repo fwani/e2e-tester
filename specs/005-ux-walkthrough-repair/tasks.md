@@ -34,7 +34,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 **Purpose**: 22건을 검증할 재료를 먼저 만든다. 재료 없이는 어느 스토리도 검증할 수 없다.
 
 - [X] T001 [P] `fixtures/sample-app` 위에서 도는 검증용 테스트 정의 두 개를 픽스처로 만든다 — `backend/tests/fixtures/tc_fail_midstep.yaml` (7 Step, Step 06 이 존재하지 않는 `testId` 로 대기 예산을 소진하며 실패, Step 07 은 미실행으로 남는다) 와 `backend/tests/fixtures/tc_pass.yaml` (5 Step, 항상 통과). quickstart.md §0 의 재료 표와 일치시킨다
-- [ ] T002 [P] 정적 페이지 세션에서 미러 프레임 도달을 재는 통합 테스트 하니스를 `backend/tests/integration/conftest.py` 에 추가한다 — 세션을 만들고 **구독을 늦게 붙이는** 픽스처. U-24 검증(FR-161)의 전제다
+- [X] T002 [P] 정적 페이지 세션에서 미러 프레임 도달을 재는 통합 테스트 하니스를 `backend/tests/integration/conftest.py` 에 추가한다 — 세션을 만들고 **구독을 늦게 붙이는** 픽스처. U-24 검증(FR-161)의 전제다
 - [ ] T003 [P] 프론트 컴포넌트 테스트에서 응답을 지연시킬 수 있는 헬퍼를 `frontend/tests/helpers/pending.ts` 에 추가한다 — 클릭 직후(응답 전) 화면을 단정하기 위한 pending Promise. FR-129·FR-142 검증의 전제다
 
 **Checkpoint**: 재료 준비 완료 — 실패·통과·전이·미러를 각각 재현할 수 있다
@@ -232,7 +232,7 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 ### Tests for User Story 6
 
 - [X] T083 [P] [US6] `backend/tests/integration/test_mirror_late_subscribe.py` — 정적 페이지 세션에서 **구독을 늦게 붙여도 3초 안에** `mirror_frame` 이 도달하는지 단정한다 (FR-161·FR-162·SC-218). T002 하니스를 쓴다. 현재는 0건이다
-- [ ] T084 [P] [US6] 같은 파일에서 화면이 5초 이상 변하지 않아도 프레임이 계속 오는지(무프레임 감시) 단정한다 (FR-160)
+- [X] T084 [P] [US6] 같은 파일에서 화면이 5초 이상 변하지 않아도 프레임이 계속 오는지(무프레임 감시) 단정한다 (FR-160)
 - [X] T085 [P] [US6] `backend/tests/unit/test_mirror_no_input.py` — 미러 모듈이 CDP `Input.*` 을 보내지 않고 허용 명령 화이트리스트가 3개로 유지되는지 단정한다 (FR-165, 헌법 FR-047a)
 - [X] T086 [P] [US6] `backend/tests/unit/test_mirror_failure_isolation.py` — 감시 태스크의 예외가 실행에 전파되지 않는지 단정한다 (FR-164, FR-047b)
 
