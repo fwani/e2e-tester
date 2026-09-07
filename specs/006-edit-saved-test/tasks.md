@@ -340,3 +340,31 @@ Task: "frontend/tests/TestListEditEntry.test.tsx — 목록 진입점"
 - 각 작업 또는 논리적 묶음 뒤에 커밋한다
 - Checkpoint 에서 멈춰 스토리를 독립적으로 검증할 수 있다
 - 요구사항 42건 중 FR-187 은 범위 제외이며, 그 사실을 T012·T064 가 테스트와 화면으로 고정한다
+
+---
+
+## Phase 9: Convergence
+
+**작성 시점**: 2026-09-07 · `/speckit-converge` 1회차. 헌법 위반 0건.
+
+앞선 단계를 다 끝낸 뒤 명세·계획 대비 코드를 살펴 남은 것만 적는다. 세 건이고, 모두
+"동작은 되지만 그것을 고정한 것이 없다" 또는 "경로가 한쪽만 있다" 계열이다.
+
+- [ ] T093 편집으로 바꾼 값이 **다음 실행에 반영되는지**를 통합 테스트로 고정한다 —
+  `backend/tests/integration/test_definition_edit_rerun.py`. `quickstart.md` §4 가
+  `pytest -k "definition_edit and rerun"` 을 검증 절차로 적어 두었으나 그 이름의 테스트가
+  없다(`no tests collected`). 계약 테스트는 저장까지만 보고, 저장한 정의로 러너가 실제로
+  도는지는 아직 아무도 단정하지 않는다 per SC-308 (missing)
+- [ ] T094 브라우저 편집 세션이 끝나면 **출발한 편집 화면으로 돌아오게** 한다 —
+  `frontend/src/App.tsx`·`frontend/src/pages/SessionScreen.tsx`. 지금은 `onFinished` 가
+  목록으로 보낸다. 편집 화면은 마운트마다 `GET /definition` 을 다시 읽으므로 반영 자체는
+  되지만, 사용자는 자기가 출발한 화면을 잃는다. 반영을 단정하는 테스트도 함께 붙인다
+  per FR-204 (partial)
+- [ ] T095 `drag` 의 `drop_target` 과 `assertion` 의 `target` 에도 잠긴 항목 문구를
+  붙인다 — `frontend/src/pages/TestDefinition.tsx`. 서버는 `locked_fields` 로 세 항목을
+  모두 보내는데 화면은 `steps[].target`·`steps[].type`·`ai_instruction` 세 개만 문구로
+  쓴다. `drag`·`assertion` Step 을 고르면 잠긴 이유가 그 자리에 없다
+  per FR-191 · ui-contract §4 (partial)
+
+**남은 수동 확인 1건** (Phase 8): T092 — quickstart S1~S8 을 사람이 직접 걷는 확인.
+자동 검증으로 덮이지 않는 시각·조작 항목이며 005 의 T110 과 같은 성질이다.
