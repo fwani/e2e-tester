@@ -15,14 +15,18 @@ import { ErrorNotice, describeError, localError } from "../components/ErrorNotic
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { tests, type ArtifactKind } from "../api/client";
-import type { RunResult as RunResultData, StepResult } from "../types/generated/run-result";
+import type { RunResultView as RunResultData } from "../api/client";
+import type { StepResult } from "../types/generated/run-result";
 import {
   outcomeChip,
   outcomeTone,
   partialRunNotice,
+  partialRunDiagnosis,
   runFromLabel,
+  runSummary,
   stepLabel,
   stepNumber,
+  stepOutcomeLabel,
 } from "../lib/wording";
 import type { OutcomeTone } from "../lib/wording";
 
@@ -300,11 +304,89 @@ export function RunResult({
 
           {result !== null && (
             <>
+              {/*
+                005 FR-152 (U-02) — 결말 한 문장. 부분 실행임과 구간이 드러난다.
+
+                이전에는 요약 3칸만 있었고 「통과 / 전체」가 `0 / 7` 이었다. 5개를
+                건너뛴 부분 실행이 직전 전체 실행(5/7)보다 나빠진 것으로 읽혔다.
+              */}
+              <div
+                style={{
+                  border: "3px solid #14130F",
+                  background: "#FFFDF6",
+                  padding: "12px 16px",
+                  font: `600 16px/1.4 ${SANS}`,
+                }}
+              >
+                {runSummary({
+                  outcome: result.outcome,
+                  passedCount: result.passed_count,
+                  attemptedCount: result.attempted_count,
+                  totalCount: result.total_count,
+                  totalMs: result.total_ms,
+                  scope: result.scope,
+                  startIndex: result.start_index,
+                  failedStepIndex: result.failed_step_index,
+                  stoppedStepIndex: result.stopped_step_index,
+                })}
+                {/* 005 FR-152 — 이전 전체 실행 결과를 지우지 않는다. 보조로 함께 둔다. */}
+                {result.last_full_run != null && (
+                  <div
+                    className="muted"
+                    style={{ marginTop: 6, font: `400 13px/1.4 ${SANS}` }}
+                  >
+                    {`최근 전체 실행: ${runSummary({
+                      outcome: result.last_full_run.outcome,
+                      passedCount: result.last_full_run.passed_count,
+                      attemptedCount: result.last_full_run.attempted_count,
+                      totalCount: result.last_full_run.total_count,
+                      totalMs: result.last_full_run.total_ms,
+                      scope: result.last_full_run.scope,
+                      startIndex: result.last_full_run.start_index,
+                      failedStepIndex: result.last_full_run.failed_step_index,
+                      stoppedStepIndex: result.last_full_run.stopped_step_index,
+                    })}`}
+                  </div>
+                )}
+              </div>
+
+              {/*
+                005 FR-153 (U-02) — 부분 실행 실패의 진단 **첫 줄**.
+
+                리포트가 잡은 것은 안내가 틀린 방향을 지시한 것이었다 — 로그인 Step 을
+                건너뛰어 대상 버튼이 있을 수 없는 상황인데 "대상 화면이 느릴 수 있습니다
+                — 대기 시간을 늘리세요" 라고 말했고, 사용자는 몇 바퀴를 헛돌았다.
+
+                규칙 기반이며 언어모델을 쓰지 않는다 (헌법 원칙 II).
+              */}
+              {result.scope === "partial" &&
+                result.failed_step_index !== null &&
+                partialRunDiagnosis(result.start_index) !== null && (
+                  <div
+                    role="note"
+                    style={{
+                      border: "3px solid #14130F",
+                      background: "#FFF6D9",
+                      padding: "12px 16px",
+                      font: `500 14px/1.5 ${SANS}`,
+                    }}
+                  >
+                    {partialRunDiagnosis(result.start_index)}
+                  </div>
+                )}
+
               {/* 요약 3칸 (FR-050) */}
               <div style={{ display: "flex", gap: "0", border: "3px solid #14130F", background: "#FFFDF6" }}>
                 <Summary label="총 시간" value={`${(result.total_ms / 1000).toFixed(2)} s`} />
                 <div style={{ width: "3px", background: INK }} />
-                <Summary label="통과 / 전체" value={`${result.passed_count} / ${result.total_count}`} />
+                {/* 005 FR-152 — 분모는 실행 대상 수다. `total_count` 를 쓰면 부분 실행이
+                    `0 / 7` 로 보인다 (U-02). 라벨도 그 사실에 맞춘다. */}
+                <Summary
+                  label={result.scope === "partial" ? "통과 / 실행 대상" : "통과 / 전체"}
+                  value={`${result.passed_count} / ${
+                    result.attempted_count > 0 ? result.attempted_count : result.total_count
+                  }`}
+                />
                 <div style={{ width: "3px", background: INK }} />
                 <Summary
                   label="멈춘 STEP"
@@ -579,7 +661,16 @@ function Summary({ label, value }: { label: string; value: string }) {
 
 function StepRow({ step, onOpen }: { step: StepResult; onOpen?: () => void }) {
   const failed = step.outcome === "fail";
-  const skipped = step.outcome === "skipped" || step.outcome === "not_run";
+  /**
+   * 005 FR-151 (U-21) — **건너뜀과 미실행은 다른 것이다.**
+   *
+   * 이전에는 `skipped || not_run` 한 값으로 뭉개서, 부분 실행 결과에서 건너뛴 01~05 와
+   * 실패로 도달하지 못한 07 이 똑같이 "빈 체크박스 + —" 였다. 사용자는 "안 돌린 것" 과
+   * "도달 못한 것" 을 구분할 수 없었다.
+   */
+  const isSkipped = step.outcome === "skipped";
+  const isNotRun = step.outcome === "not_run";
+  const noResult = isSkipped || isNotRun;
 
   return (
     <div
@@ -593,22 +684,27 @@ function StepRow({ step, onOpen }: { step: StepResult; onOpen?: () => void }) {
         borderTop: "2px solid #DCD8CC",
         cursor: onOpen ? "pointer" : "default",
         ...(failed ? { background: "#FBEEEA" } : {}),
-        ...(skipped ? { opacity: 0.55 } : {}),
+        ...(noResult ? { opacity: 0.55 } : {}),
       }}
     >
       <div
         style={{
           width: "22px",
           height: "22px",
-          background: failed ? "#D9502F" : skipped ? "transparent" : "#2E9455",
-          border: skipped ? "2px solid #9A968A" : "none",
+          background: failed ? "#D9502F" : noResult ? "transparent" : "#2E9455",
+          // 건너뜀은 실선, 미실행은 점선 — 색만으로 구분하지 않고 형태도 다르게 한다.
+          border: isSkipped
+            ? "2px solid #9A968A"
+            : isNotRun
+              ? "2px dashed #9A968A"
+              : "none",
           color: "#FFFDF6",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        {!skipped && (
+        {!noResult && (
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
             <path d={failed ? "M4 4l8 8M12 4l-8 8" : "M3 8.5l3.5 3.5L13 4.5"} />
           </svg>
@@ -617,9 +713,30 @@ function StepRow({ step, onOpen }: { step: StepResult; onOpen?: () => void }) {
       <div style={{ width: "30px", font: `700 14px/1 ${MONO}`, color: "#9A968A" }}>
         {stepNumber(step.index)}
       </div>
-      <div style={{ flex: "1", minWidth: "0", font: `600 16px/1.3 ${SANS}` }}>{step.label}</div>
+      <div style={{ flex: "1", minWidth: "0", font: `600 16px/1.3 ${SANS}`, display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {step.label}
+        </span>
+        {/* 005 FR-151 — **텍스트 라벨을 병기한다.** 색·형태만으로 구분하면 접근성이
+            떨어지고, 리포트가 U-21 에서 지적한 원칙이 그것이다. */}
+        {noResult && (
+          <span
+            className="mono"
+            style={{
+              flexShrink: 0,
+              padding: "2px 7px",
+              border: isSkipped ? "2px solid #9A968A" : "2px dashed #9A968A",
+              background: isSkipped ? "#EDEAE0" : "transparent",
+              color: "#6B675C",
+              font: `600 11px/1.4 ${MONO}`,
+            }}
+          >
+            {stepOutcomeLabel(step.outcome)}
+          </span>
+        )}
+      </div>
       <div style={{ width: "90px", textAlign: "right", font: `400 14px/1 ${MONO}`, color: "#6B675C" }}>
-        {skipped ? "—" : `${step.duration_ms} ms`}
+        {noResult ? "—" : `${step.duration_ms} ms`}
       </div>
     </div>
   );

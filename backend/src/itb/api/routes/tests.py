@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from itb.api.errors import ErrorCode, bad_request, not_found, not_implemented
 from itb.api.state import AppState, get_state
-from itb.domain.run_result import Outcome, RunResult
+from itb.domain.run_result import Outcome, RunResult, RunScope
 from itb.domain.test_case import AuthoringMode, Test
 from itb.storage.repository import ProjectError, ResultUnreadableError
 from itb.storage.yaml_io import DefinitionError
@@ -153,8 +153,25 @@ async def delete_test(test_id: str, state: State) -> None:
         raise not_found(ErrorCode.TEST_NOT_FOUND, f"테스트를 찾을 수 없습니다: {test_id}")
 
 
+class RunResultView(RunResult):
+    """실행 결과 + 보조 문맥 (005 FR-152).
+
+    `RunResult` 를 그대로 확장하므로 기존 클라이언트가 읽던 필드는 모두 그대로다.
+    """
+
+    last_full_run: RunResult | None = None
+    """최근 **전체** 실행 (005 FR-152).
+
+    부분 실행 결과 화면이 "최근 전체 실행: 5 / 7 통과" 를 함께 보여주기 위한 것이다.
+    이전에는 부분 실행이 전체 실행 결과를 덮어써서, 사용자는 `5 / 7` → `0 / 7` 을 보고
+    "고치다 더 망가뜨렸다" 고 읽었다 (U-02).
+
+    이번 실행이 전체이면 `None` 이다 — 같은 것을 두 번 보여줄 이유가 없다.
+    """
+
+
 @router.get("/{test_id}/result")
-async def get_result(test_id: str, state: State) -> RunResult:
+async def get_result(test_id: str, state: State) -> RunResultView:
     """최근 실행 결과.
 
     **"결과 없음" 과 "결과를 읽을 수 없음" 을 구분한다.** 손상된 파일을 없는 것처럼
@@ -170,7 +187,12 @@ async def get_result(test_id: str, state: State) -> RunResult:
             ErrorCode.TEST_NOT_FOUND,
             f"{test_id} 의 실행 결과가 없습니다. 먼저 실행하세요.",
         )
-    return result
+    # 005 FR-152 — 부분 실행일 때만 최근 전체 실행을 함께 준다.
+    #
+    # 보조 표시가 없어도 주 결과는 온다. `read_full_result` 는 읽기 실패를 예외로 만들지
+    # 않는다 — 보조 때문에 결과를 못 보게 하면 고치려던 것보다 나쁘다.
+    full = repo.read_full_result(test_id) if result.scope is RunScope.PARTIAL else None
+    return RunResultView(**result.model_dump(), last_full_run=full)
 
 
 _ARTIFACT_MEDIA_TYPE = {

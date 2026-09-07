@@ -175,22 +175,22 @@ description: "Task list for 005 — UX 워크스루 결함 수정"
 
 ### Tests for User Story 4
 
-- [ ] T061 [P] [US4] `backend/tests/integration/test_partial_run_result.py` — 부분 실행 후 `scope == "partial"`·`start_index` 가 저장되고, `result-full.json` 의 이전 전체 실행이 **덮이지 않는지** 단정한다 (FR-152·U-02)
-- [ ] T062 [P] [US4] 같은 파일에서 요약 분모가 `attempted_count` 인지 단정한다 — 5개를 건너뛴 부분 실행이 `0 / 7` 이 아니라 `0 / 2` 다 (FR-152)
-- [ ] T063 [P] [US4] `backend/tests/unit/test_partial_diagnosis.py` — 부분 실행에서 요소를 찾지 못한 실패의 진단 첫 줄이 선행 Step 건너뜀을 먼저 지시하는지, 그 함수가 **순수 함수이며 언어모델을 부르지 않는지** 단정한다 (FR-153, 헌법 원칙 II)
+- [X] T061 [P] [US4] `backend/tests/integration/test_partial_run_result.py` — 부분 실행 후 `scope == "partial"`·`start_index` 가 저장되고, `result-full.json` 의 이전 전체 실행이 **덮이지 않는지** 단정한다 (FR-152·U-02)
+- [X] T062 [P] [US4] 같은 파일에서 요약 분모가 `attempted_count` 인지 단정한다 — 5개를 건너뛴 부분 실행이 `0 / 7` 이 아니라 `0 / 2` 다 (FR-152)
+- [X] T063 [P] [US4] `backend/tests/unit/test_partial_diagnosis.py` — 부분 실행에서 요소를 찾지 못한 실패의 진단 첫 줄이 선행 Step 건너뜀을 먼저 지시하는지, 그 함수가 **순수 함수이며 언어모델을 부르지 않는지** 단정한다 (FR-153, 헌법 원칙 II)
 - [X] T064 [P] [US4] `frontend/tests/SkippedVsNotRun.test.tsx` — `skipped` 와 `not_run` 이 서로 다른 표시이고 각각 텍스트 라벨을 갖는지 단정한다 (FR-151·U-21)
-- [ ] T065 [P] [US4] `frontend/tests/PartialRunLabels.test.tsx` — 재실행 버튼 라벨에 시작 Step 번호가 있고, 보조 문구에 건너뛰는 구간과 선행 상태 경고가 있는지 단정한다 (FR-149·FR-150)
+- [X] T065 [P] [US4] `frontend/tests/PartialRunLabels.test.tsx` — 재실행 버튼 라벨에 시작 Step 번호가 있고, 보조 문구에 건너뛰는 구간과 선행 상태 경고가 있는지 단정한다 (FR-149·FR-150)
 
 ### Implementation for User Story 4
 
 - [X] T066 [US4] `backend/src/itb/execution/runner.py` 가 `.runs/<테스트ID>/result-full.json` 을 전체 실행에서만 갱신하게 한다. 부분 실행은 `result.json` 만 쓴다 (FR-152, data-model.md §5)
-- [ ] T067 [US4] `backend/src/itb/api/routes/tests.py` 의 결과 조회에 `last_full_run` 을 싣는다. 파일이 없으면 `null` (contracts/rest-api.md §7)
-- [ ] T068 [US4] 부분 실행 실패 진단 문구 생성을 규칙 기반 순수 함수로 만든다 — `backend/src/itb/domain/` 또는 결과 조립부. 첫 줄이 선행 Step 건너뜀 가능성을 지시한다 (FR-153)
+- [X] T067 [US4] `backend/src/itb/api/routes/tests.py` 의 결과 조회에 `last_full_run` 을 싣는다. 파일이 없으면 `null` (contracts/rest-api.md §7)
+- [X] T068 [US4] 부분 실행 실패 진단 문구 생성을 규칙 기반 순수 함수로 만든다 — `backend/src/itb/domain/` 또는 결과 조립부. 첫 줄이 선행 Step 건너뜀 가능성을 지시한다 (FR-153)
 - [X] T069 [P] [US4] `frontend/src/pages/RunResult.tsx` 의 재실행 버튼 라벨에 시작점을 박고(`Step 06부터 실행`) 보조 문구를 붙인다 (FR-149·FR-150, ui-contract §5)
-- [ ] T070 [P] [US4] 같은 파일의 Step 목록에서 `skipped`·`not_run` 을 ui-contract §3 대로 구분해 표시한다. 색만이 아니라 텍스트 라벨을 병기한다 (FR-151)
-- [ ] T071 [US4] 부분 실행 요약을 ui-contract §1 의 문장으로 만든다 — **결말이 앞에 온다**: `실패 · 부분 실행 Step 06~07 · 0 / 2 · (01~05 건너뜀)`. 분모는 `attempted_count`. spec.md US4-4 의 예시는 어순이 다르므로 **ui-contract 표를 권위로 삼는다** (FR-152·FR-141)
-- [ ] T072 [US4] 결과 화면에 「최근 전체 실행」 보조 표시를 붙인다. `last_full_run` 이 `null` 이면 생략한다 (FR-152)
-- [ ] T073 [P] [US4] 실행 중 화면의 Step 목록에서도 건너뛴 Step 을 구분해 표시한다 — `SessionScreen.tsx` (FR-151, U-02 관찰 1)
+- [X] T070 [P] [US4] 같은 파일의 Step 목록에서 `skipped`·`not_run` 을 ui-contract §3 대로 구분해 표시한다. 색만이 아니라 텍스트 라벨을 병기한다 (FR-151)
+- [X] T071 [US4] 부분 실행 요약을 ui-contract §1 의 문장으로 만든다 — **결말이 앞에 온다**: `실패 · 부분 실행 Step 06~07 · 0 / 2 · (01~05 건너뜀)`. 분모는 `attempted_count`. spec.md US4-4 의 예시는 어순이 다르므로 **ui-contract 표를 권위로 삼는다** (FR-152·FR-141)
+- [X] T072 [US4] 결과 화면에 「최근 전체 실행」 보조 표시를 붙인다. `last_full_run` 이 `null` 이면 생략한다 (FR-152)
+- [X] T073 [P] [US4] 실행 중 화면의 Step 목록에서도 건너뛴 Step 을 구분해 표시한다 — `SessionScreen.tsx` (FR-151, U-02 관찰 1)
 
 **Checkpoint**: 부분 실행이 전체 실행을 덮지 않고, 건너뜀이 드러난다
 

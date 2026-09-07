@@ -8,6 +8,16 @@
  */
 import type { Category, ErrorBody, ErrorCode } from "../types/generated/error-response";
 import type { RunResult } from "../types/generated/run-result";
+
+/**
+ * 실행 결과 + 보조 문맥 (005 FR-152).
+ *
+ * `last_full_run` 은 **부분 실행일 때만** 온다. 부분 실행이 전체 실행 결과를 덮어써서
+ * `5 / 7` → `0 / 7` 로 보이던 것이 U-02 였다 — 이제 둘을 함께 보여줄 수 있다.
+ */
+export interface RunResultView extends RunResult {
+  last_full_run?: RunResult | null;
+}
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
 
@@ -202,7 +212,7 @@ export const tests = {
   rename: (id: string, name: string) => patch<Test>(`/api/tests/${id}`, { name }),
   remove: (id: string) => del<void>(`/api/tests/${id}`),
   /** 최근 실행 결과. 테스트당 1건만 보관된다 (FR-050~FR-054). */
-  result: (id: string) => get<RunResult>(`/api/tests/${id}/result`),
+  result: (id: string) => get<RunResultView>(`/api/tests/${id}/result`),
   /**
    * 산출물 주소. 서버가 **바이트**를 돌려주므로 스크린샷은 `<img src>` 에 그대로 넣는다.
    * 예전에는 `{kind, path}` JSON 을 받아 그 상대 경로를 `src` 에 넣었고, 화면에는 깨진

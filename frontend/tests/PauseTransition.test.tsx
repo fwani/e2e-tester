@@ -15,6 +15,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { RunnerPaused } from "../src/pages/RunnerPaused";
@@ -77,7 +78,7 @@ function pausedProps(overrides: Record<string, unknown> = {}) {
     onAddAssertion: noop,
     onAddNlStep: noop,
     ...overrides,
-  } as never;
+  } as unknown as ComponentProps<typeof RunnerPaused>;
 }
 
 describe("일시정지 전이 (FR-142~FR-145 · U-04)", () => {
@@ -188,8 +189,9 @@ describe("종료 후 컨트롤 (FR-147 · U-08)", () => {
       onStop: noop,
       onSelectStep: noop,
       selectedStepId: null,
+      statusLabel: "실행 중",
       ...overrides,
-    } as never;
+    } as unknown as ComponentProps<typeof Runner>;
   }
 
   it("실행 중에는 「중지」다", () => {
