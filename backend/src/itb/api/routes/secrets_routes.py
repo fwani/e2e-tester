@@ -19,6 +19,7 @@ from itb.secrets.keys import (
     KeyMissingError,
     KeyPaths,
     KeyStoreError,
+    PassphraseError,
     fingerprint,
     generate,
     load_public,
@@ -60,6 +61,16 @@ class KeyStatusResponse(BaseModel):
     키는 장비에 하나다. 경고가 "이 프로젝트" 라고만 말하면 나머지 프로젝트의 암호문이
     아무 통보 없이 못 읽는 상태가 된다 (UX U-09). 그래서 영향 범위를 세어 준다."""
 
+    unlocked: bool
+    """지금 이 백엔드가 비밀키를 열 수 있는가 (FR-089e-3).
+
+    암호구가 걸려 있지 않은 키는 항상 True 다. 걸려 있는 키는 **이 프로세스가 확인된
+    암호구를 들고 있을 때만** True 다 — 생성·교체 직후이거나, 잠금 해제를 했거나,
+    기동 시점에 환경 변수로 받았거나.
+
+    False 면 민감 변수를 쓰는 실행이 실패한다. 화면은 실행이 실패하기를 기다리지 않고
+    이것으로 미리 잠금 해제를 안내한다."""
+
 
 class GenerateKeyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -80,6 +91,19 @@ class DestroyKeyRequest(BaseModel):
     confirm: str = Field(description=f"정확히 '{DESTROY_CONFIRM}' 여야 한다")
     passphrase: str | None = Field(default=None, min_length=8, max_length=200)
     """재생성에만 쓴다. 삭제 요청에서는 무시한다."""
+
+
+class UnlockKeyRequest(BaseModel):
+    """실행 시점에 비밀키를 열 암호구. FR-089e-3.
+
+    **응답에도 로그에도 담기지 않는다.** 확인에만 쓰고 프로세스 메모리로 들어간다.
+    길이 제약은 `GenerateKeyRequest` 와 같다 — 다르면 만들 수는 있는데 열 수 없는 값이
+    생긴다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    passphrase: str = Field(min_length=8, max_length=200)
 
 
 class DestroyKeyResponse(BaseModel):
@@ -153,14 +177,17 @@ def _sealed_with(root: pathlib.Path, current_fingerprint: str) -> bool:
 @router.get("/keys/status")
 async def key_status(state: State) -> KeyStatusResponse:
     info = status(state.key_paths)
+    protected = bool(info["passphrase_protected"])
     return KeyStatusResponse(
         private_key_present=bool(info["private_key_present"]),
         public_key_present=bool(info["public_key_present"]),
-        passphrase_protected=bool(info["passphrase_protected"]),
+        passphrase_protected=protected,
         public_key_fingerprint=info["public_key_fingerprint"],  # type: ignore[arg-type]
         permission_warning=info["permission_warning"],  # type: ignore[arg-type]
         key_dir=str(state.key_paths.directory),
         sealed_projects=_sealed_projects(state.key_paths),
+        # 암호구가 없는 키는 열 것이 없다. 있는 키는 들고 있을 때만 열린 것이다.
+        unlocked=not protected or state.key_unlock.held,
     )
 
 
@@ -191,7 +218,25 @@ async def generate_key(body: GenerateKeyRequest, state: State) -> KeyStatusRespo
             f"키를 저장할 수 없습니다: {exc.strerror or exc}. "
             f"저장 위치({state.key_paths.directory})를 확인하세요.",
         ) from exc
+    # **화면에서 받은 암호구를 그 자리에서 기억한다** (FR-089e-3). 이것이 없으면 사용자는
+    # 방금 입력한 암호구를 셸 환경 변수로 다시 넣고 백엔드를 재기동해야 민감 변수를 쓸 수
+    # 있었다 — 화면이 이미 받은 것을 화면이 못 쓰는 상태였다.
+    _rearm(state, body.passphrase)
     return await key_status(state)
+
+
+def _rearm(state: AppState, passphrase: str | None) -> None:
+    """새로 만든 키의 암호구를 이 프로세스가 들도록 한다 (FR-089e-3).
+
+    암호구가 없는 키면 들 것이 없으므로 비운다 — 남겨 두면 그 다음 잠금 해제 상태 표시가
+    거짓이 된다.
+
+    **확인 절차를 다시 돌리지 않는다.** 방금 이 값으로 키를 만들었으므로 맞는 것이
+    확실하고, argon2id 를 한 번 더 돌리는 것은 응답만 느려지게 한다.
+    """
+    state.key_unlock.forget()
+    if passphrase:
+        state.key_unlock.remember(passphrase)
 
 
 def _require_confirm(body: DestroyKeyRequest) -> None:
@@ -228,6 +273,7 @@ async def destroy_key(body: DestroyKeyRequest, state: State) -> DestroyKeyRespon
             ErrorCode.KEY_MISSING,
             f"지울 키가 없습니다: {state.key_paths.directory}",
         )
+    state.key_unlock.forget()
     purged = _purge_secrets(state)
     return DestroyKeyResponse(
         status=await key_status(state),
@@ -246,6 +292,9 @@ async def regenerate_key(body: DestroyKeyRequest, state: State) -> DestroyKeyRes
     """
     _require_confirm(body)
     remove(state.key_paths)
+    # 옛 암호구를 먼저 버린다. 남겨 두면 새 키에 옛 값을 시도해 "암호구가 올바르지
+    # 않습니다" 로 헤매게 된다 — 사용자는 방금 새 암호구를 입력했으므로 원인을 못 찾는다.
+    state.key_unlock.forget()
     purged = _purge_secrets(state)
     try:
         generate(state.key_paths, passphrase=body.passphrase)
@@ -256,11 +305,48 @@ async def regenerate_key(body: DestroyKeyRequest, state: State) -> DestroyKeyRes
             f"저장 위치({state.key_paths.directory})를 확인하세요. "
             "이전 키는 이미 삭제되었습니다.",
         ) from exc
+    _rearm(state, body.passphrase)
     return DestroyKeyResponse(
         status=await key_status(state),
         purged_secret_count=purged,
         project_open=state.repository is not None,
     )
+
+
+@router.post("/keys/unlock")
+async def unlock_key(body: UnlockKeyRequest, state: State) -> KeyStatusResponse:
+    """암호구로 잠긴 비밀키의 잠금을 **화면에서** 해제한다. FR-089e-3.
+
+    백엔드를 다시 띄우면 기억이 사라지므로 이 경로가 필요하다. 없으면 사용자는 셸에서
+    ``ITB_KEY_PASSPHRASE`` 를 넣고 재기동하는 수밖에 없었다.
+
+    **암호구가 실제로 키를 여는지 확인한 뒤 기억한다.** 확인 없이 받으면 틀린 값이
+    조용히 들어앉고, 사용자는 해제된 줄 알다가 실행 도중에 실패를 본다.
+
+    사유를 두 코드로 가른다 — 키가 없는 것과 암호구가 틀린 것은 조치가 다르다
+    (FR-089e-2).
+    """
+    try:
+        state.key_unlock.unlock(state.key_paths, body.passphrase)
+    except KeyMissingError as exc:
+        raise not_found(ErrorCode.KEY_MISSING, str(exc)) from exc
+    except PassphraseError as exc:
+        raise bad_request(ErrorCode.PASSPHRASE_INVALID, str(exc)) from exc
+    return await key_status(state)
+
+
+@router.delete("/keys/unlock")
+async def lock_key(state: State) -> KeyStatusResponse:
+    """들고 있던 암호구를 버린다. 다시 잠긴다. FR-089e-3.
+
+    자리를 비울 때 쓰는 조작이다. **되돌릴 수 없는 조작이 아니다** — 암호구를 다시 넣으면
+    열린다. 그래서 확인 문구를 받지 않는다.
+
+    들고 있지 않아도 성공한다. 잠긴 것을 다시 잠그라는 요청의 결과는 "잠겨 있음" 이고,
+    그것을 오류로 만들면 화면이 상태를 먼저 확인해야 하는 순서 의존이 생긴다.
+    """
+    state.key_unlock.forget()
+    return await key_status(state)
 
 
 @router.get("/secrets")

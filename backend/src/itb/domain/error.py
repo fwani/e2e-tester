@@ -208,7 +208,7 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ),
     ErrorCode.KEY_MISSING: "키 관리 화면에서 키 쌍을 먼저 만드세요.",
     ErrorCode.KEY_ALREADY_EXISTS: "기존 키를 쓰거나, 교체하려면 키 교체를 쓰세요.",
-    ErrorCode.PASSPHRASE_REQUIRED: "암호구를 입력하세요.",
+    ErrorCode.PASSPHRASE_REQUIRED: "키 관리 화면에서 암호구를 입력해 잠금을 해제하세요.",
     ErrorCode.PASSPHRASE_INVALID: "암호구를 다시 확인해 입력하세요.",
     ErrorCode.DECRYPT_FAILED: "이 값을 암호화한 키와 암호구가 맞는지 확인하세요.",
     ErrorCode.FINGERPRINT_MISMATCH: "이 값은 다른 키로 암호화됐습니다. 해당 키로 여세요.",

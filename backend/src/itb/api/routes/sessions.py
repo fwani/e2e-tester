@@ -450,10 +450,13 @@ def _build_engine(
     repo = state.require_repository()
 
     key_paths = state.key_paths
+    # 잠금 해제 상태도 **여기서 값을 꺼내지 않고** 객체째 들고 간다. 값을 지금 읽으면
+    # 세션이 열려 있는 동안 화면에서 해제한 잠금이 이 세션에 반영되지 않는다.
+    unlock = state.key_unlock
     resolver = VariableResolver(
         test,
         store=work.store or _secret_store(repo),
-        key_source=lambda: load_private_or_reason(key_paths),
+        key_source=lambda: load_private_or_reason(key_paths, unlock.passphrase),
     )
     collector = ArtifactCollector(work.session.context)
     collector.attach()
@@ -497,6 +500,7 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
 
     repo = state.require_repository()
     key_paths = state.key_paths
+    unlock = state.key_unlock
 
     store = work.store or _secret_store(repo)
     capturer = work.recorder.capturer or SensitiveCapturer(
@@ -508,7 +512,7 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
     resolver = VariableResolver(
         _draft_test(work) if work.steps else _empty_draft(work),
         store=store,
-        key_source=lambda: load_private_or_reason(key_paths),
+        key_source=lambda: load_private_or_reason(key_paths, unlock.passphrase),
     )
     work.resolver = resolver
 

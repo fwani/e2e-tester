@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -42,7 +43,12 @@ from itb.api.routes import (
 from itb.api.state import BIND_HOST, BIND_PORT, AppState, get_state
 from itb.api.ws.session_events import EventBroker
 from itb.execution.session import SessionManager
-from itb.secrets.keys import KeyPaths, default_key_dir
+from itb.secrets.keys import (
+    PASSPHRASE_ENV,
+    KeyPaths,
+    KeyStoreError,
+    default_key_dir,
+)
 
 # 처리되지 않은 오류는 응답에 스택을 싣지 않는다. 진단은 서버 로그가 맡는다 (003 EC-005).
 logger = logging.getLogger(__name__)
@@ -60,6 +66,27 @@ ROUTERS = (
 )
 
 
+def _unlock_from_env(state: AppState) -> None:
+    """``ITB_KEY_PASSPHRASE`` 가 있으면 기동 시점에 확인해 잠금을 풀어 둔다 (FR-089e-3).
+
+    환경 변수 경로는 **사람이 없는 실행**(CI·헤드리스)을 위해 남긴다. 여기서 한 번
+    확인해 `KeyUnlock` 에 넣으면 이후 경로가 하나로 합쳐진다 — 화면에서 해제한 경우와
+    환경 변수로 공급한 경우가 같은 자리를 본다.
+
+    **기동을 막지 않는다.** 암호구가 틀렸거나 키가 없어도 서버는 떠야 한다 — 민감 변수를
+    쓰지 않는 테스트가 이것 때문에 못 돌면 안 된다. 틀린 값은 로그로 알린다. 조용히
+    넘기면 사용자는 환경 변수를 넣었는데 왜 잠겨 있는지 알 수 없다.
+    """
+    passphrase = os.environ.get(PASSPHRASE_ENV)
+    if not passphrase:
+        return
+    try:
+        state.key_unlock.unlock(state.key_paths, passphrase)
+    except KeyStoreError as exc:
+        # 암호구 자체는 절대 찍지 않는다. 사유만 남긴다.
+        logger.warning("%s 로 받은 암호구로 비밀키를 열지 못했습니다: %s", PASSPHRASE_ENV, exc)
+
+
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     playwright = await async_playwright().start()
@@ -70,6 +97,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         key_paths=KeyPaths(default_key_dir()),
     )
     app.state.itb = state
+    _unlock_from_env(state)
     try:
         yield
     finally:

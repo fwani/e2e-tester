@@ -441,6 +441,11 @@ export interface KeyStatus {
   key_dir: string;
   /** 지금 키로 봉인된 값을 가진 프로젝트 이름들 — 키 교체·삭제의 실제 영향 범위. */
   sealed_projects: string[];
+  /**
+   * 지금 이 백엔드가 비밀키를 열 수 있는가 (FR-089e-3). 암호구가 없는 키는 항상 true.
+   * false 면 민감 변수를 쓰는 실행이 실패한다 — 화면이 미리 잠금 해제를 안내한다.
+   */
+  unlocked: boolean;
 }
 
 export interface SecretsResponse {
@@ -471,6 +476,15 @@ export const secrets = {
       confirm: DESTROY_CONFIRM,
       passphrase: passphrase ?? null,
     }),
+  /**
+   * 암호구로 잠긴 비밀키를 이 백엔드 프로세스에서 연다 (FR-089e-3).
+   *
+   * **암호구는 여기서만 오간다.** 응답에 담기지 않고 디스크에도 쓰이지 않는다 — 백엔드를
+   * 다시 띄우면 잠기고, 그때 다시 해제한다.
+   */
+  unlockKey: (passphrase: string) => post<KeyStatus>("/api/keys/unlock", { passphrase }),
+  /** 들고 있던 암호구를 버린다. 되돌릴 수 없는 조작이 아니라 확인 문구를 받지 않는다. */
+  lockKey: () => del<KeyStatus>("/api/keys/unlock"),
   list: () => get<SecretsResponse>("/api/secrets"),
   /** 값은 응답에 없다. 공개키만으로 봉인한다 (FR-089b). */
   put: (name: string, value: string) =>

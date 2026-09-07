@@ -30,11 +30,15 @@ PUBLIC_KEY_NAME = "public.key"
 PRIVATE_KEY_MODE = 0o600
 PASSPHRASE_MAGIC = b"itb-sealed-privkey-v1\n"
 PASSPHRASE_ENV = "ITB_KEY_PASSPHRASE"  # noqa: S105 - 변수 이름이지 값이 아니다
-"""실행 시점에 암호구를 공급하는 환경 변수 (FR-089e-3).
+"""**사람이 없는 실행**에서 암호구를 공급하는 환경 변수 (FR-089e-3).
 
 암호구로 잠근 비밀키는 봉인(공개키만 필요)에는 지장이 없지만 재실행·AI 작성에는
-개봉이 필요하다. 요청 맥락에는 암호구가 없으므로 프로세스 환경에서 받는다 —
-비밀 값 자체와 같은 경로(FR-089g)를 쓰는 것이라 운용 방식이 하나로 유지된다.
+개봉이 필요하다.
+
+**일상 경로는 이것이 아니다.** 키 관리 화면에서 암호구를 입력해 잠금을 해제하면
+백엔드가 그것을 프로세스 메모리에 들고 있고(`itb.secrets.unlock`), 실행 시점 복호화가
+그것을 쓴다. 이 환경 변수는 CI·헤드리스처럼 화면을 거칠 수 없는 실행을 위해 남는다 —
+`app.py` 가 기동 시점에 한 번 확인해 같은 자리에 넣는다.
 """
 
 
@@ -202,10 +206,14 @@ def load_private(paths: KeyPaths, passphrase: str | None = None) -> PrivateKey:
     blob = paths.private.read_bytes()
     if blob.startswith(PASSPHRASE_MAGIC):
         if not passphrase:
+            # **화면에서 할 수 있는 일을 먼저 말한다.** 예전에는 환경 변수부터 안내해서,
+            # 방금 키 관리 화면에서 암호구를 입력한 사용자가 같은 값을 셸에 다시 넣고
+            # 백엔드를 재기동해야 하는 줄 알았다 (UX U-26).
             msg = (
-                "이 비밀키는 암호구로 보호되어 있습니다. "
-                f"백엔드 프로세스에 환경 변수 {PASSPHRASE_ENV} 로 암호구를 공급하거나, "
-                "키 관리에서 암호구 없는 키로 재생성하세요."
+                "이 비밀키는 암호구로 보호되어 있고 지금 잠겨 있습니다. "
+                "키 관리 화면에서 암호구를 입력해 잠금을 해제하세요. "
+                f"사람이 없는 실행에서는 백엔드 프로세스에 환경 변수 {PASSPHRASE_ENV} "
+                "로 공급할 수 있습니다."
             )
             raise PassphraseRequiredError(msg)
         blob = _unwrap_with_passphrase(blob[len(PASSPHRASE_MAGIC) :], passphrase)

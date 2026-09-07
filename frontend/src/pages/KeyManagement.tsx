@@ -29,6 +29,7 @@ export interface KeyManagementProps {
 export function KeyManagement({ onClose }: KeyManagementProps) {
   const [status, setStatus] = useState<KeyStatus | null>(null);
   const [passphrase, setPassphrase] = useState("");
+  const [unlockPassphrase, setUnlockPassphrase] = useState("");
   const [newPassphrase, setNewPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -91,6 +92,35 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       },
     );
 
+  /**
+   * 잠금 해제. **여기가 이 화면의 핵심 조작이다** (FR-089e-3).
+   *
+   * 예전에는 암호구를 걸어 키를 만든 사용자가 같은 암호구를 셸 환경 변수로 다시 넣고
+   * 백엔드를 재기동해야 민감 변수를 쓸 수 있었다 — 화면이 이미 받은 것을 화면이 쓰지
+   * 못했다 (UX U-26).
+   */
+  const unlock = () =>
+    run(
+      () => secrets.unlockKey(unlockPassphrase),
+      (next) => {
+        setStatus(next);
+        setUnlockPassphrase("");
+        setNotice(
+          "잠금을 해제했습니다. 민감 변수를 쓰는 재실행과 AI 작성이 가능합니다. " +
+            "백엔드를 다시 띄우면 다시 잠깁니다.",
+        );
+      },
+    );
+
+  const lock = () =>
+    run(secrets.lockKey, (next) => {
+      setStatus(next);
+      setNotice(
+        "다시 잠갔습니다. 민감 변수를 쓰는 실행은 잠금을 해제할 때까지 사유와 함께 " +
+          "실패합니다. 비밀 값 저장은 그대로 됩니다 — 봉인은 공개키만으로 하기 때문입니다.",
+      );
+    });
+
   const destroy = () =>
     run(secrets.destroyKey, (result) => {
       setStatus(result.status);
@@ -101,7 +131,12 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
     });
 
   const hasKeys = status?.private_key_present === true;
-  const locked = status?.passphrase_protected === true;
+  /** 키 파일에 암호구가 걸려 있는가 — **지금 열려 있는지와는 다른 질문이다.** */
+  const protectedKey = status?.passphrase_protected === true;
+  /** 지금 이 백엔드가 비밀키를 열 수 있는가. */
+  const unlocked = status?.unlocked === true;
+  const needsUnlock = protectedKey && !unlocked;
+  const unlockTooShort = unlockPassphrase !== "" && unlockPassphrase.length < 8;
   /** 서버의 제약과 같은 값이다 (`GenerateKeyRequest.passphrase`, min_length=8). */
   const tooShort = passphrase !== "" && passphrase.length < 8;
   const newTooShort = newPassphrase !== "" && newPassphrase.length < 8;
@@ -164,7 +199,13 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           <span className={`badge ${hasKeys ? "pass" : "warn"}`}>
             {hasKeys ? "준비됨" : "없음"}
           </span>
-          {locked && <span className="badge">암호구 보호</span>}
+          {protectedKey && <span className="badge">암호구 보호</span>}
+          {/* 보호 여부와 **지금 열려 있는지**는 다른 정보다. 둘 다 보여야 한다. */}
+          {protectedKey && (
+            <span className={`badge ${unlocked ? "pass" : "warn"}`}>
+              {unlocked ? "열림" : "잠김"}
+            </span>
+          )}
         </div>
 
         <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: 6 }}>
@@ -188,9 +229,12 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
 
       {/*
         잠긴 키는 봉인에는 지장이 없고 실행에서만 막힌다. 그 시점에 처음 알면 사용자는
-        재실행이 왜 실패했는지 모른다 — 여기서 미리 말한다.
+        재실행이 왜 실패했는지 모른다 — 여기서 미리 말하고, **여기서 풀 수 있게 한다.**
+
+        예전에는 이 자리가 환경 변수 사용법만 알려 주는 안내였다. 화면에서 암호구를 받아
+        키를 만들었는데 같은 값을 셸에 다시 넣고 재기동하라고 요구한 셈이다 (UX U-26).
       */}
-      {locked && (
+      {needsUnlock && (
         <section
           role="note"
           style={{
@@ -198,24 +242,81 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
             background: "var(--warn-tint)",
             padding: 14,
             marginTop: 16,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
           }}
         >
-          <strong>암호구로 잠긴 키입니다</strong>
-          <p style={{ margin: "8px 0 0", fontSize: 12.5 }}>
+          <strong>비밀키가 잠겨 있습니다</strong>
+          <p style={{ margin: 0, fontSize: 12.5 }}>
             비밀 값을 저장하는 데에는 문제가 없지만, <b>재실행과 AI 작성은 비밀키를 열어야
-            합니다.</b> 백엔드 프로세스에 환경 변수{" "}
-            <span className="mono">{PASSPHRASE_ENV}</span> 로 암호구를 공급하세요. 공급하지
-            않으면 민감 변수를 쓰는 Step 이 사유와 함께 실패합니다.
+            합니다.</b> 암호구를 입력해 잠금을 해제하세요. 해제하지 않으면 민감 변수를 쓰는
+            Step 이 사유와 함께 실패합니다.
           </p>
-          <pre
-            className="mono"
-            style={{ margin: "8px 0 0", fontSize: 11.5, overflowX: "auto" }}
+          <label htmlFor="unlock-passphrase">암호구</label>
+          <input
+            id="unlock-passphrase"
+            type="password"
+            value={unlockPassphrase}
+            onChange={(e) => setUnlockPassphrase(e.target.value)}
+            placeholder="키를 만들 때 입력한 암호구"
+            aria-describedby="unlock-rule"
+            onKeyDown={(e) => {
+              // 암호구 입력란 하나뿐인 양식이다. Enter 로 끝나야 한다.
+              if (e.key === "Enter" && !busy && !unlockTooShort && unlockPassphrase !== "") {
+                unlock();
+              }
+            }}
+          />
+          <p
+            id="unlock-rule"
+            className="dim"
+            style={{ margin: 0, fontSize: 11.5 }}
           >
-            {PASSPHRASE_ENV}='…' uv run itb
-          </pre>
-          <p className="dim" style={{ margin: "8px 0 0", fontSize: 11.5 }}>
-            암호구를 없애려면 아래에서 키를 교체하세요. 교체하면 보관된 민감 값은 다시
+            {unlockTooShort
+              ? `암호구는 8자 이상입니다. 지금 ${unlockPassphrase.length}자입니다.`
+              : "암호구는 이 백엔드 프로세스의 메모리에만 보관됩니다. 디스크에 쓰지 않으며, " +
+                "백엔드를 다시 띄우면 다시 잠깁니다."}
+          </p>
+          <div>
+            <button
+              disabled={busy || unlockPassphrase === "" || unlockTooShort}
+              onClick={unlock}
+            >
+              잠금 해제
+            </button>
+          </div>
+          <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+            사람이 없는 실행(CI 등)에서는 백엔드 프로세스에 환경 변수{" "}
+            <span className="mono">{PASSPHRASE_ENV}</span> 로 공급할 수도 있습니다. 암호구
+            자체를 없애려면 아래에서 키를 교체하세요 — 교체하면 보관된 민감 값은 다시
             입력해야 합니다.
+          </p>
+        </section>
+      )}
+
+      {/* 열려 있다는 것도 상태다. 알려주지 않으면 사용자는 매번 실행해 봐야 안다. */}
+      {protectedKey && unlocked && (
+        <section
+          role="note"
+          style={{
+            border: "3px solid var(--ink)",
+            background: "var(--surface-soft)",
+            padding: 14,
+            marginTop: 16,
+          }}
+        >
+          <div className="row" style={{ gap: 8, alignItems: "center" }}>
+            <strong>비밀키가 열려 있습니다</strong>
+            <span className="spacer" />
+            <button className="secondary" disabled={busy} onClick={lock}>
+              다시 잠그기
+            </button>
+          </div>
+          <p style={{ margin: "8px 0 0", fontSize: 12.5 }}>
+            암호구로 보호된 키이며, 이 백엔드 프로세스가 암호구를 들고 있습니다. 민감
+            변수를 쓰는 재실행과 AI 작성이 가능합니다. <b>백엔드를 다시 띄우면 다시
+            잠깁니다.</b>
           </p>
         </section>
       )}
@@ -255,9 +356,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
               : "암호구를 걸려면 8자 이상 200자 이하로 적으세요."}
           </p>
           <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
-            암호구를 걸면 비밀키 파일이 잠깁니다. 잊으면 보관된 값을 읽을 수 없고, 제품이
-            복구해 줄 방법은 없습니다. 실행할 때는 환경 변수{" "}
-            <span className="mono">{PASSPHRASE_ENV}</span> 로 공급해야 합니다.
+            암호구를 걸면 비밀키 <b>파일</b>이 잠깁니다. 잊으면 보관된 값을 읽을 수 없고,
+            제품이 복구해 줄 방법은 없습니다. 만든 직후에는 바로 실행할 수 있고, 백엔드를
+            다시 띄운 뒤에는 이 화면에서 잠금을 해제하면 됩니다.
           </p>
           <div>
             {/* 제약에 맞지 않으면 제출 자체를 막는다 — 실패를 겪게 할 이유가 없다. */}

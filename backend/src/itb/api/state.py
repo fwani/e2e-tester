@@ -15,6 +15,7 @@ from itb.api.errors import ErrorCode, bad_request
 from itb.api.ws.session_events import EventBroker
 from itb.execution.session import SessionManager
 from itb.secrets.keys import KeyPaths
+from itb.secrets.unlock import KeyUnlock
 from itb.storage.repository import ProjectRepository
 
 BIND_HOST = "127.0.0.1"
@@ -37,6 +38,13 @@ class AppState:
     sessions: SessionManager
     broker: EventBroker
     key_paths: KeyPaths
+    key_unlock: KeyUnlock = field(default_factory=KeyUnlock)
+    """암호구로 잠긴 비밀키의 잠금 해제 상태 (FR-089e-3).
+
+    **앱 수명에 두는 것이 요점이다.** 요청 수명에 두면 화면에서 해제한 잠금이 다음
+    요청에서 사라져, 사용자가 셸 환경 변수로 다시 공급하는 수밖에 없어진다.
+    """
+
     repository: ProjectRepository | None = None
     startup_warnings: list[str] = field(default_factory=list)
 

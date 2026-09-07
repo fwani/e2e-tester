@@ -33,6 +33,7 @@ from itb.secrets.keys import (
 from itb.secrets.resolver import VariableResolutionError, VariableResolver
 from itb.secrets.scrubber import MASK, Scrubber
 from itb.secrets.store import DecryptError, FingerprintMismatchError, SecretStore
+from itb.secrets.unlock import KeyUnlock
 
 SECRET_VALUE = "s3cr3t-passphrase-value"
 CLOSE_TAB = [{"type": "close_tab", "id": "step-01", "label": "탭 닫기"}]
@@ -575,3 +576,60 @@ def test_store_picks_up_a_purge_done_elsewhere(tmp_path: pathlib.Path) -> None:
 
     reloaded = SecretStore(path)
     assert reloaded.names() == ["NEW"]
+
+
+# ─── 잠금 해제 상태 (FR-089e-3) ─────────────────────────────────────────────
+
+
+def test_unlock_holder_never_exposes_the_passphrase_through_held() -> None:
+    """`held` 는 **여부**다. 값을 알려주는 통로가 되면 응답에 실려 나갈 길이 생긴다."""
+    holder = KeyUnlock()
+    assert holder.held is False
+    assert holder.passphrase is None
+
+    holder.remember("long-enough-phrase")
+    assert holder.held is True
+    assert isinstance(holder.held, bool)
+
+    assert holder.forget() is True
+    assert holder.forget() is False, "두 번째 버리기는 버린 것이 없다고 말해야 한다"
+
+
+def test_unlock_verifies_before_it_remembers(tmp_path: pathlib.Path) -> None:
+    """확인 없이 기억하면 틀린 암호구가 들어앉고, 실패는 실행 도중으로 미뤄진다."""
+    kp = KeyPaths(tmp_path / "keys")
+    generate(kp, passphrase="long-enough-phrase")
+    holder = KeyUnlock()
+
+    with pytest.raises(PassphraseError):
+        holder.unlock(kp, "wrong-but-long-enough")
+    assert holder.held is False, "거절된 암호구가 기억에 남았다"
+
+    holder.unlock(kp, "long-enough-phrase")
+    assert holder.held is True
+
+
+def test_unlock_reports_a_missing_key_apart_from_a_wrong_passphrase(
+    tmp_path: pathlib.Path,
+) -> None:
+    """키가 없는 것과 암호구가 틀린 것은 사용자가 할 일이 다르다."""
+    holder = KeyUnlock()
+    with pytest.raises(KeyMissingError):
+        holder.unlock(KeyPaths(tmp_path / "nowhere"), "long-enough-phrase")
+
+
+def test_held_passphrase_opens_the_key_for_the_resolver(tmp_path: pathlib.Path) -> None:
+    """실행 조립부가 하는 것과 같은 이음매다 — 들고 있는 값이 해석기까지 이어진다."""
+    kp = KeyPaths(tmp_path / "keys")
+    generate(kp, passphrase="long-enough-phrase")
+    store = SecretStore(tmp_path / "secrets.local.yaml")
+    store.put("LOGIN_PASSWORD", SECRET_VALUE, load_public(kp))
+    holder = KeyUnlock()
+    holder.unlock(kp, "long-enough-phrase")
+
+    t = make_test(variables=[{"name": "LOGIN_PASSWORD", "sensitive": True}])
+    r = VariableResolver(
+        t, store, env={}, key_source=lambda: load_private_or_reason(kp, holder.passphrase)
+    )
+
+    assert r.resolve("LOGIN_PASSWORD") == SECRET_VALUE

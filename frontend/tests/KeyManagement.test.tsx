@@ -24,6 +24,8 @@ const NO_KEYS = {
   permission_warning: null,
   key_dir: "/tmp/itb-test/keys",
   sealed_projects: [],
+  // 암호구가 걸려 있지 않은 키는 열 것이 없다 — 항상 열린 상태로 취급한다.
+  unlocked: true,
 };
 
 function stub(routes: Record<string, { status: number; body: unknown }>) {
@@ -154,25 +156,103 @@ const WITH_KEYS = {
   public_key_fingerprint: "SHA256:aaaa",
 };
 
-const LOCKED = { ...WITH_KEYS, passphrase_protected: true };
+const LOCKED = { ...WITH_KEYS, passphrase_protected: true, unlocked: false };
+const UNLOCKED = { ...WITH_KEYS, passphrase_protected: true, unlocked: true };
 
-describe("KeyManagement — 잠긴 키 안내 (FR-089e-3)", () => {
-  it("암호구로 잠겼으면 실행 시 필요한 환경 변수를 미리 알린다", async () => {
-    // 사용자가 겪은 것: 스텝의 secret 은 저장되는데 재실행에서 "비밀키가 없다" 고 나온다.
-    // 실체는 키가 암호구로 잠겨 있었던 것이다. 실패한 뒤가 아니라 여기서 말해야 한다.
+describe("KeyManagement — 잠금 해제 (FR-089e-3)", () => {
+  it("잠겨 있으면 **이 화면에서** 암호구를 받아 해제한다", async () => {
+    // 사용자가 겪은 것: 키 관리 화면에서 암호구를 입력해 키를 만들었는데, 실행하면
+    // "환경 변수 ITB_KEY_PASSPHRASE 로 공급하라" 고 나온다. 화면이 이미 받은 것을
+    // 화면이 쓰지 못한 것이다 (UX U-26). 해제 조작이 여기 있어야 한다.
     vi.stubGlobal("fetch", stub({ "GET /api/keys/status": { status: 200, body: LOCKED } }));
     render(<KeyManagement />);
 
-    expect(await screen.findByText(/암호구로 잠긴 키입니다/)).toBeTruthy();
-    expect(document.body.textContent).toContain("ITB_KEY_PASSPHRASE");
+    expect(await screen.findByText(/비밀키가 잠겨 있습니다/)).toBeTruthy();
+    expect(screen.getByLabelText("암호구")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "잠금 해제" })).toBeTruthy();
   });
 
-  it("잠기지 않은 키에는 그 안내를 띄우지 않는다", async () => {
+  it("암호구가 8자 미만이면 제출을 막는다 — 서버 제약과 같은 값이다", async () => {
+    vi.stubGlobal("fetch", stub({ "GET /api/keys/status": { status: 200, body: LOCKED } }));
+    render(<KeyManagement />);
+    const input = await screen.findByLabelText("암호구");
+
+    fireEvent.change(input, { target: { value: "short" } });
+
+    const submit = screen.getByRole("button", { name: "잠금 해제" }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect(screen.getByText(/8자 이상입니다/)).toBeTruthy();
+  });
+
+  it("해제하면 잠금 해제 경로를 부르고 열린 상태로 바뀐다", async () => {
+    const fetchMock = stub({
+      "GET /api/keys/status": { status: 200, body: LOCKED },
+      "POST /api/keys/unlock": { status: 200, body: UNLOCKED },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<KeyManagement />);
+
+    fireEvent.change(await screen.findByLabelText("암호구"), {
+      target: { value: "correct-horse" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "잠금 해제" }));
+
+    await waitFor(() => expect(screen.getByText(/잠금을 해제했습니다/)).toBeTruthy());
+    expect(screen.queryByText(/비밀키가 잠겨 있습니다/)).toBeNull();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url).includes("/api/keys/unlock") &&
+          (init as RequestInit | undefined)?.method === "POST",
+      ),
+    ).toBe(true);
+  });
+
+  it("틀린 암호구는 그 사유를 그대로 보여준다 — 복호화 실패와 구분된다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      stub({
+        "GET /api/keys/status": { status: 200, body: LOCKED },
+        "POST /api/keys/unlock": {
+          status: 400,
+          body: {
+            error: {
+              code: "PASSPHRASE_INVALID",
+              message: "암호구가 올바르지 않습니다.",
+              next_action: "암호구를 다시 확인해 입력하세요.",
+            },
+          },
+        },
+      }),
+    );
+    render(<KeyManagement />);
+
+    fireEvent.change(await screen.findByLabelText("암호구"), {
+      target: { value: "wrong-passphrase" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "잠금 해제" }));
+
+    await waitFor(() => expect(screen.getByText(/암호구가 올바르지 않습니다/)).toBeTruthy());
+    // 여전히 잠겨 있다 — 틀린 암호구가 조용히 들어앉지 않는다.
+    expect(screen.getByText(/비밀키가 잠겨 있습니다/)).toBeTruthy();
+  });
+
+  it("열려 있으면 그 사실과 다시 잠그는 방법을 알린다", async () => {
+    vi.stubGlobal("fetch", stub({ "GET /api/keys/status": { status: 200, body: UNLOCKED } }));
+    render(<KeyManagement />);
+
+    expect(await screen.findByText(/비밀키가 열려 있습니다/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "다시 잠그기" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "잠금 해제" })).toBeNull();
+  });
+
+  it("암호구가 없는 키에는 잠금 이야기를 꺼내지 않는다", async () => {
     vi.stubGlobal("fetch", stub({ "GET /api/keys/status": { status: 200, body: WITH_KEYS } }));
     render(<KeyManagement />);
 
     await screen.findByText("키 교체·삭제");
-    expect(screen.queryByText(/암호구로 잠긴 키입니다/)).toBeNull();
+    expect(screen.queryByText(/비밀키가 잠겨 있습니다/)).toBeNull();
+    expect(screen.queryByText(/비밀키가 열려 있습니다/)).toBeNull();
   });
 });
 

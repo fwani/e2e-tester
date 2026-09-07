@@ -52,6 +52,11 @@ NO_REJECTION: dict[tuple[str, str], str] = {
     ("GET", "/api/project/list"): "프로젝트가 없으면 빈 목록이다. 거절할 대상이 없다",
     ("GET", "/api/keys/status"): "키가 없다는 것도 상태다. 없는 것이 오류가 아니다",
     ("GET", "/api/keys/permission-check"): "권한 여부를 알려주는 것이 이 경로의 결과다",
+    ("DELETE", "/api/keys/unlock"): (
+        "들고 있던 암호구를 버리는 조작이다. 잠긴 것을 다시 잠그라는 요청의 결과는 "
+        "「잠겨 있음」 이며, 그것을 오류로 만들면 화면이 상태를 먼저 확인해야 하는 "
+        "순서 의존이 생긴다"
+    ),
     ("GET", "/api/ai/availability"): "AI 를 쓸 수 없다는 것도 가용성 답변이다",
     ("GET", "/api/sessions"): (
         "살아 있는 세션 목록이다. 하나도 없으면 빈 목록이며 거절할 대상이 없다"

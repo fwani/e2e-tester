@@ -163,6 +163,8 @@ def test_key_status_reports_fingerprint_and_permission(
         # UX U-09 — 실제 경로와 영향 범위. 화면이 고정 문구 대신 이것을 찍는다.
         "key_dir",
         "sealed_projects",
+        # FR-089e-3 — 지금 비밀키를 열 수 있는지. **여부뿐이며 암호구는 담기지 않는다.**
+        "unlocked",
     }
 
 
