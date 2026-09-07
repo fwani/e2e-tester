@@ -120,6 +120,15 @@ export interface CapabilityFacts {
   busy?: boolean;
   /** O3 — 세션이 유실됐다 */
   sessionLost?: boolean;
+  /**
+   * O6 — 일시정지 **전이 중**이다 (005 FR-143·FR-144).
+   *
+   * 요청은 갔지만 아직 Step 경계에 닿지 않았다. 그 동안 편집 팔레트를 열면 사용자는
+   * 아직 돌고 있는 실행에 편집을 건다 — 리포트가 요청 0.12초 뒤에 본 것이 그것이다.
+   */
+  pausing?: boolean;
+  /** O8 — 중지 요청이 진행 중이다 (005 FR-147). 「중지 중…」의 근거. */
+  stopRequested?: boolean;
 }
 
 const CONDITION_FACT: Record<ConditionKey, keyof CapabilityFacts> = {
@@ -211,10 +220,76 @@ const OVERRIDES: {
     actions: ["save", "run.all", "run.from", "run.fromHere", "step.reorder", "step.delete"],
     remedy: null,
   },
+  /*
+    O5~O8 은 T037·T041 의 **실측 대조**가 더한 것이다 (UC-401 · FR-247).
+
+    표의 국면 열만으로는 같은 국면 안에서 갈리는 사정을 담을 수 없었다. 국면마다 표에
+    적으면 한 국면이 빠지고, 빠진 국면에서 화면은 쓸 수 없는 조작을 활성으로 그린다 —
+    O1 을 덮어쓰기로 둔 것과 같은 이유다.
+  */
+  {
+    // O5 — 실행이 이미 끝났다. 「일시정지」가 활성으로 남아 있던 것이 005 U-08 의 이웃이다.
+    key: "O5",
+    fact: "sessionFinished",
+    actions: ["run.pause", "run.pacing"],
+    remedy: null,
+  },
+  {
+    // O6 — 일시정지 전이 중 (005 FR-143·FR-144). **「중지」는 뺀다** — 기다리다
+    // 포기하는 것이 가장 자연스러운 다음 행동이고, 그것까지 잠근 것이 U-04 였다.
+    key: "O6",
+    fact: "pausing",
+    actions: [
+      "run.resume",
+      "run.resumeSkipFailure",
+      "run.fromHere",
+      "step.recordStart",
+      "step.recordStop",
+      "step.addNaturalLanguage",
+      "step.addAssertion",
+      "step.update",
+      "step.markSensitive",
+      "step.repick",
+      "step.delete",
+      "step.reorder",
+      "save",
+    ],
+    remedy: null,
+  },
+  {
+    /*
+      O7 — 실패한 Step 이 있으면 「계속하기」를 잠근다 (005 FR-136 · U-05).
+
+      이전에는 「계속하기」가 실패를 조용히 지나가고 배지를 「완료」로 바꿨다. 저장된
+      결과는 실패인데 화면은 완료라고 말했다.
+
+      **해소 방법을 달지 않는다.** 건너뛰는 길(`run.resumeSkipFailure`)은 같은 자리에
+      **별도 버튼**으로 있어야 하는 것이 FR-137 의 요구이고, 그것을 해소 방법 링크로
+      대신하면 "다른 버튼" 이라는 요구가 사라진다.
+    */
+    key: "O7",
+    fact: "hasFailedStep",
+    actions: ["run.resume"],
+    remedy: null,
+  },
+  {
+    // O8 — 중지 요청이 도는 중 (005 FR-147). 라벨은 `stopLabel()` 이 「중지 중…」으로 바꾼다.
+    key: "O8",
+    fact: "stopRequested",
+    actions: ["run.stop"],
+    remedy: null,
+  },
+  {
+    // 건너뛸 실패가 없으면 건너뛰기는 뜻이 없다 (C3). 참·거짓 방향이 반대다.
+    key: "C3",
+    fact: "hasFailedStep",
+    actions: ["run.resumeSkipFailure"],
+    remedy: null,
+  },
 ];
 
 /** O4 는 「Step 이 있다」가 거짓일 때 걸린다 — 다른 덮어쓰기와 참·거짓 방향이 반대다. */
-const NEGATED_OVERRIDES = new Set<DisabledReasonKey>(["O4"]);
+const NEGATED_OVERRIDES = new Set<DisabledReasonKey>(["O4", "C3"]);
 
 /* ─── 표 (ui-contract §3-1 ~ §3-4) ─────────────────────────────────────────── */
 
@@ -311,7 +386,14 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.resume": ON,
     "run.resumeSkipFailure": na("N2"),
     "run.stop": ON,
-    "run.pacing": cond("C4"),
+    /*
+      T041 — **C4 를 실측으로 확정했다.** 사람이 조작하는 동안 재생 속도는 지금 실행에
+      적용되지 않는다 (`PacingControl` 의 `manipulationPhase`). 그러나 그것은 조작을
+      막을 근거가 아니라 **라벨의 근거**다 — 004 FR-109 로 여기서 고른 값이 다음 실행의
+      기본값이 되므로, 비활성으로 두면 005 FR-174 가 요구한 "무엇에 쓰이는 값인지
+      밝히되 감추지 않는다" 를 어긴다. 표를 고친다 (UC-401).
+    */
+    "run.pacing": ON,
     "browser.openAt": na("N1"),
     "session.open": na("N1"),
     "step.recordStart": ON,
@@ -341,8 +423,14 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
 
   /* 실행 중 — 저장된 테스트를 재생한다 */
   running: {
-    "run.all": off("C1", "run.stop"),
-    "run.from": off("C1", "run.stop"),
+    /*
+      T037 대조 — 끝난 실행에서는 **재실행이 실제로 열린다.** `SessionScreen` 의
+      `rerun()` 이 세션을 폐기하고 새 세션을 연다. 표가 `○` 로 못박고 있던 것은
+      현재 동작과 어긋났다 (UC-401). 조건 C1 로 바꾼다 — 세션이 살아 있는 동안에는
+      같은 이유·같은 해소 방법으로 비활성이므로 실행 중 동작은 바뀌지 않는다.
+    */
+    "run.all": cond("C1"),
+    "run.from": cond("C1"),
     "run.fromHere": na("N2"),
     "run.pause": ON,
     "run.resume": na("N2"),
@@ -370,7 +458,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.start": na("N2"),
     "ai.chooseBlocked": na("N2"),
     "artifact.select": na("N2"),
-    "result.show": na("N2"),
+    // T037 대조 — 끝난 실행의 「결과 자세히 보기」는 이 국면에도 있다 (005 FR-133).
+    "result.show": cond("C12"),
     "nav.editStep": na("N2"),
     "nav.back": ON,
     "tab.select": ON,
@@ -383,7 +472,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.fromHere": cond("C2"),
     "run.pause": na("N1"),
     "run.resume": cond("C2"),
-    "run.resumeSkipFailure": cond("C3"),
+    /*
+      T037 대조 — 건너뛰기는 **둘 다** 필요하다: 이어갈 브라우저(C2)와 건너뛸 실패(C3).
+      표의 셀은 조건 하나만 담으므로 브라우저를 셀에, 실패 유무를 덮어쓰기(아래 `C3`)에
+      둔다. 이전 표는 C3 만 보고 있어서 브라우저가 없는 검토 상태에서도 활성이었다 —
+      누르면 서버가 거절한다. 그것이 005 U-01 의 형태다.
+    */
+    "run.resumeSkipFailure": cond("C2"),
     "run.stop": ON,
     "run.pacing": cond("C2"),
     "browser.openAt": na("N1"),

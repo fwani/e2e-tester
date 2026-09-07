@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import tokens from "../src/theme/tokens.css?raw";
 import chrome from "../src/components/design/Chrome.tsx?raw";
 import createTest from "../src/pages/CreateTest.tsx?raw";
-import sessionScreen from "../src/pages/SessionScreen.tsx?raw";
+import workbench from "../src/components/workbench/Workbench.tsx?raw";
 
 /** 주석을 걷어낸 실제 선언부. 주석의 설명 문구가 단언을 통과시키면 안 된다. */
 const declarations = tokens.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -73,8 +73,10 @@ describe("DC-011 — 기준 폭을 유지한 채 스크롤한다", () => {
     expect(createTest).toMatch(/<Artboard\s+width=\{1000\}/);
   });
 
-  it("StepInspector 겹침에 가로 스크롤이 있다", () => {
-    // `position: fixed` 라 페이지 스크롤이 닿지 않는다. 없으면 좁은 창에서 잘린다.
-    expect(sessionScreen).toMatch(/overflowX:\s*"auto"/);
+  it("Step 상세 겹침에 가로 스크롤이 있다", () => {
+    // 절대 배치라 페이지 스크롤이 닿지 않는다. 없으면 좁은 창에서 잘린다.
+    // 007 통합으로 겹침의 주인이 `SessionScreen` 에서 `Workbench` 로 옮겨졌다 —
+    // 일곱 국면이 **같은 겹침 하나**를 쓴다 (FR-230).
+    expect(workbench).toMatch(/overflowX:\s*"auto"/);
   });
 });

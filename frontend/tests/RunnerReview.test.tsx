@@ -1,15 +1,21 @@
 /**
- * 중지 후 검토 화면. DR-010·DR-012·DR-013·DR-014.
+ * 중지 후 검토 국면. DR-010·DR-012·DR-013·DR-014.
  *
  * 사용자가 겪은 것: 직접 녹화 중 중지를 누르면 화면이 목록으로 튕겨 나가고 기록한
  * Step 을 보지도 저장하지도 못했다. **화면이 남아 있는지**가 이 파일의 요점이다.
  * 서버 쪽(세션이 살아남아 저장이 성공하는지)은 `test_stop_then_save.py` 가 본다.
+ *
+ * **007 이행 2** — `RunnerPaused` 대신 `SessionWorkbench` 를 그린다. 검토 국면은
+ * `state: "review"` 가 만든다. 브라우저를 요구하는 도구를 **감추던 것을 비활성 + 이유로**
+ * 바꿨다 (FR-234) — 막힌다는 사실은 같고, 왜 막혔는지가 화면에 남는다.
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Step } from "../src/types/generated/step";
-import { RunnerPaused } from "../src/pages/RunnerPaused";
+import { SessionWorkbench } from "../src/pages/SessionScreen";
+import { sessionProps } from "./helpers/session";
+import { sessionView } from "./helpers/workbench";
 
 const steps = [
   {
@@ -19,6 +25,7 @@ const steps = [
     author: "human",
     tab: 0,
     timeout_ms: 5000,
+    frame_url: null,
     target: { test_id: { value: "login", status: "verified" } },
   },
   {
@@ -28,47 +35,38 @@ const steps = [
     author: "human",
     tab: 0,
     timeout_ms: 5000,
+    frame_url: null,
     value: "a@b.c",
     target: { test_id: { value: "email", status: "verified" } },
   },
 ] as unknown as Step[];
 
-const base = {
-  title: "TC-001",
-  testId: "TC-001",
-  currentStepIndex: 2,
-  editWarnings: [],
-  steps,
-  outcomeOf: () => "pass" as const,
-  durationOf: () => 120,
-  busy: false,
-  currentUrl: "https://x.test/",
-  mirroredTab: 0,
-  mirror: <div />,
-  selectedStepId: null,
-  onSelectStep: () => undefined,
-  reordering: false,
-  saveName: "",
-  onSaveNameChange: () => undefined,
-  onSave: () => undefined,
-  onResume: () => undefined,
-  onStop: () => undefined,
-  onRecordActionsStart: () => undefined,
-  onRecordActionsStop: () => undefined,
-  onAddAssertion: () => undefined,
-  onEditStep: () => undefined,
-  onToggleReorder: () => undefined,
-  onApplyReorder: () => undefined,
-  onRunFrom: () => undefined,
-  onDeleteStep: () => undefined,
-  onNaturalLanguage: () => undefined,
-};
+function props(
+  view: Record<string, unknown> = {},
+  overrides: Record<string, unknown> = {},
+) {
+  return sessionProps({
+    view: sessionView({
+      state: "review",
+      test_id: null,
+      steps,
+      current_step_index: 2,
+      ...view,
+    }),
+    outcomeOf: () => "pass",
+    durationOf: () => 120,
+    ...overrides,
+  });
+}
+
+const act = (id: string) =>
+  document.querySelector(`button[data-action="${id}"]`) as HTMLButtonElement;
 
 afterEach(cleanup);
 
 describe("중지 후 검토 (DR-010)", () => {
   it("기록된 Step 이 화면에 남아 있다", () => {
-    render(<RunnerPaused {...base} review />);
+    render(<SessionWorkbench {...props()} />);
 
     expect(screen.getByText("로그인 버튼 클릭")).toBeTruthy();
     expect(screen.getByText("이메일 입력")).toBeTruthy();
@@ -76,81 +74,83 @@ describe("중지 후 검토 (DR-010)", () => {
 
   it("이름을 붙여 저장할 수 있다 (DR-013)", () => {
     const onSave = vi.fn();
-    render(<RunnerPaused {...base} review saveName="내 테스트" onSave={onSave} />);
+    render(<SessionWorkbench {...props({}, { saveName: "내 테스트", onSave })} />);
 
-    fireEvent.click(screen.getByText("저장"));
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
     expect(onSave).toHaveBeenCalledOnce();
   });
 
   it("Step 이 없으면 그 사실을 안내한다", () => {
-    // 옛 StepList.test.tsx 에 있던 단언. 빈 목록 안내는 행이 아니라 패널의 몫이라
-    // 화면 테스트로 옮겼다 (T101).
-    render(<RunnerPaused {...base} review steps={[]} />);
+    render(<SessionWorkbench {...props({ steps: [] })} />);
     expect(screen.getByText("기록된 Step 이 없습니다.")).toBeTruthy();
   });
 
   it("Step 이 없으면 저장할 수 없다 (001 FR-029)", () => {
-    render(<RunnerPaused {...base} review steps={[]} saveName="이름" />);
+    render(<SessionWorkbench {...props({ steps: [] }, { saveName: "이름" })} />);
 
-    expect((screen.getByText("저장") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("Step 이 없으면 저장할 수 없습니다.")).toBeTruthy();
   });
 
   it("이름이 비면 저장할 수 없다", () => {
-    render(<RunnerPaused {...base} review saveName="" />);
+    render(<SessionWorkbench {...props({}, { saveName: "" })} />);
 
-    expect((screen.getByText("저장") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("브라우저가 없으므로 「계속하기」를 그리지 않는다 (001 FR-043a)", () => {
-    render(<RunnerPaused {...base} review />);
+  it("브라우저가 없으므로 「계속하기」를 잠그고 이유를 붙인다 (001 FR-043a)", () => {
+    render(<SessionWorkbench {...props()} />);
+    expect(act("run.resume").disabled).toBe(true);
+    expect(
+      document.querySelector("[data-disabled-reason='run.resume']")?.textContent,
+    ).toContain("브라우저");
 
-    expect(screen.queryByText("계속하기")).toBeNull();
-    // 일시정지 상태에서는 있어야 한다 — 감추는 조건이 review 임을 못 박는다.
+    // 일시정지 상태에서는 눌린다 — 잠그는 조건이 「브라우저 없음」임을 못 박는다.
     cleanup();
-    render(<RunnerPaused {...base} review={false} />);
-    expect(screen.getByText("계속하기")).toBeTruthy();
+    render(<SessionWorkbench {...props({ state: "paused" })} />);
+    expect(act("run.resume").disabled).toBe(false);
   });
 
-  it("검토 상태에서는 브라우저가 필요한 도구를 감춘다", () => {
-    render(<RunnerPaused {...base} review />);
+  it("검토 상태에서는 브라우저가 필요한 도구를 잠그되 감추지 않는다", () => {
+    render(<SessionWorkbench {...props({}, { focusedStepId: "step-01" })} />);
 
-    expect(screen.queryByText("직접 동작 추가")).toBeNull();
-    expect(screen.queryByText("Assertion 추가")).toBeNull();
-    expect(screen.queryByLabelText("자연어로 Step 추가")).toBeNull();
-    // 브라우저 없이도 되는 것은 남는다 (DR-012).
-    expect(screen.getByText("Step 삭제")).toBeTruthy();
-    expect(screen.getByText("순서 변경")).toBeTruthy();
+    expect(act("step.recordStart").disabled).toBe(true);
+    expect(act("step.addAssertion").disabled).toBe(true);
+    expect((screen.getByLabelText("자연어로 Step 추가") as HTMLInputElement).disabled).toBe(true);
+    // 브라우저 없이도 되는 것은 눌린다 (DR-012).
+    expect(act("step.delete").disabled).toBe(false);
+    expect(act("step.reorder").disabled).toBe(false);
   });
 
   it("Step 을 골라 지울 수 있다 (DR-012)", () => {
     const onDeleteStep = vi.fn();
-    render(
-      <RunnerPaused {...base} review selectedStepId="step-01" onDeleteStep={onDeleteStep} />,
-    );
+    render(<SessionWorkbench {...props({}, { focusedStepId: "step-01", onDeleteStep })} />);
 
-    fireEvent.click(screen.getByText("Step 삭제"));
+    fireEvent.click(act("step.delete"));
     expect(onDeleteStep).toHaveBeenCalledWith("step-01");
   });
 
   it("브라우저 유실 뒤에도 이름을 붙여 저장할 수 있다 (DR-015)", () => {
-    // converge 1회차가 잡은 구멍. 백엔드는 유실된 세션의 Step 을 보존하고 LOST 에서
-    // SAVE 를 허용하는데, 화면이 저장 상자가 없는 Main 으로 보내 저장할 방법이 없었다.
-    // `lost` 는 `review` 와 처지가 같으므로(브라우저 없음·Step 살아 있음) 같은 화면이 맡는다.
+    // 백엔드는 유실된 세션의 Step 을 보존하고 LOST 에서 SAVE 를 허용한다. `lost` 는
+    // `review` 와 처지가 같으므로(브라우저 없음·Step 살아 있음) 같은 국면이 맡는다.
     const onSave = vi.fn();
-    render(<RunnerPaused {...base} review saveName="유실 후 저장" onSave={onSave} />);
+    render(
+      <SessionWorkbench
+        {...props({ state: "lost" }, { saveName: "유실 후 저장", onSave })}
+      />,
+    );
 
     expect(screen.getByLabelText("테스트 이름")).toBeTruthy();
-    fireEvent.click(screen.getByText("저장"));
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
     expect(onSave).toHaveBeenCalledOnce();
   });
 
   it("나가기 버튼의 문구가 검토 상태에서 달라진다", () => {
-    render(<RunnerPaused {...base} review />);
-    expect(screen.getByText("나가기")).toBeTruthy();
+    render(<SessionWorkbench {...props()} />);
+    expect(act("run.stop").textContent).toBe("나가기");
 
     cleanup();
-    render(<RunnerPaused {...base} review={false} />);
-    expect(screen.getByText("중지")).toBeTruthy();
+    render(<SessionWorkbench {...props({ state: "paused" })} />);
+    expect(act("run.stop").textContent).toBe("중지");
   });
 });

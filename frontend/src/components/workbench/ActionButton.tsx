@@ -33,8 +33,15 @@ export interface ActionButtonProps {
   onRemedy?: (action: ActionId) => void;
   /** 라벨을 상황에 맞게 바꿀 때. 없으면 `ACTION_LABEL` 을 쓴다 (005 FR-147·FR-149) */
   label?: string;
-  /** 강조 여부. 확정 디자인의 노란 배경(`#F5D000`)이 강조다 */
-  emphasis?: boolean;
+  /**
+   * 강조 단계.
+   *
+   * - `true`  — 확정 디자인의 노란 배경(`#F5D000`). 그 국면의 주 조작
+   * - `false` — 보통. 종이 배경 + 그림자
+   * - `"quiet"` — **강조를 뺀다** (005 FR-147 · U-08). 끝난 실행의 「닫기」처럼 파괴적
+   *   이거나 되돌리기 어려운 조작이 화면에서 가장 눈에 띄는 컨트롤이 되지 않게 한다
+   */
+  emphasis?: boolean | "quiet";
   icon?: ReactNode;
   /** 확정 디자인의 46px 버튼이 아닌 작은 자리(Step 행 안 등) */
   compact?: boolean;
@@ -69,10 +76,13 @@ export function ActionButton({
     color: INK,
   } as const;
 
+  const quiet = emphasis === "quiet";
   const live = {
     ...base,
-    background: emphasis ? "#F5D000" : "#FFFDF6",
-    boxShadow: compact ? "none" : `5px 5px 0 ${INK}`,
+    background: emphasis === true ? "#F5D000" : "#FFFDF6",
+    border: `3px solid ${quiet ? "#9A968A" : INK}`,
+    color: quiet ? "#6B675C" : INK,
+    boxShadow: compact || quiet ? "none" : `5px 5px 0 ${INK}`,
     cursor: "pointer",
   } as const;
 

@@ -21,6 +21,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { RunResult } from "../src/pages/RunResult";
+import { SessionWorkbench } from "../src/pages/SessionScreen";
+import { sessionProps } from "./helpers/session";
+import { sessionView } from "./helpers/workbench";
 import { outcomeChip, outcomeLabel, runSummary } from "../src/lib/wording";
 import type { Outcome, RunResult as RunResultData } from "../src/types/generated/run-result";
 
@@ -141,44 +144,31 @@ describe("결말 요약은 한 화면에 한 번만 나온다 (FR-140·U-19)", (
   });
 
   /**
-   * T123 — **세션 화면의 두 자리**도 같은 규칙을 지킨다.
+   * T123 — **세션 국면도 같은 규칙을 지킨다.**
    *
-   * `SessionScreen` 은 결말 요약을 그릴 수 있는 자리가 둘이다 — 정보 배너와, 페이지가
+   * 007 이전에는 결말 요약을 그릴 수 있는 자리가 둘이었다 — 정보 배너와, 페이지가
    * 스스로 그리는 결말 표시(`Runner` 의 결말 바 / `RunnerPaused` 의 결말 블록). 배너의
    * 조건이 `!isDone` 하나였고 **멈추기 전에 실행이 끝난 세션은 `paused`** 이므로
    * `isDone` 이 거짓이다. 그래서 배너와 결말 블록이 같은 문장을 나란히 그렸다.
-   * T042 가 없앤 것과 같은 결함이 다른 조건으로 남아 있었다.
    *
-   * **원문으로 본다.** 세션 화면을 통째로 그리려면 실시간 통로와 미러까지 흉내 내야
-   * 하고, 그러면 이 검증이 무엇을 재는지 흐려진다 —
-   * `tests/abnormal/screen-blockers.test.tsx` 가 같은 이유로 같은 방식을 쓴다. 실제로
-   * 그렇게 보이는가는 실브라우저 계층이 본다.
+   * 통합 뒤에는 요약을 그릴 수 있는 자리가 **구조적으로 하나뿐이다** — 국면 띠의
+   * `data-run-summary` (FR-218d). 조건을 원문에서 확인하는 대신 **세어서** 본다.
    */
-  it("세션 화면 — 요약 배너가 결말을 그리는 화면과 겹치지 않는다 (T123)", () => {
-    const source = (
-      import.meta.glob("../src/pages/SessionScreen.tsx", {
-        query: "?raw",
-        import: "default",
-        eager: true,
-      }) as Record<string, string>
-    )["../src/pages/SessionScreen.tsx"];
-
-    expect(source, "SessionScreen.tsx 원문을 읽지 못했다").toBeTruthy();
-
-    // 배너가 `summary` 를 그리는 자리를 찾는다. 줄바꿈·들여쓰기가 바뀌어도 조건만 본다.
-    const flat = code(source ?? "").replace(/\s+/g, " ");
-    const guard = /(summary !== null[^)]*?) && \(? ?<Banner tone="info"> ?\{summary\}/
-      .exec(flat)?.[1];
-
-    expect(guard, "요약 배너의 조건을 찾지 못했다 — 자리가 옮겨졌으면 이 단정을 옮긴다")
-      .toBeTruthy();
-    // 종료 상태는 `Runner` 의 결말 바가, 멈추기 전 종료는 `RunnerPaused` 의 결말 블록이
-    // 요약을 갖는다. 배너는 그 둘을 **모두** 비켜야 한다.
-    expect(guard, `요약 배너가 !isDone 을 보지 않는다: ${guard}`).toContain("!isDone");
-    expect(
-      guard,
-      `요약 배너가 finishedWhilePausing 을 비키지 않는다 — 결말 블록과 겹친다: ${guard}`,
-    ).toContain("!finishedWhilePausing");
+  it.each([
+    ["끝난 실행", "completed"],
+    ["멈추기 전에 끝난 실행", "paused"],
+    ["중지 후 검토", "review"],
+  ] as const)("세션 국면 — %s 에서도 결말 요약은 하나다 (T123)", (_name, state) => {
+    render(
+      <SessionWorkbench
+        {...sessionProps({
+          view: sessionView({ state }),
+          summary: "실패 · Step 06 에서 실패 · 5 / 7 통과",
+          failure: { index: 5, message: "요소를 찾을 수 없습니다" },
+        })}
+      />,
+    );
+    expect(document.querySelectorAll("[data-run-summary]")).toHaveLength(1);
   });
 });
 

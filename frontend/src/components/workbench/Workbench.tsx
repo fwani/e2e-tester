@@ -49,6 +49,14 @@ export interface WorkbenchProps {
 
   /** 국면 띠 오른쪽의 주요 조작. 어댑터가 `ActionButton` 으로 만들어 넘긴다 */
   phaseActions: ReactNode;
+  /**
+   * 알림 자리에 함께 오는 것 (실시간 통로 끊김 배너 등).
+   *
+   * `Notice` 로 표현할 수 없는 알림 — 조작 식별자를 갖지 않는 자체 버튼이 있는 것 —
+   * 을 위한 자리다. **자리는 같다** — 알림이 국면마다 다른 곳에 나타나면 사용자는
+   * 그것을 찾아야 한다 (T020 의 이유와 같다).
+   */
+  noticesExtra?: ReactNode;
   /** 헤더 오른쪽의 이동 조작 */
   headerActions?: ReactNode;
   /** Step 행 안의 편집 조작 */
@@ -57,6 +65,8 @@ export interface WorkbenchProps {
   stepHeaderExtra?: ReactNode;
   /** Step 이 0개일 때의 안내. 국면마다 다르다 */
   stepEmptyNotice?: ReactNode;
+  /** Step 패널 바닥의 조작 블록. **일곱 국면에서 같은 자리다** (FR-235) */
+  stepFooter?: ReactNode;
 
   onSelectStep: (stepId: string) => void;
   onCloseDetail: () => void;
@@ -85,10 +95,12 @@ type WorkbenchStepActions = NonNullable<
 export function Workbench({
   model,
   phaseActions,
+  noticesExtra,
   headerActions,
   rowActions,
   stepHeaderExtra,
   stepEmptyNotice,
+  stepFooter,
   onSelectStep,
   onCloseDetail,
   onSaveStep,
@@ -128,6 +140,7 @@ export function Workbench({
       <PhaseBar bar={model.phaseBar} testName={model.testName} actions={phaseActions} />
 
       {/* 알림 — 국면 띠 바로 아래 한 자리 */}
+      {noticesExtra}
       <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
 
       {/* ─── 층③ 본문 ──────────────────────────────────────────────────────── */}
@@ -171,6 +184,7 @@ export function Workbench({
           rowActions={rowActions}
           headerExtra={stepHeaderExtra}
           emptyNotice={stepEmptyNotice}
+          footer={stepFooter}
         />
 
         {/*
@@ -188,6 +202,13 @@ export function Workbench({
               justifyContent: "flex-end",
               background: "rgba(20,19,15,0.28)",
               zIndex: 20,
+              /*
+                DC-011 — 창이 확정 디자인의 기준 폭(640px)보다 좁으면 **기준 폭을 유지한
+                채 스크롤한다.** 겹침이 절대 배치라 페이지 스크롤이 닿지 않으므로 가로
+                스크롤을 여기서 준다. 없으면 좁은 창에서 판이 잘린 채 접근할 수 없다.
+              */
+              overflowX: "auto",
+              overflowY: "auto",
             }}
           >
             <StepDetail

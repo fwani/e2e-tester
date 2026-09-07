@@ -272,6 +272,14 @@ export interface StepListProps {
   headerExtra?: ReactNode;
   /** Step 이 0개일 때의 안내. 국면마다 다르다 */
   emptyNotice?: ReactNode;
+  /**
+   * 패널 바닥 — Step 을 대상으로 하는 조작의 **유일한 자리** (FR-235).
+   *
+   * 확정 디자인 3종(`Main`·`RunnerPaused`·`Takeover`)이 모두 460px 패널 아래에 잉크
+   * 테두리로 구분된 조작 블록을 갖는다. 007 이 새로 만드는 자리가 아니라 이미 공유되던
+   * 자리이며, 조작이 국면마다 다른 곳에 있던 것을 여기 하나로 모은다.
+   */
+  footer?: ReactNode;
 }
 
 /**
@@ -285,6 +293,7 @@ export function StepList({
   rowActions,
   headerExtra,
   emptyNotice,
+  footer,
 }: StepListProps) {
   return (
     <div
@@ -317,6 +326,21 @@ export function StepList({
           />
         ))}
       </div>
+
+      {footer !== undefined && footer !== null && (
+        <div
+          data-workbench-step-footer
+          style={{
+            borderTop: `3px solid ${INK}`,
+            background: "#EFEBE0",
+            padding: "14px 18px 16px",
+            maxHeight: "52%",
+            overflowY: "auto",
+          }}
+        >
+          {footer}
+        </div>
+      )}
     </div>
   );
 }
