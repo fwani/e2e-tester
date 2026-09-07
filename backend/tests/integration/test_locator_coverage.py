@@ -17,6 +17,8 @@ import pytest
 from fastapi.testclient import TestClient
 from us2_support import stop_quietly
 
+from tests.step_wait import has_kinds, wait_for_steps
+
 MIN_VERIFIED_CANDIDATES = 2
 COVERAGE_TARGET = 0.90
 """SC-008 — 후보 2개 이상인 Step 이 90% 이상."""
@@ -116,10 +118,11 @@ def test_element_without_test_id_still_gets_candidates(
 
         async def act(p: Any = page) -> None:
             await p.fill("#password", "record-only-not-a-real-secret")
-            await asyncio.sleep(0.4)
 
         project_client.portal.call(act)  # type: ignore[attr-defined]
-        steps = project_client.get(f"/api/sessions/{sid}").json()["steps"]
+        # 고정 시간을 자지 않는다 — 부하가 있으면 짧고 평상시에는 길다
+        # (`tests/step_wait.py`).
+        steps = wait_for_steps(project_client, sid, has_kinds("fill"))
     finally:
         stop_quietly(project_client, sid)
 

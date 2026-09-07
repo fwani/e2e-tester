@@ -152,6 +152,20 @@ def generate(paths: KeyPaths, passphrase: str | None = None) -> str:
     return fingerprint(sk.public_key)
 
 
+# ─── 암호구 파생 비용 ───────────────────────────────────────────────────────
+#
+# 봉인과 개봉이 **반드시 같은 값**을 써야 한다 — 비용은 봉인된 파일에 기록되지 않으므로
+# 두 쪽이 갈라지면 열 수 없는 키가 된다. 그래서 상수를 한곳에 둔다.
+#
+# 테스트는 이 두 상수를 더 싼 프로필로 바꿔 쓴다 (`tests/conftest.py`). argon2id 파생
+# 자체는 그대로 지나므로 검증하는 성질은 같고, MODERATE 의 회당 2.7초만 사라진다.
+# 제품 기본값이 MODERATE 임은 `test_secrets.py` 가 따로 못 박는다 — 테스트 편의가
+# 제품의 보호 수준을 조용히 낮추지 못하게 하는 잠금이다.
+
+KDF_OPSLIMIT = pwhash.argon2id.OPSLIMIT_MODERATE
+KDF_MEMLIMIT = pwhash.argon2id.MEMLIMIT_MODERATE
+
+
 def _kdf_salt(blob: bytes) -> bytes:
     return blob[: pwhash.argon2id.SALTBYTES]
 
@@ -162,8 +176,8 @@ def _wrap_with_passphrase(raw: bytes, passphrase: str) -> bytes:
         secret.SecretBox.KEY_SIZE,
         passphrase.encode("utf-8"),
         salt,
-        opslimit=pwhash.argon2id.OPSLIMIT_MODERATE,
-        memlimit=pwhash.argon2id.MEMLIMIT_MODERATE,
+        opslimit=KDF_OPSLIMIT,
+        memlimit=KDF_MEMLIMIT,
     )
     return salt + secret.SecretBox(key).encrypt(raw)
 
@@ -175,8 +189,8 @@ def _unwrap_with_passphrase(blob: bytes, passphrase: str) -> bytes:
         secret.SecretBox.KEY_SIZE,
         passphrase.encode("utf-8"),
         salt,
-        opslimit=pwhash.argon2id.OPSLIMIT_MODERATE,
-        memlimit=pwhash.argon2id.MEMLIMIT_MODERATE,
+        opslimit=KDF_OPSLIMIT,
+        memlimit=KDF_MEMLIMIT,
     )
     try:
         return secret.SecretBox(key).decrypt(body)

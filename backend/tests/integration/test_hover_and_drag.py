@@ -17,6 +17,8 @@ import pytest
 from fastapi.testclient import TestClient
 from us2_support import replay, result_of, stop_quietly
 
+from tests.step_wait import has_kinds, wait_for_steps
+
 HOVER_SETTLE_S = 0.4
 """hover 가 화면을 바꿨는지 리코더가 관측할 시간. 주입 스크립트의 창(300ms)보다 넉넉하다."""
 
@@ -49,10 +51,11 @@ def test_hover_that_changes_the_screen_is_recorded(
 
         project_client.portal.call(act)  # type: ignore[attr-defined]
 
-        hovers = [s for s in _steps(project_client, sid) if s["type"] == "hover"]
+        steps = wait_for_steps(project_client, sid, has_kinds("hover"))
+        hovers = [s for s in steps if s["type"] == "hover"]
         assert hovers, (
             "메뉴를 여는 hover 가 기록되지 않았다. "
-            f"기록된 종류: {[s['type'] for s in _steps(project_client, sid)]}"
+            f"기록된 종류: {[s['type'] for s in steps]}"
         )
         target = hovers[-1]["target"]
         assert target["test_id"]["value"] == "tools-menu"
@@ -106,10 +109,11 @@ def test_drag_is_recorded_with_both_ends(
 
         project_client.portal.call(act)  # type: ignore[attr-defined]
 
-        drags = [s for s in _steps(project_client, sid) if s["type"] == "drag"]
+        steps = wait_for_steps(project_client, sid, has_kinds("drag"))
+        drags = [s for s in steps if s["type"] == "drag"]
         assert drags, (
             "끌어다 놓기가 기록되지 않았다. "
-            f"기록된 종류: {[s['type'] for s in _steps(project_client, sid)]}"
+            f"기록된 종류: {[s['type'] for s in steps]}"
         )
         step = drags[-1]
         assert step["target"]["test_id"]["value"] == "chip-events"
@@ -137,7 +141,7 @@ def test_hover_menu_flow_replays(project_client: TestClient, fixture_app: str) -
 
         project_client.portal.call(act)  # type: ignore[attr-defined]
 
-        steps = _steps(project_client, sid)
+        steps = wait_for_steps(project_client, sid, has_kinds("hover", "click"))
         kinds = [s["type"] for s in steps]
         assert "hover" in kinds, f"hover Step 이 없다: {kinds}"
         assert "click" in kinds, f"메뉴 항목 클릭이 없다: {kinds}"
@@ -173,7 +177,10 @@ def test_drag_flow_replays(project_client: TestClient, fixture_app: str) -> None
             await asyncio.sleep(0.5)
 
         project_client.portal.call(act)  # type: ignore[attr-defined]
-        assert any(s["type"] == "drag" for s in _steps(project_client, sid))
+        steps = wait_for_steps(project_client, sid, has_kinds("drag"))
+        assert any(s["type"] == "drag" for s in steps), (
+            f"끌어다 놓기가 기록되지 않았다. 기록된 종류: {[s['type'] for s in steps]}"
+        )
 
         saved = project_client.post(
             f"/api/sessions/{sid}/save", json={"name": "칩 보관"}

@@ -26,8 +26,15 @@ jobs:
         working-directory: backend
         run: uv run lint-imports
 
-  backend:
-    name: 백엔드 검사·테스트
+  # ─────────────────────────────────────────────────────────────────────────
+  # 백엔드 검증을 두 잡으로 나눈다. 이전에는 한 잡이 두 pytest 단계를 **순서대로**
+  # 돌아 실시간이 두 계층의 합이었다. 나누면 최댓값이 된다.
+  #
+  # 나누는 선은 `browser` 마커다 (`backend/tests/conftest.py`). 빠른 계층은 Chromium
+  # 도, npm 도, 픽스처 앱도 필요하지 않다 — 그 설치 단계(1~2분)가 그대로 빠진다.
+  # ─────────────────────────────────────────────────────────────────────────
+  backend-fast:
+    name: 백엔드 — 린트·브라우저 없는 테스트
     needs: constitution-boundaries
     runs-on: ubuntu-latest
     steps:
@@ -41,22 +48,47 @@ jobs:
       - name: 린트
         working-directory: backend
         run: uv run ruff check .
+      - name: 브라우저 없는 테스트 (병렬)
+        working-directory: backend
+        run: uv run pytest -m "not browser and not timing" -q
+      # 경과 시간을 단언하는 검증은 프로세스 하나로 돈다 — 나눠 쓰면 재는 값이 제품의
+      # 성질이 아니라 그 순간의 부하가 된다 (`backend/tests/tiers.py`).
+      - name: 시간을 재는 테스트 (순차)
+        working-directory: backend
+        run: uv run pytest -m "timing and not browser" -q -n 0
+
+  backend-browser:
+    name: 백엔드 — 실브라우저 테스트
+    needs: constitution-boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: 의존성 설치
+        working-directory: backend
+        run: uv sync
+      # 제품 화면 면(`tests/abnormal/test_ui_surface.py`)이 vite dev server 를 띄운다.
+      - name: 프론트 의존성 설치
+        working-directory: frontend
+        run: npm ci
       - name: Chromium 설치
         working-directory: backend
         run: uv run playwright install --with-deps chromium
-      - name: 픽스처 앱 기동
-        run: |
-          python fixtures/sample-app/serve.py --port 4300 &
-          for _ in $(seq 1 30); do
-            curl -sf http://127.0.0.1:4300/login.html >/dev/null && break
-            sleep 0.5
-          done
-      - name: 단위·계약 테스트
+      - name: 실브라우저 테스트 (병렬)
         working-directory: backend
-        run: uv run pytest tests/unit tests/contract -q
-      - name: 통합·종단 테스트
+        # 러너 코어(2~4개)보다 많이 나누면 브라우저가 서로 CPU 를 빼앗아 대기 시간이
+        # 늘고 시간 초과가 난다. 브라우저 계층은 분배 수를 명시적으로 낮춘다.
+        run: uv run pytest -m "browser and not timing" -q -n 2
+      - name: 시간을 재는 실브라우저 테스트 (순차)
         working-directory: backend
-        run: uv run pytest tests/integration tests/e2e -q
+        run: uv run pytest -m "browser and timing" -q -n 0
 
   schema-drift:
     name: DSL 스키마 드리프트 (헌법 Cross-language schema duty)

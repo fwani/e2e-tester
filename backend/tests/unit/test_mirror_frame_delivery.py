@@ -17,12 +17,44 @@ import pytest
 
 from itb.mirror import screencast as sc
 from itb.mirror.screencast import (
-    IDLE_INTERVAL_S,
+    _ALLOWED_COMMANDS,
     MirrorInputForbiddenError,
     TabScreencast,
-    _ALLOWED_COMMANDS,
     _send,
 )
+
+# 픽스처가 주기를 내리기 **전에** 제품 기본값을 붙잡아 둔다. 모듈 임포트는 픽스처보다
+# 먼저 일어나므로 이 두 값은 제품에 적힌 값 그대로다.
+PRODUCT_IDLE_INTERVAL_S = sc.IDLE_INTERVAL_S
+PRODUCT_FALLBACK_INTERVAL_S = sc.FALLBACK_INTERVAL_S
+
+
+@pytest.fixture(autouse=True)
+def _short_intervals(monkeypatch: pytest.MonkeyPatch) -> None:
+    """감시 주기를 **작은 값**으로 돌린다.
+
+    제품 값은 무프레임 감시 2초·강등 1초다. 이 파일의 검증은 "주기가 지나면 한 장 더
+    온다" 는 성질이고 그 성질은 주기의 **크기**에 달려 있지 않다. 제품 값 그대로 두면
+    검증 5개가 실시간 8초를 그냥 기다린다.
+
+    제품 값 자체는 `test_product_intervals_are_the_measured_ones` 가 못 박는다 —
+    여기서 내린 것이 제품으로 새지 않게 하는 잠금이다.
+
+    테스트의 대기는 `sc.IDLE_INTERVAL_S` 를 **읽어서** 계산한다. 상수를 이름으로
+    가져오면 스냅샷이 되어 이 픽스처가 반영되지 않는다.
+    """
+    monkeypatch.setattr(sc, "IDLE_INTERVAL_S", 0.10)
+    monkeypatch.setattr(sc, "FALLBACK_INTERVAL_S", 0.05)
+
+
+def test_product_intervals_are_the_measured_ones() -> None:
+    """제품 주기는 실측으로 정한 값이다 (research R3 · FR-160).
+
+    이 파일은 속도 때문에 주기를 내려 쓴다. 그 편의가 제품으로 새면 미러가 초당 20장을
+    찍으며 실행 중인 브라우저를 갉아먹고, 그것을 알려 줄 것이 아무것도 없다.
+    """
+    assert PRODUCT_IDLE_INTERVAL_S == 2.0
+    assert PRODUCT_FALLBACK_INTERVAL_S == 1.0
 
 
 class FakePage:
@@ -132,7 +164,7 @@ async def test_idle_watch_keeps_sending_on_static_screen() -> None:
 
     before = page.shots
     # 감시 주기를 두 번 이상 지나도록 기다린다.
-    await asyncio.sleep(IDLE_INTERVAL_S * 1.2)
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
     await cast.stop()
 
     assert page.shots > before, "정적 화면에서 프레임이 더 오지 않았다"
@@ -152,7 +184,7 @@ async def test_idle_watch_does_not_announce_degradation() -> None:
     await cast.start()
     degraded_at_start = [e for e in events if e[0] == "mirror_degraded"]
     events.clear()
-    await asyncio.sleep(IDLE_INTERVAL_S * 1.2)
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
     await cast.stop()
 
     # 시작 시점의 강등 통보는 CDP 를 못 쓴 것이므로 정당하다. 그 뒤로는 없어야 한다.
@@ -175,7 +207,7 @@ async def test_screenshot_failure_does_not_raise() -> None:
     cast = TabScreencast(page, 0, emit)
     page.context = None
     await cast.start()
-    await asyncio.sleep(IDLE_INTERVAL_S * 0.8)
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 0.8)
     await cast.stop()
 
     assert cast.last_frame() is None, "찍지 못한 프레임을 캐시해서는 안 된다"
@@ -192,5 +224,5 @@ async def test_stop_cancels_idle_watch() -> None:
     await cast.stop()
 
     settled = page.shots
-    await asyncio.sleep(IDLE_INTERVAL_S * 1.2)
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
     assert page.shots == settled, "정지 후에도 화면을 찍고 있다"

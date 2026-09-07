@@ -14,6 +14,7 @@ from collections.abc import Callable
 import pytest
 
 from itb.domain.test_case import Test
+from itb.secrets import keys as _keys_module
 from itb.secrets.keys import (
     PASSPHRASE_ENV,
     KeyMissingError,
@@ -34,6 +35,11 @@ from itb.secrets.resolver import VariableResolutionError, VariableResolver
 from itb.secrets.scrubber import MASK, Scrubber
 from itb.secrets.store import DecryptError, FingerprintMismatchError, SecretStore
 from itb.secrets.unlock import KeyUnlock
+
+# conftest 의 `_cheap_key_derivation` 이 비용을 내리기 **전에** 제품 기본값을 붙잡는다.
+# 모듈 임포트는 픽스처보다 먼저 일어난다.
+PRODUCT_KDF_OPSLIMIT = _keys_module.KDF_OPSLIMIT
+PRODUCT_KDF_MEMLIMIT = _keys_module.KDF_MEMLIMIT
 
 SECRET_VALUE = "s3cr3t-passphrase-value"
 CLOSE_TAB = [{"type": "close_tab", "id": "step-01", "label": "탭 닫기"}]
@@ -175,6 +181,39 @@ def test_get_unknown_name(keys: KeyPaths, store: SecretStore) -> None:
 
 
 # ─── 암호구 (FR-089e-2) ────────────────────────────────────────────────────
+
+
+def test_product_derivation_cost_is_moderate() -> None:
+    """제품 기본 파생 비용은 argon2id MODERATE 다.
+
+    테스트는 속도 때문에 이 값을 INTERACTIVE 로 내려 쓴다 (`tests/conftest.py` 의
+    `_cheap_key_derivation`). 그 편의가 제품으로 새면 사용자의 비밀키 보호가 조용히
+    약해지고, 약해진 것을 알려 줄 것이 아무것도 없다. 이 검증이 그 잠금이다 —
+    **모듈에 적힌 기본값**을 보므로 픽스처의 되돌림 여부와 무관하게 성립한다.
+    """
+    from nacl import pwhash
+
+    assert PRODUCT_KDF_OPSLIMIT == pwhash.argon2id.OPSLIMIT_MODERATE
+    assert PRODUCT_KDF_MEMLIMIT == pwhash.argon2id.MEMLIMIT_MODERATE
+
+
+@pytest.mark.production_kdf
+def test_production_cost_key_round_trips(tmp_path: pathlib.Path) -> None:
+    """제품 비용 그대로도 봉인 → 개봉이 맞물린다.
+
+    나머지 암호구 검증은 싼 프로필로 지난다. 비용이 성질을 바꾸지 않는다는 것을
+    적어도 한 번은 **제품 값으로** 확인해 둔다 — 파생 비용은 봉인된 파일에 기록되지
+    않으므로, 봉인과 개봉이 같은 값을 쓰는지는 실제로 맞춰 봐야 안다.
+
+    **파생을 두 번만 지난다** (봉인 1 + 개봉 1). 틀린 암호구 분기까지 제품 비용으로
+    지나면 파생이 세 번이 되고, 8분할에서 이 검증 하나가 28초를 먹었다 —
+    MODERATE 는 회당 256MB 를 잡으므로 프로세스가 늘면 메모리까지 다툰다. 그 분기가
+    확인하는 성질은 `test_wrong_passphrase_is_distinguished_from_decrypt_failure` 가
+    싼 프로필로 이미 본다.
+    """
+    kp = KeyPaths(tmp_path / "k")
+    generate(kp, passphrase="correct horse battery")
+    assert load_private(kp, passphrase="correct horse battery") is not None
 
 
 def test_passphrase_protected_key_requires_passphrase(tmp_path: pathlib.Path) -> None:

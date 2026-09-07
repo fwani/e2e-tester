@@ -19,9 +19,54 @@ from urllib.request import urlopen
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.tiers import HEAVY_FIXTURES, TIMING_MODULES
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 FIXTURE_APP = REPO_ROOT / "fixtures" / "sample-app" / "serve.py"
 STARTUP_TIMEOUT_S = 20.0
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """실제 스택을 지나는 검증에 `browser` 마커를 **자동으로** 붙인다.
+
+    파일 90개에 손으로 마커를 달면 새 파일에서 잊는다. 잊은 것은 조용히 빠른 계층에
+    섞여 개발 루프를 다시 느리게 만들고, 그 원인은 드러나지 않는다. 그래서 판정을
+    한곳에서 한다 — **무거운 픽스처를 요구하면 실제 스택을 지난다.**
+
+    `fixturenames` 는 간접 의존까지 포함하므로 `keyed_client` 처럼 픽스처 앱을 거쳐
+    가는 것도 함께 걸린다.
+
+    쓰임:
+        uv run pytest -m "not browser"   # 개발 루프 (브라우저·npm 없음)
+        uv run pytest                    # 전량 (커밋·CI)
+    """
+    for item in items:
+        if HEAVY_FIXTURES & set(getattr(item, "fixturenames", ())):
+            item.add_marker(pytest.mark.browser)
+        rel = item.path.relative_to(REPO_ROOT / "backend").as_posix()
+        if rel in TIMING_MODULES:
+            item.add_marker(pytest.mark.timing)
+
+
+@pytest.fixture(autouse=True)
+def _timing_needs_one_process(request: pytest.FixtureRequest) -> None:
+    """시간을 재는 검증이 **병렬 실행에 섞이면** 사유와 함께 실패한다.
+
+    섞인 채 돌면 실패 메시지가 "지연 p95 737ms 가 목표 200ms 를 넘었다" 로 나온다.
+    그것을 읽은 사람은 제품이 느려졌다고 판단하고 있지도 않은 회귀를 찾는다. 실제
+    원인은 프로세스 8개가 CPU 를 나눠 쓴 것이다.
+
+    건너뛰지 않는다 — 건너뛰면 재지 않은 것이 통과로 보인다 (헌법 품질 게이트 4).
+    """
+    if not request.node.get_closest_marker("timing"):
+        return
+    worker_input = getattr(request.config, "workerinput", None)
+    workers = int(worker_input["workercount"]) if worker_input else 1
+    if workers > 1:
+        pytest.fail(
+            f"시간을 재는 검증입니다 — 프로세스 {workers}개로는 재는 값이 그 순간의 "
+            "부하가 됩니다. `-n 0` 을 붙이거나 `scripts/test-backend.sh` 로 돌리세요."
+        )
 
 
 def _free_port() -> int:
@@ -63,6 +108,61 @@ def fixture_app() -> Iterator[str]:
     finally:
         proc.terminate()
         proc.wait(timeout=5)
+
+
+@pytest.fixture(autouse=True)
+def _headless_browsers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """검증은 **언제나 창 없이** 브라우저를 띄운다.
+
+    제품 기본값은 창을 띄우는 것이다 — 녹화·인수인계는 사람이 조작하는 국면이므로
+    옳다 (clarify 결정 3). 하지만 검증이 그 기본값을 그대로 지나면 매 세션마다 창이
+    떠서 **개발자의 화면을 빼앗는다.** 전량 실행은 브라우저 세션을 60번 가까이 만들고,
+    그동안 다른 작업을 할 수 없다. 초점이 옮겨 가면 `blur` 에 기대는 녹화 검증이
+    엉뚱한 사유로 실패하기도 한다.
+
+    개발자가 셸에 `ITB_HEADLESS=0` 을 켜 둔 채 돌려도 여기서 덮는다 — 검증에서 창을
+    보고 싶은 경우는 사람이 직접 한 세션을 여는 것이고, 그것은 전량 실행이 아니다.
+
+    창 없이 돌아도 검증하는 것은 같다. 스크린캐스트·recorder.js 주입·hover·끌어다
+    놓기 모두 headless 에서 동작한다.
+    """
+    from itb.execution.session import HEADLESS_ENV
+
+    monkeypatch.setenv(HEADLESS_ENV, "1")
+
+
+@pytest.fixture(autouse=True)
+def _cheap_key_derivation(request: pytest.FixtureRequest) -> Iterator[None]:
+    """암호구 파생 비용을 테스트에서 **싼 프로필**로 내린다.
+
+    제품 기본값은 argon2id MODERATE 다 — 회당 약 2.7초. 그 비용은 사람의 비밀키를
+    지키기 위한 것이고 제품에서는 옳지만, 테스트가 확인하는 성질(파생 → 봉인 → 개봉이
+    맞물리는지, 틀린 암호구가 복호화 실패와 구분되는지)은 비용에 달려 있지 않다.
+    측정 결과 이 한 가지가 unit·contract 수행 시간의 절반을 차지했다.
+
+    **파생을 건너뛰지 않는다.** INTERACTIVE 도 진짜 argon2id 파생이다. 값만 싸다.
+    제품 기본값이 MODERATE 임은 `test_secrets.py::test_product_derivation_cost_is_moderate`
+    가 못 박는다 — 여기서 낮춘 것이 제품으로 새지 않게 하는 잠금이다.
+
+    제품 값 그대로 지나야 하는 테스트는 `@pytest.mark.production_kdf` 를 붙인다.
+    """
+    if request.node.get_closest_marker("production_kdf"):
+        yield
+        return
+
+    from nacl import pwhash
+
+    from itb.secrets import keys
+
+    # monkeypatch 픽스처를 쓰지 않는다 — 그것은 함수 스코프이고 이 픽스처도 그렇지만,
+    # 여기서 직접 세우고 되돌리면 실패한 테스트가 남긴 상태가 다음으로 새지 않는다.
+    saved = (keys.KDF_OPSLIMIT, keys.KDF_MEMLIMIT)
+    keys.KDF_OPSLIMIT = pwhash.argon2id.OPSLIMIT_INTERACTIVE
+    keys.KDF_MEMLIMIT = pwhash.argon2id.MEMLIMIT_INTERACTIVE
+    try:
+        yield
+    finally:
+        keys.KDF_OPSLIMIT, keys.KDF_MEMLIMIT = saved
 
 
 @pytest.fixture(autouse=True)

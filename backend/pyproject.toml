@@ -27,6 +27,9 @@ itb = "itb.cli:main"
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
+    # 코어 수만큼 프로세스를 나눠 돈다. 개발 루프의 실시간을 줄이는 데 가장 큰 지분이다.
+    # `--dist loadfile` 로 쓴다 — 한 파일의 검증은 한 프로세스에 모인다 (아래 addopts 주석).
+    "pytest-xdist>=3.6",
     "import-linter>=2.1",
     "ruff>=0.7",
     "httpx>=0.27",
@@ -42,12 +45,30 @@ packages = ["src/itb"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# ─── 병렬 실행 ──────────────────────────────────────────────────────────────
+#
+# `-n auto` — 코어 수만큼 프로세스를 나눈다.
+#
+# `--dist loadfile` — **한 파일의 검증은 한 프로세스에 모인다.** 기본 `load` 를 쓰면
+# 안 된다: `tests/abnormal/test_ui_surface.py` 는 시나리오를 목록 순서대로 돌아야
+# 하고(AS-007 은 프로젝트가 열리기 전에만 닿을 수 있다) 세션 범위 `product_ui` 를
+# 18건이 나눠 쓴다. 검증을 프로세스에 흩으면 그 순서가 깨지고, 깨진 원인이 분배라는
+# 것은 실패 메시지에 드러나지 않는다.
+#
+# 되돌리는 법: `-p no:xdist` 또는 `-n 0`. 실패를 하나씩 따라갈 때는 그쪽이 낫다 —
+# 분배된 출력은 어느 프로세스의 것인지 읽기 어렵다.
+addopts = "-n auto --dist loadfile"
 # "." 은 `tests` 를 패키지로 임포트하기 위한 것이고(`tests.abnormal.catalogue`),
 # "tests" 는 공용 지원 모듈을 이름만으로 임포트하기 위한 것이다(`us2_support`).
 pythonpath = ["src", ".", "tests"]
 # 도메인의 `Test` 클래스(테스트 시나리오 모델)를 pytest 가 수집하지 않게 한다.
 # 함수 기반 테스트만 쓰므로 클래스 수집 패턴을 좁힌다.
 python_classes = ["*Tests"]
+markers = [
+    "production_kdf: 제품 기본 argon2id 비용(MODERATE)을 그대로 지난다. 느리다 — 필요한 것만 붙인다.",
+    "browser: 실제 Chromium 을 띄운다. 개발 루프 기본 계층에서 빠진다.",
+    "timing: 경과 시간을 단언한다. **순차로만** 돈다 (`-n 0`) — 자동으로 붙는다.",
+]
 filterwarnings = [
     # 우리 코드의 deprecation 은 오류로 다룬다.
     "error::DeprecationWarning",

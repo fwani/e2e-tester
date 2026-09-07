@@ -272,23 +272,104 @@ CI(`.github/workflows/ci.yml`)는 경계 검사 잡을 최우선으로 실행하
 
 ### 테스트 계층
 
-| 경로 | 무엇을 보는가 | 브라우저 |
-|------|---------------|----------|
+| 경로 | 무엇을 보는가 | 실제 스택 |
+|------|---------------|-----------|
 | `tests/unit/` | 순수 로직 — 도메인 불변식, 상태 기계, 후보 우선순위, 생성기, 시도 상한 | 없음 |
-| `tests/contract/` | REST·WebSocket·DSL 계약, 스키마 드리프트 | 대부분 없음 |
+| `tests/contract/` | REST·WebSocket·DSL 계약, 스키마 드리프트 | 일부 |
+| `tests/abnormal/` | 이상 조작 목록(고장 4종 × 조작 면 3종) 판정 | 대부분 |
 | `tests/integration/` | 픽스처 앱 대상 실제 동작 — 녹화·재실행·일시정지·AI·비밀값 | 있음 |
 | `tests/e2e/` | 사용자 스토리별 quickstart 절차 | 있음 |
 
-전체 실행은 6분 안팎이다. 브라우저를 띄우지 않는 계층만 빠르게 돌리려면:
+### 개발 루프에서는 브라우저 계층을 뺀다
+
+디렉터리로 나누지 않는다 — `tests/contract/` 에도 실브라우저 검증이 섞여 있어서
+경로만으로는 선이 맞지 않는다. 선은 **`browser` 마커**다. 그 마커는
+`tests/conftest.py` 의 `pytest_collection_modifyitems` 가 **자동으로** 붙인다:
+무거운 픽스처(`tests/tiers.py` 의 `HEAVY_FIXTURES`)를 요구하는 검증이 그 계층이다.
+손으로 달지 않으므로 새 파일에서 잊을 일이 없고, 목록이 낡으면
+`tests/unit/test_test_tiers.py` 가 실패한다.
 
 ```bash
-cd backend && uv run pytest tests/unit tests/contract -q      # 30초 안팎
+# 개발 루프 — 브라우저·npm·픽스처 앱 없이 돈다
+cd backend && uv run pytest -m "not browser" -q
+
+# 커밋 전 — 전량
+cd backend && uv run pytest -q
+
+# 실브라우저 계층만
+cd backend && uv run pytest -m browser -q
 ```
+
+**빠진 것을 통과로 읽지 않는다.** `-m "not browser"` 는 개발 중 되돌림을 빠르게 보기
+위한 것이고, 커밋·CI 는 전량을 돈다. CI 는 두 계층을 **별도 잡으로 동시에** 돌린다
+(`.github/workflows/ci.yml` 의 `backend-fast`·`backend-browser`).
+
+### 병렬 실행
+
+`pytest-xdist` 가 기본으로 켜져 있다 (`pyproject.toml` 의
+`addopts = "-n auto --dist loadfile"`). `--dist loadfile` 은 필수다 —
+`tests/abnormal/test_ui_surface.py` 는 시나리오를 목록 순서대로 돌아야 하고 세션 범위
+`product_ui` 를 18건이 나눠 쓴다. 검증을 프로세스에 흩으면 그 순서가 깨진다.
+
+실패 하나를 따라갈 때는 순차로 돌리는 편이 낫다 — 분배된 출력은 어느 프로세스의
+것인지 읽기 어렵다.
+
+```bash
+cd backend && uv run pytest -n 0 -x tests/unit/test_secrets.py
+```
+
+### 검증은 창을 띄우지 않는다
+
+제품 기본값은 **창을 띄우는 것**이다 — 녹화·인수인계는 사람이 실제로 조작하는 국면이고,
+창이 없으면 그 국면 자체가 성립하지 않는다 (clarify 결정 3). 하지만 검증이 그 기본값을
+그대로 지나면 세션마다 창이 떠서 개발자의 화면을 빼앗는다. 전량 실행은 브라우저 세션을
+60번 가까이 만들고, 그동안 다른 작업을 할 수 없다.
+
+그래서 검증은 `ITB_HEADLESS=1` 로 돈다. `tests/conftest.py` 의 `_headless_browsers` 가
+자동으로 세우고, 별도 프로세스로 뜨는 제품 서버에는 `tests/abnormal/product_ui.py` 가
+환경 변수로 넘긴다 (monkeypatch 가 프로세스 경계를 넘지 못한다).
+
+```bash
+# 화면 없는 장비에서 제품을 돌릴 때도 같은 변수를 쓴다
+ITB_HEADLESS=1 uv run itb
+```
+
+**켜면 수동 조작·인수인계는 쓸 수 없다** — 볼 창이 없다. 그래서 제품 기본값으로 두지
+않는다. 알 수 없는 값(오타)은 창 없음으로 읽지 않는다.
+`tests/unit/test_test_tiers.py` 가 그 두 성질을 못 박는다.
+
+### 느린 것은 지우지 않고 비용을 내린다
+
+두 곳이 그 예다. **검증하는 성질은 그대로 두고 비용만 내렸고**, 제품 기본값이 새지
+않도록 각각 잠금 검증을 뒀다.
+
+| 무엇 | 제품 값 | 테스트 값 | 잠금 |
+|------|---------|-----------|------|
+| 암호구 파생 (argon2id) | MODERATE (회당 ~2.7초) | INTERACTIVE | `test_secrets.py::test_product_derivation_cost_is_moderate` |
+| 미러 무프레임 감시 주기 | 2.0초 / 강등 1.0초 | 0.10초 / 0.05초 | `test_mirror_frame_delivery.py::test_product_intervals_are_the_measured_ones` |
+| 브라우저 창 | 띄운다 | 띄우지 않는다 | `test_test_tiers.py::test_headless_is_off_by_default_in_the_product` |
+
+### 고정 시간 대기를 쓰지 않는다
+
+녹화 검증은 오랫동안 "동작한 뒤 0.4~0.8초 자고 나서 읽는다" 였다. 그 대기는 두 가지를
+동시에 틀리게 한다 — 부하가 있으면 짧고(8분할에서 `steps` 가 빈 배열로 읽혔다),
+평상시에는 길다(대개 100ms 안에 도달하는데 나머지를 그냥 기다린다).
+
+`tests/step_wait.py` 의 `wait_for_steps` 는 시간을 재지 않고 **조건을 본다.** 조건이
+서면 즉시 돌아오고, 서지 않으면 마감까지 기다린 뒤 마지막으로 읽은 것을 돌려준다 —
+판정은 호출한 검증이 자기 단언으로 한다. 새 녹화 검증도 이것을 쓴다.
+
+파생을 **건너뛰지 않는다** — INTERACTIVE 도 진짜 argon2id 파생이다. 제품 비용 그대로
+봉인·개봉이 맞물리는지는 `@pytest.mark.production_kdf` 를 붙인 검증 하나가 확인한다.
 
 ### 테스트를 지우거나 건너뛰지 않는다
 
 헌법 품질 게이트 4다. 깨진 테스트는 고치거나, 정말 낡았다면 **이유를 기록하고** 지운다.
 `skip` 으로 덮으면 검증하지 않은 것이 통과로 보인다.
+
+**느리다는 것은 낡았다는 뜻이 아니다.** 수행 시간을 줄이려고 검증을 지우는 것은 이
+게이트가 금지하는 것과 같다 — 확인하지 않은 것이 통과로 보인다. 줄일 곳은 검증의
+개수가 아니라 검증 하나의 비용과 분배다 (위 두 절).
 
 ## 자주 겪는 문제
 

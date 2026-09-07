@@ -19,6 +19,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from itb.domain.locator import CandidateStatus
+from tests.step_wait import has_any, has_kinds, wait_for_steps
 
 
 def _session(client: TestClient, fixture_app: str, page: str = "login.html") -> dict[str, Any]:
@@ -85,7 +86,11 @@ def test_records_click_fill_select_and_navigation(
 
         project_client.portal.call(act)  # type: ignore[attr-defined]
 
-        steps = _steps(project_client, sid)
+        # 읽기를 고정 시간 뒤로 미루지 않는다 — 4종이 다 도달하면 즉시, 아니면 마감까지
+        # 기다린 뒤 마지막으로 읽은 것으로 아래 단언이 사유를 낸다 (`tests/step_wait.py`).
+        steps = wait_for_steps(
+            project_client, sid, has_kinds("fill", "click", "select", "navigate")
+        )
         kinds = [s["type"] for s in steps]
         assert "fill" in kinds, f"입력 Step 이 없다: {kinds}"
         assert "click" in kinds, f"클릭 Step 이 없다: {kinds}"
@@ -116,7 +121,11 @@ def test_repeated_input_merges_into_final_value(
 
         project_client.portal.call(act)  # type: ignore[attr-defined]
 
-        fills = [s for s in _steps(project_client, sid) if s["type"] == "fill"]
+        # 병합 결과를 세려면 먼저 도달해야 한다. **개수를 조건으로 걸지 않는다** —
+        # 그러면 "1개가 될 때까지" 기다리다 병합 실패를 마감으로 덮는다. 도달 여부만
+        # 기다리고 개수는 아래 단언이 판정한다.
+        steps = wait_for_steps(project_client, sid, has_kinds("fill"))
+        fills = [s for s in steps if s["type"] == "fill"]
         assert len(fills) == 1, f"입력 Step 이 {len(fills)}개다. 병합되지 않았다: {fills}"
         assert fills[0]["value"] == "final@example.com"
     finally:
@@ -156,7 +165,8 @@ def test_korean_input_records_composed_value(
             css = (target.get("css") or {}).get("value", "")
             return step["type"] == "fill" and css.endswith("#pname")
 
-        pname_fills = [s for s in _steps(project_client, sid) if is_pname(s)]
+        steps = wait_for_steps(project_client, sid, has_any(is_pname))
+        pname_fills = [s for s in steps if is_pname(s)]
         assert pname_fills, "프로젝트명 입력 Step 이 없다"
         assert pname_fills[-1]["value"] == "한글프로젝트"
     finally:
@@ -180,7 +190,8 @@ def test_candidates_are_collected_and_verified(
 
         project_client.portal.call(act)  # type: ignore[attr-defined]
 
-        clicks = [s for s in _steps(project_client, sid) if s["type"] == "click"]
+        steps = wait_for_steps(project_client, sid, has_kinds("click"))
+        clicks = [s for s in steps if s["type"] == "click"]
         assert clicks, "클릭 Step 이 없다"
         target = clicks[0]["target"]  # click Step 은 target 을 항상 갖는다
 
@@ -235,7 +246,7 @@ def test_password_is_stored_as_variable_reference_not_plaintext(
 
         project_client.portal.call(act)  # type: ignore[attr-defined]
 
-        steps = _steps(project_client, sid)
+        steps = wait_for_steps(project_client, sid, has_kinds("fill", "click"))
         blob = str(steps)
         assert secret not in blob, "평문 비밀번호가 Step 에 남았다"
 
