@@ -953,7 +953,11 @@ function SessionTools({
         <ActionButton
           action="step.addNaturalLanguage"
           capability={capabilities["step.addNaturalLanguage"]}
-          label="추가"
+          /*
+            **라벨을 줄이지 않는다** (FR-235). 「추가」는 무엇을 더하는지 말하지 않고,
+            같은 화면의 다른 「추가」와 구별되지 않는다. 실브라우저 계층(AS-025)이 이
+            자리에서 「Step 추가」를 찾는 것도 그 라벨이 조작의 이름이기 때문이다.
+          */
           compact
           onRemedy={onAction}
           onRun={() => {

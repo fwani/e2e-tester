@@ -117,6 +117,39 @@ export function PhaseAside({
               {aside.step.error_message ?? "실패 이유가 기록되지 않았습니다."}
             </p>
           </Section>
+
+          {/*
+            001 FR-021·FR-054 — **그때 무엇을 시도했는가.** 결과 국면에서 사용자가
+            알아야 하는 것은 정의의 후보가 아니라 실제 시도다. Step 상세를 열지 않아도
+            보여야 한다 — 실패는 이 화면에 온 이유이고, 한 번 더 누르게 하면 그만큼
+            원인 파악이 늦어진다 (SC-009).
+          */}
+          {aside.step.locator_attempts.length > 0 && (
+            <Section title="시도한 LOCATOR (우선순위 순)">
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {aside.step.locator_attempts.map((a) => (
+                  <div
+                    key={`${a.candidate}-${a.expression}`}
+                    style={{ display: "flex", alignItems: "center", gap: 10, font: `400 12.5px/1.4 ${MONO}` }}
+                  >
+                    <span style={{ color: a.matched ? "#2E9455" : "#A83A22", fontWeight: 700 }}>
+                      {a.matched ? "✓" : "×"}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {a.expression}
+                    </span>
+                  </div>
+                ))}
+                {/*
+                  004 FR-121 — **실제로 기다린 시간**이다. 예전에는 후보별 대기 중
+                  최댓값을 "timeout" 이라 불렀는데, 그것은 설정값도 실측값도 아니었다.
+                */}
+                <div style={{ font: `400 12px/1.4 ${MONO}`, color: "#6B675C", paddingLeft: 20 }}>
+                  {`요소를 ${aside.step.element_wait_ms} ms 기다렸습니다`}
+                </div>
+              </div>
+            </Section>
+          )}
           {/*
             004 FR-122·FR-123 — 진단은 **`code` 로 분기한다.** 문구를 파싱하지 않는다.
             규칙 기반이며 언어모델을 쓰지 않는다 (Principle II).

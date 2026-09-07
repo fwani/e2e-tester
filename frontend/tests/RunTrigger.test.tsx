@@ -15,7 +15,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { RunResult } from "../src/pages/RunResult";
+import { ResultView } from "../src/pages/ResultView";
 import { TestList } from "../src/pages/TestList";
 import { pendingFetch } from "./helpers/pending";
 import type { RunResult as RunResultData } from "../src/types/generated/run-result";
@@ -77,7 +77,7 @@ afterEach(() => {
 describe("결과 화면의 실행 버튼 (US1)", () => {
   it("실패 지점부터 실행 라벨에 시작 Step 번호가 있다 (FR-149·U-02)", async () => {
     vi.stubGlobal("fetch", mockResultFetch());
-    render(<RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
+    render(<ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
 
     // 실패 인덱스 5 → 사용자에게는 Step 06.
     const button = await screen.findByRole("button", { name: /Step 06부터 실행/ });
@@ -88,7 +88,7 @@ describe("결과 화면의 실행 버튼 (US1)", () => {
 
   it("누르기 전에 건너뛰는 구간과 선행 상태를 알린다 (FR-150·U-02)", async () => {
     vi.stubGlobal("fetch", mockResultFetch());
-    render(<RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
+    render(<ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
 
     await screen.findByRole("button", { name: /Step 06부터 실행/ });
     expect(screen.getByText(/01~05 는 건너뜁니다/)).toBeTruthy();
@@ -98,14 +98,25 @@ describe("결과 화면의 실행 버튼 (US1)", () => {
   it("실행 요청 중에는 두 버튼이 비활성이고 준비 문구를 말한다 (FR-127·FR-129·SC-214)", async () => {
     vi.stubGlobal("fetch", mockResultFetch());
     render(
-      <RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} runPending />,
+      <ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} runPending />,
     );
 
+    /*
+      007 이후 **라벨은 그대로 두고 이유를 옆에 붙인다** (FR-234). 이전에는 버튼 문구
+      자체가 「실행을 준비하는 중…」으로 바뀌었는데, 그러면 같은 자리의 같은 버튼이
+      상황에 따라 다른 이름을 갖게 되어 사용자가 무엇을 눌렀는지 배우기 어렵다.
+      재는 성질은 같다 — 두 버튼이 잠기고, 왜 잠겼는지가 화면에 있다.
+    */
     await waitFor(() => {
-      const buttons = screen.getAllByRole("button", { name: /실행을 준비하는 중/ });
-      // 「처음부터 실행」과 「Step 06부터 실행」 둘 다 잠긴다.
-      expect(buttons.length).toBe(2);
-      for (const b of buttons) expect((b as HTMLButtonElement).disabled).toBe(true);
+      for (const id of ["run.all", "run.from"]) {
+        const button = document.querySelector(`button[data-action="${id}"]`) as HTMLButtonElement;
+        expect(button, id).not.toBeNull();
+        expect(button.disabled, id).toBe(true);
+        expect(
+          document.querySelector(`[data-disabled-reason="${id}"]`)?.textContent,
+          id,
+        ).toContain("실행을 준비하는 중");
+      }
     });
   });
 
@@ -114,19 +125,18 @@ describe("결과 화면의 실행 버튼 (US1)", () => {
     const onRunAll = vi.fn();
     // 부모(App)의 in-flight 가드를 흉내 낸다 — 첫 호출 뒤 runPending 이 참이 된다.
     const { rerender } = render(
-      <RunResult testId="TC-002" onRunAll={onRunAll} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-002" onRunAll={onRunAll} onRunFrom={noop} onBack={noop} />,
     );
     const button = await screen.findByRole("button", { name: "처음부터 실행" });
 
     await userEvent.click(button);
     rerender(
-      <RunResult testId="TC-002" onRunAll={onRunAll} onRunFrom={noop} onBack={noop} runPending />,
+      <ResultView testId="TC-002" onRunAll={onRunAll} onRunFrom={noop} onBack={noop} runPending />,
     );
-    const locked = screen.getAllByRole("button", { name: /실행을 준비하는 중/ });
-    for (const b of locked.slice(0, 1)) {
-      await userEvent.click(b).catch(() => undefined);
-      await userEvent.click(b).catch(() => undefined);
-    }
+    const locked = document.querySelector('button[data-action="run.all"]') as HTMLButtonElement;
+    expect(locked.disabled).toBe(true);
+    await userEvent.click(locked).catch(() => undefined);
+    await userEvent.click(locked).catch(() => undefined);
 
     expect(onRunAll).toHaveBeenCalledTimes(1);
   });
@@ -139,7 +149,7 @@ describe("응답이 오기 전의 화면 (FR-129 · U-11)", () => {
     const api = pendingFetch({ "/result": failedResult() });
     vi.stubGlobal("fetch", api.fetch);
 
-    render(<RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
+    render(<ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
     await api.waitFor("/result");
 
     // 아직 결말을 모른다. 모르는 채로 「Step 06부터 실행」을 내주면 사용자는 존재하지

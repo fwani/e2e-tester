@@ -1,5 +1,5 @@
 /**
- * RunResult 화면 테스트 (T089).
+ * 결과 국면 화면 테스트 (T089 · 007 이행 5).
  *
  * 요약 3항목·Step 결과·실패 상세·재실행 두 갈래·`TRACE` 비활성을 고정한다
  * (FR-050~FR-058, spec 디자인 차이 1).
@@ -11,7 +11,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { RunResult } from "../src/pages/RunResult";
+import { ResultView } from "../src/pages/ResultView";
 import type { RunResult as RunResultData } from "../src/types/generated/run-result";
 
 function failedResult(): RunResultData {
@@ -120,23 +120,32 @@ afterEach(() => {
 });
 
 describe("RunResult", () => {
-  it("요약 3항목을 보여준다 (FR-050)", async () => {
+  /**
+   * FR-050 의 세 값(총 시간·통과/전체·멈춘 Step)은 그대로 요구된다. 달라진 것은
+   * **자리**다 — 007 이전에는 같은 사실이 결말 요약 한 줄과 3칸 패널에 나뉘어 두 번
+   * 있었고, 그것이 FR-218d(결말 요약은 화면에 하나뿐)가 금지하는 형태다.
+   *
+   * 그래서 세 값을 **한 자리에서** 센다. 자리가 둘로 늘면 이 단정이 먼저 깨진다.
+   */
+  it("요약 3항목이 결말 요약 한 자리에 있다 (FR-050 · FR-218d)", async () => {
     vi.stubGlobal("fetch", stubFetch(failedResult()));
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
 
-    expect(await screen.findByText("6.41 s")).toBeDefined();
-    expect(screen.getByText("4 / 5")).toBeDefined();
-    // "05" 는 Step 목록의 행 번호에도 나온다. 요약 칸 안에서만 찾는다.
-    const stoppedCell = screen.getByText("멈춘 STEP").parentElement;
-    expect(stoppedCell?.textContent).toContain("05");
+    await screen.findByText("로그인");
+    const summaries = document.querySelectorAll("[data-run-summary]");
+    expect(summaries).toHaveLength(1);
+    const text = summaries[0]?.textContent ?? "";
+    expect(text).toContain("6.41 s"); // 총 시간
+    expect(text).toContain("4 / 5"); // 통과 / 실행 대상
+    expect(text).toContain("Step 05"); // 멈춘 Step
   });
 
   it("실행한 브라우저를 표시한다 (FR-058)", async () => {
     vi.stubGlobal("fetch", stubFetch(failedResult()));
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
     expect(await screen.findByText("Playwright · Chromium")).toBeDefined();
   });
@@ -144,7 +153,7 @@ describe("RunResult", () => {
   it("Step별 결과와 소요 시간을 보여준다 (FR-051)", async () => {
     vi.stubGlobal("fetch", stubFetch(failedResult()));
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
     expect(await screen.findByText("로그인")).toBeDefined();
     expect(screen.getByText("421 ms")).toBeDefined();
@@ -154,7 +163,7 @@ describe("RunResult", () => {
   it("실패 이유와 시도한 후보를 우선순위 순으로 보여준다 (FR-054·FR-021)", async () => {
     vi.stubGlobal("fetch", stubFetch(failedResult()));
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
 
     expect(await screen.findByText('"저장" 버튼을 찾을 수 없습니다.')).toBeDefined();
@@ -169,7 +178,7 @@ describe("RunResult", () => {
   it("시간 초과 실패에는 다음 행동이 함께 나온다 (004 FR-122·FR-123)", async () => {
     vi.stubGlobal("fetch", stubFetch(failedResult()));
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
     await screen.findByText('"저장" 버튼을 찾을 수 없습니다.');
     // **`code` 로 갈린다.** 문구를 파싱해 판단하지 않는다.
@@ -183,7 +192,7 @@ describe("RunResult", () => {
     );
     vi.stubGlobal("fetch", stubFetch({ ...base, steps }));
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
     await screen.findByText('"저장" 버튼을 찾을 수 없습니다.');
     // 기다려도 달라지지 않는 문제에 "속도를 낮춰 보세요" 라고 하면 사용자를 헤매게 한다.
@@ -193,7 +202,7 @@ describe("RunResult", () => {
   it("TRACE 탭은 비활성이다 (spec 디자인 차이 1)", async () => {
     vi.stubGlobal("fetch", stubFetch(failedResult()));
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
 
     const trace = (await screen.findByText("TRACE")).closest("button");
@@ -206,7 +215,7 @@ describe("RunResult", () => {
     const onRunFrom = vi.fn();
     const onRunAll = vi.fn();
     render(
-      <RunResult
+      <ResultView
         testId="TC-003"
         onRunAll={onRunAll}
         onRunFrom={onRunFrom}
@@ -228,7 +237,7 @@ describe("RunResult", () => {
     vi.stubGlobal("fetch", stubFetch(failedResult()));
     const onEditStep = vi.fn();
     render(
-      <RunResult
+      <ResultView
         testId="TC-003"
         onRunAll={noop}
         onRunFrom={noop}
@@ -251,7 +260,7 @@ describe("RunResult", () => {
     };
     vi.stubGlobal("fetch", stubFetch(passed));
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
 
     await screen.findByText("처음부터 실행");
@@ -261,7 +270,7 @@ describe("RunResult", () => {
   it("세션 유실로 끝난 실행은 이어서 실행이 불가함을 알린다 (FR-041c)", async () => {
     vi.stubGlobal("fetch", stubFetch({ ...failedResult(), session_lost: true }));
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
     expect(
       await screen.findByText(/처음부터 다시 실행해야 합니다/),
@@ -272,7 +281,7 @@ describe("RunResult", () => {
     const fetchStub = stubFetch(failedResult());
     vi.stubGlobal("fetch", fetchStub);
     render(
-      <RunResult testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
 
     await userEvent.click(await screen.findByText("CONSOLE"));

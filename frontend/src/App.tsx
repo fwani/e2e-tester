@@ -11,7 +11,7 @@ import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNo
 import { CreateTest } from "./pages/CreateTest";
 import { KeyManagement } from "./pages/KeyManagement";
 import { ProjectSetup } from "./pages/ProjectSetup";
-import { RunResult } from "./pages/RunResult";
+import { ResultView } from "./pages/ResultView";
 import { SecretValues } from "./pages/SecretValues";
 import { TestDefinition } from "./pages/TestDefinition";
 import { AiCompose } from "./pages/AiCompose";
@@ -40,7 +40,13 @@ type Screen =
     }
   /** AI 지시문 작성. 확정 디자인이 독립 artboard 로 정의한다 (DC-008). */
   | { name: "ai-compose"; startUrl: string }
-  | { name: "result"; testId: string }
+  /**
+   * 결과 국면. `focusStepId` 는 **국면을 넘어 유지되는 지목**이다 (007 FR-239 · S-10).
+   *
+   * 세션에서 결과로 넘어올 때 보던 Step 을 함께 넘긴다 — 이전에는 `onShowResult` 가
+   * 테스트 식별자만 날라서, 사용자는 결과 화면에서 그 Step 을 다시 찾아야 했다.
+   */
+  | { name: "result"; testId: string; focusStepId?: string | null }
   | { name: "definition"; testId: string; focusStepId?: string | null }
   | { name: "keys" }
   | { name: "secrets" };
@@ -95,7 +101,7 @@ export function App() {
         // 있어 다시 열 수는 있었지만, 사용자는 자기가 보던 화면을 잃었다.
         const at = initialLocation();
         if (at.name === "result" && at.testId) {
-          setScreen({ name: "result", testId: at.testId });
+          setScreen({ name: "result", testId: at.testId, focusStepId: at.stepId ?? null });
         } else if (at.name === "definition" && at.testId) {
           setScreen({
             name: "definition",
@@ -128,11 +134,16 @@ export function App() {
       sessionId: screen.name === "runner" ? screen.session.session_id : null,
       // 006 FR-181 — 지목된 Step 도 주소에 남긴다. 새로고침해도 고치러 온 Step 을 잃지
       // 않는다.
-      stepId: screen.name === "definition" ? (screen.focusStepId ?? null) : null,
+      // 007 FR-239 — 지목한 Step 은 결과 국면에서도 주소에 남는다. 새로 고쳐도
+      // 보던 Step 을 잃지 않는다 (006 FR-181 을 결과 국면으로 넓힌 것).
+      stepId:
+        screen.name === "definition" || screen.name === "result"
+          ? (screen.focusStepId ?? null)
+          : null,
     },
     (loc) => {
       if (loc.name === "result" && loc.testId) {
-        setScreen({ name: "result", testId: loc.testId });
+        setScreen({ name: "result", testId: loc.testId, focusStepId: loc.stepId ?? null });
       } else if (loc.name === "definition" && loc.testId) {
         setScreen({
           name: "definition",
@@ -371,14 +382,17 @@ export function App() {
                 : { name: "list" },
             );
           }}
-          onShowResult={(testId) => setScreen({ name: "result", testId })}
+          onShowResult={(testId, stepId) =>
+            setScreen({ name: "result", testId, focusStepId: stepId ?? null })
+          }
           onRerun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
         />
       )}
 
       {screen.name === "result" && (
-        <RunResult
+        <ResultView
           testId={screen.testId}
+          focusStepId={screen.focusStepId ?? null}
           onRunAll={(testId) => startRun(testId)}
           onRunFrom={(testId, stepIndex) => startRun(testId, stepIndex)}
           runPending={pendingRun !== null}

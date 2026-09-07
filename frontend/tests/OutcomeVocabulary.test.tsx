@@ -20,7 +20,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { RunResult } from "../src/pages/RunResult";
+import { ResultView } from "../src/pages/ResultView";
 import { SessionWorkbench } from "../src/pages/SessionScreen";
 import { sessionProps } from "./helpers/session";
 import { sessionView } from "./helpers/workbench";
@@ -127,11 +127,15 @@ describe("결말 요약은 한 화면에 한 번만 나온다 (FR-140·U-19)", (
   it.each(ALL_OUTCOMES)("결과 화면 — %s", async (outcome) => {
     vi.stubGlobal("fetch", jsonFetch(resultWith(outcome)));
     const view = render(
-      <RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
     );
 
-    const chip = outcomeChip(outcome);
-    await screen.findAllByText(chip);
+    /*
+      **결말은 사전이 만든 문장으로 화면에 온다** (ui-contract §1). 007 이전에는 대문자
+      칩(`PASS`/`FAIL`)이 헤더와 상단 띠에 따로 있었다 — 통합 화면에서 상태를 말하는
+      자리는 국면 띠 하나이고, 그 자리의 결말 요약이 사전의 문장을 쓴다.
+    */
+    await screen.findAllByText(new RegExp(outcomeLabel(outcome)));
 
     // 결말 요약 자리가 **정확히 하나**다. `<= 1` 로 두면 자리가 아예 없을 때도
     // 통과해 버려 U-19 의 재발을 잡지 못한다.
