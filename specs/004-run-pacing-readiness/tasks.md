@@ -197,7 +197,7 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 - [X] T064 [P] `docs/DEVELOPMENT.md` 에 지연 로딩 픽스처 사용법과 속도 설정 파일 위치를 적는다
 - [X] T065 [P] `backend/tests/integration/test_roundtrip.py` 에서 예산 기본값 상향이 생성 Playwright 코드의 `timeout:` 에 반영되는지 확인한다 (품질 게이트 2, SC-008)
 - [X] T066 `uv run ruff check src/ tests/` 와 `uv run lint-imports` 를 통과시킨다
-- [ ] T067 `uv run python -m pytest` 전체를 돌린다 — 기존 921건이 줄지 않는다. **테스트를 지우거나 건너뛰어 통과시키지 않는다** (품질 게이트 4). `.first` 폴백 제거로 깨지는 기존 테스트가 있으면 되돌리지 말고 대상 정의를 고친다 (plan 위험표)
+- [X] T067 `uv run python -m pytest` 전체를 돌린다 — 기존 921건이 줄지 않는다. **테스트를 지우거나 건너뛰어 통과시키지 않는다** (품질 게이트 4). `.first` 폴백 제거로 깨지는 기존 테스트가 있으면 되돌리지 말고 대상 정의를 고친다 (plan 위험표)
 - [X] T068 `backend/tests/contract/test_schema_drift.py` 로 생성 타입과 스키마가 어긋나지 않았는지 확인한다
 - [X] T069 [quickstart.md](./quickstart.md) §5 의 화면 절차 6단계를 실제로 수행하고 결과를 기록한다 — 자동 테스트가 못 보는 FR-107·SC-006 을 사람이 확인한다
 - [X] T070 [quickstart.md](./quickstart.md) §7 성공 기준 대조표 8개 항목을 모두 확인하고, 미달 항목이 있으면 사유와 함께 기록한다
@@ -312,3 +312,13 @@ US2 만으로도 값이 있다 — 정상 동작해야 할 테스트가 실패�
   의도다
 - **속도 설정을 테스트 자산에 넣지 않는다** — 헌법 원칙 V. `preferences.json` 은 프로젝트
   트리 밖이다
+
+---
+
+## Phase 7: Convergence
+
+수렴 판정에서 남은 것. CRITICAL·HIGH 없음.
+
+- [ ] T071 `backend/tests/contract/test_preferences_api.py` 에 세션 속도 변경의 거부 경로 둘을 더한다 — 유실된 세션은 409 `SESSION_LOST`, 종료된 세션은 409 `INVALID_TRANSITION`. `sessions.py` 의 두 분기가 아직 한 번도 실행되지 않았다 per contracts/rest-api.md §2 (missing)
+- [ ] T072 `frontend/tests/` 에 Runner 화면 테스트를 더한다 — 마지막 이벤트가 `step_finished` 인 상태(= Step 간 간격)에서 방금 끝난 Step 과 그 결과가 보인다. 지금은 "간격 중에는 `step_started` 가 발행되지 않는다"는 암묵적 성질에 기대고 있어, 누군가 간격 중 이벤트를 추가하면 조용히 깨진다 per FR-107 (partial)
+- [ ] T073 AI **작성 중** 실행되는 Step 에는 속도가 적용되지 않는다는 한계를 `specs/004-run-pacing-readiness/outcome.md` 와 `docs/DEVELOPMENT.md` 에 적는다 — 작성 경로가 `RunnerTask` 를 쓰지 않기 때문이며, 저장된 AI 테스트의 재실행에는 정상 적용된다. 구현 확대는 작성 루프의 재설계를 요구하므로 이번 범위 밖이다 per spec 엣지 케이스 "AI 작성 세션에도 속도 설정이 적용되는가" (partial)
