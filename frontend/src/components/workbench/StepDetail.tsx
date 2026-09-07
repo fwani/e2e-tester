@@ -20,7 +20,7 @@
  * 인라인 style 값은 `docs/design/StepInspector.dc.html` 에서 그대로 옮겼다 (DC-001) —
  * `pages/StepInspector.tsx` 가 이미 전사해 둔 것을 이식했다.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type { RepickSlot } from "../../api/client";
 import { InlineSecretInput, referenceName } from "../InlineSecretInput";
@@ -58,11 +58,22 @@ export interface StepDetailProps {
     value?: string;
     timeout_ms?: number;
     sensitive?: boolean;
+    tab?: number;
+    url?: string;
+    assertion_value?: string;
   }) => void;
   onRepick: (slot: RepickSlot) => void;
   onClose: () => void;
   /** 비활성 조작의 해소 방법을 눌렀을 때 */
   onRemedy?: (action: keyof CapabilityMap) => void;
+  /**
+   * 편집 국면의 나머지 필드 (`tab`·`url`·`assertion_value`)와 잠긴 대상의 이유.
+   *
+   * 세션 국면에는 이 필드들이 없다 — 세션의 편집 경로(`PATCH …/steps/{id}`)가 다루지
+   * 않기 때문이다. 그래서 **국면이 주는 자리**로 두고, 그리는 규칙은 여전히 하나다
+   * (FR-230: 상세는 어느 국면에서나 같은 자리·같은 구성).
+   */
+  extraFields?: ReactNode;
 }
 
 export function StepDetail({
@@ -73,6 +84,7 @@ export function StepDetail({
   onRepick,
   onClose,
   onRemedy,
+  extraFields,
 }: StepDetailProps) {
   const step = detail.step;
   const [label, setLabel] = useState(step?.label ?? "");
@@ -301,6 +313,8 @@ export function StepDetail({
                 )}
               </div>
             )}
+
+            {extraFields}
 
             <div>
               <label htmlFor="detail-timeout">대기 시간 (ms)</label>

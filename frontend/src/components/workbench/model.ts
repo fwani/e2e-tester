@@ -75,7 +75,12 @@ export type TargetView =
       available: ArtifactKind[];
       body: ReactNode;
     }
-  | { kind: "open_browser"; stepIndex: number | null }
+  | {
+      kind: "open_browser";
+      stepIndex: number | null;
+      /** 저장이 먼저 필요할 때 라벨이 그 사실을 말한다 (006 FR-203). */
+      label?: string;
+    }
   | { kind: "empty"; reason: EmptyReason };
 
 /** AI 가 막힌 자리. 세션 상태와 무관하게 그린다 (FR-218f). */
@@ -119,6 +124,14 @@ export type PhaseAside =
       warnings: string[];
       stale: StaleInfo | null;
       savedName: string | null;
+      /**
+       * 편집 국면 고유의 나머지 — 테스트 이름·시작 주소·지시문 기록·개별 되돌리기.
+       *
+       * **Step 이 아니라 테스트에 속한 것들**이라 Step 패널 바닥(조작 팔레트)에 둘 수
+       * 없고, 그렇다고 국면 띠에 넣으면 74px 안에 입력칸이 들어간다. 국면 보조 영역이
+       * 「국면 고유 내용의 유일한 자리」(FR-218e)이므로 여기가 그 자리다.
+       */
+      fields?: ReactNode;
     };
 
 /**

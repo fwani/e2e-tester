@@ -169,9 +169,10 @@ export function TargetPane({
             action="browser.openAt"
             capability={capabilities["browser.openAt"]}
             label={
-              target.stepIndex !== null
+              target.label ??
+              (target.stepIndex !== null
                 ? openBrowserAtStepLabel(target.stepIndex)
-                : ACTION_LABEL["browser.openAt"]
+                : ACTION_LABEL["browser.openAt"])
             }
             emphasis
             onRun={onOpenBrowser}

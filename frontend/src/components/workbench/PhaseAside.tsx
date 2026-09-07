@@ -17,6 +17,7 @@
  * 사용자에게는 "아무 일도 일어나지 않음" 으로 보였다. 접힘·탭·겹침 뒤에 두지 않는다.
  */
 import { ErrorNotice } from "../ErrorNotice";
+import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../lib/wording";
 import type { AiBlockedState, PhaseAside as PhaseAsideModel } from "./model";
 
 const INK = "#14130F";
@@ -188,7 +189,7 @@ export function PhaseAside({
             </span>
             {aside.savedName !== null && (
               <span role="status" style={{ color: "#1F7A3D", font: `600 13px/1.4 ${SANS}` }}>
-                ✓ {aside.savedName} 을 저장했습니다
+                ✓ {editSavedNotice(aside.savedName)}
               </span>
             )}
           </div>
@@ -202,6 +203,8 @@ export function PhaseAside({
             </ul>
           )}
 
+          {aside.fields}
+
           {/* 006 FR-209 — 편집 도중 정의 파일이 밖에서 바뀌었다. */}
           {aside.stale !== null && (
             <div
@@ -214,11 +217,12 @@ export function PhaseAside({
               <p style={{ fontSize: 12.5, margin: "6px 0 10px" }}>
                 파일 밖에서 고친 내용이 있습니다. 어떻게 할지 고르세요.
               </p>
+              {/* 무엇을 버리는지 라벨에 적는다 (006 FR-209 · ui-contract §7). */}
               <div className="row" style={{ gap: 8 }}>
                 <button className="secondary" onClick={onReload}>
-                  파일을 다시 읽기
+                  {staleReloadLabel(aside.pendingCount)}
                 </button>
-                <button onClick={onOverwriteStale}>내 편집으로 덮어쓰기</button>
+                <button onClick={onOverwriteStale}>{STALE_OVERWRITE_LABEL}</button>
               </div>
             </div>
           )}

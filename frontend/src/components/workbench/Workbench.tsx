@@ -67,6 +67,14 @@ export interface WorkbenchProps {
   stepEmptyNotice?: ReactNode;
   /** Step 패널 바닥의 조작 블록. **일곱 국면에서 같은 자리다** (FR-235) */
   stepFooter?: ReactNode;
+  /**
+   * Step 상세 안, 항목 순서 사이에 국면이 얹는 것 (FR-231).
+   *
+   * 편집 국면의 `tab`·`url`·`기대값` 처럼 **그 국면에만 있는 필드**의 자리다. 자리를
+   * 따로 만들지 않고 상세의 항목 순서 안에 두는 이유는, 국면에 따라 같은 자리가 다른
+   * 뜻을 갖지 않게 하는 것이다.
+   */
+  stepDetailExtra?: ReactNode;
 
   onSelectStep: (stepId: string) => void;
   onCloseDetail: () => void;
@@ -101,6 +109,7 @@ export function Workbench({
   stepHeaderExtra,
   stepEmptyNotice,
   stepFooter,
+  stepDetailExtra,
   onSelectStep,
   onCloseDetail,
   onSaveStep,
@@ -219,6 +228,7 @@ export function Workbench({
               onRepick={onRepick ?? (() => undefined)}
               onClose={onCloseDetail}
               onRemedy={onAction}
+              extraFields={stepDetailExtra}
             />
           </div>
         )}

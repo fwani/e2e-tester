@@ -83,8 +83,15 @@ describe("화면이 공용 통로를 지나는가 (RG-104-4)", () => {
     ([p, source]) => [p.split("/").pop() as string, source] as const,
   );
 
+  /**
+   * 목록을 못 읽은 채 통과하는 상태를 막는다.
+   *
+   * **007 이 이 수를 내렸다** (13 → 9). 통합으로 화면이 줄어드는 것이 이 라운드의
+   * 목적이고(SC-001), 줄어든 것을 "가드가 아무것도 못 읽었다" 와 섞으면 안 된다.
+   * 이 수보다 적어지면 그때는 실제로 목록을 못 읽은 것이다.
+   */
   it("훑을 화면이 실제로 있다", () => {
-    expect(pages.length).toBeGreaterThanOrEqual(10);
+    expect(pages.length).toBeGreaterThanOrEqual(9);
   });
 
   it.each(pages)("%s 는 오류를 직접 그리지 않는다", (file, source) => {

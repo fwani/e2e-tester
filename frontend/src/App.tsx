@@ -13,7 +13,7 @@ import { KeyManagement } from "./pages/KeyManagement";
 import { ProjectSetup } from "./pages/ProjectSetup";
 import { ResultView } from "./pages/ResultView";
 import { SecretValues } from "./pages/SecretValues";
-import { TestDefinition } from "./pages/TestDefinition";
+import { EditView } from "./pages/EditView";
 import { AiCompose } from "./pages/AiCompose";
 import { SessionScreen } from "./pages/SessionScreen";
 import { TestList } from "./pages/TestList";
@@ -313,7 +313,7 @@ export function App() {
         U-01·U-06 이 되살아난다.
       */}
       {screen.name === "definition" && (
-        <TestDefinition
+        <EditView
           testId={screen.testId}
           focusStepId={screen.focusStepId ?? null}
           onRun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
@@ -321,6 +321,11 @@ export function App() {
             openBrowserAt(testId, stepIndex, stepId)
           }
           onOpenSession={openSession}
+          /* 007 FR-239 — 편집 ↔ 결과 왕복에서도 보던 Step 을 잃지 않는다. */
+          onShowResult={(testId, stepId) =>
+            setScreen({ name: "result", testId, focusStepId: stepId ?? null })
+          }
+          runPending={pendingRun !== null}
           onBack={() => setScreen({ name: "list" })}
         />
       )}
