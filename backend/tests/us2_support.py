@@ -1,6 +1,6 @@
 """US2 (재실행) 테스트 공용 도구.
 
-`tests/` 에는 `__init__.py` 가 없으므로 pytest 가 이 디렉터리를 sys.path 에 넣는다.
+`pyproject.toml` 의 `pythonpath` 가 `tests/` 를 sys.path 에 올린다.
 테스트 모듈에서 ``from us2_support import ...`` 로 쓴다.
 
 여기 있는 함수들은 **정의를 손으로 쓰지 않고 실제 녹화 경로를 지나게** 하는 데 목적이 있다.

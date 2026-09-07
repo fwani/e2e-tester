@@ -42,7 +42,9 @@ packages = ["src/itb"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = ["src"]
+# "." 은 `tests` 를 패키지로 임포트하기 위한 것이고(`tests.abnormal.catalogue`),
+# "tests" 는 공용 지원 모듈을 이름만으로 임포트하기 위한 것이다(`us2_support`).
+pythonpath = ["src", ".", "tests"]
 # 도메인의 `Test` 클래스(테스트 시나리오 모델)를 pytest 가 수집하지 않게 한다.
 # 함수 기반 테스트만 쓰므로 클래스 수집 패턴을 좁힌다.
 python_classes = ["*Tests"]
