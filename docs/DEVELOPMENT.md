@@ -153,6 +153,51 @@ SC-002 같은 성공 기준 측정은 **기본 드라이버로만** 한다.
 `backend/tests/unit/test_driver_selection.py` 가 고정한다. 테스트는 이 환경 변수를 항상
 지우고 돌린다 (`backend/tests/conftest.py`).
 
+## 저장된 테스트 편집 (006)
+
+**편집 규칙의 구현은 한 곳이다** — `backend/src/itb/execution/step_edits.py`. 그 모듈은
+Playwright 도 FastAPI 도 임포트하지 않는 순수 모듈이고, **호출자가 둘**이다.
+
+| 경로 | 호출자 | 실행 위치 |
+|---|---|---|
+| 일시정지 세션 편집 | `api/routes/steps.py` (`/api/sessions/{id}/steps*`) | 세션의 현재 위치 |
+| 저장된 정의 편집 | `api/routes/tests.py` (`PUT /api/tests/{id}/definition`) | 없음 → `0` 을 넘긴다 |
+
+`current_step_index=0` 으로 부르면 "이미 실행된 구간을 고쳤다" 경고가 하나도 생기지 않는다.
+그래서 정의 편집이 그 모듈을 **고치지 않고** 쓸 수 있다.
+
+**세 번째 구현을 만들지 말 것.** 편집 조작이 필요하면 `step_edits` 에 인자를 더한다.
+`backend/tests/unit/test_definition_edit_core.py` 가 그 구조를 테스트로 고정한다 —
+두 번째 구현이 생기면 그 파일이 깨진다.
+
+같은 이유로 변수 파생은 `domain/test_case.py` 의 `derive_variables()` 한 곳이다. 두 벌이면
+한쪽에서 민감 표시가 비민감으로 강등되고, 재실행이 빈 값을 채운다 (조용한 실패다).
+
+### 저장 요청은 편집 결과가 아니라 편집 연산 목록이다
+
+```
+PUT /api/tests/TC-001/definition
+{ "revision": "<GET 이 준 지문>", "edits": [{"op": "update", "step_id": "step-02", "value": "operator"}] }
+```
+
+결과 전체를 받으면 "어느 Step 종류가 값을 갖는가" 같은 판정이 프론트로 넘어가고, 그것이
+규칙의 두 번째 구현이 된다. 연산을 받으면 서버가 규칙의 주인으로 남는다.
+
+`revision` 은 정의 파일 내용의 SHA-256 앞 16자다. 불일치면 `409 DEFINITION_STALE` 이고
+응답에 현재 정의가 실린다 — 사용자가 편집기로 YAML 을 직접 고치는 것은 정상 사용이므로
+(헌법 원칙 V) 실제로 일어난다. **강제 플래그는 없다**: 덮어쓰기는 응답이 준 새 `revision` 을
+실어 다시 보내는 것이다. 플래그는 습관이 되고, 습관이 되면 감지가 무의미해진다.
+
+### locator 후보는 편집할 수 없다
+
+편집 요청 모델에 `target`·`css`·`test_id` 류 필드가 **아예 없다.** 후보는 살아 있는
+페이지에서만 수집·검증되므로(원칙 IV), 손으로 넣은 값은 `verified` 를 얻을 수 없다.
+`verified` 로 적으면 거짓말이고, 아니면 실행에 쓰이지 않는 조용한 무효 편집이다.
+
+요소를 다시 집어야 하면 편집 화면의 「브라우저 열어 Step nn 에서 멈추기」를 쓴다 —
+`POST /api/sessions` 에 `pause_before_index` 를 실으면 러너가 그 Step **직전**에서 기존
+`PAUSED` 로 들어간다. 사용자가 달리는 실행을 「일시정지」로 잡을 필요가 없다.
+
 ## 검증
 
 ```bash

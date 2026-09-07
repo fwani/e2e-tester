@@ -250,6 +250,17 @@ export function saveEditsLabel(pendingCount: number, saving: boolean): string {
   return pendingCount > 0 ? `변경 저장 (${pendingCount}건)` : "변경 저장";
 }
 
+/**
+ * 세션(일시정지·검토) 화면의 저장 라벨 (005 FR-155·FR-156).
+ *
+ * 편집 화면의 `saveEditsLabel()` 과 **규칙이 다르다** — 세션에는 변경 건수 개념이 없고
+ * 처음 저장은 이름을 정하는 일이다. 그래서 함수를 합치지 않고 **같은 자리에 둔다**:
+ * 문구가 두 파일에 흩어져 있으면 한쪽을 고칠 때 다른 쪽을 빠뜨린다.
+ */
+export function sessionSaveLabel(alreadySaved: boolean): string {
+  return alreadySaved ? "변경 저장" : "저장";
+}
+
 /** 저장 성공 확인줄 (FR-194 · 005 FR-158). 화면을 옮기지 않고 알린다. */
 export function editSavedNotice(testName: string): string {
   return `저장했습니다 · ${testName}`;

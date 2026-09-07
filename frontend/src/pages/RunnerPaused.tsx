@@ -15,7 +15,7 @@ import type { AddAssertionBody, RunPacing } from "../api/client";
 import type { Step } from "../types/generated/step";
 import { AssertionForm } from "../components/AssertionForm";
 import { BrowserFrame } from "../components/design/BrowserFrame";
-import { stepLabel, stepNumber } from "../lib/wording";
+import { sessionSaveLabel, stepLabel, stepNumber } from "../lib/wording";
 
 import {
   DesignStepRow,
@@ -671,7 +671,7 @@ export function RunnerPaused(props: RunnerPausedProps) {
                 disabled={busy || steps.length === 0 || saveName.trim() === "" || !hasChangesToSave}
                 onClick={onSave}
               >
-                {savedAt !== null ? "변경 저장" : "저장"}
+                {sessionSaveLabel(savedAt !== null)}
               </button>
             </div>
 
