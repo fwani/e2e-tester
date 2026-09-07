@@ -29,6 +29,11 @@ CANVAS = DESIGN / "canvas.json"
 OUT_DIR = ROOT / "specs" / "002-defect-fix-design-conformance" / "design-conformance"
 
 # 화면 식별자 → (dc.html 파일, 제품의 대응 파일). contracts/design-conformance.md §1
+#
+# **007 이 대체한 6종의 `대응 파일` 경로는 이제 존재하지 않는다.** 지우지 않는 이유는
+# 002 의 대조 기록이 그 파일을 대상으로 한 판정이기 때문이다 — 경로를 고치면 그 판정이
+# 무엇을 본 것인지 알 수 없게 된다. 대체 관계는
+# `specs/007-unify-test-screens/design-conformance/replacement-map.md` 가 갖는다.
 SCREENS: dict[str, tuple[str, str]] = {
     "TestList": ("TestList.dc.html", "frontend/src/pages/TestList.tsx"),
     "CreateTest": ("CreateTest.dc.html", "frontend/src/pages/CreateTest.tsx"),
@@ -41,7 +46,11 @@ SCREENS: dict[str, tuple[str, str]] = {
     # 007 — 통합 작업 화면. 위 6종(TestList·CreateTest 제외)을 대체한다.
     # 이 항목의 대조 기록은 007 의 디렉터리로 나간다 (OUT_DIR_007) — 002 의 기록은
     # 그 라운드의 판정이므로 덮어쓰지 않는다.
-    "Workbench": ("Workbench.dc.html", "frontend/src/components/workbench/Workbench.tsx"),
+    "Workbench": (
+        "Workbench.dc.html",
+        "frontend/src/components/workbench/* · "
+        "frontend/src/pages/{SessionScreen,ResultView,EditView}.tsx",
+    ),
 }
 
 # 007 의 대조 기록 위치. `Workbench` 만 여기로 나간다.
@@ -195,23 +204,54 @@ def _rows(name: str, s: dict[str, Any]) -> list[tuple[str, str, str]]:
     for h in heights[:6]:
         rows.append(("치수", f"고정 높이 {h}px", "확정 디자인 선언값"))
 
+    rows.append(("치수", "border-radius", "0회 — 모든 모서리 직각"))
+
+    if name in SCREENS_007:
+        # **상태 축은 국면마다 행을 갖는다.** 일곱 국면이 하나의 화면이므로 상태가
+        # 일곱이고, 한 행으로 뭉개면 리뷰어가 어느 국면을 봤는지 기록에 남지 않는다.
+        for phase in (
+            "녹화 중",
+            "AI 작성 중",
+            "사람이 직접 조작",
+            "실행 중",
+            "일시정지",
+            "결과",
+            "편집",
+        ):
+            rows.append(("상태", f"국면 「{phase}」", "artboard 의 해당 상태 블록과 대조한다"))
+    else:
+        rows.append(("상태", "확정 디자인이 보여주는 상태", "리뷰어가 dc.html 을 열어 확인한다"))
+
     rows += [
-        ("치수", "border-radius", "0회 — 모든 모서리 직각"),
-        ("상태", "확정 디자인이 보여주는 상태", "리뷰어가 dc.html 을 열어 확인한다"),
         ("가감", "dc.html 에 없는 요소", "0개여야 한다"),
         ("가감", "dc.html 에 있는데 빠진 요소", "0개여야 한다"),
     ]
     return rows
 
 
-def write_tables(data: dict[str, Any]) -> list[Path]:
+def write_tables(data: dict[str, Any], only: str | None = None) -> list[Path]:
+    """대조표를 쓴다.
+
+    `only` 를 주면 그 화면 하나만 쓴다. **이것이 없으면 007 의 기준값을 다시 뽑을 때
+    002 의 리뷰 판정까지 함께 지워진다** — 판정은 그 라운드의 것이고, 되살릴 수 없다.
+    """
     written: list[Path] = []
 
     for name, s in data["screens"].items():
+        if only is not None and name != only:
+            continue
         target_dir = out_dir_for(name)
         target_dir.mkdir(parents=True, exist_ok=True)
         rows = _rows(name, s)
         body = "\n".join(f"| {a} | {i} | {v} |  | 미판정 |  |" for a, i, v in rows)
+        # 007 의 artboard 는 아직 승인 전이다. 그 사실이 표의 첫 줄에 있어야 판정이
+        # 승인 없이 성립한 것으로 읽히지 않는다 (FR-254c · design-conformance-007 §5).
+        approval = (
+            "\n> **이 artboard 는 승인 대기 중이며 대조 기준으로 확정되지 않았다** "
+            "(FR-254c · `contracts/design-conformance-007.md` §5). 승인 전 판정은 성립하지 않는다.\n"
+            if name in SCREENS_007
+            else ""
+        )
         out = target_dir / f"{name}.md"
         out.write_text(
             f"""# 디자인 대조 — {name} ({s["title"]})
@@ -219,7 +259,7 @@ def write_tables(data: dict[str, Any]) -> list[Path]:
 **기준**: `docs/design/{s["file"]}` — 아트보드 {s["artboard_w"]}×{s["artboard_h"]}
 **대상**: `{s["target"]}`
 **요구사항**: DC-002 ~ DC-007 · 완료 판정 SC-108
-
+{approval}
 > **`기준값` 칸은 `scripts/design_baseline.py` 가 확정 디자인에서 기계적으로 뽑았다.**
 > `관측값`·`판정`·`비고` 는 **리뷰어가 채운다.** 구현자가 자기 구현을 판정하면 대조가
 > 아니라 자기 확인이 된다 (contracts/design-conformance.md §4).
@@ -281,14 +321,19 @@ def write_undefined_states() -> Path:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", action="store_true", help="추출한 사실을 JSON 으로 출력")
-    ap.add_argument("--write", action="store_true", help="대조표 8개와 미정의 상태 파일 생성")
+    ap.add_argument("--write", action="store_true", help="대조표와 미정의 상태 파일 생성")
+    ap.add_argument(
+        "--only",
+        metavar="NAME",
+        help="그 화면 하나만 다시 쓴다 (예: Workbench). 다른 라운드의 리뷰 판정을 지키려면 필요하다",
+    )
     args = ap.parse_args()
 
     data = collect()
     assert_baseline(data)
 
     if args.write:
-        tables = write_tables(data)
+        tables = write_tables(data, only=args.only)
         states = write_undefined_states()
         for p in tables:
             print(f"생성: {p.relative_to(ROOT)}")

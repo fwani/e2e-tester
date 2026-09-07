@@ -3,8 +3,8 @@
 자동으로 닫을 수 있는 작업은 전부 닫혔다. 아래 7건은 **판정하는 주체가 사람이어야
 성립하는 것**이며, 준비물은 모두 만들어져 있고 **판정 칸만 비어 있다.**
 
-6·7 은 007(화면 통합)이 진행 중에 등록한 것이다 — 준비물이 아직 만들어지는 중인 항목은
-그 사실을 표에 적었다.
+6·7 은 007(화면 통합)이 등록한 것이다. **007 의 구현은 끝났고 준비물도 다 만들어졌다**
+(T090 · 2026-09-08) — 두 항목 모두 판정 칸만 비어 있다.
 
 이 문서는 색인이다. 절차는 각 항목이 가리키는 문서가 갖는다.
 
@@ -105,7 +105,13 @@ T156 은 **요구사항이 잘 쓰였는지**를 본다 — 구현이 동작하�
 | 대상 | [docs/design/Workbench.dc.html](design/Workbench.dc.html) — 통합 작업 화면 초안 (1440×900) |
 | 절차 | [design-conformance-007.md §5](../specs/007-unify-test-screens/contracts/design-conformance-007.md) |
 | 승인 대상 | **5건** — research.md R8 의 A1~A5 |
+| 준비 상태 | **준비 완료.** 초안 · `canvas.json` 항목 · 대체 관계 기록이 모두 있다 |
+| 남은 판정 칸 | **5** (A1~A5) |
 | 완료 조건 | A1~A5 각각에 승인 또는 대체값. 승인 전 초안은 **대조 기준이 아니다** (FR-254c) |
+
+**007 이 무엇을 했는지** — 구현은 끝났다. Step 목록 구현 4벌 → 1벌, Step 상세 2벌 → 1벌,
+옛 화면 8개 → 0개 (`frontend/tests/ImplementationCount.test.ts` 가 센다). 남은 것은 그
+결과가 **확정 디자인으로서 옳은가**이고, 그 판정은 사람의 것이다.
 
 007 은 확정 디자인 6종(`Main`·`RunnerPaused`·`Takeover`·`AiRecord`·`RunResult`·
 `StepInspector`)을 **하나의 화면의 일곱 상태**로 합친다. 그러면 002 가 세운 1:1 대응
@@ -131,9 +137,17 @@ T156 은 **요구사항이 잘 쓰였는지**를 본다 — 구현이 동작하�
 | | |
 |---|---|
 | 대상 | [design-conformance/Workbench.md](../specs/007-unify-test-screens/design-conformance/Workbench.md) |
-| 준비 상태 | `기준값` 은 `scripts/design_baseline.py` 가 채운다 (`Workbench` 항목 추가됨). **artboard 초안이 있어야 돌아간다** |
-| 규모 | 축 6개 × 항목 + **국면 7개의 상태 행** |
+| 준비 상태 | **준비 완료.** `기준값` 36칸이 `scripts/design_baseline.py --write --only Workbench` 로 채워져 있다 |
+| 규모 | 축 6개 · 항목 36개 (그중 **국면 7개의 상태 행**) |
+| 남은 판정 칸 | **36** (`관측값`·`판정`·`비고` 가 비어 있는 행 수) |
 | 완료 조건 | `불일치`·`미판정` **0건**. 단 6번 승인 후에만 성립한다 |
+
+**다시 뽑는 법** — artboard 가 바뀌면 기준값을 다시 뽑는다. `--only` 를 빼면 002 의
+리뷰 판정까지 함께 지워지므로 **반드시 붙인다.**
+
+```bash
+python3 scripts/design_baseline.py --write --only Workbench
+```
 
 002 T099 와 같은 성질의 일이다 — **구현자가 자기 구현을 판정하면 대조가 아니라 자기
 확인이다.** 007 도 예외가 아니다.

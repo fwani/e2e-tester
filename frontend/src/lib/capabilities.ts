@@ -280,8 +280,9 @@ const OVERRIDES: {
     remedy: null,
   },
   {
-    // 건너뛸 실패가 없으면 건너뛰기는 뜻이 없다 (C3). 참·거짓 방향이 반대다.
-    key: "C3",
+    // O9 — 건너뛸 실패가 없으면 건너뛰기는 뜻이 없다. 참·거짓 방향이 반대다.
+    // 계약(§3-6)과 **같은 이름**을 쓴다 — 문구를 고칠 때 계약의 어느 줄인지 즉시 찾는다.
+    key: "O9",
     fact: "hasFailedStep",
     actions: ["run.resumeSkipFailure"],
     remedy: null,
@@ -289,7 +290,7 @@ const OVERRIDES: {
 ];
 
 /** O4 는 「Step 이 있다」가 거짓일 때 걸린다 — 다른 덮어쓰기와 참·거짓 방향이 반대다. */
-const NEGATED_OVERRIDES = new Set<DisabledReasonKey>(["O4", "C3"]);
+const NEGATED_OVERRIDES = new Set<DisabledReasonKey>(["O4", "O9"]);
 
 /* ─── 표 (ui-contract §3-1 ~ §3-4) ─────────────────────────────────────────── */
 
