@@ -84,10 +84,10 @@ description: "Task list template for feature implementation"
 
 ### 확정 디자인 artboard
 
-- [ ] T028 artboard 초안 in `docs/design/Workbench.dc.html` — 1440×900. 일곱 국면을 **하나의 껍데기의 상태로** 정의한다. 값은 기존 6종에서 추출한 것만 쓴다
-- [ ] T029 `docs/design/canvas.json` 에 항목 추가 + 대체되는 6종의 상태 표시
-- [ ] T030 대체 관계 기록 in `specs/007-unify-test-screens/design-conformance/replacement-map.md` — 기존 6종의 **모든 영역**을 `그대로`/`이동`/`분리`/`옮기지 않음` 넷으로 판정. `옮기지 않음` 은 이유 필수
-- [ ] T031 승인 대상 A1~A5 목록 작성 + `docs/PENDING-HUMAN-VERIFICATION.md` 등록. 대조 기록 첫 줄에 「승인 대기 중이며 대조 기준으로 확정되지 않았다」 명시
+- [X] T028 artboard 초안 in `docs/design/Workbench.dc.html` — 1440×900. 일곱 국면을 **하나의 껍데기의 상태로** 정의한다. 값은 기존 6종에서 추출한 것만 쓴다
+- [X] T029 `docs/design/canvas.json` 에 항목 추가 + 대체되는 6종의 상태 표시
+- [X] T030 대체 관계 기록 in `specs/007-unify-test-screens/design-conformance/replacement-map.md` — 기존 6종의 **모든 영역**을 `그대로`/`이동`/`분리`/`옮기지 않음` 넷으로 판정. `옮기지 않음` 은 이유 필수
+- [X] T031 승인 대상 A1~A5 목록 작성 + `docs/PENDING-HUMAN-VERIFICATION.md` 등록. 대조 기록 첫 줄에 「승인 대기 중이며 대조 기준으로 확정되지 않았다」 명시
 
 **Checkpoint**: 공통 계약 완료. `CapabilityCoverage` 통과. 화면 동작은 아직 그대로
 
