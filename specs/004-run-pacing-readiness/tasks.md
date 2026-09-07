@@ -195,12 +195,12 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 
 - [X] T063 [P] `docs/design/` 문서의 RunResult 표기에서 `timeout 5000 ms` 를 갱신한다 — 기본값이 10000ms 로 바뀌었다 (research R5 부수 영향)
 - [X] T064 [P] `docs/DEVELOPMENT.md` 에 지연 로딩 픽스처 사용법과 속도 설정 파일 위치를 적는다
-- [ ] T065 [P] `backend/tests/integration/test_roundtrip.py` 에서 예산 기본값 상향이 생성 Playwright 코드의 `timeout:` 에 반영되는지 확인한다 (품질 게이트 2, SC-008)
-- [ ] T066 `uv run ruff check src/ tests/` 와 `uv run lint-imports` 를 통과시킨다
+- [X] T065 [P] `backend/tests/integration/test_roundtrip.py` 에서 예산 기본값 상향이 생성 Playwright 코드의 `timeout:` 에 반영되는지 확인한다 (품질 게이트 2, SC-008)
+- [X] T066 `uv run ruff check src/ tests/` 와 `uv run lint-imports` 를 통과시킨다
 - [ ] T067 `uv run python -m pytest` 전체를 돌린다 — 기존 921건이 줄지 않는다. **테스트를 지우거나 건너뛰어 통과시키지 않는다** (품질 게이트 4). `.first` 폴백 제거로 깨지는 기존 테스트가 있으면 되돌리지 말고 대상 정의를 고친다 (plan 위험표)
-- [ ] T068 `backend/tests/contract/test_schema_drift.py` 로 생성 타입과 스키마가 어긋나지 않았는지 확인한다
-- [ ] T069 [quickstart.md](./quickstart.md) §5 의 화면 절차 6단계를 실제로 수행하고 결과를 기록한다 — 자동 테스트가 못 보는 FR-107·SC-006 을 사람이 확인한다
-- [ ] T070 [quickstart.md](./quickstart.md) §7 성공 기준 대조표 8개 항목을 모두 확인하고, 미달 항목이 있으면 사유와 함께 기록한다
+- [X] T068 `backend/tests/contract/test_schema_drift.py` 로 생성 타입과 스키마가 어긋나지 않았는지 확인한다
+- [X] T069 [quickstart.md](./quickstart.md) §5 의 화면 절차 6단계를 실제로 수행하고 결과를 기록한다 — 자동 테스트가 못 보는 FR-107·SC-006 을 사람이 확인한다
+- [X] T070 [quickstart.md](./quickstart.md) §7 성공 기준 대조표 8개 항목을 모두 확인하고, 미달 항목이 있으면 사유와 함께 기록한다
 
 ---
 

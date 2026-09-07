@@ -399,3 +399,52 @@ def test_ai_instruction_is_a_comment_not_an_instruction() -> None:
     for line in code.splitlines():
         if "로그인해서 프로젝트를 삭제해" in line:
             assert line.strip().startswith("//")
+
+
+# ─── 004: 대기 예산이 생성 코드에 그대로 반영된다 (FR-118, SC-008) ───────────
+
+
+def test_default_budget_reaches_the_generated_code() -> None:
+    """제품 안과 내보낸 테스트가 **같은 시간을 기다린다** (004 FR-118).
+
+    지연 로딩 화면에서 제품은 통과하는데 내보낸 테스트는 실패하는 상황을 막는 것이
+    목적이다. 생성기가 `step.timeout_ms` 를 그대로 읽으므로 기본값 상향이 자동으로
+    반영되는데, 그 "자동" 이 유지되는지는 확인해 둬야 한다 — 누군가 생성기에 상수를
+    적어 넣으면 두 값이 갈린다.
+    """
+    from itb.domain.step import DEFAULT_TIMEOUT_MS
+
+    step = ClickStep(id="step-01", label="클릭", target=target(test_id=cand("a")))
+    assert step.timeout_ms == DEFAULT_TIMEOUT_MS
+    assert f"timeout: {DEFAULT_TIMEOUT_MS}" in line_of(step), (
+        "생성 코드가 Step 의 대기 예산을 쓰지 않는다"
+    )
+
+
+def test_per_step_budget_is_honoured_by_the_generator() -> None:
+    """Step 별로 조정한 예산도 생성 코드에 실린다 (FR-115).
+
+    느린 화면 하나 때문에 예산을 올린 사용자가, 내보낸 테스트에서는 기본값으로
+    돌아가는 것을 보면 안 된다.
+    """
+    step = ClickStep(
+        id="step-01", label="클릭", target=target(test_id=cand("a")), timeout_ms=30_000
+    )
+    assert "timeout: 30000" in line_of(step)
+
+
+def test_generator_does_not_hardcode_a_timeout() -> None:
+    """생성기 소스에 대기 시간 상수가 박혀 있지 않다.
+
+    값이 두 곳에 있으면 한쪽만 바뀌는 날이 온다. 004 가 기본값을 5000 → 10000 으로
+    올릴 때 생성기를 건드리지 않아도 됐던 것이 이 성질 덕이다.
+    """
+    import pathlib
+
+    source = pathlib.Path("src/itb/generator/playwright_gen.py").read_text(
+        encoding="utf-8"
+    )
+    for forbidden in ("timeout: 5000", "timeout: 10000", "= 5000", "= 10000"):
+        assert forbidden not in source, (
+            f"생성기에 대기 시간이 박혀 있다: {forbidden!r}"
+        )
