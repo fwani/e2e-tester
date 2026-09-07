@@ -170,6 +170,27 @@ export function TargetPane({
               );
             })}
           </div>
+          {/*
+            005 FR-172 (U-22) — **비활성인 이유를 화면에도 남긴다.** `title` 은 마우스를
+            올려야 보이고, 그러면 왜 못 누르는지 알아내는 데 한 번 더 시도가 필요하다.
+            확정 디자인에 있는 탭을 빼지 않는 대신(DC-007) 이유를 붙여 남긴다.
+          */}
+          {target.available.length < ARTIFACT_TABS.length && (
+            <div
+              data-disabled-reason="artifact.select"
+              style={{
+                padding: "6px 16px",
+                borderBottom: "2px solid #DCD8CC",
+                font: `400 12px/1.4 ${MONO}`,
+                color: "#9A968A",
+              }}
+            >
+              {ARTIFACT_TABS.filter((t) => !target.available.includes(t.kind))
+                .map((t) => t.label)
+                .join(" · ")}{" "}
+              는 이 실행에 남지 않았습니다 (MVP 미지원).
+            </div>
+          )}
           <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "16px" }}>
             {target.body}
           </div>
