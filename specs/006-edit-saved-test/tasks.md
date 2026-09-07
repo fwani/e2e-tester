@@ -85,7 +85,7 @@ description: "Task list for 006-edit-saved-test"
 
 - [ ] T015 [P] [US1] `backend/tests/contract/test_get_definition.py` — `GET /api/tests/{id}/definition` 이 200 이고 `test`·`revision`·`editable`·`locked_fields` 를 준다. **Playwright 를 기동하는 코드 경로가 닿지 않는다**는 것을 단정한다 (FR-182 · SC-302)
 - [ ] T016 [P] [US1] `backend/tests/contract/test_put_definition.py` — `update`·`delete`·`reorder`·`set_name`·`set_start_url`·`set_assertion_value` 각 연산이 정의 파일에 반영된다 (FR-183~186)
-- [ ] T017 [P] [US1] 같은 파일에 거절 계약을 단정한다 — 알 수 없는 `step_id`(400 `DEFINITION_INVALID`), 값을 갖지 않는 종류에 `value`(400), `reorder` 집합 불일치(400), 결과 Step 0개(400 `STEP_LIST_EMPTY`), 빈 `edits`(400) ([contracts/rest-api.md](./contracts/rest-api.md) §2)
+- [ ] T017 [P] [US1] 같은 파일에 거절 계약을 단정한다 — 알 수 없는 `step_id`(400 `DEFINITION_INVALID`), 값을 갖지 않는 종류에 `value`(400), `reorder` 집합 불일치(400), 결과 Step 0개(400 `STEP_LIST_EMPTY`, FR-197), 빈 `edits`(400) ([contracts/rest-api.md](./contracts/rest-api.md) §2)
 - [ ] T018 [P] [US1] `backend/tests/contract/test_definition_sensitive.py` — 민감 참조를 평문으로 바꾸는 편집이 400 이고 `next_action` 이 비밀 값 화면을 가리킨다. 비민감 참조를 평문으로 바꾸는 것은 성공한다 (FR-213 · data-model §4 V6)
 - [ ] T019 [P] [US1] 같은 파일에서 편집·저장 후 민감 변수의 `sensitive: true` 가 유지되는 것과, 응답·로그에 평문이 없는 것을 단정한다 (FR-214·FR-215)
 - [ ] T020 [P] [US1] `backend/tests/unit/test_definition_warnings.py` — 정의되지 않은 참조가 저장을 막지 않고 `warnings` 로 나온다 (FR-216)
@@ -99,11 +99,13 @@ description: "Task list for 006-edit-saved-test"
 
 - [ ] T026 [US1] `backend/src/itb/api/routes/tests.py` 에 `GET /api/tests/{test_id}/definition` 을 구현한다. `repo.read_test()` + `definition_revision()` + `state.sessions.reservation_for_test()` 로 `DefinitionView` 를 만든다. **브라우저를 만들지 않는다** (FR-182)
 - [ ] T027 [US1] `locked_fields` 를 한 곳에서 만든다 — `backend/src/itb/api/routes/tests.py` 의 상수 또는 `domain` 의 표. [data-model.md](./data-model.md) §1 의 편집 가능 표가 유일한 근거다. 화면이 이 목록을 하드코딩하지 않게 한다 (FR-191)
-- [ ] T028 [US1] `PUT /api/tests/{test_id}/definition` 을 구현한다. 순서: V1 요청 형태 → V2 `revision` → V3 실행 중 → V4 연산 적용(`step_edits`) → V5 Step 1개 이상 → V6 민감 참조 → V7 `Test` 검증 → V8 `derive_variables()` → V9 경고 ([data-model.md](./data-model.md) §4)
+- [ ] T028 [US1] `PUT /api/tests/{test_id}/definition` 을 구현한다. 순서: V1 요청 형태 → V2 `revision` → V3 실행 중 → V4 연산 적용(`step_edits`) → V5 Step 1개 이상(FR-197) → V6 민감 참조 → V7 `Test` 검증 → V8 `derive_variables()` → V9 경고 ([data-model.md](./data-model.md) §4)
 - [ ] T029 [US1] 연산 적용을 **전부 또는 전무**로 만든다. 하나라도 실패하면 파일을 쓰지 않는다. `step_edits` 예외를 계약의 오류 코드로 옮긴다 (`ValueNotSupportedError`·`ReorderMismatchError`·`StepNotFoundError` → 400/404)
 - [ ] T030 [US1] 저장을 `repo.write_test()` 로 수렴시킨다. 원자적 쓰기(`itb.storage.atomic`)를 쓰고 `updated_at` 을 갱신한다. **같은 `test_id` 를 덮어쓴다** (FR-193 · 불변식 5·6)
 - [ ] T031 [US1] 저장 실패를 조용히 넘기지 않는다 — 파일 쓰기 실패는 500 `STORAGE_WRITE_FAILED` 와 다음 행동 (FR-198)
 - [ ] T032 [US1] 정의 형식이 편집으로 바뀌지 않는지 확인한다 — 저장 후 YAML 이 여전히 사람이 읽는 평문이고 필드 구성이 같다. `git diff` 가 편집한 값만 보여야 한다 (FR-199 · 원칙 V · quickstart §4)
+- [ ] T032a [US1] 순서 변경 경고를 붙인다 — `reorder` 로 `navigate` Step 이 뒤로 밀렸으면 "앞선 상태가 필요한 Step 이 앞으로 왔습니다" 를 `warnings` 에 싣는다. **막지 않는다** (명세 Edge Case · research Q1). 규칙은 얕게 시작하고, 규칙이 늘어나면 별도 결정으로 다룬다
+- [ ] T032b [P] [US1] `backend/tests/unit/test_reorder_warning.py` — `navigate` 가 뒤로 밀린 순서 변경이 저장은 성공하고 경고를 낸다. 순서가 그대로면 경고가 없다
 
 ### Implementation for User Story 1 — 프론트엔드
 
@@ -161,7 +163,7 @@ description: "Task list for 006-edit-saved-test"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T054 [P] [US3] `backend/tests/integration/test_pause_before_index.py` — `pause_before_index: 5` 로 만든 세션이 인덱스 0~4 를 실행한 뒤 인덱스 5 를 **실행하기 전에** `paused` 다 (FR-200)
+- [ ] T054 [P] [US3] `backend/tests/integration/test_pause_before_index.py` — `pause_before_index: 5` 로 만든 세션이 인덱스 0~4 를 실행한 뒤 인덱스 5 를 **실행하기 전에** `paused` 다. 그 과정에서 「일시정지」 요청이 한 번도 오지 않았다는 것도 함께 단정한다 (FR-200·FR-201)
 - [ ] T055 [P] [US3] 같은 파일에서 `pause_before_index: 0` 이면 아무 Step 도 실행하지 않고 멈추는 것과, 범위 밖 값이 400 인 것을 단정한다 ([contracts/rest-api.md](./contracts/rest-api.md) §3)
 - [ ] T056 [P] [US3] `backend/tests/unit/test_pacing_boundary.py` — `pause_before_index` 가 004 의 `한 스텝씩` 동작을 바꾸지 않는다. 상태 집합에 새 상태가 늘지 않는다 (R7 · 원칙 III)
 - [ ] T057 [P] [US3] `frontend/tests/OpenBrowserAtStep.test.tsx` — 버튼 라벨에 Step 번호가 박혀 있고, 미저장 변경이 있으면 「저장하고 열기」가 되는 것을 단정한다 (FR-203 · ui-contract §5)
