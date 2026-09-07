@@ -4,6 +4,10 @@
 제품을 **검증**하는 절차는 `specs/001-interactive-ai-test-builder/quickstart.md` 가 갖고,
 이 문서는 **개발할 때 반복하는 것들**을 갖는다.
 
+> **사람이 걸어야 남는 검증**은 [PENDING-HUMAN-VERIFICATION.md](PENDING-HUMAN-VERIFICATION.md)
+> 가 한 곳에 모아 둔다 — 절차·기록 시트·규모가 항목별로 있고 판정 칸만 비어 있다.
+> 자동 테스트가 왜 그것을 대체하지 못하는지도 그 문서가 실측 사례로 적었다.
+
 ## 확인된 환경
 
 Python 3.13.0 (pyenv) · Node 23.7.0 / npm 10.9.2 · uv 0.9.7 · macOS 26.2 arm64
