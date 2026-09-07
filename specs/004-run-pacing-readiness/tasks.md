@@ -92,12 +92,15 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 - [ ] T017 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_hidden_assertion_still_passes_when_absent` — 처음부터 없는 요소에 대한 `hidden` 검증이 대기 정책 변경 후에도 통과 (FR-119)
 - [ ] T018 [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_immediate_element_does_not_poll` — 요소가 즉시 존재하면 폴링 루프에 들어가지 않는다 (FR-113)
 - [ ] T019 [P] [US2] `backend/tests/integration/test_performance.py` 에 정상 경로 비용 테스트를 더한다 — 즉시 존재하는 요소의 Step 소요가 100ms 미만 증가 (SC-003)
+- [ ] T019a [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_step_never_exceeds_budget` — 요소가 끝내 나타나지 않는 화면에서 Step 소요가 `timeout_ms` 를 넘지 않는다. 탭 대기·요소 탐색·동작이 하나의 예산을 나눠 쓴다 (FR-117)
+- [ ] T019b [P] [US2] `backend/tests/integration/test_lazy_loading.py` 에 `test_candidate_disagreement_still_recorded` — 두 후보가 서로 다른 요소를 매칭할 때 불일치가 실행 기록에 남는다. `resolve()` 재작성이 이 기능을 떨어뜨리지 않았음을 고정한다 (spec 엣지 케이스, T020a 와 짝)
 
 ### Implementation for User Story 2
 
 - [ ] T020 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 를 폴링 알고리즘으로 바꾼다 — 1라운드에서 즉시 채택되면 반환하고, 아니면 `POLL_INTERVAL_MS` 주기로 **모든 후보를 다시 확인**한다 (FR-111, research R1)
+- [ ] T020a [US2] `backend/src/itb/execution/locator_runtime.py` 의 재작성에서 `_detect_disagreement()` 호출을 **보존한다** — 후보들이 서로 다른 요소를 가리킨 기록이 사라지면 나중에 테스트가 엉뚱한 요소에 대해 통과했을 때 단서가 없다 (spec 엣지 케이스 "여러 후보가 서로 다른 시점에")
 - [ ] T021 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 에서 `locator.first.wait_for(state="attached")` 폴백을 제거한다 — 후보가 여러 개를 매칭할 때 조용히 첫 번째를 잡던 경로다 (research R2)
-- [ ] T022 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 에 보임 선호 채택 규칙을 넣는다 — `count()==1` 이고 보이는 후보를 우선순위 순으로 즉시 채택하고, 보이지 않는 것만 있으면 계속 폴링하되 예산 끝에는 `count()==1` 인 최상위 후보를 채택한다 (research R3, FR-119 를 위해 실패시키지 않는다)
+- [ ] T022 [US2] `backend/src/itb/execution/locator_runtime.py` 의 `resolve()` 에 보임 선호 채택 규칙을 넣는다 — `count()==1` 이고 보이는 후보를 우선순위 순으로 즉시 채택하고, 보이지 않는 것만 있으면 계속 폴링하되, **남은 예산이 `MIN_ACTION_TIMEOUT_MS`(250ms) 이하가 되는 라운드에서** `count()==1` 인 최상위 후보를 채택한다 (research R3, FR-119 를 위해 실패시키지 않는다)
 - [ ] T023 [US2] `ElementNotFoundError` 가 `timed_out`·`waited_ms`·`ambiguous` 를 들도록 확장한다 — 호출부가 문구를 파싱하지 않고 분류할 수 있어야 한다 (`backend/src/itb/execution/locator_runtime.py`)
 - [ ] T024 [US2] `backend/src/itb/execution/locator_runtime.py` 에서 폴링 라운드마다 `LocatorAttempt` 를 갱신한다 — `waited_ms` 는 모든 후보가 총 대기 시간을 갖고, `match_count` 는 마지막 라운드 값이다 (data-model §4)
 - [ ] T025 [US2] `backend/src/itb/execution/step_executor.py` 에서 `ElementNotFoundError` 를 신규 오류 코드로 매핑한다 — `timed_out` → `ELEMENT_NOT_READY`, `ambiguous` → `ELEMENT_AMBIGUOUS`, 후보 없음 → 기존 `STEP_FAILED` (T023 이후, contracts/error-contract.md §2)
@@ -127,9 +130,13 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 - [ ] T033 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 간격 도중 중지 테스트 — 1초 안에 중지된다
 - [ ] T034 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 `test_pacing_change_does_not_interrupt_running_step` — 실행 중 속도 변경이 진행 중 Step 을 끊지 않고 다음 경계부터 적용된다 (FR-103)
 - [ ] T035 [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 `test_no_delay_after_last_step` — 마지막 Step 뒤에는 간격이 없다 (spec 엣지 케이스)
+- [ ] T035a [P] [US1] `backend/tests/integration/test_pacing_interrupt.py` 에 `test_delay_excluded_from_step_budget` — `느림` 실행에서 각 Step 의 `duration_ms` 에 1500ms 간격이 포함되지 않고, 간격이 시간 초과 판정에 영향을 주지 않는다 (FR-105)
 - [ ] T036 [P] [US1] `backend/tests/integration/test_pause_resume.py` 에 `한 스텝씩` 테스트를 더한다 — 매 Step 경계에서 `PAUSED` 가 되고, 그 상태에서 Step 편집이 허용된다 (FR-108)
 - [ ] T037 [P] [US1] `backend/tests/contract/test_ws_events.py` 에 `pacing_changed` 이벤트 계약 테스트를 더한다 — `pacing`·`delay_ms`·`auto_pause`·`preference_saved` (contracts/websocket.md §1)
 - [ ] T038 [P] [US1] `backend/tests/e2e/test_us2_replay_and_diagnose.py` 에 속도 4단계 판정 동일 테스트를 더한다 — 통과/실패와 실패 Step 위치가 모두 같다 (SC-005, FR-104)
+- [ ] T038a [P] [US1] `backend/tests/contract/test_preferences_api.py` 를 만든다 — `GET`·`PUT /api/preferences` 응답 형태, 열거형 밖 값 422, 읽기 실패 시 `warning` 필드 (contracts/rest-api.md §3)
+- [ ] T038b [P] [US1] `backend/tests/contract/test_preferences_api.py` 에 `LOST` 세션의 pacing 변경이 409 로 거절되는지 더한다 (contracts/rest-api.md §2)
+- [ ] T038c [P] [US1] `backend/tests/contract/test_dsl_roundtrip.py` 에 **저장된 테스트 YAML 에 속도 관련 키가 없음**을 단언한다 — 속도가 테스트 자산으로 새어 들어가는 것을 구조가 아니라 테스트로도 막는다 (FR-110, 헌법 원칙 V)
 
 ### Implementation for User Story 1
 
@@ -150,6 +157,8 @@ Web app 구조. 백엔드 `backend/src/itb/`, 백엔드 테스트 `backend/tests
 - [ ] T053 [US1] `frontend/src/api/client.ts` 에 `setPacing`·`getPreferences`·`putPreferences` 를 더한다
 - [ ] T054 [US1] `frontend/src/pages/Runner.tsx` 에 `PacingControl` 을 붙이고, 현재 실행 중인 Step 을 강조한다. 간격 동안에는 방금 끝난 Step 과 결과가 보인다 (FR-107). `pacing_changed` 이벤트를 구독해 다른 창의 변경을 반영한다
 - [ ] T055 [US1] `frontend/src/pages/RunnerPaused.tsx` 가 `pacing === "step"` 일 때 문구를 가른다 — "한 스텝씩 — 다음 Step 을 기다립니다" vs "일시정지됨" (research R7)
+
+- [ ] T055a [P] [US1] `backend/tests/integration/test_ai_authoring.py` 에 AI 가 다음 동작을 판단하는 시간에는 간격이 적용되지 않음을 단언한다 (spec 엣지 케이스, T045 와 짝)
 
 **Checkpoint**: US1 완료. 네 속도가 동작하고 판정을 바꾸지 않으며, 간격 중 일시정지·중지가
 즉시 먹는다.
