@@ -11,6 +11,8 @@ import type { ReactNode } from "react";
 
 import type { Step } from "../../types/generated/step";
 import type { TargetLocator } from "../../types/generated/step";
+import { stepNumber } from "../../lib/wording";
+
 
 export type StepOutcome = "pass" | "fail" | "running" | "pending";
 
@@ -204,7 +206,7 @@ export function DesignStepRow({
           color: "#9A968A",
         }}
       >
-        {String(index + 1).padStart(2, "0")}
+        {stepNumber(index)}
       </div>
 
       <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", gap: "6px" }}>

@@ -16,6 +16,8 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { tests, type ArtifactKind } from "../api/client";
 import type { RunResult as RunResultData, StepResult } from "../types/generated/run-result";
+import { stepLabel, stepNumber } from "../lib/wording";
+
 import {
   Artboard,
   BrandMark,
@@ -252,7 +254,7 @@ export function RunResult({
                 <div style={{ width: "3px", background: INK }} />
                 <Summary
                   label="멈춘 STEP"
-                  value={failedIndex === null ? "—" : String(failedIndex + 1).padStart(2, "0")}
+                  value={stepNumber(failedIndex)}
                 />
               </div>
 
@@ -305,7 +307,7 @@ export function RunResult({
                       letterSpacing: "0.12em",
                     }}
                   >
-                    STEP {String(failedStep.index + 1).padStart(2, "0")} 실패
+                    {stepLabel(failedStep.index)} 실패
                   </div>
                   <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
                     <div style={{ font: `600 17px/1.4 ${SANS}`, textWrap: "pretty" }}>
@@ -362,7 +364,7 @@ export function RunResult({
 
                     {onEditStep && (
                       <button className="secondary" onClick={() => onEditStep(testId, failedStep.step_id)}>
-                        {`Step ${String(failedStep.index + 1).padStart(2, "0")} 고치기`}
+                        {`${stepLabel(failedStep.index)} 고치기`}
                       </button>
                     )}
                   </div>
@@ -442,7 +444,7 @@ export function RunResult({
               ) : tab === "screenshot" ? (
                 <img
                   src={artifact.src}
-                  alt={`step ${failedIndex === null ? "—" : String(failedIndex + 1).padStart(2, "0")} 실패 시점`}
+                  alt={`${stepLabel(failedIndex)} 실패 시점`}
                   style={{ width: "100%", height: "auto", display: "block" }}
                   onError={() =>
                     // 깨진 이미지 아이콘을 남기지 않는다 — 무엇이 없는지 말한다.
@@ -475,7 +477,7 @@ export function RunResult({
                 color: "#6B675C",
               }}
             >
-              step {String(failedIndex + 1).padStart(2, "0")} 실패 시점
+              {stepLabel(failedIndex)} 실패 시점
             </div>
           )}
         </div>
@@ -559,7 +561,7 @@ function StepRow({ step, onOpen }: { step: StepResult; onOpen?: () => void }) {
         )}
       </div>
       <div style={{ width: "30px", font: `700 14px/1 ${MONO}`, color: "#9A968A" }}>
-        {String(step.index + 1).padStart(2, "0")}
+        {stepNumber(step.index)}
       </div>
       <div style={{ flex: "1", minWidth: "0", font: `600 16px/1.3 ${SANS}` }}>{step.label}</div>
       <div style={{ width: "90px", textAlign: "right", font: `400 14px/1 ${MONO}`, color: "#6B675C" }}>

@@ -18,6 +18,8 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { tests, type SessionView, type TestListRow, type TestListResponse } from "../api/client";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
+import { stepLabel } from "../lib/wording";
+
 
 function relativeTime(iso: string | null): string {
   if (iso === null) return "—";
@@ -519,7 +521,7 @@ function Row({
               color: "#A83A22",
             }}
           >
-            step {String(row.failure_summary.step_index).padStart(2, "0")} ·{" "}
+            {stepLabel(row.failure_summary.step_index)} ·{" "}
             {row.failure_summary.message}
           </div>
         )}

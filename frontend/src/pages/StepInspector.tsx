@@ -22,6 +22,8 @@ import type { RepickSlot } from "../api/client";
 import type { Step } from "../types/generated/step";
 import { InlineSecretInput, referenceName } from "../components/InlineSecretInput";
 import { LocatorPriorityTable } from "../components/LocatorPriorityTable";
+import { stepNumber } from "../lib/wording";
+
 
 export interface StepInspectorProps {
   step: Step;
@@ -135,7 +137,7 @@ export function StepInspector({
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div style={{ font: "700 15px/1 'IBM Plex Mono', ui-monospace, monospace", color: "#6B675C" }}>
-            {String(index + 1).padStart(2, "0")}
+            {stepNumber(index)}
           </div>
           <div
             style={{

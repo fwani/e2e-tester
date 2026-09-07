@@ -47,6 +47,8 @@ import { PacingControl } from "../components/PacingControl";
 import { Runner } from "./Runner";
 import { RunnerPaused } from "./RunnerPaused";
 import { Takeover } from "./Takeover";
+import { progressLabel } from "../lib/wording";
+
 
 /**
  * 끊김을 알리기까지 기다리는 시간. 재연결이 700ms 마다 일어나므로 짧은 끊김은
@@ -685,7 +687,7 @@ export function SessionScreen({
       <Runner
         {...shared}
         title={testId ?? "새 테스트"}
-        progressLabel={`step ${String(Math.min(currentIndex + 1, view.steps.length)).padStart(2, "0")} / ${String(view.steps.length).padStart(2, "0")}`}
+        progressLabel={progressLabel(currentIndex, view.steps.length)}
         statusLabel={isObserving ? "RUNNING" : view.state_label}
         authoring={view.authoring_mode}
         canPause={!isDone}

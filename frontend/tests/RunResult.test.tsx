@@ -23,6 +23,12 @@ function failedResult(): RunResultData {
     total_ms: 6410,
     passed_count: 4,
     total_count: 5,
+    // 005 — 결말 모델이 넓어져 필드가 늘었다. 이 테스트의 단정은 약화하지 않고
+    // 전체 실행(scope=full)이라는 사실만 명시한다 (헌법 Quality Gate 4).
+    attempted_count: 5,
+    scope: "full",
+    start_index: 0,
+    stopped_step_index: null,
     failed_step_index: 4,
     browser: "Playwright · Chromium",
     session_lost: false,

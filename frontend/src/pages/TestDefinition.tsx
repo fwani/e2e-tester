@@ -25,6 +25,8 @@ import { LocatorPriorityTable } from "../components/LocatorPriorityTable";
 import { AuthoringBadge, AuthorBadge, StepTypeBadge, TabBadge } from "../components/Badges";
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
+import { stepNumber } from "../lib/wording";
+
 
 export interface TestDefinitionProps {
   testId: string;
@@ -183,7 +185,7 @@ export function TestDefinition({
               }}
             >
               <span className="mono dim" style={{ width: 28 }}>
-                {String(index + 1).padStart(2, "0")}
+                {stepNumber(index)}
               </span>
               <StepTypeBadge type={step.type} />
               <span className="spacer">{step.label}</span>

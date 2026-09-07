@@ -15,6 +15,8 @@ import type { AddAssertionBody, RunPacing } from "../api/client";
 import type { Step } from "../types/generated/step";
 import { AssertionForm } from "../components/AssertionForm";
 import { BrowserFrame } from "../components/design/BrowserFrame";
+import { stepLabel, stepNumber } from "../lib/wording";
+
 import {
   DesignStepRow,
   StepPanelHeader,
@@ -171,7 +173,7 @@ export function RunnerPaused(props: RunnerPausedProps) {
         <div style={{ font: "400 14px/1 'IBM Plex Mono', ui-monospace, monospace", color: "#6B675C" }}>
           {review
             ? `기록된 Step ${steps.length}개 · 브라우저 종료됨`
-            : `step ${String(currentStepIndex).padStart(2, "0")} 이후 정지`}
+            : `${stepLabel(currentStepIndex)} 이후 정지`}
         </div>
         <div style={{ flex: "1" }} />
         {/* 멈춘 상태에서도 다음 Step 의 속도를 미리 고를 수 있다. 검토 상태에는
@@ -540,7 +542,7 @@ function ReorderPanel({
       </strong>
       {order.map((id, index) => (
         <div key={id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
-          <span className="mono dim">{String(index + 1).padStart(2, "0")}</span>
+          <span className="mono dim">{stepNumber(index)}</span>
           <span style={{ flex: 1 }}>{labelOf(id)}</span>
           <button className="ghost" aria-label={`${labelOf(id)} 위로`} onClick={() => move(index, -1)}>
             ↑
