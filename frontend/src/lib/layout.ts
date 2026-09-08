@@ -136,6 +136,54 @@ export const PRIMARY_SLOT: Record<Phase, SlotName> = {
   editing: "work",
 };
 
+/**
+ * Step 상세를 **어디에 거는가** (008 · FR-230 개정 대상).
+ *
+ * ## 왜 표인가 — 007 이 남긴 모순
+ *
+ * 007 은 Step 상세 구현 2벌을 1벌로 합치면서 자리도 하나로 고정했다 (FR-229·FR-230).
+ * 그 통합은 옳았다 — S-05 의 실제 원인은 **두 구현이 갈라진 것**이었다.
+ *
+ * 그런데 같은 라운드가 ③-b 를 「그 국면의 주 작업 자리」로 정하고 편집 국면에
+ * `fill` 을 줬다 (FR-257 · `VERTICAL_SPLIT.editing`). 그 항목의 주석은 이렇게 적혀
+ * 있다 — **「하는 일은 Step 편집이다」**. 그런데 Step 편집 폼은 겹침에 있고, ③-b 에
+ * 담기로 했던 테스트 이름·시작 주소·지시문은 FR-235 로 조작 팔레트에 갔다.
+ *
+ * 결과는 **비어 있는 것이 정상인 자리에 남는 높이를 전부 주는 배분**이었다. 편집
+ * 화면에 들어오면 화면의 절반이 아무 말도 하지 않았다.
+ *
+ * ## 무엇을 고치고 무엇을 지키는가
+ *
+ * **구현은 그대로 1벌이다** (FR-229 · SC-001). 항목과 순서도 그대로다 (FR-231).
+ * 바뀌는 것은 **거는 자리**뿐이며, 그것을 국면이 정하되 **표가 정본**이다 —
+ * `VERTICAL_SPLIT` 과 같은 규율이고 이유도 같다. 컴포넌트가 스스로 판단하면 그 판단이
+ * 두 곳으로 갈리고, 갈리는 순간이 S-05 다.
+ *
+ * FR-230(자리가 모든 국면에서 같다)은 이 표로 대체된다. 명세 개정이 필요하며
+ * `docs/design/008-visual-language/replacement-map.md` §5 에 등록했다.
+ */
+export type DetailPlacement = "overlay" | "inline";
+
+export const DETAIL_PLACEMENT: Record<Phase, DetailPlacement> = {
+  /** 만들기 — 아직 Step 이 없다. 생기면 겹침으로 본다 */
+  composing: "overlay",
+  /** 미러를 보면서 하는 국면들은 전부 겹침이다 — 미러를 가리지 않아야 한다 */
+  recording: "overlay",
+  ai_authoring: "overlay",
+  takeover: "overlay",
+  running: "overlay",
+  paused: "overlay",
+  /** 끝난 실행의 기록. 산출물을 보면서 대조하므로 겹침이다 */
+  result: "overlay",
+  /**
+   * 편집 — **인라인이다.**
+   *
+   * 이 국면에는 미러가 없다 (③-a 가 88px 로 줄어 있다). 가릴 것이 없고, 고치는 일이
+   * 이 국면의 주 작업이므로 주 작업 자리에 있어야 한다 (FR-257·FR-261).
+   */
+  editing: "inline",
+};
+
 /** 「내용에 맞는 높이」자리의 상한. 1회차 값을 그대로 쓴다. */
 export const CONTENT_MAX_HEIGHT = "45%";
 

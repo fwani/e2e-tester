@@ -11,11 +11,14 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { StepDetail } from "../src/components/workbench/StepDetail";
 import { Workbench } from "../src/components/workbench/Workbench";
 import type { WorkbenchModel } from "../src/components/workbench/model";
+import { capabilitiesFor } from "../src/lib/capabilities";
+import { DETAIL_PLACEMENT } from "../src/lib/layout";
 import { PHASES } from "../src/lib/phase";
 import { PHASE_LABEL } from "../src/lib/wording";
-import { workbenchModel } from "./helpers/model";
+import { ALL_FACTS, workbenchModel } from "./helpers/model";
 import { stepResult } from "./helpers/workbench";
 
 function renderShell(model: WorkbenchModel) {
@@ -321,47 +324,112 @@ describe("대상 앱 영역 (FR-244·FR-245)", () => {
   });
 });
 
-describe("Step 상세는 모든 국면에서 같은 자리다 (FR-230)", () => {
-  it("우측 겹침 640px 로 열린다", () => {
-    renderShell(
-      workbenchModel("editing", {
-        focusedStepId: "st-1",
-        detail: {
-          step: null,
-          index: 0,
-          attempts: null,
-          candidates: null,
-          dropCandidates: null,
-          repickWaiting: null,
-          failure: null,
-        },
-      }),
-    );
-    const detail = el("[data-workbench-step-detail]");
-    expect(detail.style.width).toBe("640px");
-  });
+const DETAIL_FIXTURE = {
+  step: null,
+  index: 0,
+  attempts: null,
+  candidates: null,
+  dropCandidates: null,
+  repickWaiting: null,
+  failure: null,
+} as const;
 
-  it("일곱 국면에서 같은 폭·같은 자리로 열린다", () => {
-    const shapes = new Set<string>();
+/**
+ * 008 — FR-230 이 표로 대체됐다.
+ *
+ * 007 은 「자리가 모든 국면에서 같다」로 S-05 를 막았다. 그런데 S-05 의 실제 원인은
+ * **구현이 두 벌이라 갈라진 것**이었지 자리가 둘이라는 사실 자체가 아니었다. 같은
+ * 라운드가 ③-b 를 「그 국면의 주 작업 자리」로 정하고 편집 국면에 `fill` 을 주면서
+ * (FR-257 · 근거는 「하는 일은 Step 편집이다」) 정작 그 폼은 겹침에 두어, 편집 화면의
+ * 절반이 빈 채로 남았다.
+ *
+ * 그래서 지키는 것을 바꾼다 — **구현이 한 벌인가**, **자리를 표가 정하는가**,
+ * **항목이 두 배치에서 같은가**. 셋이 지켜지면 S-05 는 재발할 수 없다.
+ */
+describe("Step 상세 — 구현은 한 벌이고 자리는 표가 정한다 (FR-229·FR-231 · 008)", () => {
+  it("모든 국면에서 정확히 한 벌만 그려진다 (SC-001)", () => {
     for (const phase of PHASES) {
       const view = renderShell(
-        workbenchModel(phase, {
-          focusedStepId: "st-1",
-          detail: {
-            step: null,
-            index: 0,
-            attempts: null,
-            candidates: null,
-            dropCandidates: null,
-            repickWaiting: null,
-            failure: null,
-          },
-        }),
+        workbenchModel(phase, { focusedStepId: "st-1", detail: { ...DETAIL_FIXTURE } }),
       );
-      const detail = el("[data-workbench-step-detail]");
-      shapes.add(`${detail.style.width}|${detail.parentElement!.style.position}`);
+      expect(
+        document.querySelectorAll("[data-workbench-step-detail]"),
+        `국면 ${phase}`,
+      ).toHaveLength(1);
       view.unmount();
     }
-    expect(shapes.size).toBe(1);
+  });
+
+  it("거는 자리가 DETAIL_PLACEMENT 와 한 글자도 다르지 않다", () => {
+    // 컴포넌트가 스스로 판단하면 그 판단이 두 곳으로 갈리고, 갈리는 순간이 S-05 다.
+    for (const phase of PHASES) {
+      const view = renderShell(
+        workbenchModel(phase, { focusedStepId: "st-1", detail: { ...DETAIL_FIXTURE } }),
+      );
+      expect(
+        el("[data-workbench-step-detail]").dataset.detailPlacement,
+        `국면 ${phase}`,
+      ).toBe(DETAIL_PLACEMENT[phase]);
+      view.unmount();
+    }
+  });
+
+  it("겹침 국면은 640px 고정이고 인라인 국면은 겹침을 만들지 않는다", () => {
+    const overlay = PHASES.filter((p) => DETAIL_PLACEMENT[p] === "overlay");
+    const inline = PHASES.filter((p) => DETAIL_PLACEMENT[p] === "inline");
+    expect(overlay.length, "겹침 국면이 하나도 없으면 이 검사가 아무것도 세지 않는다").toBeGreaterThan(0);
+    expect(inline.length, "인라인 국면이 없으면 표가 무의미하다").toBeGreaterThan(0);
+
+    for (const phase of overlay) {
+      const view = renderShell(
+        workbenchModel(phase, { focusedStepId: "st-1", detail: { ...DETAIL_FIXTURE } }),
+      );
+      const detail = el("[data-workbench-step-detail]");
+      expect(detail.style.width, `국면 ${phase}`).toBe("640px");
+      expect(detail.getAttribute("role"), `국면 ${phase}`).toBe("dialog");
+      view.unmount();
+    }
+
+    for (const phase of inline) {
+      const view = renderShell(
+        workbenchModel(phase, { focusedStepId: "st-1", detail: { ...DETAIL_FIXTURE } }),
+      );
+      const detail = el("[data-workbench-step-detail]");
+      expect(detail.style.width, `국면 ${phase}`).toBe("100%");
+      // 가리지 않는 것을 대화상자라고 말하면 보조 기술이 잘못 안내한다.
+      expect(detail.getAttribute("role"), `국면 ${phase}`).toBe("region");
+      view.unmount();
+    }
+  });
+
+  it("배치는 껍데기만 바꾼다 — 담는 것은 같다 (FR-231)", () => {
+    /*
+      국면을 통해 비교하면 배치와 **조작 권한**이 섞인다 — 국면이 다르면 잠긴 조작의
+      사유 문구가 달라지므로, 그 차이를 배치 탓으로 읽게 된다. 그래서 같은 입력을 주고
+      `placement` 만 바꿔 컴포넌트를 직접 그린다.
+    */
+    const detail = { ...DETAIL_FIXTURE };
+    const capabilities = capabilitiesFor("editing", ALL_FACTS);
+    const noop = () => undefined;
+
+    const bodyText = (placement: "overlay" | "inline") => {
+      const view = render(
+        <StepDetail
+          detail={detail}
+          capabilities={capabilities}
+          placement={placement}
+          onSave={noop}
+          onRepick={noop}
+          onClose={noop}
+        />,
+      );
+      const text = (el("[data-workbench-step-detail]").textContent ?? "")
+        .replace(/\s+/g, " ")
+        .trim();
+      view.unmount();
+      return text;
+    };
+
+    expect(bodyText("inline")).toBe(bodyText("overlay"));
   });
 });

@@ -536,7 +536,18 @@ export function EditView({
       stale,
       savedName,
       fields: (
-        <EditFields sensitiveNames={sensitiveNames} ops={ops} steps={dslSteps} onRevert={revert} />
+        <EditFields
+          sensitiveNames={sensitiveNames}
+          ops={ops}
+          steps={dslSteps}
+          onRevert={revert}
+          /*
+            008 — Step 상세가 이 자리에 인라인으로 걸리면(`DETAIL_PLACEMENT.editing`)
+            빈 상태 안내를 그리지 않는다. 「고칠 Step 을 고르세요」와 그 Step 의 편집면이
+            함께 떠 있으면 화면이 두 가지를 주장한다.
+          */
+          stepFocused={selected !== null}
+        />
       ),
     },
     steps,
@@ -604,6 +615,8 @@ export function EditView({
           편집 국면의 나머지 필드(`tab`·`url`·`기대값`)를 상세 **안**에 얹는다.
           자리를 따로 만들면 국면마다 다른 상세가 다시 생긴다 (FR-230).
         */
+        /* 편집면은 `stepDetailExtra` 가 갖는다 — 상세가 자기 입력을 또 그리면 중복이다 */
+        stepDetailOwnFields={false}
         stepDetailExtra={
           current !== null ? (
             <>
@@ -727,11 +740,14 @@ function EditFields({
   ops,
   steps,
   onRevert,
+  stepFocused,
 }: {
   sensitiveNames: string[];
   ops: EditOp[];
   steps: Step[];
   onRevert: (index: number) => void;
+  /** 이 자리에 Step 편집면이 함께 걸려 있는가 (008 · `DETAIL_PLACEMENT.editing`) */
+  stepFocused: boolean;
 }) {
   /*
     008 — **빈 자리를 빈 채로 두지 않는다.**
@@ -743,7 +759,7 @@ function EditFields({
 
     무엇을 하면 되는지 말한다 — 자리를 없애지는 않는다 (FR-261).
   */
-  if (sensitiveNames.length === 0 && ops.length === 0) {
+  if (!stepFocused && sensitiveNames.length === 0 && ops.length === 0) {
     return (
       <div
         data-edit-fields-empty

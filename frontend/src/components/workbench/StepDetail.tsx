@@ -52,6 +52,27 @@ function dslPreview(step: Step): string {
 export interface StepDetailProps {
   detail: StepDetailModel;
   capabilities: CapabilityMap;
+  /**
+   * 어디에 걸렸는가 (008 · `lib/layout.ts` 의 `DETAIL_PLACEMENT`).
+   *
+   * **이 값이 바꾸는 것은 껍데기뿐이다** — 폭·테두리·닫기 버튼의 모양. 안에 그리는
+   * 항목과 순서는 두 배치에서 같다 (FR-231). 스스로 판단하지 않는다: 국면이 표로
+   * 정하고 `Workbench` 가 내려 준다 (UC-000 과 같은 규율).
+   */
+  placement?: "overlay" | "inline";
+  /**
+   * 이 컴포넌트가 **자기 편집 입력을 갖는가** (008).
+   *
+   * 기본은 갖는다 — 세션 국면들은 여기가 유일한 편집면이고, 지역 상태에 모아 두었다가
+   * 「저장」으로 한 번에 넘긴다.
+   *
+   * 편집 국면은 다르다. 그 국면은 `extraFields` 로 **입력할 때마다 변경 연산을 쌓는**
+   * 편집면을 넣는다 (006 FR-188~FR-190 — 변경 건수가 실시간으로 는다). 둘을 함께 그리면
+   * 같은 값에 입력칸이 둘 생기고, 커밋 방식이 다른 둘이 한 화면에 놓인다.
+   *
+   * FR-231 은 국면에 따라 **읽기·편집을 전환**하는 것을 허용한다. 항목의 순서는 그대로다.
+   */
+  ownFields?: boolean;
   busy?: boolean;
   onSave: (patch: {
     label?: string;
@@ -79,6 +100,8 @@ export interface StepDetailProps {
 export function StepDetail({
   detail,
   capabilities,
+  placement = "overlay",
+  ownFields = true,
   busy = false,
   onSave,
   onRepick,
@@ -111,12 +134,20 @@ export function StepDetail({
   return (
     <div
       data-workbench-step-detail
-      role="dialog"
+      /*
+        겹침은 대화상자다 — 뒤를 가리고 초점을 가둔다. 인라인은 그 자리에 늘 있는
+        영역이므로 `region` 이다. 가리지 않는 것을 대화상자라고 말하면 보조 기술이
+        "닫아야 뒤로 갈 수 있다" 고 잘못 안내한다.
+      */
+      role={placement === "overlay" ? "dialog" : "region"}
       aria-label="Step 상세"
+      data-detail-placement={placement}
       style={{
-        width: "640px",
+        // 겹침은 우측 640px 고정. 인라인은 ③-b 를 채운다 — 그 자리의 폭은 국면이 정한다.
+        ...(placement === "overlay"
+          ? { width: "640px", borderLeft: `1px solid ${INK}` }
+          : { flex: 1, minHeight: 0, width: "100%", border: "1px solid #E3E6EB", borderRadius: "3px" }),
         background: "#FFFFFF",
-        borderLeft: `1px solid ${INK}`,
         display: "flex",
         flexDirection: "column",
         overflowY: "auto",
@@ -124,15 +155,21 @@ export function StepDetail({
     >
       <div
         style={{
-          flex: "0 0 56px",
+          flex: placement === "inline" ? "0 0 36px" : "0 0 56px",
           background: INK,
           color: "#F2F4F7",
           display: "flex",
           alignItems: "center",
           gap: "12px",
-          padding: "0 20px",
+          padding: placement === "inline" ? "0 12px" : "0 20px",
         }}
       >
+        {/*
+          머리 띠 문구는 두 배치에서 같다. 「STEP nn 편집」처럼 배치마다 다르게 쓰면
+          그것은 껍데기가 아니라 **내용**이 갈리는 것이고, 가드가 그것을 잡는다
+          (WorkbenchShell.test.tsx — 「배치는 껍데기만 바꾼다」). 번호와 종류는 바로
+          아래 줄이 이미 말한다.
+        */}
         <div style={{ font: `600 12px/1 ${MONO}`, letterSpacing: "0.12em" }}>STEP 상세</div>
         <div style={{ flex: "1" }} />
         <button
@@ -207,8 +244,11 @@ export function StepDetail({
           <div
             style={{
               fontFamily: "'IBM Plex Sans KR', system-ui, sans-serif",
-              fontSize: "28px",
-              lineHeight: "1.1",
+              // 겹침은 640px 안에서 혼자 서므로 크게 둔다. 인라인은 ③-b 안이고 위에
+              // 국면 띠의 테스트 이름이 이미 있으므로, 여기서 또 크면 제목이 둘이 된다.
+              fontSize: placement === "inline" ? "17px" : "28px",
+              fontWeight: placement === "inline" ? 700 : 400,
+              lineHeight: "1.2",
             }}
           >
             {step?.label ?? "이 결과 이후 정의에서 사라진 Step"}
@@ -258,6 +298,7 @@ export function StepDetail({
           </p>
         ) : (
           <>
+            {ownFields && (
             <div>
               <label htmlFor="detail-label">표시 이름</label>
               <input
@@ -267,8 +308,9 @@ export function StepDetail({
                 onChange={(e) => setLabel(e.target.value)}
               />
             </div>
+            )}
 
-            {hasValueField && (
+            {ownFields && hasValueField && (
               <div>
                 <label htmlFor="detail-value">입력값</label>
                 <input
@@ -338,6 +380,7 @@ export function StepDetail({
 
             {extraFields}
 
+            {ownFields && (
             <div>
               <label htmlFor="detail-timeout">대기 시간 (ms)</label>
               <input
@@ -350,6 +393,7 @@ export function StepDetail({
                 onChange={(e) => setTimeoutMs(Number(e.target.value))}
               />
             </div>
+            )}
           </>
         )}
 

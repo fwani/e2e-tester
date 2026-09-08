@@ -64,21 +64,57 @@
 
 ---
 
-## 4. 코드는 아직 옮겨지지 않았다
+## 4. 코드 전환 — 7건 중 6건 완료
 
-**디자인은 폐기됐지만 구현은 v1 이다.** 이 상태를 그대로 두면 코드가 아무것도
-준수하지 않는 것이 되므로, 아래가 남은 일이다. 순서가 중요하다 — 1번을 건너뛰면
-2번이 즉시 실패한다.
+순서가 중요했다 — 1번을 건너뛰면 2번이 즉시 실패한다 (가드가 v1 을 하드 단언하고 있었다).
 
-| # | 대상 | 할 일 |
-|---|---|---|
-| 1 | `frontend/tests/DesignTokens.test.tsx` | **v1 을 하드 단언한다** — `border-radius` 없음 · `--radius` 없음 · 1px 테두리 금지 · 하드 그림자 필수 · 배경 `#EFEBE0`. 전부 v2 와 정반대다. v2 를 단언하도록 뒤집는다 |
-| 2 | `frontend/src/theme/tokens.css` | v2 토큰으로 교체. `Language.dc.html` 이 기준이다 |
-| 3 | `frontend/src/lib/layout.ts` | ③-a 고정 높이 118 → 88 |
-| 4 | `specs/007-unify-test-screens/contracts/ui-contract.md` §1-2 | 헤더 60→56 · 국면 띠 74→48 · 조작 44→32 · Step 행 → 52. Step 패널 460 과 기준 폭 1440 은 그대로 |
-| 5 | `components/workbench/{StepList,PhaseBar,ActionButton,TargetPane,StepDetail}.tsx` · `pages/TestList.tsx` | 이 파일들은 v1 dc.html 의 인라인 값을 **전사**했다. 주석이 가리키는 경로가 지금 `_retired/` 다. 값과 주석을 함께 옮긴다 |
-| 6 | `frontend/tests/{StepRowLayout,WorkbenchShell}.test.tsx` | 치수를 단언한다. 4번을 따라 갱신 |
-| 7 | `docs/design/008-visual-language/conformance/*.md` | 리뷰어가 `관측값`·`판정` 을 채운다. 완료 조건은 `불일치`·`미판정` 0건 |
+| # | 대상 | 할 일 | 상태 |
+|---|---|---|---|
+| 1 | `frontend/tests/DesignTokens.test.tsx` | **v1 을 하드 단언한다** — `border-radius` 없음 · `--radius` 없음 · 1px 테두리 금지 · 하드 그림자 필수 · 배경 `#EFEBE0`. 전부 v2 와 정반대다. v2 를 단언하도록 뒤집는다 | 완료 |
+| 2 | `frontend/src/theme/tokens.css` | v2 토큰으로 교체. `Language.dc.html` 이 기준이다 | 완료 |
+| 3 | `frontend/src/lib/layout.ts` | ③-a 고정 높이 118 → 88 | 완료 |
+| 4 | `specs/007-unify-test-screens/contracts/ui-contract.md` §1-2 | 헤더 60→56 · 국면 띠 74→48 · 조작 44→32 · Step 행 → 52. Step 패널 460 과 기준 폭 1440 은 그대로 | 완료 |
+| 5 | `components/workbench/{StepList,PhaseBar,ActionButton,TargetPane,StepDetail}.tsx` · `pages/TestList.tsx` | 이 파일들은 v1 dc.html 의 인라인 값을 **전사**했다. 주석이 가리키는 경로가 지금 `_retired/` 다. 값과 주석을 함께 옮긴다 | 완료 |
+| 6 | `frontend/tests/{StepRowLayout,WorkbenchShell}.test.tsx` | 치수를 단언한다. 4번을 따라 갱신 | 완료 |
+| 7 | `docs/design/008-visual-language/conformance/*.md` | 리뷰어가 `관측값`·`판정` 을 채운다. 완료 조건은 `불일치`·`미판정` 0건 | **남음** — 리뷰어 몫 |
 
-`scripts/design_baseline.py` 는 이미 008 을 읽도록 옮겼고, `assert_baseline` 의 단언도
-뒤집었다 (v1 의 하드 오프셋 그림자가 섞여 들어오면 멈춘다).
+`scripts/design_baseline.py` 는 008 을 읽도록 옮겼고 `assert_baseline` 의 단언도 뒤집었다
+(v1 의 하드 오프셋 그림자가 섞여 들어오면 멈춘다).
+
+전환 뒤 격리 환경(포트 4510·4520 · 격리 XDG)에서 제품을 띄워 목록 · 편집 · Step 상세 ·
+키 관리 · 비밀 값을 눈으로 확인했고, 자동 검사가 초록인 상태에서 결함 4건을 더 찾아
+고쳤다 (③-a 넘침 · 비활성 사유가 층을 덮음 · `pending` 이 체크박스로 읽힘 · 정규식을
+빠져나간 하드 그림자 1건).
+
+---
+
+## 5. 명세 개정이 필요한 것 — FR-230
+
+**상태**: 코드·계약·검사는 이미 새 규칙을 따른다. `specs/007-.../spec.md` 의 FR-230
+문장만 아직 옛 규칙이다.
+
+| | |
+|---|---|
+| 현행 FR-230 | Step 상세는 **같은 자리에** 같은 구성으로 열려야 하며, 국면에 따라 열리는 자리가 달라지지 않는다 |
+| 개정안 | Step 상세를 **거는 자리는 국면이 정하되 표가 정본이다** (`lib/layout.ts` 의 `DETAIL_PLACEMENT`). 구현은 한 벌이고(FR-229) 항목과 순서는 같다(FR-231) |
+
+**왜.** 007 은 S-05(같은 Step 이 국면에 따라 다른 자리에서 열림)를 자리 고정으로 막았다.
+그러나 S-05 의 실제 원인은 **구현이 두 벌이라 갈라진 것**이었다 — 자리가 둘이라는 사실
+자체가 아니다.
+
+그리고 같은 라운드가 모순을 하나 남겼다. ③-b 를 「그 국면의 주 작업 자리」로 정하고 편집
+국면에 `fill` 을 줬는데(FR-257), 그 항목의 근거 주석은 **「하는 일은 Step 편집이다」**
+였다. 정작 Step 편집 폼은 겹침에 있었고, ③-b 에 담기로 했던 테스트 이름·시작 주소·지시문은
+FR-235 로 조작 팔레트에 갔다. 남은 것은 **비어 있는 것이 정상인 자리에 남는 높이를 전부
+주는 배분**이었고, 편집 화면에 들어오면 절반이 아무 말도 하지 않았다.
+
+**무엇으로 S-05 를 막는가.** 자리 고정 대신 셋을 검사가 센다
+(`frontend/tests/WorkbenchShell.test.tsx`).
+
+1. 모든 국면에서 상세가 **정확히 한 벌**만 그려진다 (SC-001)
+2. 거는 자리가 `DETAIL_PLACEMENT` 와 **한 글자도 다르지 않다** — 컴포넌트가 스스로
+   판단하지 않는다 (UC-101)
+3. `placement` 만 바꿔 그렸을 때 **담는 것이 같다** — 배치는 껍데기만 바꾼다 (FR-231)
+
+계약 문서는 이미 갱신했다: `specs/007-unify-test-screens/contracts/ui-contract.md` §1-2-1.
+UC-102(한 값에 입력칸이 둘일 수 없다)도 그 절에 함께 있다.

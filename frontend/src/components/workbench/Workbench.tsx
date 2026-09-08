@@ -35,6 +35,7 @@ import { flexOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
 import { PhaseBar } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
+import { DETAIL_PLACEMENT } from "../../lib/layout";
 import { StepList } from "./StepList";
 import { TargetPane } from "./TargetPane";
 import { WorkArea } from "./WorkArea";
@@ -76,6 +77,14 @@ export interface WorkbenchProps {
    * 뜻을 갖지 않게 하는 것이다.
    */
   stepDetailExtra?: ReactNode;
+  /**
+   * Step 상세가 자기 편집 입력(표시 이름·입력값·대기 시간)을 갖는가 (008).
+   *
+   * 편집 국면은 `false` 다 — 그 국면은 `stepDetailExtra` 로 **입력할 때마다 변경 연산을
+   * 쌓는** 편집면을 넣기 때문에, 둘을 함께 그리면 같은 값에 입력칸이 둘 생기고 커밋
+   * 방식이 다른 둘이 한 화면에 놓인다 (006 FR-188~FR-190).
+   */
+  stepDetailOwnFields?: boolean;
 
   onSelectStep: (stepId: string) => void;
   onCloseDetail: () => void;
@@ -111,6 +120,7 @@ export function Workbench({
   stepEmptyNotice,
   stepFooter,
   stepDetailExtra,
+  stepDetailOwnFields = true,
   onSelectStep,
   onCloseDetail,
   onSaveStep,
@@ -135,6 +145,27 @@ export function Workbench({
   const split = splitFor(model.phase);
   const targetStyle = flexOf(split.targetSlot);
   const workStyle = flexOf(split.workArea);
+
+  /*
+    Step 상세 — **한 번만 만든다.** 겹침이든 인라인이든 같은 원소를 쓴다. 자리마다 따로
+    만들면 그 순간 구현이 둘이 되고, 그것이 007 이 고친 S-05 의 원인이다 (FR-229).
+  */
+  const placement = DETAIL_PLACEMENT[model.phase];
+  const detailNode =
+    model.detail === null ? null : (
+      <StepDetail
+        detail={model.detail}
+        capabilities={capabilities}
+        placement={placement}
+        ownFields={stepDetailOwnFields}
+        busy={busy}
+        onSave={onSaveStep ?? (() => undefined)}
+        onRepick={onRepick ?? (() => undefined)}
+        onClose={onCloseDetail}
+        onRemedy={onAction}
+        extraFields={stepDetailExtra}
+      />
+    );
 
   return (
     <Artboard width={BASE_WIDTH} minHeight={900} grow>
@@ -190,6 +221,28 @@ export function Workbench({
             자리가 바뀌어서는 안 된다 (FR-218e) — 배분표가 그 국면에서 ③-a 를 `fill` 로
             정하므로 아래가 없어지면 위가 그만큼 늘어난다. 영역의 순서·개수는 그대로다.
           */}
+          {/*
+            008 — `work` 가 없는데 상세를 인라인으로 걸어야 하는 경우에도 ③-b 는 있다.
+            자리의 **개수와 순서**는 국면에 따라 바뀌지 않는다 (FR-218c) — 담는 것만
+            바뀐다. 이 분기가 없으면 그 국면에서 층이 하나 사라진다.
+          */}
+          {model.work === null && placement === "inline" && detailNode !== null && (
+            <div
+              data-workbench-work="step_detail"
+              data-slot-size={split.workArea.kind}
+              style={{
+                ...workStyle,
+                borderTop: "1px solid #14171C",
+                background: "#FFFFFF",
+                padding: "14px 20px",
+                display: "flex",
+                flexDirection: "column",
+                minHeight: 0,
+              }}
+            >
+              {detailNode}
+            </div>
+          )}
           {model.work !== null && (
             <WorkArea
               work={model.work}
@@ -199,6 +252,7 @@ export function Workbench({
               onChooseBlocked={onChooseBlocked}
               onReload={onReloadDefinition}
               onOverwriteStale={onOverwriteStale}
+              detail={placement === "inline" ? detailNode : undefined}
               busy={busy}
             />
           )}
@@ -217,10 +271,13 @@ export function Workbench({
         />
 
         {/*
-          Step 상세 — 우측에서 겹치는 640px. **모든 국면에서 같은 자리다** (FR-230).
-          이전에는 세션 화면이 겹침으로, 편집 화면이 목록 아래 인라인으로 열었다 (S-05).
+          Step 상세 — **구현은 한 벌이고 거는 자리만 국면이 정한다** (008 ·
+          `DETAIL_PLACEMENT`). 겹침이면 여기, 인라인이면 위의 ③-b 안이다.
+
+          007 이 자리를 하나로 고정한 이유(S-05)는 **두 구현이 갈라진 것**이었다. 구현이
+          하나로 남는 한 그 원인은 재발하지 않는다 — 그래서 자리만 표로 뺐다.
         */}
-        {model.detail !== null && (
+        {model.detail !== null && placement === "overlay" && (
           <div
             style={{
               position: "absolute",
@@ -240,16 +297,7 @@ export function Workbench({
               overflowY: "auto",
             }}
           >
-            <StepDetail
-              detail={model.detail}
-              capabilities={capabilities}
-              busy={busy}
-              onSave={onSaveStep ?? (() => undefined)}
-              onRepick={onRepick ?? (() => undefined)}
-              onClose={onCloseDetail}
-              onRemedy={onAction}
-              extraFields={stepDetailExtra}
-            />
+            {detailNode}
           </div>
         )}
       </div>
