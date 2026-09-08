@@ -140,22 +140,32 @@ async def _generate_a_key_with_a_passphrase_the_screen_rejects(ctx: Any) -> Atte
 
 @driver("AS-011")
 async def _ask_the_ai_without_what_it_needs(ctx: Any) -> Attempt:
-    """AI 에게 만들기를 요청한다 — 필요한 것이 갖춰지지 않은 상태에서.
+    """AI 에게 만들기를 요청한다 — 지시문을 비운 채.
 
-    목록은 "지시문을 비운 채" 라고 적었다. 자격 증명이 없는 환경에서는 **지시문을 쓰는
-    화면에 닿기 전에** 화면이 막고 이유를 말한다. 그것이 더 나은 동작이므로 결함으로
-    판정하지 않는다 — 재려는 것(요청이 막히고 무엇이 문제인지 화면에 있는가)은 같다.
-    빈 지시문 자체의 거부는 요청 경계가 판정한다 (`validate_instruction`).
-    근거는 목록의 `note` 에 남겼다.
+    **007 2회차에 자리가 바뀌었다.** 1회차까지는 「테스트 만들기」 화면에서 「지시문 쓰기」
+    버튼을 눌러 별도 화면(`AiCompose`)으로 넘어갔고, 이 수단은 그 버튼이 잠겼는지를
+    쟀다. 만들기가 통합 화면의 국면이 되면서 그 이동이 사라졌다 (007 FR-259) — 방법을
+    고르면 지시문 자리가 **같은 화면에 펼쳐진다.**
+
+    그래서 이제 목록에 적힌 그대로 잴 수 있다: 지시문을 비운 채 「AI 시작」을 눌러 보고
+    막히는지, 왜 막히는지가 화면에 있는지, 넣어 둔 시작 URL 이 남는지. 1회차의 `note`
+    (자격 증명이 없으면 지시문 화면에 닿기 전에 막힌다)는 더 이상 필요하지 않다 —
+    자격 증명이 없어도 지시문 자리는 있고, 빈 지시문의 거부를 그 자리에서 잴 수 있다.
+
+    빈 지시문 자체의 거부는 요청 경계도 판정한다 (`validate_instruction`). 여기서 재는
+    것은 **화면이 요청을 보내기 전에 막는가**다 (007 조건 C14).
     """
     ctx.ensure_project()
     page = await ctx.open()
 
     await ctx.click(page, "테스트 만들기")
     await ctx.fill(page, "시작 URL", ctx.fixture("/login.html"))
+    # 방법을 고르면 지시문 자리가 열린다 — 화면을 갈아타지 않는다 (FR-259)
+    await ctx.click(page, "AI로 만들기")
     await ctx.settle(page, ms=1_500)
 
-    blocked = await ctx.is_disabled(page, "지시문 쓰기")
+    # 지시문이 비어 있으므로 잠겨 있어야 한다 (조건 C14)
+    blocked = await ctx.is_disabled(page, "AI 시작")
     url_kept = ctx.fixture("/login.html") in await page.get_by_label(
         "시작 URL", exact=False
     ).first.input_value()
@@ -165,7 +175,8 @@ async def _ask_the_ai_without_what_it_needs(ctx: Any) -> Attempt:
         rejected=blocked,
         prevented=blocked,
         preserved=url_kept,
-        surfaced=await ctx.status_note(page),
+        # 왜 막히는지가 그 자리에 있어야 한다 (FR-234)
+        surfaced=await ctx.disabled_reason(page, "AI 시작") or await ctx.status_note(page),
     )
 
 

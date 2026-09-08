@@ -217,7 +217,15 @@ frontend/tests/
 | # | 묶음 | 내용 | 완료 판정 |
 |---|---|---|---|
 | **A** | **세로 배분** | `lib/layout.ts` 신설 (`SlotSize`·`VERTICAL_SPLIT`) · `PhaseAside` → `WorkArea` 개명 (파일·타입·`WorkbenchModel.aside` → `.work`) · `TargetPane`·`WorkArea` 가 크기를 인자로 받는다 · `EditView` 의 편집 필드를 작업 영역으로 · `ResultView` 의 시도한 locator 기록을 작업 영역으로 · 실행·녹화의 42px 띠를 `run_progress` 로 타입 안에 들인다 | 두 파일에 `flex: "1"`·`flex: 0 0 auto` 리터럴이 없다 · `VerticalSplit` 검사 통과 (동시 `fill` 0건) · `AiFailureVisible` 통과 유지 |
-| **B** | **만들기 흡수** | `Phase` 에 `composing` · `actions.ts` 에 `record.start` · 권한표 CRE 열 34칸 · 조건 C14 · `ComposeView` 어댑터 신설 · `CreateTest.tsx`·`AiCompose.tsx` 삭제 · `App.tsx` 의 `create`·`ai-compose` 제거 · `useScreenUrl` 이름 정규화 | 두 파일 없음 · 참조 0건 · `?screen=create`·`?screen=ai-compose` 가 만들기 국면으로 열린다 · 껍데기 개수 검사 통과 |
+| **B** | **만들기 흡수** | `Phase` 에 `composing` · `actions.ts` 에 `record.start` · 권한표 CRE 열 34칸 · 조건 C14 · `ComposeView` 어댑터 신설 · `CreateTest.tsx`·`AiCompose.tsx` 삭제 · `App.tsx` 의 `create`·`ai-compose` 제거 · `useScreenUrl` 이름 정규화 | 두 파일 없음 · **`frontend/src` 와 `backend/tests` 양쪽에서 참조 0건** · `?screen=create`·`?screen=ai-compose` 가 만들기 국면으로 열린다 · 껍데기 개수 검사 통과 |
+
+> **판정에 「양쪽에서」가 붙은 것은 구현 중에 고친 것이다** (T127·T128). 처음 판정은
+> `참조 0건` 을 `frontend/src` 안에서만 셌고, 그래서 **사라진 화면을 조작하는 이상 조작
+> 대본**(`backend/tests/abnormal/drivers/ui_drivers.py` 의 AS-011)이 깨진 것을 놓쳤다.
+> 프런트엔드 검사 635개가 전부 통과한 상태에서 백엔드 테스트가 잡았다 — 실브라우저로
+> 제품 화면을 여는 검사(003 RG-105)만이 「그 버튼이 실제로 없다」를 알 수 있다.
+>
+> **화면을 지우는 묶음의 판정에는 그 화면을 조작하는 대본도 들어가야 한다.**
 
 **A → B 다.** B 의 만들기 국면 배분(③-a `fixed 118` / ③-b `fill`)은 A 가 만든 규칙을 쓴다.
 B 를 먼저 하면 만들기 국면만 규칙 없이 서고 그 상태를 A 가 다시 고친다.

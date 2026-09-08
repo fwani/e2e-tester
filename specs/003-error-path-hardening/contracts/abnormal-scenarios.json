@@ -112,10 +112,11 @@
       "id": "AS-011",
       "fault": "invalid-input",
       "surface": "ui",
-      "target": "AiCompose",
+      "target": "ComposeView",
       "operation": "지시문을 비운 채 AI에게 만들기를 요청한다",
       "must_be_rejected": true,
-      "preserves": "form-input"
+      "preserves": "form-input",
+      "note": "007 2회차에 자리가 바뀌었다. 지시문 작성이 별도 화면(AiCompose)이 아니라 만들기 국면(ComposeView)의 한 부분이 됐다 (007 FR-217b·FR-258·FR-259). 방법으로 「AI로 만들기」를 고르면 지시문 자리가 같은 화면에 펼쳐지므로, 이제 목록에 적힌 그대로 「지시문을 비운 채 요청한다」를 잰다 — 1회차의 우회(자격 증명이 없으면 지시문 화면에 닿기 전에 막힌다)는 필요하지 않다. 화면 쪽 판정은 007 조건 C14 가 갖는다."
     },
     {
       "id": "AS-012",
