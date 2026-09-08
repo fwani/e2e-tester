@@ -376,12 +376,13 @@ Task: "replacement-map.md"
 작업이 들어간 자리가 다른 자리보다 크거나 같은지 대조한다 (`quickstart.md` W-8)
 
 **⚠️ 이 묶음은 쪼개서 멈출 수 없다** (research R13). 중간에 멈추면 어떤 국면은 새 규칙,
-어떤 국면은 옛 규칙이 되어 FR-256 이 성립하지 않는다. T098~T107 이 한 커밋이다
+어떤 국면은 옛 규칙이 되어 FR-256 이 성립하지 않는다. **T098~T108 이 한 커밋이다** —
+T108(기존 테스트 갱신)이 빠지면 그 커밋은 깨진 테스트를 남긴 상태가 된다
 
 ### 규칙을 먼저 세운다
 
 - [ ] T098 [US5] 세로 배분 표 in `frontend/src/lib/layout.ts` (신설) — `SlotSize`(`fill` · `content` · `fixed`) · `VERTICAL_SPLIT: Record<Phase, VerticalSplit>` 여덟 국면. 값은 `ui-contract.md` §1-5 표 그대로. **`Record<Phase, …>` 이므로 국면을 더하면 컴파일러가 배분을 요구한다** — `PHASE_TABLE` 과 같은 규율 (research R9)
-- [ ] T099 [P] [US5] 배분 검사 in `frontend/tests/VerticalSplit.test.ts` (신설) per SC-010 · UC-100 — 넷을 센다: ① 여덟 국면 전부 채움 ② **한 국면에서 두 자리가 동시에 `fill` 이 아니고 동시에 `content` 도 아니다** ③ `fill` 인 자리가 그 국면의 주 작업이다 ④ `TargetPane.tsx`·`WorkArea.tsx` 원문에 `flex: "1"`·`flex: 0 0 auto` 리터럴이 없다 (S-12 재발 방지)
+- [ ] T099 [P] [US5] 배분 검사 in `frontend/tests/VerticalSplit.test.ts` (신설) per SC-010 · UC-100 — 넷을 센다: ① 여덟 국면 전부 채움 ② **한 국면에서 두 자리가 동시에 `fill` 이 아니고 동시에 `content` 도 아니다** ③ **`fill` 인 자리의 `kind` 가 그 국면이 선언한 작업 종류와 일치한다** — 「주 작업」을 검사가 알 방법이 필요하다. `PRIMARY_SLOT: Record<Phase, "target" | "work">` 를 `layout.ts` 에 함께 두고, `fill`(또는 국면이 `fixed` 를 쓰는 경우 더 큰 쪽)인 자리가 그것과 같은지 센다 ④ `TargetPane.tsx`·`WorkArea.tsx` 원문에 `flex: "1"`·`flex: 0 0 auto` 리터럴이 없다 (S-12 재발 방지)
 
 ### 타입과 이름을 고친다
 
@@ -392,13 +393,14 @@ Task: "replacement-map.md"
 
 - [ ] T102 [US5] `TargetPane` 이 크기를 인자로 받는다 in `frontend/src/components/workbench/TargetPane.tsx` per FR-256 — 지금 하드코딩된 `flex: "1"` 을 제거하고 `size: SlotSize` 를 받는다. **자기 크기를 모르게 만드는 것이 요점이다**
 - [ ] T103 [US5] `WorkArea` 가 크기를 인자로 받는다 in `frontend/src/components/workbench/WorkArea.tsx` per FR-256 — 지금 하드코딩된 `flex: 0 0 auto` · `minHeight: 42` 를 제거하고 `size: SlotSize` 를 받는다. `content` 일 때만 최소 42px 을 적용한다
-- [ ] T104 [US5] `Workbench` 가 배분을 국면으로 조회해 두 자리에 내려 준다 in `frontend/src/components/workbench/Workbench.tsx` per FR-256 · UC-100 — `VERTICAL_SPLIT[model.phase]` 하나만 읽는다. 표시 컴포넌트가 표를 직접 읽지 않는다
+- [ ] T104 [US5] `Workbench` 가 배분을 국면으로 조회해 두 자리에 내려 준다 in `frontend/src/components/workbench/Workbench.tsx` per FR-218c · FR-256 · UC-100 — ③ 좌측이 **③-a 대상 앱 슬롯 + ③-b 국면 작업 영역 두 자리**임을 이 파일이 정한다 (FR-218c) — `VERTICAL_SPLIT[model.phase]` 하나만 읽는다. 표시 컴포넌트가 표를 직접 읽지 않는다
 
 ### 국면 어댑터를 새 자리로 옮긴다
 
 - [ ] T105 [US5] 편집 필드를 작업 영역으로 in `frontend/src/pages/EditView.tsx` per FR-257 · FR-261 — `work: { kind: "edit_fields", fields }` 가 남는 높이 전부를 갖고, `target: open_browser` 는 `fixed 118`. **브라우저 여는 조작은 그 자리 안에 유지한다** — 자리를 없애는 것과 줄이는 것은 다르다 (S-12)
 - [ ] T106 [US5] 시도한 locator 기록을 작업 영역으로 in `frontend/src/pages/ResultView.tsx` per FR-262 — `work: { kind: "failure_detail", attempts }`. 지금은 `StepDetail` 겹침을 열어야 보인다 (S-13). **겹침 상세의 표는 남긴다** — 그것은 지목한 Step 의 것이고 작업 영역의 것은 실패 Step 고정이다
 - [ ] T107 [US5] 실행·녹화의 42px 띠를 타입 안으로 in `frontend/src/pages/SessionScreen.tsx` per FR-256 · data-model §2-3 — 지금 `noticesExtra` 로 우회해 넣어 배분표에 잡히지 않는다. `work: { kind: "run_progress" }` 로 옮겨 ③-b 가 되게 한다
+- [ ] T107a [P] [US5] 결과 국면 시도 기록 검사 in `frontend/tests/ResultAttemptsVisible.test.tsx` (신설) per SC-012 · FR-262 · quickstart §1-8 — 실패 결과로 `ResultView` 를 렌더하고 **겹침 상세를 열지 않은 상태에서** 시도한 locator 행이 보이는지 센다. 1회차에는 `StepDetail` 을 열어야 보였다 (S-13). **동작을 만드는 T106 만으로는 회귀를 막지 못한다** — 다음 라운드에 누가 다시 겹침으로 옮겨도 아무것도 세지 않는다
 - [ ] T108 [US5] 개명·이동으로 깨지는 기존 테스트 갱신 in `frontend/tests/` — 헌법 게이트 4: **삭제·건너뛰기 금지, 갱신으로만 통과시킨다.** 검증하는 행동이 바뀌면 회귀다
 
 **Checkpoint**: `VerticalSplit` 통과 · `AiFailureVisible` 통과 유지 · 편집 국면에서 아래가
@@ -454,7 +456,8 @@ Phase 10 이 만든 규칙을 쓴다. 먼저 하면 만들기만 규칙 없이 �
 - [ ] T122 [P] 대체 관계 기록 in `specs/007-unify-test-screens/design-conformance/replacement-map.md` per FR-254b · FR-254d — `Workbench.dc.html`(초안) + `CreateTest.dc.html`(**확정 디자인**) → `docs/design/007-rework/`. `CreateTest.dc.html` 의 모든 요소(시작 URL 필드 · 방법 2택의 설명 문구 · 취소 · 1000px 셸)가 어디로 갔는지 판정 넷(`그대로`/`이동`/`분리`/`옮기지 않음`)으로 적는다. **`옮기지 않음` 은 이유가 필수다**
 - [ ] T123 [P] 2회차 대조 기록 in `specs/007-unify-test-screens/design-conformance/Workbench.md` per DC-012 · FR-254c — B1~B10 의 기준값과 구현값. **첫 줄의 「승인 대기 중이며 대조 기준으로 확정되지 않았다」를 유지한다.** 만들기 국면은 승인 전까지 `CreateTest.dc.html` 이 기준임을 명시한다 (research R14)
 - [ ] T124 [P] 미정의 상태 갱신 in `specs/007-unify-test-screens/design-conformance/undefined-states.md` per DC-009 — 1회차의 `AiCompose` 항목을 **해소로 닫는다**(만들기 국면이 되었다). 2회차가 만든 미정의 상태를 등록한다
-- [ ] T125 [P] 캔버스 갱신 in `docs/design/canvas.json` — `Workbench.dc.html` 항목에 `007-rework` 로 대체됨을 표시. `CreateTest.dc.html` 의 `replaces` 관계 기록
+- [ ] T125 [P] 캔버스 갱신 in `docs/design/canvas.json` per FR-254b · FR-254d — `Workbench.dc.html` 항목에 `007-rework` 로 대체됨을 표시. `CreateTest.dc.html` 의 `replaces` 관계 기록
+- [ ] T125a [P] 구조 문서 개명 반영 in `docs/DEVELOPMENT.md` per FR-218e-1 — `PhaseAside.tsx 국면 보조 영역` → `WorkArea.tsx 국면 작업 영역`. **FR-218e-1 은 계약·코드 식별자·대조 기록이 함께 바뀌어야 한다고 요구한다** — 리포지토리 구조 문서가 옛 이름을 적고 있으면 다음 사람이 그 이름으로 읽는다
 - [ ] T126 사람 판정 항목 등록 in `docs/PENDING-HUMAN-VERIFICATION.md` per FR-254c — B1~B10 승인 요청 · **`CreateTest.dc.html`(확정 디자인) 대체 승인** · W-8·W-9 걷기의 사람 재확인. 1회차 T096·T097 과 같은 형식
 
 ---
@@ -470,7 +473,7 @@ Phase 10 (묶음 A · 세로 배분)  ──▶  Phase 11 (묶음 B · 만들기
   → T104(전달) → T105~T107(어댑터) → T108(기존 테스트). T099 는 `[P]`
 - **Phase 11 안에서**: T109·T110 → T111 → T113·T114 → T115·T116 → T117(삭제) → T118~T121.
   T112·T120 은 `[P]`
-- **Phase 12**: T122~T125 전부 `[P]`. T126 은 나머지가 끝난 뒤
+- **Phase 12**: T122~T125a 전부 `[P]`. T126 은 나머지가 끝난 뒤
 
 ## 2회차에서 하지 말아야 할 것
 
@@ -485,4 +488,7 @@ Phase 10 (묶음 A · 세로 배분)  ──▶  Phase 11 (묶음 B · 만들기
 
 ## 2회차 작업 수
 
-29개. Phase 10 이 11 · Phase 11 이 13 · Phase 12 가 5. 누적 T001~T126.
+32개. Phase 10 이 12 · Phase 11 이 13 · Phase 12 가 7. 누적 T001~T126 (T107a·T125a 포함).
+
+`analyze` 가 찾아 더한 셋: T107a(SC-012 를 세는 작업이 없었다) · T125a(구조 문서가 옛
+이름을 적는다) · T099 ③ 의 조작적 정의(「주 작업」을 검사가 알 방법이 없었다).

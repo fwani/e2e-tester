@@ -243,8 +243,13 @@ const VERTICAL_SPLIT: Record<Phase, VerticalSplit>;
 | `result` | `fill` | `fixed 424` | 산출물이 남는 높이. ③-b 는 사유 + locator 4행이 스크롤 없이 들어가는 높이 (B4) |
 | `editing` | `fixed 118` | `fill` | 브라우저 여는 조작만 필요하다. 하는 일은 Step 편집이다 (FR-261) |
 
-**불변식 — 한 국면에서 두 자리가 동시에 `fill` 일 수 없다.** 그러면 그 국면의 주 작업이
-어느 자리인지 화면이 말하지 못한다. 검사가 이것을 센다 (SC-010).
+**불변식 둘 — 한 국면에서 두 자리가 동시에 `fill` 일 수 없고, 동시에 `content` 일 수도
+없다.** 앞은 그 국면의 주 작업이 어느 자리인지 화면이 말하지 못하게 하고, 뒤는 남는 높이를
+어디로도 보내지 않는다. 검사가 둘 다 센다 (SC-010 · UC-100).
+
+**주 자리 선언 — `PRIMARY_SLOT: Record<Phase, "target" | "work">`.** 검사가 「주 작업」을
+알 방법이 필요하다 (`analyze` A1). 배분표와 같은 파일에 두고, 크기가 큰 쪽이 이 선언과
+일치하는지 센다.
 
 `content` 의 최소 42px 은 1회차 값을 그대로 쓴다 (`RunnerPaused`·`Takeover` 의 국면 안내
 띠). `fixed 118` 은 46px 버튼 + 상하 여백이며 승인 대상이다 (B1).
