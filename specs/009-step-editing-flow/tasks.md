@@ -303,3 +303,14 @@ CRITICAL 0건 · 헌법 위반 0건. HIGH 하나가 이 저장소가 가장 경�
 - [X] T062 `frontend/src/api/client.ts` 의 `InsertableKind` 를 **생성 타입에서 파생**시킨다 per FR-286 (partial) — 지금 `ManualStepSpec` 이 손으로 쓴 타입이라 백엔드가 다섯째 종류를 더해도 화면은 모르고 아무 검사도 실패하지 않는다. `import type { ManualStep } from "../types/generated/manual-step"` 후 `type InsertableKind = ManualStep["kind"]` 로 두고, 요청 타입의 `kind` 가 그 집합과 같은지 타입 수준으로 못박는다(`never` 단언). `frontend/src/components/workbench/InsertStepForm.tsx` 의 `KINDS` 배열은 망라를 강제하지 않으므로 `frontend/tests/StepInsert.test.tsx` 에 「`KINDS` 가 `INSERTABLE_KIND_LABEL` 의 키 전부를 덮는다」를 더한다
 
 **Checkpoint**: 팔레트 경로가 표대로 동작하고, 새 정본 형태가 L1 대조를 받고, 종류 목록이 한 곳에서만 자란다.
+
+---
+
+## Phase 8: Convergence (2회차)
+
+**Purpose**: 1회차 갭 넷을 닫은 뒤 다시 대조했다. 남은 것은 하나이며 1회차 T059 와 **같은
+종류**다 — 활성인데 서버가 거절하는 조작.
+
+- [ ] T063 `frontend/src/lib/capabilities.ts` 의 편집 국면 `browser.openAt` 을 `ON` → `cond("C7")` 으로 바꾼다 per US2/AC5 · FR-234 (contradicts) — 다른 세션이 그 테스트를 잡고 있어도 지금은 활성으로 보이고, 누르면 저장 또는 세션 생성이 `409 SESSION_ALREADY_ACTIVE` 로 거절된다. 005 U-01 의 형태이며 US2 인수 시나리오 5 가 「같은 자리에 비활성으로 있고 그 세션으로 가는 방법을 가리킨다」를 요구한다. `C7`(정의가 편집 가능하다)이 맞는 조건이다 — 그 테스트를 잡은 세션이 있으면 두 번째 세션을 열 수 없고, `CONDITION_REMEDY["C7"]` 이 이미 `session.open` 이다. `frontend/tests/InsertViaBrowser.test.tsx` 에 「다른 세션이 잡고 있으면 비활성이고 그 세션으로 가는 길을 가리킨다」를 더한다
+
+**Checkpoint**: 편집 화면의 어떤 조작도 「눌렀는데 서버가 거절」로 끝나지 않는다.
