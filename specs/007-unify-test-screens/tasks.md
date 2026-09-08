@@ -513,3 +513,28 @@ Phase 10 (묶음 A · 세로 배분)  ──▶  Phase 11 (묶음 B · 만들기
 
 `analyze` 가 찾아 더한 셋: T107a(SC-012 를 세는 작업이 없었다) · T125a(구조 문서가 옛
 이름을 적는다) · T099 ③ 의 조작적 정의(「주 작업」을 검사가 알 방법이 없었다).
+
+---
+
+## Phase 14: Convergence (2회차)
+
+`/speckit-converge` 가 찾은 잔여 6건이다. CRITICAL 은 없다. **HIGH 4건 중 셋이 한
+뿌리**다 — 구현 중에 권한표를 고쳐야 할 것을 코드에서만 고쳤고, 그것이 UC-000(표가
+정본)이 금지하는 형태다.
+
+- [ ] T129 조건 C15 를 계약 표에 올린다 in `specs/007-unify-test-screens/contracts/ui-contract.md` §3-5 per UC-000 (contradicts) — `capabilities.ts` 에 `C15`(만드는 방법으로 AI 를 골랐다)가 있는데 계약 §3-5 의 런타임 조건 표에 없다. **화면이 표에 없는 조건으로 판정하고 있다.** 거짓일 때의 이유(「「AI로 만들기」를 고르면 쓸 수 있습니다」)와 해소 방법(`ai.compose`)을 함께 적는다
+- [ ] T130 CRE 열의 `ai.compose` 를 `◐ C15` 로 고친다 in `specs/007-unify-test-screens/contracts/ui-contract.md` §3-4 per UC-000 (contradicts) — 표는 `●` 인데 코드는 `cond("C15")` 다. 지시문 자리는 방법을 고르기 전에도 있어야 하므로(FR-234) 조건이 맞고, **표를 코드에 맞춘다** — 이 경우는 UC-401 의 「표가 틀렸다」에 해당한다 (현재 쓸 수 있는 조작을 표가 잘못 적었다)
+- [ ] T131 CRE 열의 `step.update`·`step.markSensitive`·`step.repick` 을 `– N2` 로 고친다 in `specs/007-unify-test-screens/contracts/ui-contract.md` §3-3 per UC-000 · §4-2 (contradicts) — 표는 `○` 인데 코드는 `na("N2")` 다. **자리가 Step 상세이고 Step 이 0개면 상세가 열릴 수 없다.** §3-4 아래의 「갈릴 수 있는 다섯 칸」 표에 그 근거를 적는다 — `step.select`·`delete`·`reorder` 는 목록과 팔레트가 자리이므로 `○` 로 남고, 이 셋만 `–` 다
+- [ ] T132 결과 국면 시도 기록 검사를 만든다 in `frontend/tests/ResultAttemptsVisible.test.tsx` (신설) per SC-012 · FR-262 · quickstart §1-8 (missing) — **T107a 를 `[X]` 로 표시했으나 파일을 만들지 않았다.** 거짓 완료 표시이며 가장 나쁜 종류다. 실패 결과로 `ResultView` 를 렌더하고 ③-b 의 배분이 `fixed 424` 인지, 겹침 상세를 열지 않은 상태에서 실패 사유와 시도한 locator 행이 보이는지 센다. **이 검사는 「보이는가」가 아니라 「자리가 충분한가」를 센다** — 1회차에도 표는 그려졌고 `maxHeight: 45%` 에 갇혔던 것이 결함이었다 (S-13 정정)
+- [ ] T133 옛 주소 정규화 검사를 더한다 in `frontend/tests/ScreenUrl.test.ts` per FR-240 · research R12 · quickstart W-9 ⑧ (missing) — `?screen=create` · `?screen=ai-compose` 가 `compose` 국면으로 열리는지 세는 것이 없다. **열어 둔 탭을 끊지 않는 것이 이 정규화의 목적**인데 그것을 지키는 것이 없다. `locationToSearch` 왕복도 함께 센다
+- [ ] T134 죽은 옛 이름을 정리한다 in `frontend/src/components/workbench/model.ts` per FR-218e-1 (unrequested) — `export type PhaseAside = WorkAreaView` 별칭을 **쓰는 곳이 0건**이다. 이행 중 호환을 위해 뒀으나 이행이 끝났다. 개명을 요구한 조항(FR-218e-1)에 죽은 옛 이름이 남아 있으면 다음 사람이 그것을 쓴다 — 제거한다
+
+### 이 회차가 알려 준 것
+
+**표와 코드가 어긋나는 것을 세는 검사가 없다.** `CapabilityCoverage` 는 코드의 표를
+자기 자신과 대조하므로(34개가 다 있나 · `–` 이 근거를 갖나) **계약 문서와의 어긋남은
+보지 못한다.** F2~F4 셋이 그 형태였고, 구현 중 검사가 전부 통과하는 동안 남아 있었다.
+
+계약 문서를 기계가 읽을 수 있게 만드는 것은 이 라운드의 범위를 넘는다. 대신 **UC-401 의
+절차를 지키는 것**이 유일한 방어이므로, 표를 고칠 때 코드와 문서를 같은 커밋에 담는
+규율을 `plan.md` 의 이행 판정에 남긴다 (T129~T131 이 그 자리다).
