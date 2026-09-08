@@ -311,6 +311,6 @@ CRITICAL 0건 · 헌법 위반 0건. HIGH 하나가 이 저장소가 가장 경�
 **Purpose**: 1회차 갭 넷을 닫은 뒤 다시 대조했다. 남은 것은 하나이며 1회차 T059 와 **같은
 종류**다 — 활성인데 서버가 거절하는 조작.
 
-- [ ] T063 `frontend/src/lib/capabilities.ts` 의 편집 국면 `browser.openAt` 을 `ON` → `cond("C7")` 으로 바꾼다 per US2/AC5 · FR-234 (contradicts) — 다른 세션이 그 테스트를 잡고 있어도 지금은 활성으로 보이고, 누르면 저장 또는 세션 생성이 `409 SESSION_ALREADY_ACTIVE` 로 거절된다. 005 U-01 의 형태이며 US2 인수 시나리오 5 가 「같은 자리에 비활성으로 있고 그 세션으로 가는 방법을 가리킨다」를 요구한다. `C7`(정의가 편집 가능하다)이 맞는 조건이다 — 그 테스트를 잡은 세션이 있으면 두 번째 세션을 열 수 없고, `CONDITION_REMEDY["C7"]` 이 이미 `session.open` 이다. `frontend/tests/InsertViaBrowser.test.tsx` 에 「다른 세션이 잡고 있으면 비활성이고 그 세션으로 가는 길을 가리킨다」를 더한다
+- [X] T063 `frontend/src/lib/capabilities.ts` 의 편집 국면 `browser.openAt` 을 `ON` → `cond("C7")` 으로 바꾼다 per US2/AC5 · FR-234 (contradicts) — 다른 세션이 그 테스트를 잡고 있어도 지금은 활성으로 보이고, 누르면 저장 또는 세션 생성이 `409 SESSION_ALREADY_ACTIVE` 로 거절된다. 005 U-01 의 형태이며 US2 인수 시나리오 5 가 「같은 자리에 비활성으로 있고 그 세션으로 가는 방법을 가리킨다」를 요구한다. `C7`(정의가 편집 가능하다)이 맞는 조건이다 — 그 테스트를 잡은 세션이 있으면 두 번째 세션을 열 수 없고, `CONDITION_REMEDY["C7"]` 이 이미 `session.open` 이다. `frontend/tests/InsertViaBrowser.test.tsx` 에 「다른 세션이 잡고 있으면 비활성이고 그 세션으로 가는 길을 가리킨다」를 더한다
 
 **Checkpoint**: 편집 화면의 어떤 조작도 「눌렀는데 서버가 거절」로 끝나지 않는다.

@@ -681,7 +681,21 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.resumeSkipFailure": na("N3"),
     "run.stop": na("N3"),
     "run.pacing": na("N3"),
-    "browser.openAt": ON,
+    /*
+      **009 T063 — `ON` 에서 `C7` 로 좁혔다** (US2 인수 시나리오 5 · FR-234).
+
+      이 조작은 그 테스트로 **세션을 만든다.** 다른 세션이 이미 그것을 잡고 있으면 만들 수
+      없다 — 서버가 `409 SESSION_ALREADY_ACTIVE` 로 거절한다. `ON` 인 동안 화면은 그 사실을
+      모르고 활성으로 그렸고, 누르면 거절됐다. 그것이 005 U-01 의 형태다.
+
+      `C7`(정의가 편집 가능하다)이 맞는 조건인 이유: 그 값은 「이 테스트를 잡은 세션이
+      없다」에서 나온다(`blocking_session_id is None`). 해소 방법도 이미 맞다 —
+      `CONDITION_REMEDY["C7"]` 이 `session.open` 이며, 그것이 「그 세션으로 가는 방법」이다.
+
+      009 가 이 조작을 다섯 걸음에서 한 걸음으로 만들었으므로(FR-291) 눌리는 빈도가 크게
+      늘었다. 거절되는 경로를 남겨 둘 수 없다.
+    */
+    "browser.openAt": cond("C7"),
     "session.open": cond("C5"),
     /** 만들 대상이 없다. 새 테스트는 목록에서 시작한다 */
     "record.start": na("N2"),

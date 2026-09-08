@@ -236,3 +236,56 @@ describe("결과 화면에서 그 자리로 (FR-297)", () => {
     expect(row?.getAttribute("aria-pressed")).toBe("true");
   });
 });
+
+// ─── 009 T063 · 다른 세션이 잡고 있을 때 (US2/AC5 · FR-234) ─────────────────
+//
+// 이 조작은 그 테스트로 **세션을 만든다.** 이미 잡혀 있으면 만들 수 없고 서버가 409 로
+// 거절한다. 활성으로 그리면 누른 뒤 거절되고, 그것이 005 U-01 의 형태다.
+
+describe("다른 세션이 그 테스트를 잡고 있을 때 (US2/AC5)", () => {
+  function stubBlocked() {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify(
+            definitionView({
+              editable: false,
+              blocked_by: "running",
+              blocking_session_id: "sess-1",
+            }),
+          ),
+          { status: 200 },
+        ),
+      ),
+    );
+  }
+
+  it("비활성이고 그 세션으로 가는 방법을 가리킨다", async () => {
+    stubBlocked();
+    render(
+      <EditView testId="TC-001" onBack={() => undefined} onOpenBrowserAt={() => undefined} />,
+    );
+    await waitFor(() => expect(screen.getByText("로그인 화면")).toBeTruthy());
+
+    const btn = action("browser.openAt");
+    expect(btn, "조작이 감춰졌다 — 자리를 남겨야 한다 (FR-234)").toBeTruthy();
+    expect(btn.disabled, "활성이다 — 누르면 서버가 409 로 거절한다").toBe(true);
+    // 「실행 중인 세션 보기」가 그 방법이다.
+    expect(action("session.open")).toBeTruthy();
+    expect(action("session.open").disabled).toBe(false);
+  });
+
+  it("누를 수 없으므로 세션을 만들지 않는다", async () => {
+    stubBlocked();
+    const onOpenBrowserAt = vi.fn();
+    render(
+      <EditView testId="TC-001" onBack={() => undefined} onOpenBrowserAt={onOpenBrowserAt} />,
+    );
+    await waitFor(() => expect(screen.getByText("로그인 화면")).toBeTruthy());
+
+    act(() => action("browser.openAt").click());
+
+    expect(onOpenBrowserAt).not.toHaveBeenCalled();
+  });
+});
