@@ -119,7 +119,13 @@ describe("중지 후 검토 (DR-010)", () => {
     expect((screen.getByLabelText("자연어로 Step 추가") as HTMLInputElement).disabled).toBe(true);
     // 브라우저 없이도 되는 것은 눌린다 (DR-012).
     expect(act("step.delete").disabled).toBe(false);
-    expect(act("step.reorder").disabled).toBe(false);
+    expect(act("step.moveUp").disabled).toBe(false);
+    expect(act("step.moveDown").disabled).toBe(false);
+    /*
+      009 — 직접 입력 삽입도 이 부류다 (계약 §2-1). 위의 셋(녹화·검증·자연어)은 브라우저를
+      만져야 하므로 잠기지만, 이것은 정의 목록만 고치고 브라우저에 명령을 보내지 않는다.
+    */
+    expect(act("step.insertManual").disabled).toBe(false);
   });
 
   it("Step 을 골라 지울 수 있다 (DR-012)", () => {

@@ -7,6 +7,7 @@
  * Cross-language schema duty 를 위반한다.
  */
 import type { Category, ErrorBody, ErrorCode } from "../types/generated/error-response";
+import type { ManualStep as GeneratedManualStep } from "../types/generated/manual-step";
 import type { RunResult } from "../types/generated/run-result";
 
 /**
@@ -259,8 +260,88 @@ export interface DefinitionView {
   warnings: string[];
 }
 
+/**
+ * 손으로 넣을 Step 의 서술 (009 FR-286).
+ *
+ * **종류 목록을 화면이 갖지 않는다.** 생성 타입(`types/generated/manual-step.d.ts`)이
+ * 백엔드 `itb/domain/manual_step.py` 에서 나오고, 이것은 그것을 **요청 형태**로 좁힌 것이다.
+ *
+ * 생성 타입의 필드가 전부 required 인 이유: 그 스키마는 **직렬화** 스키마다(기본값이 채워진
+ * 상태를 나타낸다). 요청에서는 `label`·`tab`·`timeout_ms`·`match` 를 생략할 수 있고 그때
+ * 서버가 정본 기본값을 쓴다 — 화면이 기본값을 복제하면 두 곳에서 갈린다.
+ */
+export type ManualStepSpec =
+  | { kind: "navigate"; url: string; label?: string; tab?: number; timeout_ms?: number }
+  | { kind: "close_tab"; label?: string; tab?: number; timeout_ms?: number }
+  | {
+      kind: "assert_url";
+      url: string;
+      match?: MatchMode;
+      label?: string;
+      tab?: number;
+      timeout_ms?: number;
+    }
+  | {
+      kind: "assert_text";
+      value: string;
+      match?: MatchMode;
+      label?: string;
+      tab?: number;
+      timeout_ms?: number;
+    };
+
+/**
+ * 손으로 넣을 수 있는 종류. **생성 타입에서 파생한다** (009 FR-286 · T062).
+ *
+ * 이전 판은 위의 손으로 쓴 `ManualStepSpec` 에서 파생했다. 그러면 백엔드가 다섯째 종류를
+ * 더해도 화면은 모르고 **아무 검사도 실패하지 않는다** — FR-286 이 요구하는 「한 곳만
+ * 고쳐 반영된다」가 성립하지 않는다.
+ *
+ * 이제 `types/generated/manual-step.d.ts` 가 근원이고, 그 파일은
+ * `backend/src/itb/domain/manual_step.py` 에서 나온다. CI 의 스키마 드리프트 잡이 생성물이
+ * 커밋된 것과 같은지 확인하므로, 백엔드에서 종류가 늘면 생성 타입이 늘고 아래 `_Exhaustive`
+ * 가 **컴파일에서** 터진다.
+ */
+export type InsertableKind = GeneratedManualStep["kind"];
+
+/**
+ * 참이어야 하는 타입 조건. `Assert<false>` 는 **컴파일되지 않는다.**
+ *
+ * 조건 타입을 그냥 선언만 하면 아무 오류도 나지 않는다 — 쓰이지 않는 타입 별칭은 검사받지
+ * 않기 때문이다. 그래서 조건을 이 형태로 **소비한다.** 런타임 산출물은 없다.
+ */
+type Assert<T extends true> = T;
+
+/**
+ * 요청 타입의 종류 집합이 생성 타입과 **같은지** 컴파일 시점에 못박는다 (FR-286).
+ *
+ * 두 방향을 모두 본다.
+ *
+ *   생성에만 있다 → 백엔드가 종류를 늘렸는데 화면이 모른다 (FR-286 이 없애려는 것)
+ *   요청에만 있다 → 화면이 서버가 모르는 종류를 보낸다 (422 로 거절된다)
+ *
+ * 어느 쪽이든 컴파일이 멈춘다. 실측으로 확인했다 — 요청 타입에서 `close_tab` 을 빼면
+ * 네 곳에서 타입 오류가 난다.
+ */
+type _KindsMatch = Assert<
+  [Exclude<ManualStepSpec["kind"], GeneratedManualStep["kind"]>] extends [never]
+    ? [Exclude<GeneratedManualStep["kind"], ManualStepSpec["kind"]>] extends [never]
+      ? true
+      : false
+    : false
+>;
+/** 위 단언을 내보내 「쓰이지 않는 타입」으로 지워지지 않게 한다. */
+export type ManualStepKindsAreExhaustive = _KindsMatch;
+
 /** 편집 연산 하나. 이 목록의 길이가 곧 「저장할 변경 건수」다 (FR-189). */
 export type EditOp =
+  /**
+   * 009 FR-285 — 목록의 `at` 위치 **앞**에 넣는다.
+   *
+   * 위치는 저장 직전에 **미리보기 목록 기준으로** 확정한다 (research R7). 미저장 상태에서
+   * 삽입 → 순서 변경 → 삭제가 이어지면 정수 위치가 가리키는 곳이 앞선 연산에 따라 바뀐다.
+   */
+  | { op: "insert"; at: number; spec: ManualStepSpec }
   | {
       op: "update";
       step_id: string;
@@ -363,6 +444,17 @@ export interface SessionView {
    * 화면에서 지워지는" 증상이다.
    */
   step_results?: StepProgress[];
+
+  /**
+   * **아직 도달하지 않은** 목표 지점 (009 FR-293·FR-294 · 계약 §4-3).
+   *
+   * 「이 앞에 추가」가 만든 세션은 지정한 Step 앞에서 멈춘다. 도달하면 `null` 이 된다 —
+   * 값의 뜻이 하나다: `null` 이 아니면 아직 그 자리에 닿지 않았다.
+   *
+   * `step_results` 와 **같은 이유로** 여기 있다. 목표를 화면 상태로만 들고 있으면 새로
+   * 고침 한 번에 「어디서 멈출 예정인지」가 사라진다 (005 U-18).
+   */
+  pause_before_index?: number | null;
 
   /**
    * 일시정지가 **실제로** 걸렸는가 (005 FR-142).
@@ -513,8 +605,17 @@ export const sessions = {
   reorderSteps: (id: string, order: string[]) =>
     post<StepsResponse>(`/api/sessions/${id}/steps:reorder`, { order }),
   /** Step 삽입. `at` 을 생략하면 일시정지 위치다 (FR-035). */
+  /**
+   * 완성된 Step 을 통째로 넣는다. 리코더·AI 컴파일러가 만든 것을 위한 입구다.
+   *
+   * 사람이 손으로 넣는 것은 `insertStepManual` 이다 — 그쪽은 요소를 요구하는 종류를
+   * **요청 모델 단계에서** 거절한다 (009 research R2).
+   */
   insertStep: (id: string, step: unknown, at?: number) =>
     post<StepsResponse>(`/api/sessions/${id}/steps`, { step, at: at ?? null }),
+  /** 일시정지 중 직접 입력으로 Step 추가 (009 FR-290). `at` 을 생략하면 일시정지 위치다. */
+  insertStepManual: (id: string, spec: ManualStepSpec, at?: number) =>
+    post<StepsResponse>(`/api/sessions/${id}/steps:manual`, { spec, at: at ?? null }),
   /** 표시 이름·입력값·타임아웃·민감 여부 수정 (FR-035·FR-082b). */
   patchStep: (
     id: string,

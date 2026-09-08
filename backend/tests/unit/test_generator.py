@@ -31,6 +31,7 @@ from itb.domain.test_case import AuthoringMode, Test, Variable
 from itb.generator.playwright_gen import (
     NoUsableCandidateError,
     ValueRenderer,
+    _frame_selector,
     generate_config,
     generate_package_json,
     generate_spec,
@@ -448,3 +449,62 @@ def test_generator_does_not_hardcode_a_timeout() -> None:
         assert forbidden not in source, (
             f"생성기에 대기 시간이 박혀 있다: {forbidden!r}"
         )
+
+
+# ─── 5. 하위 프레임 (001 research 의 iframe 항목) ──────────────────────────
+
+
+def test_subframe_step_wraps_the_locator_in_a_frame_locator() -> None:
+    """`frame_url` 이 있는 Step 은 `frameLocator` 를 지난다.
+
+    감싸지 않으면 내보낸 코드가 main frame 에서 요소를 찾아 반드시 실패한다 — 제품 내
+    실행이 프레임을 해석하는 것과 **같은 문서**를 봐야 한다 (FR-022).
+    """
+    step = ClickStep(
+        id="step-01",
+        label="내장 저장 클릭",
+        target=target(
+            role="button",
+            accessible_name="저장",
+            role_status=CandidateStatus.VERIFIED,
+            css=cand("button.btn"),
+        ),
+        frame_url="http://127.0.0.1:4300/embedded-inner.html",
+    )
+    line = line_of(step)
+    assert 'page.frameLocator("iframe[src*=\\"embedded-inner.html\\"]")' in line, line
+    assert '.getByRole("button", { name: "저장", exact: true })' in line, line
+
+
+def test_frame_selector_drops_the_leading_slash() -> None:
+    """`src` 가 상대 주소여도 걸리게 앞의 `/` 를 뗀다.
+
+    `src="inner.html"` 은 `/inner.html` 을 포함하지 않는다. 떼지 않으면 상대 주소로 쓴
+    iframe 을 하나도 찾지 못한다.
+    """
+    assert _frame_selector("https://app.example/a/b/inner.html?v=2") == (
+        'iframe[src*="a/b/inner.html"]'
+    )
+
+
+def test_main_frame_step_is_not_wrapped() -> None:
+    """`frame_url` 이 없으면 감싸지 않는다. 기존 정의의 출력이 바뀌면 안 된다."""
+    step = ClickStep(id="step-01", label="저장 클릭", target=target(test_id=cand("save")))
+    assert line_of(step) == 'await page.getByTestId("save").click({ timeout: 10000 });'
+
+
+def test_url_assertion_in_a_subframe_still_checks_the_tab() -> None:
+    """주소 검증은 프레임이 아니라 **탭**을 본다.
+
+    iframe 안에서 기록됐다고 프레임의 주소를 재면 사용자가 뜻한 "현재 주소"(주소창)와
+    달라진다. 제품 내 실행도 같은 판단을 한다 (`step_executor._assert`).
+    """
+    step = AssertionStep(
+        id="step-01",
+        label="주소 확인",
+        assertion=Assertion(kind=AssertionKind.URL, value="https://app.example/done"),
+        frame_url="http://127.0.0.1:4300/embedded-inner.html",
+    )
+    line = line_of(step)
+    assert "frameLocator" not in line, line
+    assert "await expect(page).toHaveURL" in line, line

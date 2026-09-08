@@ -20,12 +20,20 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { definition, tests, type DefinitionView, type EditOp } from "../api/client";
+import {
+  definition,
+  tests,
+  type DefinitionView,
+  type EditOp,
+  type ManualStepSpec,
+} from "../api/client";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { StepEditFields } from "../components/StepEditFields";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
+import { InsertStepForm } from "../components/workbench/InsertStepForm";
+import { ConfirmDelete, StepRowOps } from "../components/workbench/StepRowOps";
 import { Workbench } from "../components/workbench/Workbench";
 import type { Notice, WorkbenchModel, WorkbenchStep } from "../components/workbench/model";
 import type { ActionId } from "../lib/actions";
@@ -41,6 +49,7 @@ import {
   SAVE_BEFORE_OPEN_BROWSER,
   SAVE_THEN_OPEN_BROWSER,
   lockedFieldNotice,
+  manualStepLabel,
   runFromStepLabel,
   saveEditsLabel,
   stepNumber,
@@ -72,6 +81,58 @@ export interface EditViewProps {
   runPending?: boolean;
 }
 
+export const PENDING_ID_PREFIX = "pending-";
+/**
+ * 저장 전 삽입 Step 의 임시 식별자 접두어.
+ *
+ * 진짜 id 는 서버가 `allocate_step_id` 로 매긴다 (009 research R6). 화면이 번호를
+ * 만들면 리코더가 매긴 번호와 충돌한다. 그래서 저장 전에는 **자리만** 나타내는 표식을 쓰고,
+ * 저장 응답이 오면 서버가 매긴 목록으로 통째 교체된다.
+ *
+ * 이 접두어가 곧 「저장되지 않은 삽입」의 근거다 — 행의 「미저장」 칩(FR-310)과 옮기기·
+ * 지우기가 이것을 본다.
+ */
+
+/**
+ * 저장 전 삽입 연산 중 그 임시 id 를 만든 것의 자리 (FR-289).
+ *
+ * `preview` 가 붙이는 표식과 같은 규칙으로 되짚는다 — 표식을 만드는 곳과 읽는 곳이
+ * 갈리면 「넣었다가 지웠는데 변경이 남는」 상태가 된다.
+ */
+function pendingInsertIndex(ops: EditOp[], pendingId: string): number {
+  let seen = 0;
+  for (let i = 0; i < ops.length; i += 1) {
+    const op = ops[i];
+    if (op === undefined || op.op !== "insert") continue;
+    const at = Math.max(0, op.at);
+    if (`${PENDING_ID_PREFIX}${at}-${op.spec.kind}` === pendingId) return i;
+    seen += 1;
+  }
+  return seen > 0 ? -1 : -1;
+}
+
+/** 삽입 연산 하나를 미리보기 Step 으로 만든다. **표시 전용이며 저장되지 않는다.** */
+function previewStep(op: Extract<EditOp, { op: "insert" }>, at: number): Step {
+  const spec = op.spec;
+  const id = `${PENDING_ID_PREFIX}${at}-${spec.kind}`;
+  const base = { id, label: spec.label ?? manualStepLabel(spec), author: "human" as const,
+    tab: spec.tab ?? 0, timeout_ms: spec.timeout_ms ?? 10_000, frame_url: null };
+  if (spec.kind === "navigate") return { ...base, type: "navigate", url: spec.url } as Step;
+  if (spec.kind === "close_tab") return { ...base, type: "close_tab" } as Step;
+  if (spec.kind === "assert_url") {
+    return {
+      ...base,
+      type: "assertion",
+      assertion: { kind: "url", target: null, match: spec.match ?? "equals", value: spec.url },
+    } as Step;
+  }
+  return {
+    ...base,
+    type: "assertion",
+    assertion: { kind: "text", target: null, match: spec.match ?? "contains", value: spec.value },
+  } as Step;
+}
+
 /**
  * 편집 연산 목록을 저장된 정의에 **표시용으로** 얕게 적용한다.
  *
@@ -84,7 +145,17 @@ function preview(test: Test, ops: EditOp[]): Test {
   let startUrl = test.start_url;
 
   for (const op of ops) {
-    if (op.op === "update") {
+    if (op.op === "insert") {
+      /*
+        미리보기용 Step 을 만든다. **id 는 서버가 매기므로 여기서는 임시 표식**이다
+        (`PENDING_ID_PREFIX`). 그 표식이 「저장 전 삽입」을 나타내며 행의 「미저장」 칩과
+        저장 직전 위치 계산이 그것을 본다 (FR-310 · research R7).
+
+        **판정하지 않는다** — 값이 유효한지는 서버가 정한다. 여기서 정하면 두 벌이 된다.
+      */
+      const at = Math.max(0, Math.min(op.at, steps.length));
+      steps = [...steps.slice(0, at), previewStep(op, at), ...steps.slice(at)];
+    } else if (op.op === "update") {
       steps = steps.map((s) => {
         if (s.id !== op.step_id) return s;
         const next = { ...s } as Record<string, unknown>;
@@ -126,6 +197,16 @@ function mergeOps(ops: EditOp[], next: EditOp): EditOp[] {
       return [...ops.slice(0, at), merged, ...ops.slice(at + 1)];
     }
   }
+  /*
+    009 FR-289 — 저장 전에 넣은 Step 을 지우면 **`insert` 연산 자체를 뺀다.**
+
+    `insert` + `delete` 두 건으로 남기면 「저장할 변경 3건」이 사용자가 인지한 것과
+    달라진다. 넣었다가 지운 것은 아무것도 하지 않은 것과 같아야 한다.
+  */
+  if (next.op === "delete" && next.step_id.startsWith(PENDING_ID_PREFIX)) {
+    const at = pendingInsertIndex(ops, next.step_id);
+    return at >= 0 ? [...ops.slice(0, at), ...ops.slice(at + 1)] : ops;
+  }
   if (next.op === "reorder" || next.op === "set_name" || next.op === "set_start_url") {
     // 마지막 것만 의미가 있다. 쌓아 두면 변경 건수가 실제로 바뀐 것보다 많아진다.
     return [...ops.filter((o) => o.op !== next.op), next];
@@ -156,6 +237,21 @@ export function EditView({
   const [leaving, setLeaving] = useState<null | (() => void)>(null);
   /** 볼 결과가 있는가 (조건 C13). 없으면 「결과 자세히 보기」가 이유와 함께 잠긴다. */
   const [hasResult, setHasResult] = useState(false);
+  /**
+   * 삽입 입력면이 열려 있는가 (009 FR-285).
+   *
+   * **자연어 추가·검증 추가와 같은 문법이다** — 조작 하나가 그 자리에서 입력면을 여닫는다.
+   * 닫혀 있으면 자리를 차지하지 않는다.
+   */
+  const [insertOpen, setInsertOpen] = useState(false);
+  /**
+   * 지우기 확인을 기다리는 Step (009 FR-302).
+   *
+   * **행 안에서 확인한다** — 겹침 대화상자를 쓰지 않는다. 행 조작의 결과를 행이 아닌
+   * 곳에서 확인하면 대상이 무엇이었는지 다시 확인해야 한다. `TestList` 의 테스트 삭제가
+   * 같은 방식이며 그 선례를 따른다.
+   */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const load = useCallback(() => {
     void definition
@@ -271,6 +367,55 @@ export function EditView({
   const dslSteps = test.steps as unknown as Step[];
   const current = dslSteps.find((s) => s.id === selected) ?? null;
   const currentIndex = current ? dslSteps.findIndex((s) => s.id === current.id) : -1;
+
+  /*
+    009 research R7 — 넣을 자리는 **미리보기 목록 기준**이다.
+
+    `dslSteps` 는 저장된 정의에 미저장 연산을 적용한 결과다. 저장된 목록의 인덱스로 계산하면
+    앞선 삽입·삭제·순서 변경이 가리키는 곳을 바꿔 버린다.
+
+    고른 Step 이 없으면 **맨 뒤**다 — 「어디에 넣을지 먼저 고르세요」로 잠그지 않는다.
+    맨 뒤에 넣는 것은 실무에서 가장 흔하고, 그것을 막을 근거가 없다.
+  */
+  const insertAt = currentIndex >= 0 ? currentIndex : dslSteps.length;
+  const insertAtLabel =
+    currentIndex >= 0 ? `Step ${stepNumber(currentIndex)}` : "목록 맨 뒤";
+
+  const submitInsert = (spec: ManualStepSpec) => {
+    apply({ op: "insert", at: insertAt, spec });
+    setInsertOpen(false);
+  };
+
+  /*
+    009 FR-298 — **행에서 바로 조작한다.**
+
+    이전에는 팔레트가 「지목한 Step」을 대상으로 했으므로 옮기려는 Step 을 먼저 골라야
+    했다. 여기서는 **그 행의 자리(index)를 인자로 받는다** — 고르는 조작이 끼지 않는다.
+    그것이 세 칸 내리기를 여섯 번에서 세 번으로 줄이는 것의 전부다 (SC-503).
+  */
+  const runRowAction = (action: ActionId, index: number) => {
+    const step = dslSteps[index];
+    if (step === undefined) return;
+    switch (action) {
+      case "step.moveUp":
+        move(index, -1);
+        break;
+      case "step.moveDown":
+        move(index, 1);
+        break;
+      case "step.delete":
+        // FR-302 — 확인을 거친다. 무엇이 지워지는지 그 행에서 보인다.
+        setConfirmDelete(step.id);
+        break;
+      case "step.insertManual":
+        // 그 행 **앞**에 넣는다 — 행을 고르고 입력면을 연다.
+        setSelected(step.id);
+        setInsertOpen(true);
+        break;
+      default:
+        break;
+    }
+  };
   const sensitiveNames = (test.variables ?? []).filter((v) => v.sensitive).map((v) => v.name);
   const editable = view.editable;
   const lockedReason = (field: string) =>
@@ -285,6 +430,8 @@ export function EditView({
     outcome: "pending",
     durationMs: null,
     isPausedHere: false,
+    // 009 FR-310 — 임시 표식을 가진 것이 저장 전 삽입이다 (`PENDING_ID_PREFIX`).
+    isUnsaved: step.id.startsWith(PENDING_ID_PREFIX),
   }));
 
   const facts: CapabilityFacts = {
@@ -364,11 +511,17 @@ export function EditView({
       case "nav.back":
         guard(onBack);
         break;
+      case "step.insertManual":
+        setInsertOpen((v) => !v);
+        break;
       case "step.delete":
         if (current !== null) apply({ op: "delete", step_id: current.id });
         break;
-      case "step.reorder":
+      case "step.moveUp":
         if (currentIndex >= 0) move(currentIndex, -1);
+        break;
+      case "step.moveDown":
+        if (currentIndex >= 0) move(currentIndex, 1);
         break;
       default:
         break;
@@ -376,7 +529,12 @@ export function EditView({
   }
 
   /** 지목한 Step 이 있어야 뜻이 있는 조작. 표는 국면을, 이것은 화면이 아는 사실을 본다. */
-  const STEP_SCOPED: ActionId[] = ["step.reorder", "step.delete", "browser.openAt"];
+  const STEP_SCOPED: ActionId[] = [
+    "step.moveUp",
+    "step.moveDown",
+    "step.delete",
+    "browser.openAt",
+  ];
   const narrowByPick = (id: ActionId, base: CapabilityState) =>
     STEP_SCOPED.includes(id) && currentIndex < 0 && base.kind === "enabled"
       ? ({
@@ -581,6 +739,31 @@ export function EditView({
         model={model}
         phaseActions={phaseActions}
         headerActions={headerActions}
+        /*
+          009 FR-298 — 행 조작. `rowActions` 자리는 007 이 열어 두었고 넘기는 화면이
+          없었다 (관찰 M-08). 이 화면이 첫 소비자다.
+        */
+        rowActions={(step) =>
+          confirmDelete === step.id ? (
+            <ConfirmDelete
+              label={step.label}
+              onConfirm={() => {
+                apply({ op: "delete", step_id: step.id });
+                setConfirmDelete(null);
+              }}
+              onCancel={() => setConfirmDelete(null)}
+            />
+          ) : (
+            <StepRowOps
+              index={step.index}
+              total={steps.length}
+              label={step.label}
+              capabilities={capabilities}
+              busy={saving}
+              onRun={runRowAction}
+            />
+          )
+        }
         stepEmptyNotice="이 테스트에는 Step 이 없습니다."
         stepFooter={
           <ActionPalette
@@ -588,13 +771,29 @@ export function EditView({
             onRun={runAction}
             onRemedy={runAction}
             narrow={narrowByPick}
-            labels={{ "step.reorder": "위로 옮기기" }}
             /*
               이 국면에서 자리가 다른 둘 — 브라우저 열기는 대상 앱 영역(T079), 충돌
               중의 덮어쓰기는 「다시 읽기」와 짝을 이루는 보조 영역(FR-209)이 갖는다.
             */
             hidden={stale !== null ? ["browser.openAt", "save.overwriteStale"] : ["browser.openAt"]}
             nl={{ value: "", onChange: () => undefined, onSubmit: () => undefined }}
+            insert={{
+              open: insertOpen,
+              form: (
+                <InsertStepForm
+                  atLabel={insertAtLabel}
+                  busy={saving}
+                  capability={capabilities["step.insertManual"]}
+                  browserCapability={narrowByPick(
+                    "browser.openAt",
+                    capabilities["browser.openAt"],
+                  )}
+                  onSubmit={submitInsert}
+                  onOpenBrowser={() => runAction("browser.openAt")}
+                  onCancel={() => setInsertOpen(false)}
+                />
+              ),
+            }}
             name={test.name}
             onNameChange={(v) => apply({ op: "set_name", name: v })}
             startUrl={test.start_url}
@@ -815,6 +1014,8 @@ function describeOp(op: EditOp, steps: Step[]): string {
     return at >= 0 ? stepNumber(at) : id;
   };
   switch (op.op) {
+    case "insert":
+      return `Step ${stepNumber(op.at)} 자리에 ${manualStepLabel(op.spec)} 추가`;
     case "update": {
       const fields = [
         op.label !== undefined ? "이름" : null,

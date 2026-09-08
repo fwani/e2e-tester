@@ -16,7 +16,7 @@
     기준  docs/design/008-visual-language/Language.dc.html 의 <style> 시트
     관측  frontend/src/theme/tokens.css
 
-**같은 마크업**에 두 시트를 각각 적용해 형태 27종의 `getComputedStyle` 을 읽는다. 시트만
+**같은 마크업**에 두 시트를 각각 적용해 `FORMS` 의 `getComputedStyle` 을 읽는다. 시트만
 다르고 나머지는 같으므로 차이가 나면 그것은 시트의 차이다.
 
 ## 실행
@@ -44,7 +44,7 @@ DESIGN = ROOT / "docs" / "design" / "008-visual-language"
 TOKENS = ROOT / "frontend" / "src" / "theme" / "tokens.css"
 REPORT = ROOT / "frontend" / "tests" / "l1-report.json"
 
-# 확정 디자인이 정의한 재사용 형태 27종. 이름과 뜻은 디자인 그대로다 (C-4).
+# 확정 디자인이 정의한 재사용 형태. 이름과 뜻은 디자인 그대로다 (C-4).
 #
 # `.body`·`.left` 는 부모의 flex 안에서만 의미를 갖는 배치 구획이므로 계산값 비교 대상이
 # 아니다 — 여기 넣으면 부모 없는 렌더에서 둘 다 같은 값이 나와 대조가 무의미해진다.
@@ -54,7 +54,21 @@ FORMS = [
     "chip", "chip pass", "chip fail", "chip warn", "chip run", "chip ai",
     "hdr", "phase", "notice", "steps", "steps-hd",
     "srow", "srow pass", "srow fail", "srow run", "srow sel",
+    # 009 T060 — Step 행의 칸 5. **이 넷이 빠져 있던 동안 L1 대조를 받지 않았다** —
+    # 시트와 `tokens.css` 가 그 클래스에서 벌어져도 검사가 초록이었다 (008 V-09 와 같은
+    # 종류의 구멍이다).
+    "srow-ops", "op", "op off", "op danger",
 ]
+
+# 부모 안에서만 뜻을 갖는 형태 — 자식 선택자(`.srow-ops .op`)로 정의된 것들이다.
+#
+# 평평하게 놓으면 선택자가 걸리지 않아 **두 시트에서 똑같이 기본값**이 나오고, 대조가
+# 통과하지만 아무것도 검증하지 않는다. 그것이 가짜 초록이므로 부모를 명시한다.
+NESTED = {
+    "op": "srow-ops",
+    "op off": "srow-ops",
+    "op danger": "srow-ops",
+}
 
 # 재는 속성. `contracts/design-conformance.md` §3 의 목록이다.
 PROPS = [
@@ -78,10 +92,17 @@ def design_sheet() -> str:
 
 
 def page(sheet: str) -> str:
-    """두 시트에 **똑같이** 적용할 마크업. 형태마다 상자 하나."""
-    boxes = "".join(
-        f'<div class="{cls}" data-form="{cls}">텍스트 Ag 09</div>' for cls in FORMS
-    )
+    """두 시트에 **똑같이** 적용할 마크업. 형태마다 상자 하나.
+
+    `NESTED` 에 있는 형태는 부모 상자로 한 겹 감싼다 — 그 부모가 선택자의 일부다.
+    """
+
+    def box(cls: str) -> str:
+        one = f'<div class="{cls}" data-form="{cls}">텍스트 Ag 09</div>'
+        parent = NESTED.get(cls)
+        return one if parent is None else f'<div class="{parent}">{one}</div>'
+
+    boxes = "".join(box(cls) for cls in FORMS)
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
         f"<style>{sheet}</style>"

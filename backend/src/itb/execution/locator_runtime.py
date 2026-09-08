@@ -24,10 +24,11 @@ import asyncio
 import time
 from dataclasses import dataclass
 
-from playwright.async_api import Locator, Page
+from playwright.async_api import Locator
 
 from itb.domain.locator import TargetLocator
 from itb.domain.run_result import LocatorAttempt
+from itb.execution.frame_resolver import SearchRoot
 from itb.locator.strategy import (
     POLL_INTERVAL_MS,
     LocatorStrategy,
@@ -97,31 +98,36 @@ class Resolution:
     """
 
 
-def to_locator(page: Page, strategy: LocatorStrategy) -> Locator:
-    """전략을 Playwright `Locator` 로 바꾼다. 순수 변환이며 대기하지 않는다."""
+def to_locator(root: SearchRoot, strategy: LocatorStrategy) -> Locator:
+    """전략을 Playwright `Locator` 로 바꾼다. 순수 변환이며 대기하지 않는다.
+
+    `root` 는 main frame(`Page`) 이거나 하위 프레임(`Frame`) 이다. 두 타입이 같은
+    이름의 API 를 가지므로 여기서 갈라 볼 것이 없다 — 어느 문서에서 찾을지는
+    `frame_resolver` 가 이미 정했다.
+    """
     args = strategy.args
     match strategy.kind:
         case StrategyKind.TEST_ID:
-            return page.get_by_test_id(args["test_id"])
+            return root.get_by_test_id(args["test_id"])
         case StrategyKind.ROLE:
-            return page.get_by_role(
+            return root.get_by_role(
                 args["role"],  # type: ignore[arg-type]
                 name=args["name"],
                 exact=strategy.exact,
             )
         case StrategyKind.LABEL:
-            return page.get_by_label(args["label"], exact=strategy.exact)
+            return root.get_by_label(args["label"], exact=strategy.exact)
         case StrategyKind.TEXT:
-            return page.get_by_text(args["text"], exact=strategy.exact)
+            return root.get_by_text(args["text"], exact=strategy.exact)
         case StrategyKind.STABLE_ATTR:
             name = args["name"].replace('"', '\\"')
             value = args["value"].replace('"', '\\"')
-            return page.locator(f'[{name}="{value}"]')
+            return root.locator(f'[{name}="{value}"]')
         case StrategyKind.CSS:
-            return page.locator(args["css"])
+            return root.locator(args["css"])
 
 
-async def resolve(page: Page, target: TargetLocator, timeout_ms: int) -> Resolution:
+async def resolve(root: SearchRoot, target: TargetLocator, timeout_ms: int) -> Resolution:
     """우선순위대로 요소를 찾는다. 나타날 때까지 예산 안에서 기다린다.
 
     알고리즘 (004 research R1~R4):
@@ -160,7 +166,7 @@ async def resolve(page: Page, target: TargetLocator, timeout_ms: int) -> Resolut
         round_started = time.monotonic()
         waited_ms = int((round_started - started) * 1000)
         attempts, matched, round_ambiguous = await _probe_round(
-            page, strategies, waited_ms
+            root, strategies, waited_ms
         )
         saw_ambiguous = saw_ambiguous or round_ambiguous
 
@@ -169,7 +175,7 @@ async def resolve(page: Page, target: TargetLocator, timeout_ms: int) -> Resolut
             strategy, locator = matched[0]
             out_of_time = time.monotonic() >= deadline - grace
             if out_of_time or await _is_visible(locator):
-                disagreement = await _detect_disagreement(page, matched)
+                disagreement = await _detect_disagreement(root, matched)
                 return Resolution(
                     locator=locator,
                     strategy=strategy,
@@ -206,7 +212,7 @@ async def resolve(page: Page, target: TargetLocator, timeout_ms: int) -> Resolut
 
 
 async def _probe_round(
-    page: Page, strategies: list[LocatorStrategy], waited_ms: int
+    root: SearchRoot, strategies: list[LocatorStrategy], waited_ms: int
 ) -> tuple[list[LocatorAttempt], list[tuple[LocatorStrategy, Locator]], bool]:
     """후보 전체를 한 번 확인한다. (시도 내역, 우선순위 순 매칭, 모호함 있었는가).
 
@@ -218,7 +224,7 @@ async def _probe_round(
     ambiguous = False
 
     for strategy in strategies:
-        locator = to_locator(page, strategy)
+        locator = to_locator(root, strategy)
         try:
             count = await locator.count()
         except Exception:  # noqa: BLE001 - 잘못된 셀렉터. 시도 내역에 0개로 남긴다
@@ -255,7 +261,7 @@ async def _is_visible(locator: Locator) -> bool:
 
 
 async def _detect_disagreement(
-    page: Page, matched: list[tuple[LocatorStrategy, Locator]]
+    root: SearchRoot, matched: list[tuple[LocatorStrategy, Locator]]
 ) -> list[str]:
     """후보들이 서로 다른 요소를 가리키는지 확인한다.
 
@@ -278,7 +284,7 @@ async def _detect_disagreement(
     notes: list[str] = []
     for (strategy, _), handle in zip(matched[1:], handles[1:], strict=False):
         try:
-            same = await page.evaluate("([a, b]) => a === b", [first, handle])
+            same = await root.evaluate("([a, b]) => a === b", [first, handle])
         except Exception as exc:  # noqa: BLE001 - 비교 실패도 기록으로 남긴다
             # 헌법 보안 요건: 예외를 조용히 삼키지 않는다. 비교하지 못했다는 사실 자체가
             # 진단 정보다 — 조용히 넘기면 불일치가 없었던 것처럼 보인다.

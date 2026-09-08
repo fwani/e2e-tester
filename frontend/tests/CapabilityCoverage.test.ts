@@ -3,11 +3,11 @@
  *
  * **이 파일이 지키는 것은 셋이다.**
  *
- * 1. 34개 조작 전부가 여덟 국면에 답을 갖는다 — 빠진 칸이 있으면 화면은 `undefined` 를
+ * 1. 36개 조작 전부가 여덟 국면에 답을 갖는다 — 빠진 칸이 있으면 화면은 `undefined` 를
  *    받고 조용히 아무것도 그리지 않는다. 감춰진 조작이 되고 FR-234 위반이다.
  * 2. 모든 「해당 없음」이 §4-2 의 닫힌 목록(N1·N2·N3)에서 근거를 갖는다 — 근거 없이
  *    그리지 않는 것이 곧 조작을 잃는 것이다 (FR-247).
- * 3. 모든 해소 방법이 **34개 목록 안의 조작**을 가리킨다 — 006 E-03 이 정확히 그
+ * 3. 모든 해소 방법이 **36개 목록 안의 조작**을 가리킨다 — 006 E-03 이 정확히 그
  *    결함이었다. "실행을 시작해 일시정지한 뒤 하세요" 라고 안내하면서 그리로 가는
  *    버튼을 주지 않았다.
  */
@@ -41,9 +41,12 @@ const ALL_TRUE: CapabilityFacts = {
 };
 
 describe("조작 목록 (T008)", () => {
-  /** 2회차에 `record.start` 가 들어와 34개가 됐다 (FR-258b · UC-401) */
-  it("34개다 — contracts/ui-contract.md §2 의 합계와 같아야 한다", () => {
-    expect(ACTION_IDS).toHaveLength(34);
+  /**
+   * 2회차에 `record.start` 가 들어와 34개가 됐다 (FR-258b · UC-401).
+   * 009 가 `step.insertManual`·`step.moveDown` 을 더해 36개가 됐다 (FR-305 · 계약 §1).
+   */
+  it("36개다 — 009 계약 §1 의 합계와 같아야 한다", () => {
+    expect(ACTION_IDS).toHaveLength(36);
   });
 
   it("중복이 없다", () => {
@@ -52,13 +55,13 @@ describe("조작 목록 (T008)", () => {
 });
 
 describe("권한표 커버리지 (T012)", () => {
-  it("여덟 국면 × 34 조작 전부에 답이 있다", () => {
+  it("여덟 국면 × 36 조작 전부에 답이 있다", () => {
     for (const phase of PHASES) {
       const map = capabilitiesFor(phase);
       for (const action of ACTION_IDS) {
         expect(map[action], `${phase} × ${action} 이 비어 있다`).toBeDefined();
       }
-      expect(Object.keys(map)).toHaveLength(34);
+      expect(Object.keys(map)).toHaveLength(36);
     }
   });
 
@@ -206,7 +209,14 @@ describe("전 국면 덮어쓰기 (T011 · §3-6)", () => {
 
 describe("표의 모양 — 국면별 성질 (§3)", () => {
   it("실행 중 국면의 편집 조작은 감추지 않고 비활성이다 (FR-238)", () => {
-    for (const action of ["step.update", "step.delete", "step.reorder", "save"] as ActionId[]) {
+    for (const action of [
+      "step.update",
+      "step.delete",
+      "step.moveUp",
+      "step.moveDown",
+      "step.insertManual",
+      "save",
+    ] as ActionId[]) {
       const state = capabilityOf("running", action, ALL_TRUE);
       expect(state.kind, action).toBe("disabled");
       if (state.kind === "disabled") expect(state.remedy).not.toBeNull();
@@ -214,7 +224,13 @@ describe("표의 모양 — 국면별 성질 (§3)", () => {
   });
 
   it("결과 국면의 편집 조작은 「이 Step 고치기」로 안내한다", () => {
-    for (const action of ["step.update", "step.delete", "step.reorder"] as ActionId[]) {
+    for (const action of [
+      "step.update",
+      "step.delete",
+      "step.moveUp",
+      "step.moveDown",
+      "step.insertManual",
+    ] as ActionId[]) {
       const state = capabilityOf("result", action, ALL_TRUE);
       expect(state.kind, action).toBe("disabled");
       if (state.kind === "disabled") expect(state.remedy?.action).toBe("nav.editStep");
@@ -256,7 +272,13 @@ describe("표의 모양 — 국면별 성질 (§3)", () => {
    * 상세**인데 Step 이 0개면 상세가 열릴 수 없다 — 「대상이 없음」(N2)이다.
    */
   it("자리가 있는 Step 조작은 감추지 않고 이유를 붙인다 (FR-234·FR-260)", () => {
-    for (const action of ["step.select", "step.delete", "step.reorder"] as const) {
+    for (const action of [
+      "step.select",
+      "step.delete",
+      "step.moveUp",
+      "step.moveDown",
+      "step.insertManual",
+    ] as const) {
       const state = capabilityOf("composing", action, ALL_TRUE);
       expect(state.kind, action).toBe("disabled");
       if (state.kind === "disabled") {

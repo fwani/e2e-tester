@@ -14,21 +14,22 @@ from __future__ import annotations
 import contextlib
 from typing import Any
 
-from playwright.async_api import ElementHandle, Page
+from playwright.async_api import ElementHandle
 
 from itb.domain.locator import CandidateStatus, TargetLocator
+from itb.execution.frame_resolver import SearchRoot
 from itb.locator.collector import apply_statuses, build_unverified, candidate_strategies, classify
 from itb.locator.strategy import LocatorStrategy, StrategyKind
 
 
-async def describe_element(page: Page, selector: str) -> dict[str, Any] | None:
+async def describe_element(root: SearchRoot, selector: str) -> dict[str, Any] | None:
     """CSS 셀렉터로 요소 설명을 얻는다. 없으면 None.
 
     주입 스크립트의 `window.__itbDescribe` 를 호출한다 — 수집 규칙을 Python 에 복제하지
     않기 위해서다. 스크립트가 아직 주입되지 않았거나 페이지가 사라지는 중이면 None.
     """
     try:
-        result = await page.evaluate(
+        result = await root.evaluate(
             "(sel) => (typeof window.__itbDescribe === 'function'"
             " ? window.__itbDescribe(sel) : null)",
             selector,
@@ -39,7 +40,7 @@ async def describe_element(page: Page, selector: str) -> dict[str, Any] | None:
 
 
 async def verify_candidate(
-    page: Page, strategy: LocatorStrategy, anchor: ElementHandle | None
+    root: SearchRoot, strategy: LocatorStrategy, anchor: ElementHandle | None
 ) -> CandidateStatus:
     """후보 하나를 실제로 찾아 상태를 판정한다 (data-model §6).
 
@@ -49,7 +50,7 @@ async def verify_candidate(
     from itb.execution.locator_runtime import to_locator
 
     try:
-        locator = to_locator(page, strategy)
+        locator = to_locator(root, strategy)
         count = await locator.count()
     except Exception:  # noqa: BLE001 - 잘못된 셀렉터는 미수집으로 본다
         return CandidateStatus.NOT_COLLECTED
@@ -60,23 +61,29 @@ async def verify_candidate(
         return CandidateStatus.UNVERIFIED
     try:
         other = await locator.element_handle()
-        same = await page.evaluate("([a, b]) => a === b", [anchor, other])
+        same = await root.evaluate("([a, b]) => a === b", [anchor, other])
     except Exception:  # noqa: BLE001
         return CandidateStatus.UNVERIFIED
     return classify(1, same_element=bool(same))
 
 
 async def collect_and_verify(
-    page: Page, element: dict[str, Any], test_id_attribute: str = "data-testid"
+    root: SearchRoot, element: dict[str, Any], test_id_attribute: str = "data-testid"
 ) -> TargetLocator | None:
-    """요소 설명에서 후보를 만들고 즉시 검증한다. 식별 정보가 전혀 없으면 None."""
+    """요소 설명에서 후보를 만들고 즉시 검증한다. 식별 정보가 전혀 없으면 None.
+
+    **`root` 는 동작이 일어난 그 문서여야 한다.** iframe 안의 클릭을 main frame 기준으로
+    검증하면 `role`·`text` 후보가 전부 미수집으로 깎이고, 주입 스크립트가 프레임 안에서
+    잰 CSS 만 `verified` 로 남는다. 그 Step 은 실행이 main frame 을 뒤지므로 반드시
+    실패하는데, 녹화 화면에는 아무 이상이 보이지 않는다.
+    """
     try:
         target = build_unverified(element, test_id_attribute)
     except ValueError:
         # CSS 조차 없다. `TargetLocator` 불변식이 거절한 경우이며 기록할 수 없다.
         return None
 
-    anchor = await _anchor(page, element, target.css.value if target.css else None)
+    anchor = await _anchor(root, element, target.css.value if target.css else None)
 
     # **동작 시점에 페이지 안에서 잰 결과를 우선한다** (CSS·testId 에 한해).
     # 클릭이 화면 이동을 유발하면 여기서 다시 재는 시점에는 문서가 이미 교체돼 있어 모든
@@ -89,12 +96,12 @@ async def collect_and_verify(
         if kind in at_action:
             statuses[kind] = at_action[kind]
             continue
-        statuses[kind] = await verify_candidate(page, strategy, anchor)
+        statuses[kind] = await verify_candidate(root, strategy, anchor)
     return apply_statuses(target, statuses)
 
 
 async def _anchor(
-    page: Page, element: dict[str, Any], css: str | None
+    root: SearchRoot, element: dict[str, Any], css: str | None
 ) -> ElementHandle | None:
     """후보 검증의 기준 요소. **주입 스크립트가 남긴 참조를 우선한다.**
 
@@ -109,7 +116,7 @@ async def _anchor(
     ref = element.get("ref")
     if isinstance(ref, str) and ref:
         with contextlib.suppress(Exception):
-            handle = await page.evaluate_handle(
+            handle = await root.evaluate_handle(
                 "(token) => (typeof window.__itbResolveRef === 'function'"
                 " ? window.__itbResolveRef(token) : null)",
                 ref,
@@ -119,7 +126,7 @@ async def _anchor(
                 return resolved
     if css:
         with contextlib.suppress(Exception):
-            return await page.query_selector(css)
+            return await root.query_selector(css)
     return None
 
 
@@ -150,10 +157,10 @@ def _statuses_from_payload(element: dict[str, Any]) -> dict[StrategyKind, Candid
 
 
 async def collect_by_selector(
-    page: Page, selector: str, test_id_attribute: str = "data-testid"
+    root: SearchRoot, selector: str, test_id_attribute: str = "data-testid"
 ) -> TargetLocator | None:
     """셀렉터 하나로 후보 묶음을 만든다. 편집·다시 집기·검증 추가의 공통 진입점."""
-    element = await describe_element(page, selector)
+    element = await describe_element(root, selector)
     if element is None:
         return None
-    return await collect_and_verify(page, element, test_id_attribute)
+    return await collect_and_verify(root, element, test_id_attribute)

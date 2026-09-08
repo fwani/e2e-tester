@@ -200,6 +200,7 @@ const OVERRIDES: {
       "step.recordStop",
       "step.addNaturalLanguage",
       "step.addAssertion",
+      "step.insertManual",
       "step.repick",
       "save",
       "ai.start",
@@ -220,6 +221,7 @@ const OVERRIDES: {
       "step.recordStop",
       "step.addNaturalLanguage",
       "step.addAssertion",
+      "step.insertManual",
       "step.repick",
       "tab.select",
     ],
@@ -228,7 +230,20 @@ const OVERRIDES: {
   {
     key: "O4",
     fact: "hasSteps",
-    actions: ["save", "run.all", "run.from", "run.fromHere", "step.reorder", "step.delete"],
+    /*
+      **`step.insertManual` 은 여기 넣지 않는다** (009 계약 §2-2). `O4` 는 「대상이 없으면
+      뜻이 없는 조작」을 위한 것이고 삽입은 그 반대다 — Step 이 0개일 때야말로 넣을 수
+      있어야 한다 (008 FR-260 과 같은 판단).
+    */
+    actions: [
+      "save",
+      "run.all",
+      "run.from",
+      "run.fromHere",
+      "step.moveUp",
+      "step.moveDown",
+      "step.delete",
+    ],
     remedy: null,
   },
   /*
@@ -262,7 +277,9 @@ const OVERRIDES: {
       "step.markSensitive",
       "step.repick",
       "step.delete",
-      "step.reorder",
+      "step.moveUp",
+      "step.moveDown",
+      "step.insertManual",
       "save",
     ],
     remedy: null,
@@ -341,6 +358,7 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.recordStop": na("N2"),
     "step.addNaturalLanguage": off("NOT_STARTED_YET", "record.start"),
     "step.addAssertion": off("NOT_STARTED_YET", "record.start"),
+    "step.insertManual": off("NOT_STARTED_YET", "record.start"),
     /* 목록이 그 자리다. 0개여도 목록은 남으므로 ○ 다 (FR-260) */
     "step.select": off("NOT_STARTED_YET", "record.start"),
     /*
@@ -356,7 +374,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.repick": na("N2"),
     /* 조작 팔레트가 그 자리다 */
     "step.delete": off("NOT_STARTED_YET", "record.start"),
-    "step.reorder": off("NOT_STARTED_YET", "record.start"),
+    "step.moveUp": off("NOT_STARTED_YET", "record.start"),
+    "step.moveDown": off("NOT_STARTED_YET", "record.start"),
     /** 이름은 저장 시점에 정한다. 자리는 남기고 이유를 붙인다 (FR-258a) */
     "test.rename": off("NAME_ON_SAVE"),
     "test.setStartUrl": ON,
@@ -395,12 +414,14 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.recordStop": ON,
     "step.addNaturalLanguage": off("NEEDS_PAUSE", "run.pause"),
     "step.addAssertion": off("NEEDS_PAUSE", "run.pause"),
+    "step.insertManual": off("NEEDS_PAUSE", "run.pause"),
     "step.select": ON,
     "step.update": off("NEEDS_PAUSE", "run.pause"),
     "step.markSensitive": off("NEEDS_PAUSE", "run.pause"),
     "step.repick": off("NEEDS_PAUSE", "run.pause"),
     "step.delete": off("NEEDS_PAUSE", "run.pause"),
-    "step.reorder": off("NEEDS_PAUSE", "run.pause"),
+    "step.moveUp": off("NEEDS_PAUSE", "run.pause"),
+    "step.moveDown": off("NEEDS_PAUSE", "run.pause"),
     "test.rename": ON,
     "test.setStartUrl": na("N2"),
     save: cond("C8"),
@@ -434,12 +455,14 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.recordStop": na("N2"),
     "step.addNaturalLanguage": off("NEEDS_PAUSE", "run.pause"),
     "step.addAssertion": off("NEEDS_PAUSE", "run.pause"),
+    "step.insertManual": off("NEEDS_PAUSE", "run.pause"),
     "step.select": ON,
     "step.update": off("NEEDS_PAUSE", "run.pause"),
     "step.markSensitive": off("NEEDS_PAUSE", "run.pause"),
     "step.repick": off("NEEDS_PAUSE", "run.pause"),
     "step.delete": off("NEEDS_PAUSE", "run.pause"),
-    "step.reorder": off("NEEDS_PAUSE", "run.pause"),
+    "step.moveUp": off("NEEDS_PAUSE", "run.pause"),
+    "step.moveDown": off("NEEDS_PAUSE", "run.pause"),
     "test.rename": ON,
     "test.setStartUrl": na("N2"),
     save: cond("C8"),
@@ -481,12 +504,14 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.recordStop": cond("C6"),
     "step.addNaturalLanguage": off("NEEDS_PAUSE", "run.resume"),
     "step.addAssertion": off("NEEDS_PAUSE", "run.resume"),
+    "step.insertManual": off("NEEDS_PAUSE", "run.resume"),
     "step.select": ON,
     "step.update": off("NEEDS_PAUSE", "run.resume"),
     "step.markSensitive": off("NEEDS_PAUSE", "run.resume"),
     "step.repick": ON,
     "step.delete": off("NEEDS_PAUSE", "run.resume"),
-    "step.reorder": off("NEEDS_PAUSE", "run.resume"),
+    "step.moveUp": off("NEEDS_PAUSE", "run.resume"),
+    "step.moveDown": off("NEEDS_PAUSE", "run.resume"),
     "test.rename": ON,
     "test.setStartUrl": na("N2"),
     save: cond("C8"),
@@ -526,12 +551,14 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.recordStop": na("N2"),
     "step.addNaturalLanguage": off("RUNNING_NO_EDIT", "run.pause"),
     "step.addAssertion": off("RUNNING_NO_EDIT", "run.pause"),
+    "step.insertManual": off("RUNNING_NO_EDIT", "run.pause"),
     "step.select": ON,
     "step.update": off("RUNNING_NO_EDIT", "run.pause"),
     "step.markSensitive": off("RUNNING_NO_EDIT", "run.pause"),
     "step.repick": off("RUNNING_NO_EDIT", "run.pause"),
     "step.delete": off("RUNNING_NO_EDIT", "run.pause"),
-    "step.reorder": off("RUNNING_NO_EDIT", "run.pause"),
+    "step.moveUp": off("RUNNING_NO_EDIT", "run.pause"),
+    "step.moveDown": off("RUNNING_NO_EDIT", "run.pause"),
     "test.rename": off("RUNNING_NO_EDIT", "run.pause"),
     "test.setStartUrl": off("EDIT_AFTER_SESSION", "run.stop"),
     save: off("RUNNING_NO_EDIT", "run.pause"),
@@ -572,12 +599,22 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.recordStop": cond("C6"),
     "step.addNaturalLanguage": cond("C2"),
     "step.addAssertion": cond("C2"),
+    /*
+      **`C2`(브라우저가 살아 있다)를 요구하지 않는다** (009 계약 §2-1).
+
+      위의 `step.recordStart`·`addNaturalLanguage`·`addAssertion` 은 브라우저를 만져야
+      하므로 `C2` 다. 이것은 정의 목록만 고치고 **브라우저에 아무 명령도 보내지 않는다** —
+      `step.delete` 가 같은 이유로 이미 `●` 인 것과 같다. 검토 상태(브라우저가 닫힌 채
+      목록만 보는 상태)에서도 넣고 옮기고 지울 수 있어야 한다.
+    */
+    "step.insertManual": ON,
     "step.select": ON,
     "step.update": ON,
     "step.markSensitive": ON,
     "step.repick": cond("C2"),
     "step.delete": ON,
-    "step.reorder": ON,
+    "step.moveUp": ON,
+    "step.moveDown": ON,
     "test.rename": ON,
     "test.setStartUrl": off("EDIT_AFTER_SESSION", "run.stop"),
     save: cond("C8"),
@@ -611,12 +648,14 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.recordStop": na("N3"),
     "step.addNaturalLanguage": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.addAssertion": off("RESULT_NO_EDIT", "nav.editStep"),
+    "step.insertManual": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.select": ON,
     "step.update": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.markSensitive": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.repick": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.delete": off("RESULT_NO_EDIT", "nav.editStep"),
-    "step.reorder": off("RESULT_NO_EDIT", "nav.editStep"),
+    "step.moveUp": off("RESULT_NO_EDIT", "nav.editStep"),
+    "step.moveDown": off("RESULT_NO_EDIT", "nav.editStep"),
     "test.rename": off("RESULT_NO_EDIT", "nav.editStep"),
     "test.setStartUrl": off("RESULT_NO_EDIT", "nav.editStep"),
     save: na("N2"),
@@ -642,7 +681,21 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.resumeSkipFailure": na("N3"),
     "run.stop": na("N3"),
     "run.pacing": na("N3"),
-    "browser.openAt": ON,
+    /*
+      **009 T063 — `ON` 에서 `C7` 로 좁혔다** (US2 인수 시나리오 5 · FR-234).
+
+      이 조작은 그 테스트로 **세션을 만든다.** 다른 세션이 이미 그것을 잡고 있으면 만들 수
+      없다 — 서버가 `409 SESSION_ALREADY_ACTIVE` 로 거절한다. `ON` 인 동안 화면은 그 사실을
+      모르고 활성으로 그렸고, 누르면 거절됐다. 그것이 005 U-01 의 형태다.
+
+      `C7`(정의가 편집 가능하다)이 맞는 조건인 이유: 그 값은 「이 테스트를 잡은 세션이
+      없다」에서 나온다(`blocking_session_id is None`). 해소 방법도 이미 맞다 —
+      `CONDITION_REMEDY["C7"]` 이 `session.open` 이며, 그것이 「그 세션으로 가는 방법」이다.
+
+      009 가 이 조작을 다섯 걸음에서 한 걸음으로 만들었으므로(FR-291) 눌리는 빈도가 크게
+      늘었다. 거절되는 경로를 남겨 둘 수 없다.
+    */
+    "browser.openAt": cond("C7"),
     "session.open": cond("C5"),
     /** 만들 대상이 없다. 새 테스트는 목록에서 시작한다 */
     "record.start": na("N2"),
@@ -650,13 +703,30 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.recordStop": na("N3"),
     "step.addNaturalLanguage": off("NEEDS_BROWSER", "browser.openAt"),
     "step.addAssertion": off("NEEDS_BROWSER", "browser.openAt"),
+    /*
+      **009 의 핵심 셀이다** (FR-307 · 계약 §2-1).
+
+      위 셋은 전부 `NEEDS_BROWSER` 다. 그 잠금의 근거는 하나뿐이다 — 요소 후보는 살아
+      있는 페이지에서만 수집·검증된다(헌법 원칙 IV). 그런데 **요소를 지목하지 않는 Step
+      종류**(주소 이동·탭 닫기·주소 검증·화면 텍스트 검증)에는 그 근거가 적용되지 않는다.
+
+      006 이 이 화면을 만들 때 삽입을 뺀 것은 원칙 IV 때문이었고 그 판단은 옳았다. 다만
+      「일부는 손으로 만들 수 있다」를 표현할 자리가 없어서 **전부** 못 만드는 쪽으로
+      정리됐다 (관찰 M-11). 그것을 여기서 가른다.
+
+      잠금의 근거는 「정의를 고칠 수 있는가」(C7) 하나다. 실행 중이면 그 세션이 정의를
+      잡고 있으므로 C7 이 거짓이 되고, 그것이 FR-306 이 요구하는 잠금이다 — 러너와 목록
+      편집이 겹치는 것을 여기서도 같은 근거로 막는다.
+    */
+    "step.insertManual": cond("C7"),
     "step.select": ON,
     "step.update": cond("C7"),
     "step.markSensitive": cond("C7"),
     // 새 요소를 브라우저 없이 지목할 수는 없다 (006 의 범위 밖).
     "step.repick": off("NEEDS_BROWSER", "browser.openAt"),
     "step.delete": cond("C7"),
-    "step.reorder": cond("C7"),
+    "step.moveUp": cond("C7"),
+    "step.moveDown": cond("C7"),
     "test.rename": cond("C7"),
     "test.setStartUrl": cond("C7"),
     save: cond("C9"),

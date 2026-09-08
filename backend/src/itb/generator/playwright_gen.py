@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from itb.domain.assertion import Assertion, AssertionKind, MatchMode
 from itb.domain.step import (
@@ -144,6 +145,39 @@ def locator_expression(strategy: LocatorStrategy, tab_var: str) -> str:
     raise UnsupportedStepError(msg)  # pragma: no cover
 
 
+def _frame_selector(frame_url: str) -> str:
+    """프레임 주소 → 그 `<iframe>` 요소를 가리키는 선택자.
+
+    **내보낸 코드는 주소로 프레임을 찾을 수 없다.** 제품 내 실행은 `page.frames` 를 주소로
+    걸러 쓰지만(`itb.execution.frame_resolver`), Playwright 의 `frameLocator` 는 iframe
+    **요소**의 선택자를 받는다. 표준 Playwright 에는 주소로 프레임을 잡는 locator 가 없다.
+
+    그래서 주소의 **경로 부분으로 `src` 를 부분 일치**시킨다. `src` 가 상대 주소든 절대
+    주소든 걸리게 하려면 앞의 `/` 를 떼야 한다 — `src="inner.html"` 은 `/inner.html` 을
+    포함하지 않는다.
+
+    한계: 같은 경로의 iframe 이 둘이면 Playwright 가 strict 위반으로 실패한다. 조용히 첫
+    번째를 고르지 않으므로 **잘못된 프레임을 조작하지는 않는다** — 제품 내 실행이 같은
+    주소 여러 개를 채택하지 않는 것과 같은 판단이다.
+    """
+    parts = urlsplit(frame_url)
+    token = parts.path.lstrip("/") or parts.netloc or frame_url
+    return f'iframe[src*="{token}"]'
+
+
+def _locator_root(step: Step) -> str:
+    """요소를 찾을 대상. 하위 프레임 Step 이면 `frameLocator` 로 감싼다.
+
+    탭 변수 자체(`page`·`tab1`)는 화면 이동·주소 검증·탭 닫기가 계속 쓴다 — 그 셋은
+    프레임이 아니라 탭에 대한 동작이다.
+    """
+    tab = _tab_var(step.tab)
+    frame_url = getattr(step, "frame_url", None)
+    if not frame_url:
+        return tab
+    return f"{tab}.frameLocator({_js(_frame_selector(frame_url))})"
+
+
 def _locator_for(target: object, tab_var: str, label: str) -> str:
     strategy = choose_strategy(target)  # type: ignore[arg-type]
     if strategy is None:
@@ -165,46 +199,51 @@ def _timeout(step: Step) -> str:
 def step_lines(step: Step, values: ValueRenderer) -> list[str]:
     """Step 하나를 코드 줄들로. 탭 준비 줄은 호출자가 앞에 붙인다."""
     tab = _tab_var(step.tab)
+    root = _locator_root(step)
     match step:
         case NavigateStep():
             return [f"await {tab}.goto({values.render(step.url)});"]
         case ClickStep():
-            loc = _locator_for(step.target, tab, step.label)
+            loc = _locator_for(step.target, root, step.label)
             return [f"await {loc}.click({_timeout(step)});"]
         case HoverStep():
-            loc = _locator_for(step.target, tab, step.label)
+            loc = _locator_for(step.target, root, step.label)
             return [f"await {loc}.hover({_timeout(step)});"]
         case FillStep():
-            loc = _locator_for(step.target, tab, step.label)
+            loc = _locator_for(step.target, root, step.label)
             return [f"await {loc}.fill({values.render(step.value)}, {_timeout(step)});"]
         case SelectStep():
-            loc = _locator_for(step.target, tab, step.label)
+            loc = _locator_for(step.target, root, step.label)
             return [
                 f"await {loc}.selectOption({values.render(step.value)}, {_timeout(step)});"
             ]
         case DragStep():
-            source = _locator_for(step.target, tab, step.label)
-            destination = _locator_for(step.drop_target, tab, f"{step.label} (놓는 위치)")
+            source = _locator_for(step.target, root, step.label)
+            destination = _locator_for(step.drop_target, root, f"{step.label} (놓는 위치)")
             return [f"await {source}.dragTo({destination}, {_timeout(step)});"]
         case CloseTabStep():
             return [f"await {tab}.close();"]
         case AssertionStep():
-            return _assertion_lines(step.assertion, tab, values, step)
+            return _assertion_lines(step.assertion, tab, root, values, step)
     msg = f"생성할 수 없는 Step 종류입니다: {type(step).__name__}"
     raise UnsupportedStepError(msg)
 
 
 def _assertion_lines(
-    assertion: Assertion, tab: str, values: ValueRenderer, step: Step
+    assertion: Assertion, tab: str, root: str, values: ValueRenderer, step: Step
 ) -> list[str]:
-    """검증 4종 (FR-013a). `hidden` 은 없던 요소도 통과한다 — `toBeHidden` 과 같은 의미다."""
+    """검증 4종 (FR-013a). `hidden` 은 없던 요소도 통과한다 — `toBeHidden` 과 같은 의미다.
+
+    **주소 검증만 `tab` 을 쓴다.** 하위 프레임 안의 Step 이라도 사용자가 뜻한 "현재 주소"
+    는 주소창의 주소다 — 제품 내 실행도 같은 판단을 한다 (`step_executor._assert`).
+    """
     options = f"{{ timeout: {step.timeout_ms} }}"
     match assertion.kind:
         case AssertionKind.VISIBLE:
-            loc = _locator_for(assertion.target, tab, step.label)
+            loc = _locator_for(assertion.target, root, step.label)
             return [f"await expect({loc}).toBeVisible({options});"]
         case AssertionKind.HIDDEN:
-            loc = _locator_for(assertion.target, tab, step.label)
+            loc = _locator_for(assertion.target, root, step.label)
             return [f"await expect({loc}).toBeHidden({options});"]
         case AssertionKind.TEXT:
             expected = values.render(assertion.value or "")
@@ -214,10 +253,10 @@ def _assertion_lines(
             if assertion.target is None:
                 # 화면 전체가 대상이다 (data-model §5).
                 return [
-                    f"await expect({tab}.locator({_js('body')}))."
+                    f"await expect({root}.locator({_js('body')}))."
                     f"{matcher}({expected}, {options});"
                 ]
-            loc = _locator_for(assertion.target, tab, step.label)
+            loc = _locator_for(assertion.target, root, step.label)
             return [f"await expect({loc}).{matcher}({expected}, {options});"]
         case AssertionKind.URL:
             expected = values.render(assertion.value or "")

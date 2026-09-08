@@ -112,7 +112,7 @@ a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
           background:var(--sunken);border-bottom:1px solid var(--hair-2);}
 
 /* Step 행 — 52px 2줄. 125px 에서 왔다. 900px 화면에서 5행 → 13행. */
-.srow{display:grid;grid-template-columns:26px 1fr 58px 20px;gap:10px;align-items:center;
+.srow{display:grid;grid-template-columns:26px 1fr 58px 20px auto;gap:10px;align-items:center;
       height:52px;padding:6px 12px 6px 9px;border-bottom:1px solid var(--hair);
       border-left:3px solid transparent;}
 .srow .n{font:500 12px/1 var(--font-mono);color:var(--ink-3);text-align:right;}
@@ -125,6 +125,15 @@ a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
 .srow.fail{border-left-color:var(--fail);background:var(--fail-t);}
 .srow.run{border-left-color:var(--run);background:var(--run-t);}
 .srow.sel{background:var(--sunken-2);border-left-color:var(--ink);}
+/* 칸 5 — 행 조작. 위로·아래로·이 앞에 추가·지우기 (009 계약 §3-2).
+   항상 보인다. hover 로 드러내면 없는 조작이 된다. */
+.srow-ops{display:flex;align-items:center;gap:4px;}
+.srow-ops .op{display:inline-flex;align-items:center;justify-content:center;
+              width:20px;height:20px;padding:0;border:1px solid var(--hair-2);
+              border-radius:2px;background:var(--panel);color:var(--ink-2);
+              font:500 12px/1 var(--font-sans);box-shadow:none;}
+.srow-ops .op.off{border-style:dashed;color:var(--ink-3);background:transparent;}
+.srow-ops .op.danger{border-color:var(--fail);color:var(--fail);}
 
 /* ════════════════════════════════════════════════════════════════════════════
    정본에서 파생된 것. **새 값을 만들지 않는다** — 아래 모든 선언은 위 토큰을

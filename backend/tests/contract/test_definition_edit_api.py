@@ -537,3 +537,264 @@ def test_saving_keeps_the_plain_text_definition_shape(saved: TestClient) -> None
         line for line in after if line not in before and "updated_at" not in line
     ]
     assert changed == ["  value: operator"], changed
+
+
+# ─── 009 T020 · insert 연산 (FR-285~FR-289·FR-312 · 계약 §4-1) ──────────────
+#
+# **브라우저를 띄우지 않는다.** 위 파일 전체가 그 주장의 증거이고, 삽입도 같다 — 요소를
+# 지목하지 않는 Step 종류는 정의만으로 만들어진다 (009 FR-285).
+
+
+def _insert(at: int, spec: dict[str, object]) -> dict[str, object]:
+    return {"op": "insert", "at": at, "spec": spec}
+
+
+@pytest.mark.parametrize(
+    ("spec", "expect_type"),
+    [
+        ({"kind": "navigate", "url": "/orders"}, "navigate"),
+        ({"kind": "close_tab", "tab": 0}, "close_tab"),
+        ({"kind": "assert_url", "url": "/done", "match": "contains"}, "assertion"),
+        ({"kind": "assert_text", "value": "주문 완료"}, "assertion"),
+    ],
+)
+def test_insert_네_종류가_지정_위치에_들어간다(
+    saved: TestClient, spec: dict[str, object], expect_type: str
+) -> None:
+    """FR-285·FR-286 — 요소 지목이 필요 없는 넷은 브라우저 없이 들어간다."""
+    resp = _save(saved, [_insert(3, spec)])
+    assert resp.status_code == 200, resp.text
+
+    steps = resp.json()["test"]["steps"]
+    assert len(steps) == 6
+    assert steps[3]["type"] == expect_type
+    # 손으로 넣은 것은 사람이 만든 것이다 (원칙 I · FR-014).
+    assert steps[3]["author"] == "human"
+    # 이후 번호가 하나씩 밀린다 — id 는 자리가 아니라 정체성이므로 그대로다.
+    assert [s["id"] for s in steps[4:]] == ["step-04", "step-05"]
+
+
+def test_insert_는_라벨을_서버가_만든다(saved: TestClient) -> None:
+    """research R6 — 화면이 만들면 만든 경로에 따라 이름이 갈린다."""
+    resp = _save(saved, [_insert(0, {"kind": "navigate", "url": "/orders"})])
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["test"]["steps"][0]["label"] == "주소로 이동 — /orders"
+
+
+def test_insert_id_는_쓰인_번호를_피한다(saved: TestClient) -> None:
+    """`allocate_step_id` 의 규칙이 여기에도 적용된다 (research R6)."""
+    resp = _save(saved, [_insert(5, {"kind": "navigate", "url": "/a"})])
+    assert resp.status_code == 200, resp.text
+
+    ids = [s["id"] for s in resp.json()["test"]["steps"]]
+    assert len(set(ids)) == len(ids)
+    assert "step-06" in ids
+
+
+def test_insert_맨_앞과_맨_뒤에_넣을_수_있다(saved: TestClient) -> None:
+    """명세 Edge Case — 한쪽 끝에 도달할 수 없는 결함을 만들지 않는다."""
+    resp = _save(
+        saved,
+        [
+            _insert(0, {"kind": "navigate", "url": "/first"}),
+            _insert(6, {"kind": "close_tab", "tab": 0}),
+        ],
+    )
+    assert resp.status_code == 200, resp.text
+
+    steps = resp.json()["test"]["steps"]
+    assert steps[0]["type"] == "navigate"
+    assert steps[0]["url"] == "/first"
+    assert steps[-1]["type"] == "close_tab"
+
+
+def test_insert_at_이_범위를_벗어나면_거절한다(saved: TestClient) -> None:
+    """조용히 다른 자리에 넣지 않는다 — 사용자가 의도한 어떤 상태도 아니다."""
+    resp = _save(saved, [_insert(99, {"kind": "navigate", "url": "/a"})])
+
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "DEFINITION_INVALID"
+    # 저장되지 않았다.
+    assert len(_view(saved)["test"]["steps"]) == 5
+
+
+@pytest.mark.parametrize("kind", ["click", "fill", "select", "hover", "drag"])
+def test_insert_요소를_요구하는_종류는_거절한다(saved: TestClient, kind: str) -> None:
+    """FR-287 · 원칙 IV — 판별 유니온에 그 종류가 없다. 런타임 검사가 아니다.
+
+    **422 이고 400 이 아니다.** 요청의 *모양*이 계약에 맞지 않는 것이므로 전역
+    `RequestValidationError` 핸들러가 받는다 — 라우트 안에서 거절하는 것(`at` 범위 초과
+    등)은 400 이다. 오류 코드는 둘 다 `DEFINITION_INVALID` 로 같다 (003 EC-006).
+    """
+    resp = _save(saved, [_insert(0, {"kind": kind, "url": "/x"})])
+
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["error"]["code"] == "DEFINITION_INVALID"
+
+
+def test_insert_거절_응답에_넘어온_값이_실리지_않는다(saved: TestClient) -> None:
+    """003 EC-005 — pydantic 원문에는 입력이 통째로 들어 있다.
+
+    이 라우트의 판별 유니온 거절은 **전역 `RequestValidationError` 핸들러**를 타고,
+    `itb/api/errors.py` 의 `_reason` 이 닫힌 문구 집합만 쓰므로 값이 실리지 않는다.
+    **규칙이 있다는 것과 그 경로를 탄다는 것은 다른 사실이므로** 실제로 확인한다.
+    """
+    secret = "비밀번호1234"
+    resp = _save(saved, [_insert(0, {"kind": "click", "value": secret})])
+
+    assert resp.status_code in (400, 422)
+    assert secret not in resp.text
+
+
+def test_insert_target_을_실어_보낼_수_없다(saved: TestClient) -> None:
+    """손으로 넣은 후보는 검증 상태를 얻을 수 없다 (원칙 IV · 006 FR-187)."""
+    resp = _save(
+        saved,
+        [
+            _insert(
+                0,
+                {
+                    "kind": "assert_url",
+                    "url": "/done",
+                    "target": {"css": {"value": "a", "status": "verified"}},
+                },
+            )
+        ],
+    )
+
+    assert resp.status_code in (400, 422)
+
+
+def test_insert_는_다른_연산과_한_묶음에서_순서대로_적용된다(saved: TestClient) -> None:
+    """FR-288 — 같은 저장에 섞이고, 앞선 연산의 결과 위에서 다음 연산이 돈다."""
+    resp = _save(
+        saved,
+        [
+            _insert(0, {"kind": "navigate", "url": "/first"}),
+            {"op": "delete", "step_id": "step-05"},
+            {"op": "set_name", "name": "고친 로그인"},
+        ],
+    )
+    assert resp.status_code == 200, resp.text
+
+    body = resp.json()["test"]
+    assert body["name"] == "고친 로그인"
+    assert body["steps"][0]["url"] == "/first"
+    assert "step-05" not in [s["id"] for s in body["steps"]]
+
+
+def test_insert_묶음_하나가_실패하면_파일이_쓰이지_않는다(saved: TestClient) -> None:
+    """전부 또는 전무 — 절반 적용된 정의는 사용자가 의도한 어떤 상태도 아니다."""
+    before = _view(saved)
+    resp = _save(
+        saved,
+        [
+            _insert(0, {"kind": "navigate", "url": "/first"}),
+            {"op": "delete", "step_id": "step-99"},
+        ],
+    )
+
+    assert resp.status_code == 400
+    after = _view(saved)
+    assert after["revision"] == before["revision"]
+    assert len(after["test"]["steps"]) == 5
+
+
+def test_insert_는_revision_없이_저장되지_않는다(saved: TestClient) -> None:
+    """006 FR-209 — 바탕이 바뀐 것을 모르고 덮어쓰는 경로를 만들지 않는다."""
+    resp = saved.put(
+        "/api/tests/TC-001/definition",
+        json={"edits": [_insert(0, {"kind": "navigate", "url": "/a"})]},
+    )
+
+    assert resp.status_code == 422
+
+
+def test_insert_바탕이_바뀌면_충돌_흐름을_탄다(saved: TestClient) -> None:
+    """삽입도 다른 연산과 같은 충돌 흐름이다 (006 FR-209)."""
+    stale = _view(saved)["revision"]
+    assert _save(saved, [{"op": "set_name", "name": "먼저 바꾼다"}]).status_code == 200
+
+    resp = _save(saved, [_insert(0, {"kind": "navigate", "url": "/a"})], revision=stale)
+
+    assert resp.status_code == 409
+
+
+def test_insert_중간의_주소_이동은_경고를_남기고_저장은_된다(saved: TestClient) -> None:
+    """FR-312 — 막지 않는다. 무엇이 선행 상태인지는 대상 앱마다 다르다."""
+    resp = _save(saved, [_insert(3, {"kind": "navigate", "url": "/orders"})])
+
+    assert resp.status_code == 200, resp.text
+    assert any("주소 이동" in w for w in resp.json()["warnings"])
+
+
+def test_insert_열리지_않은_탭을_닫으면_경고를_남긴다(saved: TestClient) -> None:
+    """FR-312 — 번호의 유효성은 실행 흐름에 달려 있으므로 저장 시점에 막지 않는다."""
+    resp = _save(saved, [_insert(2, {"kind": "close_tab", "tab": 3})])
+
+    assert resp.status_code == 200, resp.text
+    assert any("탭 3" in w for w in resp.json()["warnings"])
+
+
+def test_insert_맨_앞의_주소_이동은_경고하지_않는다(saved: TestClient) -> None:
+    """앞으로 밀려난 Step 이 없으면 경고할 것이 없다 — 없는 위험을 말하지 않는다."""
+    resp = _save(saved, [_insert(0, {"kind": "navigate", "url": "/orders"})])
+
+    assert resp.status_code == 200, resp.text
+    assert not any("주소 이동" in w for w in resp.json()["warnings"])
+
+
+def test_insert_뒤_다시_읽어도_그_자리에_있다(saved: TestClient) -> None:
+    """SC-510 의 앞 절반. 실행까지 보는 것은 통합 검사가 한다 (T023)."""
+    assert _save(saved, [_insert(2, {"kind": "assert_url", "url": "/x"})]).status_code == 200
+
+    steps = _view(saved)["test"]["steps"]
+    assert steps[2]["type"] == "assertion"
+    assert steps[2]["assertion"]["kind"] == "url"
+    assert steps[2]["assertion"]["value"] == "/x"
+
+
+# ─── 009 T054·T055 · 세 입구의 잠금과 결과 일치 ─────────────────────────────
+
+
+def test_실행_중에는_삽입도_거절된다(saved: TestClient) -> None:
+    """009 FR-306 — 세 입구 **전부**가 잠긴다.
+
+    세션 두 입구는 `require_paused` 가 막고(`test_step_edit_api.py`), 이 입구는 실행
+    예약이 막는다 (FR-207). 근거가 다르지만 사용자에게는 같은 사실이어야 한다 — 러너가
+    전진하는 동안 목록을 고치면 같은 Step 이 두 번 돈다.
+    """
+    saved.app.state.itb.sessions.reserve_for_test("TC-001", "sess-running")
+    try:
+        resp = _save(saved, [_insert(0, {"kind": "navigate", "url": "/a"})])
+
+        assert resp.status_code == 409
+        assert resp.json()["error"]["code"] == "SESSION_ALREADY_ACTIVE"
+        # 저장되지 않았다.
+        assert len(_view(saved)["test"]["steps"]) == 5
+    finally:
+        saved.app.state.itb.sessions.release_reservation("TC-001", "sess-running")
+
+
+def test_정의_편집_입구도_같은_step_을_만든다(saved: TestClient) -> None:
+    """009 research R2 의 전제 — 세 입구가 같은 목록을 만든다.
+
+    세션 두 입구의 대조는 `test_step_edit_api.py::test_세_입구가_같은_목록을_만든다` 가
+    한다. 여기서는 **정의 편집 입구**가 같은 서술로 같은 Step 을 만드는지 본다 — 삽입
+    규칙이 갈리면 「어디서 넣었는지」에 따라 정의가 달라진다.
+    """
+    spec = {"kind": "assert_url", "url": "/done", "match": "contains"}
+    resp = _save(saved, [_insert(2, spec)])
+    assert resp.status_code == 200, resp.text
+
+    made = resp.json()["test"]["steps"][2]
+    # 서버가 조립한 결과 — 라벨·작성자·검증 모양이 `manual_step.build_step` 과 같다.
+    assert made["type"] == "assertion"
+    assert made["author"] == "human"
+    assert made["label"] == "주소 검증 — /done"
+    assert made["assertion"] == {
+        "kind": "url",
+        "target": None,
+        "match": "contains",
+        "value": "/done",
+    }

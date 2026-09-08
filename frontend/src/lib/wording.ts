@@ -13,6 +13,7 @@
  * 그래서 화면은 문구를 직접 만들지 않고 여기서 받는다.
  */
 
+import type { InsertableKind, ManualStepSpec } from "../api/client";
 import type { Outcome, RunScope, StepOutcome } from "../types/generated/run-result";
 import type { ActionId } from "./actions";
 import type { Phase } from "./phase";
@@ -198,6 +199,37 @@ export function progressLabel(currentIndex: number, total: number): string {
   const shown = Math.min(Math.max(currentIndex, 0) + 1, total);
   return `${stepLabel(shown - 1)} / ${String(total).padStart(2, "0")}`;
 }
+
+/**
+ * 목표 앞에서 멈추는 재생의 진행 표시 (009 FR-293).
+ *
+ * **목표와 현재를 함께 말한다.** 보통 재실행의 「Step 03 / 12」는 끝까지 간다는 뜻이지만,
+ * 이 재생은 지정한 자리에서 멈춘다 — 어디서 멈출 예정인지를 말하지 않으면 사용자는
+ * 실행이 끝나기를 기다린다.
+ *
+ * 「앞에서」인 것이 중요하다: 그 Step 은 **실행되지 않는다**(`pause_before_index`). 그것이
+ * 곧 「그 자리에 넣을 수 있다」는 뜻이다.
+ */
+export function pauseTargetProgress(currentIndex: number, targetIndex: number): string {
+  return `${stepLabel(targetIndex)} 앞에서 멈춥니다 · 지금 ${stepLabel(currentIndex)}`;
+}
+
+/**
+ * 목표에 닿기 전에 실패했다 (009 FR-294).
+ *
+ * **「일시정지됨」만 말하면 위반이다.** 사용자는 도달한 것으로 읽고 없는 자리에 Step 을
+ * 넣으려 한다. 도달과 실패는 화면에서 구별되어야 한다.
+ */
+export function pauseTargetUnreached(failedIndex: number, targetIndex: number): string {
+  return (
+    `${stepLabel(targetIndex)} 에 도달하기 전에 ${stepLabel(failedIndex)} 에서 ` +
+    "실패했습니다. 그 자리를 고친 뒤 이어서 실행하세요."
+  );
+}
+
+/** 목표 자리에 도착해 기록이 켜졌다 (009 FR-295·FR-296 · research R5 의 완화 장치). */
+export const ARRIVED_RECORDING_STARTED =
+  "지금부터 브라우저 조작이 기록됩니다. 넣으려는 동작을 브라우저에서 해 보세요.";
 
 /** 부분 실행을 걸기 전 보조 안내 (FR-150). */
 export function partialRunNotice(startIndex: number): string | null {
@@ -527,7 +559,14 @@ export const ACTION_LABEL: Record<ActionId, string> = {
   "run.resumeSkipFailure": RESUME_SKIPPING_FAILURE,
   "run.stop": "중지",
   "run.pacing": "실행 속도",
-  "browser.openAt": "브라우저 열어 이 Step 에서 멈추기",
+  /**
+   * 009 — 「에서」를 「앞에서」로 고쳤다.
+   *
+   * 이 조작은 그 Step 을 **실행하지 않고 그 앞에서** 멈춘다(`pause_before_index`). 「이
+   * Step 에서 멈추기」는 그 Step 이 이미 수행된 뒤로 읽히고, 무엇을 끼워 넣을 수 있는
+   * 자리인지가 뒤집힌다.
+   */
+  "browser.openAt": "브라우저 열어 이 Step 앞에서 멈추기",
   "session.open": OPEN_RUNNING_SESSION,
   /** 2회차 — 세션을 녹화 모드로 만든다. `step.recordStart` 와 다른 조작이다 */
   "record.start": "녹화 시작",
@@ -535,12 +574,21 @@ export const ACTION_LABEL: Record<ActionId, string> = {
   "step.recordStop": "기록 멈추기",
   "step.addNaturalLanguage": "자연어로 Step 추가",
   "step.addAssertion": "검증 추가",
+  /** 009 FR-285 — 브라우저 없이 넣는다. 위 셋과 갈리는 유일한 추가 경로다 */
+  "step.insertManual": "직접 입력으로 Step 추가",
   "step.select": "Step 상세 보기",
   "step.update": "Step 고치기",
   "step.markSensitive": "민감 값으로 지정",
   "step.repick": "요소 다시 집기",
   "step.delete": "Step 삭제",
-  "step.reorder": "순서 변경",
+  /**
+   * 009 — `step.reorder`「순서 변경」을 개칭했다.
+   *
+   * 이전 이름은 별도 패널을 가리켰고 그 패널은 없어진다(FR-301). 이름이 두 방향을 뜻하는
+   * 것처럼 읽히면서 실제로는 위로만 옮긴 것이 관찰 M-05 였다.
+   */
+  "step.moveUp": "위로 옮기기",
+  "step.moveDown": "아래로 옮기기",
   "test.rename": "테스트 이름",
   "test.setStartUrl": "시작 주소",
   save: "저장",
@@ -562,6 +610,58 @@ export const ACTION_LABEL: Record<ActionId, string> = {
  * 키가 조건 번호인 이유는 계약과 코드가 같은 이름을 쓰게 하는 것이다. 문구를 고치면
  * 계약의 어느 줄인지 즉시 찾을 수 있다.
  */
+/**
+ * 손으로 넣는 Step 의 표시 이름 (009 FR-286 · research R6).
+ *
+ * **이 문구가 요청에 실려 나간다.** 화면이 미리보기에 쓰는 이름과 서버가 정의 파일에
+ * 저장하는 이름이 같아야 하므로, 화면이 만들어 `spec.label` 로 보낸다 — 두 곳에서 각각
+ * 만들면 저장 순간 이름이 바뀌는 것으로 보인다.
+ *
+ * 서버(`itb/domain/manual_step.derive_label`)에도 같은 규칙이 있지만 그것은 **`label` 이
+ * 없이 온 요청**을 위한 것이다(다른 호출자·CLI). 이 저장소의 규칙은 「사용자에게 보이는
+ * 문구는 화면이 정한다」이고(`LockedField.reason` 이 문구가 아니라 키인 것과 같은 근거),
+ * 저장되는 값은 서버가 정한다 — 그 둘을 같게 만드는 방법이 **화면이 보내는 것**이다.
+ */
+export function manualStepLabel(spec: ManualStepSpec): string {
+  const clip = (text: string, room: number) =>
+    text.length <= room ? text : text.slice(0, Math.max(room - 1, 0)) + "…";
+  switch (spec.kind) {
+    case "navigate":
+      return "주소로 이동 — " + clip(spec.url, 200 - "주소로 이동 — ".length);
+    case "close_tab":
+      return `탭 ${spec.tab ?? 0} 닫기`;
+    case "assert_url":
+      return "주소 검증 — " + clip(spec.url, 200 - "주소 검증 — ".length);
+    case "assert_text":
+      return "화면 텍스트 검증 — " + clip(spec.value, 200 - "화면 텍스트 검증 — ".length);
+  }
+}
+
+/** 종류를 고르는 자리의 이름. 「무엇을 넣을 수 있는가」를 사용자 말로 적는다. */
+export const INSERTABLE_KIND_LABEL: Record<InsertableKind, string> = {
+  navigate: "주소로 이동",
+  close_tab: "탭 닫기",
+  assert_url: "주소 검증",
+  assert_text: "화면 텍스트 검증",
+};
+
+/**
+ * 요소를 지목해야 하므로 손으로 만들 수 없는 종류 (FR-287).
+ *
+ * **감추지 않는다.** 같은 자리에 비활성으로 두고 이유와 갈 길을 붙인다 — 그것이 이
+ * 저장소가 「쓸 수 없는 조작」을 다루는 방식이다 (FR-234).
+ */
+export const BROWSER_ONLY_KIND_LABEL: Record<string, string> = {
+  click: "클릭",
+  fill: "입력",
+  select: "선택",
+  hover: "마우스 올리기",
+  drag: "끌어놓기",
+};
+
+export const BROWSER_ONLY_KIND_REASON =
+  "요소는 살아 있는 화면에서만 지목할 수 있습니다";
+
 export const DISABLED_REASON = {
   C1: "실행 중인 세션이 열려 있습니다",
   C2: "브라우저가 닫혔습니다",

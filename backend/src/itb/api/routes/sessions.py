@@ -290,6 +290,25 @@ class SessionView(BaseModel):
     has_unsaved_changes: bool = False
     """저장하지 않은 편집이 있는가. 중지 확인 대화상자의 근거다 (FR-042)."""
 
+    pause_before_index: int | None = None
+    """**아직 도달하지 않은** 목표 지점 (009 FR-293·FR-294 · 계약 §4-3).
+
+    「이 자리에 추가」가 만든 세션은 지정한 Step 앞에서 멈춘다. 그 목표가 여기 실린다.
+
+    **왜 스냅샷에 싣는가.** 목표를 화면 상태로만 들고 있으면 새로 고침 한 번에 「어디서
+    멈출 예정인지」가 사라진다. 005 U-18 이 같은 형태였고 — Step별 결과가 화면 로컬 상태에만
+    있어 다시 그리면 사라졌다 — 그 고침이 `step_results` 였다. 같은 근거로 여기 있다.
+
+    화면이 이 값으로 문구를 가른다.
+
+      값이 있고 실행 중        「Step nn 앞에서 멈춥니다 — 지금 Step mm」
+      값이 없고 일시정지       도착했다. 일시정지 문구는 지금과 같다
+      값이 있고 실패한 Step 有  「Step nn 에 도달하기 전에 Step mm 에서 실패했습니다」
+
+    셋째 줄이 FR-294 다 — **도달하지 못했는데 도달한 것처럼 말하지 않는다.** 판정을 화면이
+    조립하지 않는다: 「도달했는가」는 목표가 남아 있는지로 결정되며 그 사실은 러너가 안다.
+    """
+
     pacing: RunPacing = DEFAULT_PACING
     """이 세션의 실행 속도.
 
@@ -411,6 +430,7 @@ def view_of(w: SessionWork) -> SessionView:
         allowed_commands=[c.value for c in allowed_commands(w.session.state)],
         has_unsaved_changes=w.has_unsaved_changes,
         pacing=w.session.pacing,
+        pause_before_index=w.runner.pause_before_index if w.runner is not None else None,
         authoring_mode=w.authoring_mode,
         step_results=_progress_of(w),
         pause_settled=_pause_settled(w),

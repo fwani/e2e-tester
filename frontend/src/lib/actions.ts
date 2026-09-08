@@ -1,5 +1,5 @@
 /**
- * 조작 식별자 33개 (007 T008 · contracts/ui-contract.md §2).
+ * 조작 식별자 36개 (007 T008 · contracts/ui-contract.md §2 · 009 계약 §1).
  *
  * **이 목록이 FR-247 의 검사 대상이다** — 통합으로 사라지는 조작이 있어서는 안 된다.
  * 지금 조작은 7개 화면의 props 로 흩어져 있고, 같은 일이 다른 이름으로 여러 곳에 있다.
@@ -28,7 +28,13 @@ export const RUN_ACTIONS = [
   "run.stop",
   /** 실행 속도 */
   "run.pacing",
-  /** 브라우저 열어 Step nn 에서 멈추기 */
+  /**
+   * 브라우저 열어 Step nn **앞에서** 멈추기.
+   *
+   * 009 에서 뜻이 넓어졌다 — 도착하면 **직접 조작 녹화가 켜진다** (FR-291·FR-295).
+   * 「브라우저에서 지목해 추가」를 별도 조작으로 만들지 않았다: 도착지가 같은 두 버튼을
+   * 나란히 두면 사용자는 차이를 확인하느라 멈춘다 (006 E-03 · 009 research R3).
+   */
   "browser.openAt",
   /** 실행 중인 세션 보기 */
   "session.open",
@@ -45,22 +51,40 @@ export const RUN_ACTIONS = [
   "record.start",
 ] as const;
 
-/** Step 작성 (4) */
+/** Step 작성 (5) */
 export const AUTHORING_ACTIONS = [
   "step.recordStart",
   "step.recordStop",
   "step.addNaturalLanguage",
   "step.addAssertion",
+  /**
+   * 직접 입력으로 Step 추가 — **브라우저 없이** (009 FR-285).
+   *
+   * 위 넷과 갈리는 유일한 조작이다. 넷은 전부 살아 있는 브라우저를 전제하는데(관찰 M-01),
+   * 요소를 지목하지 않는 Step 종류(주소 이동·탭 닫기·주소 검증·화면 텍스트 검증)에는
+   * 그 전제가 필요 없다. 그래서 편집 국면에서 이것만 `NEEDS_BROWSER` 로 잠기지 않는다
+   * (FR-307 · 계약 §2-1).
+   */
+  "step.insertManual",
 ] as const;
 
-/** Step 편집 (6) */
+/** Step 편집 (7) */
 export const STEP_ACTIONS = [
   "step.select",
   "step.update",
   "step.markSensitive",
   "step.repick",
   "step.delete",
-  "step.reorder",
+  /**
+   * 위로 옮기기 — **009 에서 `step.reorder` 를 개칭했다.**
+   *
+   * 이전 이름은 별도 「순서 변경」 패널을 가리켰다. 그 패널이 없어지므로(FR-301) 이름이
+   * 실제 동작(한 칸 위로)과 같아야 한다. 개칭이 개명 이상인 이유: 이전 이름은 두 방향을
+   * 뜻하는 것처럼 읽히면서 실제로는 위로만 옮겼다 (관찰 M-05).
+   */
+  "step.moveUp",
+  /** 아래로 옮기기 — 지금 없는 방향 (FR-299). n칸 옮기는 데 n회면 된다 */
+  "step.moveDown",
 ] as const;
 
 /** 테스트 속성·저장 (5) */

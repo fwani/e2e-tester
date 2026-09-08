@@ -30,6 +30,7 @@ import {
   sessions,
   type AddAssertionBody,
   type AiChoice,
+  type ManualStepSpec,
   type RepickSlot,
   type RunPacing,
   type SessionView,
@@ -48,6 +49,8 @@ import { TabStrip } from "../components/TabStrip";
 import { BrowserFrame } from "../components/design/BrowserFrame";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
+import { InsertStepForm } from "../components/workbench/InsertStepForm";
+import { ConfirmDelete, StepRowOps } from "../components/workbench/StepRowOps";
 import { Workbench } from "../components/workbench/Workbench";
 import type {
   AiBlockedState,
@@ -71,6 +74,9 @@ import {
   PHASE_LABEL,
   editSavedNotice,
   pausedAfterLabel,
+  pauseTargetProgress,
+  pauseTargetUnreached,
+  ARRIVED_RECORDING_STARTED,
   progressLabel as progressText,
   sessionPhaseLabel,
   runFromStepLabel,
@@ -79,7 +85,6 @@ import {
   sessionTitle,
   skipFailureNotice,
   stepLabel,
-  stepNumber,
   stopLabel,
   type OutcomeTone,
 } from "../lib/wording";
@@ -174,7 +179,6 @@ export interface SessionWorkbenchProps {
   /** Step 상세 겹침이 열려 있는가. 지목과 상세 열기는 다른 조작이다 (FR-227·FR-230). */
   detailOpen?: boolean;
   repickWaiting?: RepickSlot | null;
-  reordering?: boolean;
   saveName?: string;
 
   onSelectStep: (stepId: string) => void;
@@ -197,9 +201,19 @@ export interface SessionWorkbenchProps {
   onRecordStart?: () => void;
   onRecordStop?: () => void;
   onAddAssertion?: (body: AddAssertionBody) => void;
+  /** 009 FR-290 — 일시정지 중 직접 입력으로 Step 추가. `at` 은 일시정지 위치다 */
+  onInsertManual?: (spec: ManualStepSpec, at?: number) => void;
   onNaturalLanguage?: (instruction: string) => void;
   onDeleteStep?: (stepId: string) => void;
-  onToggleReorder?: () => void;
+  /**
+   * 009 FR-298·FR-301 — **행에서** 순서를 바꾼다.
+   *
+   * 이전에는 `onToggleReorder` 로 별도 패널을 열고 그 안에서 옮긴 뒤 「적용」을 눌렀다.
+   * 화면에 Step 목록이 둘 뜨는 상태였고(SC-505), 세 칸 옮기는 데 다섯 번이 걸렸다.
+   *
+   * **순서 전체를 넘긴다.** 서버 계약(`steps:reorder`)이 순서 목록을 받으므로 화면이
+   * 자리를 바꾼 결과를 만들어 보낸다 — 「위로/아래로」를 서버 연산으로 새로 만들지 않는다.
+   */
   onApplyReorder?: (order: string[]) => void;
   onRunFromHere?: (stepIndex: number) => void;
   onRerunAll?: () => void;
@@ -220,6 +234,14 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     상태를 둘의 공통 조상인 여기서 갖는다.
   */
   const [assertOpen, setAssertOpen] = useState(false);
+  /**
+   * 삽입 입력면이 열려 있는가 (009 FR-290).
+   *
+   * 검증 추가와 **같은 문법**이다 — 여는 조작은 Step 패널 바닥에, 폼은 그 자리에 펼쳐진다.
+   */
+  const [insertOpen, setInsertOpen] = useState(false);
+  /** 지우기 확인을 기다리는 Step (009 FR-302). **행 안에서** 묻는다. */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   /** 자연어 Step 입력. 팔레트가 아니라 어댑터가 갖는다 — 보내는 것은 어댑터다. */
   const [nl, setNl] = useState("");
   const {
@@ -250,7 +272,6 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     focusedStepId = null,
     detailOpen = false,
     repickWaiting = null,
-    reordering = false,
     saveName = "",
     onSelectStep,
     onOpenDetail,
@@ -267,9 +288,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     onRecordStart,
     onRecordStop,
     onAddAssertion,
+    onInsertManual,
     onNaturalLanguage,
     onDeleteStep,
-    onToggleReorder,
     onApplyReorder,
     onRunFromHere,
     onRerunAll,
@@ -306,6 +327,15 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     const at = steps.findIndex((s) => s.outcome === "fail");
     return at < 0 ? null : at;
   })();
+
+  /**
+   * 아직 도달하지 않은 목표 지점 (009 FR-293·FR-294).
+   *
+   * **서버가 준다** (`SessionView.pause_before_index`). 화면 상태로 들고 있으면 새로 고침
+   * 한 번에 사라진다 — 005 U-18 과 같은 형태다 (research R5).
+   */
+  const pauseTarget = view.pause_before_index ?? null;
+  const failedIndex = failedStepIndex ?? -1;
 
   /**
    * 007 T091 걷기(W-1)가 잡은 것 — **이벤트를 놓친 화면도 결말을 말한다.**
@@ -352,6 +382,52 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   })();
   const selectedIndex = steps.findIndex((s) => s.id === focusedStepId);
 
+  /**
+   * 자리를 한 칸 옮긴다 (009 FR-299).
+   *
+   * **서버 연산을 새로 만들지 않는다.** `steps:reorder` 가 순서 목록을 받으므로 화면이
+   * 맞바꾼 결과를 만들어 보낸다. 「위로/아래로」를 서버에 새 엔드포인트로 두면 순서 규칙이
+   * 두 곳에 생긴다.
+   *
+   * 갈 곳이 없으면 아무 일도 하지 않는다 — 행 조작이 이미 비활성이지만(FR-300) 팔레트
+   * 경로도 같은 함수를 지나므로 여기서도 막는다.
+   */
+  const moveStep = (index: number, delta: number) => {
+    const to = index + delta;
+    if (to < 0 || to >= steps.length) return;
+    const ids = steps.map((s) => s.id);
+    const order = ids.map((id, i) => (i === index ? ids[to] : i === to ? ids[index] : id));
+    onApplyReorder?.(order as string[]);
+  };
+
+  /*
+    009 FR-298 — 행 조작. **그 행의 자리를 인자로 받는다** — 고르는 조작이 끼지 않는다.
+    일시정지 화면에서 세 칸 옮기는 데 다섯 번(패널 열기 + ↓×3 + 적용)이 걸렸던 것이
+    세 번이 된다 (SC-503).
+  */
+  const runRowAction = (action: ActionId, index: number) => {
+    const step = steps[index];
+    if (step === undefined) return;
+    switch (action) {
+      case "step.moveUp":
+        moveStep(index, -1);
+        break;
+      case "step.moveDown":
+        moveStep(index, 1);
+        break;
+      case "step.delete":
+        // FR-302 — 확인을 거친다.
+        setConfirmDelete(step.id);
+        break;
+      case "step.insertManual":
+        onSelectStep(step.id);
+        setInsertOpen(true);
+        break;
+      default:
+        break;
+    }
+  };
+
   /*
     권한표에 넘기는 **사실**. 화면이 아는 것만 담는다 — 모르는 것은 `undefined` 로 두고
     표가 보수적으로 판정한다 (`capabilities.ts` 의 주석).
@@ -389,11 +465,25 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       );
     }
     if (review) return `기록된 Step ${view.steps.length}개 · 브라우저 종료됨`;
+    /*
+      009 FR-294 — **도달과 실패를 구별한다.**
+
+      목표가 남아 있는데(= 닿지 못했다) 실패한 Step 이 있으면 그 사실을 말한다.
+      「일시정지됨」만 말하면 사용자는 도달한 것으로 읽고 없는 자리에 Step 을 넣으려 한다.
+      판정을 화면이 조립하지 않는다 — 「도달했는가」는 서버가 주는 목표 유무가 정한다.
+    */
+    if (pauseTarget !== null && failedIndex >= 0) {
+      return pauseTargetUnreached(failedIndex, pauseTarget);
+    }
     if (phase === "paused") return pausedAfterLabel(view.current_step_index);
     if (phase === "takeover") return "AI 실패 → 사람이 이어받음";
     // 005 FR-139 (U-14) — 끝난 실행에서는 진행 표시를 쓰지 않는다. 결말은 요약이 말한다.
     if (isDone) return null;
-    if (phase === "running") return progressText(view.current_step_index, view.steps.length);
+    if (phase === "running") {
+      // 009 FR-293 — 목표가 있으면 **어디서 멈출 예정인지**를 함께 말한다.
+      if (pauseTarget !== null) return pauseTargetProgress(view.current_step_index, pauseTarget);
+      return progressText(view.current_step_index, view.steps.length);
+    }
     return null;
   })();
 
@@ -475,15 +565,30 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         ),
       };
     }
-    if (reordering) {
+    /*
+      009 FR-290 — 삽입 입력면. 검증 추가 폼과 **같은 자리**다 (T036 의 판단을 따른다).
+      닫혀 있으면 자리를 차지하지 않는다.
+    */
+    if (insertOpen && capabilities["step.insertManual"].kind === "enabled") {
       return {
         kind: "paused_tools",
         tools: (
-          <ReorderPanel
-            steps={steps.map((s2) => ({ id: s2.id, label: s2.label }))}
+          <InsertStepForm
+            atLabel={`Step ${stepLabel(view.current_step_index)}`}
             busy={busy}
-            onApply={(order) => onApplyReorder?.(order)}
-            onCancel={() => onToggleReorder?.()}
+            capability={capabilities["step.insertManual"]}
+            /*
+              세션 안에서는 브라우저가 **이미 열려 있다.** 그래서 요소가 필요한 종류의 갈
+              길은 「브라우저 열기」가 아니라 그 자리에서의 「직접 조작으로 Step 추가」다 —
+              표가 그 국면에 그 조작을 두고 있고, 폼은 그것을 가리킨다.
+            */
+            browserCapability={capabilities["step.recordStart"]}
+            onSubmit={(spec) => {
+              onInsertManual?.(spec);
+              setInsertOpen(false);
+            }}
+            onOpenBrowser={() => runAction("step.recordStart")}
+            onCancel={() => setInsertOpen(false)}
           />
         ),
       };
@@ -666,11 +771,23 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       case "step.recordStop":
         onRecordStop?.();
         break;
-      case "step.reorder":
-        onToggleReorder?.();
+      /*
+        009 FR-298 — 옮기는 조작의 **자리는 행이다.** 팔레트에서 눌렀다면 지목한 Step 을
+        대상으로 삼는다 — 표가 그 국면에 그 조작을 두고 있으므로 자리가 있어야 하고,
+        팔레트는 `hidden` 으로 행에 양도한다 (계약 §3-3). 여기 남는 것은 표가 요구하는
+        경로가 실제로 동작한다는 보장이다.
+      */
+      case "step.moveUp":
+        if (selectedIndex >= 0) moveStep(selectedIndex, -1);
+        break;
+      case "step.moveDown":
+        if (selectedIndex >= 0) moveStep(selectedIndex, 1);
         break;
       case "step.addAssertion":
         setAssertOpen((v) => !v);
+        break;
+      case "step.insertManual":
+        setInsertOpen((v) => !v);
         break;
       case "step.addNaturalLanguage":
         if (nl.trim() !== "") {
@@ -911,6 +1028,31 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       model={model}
       phaseActions={phaseActions}
       headerActions={headerActions}
+      /*
+        009 FR-298 — 행 조작. **결과 국면은 이 화면이 아니다**(`ResultView` 가 그린다)
+        므로 계약 §3-3-1 의 예외가 여기 걸리지 않는다 — 세션 국면은 전부 행이 갖는다.
+      */
+      rowActions={(step) =>
+        confirmDelete === step.id ? (
+          <ConfirmDelete
+            label={step.label}
+            onConfirm={() => {
+              onDeleteStep?.(step.id);
+              setConfirmDelete(null);
+            }}
+            onCancel={() => setConfirmDelete(null)}
+          />
+        ) : (
+          <StepRowOps
+            index={step.index}
+            total={steps.length}
+            label={step.label}
+            capabilities={capabilities}
+            busy={busy}
+            onRun={runRowAction}
+          />
+        )
+      }
       noticesExtra={
         offline ? <LiveConnectionBanner onReconnect={() => onReconnect?.()} /> : null
       }
@@ -927,6 +1069,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
             "run.fromHere":
               selectedIndex >= 0 ? `${stepLabel(selectedIndex)} 부터 이어 실행` : undefined,
             "step.addAssertion": assertOpen ? "검증 추가 닫기" : undefined,
+            "step.insertManual": insertOpen ? "직접 입력 닫기" : undefined,
           }}
           nl={{
             value: nl,
@@ -975,71 +1118,41 @@ function dropCandidatesOf(step: Step | undefined) {
   return step.type === "drag" ? step.drop_target : null;
 }
 
-/** 지목한 Step 이 있어야 뜻이 있는 조작. */
+/**
+ * 지목한 Step 이 있어야 뜻이 있는 조작.
+ *
+ * **009 T059 — 이동 두 조작을 더했다.** 빠져 있는 동안 일시정지 국면에서 Step 을 고르지
+ * 않은 채 팔레트의 「위로/아래로 옮기기」를 누르면 `moveStep(-1, …)` 이 조용히 아무 일도
+ * 하지 않았다 — **활성인데 동작하지 않는 조작**이며 005 U-01 이 그 형태였다.
+ *
+ * 조작의 **자리**는 팔레트가 선언하고 행은 사례다 (009 계약 §3-3-0). 자리가 선언되어
+ * 있으면 그 경로도 동작해야 한다 — 그것이 표가 거짓말하지 않는다는 뜻이다.
+ *
+ * `step.insertManual` 은 **넣지 않는다.** 고른 Step 이 없으면 일시정지 위치에 넣으므로
+ * 지목 없이도 뜻이 있다 (`step_edits._clamp`).
+ */
 const STEP_SCOPED = new Set<ActionId>([
   "step.update",
   "step.delete",
+  "step.moveUp",
+  "step.moveDown",
   "run.fromHere",
   "run.from",
 ]);
 
-/**
- * 순서 변경 (FR-035).
- *
- * 드래그 앤 드롭을 쓰지 않는다. 목록이 200개까지 갈 수 있고(research R8) 드래그는 긴
- * 목록에서 정확히 놓기 어렵다. 위·아래 이동 버튼이 느리지만 틀리지 않는다.
- */
-function ReorderPanel({
-  steps,
-  busy,
-  onApply,
-  onCancel,
-}: {
-  steps: { id: string; label: string }[];
-  busy: boolean;
-  onApply: (order: string[]) => void;
-  onCancel: () => void;
-}) {
-  const [order, setOrder] = useState(steps.map((s) => s.id));
-  const labelOf = (id: string) => steps.find((s) => s.id === id)?.label ?? id;
+/*
+  009 FR-301 · SC-505 — **`ReorderPanel` 을 없앴다.**
 
-  const move = (index: number, delta: number) => {
-    const next = [...order];
-    const target = index + delta;
-    const a = next[index];
-    const b = next[target];
-    if (target < 0 || target >= next.length || a === undefined || b === undefined) return;
-    next[index] = b;
-    next[target] = a;
-    setOrder(next);
-  };
+  별도 패널은 화면에 Step 목록을 **둘** 띄웠다. 목록은 이미 오른쪽 460px 패널에 있는데
+  순서를 바꾸려면 그 사본을 하나 더 열어야 했고, 세 칸 옮기는 데 다섯 번(패널 열기 +
+  ↓×3 + 적용)이 걸렸다 (관찰 M-06).
 
-  return (
-    <div className="pane" style={{ padding: 12, maxHeight: 240, overflowY: "auto" }}>
-      <strong className="lbl">순서 변경</strong>
-      {order.map((id, index) => (
-        <div key={id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }}>
-          <span className="mono dim">{stepNumber(index)}</span>
-          <span style={{ flex: 1 }}>{labelOf(id)}</span>
-          <button className="ghost" aria-label={`${labelOf(id)} 위로`} onClick={() => move(index, -1)}>
-            ↑
-          </button>
-          <button className="ghost" aria-label={`${labelOf(id)} 아래로`} onClick={() => move(index, 1)}>
-            ↓
-          </button>
-        </div>
-      ))}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-        <button className="secondary" onClick={onCancel}>
-          취소
-        </button>
-        <button disabled={busy} onClick={() => onApply(order)}>
-          적용
-        </button>
-      </div>
-    </div>
-  );
-}
+  이제 순서는 행의 위로·아래로가 바꾼다. 「적용」이 없다 — 누르는 즉시 반영된다.
+
+  그 패널의 주석이 기록한 판단은 **유지된다**: 끌어놓기를 쓰지 않는다. 목록이 200개까지
+  갈 수 있고 끌어놓기는 긴 목록에서 정확히 놓기 어렵다. 위·아래 이동이 느리지만 틀리지
+  않는다 (009 명세 Assumptions 가 같은 판단을 다시 기록했다).
+*/
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 소유 — `SessionScreen`
@@ -1048,6 +1161,14 @@ function ReorderPanel({
 export interface SessionScreenProps {
   initial: SessionView;
   aiInstruction?: string | null;
+  /**
+   * 목표 자리에 도착하면 직접 조작 기록을 켠다 (009 FR-291·FR-295).
+   *
+   * 「이 앞에 추가」로 출발한 세션에만 참이다. **이 값은 화면 상태이며 서버에 없다** —
+   * 새로 고치면 기록은 켜지지 않은 채로 오고, 그때 팔레트의 같은 조작을 쓸 수 있다
+   * (research R5). 잃어도 막히지 않는 정보만 화면에 둔다.
+   */
+  recordOnArrival?: boolean;
   onFinished: () => void;
   onShowResult?: (testId: string, stepId?: string | null) => void;
   /** 다시 실행 — 이 세션을 버리고 같은 테스트로 새 세션을 연다 (UX U-02). */
@@ -1057,6 +1178,7 @@ export interface SessionScreenProps {
 export function SessionScreen({
   initial,
   aiInstruction = null,
+  recordOnArrival = false,
   onFinished,
   onShowResult,
   onRerun,
@@ -1080,7 +1202,6 @@ export function SessionScreen({
   const durations = useRef<Record<string, number>>({});
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [inspecting, setInspecting] = useState(false);
-  const [reordering, setReordering] = useState(false);
   const [repickWaiting, setRepickWaiting] = useState<RepickSlot | null>(null);
   const [notice, setNotice] = useState<ErrorInfo | null>(null);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
@@ -1323,6 +1444,32 @@ export function SessionScreen({
   const isSaveableWithoutBrowser = SAVEABLE_WITHOUT_BROWSER.has(view.state);
   const testId = view.test_id;
   const isPaused = view.state === "paused";
+
+  /*
+    009 FR-291·FR-295 — 목표 자리에 **도착하면** 기록을 켠다.
+
+    조건이 셋이다. ① 「이 앞에 추가」로 출발했다 ② 일시정지에 닿았다 ③ 목표가 비었다
+    (= 실제로 도달했다). ③ 이 없으면 목표 앞에서 **실패해 멈춘** 경우에도 기록이 켜져,
+    사용자는 실패한 자리에서 브라우저를 만지게 된다 (FR-294 가 없애려는 혼동이다).
+
+    한 번만 켠다 — 「기록 멈추기」를 누른 뒤 다시 켜지면 멈출 수 없다.
+  */
+  const armedRecord = useRef(false);
+  useEffect(() => {
+    if (!recordOnArrival || armedRecord.current) return;
+    if (view.state !== "paused") return;
+    if ((view.pause_before_index ?? null) !== null) return;
+    armedRecord.current = true;
+    setNotice(
+      localError(
+        ARRIVED_RECORDING_STARTED,
+        "그만 기록하려면 「기록 멈추기」를 누르세요.",
+      ),
+    );
+    void act(() => sessions.recordActionsStart(sessionId));
+    // `act` 는 위에서 선언됐다. 의존성에 넣으면 매 렌더마다 새 함수라 효과가 다시 돈다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordOnArrival, view.state, view.pause_before_index, sessionId]);
   /** 005 FR-142~FR-146 — 일시정지 **전이 중**인가 (U-04). */
   const isPausing =
     (pauseRequested || view.pause_settled === false) && !TERMINAL_STATES.has(view.state);
@@ -1500,7 +1647,6 @@ export function SessionScreen({
         focusedStepId={selectedStepId}
         detailOpen={inspecting}
         repickWaiting={repickWaiting}
-        reordering={reordering}
         saveName={saveName}
         onSelectStep={(stepId) => setSelectedStepId(stepId)}
         onOpenDetail={(stepId) => {
@@ -1552,6 +1698,14 @@ export function SessionScreen({
         onRecordStart={() => void act(() => sessions.recordActionsStart(sessionId))}
         onRecordStop={() => void act(() => sessions.recordActionsStop(sessionId))}
         onAddAssertion={(body) => void edit(() => sessions.addAssertion(sessionId, body))}
+        /*
+          009 FR-290 — 직접 입력 삽입. **`at` 을 넘기지 않는다.**
+
+          넘기지 않으면 서버가 일시정지 위치에 넣는다(`step_edits._clamp`). 화면이 인덱스를
+          계산해 보내면 그 사이 러너가 전진한 경우 다른 자리에 들어간다 — `run.fromHere` 가
+          인덱스를 넘기지 않는 것과 같은 근거다 (005 T129).
+        */
+        onInsertManual={(spec) => void edit(() => sessions.insertStepManual(sessionId, spec))}
         onNaturalLanguage={(instruction) => {
           setBusy(true);
           setNotice(null);
@@ -1565,11 +1719,7 @@ export function SessionScreen({
             .finally(() => setBusy(false));
         }}
         onDeleteStep={(stepId) => void edit(() => sessions.deleteStep(sessionId, stepId))}
-        onToggleReorder={() => setReordering((v) => !v)}
-        onApplyReorder={(order) => {
-          void edit(() => sessions.reorderSteps(sessionId, order));
-          setReordering(false);
-        }}
+        onApplyReorder={(order) => void edit(() => sessions.reorderSteps(sessionId, order))}
         onRunFromHere={(stepIndex) => void act(() => sessions.runFrom(sessionId, stepIndex))}
         onRerunAll={() => rerun()}
         onRerunFrom={(stepIndex) => rerun(stepIndex)}

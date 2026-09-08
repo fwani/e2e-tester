@@ -335,6 +335,23 @@ class RunnerTask:
     async def wait(self) -> None:
         await self._finished.wait()
 
+    @property
+    def pause_before_index(self) -> int | None:
+        """**아직 도달하지 않은** 목표 지점 (009 FR-293).
+
+        도달하면 `None` 이 된다 — 위 실행 루프가 멈추는 순간 지운다("한 번만 멈춘다").
+        그 규칙을 그대로 노출하는 것이므로 값의 뜻이 하나다: `None` 이 아니면 아직 그
+        자리에 닿지 않았다.
+
+        **왜 세션 뷰에 실어야 하는가** (research R5). 목표를 화면 상태로만 들고 있으면
+        새로 고침 한 번에 「어디서 멈출 예정인지」가 사라진다. 005 U-18 이 같은 형태였고
+        그 고침이 `SessionView.step_results` 였다 — 이벤트 없이도 화면이 복원되게 한다.
+
+        읽기 전용이다. 목표를 밖에서 바꾸는 길을 만들지 않는다 — 실행 중에 목표가 바뀌면
+        사용자가 본 안내와 실제로 멈추는 자리가 갈린다.
+        """
+        return self._pause_before
+
     async def cancel(self) -> None:
         """태스크를 취소한다. 브라우저는 호출자가 정리한다."""
         if self._task is None:

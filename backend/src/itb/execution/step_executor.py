@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 
@@ -31,6 +32,11 @@ from itb.domain.step import (
     NavigateStep,
     SelectStep,
     Step,
+)
+from itb.execution.frame_resolver import (
+    FrameNotFoundError,
+    SearchRoot,
+    resolve_frame,
 )
 from itb.execution.locator_runtime import (
     MIN_ACTION_TIMEOUT_MS,
@@ -84,7 +90,13 @@ class StepExecution:
     disagreement: list[str] = field(default_factory=list)
     tab_wait_ms: int = 0
     element_wait_ms: int = 0
-    """요소가 나타나기를 기다린 시간 (004 FR-114). 성공 경로에서도 남긴다."""
+    """요소가 나타나기를 기다린 시간 (004 FR-114). 성공 경로에서도 남긴다.
+
+    **하위 프레임을 기다린 시간도 여기 들어간다.** 프레임을 찾는 것은 요소를 찾는 일의
+    일부이고, 사용자가 이 값으로 하는 일(예산을 얼마로 잡을지)은 둘을 나눠 봐도 달라지지
+    않는다. 그래서 프레임 대기로 **씨앗을 놓고** 이후 지점이 모두 더한다 — 대입으로 두면
+    나중에 요소 대기가 프레임 대기를 지운다.
+    """
 
     tab: int = 0
 
@@ -120,18 +132,46 @@ class StepExecutor:
 
         record = StepExecution(tab_wait_ms=tab.waited_ms, tab=step.tab)
 
+        # 하위 프레임에서 기록된 Step 은 **그 프레임 안에서** 찾아야 한다. main frame 만
+        # 뒤지면 프레임 안에서 측정된 후보는 0개를 매칭하고, 사용자는 예산을 다 쓴 "요소를
+        # 찾을 수 없습니다" 만 본다 (001 research 의 iframe 항목).
         try:
-            await self._dispatch(step, tab.page, deadline, record)
+            frame = await resolve_frame(tab.page, step.frame_url, step.timeout_ms)
+        except FrameNotFoundError as exc:
+            # 프레임을 기다린 시간은 요소 대기에 넣는다 — 프레임을 찾는 것은 요소를 찾는
+            # 일의 일부이며, 사용자가 예산을 정할 때 보는 값도 그것이다.
+            record.element_wait_ms = exc.waited_ms
+            raise StepFailure(
+                str(exc),
+                record.attempts,
+                record.tab_wait_ms,
+                code=(
+                    ErrorCode.ELEMENT_AMBIGUOUS
+                    if exc.ambiguous
+                    else ErrorCode.ELEMENT_NOT_READY
+                ),
+                element_wait_ms=exc.waited_ms,
+            ) from exc
+
+        record.element_wait_ms = frame.waited_ms
+        if frame.relaxed:
+            record.disagreement = [
+                *record.disagreement,
+                f"프레임을 쿼리·프래그먼트를 뗀 주소로 맞췄습니다: {step.frame_url}",
+            ]
+
+        try:
+            await self._dispatch(step, tab.page, frame.root, deadline, record)
         except StepFailure:
             raise
         except ElementNotFoundError as exc:
-            record.element_wait_ms = exc.waited_ms
+            record.element_wait_ms += exc.waited_ms
             raise StepFailure(
                 str(exc),
                 exc.attempts,
                 record.tab_wait_ms,
                 code=_classify_lookup(exc),
-                element_wait_ms=exc.waited_ms,
+                element_wait_ms=record.element_wait_ms,
             ) from exc
         except VariableResolutionError as exc:
             # FR-089f — 값을 구하지 못하면 빈 값으로 진행하지 않고 사유를 밝히며 멈춘다.
@@ -148,35 +188,44 @@ class StepExecutor:
     # ─── 종류별 실행 ────────────────────────────────────────────────────────
 
     async def _dispatch(
-        self, step: Step, page: Page, deadline: float, record: StepExecution
+        self,
+        step: Step,
+        page: Page,
+        root: SearchRoot,
+        deadline: float,
+        record: StepExecution,
     ) -> None:
         """종류별 실행. **남은 예산을 매 단계에서 다시 계산한다.**
 
         요소를 찾는 데 쓴 시간과 동작에 쓴 시간이 각각 상한을 갖게 두면 한 Step 이 상한의
         두 배 이상 걸린다 — FR-057 이 막으려는 것이 정확히 그것이다.
+
+        **`page` 와 `root` 를 나눠 받는다.** `root` 는 요소를 찾을 문서이며 하위 프레임일
+        수 있다. `page` 는 탭 자체를 뜻하며 화면 이동과 주소 검증이 쓴다 — iframe 안의
+        Step 이라도 "현재 주소" 는 주소창의 주소여야 한다.
         """
         match step:
             case NavigateStep():
                 url = self._resolver.substitute(step.url)
                 await page.goto(url, timeout=self._left(deadline))
             case ClickStep():
-                located = await self._locate(page, step, deadline, record)
+                located = await self._locate(root, step, deadline, record)
                 await located.locator.click(timeout=self._left(deadline))
             case FillStep():
-                located = await self._locate(page, step, deadline, record)
+                located = await self._locate(root, step, deadline, record)
                 value = self._resolver.substitute(step.value)
                 await located.locator.fill(value, timeout=self._left(deadline))
             case SelectStep():
-                located = await self._locate(page, step, deadline, record)
+                located = await self._locate(root, step, deadline, record)
                 value = self._resolver.substitute(step.value)
                 await located.locator.select_option(value, timeout=self._left(deadline))
             case HoverStep():
-                located = await self._locate(page, step, deadline, record)
+                located = await self._locate(root, step, deadline, record)
                 await located.locator.hover(timeout=self._left(deadline))
             case DragStep():
-                await self._drag(step, page, deadline, record)
+                await self._drag(step, root, deadline, record)
             case AssertionStep():
-                await self._assert(step.assertion, page, deadline, record)
+                await self._assert(step.assertion, page, root, deadline, record)
             case _:  # pragma: no cover - 판별 유니온이 모든 종류를 덮는다
                 msg = f"실행할 수 없는 Step 종류입니다: {type(step).__name__}"
                 raise StepFailure(msg, record.attempts, record.tab_wait_ms)
@@ -215,7 +264,7 @@ class StepExecutor:
         return record
 
     async def _drag(
-        self, step: DragStep, page: Page, deadline: float, record: StepExecution
+        self, step: DragStep, root: SearchRoot, deadline: float, record: StepExecution
     ) -> None:
         """끄는 대상과 놓는 위치를 각각 해석해 끌어다 놓는다 (FR-023c).
 
@@ -225,9 +274,9 @@ class StepExecutor:
         **놓는 위치를 못 찾은 것도 실패다.** 끄는 대상만 찾고 진행하면 요소가 엉뚱한 곳에
         떨어지거나 원위치로 돌아가는데, 그 결과는 통과로 보일 수 있다 — 실패보다 나쁘다.
         """
-        source = await self._locate(page, step, deadline, record)
+        source = await self._locate(root, step, deadline, record)
         try:
-            destination = await resolve(page, step.drop_target, self._left(deadline))
+            destination = await resolve(root, step.drop_target, self._left(deadline))
         except ElementNotFoundError as exc:
             # 시도 내역을 합쳐 둔다. 어느 쪽을 못 찾았는지 결과 화면에서 보여야 한다.
             record.attempts = [*record.attempts, *exc.attempts]
@@ -248,7 +297,7 @@ class StepExecutor:
         await source.locator.drag_to(destination.locator, timeout=self._left(deadline))
 
     async def _locate(
-        self, page: Page, step: Step, deadline: float, record: StepExecution
+        self, root: SearchRoot, step: Step, deadline: float, record: StepExecution
     ) -> Resolution:
         """요소를 찾고 시도 내역을 기록에 남긴다."""
         target = getattr(step, "target", None)
@@ -256,15 +305,15 @@ class StepExecutor:
             msg = "이 Step 에는 대상 요소가 없습니다."
             raise StepFailure(msg, record.attempts, record.tab_wait_ms)
         try:
-            located = await resolve(page, target, self._left(deadline))
+            located = await resolve(root, target, self._left(deadline))
         except ElementNotFoundError as exc:
             record.attempts = exc.attempts
-            record.element_wait_ms = exc.waited_ms
+            record.element_wait_ms += exc.waited_ms
             raise
         record.attempts = located.attempts
-        record.disagreement = located.disagreement
+        record.disagreement = [*record.disagreement, *located.disagreement]
         record.resolved_candidate = located.strategy.kind.value
-        record.element_wait_ms = located.waited_ms
+        record.element_wait_ms += located.waited_ms
         return located
 
     # ─── 검증 4종 (FR-013a) ────────────────────────────────────────────────
@@ -273,21 +322,24 @@ class StepExecutor:
         self,
         assertion: Assertion,
         page: Page,
+        root: SearchRoot,
         deadline: float,
         record: StepExecution,
     ) -> None:
         match assertion.kind:
             case AssertionKind.URL:
+                # 주소 검증만 `page` 를 쓴다 — iframe 안의 Step 이라도 사용자가 뜻한
+                # "현재 주소" 는 주소창의 주소다.
                 await self._assert_url(assertion, page, deadline)
             case AssertionKind.HIDDEN:
-                await self._assert_hidden(assertion, page, deadline, record)
+                await self._assert_hidden(assertion, root, deadline, record)
             case AssertionKind.VISIBLE:
-                located = await self._locate_target(assertion, page, deadline, record)
+                located = await self._locate_target(assertion, root, deadline, record)
                 await located.locator.wait_for(
                     state="visible", timeout=self._left(deadline)
                 )
             case AssertionKind.TEXT:
-                await self._assert_text(assertion, page, deadline, record)
+                await self._assert_text(assertion, root, deadline, record)
 
     async def _assert_url(
         self, assertion: Assertion, page: Page, deadline: float
@@ -311,7 +363,7 @@ class StepExecutor:
     async def _assert_hidden(
         self,
         assertion: Assertion,
-        page: Page,
+        root: SearchRoot,
         deadline: float,
         record: StepExecution,
     ) -> None:
@@ -320,7 +372,7 @@ class StepExecutor:
         요소를 찾지 못한 것이 곧 조건 충족이므로, 탐색 실패를 실패로 옮기지 않는다.
         """
         try:
-            located = await self._locate_target(assertion, page, deadline, record)
+            located = await self._locate_target(assertion, root, deadline, record)
         except (ElementNotFoundError, StepFailure):
             return
         await located.locator.wait_for(state="hidden", timeout=self._left(deadline))
@@ -328,16 +380,16 @@ class StepExecutor:
     async def _assert_text(
         self,
         assertion: Assertion,
-        page: Page,
+        root: SearchRoot,
         deadline: float,
         record: StepExecution,
     ) -> None:
         expected = self._resolver.substitute(assertion.value or "")
         if assertion.target is None:
-            actual = await page.inner_text("body", timeout=self._left(deadline))
+            actual = await root.inner_text("body", timeout=self._left(deadline))
             scope = "화면"
         else:
-            located = await self._locate_target(assertion, page, deadline, record)
+            located = await self._locate_target(assertion, root, deadline, record)
             actual = await located.locator.inner_text(timeout=self._left(deadline))
             scope = "요소"
         if _matches(actual, expected, assertion.match):
@@ -352,18 +404,18 @@ class StepExecutor:
     async def _locate_target(
         self,
         assertion: Assertion,
-        page: Page,
+        root: SearchRoot,
         deadline: float,
         record: StepExecution,
     ) -> Resolution:
         if assertion.target is None:  # pragma: no cover - 스키마가 막는다
             msg = "이 검증에는 대상 요소가 필요합니다."
             raise StepFailure(msg, record.attempts, record.tab_wait_ms)
-        located = await resolve(page, assertion.target, self._left(deadline))
+        located = await resolve(root, assertion.target, self._left(deadline))
         record.attempts = located.attempts
-        record.disagreement = located.disagreement
+        record.disagreement = [*record.disagreement, *located.disagreement]
         record.resolved_candidate = located.strategy.kind.value
-        record.element_wait_ms = located.waited_ms
+        record.element_wait_ms += located.waited_ms
         return located
 
     # ─── 시간 예산 ─────────────────────────────────────────────────────────
@@ -419,6 +471,35 @@ def _classify(exc: PlaywrightError, step: Step) -> ErrorCode:
     return ErrorCode.STEP_FAILED
 
 
+_INTERCEPT_MARK = "intercepts pointer events"
+"""Playwright 가 "다른 요소가 포인터를 가로막았다" 고 말할 때 쓰는 문구."""
+
+_OPEN_TAG = re.compile(r"<[a-zA-Z][^>]{0,120}>")
+
+
+def _blocker(full: str) -> str | None:
+    """포인터를 가로막은 요소의 여는 태그. 알아보지 못하면 None.
+
+    Playwright 의 호출 기록은 두 형태로 말한다.
+
+        <blocker> intercepts pointer events
+        <blocker> from <ancestor>…</ancestor> subtree intercepts pointer events
+
+    어느 쪽이든 **그 항목의 첫 여는 태그**가 가로막은 요소다. 뒤의 `<ancestor>` 를 잡으면
+    사용자에게 엉뚱한 것을 지목해 보여 준다.
+
+    **원문 전체를 받아야 한다.** 사용자에게 붙이는 원문은 길이를 자르는데, 실측(TC-007)에서
+    그 절단이 `subtree` 를 `su` 로 끊어 이 문구 자체를 잘라 냈다. 잘린 문자열에서 찾으면
+    정작 이 판정이 필요한 실패에서 판정이 되지 않는다.
+    """
+    at = full.find(_INTERCEPT_MARK)
+    if at < 0:
+        return None
+    item = full[:at].rsplit(" - ", 1)[-1]
+    found = _OPEN_TAG.search(item)
+    return found.group(0) if found else None
+
+
 def _humanize(exc: PlaywrightError, step: Step) -> str:
     """Playwright 오류를 사용자 문장으로 바꾼다 (FR-054).
 
@@ -428,8 +509,11 @@ def _humanize(exc: PlaywrightError, step: Step) -> str:
     "대상 요소가 나타나지 않았다" 는 대상 사이트가 응답을 끝내지 않은 상황을 잘못
     설명하고, 사용자를 없는 문제로 보낸다.
     """
-    raw = " ".join(str(exc.message).split())[:400]
-    timed_out = "Timeout" in raw or "timeout" in raw
+    full = " ".join(str(exc.message).split())
+    # 사용자에게 붙이는 원문만 자른다. **판정은 전체 문장으로 한다** — 절단이 판정에
+    # 필요한 문구를 잘라 내면, 잘릴 만큼 긴 실패에서만 판정이 실패한다.
+    raw = full[:400]
+    timed_out = "Timeout" in full or "timeout" in full
     if _classify(exc, step) is ErrorCode.TARGET_UNREACHABLE:
         what = (
             f"{step.timeout_ms}ms 안에 응답을 끝내지 않았습니다"
@@ -437,6 +521,17 @@ def _humanize(exc: PlaywrightError, step: Step) -> str:
             else "페이지를 열 수 없었습니다"
         )
         return f"{step.label}: 대상 사이트가 {what}. ({raw})"
+    if _INTERCEPT_MARK in full:
+        # **요소를 못 찾은 것과 갈라 말한다.** 여기서는 요소를 찾았고, 다른 요소가 그 위를
+        # 덮고 있어 포인터가 닿지 않았을 뿐이다. 한 문장으로 뭉뚱그리면 사용자는 있지도
+        # 않은 "요소가 안 나타나는 문제" 를 찾아 헤맨다 — 실측(TC-007)에서 후보는 1개를
+        # 정확히 매칭했는데(`matched: true`) 메시지는 "나타나지 않았거나" 라고 말했다.
+        covered = _blocker(full) or "다른 요소"
+        return (
+            f"{step.label}: 대상 요소는 찾았지만 {covered} 이(가) 위를 덮고 있어 "
+            f"{step.timeout_ms}ms 동안 동작할 수 없었습니다. 로딩 표시나 모달이 걷히기를 "
+            f"기다리는 검증을 앞에 두거나, 그 Step 이 필요한지 다시 보세요. ({raw})"
+        )
     if timed_out:
         return (
             f"{step.label} 이(가) {step.timeout_ms}ms 안에 끝나지 않았습니다. "

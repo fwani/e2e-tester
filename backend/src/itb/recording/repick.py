@@ -37,8 +37,14 @@ class PendingRepick:
     slot: RepickSlot = RepickSlot.TARGET
 
 
-RepickSink = Callable[[PendingRepick, TargetLocator], Awaitable[None]]
-"""재지정 결과를 받는 통로. Step 갱신과 이벤트 발행은 호출자가 한다."""
+RepickSink = Callable[[PendingRepick, TargetLocator, str | None], Awaitable[None]]
+"""재지정 결과를 받는 통로. Step 갱신과 이벤트 발행은 호출자가 한다.
+
+세 번째 값은 **사용자가 집은 요소가 있던 문서**의 주소다(main frame 이면 None).
+후보만 갈아 끼우고 문서를 그대로 두면, 프레임 안에서 집은 후보를 실행이 main frame
+에서 찾게 되어 다시 집기가 오히려 Step 을 깨뜨린다 — 이 기능이 고치려는 것과 같은
+결함이다.
+"""
 
 
 @dataclass(slots=True)
@@ -64,7 +70,7 @@ class RepickController:
         pending, self.pending = self.pending, None
         return pending
 
-    async def deliver(self, target: TargetLocator) -> bool:
+    async def deliver(self, target: TargetLocator, frame_url: str | None = None) -> bool:
         """대기 중이던 Step 에 새 후보를 전달한다. 전달했으면 True.
 
         **대기를 먼저 해제한다.** `pointerdown` 과 `click` 이 같은 클릭에 대해 둘 다
@@ -74,18 +80,33 @@ class RepickController:
         if pending is None or self.sink is None:
             return False
         with contextlib.suppress(Exception):
-            await self.sink(pending, target)
+            await self.sink(pending, target, frame_url)
         return True
 
 
-def apply_repick(step: object, slot: RepickSlot, target: TargetLocator) -> object:
+def apply_repick(
+    step: object,
+    slot: RepickSlot,
+    target: TargetLocator,
+    frame_url: str | None = None,
+) -> object:
     """Step 의 지정된 슬롯을 새 후보로 바꾼 사본을 돌려준다.
 
     Step 종류를 바꾸지 않는다. 대상이 없는 종류(`navigate`·`close_tab`)나 없는 슬롯을
     지정하면 거절한다 — 조용히 무시하면 사용자는 갱신됐다고 오해한다.
+
+    **주 대상을 다시 집으면 문서도 함께 옮긴다.** 후보는 사용자가 집은 그 문서에서
+    검증됐으므로, `frame_url` 을 옛 값으로 두면 실행이 다른 문서를 뒤진다. 그러면 다시
+    집기가 Step 을 고치는 대신 깨뜨린다.
+
+    놓는 위치(`drop_target`)는 문서를 옮기지 않는다 — 한 Step 은 문서 하나에서 실행되고,
+    끄는 대상과 놓는 위치가 서로 다른 프레임에 있는 끌어다 놓기는 지원하지 않는다.
     """
     if not hasattr(step, slot.value):
         kind = getattr(step, "type", type(step).__name__)
         msg = f"{kind} Step 에는 '{slot.value}' 대상이 없어 다시 집을 수 없습니다."
         raise ValueError(msg)
-    return step.model_copy(update={slot.value: target})  # type: ignore[attr-defined]
+    update: dict[str, object] = {slot.value: target}
+    if slot is RepickSlot.TARGET:
+        update["frame_url"] = frame_url
+    return step.model_copy(update=update)  # type: ignore[attr-defined]

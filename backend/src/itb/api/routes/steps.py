@@ -25,6 +25,8 @@ from itb.api.routes.sessions import SessionWork, require_paused, work_of
 from itb.api.state import AppState, get_state
 from itb.domain.assertion import AssertionKind, MatchMode
 from itb.domain.locator import TargetLocator
+from itb.domain.manual_step import ManualStepSpec
+from itb.domain.manual_step import build_step as build_manual_step
 from itb.domain.step import Author, Step
 from itb.domain.test_case import (
     fallback_variable_name,
@@ -75,6 +77,25 @@ class InsertStepRequest(BaseModel):
     step: dict[str, object]
     at: int | None = Field(default=None, ge=0)
     """생략하면 일시정지 위치에 삽입한다."""
+
+
+class ManualStepRequest(BaseModel):
+    """손으로 넣는 Step (009 FR-290 · 계약 §4-2).
+
+    위 `InsertStepRequest` 와 **받는 것이 다르다.** 그것은 완성된 `Step` 통째를 받고
+    리코더·AI 컴파일러가 만든 것을 넣는 데 쓴다. 이것은 서술을 받고 서버가 Step 을
+    조립한다 — 요소를 요구하는 종류가 **요청 모델 단계에서** 성립하지 않는다.
+
+    입구를 둘로 둔 근거는 009 research R2 다. 신규 입구의 존재 이유가 **거절**이므로 기존
+    입구를 좁히는 것으로는 대신할 수 없고, 기존 입구의 거절 규칙은 이미 계약 테스트로
+    고정돼 있다. 두 입구는 `step_edits.insert_step` 한 연산으로 모인다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    spec: ManualStepSpec
+    at: int | None = Field(default=None, ge=0)
+    """생략하면 일시정지 위치에 삽입한다 — `InsertStepRequest` 와 같은 규칙이다."""
 
 
 class PatchStepRequest(BaseModel):
@@ -213,6 +234,28 @@ async def insert(session_id: str, body: InsertStepRequest) -> StepsResponse:
             fields=_missing_fields(exc),
         ) from exc
 
+    result = insert_step(w.steps, w.current_step_index, step, body.at)
+    _apply_edit(w, result)
+    await w.session.emit(
+        "step_added", step=step.model_dump(mode="json"), at_index=result.at_index
+    )
+    return await _response(w)
+
+
+@router.post("/{session_id}/steps:manual")
+async def insert_manual(session_id: str, body: ManualStepRequest) -> StepsResponse:
+    """요소 지목이 필요 없는 Step 을 손으로 넣는다 (009 FR-290).
+
+    **브라우저에 아무 명령도 보내지 않는다.** 손으로 넣은 Step 은 아직 수행되지 않은
+    정의이므로 실행 위치도 밀지 않는다 — `insert_step` 이 그 규칙을 갖는다.
+
+    이벤트는 기존 `step_added` 를 그대로 발행한다. 새 이벤트를 만들면 화면이 같은 일을
+    두 가지로 듣게 되고, 하나를 빠뜨린 화면에서 목록이 갱신되지 않는다.
+    """
+    w = work_of(session_id)
+    require_paused(w)
+
+    step = build_manual_step(body.spec, allocate_step_id(w.steps))
     result = insert_step(w.steps, w.current_step_index, step, body.at)
     _apply_edit(w, result)
     await w.session.emit(
@@ -458,14 +501,19 @@ async def repick(session_id: str, step_id: str, body: RepickRequest) -> RepickRe
 
 
 def _repick_sink(session_id: str):  # noqa: ANN201 - RepickSink 를 만든다
-    async def sink(pending: PendingRepick, target: TargetLocator) -> None:
-        await _replace_target(session_id, pending, target)
+    async def sink(
+        pending: PendingRepick, target: TargetLocator, frame_url: str | None
+    ) -> None:
+        await _replace_target(session_id, pending, target, frame_url)
 
     return sink
 
 
 async def _replace_target(
-    session_id: str, pending: PendingRepick, target: TargetLocator
+    session_id: str,
+    pending: PendingRepick,
+    target: TargetLocator,
+    frame_url: str | None = None,
 ) -> None:
     """Step 의 대상 후보를 갈아 끼우고 `step_updated` 를 발행한다.
 
@@ -481,6 +529,6 @@ async def _replace_target(
         index = find_index(w.steps, pending.step_id)
     except StepNotFoundError:
         return
-    updated = apply_repick(w.steps[index], pending.slot, target)
+    updated = apply_repick(w.steps[index], pending.slot, target, frame_url)
     w.steps[index] = updated  # type: ignore[assignment]
     await w.session.emit("step_updated", step=updated.model_dump(mode="json"))  # type: ignore[attr-defined]

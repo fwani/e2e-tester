@@ -18,6 +18,7 @@ import sys
 from pydantic import TypeAdapter
 
 from itb.domain.error import ErrorResponse
+from itb.domain.manual_step import ManualStepSpec
 from itb.domain.run_result import RunResult
 from itb.domain.step import Step
 from itb.domain.test_case import Project, Test
@@ -32,6 +33,8 @@ MODELS: dict[str, TypeAdapter] = {
     "run-result": TypeAdapter(RunResult),
     # 오류 계약. 프론트엔드가 ErrorCode 목록을 손으로 복제하던 것을 대체한다 (003 EC-006).
     "error-response": TypeAdapter(ErrorResponse),
+    # 손으로 넣을 수 있는 Step 종류. 화면이 이 목록을 상수로 복제하지 않게 한다 (009 FR-286).
+    "manual-step": TypeAdapter(ManualStepSpec),
 }
 
 
