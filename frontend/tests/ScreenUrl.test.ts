@@ -199,4 +199,41 @@ describe("뒤로 가기가 앱 안에 머문다 (T094 · FR-241)", () => {
     renderHook(() => useScreenUrl({ name: "result", testId: "TC-001" }, () => undefined));
     expect(window.history.length).toBe(before);
   });
+
+  /**
+   * 2회차 — **옛 주소를 떨어뜨리지 않는다** (research R12 · FR-240).
+   *
+   * 만들기가 화면 둘(`create` · `ai-compose`)에서 국면 하나(`compose`)로 합쳐졌다
+   * (FR-259). 옛 이름으로 들어온 주소를 알 수 없는 값으로 보고 목록으로 떨어뜨리면
+   * **사용자가 열어 둔 탭과 북마크가 끊긴다** — 그것은 이 라운드가 고치려는 문제와
+   * 무관한 손해다.
+   */
+  describe("옛 만들기 주소가 만들기 국면으로 열린다 (2회차 · FR-240)", () => {
+    it("`create` 가 `compose` 로 읽힌다", () => {
+      expect(searchToLocation("?screen=create").name).toBe("compose");
+    });
+
+    it("`ai-compose` 가 `compose` 로 읽힌다", () => {
+      expect(searchToLocation("?screen=ai-compose").name).toBe("compose");
+    });
+
+    it("뒤로 가기로 옛 주소에 닿아도 만들기 국면이다 (FR-241)", () => {
+      const seen: WorkbenchLocation[] = [];
+      renderHook(() => useScreenUrl({ name: "list" }, (loc) => seen.push(loc)));
+
+      at("?screen=ai-compose");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+
+      expect(seen[0]?.name, "옛 주소가 목록으로 떨어졌다").toBe("compose");
+    });
+
+    it("만들기 국면은 주소에 국면만 남긴다 — 입력 중인 값을 싣지 않는다", () => {
+      // 시작 주소·지시문·고른 방법은 새로 고침으로 되살릴 대상이 아니다 (research R12)
+      expect(locationToSearch({ name: "compose" })).toBe("?screen=compose");
+    });
+
+    it("모르는 이름은 그대로 둔다 — 정규화가 다른 주소를 삼키지 않는다", () => {
+      expect(searchToLocation("?screen=composer").name).toBe("composer");
+    });
+  });
 });

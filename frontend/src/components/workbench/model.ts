@@ -198,8 +198,6 @@ export type WorkAreaView =
       fields?: ReactNode;
     };
 
-/** 1회차 이름. 부르는 곳이 남아 있어도 같은 것을 가리킨다 (FR-218e-1 이행 중). */
-export type PhaseAside = WorkAreaView;
 
 /**
  * 층③ 우측 Step 행 — **단일 구현이 그리는 단일 모델** (FR-221·FR-222).
