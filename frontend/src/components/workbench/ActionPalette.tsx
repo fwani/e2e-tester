@@ -29,9 +29,6 @@ import type { CapabilityMap, CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 
-const INK = "#14171C";
-const MONO = "'IBM Plex Mono', ui-monospace, monospace";
-const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
 /**
  * 버튼 줄의 **고정 순서**. 국면이 이 순서를 바꾸지 않는다.
@@ -143,9 +140,7 @@ export function ActionPalette({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ font: `600 11px/1 ${MONO}`, letterSpacing: "0.1em", color: "#4A515C" }}>
-        지금 할 수 있는 것
-      </div>
+      <div className="lbl">지금 할 수 있는 것</div>
 
       {/* 자연어로 Step 추가 (FR-078). 쓸 수 없으면 입력칸을 잠그고 이유는 버튼이 말한다. */}
       {shown("step.addNaturalLanguage") && (
@@ -156,17 +151,8 @@ export function ActionPalette({
             disabled={!usable("step.addNaturalLanguage")}
             onChange={(e) => nl.onChange(e.target.value)}
             placeholder="생성된 프로젝트가 목록에 있는지 확인해."
-            style={{
-              flex: "1",
-              minWidth: 0,
-              height: 40,
-              minHeight: 40,
-              padding: "0 12px",
-              border: "1px solid #6B3FD4",
-              borderRadius: "3px",
-              background: usable("step.addNaturalLanguage") ? "#FFFFFF" : "#EAEDF2",
-              font: `400 13px/1 ${SANS}`,
-            }}
+            className="ai"
+            style={{ flex: "1", minWidth: 0 }}
           />
           {button("step.addNaturalLanguage", () => {
             if (nl.value.trim() === "") return;
@@ -182,13 +168,8 @@ export function ActionPalette({
       {/* ─── 테스트 속성 (FR-247 — 통합으로 사라지는 조작이 없다) ────────────── */}
       {(shown("test.rename") || shown("test.setStartUrl")) && (
         <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            borderTop: "1px solid #E3E6EB",
-            paddingTop: 12,
-          }}
+          className="rule-top"
+          style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 12 }}
         >
           {shown("test.rename") && (
             <Field
@@ -236,10 +217,10 @@ export function ActionPalette({
       {/* ─── 저장 (005 FR-155·FR-156 · 006 FR-195) ────────────────────────── */}
       {shown("save") && (
         <div
+          className="rule-top"
           style={{
             display: "flex",
             gap: 10,
-            borderTop: "1px solid #E3E6EB",
             paddingTop: 12,
             alignItems: "flex-start",
             flexWrap: "wrap",
@@ -266,7 +247,7 @@ export function ActionPalette({
       {saveNotice}
 
       {stepCount === 0 && emptyHint !== undefined && (
-        <div style={{ color: "#4A515C", fontSize: 12.5 }}>{emptyHint}</div>
+        <div className="why">{emptyHint}</div>
       )}
     </div>
   );
@@ -321,14 +302,8 @@ function Field({
     maxLength,
     "aria-describedby": disabled ? reasonId : undefined,
     onChange: (e: { target: { value: string } }) => onChange(e.target.value),
-    style: {
-      flex: 1,
-      minWidth: 0,
-      border: `1px solid ${disabled ? "#6E757F" : INK}`,
-      borderRadius: "3px",
-      background: disabled ? "#EAEDF2" : "#FFFFFF",
-      font: `400 13px/1.4 ${mono ? MONO : SANS}`,
-    } as const,
+    className: mono ? "mono" : undefined,
+    style: { flex: 1, minWidth: 0 } as const,
   };
 
   return (
@@ -347,7 +322,8 @@ function Field({
         <span
           id={reasonId}
           data-disabled-reason={action}
-          style={{ font: `400 12px/1.4 ${SANS}`, color: "#4A515C", paddingLeft: 84 }}
+          className="why"
+          style={{ paddingLeft: 84 }}
         >
           {capability.reason}
           {capability.remedy !== null && (
@@ -356,18 +332,8 @@ function Field({
               <button
                 type="button"
                 data-remedy-for={action}
+                className="textlink"
                 onClick={() => onRemedy(capability.remedy!.action)}
-                style={{
-                  border: "none",
-                  borderRadius: "3px",
-                  background: "transparent",
-                  boxShadow: "none",
-                  padding: 0,
-                  font: `600 12px/1.4 ${SANS}`,
-                  color: "#5732B0",
-                  textDecoration: "underline",
-                  cursor: "pointer",
-                }}
               >
                 {ACTION_LABEL[capability.remedy.action]}
               </button>

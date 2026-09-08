@@ -107,7 +107,11 @@ describe("실행 종료 표시", () => {
     // 링크는 가리키는 조작과 같은 라벨을 쓴다. 주 조작은 식별자로 집는다.
     const close = document.querySelector('button[data-action="run.stop"]') as HTMLButtonElement;
     expect(close.textContent).toBe("닫기");
-    expect(close.style.boxShadow).toBe("none");
+    // 008 — 강조 여부는 인라인 그림자가 아니라 **형태 이름**이 말한다. 시각 언어가
+    // 정본으로 옮겨졌으므로 인라인에는 아무것도 남지 않는다 (research R3 · C-7).
+    // 단언 대상은 그대로다: 이 조작에 강조가 없는가.
+    expect(close.className).toContain("quiet");
+    expect(close.className).not.toContain("primary");
   });
 });
 

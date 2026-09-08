@@ -20,6 +20,7 @@
  * 형태다 (`tests/OutcomeVocabulary.test.tsx`).
  */
 import { outcomeTone } from "../lib/wording";
+import type { OutcomeTone } from "../lib/wording";
 import type { Outcome } from "../types/generated/run-result";
 
 /**
@@ -51,9 +52,19 @@ const ROW_VARIANT = {
   unknown: "",
 } as const;
 
+/**
+ * 뜻에서 바로 표식 클래스를 얻는다.
+ *
+ * 국면 띠처럼 결말이 아니라 **국면의 뜻**을 이미 갖고 있는 자리가 쓴다 (`model.ts` 의
+ * `phaseTone`). 그 자리가 뜻 이름을 형태 이름으로 직접 옮기면 이 매핑이 두 곳이 된다.
+ */
+export function chipClassForTone(tone: OutcomeTone): string {
+  return `chip ${CHIP_VARIANT[tone]}`.trimEnd();
+}
+
 /** 결말 표식의 클래스. 넷을 전부 다룬다. */
 export function chipClass(outcome: Outcome | null | undefined): string {
-  return `chip ${CHIP_VARIANT[outcomeTone(outcome)]}`.trimEnd();
+  return chipClassForTone(outcomeTone(outcome));
 }
 
 /** 목록 행의 클래스. 돌고 있으면 결말보다 그 사실이 이긴다 (005 FR-168 · U-16). */

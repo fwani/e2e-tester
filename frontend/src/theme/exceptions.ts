@@ -39,23 +39,19 @@ export interface VisualLanguageException {
 /**
  * 등록된 예외 전부.
  *
- * **하나뿐이다.** 이 수가 늘어나면 정본이 실제 화면을 감당하지 못한다는 신호이므로,
- * 예외를 더하기 전에 확정 디자인에 그 형태가 있는지 먼저 본다 (FR-266).
+ * **지금은 비어 있다.** 33개 화면을 옮기는 동안 정본으로 표현할 수 없는 형태가 하나도
+ * 나오지 않았다.
+ *
+ * 처음에는 껍데기의 경계선을 예외로 등록했다 — 층의 구분은 배치 계약(007 `ui-contract`
+ * §1-2 · `lib/layout.ts`)의 관할이라고 봤기 때문이다. 실제로 옮겨 보니 **경계선은 배치가
+ * 아니라 시각 언어**였고 정본의 `.hdr`·`.phase`·`.steps` 가 이미 갖고 있었다. 배치 계약이
+ * 실제로 정하는 것은 `flex`·`minWidth` 같은 자리의 크기이며 그것들은 애초에 이 가드의
+ * 대상이 아니다. 가드의 「죽은 예외」 검사가 그 사실을 알려 줬다 (G-6).
+ *
+ * 이 수가 늘어나면 정본이 실제 화면을 감당하지 못한다는 신호이므로, 예외를 더하기 전에
+ * 확정 디자인에 그 형태가 있는지 먼저 본다 (FR-266).
  */
-export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
-  {
-    file: "frontend/src/components/workbench/Workbench.tsx",
-    pattern: "^(?:border|borderBottom|borderTop|borderLeft|borderRight)$",
-    axis: "inline-style",
-    reason:
-      "껍데기 층의 경계는 시각 언어가 아니라 배치 계약이다. 층의 순서와 구분은 " +
-      "ui-contract §1-2 표와 lib/layout.ts 가 정하며, 컴포넌트가 스스로 판단하지 " +
-      "못하게 막아 둔 것이 007 이 S-05·S-12 를 고친 방식이다. 클래스로 옮기면 " +
-      "Record<Phase, …> 의 컴파일 시점 강제를 잃는다 (research R3). 값의 출처는 " +
-      "정본 토큰이므로 중복이 아니다.",
-    requirement: "007 FR-218a · 008 research R3",
-  },
-];
+export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [];
 
 /** `reason` 이 비어 있으면 등록이 아니다 (EX-1). 가드와 이 모듈 양쪽이 쓴다. */
 export function isRegistered(exception: VisualLanguageException): boolean {

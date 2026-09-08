@@ -107,15 +107,15 @@ FR-278~FR-284 이므로 검사 작성 작업이 선택이 아니다. 기존 657�
 
 ### 4-1. 껍데기와 Step 목록 (모든 국면이 공유)
 
-- [ ] T026 [US2] `frontend/src/components/workbench/Workbench.tsx` 를 정본 소비로 바꾼다 (hex 3 · 인라인 6). **`data-workbench-*` 속성과 `style.flex` 는 그대로 둔다** — `WorkbenchShell.test.tsx` 의 인라인 단언 4건이 배치 계약이며 초록 유지가 목표다 (research R3)
-- [ ] T027 [P] [US2] `frontend/src/components/workbench/PhaseBar.tsx` 를 `.phase` 로 바꾼다 (hex 9 · 인라인 7). 국면 띠 높이 48 유지
-- [ ] T028 [P] [US2] `frontend/src/components/workbench/StepList.tsx` 를 `.steps`·`.steps-hd`·`.srow`(+`pass`·`fail`·`run`·`sel`)로 바꾼다 (hex 37 · 인라인 21 — **단일 파일 최다 잔재**). 행 높이 52 · 격자 `26px 1fr 58px 20px` / gap 10. **`data-step-row`·`data-cell`·`data-outcome` 속성을 전부 보존한다** — `StepRowLayout.test.tsx` 26곳이 그것으로 질의한다
-- [ ] T029 [P] [US2] `frontend/src/components/workbench/ActionButton.tsx` 를 `.btn`(+`primary`·`danger`·`off`·`sm`)으로 바꾼다 (hex 12 · 인라인 3). **비활성은 `.btn.off` — 점선이고 자리를 지킨다.** 비활성 사유는 `.why` (006 ui-contract §2 유지). 잔존색 `#F5D000` 판정
-- [ ] T030 [P] [US2] `frontend/src/components/workbench/ActionPalette.tsx` 를 정본 소비로 바꾼다 (hex 13 · 인라인 15)
-- [ ] T031 [P] [US2] `frontend/src/components/workbench/TargetPane.tsx` 를 정본 소비로 바꾼다 (hex 12 · 인라인 13). 세로 배분은 `lib/layout.ts` 가 정하므로 건드리지 않는다 (007 FR-256·FR-257)
-- [ ] T032 [P] [US2] `frontend/src/components/workbench/WorkArea.tsx` 를 정본 소비로 바꾼다 (hex 28 · 인라인 38 — **인라인 최다**). 잔존색 6종(`#E5D3AC`·`#FFF6D9`·`#FFF6D8`·`#EFC7BC`·`#1F7A3D`·`#8A6A16`)을 하나씩 판정한다
-- [ ] T033 [P] [US2] `frontend/src/components/workbench/NoticeStack.tsx` 를 `.notice` 로 바꾼다 (hex 6 · 인라인 4). `States.dc.html` 의 알림 형태를 따른다. 잔존색 `#8A6A16` 판정
-- [ ] T034 [US2] `npx vitest run` — 껍데기 묶음 회귀 확인. **`WorkbenchShell.test.tsx` 4건과 `StepRowLayout.test.tsx` 26건이 초록인지 특히 확인한다**
+- [X] T026 [US2] `frontend/src/components/workbench/Workbench.tsx` 를 정본 소비로 바꾼다 (hex 3 · 인라인 6). **`data-workbench-*` 속성과 `style.flex` 는 그대로 둔다** — `WorkbenchShell.test.tsx` 의 인라인 단언 4건이 배치 계약이며 초록 유지가 목표다 (research R3)
+- [X] T027 [P] [US2] `frontend/src/components/workbench/PhaseBar.tsx` 를 `.phase` 로 바꾼다 (hex 9 · 인라인 7). 국면 띠 높이 48 유지
+- [X] T028 [P] [US2] `frontend/src/components/workbench/StepList.tsx` 를 `.steps`·`.steps-hd`·`.srow`(+`pass`·`fail`·`run`·`sel`)로 바꾼다 (hex 37 · 인라인 21 — **단일 파일 최다 잔재**). 행 높이 52 · 격자 `26px 1fr 58px 20px` / gap 10. **`data-step-row`·`data-cell`·`data-outcome` 속성을 전부 보존한다** — `StepRowLayout.test.tsx` 26곳이 그것으로 질의한다
+- [X] T029 [P] [US2] `frontend/src/components/workbench/ActionButton.tsx` 를 `.btn`(+`primary`·`danger`·`off`·`sm`)으로 바꾼다 (hex 12 · 인라인 3). **비활성은 `.btn.off` — 점선이고 자리를 지킨다.** 비활성 사유는 `.why` (006 ui-contract §2 유지). 잔존색 `#F5D000` 판정
+- [X] T030 [P] [US2] `frontend/src/components/workbench/ActionPalette.tsx` 를 정본 소비로 바꾼다 (hex 13 · 인라인 15)
+- [X] T031 [P] [US2] `frontend/src/components/workbench/TargetPane.tsx` 를 정본 소비로 바꾼다 (hex 12 · 인라인 13). 세로 배분은 `lib/layout.ts` 가 정하므로 건드리지 않는다 (007 FR-256·FR-257)
+- [X] T032 [P] [US2] `frontend/src/components/workbench/WorkArea.tsx` 를 정본 소비로 바꾼다 (hex 28 · 인라인 38 — **인라인 최다**). 잔존색 6종(`#E5D3AC`·`#FFF6D9`·`#FFF6D8`·`#EFC7BC`·`#1F7A3D`·`#8A6A16`)을 하나씩 판정한다
+- [X] T033 [P] [US2] `frontend/src/components/workbench/NoticeStack.tsx` 를 `.notice` 로 바꾼다 (hex 6 · 인라인 4). `States.dc.html` 의 알림 형태를 따른다. 잔존색 `#8A6A16` 판정
+- [X] T034 [US2] `npx vitest run` — 껍데기 묶음 회귀 확인. **`WorkbenchShell.test.tsx` 4건과 `StepRowLayout.test.tsx` 26건이 초록인지 특히 확인한다**
 
 ### 4-2. Step 상세 (겹침 640)
 

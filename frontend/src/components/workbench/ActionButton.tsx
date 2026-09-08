@@ -13,17 +13,22 @@
  * 3번이 006 E-03 의 수정이다. "실행을 시작해 일시정지한 뒤 하세요" 라고 안내하면서 그리로
  * 가는 버튼을 주지 않은 것이 그 결함이었다.
  *
- * 인라인 style 값은 `docs/design/Main.dc.html` 의 74px 띠 버튼에서 그대로 옮겼다 —
- * 축약·토큰 치환을 하지 않는다 (DC-001).
+ * ## 2026-09-08 (008)
+ *
+ * 이전 판은 확정 디자인의 인라인 값을 전사했고, 주 조작의 배경으로 **v1 의 노란색**
+ * (`#F5D000`)을 주석에 남긴 채 잉크 채움을 쓰고 있었다. 이제 형태는 정본의 `.btn` 과
+ * 변형 넷이 갖는다 — `primary`(잉크 채움) · `danger` · `off`(점선) · `sm`.
+ *
+ * **비활성의 모양은 v2 에서 바뀌었다** (Language.dc.html §05). 감추지 않는 것은 그대로이고
+ * (SC-004), 무게가 내려갔다: v1 은 채운 상자라 활성 조작과 시각적 무게가 비슷했고 이유가
+ * 버튼 **아래** 줄로 붙어 48px 띠 안에서 아래 영역을 덮었다. 점선 + 그림자 없음 + 사유는
+ * 같은 줄. 층이 늘지 않는다.
  */
 import { useId, type ReactNode } from "react";
 
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
-
-const INK = "#14171C";
-const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
 export interface ActionButtonProps {
   action: ActionId;
@@ -36,15 +41,17 @@ export interface ActionButtonProps {
   /**
    * 강조 단계.
    *
-   * - `true`  — 확정 디자인의 노란 배경(`#F5D000`). 그 국면의 주 조작
-   * - `false` — 보통. 종이 배경 + 그림자
+   * - `true`  — 잉크 채움(`.btn.primary`). **그 국면의 주 조작 하나뿐이다** (FR-269)
+   * - `false` — 보통. 정본의 기본 조작
    * - `"quiet"` — **강조를 뺀다** (005 FR-147 · U-08). 끝난 실행의 「닫기」처럼 파괴적
    *   이거나 되돌리기 어려운 조작이 화면에서 가장 눈에 띄는 컨트롤이 되지 않게 한다
    */
   emphasis?: boolean | "quiet";
   icon?: ReactNode;
-  /** 확정 디자인의 46px 버튼이 아닌 작은 자리(Step 행 안 등) */
+  /** 작은 자리(Step 행 안 등)의 26px 조작 */
   compact?: boolean;
+  /** 되돌리기 어려운 조작 — 중지·버리기 (`.btn.danger`) */
+  danger?: boolean;
 }
 
 export function ActionButton({
@@ -56,6 +63,7 @@ export function ActionButton({
   emphasis = false,
   icon,
   compact = false,
+  danger = false,
 }: ActionButtonProps) {
   const reasonId = useId();
 
@@ -65,47 +73,15 @@ export function ActionButton({
   const disabled = capability.kind === "disabled";
   const text = label ?? ACTION_LABEL[action];
 
-  const base = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: compact ? "6px" : "9px",
-    height: compact ? "26px" : "32px",
-    padding: compact ? "0 10px" : "0 18px",
-    border: `1px solid ${INK}`,
-    borderRadius: "3px",
-    font: compact ? `600 12px/1 ${SANS}` : `600 15px/1 ${SANS}`,
-    color: INK,
-  } as const;
-
-  const quiet = emphasis === "quiet";
-  const live = {
-    ...base,
-    background: emphasis === true ? INK : "#FFFFFF",
-    border: `1px solid ${emphasis === true ? INK : quiet ? "#CBD0D8" : "#CBD0D8"}`,
-    borderRadius: "3px",
-    color: emphasis === true ? "#FFFFFF" : quiet ? "#4A515C" : INK,
-    boxShadow: compact || quiet ? "none" : "0 1px 2px rgba(20, 23, 28, 0.07)",
-    cursor: "pointer",
-  } as const;
-
-  /**
-   * 비활성의 모양 (008「계기판」 · Language.dc.html §05).
-   *
-   * **감추지 않는다** (SC-004). 바뀐 것은 무게다 — v1 은 채운 상자(`#EAEDF2`)라 활성
-   * 조작과 시각적 무게가 비슷했고, 이유가 버튼 **아래** 줄로 붙어 층을 하나 더 만들었다.
-   * 48px 국면 띠 안에서 그 층은 아래 영역을 덮었다.
-   *
-   * 점선 + 그림자 없음 + 사유는 같은 줄. 층이 늘지 않는다.
-   */
-  const dead = {
-    ...base,
-    background: "transparent",
-    border: "1px dashed #CBD0D8",
-    boxShadow: "none",
-    color: "#6E757F",
-    fontWeight: 500,
-    cursor: "not-allowed",
-  } as const;
+  const variant = disabled
+    ? "off"
+    : emphasis === true
+      ? "primary"
+      : danger
+        ? "danger"
+        : emphasis === "quiet"
+          ? "quiet"
+          : "";
 
   const button = (
     <button
@@ -114,7 +90,7 @@ export function ActionButton({
       disabled={disabled}
       aria-describedby={disabled ? reasonId : undefined}
       onClick={disabled ? undefined : onRun}
-      style={disabled ? dead : live}
+      className={`btn ${compact ? "sm " : ""}${variant}`.trimEnd()}
     >
       {icon}
       {text}
@@ -124,17 +100,13 @@ export function ActionButton({
   if (!disabled) return button;
 
   return (
-    <span style={{ display: "inline-flex", flexDirection: "row", gap: 8, alignItems: "center" }}>
+    <span className="row" style={{ gap: 8 }}>
       {button}
       {/*
         이유는 **시각적으로만** 두지 않는다. `aria-describedby` 로 버튼에 묶여 있어야
         비활성 이유가 보조 기술에 전달된다 (ui-contract §7).
       */}
-      <span
-        id={reasonId}
-        data-disabled-reason={action}
-        style={{ font: `400 11px/1.35 ${SANS}`, color: "#6E757F", maxWidth: 260 }}
-      >
+      <span id={reasonId} data-disabled-reason={action} className="why" style={{ maxWidth: 260 }}>
         {capability.reason}
         {capability.remedy !== null && onRemedy !== undefined && (
           <>
@@ -142,18 +114,8 @@ export function ActionButton({
             <button
               type="button"
               data-remedy-for={action}
+              className="textlink"
               onClick={() => onRemedy(capability.remedy!.action)}
-              style={{
-                border: "none",
-                borderRadius: "3px",
-                background: "transparent",
-                boxShadow: "none",
-                padding: 0,
-                font: `600 12px/1.4 ${SANS}`,
-                color: "#5732B0",
-                textDecoration: "underline",
-                cursor: "pointer",
-              }}
             >
               {ACTION_LABEL[capability.remedy.action]}
             </button>

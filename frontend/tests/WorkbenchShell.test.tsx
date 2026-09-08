@@ -114,7 +114,9 @@ describe("일곱 국면이 같은 껍데기를 쓴다 (SC-003 · FR-217)", () =>
 
   it("테스트 식별자가 없는 작성 세션도 경로 자리를 비우지 않는다", () => {
     renderShell(workbenchModel("recording", { testId: null }));
-    expect(screen.getByText("테스트 / 초안")).toBeTruthy();
+    // 008 — 경로 표시가 확정 디자인의 형태(`.lbl` + `.pill`)로 나뉘었다. 자리를
+    // 비우지 않는다는 요구는 그대로다 (FR-217).
+    expect(screen.getByText("초안")).toBeTruthy();
   });
 });
 

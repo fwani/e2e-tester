@@ -35,10 +35,6 @@ import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../
 import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
 import type { SlotSize, SlotStyle } from "../../lib/layout";
 
-const INK = "#14171C";
-const MONO = "'IBM Plex Mono', ui-monospace, monospace";
-const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
-
 /**
  * 국면 안내 띠 **자체**의 높이. `RunnerPaused`·`Takeover` 의 `flex: 0 0 42px`.
  *
@@ -89,15 +85,8 @@ export function WorkArea({
     <div
       data-workbench-work={work.kind}
       data-slot-size={sizeKind}
-      style={{
-        ...size,
-        borderTop: `1px solid ${INK}`,
-        background: "#FFFFFF",
-        padding: "14px 20px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-      }}
+      className="steps-ft"
+      style={{ ...size, padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}
     >
       {/*
         만들기 국면 — 시작 조건 (2회차 · FR-258).
@@ -116,15 +105,7 @@ export function WorkArea({
               value={work.startUrl}
               onChange={(e) => work.onStartUrlChange(e.target.value)}
               placeholder="https://[대상 앱 URL]/login"
-              style={{
-                height: 48,
-                minHeight: 48,
-                padding: "0 14px",
-                border: `1px solid ${INK}`,
-                borderRadius: "3px",
-                background: "#FFFFFF",
-                font: `400 15px/1 ${MONO}`,
-              }}
+              className="mono"
             />
           </Section>
 
@@ -135,7 +116,6 @@ export function WorkArea({
                 title="직접 녹화"
                 summary="브라우저를 직접 조작해서 테스트를 만듭니다."
                 bullets={["클릭 · 입력 · 선택 · 화면 이동을 그대로 기록", "기록 중 언제든 멈추고 고칠 수 있음"]}
-                tint="#FFFFFF"
                 selected={work.mode === "record"}
                 onPick={work.onModeChange}
               />
@@ -144,7 +124,7 @@ export function WorkArea({
                 title="AI로 만들기"
                 summary="할 일을 문장으로 쓰면 AI 가 조작하고 Step 을 만듭니다."
                 bullets={["성공한 동작만 Step으로 기록", "다시 돌릴 때는 AI를 쓰지 않음"]}
-                tint="#F0EBFB"
+                ai
                 selected={work.mode === "ai"}
                 onPick={work.onModeChange}
               />
@@ -158,14 +138,8 @@ export function WorkArea({
           {work.mode === "ai" && work.aiReady !== null && !work.aiReady.available && (
             <div
               role="status"
-              style={{
-                border: `1px solid ${INK}`,
-                borderRadius: "3px",
-                background: "#FBF3E2",
-                padding: "10px 12px",
-                font: `500 13px/1.5 ${SANS}`,
-                whiteSpace: "pre-wrap",
-              }}
+              className="tint-warn line"
+              style={{ padding: "10px 12px", whiteSpace: "pre-wrap" }}
             >
               {work.aiReady.reason ?? "AI 를 사용할 수 없습니다."}
             </div>
@@ -189,25 +163,19 @@ export function WorkArea({
                 placeholder={
                   "로그인한 다음 프로젝트 메뉴로 이동해서\nTEST라는 프로젝트를 생성하고\n프로젝트 목록에 TEST가 있는지 확인해."
                 }
-                style={{
-                  border: `1px solid ${INK}`,
-                  borderRadius: "3px",
-                  background: work.mode === "ai" ? "#F0EBFB" : "#EAEDF2",
-                  padding: 12,
-                  font: `500 15px/1.5 ${SANS}`,
-                  minHeight: "auto",
-                }}
+                className="ai"
+                style={{ minHeight: "auto" }}
               />
             {work.composeReason !== null && (
               <span
                 data-disabled-reason="ai.compose"
-                style={{ font: `400 12px/1.5 ${SANS}`, color: "#4A515C" }}
+                className="why"
               >
                 {work.composeReason}
               </span>
             )}
             {/* 001 FR-064 — 지시문은 기록이며 저장 대상이 아니다. 그 사실을 미리 말한다 */}
-            <p className="dim" style={{ margin: 0, font: `400 12.5px/1.6 ${SANS}` }}>
+            <p className="why" style={{ margin: 0 }}>
               지시문은 테스트로 저장되지 않습니다. 만들어진 Step 만 저장됩니다.
             </p>
           </Section>
@@ -236,11 +204,11 @@ export function WorkArea({
 
           <Section title="진행">
             {work.messages.length === 0 ? (
-              <p className="dim" style={{ margin: 0, font: `400 12.5px/1.6 ${MONO}` }}>
+              <p className="why mono" style={{ margin: 0 }}>
                 아직 기록이 없습니다.
               </p>
             ) : (
-              <ol style={{ margin: 0, paddingLeft: 18, font: `400 12.5px/1.7 ${MONO}` }}>
+              <ol className="mono why" style={{ margin: 0, paddingLeft: 18 }}>
                 {work.messages.map((m, i) => (
                   <li key={`${i}-${m}`}>{m}</li>
                 ))}
@@ -254,17 +222,13 @@ export function WorkArea({
         <>
           <div
             role="status"
+            className={`${work.recording ? "tint-fail" : "tint-warn"} strong-sm`}
             style={{
               display: "flex",
               alignItems: "center",
               gap: 10,
               minHeight: GUIDE_BAND_HEIGHT,
               padding: "0 12px",
-              background: work.recording ? "#FCEDE9" : "#FBF3E2",
-              color: INK,
-              border: `1px solid ${work.recording ? "#EFC7BC" : "#E5D3AC"}`,
-              borderRadius: "3px",
-              font: `600 13px/1.4 ${SANS}`,
             }}
           >
             {work.recording
@@ -286,7 +250,7 @@ export function WorkArea({
       {work.kind === "failure_detail" && (
         <>
           <Section title={`실패 — ${work.step.label}`}>
-            <p style={{ margin: 0, font: `500 14px/1.6 ${SANS}`, color: "#A32C13" }}>
+            <p className="line fail-ink" style={{ margin: 0 }}>
               {work.step.error_message ?? "실패 이유가 기록되지 않았습니다."}
             </p>
           </Section>
@@ -303,9 +267,9 @@ export function WorkArea({
                 {work.step.locator_attempts.map((a) => (
                   <div
                     key={`${a.candidate}-${a.expression}`}
-                    style={{ display: "flex", alignItems: "center", gap: 10, font: `400 12.5px/1.4 ${MONO}` }}
+                    className="row mono why"
                   >
-                    <span style={{ color: a.matched ? "#1A7F45" : "#A32C13", fontWeight: 700 }}>
+                    <span className={a.matched ? "pass-ink" : "fail-ink"}>
                       {a.matched ? "✓" : "×"}
                     </span>
                     <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -317,7 +281,7 @@ export function WorkArea({
                   004 FR-121 — **실제로 기다린 시간**이다. 예전에는 후보별 대기 중
                   최댓값을 "timeout" 이라 불렀는데, 그것은 설정값도 실측값도 아니었다.
                 */}
-                <div style={{ font: `400 12px/1.4 ${MONO}`, color: "#4A515C", paddingLeft: 20 }}>
+                <div className="why mono" style={{ paddingLeft: 20 }}>
                   {`요소를 ${work.step.element_wait_ms} ms 기다렸습니다`}
                 </div>
               </div>
@@ -330,13 +294,8 @@ export function WorkArea({
           {work.diagnosis !== null && (
             <div
               role="note"
-              style={{
-                border: `1px solid ${INK}`,
-                borderRadius: "3px",
-                background: "#FFF6D9",
-                padding: "12px 14px",
-                font: `500 13.5px/1.6 ${SANS}`,
-              }}
+              className="tint-warn line"
+              style={{ padding: "12px 14px" }}
             >
               {work.diagnosis}
             </div>
@@ -347,13 +306,8 @@ export function WorkArea({
       {work.kind === "edit_fields" && (
         <>
           <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              minHeight: GUIDE_BAND_HEIGHT,
-              font: `600 13px/1.4 ${SANS}`,
-            }}
+            className="strong-sm"
+            style={{ display: "flex", alignItems: "center", gap: 12, minHeight: GUIDE_BAND_HEIGHT }}
           >
             <span data-pending-edits>
               {work.pendingCount === 0
@@ -361,7 +315,7 @@ export function WorkArea({
                 : `저장할 변경 ${work.pendingCount}건`}
             </span>
             {work.savedName !== null && (
-              <span role="status" style={{ color: "#1F7A3D", font: `600 13px/1.4 ${SANS}` }}>
+              <span role="status" className="strong-sm pass-ink">
                 ✓ {editSavedNotice(work.savedName)}
               </span>
             )}
@@ -369,7 +323,7 @@ export function WorkArea({
 
           {/* FR-216 — 저장을 막지 않는 것들. 경고로만 알린다. */}
           {work.warnings.length > 0 && (
-            <ul style={{ margin: 0, paddingLeft: 18, font: `400 12.5px/1.6 ${SANS}`, color: "#8A6A16" }}>
+            <ul className="warn-ink line" style={{ margin: 0, paddingLeft: 18 }}>
               {work.warnings.map((w) => (
                 <li key={w}>{w}</li>
               ))}
@@ -382,20 +336,21 @@ export function WorkArea({
           {work.stale !== null && (
             <div
               role="alert"
-              style={{ border: `1px solid ${INK}`, background: "#FFF6D8", padding: 14 }}
+              className="tint-warn"
+              style={{ padding: 14 }}
             >
-              <strong style={{ fontSize: 13 }}>
+              <strong className="strong-sm">
                 ⚠ 이 테스트의 정의 파일이 편집을 시작한 뒤에 바뀌었습니다.
               </strong>
-              <p style={{ fontSize: 12.5, margin: "6px 0 10px" }}>
+              <p className="why" style={{ margin: "6px 0 10px" }}>
                 파일 밖에서 고친 내용이 있습니다. 어떻게 할지 고르세요.
               </p>
               {/* 무엇을 버리는지 라벨에 적는다 (006 FR-209 · ui-contract §7). */}
               <div className="row" style={{ gap: 8 }}>
-                <button className="secondary" onClick={onReload}>
+                <button className="btn sm" onClick={onReload}>
                   {staleReloadLabel(work.pendingCount)}
                 </button>
-                <button data-action="save.overwriteStale" onClick={onOverwriteStale}>
+                <button className="btn sm primary" data-action="save.overwriteStale" onClick={onOverwriteStale}>
                   {STALE_OVERWRITE_LABEL}
                 </button>
               </div>
@@ -429,7 +384,7 @@ function ModeCard({
   title,
   summary,
   bullets,
-  tint,
+  ai = false,
   selected,
   onPick,
 }: {
@@ -437,7 +392,8 @@ function ModeCard({
   title: string;
   summary: string;
   bullets: string[];
-  tint: string;
+  /** AI 로 만드는 쪽인가. 사람 작성과 구분하는 유일한 색이다 (`--ai`). */
+  ai?: boolean;
   selected: boolean;
   onPick: (next: ComposeMode) => void;
 }) {
@@ -447,14 +403,12 @@ function ModeCard({
       data-compose-mode={mode}
       aria-pressed={selected}
       onClick={() => onPick(mode)}
+      className={`pane pick${selected ? " on" : ""}${ai ? " tint-ai" : ""}`}
       style={{
         flex: 1,
         minWidth: 0,
         textAlign: "left",
-        border: `1px solid ${INK}`,
-        borderRadius: "3px",
-        background: selected ? "#FBF3E2" : tint,
-        boxShadow: selected ? "0 1px 2px rgba(20, 23, 28, 0.07)" : "none",
+        height: "auto",
         padding: "16px 18px",
         display: "flex",
         flexDirection: "column",
@@ -462,11 +416,11 @@ function ModeCard({
         cursor: "pointer",
       }}
     >
-      <span style={{ font: `700 15px/1.3 ${SANS}` }}>{title}</span>
-      <span style={{ font: `400 13px/1.6 ${SANS}`, color: "#4A515C" }}>{summary}</span>
+      <span className="subtitle">{title}</span>
+      <span className="note">{summary}</span>
       <span style={{ display: "flex", flexDirection: "column", gap: 5 }}>
         {bullets.map((b) => (
-          <span key={b} style={{ font: `400 12.5px/1.4 ${MONO}`, color: "#4A515C" }}>
+          <span key={b} className="why mono">
             {b}
           </span>
         ))}
@@ -478,9 +432,7 @@ function ModeCard({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ font: `600 11px/1 ${MONO}`, letterSpacing: "0.1em", color: "#4A515C" }}>
-        {title}
-      </div>
+      <div className="lbl">{title}</div>
       {children}
     </div>
   );
@@ -515,7 +467,7 @@ function AlwaysVisibleFailure({
       <span
         data-action="ai.chooseBlocked"
         data-disabled-reason="ai.chooseBlocked"
-        style={{ font: `400 12px/1.4 ${SANS}`, color: "#4A515C" }}
+        className="why"
       >
         {choose.reason}
       </span>
@@ -527,20 +479,21 @@ function AlwaysVisibleFailure({
       {blocked !== null && (
         <div
           role="alert"
-          style={{ border: `1px solid ${INK}`, background: "#FCEDE9", padding: "12px 14px" }}
+          className="tint-fail"
+          style={{ padding: "12px 14px" }}
         >
-          <strong style={{ font: `700 13px/1.4 ${SANS}`, color: "#A32C13" }}>
-            AI 가 막혔습니다
-          </strong>
+          <strong className="strong-sm fail-ink">AI 가 막혔습니다</strong>
           {blocked.attempted !== null && (
-            <p style={{ margin: "6px 0 0", font: `400 12.5px/1.6 ${MONO}` }}>
+            <p className="why mono" style={{ margin: "6px 0 0" }}>
               시도: {blocked.attempted}
             </p>
           )}
-          <p style={{ margin: "6px 0 10px", font: `400 13px/1.6 ${SANS}` }}>{blocked.reason}</p>
+          <p className="line" style={{ margin: "6px 0 10px" }}>
+            {blocked.reason}
+          </p>
           <div className="row" data-action="ai.chooseBlocked" style={{ gap: 8, flexWrap: "wrap" }}>
             {blocked.choices.map((c) => (
-              <button key={c} className="secondary" disabled={busy} onClick={() => onChoose?.(c)}>
+              <button key={c} className="btn sm" disabled={busy} onClick={() => onChoose?.(c)}>
                 {c}
               </button>
             ))}

@@ -155,12 +155,23 @@ describe("밀도 — 이 개편이 실제로 사는 곳", () => {
 
   it("Step 행이 52px 다 (v1 은 125px 였다)", () => {
     expect(declarations).toMatch(/--h-step:\s*52px/);
-    // 행을 그리는 쪽도 같은 값이어야 한다. 토큰만 바꾸고 행이 안 따라오면 의미가 없다.
-    expect(stepList).toMatch(/minHeight:\s*"52px"/);
+    /*
+      008 — 행의 높이가 **정본에** 있다. 이전에는 컴포넌트가 `minHeight:"52px"` 를 전사했고
+      이 단언은 그 사본을 봤다. 사본을 보면 정본이 바뀌어도 사본이 그대로면 통과한다 —
+      그것이 v1→v2 에서 색과 구조가 남은 경로다. 이제 둘을 나눠 센다.
+
+      (a) 정본의 `.srow` 가 52px 를 선언한다  (b) 행이 그 형태를 실제로 쓴다
+    */
+    expect(declarations).toMatch(/\.srow\{[^}]*height:52px/);
+    expect(stepList).toMatch(/className=\{`srow /);
   });
 
   it("Step 이름을 한 줄로 자른다 — 감싸면 52px 가 성립하지 않는다", () => {
-    expect(stepList).toMatch(/textOverflow:\s*"ellipsis"/);
+    // 확정 디자인은 `.srow .t b` 로, 제품은 누를 수 있는 `.srow-name` 으로 그린다.
+    // **둘 다** 잘라야 한다 — 한쪽만 자르면 화면에서 행 높이가 흔들린다.
+    expect(declarations).toMatch(/\.srow \.t b\{[^}]*text-overflow:ellipsis/);
+    expect(declarations).toMatch(/\.srow \.t \.srow-name \{[\s\S]*?text-overflow: ellipsis/);
+    expect(stepList).toMatch(/className="srow-name"/);
   });
 
   it("결말을 색만으로 구분하지 않는다 — 왼쪽 표식과 오른쪽 형태가 짝을 이룬다", () => {

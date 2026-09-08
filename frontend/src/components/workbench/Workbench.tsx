@@ -41,7 +41,6 @@ import { TargetPane } from "./TargetPane";
 import { WorkArea } from "./WorkArea";
 import type { WorkbenchModel } from "./model";
 
-const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 
 /** 최소 기준 폭. 확정 디자인 6종 공통값 (research R1). */
 export const BASE_WIDTH = 1440;
@@ -181,9 +180,12 @@ export function Workbench({
         {model.testId !== null ? (
           <Breadcrumb testId={model.testId} />
         ) : (
-          <div style={{ font: `500 14px/1 ${MONO}`, color: "#4A515C" }}>테스트 / 초안</div>
+          <div className="row muted" style={{ gap: "8px" }}>
+            <span className="lbl">테스트</span>
+            <span className="pill mono">초안</span>
+          </div>
         )}
-        <div style={{ flex: "1" }} />
+        <div className="spacer" />
         {headerActions}
       </HeaderBar>
 
@@ -230,11 +232,10 @@ export function Workbench({
             <div
               data-workbench-work="step_detail"
               data-slot-size={split.workArea.kind}
+              className="steps-ft"
               style={{
                 ...workStyle,
-                borderTop: "1px solid #14171C",
-                background: "#FFFFFF",
-                padding: "14px 20px",
+                padding: "12px 16px",
                 display: "flex",
                 flexDirection: "column",
                 minHeight: 0,
@@ -279,6 +280,7 @@ export function Workbench({
         */}
         {model.detail !== null && placement === "overlay" && (
           <div
+            className="scrim"
             style={{
               position: "absolute",
               top: 0,
@@ -286,7 +288,6 @@ export function Workbench({
               bottom: 0,
               display: "flex",
               justifyContent: "flex-end",
-              background: "rgba(20,19,15,0.28)",
               zIndex: 20,
               /*
                 DC-011 — 창이 확정 디자인의 기준 폭(640px)보다 좁으면 **기준 폭을 유지한
