@@ -78,20 +78,20 @@ FR-278~FR-284 이므로 검사 작성 작업이 선택이 아니다. 기존 657�
 > **US1 은 US2 와 병렬로 돌릴 수 없다.** 정본이 실제 화면 하나를 감당하는지 여기서 판명된다.
 > 감당 못 하면 여기서 정본을 고치는 것이 33파일 뒤에 고치는 것보다 싸다 (plan 위험표 1번).
 
-- [ ] T012 [P] [US1] `frontend/src/components/design/Chrome.tsx` 를 정본 소비로 바꾼다 (hex 11 · 인라인 11). `Artboard`·`HeaderBar`·`BrandMark`·`HeaderDivider` 가 `.hdr` 과 토큰만 쓴다. 껍데기 폭·높이는 배치 계약이므로 인라인 유지, 값 출처만 정본 토큰
-- [ ] T013 [P] [US1] `frontend/src/components/Badges.tsx` 를 `.chip` 변형으로 바꾼다. 결말 5종(`pass`·`fail`·`warn`·`run`·`ai`)과 미실행(점선 중립)이 **색과 형태를 함께** 쓰는지 확인한다 (FR-271 · SC-410)
-- [ ] T014 [US1] `frontend/src/pages/TestList.tsx` 의 표 머리와 행을 디자인 격자로 바꾼다 — CSS grid `96px 82px 1fr 64px 92px 150px 168px` / gap 12 / 행 높이 44 / 표 머리 34. **표 머리와 행이 같은 격자를 공유해야 한다** (FR-273 · V-08). 표 머리 바탕 `#14171C` → `--sunken`, 글자 → `.lbl` (V-04)
-- [ ] T015 [US1] 같은 파일에 **행 왼쪽 3px 결말 마커**를 넣는다 — `border-left: 3px solid var(--pass|--fail|--run|transparent)`. 실패 행 배경 `--fail-t`, 실행 중 행 배경 `--run-t` (FR-271 · V-05)
-- [ ] T016 [US1] 같은 파일의 행 조작을 `.btn.sm` 중립으로 바꾼다. **잉크 채움은 헤더의 「테스트 만들기」 하나뿐**이다 (FR-269 · C-10 · V-04). 「실행」·「결과 보기」·「실행 화면 보기」가 전부 잉크 채움이던 것을 되돌린다
-- [ ] T017 [US1] 같은 파일의 글자 크기를 디자인 단계로 내린다 — 테스트 이름 `600 16px` → `500 13px` · ID `600 14px` → mono 12px · STEP mono 14px → mono 12px · 마지막 실행 14px → mono 11.5px (FR-270 · V-06)
-- [ ] T018 [US1] 같은 파일에 **결말 필터 칩 4종**(전체·통과·실패·미실행)을 만든다. 각 칩이 개수를 함께 보이고 실제로 목록을 거른다. **클라이언트에서 계산한다** — 백엔드 `list_tests` 는 `q` 만 받고 응답이 이미 `outcome` 을 담는다 (research R7 · FR-272 · V-07)
-- [ ] T019 [US1] 같은 파일에 **정렬 조작**「최근 실행 순」을 만든다. 디자인이 정의한 것만 만들고 그 이상 늘리지 않는다 (FR-272 · Out of Scope)
-- [ ] T020 [US1] 같은 파일의 빈 목록 상태를 `EmptyList.dc.html` 과 맞춘다. 지금은 `undefined-states` 로만 기록돼 있고 디자인이 생겼다 (`replacement-map.md` §3)
-- [ ] T021 [US1] 같은 파일의 잔존색을 판정한다 — `#E4DFD1`·`#B8860B`. quickstart 4단계의 판정표를 따른다. v1 잔재면 대응 토큰으로, 대응이 없으면 `exceptions.ts` 에 **사유와 함께** 등록
-- [ ] T022 [US1] `frontend/tests/TestListFilters.test.tsx` 를 새로 만든다 — 필터 4종이 목록을 거르는지, 정렬이 순서를 바꾸는지, 개수가 맞는지 (FR-272 회귀 가드)
-- [ ] T023 [US1] `npx vitest run` — **657건 + 신규가 전부 초록.** 깨지면 quickstart 5단계 판정표를 따르고 판정을 커밋 본문에 적는다. 고쳐서 통과시키지 않는다 (헌법 게이트 4)
-- [ ] T024 [US1] T001 로 재측정해 `baseline.md` 에 US1 후 수치를 추가한다. `pages/TestList.tsx`·`Chrome.tsx`·`Badges.tsx` 의 색 리터럴이 **0** 이어야 한다 (기준선 83+11+0)
-- [ ] T025 [US1] T009 의 상한을 US1 후 실측값으로 **내린다**. 상한은 내려가기만 한다
+- [X] T012 [P] [US1] `frontend/src/components/design/Chrome.tsx` 를 정본 소비로 바꾼다 (hex 11 · 인라인 11). `Artboard`·`HeaderBar`·`BrandMark`·`HeaderDivider` 가 `.hdr` 과 토큰만 쓴다. 껍데기 폭·높이는 배치 계약이므로 인라인 유지, 값 출처만 정본 토큰
+- [X] T013 [P] [US1] `frontend/src/components/Badges.tsx` 를 `.chip` 변형으로 바꾼다. 결말 5종(`pass`·`fail`·`warn`·`run`·`ai`)과 미실행(점선 중립)이 **색과 형태를 함께** 쓰는지 확인한다 (FR-271 · SC-410)
+- [X] T014 [US1] `frontend/src/pages/TestList.tsx` 의 표 머리와 행을 디자인 격자로 바꾼다 — CSS grid `96px 82px 1fr 64px 92px 150px 168px` / gap 12 / 행 높이 44 / 표 머리 34. **표 머리와 행이 같은 격자를 공유해야 한다** (FR-273 · V-08). 표 머리 바탕 `#14171C` → `--sunken`, 글자 → `.lbl` (V-04)
+- [X] T015 [US1] 같은 파일에 **행 왼쪽 3px 결말 마커**를 넣는다 — `border-left: 3px solid var(--pass|--fail|--run|transparent)`. 실패 행 배경 `--fail-t`, 실행 중 행 배경 `--run-t` (FR-271 · V-05)
+- [X] T016 [US1] 같은 파일의 행 조작을 `.btn.sm` 중립으로 바꾼다. **잉크 채움은 헤더의 「테스트 만들기」 하나뿐**이다 (FR-269 · C-10 · V-04). 「실행」·「결과 보기」·「실행 화면 보기」가 전부 잉크 채움이던 것을 되돌린다
+- [X] T017 [US1] 같은 파일의 글자 크기를 디자인 단계로 내린다 — 테스트 이름 `600 16px` → `500 13px` · ID `600 14px` → mono 12px · STEP mono 14px → mono 12px · 마지막 실행 14px → mono 11.5px (FR-270 · V-06)
+- [X] T018 [US1] 같은 파일에 **결말 필터 칩 4종**(전체·통과·실패·미실행)을 만든다. 각 칩이 개수를 함께 보이고 실제로 목록을 거른다. **클라이언트에서 계산한다** — 백엔드 `list_tests` 는 `q` 만 받고 응답이 이미 `outcome` 을 담는다 (research R7 · FR-272 · V-07)
+- [X] T019 [US1] 같은 파일에 **정렬 조작**「최근 실행 순」을 만든다. 디자인이 정의한 것만 만들고 그 이상 늘리지 않는다 (FR-272 · Out of Scope)
+- [X] T020 [US1] 같은 파일의 빈 목록 상태를 `EmptyList.dc.html` 과 맞춘다. 지금은 `undefined-states` 로만 기록돼 있고 디자인이 생겼다 (`replacement-map.md` §3)
+- [X] T021 [US1] 같은 파일의 잔존색을 판정한다 — `#E4DFD1`·`#B8860B`. quickstart 4단계의 판정표를 따른다. v1 잔재면 대응 토큰으로, 대응이 없으면 `exceptions.ts` 에 **사유와 함께** 등록
+- [X] T022 [US1] `frontend/tests/TestListFilters.test.tsx` 를 새로 만든다 — 필터 4종이 목록을 거르는지, 정렬이 순서를 바꾸는지, 개수가 맞는지 (FR-272 회귀 가드)
+- [X] T023 [US1] `npx vitest run` — **657건 + 신규가 전부 초록.** 깨지면 quickstart 5단계 판정표를 따르고 판정을 커밋 본문에 적는다. 고쳐서 통과시키지 않는다 (헌법 게이트 4)
+- [X] T024 [US1] T001 로 재측정해 `baseline.md` 에 US1 후 수치를 추가한다. `pages/TestList.tsx`·`Chrome.tsx`·`Badges.tsx` 의 색 리터럴이 **0** 이어야 한다 (기준선 83+11+0)
+- [X] T025 [US1] T009 의 상한을 US1 후 실측값으로 **내린다**. 상한은 내려가기만 한다
 
 **Checkpoint**: 목록 화면이 단독으로 옳다. 정본이 실제 화면을 감당함이 판명됐다.
 

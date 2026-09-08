@@ -224,7 +224,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
 
     await screen.findByText("실패한 테스트");
-    expect(screen.getByRole("button", { name: /실행/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "실행" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
   });
 
@@ -234,7 +234,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
 
     await screen.findByText("실패한 테스트");
     expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /실행/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "실행" })).toBeTruthy();
   });
 
   it("중지·부분 성공 결말에서도 두 경로가 모두 있다 (FR-130)", async () => {
@@ -243,7 +243,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
       const view = render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
       await screen.findByText("실패한 테스트");
       expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
-      expect(screen.getByRole("button", { name: /실행/ })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "실행" })).toBeTruthy();
       view.unmount();
     }
   });

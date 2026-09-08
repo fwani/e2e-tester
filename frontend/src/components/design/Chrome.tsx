@@ -1,77 +1,65 @@
 /**
- * 확정 디자인 8종에 **바이트 단위로 동일하게** 나타나는 조각들. DC-003·DC-007.
+ * 껍데기 — 확정 디자인 18장이 **똑같이** 그리는 층. DC-003·DC-007.
  *
- * 여기 있는 것만 공유한다. `scripts/dc_to_jsx.py` 로 8개 파일을 변환한 뒤 앞 20줄의
- * 해시를 비교해 실제로 같은 것만 골랐다 — 비슷해 보인다고 묶지 않았다. 미리 추상화하면
- * 그 층에서 다시 해석이 일어나고, 그것이 002 라운드의 원인이다.
+ * ## 2026-09-08 (008) — 전사에서 소비로
  *
- * 인라인 style 값은 dc.html 에서 그대로 옮겼다. 토큰으로 치환하지 않는다 — 치환하면
- * 확정 디자인과 1:1 대조가 불가능해진다 (contracts/design-conformance.md §2).
+ * 이전 판의 머리말은 이렇게 적혀 있었다: "인라인 style 값은 dc.html 에서 그대로 옮겼다.
+ * 토큰으로 치환하지 않는다 — 치환하면 확정 디자인과 1:1 대조가 불가능해진다."
+ *
+ * **그 판단이 틀렸다.** 1:1 대조는 값을 베껴야 성립하는 것이 아니라, 값이 **한 곳에서
+ * 오면** 자동으로 성립한다. 베끼는 쪽을 택한 결과 v1→v2 전환에서 기하는 옮겨졌으나
+ * 색과 구조는 v1 이 남았고, 대조표 509칸은 한 칸도 채워지지 않았다.
+ *
+ * 이제 형태는 `theme/tokens.css` 의 정본에서 오고 여기는 그것을 `className` 으로 쓴다.
+ * 대조는 L1(정본 ↔ 디자인)과 L2(코드 ↔ 정본)가 기계로 한다
+ * (`specs/008-visual-language/contracts/design-conformance.md`).
+ *
+ * ## 남는 인라인은 배치뿐이다
+ *
+ * `display`·`flex`·`gap`·`width`·`padding` 은 007 배치 계약의 관할이다. 색·서체·테두리·
+ * 모서리·그림자는 여기 없다 (`contracts/visual-language.md` §2).
  */
 import type { ReactNode } from "react";
 
-/** 헤더 왼쪽의 로고 블록. 8종 전부에서 동일하다. */
+/**
+ * 헤더 왼쪽의 제품 표시. 18장 전부에서 동일하다.
+ *
+ * 008 에서 문구가 「TEST BUILDER」에서 **「ITB」**로 바뀌었다. 확정 디자인이 그렇게 그리며,
+ * 헤더가 56px 로 내려온 만큼 표시도 26px 사각형 + 15px 글자로 줄었다. 코드가 디자인과
+ * 다르면 코드를 고친다 (spec Assumptions).
+ */
 export function BrandMark() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-      <div
-        style={{
-          width: "34px",
-          height: "34px",
-          background: "#14171C",
-          color: "#FFFFFF",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <svg width="20" height="20" viewBox="0 0 20 20">
-          <rect x="2.5" y="2.5" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5" />
-          <circle cx="10" cy="10" r="3.5" fill="currentColor" />
+    <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+      <div className="brand">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <rect x="2" y="2" width="12" height="12" rx="1.5" />
+          <path d="M5 8.2l2 2 4-4.4" />
         </svg>
       </div>
-      <div
-        style={{
-          fontFamily: "'IBM Plex Sans KR', system-ui, sans-serif",
-          fontSize: "19px",
-          letterSpacing: "0.01em",
-        }}
-      >
-        TEST BUILDER
-      </div>
+      <div className="brand-name">ITB</div>
     </div>
   );
 }
 
-/** 로고와 그다음 블록 사이의 세로 막대. 8종 전부에서 동일하다. */
+/** 헤더 안에서 블록을 가르는 세로 막대. 18장 전부에서 동일하다. */
 export function HeaderDivider() {
-  return <div style={{ width: "3px", height: "32px", background: "#14171C" }} />;
+  return <div className="divider" />;
 }
 
-/** 60px 헤더 껍데기. 8종 전부에서 동일하다. */
+/** 헤더 층. 높이 56 — `ui-contract.md` §1-2 의 값이다. */
 export function HeaderBar({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        flex: "0 0 56px",
-        borderBottom: "1px solid #14171C",
-        background: "#FFFFFF",
-        display: "flex",
-        alignItems: "center",
-        gap: "18px",
-        padding: "0 24px",
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className="hdr">{children}</div>;
 }
 
 /**
  * 아트보드 껍데기.
  *
- * 확정 디자인은 고정 폭(1440px 등)이다. 창이 그보다 좁으면 **기준 폭을 유지하고
- * 스크롤한다** — 임의로 재배치하지 않는다 (DC-011).
+ * 확정 디자인은 고정 폭(1440px)이다. 창이 그보다 좁으면 **기준 폭을 유지하고 스크롤한다**
+ * — 임의로 재배치하지 않는다 (DC-011).
+ *
+ * 배경을 여기서 칠하지 않는다. 정본의 `body` 가 이미 `var(--bg)` 를 갖고, 아트보드는
+ * 그것을 그대로 보인다 — 같은 값을 두 곳에 두지 않는다 (C-1).
  */
 export function Artboard({
   width,
@@ -86,26 +74,20 @@ export function Artboard({
   /**
    * 창이 기준 폭보다 **넓을 때** 늘어나는가 (007 FR-218a).
    *
-   * 확정 디자인 8종은 고정 폭이고 그것이 DC-011 의 전제다. 007 의 통합 화면만 이 값을
-   * 켠다 — 껍데기(헤더 구성·영역 배치·최소 기준 폭)는 고정하고 **좌측 대상 앱 영역만**
-   * 남는 폭을 가져간다. 좁은 창 정책은 그대로다: 재배치하지 않고 스크롤한다.
-   *
-   * 이 값이 켜진 화면은 승인 대상 A3 에 걸려 있다
-   * (`specs/007-unify-test-screens/design-conformance/undefined-states.md`).
+   * 확정 디자인은 고정 폭이고 그것이 DC-011 의 전제다. 007 의 통합 화면만 이 값을 켠다 —
+   * 껍데기(헤더 구성·영역 배치·최소 기준 폭)는 고정하고 **좌측 대상 앱 영역만** 남는 폭을
+   * 가져간다. 좁은 창 정책은 그대로다: 재배치하지 않고 스크롤한다.
    */
   grow?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div style={{ overflowX: "auto", background: "#F2F4F7", minHeight: "100vh" }}>
+    <div style={{ overflowX: "auto", minHeight: "100vh" }}>
       <div
         style={{
-          ...(grow
-            ? { minWidth: `${width}px`, width: "100%" }
-            : { width: `${width}px` }),
+          ...(grow ? { minWidth: `${width}px`, width: "100%" } : { width: `${width}px` }),
           ...(height !== undefined ? { height: `${height}px` } : {}),
           ...(minHeight !== undefined ? { minHeight: `${minHeight}px` } : {}),
-          background: "#F2F4F7",
           display: "flex",
           flexDirection: "column",
         }}
@@ -116,75 +98,12 @@ export function Artboard({
   );
 }
 
-/** 러너 계열 5종(Main·RunnerPaused·Takeover·RunResult·AiRecord)의 경로 표시. */
+/** 통합 작업 화면의 경로 표시 — 「테스트 / TC-001」. */
 export function Breadcrumb({ testId }: { testId: string }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        font: "500 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
-        color: "#4A515C",
-      }}
-    >
-      테스트
-      <span style={{ color: "#14171C" }}>/</span>
-      <span
-        style={{
-          color: "#14171C",
-          fontWeight: "600",
-          fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
-        }}
-      >
-        {testId}
-      </span>
+    <div className="row muted" style={{ gap: "8px" }}>
+      <span className="lbl">테스트</span>
+      <span className="pill mono">{testId}</span>
     </div>
-  );
-}
-
-/**
- * 헤더 오른쪽의 상태 알약. 화면마다 색과 문구가 다르지만 형태는 같다.
- *
- * `Main.dc.html` 은 `RUNNING` 을 잉크 배경 + 노랑 글자로, `RunnerPaused.dc.html` 은
- * `PAUSED` 를 노랑 배경 + 잉크 글자로 그린다. 그 차이를 props 로 받는다.
- */
-export function StatusPill({
-  background,
-  color,
-  border = "1px solid #14171C",
-  children,
-}: {
-  background: string;
-  color: string;
-  border?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        height: "40px",
-        padding: "0 14px",
-        border,
-        background,
-        color,
-        font: "700 13px/1 'IBM Plex Mono', ui-monospace, monospace",
-        letterSpacing: "0.08em",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-/** 상태 알약 안의 점. `Main.dc.html` 의 `tb-live` 클래스를 그대로 쓴다. */
-export function LiveDot({ className }: { className?: string }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" className={className}>
-      <circle cx="6" cy="6" r="5" fill="currentColor" />
-    </svg>
   );
 }

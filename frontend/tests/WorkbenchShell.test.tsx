@@ -81,7 +81,9 @@ describe("일곱 국면이 같은 껍데기를 쓴다 (SC-003 · FR-217)", () =>
       expect(el("[data-workbench-phase-bar]"), phase).not.toBeNull();
       expect(el("[data-workbench-target]"), phase).not.toBeNull();
       expect(el("[data-workbench-step-panel]"), phase).not.toBeNull();
-      expect(screen.getByText("TEST BUILDER"), phase).toBeTruthy();
+      // 008 — 확정 디자인이 제품 표시를 「ITB」로 그린다. 헤더가 56px 로 내려온 만큼
+      // 표시도 줄었다. 단언 대상은 그대로다 — 모든 국면에 제품 표시가 있는가.
+      expect(screen.getByText("ITB"), phase).toBeTruthy();
       view.unmount();
     }
   });

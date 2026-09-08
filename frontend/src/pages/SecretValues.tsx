@@ -153,7 +153,7 @@ export function SecretValues({
       >
         <div className="row" style={{ gap: 8 }}>
           <strong>보관된 변수</strong>
-          <span className="badge">{data?.names.length ?? 0}</span>
+          <span className="chip">{data?.names.length ?? 0}</span>
         </div>
 
         {(data?.names.length ?? 0) === 0 ? (
@@ -165,7 +165,7 @@ export function SecretValues({
             {data?.names.map((entry) => (
               <li key={entry.name} className="row" style={{ gap: 8 }}>
                 <span className="mono">{entry.name}</span>
-                <span className="badge pass">보관됨</span>
+                <span className="chip pass">보관됨</span>
                 <span className="spacer" />
                 <button
                   className="ghost"

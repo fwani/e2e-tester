@@ -127,7 +127,7 @@ export function LocatorPriorityTable({
         <strong className="mono" style={{ fontSize: 11, letterSpacing: "0.08em" }}>
           {title}
         </strong>
-        <span className={`badge ${usable >= 2 ? "pass" : "warn"}`}>
+        <span className={`chip ${usable >= 2 ? "pass" : "warn"}`}>
           사용 가능 후보 {usable}
         </span>
         <span className="spacer" />
@@ -212,7 +212,7 @@ export function LocatorPriorityTable({
                   {row.value ?? "수집되지 않음"}
                 </td>
                 <td style={{ padding: "0 14px 0 0", textAlign: "right" }}>
-                  {!missing && <span className={`badge ${tone(state)}`}>{state}</span>}
+                  {!missing && <span className={`chip ${tone(state)}`}>{state}</span>}
                 </td>
               </tr>
             );

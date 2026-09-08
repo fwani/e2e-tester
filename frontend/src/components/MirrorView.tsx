@@ -53,7 +53,7 @@ export function MirrorView({
           className="row"
           style={{ gap: 8, padding: "6px 14px", background: "var(--sunken-2)" }}
         >
-          <span className="badge warn mono">1 FPS</span>
+          <span className="chip warn mono">1 FPS</span>
           <span className="muted">{degradedReason}</span>
         </div>
       )}
@@ -114,7 +114,7 @@ function PhaseNotice({ phase, tabIndex }: { phase: MirrorPhase; tabIndex?: numbe
       }}
     >
       {asBadge ? (
-        <span className="badge mono">{notice.title}</span>
+        <span className="chip mono">{notice.title}</span>
       ) : (
         <strong>
           {notice.title}

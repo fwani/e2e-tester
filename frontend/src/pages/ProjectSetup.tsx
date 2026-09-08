@@ -282,9 +282,9 @@ function ProjectRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontWeight: 600, fontSize: 16 }}>{item.name}</span>
-          {item.origin === "external" && <span className="badge">외부 위치</span>}
+          {item.origin === "external" && <span className="chip">외부 위치</span>}
           {!item.accessible && (
-            <span className="badge fail">열 수 없음</span>
+            <span className="chip fail">열 수 없음</span>
           )}
         </div>
         <div
@@ -539,7 +539,7 @@ function FolderPicker({
             >
               📁 {e.name}
             </button>
-            {e.is_project && <span className="badge">프로젝트</span>}
+            {e.is_project && <span className="chip">프로젝트</span>}
             {e.is_project && (
               <button className="secondary" disabled={busy} onClick={() => onPick(e.path)}>
                 열기

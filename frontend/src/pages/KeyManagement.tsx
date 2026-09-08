@@ -199,13 +199,13 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       >
         <div className="row" style={{ gap: 8 }}>
           <strong>키 상태</strong>
-          <span className={`badge ${hasKeys ? "pass" : "warn"}`}>
+          <span className={`chip ${hasKeys ? "pass" : "warn"}`}>
             {hasKeys ? "준비됨" : "없음"}
           </span>
-          {protectedKey && <span className="badge">암호구 보호</span>}
+          {protectedKey && <span className="chip">암호구 보호</span>}
           {/* 보호 여부와 **지금 열려 있는지**는 다른 정보다. 둘 다 보여야 한다. */}
           {protectedKey && (
-            <span className={`badge ${unlocked ? "pass" : "warn"}`}>
+            <span className={`chip ${unlocked ? "pass" : "warn"}`}>
               {unlocked ? "열림" : "잠김"}
             </span>
           )}

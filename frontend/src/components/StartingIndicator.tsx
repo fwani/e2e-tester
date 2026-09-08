@@ -43,7 +43,7 @@ export function StartingIndicator({
         color: "var(--ink-2)",
       }}
     >
-      <span className="badge">STARTING</span>
+      <span className="chip">STARTING</span>
       <p style={{ margin: 0, fontSize: 13 }}>{message}</p>
       {slow && (
         <p className="dim" style={{ margin: 0, fontSize: 11.5, textAlign: "center" }}>
