@@ -344,3 +344,17 @@ open docs/design/008-visual-language/conformance/<Screen>.md
 
 **Checkpoint**: 이 여섯이 끝나면 기계가 셀 수 있는 것은 전부 센다. 남는 것은 L3 판정
 54항목뿐이며 그것은 사람의 몫이다 (DC-C).
+
+---
+
+## Phase 9: Convergence
+
+**수렴 2회차 (2026-09-08).** 1회차의 6건은 전부 닫혔다 — 셋은 실물 위반을 심어 실제로
+실패하는 것을 확인했다. **HIGH 이상 0건.** 남은 셋은 문을 완전히 잠그는 일이다.
+
+- [ ] T089 `frontend/tests/VisualLanguage.test.tsx` 에 **G-3 을 구현한다** per `contracts/visual-language.md` §4 · C-8 (missing). 계약이 축으로 정해 놓고 구현이 없다 — `Finding` 타입과 라벨 표에 `G-3` 이 있지만 그것을 만드는 코드가 없어서, 화면이 정본에 없는 클래스를 써도 아무도 모른다. 화면 파일의 `className` **문자열 리터럴 부분**에서 클래스 이름을 뽑아 정본이 선언한 것뿐인지 센다. `` className={`chip ${variant}`} `` 의 `${…}` 는 클래스 이름이 아니라 식이므로 통째로 버린다 — 그 계산된 변형은 `theme/tone.ts` 의 `as const` 표가 좁히고 「정본이 형태 27종을 전부 선언한다」 검사가 받친다. **그 한계를 주석에 적는다.** 실측: 지금 쓰이는 82종 전부가 정본에 있어 고아 0건이므로 이 검사는 통과 상태로 붙는다. 붙인 뒤 **일부러 없는 클래스를 심어 실패하는지 확인한다** (SC-405 의 규칙 — 0건이 세는 쪽 고장일 수 있다)
+- [ ] T090 `frontend/src/theme/tokens.css` 의 파생 구획에서 **`.card` 를 지운다** per C-4 · FR-266 (unrequested). 008 이전 `tokens.css` 에서 딸려 온 것을 파생 층으로 옮기며 남았고 **아무 화면도 쓰지 않는다.** 소비처 없는 값은 G-6 이 예외에 대해 막는 것과 같은 종류다 — 다음 사람이 「이건 왜 있지」를 묻게 된다. 지운 뒤 검사와 L1 을 다시 돌린다 (정본이 바뀌면 L1 보고서가 낡는다)
+- [ ] T091 `specs/008-visual-language/baseline.md` 에 **이 기능이 실제로 만든 파일 목록**을 적는다 per `plan.md` Structure Decision (partial). 계획은 신규 파일이 셋(`theme/exceptions.ts`·`tests/VisualLanguage.test.tsx`·`scripts/design_render.py`)이라 했으나 실제로는 여덟이다 — `scripts/extract_canon.py`(정본 추출) · `frontend/scripts/count-violations.mjs`(세는 규칙의 정의처) · `src/theme/tone.ts`(뜻→형태 매핑) · `tests/CanonMatchesDesign.test.ts`(L1) · `tests/TestListFilters.test.tsx`(FR-272 가드)가 더 생겼다. 다섯 다 요구사항이 요구한 것이지만 계획의 목록과 어긋나므로 **무엇을 왜 더 만들었는지** 남긴다. `plan.md` 는 고치지 않는다 (converge 의 계약)
+
+**Checkpoint**: 이 셋이 끝나면 계약의 가드 축 6개가 전부 구현되고, 정본에 소비처 없는
+값이 0이 되며, 만든 것과 계획한 것의 차이가 기록된다. 남는 것은 L3 판정 54항목뿐이다.
