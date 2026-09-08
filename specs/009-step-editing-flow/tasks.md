@@ -36,7 +36,7 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 | `insertStep` 호출처 | **0** | 관찰 M-03 |
 | `rowActions` 전달 화면 | **0** | 관찰 M-08 |
 | Step 을 3칸 내리는 조작 수 (편집 화면) | **6** | 관찰 M-05 · SC-503 |
-| Step 하나 지우는 조작 수 | **3** | 관찰 M-07 · SC-504 |
+| Step 삭제 시 목록↔팔레트 왕복 | **1건** (횟수는 2회 — `baseline.md` §2-2) | 관찰 M-07 · SC-504 |
 | 순서 변경 시 화면의 Step 목록 수 (일시정지) | **2** | 관찰 M-06 · SC-505 |
 | 요소 지목 없이 Step 을 넣는 방법 | **없음** | 관찰 M-02 · SC-501 |
 | Step 삭제 확인 절차 | **없음** | 확인 상태를 가진 화면은 `TestList.tsx` 뿐 · FR-302 |
@@ -49,8 +49,8 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 **Purpose**: SC-501~SC-505 가 "몇 회에서 몇 회로 줄었는가"를 주장하므로, 줄기 전의 값을
 실측으로 남긴다. 기준선이 틀리면 이후 판정이 전부 틀린다.
 
-- [ ] T001 위 기준선 표의 8개 지표를 실측해 `specs/009-step-editing-flow/baseline.md` 에 남긴다. 조작 횟수는 **실제로 눌러 보고** 센다 (편집 화면에서 5번 Step 을 8번 자리로 내리기 · Step 하나 지우기). 표에 적힌 값과 다르면 그 차이를 먼저 조사한다
-- [ ] T002 [P] 회귀 기준선을 남긴다 — `cd backend && uv run pytest -m "not browser and not timing" -q` 와 `cd frontend && npm test -- --run` 의 통과 건수를 `baseline.md` 에 적는다. 이후 모든 단계에서 이 수가 줄면 회귀다
+- [X] T001 위 기준선 표의 8개 지표를 실측해 `specs/009-step-editing-flow/baseline.md` 에 남긴다. 조작 횟수는 **실제로 눌러 보고** 센다 (편집 화면에서 5번 Step 을 8번 자리로 내리기 · Step 하나 지우기). 표에 적힌 값과 다르면 그 차이를 먼저 조사한다
+- [X] T002 [P] 회귀 기준선을 남긴다 — `cd backend && uv run pytest -m "not browser and not timing" -q` 와 `cd frontend && npm test -- --run` 의 통과 건수를 `baseline.md` 에 적는다. 이후 모든 단계에서 이 수가 줄면 회귀다
 
 **Checkpoint**: 무엇이 몇 회였는지가 파일에 남았다.
 
@@ -181,7 +181,7 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 - [ ] T049 [P] [US3] `docs/design/008-visual-language/*.dc.html` 중 행을 그리는 8장(`Main`·`Paused`·`Run`·`Record`·`Takeover`·`AiWriting`·`Result`·`StepDetail`)의 **마크업**에 칸 5 를 그린다. `Main` 장에는 「이 앞에 추가」 선택 자리와 「미저장」 칩도 함께 넣는다 (계약 §6 의 2번)
 - [ ] T050 [P] [US3] `docs/design/008-visual-language/conformance/*.md` 의 같은 8장 대조표에 칸 5 행을 추가하고, `docs/design/008-visual-language/replacement-map.md` 의 정본 클래스 목록에 `.srow-ops` 를 더한다 (계약 §6 의 4·5번)
 - [ ] T051 [P] [US3] `frontend/tests/StepRowActions.test.tsx` — 5번을 8번으로 옮기는 데 「아래로」 3회로 끝나는지(SC-503), 첫 행·마지막 행의 방향이 비활성이고 이유를 말하는지, 삭제가 확인을 거치는지, **화면에 Step 목록이 하나만 있는지**(SC-505), 키보드만으로 모든 행 조작에 도달하고 접근 가능한 이름이 「〈이름〉 위로」·「〈이름〉 아래로」인지(SC-507), 실행 중과 결과 화면에서 비활성인지(SC-508 · FR-308)
-- [ ] T052 [US3] [quickstart.md](./quickstart.md) 「US3」 절 전체를 실측하고 조작 횟수를 `baseline.md` 대비로 적는다 — SC-503 은 3회, SC-504 는 행 1회 + 확인 1회를 요구한다
+- [ ] T052 [US3] [quickstart.md](./quickstart.md) 「US3」 절 전체를 실측하고 조작 횟수를 `baseline.md` 대비로 적는다 — SC-503 은 3회, SC-504 는 왕복 0건과 확인 없는 경로 0건을 요구한다(횟수가 아니다)
 
 **Checkpoint**: 세 이야기가 전부 독립으로 동작한다.
 
