@@ -22,6 +22,7 @@ python fixtures/sample-app/serve.py --port 4300
 | `nameless.html` | 접근 가능한 이름이 전혀 없는 요소만 (003 AS-016) |
 | `lazy.html` | **2초 뒤 목록을 그린다.** 그 전에는 같은 텍스트의 스켈레톤 행 2개 (004 US2) |
 | `late-visible.html` | **DOM 에 붙어 있지만 1초 뒤 보이게 되는 버튼** (004 FR-112) |
+| `nested.html` | **클릭이 닿는 노드가 조작 주체가 아닌 버튼** — `button > span`, 아이콘만 있는 버튼, `a > div > span`, `[role=button] > div > span`. 같은 구조를 두 벌 둬서 위치 경로가 우연히 유일해지지 않게 했다 |
 
 ## 이상 경로 (003 T011)
 

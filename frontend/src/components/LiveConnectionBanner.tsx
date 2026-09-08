@@ -21,22 +21,15 @@ export function LiveConnectionBanner({ onReconnect }: LiveConnectionBannerProps)
   return (
     <div
       role="status"
-      style={{
-        background: "var(--warn-tint)",
-        color: "var(--ink)",
-        borderBottom: "var(--rule) solid var(--ink)",
-        padding: "10px 24px",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-      }}
+      className="tint-warn"
+      style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 12 }}
     >
       <span style={{ flex: 1 }}>
         <strong>실시간 연결이 끊겼습니다.</strong> 조작한 내용은 서버에 계속 기록되고
         있습니다 — 화면만 멈춰 있습니다. 자동으로 다시 연결하는 중입니다.
       </span>
       {onReconnect && (
-        <button className="ghost" onClick={onReconnect}>
+        <button className="btn sm" onClick={onReconnect}>
           지금 다시 연결
         </button>
       )}

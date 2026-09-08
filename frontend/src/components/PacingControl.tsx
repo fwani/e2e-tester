@@ -50,21 +50,13 @@ export function PacingControl({
 }: PacingControlProps) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <span
-        style={{
-          font: "600 12px/1 'IBM Plex Sans KR', system-ui, sans-serif",
-          color: "#6B675C",
-          letterSpacing: "0.04em",
-        }}
-      >
-        {manipulationPhase ? "다음 실행 속도" : "속도"}
-      </span>
+      <span className="lbl">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
       <div
         role="group"
         aria-label="실행 속도"
-        style={{ display: "inline-flex", border: "3px solid #14130F", background: "#FFFDF6" }}
+        className="segmented"
       >
-        {PACING_ORDER.map((pacing, index) => {
+        {PACING_ORDER.map((pacing) => {
           const active = pacing === value;
           return (
             <button
@@ -76,16 +68,7 @@ export function PacingControl({
               onClick={() => {
                 if (!active) onChange(pacing);
               }}
-              style={{
-                height: "40px",
-                padding: "0 12px",
-                border: "none",
-                borderLeft: index === 0 ? "none" : "2px solid #14130F",
-                background: active ? "#F5D000" : "transparent",
-                color: disabled ? "#9A968B" : "#14130F",
-                cursor: busy || disabled ? "default" : "pointer",
-                font: `${active ? 700 : 500} 13px/1 'IBM Plex Sans KR', system-ui, sans-serif`,
-              }}
+              style={{ padding: "0 12px", cursor: busy || disabled ? "default" : "pointer" }}
             >
               {PACING_LABEL[pacing]}
             </button>
@@ -95,11 +78,8 @@ export function PacingControl({
       {!preferenceSaved && (
         <span
           role="status"
-          style={{
-            font: "500 11px/1.3 'IBM Plex Sans KR', system-ui, sans-serif",
-            color: "#8A5A00",
-            maxWidth: "180px",
-          }}
+          className="why warn-ink"
+          style={{ maxWidth: "180px" }}
         >
           설정을 저장하지 못해 다음 실행에는 유지되지 않습니다.
         </span>

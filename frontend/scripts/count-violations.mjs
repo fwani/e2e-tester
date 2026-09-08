@@ -1,0 +1,162 @@
+#!/usr/bin/env node
+/**
+ * 시각 언어 위반 계수기 — 008 T001.
+ *
+ * `contracts/visual-language.md` §4 의 축 G-1·G-2 와 팔레트 이탈을 **파일별로** 센다.
+ * 검사(`tests/VisualLanguage.test.tsx`)와 **같은 판정 규칙**을 쓰며, 이 파일이 규칙의
+ * 정의처다 — 검사는 여기서 내보내는 함수를 부른다. 두 곳에 규칙을 두면 그것 자체가
+ * 이 기능이 고치려는 결함이다.
+ *
+ *     node frontend/scripts/count-violations.mjs           # 사람이 읽는 표
+ *     node frontend/scripts/count-violations.mjs --json    # 사실만
+ *     node frontend/scripts/count-violations.mjs --lines    # 파일:줄 전부
+ *
+ * 왜 수치가 아니라 `파일:줄` 을 내는가 — FR-279. 수치만 보고하는 검사는 고칠 곳을
+ * 알려주지 못한다. V-09 가 정확히 그 형태였다.
+ */
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative, resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+export const SRC_ROOT = resolve(HERE, "..", "src");
+export const REPO_ROOT = resolve(HERE, "..", "..");
+
+/**
+ * G-1 — 색 리터럴. 어떤 표기든 잡는다.
+ *
+ * `#14171C` 도 `rgb(20,23,28)` 도 같은 값이므로 표기를 바꿔 빠져나갈 수 없어야 한다.
+ * 002 라운드가 정규식을 빠져나간 하드 그림자 1건을 뒤늦게 찾은 전례가 있다.
+ */
+const COLOR = /#[0-9A-Fa-f]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/g;
+
+/**
+ * G-2 — 시각 언어 속성의 인라인 선언.
+ *
+ * 목록은 `contracts/visual-language.md` §2 C-7 이 정본이다. 배치 속성(§2 허용 목록)은
+ * 여기에 없다 — 그것은 007 배치 계약의 관할이고, 클래스로 옮기면 `Record<Phase, …>` 의
+ * 컴파일 시점 강제를 잃는다 (research R3).
+ */
+const VISUAL_PROPS = [
+  "background",
+  "backgroundColor",
+  "backgroundImage",
+  "border",
+  "borderTop",
+  "borderRight",
+  "borderBottom",
+  "borderLeft",
+  "borderColor",
+  "borderRadius",
+  "borderStyle",
+  "borderWidth",
+  "boxShadow",
+  "color",
+  "font",
+  "fontFamily",
+  "fontSize",
+  "fontWeight",
+  "fontStyle",
+  "letterSpacing",
+  "lineHeight",
+  "textDecoration",
+  "textTransform",
+  "opacity",
+  "outline",
+];
+const VISUAL_PROP = new RegExp(`(?<![A-Za-z])(${VISUAL_PROPS.join("|")})\\s*:`, "g");
+
+/** 정본이 선언하는 색. `tokens.css` 에서 읽는다 — 목록을 두 곳에 두지 않는다. */
+export function canonColors() {
+  const css = readFileSync(join(SRC_ROOT, "theme", "tokens.css"), "utf8");
+  return new Set((css.match(/#[0-9a-fA-F]{6}\b/g) ?? []).map((c) => c.toUpperCase()));
+}
+
+/** 검사 대상 열거. 손으로 적지 않는다 — 새 파일이 자동으로 대상이 된다 (V-09 의 원인 제거). */
+export function screenFiles(root = SRC_ROOT) {
+  const out = [];
+  for (const name of readdirSync(root)) {
+    const p = join(root, name);
+    if (statSync(p).isDirectory()) out.push(...screenFiles(p));
+    else if (name.endsWith(".tsx")) out.push(p);
+  }
+  return out.sort();
+}
+
+/**
+ * 한 파일의 위반을 줄 단위로 낸다.
+ *
+ * 주석은 제외한다 — 주석 안의 `#F2F4F7` 은 근거를 적은 것이지 화면에 나가는 값이 아니다.
+ * 002 의 `DesignTokens.test.tsx` 가 같은 이유로 주석을 걷어내고 단언한다.
+ */
+export function scan(text, palette) {
+  const stripped = text
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/\/\/[^\n]*/g, (m) => m.replace(/[^\n]/g, " "));
+  const lines = stripped.split("\n");
+  const found = [];
+  lines.forEach((line, i) => {
+    for (const m of line.matchAll(COLOR)) {
+      const value = m[0];
+      const hex = /^#/.test(value) ? value.toUpperCase() : null;
+      found.push({
+        line: i + 1,
+        axis: "G-1",
+        value,
+        offPalette: hex !== null && palette !== undefined && !palette.has(hex),
+      });
+    }
+    for (const m of line.matchAll(VISUAL_PROP)) {
+      found.push({ line: i + 1, axis: "G-2", value: m[1], offPalette: false });
+    }
+  });
+  return found;
+}
+
+export function report(files = screenFiles(), palette = canonColors()) {
+  const rows = [];
+  for (const file of files) {
+    const found = scan(readFileSync(file, "utf8"), palette);
+    if (found.length === 0) continue;
+    rows.push({
+      file: relative(REPO_ROOT, file),
+      color: found.filter((f) => f.axis === "G-1").length,
+      inline: found.filter((f) => f.axis === "G-2").length,
+      offPalette: [...new Set(found.filter((f) => f.offPalette).map((f) => f.value.toUpperCase()))],
+      found,
+    });
+  }
+  const offPalette = [...new Set(rows.flatMap((r) => r.offPalette))].sort();
+  return {
+    total: {
+      color: rows.reduce((s, r) => s + r.color, 0),
+      inline: rows.reduce((s, r) => s + r.inline, 0),
+      offPaletteKinds: offPalette.length,
+    },
+    offPalette,
+    rows,
+  };
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const r = report();
+  if (process.argv.includes("--json")) {
+    console.log(JSON.stringify(r, (k, v) => (k === "found" ? undefined : v), 2));
+  } else if (process.argv.includes("--lines")) {
+    for (const row of r.rows)
+      for (const f of row.found)
+        console.log(
+          `${row.file}:${f.line} — ${f.axis === "G-1" ? "색 리터럴" : "인라인"} '${f.value}'` +
+            `${f.offPalette ? " [팔레트 밖]" : ""} (${f.axis})`,
+        );
+  } else {
+    console.log(`${"파일".padEnd(46)}${"색".padStart(5)}${"인라인".padStart(8)}  팔레트 밖`);
+    for (const row of [...r.rows].sort((a, b) => b.color - a.color))
+      console.log(
+        `${row.file.padEnd(46)}${String(row.color).padStart(5)}${String(row.inline).padStart(8)}  ${row.offPalette.join(" ")}`,
+      );
+    console.log(
+      `${"합계".padEnd(46)}${String(r.total.color).padStart(5)}${String(r.total.inline).padStart(8)}  ${r.total.offPaletteKinds}종`,
+    );
+  }
+}

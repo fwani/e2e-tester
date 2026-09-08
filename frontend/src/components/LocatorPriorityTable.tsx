@@ -124,41 +124,31 @@ export function LocatorPriorityTable({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div className="row" style={{ gap: 8 }}>
-        <strong className="mono" style={{ fontSize: 11, letterSpacing: "0.08em" }}>
-          {title}
-        </strong>
-        <span className={`badge ${usable >= 2 ? "pass" : "warn"}`}>
+        <strong className="lbl">{title}</strong>
+        <span className={`chip ${usable >= 2 ? "pass" : "warn"}`}>
           사용 가능 후보 {usable}
         </span>
         <span className="spacer" />
         {onRepick && (
-          <button className="secondary" disabled={busy || repicking} onClick={onRepick}>
+          <button className="btn sm" disabled={busy || repicking} onClick={onRepick}>
             {repicking ? "브라우저에서 클릭 대기 중…" : "다시 집기"}
           </button>
         )}
       </div>
 
       {repicking && (
-        <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+        <p className="why" style={{ margin: 0 }}>
           실제 브라우저 창에서 대상 요소를 클릭하세요. 그 클릭은 Step 으로 기록되지
           않습니다.
         </p>
       )}
 
       {/*
-        `StepInspector.dc.html` 의 표. 행 높이 46px, 순번 20px, 후보 이름 118px,
-        구분선 2px, 바깥 테두리 3px + 6px 하드 그림자. 첫 행(사용 중)은 #EAF5EE,
-        최후 수단(CSS)은 #F6F4EE 로 구분한다.
+        008 — 형태는 정본의 `.table` 이 갖는다. 지금 쓰이는 줄과 최후 수단(CSS)을 옅은
+        바탕으로 구분하는 규칙은 그대로다 — **순서 자체가 정보**이므로(원칙 IV) 어느
+        줄이 쓰이는지 표에서 바로 읽혀야 한다.
       */}
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          border: "3px solid #14130F",
-          background: "#FFFDF6",
-          boxShadow: "6px 6px 0 #14130F",
-        }}
-      >
+      <table className="table pane">
         <thead>
           <tr>
             <th style={{ width: 20 }} />
@@ -176,42 +166,17 @@ export function LocatorPriorityTable({
             return (
               <tr
                 key={row.kind}
-                style={{
-                  height: 46,
-                  borderTop: i === 0 ? "none" : "2px solid #DCD8CC",
-                  background: inUse ? "#EAF5EE" : last ? "#F6F4EE" : undefined,
-                }}
+                className={inUse ? "in-use" : last ? "last-resort" : undefined}
               >
-                <td
-                  style={{
-                    padding: "0 0 0 14px",
-                    font: "700 13px/1 'IBM Plex Mono', ui-monospace, monospace",
-                    color: "#6B675C",
-                  }}
-                >
+                <td className="num" style={{ padding: "0 0 0 14px" }}>
                   {i + 1}
                 </td>
-                <td
-                  style={{
-                    padding: "0 12px",
-                    font: `${missing ? 600 : 700} 13px/1 'IBM Plex Sans KR', system-ui, sans-serif`,
-                    color: missing ? "#9A968A" : undefined,
-                  }}
-                >
-                  {row.label}
-                </td>
-                <td
-                  style={{
-                    padding: "0 12px",
-                    font: "400 13px/1 'IBM Plex Mono', ui-monospace, monospace",
-                    wordBreak: "break-all",
-                    color: missing ? "#9A968A" : undefined,
-                  }}
-                >
+                <td className={missing ? "dim" : "strong-sm"}>{row.label}</td>
+                <td className={`mono${missing ? " dim" : ""}`} style={{ wordBreak: "break-all" }}>
                   {row.value ?? "수집되지 않음"}
                 </td>
                 <td style={{ padding: "0 14px 0 0", textAlign: "right" }}>
-                  {!missing && <span className={`badge ${tone(state)}`}>{state}</span>}
+                  {!missing && <span className={`chip ${tone(state)}`}>{state}</span>}
                 </td>
               </tr>
             );

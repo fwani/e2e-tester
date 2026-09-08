@@ -74,15 +74,15 @@ export function SecretValues({
   return (
     <main style={{ maxWidth: 720, margin: "32px auto", padding: "0 16px" }}>
       <div className="row" style={{ gap: 8, marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontFamily: "var(--font-display)" }}>비밀 값</h1>
+        <h1 className="title" style={{ margin: 0 }}>비밀 값</h1>
         <span className="spacer" />
         {onManageKeys && (
-          <button className="secondary" onClick={onManageKeys}>
+          <button className="btn" onClick={onManageKeys}>
             키 관리
           </button>
         )}
         {onClose && (
-          <button className="secondary" onClick={onClose}>
+          <button className="btn" onClick={onClose}>
             닫기
           </button>
         )}
@@ -91,12 +91,8 @@ export function SecretValues({
       {mismatched && (
         <p
           role="alert"
-          style={{
-            padding: "8px 10px",
-            background: "var(--fail-tint)",
-            color: "var(--fail-dark)",
-            border: "2px solid var(--fail)",
-          }}
+          className="tint-fail fail-ink"
+          style={{ padding: "8px 10px" }}
         >
           공개키가 교체되었습니다. 기존 암호문은 새 키로 읽을 수 없으므로 **모든 값을 다시
           입력**해야 합니다.
@@ -106,12 +102,8 @@ export function SecretValues({
       {error !== null && (
         <p
           role="alert"
-          style={{
-            padding: "8px 10px",
-            background: "var(--fail-tint)",
-            color: "var(--fail-dark)",
-            border: "2px solid var(--fail)",
-          }}
+          className="tint-fail fail-ink"
+          style={{ padding: "8px 10px" }}
         >
           <ErrorNotice error={error} />
         </p>
@@ -120,51 +112,42 @@ export function SecretValues({
       {notice !== null && (
         <p
           role="status"
-          style={{
-            padding: "8px 10px",
-            background: "var(--warn-tint)",
-            border: "2px solid var(--warn)",
-          }}
+          className="tint-warn"
+          style={{ padding: "8px 10px" }}
         >
           {notice}
         </p>
       )}
 
       {missing.length > 0 && (
-        <p className="muted" style={{ fontSize: 12.5 }}>
+        <p className="line muted">
           아직 값이 없는 변수: <span className="mono">{missing.join(", ")}</span>. 값이
           없으면 해당 Step 이 사유와 함께 실패합니다.
         </p>
       )}
 
       <section
-        style={{
-          border: "3px solid var(--ink)",
-          background: "var(--paper)",
-          padding: 14,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
+        className="pane"
+        style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8 }}
       >
         <div className="row" style={{ gap: 8 }}>
           <strong>보관된 변수</strong>
-          <span className="badge">{data?.names.length ?? 0}</span>
+          <span className="chip">{data?.names.length ?? 0}</span>
         </div>
 
         {(data?.names.length ?? 0) === 0 ? (
-          <p className="dim" style={{ margin: 0, fontSize: 12 }}>
+          <p className="why" style={{ margin: 0 }}>
             보관된 값이 없습니다.
           </p>
         ) : (
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+          <ul className="line" style={{ margin: 0, paddingLeft: 18 }}>
             {data?.names.map((entry) => (
               <li key={entry.name} className="row" style={{ gap: 8 }}>
                 <span className="mono">{entry.name}</span>
-                <span className="badge pass">보관됨</span>
+                <span className="chip pass">보관됨</span>
                 <span className="spacer" />
                 <button
-                  className="ghost"
+                  className="navlink"
                   disabled={busy}
                   onClick={() => {
                     setBusy(true);
@@ -184,16 +167,14 @@ export function SecretValues({
           </ul>
         )}
 
-        <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+        <p className="why" style={{ margin: 0 }}>
           값은 어떤 화면에도 표시되지 않습니다. 서버에 값을 돌려주는 경로가 없습니다.
         </p>
       </section>
 
       <section
-        style={{
-          border: "3px solid var(--ink)",
-          background: "var(--surface-soft)",
-          padding: 14,
+        className="pane sunken"
+          style={{ padding: 14,
           marginTop: 16,
           display: "flex",
           flexDirection: "column",
@@ -217,7 +198,7 @@ export function SecretValues({
           onChange={(e) => setValue(e.target.value)}
           autoComplete="off"
         />
-        <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+        <p className="why" style={{ margin: 0 }}>
           입력한 값은 공개키로 즉시 봉인되어 저장됩니다. 비밀키는 필요하지 않습니다.
           같은 이름으로 다시 넣으면 이전 값을 대체합니다.
         </p>

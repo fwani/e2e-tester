@@ -8,13 +8,12 @@ import { initialLocation, useScreenUrl } from "./hooks/useScreenUrl";
 
 import { project, sessions, type ProjectView, type SessionView } from "./api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
-import { CreateTest } from "./pages/CreateTest";
+import { ComposeView } from "./pages/ComposeView";
 import { KeyManagement } from "./pages/KeyManagement";
 import { ProjectSetup } from "./pages/ProjectSetup";
-import { RunResult } from "./pages/RunResult";
+import { ResultView } from "./pages/ResultView";
 import { SecretValues } from "./pages/SecretValues";
-import { TestDefinition } from "./pages/TestDefinition";
-import { AiCompose } from "./pages/AiCompose";
+import { EditView } from "./pages/EditView";
 import { SessionScreen } from "./pages/SessionScreen";
 import { TestList } from "./pages/TestList";
 
@@ -22,7 +21,14 @@ type Screen =
   | { name: "loading" }
   | { name: "setup" }
   | { name: "list" }
-  | { name: "create" }
+  /**
+   * 만들기 국면 (2회차 · FR-217b·FR-259).
+   *
+   * 1회차의 `create` 와 `ai-compose` 두 화면을 **하나로 합친 것**이다. 방법을 고르고
+   * 지시문을 쓰는 일이 같은 화면 안에서 일어나므로 중간 상태가 없다 — 그것이
+   * SC-011(껍데기가 바뀌는 횟수 0)의 뜻이다.
+   */
+  | { name: "compose" }
   | {
       name: "runner";
       session: SessionView;
@@ -38,9 +44,13 @@ type Screen =
        */
       returnToEdit?: { testId: string; stepId: string | null } | null;
     }
-  /** AI 지시문 작성. 확정 디자인이 독립 artboard 로 정의한다 (DC-008). */
-  | { name: "ai-compose"; startUrl: string }
-  | { name: "result"; testId: string }
+  /**
+   * 결과 국면. `focusStepId` 는 **국면을 넘어 유지되는 지목**이다 (007 FR-239 · S-10).
+   *
+   * 세션에서 결과로 넘어올 때 보던 Step 을 함께 넘긴다 — 이전에는 `onShowResult` 가
+   * 테스트 식별자만 날라서, 사용자는 결과 화면에서 그 Step 을 다시 찾아야 했다.
+   */
+  | { name: "result"; testId: string; focusStepId?: string | null }
   | { name: "definition"; testId: string; focusStepId?: string | null }
   | { name: "keys" }
   | { name: "secrets" };
@@ -95,7 +105,7 @@ export function App() {
         // 있어 다시 열 수는 있었지만, 사용자는 자기가 보던 화면을 잃었다.
         const at = initialLocation();
         if (at.name === "result" && at.testId) {
-          setScreen({ name: "result", testId: at.testId });
+          setScreen({ name: "result", testId: at.testId, focusStepId: at.stepId ?? null });
         } else if (at.name === "definition" && at.testId) {
           setScreen({
             name: "definition",
@@ -128,11 +138,16 @@ export function App() {
       sessionId: screen.name === "runner" ? screen.session.session_id : null,
       // 006 FR-181 — 지목된 Step 도 주소에 남긴다. 새로고침해도 고치러 온 Step 을 잃지
       // 않는다.
-      stepId: screen.name === "definition" ? (screen.focusStepId ?? null) : null,
+      // 007 FR-239 — 지목한 Step 은 결과 국면에서도 주소에 남는다. 새로 고쳐도
+      // 보던 Step 을 잃지 않는다 (006 FR-181 을 결과 국면으로 넓힌 것).
+      stepId:
+        screen.name === "definition" || screen.name === "result"
+          ? (screen.focusStepId ?? null)
+          : null,
     },
     (loc) => {
       if (loc.name === "result" && loc.testId) {
-        setScreen({ name: "result", testId: loc.testId });
+        setScreen({ name: "result", testId: loc.testId, focusStepId: loc.stepId ?? null });
       } else if (loc.name === "definition" && loc.testId) {
         setScreen({
           name: "definition",
@@ -276,7 +291,7 @@ export function App() {
       {screen.name === "list" && (
         <TestList
           projectName={opened.name}
-          onCreate={() => setScreen({ name: "create" })}
+          onCreate={() => setScreen({ name: "compose" })}
           onRun={(testId) => startRun(testId)}
           pendingRunId={pendingRun}
           onRefreshSessions={refreshActive}
@@ -302,7 +317,7 @@ export function App() {
         U-01·U-06 이 되살아난다.
       */}
       {screen.name === "definition" && (
-        <TestDefinition
+        <EditView
           testId={screen.testId}
           focusStepId={screen.focusStepId ?? null}
           onRun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
@@ -310,6 +325,11 @@ export function App() {
             openBrowserAt(testId, stepIndex, stepId)
           }
           onOpenSession={openSession}
+          /* 007 FR-239 — 편집 ↔ 결과 왕복에서도 보던 Step 을 잃지 않는다. */
+          onShowResult={(testId, stepId) =>
+            setScreen({ name: "result", testId, focusStepId: stepId ?? null })
+          }
+          runPending={pendingRun !== null}
           onBack={() => setScreen({ name: "list" })}
         />
       )}
@@ -325,28 +345,27 @@ export function App() {
         />
       )}
 
-      {screen.name === "create" && (
-        <CreateTest
+      {screen.name === "compose" && (
+        <ComposeView
           project={opened}
           onCancel={() => setScreen({ name: "list" })}
+          /*
+            **세션 생성 경로를 새로 만들지 않는다** (FR-248 · 005 U-01·U-06).
+            아래 두 호출은 1회차에 `CreateTest`·`AiCompose` 가 부르던 것과 같다 —
+            화면이 하나로 합쳐졌을 뿐 경로는 그대로다.
+          */
           onRecord={(startUrl) => {
             void sessions
               .create({ mode: "record", start_url: startUrl })
               .then((session) => setScreen({ name: "runner", session }))
               .catch((exc: unknown) => setError(describeError(exc)));
           }}
-          // 지시문은 다음 화면에서 쓴다 — 확정 디자인의 「지시문 쓰기」다 (DC-008).
-          onWriteInstruction={(startUrl) => setScreen({ name: "ai-compose", startUrl })}
-        />
-      )}
-
-      {screen.name === "ai-compose" && (
-        <AiCompose
-          startUrl={screen.startUrl}
-          onCancel={() => setScreen({ name: "create" })}
-          onStarted={(session, aiInstruction) =>
-            setScreen({ name: "runner", session, aiInstruction })
-          }
+          onStartAi={(startUrl, aiInstruction) => {
+            void sessions
+              .create({ mode: "ai", start_url: startUrl, ai_instruction: aiInstruction })
+              .then((session) => setScreen({ name: "runner", session, aiInstruction }))
+              .catch((exc: unknown) => setError(describeError(exc)));
+          }}
         />
       )}
 
@@ -371,14 +390,17 @@ export function App() {
                 : { name: "list" },
             );
           }}
-          onShowResult={(testId) => setScreen({ name: "result", testId })}
+          onShowResult={(testId, stepId) =>
+            setScreen({ name: "result", testId, focusStepId: stepId ?? null })
+          }
           onRerun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
         />
       )}
 
       {screen.name === "result" && (
-        <RunResult
+        <ResultView
           testId={screen.testId}
+          focusStepId={screen.focusStepId ?? null}
           onRunAll={(testId) => startRun(testId)}
           onRunFrom={(testId, stepIndex) => startRun(testId, stepIndex)}
           runPending={pendingRun !== null}

@@ -50,23 +50,17 @@ export function MirrorView({
 
       {degradedReason !== null && (
         <div
-          className="row"
-          style={{ gap: 8, padding: "6px 14px", background: "var(--surface-soft)" }}
+          className="row sunken"
+          style={{ gap: 8, padding: "6px 14px" }}
         >
-          <span className="badge warn mono">1 FPS</span>
+          <span className="chip warn mono">1 FPS</span>
           <span className="muted">{degradedReason}</span>
         </div>
       )}
 
       <div
-        style={{
-          flex: 1,
-          display: "grid",
-          placeItems: "center",
-          background: "var(--paper-alt)",
-          overflow: "hidden",
-          minHeight: 0,
-        }}
+        className="sunken"
+        style={{ flex: 1, display: "grid", placeItems: "center", overflow: "hidden", minHeight: 0 }}
       >
         {stoppedReason !== null ? (
           <p className="muted" style={{ textAlign: "center", padding: 24 }}>
@@ -106,15 +100,11 @@ function PhaseNotice({ phase, tabIndex }: { phase: MirrorPhase; tabIndex?: numbe
 
   return (
     <div
-      className="row"
-      style={{
-        gap: 8,
-        padding: "10px 14px",
-        background: phase === "manipulation" ? "var(--warn-tint)" : "var(--surface)",
-      }}
+      className={`row${phase === "manipulation" ? " tint-warn" : ""}`}
+      style={{ gap: 8, padding: "10px 14px" }}
     >
       {asBadge ? (
-        <span className="badge mono">{notice.title}</span>
+        <span className="chip mono">{notice.title}</span>
       ) : (
         <strong>
           {notice.title}

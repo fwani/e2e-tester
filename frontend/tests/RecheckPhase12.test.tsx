@@ -10,12 +10,13 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { MirrorView } from "../src/components/MirrorView";
-import { RunnerPaused } from "../src/pages/RunnerPaused";
+import { SessionWorkbench } from "../src/pages/SessionScreen";
 import { TestList } from "../src/pages/TestList";
+import { sessionProps } from "./helpers/session";
+import { sessionView } from "./helpers/workbench";
 import { isRunning } from "../src/lib/sessionState";
 import { pausedAfterLabel, sessionTitle } from "../src/lib/wording";
 import type { SessionState, SessionView } from "../src/api/client";
@@ -47,64 +48,73 @@ function steps(n: number): Step[] {
   })) as unknown as Step[];
 }
 
+/**
+ * 일시정지·검토 국면의 `SessionWorkbench` 속성 (007 이행 2).
+ *
+ * 옛 `RunnerPaused` 는 「초안」·「검토」 같은 판정을 개별 prop 으로 받았다. 통합 뒤에는
+ * **세션 뷰가 국면을 정한다** — `persisted` 는 `test_id` 의 유무이고 `review` 는
+ * `state: "review"` 다. 재는 성질은 같고 입력이 사실로 바뀌었을 뿐이다.
+ */
 function pausedProps(overrides: Record<string, unknown> = {}) {
-  return {
-    title: "TC-001",
-    authoring: "record" as const,
-    steps: steps(7),
-    currentStepIndex: 5,
-    currentUrl: "http://127.0.0.1:4300/projects.html",
-    mirror: <div />,
-    mirroredTab: 0,
-    busy: false,
-    review: false,
-    editWarnings: [],
-    saveName: "",
-    selectedStepId: null,
-    reordering: false,
-    outcomeOf: () => "pending" as const,
+  const o = overrides as Record<string, never> & {
+    persisted?: boolean;
+    review?: boolean;
+    savedAt?: string | null;
+    hasUnsavedChanges?: boolean;
+    title?: string;
+    steps?: Step[];
+    currentStepIndex?: number;
+  };
+  const {
+    persisted = true,
+    review = false,
+    savedAt = null,
+    hasUnsavedChanges = false,
+    title,
+    steps: stepList,
+    currentStepIndex,
+    ...rest
+  } = o;
+  return sessionProps({
+    view: sessionView({
+      state: review ? "review" : "paused",
+      test_id: persisted ? (title ?? "TC-001") : null,
+      steps: stepList ?? steps(7),
+      current_step_index: currentStepIndex ?? 5,
+      saved_at: savedAt,
+      has_unsaved_changes: hasUnsavedChanges,
+    }),
+    outcomeOf: () => "pending",
     durationOf: () => undefined,
-    onSaveNameChange: noop,
-    onSave: noop,
-    onResume: noop,
-    onStop: noop,
-    onRunFrom: noop,
-    onEditStep: noop,
-    onDeleteStep: noop,
-    onSelectStep: noop,
-    onToggleReorder: noop,
-    onApplyReorder: noop,
-    onRecordActionsStart: noop,
-    onRecordActionsStop: noop,
-    onAddAssertion: noop,
-    onNaturalLanguage: noop,
-    testId: "TC-001",
-    ...overrides,
-  } as unknown as ComponentProps<typeof RunnerPaused>;
+    saveName: "",
+    ...(rest as Record<string, unknown>),
+  });
 }
+
+/** 조작 식별자로 버튼을 집는다 — 해소 방법 링크와 부딪히지 않는다. */
+const act = (id: string) =>
+  document.querySelector(`button[data-action="${id}"]`) as HTMLButtonElement | null;
 
 // ─── T112 — 재실행 세션 제목의 「초안」 (U-03-a · FR-134) ────────────────────
 
 describe("T112 저장된 테스트의 재실행 세션은 초안이 아니다 (FR-134 · U-03-a)", () => {
   it("이 세션에서 저장하지 않았어도 정의 파일이 있으면 초안이 아니다", () => {
     // 재점검이 본 상태 그대로 — 재실행 세션은 `saved_at` 이 없다.
-    render(<RunnerPaused {...pausedProps({ persisted: true, savedAt: null })} />);
+    render(<SessionWorkbench {...pausedProps({ persisted: true, savedAt: null })} />);
     expect(screen.queryByText(/초안/)).toBeNull();
     expect(screen.getByText("TC-001 · 저장됨")).toBeTruthy();
   });
 
   it("아직 파일이 없는 녹화는 초안이다 — 「초안」을 없애는 것이 목적이 아니다", () => {
     render(
-      <RunnerPaused
-        {...pausedProps({ title: "새 테스트", testId: "TC-000", persisted: false, savedAt: null })}
-      />,
+      <SessionWorkbench {...pausedProps({ persisted: false, savedAt: null })} />,
     );
     expect(screen.getByText("새 테스트 초안")).toBeTruthy();
   });
 
   it("저장된 테스트에 저장하지 않은 편집이 남으면 「저장됨」을 단정하지 않는다", () => {
     render(
-      <RunnerPaused
+      <SessionWorkbench
         {...pausedProps({ persisted: true, savedAt: null, hasUnsavedChanges: true })}
       />,
     );
@@ -124,73 +134,56 @@ describe("T112 저장된 테스트의 재실행 세션은 초안이 아니다 (F
 // ─── T113 — 중지 결과 화면 (U-03-a · FR-133 · ui-contract §8) ───────────────
 
 describe("T113 중지 결과 화면은 저장 프롬프트가 아니다 (FR-133 · U-03-a)", () => {
-  const stopResult = {
+  /** 중지로 끝난 세션. 결말 요약은 국면 띠가 하나만 갖는다 (FR-218d). */
+  const stopped = {
+    review: true,
     summary: "중지 · Step 06 에서 중지 · 5 / 7 통과 · 3.21 s",
-    stoppedStepIndex: 5,
+    onShowResult: noop,
     onRerunAll: noop,
-    onRerunFromStop: noop,
-    onBack: noop,
+    onRerunFrom: noop,
+    onShowList: noop,
   };
 
   it("ui-contract §8 의 다음 행동 네 개가 모두 있다 — 이전에는 셋이었다", () => {
-    render(
-      <RunnerPaused
-        {...pausedProps({
-          review: true,
-          persisted: true,
-          savedAt: null,
-          hasChangesToSave: false,
-          stopResult,
-          onShowResult: noop,
-        })}
-      />,
-    );
-    expect(screen.getByRole("button", { name: "결과 자세히 보기" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "처음부터 실행" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Step 06부터 실행" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "목록으로" })).toBeTruthy();
+    render(<SessionWorkbench {...pausedProps({ ...stopped })} />);
+    // 네 개가 **모두 눌린다.** 이전에는 셋만 있었고, 없던 하나가 결과 경로였다.
+    for (const id of ["result.show", "run.all", "run.from", "nav.back"]) {
+      expect(act(id), id).not.toBeNull();
+      expect(act(id)!.disabled, id).toBe(false);
+    }
+    // 시작 지점이 라벨에 드러난다 (FR-236 · 005 FR-149).
+    expect(act("run.from")!.textContent).toBe("Step 06부터 실행");
   });
 
-  it("저장된 테스트의 결말 화면에는 이름 입력칸과 「저장」이 없다 (§8 금지 4)", () => {
-    render(
-      <RunnerPaused
-        {...pausedProps({
-          review: true,
-          persisted: true,
-          savedAt: null,
-          hasChangesToSave: false,
-          stopResult,
-          onShowResult: noop,
-        })}
-      />,
+  /**
+   * **007 이 이 단정을 바꿨다.** 005 ui-contract §8 금지 4 는 「결말 화면에 저장
+   * 프롬프트를 두지 말라」였다. 금지의 이유는 저장이 결말 화면 **맨 아래 자리**를
+   * 차지해 "지금 해야 할 일" 로 읽힌 것이었다.
+   *
+   * 통합 뒤에는 결말 화면이 따로 없다. 저장은 국면 보조 영역의 도구로 살고, 저장할
+   * 것이 없으면 FR-234 가 요구하는 대로 **이유를 붙여 비활성으로** 남는다. 사용자가
+   * 그것을 해야 할 일로 읽지 않는다는 성질은 유지되고, "왜 못 누르지" 에 답이 생겼다.
+   */
+  it("저장된 테스트의 결말 화면에서 저장은 비활성이고 이유가 붙는다 (§8 금지 4 의 대체)", () => {
+    render(<SessionWorkbench {...pausedProps({ ...stopped, savedAt: null })} />);
+    const save = act("save")!;
+    expect(save.disabled).toBe(true);
+    expect(document.querySelector("[data-disabled-reason='save']")?.textContent).toContain(
+      "테스트 이름",
     );
-    expect(screen.queryByLabelText("테스트 이름")).toBeNull();
-    expect(screen.queryByRole("button", { name: /^저장$/ })).toBeNull();
   });
 
   it("이름 없는 녹화를 중지한 결말 화면에는 저장이 남는다 — 감추면 기록이 사라진다", () => {
     render(
-      <RunnerPaused
-        {...pausedProps({
-          title: "새 테스트",
-          review: true,
-          persisted: false,
-          savedAt: null,
-          stopResult,
-        })}
-      />,
+      <SessionWorkbench {...pausedProps({ ...stopped, persisted: false, savedAt: null })} />,
     );
     expect(screen.getByLabelText("테스트 이름")).toBeTruthy();
   });
 
   it("결말 화면이 아니면 저장 자리를 걷지 않는다 (FR-156 은 비활성을 요구한다)", () => {
     render(
-      <RunnerPaused
-        {...pausedProps({
-          persisted: true,
-          savedAt: "2026-09-07T05:00:00Z",
-          hasChangesToSave: false,
-        })}
+      <SessionWorkbench
+        {...pausedProps({ persisted: true, savedAt: "2026-09-07T05:00:00Z", saveName: "TC-001" })}
       />,
     );
     const button = screen.getByRole("button", { name: "변경 저장" });
@@ -358,11 +351,11 @@ describe("T121 실패한 Step 을 건너뛰는 별도 조작이 화면에 있다
 
   it("실패가 있으면 「계속하기」와 **다른** 버튼이 나온다", () => {
     const onSkip = vi.fn();
-    render(<RunnerPaused {...pausedProps({ ...failing, onResumeSkippingFailure: onSkip })} />);
-    const resume = screen.getByRole("button", { name: /계속하기$/ });
-    expect((resume as HTMLButtonElement).disabled).toBe(true);
-    const skip = screen.getByRole("button", { name: "실패한 Step 건너뛰고 계속" });
-    expect((skip as HTMLButtonElement).disabled).toBe(false);
+    render(<SessionWorkbench {...pausedProps({ ...failing, onResumeSkippingFailure: onSkip })} />);
+    expect(act("run.resume")!.disabled).toBe(true);
+    const skip = act("run.resumeSkipFailure")!;
+    expect(skip.textContent).toBe("실패한 Step 건너뛰고 계속");
+    expect(skip.disabled).toBe(false);
     fireEvent.click(skip);
     // **인자를 넘기지 않는다** (T129). 건너뛸 Step 은 서버가 스스로 찾으므로
     // (`sessions.py:resume` 의 `first_failed_index()`) 화면이 인덱스를 실어 보내면
@@ -372,21 +365,31 @@ describe("T121 실패한 Step 을 건너뛰는 별도 조작이 화면에 있다
   });
 
   it("누르기 전에 결말이 「부분 성공」이 된다는 사실을 말한다", () => {
-    render(<RunnerPaused {...pausedProps({ ...failing, onResumeSkippingFailure: noop })} />);
+    render(<SessionWorkbench {...pausedProps({ ...failing, onResumeSkippingFailure: noop })} />);
     expect(screen.getByText(/부분 성공/)).toBeTruthy();
     expect(screen.getByText(/Step 06 을 건너뛰고 다음 Step 부터 이어갑니다/)).toBeTruthy();
   });
 
-  it("실패가 없으면 그 버튼을 두지 않는다 — 건너뛸 것이 없다", () => {
-    render(<RunnerPaused {...pausedProps({ onResumeSkippingFailure: noop })} />);
-    expect(screen.queryByRole("button", { name: "실패한 Step 건너뛰고 계속" })).toBeNull();
+  it("실패가 없으면 잠긴다 — 건너뛸 것이 없다", () => {
+    // 007 FR-234 — 감추지 않고 이유를 붙여 남긴다. 「없다」와 「지금은 안 된다」는
+    // 사용자에게 다른 뜻이고, 감추면 그 구별이 사라진다.
+    render(<SessionWorkbench {...pausedProps({ onResumeSkippingFailure: noop })} />);
+    expect(act("run.resumeSkipFailure")!.disabled).toBe(true);
+    expect(
+      document.querySelector("[data-disabled-reason='run.resumeSkipFailure']")?.textContent,
+    ).toContain("건너뛸 실패가 없습니다");
   });
 
-  it("검토 상태(브라우저 없음)에는 두지 않는다 — 이어갈 실행이 없다", () => {
+  it("검토 상태(브라우저 없음)에서는 잠긴다 — 이어갈 실행이 없다", () => {
     render(
-      <RunnerPaused {...pausedProps({ ...failing, review: true, onResumeSkippingFailure: noop })} />,
+      <SessionWorkbench
+        {...pausedProps({ ...failing, review: true, onResumeSkippingFailure: noop })}
+      />,
     );
-    expect(screen.queryByRole("button", { name: "실패한 Step 건너뛰고 계속" })).toBeNull();
+    expect(act("run.resumeSkipFailure")!.disabled).toBe(true);
+    expect(
+      document.querySelector("[data-disabled-reason='run.resumeSkipFailure']")?.textContent,
+    ).toContain("브라우저");
   });
 });
 
@@ -395,7 +398,7 @@ describe("T121 실패한 Step 을 건너뛰는 별도 조작이 화면에 있다
 describe("T122 멈춘 지점은 직전 Step 이다 (FR-138 · N-06)", () => {
   it("Step 5개를 녹화하고 멈추면 「Step 05 이후 정지」다", () => {
     // `currentStepIndex` 는 **다음에 실행할** 위치다. 5개를 마쳤으면 5 다.
-    render(<RunnerPaused {...pausedProps({ steps: steps(5), currentStepIndex: 5 })} />);
+    render(<SessionWorkbench {...pausedProps({ steps: steps(5), currentStepIndex: 5 })} />);
     expect(screen.getByText("Step 05 이후 정지")).toBeTruthy();
     expect(screen.queryByText("Step 06 이후 정지")).toBeNull();
   });

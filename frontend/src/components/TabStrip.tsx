@@ -20,19 +20,13 @@ export function TabStrip({ tabs, mirroredTabIndex, maxTabs, onSelect }: TabStrip
 
   return (
     <div
-      className="row"
-      style={{
-        gap: 4,
-        padding: "6px 8px",
-        background: "var(--surface)",
-        borderBottom: "1px solid var(--border)",
-        overflowX: "auto",
-      }}
+      className="row rule-bottom"
+      style={{ gap: 4, padding: "6px 8px", overflowX: "auto" }}
     >
       {open.map((tab) => (
         <button
           key={tab.tab_index}
-          className={tab.tab_index === mirroredTabIndex ? "" : "secondary"}
+          className={`btn sm${tab.tab_index === mirroredTabIndex ? " primary" : ""}`}
           aria-current={tab.tab_index === mirroredTabIndex ? "true" : undefined}
           onClick={() => onSelect(tab.tab_index)}
           style={{ whiteSpace: "nowrap", maxWidth: 220, overflow: "hidden" }}

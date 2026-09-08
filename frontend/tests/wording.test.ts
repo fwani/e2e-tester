@@ -16,7 +16,7 @@ import {
   partialRunDiagnosis,
   partialRunNotice,
   progressLabel,
-  runFromLabel,
+  runFromStepLabel,
   runSummary,
   skippedRange,
   stepLabel,
@@ -175,8 +175,10 @@ describe("진행 표시 (FR-139)", () => {
 
 describe("실행 트리거 라벨 (FR-149·FR-150)", () => {
   it("시작점이 라벨에 드러난다", () => {
-    expect(runFromLabel(5)).toBe("Step 06부터 실행");
-    expect(runFromLabel(0)).toBe("처음부터 실행");
+    expect(runFromStepLabel(5)).toBe("Step 06부터 실행");
+    // **0번도 번호로 부른다** (007 FR-235). 「처음부터 실행」은 `run.all` 만의 라벨이며,
+    // 통합 화면에서 둘은 같은 자리에 함께 있다.
+    expect(runFromStepLabel(0)).toBe("Step 01부터 실행");
   });
 
   it("건너뛰는 구간과 선행 상태 경고를 함께 안내한다", () => {

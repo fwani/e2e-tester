@@ -8,7 +8,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TestDefinition } from "../src/pages/TestDefinition";
+import { EditView } from "../src/pages/EditView";
 
 const verified = (value: string) => ({ value, status: "verified" });
 
@@ -115,8 +115,30 @@ function stubFetch(
 afterEach(() => vi.unstubAllGlobals());
 
 async function renderScreen(props: Record<string, unknown> = {}) {
-  render(<TestDefinition testId="TC-001" onBack={() => undefined} {...props} />);
+  render(<EditView testId="TC-001" onBack={() => undefined} {...props} />);
   await waitFor(() => expect(screen.getByText("비밀번호 입력")).toBeTruthy());
+}
+
+/**
+ * 조작 식별자로 버튼을 집는다 — 해소 방법 링크와 부딪히지 않는다.
+ *
+ * 007 통합 뒤 Step 을 대상으로 하는 조작은 **행마다 붙어 있지 않고** Step 패널 바닥
+ * 한 자리에 있다 (FR-235). 그래서 "그 Step 을 고른 뒤 그 조작을 누른다" 가 된다 —
+ * 일곱 국면에서 같은 방식이다 (FR-227).
+ */
+const action = (id: string) =>
+  document.querySelector(`button[data-action="${id}"]`) as HTMLButtonElement;
+
+/** 그 Step 의 **행**을 고른다. 상세 겹침에도 같은 이름이 있으므로 행으로 좁힌다. */
+function selectStep(stepId: string) {
+  const row = document.querySelector(`[data-step-row="${stepId}"] button`) as HTMLButtonElement;
+  act(() => row.click());
+}
+
+/** Step 02(「로그인 클릭」)를 고르고 지운다. */
+function deleteSecondStep() {
+  selectStep("step-02");
+  act(() => action("step.delete").click());
 }
 
 describe("편집 화면 — 브라우저 없이 (US1)", () => {
@@ -140,7 +162,7 @@ describe("편집 화면 — 브라우저 없이 (US1)", () => {
 
   it("민감 참조 값 칸은 읽기 전용이고 이유를 밝힌다 (FR-213)", async () => {
     await renderScreen();
-    act(() => screen.getByText("비밀번호 입력").click());
+    selectStep("step-01");
     await waitFor(() => expect(screen.getByLabelText("Step 입력값")).toBeTruthy());
 
     const input = screen.getByLabelText("Step 입력값") as HTMLInputElement;
@@ -150,20 +172,26 @@ describe("편집 화면 — 브라우저 없이 (US1)", () => {
 
   it("지시문을 '실행 대상이 아님' 과 함께 보여 준다 (FR-063·FR-064)", async () => {
     await renderScreen();
-    expect(screen.getByText(/실행 대상이 아닙니다/)).toBeTruthy();
-    expect(screen.getByText(/기록입니다. 편집 대상이 아닙니다/)).toBeTruthy();
+    // 지시문의 집은 `ai.compose` 조작 칸이다 (FR-235). 읽기 전용인 **이유**가 그 자리에서
+    // 「기록일 뿐」이라고 말한다 — 「끝난 실행이라 못 고친다」로 뭉개면 사용자는 언젠가
+    // 고칠 수 있는 것으로 읽는다.
+    const field = screen.getByLabelText("AI 지시문") as HTMLTextAreaElement;
+    expect(field.disabled).toBe(true);
+    expect(
+      document.querySelector("[data-disabled-reason='ai.compose']")?.textContent,
+    ).toMatch(/실행 대상이 아닙니다/);
   });
 
   it("Step 을 고르면 후보 우선순위 표를 보여 준다 (FR-019)", async () => {
     await renderScreen();
-    act(() => screen.getByText("로그인 클릭").click());
+    selectStep("step-02");
     await waitFor(() => expect(screen.getByText("login-submit")).toBeTruthy());
     expect(screen.getByText("사용 중")).toBeTruthy();
   });
 
   it("결과 화면에서 지목한 Step 을 처음부터 펼친다 (FR-056·FR-180)", async () => {
     render(
-      <TestDefinition testId="TC-001" focusStepId="step-02" onBack={() => undefined} />,
+      <EditView testId="TC-001" focusStepId="step-02" onBack={() => undefined} />,
     );
     await waitFor(() => expect(screen.getByText("login-submit")).toBeTruthy());
   });
@@ -173,7 +201,7 @@ describe("변경 건수와 되돌리기 (FR-188~FR-190)", () => {
   it("변경할 때마다 건수가 늘고, 같은 Step 의 연속 편집은 하나로 센다", async () => {
     stubFetch();
     await renderScreen();
-    act(() => screen.getByText("비밀번호 입력").click());
+    selectStep("step-01");
     await waitFor(() => expect(screen.getByLabelText("Step 표시 이름")).toBeTruthy());
 
     const label = screen.getByLabelText("Step 표시 이름");
@@ -206,13 +234,15 @@ describe("변경 건수와 되돌리기 (FR-188~FR-190)", () => {
     stubFetch();
     await renderScreen();
 
-    act(() => screen.getByLabelText("Step 02 삭제").click());
+    deleteSecondStep();
     await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
     // 삭제는 미리보기에도 반영된다.
-    expect(screen.queryByText("로그인 클릭")).toBeNull();
+    expect(document.querySelector('[data-step-row="step-02"]')).toBeNull();
 
-    act(() => screen.getByText("변경 전부 되돌리기").click());
-    await waitFor(() => expect(screen.getByText("로그인 클릭")).toBeTruthy());
+    act(() => action("edits.revert").click());
+    await waitFor(() =>
+      expect(document.querySelector('[data-step-row="step-02"]')).not.toBeNull(),
+    );
     expect((screen.getByText("변경 저장") as HTMLButtonElement).disabled).toBe(true);
   });
 });
@@ -222,7 +252,7 @@ describe("저장 (FR-193·FR-194)", () => {
     const calls = stubFetch();
     await renderScreen();
 
-    act(() => screen.getByLabelText("Step 02 삭제").click());
+    deleteSecondStep();
     await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
     act(() => screen.getByText("변경 저장 (1건)").click());
 
@@ -243,12 +273,12 @@ describe("저장 (FR-193·FR-194)", () => {
     const calls = stubFetch();
     await renderScreen();
 
-    act(() => screen.getByLabelText("Step 02 삭제").click());
+    deleteSecondStep();
     await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
     act(() => screen.getByText("변경 저장 (1건)").click());
     await waitFor(() => expect(screen.getByText(/저장했습니다/)).toBeTruthy());
 
-    act(() => screen.getByLabelText("Step 02 삭제").click());
+    deleteSecondStep();
     await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
     act(() => screen.getByText("변경 저장 (1건)").click());
     await waitFor(() => {
@@ -262,7 +292,7 @@ describe("저장 (FR-193·FR-194)", () => {
     stubFetch();
     const onRun = vi.fn();
     render(
-      <TestDefinition
+      <EditView
         testId="TC-001"
         focusStepId="step-02"
         onRun={onRun}
@@ -288,14 +318,14 @@ describe("브라우저가 필요한 편집 (US3 · FR-202·FR-203)", () => {
     stubFetch();
     const onOpenBrowserAt = vi.fn();
     await renderScreen({ onOpenBrowserAt });
-    act(() => screen.getByText("로그인 클릭").click());
+    selectStep("step-02");
     await waitFor(() => expect(screen.getByText("login-submit")).toBeTruthy());
 
     expect(
       screen.getByText(/살아 있는 화면에서만 다시 집을 수 있습니다/),
     ).toBeTruthy();
-    const button = screen.getByText("브라우저 열어 Step 02 에서 멈추기");
-    act(() => button.click());
+    // 「가는 길」 버튼은 **대상 앱 영역**에 하나 있다 (T079 · FR-244).
+    act(() => action("browser.openAt").click());
     // 세션이 끝난 뒤 이 Step 으로 돌아오기 위해 id 도 함께 넘긴다 (FR-204).
     expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1, "step-02");
   });
@@ -304,7 +334,7 @@ describe("브라우저가 필요한 편집 (US3 · FR-202·FR-203)", () => {
     const calls = stubFetch();
     const onOpenBrowserAt = vi.fn();
     await renderScreen({ onOpenBrowserAt });
-    act(() => screen.getByText("로그인 클릭").click());
+    selectStep("step-02");
     await waitFor(() => expect(screen.getByText("login-submit")).toBeTruthy());
 
     const label = screen.getByLabelText("Step 표시 이름");
@@ -325,13 +355,13 @@ describe("저장하지 않은 변경 보호 (US4 · FR-208)", () => {
   it("변경이 있으면 이탈 시 건수를 밝힌 확인을 거친다", async () => {
     stubFetch();
     const onBack = vi.fn();
-    render(<TestDefinition testId="TC-001" onBack={onBack} />);
+    render(<EditView testId="TC-001" onBack={onBack} />);
     await waitFor(() => expect(screen.getByText("비밀번호 입력")).toBeTruthy());
 
-    act(() => screen.getByLabelText("Step 02 삭제").click());
+    deleteSecondStep();
     await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
 
-    act(() => screen.getByText("목록으로").click());
+    act(() => action("nav.back").click());
     expect(onBack).not.toHaveBeenCalled();
     expect(screen.getByText("저장하지 않은 변경 1건이 있습니다")).toBeTruthy();
 
@@ -342,10 +372,10 @@ describe("저장하지 않은 변경 보호 (US4 · FR-208)", () => {
   it("변경이 없으면 확인 없이 바로 나간다 — 물어볼 것이 없을 때 묻지 않는다", async () => {
     stubFetch();
     const onBack = vi.fn();
-    render(<TestDefinition testId="TC-001" onBack={onBack} />);
+    render(<EditView testId="TC-001" onBack={onBack} />);
     await waitFor(() => expect(screen.getByText("비밀번호 입력")).toBeTruthy());
 
-    act(() => screen.getByText("목록으로").click());
+    act(() => action("nav.back").click());
     expect(onBack).toHaveBeenCalled();
     expect(screen.queryByText(/저장하지 않은 변경/)).toBeNull();
   });
@@ -369,7 +399,7 @@ describe("외부 변경 충돌 (US4 · FR-209)", () => {
     );
     await renderScreen();
 
-    act(() => screen.getByLabelText("Step 02 삭제").click());
+    deleteSecondStep();
     await waitFor(() => expect(screen.getByText("변경 저장 (1건)")).toBeTruthy());
     act(() => screen.getByText("변경 저장 (1건)").click());
 
@@ -393,16 +423,24 @@ describe("실행 중이면 읽기 전용 (US5 · FR-206)", () => {
     const onOpenSession = vi.fn();
     await renderScreen({ onOpenSession });
 
-    expect(screen.getByText("실행 중이어서 편집할 수 없습니다")).toBeTruthy();
+    /*
+      **이유는 두 층으로 온다.** 화면 위의 알림이 한 번 말하고, 잠긴 조작마다 그 자리에서
+      다시 말한다 (FR-234). 둘 다 있어야 사용자가 "왜 이 버튼이 안 눌리지" 에 답을
+      찾는다 — 알림만 있으면 어떤 조작이 막혔는지 모르고, 이유만 있으면 화면 전체가
+      왜 이런지 모른다.
+    */
+    expect(screen.getAllByText("실행 중이어서 편집할 수 없습니다").length).toBeGreaterThan(0);
+    expect(action("session.open")).not.toBeNull();
+    expect(document.querySelector("[data-notice='not-editable']")).not.toBeNull();
     // 감추지 않았다 — 비활성이다.
-    expect((screen.getByLabelText("Step 02 삭제") as HTMLButtonElement).disabled).toBe(
-      true,
-    );
+    selectStep("step-02");
+    expect(action("step.delete").disabled).toBe(true);
     expect((screen.getByLabelText("테스트 이름") as HTMLInputElement).disabled).toBe(
       true,
     );
 
-    act(() => screen.getByText("실행 중인 세션 보기").click());
+    // 그 실행으로 가는 길은 **헤더에 하나** 있다 (FR-235). 알림은 그것을 가리키기만 한다.
+    act(() => action("session.open").click());
     expect(onOpenSession).toHaveBeenCalledWith("s-1");
   });
 });

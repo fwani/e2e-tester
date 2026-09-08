@@ -19,7 +19,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { RunResult } from "../src/pages/RunResult";
+import { ResultView } from "../src/pages/ResultView";
 import { TestList } from "../src/pages/TestList";
 import { stepLabel } from "../src/lib/wording";
 import type { RunResult as RunResultData } from "../src/types/generated/run-result";
@@ -90,7 +90,7 @@ describe("같은 실패가 세 곳에서 같은 번호로 보인다 (SC-216)", (
 
   it("결과 화면이 Step 06 이라고 말한다", async () => {
     vi.stubGlobal("fetch", jsonFetch({ "/result": failedResult() }));
-    render(<RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
+    render(<ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
 
     const shown = await screen.findAllByText(new RegExp(EXPECTED));
     expect(shown.length).toBeGreaterThan(0);

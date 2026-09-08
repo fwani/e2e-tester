@@ -1,0 +1,53 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "화면 16종" },
+    { "id": "page-2", "name": "시각 언어와 상태" }
+  ],
+  "artboards": [
+    { "file": "ProjectSetup.dc.html", "page": "page-1", "x": 0,    "y": 0,    "w": 1440, "h": 900, "title": "프로젝트 열기" },
+    { "file": "EmptyList.dc.html",    "page": "page-1", "x": 1560, "y": 0,    "w": 1440, "h": 900, "title": "테스트 목록 — 비어 있음" },
+    { "file": "TestList.dc.html",     "page": "page-1", "x": 3120, "y": 0,    "w": 1440, "h": 900, "title": "테스트 목록" },
+    { "file": "Create.dc.html",       "page": "page-1", "x": 4680, "y": 0,    "w": 1440, "h": 900, "title": "CRE · 만들기" },
+
+    { "file": "Record.dc.html",       "page": "page-1", "x": 0,    "y": 1020, "w": 1440, "h": 900, "title": "REC · 녹화" },
+    { "file": "AiWriting.dc.html",    "page": "page-1", "x": 1560, "y": 1020, "w": 1440, "h": 900, "title": "AI · 작성 중" },
+    { "file": "AiBlocked.dc.html",    "page": "page-1", "x": 3120, "y": 1020, "w": 1440, "h": 900, "title": "AI · 막힘" },
+    { "file": "Takeover.dc.html",     "page": "page-1", "x": 4680, "y": 1020, "w": 1440, "h": 900, "title": "TKO · 사람이 이어받기" },
+
+    { "file": "Run.dc.html",          "page": "page-1", "x": 0,    "y": 2040, "w": 1440, "h": 900, "title": "RUN · 실행 중" },
+    { "file": "Paused.dc.html",       "page": "page-1", "x": 1560, "y": 2040, "w": 1440, "h": 900, "title": "PAU · 일시정지" },
+    { "file": "Finished.dc.html",     "page": "page-1", "x": 3120, "y": 2040, "w": 1440, "h": 900, "title": "RUN · 실행 종료" },
+    { "file": "Result.dc.html",       "page": "page-1", "x": 4680, "y": 2040, "w": 1440, "h": 900, "title": "RES · 결과" },
+
+    { "file": "Main.dc.html",         "page": "page-1", "x": 0,    "y": 3060, "w": 1440, "h": 900, "title": "EDT · 편집" },
+    { "file": "StepDetail.dc.html",   "page": "page-1", "x": 1560, "y": 3060, "w": 1440, "h": 900, "title": "Step 상세 — 겹침 640" },
+    { "file": "Keys.dc.html",         "page": "page-1", "x": 3120, "y": 3060, "w": 1440, "h": 900, "title": "설정 · 키 관리" },
+    { "file": "Secrets.dc.html",      "page": "page-1", "x": 4680, "y": 3060, "w": 1440, "h": 900, "title": "설정 · 비밀 값" },
+
+    { "file": "Language.dc.html",     "page": "page-2", "x": 0,    "y": 0,    "w": 1440, "h": 1020, "title": "시각 언어 v2 — 계기판" },
+    { "file": "States.dc.html",       "page": "page-2", "x": 1560, "y": 0,    "w": 1440, "h": 1020, "title": "알림 · 오류 · 확인" }
+  ],
+  "annotations": [
+    {
+      "id": "note-scope", "page": "page-1", "x": 0, "y": -250, "w": 1000,
+      "text": "ITB 화면 전부 — 16종\n\n1행  프로젝트 열기 · 목록(비어 있음) · 목록 · 만들기\n2행  녹화 · AI 작성 중 · AI 막힘 · 사람이 이어받기\n3행  실행 중 · 일시정지 · 실행 종료 · 결과\n4행  편집 · Step 상세(겹침) · 키 관리 · 비밀 값\n\n2~4행 앞 12장이 통합 작업 화면의 국면들이다 — 껍데기는 같고 ③ 좌측의 세로 배분과 내용만 바뀐다. Step 상세는 어느 국면에서든 우측에서 640px 로 겹친다."
+    },
+    {
+      "id": "note-retire", "page": "page-1", "x": 1560, "y": -250, "w": 1100,
+      "text": "이 18장이 기존 디자인 19장을 폐기하고 대체한다\n\n폐기 대상\n  docs/design/*.dc.html            8종 (v1 확정)\n  docs/design/007-rework/*.dc.html 11종 (2회차 초안)\n\n대응은 replacement-map.md 가 갖는다. 옮기지 않은 것은 이유를 적었다.\n\n주의 — 코드는 아직 v1 이다. tokens.css · layout.ts · 컴포넌트의 전사된 인라인 값 · DesignTokens.test.tsx 가 v1 언어를 하드 단언하고 있어, 이 캔버스를 채택하면 그것들을 함께 고쳐야 한다."
+    },
+    {
+      "id": "note-shell", "page": "page-1", "x": 0, "y": 3960, "w": 1200,
+      "text": "껍데기 — 8 국면 공통\n\n① 헤더 56 · ② 국면 띠 48 · 알림 32(있을 때만) · ③ 좌측(대상 앱 슬롯 + 국면 작업 영역) + 우측 Step 패널 460 · Step 상세 겹침 640.\n\nv1 대비: 헤더 60→56 · 국면 띠 74→48 · 알림 47→32 · 조작 44→32 · Step 행 125→52. Step 패널 460 과 최소 기준 폭 1440 은 그대로 둔다.\n\n한 국면에서 ③-a 와 ③-b 가 동시에 fill 일 수 없다는 규칙(UC-100)은 그대로다."
+    },
+    {
+      "id": "note-lang", "page": "page-2", "x": 0, "y": -250, "w": 1100,
+      "text": "시각 언어 v2 — 「계기판」\n\n무게(3px 테두리 · 5px 하드 그림자 · Black Han Sans)로 만들던 위계를 대비와 정렬로 바꾼다. 왜: 실무 테스트는 20~50 Step 인데 v1 의 Step 행이 125px 라 900px 창에서 5행밖에 안 보였다. 경계에만 요소당 11px 를 썼기 때문이다.\n\n정보는 하나도 줄이지 않았다. 이름 · 동작 · 대상 · 값 · 소요 · 결말이 그대로 두 줄 52px 에 들어간다. 5행 → 13행.\n\n오른쪽 시트는 알림 · 오류 · 확인의 문구 규칙이다. 모든 안내가 「무슨 일이 일어났는가 + 다음에 무엇을 하면 되는가」 둘을 함께 말한다."
+    },
+    {
+      "id": "note-open", "page": "page-2", "x": 0, "y": 1120, "w": 1200,
+      "text": "아직 열려 있는 것\n\n· 다크 모드는 그리지 않았다. 라이트를 기준으로 정했고 토큰은 뒤집을 수 있게 짰다.\n· 목록의 검색을 「Step 안 locator 까지」로 그렸다 — 지금 제품에 없는 기능이므로 확인 필요.\n· 프로젝트 열기 화면의 「최근 연 프로젝트」와 「찾아보기」도 지금 제품에 없다. 확인 필요.\n· 키 관리의 세 가지 등록 경로(환경 변수 · CLI · 직접 입력)는 현재 동작을 그린 것이다."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

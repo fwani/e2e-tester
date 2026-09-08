@@ -15,7 +15,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { RunResult } from "../src/pages/RunResult";
+import { ResultView } from "../src/pages/ResultView";
+import { capabilityOf } from "../src/lib/capabilities";
+import { PHASES } from "../src/lib/phase";
+import { ALL_FACTS } from "./helpers/model";
 import { TestList } from "../src/pages/TestList";
 import { pendingFetch } from "./helpers/pending";
 import type { RunResult as RunResultData } from "../src/types/generated/run-result";
@@ -77,7 +80,7 @@ afterEach(() => {
 describe("결과 화면의 실행 버튼 (US1)", () => {
   it("실패 지점부터 실행 라벨에 시작 Step 번호가 있다 (FR-149·U-02)", async () => {
     vi.stubGlobal("fetch", mockResultFetch());
-    render(<RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
+    render(<ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
 
     // 실패 인덱스 5 → 사용자에게는 Step 06.
     const button = await screen.findByRole("button", { name: /Step 06부터 실행/ });
@@ -88,7 +91,7 @@ describe("결과 화면의 실행 버튼 (US1)", () => {
 
   it("누르기 전에 건너뛰는 구간과 선행 상태를 알린다 (FR-150·U-02)", async () => {
     vi.stubGlobal("fetch", mockResultFetch());
-    render(<RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
+    render(<ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
 
     await screen.findByRole("button", { name: /Step 06부터 실행/ });
     expect(screen.getByText(/01~05 는 건너뜁니다/)).toBeTruthy();
@@ -98,14 +101,25 @@ describe("결과 화면의 실행 버튼 (US1)", () => {
   it("실행 요청 중에는 두 버튼이 비활성이고 준비 문구를 말한다 (FR-127·FR-129·SC-214)", async () => {
     vi.stubGlobal("fetch", mockResultFetch());
     render(
-      <RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} runPending />,
+      <ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} runPending />,
     );
 
+    /*
+      007 이후 **라벨은 그대로 두고 이유를 옆에 붙인다** (FR-234). 이전에는 버튼 문구
+      자체가 「실행을 준비하는 중…」으로 바뀌었는데, 그러면 같은 자리의 같은 버튼이
+      상황에 따라 다른 이름을 갖게 되어 사용자가 무엇을 눌렀는지 배우기 어렵다.
+      재는 성질은 같다 — 두 버튼이 잠기고, 왜 잠겼는지가 화면에 있다.
+    */
     await waitFor(() => {
-      const buttons = screen.getAllByRole("button", { name: /실행을 준비하는 중/ });
-      // 「처음부터 실행」과 「Step 06부터 실행」 둘 다 잠긴다.
-      expect(buttons.length).toBe(2);
-      for (const b of buttons) expect((b as HTMLButtonElement).disabled).toBe(true);
+      for (const id of ["run.all", "run.from"]) {
+        const button = document.querySelector(`button[data-action="${id}"]`) as HTMLButtonElement;
+        expect(button, id).not.toBeNull();
+        expect(button.disabled, id).toBe(true);
+        expect(
+          document.querySelector(`[data-disabled-reason="${id}"]`)?.textContent,
+          id,
+        ).toContain("실행을 준비하는 중");
+      }
     });
   });
 
@@ -114,21 +128,50 @@ describe("결과 화면의 실행 버튼 (US1)", () => {
     const onRunAll = vi.fn();
     // 부모(App)의 in-flight 가드를 흉내 낸다 — 첫 호출 뒤 runPending 이 참이 된다.
     const { rerender } = render(
-      <RunResult testId="TC-002" onRunAll={onRunAll} onRunFrom={noop} onBack={noop} />,
+      <ResultView testId="TC-002" onRunAll={onRunAll} onRunFrom={noop} onBack={noop} />,
     );
     const button = await screen.findByRole("button", { name: "처음부터 실행" });
 
     await userEvent.click(button);
     rerender(
-      <RunResult testId="TC-002" onRunAll={onRunAll} onRunFrom={noop} onBack={noop} runPending />,
+      <ResultView testId="TC-002" onRunAll={onRunAll} onRunFrom={noop} onBack={noop} runPending />,
     );
-    const locked = screen.getAllByRole("button", { name: /실행을 준비하는 중/ });
-    for (const b of locked.slice(0, 1)) {
-      await userEvent.click(b).catch(() => undefined);
-      await userEvent.click(b).catch(() => undefined);
-    }
+    const locked = document.querySelector('button[data-action="run.all"]') as HTMLButtonElement;
+    expect(locked.disabled).toBe(true);
+    await userEvent.click(locked).catch(() => undefined);
+    await userEvent.click(locked).catch(() => undefined);
 
     expect(onRunAll).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * 007 T066 — **실행 진입이 국면과 무관하게 한 경로다** (FR-248·FR-249).
+ *
+ * 005 U-06 은 화면마다 in-flight 가드를 따로 두어 생겼다. 한 화면이 빠뜨리면 그
+ * 화면에서만 연타로 브라우저 창이 둘 떴다. 007 은 그 가드를 **권한표의 덮어쓰기 O1**
+ * 로 옮겼다 — 국면마다 적지 않으므로 빠뜨릴 국면이 없다.
+ */
+describe("실행 진입 중복 방지가 국면과 무관하다 (T066 · FR-248·FR-249)", () => {
+  const RUN_ACTIONS = ["run.all", "run.from"] as const;
+
+  it("실행 요청 중이면 어느 국면의 실행도 눌리지 않는다 (덮어쓰기 O1)", () => {
+    // 화면을 그려서 세지 않는다 — 국면마다 그리면 한 국면을 빠뜨리고, 빠뜨린 것이
+    // 정확히 U-06 의 형태다. 표를 직접 훑는다.
+    for (const phase of PHASES) {
+      for (const action of RUN_ACTIONS) {
+        const base = capabilityOf(phase, action, ALL_FACTS);
+        if (base.kind === "not_applicable") continue;
+        const pending = capabilityOf(phase, action, { ...ALL_FACTS, runPending: true });
+        expect(pending.kind, `${phase} × ${action}`).toBe("disabled");
+        if (pending.kind === "disabled") expect(pending.reason).toContain("준비");
+      }
+    }
+  });
+
+  it("브라우저 편집 세션도 같은 가드를 지난다 — 별도 경로를 만들지 않는다", () => {
+    const state = capabilityOf("editing", "browser.openAt", { ...ALL_FACTS, runPending: true });
+    expect(state.kind).toBe("disabled");
   });
 });
 
@@ -139,7 +182,7 @@ describe("응답이 오기 전의 화면 (FR-129 · U-11)", () => {
     const api = pendingFetch({ "/result": failedResult() });
     vi.stubGlobal("fetch", api.fetch);
 
-    render(<RunResult testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
+    render(<ResultView testId="TC-002" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
     await api.waitFor("/result");
 
     // 아직 결말을 모른다. 모르는 채로 「Step 06부터 실행」을 내주면 사용자는 존재하지
@@ -181,7 +224,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
 
     await screen.findByText("실패한 테스트");
-    expect(screen.getByRole("button", { name: /실행/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "실행" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
   });
 
@@ -191,7 +234,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
 
     await screen.findByText("실패한 테스트");
     expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /실행/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "실행" })).toBeTruthy();
   });
 
   it("중지·부분 성공 결말에서도 두 경로가 모두 있다 (FR-130)", async () => {
@@ -200,7 +243,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
       const view = render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
       await screen.findByText("실패한 테스트");
       expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
-      expect(screen.getByRole("button", { name: /실행/ })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "실행" })).toBeTruthy();
       view.unmount();
     }
   });

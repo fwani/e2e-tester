@@ -4,7 +4,7 @@
  * **002 에서 대상을 실제 렌더 경로로 옮겼다.** 전사 이후 어느 페이지도
  * `components/StepList.tsx` 를 임포트하지 않는데 이 가드는 그것을 재고 있었다 —
  * 통과하지만 아무것도 지키지 않는 상태였다 (converge 1회차가 잡았다).
- * 이제 페이지가 실제로 쓰는 `DesignStepRow` 를 200개 그려 잰다.
+ * 이제 페이지가 실제로 쓰는 `StepList` 를 200개 그려 잰다 (007 이행 3 — 단일 구현).
  *
  * 테스트당 Step 200개까지가 설계 상한이다 (plan.md Scale/Scope). 그 규모에서 목록이
  * 느려지면 일시정지 중 편집이 실용적이지 않게 된다 — 사용자는 Step 을 고르고 지우고
@@ -17,10 +17,11 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { DesignStepRow } from "../src/components/design/DesignStepList";
+import { StepList } from "../src/components/workbench/StepList";
+import type { WorkbenchStep } from "../src/components/workbench/model";
 import type { Step } from "../src/types/generated/step";
 
-/** 페이지가 목록을 그리는 방식과 같다 — 행 컴포넌트를 Step 수만큼 반복한다. */
+/** 일곱 국면이 쓰는 **그 목록**을 그대로 그린다. */
 function StepPanel({
   steps,
   pausedIndex = null,
@@ -28,18 +29,22 @@ function StepPanel({
   steps: Step[];
   pausedIndex?: number | null;
 }) {
+  const items: WorkbenchStep[] = steps.map((step, index) => ({
+    id: step.id,
+    index,
+    step,
+    label: step.label,
+    outcome: "pending",
+    durationMs: null,
+    isPausedHere: index === pausedIndex,
+  }));
   return (
-    <>
-      {steps.map((step, index) => (
-        <DesignStepRow
-          key={step.id}
-          index={index}
-          step={step}
-          outcome="pending"
-          paused={index === pausedIndex}
-        />
-      ))}
-    </>
+    <StepList
+      steps={items}
+      authoring="record"
+      focusedStepId={null}
+      onSelect={() => undefined}
+    />
   );
 }
 
@@ -99,6 +104,7 @@ describe("Step 패널 — 200개 규모 (실제 렌더 경로)", () => {
   it("일시정지 위치를 한 곳만 구분한다 (FR-034)", () => {
     const { container } = render(<StepPanel steps={makeSteps(200)} pausedIndex={100} />);
     // 구분은 목록에서 정확히 한 곳이다 — 여러 개면 어디서 멈췄는지 알 수 없다.
-    expect(container.querySelectorAll('[style*="border-left"]')).toHaveLength(1);
+    // 008 부터 모든 행이 결말 표식으로 왼쪽 테두리를 가지므로 속성으로 센다.
+    expect(container.querySelectorAll("[data-step-row][data-paused-here]")).toHaveLength(1);
   });
 });

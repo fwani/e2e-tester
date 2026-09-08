@@ -180,9 +180,11 @@ describe("ProjectSetup — 폴더 선택기 (DR-005)", () => {
 
     expect(await screen.findByText("📁 work")).toBeTruthy();
     expect(screen.getByText("📁 proj")).toBeTruthy();
-    // "프로젝트" 는 화면 제목에도 있다. 항목에 붙은 뱃지를 본다.
-    const badge = screen.getAllByText("프로젝트").find((el) => el.classList.contains("badge"));
-    expect(badge).toBeTruthy();
+    // "프로젝트" 는 화면 제목에도 있다. 항목에 붙은 상태 표식을 본다.
+    // 008 — 정본의 이름은 `.chip` 이다. 같은 형태에 이름이 둘이면(`.badge`) 어느 쪽이
+    // 기준인지 화면이 말하지 못한다 (FR-264 · C-4). 단언 대상은 그대로다.
+    const chip = screen.getAllByText("프로젝트").find((el) => el.classList.contains("chip"));
+    expect(chip).toBeTruthy();
   });
 
   it("홈 최상위에서는 위로 올라가는 수단이 없다", async () => {

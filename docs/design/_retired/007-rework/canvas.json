@@ -1,0 +1,167 @@
+{
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "A안 — 여덟 상태"
+    },
+    {
+      "id": "page-2",
+      "name": "검토한 대안 (B · C)"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "DirectionA.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1180,
+      "h": 860,
+      "page": "page-1",
+      "title": "규칙 — 세로 비율을 국면이 준다"
+    },
+    {
+      "file": "Create.dc.html",
+      "x": 0,
+      "y": 1120,
+      "w": 1440,
+      "h": 900,
+      "page": "page-1",
+      "title": "① 만들기 — 같은 셸로 흡수"
+    },
+    {
+      "file": "Record.dc.html",
+      "x": 1540,
+      "y": 1120,
+      "w": 1440,
+      "h": 900,
+      "page": "page-1",
+      "title": "② 녹화"
+    },
+    {
+      "file": "AiBlocked.dc.html",
+      "x": 3080,
+      "y": 1120,
+      "w": 1440,
+      "h": 900,
+      "page": "page-1",
+      "title": "③ AI 작성 — 막힘"
+    },
+    {
+      "file": "Takeover.dc.html",
+      "x": 4620,
+      "y": 1120,
+      "w": 1440,
+      "h": 900,
+      "page": "page-1",
+      "title": "④ 사람이 직접 조작"
+    },
+    {
+      "file": "Run.dc.html",
+      "x": 0,
+      "y": 2260,
+      "w": 1440,
+      "h": 900,
+      "page": "page-1",
+      "title": "⑤ 실행 중"
+    },
+    {
+      "file": "Paused.dc.html",
+      "x": 1540,
+      "y": 2260,
+      "w": 1440,
+      "h": 900,
+      "page": "page-1",
+      "title": "⑥ 일시정지 / 검토"
+    },
+    {
+      "file": "Result.dc.html",
+      "x": 3080,
+      "y": 2260,
+      "w": 1440,
+      "h": 900,
+      "page": "page-1",
+      "title": "⑦ 결과보기 — 「왜 멈췄나」가 424px 자리를 갖는다"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 4620,
+      "y": 2260,
+      "w": 1440,
+      "h": 900,
+      "page": "page-1",
+      "title": "⑧ 편집 — 작업 영역이 편집면을 갖는다"
+    },
+    {
+      "file": "DirectionB.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1180,
+      "h": 860,
+      "page": "page-2",
+      "title": "B안 — Step 상세를 붙박이 열로"
+    },
+    {
+      "file": "DirectionC.dc.html",
+      "x": 1280,
+      "y": 0,
+      "w": 1180,
+      "h": 860,
+      "page": "page-2",
+      "title": "C안 — 국면을 탭으로"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "note-diagnosis",
+      "x": 1280,
+      "y": 0,
+      "w": 1000,
+      "page": "page-1",
+      "text": "진단 — 007 통합 화면의 주/보조 역전\n\n007 은 「좌측 큰 영역 = 대상 앱」을 모든 국면에 고정했다. 세션이 있는 국면에서는 맞고, 편집·결과에서는 틀린다:\n· 편집 — 좌측 ≈700px 이 안내 2줄 + 버튼 1개. 편집 폼 전체는 그 아래 42px 띠.\n· 결과 — 실패 사유 두 줄만 42px 띠에. 「어떤 locator 를 얼마나 시도했나」는 겹침 상세를 열어야 보인다.\n· 만들기 — 셸이 3벌 (CreateTest 1000px 가운데 정렬 / AiCompose / Workbench).\n\n확정: A안. 규칙 하나 — 「③ 좌측의 세로 비율은 국면의 것」. 하단 영역 이름을 「국면 보조 영역」에서 「국면 작업 영역」으로 바꾼다."
+    },
+    {
+      "id": "note-flow-create",
+      "x": 0,
+      "y": 1000,
+      "w": 1440,
+      "page": "page-1",
+      "text": "만들기 흐름 ①→④ — 만들기는 셸의 국면으로 흡수된다. Step 목록은 0개여도 자리를 지킨다. 시작하면 국면 알약만 바뀌고 ③-a 미러가 남는 높이를 가져간다. 세션이 있는 세 국면(②③④)은 007 과 같다."
+    },
+    {
+      "id": "note-flow-loop",
+      "x": 0,
+      "y": 2140,
+      "w": 1440,
+      "page": "page-1",
+      "text": "실행·결과·편집 루프 ⑤→⑧ — 사용자가 하나의 테스트를 놓고 반복하는 일. ⑤⑥은 007 그대로(미러가 주 자리). ⑦⑧이 A안이 고치는 자리다: 결과는 「왜 멈췄나」를 424px 작업 영역에 두고(1회차에는 45% 상한에 갇혔다), 편집은 대상 앱 슬롯을 118px 로 줄이고 나머지를 편집면에 준다."
+    },
+    {
+      "id": "note-contract",
+      "x": 1280,
+      "y": 560,
+      "w": 1000,
+      "page": "page-1",
+      "text": "ui-contract 개정 항목 (A안 확정 시)\n1. §1-1 그림 — ③ 좌측을 「③-a 대상 앱 슬롯 + ③-b 국면 작업 영역」으로. 「세로 비율은 국면이 정한다」 한 줄 추가.\n2. FR-218a — 폭 규칙(좌측이 남는 폭)은 유지, 높이 규칙을 국면 표로 신설.\n3. FR-218e — 「없으면 자리를 차지하지 않는다」 유지. 명칭만 변경.\n4. §1-2 치수표 — B1~B10 추가 (승인 대상).\n5. §3 국면×조작 표 — 「만들기」 열 추가 (7→8 국면). ai.compose · ai.start · step.recordStart · test.rename · test.setStartUrl 활성.\n6. FR-244 유지 — 브라우저 여는 조작은 118px 슬롯 안에.\n7. 결과 국면 — 「시도한 LOCATOR」 표가 작업 영역에 상시 (실패 Step 고정). Step 상세의 표는 지목한 Step 의 것.\n8. replacement-map — Workbench.dc.html · CreateTest.dc.html → 007-rework 9종. AiCompose(undefined-states) 해소.\n\n코드 영향 — PhaseAside → WorkArea(높이 모델 `fill | px`), TargetPane 에 높이 인자, EditView 필드를 aside→work, CreateTest·AiCompose 를 Workbench 어댑터로."
+    },
+    {
+      "id": "note-b",
+      "x": 0,
+      "y": -150,
+      "w": 1180,
+      "page": "page-2",
+      "text": "B안 — 구조적으로 가장 깨끗하다(상세 구현 2벌·겹침 패널이 사라진다). 대신 최소 기준 폭 1440 → 1720 개정이 필요하고, 1440 창에서 실행 중 미러가 좁아진다. 넓은 모니터가 표준이 되면 다시 볼 안."
+    },
+    {
+      "id": "note-c",
+      "x": 1280,
+      "y": -150,
+      "w": 1180,
+      "page": "page-2",
+      "text": "C안 — 작업면은 가장 넓지만 「미러를 보면서 Step 을 고친다」는 동시성을 잃는다. Interactive Runner 의 핵심을 해치므로 채택하지 않았다."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

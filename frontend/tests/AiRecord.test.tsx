@@ -1,5 +1,5 @@
 /**
- * AI 작성 화면의 실패 표시. DR-016·DR-020 · SC-104·SC-105.
+ * AI 작성 국면의 실패 표시. DR-016·DR-020 · SC-104·SC-105.
  *
  * **이것이 이 라운드에서 가장 중요한 프런트엔드 회귀 테스트다.**
  *
@@ -14,98 +14,157 @@
  *
  * 그래서 여기서 확인하는 것은 "실패가 보인다" 가 아니라
  * **"세션 상태·메시지 유무와 무관하게 보인다"** 다.
+ *
+ * **007 이행 4** — `AiRecord` 화면이 사라지고 AI 작성 국면이 통합 화면의 한 상태가 됐다.
+ *
+ * **007 2회차** — 지시문 작성도 통합 화면의 한 상태(`composing` 국면)가 됐다.
+ * `AiCompose` 가 사라졌으므로 아래 「지시문 작성」 묶음을 `ComposeView` 대상으로
+ * 옮겼다. **검사를 지우지 않는다** — 검증하던 행동(지시문 자리가 있다 · 저장되지
+ * 않는다고 알린다 · 비면 시작할 수 없다)이 새 자리에서도 성립해야 한다 (헌법 게이트 4).
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ErrorInfo } from "../src/components/ErrorNotice";
 
-import { AiRecord } from "../src/pages/AiRecord";
+import { ComposeView } from "../src/pages/ComposeView";
+import { SessionWorkbench } from "../src/pages/SessionScreen";
+import { sessionProps } from "./helpers/session";
+import { sessionView } from "./helpers/workbench";
 
 /** 003 에서 오류 prop 이 문자열에서 ErrorInfo 로 바뀌었다 — 다음 행동을 함께 나르기 위해서다. */
 const failure = (message: string): ErrorInfo => ({
   message,
-  nextAction: "다시 시도하거나 직접 이어받으세요.",
+  // 001 FR-067 — 실패해도 그때까지의 Step 은 보존된다. 그 사실이 다음 행동에 실려 온다.
+  nextAction: "다시 시도하거나 직접 이어받으세요. 기록된 Step은 남아 있습니다.",
   category: "blocked",
   code: "UNKNOWN",
 });
 
-const base = {
-  instruction: "로그인한 다음 프로젝트를 만들어",
-  running: false,
-  steps: [],
-  messages: [] as string[],
-  error: null as ErrorInfo | null,
-  blocked: null,
-  saveName: "",
-  onSaveNameChange: () => undefined,
-  onSave: () => undefined,
-};
+function ai(overrides: Record<string, unknown> = {}, state = "ai_running") {
+  return sessionProps({
+    view: sessionView({
+      state: state as never,
+      authoring_mode: "ai",
+      test_id: null,
+      steps: [],
+    }),
+    aiInstruction: "로그인한 다음 프로젝트를 만들어",
+    outcomeOf: () => "recorded",
+    ...overrides,
+  });
+}
 
 const REASON =
   "언어모델 자격 증명을 찾을 수 없습니다. `ANTHROPIC_API_KEY` 를 환경 변수로 주세요.";
 
 afterEach(cleanup);
 
-describe("AiRecord — 실패는 언제나 보인다 (DR-020)", () => {
+describe("AI 작성 국면 — 실패는 언제나 보인다 (DR-020)", () => {
   it("진행 메시지가 하나도 없어도 실패 사유를 그린다", () => {
-    // 001 이 못 그리던 바로 그 조합이다: 메시지 0건 + 세션이 이미 paused.
-    render(<AiRecord {...base} error={failure(REASON)} />);
-
+    // 001 이 못 그리던 바로 그 조합이다: 메시지 0건 + AI 가 이미 멈춘 세션.
+    render(<SessionWorkbench {...ai({ aiError: failure(REASON), aiMessages: [] })} />);
     expect(screen.getByText(REASON)).toBeTruthy();
-    // 헤더 알약과 실패 영역 제목 둘 다 같은 문구를 쓴다.
-    expect(screen.getAllByText("AI 수행 실패").length).toBe(2);
   });
 
-  it("running 이 아니어도 실패 사유를 그린다", () => {
-    render(<AiRecord {...base} running={false} error={failure(REASON)} />);
+  it("세션 상태가 무엇이든 실패 사유를 그린다 (research R2 의 뿌리)", () => {
+    // AI 가 실패하면 세션이 검토를 위해 `paused` 로 옮겨간다. 그때 사유가 사라지던
+    // 것이 001·003 AP-032 였다.
+    render(<SessionWorkbench {...ai({ aiError: failure(REASON) }, "paused")} />);
     expect(screen.getByText(REASON)).toBeTruthy();
   });
 
   it("실패해도 그때까지의 Step 이 보존됨을 알린다 (001 FR-067)", () => {
-    render(<AiRecord {...base} error={failure(REASON)} steps={[]} />);
-    expect(screen.getByText(/보존됐습니다/)).toBeTruthy();
+    render(<SessionWorkbench {...ai({ aiError: failure(REASON) })} />);
+    expect(screen.getByText(/기록된 Step은 남아 있습니다/)).toBeTruthy();
   });
 
   it("오류는 alert 역할로 노출된다 — 조용히 지나가지 않는다", () => {
-    render(<AiRecord {...base} error={failure(REASON)} />);
+    render(<SessionWorkbench {...ai({ aiError: failure(REASON) })} />);
     expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
   });
 
   it("실패가 없으면 실패 영역을 그리지 않는다", () => {
-    render(<AiRecord {...base} error={null} />);
-    expect(screen.queryByText("AI 수행 실패")).toBeNull();
+    render(<SessionWorkbench {...ai({ aiError: null })} />);
+    expect(document.querySelector("[data-always-visible-failure]")).toBeNull();
   });
 });
 
-describe("AiRecord — 상태 표시 (DR-016)", () => {
-  it("실패하면 상태 알약이 실패를 말한다", () => {
-    render(<AiRecord {...base} error={failure(REASON)} />);
-    // 헤더의 알약과 실패 영역 제목 둘 다 "AI 수행 실패" 를 쓴다.
-    expect(screen.getAllByText("AI 수행 실패").length).toBe(2);
+describe("AI 작성 국면 — 상태 표시 (DR-016)", () => {
+  it("수행 중이면 국면 표시가 그렇게 말한다", () => {
+    render(<SessionWorkbench {...ai()} />);
+    expect(document.querySelector("[data-phase-pill]")?.textContent).toBe("AI 작성 중");
   });
 
-  it("수행 중이면 그렇게 말한다", () => {
-    render(<AiRecord {...base} running />);
-    expect(screen.getByText("AI 수행 중")).toBeTruthy();
-  });
-
-  it("지시문 작성 중이면 그렇게 말한다", () => {
-    render(<AiRecord {...base} composing onInstructionChange={() => undefined} />);
-    expect(screen.getByText("지시문 작성")).toBeTruthy();
-    expect(screen.getByLabelText("자연어 지시")).toBeTruthy();
+  it("지시문이 화면에 남는다 — 무엇을 시켰는지 잃지 않는다 (UX U-07)", () => {
+    render(<SessionWorkbench {...ai()} />);
+    // 지시문의 집은 `ai.compose` 조작 칸 **하나**다 (FR-235). 수행 중에는 고칠 수 없고
+    // 기록으로 계속 보인다 (001 FR-063).
+    const field = screen.getByLabelText("AI 지시문") as HTMLTextAreaElement;
+    expect(field.value).toBe("로그인한 다음 프로젝트를 만들어");
+    expect(field.disabled).toBe(true);
+    expect(document.querySelector("[data-disabled-reason='ai.compose']")).not.toBeNull();
   });
 });
 
-describe("AiRecord — 저장 (001 FR-028·FR-029·FR-064)", () => {
-  it("Step 이 없으면 저장할 수 없다", () => {
-    render(<AiRecord {...base} saveName="이름" steps={[]} />);
-
-    expect((screen.getByText("테스트로 저장") as HTMLButtonElement).disabled).toBe(true);
+describe("AI 작성 국면 — 저장 (001 FR-028·FR-029·FR-064)", () => {
+  it("Step 이 없으면 저장할 수 없고 이유가 붙는다", () => {
+    render(<SessionWorkbench {...ai({ saveName: "이름" })} />);
+    const save = document.querySelector('button[data-action="save"]') as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
     expect(screen.getByText("Step 이 없으면 저장할 수 없습니다.")).toBeTruthy();
+  });
+});
+
+/**
+ * 2회차 — 같은 행동을 만들기 국면(`ComposeView`)에서 센다 (T121 · 헌법 게이트 4).
+ *
+ * 「AI 실행 →」 이 「AI 시작」으로 바뀐 것은 조작 식별자(`ai.start`)의 라벨이
+ * `wording.ts` 하나로 모였기 때문이다 (ui-contract §5). 라벨이 바뀐 것은 회귀가
+ * 아니고, **검증하는 행동이 바뀌면** 회귀다.
+ */
+describe("지시문 작성 (만들기 국면)", () => {
+  const compose = () =>
+    render(
+      <ComposeView
+        project={null}
+        onCancel={() => undefined}
+        onRecord={() => undefined}
+        onStartAi={() => undefined}
+      />,
+    );
+
+  /** 지시문 자리는 「AI로 만들기」를 고른 뒤에 펼쳐진다 — 1회차에는 별도 화면이었다 */
+  const pickAi = () => fireEvent.click(screen.getByRole("button", { name: /AI로 만들기/ }));
+
+  it("지시문을 쓰는 자리가 있다", () => {
+    compose();
+    pickAi();
+    expect(screen.getByLabelText("자연어 지시")).toBeTruthy();
   });
 
   it("지시문이 저장되지 않는다는 것을 알린다 (FR-064)", () => {
-    render(<AiRecord {...base} />);
+    compose();
+    pickAi();
     expect(screen.getByText(/지시문은 테스트로 저장되지 않습니다/)).toBeTruthy();
+  });
+
+  it("지시문이 비면 시작할 수 없고 이유가 붙는다 (조건 C14)", () => {
+    compose();
+    pickAi();
+    const start = screen.getByRole("button", { name: /AI 시작/ }) as HTMLButtonElement;
+    expect(start.disabled).toBe(true);
+    // 1회차에는 `disabled` 만 있었다. 2회차는 **왜** 못 누르는지도 화면에 있다 (FR-234)
+    expect(screen.getByText(/지시문을 쓰면 시작할 수 있습니다/)).toBeTruthy();
+  });
+
+  it("지시문을 쓰면 시작할 수 있다", () => {
+    compose();
+    pickAi();
+    fireEvent.change(screen.getByLabelText("자연어 지시"), {
+      target: { value: "로그인한 다음 프로젝트를 만들어" },
+    });
+    expect((screen.getByRole("button", { name: /AI 시작/ }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
   });
 });

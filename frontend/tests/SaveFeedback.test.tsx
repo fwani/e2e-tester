@@ -12,15 +12,19 @@
  * - 유일한 변화는 빵부스러기 하나. 알아채기 어렵다
  *
  * 그리고 U-10 — 저장에 성공했는데도 정리 버튼이 "Step 6개가 사라집니다" 를 띄웠다.
+ *
+ * **007 이행 2** — `RunnerPaused` 대신 `SessionWorkbench` 를 그린다. 저장 상자는 국면
+ * 보조 영역으로 옮겼고 문구·판정 규칙은 그대로 `lib/wording.ts` 가 소유한다.
  */
 
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ComponentProps } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { RunnerPaused } from "../src/pages/RunnerPaused";
+import { SessionWorkbench } from "../src/pages/SessionScreen";
 import { TestList } from "../src/pages/TestList";
+import { sessionProps } from "./helpers/session";
+import { sessionView } from "./helpers/workbench";
 import type { Step } from "../src/types/generated/step";
 
 const noop = () => undefined;
@@ -48,67 +52,59 @@ function steps(n: number): Step[] {
   })) as unknown as Step[];
 }
 
+/**
+ * 일시정지 국면의 세션. **`test_id` 를 비운다** — 「초안」 판정이 `persisted` 에
+ * 달려 있으므로(005 재점검 U-03-a), 저장 여부를 재는 이 파일은 아직 파일이 없는
+ * 세션을 대상으로 삼아야 한다.
+ */
 function pausedProps(overrides: Record<string, unknown> = {}) {
-  return {
-    title: "TC-001",
-    authoring: "record" as const,
-    steps: steps(6),
-    currentStepIndex: 2,
-    currentUrl: "http://127.0.0.1:4300/projects.html",
-    mirror: <div />,
-    mirroredTab: 0,
-    busy: false,
-    editWarnings: [],
-    recorderWarnings: [],
-    saveName: "TC-001",
-    selectedStepId: null,
-    reordering: false,
-    outcomeOf: () => "pass" as const,
+  const { savedAt, ...rest } = overrides as { savedAt?: string | null };
+  return sessionProps({
+    view: sessionView({
+      state: "paused",
+      // 저장하면 정의 파일이 생긴다 — 그때부터 「초안」이 아니다 (005 재점검 U-03-a).
+      test_id: savedAt ? "TC-001" : null,
+      steps: steps(6),
+      current_step_index: 2,
+      saved_at: savedAt ?? null,
+      has_unsaved_changes: (overrides.hasChangesToSave as boolean | undefined) ?? false,
+    }),
+    outcomeOf: () => "pass",
     durationOf: () => 90,
-    onSaveNameChange: noop,
-    onSave: noop,
-    onResume: noop,
-    onStop: noop,
-    onRunFrom: noop,
-    onEditStep: noop,
-    onDeleteStep: noop,
-    onSelectStep: noop,
-    onToggleReorder: noop,
-    onMoveStep: noop,
-    onRecordActionsStart: noop,
-    onAddAssertion: noop,
-    onAddNlStep: noop,
-    ...overrides,
-  } as unknown as ComponentProps<typeof RunnerPaused>;
+    saveName: "TC-001",
+    ...(rest as Record<string, unknown>),
+  });
 }
+
+afterEach(cleanup);
 
 describe("저장 성공 표시 (FR-154·FR-155·FR-156 · U-09)", () => {
   it("저장 전에는 성공 표시가 없다", () => {
-    render(<RunnerPaused {...pausedProps({ savedAt: null })} />);
-    expect(screen.queryByRole("status")).toBeNull();
+    render(<SessionWorkbench {...pausedProps({ savedAt: null })} />);
+    expect(screen.queryByText(/저장했습니다/)).toBeNull();
     expect(screen.getByRole("button", { name: "저장" })).toBeTruthy();
   });
 
   it("저장 성공을 화면을 옮기지 않고 알 수 있고 이름이 함께 보인다 (SC-217)", () => {
-    render(<RunnerPaused {...pausedProps({ savedAt: "2026-09-07T05:00:00Z" })} />);
+    render(<SessionWorkbench {...pausedProps({ savedAt: "2026-09-07T05:00:00Z" })} />);
     // role=status 는 스크린리더에도 전달된다.
     expect(screen.getByText("저장했습니다 · TC-001")).toBeTruthy();
   });
 
   it("저장 성공 후 제목에 「초안」이 없다 (FR-155)", () => {
-    render(<RunnerPaused {...pausedProps({ savedAt: "2026-09-07T05:00:00Z" })} />);
+    render(<SessionWorkbench {...pausedProps({ savedAt: "2026-09-07T05:00:00Z" })} />);
     expect(screen.queryByText(/초안/)).toBeNull();
     expect(screen.getByText("TC-001 · 저장됨")).toBeTruthy();
   });
 
   it("저장하지 않은 세션의 제목은 「초안」이다", () => {
-    render(<RunnerPaused {...pausedProps({ savedAt: null })} />);
-    expect(screen.getByText("TC-001 초안")).toBeTruthy();
+    render(<SessionWorkbench {...pausedProps({ savedAt: null })} />);
+    expect(screen.getByText("새 테스트 초안")).toBeTruthy();
   });
 
   it("저장 후 버튼이 「변경 저장」이고 바뀐 것이 없으면 비활성이다 (FR-156)", () => {
     render(
-      <RunnerPaused
+      <SessionWorkbench
         {...pausedProps({ savedAt: "2026-09-07T05:00:00Z", hasChangesToSave: false })}
       />,
     );
@@ -118,7 +114,7 @@ describe("저장 성공 표시 (FR-154·FR-155·FR-156 · U-09)", () => {
 
   it("저장 후 다시 고쳤으면 「변경 저장」이 눌린다", () => {
     render(
-      <RunnerPaused
+      <SessionWorkbench
         {...pausedProps({ savedAt: "2026-09-07T05:00:00Z", hasChangesToSave: true })}
       />,
     );
@@ -129,14 +125,15 @@ describe("저장 성공 표시 (FR-154·FR-155·FR-156 · U-09)", () => {
   it("「목록에서 보기」로 목록에 갈 수 있다 (FR-154)", async () => {
     const onShowList = vi.fn();
     render(
-      <RunnerPaused {...pausedProps({ savedAt: "2026-09-07T05:00:00Z", onShowList })} />,
+      <SessionWorkbench
+        {...pausedProps({ savedAt: "2026-09-07T05:00:00Z", onShowList })} />,
     );
     await userEvent.click(screen.getByRole("button", { name: "목록에서 보기" }));
     expect(onShowList).toHaveBeenCalledTimes(1);
   });
 
   it("저장 버튼은 in-flight 동안 잠긴다 — 중복 저장을 막는다", () => {
-    render(<RunnerPaused {...pausedProps({ busy: true })} />);
+    render(<SessionWorkbench {...pausedProps({ busy: true })} />);
     const button = screen.getByRole("button", { name: "저장" });
     expect((button as HTMLButtonElement).disabled).toBe(true);
   });

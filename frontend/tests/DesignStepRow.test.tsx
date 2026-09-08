@@ -12,11 +12,16 @@
  * 보여 주고 있었다.
  *
  * **원칙 I 을 UI 계층에서 검증한다**: 사람 Step 과 AI Step 이 구조적으로 같게 렌더된다.
+ *
+ * **007 이행 3** — 재는 대상이 `DesignStepRow` 에서 **단일 구현** `StepList` 로 바뀌었다.
+ * 007 이전에는 Step 행을 그리는 구현이 4벌이었고 이 파일은 그중 하나만 재고 있었다
+ * (SC-001). 단정은 그대로다.
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { DesignStepRow, locatorSummary } from "../src/components/design/DesignStepList";
+import { StepList, locatorSummary } from "../src/components/workbench/StepList";
+import type { StepOutcome, WorkbenchStep } from "../src/components/workbench/model";
 import type { Step } from "../src/types/generated/step";
 
 const verifiedCss = { css: { value: "#save", status: "verified" as const } };
@@ -35,8 +40,34 @@ function clickStep(overrides: Partial<Step> = {}): Step {
   } as Step;
 }
 
-function row(step: Step, props: Partial<Parameters<typeof DesignStepRow>[0]> = {}) {
-  return render(<DesignStepRow index={0} step={step} outcome="pending" {...props} />);
+/** 행 하나를 실제 렌더 경로(단일 `StepList`)로 그린다. */
+function row(
+  step: Step,
+  props: {
+    index?: number;
+    outcome?: StepOutcome;
+    durationMs?: number | null;
+    paused?: boolean;
+    selected?: boolean;
+  } = {},
+) {
+  const item: WorkbenchStep = {
+    id: step.id,
+    index: props.index ?? 0,
+    step,
+    label: step.label,
+    outcome: props.outcome ?? "pending",
+    durationMs: props.durationMs ?? null,
+    isPausedHere: props.paused ?? false,
+  };
+  return render(
+    <StepList
+      steps={[item]}
+      authoring="record"
+      focusedStepId={props.selected === true ? step.id : null}
+      onSelect={() => undefined}
+    />,
+  );
 }
 
 afterEach(cleanup);
@@ -184,15 +215,20 @@ describe("DesignStepRow — 입력값 (FR-083)", () => {
 });
 
 describe("DesignStepRow — 상태 표시 (FR-034·FR-046)", () => {
+  // 패널 자체가 왼쪽 테두리를 갖는다(460px 경계). **행 안에서만** 찾는다.
+  // 008 — 모든 행이 결말 표식으로 왼쪽 3px 테두리를 갖는다. 일시정지는 스타일이 아니라
+  // 속성으로 구분한다.
+  const pausedMark = (container: HTMLElement) =>
+    container.querySelector("[data-step-row][data-paused-here]");
+
   it("일시정지 위치를 구분해 표시한다", () => {
     const { container } = row(clickStep(), { paused: true });
-    const marked = container.querySelector('[style*="border-left"]');
-    expect(marked).not.toBeNull();
+    expect(pausedMark(container)).not.toBeNull();
   });
 
   it("일시정지가 아니면 구분하지 않는다", () => {
     const { container } = row(clickStep(), { paused: false });
-    expect(container.querySelector('[style*="border-left"]')).toBeNull();
+    expect(pausedMark(container)).toBeNull();
   });
 
   it("결과와 소요 시간을 보여준다", () => {

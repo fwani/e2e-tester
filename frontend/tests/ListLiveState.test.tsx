@@ -81,9 +81,11 @@ describe("실행 중인 테스트의 행 (FR-168 · U-16)", () => {
     expect(screen.getByRole("button", { name: "실행 화면 보기" })).toBeTruthy();
     // 이전 실행의 결말이 행을 대표하지 않는다 — 지금 돌고 있다는 사실이 이긴다.
     //
-    // 화면에는 헤더의 통계 칩("FAIL 1")이 하나 있다. 행의 칩이 RUNNING 이면 FAIL 은
-    // 그 하나뿐이어야 한다.
-    expect(screen.getAllByText("FAIL")).toHaveLength(1);
+    // 008 — 헤더의 통계 칩이 확정 디자인의 결말 필터로 바뀌었고 그 라벨은 「실패」다
+    // (개수를 보여주는 데서 실제로 거르는 데로 바뀌었다 · FR-272). 그래서 `FAIL` 은
+    // 행의 결말 표식에만 나타난다. 행이 RUNNING 이면 화면에 `FAIL` 이 없어야 한다.
+    expect(screen.queryAllByText("FAIL")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: /^실패 \d+$/ })).toBeTruthy();
   });
 
   it("실행 중이 아니면 이전 결말을 그대로 보여준다", async () => {
@@ -91,8 +93,8 @@ describe("실행 중인 테스트의 행 (FR-168 · U-16)", () => {
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} activeSessions={[]} />);
 
     await screen.findByText("실패한 테스트");
-    // 헤더 통계 칩 + 행의 결말 칩 = 둘.
-    expect(screen.getAllByText("FAIL")).toHaveLength(2);
+    // 008 — 행의 결말 표식 하나. 헤더 쪽은 「실패」 필터가 대신한다 (위 주석 참고).
+    expect(screen.getAllByText("FAIL")).toHaveLength(1);
     expect(screen.queryByText("RUNNING")).toBeNull();
   });
 

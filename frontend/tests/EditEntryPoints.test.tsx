@@ -12,6 +12,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "../src/App";
+import type { SessionView } from "../src/api/client";
+import { sessionView } from "./helpers/workbench";
 
 const PROJECT = { name: "P", root: "/tmp/p", default_start_url: "http://t/" };
 
@@ -154,25 +156,41 @@ function stubServer() {
       if (u.startsWith("/api/tests")) return json(LIST);
       if (u === "/api/sessions") {
         if (method === "POST") {
+          // 007 T004 — 손으로 조립하지 않고 팩토리를 쓴다. 이전에는 여기서
+          // `recorder_warnings` 등이 빠져 `SessionScreen` 이 렌더 중에 터졌고, 그
+          // 오류가 **테스트가 통과하는 채로** 콘솔로만 흘러나왔다
+          // (design-conformance/baseline.md 의 미처리 오류 2건).
           return json(
-            {
+            sessionView({
               session_id: "s-new",
               state: "paused",
               state_label: "일시정지",
               test_id: "TC-001",
               authoring_mode: "record",
-              start_url: "http://t/login.html",
-              steps: [STEP_01, STEP_02],
+              steps: [STEP_01, STEP_02] as unknown as SessionView["steps"],
               current_step_index: 1,
-              pacing: "normal",
-              edit_warnings: [],
-              saved_at: null,
-              has_unsaved_changes: false,
-            },
+            }),
             201,
           );
         }
         return json({ sessions: [] });
+      }
+      // 007 T004 — 세션 하위 경로도 세션 뷰를 돌려준다. 이전에는 `run-from` 이
+      // 아래 `{ ok: true }` 로 떨어져 `SessionScreen` 이 세션 아닌 것을 받았고,
+      // 그것이 baseline.md 의 미처리 오류 나머지 1건이었다.
+      if (u.startsWith("/api/sessions/")) {
+        return json(
+          sessionView({
+            session_id: "s-new",
+            state: "replaying",
+            state_label: "실행 중",
+            test_id: "TC-001",
+            steps: [STEP_01, STEP_02] as unknown as SessionView["steps"],
+            current_step_index: 1,
+            run_scope: "partial",
+            run_start_index: 1,
+          }),
+        );
       }
       if (u.startsWith("/api/preferences")) return json({ run_pacing: "normal" });
       return json({ ok: true });

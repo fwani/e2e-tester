@@ -16,11 +16,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   countsAsFailure,
+  displayOutcomeLabel,
+  meansPassed,
   outcomeChip,
   outcomeLabel,
   outcomeTone,
   runSummary,
 } from "../src/lib/wording";
+import type { StepOutcome as WorkbenchStepOutcome } from "../src/components/workbench/model";
 import type { Outcome } from "../src/types/generated/run-result";
 
 /** 아직 존재하지 않는 결말. 타입을 뚫는 것은 **런타임에 실제로 올 수 있기** 때문이다. */
@@ -87,5 +90,47 @@ describe("아는 네 값은 그대로다", () => {
     expect(countsAsFailure("stopped")).toBe(false);
     expect(countsAsFailure("partial_pass")).toBe(false);
     expect(countsAsFailure("fail")).toBe(true);
+  });
+});
+
+/* ─── 007 T016 — 표시 결말이 늘어도 같은 원칙이 유지되는가 ──────────────────── */
+
+describe("표시 결말의 알 수 없는 값 (007 T016)", () => {
+  /** 아직 존재하지 않는 표시 결말. 런타임에 실제로 올 수 있다. */
+  const FUTURE_DISPLAY = "flaky" as WorkbenchStepOutcome;
+
+  it("알 수 없는 표시 결말을 통과로 부르지 않는다", () => {
+    // `displayOutcomeLabel` 은 완전 스위치이므로 새 값에 `undefined` 를 돌려준다.
+    // 중요한 것은 그것이 **「통과」가 아니라는 것**이다 — 통과로 보이는 쪽이 훨씬 나쁘다.
+    expect(displayOutcomeLabel(FUTURE_DISPLAY)).not.toBe("통과");
+  });
+
+  it("`meansPassed` 는 `pass` 하나에만 참이다 — 「기록됨」은 통과가 아니다 (FR-225)", () => {
+    expect(meansPassed("pass")).toBe(true);
+    for (const o of [
+      "fail",
+      "running",
+      "pending",
+      "skipped",
+      "not_run",
+      "recorded",
+    ] as WorkbenchStepOutcome[]) {
+      expect(meansPassed(o), o).toBe(false);
+    }
+    expect(meansPassed(FUTURE_DISPLAY)).toBe(false);
+  });
+
+  it("일곱 표시 결말이 서로 다른 라벨을 갖는다 — 두 값이 같은 말을 쓰면 구분이 사라진다", () => {
+    const all: WorkbenchStepOutcome[] = [
+      "pass",
+      "fail",
+      "running",
+      "pending",
+      "skipped",
+      "not_run",
+      "recorded",
+    ];
+    const labels = all.map(displayOutcomeLabel);
+    expect(new Set(labels).size).toBe(all.length);
   });
 });

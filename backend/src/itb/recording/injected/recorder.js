@@ -116,34 +116,59 @@
     return null;
   };
 
+  const cssEscape = (value) =>
+    typeof CSS !== "undefined" && CSS.escape ? CSS.escape(value) : value.replace(/"/g, '\\"');
+
+  /** 누적 경로가 그 요소 **하나만** 가리키는가. */
+  const matchesOnly = (selector, el) => {
+    try {
+      const nodes = document.querySelectorAll(selector);
+      return nodes.length === 1 && nodes[0] === el;
+    } catch {
+      return false;
+    }
+  };
+
   /**
    * CSS 경로. **최후 후보이며 항상 수집한다** — 다른 후보가 모두 없어도
    * TargetLocator 불변식(후보 최소 1개)을 만족시켜야 한다.
+   *
+   * **깊이 상한을 두면 안 된다.** 상한에 걸린 경로는 `main > section > div > button` 처럼
+   * 문서 어디에나 맞는 **상대 경로**가 되어 여러 요소를 매칭하고, CSS 후보가 `ambiguous`
+   * 로 버려진다. 실측에서 같은 구조가 두 번 나오는 화면(카드 두 장, 목록 두 줄)의 버튼이
+   * 확보 후보 0개로 기록됐고, 그 Step 은 재실행에서 반드시 "요소를 찾지 못했다" 로 끝났다.
+   *
+   * 대신 **유일해지는 즉시 멈춘다.** 짧은 경로가 화면 구조 변화에 덜 깨지므로, 조상까지
+   * 다 붙인 절대 경로는 유일성을 얻지 못했을 때만 나온다.
+   *
+   * 한계: shadow DOM 안의 요소는 `document.querySelectorAll` 로 확인되지 않으므로 경로가
+   * shadow 경계에서 끊긴 채 `not_collected` 로 기록된다. 그 경로는 `role`·`text` 후보가
+   * 담당한다.
    */
   const cssPath = (el) => {
     const parts = [];
     let node = el;
-    let depth = 0;
-    while (node && node.nodeType === 1 && depth < 6) {
-      let part = node.tagName.toLowerCase();
+    while (node && node.nodeType === 1) {
+      // 태그 이름을 소문자로 바꾸지 않는다. SVG 는 HTML 과 달리 태그 이름의 대소문자를
+      // 구별하므로 `clipPath` 를 `clippath` 로 적으면 맞지 않는다.
+      const name = node.localName || node.tagName.toLowerCase();
       const id = node.getAttribute("id");
       // 난수처럼 보이는 id 는 안정적이지 않으므로 쓰지 않는다.
       if (id && !/\d{4,}|[0-9a-f]{8,}/i.test(id)) {
-        parts.unshift(`${part}#${CSS.escape(id)}`);
-        break;
+        parts.unshift(`${name}#${cssEscape(id)}`);
+        break; // id 는 문서에서 유일해야 하므로 더 올라갈 이유가 없다
       }
+      let part = name;
       const parent = node.parentElement;
       if (parent) {
-        const siblings = Array.from(parent.children).filter(
-          (c) => c.tagName === node.tagName,
-        );
+        const siblings = Array.from(parent.children).filter((c) => c.localName === name);
         if (siblings.length > 1) {
           part += `:nth-of-type(${siblings.indexOf(node) + 1})`;
         }
       }
       parts.unshift(part);
+      if (matchesOnly(parts.join(" > "), el)) break;
       node = parent;
-      depth += 1;
     }
     return parts.join(" > ");
   };
@@ -194,10 +219,31 @@
     return typeof configured === "string" && configured ? configured : "data-testid";
   };
 
-  const cssEscape = (value) =>
-    typeof CSS !== "undefined" && CSS.escape ? CSS.escape(value) : value.replace(/"/g, '\\"');
+  /**
+   * 후보 검증의 **기준 요소**를 Python 이 다시 찾지 않게 한다.
+   *
+   * Python 은 기준 요소를 `page.query_selector(css)` 로 다시 잡았다. CSS 후보가 여러
+   * 요소를 매칭하면 그 재조회는 **다른 요소**를 돌려주고, 그 잘못된 기준으로 `role`·`text`
+   * 후보를 검증하므로 맞는 후보까지 `unverified` 로 버려진다. 실측에서 같은 구조가 두 번
+   * 나오는 화면의 버튼이 확보 후보 0개로 기록됐다.
+   *
+   * 그래서 설명할 때 요소 자체를 토큰과 함께 남기고, Python 은 토큰으로 그 요소의 핸들을
+   * 받는다. 오래된 항목은 버린다 — 떼어낸 노드를 계속 붙들면 문서가 회수되지 않는다.
+   */
+  const REF_LIMIT = 32;
+  const refs = new Map();
+  let refSeq = 0;
 
-  const describe = (el) => {
+  const register = (el) => {
+    const token = `r${(refSeq += 1)}`;
+    refs.set(token, el);
+    if (refs.size > REF_LIMIT) refs.delete(refs.keys().next().value);
+    return token;
+  };
+
+  window.__itbResolveRef = (token) => refs.get(token) || null;
+
+  const describe = (el, options) => {
     const attributes = {};
     for (const attr of COLLECTED_ATTRS) {
       const v = el.getAttribute(attr);
@@ -208,6 +254,9 @@
     const testId = el.getAttribute(attr);
     return {
       tag: el.tagName.toLowerCase(),
+      // `observe_page` 는 요소를 200개까지 훑으므로 등록하지 않는다. 그 목록은 검증
+      // 대상이 아니고, 등록하면 상한이 밀려 정작 필요한 동작 대상의 참조가 버려진다.
+      ref: options && options.register === false ? null : register(el),
       role: clean(el.getAttribute("role")) || implicitRole(el),
       accessibleName: accessibleName(el),
       label: associatedLabel(el),
@@ -265,7 +314,7 @@
       } catch {
         rect = { width: 0, height: 0 };
       }
-      const described = describe(el);
+      const described = describe(el, { register: false });
       out.push({
         tag: described.tag,
         role: described.role,
@@ -285,11 +334,77 @@
     };
   };
 
+  /**
+   * 조작의 **의미 단위**까지 올라간다.
+   *
+   * 이벤트의 `target` 은 사람이 실제로 누른 가장 깊은 노드다 — `div > div > button > span`
+   * 이면 `span`, 아이콘 버튼이면 `svg` 나 `path`, 링크면 `a` 안의 `span` 이다. 그 노드를
+   * 그대로 기록하면 두 가지를 동시에 잃는다.
+   *
+   * 1. **최우선 후보인 `role`+접근 이름이 사라진다** (FR-018). `span`·`path` 에는 암시적
+   *    role 이 없다. 아이콘만 있는 버튼은 텍스트도 없으므로 남는 후보가 CSS 하나뿐이 된다.
+   * 2. **그 CSS 가 가장 깨지기 쉬운 형태다.** 껍데기 `div` 를 몇 겹 지나온 위치 경로가
+   *    되어, 같은 구조가 화면에 두 번 나오면 모호해지고 아예 버려진다.
+   *
+   * 둘이 겹치면 **확보 후보가 0개인 Step** 이 기록된다. 녹화 중에는 클릭이 정상으로
+   * 보이므로 사용자는 재실행에서 "요소를 찾지 못했다" 를 볼 때까지 알 수 없다.
+   *
+   * 그래서 조작 대상을 실제 조작 주체까지 올린다. 부모 버튼을 클릭해도 같은 핸들러가
+   * 돌므로 재실행 동작은 같다 — 사람이 누른 지점과 동작의 주체가 다를 뿐이다.
+   *
+   * **올라가는 거리를 제한한다.** 화면 전체를 `[tabindex]` 컨테이너로 감싼 앱에서 상한이
+   * 없으면 컨테이너까지 올라가 엉뚱한 요소를 기록한다. `body`·`html` 에는 닿지 않는다.
+   */
+  const ACTIONABLE = [
+    "button",
+    "a[href]",
+    "input",
+    "select",
+    "textarea",
+    "summary",
+    "label",
+    '[role="button"]',
+    '[role="link"]',
+    '[role="menuitem"]',
+    '[role="menuitemcheckbox"]',
+    '[role="menuitemradio"]',
+    '[role="tab"]',
+    '[role="checkbox"]',
+    '[role="radio"]',
+    '[role="switch"]',
+    '[role="option"]',
+    '[role="treeitem"]',
+    '[role="combobox"]',
+    '[contenteditable="true"]',
+  ].join(",");
+
+  /** 의미가 없는 요소에 핸들러만 달아 버튼처럼 쓰는 구현을 위한 차선책. */
+  const CLICKABLE = '[onclick],[tabindex]:not([tabindex="-1"])';
+  const MAX_ASCEND = 8;
+
+  const ascend = (el, selector) => {
+    let node = el;
+    for (let hops = 0; node && node.nodeType === 1 && hops <= MAX_ASCEND; hops += 1) {
+      if (node === document.body || node === document.documentElement) return null;
+      try {
+        if (node.matches(selector)) return node;
+      } catch {
+        return null;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  };
+
+  const actionTarget = (el) =>
+    el ? ascend(el, ACTIONABLE) || ascend(el, CLICKABLE) || el : null;
+
   /** Shadow DOM 안의 요소도 잡는다 (T004 로 확인). */
   const targetOf = (event) => {
     const path = typeof event.composedPath === "function" ? event.composedPath() : null;
     const first = path && path.length > 0 ? path[0] : event.target;
-    return first && first.nodeType === 1 ? first : null;
+    if (!first || first.nodeType !== 1) return null;
+    return actionTarget(first);
   };
 
   /**

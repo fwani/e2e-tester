@@ -113,8 +113,66 @@ Step 번호 변환이 전부 여기 있고, **알 수 없는 값은 실패로 �
 `paused`·`ai_blocked` 는 **실행 중이 아니다** — 세션은 열려 있지만 사용자의 다음 조작을
 기다린다. 그것을 「실행 중」이라고 부르면 사용자는 기다리면 끝난다고 읽는다.
 
-`SessionScreen.tsx` 는 자기 화면 선택을 위해 더 세분된 집합(조작·관찰·종료·탭 없음)을
+`SessionScreen.tsx` 는 미러 국면 판정을 위해 더 세분된 집합(조작·관찰·종료·탭 없음)을
 따로 갖는다. 여러 화면이 함께 묻는 질문만 위 모듈에 둔다.
+
+### 화면은 하나이고 국면이 일곱이다 (007)
+
+007 이전에는 한 테스트를 놓고 화면이 여섯이었다 — 실행 중·일시정지·사람이 직접 조작·
+AI 작성·결과·편집. 여섯은 Step 목록을 **각자** 그렸고(4벌), Step 상세를 각자 열었고(2벌),
+같은 정보를 다른 자리에 뒀다. 사용자가 말한 "다 따로 만드니까 사용성이 떨어진다" 의
+코드 상 형태가 그것이다.
+
+지금은 화면이 하나다. **국면**이 여덟이고, 국면은 `frontend/src/lib/phase.ts` 가 판정한다.
+
+```
+lib/phase.ts          국면 판정의 유일한 지점 (AI 세션은 `authoring_mode` 로 — `state` 가 아니다)
+lib/actions.ts        조작 식별자 34개
+lib/capabilities.ts   국면 × 조작 권한표 + 런타임 조건 + 전 국면 덮어쓰기
+lib/wording.ts        화면 어휘 — 국면 이름·조작 라벨·비활성 이유
+lib/layout.ts         ③ 좌측 두 자리의 세로 배분 — 국면이 정하고 표가 소유한다
+
+components/workbench/ 표시 층. **데이터를 읽지 않고 명령을 만들지 않는다**
+  Workbench.tsx       3층 껍데기 (헤더 60px · 국면 띠 74px · 본문)
+  StepList.tsx        **단일** Step 목록 (우 460px)
+  StepDetail.tsx      **단일** Step 상세 (우측 겹침 640px)
+  ActionPalette.tsx   조작의 집 — 순서와 구성을 여기가 갖는다
+  TargetPane.tsx      ③-a 대상 앱 슬롯 — 미러 / 산출물 / 브라우저 열기 / 빈 상태
+  WorkArea.tsx        ③-b 국면 작업 영역 — 그 국면에서 실제로 하는 일의 유일한 자리
+
+pages/ComposeView.tsx    만들기 국면의 어댑터 (세션도 저장된 테스트도 Step 도 없다)
+pages/SessionScreen.tsx  세션 다섯 국면의 어댑터 (구독·상태·명령을 소유한다)
+pages/ResultView.tsx     결과 국면의 어댑터
+pages/EditView.tsx       편집 국면의 어댑터
+```
+
+**두 표시 컴포넌트는 자기 크기를 모른다.** `TargetPane`·`WorkArea` 는 높이를 인자로만
+받고, `Workbench` 가 `lib/layout.ts` 의 배분표를 국면으로 한 번 조회해 내려 준다. 1회차에는
+둘이 각자 하드코딩했고 — `flex: "1"` 과 `flex: 0 0 auto` — 합쳐 보면 **편집 국면에서 채울
+것이 없는 자리가 700px 를 가져갔다** (2회차 S-12). 판단이 두 파일에 흩어져 있으면 어느 한
+쪽만 보고는 그 결함을 볼 수 없다.
+
+한 국면에서 두 자리가 동시에 「남는 높이 전부」일 수 없다 (UC-100). `tests/VerticalSplit.test.ts`
+가 그것과 「선언한 주 자리가 실제로 더 큰 배분을 갖는가」를 센다.
+
+어댑터는 국면을 `WorkbenchModel` 로 바꾸는 일만 한다. 그리는 것은 `Workbench` 하나다.
+
+**조작 가능 여부를 화면이 스스로 판단하지 않는다.** `capabilities.ts` 의 표가 정본이고,
+표와 코드가 다르면 코드를 고친다. 단 **현재 쓸 수 있는 조작이 표에서 「해당 없음」이면
+그것은 표의 오류**이며 표를 고친다 (UC-401).
+
+**조작마다 자리가 하나다.** 자리를 국면마다 조립하면 한 국면이 하나를 빠뜨리고, 빠진 것이
+감춰진 조작이 된다. `tests/CapabilityUI.test.tsx` 가 그것을 센다 — 표가 `–` 로 두지 않은
+조작이 여덟 국면 전부의 화면에 있고, 비활성인 것은 모두 이유를 갖는지.
+
+| 조작 묶음 | 자리 |
+|---|---|
+| `run.*` (실행·일시정지·계속·중지·속도) | 국면 띠 |
+| `session.open`·`result.show`·`nav.editStep`·`nav.back` | 헤더 |
+| `browser.openAt`·`artifact.select`·`tab.select` | 대상 앱 영역 |
+| `step.select` | Step 패널 |
+| `step.update`·`step.markSensitive`·`step.repick` | Step 상세 |
+| 나머지 (Step 작성·순서·삭제, 테스트 속성, 저장) | 조작 팔레트 |
 
 ### 전이 안내는 걷어야 한다 (005 FR-146)
 
@@ -251,7 +309,7 @@ PUT /api/tests/TC-001/definition
 페이지에서만 수집·검증되므로(원칙 IV), 손으로 넣은 값은 `verified` 를 얻을 수 없다.
 `verified` 로 적으면 거짓말이고, 아니면 실행에 쓰이지 않는 조용한 무효 편집이다.
 
-요소를 다시 집어야 하면 편집 화면의 「브라우저 열어 Step nn 에서 멈추기」를 쓴다 —
+요소를 다시 집어야 하면 편집 국면의 「브라우저 열어 Step nn 에서 멈추기」를 쓴다 —
 `POST /api/sessions` 에 `pause_before_index` 를 실으면 러너가 그 Step **직전**에서 기존
 `PAUSED` 로 들어간다. 사용자가 달리는 실행을 「일시정지」로 잡을 필요가 없다.
 

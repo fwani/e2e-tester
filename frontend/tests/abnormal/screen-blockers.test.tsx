@@ -13,17 +13,9 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectSetup } from "../../src/pages/ProjectSetup";
-
-// `?raw` 로 원문을 읽는다 — `error-notice.test.tsx` 와 같은 방식이다. 세션 화면을 통째로
-// 그리려면 실시간 통로와 미러까지 흉내 내야 하고, 그러면 이 검증이 무엇을 재는지 흐려진다.
-// 실제로 그렇게 보이는가는 실브라우저 계층(AS-037)이 본다.
-const SESSION_SCREEN_SOURCE = (
-  import.meta.glob("../../src/pages/SessionScreen.tsx", {
-    query: "?raw",
-    import: "default",
-    eager: true,
-  }) as Record<string, string>
-)["../../src/pages/SessionScreen.tsx"];
+import { SessionWorkbench } from "../../src/pages/SessionScreen";
+import { sessionProps } from "../helpers/session";
+import { sessionView } from "../helpers/workbench";
 
 function stubFetch(routes: Record<string, unknown>) {
   return vi.fn((input: RequestInfo | URL) => {
@@ -95,13 +87,45 @@ describe("막힌 조작은 왜 막혔는지 말한다 (AP-003)", () => {
 });
 
 describe("AI 실패 사유는 화면을 떠나지 않는다 (AP-032 · DR-020)", () => {
-  it("세션 화면이 AI 화면을 그리지 않는 상태에서도 사유를 내보낸다", async () => {
-    // 이 조건을 코드에서 확인한다. AI 수행이 실패하면 세션이 검토를 위해 `paused` 로
-    // 옮겨가고, 그러면 AI 화면이 선택되지 않는다. 사유가 그 화면에서만 그려지면
-    // 사용자에게는 "아무 일도 일어나지 않음" 으로 보인다 — 001 이 그랬고 002 가 고쳤지만
-    // 구멍이 `paused` 로 옮겨졌을 뿐이다.
-    const source = SESSION_SCREEN_SOURCE;
-    expect(source).toMatch(/aiError !== null && !showsAiScreen/);
-    expect(source).toMatch(/const showsAiScreen = isAiSession && !isPaused && !isTakeover/);
+  /*
+    AI 수행이 실패하면 세션이 검토를 위해 `paused` 로 옮겨간다. 사유가 AI 화면에서만
+    그려지면 사용자에게는 "아무 일도 일어나지 않음" 으로 보인다 — 001 이 그랬고 002 가
+    고쳤지만 구멍이 `paused` 로 옮겨졌을 뿐이다.
+
+    **007 이후로는 원문 정규식이 아니라 실제로 그려서 본다.** 화면이 하나로 합쳐지면서
+    실시간 통로와 미러를 흉내 내지 않고도 국면을 그릴 수 있게 됐고, 조건이 코드에
+    남았는지보다 **사유가 화면에 있는지**가 정확한 질문이다.
+  */
+  const REASON = "언어모델 자격 증명을 찾을 수 없습니다.";
+  const aiError = {
+    message: REASON,
+    nextAction: "다시 시도하거나 직접 이어받으세요.",
+    category: "blocked" as const,
+    code: "UNKNOWN" as const,
+  };
+
+  it("AI 작성 국면에서 사유가 보인다", () => {
+    render(
+      <SessionWorkbench
+        {...sessionProps({
+          view: sessionView({ state: "ai_running", authoring_mode: "ai" }),
+          aiError,
+        })}
+      />,
+    );
+    expect(screen.getByText(REASON)).toBeTruthy();
+  });
+
+  it("상태가 일시정지로 바뀌어도 사유가 사라지지 않는다", () => {
+    render(
+      <SessionWorkbench
+        {...sessionProps({
+          view: sessionView({ state: "paused", authoring_mode: "ai" }),
+          aiError,
+        })}
+      />,
+    );
+    expect(screen.getByText(REASON)).toBeTruthy();
+    expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
   });
 });

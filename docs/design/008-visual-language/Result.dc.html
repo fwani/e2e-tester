@@ -1,0 +1,218 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+  <style>
+    /* ITB 시각 언어 v2 — 「계기판(Instrument)」
+       무게(3px 테두리·하드 그림자) 대신 대비와 정렬로 위계를 만든다.
+       근거: ui-ux-pro-max style=data-dense-dashboard, color=light neutral + status chips.
+       한글 때문에 DB 가 권한 Fira Sans 대신 IBM Plex Sans KR 을 쓴다 (각색). */
+    :root {
+      --bg:#F2F4F7; --surface:#FFFFFF; --sunken:#EAEDF2; --sunken-2:#F7F8FA;
+      --ink:#14171C; --ink-2:#4A515C; --ink-3:#6E757F;
+      --hair:#E3E6EB; --hair-2:#CBD0D8;
+      --pass:#1A7F45; --pass-t:#E8F5ED;
+      --fail:#C8371D; --fail-t:#FCEDE9;
+      --warn:#8F5A00; --warn-t:#FBF3E2;
+      --run:#0B6BCB;  --run-t:#E8F1FB;
+      --ai:#6B3FD4;   --ai-t:#F0EBFB;
+      --r:3px; --r-chip:2px; --r-lg:6px;
+      --e-1:0 1px 2px rgba(20,23,28,.07);
+      --e-2:0 16px 40px rgba(20,23,28,.18);
+      --sans:"IBM Plex Sans KR",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+    }
+    *,*::before,*::after{box-sizing:border-box;}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+         font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;
+         font-variant-numeric:tabular-nums;}
+    a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
+
+    .lbl{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);}
+    .mono{font-family:var(--mono);}
+    .pane{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);}
+
+    /* 조작 — 높이 32. 주 동작만 채운다. 비활성은 점선이고 자리를 지킨다. */
+    .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;
+         border:1px solid var(--hair-2);border-radius:var(--r);background:var(--surface);
+         color:var(--ink);font:600 13px/1 var(--sans);box-shadow:var(--e-1);white-space:nowrap;}
+    .btn.primary{background:var(--ink);border-color:var(--ink);color:#fff;}
+    .btn.danger{background:var(--surface);border-color:var(--fail);color:var(--fail);}
+    .btn.off{background:transparent;border:1px dashed var(--hair-2);color:var(--ink-3);
+             box-shadow:none;font-weight:500;}
+    .btn.sm{height:26px;padding:0 9px;font-size:12px;}
+    .why{font:400 11px/1.4 var(--sans);color:var(--ink-3);}
+
+    /* 상태 — 색과 형태를 함께 쓴다. 색만으로 구분하지 않는다. */
+    .chip{display:inline-flex;align-items:center;gap:5px;height:19px;padding:0 6px;
+          border:1px solid var(--hair-2);border-radius:var(--r-chip);
+          font:600 10px/1 var(--mono);letter-spacing:.06em;color:var(--ink-2);background:var(--sunken-2);}
+    .chip.pass{border-color:var(--pass);color:var(--pass);background:var(--pass-t);}
+    .chip.fail{border-color:var(--fail);color:var(--fail);background:var(--fail-t);}
+    .chip.warn{border-color:var(--warn);color:var(--warn);background:var(--warn-t);}
+    .chip.run{border-color:var(--run);color:var(--run);background:var(--run-t);}
+    .chip.ai{border-color:var(--ai);color:var(--ai);background:var(--ai-t);}
+
+    /* 껍데기 층 */
+    .hdr{flex:0 0 56px;display:flex;align-items:center;gap:14px;padding:0 16px;
+         background:var(--surface);border-bottom:1px solid var(--hair);}
+    .phase{flex:0 0 48px;display:flex;align-items:center;gap:12px;padding:0 16px;
+           background:var(--surface);border-bottom:1px solid var(--hair-2);}
+    .notice{flex:0 0 32px;display:flex;align-items:center;gap:8px;padding:0 16px;
+            font:400 12px/1 var(--sans);border-bottom:1px solid var(--hair);}
+    .body{flex:1;min-height:0;display:flex;}
+    .left{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:12px;}
+    .steps{flex:0 0 460px;border-left:1px solid var(--hair-2);background:var(--surface);
+           display:flex;flex-direction:column;}
+    .steps-hd{flex:0 0 36px;display:flex;align-items:center;gap:8px;padding:0 12px;
+              background:var(--sunken);border-bottom:1px solid var(--hair-2);}
+
+    /* Step 행 — 52px 2줄. 125px 에서 왔다. 900px 화면에서 5행 → 13행. */
+    .srow{display:grid;grid-template-columns:26px 1fr 58px 20px;gap:10px;align-items:center;
+          height:52px;padding:6px 12px 6px 9px;border-bottom:1px solid var(--hair);
+          border-left:3px solid transparent;}
+    .srow .n{font:500 12px/1 var(--mono);color:var(--ink-3);text-align:right;}
+    .srow .t{min-width:0;display:flex;flex-direction:column;gap:3px;}
+    .srow .t b{font:600 13px/1.25 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .srow .m{display:flex;align-items:center;gap:6px;min-width:0;}
+    .srow .loc{font:400 11px/1 var(--mono);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .srow .d{font:400 11px/1 var(--mono);color:var(--ink-3);text-align:right;}
+    .srow.pass{border-left-color:var(--pass);}
+    .srow.fail{border-left-color:var(--fail);background:var(--fail-t);}
+    .srow.run{border-left-color:var(--run);background:var(--run-t);}
+    .srow.sel{background:var(--sunken-2);border-left-color:var(--ink);}
+  </style>
+</helmet>
+<div style="width:1440px;height:900px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;">
+  <div class="hdr">
+    <div style="display:flex;align-items:center;gap:9px;">
+      <div style="width:26px;height:26px;background:var(--ink);border-radius:var(--r);display:flex;align-items:center;justify-content:center;">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.6"><rect x="2" y="2" width="12" height="12" rx="1.5"></rect><path d="M5 8.2l2 2 4-4.4"></path></svg>
+      </div>
+      <div style="font:700 15px/1 var(--sans);letter-spacing:-.01em;">ITB</div>
+    </div>
+    <div style="width:1px;height:20px;background:var(--hair-2);"></div>
+    <div style="display:flex;align-items:center;gap:7px;font:400 13px/1 var(--sans);color:var(--ink-3);">
+      <a href="#" style="color:var(--ink-2);">테스트</a><span>/</span><span class="mono" style="color:var(--ink);font-weight:600;">TC-001</span>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="btn">결과 보기</div>
+    <div class="btn">목록으로</div>
+  </div>
+
+  <div class="phase">
+    <span class="chip fail" style="height:22px;">결과</span>
+    <div style="font:700 17px/1 var(--sans);">로그인 후 대시보드</div>
+    <div style="display:flex;align-items:center;gap:8px;font:400 12px/1 var(--sans);color:var(--ink-3);">
+      <span style="color:var(--fail);font-weight:600;">실패 · Step 07</span><span>·</span><span>6 / 13 통과</span><span>·</span><span class="mono">7.38 s</span><span>·</span><span class="mono">Playwright · Chromium</span>
+    </div>
+    <div style="flex:1;"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="btn primary">Step 07 고치기</div>
+      <div class="btn">Step 07 부터 실행</div>
+      <div class="btn">처음부터 실행</div>
+    </div>
+  </div>
+
+  <div class="notice" style="background:var(--sunken-2);">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--ink-3)" stroke-width="1.7"><circle cx="8" cy="8" r="6"></circle><path d="M8 5v3.6M8 10.8v.2"></path></svg>
+    <span style="color:var(--ink-2);">「Step 07 부터 실행」은 01~06 을 건너뜁니다. 로그인 같은 앞선 상태가 필요하면 <a href="#">처음부터 실행</a> 을 쓰세요.</span>
+  </div>
+
+  <div class="body">
+    <div class="left">
+      <div class="pane" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="flex:0 0 34px;display:flex;align-items:stretch;gap:0;background:var(--sunken);border-bottom:1px solid var(--hair-2);padding:0 6px;">
+          <div style="display:flex;align-items:center;padding:0 12px;background:var(--surface);border:1px solid var(--hair-2);border-bottom-color:var(--surface);border-radius:var(--r) var(--r) 0 0;margin-bottom:-1px;font:600 12px/1 var(--sans);">스크린샷</div>
+          <div style="display:flex;align-items:center;padding:0 12px;font:500 12px/1 var(--sans);color:var(--ink-2);">콘솔 <span class="mono" style="font-size:10px;color:var(--fail);margin-left:5px;">3</span></div>
+          <div style="display:flex;align-items:center;padding:0 12px;font:500 12px/1 var(--sans);color:var(--ink-2);">네트워크 <span class="mono" style="font-size:10px;color:var(--ink-3);margin-left:5px;">41</span></div>
+          <div style="display:flex;align-items:center;gap:7px;padding:0 12px;font:500 12px/1 var(--sans);color:var(--ink-3);border:1px dashed var(--hair-2);border-radius:var(--r);margin:4px 0;">트레이스</div>
+          <div style="display:flex;align-items:center;padding-left:10px;" class="why">트레이스는 이 실행에 남지 않았습니다 (MVP 미지원)</div>
+          <div style="flex:1;"></div>
+          <div style="display:flex;align-items:center;gap:6px;padding-right:4px;"><div class="btn sm">원본 열기</div></div>
+        </div>
+        <div style="flex:1;min-height:0;background:var(--sunken-2);display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow:hidden;">
+          <div style="width:100%;max-width:900px;border:1px solid var(--hair-2);border-radius:var(--r);background:#FBFCFD;overflow:hidden;box-shadow:var(--e-1);display:flex;flex-direction:column;">
+            <div style="flex:0 0 38px;display:flex;align-items:center;gap:12px;padding:0 16px;background:#1F2A37;color:#fff;"><div style="font:700 13px/1 var(--sans);">데이터 플랫폼</div><div style="display:flex;gap:12px;font:400 11px/1 var(--sans);color:#C3CBD6;"><span>대시보드</span><span style="color:#fff;">데이터</span><span>설정</span></div></div>
+            <div style="padding:18px 20px;display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;gap:10px;"><div style="font:700 15px/1 var(--sans);color:#1F2A37;">업로드된 데이터</div><div style="flex:1;"></div><div style="height:26px;padding:0 10px;display:flex;align-items:center;background:#E7EBF0;color:#8B95A1;border-radius:4px;font:600 11px/1 var(--sans);">업로드</div></div>
+              <div style="border:1px solid #DDE3EA;border-radius:4px;background:#fff;overflow:hidden;">
+                <div style="display:grid;grid-template-columns:64px 1fr 110px 84px;gap:10px;padding:8px 12px;background:#F3F6F9;border-bottom:1px solid #DDE3EA;font:600 10px/1 var(--sans);color:#5A6572;"><div>ID</div><div>파일명</div><div>업로드 시각</div><div style="text-align:right;">행</div></div>
+                <div style="display:grid;grid-template-columns:64px 1fr 110px 84px;gap:10px;padding:9px 12px;border-bottom:1px solid #EDF1F5;font:400 11px/1 var(--sans);color:#2A323C;"><div class="mono">D-1041</div><div>2026-09-orders.csv</div><div class="mono">09-08 09:12</div><div class="mono" style="text-align:right;">128</div></div>
+                <div style="display:grid;grid-template-columns:64px 1fr 110px 84px;gap:10px;padding:9px 12px;font:400 11px/1 var(--sans);color:#2A323C;"><div class="mono">D-1040</div><div>2026-08-orders.csv</div><div class="mono">09-07 17:40</div><div class="mono" style="text-align:right;">304</div></div>
+              </div>
+              <div style="font:400 11px/1.5 var(--sans);color:#8B95A1;">실패 시점 화면 · 07 「업로드 열기」 직전</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane" style="flex:0 0 300px;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="flex:0 0 32px;display:flex;align-items:center;gap:9px;padding:0 12px;background:var(--fail-t);border-bottom:1px solid #EFC7BC;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#C8371D" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"></path></svg>
+          <span class="lbl" style="color:var(--fail);">STEP 07 실패 — 업로드 열기</span>
+        </div>
+        <div style="flex:1;min-height:0;padding:12px 14px;display:flex;gap:16px;overflow:hidden;">
+          <div style="flex:0 0 380px;display:flex;flex-direction:column;gap:8px;">
+            <div class="lbl">사유</div>
+            <div style="font:400 12.5px/1.6 var(--sans);color:var(--ink);">5000 ms 동안 <span class="mono" style="color:var(--fail);">role=button "업로드"</span> 에 맞는 요소를 찾지 못했습니다. 대기 시간이 지나 Step 이 실패했고 08 이후는 건너뛰었습니다.</div>
+            <div style="display:flex;gap:7px;margin-top:2px;"><div class="btn sm">대기 시간 늘리기</div><div class="btn sm">이 Step 고치기</div></div>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
+            <div class="lbl">시도한 LOCATOR</div>
+            <div style="border:1px solid var(--hair);border-radius:var(--r);overflow:hidden;">
+              <div style="display:grid;grid-template-columns:80px 1fr 92px;gap:10px;padding:6px 11px;background:var(--sunken);border-bottom:1px solid var(--hair-2);"><div class="lbl">우선순위</div><div class="lbl">후보</div><div class="lbl" style="text-align:right;">결과</div></div>
+              <div style="display:grid;grid-template-columns:80px 1fr 92px;gap:10px;padding:6px 11px;border-bottom:1px solid var(--hair);font:400 11.5px/1.4 var(--mono);color:var(--ink-3);"><div style="font-weight:600;">testId</div><div>(없음)</div><div style="text-align:right;">건너뜀</div></div>
+              <div style="display:grid;grid-template-columns:80px 1fr 92px;gap:10px;padding:6px 11px;border-bottom:1px solid var(--hair);font:400 11.5px/1.4 var(--mono);background:var(--fail-t);color:var(--ink);"><div style="font-weight:600;">role</div><div>role=button "업로드"</div><div style="text-align:right;font-weight:700;color:var(--fail);">0개</div></div>
+              <div style="display:grid;grid-template-columns:80px 1fr 92px;gap:10px;padding:6px 11px;border-bottom:1px solid var(--hair);font:400 11.5px/1.4 var(--mono);color:var(--ink-3);"><div style="font-weight:600;">text</div><div>text="업로드"</div><div style="text-align:right;">0개</div></div>
+              <div style="display:grid;grid-template-columns:80px 1fr 92px;gap:10px;padding:6px 11px;font:400 11.5px/1.4 var(--mono);color:var(--ink-3);"><div style="font-weight:600;">css</div><div>button.upload-open</div><div style="text-align:right;">0개</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div class="btn sm off">요소 다시 집기</div>
+              <div class="why" style="flex:1;">끝난 실행의 기록은 고칠 수 없습니다 — <a href="#">이 Step 고치기</a> 로 편집으로 넘어가세요.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="steps-hd">
+        <span class="lbl">TEST STEPS</span>
+        <div style="flex:1;"></div>
+        <span class="chip pass">통과 6</span>
+        <span class="chip fail">실패 1</span>
+        <span class="chip">건너뜀 6</span>
+      </div>
+      <div style="flex:1;min-height:0;overflow:hidden;">
+      <div class="srow pass"><div class="n">01</div><div class="t"><b>로그인 화면 열기</b><div class="m"><span class="chip">NAVIGATE</span><span class="loc">127.0.0.1:4400/login.html</span></div></div><div class="d">60 ms</div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg></div></div>
+      <div class="srow pass"><div class="n">02</div><div class="t"><b>이메일 입력</b><div class="m"><span class="chip">FILL</span><span class="loc">testId=login-email · tester@example.com</span></div></div><div class="d">70 ms</div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg></div></div>
+      <div class="srow pass"><div class="n">03</div><div class="t"><b>비밀번호 입력</b><div class="m"><span class="chip">FILL</span><span class="loc">testId=login-pw · {{비밀값}}</span></div></div><div class="d">64 ms</div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg></div></div>
+      <div class="srow pass"><div class="n">04</div><div class="t"><b>로그인 클릭</b><div class="m"><span class="chip">CLICK</span><span class="loc">testId=login-submit</span></div></div><div class="d">45 ms</div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg></div></div>
+      <div class="srow pass"><div class="n">05</div><div class="t"><b>로그인 완료 확인</b><div class="m"><span class="chip">ASSERT</span><span class="loc">text="환영합니다"</span></div></div><div class="d">31 ms</div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg></div></div>
+      <div class="srow pass"><div class="n">06</div><div class="t"><b>데이터 화면 열기</b><div class="m"><span class="chip">NAVIGATE</span><span class="loc">127.0.0.1:4400/data.html</span></div></div><div class="d">138 ms</div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg></div></div>
+      <div class="srow fail"><div class="n">07</div><div class="t"><b>업로드 열기</b><div class="m"><span class="chip fail">CLICK</span><span class="loc">role=button "업로드"</span></div></div><div class="d" style="color:var(--fail);">5005 ms</div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#C8371D" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"></path></svg></div></div>
+      <div class="srow"><div class="n">08</div><div class="t"><b>파일 선택</b><div class="m"><span class="chip">UPLOAD</span><span class="loc">testId=file-input · sample.csv</span></div></div><div class="d"></div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6E757F" stroke-width="2"><path d="M4 4l4 4-4 4M9 4l4 4-4 4"></path></svg></div></div>
+      <div class="srow"><div class="n">09</div><div class="t"><b>업로드 확인 클릭</b><div class="m"><span class="chip">CLICK</span><span class="loc">testId=upload-confirm</span></div></div><div class="d"></div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6E757F" stroke-width="2"><path d="M4 4l4 4-4 4M9 4l4 4-4 4"></path></svg></div></div>
+      <div class="srow"><div class="n">10</div><div class="t"><b>처리 완료 대기</b><div class="m"><span class="chip ai">AI</span><span class="loc">wait · text="처리 완료"</span></div></div><div class="d"></div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6E757F" stroke-width="2"><path d="M4 4l4 4-4 4M9 4l4 4-4 4"></path></svg></div></div>
+      <div class="srow"><div class="n">11</div><div class="t"><b>대시보드 열기</b><div class="m"><span class="chip">CLICK</span><span class="loc">testId=dashboard-open</span></div></div><div class="d"></div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6E757F" stroke-width="2"><path d="M4 4l4 4-4 4M9 4l4 4-4 4"></path></svg></div></div>
+      <div class="srow"><div class="n">12</div><div class="t"><b>행 개수 확인</b><div class="m"><span class="chip ai">AI</span><span class="loc">assert · rowCount=128</span></div></div><div class="d"></div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6E757F" stroke-width="2"><path d="M4 4l4 4-4 4M9 4l4 4-4 4"></path></svg></div></div>
+      <div class="srow"><div class="n">13</div><div class="t"><b>대시보드 저장</b><div class="m"><span class="chip">CLICK</span><span class="loc">testId=dashboard-save</span></div></div><div class="d"></div><div><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6E757F" stroke-width="2"><path d="M4 4l4 4-4 4M9 4l4 4-4 4"></path></svg></div></div>
+      </div>
+      <div style="flex:0 0 auto;border-top:1px solid var(--hair-2);background:var(--sunken-2);padding:10px 12px;display:flex;align-items:center;gap:8px;">
+        <div class="btn sm off">자연어로 Step 추가</div>
+        <div class="btn sm off">직접 조작으로 추가</div>
+        <div class="why" style="flex:1;">끝난 실행의 기록은 고칠 수 없습니다 — <a href="#">Step 07 고치기</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
