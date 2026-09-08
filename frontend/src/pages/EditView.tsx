@@ -33,6 +33,7 @@ import { StepEditFields } from "../components/StepEditFields";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
 import { InsertStepForm } from "../components/workbench/InsertStepForm";
+import { ConfirmDelete, StepRowOps } from "../components/workbench/StepRowOps";
 import { Workbench } from "../components/workbench/Workbench";
 import type { Notice, WorkbenchModel, WorkbenchStep } from "../components/workbench/model";
 import type { ActionId } from "../lib/actions";
@@ -243,6 +244,14 @@ export function EditView({
    * 닫혀 있으면 자리를 차지하지 않는다.
    */
   const [insertOpen, setInsertOpen] = useState(false);
+  /**
+   * 지우기 확인을 기다리는 Step (009 FR-302).
+   *
+   * **행 안에서 확인한다** — 겹침 대화상자를 쓰지 않는다. 행 조작의 결과를 행이 아닌
+   * 곳에서 확인하면 대상이 무엇이었는지 다시 확인해야 한다. `TestList` 의 테스트 삭제가
+   * 같은 방식이며 그 선례를 따른다.
+   */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const load = useCallback(() => {
     void definition
@@ -375,6 +384,37 @@ export function EditView({
   const submitInsert = (spec: ManualStepSpec) => {
     apply({ op: "insert", at: insertAt, spec });
     setInsertOpen(false);
+  };
+
+  /*
+    009 FR-298 — **행에서 바로 조작한다.**
+
+    이전에는 팔레트가 「지목한 Step」을 대상으로 했으므로 옮기려는 Step 을 먼저 골라야
+    했다. 여기서는 **그 행의 자리(index)를 인자로 받는다** — 고르는 조작이 끼지 않는다.
+    그것이 세 칸 내리기를 여섯 번에서 세 번으로 줄이는 것의 전부다 (SC-503).
+  */
+  const runRowAction = (action: ActionId, index: number) => {
+    const step = dslSteps[index];
+    if (step === undefined) return;
+    switch (action) {
+      case "step.moveUp":
+        move(index, -1);
+        break;
+      case "step.moveDown":
+        move(index, 1);
+        break;
+      case "step.delete":
+        // FR-302 — 확인을 거친다. 무엇이 지워지는지 그 행에서 보인다.
+        setConfirmDelete(step.id);
+        break;
+      case "step.insertManual":
+        // 그 행 **앞**에 넣는다 — 행을 고르고 입력면을 연다.
+        setSelected(step.id);
+        setInsertOpen(true);
+        break;
+      default:
+        break;
+    }
   };
   const sensitiveNames = (test.variables ?? []).filter((v) => v.sensitive).map((v) => v.name);
   const editable = view.editable;
@@ -699,6 +739,31 @@ export function EditView({
         model={model}
         phaseActions={phaseActions}
         headerActions={headerActions}
+        /*
+          009 FR-298 — 행 조작. `rowActions` 자리는 007 이 열어 두었고 넘기는 화면이
+          없었다 (관찰 M-08). 이 화면이 첫 소비자다.
+        */
+        rowActions={(step) =>
+          confirmDelete === step.id ? (
+            <ConfirmDelete
+              label={step.label}
+              onConfirm={() => {
+                apply({ op: "delete", step_id: step.id });
+                setConfirmDelete(null);
+              }}
+              onCancel={() => setConfirmDelete(null)}
+            />
+          ) : (
+            <StepRowOps
+              index={step.index}
+              total={steps.length}
+              label={step.label}
+              capabilities={capabilities}
+              busy={saving}
+              onRun={runRowAction}
+            />
+          )
+        }
         stepEmptyNotice="이 테스트에는 Step 이 없습니다."
         stepFooter={
           <ActionPalette

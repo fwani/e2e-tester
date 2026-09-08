@@ -170,18 +170,18 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 
 **검증 절차**: [quickstart.md](./quickstart.md) 「US3」 절
 
-- [ ] T042 [US3] `frontend/src/components/workbench/StepList.tsx` 의 `StepRow` 에 칸 5 를 만든다 (FR-298·FR-299·FR-303) — **결과 국면에서는 칸 5 를 그리지 않는다**(계약 §3-3-1 — 행마다 같은 이유의 비활성 조작 4개가 최대 200개가 된다). 그 국면에서는 팔레트가 자리를 갖는다.
+- [X] T042 [US3] `frontend/src/components/workbench/StepList.tsx` 의 `StepRow` 에 칸 5 를 만든다 (FR-298·FR-299·FR-303) — **결과 국면에서는 칸 5 를 그리지 않는다**(계약 §3-3-1 — 행마다 같은 이유의 비활성 조작 4개가 최대 200개가 된다). 그 국면에서는 팔레트가 자리를 갖는다.
   나머지 국면에서는 `.srow-ops` 안에 위로 · 아래로 · 이 앞에 추가 · 지우기 순서로 고정. **hover 로 드러내지 않고 항상 보인다**(계약 §3-2). 기존 칸 넷의 자리와 행 높이 52px 는 바뀌지 않는다 (FR-304)
-- [ ] T043 [US3] `frontend/src/components/workbench/StepList.tsx` 에서 끝단을 좁힌다 (FR-300) — 첫 행의 위로와 마지막 행의 아래로는 자리를 남기고 비활성이며 「맨 위입니다」·「맨 아래입니다」를 말한다. **해소 방법을 달지 않는다**(해소할 방법이 없는 사실이다). 표가 아니라 화면이 아는 사실로 좁히는 것이며 국면 판정을 하지 않는다 (계약 §2-3)
-- [ ] T044 [US3] `frontend/src/components/workbench/model.ts` 에 행 조작 모델을 더하고 `Workbench.tsx` 가 `rowActions` 를 화면에서 받아 넘기게 한다. 자리는 이미 열려 있다 (관찰 M-08) — 만드는 것은 넘기는 쪽이다
-- [ ] T045 [US3] `frontend/src/pages/SessionScreen.tsx` 에서 `ReorderPanel` 을 **제거**하고(FR-301 · SC-505) 행 조작으로 순서 변경·삭제를 연결한다. `reordering` 상태와 그것을 여닫는 조작도 함께 없앤다 — 화면에 Step 목록이 둘 뜨는 경로를 남기지 않는다
-- [ ] T046 [US3] `frontend/src/pages/EditView.tsx` 에서 팔레트의 「위로 옮기기」 단독 버튼을 없애고 (FR-299 — 세 칸 내리기가 여섯 번이던 것이 세 번이 된다) 행 조작으로 위로·아래로·삭제를 연결한다. `narrowByPick` 의 "먼저 Step 을 고르세요" 왕복이 이동·삭제에서 사라진다 (FR-298 · SC-504)
-- [ ] T047 [US3] 행의 지우기에 확인 절차를 만든다 (FR-302) — 지금 Step 삭제에는 확인이 **없다**(확인 상태를 가진 화면은 `frontend/src/pages/TestList.tsx` 의 테스트 삭제뿐이다). 그 선례처럼 **행 안에서** 무엇이 지워지는지 보이고 확인을 받는다. 자리는 `frontend/src/components/workbench/StepList.tsx` 가 갖고 **겹침 대화상자를 새로 만들지 않는다** — 행 조작의 결과를 행이 아닌 곳에서 확인하면 대상이 무엇이었는지 다시 확인해야 한다
-- [ ] T048 [US3] `frontend/src/components/workbench/ActionPalette.tsx` 에서 **고칠 수 있는 국면에서만** 이동·삭제 자리를 행에 양도한다 — 결과 국면에서는 팔레트가 그대로 갖는다 (계약 §3-3-1). — 기존 `hidden` 목록 방식을 쓴다(「이 국면에서 이 조작은 다른 자리가 갖는다」를 표현하는 기존 방법이다). 표가 요구하는 조작을 화면에서 **없애는 것이 아니다** (계약 §3-3)
-- [ ] T049 [P] [US3] `docs/design/008-visual-language/*.dc.html` 중 행을 그리는 8장(`Main`·`Paused`·`Run`·`Record`·`Takeover`·`AiWriting`·`Result`·`StepDetail`)의 **마크업**에 칸 5 를 그린다. `Main` 장에는 「이 앞에 추가」 선택 자리와 「미저장」 칩도 함께 넣는다 (계약 §6 의 2번)
-- [ ] T050 [P] [US3] `docs/design/008-visual-language/conformance/*.md` 의 같은 8장 대조표에 칸 5 행을 추가하고, `docs/design/008-visual-language/replacement-map.md` 의 정본 클래스 목록에 `.srow-ops` 를 더한다 (계약 §6 의 4·5번)
-- [ ] T051 [P] [US3] `frontend/tests/StepRowActions.test.tsx` — 5번을 8번으로 옮기는 데 「아래로」 3회로 끝나는지(SC-503), 첫 행·마지막 행의 방향이 비활성이고 이유를 말하는지, 삭제가 확인을 거치는지, **화면에 Step 목록이 하나만 있는지**(SC-505), 키보드만으로 모든 행 조작에 도달하고 접근 가능한 이름이 「〈이름〉 위로」·「〈이름〉 아래로」인지(SC-507), 실행 중과 결과 화면에서 비활성인지(SC-508 · FR-308)
-- [ ] T052 [US3] [quickstart.md](./quickstart.md) 「US3」 절 전체를 실측하고 조작 횟수를 `baseline.md` 대비로 적는다 — SC-503 은 3회, SC-504 는 왕복 0건과 확인 없는 경로 0건을 요구한다(횟수가 아니다)
+- [X] T043 [US3] `frontend/src/components/workbench/StepList.tsx` 에서 끝단을 좁힌다 (FR-300) — 첫 행의 위로와 마지막 행의 아래로는 자리를 남기고 비활성이며 「맨 위입니다」·「맨 아래입니다」를 말한다. **해소 방법을 달지 않는다**(해소할 방법이 없는 사실이다). 표가 아니라 화면이 아는 사실로 좁히는 것이며 국면 판정을 하지 않는다 (계약 §2-3)
+- [X] T044 [US3] `frontend/src/components/workbench/model.ts` 에 행 조작 모델을 더하고 `Workbench.tsx` 가 `rowActions` 를 화면에서 받아 넘기게 한다. 자리는 이미 열려 있다 (관찰 M-08) — 만드는 것은 넘기는 쪽이다
+- [X] T045 [US3] `frontend/src/pages/SessionScreen.tsx` 에서 `ReorderPanel` 을 **제거**하고(FR-301 · SC-505) 행 조작으로 순서 변경·삭제를 연결한다. `reordering` 상태와 그것을 여닫는 조작도 함께 없앤다 — 화면에 Step 목록이 둘 뜨는 경로를 남기지 않는다
+- [X] T046 [US3] `frontend/src/pages/EditView.tsx` 에서 팔레트의 「위로 옮기기」 단독 버튼을 없애고 (FR-299 — 세 칸 내리기가 여섯 번이던 것이 세 번이 된다) 행 조작으로 위로·아래로·삭제를 연결한다. `narrowByPick` 의 "먼저 Step 을 고르세요" 왕복이 이동·삭제에서 사라진다 (FR-298 · SC-504)
+- [X] T047 [US3] 행의 지우기에 확인 절차를 만든다 (FR-302) — 지금 Step 삭제에는 확인이 **없다**(확인 상태를 가진 화면은 `frontend/src/pages/TestList.tsx` 의 테스트 삭제뿐이다). 그 선례처럼 **행 안에서** 무엇이 지워지는지 보이고 확인을 받는다. 자리는 `frontend/src/components/workbench/StepList.tsx` 가 갖고 **겹침 대화상자를 새로 만들지 않는다** — 행 조작의 결과를 행이 아닌 곳에서 확인하면 대상이 무엇이었는지 다시 확인해야 한다
+- [X] T048 [US3] 팔레트의 선언된 자리를 **그대로 둔다** — 계약 §3-3-0 이 구현 중 확인한 사실을 기록했다. 행에 `data-action` 을 달면 「한 조작에 한 자리」(`CapabilityUI.duplicated`)가 깨지고, 팔레트에서 숨기면 「감춰진 조작 0건」이 깨진다. `step.select` 의 선례처럼 **자리는 담는 것이 선언하고 행은 사례**다(`data-row-action`). 이 작업은 팔레트 경로(`selectedIndex` 기준 이동·삭제)가 실제로 동작하는지 확인하는 것으로 바뀐다 — 표가 거짓말하지 않아야 한다. — 기존 `hidden` 목록 방식을 쓴다(「이 국면에서 이 조작은 다른 자리가 갖는다」를 표현하는 기존 방법이다). 표가 요구하는 조작을 화면에서 **없애는 것이 아니다** (계약 §3-3)
+- [X] T049 [P] [US3] `docs/design/008-visual-language/*.dc.html` 중 행을 그리는 8장(`Main`·`Paused`·`Run`·`Record`·`Takeover`·`AiWriting`·`Result`·`StepDetail`)의 **마크업**에 칸 5 를 그린다. `Main` 장에는 「이 앞에 추가」 선택 자리와 「미저장」 칩도 함께 넣는다 (계약 §6 의 2번)
+- [X] T050 [P] [US3] `docs/design/008-visual-language/conformance/*.md` 의 같은 8장 대조표에 칸 5 행을 추가하고, `docs/design/008-visual-language/replacement-map.md` 의 정본 클래스 목록에 `.srow-ops` 를 더한다 (계약 §6 의 4·5번)
+- [X] T051 [P] [US3] `frontend/tests/StepRowActions.test.tsx` — 5번을 8번으로 옮기는 데 「아래로」 3회로 끝나는지(SC-503), 첫 행·마지막 행의 방향이 비활성이고 이유를 말하는지, 삭제가 확인을 거치는지, **화면에 Step 목록이 하나만 있는지**(SC-505), 키보드만으로 모든 행 조작에 도달하고 접근 가능한 이름이 「〈이름〉 위로」·「〈이름〉 아래로」인지(SC-507), 실행 중과 결과 화면에서 비활성인지(SC-508 · FR-308)
+- [X] T052 [US3] [quickstart.md](./quickstart.md) 「US3」 절 전체를 실측하고 조작 횟수를 `baseline.md` 대비로 적는다 — SC-503 은 3회, SC-504 는 왕복 0건과 확인 없는 경로 0건을 요구한다(횟수가 아니다)
 
 **Checkpoint**: 세 이야기가 전부 독립으로 동작한다.
 

@@ -420,7 +420,6 @@ function StepRow({
             </>
           )}
         </div>
-        {actions}
       </div>
 
       {/* 칸 3 — 소요 시간. 없으면 자리를 비운다 (FR-223) */}
@@ -432,6 +431,23 @@ function StepRow({
       <div data-cell="outcome">
         <OutcomeMark outcome={step.outcome} />
       </div>
+
+      {/*
+        칸 5 — 행 조작 (009 FR-298·FR-304 · 계약 §3-2).
+
+        **칸 2 안이 아니라 새 칸이다.** 이전 판은 이름·부속 정보와 같은 칸에 넣었는데, 그
+        칸은 52px 안에 두 줄(이름 18 + 부속 17)을 이미 담고 있어 셋째 줄이 들어가면 행
+        높이가 바뀐다 — 행 높이는 국면과 무관하게 고정이어야 한다 (FR-304).
+
+        **`actions` 가 없으면 칸을 그리지 않는다.** 읽기 전용 국면(결과)에서는 팔레트가
+        자리를 갖는다 (계약 §3-3-1) — 행마다 같은 이유의 비활성 조작 4개를 20~50행에
+        반복하면 결말을 읽는 화면이 쓸 수 없는 조작으로 덮인다.
+      */}
+      {actions !== undefined && actions !== null && (
+        <div data-cell="ops" className="srow-ops">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

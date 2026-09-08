@@ -50,6 +50,7 @@ import { BrowserFrame } from "../components/design/BrowserFrame";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
 import { InsertStepForm } from "../components/workbench/InsertStepForm";
+import { ConfirmDelete, StepRowOps } from "../components/workbench/StepRowOps";
 import { Workbench } from "../components/workbench/Workbench";
 import type {
   AiBlockedState,
@@ -84,7 +85,6 @@ import {
   sessionTitle,
   skipFailureNotice,
   stepLabel,
-  stepNumber,
   stopLabel,
   type OutcomeTone,
 } from "../lib/wording";
@@ -179,7 +179,6 @@ export interface SessionWorkbenchProps {
   /** Step 상세 겹침이 열려 있는가. 지목과 상세 열기는 다른 조작이다 (FR-227·FR-230). */
   detailOpen?: boolean;
   repickWaiting?: RepickSlot | null;
-  reordering?: boolean;
   saveName?: string;
 
   onSelectStep: (stepId: string) => void;
@@ -206,7 +205,15 @@ export interface SessionWorkbenchProps {
   onInsertManual?: (spec: ManualStepSpec, at?: number) => void;
   onNaturalLanguage?: (instruction: string) => void;
   onDeleteStep?: (stepId: string) => void;
-  onToggleReorder?: () => void;
+  /**
+   * 009 FR-298·FR-301 — **행에서** 순서를 바꾼다.
+   *
+   * 이전에는 `onToggleReorder` 로 별도 패널을 열고 그 안에서 옮긴 뒤 「적용」을 눌렀다.
+   * 화면에 Step 목록이 둘 뜨는 상태였고(SC-505), 세 칸 옮기는 데 다섯 번이 걸렸다.
+   *
+   * **순서 전체를 넘긴다.** 서버 계약(`steps:reorder`)이 순서 목록을 받으므로 화면이
+   * 자리를 바꾼 결과를 만들어 보낸다 — 「위로/아래로」를 서버 연산으로 새로 만들지 않는다.
+   */
   onApplyReorder?: (order: string[]) => void;
   onRunFromHere?: (stepIndex: number) => void;
   onRerunAll?: () => void;
@@ -233,6 +240,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
    * 검증 추가와 **같은 문법**이다 — 여는 조작은 Step 패널 바닥에, 폼은 그 자리에 펼쳐진다.
    */
   const [insertOpen, setInsertOpen] = useState(false);
+  /** 지우기 확인을 기다리는 Step (009 FR-302). **행 안에서** 묻는다. */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   /** 자연어 Step 입력. 팔레트가 아니라 어댑터가 갖는다 — 보내는 것은 어댑터다. */
   const [nl, setNl] = useState("");
   const {
@@ -263,7 +272,6 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     focusedStepId = null,
     detailOpen = false,
     repickWaiting = null,
-    reordering = false,
     saveName = "",
     onSelectStep,
     onOpenDetail,
@@ -283,7 +291,6 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     onInsertManual,
     onNaturalLanguage,
     onDeleteStep,
-    onToggleReorder,
     onApplyReorder,
     onRunFromHere,
     onRerunAll,
@@ -374,6 +381,52 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     });
   })();
   const selectedIndex = steps.findIndex((s) => s.id === focusedStepId);
+
+  /**
+   * 자리를 한 칸 옮긴다 (009 FR-299).
+   *
+   * **서버 연산을 새로 만들지 않는다.** `steps:reorder` 가 순서 목록을 받으므로 화면이
+   * 맞바꾼 결과를 만들어 보낸다. 「위로/아래로」를 서버에 새 엔드포인트로 두면 순서 규칙이
+   * 두 곳에 생긴다.
+   *
+   * 갈 곳이 없으면 아무 일도 하지 않는다 — 행 조작이 이미 비활성이지만(FR-300) 팔레트
+   * 경로도 같은 함수를 지나므로 여기서도 막는다.
+   */
+  const moveStep = (index: number, delta: number) => {
+    const to = index + delta;
+    if (to < 0 || to >= steps.length) return;
+    const ids = steps.map((s) => s.id);
+    const order = ids.map((id, i) => (i === index ? ids[to] : i === to ? ids[index] : id));
+    onApplyReorder?.(order as string[]);
+  };
+
+  /*
+    009 FR-298 — 행 조작. **그 행의 자리를 인자로 받는다** — 고르는 조작이 끼지 않는다.
+    일시정지 화면에서 세 칸 옮기는 데 다섯 번(패널 열기 + ↓×3 + 적용)이 걸렸던 것이
+    세 번이 된다 (SC-503).
+  */
+  const runRowAction = (action: ActionId, index: number) => {
+    const step = steps[index];
+    if (step === undefined) return;
+    switch (action) {
+      case "step.moveUp":
+        moveStep(index, -1);
+        break;
+      case "step.moveDown":
+        moveStep(index, 1);
+        break;
+      case "step.delete":
+        // FR-302 — 확인을 거친다.
+        setConfirmDelete(step.id);
+        break;
+      case "step.insertManual":
+        onSelectStep(step.id);
+        setInsertOpen(true);
+        break;
+      default:
+        break;
+    }
+  };
 
   /*
     권한표에 넘기는 **사실**. 화면이 아는 것만 담는다 — 모르는 것은 `undefined` 로 두고
@@ -536,19 +589,6 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
             }}
             onOpenBrowser={() => runAction("step.recordStart")}
             onCancel={() => setInsertOpen(false)}
-          />
-        ),
-      };
-    }
-    if (reordering) {
-      return {
-        kind: "paused_tools",
-        tools: (
-          <ReorderPanel
-            steps={steps.map((s2) => ({ id: s2.id, label: s2.label }))}
-            busy={busy}
-            onApply={(order) => onApplyReorder?.(order)}
-            onCancel={() => onToggleReorder?.()}
           />
         ),
       };
@@ -732,12 +772,16 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         onRecordStop?.();
         break;
       /*
-        Phase 2 는 **이름만** 바꾼다. 아직 별도 패널을 여는 동작이며, 두 방향이 같은
-        패널을 연다 — 행 조작으로 옮기는 것은 US3 (FR-301) 이 한다.
+        009 FR-298 — 옮기는 조작의 **자리는 행이다.** 팔레트에서 눌렀다면 지목한 Step 을
+        대상으로 삼는다 — 표가 그 국면에 그 조작을 두고 있으므로 자리가 있어야 하고,
+        팔레트는 `hidden` 으로 행에 양도한다 (계약 §3-3). 여기 남는 것은 표가 요구하는
+        경로가 실제로 동작한다는 보장이다.
       */
       case "step.moveUp":
+        if (selectedIndex >= 0) moveStep(selectedIndex, -1);
+        break;
       case "step.moveDown":
-        onToggleReorder?.();
+        if (selectedIndex >= 0) moveStep(selectedIndex, 1);
         break;
       case "step.addAssertion":
         setAssertOpen((v) => !v);
@@ -984,6 +1028,31 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       model={model}
       phaseActions={phaseActions}
       headerActions={headerActions}
+      /*
+        009 FR-298 — 행 조작. **결과 국면은 이 화면이 아니다**(`ResultView` 가 그린다)
+        므로 계약 §3-3-1 의 예외가 여기 걸리지 않는다 — 세션 국면은 전부 행이 갖는다.
+      */
+      rowActions={(step) =>
+        confirmDelete === step.id ? (
+          <ConfirmDelete
+            label={step.label}
+            onConfirm={() => {
+              onDeleteStep?.(step.id);
+              setConfirmDelete(null);
+            }}
+            onCancel={() => setConfirmDelete(null)}
+          />
+        ) : (
+          <StepRowOps
+            index={step.index}
+            total={steps.length}
+            label={step.label}
+            capabilities={capabilities}
+            busy={busy}
+            onRun={runRowAction}
+          />
+        )
+      }
       noticesExtra={
         offline ? <LiveConnectionBanner onReconnect={() => onReconnect?.()} /> : null
       }
@@ -1057,63 +1126,19 @@ const STEP_SCOPED = new Set<ActionId>([
   "run.from",
 ]);
 
-/**
- * 순서 변경 (FR-035).
- *
- * 드래그 앤 드롭을 쓰지 않는다. 목록이 200개까지 갈 수 있고(research R8) 드래그는 긴
- * 목록에서 정확히 놓기 어렵다. 위·아래 이동 버튼이 느리지만 틀리지 않는다.
- */
-function ReorderPanel({
-  steps,
-  busy,
-  onApply,
-  onCancel,
-}: {
-  steps: { id: string; label: string }[];
-  busy: boolean;
-  onApply: (order: string[]) => void;
-  onCancel: () => void;
-}) {
-  const [order, setOrder] = useState(steps.map((s) => s.id));
-  const labelOf = (id: string) => steps.find((s) => s.id === id)?.label ?? id;
+/*
+  009 FR-301 · SC-505 — **`ReorderPanel` 을 없앴다.**
 
-  const move = (index: number, delta: number) => {
-    const next = [...order];
-    const target = index + delta;
-    const a = next[index];
-    const b = next[target];
-    if (target < 0 || target >= next.length || a === undefined || b === undefined) return;
-    next[index] = b;
-    next[target] = a;
-    setOrder(next);
-  };
+  별도 패널은 화면에 Step 목록을 **둘** 띄웠다. 목록은 이미 오른쪽 460px 패널에 있는데
+  순서를 바꾸려면 그 사본을 하나 더 열어야 했고, 세 칸 옮기는 데 다섯 번(패널 열기 +
+  ↓×3 + 적용)이 걸렸다 (관찰 M-06).
 
-  return (
-    <div className="pane" style={{ padding: 12, maxHeight: 240, overflowY: "auto" }}>
-      <strong className="lbl">순서 변경</strong>
-      {order.map((id, index) => (
-        <div key={id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }}>
-          <span className="mono dim">{stepNumber(index)}</span>
-          <span style={{ flex: 1 }}>{labelOf(id)}</span>
-          <button className="ghost" aria-label={`${labelOf(id)} 위로`} onClick={() => move(index, -1)}>
-            ↑
-          </button>
-          <button className="ghost" aria-label={`${labelOf(id)} 아래로`} onClick={() => move(index, 1)}>
-            ↓
-          </button>
-        </div>
-      ))}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-        <button className="secondary" onClick={onCancel}>
-          취소
-        </button>
-        <button disabled={busy} onClick={() => onApply(order)}>
-          적용
-        </button>
-      </div>
-    </div>
-  );
-}
+  이제 순서는 행의 위로·아래로가 바꾼다. 「적용」이 없다 — 누르는 즉시 반영된다.
+
+  그 패널의 주석이 기록한 판단은 **유지된다**: 끌어놓기를 쓰지 않는다. 목록이 200개까지
+  갈 수 있고 끌어놓기는 긴 목록에서 정확히 놓기 어렵다. 위·아래 이동이 느리지만 틀리지
+  않는다 (009 명세 Assumptions 가 같은 판단을 다시 기록했다).
+*/
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 소유 — `SessionScreen`
@@ -1163,7 +1188,6 @@ export function SessionScreen({
   const durations = useRef<Record<string, number>>({});
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [inspecting, setInspecting] = useState(false);
-  const [reordering, setReordering] = useState(false);
   const [repickWaiting, setRepickWaiting] = useState<RepickSlot | null>(null);
   const [notice, setNotice] = useState<ErrorInfo | null>(null);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
@@ -1609,7 +1633,6 @@ export function SessionScreen({
         focusedStepId={selectedStepId}
         detailOpen={inspecting}
         repickWaiting={repickWaiting}
-        reordering={reordering}
         saveName={saveName}
         onSelectStep={(stepId) => setSelectedStepId(stepId)}
         onOpenDetail={(stepId) => {
@@ -1682,11 +1705,7 @@ export function SessionScreen({
             .finally(() => setBusy(false));
         }}
         onDeleteStep={(stepId) => void edit(() => sessions.deleteStep(sessionId, stepId))}
-        onToggleReorder={() => setReordering((v) => !v)}
-        onApplyReorder={(order) => {
-          void edit(() => sessions.reorderSteps(sessionId, order));
-          setReordering(false);
-        }}
+        onApplyReorder={(order) => void edit(() => sessions.reorderSteps(sessionId, order))}
         onRunFromHere={(stepIndex) => void act(() => sessions.runFrom(sessionId, stepIndex))}
         onRerunAll={() => rerun()}
         onRerunFrom={(stepIndex) => rerun(stepIndex)}

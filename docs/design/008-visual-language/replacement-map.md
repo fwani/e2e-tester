@@ -120,6 +120,24 @@ v1→v2 전환에서 기하(3px→1px · 모서리 추가)는 옮겨졌으나 **
 | 6 | `frontend/tests/{StepRowLayout,WorkbenchShell}.test.tsx` | 치수 단언 갱신. 008 에서 인라인 사본 대신 정본 정의를 보게 했다 | 완료 |
 | 7 | `conformance/*.md` | 축을 통계에서 **규칙 3층**으로 바꿨다. L1·L2 는 기계가 채운다 | L3 54항목이 사람 몫 |
 
+## 4-1. 2026-09-08 (009) — 정본에 형태 하나가 늘었다
+
+| 새 형태 | 무엇 | 근거 |
+|---|---|---|
+| `.srow-ops` (와 그 안의 `.op` · `.op.off` · `.op.danger`) | Step 행의 다섯째 칸 — 위로·아래로·이 앞에 추가·지우기 | `specs/009-step-editing-flow/contracts/step-editing.md` §3 |
+
+`.srow` 격자가 `26px 1fr 58px 20px` → `26px 1fr 58px 20px auto` 로 넓어졌다. **행 높이
+52px 는 바뀌지 않았다** — 새 칸이며 기존 칸을 밀지 않는다 (009 FR-304).
+
+**방침은 그대로다** (§4-2 「값을 옮기지 않는다」). 이 형태도 18장 시트에 먼저 정의하고
+`scripts/extract_canon.py` 로 `tokens.css` 를 갱신했다. `tokens.css` 를 먼저 고치면 다음
+추출에서 되돌아간다.
+
+새 색·새 치수를 만들지 않았다 — `--hair-2`·`--panel`·`--ink-2`·`--ink-3`·`--fail` 과
+칩 모서리 2px 만 쓴다.
+
+---
+
 ## 5. 명세 개정이 필요한 것 — FR-230
 
 **상태**: 코드·계약·검사는 이미 새 규칙을 따른다. `specs/007-.../spec.md` 의 FR-230
