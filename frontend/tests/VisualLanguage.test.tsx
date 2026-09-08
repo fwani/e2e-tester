@@ -31,6 +31,20 @@ import { describe, expect, it } from "vitest";
 
 import { VISUAL_LANGUAGE_EXCEPTIONS, isRegistered } from "../src/theme/exceptions";
 import tokens from "../src/theme/tokens.css?raw";
+import uiContract from "../../specs/007-unify-test-screens/contracts/ui-contract.md?raw";
+
+/**
+ * 확정 디자인 18장의 **원문 전체** (시트 + 인라인). G-4 의 출처 목록이다.
+ *
+ * 시트만 보면 안 된다 — `#E5D3AC`(주의 계열 경계선) 같은 값은 인라인에만 있고 그래도
+ * v2 의 값이다. 반대로 인라인에 있다고 다 v2 인 것도 아니다 (아래 v1 표본 참고).
+ */
+const DESIGN_PAGES = import.meta.glob("../../docs/design/008-visual-language/*.dc.html", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+const DESIGN_TEXT = Object.values(DESIGN_PAGES).join("\n").toLowerCase();
 
 /**
  * 화면 파일 전체. **손으로 적지 않는다** — 새 파일이 자동으로 대상이 된다.
@@ -78,8 +92,16 @@ interface Finding {
   value: string;
 }
 
-function allowed(file: string, axis: Finding["axis"], value: string): boolean {
-  const wanted = axis === "G-1" ? "color" : axis === "G-2" ? "inline-style" : "class-name";
+/** 축 → 예외 등록부의 `axis`. 등록부는 축 이름으로 예외를 좁힌다 (C-12). */
+const EXCEPTION_AXIS: Record<string, string> = {
+  "G-1": "color",
+  "G-2": "inline-style",
+  "G-3": "class-name",
+  "G-4": "token",
+};
+
+function allowed(file: string, axis: Finding["axis"] | "G-4", value: string): boolean {
+  const wanted = EXCEPTION_AXIS[axis];
   return VISUAL_LANGUAGE_EXCEPTIONS.some(
     (e) =>
       isRegistered(e) &&
@@ -185,6 +207,85 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
     }
   });
 
+  it("G-4 — 정본에 확정 디자인에 없는 값이 없다", () => {
+    /*
+      **정본이 값을 지어내지 않는지 센다** (FR-266 · C-3).
+
+      002 라운드의 결함이 정확히 이것이었다 — 확정 디자인에 `border-radius` 가 0회인데
+      토큰에 `--radius: 10px` 가 있었다. 사람 눈으로 잡기 어려운 종류의 이탈이다.
+
+      정본은 두 구획이다. 위는 `scripts/extract_canon.py` 가 dc.html 에서 **기계로 뽑은**
+      것이라 정의상 디자인에 있다. 아래 파생 구획이 이 검사의 대상이다 — 확정 디자인이
+      인라인으로 되풀이하는 형태에 이름을 붙인 곳이며, 이름을 붙이는 김에 값을 지어낼 수
+      있는 자리다.
+    */
+    const marker = "정본에서 파생된 것";
+    expect(tokens, "정본에 파생 구획 표시가 없다").toContain(marker);
+    const derived = stripComments(tokens.slice(tokens.indexOf(marker)));
+
+    const values = [
+      ...(derived.match(/#[0-9A-Fa-f]{3,8}\b/g) ?? []),
+      ...(derived.match(/\b\d+(?:\.\d+)?px\b/g) ?? []),
+      ...(derived.match(/rgba?\([^)]*\)/g) ?? []),
+    ];
+
+    const orphan = [...new Set(values)].filter(
+      (v) => !DESIGN_TEXT.includes(v.toLowerCase()) && !allowed("frontend/src/theme/tokens.css", "G-4", v),
+    );
+    expect(
+      orphan,
+      "확정 디자인 어디에도 없는 값을 정본이 갖고 있다. 값을 더하려면 먼저 디자인에서 " +
+        "그 값을 찾거나, theme/exceptions.ts 에 사유와 함께 등록한다 (FR-266)",
+    ).toEqual([]);
+  });
+
+  it("G-4 — 확정 디자인의 v1 대조 예시를 출처로 인정하지 않는다", () => {
+    /*
+      `Language.dc.html` 은 v2 를 설명하려고 v1 을 나란히 그린다 (「03 · 기하」). 그 값들은
+      확정 디자인 **파일에는** 있지만 폐기된 언어다. 「디자인에 있으니 써도 된다」로 읽으면
+      v1 이 되살아난다 — G-4 의 출처 목록이 넓기 때문에 이 단언이 함께 있어야 한다.
+    */
+    for (const dead of ["#f5d000", "#14130f"]) {
+      expect(DESIGN_TEXT, `표본이 사라졌다면 이 단언을 다시 판단해야 한다: ${dead}`).toContain(dead);
+      expect(stripComments(tokens).toLowerCase(), `v1 표본 값이 정본에 들어왔다: ${dead}`).not.toContain(dead);
+    }
+    expect(stripComments(tokens)).not.toMatch(/box-shadow:\s*\d+px \d+px 0(\s|;)/);
+    expect(stripComments(tokens)).not.toMatch(/border:\s*3px solid/);
+  });
+
+  it("G-5 — 껍데기 치수 사본이 `ui-contract.md` §1-2 표와 같다", () => {
+    /*
+      정본은 그 표이고 `tokens.css` 는 **사본**이다 (C-5). 사본이 정본과 어긋나면 화면은
+      둘 중 어느 쪽도 아닌 값을 그린다 — 007 이 표를 세운 이유가 컴포넌트가 자기 치수를
+      스스로 정하던 것이었다.
+    */
+    const table = new Map(
+      [...uiContract.matchAll(/^\|\s*\**([^|*]+?)\**\s*\|\s*\**(\d+)px\**/gm)].map(
+        (m) => [(m[1] as string).trim(), `${m[2] as string}px`],
+      ),
+    );
+    const COPY: Record<string, string> = {
+      "헤더 높이": "--h-header",
+      "국면 띠 높이": "--h-phase",
+      "알림 띠 높이": "--h-notice",
+      "조작 높이": "--h-control",
+      "Step 행 높이": "--h-step",
+      "Step 패널 폭": "--w-steps",
+      "Step 상세 폭": "--w-detail",
+      "최소 기준 폭": "--w-min",
+    };
+
+    // 표의 행 이름이 바뀌면 대조가 조용히 0건이 된다 — 그것부터 막는다.
+    for (const label of Object.keys(COPY)) {
+      expect(table.has(label), `ui-contract §1-2 표에 「${label}」 행이 없다`).toBe(true);
+    }
+    for (const [label, token] of Object.entries(COPY)) {
+      const re = new RegExp(`${token}:\\s*([^;]+);`);
+      const got = re.exec(stripComments(tokens))?.[1]?.trim();
+      expect(got, `${token} 이 ui-contract §1-2 의 「${label}」 과 다르다`).toBe(table.get(label));
+    }
+  });
+
   it("SC-405 — 위반을 심으면 잡는다. 어느 파일 어느 줄인지 알려준다", () => {
     /*
       **가드가 실제로 잡는지 세는 검사다.** 「0건」이라는 통과는 두 가지를 뜻할 수 있다 —
@@ -223,16 +324,30 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
   });
 
   it("G-6 죽은 예외가 없다 — 등록됐는데 쓰이지 않는 항목", () => {
+    /*
+      예외가 관성으로 쌓이면 규칙을 갉아먹는다. 등록만 하고 실제로 쓰이지 않는 항목을
+      보고한다 — 이 검사는 이미 한 번 일했다. 껍데기 경계선 예외가 불필요해진 것을
+      잡아냈고 그 자리는 정본의 `.hdr`·`.phase` 가 이미 갖고 있었다.
+    */
+    const CORPUS: Record<string, string> = {
+      ...Object.fromEntries(Object.entries(SOURCES).map(([k, v]) => [repoPath(k), v])),
+      // 정본 자신도 예외의 대상이다 (`token` 축).
+      "frontend/src/theme/tokens.css": tokens,
+    };
+
     const dead = VISUAL_LANGUAGE_EXCEPTIONS.filter((e) => {
-      const files = Object.keys(SOURCES).map(repoPath).filter((f) => f.startsWith(e.file));
+      const files = Object.keys(CORPUS).filter((f) => f.startsWith(e.file));
       if (files.length === 0) return true;
       const re = new RegExp(e.pattern);
       return !files.some((f) => {
-        const key = Object.keys(SOURCES).find((k) => repoPath(k) === f) as string;
-        const text = stripComments(SOURCES[key] as string);
+        const text = stripComments(CORPUS[f] as string);
         if (e.axis === "color") return [...text.matchAll(COLOR)].some((m) => re.test(m[0]));
         if (e.axis === "inline-style")
           return [...text.matchAll(VISUAL_PROP)].some((m) => re.test(m[1] as string));
+        if (e.axis === "token")
+          return [...text.matchAll(/rgba?\([^)]*\)|#[0-9A-Fa-f]{3,8}\b|\b\d+(?:\.\d+)?px\b/g)].some(
+            (m) => re.test(m[0]),
+          );
         return re.test(text);
       });
     });

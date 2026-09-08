@@ -578,3 +578,6 @@ input.ai, textarea.ai { border-color: var(--ai); }
 .key-cell { font-weight: 700; }
 /* 알림의 본문 — 한 줄 이상이 될 수 있다. */
 .notice-body { font: 600 13px/1.5 var(--font-sans); }
+
+/* 구획 머리 띠의 높이. 확정 디자인은 표·목록 위의 라벨 줄을 36px 로 둔다. */
+.pane-hd.band { height: 36px; display: flex; align-items: center; }

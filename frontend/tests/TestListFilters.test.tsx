@@ -143,3 +143,37 @@ describe("백엔드를 건드리지 않는다 (research R7)", () => {
     expect(fetchMock.mock.calls.length, "필터·정렬이 서버를 다시 불렀다").toBe(before);
   });
 });
+
+describe("표 머리와 행이 같은 격자를 쓴다 (FR-273 · V-08)", () => {
+  /*
+    008 이 고친 결함 하나가 이것이었다 — 표 머리는 flex 로 `92 108 1fr 74 118 130 196`,
+    행도 flex 로 같은 폭을 **따로** 적었고 확정 디자인의 grid `96 82 1fr 64 92 150 168` 과는
+    열 폭 7개 중 6개가 달랐다. 값이 두 곳에 있으니 한쪽만 고쳐도 아무도 몰랐다.
+
+    지금은 `GRID` 상수 하나를 둘이 함께 쓴다. 그러나 **상수를 쓰는 것과 같은 값이 나오는
+    것은 다르다** — 누가 한쪽에 인라인을 덧대면 상수는 그대로인 채 화면이 어긋난다.
+    렌더한 결과에서 직접 잰다.
+  */
+  it("렌더한 표 머리와 모든 행의 gridTemplateColumns 가 한 값이다", async () => {
+    await renderList();
+
+    const head = document.querySelector<HTMLElement>(".thead");
+    const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-test-row]"));
+    expect(head, "표 머리를 찾지 못했다 — 선택자가 낡았다면 이 검사는 아무것도 세지 않는다").not.toBeNull();
+    expect(rows.length, "행이 없으면 대조가 성립하지 않는다").toBeGreaterThan(0);
+
+    const shapes = new Set([
+      head!.style.gridTemplateColumns,
+      ...rows.map((r) => r.style.gridTemplateColumns),
+    ]);
+    expect(
+      [...shapes],
+      `표 머리와 행의 격자가 갈렸다: ${[...shapes].join(" | ")}`,
+    ).toHaveLength(1);
+
+    // 빈 값 하나로 "일치" 가 되지 않게 한다 — 002 가 CSS 를 빈 값으로 바꿔 단언이
+    // 빈 문자열을 상대로 통과하던 것과 같은 함정이다. 그리고 그 한 값은 확정 디자인의
+    // 열 폭이어야 한다 (TestList.dc.html 의 행·표 머리가 쓰는 값).
+    expect([...shapes][0]).toBe("96px 82px 1fr 64px 92px 150px 168px");
+  });
+});

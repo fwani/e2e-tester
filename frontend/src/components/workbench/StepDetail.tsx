@@ -340,7 +340,7 @@ export function StepDetail({
         */}
         {detail.attempts !== null && detail.attempts.length > 0 && (
           <div className="pane">
-            <div className="pane-hd lbl" style={{ height: "36px", display: "flex", alignItems: "center", padding: "0 12px" }}>
+            <div className="pane-hd lbl band" style={{ padding: "0 12px" }}>
               시도한 LOCATOR (우선순위 순)
             </div>
             {detail.attempts.map((a, i) => (

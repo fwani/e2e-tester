@@ -15,13 +15,22 @@
  *
  * ## 낡은 보고서로 통과할 수 없다
  *
- * 보고서는 입력의 digest 를 함께 담는다. 정본이 바뀌었는데 다시 재지 않으면 digest 가
- * 어긋나고 이 검사가 실패한다. 확정 디자인 쪽 변경은 `scripts/design_baseline.py` 가
- * 먼저 멈춘다 (FR-280 · DC-D) — 양쪽에서 조인다.
+ * 보고서는 입력 **둘**의 digest 를 함께 담는다. 정본이든 확정 디자인이든 바뀌었는데 다시
+ * 재지 않으면 digest 가 어긋나고 이 검사가 실패한다 (FR-280 · DC-D).
+ *
+ * ## 수렴 1회차에 닫은 구멍
+ *
+ * 처음에는 `canonDigest` 만 단언했다. 그러면 **확정 디자인이 바뀌어도** `tokens.css` 가
+ * 그대로인 한 검사가 통과한다 — 정확히 v1→v2 에서 색과 구조가 남은 경로다.
+ * `scripts/design_baseline.py` 의 `assert_baseline` 이 디자인 쪽을 보긴 하지만 그것은
+ * `npm test` 가 부르지 않으므로 빈틈이 남아 있었다.
+ *
+ * 이제 이 검사가 확정 디자인 원문을 직접 읽어 digest 를 다시 잰다.
  */
 import { describe, expect, it } from "vitest";
 
 import tokens from "../src/theme/tokens.css?raw";
+import designPage from "../../docs/design/008-visual-language/Language.dc.html?raw";
 import reportJson from "./l1-report.json";
 
 /**
@@ -54,7 +63,23 @@ async function digest(text: string): Promise<string> {
     .slice(0, 16);
 }
 
+/** dc.html 의 `<style>` 블록. `scripts/design_render.py` 의 `design_sheet()` 와 같은 규칙. */
+function designSheet(page: string): string {
+  const m = /<style>([\s\S]*?)<\/style>/.exec(page);
+  if (m === null) throw new Error("Language.dc.html 에 <style> 블록이 없다");
+  return m[1] as string;
+}
+
 describe("L1 — 정본 시트 ↔ 확정 디자인 시트", () => {
+  it("보고서가 현재 **확정 디자인**을 잰 것이다", async () => {
+    expect(
+      await digest(designSheet(designPage)),
+      "확정 디자인이 바뀌었는데 L1 을 다시 재지 않았다.\n" +
+        "  python3 scripts/extract_canon.py           # 정본을 다시 뽑고\n" +
+        "  backend/.venv/bin/python scripts/design_render.py --compare",
+    ).toBe(report.designDigest);
+  });
+
   it("보고서가 현재 정본을 잰 것이다 (낡은 보고서로 통과할 수 없다)", async () => {
     expect(
       await digest(tokens),
