@@ -95,7 +95,7 @@ export function StepEditFields({
             />
           </label>
           {valueIsSecret && (
-            <p className="dim" style={{ fontSize: 11.5, margin: "4px 0 0 100px" }}>
+            <p className="why" style={{ margin: "4px 0 0 100px" }}>
               {SENSITIVE_VALUE_NOTICE}
             </p>
           )}

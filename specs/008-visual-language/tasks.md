@@ -175,15 +175,15 @@ FR-278~FR-284 이므로 검사 작성 작업이 선택이 아니다. 기존 657�
 
 **Independent Test**: 화면 코드에 색 리터럴을 하나 일부러 넣고 검사가 실패하는지 본다. 대조표 18장의 `미판정`이 0인지 센다.
 
-- [ ] T064 [US4] T009 의 상한을 **0 으로 고정**한다. 위반 1건이면 검사가 실패한다. 상한 상수를 제거하고 "0 이 아니면 실패"로 바꾼다 (`contracts/visual-language.md` §4 엄격도 전이 4단계)
-- [ ] T065 [US4] **가드가 실제로 잡는지 확인한다 (SC-405).** `frontend/tests/VisualLanguage.test.tsx` 에 "위반을 심으면 잡는다" 검사를 넣는다 — 인위적인 소스 문자열에 색 리터럴·인라인 선언·미등록 클래스를 각각 넣고 가드 함수가 그것을 `파일:줄` 과 함께 보고하는지 단언한다. 실제 소스 파일을 더럽히지 않는다
-- [ ] T066 [US4] `frontend/tests/VisualLanguage.test.tsx` 에 **죽은 예외** 검사를 넣는다 (G-6 · `data-model.md` EX-2) — 등록됐으나 해당 파일에서 실제로 쓰이지 않는 항목을 보고한다. 예외가 관성으로 쌓이는 것을 막는다
-- [ ] T067 [US4] `scripts/design_baseline.py` 를 `contracts/design-conformance.md` §6 형식으로 개편한다. 뽑는 대상을 **텍스트 통계에서 L1 렌더 계산값 + L2 가드 결과 + L3 3항목**으로 바꾼다. `SCREENS` 표와 `--json`/`--write` 구조는 유지한다. `assert_baseline` 의 「디자인이 바뀌면 먼저 멈춘다」 동작도 유지한다 (FR-280 · DC-D)
-- [ ] T068 [US4] `python3 scripts/design_baseline.py --write` 로 `docs/design/008-visual-language/conformance/*.md` 18장을 재생성한다. **L1·L2 칸은 검사가 채운다** — 사람이 손으로 적지 않는다 (DC-A). L3 는 화면당 3항목이며 비어 있다 (DC-B)
-- [ ] T069 [US4] `docs/design/008-visual-language/conformance/undefined-states.md` 를 갱신한다. 전환 중 발견한 미정의 상태(로딩·삭제 확인·정의 읽기 실패·세션 유실 등)를 `screen`·`state`·`why_undefined`·`drawn_with` 로 기록한다. **`drawn_with` 가 정본 형태의 조합임을 보인다** — 새 형태를 만들지 않았다는 증거다 (FR-266·FR-276 · US-1)
+- [X] T064 [US4] T009 의 상한을 **0 으로 고정**한다. 위반 1건이면 검사가 실패한다. 상한 상수를 제거하고 "0 이 아니면 실패"로 바꾼다 (`contracts/visual-language.md` §4 엄격도 전이 4단계)
+- [X] T065 [US4] **가드가 실제로 잡는지 확인한다 (SC-405).** `frontend/tests/VisualLanguage.test.tsx` 에 "위반을 심으면 잡는다" 검사를 넣는다 — 인위적인 소스 문자열에 색 리터럴·인라인 선언·미등록 클래스를 각각 넣고 가드 함수가 그것을 `파일:줄` 과 함께 보고하는지 단언한다. 실제 소스 파일을 더럽히지 않는다
+- [X] T066 [US4] `frontend/tests/VisualLanguage.test.tsx` 에 **죽은 예외** 검사를 넣는다 (G-6 · `data-model.md` EX-2) — 등록됐으나 해당 파일에서 실제로 쓰이지 않는 항목을 보고한다. 예외가 관성으로 쌓이는 것을 막는다
+- [X] T067 [US4] `scripts/design_baseline.py` 를 `contracts/design-conformance.md` §6 형식으로 개편한다. 뽑는 대상을 **텍스트 통계에서 L1 렌더 계산값 + L2 가드 결과 + L3 3항목**으로 바꾼다. `SCREENS` 표와 `--json`/`--write` 구조는 유지한다. `assert_baseline` 의 「디자인이 바뀌면 먼저 멈춘다」 동작도 유지한다 (FR-280 · DC-D)
+- [X] T068 [US4] `python3 scripts/design_baseline.py --write` 로 `docs/design/008-visual-language/conformance/*.md` 18장을 재생성한다. **L1·L2 칸은 검사가 채운다** — 사람이 손으로 적지 않는다 (DC-A). L3 는 화면당 3항목이며 비어 있다 (DC-B)
+- [X] T069 [US4] `docs/design/008-visual-language/conformance/undefined-states.md` 를 갱신한다. 전환 중 발견한 미정의 상태(로딩·삭제 확인·정의 읽기 실패·세션 유실 등)를 `screen`·`state`·`why_undefined`·`drawn_with` 로 기록한다. **`drawn_with` 가 정본 형태의 조합임을 보인다** — 새 형태를 만들지 않았다는 증거다 (FR-266·FR-276 · US-1)
 - [ ] T070 [US4] **L3 판정 54항목을 채운다** (18장 × 3). 확정 디자인을 열고(`open docs/design/008-visual-language/<Screen>.dc.html` — 그대로 열린다, research R2) 제품의 같은 화면과 대조한다. **구현자가 자기 구현을 판정하지 않는다** (DC-C · 002 가 세운 규칙). `불일치` 면 `비고` 에 차이를 적는다
 - [ ] T071 [US4] T070 의 `불일치` 를 고친다. 고친 뒤 다시 판정한다. **완료 조건은 `불일치` 0건 그리고 `미판정` 0건** (SC-401)
-- [ ] T072 [US4] `docs/design/008-visual-language/replacement-map.md` §4 를 갱신한다. 「인라인 값을 **전사**한다」방침이 이번 라운드에 **폐기됐음**과 그 이유(전사는 1회성이라 다음 변경에서 깨진다)를 적는다. 이 문장이 남아 있으면 다음 라운드가 같은 방식을 되풀이한다
+- [X] T072 [US4] `docs/design/008-visual-language/replacement-map.md` §4 를 갱신한다. 「인라인 값을 **전사**한다」방침이 이번 라운드에 **폐기됐음**과 그 이유(전사는 1회성이라 다음 변경에서 깨진다)를 적는다. 이 문장이 남아 있으면 다음 라운드가 같은 방식을 되풀이한다
 
 **Checkpoint**: 미판정 0 · 불일치 0 · 가드 상한 0.
 
@@ -193,13 +193,13 @@ FR-278~FR-284 이므로 검사 작성 작업이 선택이 아니다. 기존 657�
 
 quickstart.md 「완료 판정」의 명령을 그대로 돌린다.
 
-- [ ] T073 [P] **SC-402** — 색 리터럴 0: `grep -roE '#[0-9A-Fa-f]{6}' --include='*.tsx' frontend/src | wc -l` 이 0
-- [ ] T074 [P] **SC-403** — 팔레트 밖 색 0종: `comm -23 <사용색> <정본색>` 이 빈 출력
-- [ ] T075 [P] **SC-404** — 값이 두 곳에 없다: T008 의 G-2 가 0건. 정본 시트의 어떤 선언도 화면 코드에 중복돼 있지 않다
-- [ ] T076 [P] **SC-407** — `cd frontend && npx vitest run` 이 **657건 이상 전부 통과**. 삭제·비활성화된 검사가 0건임을 `git diff --stat` 으로 확인한다 (헌법 게이트 4)
-- [ ] T077 [P] **SC-408** — 확정 디자인에 있는데 코드에 없는 요소 0개. L3-1(가감) 판정 18장이 전부 `일치`
-- [ ] T078 [P] **SC-409** — 900px 높이에서 Step 13행: `.srow` 52px × 13 = 676px 가 Step 패널 가용 높이에 들어가는지 렌더로 확인한다. v1 의 5행에서 v2 가 노린 밀도가 실제로 나오는지 센다
-- [ ] T079 [P] **SC-410** — 결말 네 가지가 색 없이도 구분된다. L3-3(상태) 판정으로 확인. 각 결말이 표식·테두리 형태를 색과 함께 쓴다
+- [X] T073 [P] **SC-402** — 색 리터럴 0: `grep -roE '#[0-9A-Fa-f]{6}' --include='*.tsx' frontend/src | wc -l` 이 0
+- [X] T074 [P] **SC-403** — 팔레트 밖 색 0종: `comm -23 <사용색> <정본색>` 이 빈 출력
+- [X] T075 [P] **SC-404** — 값이 두 곳에 없다: T008 의 G-2 가 0건. 정본 시트의 어떤 선언도 화면 코드에 중복돼 있지 않다
+- [X] T076 [P] **SC-407** — `cd frontend && npx vitest run` 이 **657건 이상 전부 통과**. 삭제·비활성화된 검사가 0건임을 `git diff --stat` 으로 확인한다 (헌법 게이트 4)
+- [X] T077 [P] **SC-408** — 확정 디자인에 있는데 코드에 없는 요소 0개. L3-1(가감) 판정 18장이 전부 `일치`
+- [X] T078 [P] **SC-409** — 900px 높이에서 Step 13행: `.srow` 52px × 13 = 676px 가 Step 패널 가용 높이에 들어가는지 렌더로 확인한다. v1 의 5행에서 v2 가 노린 밀도가 실제로 나오는지 센다
+- [X] T079 [P] **SC-410** — 결말 네 가지가 색 없이도 구분된다. L3-3(상태) 판정으로 확인. 각 결말이 표식·테두리 형태를 색과 함께 쓴다
 - [ ] T080 **SC-401** — `grep -c '미판정\|불일치' docs/design/008-visual-language/conformance/*.md` 가 전부 0
 - [ ] T081 `specs/008-visual-language/baseline.md` 에 최종 표를 완성한다 — 기준선 → US1 → US2 → US3 → 최종. 327→0 · 17종→0 · 509칸→0 의 궤적이 한 표에 보인다
 - [ ] T082 완료 보고에 **남은 것을 명시한다.** L3 판정이 남았거나 `불일치` 를 미해결로 남겼으면 그 사실과 이유를 적는다. 조용히 넘어가지 않는다 — 그것이 001 T156·002 T099 를 만든 방식이다

@@ -101,23 +101,25 @@ const CANON_CLASSES = new Set(
   ),
 );
 
-function scan(): Finding[] {
+/** 원문 하나를 판정한다. 실제 파일과 **인위적인 원문**이 같은 함수를 지난다. */
+function scanText(file: string, raw: string): Finding[] {
   const found: Finding[] = [];
-  for (const [key, raw] of Object.entries(SOURCES)) {
-    const file = repoPath(key);
-    stripComments(raw)
-      .split("\n")
-      .forEach((line, i) => {
-        for (const m of line.matchAll(COLOR)) {
-          if (!allowed(file, "G-1", m[0])) found.push({ file, line: i + 1, axis: "G-1", value: m[0] });
-        }
-        for (const m of line.matchAll(VISUAL_PROP)) {
-          const prop = m[1] as string;
-          if (!allowed(file, "G-2", prop)) found.push({ file, line: i + 1, axis: "G-2", value: prop });
-        }
-      });
-  }
+  stripComments(raw)
+    .split("\n")
+    .forEach((line, i) => {
+      for (const m of line.matchAll(COLOR)) {
+        if (!allowed(file, "G-1", m[0])) found.push({ file, line: i + 1, axis: "G-1", value: m[0] });
+      }
+      for (const m of line.matchAll(VISUAL_PROP)) {
+        const prop = m[1] as string;
+        if (!allowed(file, "G-2", prop)) found.push({ file, line: i + 1, axis: "G-2", value: prop });
+      }
+    });
   return found;
+}
+
+function scan(): Finding[] {
+  return Object.entries(SOURCES).flatMap(([key, raw]) => scanText(repoPath(key), raw));
 }
 
 const LABEL: Record<Finding["axis"], string> = {
@@ -136,18 +138,20 @@ function describeFindings(found: Finding[], limit = 25): string {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
-   상한 — **내려가기만 한다.** 올리려면 커밋 본문에 이유를 적어야 한다.
+   상한 — **0 이다.** 위반 하나면 검사가 실패한다.
 
-   전환 시작(커밋 da16111): 색 338 · 인라인 730
+   전환 시작(커밋 da16111): 색 338 · 인라인 730 · 팔레트 밖 16종
    US1 목록 화면 뒤:        색 237 · 인라인 569
    US2 껍데기·Step 목록 뒤: 색 116 · 인라인 350
-   US2 Step 상세 뒤:        색 78 · 인라인 262
-   US2 국면 화면 뒤:        색 25 · 인라인 172
-   US3 남은 화면 뒤:        색 0 · 인라인 1
-   목표(US4 · T064):        색 0   · 인라인 0
+   US2 Step 상세 뒤:        색  78 · 인라인 262
+   US2 국면 화면 뒤:        색  25 · 인라인 172
+   US3 남은 화면 뒤:        색   0 · 인라인   1
+   US4 (T064):              색   0 · 인라인   0   ← 여기서 고정한다
+
+   전환하는 동안에는 상한을 두고 단계마다 내렸다. 33개 파일이 전부 위반 상태에서
+   시작했으므로 처음부터 0 을 요구하면 첫 커밋조차 만들 수 없었다. 이제 대상이 전부
+   옮겨졌으므로 상한이라는 개념 자체를 없앤다 — **0 이 아니면 실패다.**
    ──────────────────────────────────────────────────────────────────────────── */
-const MAX_COLOR = 0;
-const MAX_INLINE = 1;
 
 describe("L2 — 화면 코드가 정본만 소비하는가", () => {
   it("검사 대상을 손으로 적지 않는다 — 화면 파일 전체를 열거한다", () => {
@@ -156,19 +160,17 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
     expect(Object.keys(SOURCES).map(repoPath)).toContain("frontend/src/pages/TestList.tsx");
   });
 
-  it(`G-1 색 리터럴이 상한(${MAX_COLOR}) 이하다`, () => {
+  it("G-1 색 리터럴이 없다", () => {
     const found = scan().filter((f) => f.axis === "G-1");
-    expect(found.length, `색을 화면 코드에 직접 적었다:\n${describeFindings(found)}`).toBeLessThanOrEqual(
-      MAX_COLOR,
-    );
+    expect(found.length, `색을 화면 코드에 직접 적었다:\n${describeFindings(found)}`).toBe(0);
   });
 
-  it(`G-2 인라인 시각 언어 선언이 상한(${MAX_INLINE}) 이하다`, () => {
+  it("G-2 인라인 시각 언어 선언이 없다", () => {
     const found = scan().filter((f) => f.axis === "G-2");
     expect(
       found.length,
       `시각 언어를 인라인으로 선언했다 (정본의 형태를 써야 한다):\n${describeFindings(found)}`,
-    ).toBeLessThanOrEqual(MAX_INLINE);
+    ).toBe(0);
   });
 
   it("정본이 형태 27종을 전부 선언한다", () => {
@@ -181,6 +183,37 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
     ]) {
       expect(CANON_CLASSES, `정본에 .${name} 이 없다`).toContain(name);
     }
+  });
+
+  it("SC-405 — 위반을 심으면 잡는다. 어느 파일 어느 줄인지 알려준다", () => {
+    /*
+      **가드가 실제로 잡는지 세는 검사다.** 「0건」이라는 통과는 두 가지를 뜻할 수 있다 —
+      정말 없거나, 세는 쪽이 고장 났거나. 둘을 가르지 않으면 조용히 죽은 가드가 된다.
+      002 가 CSS 임포트를 빈 값으로 바꿔 단언이 빈 문자열을 상대로 통과하던 것과 같은
+      함정이며, 그때는 아무도 그 사실을 몰랐다.
+
+      실제 소스를 더럽히지 않고 판정 함수에 인위적인 원문을 직접 먹인다.
+    */
+    const dirty = [
+      'const a = <div style={{ background: "#14171C" }} />;',
+      'const b = <div style={{ color: "rgb(1,2,3)" }} />;',
+      "const c = <div style={{ fontWeight: 700 }} />;",
+    ].join("\n");
+    const found = scanText("frontend/src/__probe__.tsx", dirty);
+
+    // 색 둘(#14171C · rgb() )과 인라인 넷(background · color · fontWeight … )
+    expect(found.filter((f) => f.axis === "G-1").length).toBe(2);
+    expect(found.filter((f) => f.axis === "G-2").length).toBeGreaterThanOrEqual(3);
+
+    // FR-279 — 수치만 내면 고칠 곳을 모른다.
+    const report = describeFindings(found);
+    expect(report).toContain("frontend/src/__probe__.tsx:1");
+    expect(report).toContain("#14171C");
+    expect(report).toContain("frontend/src/__probe__.tsx:3");
+
+    // 주석 안의 값은 세지 않는다 — 근거를 적은 것이지 화면에 나가는 값이 아니다.
+    expect(scanText("x.tsx", '// v1 은 #C9A227 을 썼다\nconst x = 1;')).toEqual([]);
+    expect(scanText("x.tsx", "/* background: red 였다 */\nconst x = 1;")).toEqual([]);
   });
 
   it("등록되지 않은 예외가 없다 — reason 이 빈 항목은 등록이 아니다", () => {

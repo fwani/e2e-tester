@@ -64,29 +64,61 @@
 
 ---
 
-## 4. 코드 전환 — 7건 중 6건 완료
+## 4. 코드 전환 — 완료. **그러나 방침이 결함이었다**
 
-순서가 중요했다 — 1번을 건너뛰면 2번이 즉시 실패한다 (가드가 v1 을 하드 단언하고 있었다).
+### 2026-09-08 (008 US4) — 「전사」를 폐기한다
 
-| # | 대상 | 할 일 | 상태 |
+아래 표의 5번 항목은 이렇게 적혀 있었다.
+
+> 이 파일들은 v1 dc.html 의 인라인 값을 **전사**했다. 주석이 가리키는 경로가 지금
+> `_retired/` 다. **값과 주석을 함께 옮긴다**
+
+**그 방침이 결함이었다.** 전사는 1회성이라 다음 개정에서 즉시 깨지고, 실제로 그렇게 됐다.
+v1→v2 전환에서 기하(3px→1px · 모서리 추가)는 옮겨졌으나 **색과 구조는 v1 이 남았다.**
+아래가 그때 남은 것을 008 이 실측한 값이다.
+
+| | 전환 직후(이 표가 「완료」라고 적었을 때) | 008 US3 뒤 |
+|---|---|---|
+| 화면 코드의 색 리터럴 | 338 | **0** |
+| 인라인 시각 언어 선언 | 730 | **0** |
+| v2 팔레트 밖의 색 | 16종 | **0종** |
+| 대조표 판정 | 509칸 전부 미판정 | L1·L2 자동 일치 · L3 54항목이 사람 몫 |
+
+전사가 남긴 구체적인 모습: 표 머리가 검정 바탕이었고, 패널 테두리가 잉크 1px 이었으며,
+목록 행의 결말은 실패 배경 하나뿐이라 통과와 미실행이 시각적으로 같았다. 행 조작 셋이
+전부 잉크로 채워져 무엇이 주 동작인지 화면이 말하지 못했고, 글자는 디자인보다 1~3px
+컸다. 확정 디자인은 그중 어느 것도 그렇게 그리지 않는다.
+
+### 지금의 방침 — 값을 옮기지 않는다
+
+확정 디자인 18장은 **글자 하나까지 같은** 80줄 시트를 공유한다(md5 `f6420bb606`). 그것을
+`scripts/extract_canon.py` 가 기계로 뽑아 `frontend/src/theme/tokens.css` 의 정본으로 넣고,
+화면 코드는 `className` 으로만 소비한다. 값이 한 곳에만 있으면 어긋남은 사건이 아니라
+불가능이 된다.
+
+**다음에 디자인이 바뀌면 할 일은 추출을 다시 돌리는 것 하나다.** 파일을 하나씩 열어 값을
+옮기는 일은 이제 없다.
+
+| 무엇이 | 어디에 |
+|---|---|
+| 시각 언어의 값 | `frontend/src/theme/tokens.css` (추출물) |
+| 배치의 값 | `specs/007-.../contracts/ui-contract.md` §1-2 · `frontend/src/lib/layout.ts` |
+| 정본을 벗어나는 예외 | `frontend/src/theme/exceptions.ts` (지금 비어 있다) |
+| 규칙의 정의 | `specs/008-visual-language/contracts/visual-language.md` |
+| 규칙의 강제 | `frontend/tests/VisualLanguage.test.tsx` (화면 파일 **전체**를 열거한다) |
+| 정본 ↔ 디자인 | `scripts/design_render.py` → `frontend/tests/CanonMatchesDesign.test.ts` |
+
+### 전환 기록 (v1 → v2, 2026-09-08)
+
+| # | 대상 | 한 일 | 상태 |
 |---|---|---|---|
-| 1 | `frontend/tests/DesignTokens.test.tsx` | **v1 을 하드 단언한다** — `border-radius` 없음 · `--radius` 없음 · 1px 테두리 금지 · 하드 그림자 필수 · 배경 `#EFEBE0`. 전부 v2 와 정반대다. v2 를 단언하도록 뒤집는다 | 완료 |
-| 2 | `frontend/src/theme/tokens.css` | v2 토큰으로 교체. `Language.dc.html` 이 기준이다 | 완료 |
+| 1 | `frontend/tests/DesignTokens.test.tsx` | v1 을 하드 단언하던 것을 v2 로 뒤집었다. 008 에서 다시, **사본이 아니라 정의**를 단언하도록 바꿨다 | 완료 |
+| 2 | `frontend/src/theme/tokens.css` | 손으로 옮긴 토큰 → **추출한 정본** | 완료 |
 | 3 | `frontend/src/lib/layout.ts` | ③-a 고정 높이 118 → 88 | 완료 |
-| 4 | `specs/007-unify-test-screens/contracts/ui-contract.md` §1-2 | 헤더 60→56 · 국면 띠 74→48 · 조작 44→32 · Step 행 → 52. Step 패널 460 과 기준 폭 1440 은 그대로 | 완료 |
-| 5 | `components/workbench/{StepList,PhaseBar,ActionButton,TargetPane,StepDetail}.tsx` · `pages/TestList.tsx` | 이 파일들은 v1 dc.html 의 인라인 값을 **전사**했다. 주석이 가리키는 경로가 지금 `_retired/` 다. 값과 주석을 함께 옮긴다 | 완료 |
-| 6 | `frontend/tests/{StepRowLayout,WorkbenchShell}.test.tsx` | 치수를 단언한다. 4번을 따라 갱신 | 완료 |
-| 7 | `docs/design/008-visual-language/conformance/*.md` | 리뷰어가 `관측값`·`판정` 을 채운다. 완료 조건은 `불일치`·`미판정` 0건 | **남음** — 리뷰어 몫 |
-
-`scripts/design_baseline.py` 는 008 을 읽도록 옮겼고 `assert_baseline` 의 단언도 뒤집었다
-(v1 의 하드 오프셋 그림자가 섞여 들어오면 멈춘다).
-
-전환 뒤 격리 환경(포트 4510·4520 · 격리 XDG)에서 제품을 띄워 목록 · 편집 · Step 상세 ·
-키 관리 · 비밀 값을 눈으로 확인했고, 자동 검사가 초록인 상태에서 결함 4건을 더 찾아
-고쳤다 (③-a 넘침 · 비활성 사유가 층을 덮음 · `pending` 이 체크박스로 읽힘 · 정규식을
-빠져나간 하드 그림자 1건).
-
----
+| 4 | `specs/007-.../contracts/ui-contract.md` §1-2 | 헤더 56 · 국면 띠 48 · 조작 32 · Step 행 52 | 완료 |
+| 5 | 화면 코드 33개 | ~~전사~~ → **정본 소비** (008 US1~US3) | 완료 |
+| 6 | `frontend/tests/{StepRowLayout,WorkbenchShell}.test.tsx` | 치수 단언 갱신. 008 에서 인라인 사본 대신 정본 정의를 보게 했다 | 완료 |
+| 7 | `conformance/*.md` | 축을 통계에서 **규칙 3층**으로 바꿨다. L1·L2 는 기계가 채운다 | L3 54항목이 사람 몫 |
 
 ## 5. 명세 개정이 필요한 것 — FR-230
 
