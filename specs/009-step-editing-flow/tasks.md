@@ -39,6 +39,8 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 | Step 하나 지우는 조작 수 | **3** | 관찰 M-07 · SC-504 |
 | 순서 변경 시 화면의 Step 목록 수 (일시정지) | **2** | 관찰 M-06 · SC-505 |
 | 요소 지목 없이 Step 을 넣는 방법 | **없음** | 관찰 M-02 · SC-501 |
+| Step 삭제 확인 절차 | **없음** | 확인 상태를 가진 화면은 `TestList.tsx` 뿐 · FR-302 |
+| 경고 문장이 번호를 박는가 | **박는다** | `step_edits.already_executed_warning` · FR-311 |
 
 ---
 
@@ -65,7 +67,7 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 
 - [ ] T003 `frontend/src/lib/actions.ts` 의 `ACTION_IDS` 를 34 → 36 으로 바꾼다. `step.insertManual` · `step.moveDown` 을 추가하고 `step.reorder` 를 `step.moveUp` 으로 **개칭**한다. 개칭이므로 컴파일러가 남은 참조 21곳을 전수로 요구한다 ([contracts/step-editing.md](./contracts/step-editing.md) §1)
 - [ ] T004 `frontend/src/lib/wording.ts` 의 `ACTION_LABEL` 에 라벨을 넣는다 — `step.insertManual`「직접 입력으로 Step 추가」· `step.moveDown`「아래로 옮기기」· `step.moveUp`「위로 옮기기」. `browser.openAt` 라벨을 「브라우저 열어 이 Step **앞에서** 멈추기」로 고친다. **새 `DISABLED_REASON` 키를 만들지 않는다** — 기존 `NOT_STARTED_YET`·`NEEDS_PAUSE`·`RUNNING_NO_EDIT`·`RESULT_NO_EDIT`·`C7` 로 충분하다 (계약 §2)
-- [ ] T005 `frontend/src/lib/capabilities.ts` 의 `PHASE_TABLE` 에 새 조작 3개 × 여덟 국면 셀을 채운다. 값은 계약 §2 의 표가 정본이다. 각 셀에 그 국면을 그렇게 정한 이유를 주석으로 적는다 — 특히 **EDT 열의 `step.insertManual` 이 `NEEDS_BROWSER` 가 아니라 `C7` 인 근거**(FR-307)를 적는다
+- [ ] T005 `frontend/src/lib/capabilities.ts` 의 `PHASE_TABLE` 을 채운다 — **신규 2개(`step.insertManual`·`step.moveDown`)의 16칸을 새로 쓰고, 개칭된 `step.moveUp` 의 8칸은 `step.reorder` 의 값을 그대로 이관한다**. 값은 계약 §2 의 표가 정본이다. 각 셀에 그 국면을 그렇게 정한 이유를 주석으로 적는다 — 특히 **EDT 열의 `step.insertManual` 이 `NEEDS_BROWSER` 가 아니라 `C7` 인 근거**(FR-307)를 적는다
 - [ ] T006 `frontend/src/lib/capabilities.ts` 의 런타임 덮어쓰기 목록에 조작 id 를 더한다 — `O2`·`O3`·`O6` 에 `step.insertManual`, `O4`·`O6` 에 `step.moveUp`·`step.moveDown`. **`step.insertManual` 을 `O4` 에 넣지 않는다** (Step 이 0개일 때야말로 넣을 수 있어야 한다). 그 판단을 주석으로 남긴다 (계약 §2-2)
 - [ ] T007 `frontend/tests/CapabilityCoverage.test.ts` 를 36 조작 기준으로 갱신한다 — 조작 수 단언 `34` → `36`, 커버리지 8 × 36 = **288칸**. 개칭된 `step.reorder` 참조를 `step.moveUp` 으로 고친다. 해소 방법이 36개 목록 안을 가리키는지 보는 단언은 그대로 둔다
 - [ ] T008 남은 개칭 참조를 정리한다 — `frontend/src/components/workbench/ActionPalette.tsx` · `frontend/src/pages/SessionScreen.tsx` · `frontend/src/pages/EditView.tsx` · `frontend/tests/RunnerReview.test.tsx`. **이 단계에서는 동작을 바꾸지 않는다** — 이름만 바꾼다. 동작 변경은 Phase 5 가 한다
@@ -104,7 +106,7 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 
 - [ ] T018 [US1] `backend/src/itb/api/routes/tests.py` 에 `InsertStepOp`(`op`·`at`·`spec`)를 더하고 `EditOp` 유니온에 넣는다. `_apply_edits` 에 분기를 추가해 `build_step(spec, allocate_step_id(steps))` 로 만든 Step 을 `itb.execution.step_edits.insert_step(steps, 0, step, op.at)` 로 넣는다. **`step_edits` 를 고치지 않는다** — 그 모듈이 연산을 갖는다는 규칙은 그대로다 ([data-model.md](./data-model.md) §3)
 - [ ] T019 [US1] `backend/src/itb/api/routes/tests.py` 에 삽입 경고를 더한다 (FR-312 · 막지 않는다) — `close_tab` 의 `tab` 이 현재 정의에서 열리지 않는 번호일 때, `navigate` 를 목록 중간에 넣었을 때(기존 `_reorder_warning` 문장 재사용). 문장은 **한 곳에서만** 만든다
-- [ ] T020 [P] [US1] `backend/tests/contract/test_definition_edit_api.py` 에 삽입 계약을 더한다 — 네 종류가 각각 지정 위치에 들어가는지, `at` 범위 초과가 `DEFINITION_INVALID` 로 거절되는지, 요소를 요구하는 `kind` 가 거절되는지, **거절 응답 본문에 넘어온 값이 없는지**(003 EC-005), `revision` 없이 저장이 거절되는지, 삽입과 순서 변경이 한 묶음에서 순서대로 적용되는지, 하나가 실패하면 파일이 쓰이지 않는지(전부 또는 전무)
+- [ ] T020 [P] [US1] `backend/tests/contract/test_definition_edit_api.py` 에 삽입 계약을 더한다 — 네 종류가 각각 지정 위치에 들어가는지, `at` 범위 초과가 `DEFINITION_INVALID` 로 거절되는지, 요소를 요구하는 `kind` 가 거절되는지, **거절 응답 본문에 넘어온 값이 없는지**(003 EC-005 — 판별 유니온 거절은 전역 `RequestValidationError` 핸들러를 타고 `itb/api/errors.py` 의 `_reason` 이 닫힌 문구 집합만 쓴다. 그 경로를 실제로 타는지까지 확인한다), `revision` 없이 저장이 거절되는지, 삽입과 순서 변경이 한 묶음에서 순서대로 적용되는지, 하나가 실패하면 파일이 쓰이지 않는지(전부 또는 전무)
 
 ### 일시정지 세션에 직접 입력 삽입 (FR-290)
 
@@ -120,14 +122,16 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 - [ ] T027 [US1] `frontend/src/components/workbench/StepList.tsx` 에 「미저장」 칩을 더한다 (FR-310) — 저장 전 삽입 Step 의 행에만 붙는다. 정본 `.chip` 을 쓰고 **새 색을 만들지 않는다** (계약 §3-4)
 - [ ] T028 [US1] `frontend/src/pages/SessionScreen.tsx` 에 일시정지 중 직접 입력 삽입을 붙인다 — 같은 「이 앞에 추가」 자리를 쓰고 `insertStepManual` 을 부른다. 기존 추가 경로 셋은 **그대로 둔다** (FR-309)
 - [ ] T029 [P] [US1] `frontend/tests/StepInsert.test.tsx` — 브라우저를 열지 않은 편집 화면에서 네 종류를 넣을 수 있는지, 요소를 요구하는 종류가 **자리에 있고** 비활성이며 해소 경로를 가리키는지(감춰지면 실패), 저장 전 삽입에 「미저장」 칩이 붙는지, 삽입 후 지우면 변경 수가 0으로 돌아가는지, 실행 중에는 비활성인지(SC-508)
-- [ ] T030 [US1] [quickstart.md](./quickstart.md) 「US1」 절 전체를 실측하고 조작 횟수를 `baseline.md` 에 대비로 적는다 — SC-501 은 **3회 이내**를 요구한다
+- [ ] T030 [US1] 삽입이 **이미 쌓인 경고 문장**을 어긋나게 하지 않는지 고친다 (FR-311) — `backend/src/itb/execution/step_edits.py` 의 `already_executed_warning(index)` 는 「step 05 는 이미 실행된 Step입니다」처럼 **번호를 문장에 박아** 세션의 `edit_warnings` 에 쌓는다. 그 뒤 앞쪽에 삽입이 일어나면 저장된 문장이 다른 Step 을 가리킨다. 문장을 Step id 기준으로 다시 만들거나, 삽입으로 위치가 밀린 경고를 무효화한다. **번호는 자리이고 정체성이 아니다**
+- [ ] T031 [P] [US1] `backend/tests/unit/test_step_edits.py` 에 T030 의 검사를 더한다 — 경고가 쌓인 뒤 그 앞에 삽입하면 경고가 가리키는 Step 이 바뀌지 않는지(또는 무효화되는지). 현재 동작을 먼저 실측해 기록한 뒤 고친다
+- [ ] T032 [US1] [quickstart.md](./quickstart.md) 「US1」 절 전체를 실측하고 조작 횟수를 `baseline.md` 에 대비로 적는다 — SC-501 은 **3회 이내**를 요구한다
 
 **Checkpoint**: 브라우저 없이 Step 이 들어간다. US2·US3 이 없어도 사용자가 처음 물은
 「그냥 추가하는 방법」이 생겼다.
 
 ---
 
-## Phase 4: User Story 2 — 「이 자리에 추가」 한 번으로 그 앞까지 재생하고 멈춘다 (Priority: P2)
+## Phase 4: User Story 2 — 「이 앞에 추가」 한 번으로 그 앞까지 재생하고 멈춘다 (Priority: P2)
 
 **Goal**: 요소를 지목해야 하는 Step 을 넣기 위해 「저장 → 브라우저 열기 → 목표 앞까지
 재생 → 일시정지 → 추가 도구 열림」에 **조작 하나**로 도달한다.
@@ -139,18 +143,18 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 
 ### 목표 지점을 상태로 노출한다 (FR-293·FR-294)
 
-- [ ] T031 [US2] `backend/src/itb/execution/runner.py` 의 `RunnerTask` 에 읽기 전용 `pause_before_index` 접근자를 더한다. **값의 뜻은 「아직 도달하지 않은 목표」**이며 도달 시 `None` 이 되는 기존 동작(`self._pause_before = None`)을 그대로 쓴다. 재생 경로에 새 분기를 만들지 않는다 (원칙 II)
-- [ ] T032 [US2] `backend/src/itb/api/routes/sessions.py` 의 `SessionView` 에 `pause_before_index: int | None = None` 를 더하고 `view_of(work)` 가 러너에서 읽게 한다. 러너가 없으면 `None` 이다. 필드 주석에 **왜 스냅샷에 싣는지**(005 U-18 — 이벤트 없이도 화면이 복원되게 한다)를 적는다 ([data-model.md](./data-model.md) §5)
-- [ ] T033 [P] [US2] `backend/tests/integration/test_pause_before_target.py` — 목표 앞에서 멈추는지, 멈추기 전 스냅샷에 목표가 실려 있는지, 도달 후 `None` 이 되는지, **목표 앞의 Step 이 실패하면 목표가 남아 있고 실패한 자리에서 멈추는지**(FR-294), 목표가 0이면 시작 주소만 열고 멈추는지(FR-296)
+- [ ] T033 [US2] `backend/src/itb/execution/runner.py` 의 `RunnerTask` 에 읽기 전용 `pause_before_index` 접근자를 더한다. **값의 뜻은 「아직 도달하지 않은 목표」**이며 도달 시 `None` 이 되는 기존 동작(`self._pause_before = None`)을 그대로 쓴다. 재생 경로에 새 분기를 만들지 않는다 (원칙 II)
+- [ ] T034 [US2] `backend/src/itb/api/routes/sessions.py` 의 `SessionView` 에 `pause_before_index: int | None = None` 를 더하고 `view_of(work)` 가 러너에서 읽게 한다. 러너가 없으면 `None` 이다. 필드 주석에 **왜 스냅샷에 싣는지**(005 U-18 — 이벤트 없이도 화면이 복원되게 한다)를 적는다 ([data-model.md](./data-model.md) §5)
+- [ ] T035 [P] [US2] `backend/tests/integration/test_pause_before_target.py` — 목표 앞에서 멈추는지, 멈추기 전 스냅샷에 목표가 실려 있는지, 도달 후 `None` 이 되는지, **목표 앞의 Step 이 실패하면 목표가 남아 있고 실패한 자리에서 멈추는지**(FR-294), 목표가 0이면 시작 주소만 열고 멈추는지(FR-296)
 
 ### 화면 — 한 조작 흐름 (FR-291·FR-292·FR-295·FR-297)
 
-- [ ] T034 [US2] `frontend/src/pages/SessionScreen.tsx` 에 진행 표시를 더한다 — 목표가 있고 실행 중이면 「Step nn 앞에서 멈춥니다 — 지금 Step mm」, 목표가 있고 실패한 Step 이 있으면 「Step nn 에 도달하기 전에 Step mm 에서 실패했습니다」. 문구는 `lib/wording.ts` 가 만든다. 그만두는 길은 그 국면의 `run.stop` 이다 (FR-293·FR-294)
-- [ ] T035 [US2] `frontend/src/App.tsx` 와 `frontend/src/pages/EditView.tsx` 에서 `browser.openAt` 을 한 흐름으로 잇는다 — 저장(미저장이 있으면) → 세션 생성(`pause_before_index`) → 도착 후 기존 `record:start` 호출. 단계별 실패 처리는 계약 §5 의 표를 따른다. **도구 의도는 화면이 기억한다** — 서버 상태에 저장하지 않는다 ([research.md](./research.md) R5)
-- [ ] T036 [US2] `frontend/src/pages/SessionScreen.tsx` 의 도착 알림을 더한다 — 「지금부터 브라우저 조작이 기록됩니다」. 녹화가 자동으로 켜지는 것을 사용자가 모르는 상태를 만들지 않는다 (R5 의 완화 장치)
-- [ ] T037 [US2] `frontend/src/pages/ResultView.tsx` 의 「고치기」(`nav.editStep`)가 **그 Step 을 고른 상태로** 편집 화면을 열게 한다 (FR-297). 셀은 바뀌지 않고 해소 방법의 동작이 정확해진다
-- [ ] T038 [P] [US2] `frontend/tests/InsertViaBrowser.test.tsx` — 조작 한 번으로 저장·세션 생성·녹화 시작이 순서대로 일어나는지, 미저장이 있으면 「먼저 저장합니다」가 **누르기 전에** 보이는지, 진행 문구가 목표와 현재를 함께 말하는지, 도달 전 실패 문구가 「일시정지됨」과 구분되는지, 다른 세션이 잡고 있으면 그 세션으로 가는 길을 보이는지
-- [ ] T039 [US2] [quickstart.md](./quickstart.md) 「US2」 절 전체를 실측한다 — 2-1(새로 고침 후에도 목표가 남는가) · 2-2(도달 전 실패) · 2-3(목표가 맨 앞)을 포함한다. SC-502 는 **1회**를 요구한다
+- [ ] T036 [US2] `frontend/src/pages/SessionScreen.tsx` 에 진행 표시를 더한다 — 목표가 있고 실행 중이면 「Step nn 앞에서 멈춥니다 — 지금 Step mm」, 목표가 있고 실패한 Step 이 있으면 「Step nn 에 도달하기 전에 Step mm 에서 실패했습니다」. 문구는 `lib/wording.ts` 가 만든다. 그만두는 길은 그 국면의 `run.stop` 이다 (FR-293·FR-294)
+- [ ] T037 [US2] `frontend/src/App.tsx` 와 `frontend/src/pages/EditView.tsx` 에서 `browser.openAt` 을 한 흐름으로 잇는다 — 저장(미저장이 있으면) → 세션 생성(`pause_before_index`) → 도착 후 기존 `record:start` 호출. 단계별 실패 처리는 계약 §5 의 표를 따른다. **도구 의도는 화면이 기억한다** — 서버 상태에 저장하지 않는다 ([research.md](./research.md) R5)
+- [ ] T038 [US2] `frontend/src/pages/SessionScreen.tsx` 의 도착 알림을 더한다 — 「지금부터 브라우저 조작이 기록됩니다」. 녹화가 자동으로 켜지는 것을 사용자가 모르는 상태를 만들지 않는다 (R5 의 완화 장치)
+- [ ] T039 [US2] `frontend/src/pages/ResultView.tsx` 의 「고치기」(`nav.editStep`)가 **그 Step 을 고른 상태로** 편집 화면을 열게 한다 (FR-297). 셀은 바뀌지 않고 해소 방법의 동작이 정확해진다
+- [ ] T040 [P] [US2] `frontend/tests/InsertViaBrowser.test.tsx` — 조작 한 번으로 저장·세션 생성·녹화 시작이 순서대로 일어나는지, 미저장이 있으면 「먼저 저장합니다」가 **누르기 전에** 보이는지, 진행 문구가 목표와 현재를 함께 말하는지, 도달 전 실패 문구가 「일시정지됨」과 구분되는지, 다른 세션이 잡고 있으면 그 세션으로 가는 길을 보이는지
+- [ ] T041 [US2] [quickstart.md](./quickstart.md) 「US2」 절 전체를 실측한다 — 2-1(새로 고침 후에도 목표가 남는가) · 2-2(도달 전 실패) · 2-3(목표가 맨 앞)을 포함한다. SC-502 는 **1회**를 요구한다
 
 **Checkpoint**: 요소가 필요한 Step 도 한 조작으로 넣을 수 있다. 다섯 걸음이 없어졌다.
 
@@ -166,16 +170,18 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 
 **검증 절차**: [quickstart.md](./quickstart.md) 「US3」 절
 
-- [ ] T040 [US3] `frontend/src/components/workbench/StepList.tsx` 의 `StepRow` 에 칸 5 를 만든다 — `.srow-ops` 안에 위로 · 아래로 · 이 앞에 추가 · 지우기 순서로 고정. **hover 로 드러내지 않고 항상 보인다**(계약 §3-2). 기존 칸 넷의 자리와 행 높이 52px 는 바뀌지 않는다 (FR-304)
-- [ ] T041 [US3] `frontend/src/components/workbench/StepList.tsx` 에서 끝단을 좁힌다 (FR-300) — 첫 행의 위로와 마지막 행의 아래로는 자리를 남기고 비활성이며 「맨 위입니다」·「맨 아래입니다」를 말한다. **해소 방법을 달지 않는다**(해소할 방법이 없는 사실이다). 표가 아니라 화면이 아는 사실로 좁히는 것이며 국면 판정을 하지 않는다 (계약 §2-3)
-- [ ] T042 [US3] `frontend/src/components/workbench/model.ts` 에 행 조작 모델을 더하고 `Workbench.tsx` 가 `rowActions` 를 화면에서 받아 넘기게 한다. 자리는 이미 열려 있다 (관찰 M-08) — 만드는 것은 넘기는 쪽이다
-- [ ] T043 [US3] `frontend/src/pages/SessionScreen.tsx` 에서 `ReorderPanel` 을 **제거**하고(FR-301 · SC-505) 행 조작으로 순서 변경·삭제를 연결한다. `reordering` 상태와 그것을 여닫는 조작도 함께 없앤다 — 화면에 Step 목록이 둘 뜨는 경로를 남기지 않는다
-- [ ] T044 [US3] `frontend/src/pages/EditView.tsx` 에서 팔레트의 「위로 옮기기」 단독 버튼을 없애고 행 조작으로 위로·아래로·삭제를 연결한다. `narrowByPick` 의 "먼저 Step 을 고르세요" 왕복이 이동·삭제에서 사라진다 (FR-298 · SC-504)
-- [ ] T045 [US3] `frontend/src/components/workbench/ActionPalette.tsx` 에서 이동·삭제 자리를 행에 양도한다 — 기존 `hidden` 목록 방식을 쓴다(「이 국면에서 이 조작은 다른 자리가 갖는다」를 표현하는 기존 방법이다). 표가 요구하는 조작을 화면에서 **없애는 것이 아니다** (계약 §3-3)
-- [ ] T046 [P] [US3] `docs/design/008-visual-language/*.dc.html` 중 행을 그리는 8장(`Main`·`Paused`·`Run`·`Record`·`Takeover`·`AiWriting`·`Result`·`StepDetail`)의 **마크업**에 칸 5 를 그린다. `Main` 장에는 「이 앞에 추가」 선택 자리와 「미저장」 칩도 함께 넣는다 (계약 §6 의 2번)
-- [ ] T047 [P] [US3] `docs/design/008-visual-language/conformance/*.md` 의 같은 8장 대조표에 칸 5 행을 추가하고, `docs/design/008-visual-language/replacement-map.md` 의 정본 클래스 목록에 `.srow-ops` 를 더한다 (계약 §6 의 4·5번)
-- [ ] T048 [P] [US3] `frontend/tests/StepRowActions.test.tsx` — 5번을 8번으로 옮기는 데 「아래로」 3회로 끝나는지(SC-503), 첫 행·마지막 행의 방향이 비활성이고 이유를 말하는지, 삭제가 확인을 거치는지, **화면에 Step 목록이 하나만 있는지**(SC-505), 키보드만으로 모든 행 조작에 도달하고 접근 가능한 이름이 「〈이름〉 위로」·「〈이름〉 아래로」인지(SC-507), 실행 중과 결과 화면에서 비활성인지(SC-508 · FR-308)
-- [ ] T049 [US3] [quickstart.md](./quickstart.md) 「US3」 절 전체를 실측하고 조작 횟수를 `baseline.md` 대비로 적는다 — SC-503 은 3회, SC-504 는 행 1회 + 확인 1회를 요구한다
+- [ ] T042 [US3] `frontend/src/components/workbench/StepList.tsx` 의 `StepRow` 에 칸 5 를 만든다 (FR-298·FR-299·FR-303) — **결과 국면에서는 칸 5 를 그리지 않는다**(계약 §3-3-1 — 행마다 같은 이유의 비활성 조작 4개가 최대 200개가 된다). 그 국면에서는 팔레트가 자리를 갖는다.
+  나머지 국면에서는 `.srow-ops` 안에 위로 · 아래로 · 이 앞에 추가 · 지우기 순서로 고정. **hover 로 드러내지 않고 항상 보인다**(계약 §3-2). 기존 칸 넷의 자리와 행 높이 52px 는 바뀌지 않는다 (FR-304)
+- [ ] T043 [US3] `frontend/src/components/workbench/StepList.tsx` 에서 끝단을 좁힌다 (FR-300) — 첫 행의 위로와 마지막 행의 아래로는 자리를 남기고 비활성이며 「맨 위입니다」·「맨 아래입니다」를 말한다. **해소 방법을 달지 않는다**(해소할 방법이 없는 사실이다). 표가 아니라 화면이 아는 사실로 좁히는 것이며 국면 판정을 하지 않는다 (계약 §2-3)
+- [ ] T044 [US3] `frontend/src/components/workbench/model.ts` 에 행 조작 모델을 더하고 `Workbench.tsx` 가 `rowActions` 를 화면에서 받아 넘기게 한다. 자리는 이미 열려 있다 (관찰 M-08) — 만드는 것은 넘기는 쪽이다
+- [ ] T045 [US3] `frontend/src/pages/SessionScreen.tsx` 에서 `ReorderPanel` 을 **제거**하고(FR-301 · SC-505) 행 조작으로 순서 변경·삭제를 연결한다. `reordering` 상태와 그것을 여닫는 조작도 함께 없앤다 — 화면에 Step 목록이 둘 뜨는 경로를 남기지 않는다
+- [ ] T046 [US3] `frontend/src/pages/EditView.tsx` 에서 팔레트의 「위로 옮기기」 단독 버튼을 없애고 (FR-299 — 세 칸 내리기가 여섯 번이던 것이 세 번이 된다) 행 조작으로 위로·아래로·삭제를 연결한다. `narrowByPick` 의 "먼저 Step 을 고르세요" 왕복이 이동·삭제에서 사라진다 (FR-298 · SC-504)
+- [ ] T047 [US3] 행의 지우기에 확인 절차를 만든다 (FR-302) — 지금 Step 삭제에는 확인이 **없다**(확인 상태를 가진 화면은 `frontend/src/pages/TestList.tsx` 의 테스트 삭제뿐이다). 그 선례처럼 **행 안에서** 무엇이 지워지는지 보이고 확인을 받는다. 자리는 `frontend/src/components/workbench/StepList.tsx` 가 갖고 **겹침 대화상자를 새로 만들지 않는다** — 행 조작의 결과를 행이 아닌 곳에서 확인하면 대상이 무엇이었는지 다시 확인해야 한다
+- [ ] T048 [US3] `frontend/src/components/workbench/ActionPalette.tsx` 에서 **고칠 수 있는 국면에서만** 이동·삭제 자리를 행에 양도한다 — 결과 국면에서는 팔레트가 그대로 갖는다 (계약 §3-3-1). — 기존 `hidden` 목록 방식을 쓴다(「이 국면에서 이 조작은 다른 자리가 갖는다」를 표현하는 기존 방법이다). 표가 요구하는 조작을 화면에서 **없애는 것이 아니다** (계약 §3-3)
+- [ ] T049 [P] [US3] `docs/design/008-visual-language/*.dc.html` 중 행을 그리는 8장(`Main`·`Paused`·`Run`·`Record`·`Takeover`·`AiWriting`·`Result`·`StepDetail`)의 **마크업**에 칸 5 를 그린다. `Main` 장에는 「이 앞에 추가」 선택 자리와 「미저장」 칩도 함께 넣는다 (계약 §6 의 2번)
+- [ ] T050 [P] [US3] `docs/design/008-visual-language/conformance/*.md` 의 같은 8장 대조표에 칸 5 행을 추가하고, `docs/design/008-visual-language/replacement-map.md` 의 정본 클래스 목록에 `.srow-ops` 를 더한다 (계약 §6 의 4·5번)
+- [ ] T051 [P] [US3] `frontend/tests/StepRowActions.test.tsx` — 5번을 8번으로 옮기는 데 「아래로」 3회로 끝나는지(SC-503), 첫 행·마지막 행의 방향이 비활성이고 이유를 말하는지, 삭제가 확인을 거치는지, **화면에 Step 목록이 하나만 있는지**(SC-505), 키보드만으로 모든 행 조작에 도달하고 접근 가능한 이름이 「〈이름〉 위로」·「〈이름〉 아래로」인지(SC-507), 실행 중과 결과 화면에서 비활성인지(SC-508 · FR-308)
+- [ ] T052 [US3] [quickstart.md](./quickstart.md) 「US3」 절 전체를 실측하고 조작 횟수를 `baseline.md` 대비로 적는다 — SC-503 은 3회, SC-504 는 행 1회 + 확인 1회를 요구한다
 
 **Checkpoint**: 세 이야기가 전부 독립으로 동작한다.
 
@@ -186,12 +192,12 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 **Purpose**: 이 기능이 **없애지 않았어야 하는 것**을 확인한다. 새 기능이 도는 것보다
 기존 경로가 그대로인 것이 더 자주 깨진다.
 
-- [ ] T050 [P] `frontend/tests/StepInsert.test.tsx` 에 기존 추가 경로 회귀를 더한다 (SC-509) — 일시정지 상태에서 「직접 조작으로 Step 추가」·「자연어로 Step 추가」·「검증 추가」의 **자리·문구·동작**이 이전과 같은지. 하나라도 달라지면 FR-309 위반이다
-- [ ] T051 [P] `backend/tests/contract/test_step_edit_api.py` 에 실행 중 잠금 회귀를 더한다 (FR-306) — 세 입구(기존 삽입 · 신규 직접 입력 · 정의 편집) 전부가 실행 중에 거절되는지. `require_paused` 를 지나지 않는 경로가 생기지 않았는지
-- [ ] T052 [P] `backend/tests/contract/test_step_edit_api.py` 에 세 입구의 결과 일치를 확인하는 검사를 더한다 — 같은 위치에 같은 종류를 넣으면 세 입구가 **같은 목록**을 만든다. 삽입 규칙이 갈리지 않는다는 것이 [research.md](./research.md) R2 의 전제다
-- [ ] T053 전량 기계 검증을 돌린다 — [quickstart.md](./quickstart.md) 「기계 검증」 절 6개(스키마 드리프트 · `lint-imports` · ruff · pytest · vitest · `extract_canon.py --check` · `count-violations.mjs`). T002 의 통과 건수가 줄지 않았는지 확인한다
-- [ ] T054 `specs/009-step-editing-flow/baseline.md` 를 완성한다 — SC-501~SC-510 각각의 **이전 값 → 이후 값**을 표로 적는다. 달성하지 못한 항목이 있으면 그것을 감추지 않고 이유와 함께 적는다
-- [ ] T055 `docs/prd.md` §18 의 성공 지표 중 「테스트 생성 시간」에 이 기능이 준 영향을 한 줄로 적는다 (헌법 품질 게이트 5). 측정값이 없으면 조작 횟수 감소를 근거로 적고 측정이 필요하다고 표시한다
+- [ ] T053 [P] `frontend/tests/StepInsert.test.tsx` 에 기존 추가 경로 회귀를 더한다 (SC-509) — 일시정지 상태에서 「직접 조작으로 Step 추가」·「자연어로 Step 추가」·「검증 추가」의 **자리·문구·동작**이 이전과 같은지. 하나라도 달라지면 FR-309 위반이다
+- [ ] T054 [P] `backend/tests/contract/test_step_edit_api.py` 에 실행 중 잠금 회귀를 더한다 (FR-306) — 세 입구(기존 삽입 · 신규 직접 입력 · 정의 편집) 전부가 실행 중에 거절되는지. `require_paused` 를 지나지 않는 경로가 생기지 않았는지
+- [ ] T055 [P] `backend/tests/contract/test_step_edit_api.py` 에 세 입구의 결과 일치를 확인하는 검사를 더한다 — 같은 위치에 같은 종류를 넣으면 세 입구가 **같은 목록**을 만든다. 삽입 규칙이 갈리지 않는다는 것이 [research.md](./research.md) R2 의 전제다
+- [ ] T056 전량 기계 검증을 돌린다 — [quickstart.md](./quickstart.md) 「기계 검증」 절 6개(스키마 드리프트 · `lint-imports` · ruff · pytest · vitest · `extract_canon.py --check` · `count-violations.mjs`). T002 의 통과 건수가 줄지 않았는지 확인한다
+- [ ] T057 `specs/009-step-editing-flow/baseline.md` 를 완성한다 — SC-501~SC-510 각각의 **이전 값 → 이후 값**을 표로 적는다. 달성하지 못한 항목이 있으면 그것을 감추지 않고 이유와 함께 적는다
+- [ ] T058 `docs/prd.md` §18 의 성공 지표 중 「테스트 생성 시간」에 이 기능이 준 영향을 한 줄로 적는다 (헌법 품질 게이트 5). 측정값이 없으면 조작 횟수 감소를 근거로 적고 측정이 필요하다고 표시한다
 
 **Checkpoint**: 새로 생긴 것이 돌고, 있던 것이 그대로다.
 
@@ -205,7 +211,7 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 - **Phase 2 (Foundational)**: Phase 1 이후. **US1~US3 전부를 막는다.** 표와 정본이 먼저다
 - **Phase 3 (US1)**: Phase 2 이후
 - **Phase 4 (US2)**: Phase 2 이후. US1 의 「이 앞에 추가」 자리를 쓰므로 **T025 에 의존한다**
-- **Phase 5 (US3)**: Phase 2 이후. US1·US2 가 만든 자리를 행으로 내리므로 **T025·T035 에 의존한다**
+- **Phase 5 (US3)**: Phase 2 이후. US1·US2 가 만든 자리를 행으로 내리므로 **T025·T037 에 의존한다**
 - **Phase 6 (Polish)**: 원하는 이야기가 전부 끝난 뒤
 
 ### 이야기 사이 의존
@@ -228,10 +234,10 @@ US1 → US2 → US3 **순서가 실제 의존이다.** 이 기능의 세 이야�
 | 묶음 | 함께 돌릴 수 있는 작업 |
 |---|---|
 | Phase 1 | T001 · T002 |
-| Phase 3 검사 | T014 · T020 · T022 · T029 |
-| Phase 4 검사 | T033 · T038 |
-| Phase 5 디자인 정본 | T046 · T047 (화면 작업 T040~T045 와도 병렬) |
-| Phase 6 회귀 | T050 · T051 · T052 |
+| Phase 3 검사 | T014 · T020 · T022 · T029 · T031 |
+| Phase 4 검사 | T035 · T040 |
+| Phase 5 디자인 정본 | T049 · T050 (화면 작업 T042~T048 와도 병렬) |
+| Phase 6 회귀 | T053 · T054 · T055 |
 
 **Phase 2 는 병렬로 돌리지 않는다.** T003 의 개칭이 T005~T008 이 손대는 파일 전부를
 건드린다 — 동시에 고치면 충돌한다.
