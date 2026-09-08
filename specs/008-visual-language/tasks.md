@@ -51,15 +51,15 @@ FR-278~FR-284 이므로 검사 작성 작업이 선택이 아니다. 기존 657�
 
 **⚠️ 이 단계가 끝나기 전에는 어떤 화면도 옮길 수 없다.** 정본 없이 화면을 옮기면 다시 전사가 된다.
 
-- [ ] T003 `scripts/extract_canon.py` 를 만든다. `docs/design/008-visual-language/*.dc.html` 의 `<style>` 블록을 읽어 정본 CSS 를 뽑는다. **18장이 동일함을 먼저 단언하고**(research R1 · md5 일치), 하나라도 다르면 멈춘다. dc.html 축약 토큰명 → 현행 서술 토큰명 대응표(`--r`→`--radius`, `--sans`→`--font-sans`, `--surface`→`--panel` 등)를 가지며, **값은 절대 변형하지 않는다** (`contracts/visual-language.md` C-2)
-- [ ] T004 T003 을 돌려 `frontend/src/theme/tokens.css` 를 정본으로 교체한다. 재사용 형태 27종(`.btn`+4변형 · `.chip`+5 · `.srow`+4 · `.pane` · `.lbl` · `.mono` · `.why` · `.hdr` · `.phase` · `.notice` · `.body` · `.left` · `.steps` · `.steps-hd`)이 전부 들어간다. 기존 파일 머리 주석의 「왜 v1 을 버렸나」는 보존하고 「추출 방법」 절을 추가한다
-- [ ] T005 [P] `frontend/src/theme/exceptions.ts` 를 만든다. `data-model.md` §2 의 필드(`file`·`pattern`·`axis`·`reason`)를 갖는 타입과 배열. 초기 항목은 배치 계약 하나뿐이며 `reason` 에 research R3 의 근거를 적는다. `reason` 이 빈 문자열이면 타입 수준에서 막는다
-- [ ] T006 [P] `scripts/design_render.py` 를 만든다. `backend/.venv` 의 playwright 로 chromium 을 띄워 (a) `Language.dc.html` (b) `tokens.css` 를 적용한 동일 마크업 을 렌더해 형태 27종의 `getComputedStyle` 을 뽑는다. `contracts/design-conformance.md` §3 의 속성 목록을 잰다. `--json` 으로 사실만 출력한다
-- [ ] T007 `frontend/tests/CanonMatchesDesign.test.ts` — **L1 대조.** T006 의 출력으로 정본 시트와 확정 디자인 시트의 계산값이 같은지 단언한다. 계산값 비교이므로 `#FFF`/`#ffffff`/`rgb(255,255,255)` 표기 차이에 걸리지 않는다 (FR-281)
-- [ ] T008 `frontend/tests/VisualLanguage.test.tsx` — **L2 가드.** `import.meta.glob("../src/**/*.tsx", { query: "?raw", eager: true })` 로 화면 파일 **전체를 열거**한다. 손으로 import 하지 않는다 (V-09 의 원인 제거). 축 G-1~G-6 을 세고 `파일:줄 — 발견한 값 (축)` 형식으로 보고한다. `theme/exceptions.ts` 를 읽어 등록된 예외를 제외한다
-- [ ] T009 T008 을 **경고 모드**로 시작한다 — 상한을 색 327 · 인라인 437 로 두고, 그 이하면 통과한다. 상한 상수에 「내려가기만 한다. 올리려면 커밋 본문에 이유를 적는다」를 주석으로 적는다 (`contracts/visual-language.md` §4)
-- [ ] T010 `frontend/tests/DesignTokens.test.tsx` 를 정본 기준으로 갱신한다. 기존 v2 단언(모서리 3종·하드 그림자 금지·배경 `#F2F4F7`·디스플레이 서체 없음)은 **유지**하고, 손으로 import 하던 파일 5개 목록을 제거한다 — 그 역할은 T008 이 전부 가져간다
-- [ ] T011 `npx vitest run` — **657건 + 신규 검사가 전부 초록**인지 확인한다. 이 시점에 화면은 하나도 안 바뀌었으므로 657건은 그대로 통과해야 한다. 깨지면 정본 교체가 기존 동작을 바꾼 것이므로 되돌려 원인을 찾는다
+- [X] T003 `scripts/extract_canon.py` 를 만든다. `docs/design/008-visual-language/*.dc.html` 의 `<style>` 블록을 읽어 정본 CSS 를 뽑는다. **18장이 동일함을 먼저 단언하고**(research R1 · md5 일치), 하나라도 다르면 멈춘다. dc.html 축약 토큰명 → 현행 서술 토큰명 대응표(`--r`→`--radius`, `--sans`→`--font-sans`, `--surface`→`--panel` 등)를 가지며, **값은 절대 변형하지 않는다** (`contracts/visual-language.md` C-2)
+- [X] T004 T003 을 돌려 `frontend/src/theme/tokens.css` 를 정본으로 교체한다. 재사용 형태 27종(`.btn`+4변형 · `.chip`+5 · `.srow`+4 · `.pane` · `.lbl` · `.mono` · `.why` · `.hdr` · `.phase` · `.notice` · `.body` · `.left` · `.steps` · `.steps-hd`)이 전부 들어간다. 기존 파일 머리 주석의 「왜 v1 을 버렸나」는 보존하고 「추출 방법」 절을 추가한다
+- [X] T005 [P] `frontend/src/theme/exceptions.ts` 를 만든다. `data-model.md` §2 의 필드(`file`·`pattern`·`axis`·`reason`)를 갖는 타입과 배열. 초기 항목은 배치 계약 하나뿐이며 `reason` 에 research R3 의 근거를 적는다. `reason` 이 빈 문자열이면 타입 수준에서 막는다
+- [X] T006 [P] `scripts/design_render.py` 를 만든다. `backend/.venv` 의 playwright 로 chromium 을 띄워 (a) `Language.dc.html` (b) `tokens.css` 를 적용한 동일 마크업 을 렌더해 형태 27종의 `getComputedStyle` 을 뽑는다. `contracts/design-conformance.md` §3 의 속성 목록을 잰다. `--json` 으로 사실만 출력한다
+- [X] T007 `frontend/tests/CanonMatchesDesign.test.ts` — **L1 대조.** T006 의 출력으로 정본 시트와 확정 디자인 시트의 계산값이 같은지 단언한다. 계산값 비교이므로 `#FFF`/`#ffffff`/`rgb(255,255,255)` 표기 차이에 걸리지 않는다 (FR-281)
+- [X] T008 `frontend/tests/VisualLanguage.test.tsx` — **L2 가드.** `import.meta.glob("../src/**/*.tsx", { query: "?raw", eager: true })` 로 화면 파일 **전체를 열거**한다. 손으로 import 하지 않는다 (V-09 의 원인 제거). 축 G-1~G-6 을 세고 `파일:줄 — 발견한 값 (축)` 형식으로 보고한다. `theme/exceptions.ts` 를 읽어 등록된 예외를 제외한다
+- [X] T009 T008 을 **경고 모드**로 시작한다 — 상한을 색 327 · 인라인 437 로 두고, 그 이하면 통과한다. 상한 상수에 「내려가기만 한다. 올리려면 커밋 본문에 이유를 적는다」를 주석으로 적는다 (`contracts/visual-language.md` §4)
+- [X] T010 `frontend/tests/DesignTokens.test.tsx` 를 정본 기준으로 갱신한다. 기존 v2 단언(모서리 3종·하드 그림자 금지·배경 `#F2F4F7`·디스플레이 서체 없음)은 **유지**하고, 손으로 import 하던 파일 5개 목록을 제거한다 — 그 역할은 T008 이 전부 가져간다
+- [X] T011 `npx vitest run` — **657건 + 신규 검사가 전부 초록**인지 확인한다. 이 시점에 화면은 하나도 안 바뀌었으므로 657건은 그대로 통과해야 한다. 깨지면 정본 교체가 기존 동작을 바꾼 것이므로 되돌려 원인을 찾는다
 
 **Checkpoint**: 정본이 서고, L1·L2 가 돌고, 위반 수가 상한으로 고정됐다. 화면 전환을 시작할 수 있다.
 

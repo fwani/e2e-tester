@@ -1,14 +1,26 @@
 /**
- * 디자인 토큰 회귀 가드. DC-004·DC-005.
+ * 정본 회귀 가드. DC-004·DC-005.
  *
- * ## 2026-09-08 — 이 파일은 통째로 뒤집혔다
+ * ## 2026-09-08 (008) — 역할이 둘로 갈렸다
+ *
+ * 이 파일은 `tokens.css` **원문**을 본다. 화면 코드가 그 정본을 실제로 **소비하는지**는
+ * `VisualLanguage.test.tsx` 가 본다. 그 구분이 없어서 V-09 가 생겼다 — 정의는 지키는데
+ * 소비는 아무도 보지 않아, 화면 코드에 색 리터럴 338개가 살아 있어도 초록이었다.
+ *
+ * | | 보는 것 | 어떻게 |
+ * |---|---|---|
+ * | 이 파일 | 정본이 v2 를 담고 v1 을 담지 않는가 | `tokens.css` 원문 정규식 |
+ * | `VisualLanguage.test.tsx` | 화면 코드가 정본만 쓰는가 | `src/**\/*.tsx` **전체** 열거 |
+ * | `CanonMatchesDesign.test.ts` | 정본이 확정 디자인과 같은 값을 그리는가 | chromium 계산값 |
+ *
+ * **아래 컴포넌트 import 5개는 색 검사가 아니다.** 밀도·껍데기·결말 표식처럼 원문
+ * 정규식으로만 셀 수 있는 **구조** 단언이며, 소비 가드가 대신할 수 없다. 지우면 검사를
+ * 지우는 것이므로 남긴다 (헌법 품질 게이트 4).
+ *
+ * ## 2026-09-08 — 이 파일은 앞서 통째로 뒤집혔다
  *
  * 이전 판은 v1「브루탈리스트」를 지켰다 — `border-radius` 금지, 1px 테두리 금지,
  * 하드 오프셋 그림자 필수, 배경 `#EFEBE0`. 그 다섯 단언이 전부 v2 와 정반대다.
- *
- * 디자인이 `docs/design/008-visual-language/` 로 바뀌었으므로 가드도 바뀐다. 가드를
- * 그대로 두면 **폐기된 디자인이 코드를 계속 지배한다** — 그것이 이 파일을 먼저 고쳐야
- * 하는 이유다 (`replacement-map.md` §4 의 1번).
  *
  * 이전 판의 존재 이유는 그대로다. 002 라운드 이전의 토큰은 팔레트를 정확히 옮겨 놓고
  * 기하를 지어냈다 — 확정 디자인에 `border-radius` 가 0회인데 `--radius: 10px` 를
@@ -47,8 +59,11 @@ describe("디자인 토큰 — 008「계기판」 준수", () => {
   });
 
   it("부드러운 그림자 두 단계를 제공한다", () => {
-    expect(declarations).toMatch(/--e-1:\s*0 1px 2px rgba\(20, 23, 28, 0\.07\)/);
-    expect(declarations).toMatch(/--e-2:\s*0 16px 40px rgba\(20, 23, 28, 0\.18\)/);
+    // 008 — 값이 확정 디자인에서 기계로 오므로 **표기도 디자인 것**이다. 디자인은
+    // `rgba(20,23,28,.07)` 로 쓴다(공백 없음·선행 0 없음). 값은 같고 표기만 다르므로
+    // 단언을 공백·선행 0 무관하게 갱신했다 — 약화가 아니라 기준 갱신이다.
+    expect(declarations).toMatch(/--e-1:\s*0 1px 2px rgba\(\s*20\s*,\s*23\s*,\s*28\s*,\s*0?\.07\s*\)/);
+    expect(declarations).toMatch(/--e-2:\s*0 16px 40px rgba\(\s*20\s*,\s*23\s*,\s*28\s*,\s*0?\.18\s*\)/);
   });
 
   it("화면 배경이 #F2F4F7 이다 (v1 의 #EFEBE0 이 아니다)", () => {
@@ -60,8 +75,9 @@ describe("디자인 토큰 — 008「계기판」 준수", () => {
   it("전용 디스플레이 서체를 두지 않는다 — 굵은 제목 서체는 밀도와 싸운다", () => {
     expect(declarations).not.toMatch(/Black Han Sans/);
     expect(declarations).not.toMatch(/--font-display/);
-    expect(declarations).toMatch(/--font-sans:\s*"IBM Plex Sans KR", system-ui/);
-    expect(declarations).toMatch(/--font-mono:\s*"IBM Plex Mono", ui-monospace/);
+    // 위와 같은 이유로 쉼표 뒤 공백을 강제하지 않는다.
+    expect(declarations).toMatch(/--font-sans:\s*"IBM Plex Sans KR"\s*,\s*system-ui/);
+    expect(declarations).toMatch(/--font-mono:\s*"IBM Plex Mono"\s*,\s*ui-monospace/);
   });
 
   it("008 의 팔레트를 유지한다", () => {
@@ -86,6 +102,25 @@ describe("디자인 토큰 — 008「계기판」 준수", () => {
     for (const dead of ["#14130f", "#fffdf6", "#6b675c", "#2e9455", "#d9502f", "#f5d000", "#7c4ddb"]) {
       expect(declarations.toLowerCase()).not.toContain(dead);
     }
+  });
+
+  it("정본 구획이 추출물임을 밝힌다 — 손으로 고치면 안 되는 부분이 어디인지 말한다", () => {
+    // 값이 어디서 오는지 파일이 스스로 말하지 않으면, 다음 사람이 손으로 고친다.
+    // 007 의 「전사」가 그렇게 굳었다.
+    expect(tokens).toContain("scripts/extract_canon.py");
+    expect(tokens).toMatch(/정본 —[\s\S]*손으로 고치지 않는다/);
+  });
+
+  it("확정 디자인의 v1 대조 예시를 정본에 들이지 않았다", () => {
+    /*
+      `Language.dc.html` 은 v2 를 설명하려고 v1 을 나란히 보여준다 (「03 · 기하」).
+      그 예시 안의 값은 확정 디자인 **파일에는 있지만** v2 가 아니다. 파일에 있다는
+      사실만으로 정본에 넣으면 폐기한 언어가 되살아난다.
+    */
+    expect(declarations.toLowerCase()).not.toContain("#f5d000");
+    expect(declarations.toLowerCase()).not.toContain("#14130f");
+    expect(declarations).not.toMatch(/box-shadow:\s*5px 5px 0/);
+    expect(declarations).not.toMatch(/border:\s*3px solid/);
   });
 
   it("숫자를 고정폭으로 그린다 — 소요 시간 열이 자릿수마다 흔들리면 안 된다", () => {
