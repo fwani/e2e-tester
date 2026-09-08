@@ -123,26 +123,37 @@ AI 작성·결과·편집. 여섯은 Step 목록을 **각자** 그렸고(4벌), 
 같은 정보를 다른 자리에 뒀다. 사용자가 말한 "다 따로 만드니까 사용성이 떨어진다" 의
 코드 상 형태가 그것이다.
 
-지금은 화면이 하나다. **국면**이 일곱이고, 국면은 `frontend/src/lib/phase.ts` 가 판정한다.
+지금은 화면이 하나다. **국면**이 여덟이고, 국면은 `frontend/src/lib/phase.ts` 가 판정한다.
 
 ```
 lib/phase.ts          국면 판정의 유일한 지점 (AI 세션은 `authoring_mode` 로 — `state` 가 아니다)
-lib/actions.ts        조작 식별자 33개
+lib/actions.ts        조작 식별자 34개
 lib/capabilities.ts   국면 × 조작 권한표 + 런타임 조건 + 전 국면 덮어쓰기
 lib/wording.ts        화면 어휘 — 국면 이름·조작 라벨·비활성 이유
+lib/layout.ts         ③ 좌측 두 자리의 세로 배분 — 국면이 정하고 표가 소유한다
 
 components/workbench/ 표시 층. **데이터를 읽지 않고 명령을 만들지 않는다**
   Workbench.tsx       3층 껍데기 (헤더 60px · 국면 띠 74px · 본문)
   StepList.tsx        **단일** Step 목록 (우 460px)
   StepDetail.tsx      **단일** Step 상세 (우측 겹침 640px)
   ActionPalette.tsx   조작의 집 — 순서와 구성을 여기가 갖는다
-  TargetPane.tsx      대상 앱 영역 — 미러 / 산출물 / 브라우저 열기 / 빈 상태
-  PhaseAside.tsx      국면 보조 영역 — 국면 고유 내용의 유일한 자리
+  TargetPane.tsx      ③-a 대상 앱 슬롯 — 미러 / 산출물 / 브라우저 열기 / 빈 상태
+  WorkArea.tsx        ③-b 국면 작업 영역 — 그 국면에서 실제로 하는 일의 유일한 자리
 
+pages/ComposeView.tsx    만들기 국면의 어댑터 (세션도 저장된 테스트도 Step 도 없다)
 pages/SessionScreen.tsx  세션 다섯 국면의 어댑터 (구독·상태·명령을 소유한다)
 pages/ResultView.tsx     결과 국면의 어댑터
 pages/EditView.tsx       편집 국면의 어댑터
 ```
+
+**두 표시 컴포넌트는 자기 크기를 모른다.** `TargetPane`·`WorkArea` 는 높이를 인자로만
+받고, `Workbench` 가 `lib/layout.ts` 의 배분표를 국면으로 한 번 조회해 내려 준다. 1회차에는
+둘이 각자 하드코딩했고 — `flex: "1"` 과 `flex: 0 0 auto` — 합쳐 보면 **편집 국면에서 채울
+것이 없는 자리가 700px 를 가져갔다** (2회차 S-12). 판단이 두 파일에 흩어져 있으면 어느 한
+쪽만 보고는 그 결함을 볼 수 없다.
+
+한 국면에서 두 자리가 동시에 「남는 높이 전부」일 수 없다 (UC-100). `tests/VerticalSplit.test.ts`
+가 그것과 「선언한 주 자리가 실제로 더 큰 배분을 갖는가」를 센다.
 
 어댑터는 국면을 `WorkbenchModel` 로 바꾸는 일만 한다. 그리는 것은 `Workbench` 하나다.
 
@@ -152,7 +163,7 @@ pages/EditView.tsx       편집 국면의 어댑터
 
 **조작마다 자리가 하나다.** 자리를 국면마다 조립하면 한 국면이 하나를 빠뜨리고, 빠진 것이
 감춰진 조작이 된다. `tests/CapabilityUI.test.tsx` 가 그것을 센다 — 표가 `–` 로 두지 않은
-조작이 일곱 국면 전부의 화면에 있고, 비활성인 것은 모두 이유를 갖는지.
+조작이 여덟 국면 전부의 화면에 있고, 비활성인 것은 모두 이유를 갖는지.
 
 | 조작 묶음 | 자리 |
 |---|---|

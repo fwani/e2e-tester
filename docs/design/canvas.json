@@ -1,20 +1,128 @@
 {
   "artboards": [
-    { "file": "TestList.dc.html",      "x": 0,    "y": 0,    "w": 1440, "h": 760,  "title": "테스트 목록" },
-    { "file": "CreateTest.dc.html",    "x": 1560, "y": 0,    "w": 1000, "h": 700,  "title": "테스트 만들기" },
-    { "file": "AiRecord.dc.html",      "x": 2680, "y": 0,    "w": 1440, "h": 900,  "title": "AI로 만들기 (자연어)" },
-    { "file": "Main.dc.html",          "x": 0,    "y": 1180, "w": 1440, "h": 900,  "title": "Interactive Runner — 실행 중" },
-    { "file": "RunnerPaused.dc.html",  "x": 1560, "y": 1180, "w": 1440, "h": 900,  "title": "Interactive Runner — 일시정지 / 편집" },
-    { "file": "Takeover.dc.html",      "x": 3120, "y": 1180, "w": 1440, "h": 900,  "title": "AI 실패 → 사람이 이어받기" },
-    { "file": "RunResult.dc.html",     "x": 0,    "y": 2360, "w": 1440, "h": 900,  "title": "실행 결과 (FAIL)" },
-    { "file": "StepInspector.dc.html", "x": 1560, "y": 2360, "w": 640,  "h": 1140, "title": "Step 상세 — Locator 전략" },
-    { "file": "Workbench.dc.html",     "x": 0,    "y": 3700, "w": 1520, "h": 8400, "title": "통합 작업 화면 — 하나의 껍데기, 일곱 상태 (초안 · 승인 대기)", "replaces": ["AiRecord.dc.html", "Main.dc.html", "RunnerPaused.dc.html", "Takeover.dc.html", "RunResult.dc.html", "StepInspector.dc.html"], "status": "draft" }
+    {
+      "file": "TestList.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 760,
+      "title": "테스트 목록"
+    },
+    {
+      "file": "CreateTest.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1000,
+      "h": 700,
+      "title": "테스트 만들기",
+      "replaced_by": "007-rework/Create.dc.html",
+      "status": "superseded (승인 전까지 이 파일이 만들기 국면의 대조 기준이다)"
+    },
+    {
+      "file": "AiRecord.dc.html",
+      "x": 2680,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "AI로 만들기 (자연어)"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 1180,
+      "w": 1440,
+      "h": 900,
+      "title": "Interactive Runner — 실행 중"
+    },
+    {
+      "file": "RunnerPaused.dc.html",
+      "x": 1560,
+      "y": 1180,
+      "w": 1440,
+      "h": 900,
+      "title": "Interactive Runner — 일시정지 / 편집"
+    },
+    {
+      "file": "Takeover.dc.html",
+      "x": 3120,
+      "y": 1180,
+      "w": 1440,
+      "h": 900,
+      "title": "AI 실패 → 사람이 이어받기"
+    },
+    {
+      "file": "RunResult.dc.html",
+      "x": 0,
+      "y": 2360,
+      "w": 1440,
+      "h": 900,
+      "title": "실행 결과 (FAIL)"
+    },
+    {
+      "file": "StepInspector.dc.html",
+      "x": 1560,
+      "y": 2360,
+      "w": 640,
+      "h": 1140,
+      "title": "Step 상세 — Locator 전략"
+    },
+    {
+      "file": "Workbench.dc.html",
+      "x": 0,
+      "y": 3700,
+      "w": 1520,
+      "h": 8400,
+      "title": "통합 작업 화면 — 1회차 초안 (2회차 007-rework/ 로 대체됨)",
+      "replaces": [
+        "AiRecord.dc.html",
+        "Main.dc.html",
+        "RunnerPaused.dc.html",
+        "Takeover.dc.html",
+        "RunResult.dc.html",
+        "StepInspector.dc.html"
+      ],
+      "status": "superseded",
+      "replaced_by": "007-rework/"
+    }
   ],
   "annotations": [
-    { "id": "note-flow",   "x": 0, "y": -170, "w": 620, "text": "1 — 테스트 만들기\n목록에서 시작해 만드는 방법을 고르고, AI로 만들 때는 지시문을 쓴다. 직접 녹화든 AI든 같은 Step 모델로 저장된다." },
-    { "id": "note-runner", "x": 0, "y": 1010, "w": 760, "text": "2 — Interactive Runner (제품의 핵심)\n실행 중 멈추고 → 불필요한 Step을 지우거나 직접/자연어로 Step을 추가하고 → 브라우저 상태 그대로 이어서 실행한다. AI가 실패하면 그 세션에서 사람이 이어받는다." },
-    { "id": "note-result", "x": 0, "y": 2190, "w": 700, "text": "3 — 결과와 Step 모델\n실패는 어느 Step에서 왜 멈췄는지로 보여준다. Step 상세에는 화면 변경에 버티기 위한 locator 우선순위가 들어간다." },
-    { "id": "note-workbench", "x": 0, "y": 3520, "w": 900, "text": "4 — 통합 작업 화면 (007 · 초안 · 승인 대기)\n위의 6종(AiRecord·Main·RunnerPaused·Takeover·RunResult·StepInspector)을 대체한다. 그 여섯은 서로 다른 화면으로 정의됐지만 사용자가 보는 대상은 하나의 테스트이고 같은 Step 목록이다. 하나의 껍데기와 일곱 상태로 정의한다.\n\n치수는 기존 6종에서 기계적으로 추출했다 — 헤더 60px·국면 띠 74px 은 5종 공통, Step 패널 460px 은 3종 공통, Step 상세 640px 은 StepInspector 의 기준 폭이다. 새로 정하는 값은 다섯 개(A1~A5)뿐이며 승인 대상으로 따로 제시했다.\n\n승인 전에는 초안이며 대조 기준이 아니다." }
+    {
+      "id": "note-flow",
+      "x": 0,
+      "y": -170,
+      "w": 620,
+      "text": "1 — 테스트 만들기\n목록에서 시작해 만드는 방법을 고르고, AI로 만들 때는 지시문을 쓴다. 직접 녹화든 AI든 같은 Step 모델로 저장된다."
+    },
+    {
+      "id": "note-runner",
+      "x": 0,
+      "y": 1010,
+      "w": 760,
+      "text": "2 — Interactive Runner (제품의 핵심)\n실행 중 멈추고 → 불필요한 Step을 지우거나 직접/자연어로 Step을 추가하고 → 브라우저 상태 그대로 이어서 실행한다. AI가 실패하면 그 세션에서 사람이 이어받는다."
+    },
+    {
+      "id": "note-result",
+      "x": 0,
+      "y": 2190,
+      "w": 700,
+      "text": "3 — 결과와 Step 모델\n실패는 어느 Step에서 왜 멈췄는지로 보여준다. Step 상세에는 화면 변경에 버티기 위한 locator 우선순위가 들어간다."
+    },
+    {
+      "id": "note-workbench",
+      "x": 0,
+      "y": 3520,
+      "w": 900,
+      "text": "4 — 통합 작업 화면 (007 · 초안 · 승인 대기)\n위의 6종(AiRecord·Main·RunnerPaused·Takeover·RunResult·StepInspector)을 대체한다. 그 여섯은 서로 다른 화면으로 정의됐지만 사용자가 보는 대상은 하나의 테스트이고 같은 Step 목록이다. 하나의 껍데기와 일곱 상태로 정의한다.\n\n치수는 기존 6종에서 기계적으로 추출했다 — 헤더 60px·국면 띠 74px 은 5종 공통, Step 패널 460px 은 3종 공통, Step 상세 640px 은 StepInspector 의 기준 폭이다. 새로 정하는 값은 다섯 개(A1~A5)뿐이며 승인 대상으로 따로 제시했다.\n\n승인 전에는 초안이며 대조 기준이 아니다."
+    },
+    {
+      "id": "note-rework",
+      "x": 0,
+      "y": 12250,
+      "w": 1100,
+      "text": "5 — 2회차 재설계 (007-rework/ · 초안 · 승인 대기)\n\n1회차 초안 Workbench.dc.html 과 확정 디자인 CreateTest.dc.html 을 docs/design/007-rework/ 11장이 대체한다 (FR-254d).\n\n고치는 것은 ③ 좌측의 세로 배분 하나다. 층의 순서·개수·폭과 최소 기준 폭 1440 은 그대로다. 「국면 보조 영역」을 「국면 작업 영역」으로 고쳤다 — 그 이름이 편집 폼 전체를 42px 띠에 넣는 판단을 유도했다.\n\n만들기가 여덟째 국면으로 들어왔다. 1회차는 통합 대상에서 뺐고, 그 결과 한 번의 「테스트를 만든다」 안에서 껍데기가 두 번 바뀌었다.\n\nCreateTest.dc.html 은 **확정 디자인**이므로 승인 전까지 그것이 만들기 국면의 대조 기준이다. 초안이 확정을 대체할 수는 없다 (FR-254c).\n\n대체 관계: specs/007-unify-test-screens/design-conformance/replacement-map.md §2"
+    }
   ],
-  "launch": { "view": "canvas" }
+  "launch": {
+    "view": "canvas"
+  }
 }

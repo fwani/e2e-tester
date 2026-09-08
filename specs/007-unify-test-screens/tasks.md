@@ -453,12 +453,12 @@ Phase 10 이 만든 규칙을 쓴다. 먼저 하면 만들기만 규칙 없이 �
 
 **⚠️ 기록이 실제와 다르면 대조가 성립하지 않는다** (1회차 T092 가 같은 이유로 열렸다)
 
-- [ ] T122 [P] 대체 관계 기록 in `specs/007-unify-test-screens/design-conformance/replacement-map.md` per FR-254b · FR-254d — `Workbench.dc.html`(초안) + `CreateTest.dc.html`(**확정 디자인**) → `docs/design/007-rework/`. `CreateTest.dc.html` 의 모든 요소(시작 URL 필드 · 방법 2택의 설명 문구 · 취소 · 1000px 셸)가 어디로 갔는지 판정 넷(`그대로`/`이동`/`분리`/`옮기지 않음`)으로 적는다. **`옮기지 않음` 은 이유가 필수다**
-- [ ] T123 [P] 2회차 대조 기록 in `specs/007-unify-test-screens/design-conformance/Workbench.md` per DC-012 · FR-254c — B1~B10 의 기준값과 구현값. **첫 줄의 「승인 대기 중이며 대조 기준으로 확정되지 않았다」를 유지한다.** 만들기 국면은 승인 전까지 `CreateTest.dc.html` 이 기준임을 명시한다 (research R14)
-- [ ] T124 [P] 미정의 상태 갱신 in `specs/007-unify-test-screens/design-conformance/undefined-states.md` per DC-009 — 1회차의 `AiCompose` 항목을 **해소로 닫는다**(만들기 국면이 되었다). 2회차가 만든 미정의 상태를 등록한다
-- [ ] T125 [P] 캔버스 갱신 in `docs/design/canvas.json` per FR-254b · FR-254d — `Workbench.dc.html` 항목에 `007-rework` 로 대체됨을 표시. `CreateTest.dc.html` 의 `replaces` 관계 기록
-- [ ] T125a [P] 구조 문서 개명 반영 in `docs/DEVELOPMENT.md` per FR-218e-1 — `PhaseAside.tsx 국면 보조 영역` → `WorkArea.tsx 국면 작업 영역`. **FR-218e-1 은 계약·코드 식별자·대조 기록이 함께 바뀌어야 한다고 요구한다** — 리포지토리 구조 문서가 옛 이름을 적고 있으면 다음 사람이 그 이름으로 읽는다
-- [ ] T126 사람 판정 항목 등록 in `docs/PENDING-HUMAN-VERIFICATION.md` per FR-254c — B1~B10 승인 요청 · **`CreateTest.dc.html`(확정 디자인) 대체 승인** · W-8·W-9 걷기의 사람 재확인. 1회차 T096·T097 과 같은 형식
+- [X] T122 [P] 대체 관계 기록 in `specs/007-unify-test-screens/design-conformance/replacement-map.md` per FR-254b · FR-254d — `Workbench.dc.html`(초안) + `CreateTest.dc.html`(**확정 디자인**) → `docs/design/007-rework/`. `CreateTest.dc.html` 의 모든 요소(시작 URL 필드 · 방법 2택의 설명 문구 · 취소 · 1000px 셸)가 어디로 갔는지 판정 넷(`그대로`/`이동`/`분리`/`옮기지 않음`)으로 적는다. **`옮기지 않음` 은 이유가 필수다**
+- [X] T123 [P] 2회차 대조 기록 in `specs/007-unify-test-screens/design-conformance/Workbench.md` per DC-012 · FR-254c — B1~B10 의 기준값과 구현값. **첫 줄의 「승인 대기 중이며 대조 기준으로 확정되지 않았다」를 유지한다.** 만들기 국면은 승인 전까지 `CreateTest.dc.html` 이 기준임을 명시한다 (research R14)
+- [X] T124 [P] 미정의 상태 갱신 in `specs/007-unify-test-screens/design-conformance/undefined-states.md` per DC-009 — 1회차의 `AiCompose` 항목을 **해소로 닫는다**(만들기 국면이 되었다). 2회차가 만든 미정의 상태를 등록한다
+- [X] T125 [P] 캔버스 갱신 in `docs/design/canvas.json` per FR-254b · FR-254d — `Workbench.dc.html` 항목에 `007-rework` 로 대체됨을 표시. `CreateTest.dc.html` 의 `replaces` 관계 기록
+- [X] T125a [P] 구조 문서 개명 반영 in `docs/DEVELOPMENT.md` per FR-218e-1 — `PhaseAside.tsx 국면 보조 영역` → `WorkArea.tsx 국면 작업 영역`. **FR-218e-1 은 계약·코드 식별자·대조 기록이 함께 바뀌어야 한다고 요구한다** — 리포지토리 구조 문서가 옛 이름을 적고 있으면 다음 사람이 그 이름으로 읽는다
+- [X] T126 사람 판정 항목 등록 in `docs/PENDING-HUMAN-VERIFICATION.md` per FR-254c — B1~B10 승인 요청 · **`CreateTest.dc.html`(확정 디자인) 대체 승인** · W-8·W-9 걷기의 사람 재확인. 1회차 T096·T097 과 같은 형식
 
 ---
 
