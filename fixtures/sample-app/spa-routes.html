@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>SPA 라우트 전환</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- **navigate 중복 재현 화면** (TC-010).
+
+       SPA 는 한 번의 조작에 라우트를 여러 번 바꾼다. `framenavigated` 는 `pushState`·
+       `replaceState` 에도 발생하고 **같은 주소도 그대로 다시 온다**(실측). 그래서 두
+       종류의 중복이 생긴다.
+
+       1. **한 클릭이 만든 이동 사슬.** 실측한 앱은 로그인 한 번에 이동이 다섯 번
+          일어났고, 첫 하나만 억제한 결과 넷이 Step 으로 남았다. 그 정의를 재실행하면
+          로그인 클릭 뒤에 `goto /portal-auth/login` 이 실행되어 **로그인 화면으로
+          되돌아간다.**
+       2. **같은 주소 연속 반복.** 상세 화면 주소가 3번 연달아 왔다.
+
+       이 화면은 둘을 한 번의 클릭으로 만든다. 앞부분(사슬)은 억제 시간창 안에서,
+       뒷부분(같은 주소 반복)은 **시간창을 넘긴 뒤에** 일어난다 — 시간창 안에서 하면
+       클릭 억제에 함께 걸려 같은 주소 중복 규칙을 따로 잴 수 없다. -->
+  <main>
+    <h1>라우트 전환</h1>
+    <button type="button" id="go" data-testid="spa-go">이동 시작</button>
+    <p id="log" class="muted">대기</p>
+  </main>
+  <script>
+    const q = new URLSearchParams(location.search);
+    // 억제 시간창(NAV_DEDUPE_MS = 3000ms)보다 뒤. 검증에서 함께 줄이지 말 것 —
+    // 시간창 안으로 들어오면 이 화면이 두 규칙을 가려 재지 못한다.
+    const after = Number(q.get("after") || 3300);
+    const step = (url) => {
+      history.pushState({}, "", url);
+      document.getElementById("log").textContent = "현재 " + location.search;
+    };
+    document.getElementById("go").addEventListener("click", () => {
+      // ── 시간창 안: 한 클릭이 만든 사슬. 같은 주소 반복도 섞어 둔다.
+      step("?r=a");
+      setTimeout(() => step("?r=a"), 40);
+      setTimeout(() => step("?r=b"), 80);
+      // ── 시간창 뒤: 클릭 억제가 풀린 상태에서 같은 주소가 두 번 온다.
+      setTimeout(() => step("?r=c"), after);
+      setTimeout(() => step("?r=c"), after + 60);
+    });
+  </script>
+</body>
+</html>

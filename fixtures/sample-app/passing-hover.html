@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>지나가며 스친 hover</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .cols { display: flex; gap: 40px; align-items: flex-start; }
+    .toolbar button { display: block; margin-bottom: 8px; }
+    /* 정상 hover 메뉴 — 오탐을 막으면서 이것까지 잃지 않는지 같은 화면에서 잰다. */
+    .haspopup .popup { display: none; }
+    .haspopup:hover .popup { display: block; }
+  </style>
+</head>
+<body>
+  <!-- **"지나가다 스친 hover" 재현 화면** (TC-012).
+
+       사람은 클릭하러 가는 길에 여러 요소를 스친다. 그때 앞선 클릭이 화면을 다시 그리는
+       중이면, 포인터 밑에 있던 **무관한 요소**의 hover 가 그 변화의 원인으로 기록된다.
+       TC-012 에서 자동 감지된 hover 5개가 전부 이 형태였고 하나는 재실행을 실패시켰다.
+
+       재현 조건 둘.
+
+       1. **클릭이 문서의 다른 곳을 다시 그린다.** `#result` 는 툴바와 다른 갈래에 있다 —
+          hover 한 요소 주변이 아니어야 "국소성" 조건을 실제로 잰다.
+       2. **다시 그리는 일이 포인터가 툴바 버튼에 올라간 뒤까지 이어진다.** 그래야 그
+          변화가 hover 판정 창(300ms) 안에 들어온다.
+
+       `#menu` 는 CSS `:hover` 로만 열리는 **정상** 메뉴다. 이 화면이 오탐만 막고 정상
+       hover 도 함께 죽이지 않는지 판정한다. -->
+  <main>
+    <div class="cols">
+      <div class="toolbar">
+        <button type="button" data-testid="apply">적용</button>
+        <button type="button" data-testid="reset">초기화</button>
+        <span class="haspopup" data-testid="menu-host">
+          <button type="button" data-testid="menu">도구</button>
+          <span class="popup" role="menu">
+            <button type="button" data-testid="menu-export" role="menuitem">내보내기</button>
+          </span>
+        </span>
+      </div>
+      <div id="result"><p>결과 없음</p></div>
+    </div>
+  </main>
+  <script>
+    // 적용을 누르면 **다른 갈래**인 결과 영역을 여러 번에 걸쳐 다시 그린다.
+    const rounds = Number(new URLSearchParams(location.search).get("rounds") || 8);
+    document.querySelector("[data-testid=apply]").addEventListener("click", () => {
+      const target = document.getElementById("result");
+      let n = 0;
+      const tick = () => {
+        n += 1;
+        target.innerHTML = "";
+        for (let i = 0; i < n; i += 1) {
+          const p = document.createElement("p");
+          p.textContent = "결과 행 " + (i + 1);
+          target.append(p);
+        }
+        if (n < rounds) setTimeout(tick, 120);
+      };
+      tick();
+    });
+  </script>
+</body>
+</html>

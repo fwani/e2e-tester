@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>껍데기 여백</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .card { padding: 48px; background: #f2f2f2; }
+    .row { padding: 32px; display: flex; gap: 32px; }
+    .row button { padding: 20px 32px; }
+    /* `addEventListener` 로만 클릭을 처리하는 커스텀 버튼. role·tabindex·onclick 이 없어
+       제품 눈에는 조작 대상으로 보이지 않는다 — 그래도 기록돼야 한다. */
+    .fake-button { padding: 20px 32px; background: #ddd; display: inline-block; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <!-- **껍데기 여백 클릭 재현 화면** (TC-013).
+
+       사람이 버튼을 누르려다 그 **밖의 여백**을 누르면, 눌린 것은 껍데기다. 실측에서 그
+       Step 의 표시 이름은 자식 텍스트를 전부 이어붙인 형태였고(`앱 관리온톨로지 관리데이터
+       관리…`), 재실행에서는 아무 일도 하지 않았다.
+
+       **버튼으로 바꿔 줄 수는 없다.** 여백은 어느 요소를 뜻하는지 알 수 없다 — 이 화면의
+       `.row` 는 버튼 둘을 품고 있다. 그래서 기록하지 않는 것이 답이다.
+
+       `.fake-button` 은 **껍데기가 아닌** 커스텀 버튼이다. `addEventListener` 로만 클릭을
+       처리하므로 제품 눈에 조작 대상으로 보이지 않는데, 컨트롤을 품고 있지 않으므로
+       걸러지지 않아야 한다. 이 요소가 없으면 "조작 대상이 아니면 버린다" 는 과한 규칙도
+       통과해 버린다. -->
+  <main>
+    <div class="card">
+      <div class="row">
+        <button type="button" data-testid="save">저장</button>
+        <button type="button" data-testid="cancel">취소</button>
+      </div>
+      <div class="fake-button" data-testid="fake">커스텀 실행</div>
+      <p id="log" class="muted">대기</p>
+    </div>
+  </main>
+  <script>
+    const log = (what) => { document.getElementById("log").textContent = what + " 눌림"; };
+    document.querySelectorAll("[data-testid=save],[data-testid=cancel]").forEach((b) =>
+      b.addEventListener("click", () => log(b.textContent)),
+    );
+    document.querySelector(".fake-button").addEventListener("click", () => log("커스텀 실행"));
+  </script>
+</body>
+</html>

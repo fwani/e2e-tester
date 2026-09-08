@@ -200,3 +200,43 @@ def test_drag_flow_replays(project_client: TestClient, fixture_app: str) -> None
     assert dragged[0]["locator_attempts"], (
         "끌어다 놓기의 시도 내역이 비어 있다 — 두 요소를 모두 해석했다는 근거가 없다"
     )
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_hover_then_click_on_the_same_element_is_one_step(
+    project_client: TestClient, fixture_app: str
+) -> None:
+    """같은 요소의 `hover → click` 은 Step **하나**다.
+
+    `click()` 은 그 자체가 포인터를 옮기고 누르고 떼는 동작이다. 앞에 hover Step 을 따로
+    두면 같은 이동을 두 번 표현하는 것이고, 정의를 읽는 사람은 그 hover 에 별도의 뜻이
+    있다고 오해한다. 실측(TC-010)에서 37 Step 중 6쌍이 이 형태였다.
+
+    **위의 `test_hover_menu_flow_replays` 와 함께 읽어야 한다.** 그쪽은 hover 대상과 클릭
+    대상이 **다른** 경우이며 hover 가 반드시 남아야 한다. 접는 기준은 "클릭이 뒤따랐는가"
+    가 아니라 **"같은 요소를 클릭했는가"** 다.
+    """
+    sid = _record_session(project_client, fixture_app)
+    try:
+        page = project_client.app.state.itb.sessions.require(sid).tabs[0].page
+
+        async def act(p: Any = page) -> None:
+            await p.hover("[data-testid=tools-menu]")
+            await asyncio.sleep(HOVER_SETTLE_S)  # hover Step 이 만들어질 시간을 준다
+            await p.click("[data-testid=tools-menu]")
+            await asyncio.sleep(0.4)
+
+        project_client.portal.call(act)  # type: ignore[attr-defined]
+        steps = wait_for_steps(project_client, sid, has_kinds("click"))
+    finally:
+        stop_quietly(project_client, sid)
+
+    mine = [
+        s
+        for s in steps
+        if ((s.get("target") or {}).get("test_id") or {}).get("value") == "tools-menu"
+    ]
+    assert [s["type"] for s in mine] == ["click"], (
+        "같은 요소의 hover 와 click 이 Step 두 개로 남았다: "
+        f"{[(s['id'], s['type'], s['label']) for s in mine]}"
+    )

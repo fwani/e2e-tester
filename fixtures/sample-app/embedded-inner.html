@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>내장 앱 내부</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- iframe 안에서만 존재하는 id 를 둔다. 이 문서 기준의 경로(`main#app-main > ...`)가
+       main frame 에서는 0개를 매칭하는 것이 이 픽스처의 요점이다. -->
+  <main id="app-main">
+    <div class="panel">
+      <h2>내장 폼</h2>
+      <label for="inner-name">이름</label>
+      <input id="inner-name" type="text">
+      <button class="btn"><span class="lbl">내장 저장</span></button>
+      <p id="inner-status">대기</p>
+    </div>
+  </main>
+  <script>
+    document.querySelector("button.btn").addEventListener("click", () => {
+      document.getElementById("inner-status").textContent =
+        "저장됨: " + document.getElementById("inner-name").value;
+    });
+  </script>
+</body>
+</html>

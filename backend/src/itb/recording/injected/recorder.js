@@ -243,6 +243,53 @@
 
   window.__itbResolveRef = (token) => refs.get(token) || null;
 
+  /**
+   * 중복 제거의 기준이 되는 요소. **한 번의 조작이 내는 여러 이벤트를 한 묶음으로 묶는다.**
+   *
+   * `<label>` 을 누르면 브라우저가 연결된 컨트롤에 **클릭을 한 번 더 합성해 보낸다**
+   * (label activation). 두 이벤트의 대상이 다르므로 요소별 중복 제거로는 접히지 않고, 한
+   * 번의 클릭이 Step 두 개가 된다.
+   *
+   * 실측(TC-009): `Druid` 체크박스를 한 번 눌렀는데 Step 20(레이블)·21(입력)이 만들어졌고,
+   * 재실행은 체크박스를 켰다가 **다시 껐다.** 게다가 실제 `<input class="checkbox-input">`
+   * 은 `<button class="accordion-head">` 에 덮여 있어 두 번째 Step 은 10초를 쓰고 실패했다.
+   * 정의가 두 배가 되는 문제가 아니라 **뜻이 뒤집히는** 문제다.
+   *
+   * 그래서 레이블과 컨트롤이 **같은 묶음 이름**을 갖게 한다. 이름은 컨트롤의 경로로 정한다 —
+   * 컨트롤 쪽에서는 자기 경로, 레이블 쪽에서는 자기가 조작하는 컨트롤의 경로이므로 양쪽이
+   * 같은 문자열을 만든다. 그러면 Python 의 중복 제거가 둘을 접고 **먼저 도착한 쪽**만
+   * 남는데, 먼저 도착하는 것은 `pointerdown` 이 실제로 닿은 쪽이다.
+   *
+   * **먼저 도착한 쪽을 남기는 것이 맞다.** 사용자가 레이블을 눌렀으면 레이블이 보였다는
+   * 뜻이고, 컨트롤을 직접 눌렀으면 컨트롤이 보였다는 뜻이다. 어느 쪽을 남길지 규칙으로
+   * 정하면 위 실측처럼 **가려진 쪽**을 고를 수 있다.
+   */
+  const groupAnchor = (el) => {
+    const control = el.localName === "label" ? el.control : el;
+    if (!control || control.nodeType !== 1) return null;
+    const labels = control.labels;
+    if (!labels || labels.length === 0) return null;
+    return control;
+  };
+
+  /** 이 요소 자체가 조작 대상인가. `actionTarget` 이 올라가 찾는 것과 같은 기준이다. */
+  const isActionable = (el) => {
+    try {
+      return el.matches(ACTIONABLE) || el.matches(CLICKABLE);
+    } catch {
+      return false;
+    }
+  };
+
+  /** 조작 대상을 **품고 있는** 껍데기인가. 목록·카드처럼 여백이 있는 컨테이너다. */
+  const wrapsControls = (el) => {
+    try {
+      return el.querySelector(ACTIONABLE) !== null;
+    } catch {
+      return false;
+    }
+  };
+
   const describe = (el, options) => {
     const attributes = {};
     for (const attr of COLLECTED_ATTRS) {
@@ -252,7 +299,15 @@
     const css = cssPath(el);
     const attr = testIdAttribute();
     const testId = el.getAttribute(attr);
+    const anchor = groupAnchor(el);
     return {
+      // 레이블·컨트롤 쌍을 한 묶음으로 묶는 이름. 없으면 Python 이 `css` 로 떨어진다.
+      // 컨트롤 자신에 대해서는 `css` 와 같은 값이 나오므로 기존 동작이 바뀌지 않는다.
+      group: anchor === null ? null : anchor === el ? css : cssPath(anchor),
+      // **여백을 누른 클릭을 가려내는 두 사실** (`Recorder._record_click` 참고).
+      // 조작 대상이 아니면서 조작 대상을 품고 있으면 껍데기의 여백을 누른 것이다.
+      actionable: isActionable(el),
+      wrapsControls: wrapsControls(el),
       tag: el.tagName.toLowerCase(),
       // `observe_page` 는 요소를 200개까지 훑으므로 등록하지 않는다. 그 목록은 검증
       // 대상이 아니고, 등록하면 상한이 밀려 정작 필요한 동작 대상의 참조가 버려진다.
@@ -396,8 +451,64 @@
     return null;
   };
 
-  const actionTarget = (el) =>
-    el ? ascend(el, ACTIONABLE) || ascend(el, CLICKABLE) || el : null;
+  /**
+   * 그 지점을 눌렀을 때 **이 요소가 실제로 받는가.** 다른 것이 덮고 있으면 아니다.
+   *
+   * Playwright 의 `click` 도 같은 판정을 하므로, 여기서 걸러 낸 요소는 재실행에서 반드시
+   * 실패한다. 기록 시점에 미리 판정해 두면 그 실패를 만들지 않을 수 있다.
+   */
+  const isHittable = (el) => {
+    try {
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return false;
+      const top = document.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+      );
+      return !!top && (top === el || el.contains(top));
+    } catch {
+      return false;
+    }
+  };
+
+  /** 체크박스·라디오인가. 네모와 이름이 같은 조작을 뜻하는 종류다. */
+  const isToggle = (el) => {
+    if (!el || el.localName !== "input") return false;
+    const type = (el.getAttribute("type") || "").toLowerCase();
+    return type === "checkbox" || type === "radio";
+  };
+
+  /**
+   * 체크박스·라디오는 **누른 지점이 아니라 조작 가능한 쪽**으로 통일한다.
+   *
+   * 사람은 네모를 누를 수도 있고 이름을 누를 수도 있는데, 둘은 같은 조작이다. 그런데 눌린
+   * 요소를 그대로 기록하면 같은 체크박스가 누른 자리에 따라 다르게 기록된다 — 실측
+   * (TC-013)에서 `즐겨찾기` 를 이름으로 누른 Step 12 는 `label` 로, 네모로 누른 Step 16 은
+   * `input` 으로 기록됐고, **16 만 재실행에서 실패했다**(실제 `input` 이
+   * `<button class="accordion-head">` 에 덮여 있었다).
+   *
+   * 그래서 짝(`label`·`input`) 중 **그 자리를 실제로 받을 수 있는 쪽**을 고르고, 둘 다
+   * 가능하면 `label` 을 쓴다 — 이름을 들고 있어 정의가 읽히고, 사람이 보는 affordance 다.
+   *
+   * **체크박스·라디오에만 적용한다.** 텍스트 입력은 레이블을 눌러도 입력란이 포커스를 받는
+   * 것뿐이고, 값을 넣는 Step 은 입력란을 가리켜야 한다. 그 종류까지 레이블로 바꾸면 정의가
+   * 뜻하는 요소가 달라진다.
+   */
+  const preferredToggle = (el) => {
+    const control = el.localName === "label" ? el.control : el;
+    if (!isToggle(control)) return null;
+    const labels = control.labels;
+    const label = labels && labels.length > 0 ? labels[0] : null;
+    if (label && isHittable(label)) return label;
+    if (isHittable(control)) return control;
+    return null; // 둘 다 받을 수 없다 — 눌린 것을 그대로 남기고 검증이 판정하게 둔다
+  };
+
+  const actionTarget = (el) => {
+    if (!el) return null;
+    const acted = ascend(el, ACTIONABLE) || ascend(el, CLICKABLE) || el;
+    return preferredToggle(acted) || acted;
+  };
 
   /** Shadow DOM 안의 요소도 잡는다 (T004 로 확인). */
   const targetOf = (event) => {
@@ -430,7 +541,8 @@
       hovered.set(el, now);
       const described = describe(el);
       // 후보 사전 수집(경합 회피)과, 이 hover 가 화면을 바꿨는지 관측하는 두 목적이다.
-      hoverCandidate = { element: described, mutated: false };
+      // 노드를 함께 든다 — 변화가 이 요소 주변에서 일어났는지 판정해야 한다.
+      hoverCandidate = { node: el, element: described, mutated: false };
       setTimeout(settleHover, HOVER_EFFECT_WINDOW_MS);
       send({ kind: "hover", element: described });
     },
@@ -456,14 +568,36 @@
    * 시점에 이미 적용되므로, 핸들러가 도는 시점의 값은 "바뀐 뒤" 값이다. 그래서 기준선은
    * **포인터가 아무 요소에도 올라 있지 않을 때** 따로 갱신한다.
    *
-   * 한계: **아이콘만 있는(텍스트 없는) hover 메뉴를 JS 없이 CSS 로만 여는 경우**는 두
-   * 신호 모두에 걸리지 않는다. 그 화면은 일시정지 중 직접 동작 추가(FR-036)로 hover Step
-   * 을 넣어야 한다. 자동 감지를 더 밀어붙이면 오탐이 늘어 정의가 더 나빠진다.
+   * **두 신호 모두 그대로 쓰면 속는다 (TC-012 실측).** 자동 감지된 hover 5개가 전부
+   * 오탐이었고 하나는 재실행을 실패시켰다. 사람은 클릭하러 가는 길에 여러 요소를 스치는데,
+   * 그때마다 다음 두 가지가 겹친다.
+   *
+   * 1. **DOM 변화가 문서 전체에서 관측됐다.** 앞선 클릭이 목록을 다시 그리는 중이면, 포인터
+   *    밑에 있던 무관한 버튼의 hover 가 그 변화의 원인으로 기록된다.
+   * 2. **기준선이 낡았다.** 기준선은 포인터가 아무 요소에도 올라 있지 않을 때만 갱신되는데,
+   *    화면을 조작하는 동안 포인터는 늘 무언가 위에 있다. 그래서 기준선이 **클릭 이전
+   *    화면**에 멈추고, 이후 모든 hover 가 "화면이 바뀌었다" 로 판정된다.
+   *
+   * 그래서 두 신호를 각각 조인다.
+   *
+   * - **DOM 변화는 국소적이어야 한다.** hover 의 효과는 그 요소 주변에 나타난다 — 메뉴는
+   *   트리거의 형제나 자손이다. 문서 저편의 변화는 그 hover 가 만든 것이 아니다.
+   * - **텍스트 신호는 기준선이 클릭보다 나중일 때만 쓴다.** 클릭 뒤에 잰 적이 없는
+   *   기준선으로 비교하면 클릭이 만든 변화를 hover 의 것으로 읽는다.
+   *
+   * 한계 둘. **아이콘만 있는(텍스트 없는) hover 메뉴를 CSS 로만 여는 경우**는 여전히 두
+   * 신호에 걸리지 않는다. 그리고 **메뉴를 `body` 끝에 따로 붙이는 구현**(포털)은 변화가
+   * 국소적이지 않아 놓친다. 두 경우 모두 일시정지 중 직접 동작 추가(FR-036)로 넣는다 —
+   * 놓치는 대가는 그 한 Step 을 손으로 넣는 것이고, 오탐의 대가는 **재실행이 실패하는
+   * 정의**다. 실측에서 자동 감지가 필요했던 경우는 한 번도 없었다.
    */
   const HOVER_EFFECT_WINDOW_MS = 300;
   const BASELINE_SETTLE_MS = 60;
   let hoverCandidate = null;
   let baselineTextLength = 0;
+  let baselineAt = 0;
+  /** 기준선을 잰 시각. 클릭 시각과 비교해 낡은 기준선을 걸러 낸다. */
+  let lastClickAt = 0;
 
   const renderedTextLength = () => {
     try {
@@ -483,7 +617,9 @@
   };
 
   const refreshBaseline = () => {
-    if (pointerIsIdle()) baselineTextLength = renderedTextLength();
+    if (!pointerIsIdle()) return;
+    baselineTextLength = renderedTextLength();
+    baselineAt = Date.now();
   };
 
   document.addEventListener(
@@ -496,13 +632,35 @@
     const candidate = hoverCandidate;
     hoverCandidate = null;
     if (candidate === null) return;
-    if (candidate.mutated || renderedTextLength() !== baselineTextLength) {
+    // 기준선이 마지막 클릭보다 앞서 잰 것이면 텍스트 신호를 쓸 수 없다 — 그 차이가
+    // 클릭이 만든 것인지 이 hover 가 만든 것인지 가릴 수 없다.
+    const textUsable = baselineAt > lastClickAt;
+    const textChanged = textUsable && renderedTextLength() !== baselineTextLength;
+    if (candidate.mutated || textChanged) {
       send({ kind: "hover_action", element: candidate.element });
     }
   };
 
-  const mutationObserver = new MutationObserver(() => {
-    if (hoverCandidate !== null) hoverCandidate.mutated = true;
+  /** 이 변화가 hover 한 요소 주변에서 일어났는가. hover 의 효과는 국소적이다. */
+  const isNearHover = (node) => {
+    const host = hoverCandidate && hoverCandidate.node;
+    if (!host || !node) return false;
+    const scope = host.parentElement || host;
+    try {
+      return scope.contains(node);
+    } catch {
+      return false;
+    }
+  };
+
+  const mutationObserver = new MutationObserver((records) => {
+    if (hoverCandidate === null) return;
+    for (const record of records) {
+      if (isNearHover(record.target)) {
+        hoverCandidate.mutated = true;
+        return;
+      }
+    }
   });
 
   const startObserving = () => {
@@ -517,6 +675,7 @@
   const initHoverDetection = () => {
     startObserving();
     baselineTextLength = renderedTextLength();
+    baselineAt = Date.now();
   };
   if (document.body) initHoverDetection();
   else document.addEventListener("DOMContentLoaded", initHoverDetection, { once: true });
@@ -566,6 +725,7 @@
       const el = targetOf(event);
       if (!el) return;
       hoverCandidate = null; // 클릭이 끼었으면 이후 변화의 원인은 hover 가 아니다
+      lastClickAt = Date.now();
       send({ kind: "click", phase: "down", element: describe(el) });
     },
     true,
@@ -577,6 +737,7 @@
     (event) => {
       const el = targetOf(event);
       if (!el) return;
+      lastClickAt = Date.now();
       send({ kind: "click", phase: "click", element: describe(el) });
     },
     true,

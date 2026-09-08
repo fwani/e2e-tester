@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>레이블로 조작하는 체크박스</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .filter-group { position: relative; }
+    /* 실제 입력은 보이지 않지만 **체크박스 자리를 차지한다** — 커스텀 체크박스의 흔한
+       구현이다. 레이블 전체를 덮게 하면 레이블 클릭 자체가 막혀(포인터 가로막힘) 이
+       화면으로 아무것도 잴 수 없다. */
+    .checkbox-input { position: absolute; opacity: 0; width: 16px; height: 16px; left: 0; top: 2px; }
+    label { display: inline-block; padding-left: 22px; min-width: 140px; }
+    .accordion-head { position: absolute; inset: 0; z-index: 5; opacity: 0; }
+    .filter-item { position: relative; z-index: 10; }
+    label { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <!-- **레이블 활성화 중복 재현 화면** (TC-009 step 20·21).
+
+       `<label for>` 을 누르면 브라우저가 연결된 `<input>` 에 클릭을 한 번 더 합성해
+       보낸다. 두 이벤트의 대상이 다르므로 요소별 중복 제거로는 접히지 않고 Step 두 개가
+       된다. 그 정의를 재실행하면 체크박스를 **켰다가 다시 끈다** — 정의가 길어지는 문제가
+       아니라 뜻이 뒤집히는 문제다.
+
+       **`<input>` 을 일부러 가린다.** 실측한 앱이 그랬다: `checkbox-input` 은 화면에서
+       밀려나 있고 그 자리를 `accordion-head` 가 덮고 있어서, 두 번째 Step 은 요소를
+       찾고도 10초를 쓰고 실패했다. 이 화면이 그 조건을 갖추지 않으면 "레이블 대신
+       컨트롤을 기록" 하는 잘못된 해법도 통과해 버린다. -->
+  <main>
+    <div class="filter-group">
+      <button class="accordion-head" aria-hidden="true" tabindex="-1"></button>
+      <ul id="filters">
+        <li class="filter-item">
+          <input class="checkbox-input" type="checkbox" id="filter-druid">
+          <label for="filter-druid">Druid</label>
+        </li>
+        <li class="filter-item">
+          <input class="checkbox-input" type="checkbox" id="filter-elastic">
+          <label for="filter-elastic">ElasticSearch</label>
+        </li>
+      </ul>
+      <p id="chosen">고른 것: 없음</p>
+      <ul id="rows"></ul>
+    </div>
+  </main>
+  <script>
+    /** 필터 목록을 같은 내용으로 다시 그린다 — 포인터 밑 노드를 교체하는 것이 목적이다. */
+    const redrawFilters = () => {
+      const list = document.getElementById("filters");
+      // 체크 상태는 `innerHTML` 에 실리지 않으므로 직접 되돌린다 — 되돌리지 않으면 이
+      // 화면이 "고른 것" 을 기억하지 못해 재실행 결과를 잴 수 없다.
+      const on = [...list.querySelectorAll(".checkbox-input")]
+        .filter((c) => c.checked)
+        .map((c) => c.id);
+      list.innerHTML = list.innerHTML;
+      on.forEach((id) => { document.getElementById(id).checked = true; });
+      wire();
+    };
+
+    /** 결과 목록을 그린다 — 화면 텍스트가 늘어나 hover 판정에 걸린다. */
+    const redrawRows = () => {
+      const rows = document.getElementById("rows");
+      rows.innerHTML = "";
+      for (let i = 0; i < 3; i += 1) {
+        const li = document.createElement("li");
+        li.textContent = "결과 행 " + (i + 1);
+        rows.append(li);
+      }
+    };
+
+    const show = () => {
+      const on = [...document.querySelectorAll(".checkbox-input")]
+        .filter((c) => c.checked)
+        .map((c) => c.nextElementSibling.textContent);
+      document.getElementById("chosen").textContent =
+        "고른 것: " + (on.length ? on.join(", ") : "없음");
+    };
+    const wire = () => document.querySelectorAll(".checkbox-input").forEach((c) =>
+      c.addEventListener("change", () => {
+        show();
+        // 실제 앱은 필터를 고르면 화면을 다시 그린다. 그것이 `click → hover` 오탐의
+        // 조건을 만드는데, 두 단계가 필요하다.
+        //
+        // 1. **포인터 밑 노드가 교체된다.** 클릭의 `pointerdown` 은 진행 중인 hover
+        //    후보를 버리므로, 새 `pointerover` 가 없으면 hover 판정 자체가 시작되지
+        //    않는다. 노드가 교체되면 브라우저가 새 `pointerover` 를 보낸다.
+        // 2. **그 판정 창(300ms) 안에서 화면이 또 바뀐다.** 그 변화가 방금 시작된
+        //    hover 의 효과로 오인된다.
+        redrawFilters();
+        setTimeout(redrawRows, 120);
+      }),
+    );
+    wire();
+  </script>
+</body>
+</html>
