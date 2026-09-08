@@ -259,8 +259,48 @@ export interface DefinitionView {
   warnings: string[];
 }
 
+/**
+ * 손으로 넣을 Step 의 서술 (009 FR-286).
+ *
+ * **종류 목록을 화면이 갖지 않는다.** 생성 타입(`types/generated/manual-step.d.ts`)이
+ * 백엔드 `itb/domain/manual_step.py` 에서 나오고, 이것은 그것을 **요청 형태**로 좁힌 것이다.
+ *
+ * 생성 타입의 필드가 전부 required 인 이유: 그 스키마는 **직렬화** 스키마다(기본값이 채워진
+ * 상태를 나타낸다). 요청에서는 `label`·`tab`·`timeout_ms`·`match` 를 생략할 수 있고 그때
+ * 서버가 정본 기본값을 쓴다 — 화면이 기본값을 복제하면 두 곳에서 갈린다.
+ */
+export type ManualStepSpec =
+  | { kind: "navigate"; url: string; label?: string; tab?: number; timeout_ms?: number }
+  | { kind: "close_tab"; label?: string; tab?: number; timeout_ms?: number }
+  | {
+      kind: "assert_url";
+      url: string;
+      match?: MatchMode;
+      label?: string;
+      tab?: number;
+      timeout_ms?: number;
+    }
+  | {
+      kind: "assert_text";
+      value: string;
+      match?: MatchMode;
+      label?: string;
+      tab?: number;
+      timeout_ms?: number;
+    };
+
+/** 손으로 넣을 수 있는 종류. `ManualStepSpec` 에서 파생한다 — 별도 배열을 두지 않는다. */
+export type InsertableKind = ManualStepSpec["kind"];
+
 /** 편집 연산 하나. 이 목록의 길이가 곧 「저장할 변경 건수」다 (FR-189). */
 export type EditOp =
+  /**
+   * 009 FR-285 — 목록의 `at` 위치 **앞**에 넣는다.
+   *
+   * 위치는 저장 직전에 **미리보기 목록 기준으로** 확정한다 (research R7). 미저장 상태에서
+   * 삽입 → 순서 변경 → 삭제가 이어지면 정수 위치가 가리키는 곳이 앞선 연산에 따라 바뀐다.
+   */
+  | { op: "insert"; at: number; spec: ManualStepSpec }
   | {
       op: "update";
       step_id: string;
@@ -513,8 +553,17 @@ export const sessions = {
   reorderSteps: (id: string, order: string[]) =>
     post<StepsResponse>(`/api/sessions/${id}/steps:reorder`, { order }),
   /** Step 삽입. `at` 을 생략하면 일시정지 위치다 (FR-035). */
+  /**
+   * 완성된 Step 을 통째로 넣는다. 리코더·AI 컴파일러가 만든 것을 위한 입구다.
+   *
+   * 사람이 손으로 넣는 것은 `insertStepManual` 이다 — 그쪽은 요소를 요구하는 종류를
+   * **요청 모델 단계에서** 거절한다 (009 research R2).
+   */
   insertStep: (id: string, step: unknown, at?: number) =>
     post<StepsResponse>(`/api/sessions/${id}/steps`, { step, at: at ?? null }),
+  /** 일시정지 중 직접 입력으로 Step 추가 (009 FR-290). `at` 을 생략하면 일시정지 위치다. */
+  insertStepManual: (id: string, spec: ManualStepSpec, at?: number) =>
+    post<StepsResponse>(`/api/sessions/${id}/steps:manual`, { spec, at: at ?? null }),
   /** 표시 이름·입력값·타임아웃·민감 여부 수정 (FR-035·FR-082b). */
   patchStep: (
     id: string,

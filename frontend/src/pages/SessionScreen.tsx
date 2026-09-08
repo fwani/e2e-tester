@@ -30,6 +30,7 @@ import {
   sessions,
   type AddAssertionBody,
   type AiChoice,
+  type ManualStepSpec,
   type RepickSlot,
   type RunPacing,
   type SessionView,
@@ -48,6 +49,7 @@ import { TabStrip } from "../components/TabStrip";
 import { BrowserFrame } from "../components/design/BrowserFrame";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
+import { InsertStepForm } from "../components/workbench/InsertStepForm";
 import { Workbench } from "../components/workbench/Workbench";
 import type {
   AiBlockedState,
@@ -197,6 +199,8 @@ export interface SessionWorkbenchProps {
   onRecordStart?: () => void;
   onRecordStop?: () => void;
   onAddAssertion?: (body: AddAssertionBody) => void;
+  /** 009 FR-290 — 일시정지 중 직접 입력으로 Step 추가. `at` 은 일시정지 위치다 */
+  onInsertManual?: (spec: ManualStepSpec, at?: number) => void;
   onNaturalLanguage?: (instruction: string) => void;
   onDeleteStep?: (stepId: string) => void;
   onToggleReorder?: () => void;
@@ -220,6 +224,12 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     상태를 둘의 공통 조상인 여기서 갖는다.
   */
   const [assertOpen, setAssertOpen] = useState(false);
+  /**
+   * 삽입 입력면이 열려 있는가 (009 FR-290).
+   *
+   * 검증 추가와 **같은 문법**이다 — 여는 조작은 Step 패널 바닥에, 폼은 그 자리에 펼쳐진다.
+   */
+  const [insertOpen, setInsertOpen] = useState(false);
   /** 자연어 Step 입력. 팔레트가 아니라 어댑터가 갖는다 — 보내는 것은 어댑터다. */
   const [nl, setNl] = useState("");
   const {
@@ -267,6 +277,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     onRecordStart,
     onRecordStop,
     onAddAssertion,
+    onInsertManual,
     onNaturalLanguage,
     onDeleteStep,
     onToggleReorder,
@@ -475,6 +486,34 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         ),
       };
     }
+    /*
+      009 FR-290 — 삽입 입력면. 검증 추가 폼과 **같은 자리**다 (T036 의 판단을 따른다).
+      닫혀 있으면 자리를 차지하지 않는다.
+    */
+    if (insertOpen && capabilities["step.insertManual"].kind === "enabled") {
+      return {
+        kind: "paused_tools",
+        tools: (
+          <InsertStepForm
+            atLabel={`Step ${stepLabel(view.current_step_index)}`}
+            busy={busy}
+            capability={capabilities["step.insertManual"]}
+            /*
+              세션 안에서는 브라우저가 **이미 열려 있다.** 그래서 요소가 필요한 종류의 갈
+              길은 「브라우저 열기」가 아니라 그 자리에서의 「직접 조작으로 Step 추가」다 —
+              표가 그 국면에 그 조작을 두고 있고, 폼은 그것을 가리킨다.
+            */
+            browserCapability={capabilities["step.recordStart"]}
+            onSubmit={(spec) => {
+              onInsertManual?.(spec);
+              setInsertOpen(false);
+            }}
+            onOpenBrowser={() => runAction("step.recordStart")}
+            onCancel={() => setInsertOpen(false)}
+          />
+        ),
+      };
+    }
     if (reordering) {
       return {
         kind: "paused_tools",
@@ -676,6 +715,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         break;
       case "step.addAssertion":
         setAssertOpen((v) => !v);
+        break;
+      case "step.insertManual":
+        setInsertOpen((v) => !v);
         break;
       case "step.addNaturalLanguage":
         if (nl.trim() !== "") {
@@ -932,6 +974,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
             "run.fromHere":
               selectedIndex >= 0 ? `${stepLabel(selectedIndex)} 부터 이어 실행` : undefined,
             "step.addAssertion": assertOpen ? "검증 추가 닫기" : undefined,
+            "step.insertManual": insertOpen ? "직접 입력 닫기" : undefined,
           }}
           nl={{
             value: nl,
@@ -1557,6 +1600,14 @@ export function SessionScreen({
         onRecordStart={() => void act(() => sessions.recordActionsStart(sessionId))}
         onRecordStop={() => void act(() => sessions.recordActionsStop(sessionId))}
         onAddAssertion={(body) => void edit(() => sessions.addAssertion(sessionId, body))}
+        /*
+          009 FR-290 — 직접 입력 삽입. **`at` 을 넘기지 않는다.**
+
+          넘기지 않으면 서버가 일시정지 위치에 넣는다(`step_edits._clamp`). 화면이 인덱스를
+          계산해 보내면 그 사이 러너가 전진한 경우 다른 자리에 들어간다 — `run.fromHere` 가
+          인덱스를 넘기지 않는 것과 같은 근거다 (005 T129).
+        */
+        onInsertManual={(spec) => void edit(() => sessions.insertStepManual(sessionId, spec))}
         onNaturalLanguage={(instruction) => {
           setBusy(true);
           setNotice(null);

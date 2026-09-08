@@ -13,6 +13,7 @@
  * 그래서 화면은 문구를 직접 만들지 않고 여기서 받는다.
  */
 
+import type { InsertableKind, ManualStepSpec } from "../api/client";
 import type { Outcome, RunScope, StepOutcome } from "../types/generated/run-result";
 import type { ActionId } from "./actions";
 import type { Phase } from "./phase";
@@ -578,6 +579,58 @@ export const ACTION_LABEL: Record<ActionId, string> = {
  * 키가 조건 번호인 이유는 계약과 코드가 같은 이름을 쓰게 하는 것이다. 문구를 고치면
  * 계약의 어느 줄인지 즉시 찾을 수 있다.
  */
+/**
+ * 손으로 넣는 Step 의 표시 이름 (009 FR-286 · research R6).
+ *
+ * **이 문구가 요청에 실려 나간다.** 화면이 미리보기에 쓰는 이름과 서버가 정의 파일에
+ * 저장하는 이름이 같아야 하므로, 화면이 만들어 `spec.label` 로 보낸다 — 두 곳에서 각각
+ * 만들면 저장 순간 이름이 바뀌는 것으로 보인다.
+ *
+ * 서버(`itb/domain/manual_step.derive_label`)에도 같은 규칙이 있지만 그것은 **`label` 이
+ * 없이 온 요청**을 위한 것이다(다른 호출자·CLI). 이 저장소의 규칙은 「사용자에게 보이는
+ * 문구는 화면이 정한다」이고(`LockedField.reason` 이 문구가 아니라 키인 것과 같은 근거),
+ * 저장되는 값은 서버가 정한다 — 그 둘을 같게 만드는 방법이 **화면이 보내는 것**이다.
+ */
+export function manualStepLabel(spec: ManualStepSpec): string {
+  const clip = (text: string, room: number) =>
+    text.length <= room ? text : text.slice(0, Math.max(room - 1, 0)) + "…";
+  switch (spec.kind) {
+    case "navigate":
+      return "주소로 이동 — " + clip(spec.url, 200 - "주소로 이동 — ".length);
+    case "close_tab":
+      return `탭 ${spec.tab ?? 0} 닫기`;
+    case "assert_url":
+      return "주소 검증 — " + clip(spec.url, 200 - "주소 검증 — ".length);
+    case "assert_text":
+      return "화면 텍스트 검증 — " + clip(spec.value, 200 - "화면 텍스트 검증 — ".length);
+  }
+}
+
+/** 종류를 고르는 자리의 이름. 「무엇을 넣을 수 있는가」를 사용자 말로 적는다. */
+export const INSERTABLE_KIND_LABEL: Record<InsertableKind, string> = {
+  navigate: "주소로 이동",
+  close_tab: "탭 닫기",
+  assert_url: "주소 검증",
+  assert_text: "화면 텍스트 검증",
+};
+
+/**
+ * 요소를 지목해야 하므로 손으로 만들 수 없는 종류 (FR-287).
+ *
+ * **감추지 않는다.** 같은 자리에 비활성으로 두고 이유와 갈 길을 붙인다 — 그것이 이
+ * 저장소가 「쓸 수 없는 조작」을 다루는 방식이다 (FR-234).
+ */
+export const BROWSER_ONLY_KIND_LABEL: Record<string, string> = {
+  click: "클릭",
+  fill: "입력",
+  select: "선택",
+  hover: "마우스 올리기",
+  drag: "끌어놓기",
+};
+
+export const BROWSER_ONLY_KIND_REASON =
+  "요소는 살아 있는 화면에서만 지목할 수 있습니다";
+
 export const DISABLED_REASON = {
   C1: "실행 중인 세션이 열려 있습니다",
   C2: "브라우저가 닫혔습니다",

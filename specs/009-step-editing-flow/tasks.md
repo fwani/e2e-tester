@@ -116,15 +116,15 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 
 ### 화면 — 편집 국면 (FR-287·FR-289·FR-310)
 
-- [ ] T024 [US1] `frontend/src/api/client.ts` 에 래퍼를 더한다 — 정의 편집의 `insert` 연산 타입과 `insertStepManual(sessionId, spec, at)`. 종류와 필드 타입은 `types/generated/manual-step.d.ts` 에서 가져온다. **프론트에 종류 목록을 상수로 두지 않는다**
-- [ ] T025 [US1] `frontend/src/pages/EditView.tsx` 에 「이 앞에 추가」 자리를 만든다 — 종류를 고르고 값을 입력해 `insert` 연산을 편집 묶음에 넣는다. 위치는 **미리보기 목록 기준으로 저장 직전에 확정한다**([research.md](./research.md) R7). 요소를 요구하는 종류는 같은 자리에 비활성으로 두고 이유와 `browser.openAt` 으로 가는 길을 붙인다 (FR-287)
-- [ ] T026 [US1] `frontend/src/pages/EditView.tsx` 에서 저장 전 삽입 관리 규칙을 구현한다 — 삽입한 Step 을 저장 전에 지우면 `insert` 연산 자체를 묶음에서 뺀다(두 건으로 남기지 않는다 · FR-289). 되돌리기가 삽입도 되돌린다. 저장할 변경 수가 사용자가 인지한 것과 같다
-- [ ] T027 [US1] `frontend/src/components/workbench/StepList.tsx` 에 「미저장」 칩을 더한다 (FR-310) — 저장 전 삽입 Step 의 행에만 붙는다. 정본 `.chip` 을 쓰고 **새 색을 만들지 않는다** (계약 §3-4)
-- [ ] T028 [US1] `frontend/src/pages/SessionScreen.tsx` 에 일시정지 중 직접 입력 삽입을 붙인다 — 같은 「이 앞에 추가」 자리를 쓰고 `insertStepManual` 을 부른다. 기존 추가 경로 셋은 **그대로 둔다** (FR-309)
-- [ ] T029 [P] [US1] `frontend/tests/StepInsert.test.tsx` — 브라우저를 열지 않은 편집 화면에서 네 종류를 넣을 수 있는지, 요소를 요구하는 종류가 **자리에 있고** 비활성이며 해소 경로를 가리키는지(감춰지면 실패), 저장 전 삽입에 「미저장」 칩이 붙는지, 삽입 후 지우면 변경 수가 0으로 돌아가는지, 실행 중에는 비활성인지(SC-508)
-- [ ] T030 [US1] 삽입이 **이미 쌓인 경고 문장**을 어긋나게 하지 않는지 고친다 (FR-311) — `backend/src/itb/execution/step_edits.py` 의 `already_executed_warning(index)` 는 「step 05 는 이미 실행된 Step입니다」처럼 **번호를 문장에 박아** 세션의 `edit_warnings` 에 쌓는다. 그 뒤 앞쪽에 삽입이 일어나면 저장된 문장이 다른 Step 을 가리킨다. 문장을 Step id 기준으로 다시 만들거나, 삽입으로 위치가 밀린 경고를 무효화한다. **번호는 자리이고 정체성이 아니다**
-- [ ] T031 [P] [US1] `backend/tests/unit/test_step_edits.py` 에 T030 의 검사를 더한다 — 경고가 쌓인 뒤 그 앞에 삽입하면 경고가 가리키는 Step 이 바뀌지 않는지(또는 무효화되는지). 현재 동작을 먼저 실측해 기록한 뒤 고친다
-- [ ] T032 [US1] [quickstart.md](./quickstart.md) 「US1」 절 전체를 실측하고 조작 횟수를 `baseline.md` 에 대비로 적는다 — SC-501 은 **3회 이내**를 요구한다
+- [X] T024 [US1] `frontend/src/api/client.ts` 에 래퍼를 더한다 — 정의 편집의 `insert` 연산 타입과 `insertStepManual(sessionId, spec, at)`. 종류와 필드 타입은 `types/generated/manual-step.d.ts` 에서 가져온다. **프론트에 종류 목록을 상수로 두지 않는다**
+- [X] T025 [US1] `frontend/src/pages/EditView.tsx` 에 「이 앞에 추가」 자리를 만든다 — 종류를 고르고 값을 입력해 `insert` 연산을 편집 묶음에 넣는다. 위치는 **미리보기 목록 기준으로 저장 직전에 확정한다**([research.md](./research.md) R7). 요소를 요구하는 종류는 같은 자리에 비활성으로 두고 이유와 `browser.openAt` 으로 가는 길을 붙인다 (FR-287)
+- [X] T026 [US1] `frontend/src/pages/EditView.tsx` 에서 저장 전 삽입 관리 규칙을 구현한다 — 삽입한 Step 을 저장 전에 지우면 `insert` 연산 자체를 묶음에서 뺀다(두 건으로 남기지 않는다 · FR-289). 되돌리기가 삽입도 되돌린다. 저장할 변경 수가 사용자가 인지한 것과 같다
+- [X] T027 [US1] `frontend/src/components/workbench/StepList.tsx` 에 「미저장」 칩을 더한다 (FR-310) — 저장 전 삽입 Step 의 행에만 붙는다. 정본 `.chip` 을 쓰고 **새 색을 만들지 않는다** (계약 §3-4)
+- [X] T028 [US1] `frontend/src/pages/SessionScreen.tsx` 에 일시정지 중 직접 입력 삽입을 붙인다 — 같은 「이 앞에 추가」 자리를 쓰고 `insertStepManual` 을 부른다. 기존 추가 경로 셋은 **그대로 둔다** (FR-309)
+- [X] T029 [P] [US1] `frontend/tests/StepInsert.test.tsx` — 브라우저를 열지 않은 편집 화면에서 네 종류를 넣을 수 있는지, 요소를 요구하는 종류가 **자리에 있고** 비활성이며 해소 경로를 가리키는지(감춰지면 실패), 저장 전 삽입에 「미저장」 칩이 붙는지, 삽입 후 지우면 변경 수가 0으로 돌아가는지, 실행 중에는 비활성인지(SC-508)
+- [X] T030 [US1] 삽입이 **이미 쌓인 경고 문장**을 어긋나게 하지 않는지 고친다 (FR-311) — `backend/src/itb/execution/step_edits.py` 의 `already_executed_warning(index)` 는 「step 05 는 이미 실행된 Step입니다」처럼 **번호를 문장에 박아** 세션의 `edit_warnings` 에 쌓는다. 그 뒤 앞쪽에 삽입이 일어나면 저장된 문장이 다른 Step 을 가리킨다. 문장을 Step id 기준으로 다시 만들거나, 삽입으로 위치가 밀린 경고를 무효화한다. **번호는 자리이고 정체성이 아니다**
+- [X] T031 [P] [US1] `backend/tests/unit/test_step_edits.py` 에 T030 의 검사를 더한다 — 경고가 쌓인 뒤 그 앞에 삽입하면 경고가 가리키는 Step 이 바뀌지 않는지(또는 무효화되는지). 현재 동작을 먼저 실측해 기록한 뒤 고친다
+- [X] T032 [US1] [quickstart.md](./quickstart.md) 「US1」 절 전체를 실측하고 조작 횟수를 `baseline.md` 에 대비로 적는다 — SC-501 은 **3회 이내**를 요구한다
 
 **Checkpoint**: 브라우저 없이 Step 이 들어간다. US2·US3 이 없어도 사용자가 처음 물은
 「그냥 추가하는 방법」이 생겼다.

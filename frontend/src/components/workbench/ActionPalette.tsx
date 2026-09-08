@@ -69,6 +69,19 @@ export interface ActionPaletteProps {
   /** 자연어로 Step 추가 (FR-078). 입력칸과 버튼이 한 쌍이다 */
   nl: { value: string; onChange: (v: string) => void; onSubmit: () => void };
 
+  /**
+   * 직접 입력으로 Step 추가 (009 FR-285). **자연어 입력과 같은 문법이다** — 조작 하나가
+   * 그 자리에서 입력면을 여닫는다.
+   *
+   * 주지 않으면 버튼만 그린다(눌러도 아무 일이 없는 것이 아니라 `onRun` 이 받는다).
+   * 화면이 폼을 다른 자리에 두기로 했으면 그렇게 할 수 있다.
+   */
+  insert?: {
+    open: boolean;
+    /** 열려 있을 때 그 자리에 그릴 것. 화면이 만든다 — 팔레트가 폼을 소유하지 않는다 */
+    form: ReactNode;
+  };
+
   /** 테스트 이름 (`test.rename`). 세션에서는 저장 이름을 겸한다 */
   name: string;
   onNameChange: (v: string) => void;
@@ -119,6 +132,7 @@ export function ActionPalette({
   stepCount,
   emptyHint,
   hidden = [],
+  insert,
 }: ActionPaletteProps) {
   const capabilityOf = (action: ActionId): CapabilityState => {
     const base = capabilities[action];
@@ -166,6 +180,12 @@ export function ActionPalette({
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
         {PALETTE_ACTIONS.filter(shown).map((action) => button(action, () => onRun(action)))}
       </div>
+
+      {/*
+        009 — 삽입 입력면. **닫혀 있으면 자리를 차지하지 않는다** (008 FR-218e 와 같은
+        규칙) — 빈 영역이 남아 다른 영역의 자리를 바꾸지 않는다.
+      */}
+      {insert?.open === true && insert.form}
 
       {/* ─── 테스트 속성 (FR-247 — 통합으로 사라지는 조작이 없다) ────────────── */}
       {(shown("test.rename") || shown("test.setStartUrl")) && (

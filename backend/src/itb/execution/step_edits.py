@@ -96,17 +96,47 @@ def allocate_step_id(steps: list[Step]) -> str:
     return f"step-{number:02d}"
 
 
-def already_executed_warning(index: int) -> str:
-    """FR-040b 의 경고 문장. 한 곳에서만 만든다.
+_ALREADY_EXECUTED_TAIL = (
+    "이 편집은 현재 브라우저 화면에 적용되지 않았습니다. "
+    "화면을 원하는 상태로 만든 뒤 이어서 실행하세요."
+)
+"""FR-040b 의 뒷문장. **한 곳에서만 만든다.**
 
-    문장이 여러 곳에서 만들어지면 같은 상황에 다른 안내가 나가고, 사용자는 두 상황이
-    다른 것이라고 읽는다.
+문장이 여러 곳에서 만들어지면 같은 상황에 다른 안내가 나가고, 사용자는 두 상황이 다른
+것이라고 읽는다.
+"""
+
+
+def already_executed_warning(step: Step) -> str:
+    """이미 실행된 **그 Step** 을 고쳤다 (FR-040b).
+
+    ## 왜 번호가 아니라 이름인가 (009 FR-311)
+
+    이전 판은 `f"step {index + 1:02d} 은 …"` 으로 **번호를 문장에 박았다.** 이 문장은
+    세션의 `edit_warnings` 에 **쌓여 남는다** — 사용자가 읽기 전에 다른 편집이 일어날 수
+    있다. 그 뒤 앞쪽에 Step 이 삽입되면(009 FR-285) 번호가 밀리고, 저장된 문장은 **다른
+    Step 을 가리킨다.**
+
+    번호는 **자리**이고 이름은 **정체성**이다. 삽입·삭제·순서 변경이 자리를 바꾸어도
+    이름은 그 Step 을 계속 가리킨다. 그래서 쌓여 남는 문장에는 이름을 쓴다.
+
+    실행 위치 안내(「Step 07 에서 멈춤」)처럼 **그 순간에 만들어 그 순간에 읽는** 문구는
+    번호를 그대로 쓴다 — 자리를 말하는 것이 목적이기 때문이다.
     """
-    return (
-        f"step {index + 1:02d} 은 이미 실행된 Step입니다. "
-        "이 편집은 현재 브라우저 화면에 적용되지 않았습니다. "
-        "화면을 원하는 상태로 만든 뒤 이어서 실행하세요."
-    )
+    return f"「{step.label}」은 이미 실행된 Step 입니다. {_ALREADY_EXECUTED_TAIL}"
+
+
+def already_executed_region_warning() -> str:
+    """이미 실행된 **구간**이 달라졌다 (FR-040b).
+
+    순서 변경과 삽입은 특정 Step 하나가 아니라 구간의 모양을 바꾼다. 그때 어느 Step 을
+    이름으로 지목하면 사용자는 그 Step 만 문제라고 읽는다 — 실제로는 그 자리 이후가 전부
+    화면 상태와 어긋난다.
+
+    **번호를 쓰지 않는 것이 009 FR-311 의 요구를 만족하는 방법이다** — 가리킬 자리 자체가
+    바뀌는 상황이므로 자리를 말하지 않는다.
+    """
+    return f"이미 실행된 구간의 순서가 달라졌습니다. {_ALREADY_EXECUTED_TAIL}"
 
 
 def _clamp(at: int | None, current: int, size: int) -> int:
@@ -124,7 +154,8 @@ def insert_step(
     (FR-036·FR-079 가 같은 규칙을 쓴다).
     """
     index = _clamp(at, current_step_index, len(steps))
-    warnings = [already_executed_warning(index)] if index < current_step_index else []
+    # 삽입은 특정 Step 이 아니라 **구간**을 바꾼다 (009 FR-311).
+    warnings = [already_executed_region_warning()] if index < current_step_index else []
     new_steps = [*steps[:index], step, *steps[index:]]
     # 실행 위치는 "다음에 실행할 Step" 이다. 일시정지 위치에 넣은 Step 은 **아직 수행되지
     # 않은 정의**이므로 그것이 다음에 실행될 것이 되어야 한다 — 위치를 밀면 사용자가 방금
@@ -195,7 +226,7 @@ def update_step(
     updated = current.model_copy(update=update)
     new_steps = [*steps]
     new_steps[index] = updated
-    warnings = [already_executed_warning(index)] if index < current_step_index else []
+    warnings = [already_executed_warning(updated)] if index < current_step_index else []
     return EditResult(new_steps, current_step_index, warnings, at_index=index)
 
 
@@ -208,7 +239,7 @@ def delete_step(
     끝난 Step 03 을 지우는 것이다 (quickstart §5 4단계). 막지 않고 경고만 세운다.
     """
     index = find_index(steps, step_id)
-    warnings = [already_executed_warning(index)] if index < current_step_index else []
+    warnings = [already_executed_warning(steps[index])] if index < current_step_index else []
     new_steps = [*steps[:index], *steps[index + 1 :]]
     new_index = current_step_index - 1 if index < current_step_index else current_step_index
     return EditResult(new_steps, max(0, new_index), warnings, at_index=index)
@@ -231,14 +262,8 @@ def reorder_steps(
     executed_after = order[:current_step_index]
     warnings: list[str] = []
     if executed_before != executed_after:
-        first_change = next(
-            (
-                i
-                for i, (a, b) in enumerate(zip(executed_before, executed_after, strict=False))
-                if a != b
-            ),
-            0,
-        )
-        warnings.append(already_executed_warning(first_change))
+        # 어느 자리가 처음 달라졌는지 세지 않는다 (009 FR-311). 순서 변경은 그 자리
+        # 이후가 전부 화면과 어긋나므로, 자리 하나를 지목하면 그것만 문제라고 읽힌다.
+        warnings.append(already_executed_region_warning())
 
     return EditResult([by_id[i] for i in order], current_step_index, warnings)

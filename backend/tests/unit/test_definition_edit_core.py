@@ -267,3 +267,101 @@ def test_locator_priority_is_untouched_by_this_feature() -> None:
         StrategyKind.STABLE_ATTR,
         StrategyKind.CSS,
     )
+
+
+# ─── 009 T031 · 경고가 가리키는 Step 은 삽입에 밀리지 않는다 (FR-311) ────────
+#
+# **왜 이것이 검사가 되는가.** 편집 경고는 세션의 `edit_warnings` 에 **쌓여 남는다**.
+# 사용자가 읽기 전에 다른 편집이 일어날 수 있고, 그 사이 앞쪽에 Step 이 삽입되면
+# 번호를 박아 둔 문장은 다른 Step 을 가리킨다 — 번호는 자리이고 정체성이 아니다.
+
+
+def _run_steps() -> list[Step]:
+    return [
+        _mk({"type": "navigate", "id": "step-01", "label": "로그인 화면", "url": "/login"}),
+        _mk({"type": "fill", "id": "step-02", "label": "아이디", "target": TARGET, "value": "a"}),
+        _mk({"type": "click", "id": "step-03", "label": "로그인 클릭", "target": TARGET}),
+    ]
+
+
+def test_이미_실행된_step_경고는_번호가_아니라_이름을_쓴다() -> None:
+    """009 FR-311 — 쌓여 남는 문장에는 정체성을 쓴다."""
+    from itb.execution.step_edits import delete_step
+
+    result = delete_step(_run_steps(), current_step_index=2, step_id="step-02")
+
+    assert result.warnings, "이미 실행된 Step 을 지웠는데 경고가 없다 (FR-040b)"
+    note = result.warnings[0]
+    assert "「아이디」" in note
+    # 번호를 박지 않는다 — 삽입으로 밀리면 다른 Step 을 가리키게 된다.
+    assert "step 02" not in note
+    assert "Step 02" not in note
+
+
+def test_삽입_후에도_경고가_같은_step_을_가리킨다() -> None:
+    """FR-311 의 실제 시나리오 — 경고를 만든 뒤 그 앞에 넣는다."""
+    from itb.execution.step_edits import delete_step, insert_step
+
+    steps = _run_steps()
+    note = delete_step(steps, current_step_index=2, step_id="step-02").warnings[0]
+
+    # 그 뒤 맨 앞에 Step 이 들어와 번호가 전부 밀린다.
+    inserted = insert_step(
+        steps,
+        current_step_index=2,
+        step=_mk({"type": "navigate", "id": "step-09", "label": "먼저 이동", "url": "/x"}),
+        at=0,
+    ).steps
+    assert [s.label for s in inserted][:2] == ["먼저 이동", "로그인 화면"]
+
+    # 「아이디」는 2번이 아니라 3번이 됐지만, 경고가 가리키는 대상은 그대로다.
+    assert "「아이디」" in note
+    moved = next(s for s in inserted if s.label == "아이디")
+    assert inserted.index(moved) == 2, "전제가 깨졌다 — 번호가 밀리지 않았다"
+
+
+def test_순서_변경_경고는_자리를_지목하지_않는다() -> None:
+    """FR-311 — 자리 자체가 바뀌는 상황이므로 자리를 말하지 않는다.
+
+    자리 하나를 지목하면 사용자는 그 Step 만 문제라고 읽는다 — 실제로는 그 자리 이후가
+    전부 화면 상태와 어긋난다.
+    """
+    from itb.execution.step_edits import reorder_steps
+
+    result = reorder_steps(
+        _run_steps(), current_step_index=2, order=["step-02", "step-01", "step-03"]
+    )
+
+    assert result.warnings
+    note = result.warnings[0]
+    assert "구간" in note
+    assert "step 01" not in note
+    assert "「" not in note, "구간 경고가 특정 Step 을 이름으로 지목했다"
+
+
+def test_삽입도_구간_경고를_쓴다() -> None:
+    """이미 실행된 구간 안에 넣으면 그 이후가 전부 어긋난다."""
+    from itb.execution.step_edits import insert_step
+
+    result = insert_step(
+        _run_steps(),
+        current_step_index=2,
+        step=_mk({"type": "navigate", "id": "step-09", "label": "끼운 이동", "url": "/x"}),
+        at=0,
+    )
+
+    assert result.warnings
+    assert "구간" in result.warnings[0]
+
+
+def test_실행_위치_뒤의_편집에는_경고가_없다() -> None:
+    """없는 위험을 말하지 않는다 — 아직 돌지 않은 Step 은 화면과 어긋날 것이 없다."""
+    from itb.execution.step_edits import delete_step, insert_step
+
+    assert not delete_step(_run_steps(), 1, "step-03").warnings
+    assert not insert_step(
+        _run_steps(),
+        1,
+        _mk({"type": "navigate", "id": "step-09", "label": "뒤에 이동", "url": "/x"}),
+        at=2,
+    ).warnings

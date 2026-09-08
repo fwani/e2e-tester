@@ -390,6 +390,16 @@ function StepRow({
                 {dsl.type.toUpperCase()}
               </span>
 
+              {/*
+                009 FR-310 — 저장되지 않은 삽입. 정본의 `.chip.warn` 을 쓰고 **새 색을
+                만들지 않는다.** 주의 계열인 이유: 지금 목록에 보이지만 파일에는 없다.
+              */}
+              {step.isUnsaved === true && (
+                <span data-cell="unsaved" className="chip warn" style={{ flex: "0 0 auto" }}>
+                  미저장
+                </span>
+              )}
+
               {/* FR-030a — 최초 탭이 아닌 Step 은 어느 탭에서 일어나는지 보여야 한다 */}
               {dsl.tab > 0 && (
                 <span data-cell="tab" className="chip" style={{ flex: "0 0 auto" }}>
