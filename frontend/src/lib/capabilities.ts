@@ -360,7 +360,7 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /** 이름은 저장 시점에 정한다. 자리는 남기고 이유를 붙인다 (FR-258a) */
     "test.rename": off("NAME_ON_SAVE"),
     "test.setStartUrl": ON,
-    "save": off("NOTHING_TO_SAVE_YET", "record.start"),
+    save: off("NOTHING_TO_SAVE_YET", "record.start"),
     "save.overwriteStale": na("N2"),
     "edits.revert": na("N2"),
     /*

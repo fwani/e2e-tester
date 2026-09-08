@@ -197,6 +197,12 @@
 
 **기호**
 
+> **셀에 근거를 적지 않는다.** `–` 의 근거(N1·N2·N3)는 **§4-2 의 닫힌 목록과 코드**가
+> 갖고, `CapabilityCoverage.test.ts` 가 「모든 `–` 이 근거를 갖는가」를 센다. 한 열에만
+> `– N2` 처럼 적으면 열마다 표기가 달라지고, 표를 읽는 사람이 근거 없는 `–` 를 찾을 때
+> 무엇을 봐야 하는지 흐려진다 — 2회차 수렴이 실제로 그 상태를 만들었다가 되돌렸다.
+> 갈릴 수 있는 칸의 근거는 표 **아래 산문**에 적는다 (§3-4 끝).
+
 | 기호 | 뜻 | 화면이 하는 일 |
 |---|---|---|
 | ● | 가능 | 그린다. 누를 수 있다 |
@@ -226,16 +232,16 @@ CRE 열의 값 근거: 만들기 국면에는 **저장된 테스트도 세션도
 
 | 조작 | CRE | REC | AI | TKO | RUN | PAU | RES | EDT |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| `run.all` | – N2 | – | – | – | ◐ C1 | ◐ C1 | ● | ● |
-| `run.from` | – N2 | – | – | – | ◐ C1 | ◐ C1 | ● | ● |
-| `run.fromHere` | – N2 | – | – | – | – | ◐ C2 | – | – |
-| `run.pause` | – N3 | ● | ● | – | ● | – | – | – |
-| `run.resume` | – N3 | – | – | ● | – | ◐ C2 | – | – |
-| `run.resumeSkipFailure` | – N3 | – | – | – | – | ◐ C2 + O9 | – | – |
-| `run.stop` | – N3 | ● | ● | ● | ● | ● | – | – |
-| `run.pacing` | – N3 | ● | ● | ● | ● | ◐ C2 | – | – |
-| `browser.openAt` | – N2 | – | – | – | – | – | ○ | ● |
-| `session.open` | – N2 | – | – | – | – | – | ◐ C5 | ◐ C5 |
+| `run.all` | – | – | – | – | ◐ C1 | ◐ C1 | ● | ● |
+| `run.from` | – | – | – | – | ◐ C1 | ◐ C1 | ● | ● |
+| `run.fromHere` | – | – | – | – | – | ◐ C2 | – | – |
+| `run.pause` | – | ● | ● | – | ● | – | – | – |
+| `run.resume` | – | – | – | ● | – | ◐ C2 | – | – |
+| `run.resumeSkipFailure` | – | – | – | – | – | ◐ C2 + O9 | – | – |
+| `run.stop` | – | ● | ● | ● | ● | ● | – | – |
+| `run.pacing` | – | ● | ● | ● | ● | ◐ C2 | – | – |
+| `browser.openAt` | – | – | – | – | – | – | ○ | ● |
+| `session.open` | – | – | – | – | – | – | ◐ C5 | ◐ C5 |
 | `record.start` | ● | – N1 | – N1 | – N1 | – N1 | – N1 | – N2 | – N2 |
 
 ### 3-2. Step 작성
@@ -243,7 +249,7 @@ CRE 열의 값 근거: 만들기 국면에는 **저장된 테스트도 세션도
 | 조작 | CRE | REC | AI | TKO | RUN | PAU | RES | EDT |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | `step.recordStart` | ○ | – | ○ | ● | ○ | ◐ C2 | ○ | ○ |
-| `step.recordStop` | – N2 | ● | – | ◐ C6 | – | ◐ C6 | – | – |
+| `step.recordStop` | – | ● | – | ◐ C6 | – | ◐ C6 | – | – |
 | `step.addNaturalLanguage` | ○ | ○ | ○ | ○ | ○ | ◐ C2 | ○ | ○ |
 | `step.addAssertion` | ○ | ○ | ○ | ○ | ○ | ◐ C2 | ○ | ○ |
 
@@ -252,9 +258,9 @@ CRE 열의 값 근거: 만들기 국면에는 **저장된 테스트도 세션도
 | 조작 | CRE | REC | AI | TKO | RUN | PAU | RES | EDT |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | `step.select` | ○ | ● | ● | ● | ● | ● | ● | ● |
-| `step.update` | – N2 | ○ | ○ | ○ | ○ | ● | ○ | ◐ C7 |
-| `step.markSensitive` | – N2 | ○ | ○ | ○ | ○ | ● | ○ | ◐ C7 |
-| `step.repick` | – N2 | ○ | ○ | ● | ○ | ◐ C2 | ○ | ○ |
+| `step.update` | – | ○ | ○ | ○ | ○ | ● | ○ | ◐ C7 |
+| `step.markSensitive` | – | ○ | ○ | ○ | ○ | ● | ○ | ◐ C7 |
+| `step.repick` | – | ○ | ○ | ● | ○ | ◐ C2 | ○ | ○ |
 | `step.delete` | ○ | ○ | ○ | ○ | ○ | ● | ○ | ◐ C7 |
 | `step.reorder` | ○ | ○ | ○ | ○ | ○ | ● | ○ | ◐ C7 |
 
@@ -265,16 +271,16 @@ CRE 열의 값 근거: 만들기 국면에는 **저장된 테스트도 세션도
 | `test.rename` | ○ | ● | ● | ● | ○ | ● | ○ | ◐ C7 |
 | `test.setStartUrl` | ● | – | – | – | ○ | ○ | ○ | ◐ C7 |
 | `save` | ○ | ◐ C8 | ◐ C8 | ◐ C8 | ○ | ◐ C8 | – | ◐ C9 |
-| `save.overwriteStale` | – N2 | – | – | – | – | – | – | ◐ C10 |
-| `edits.revert` | – N2 | – | – | – | – | – | – | ◐ C9 |
+| `save.overwriteStale` | – | – | – | – | – | – | – | ◐ C10 |
+| `edits.revert` | – | – | – | – | – | – | – | ◐ C9 |
 | `ai.compose` | ◐ C15 | – | ○ | ○ | – | – | ○ AI-REC | ○ AI-REC |
 | `ai.start` | ◐ C14 | – | ○ | – | – | – | – | – |
-| `ai.chooseBlocked` | – N2 | – | – | ◐ C11 | – | – | – | – |
-| `artifact.select` | – N2 | – | – | – | – | – | ● | – |
-| `result.show` | – N2 | – | – | – | ◐ C12 | ◐ C12 | – | ◐ C13 |
-| `nav.editStep` | – N2 | – | – | – | – | – | ● | – |
+| `ai.chooseBlocked` | – | – | – | ◐ C11 | – | – | – | – |
+| `artifact.select` | – | – | – | – | – | – | ● | – |
+| `result.show` | – | – | – | – | ◐ C12 | ◐ C12 | – | ◐ C13 |
+| `nav.editStep` | – | – | – | – | – | – | ● | – |
 | `nav.back` | ● | ● | ● | ● | ● | ● | ● | ● |
-| `tab.select` | – N1 | ● | ● | ● | ● | ◐ C2 | – | – |
+| `tab.select` | – | ● | ● | ● | ● | ◐ C2 | – | – |
 
 **CRE 열에서 판정이 갈릴 수 있는 다섯 칸의 근거**:
 

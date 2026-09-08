@@ -529,7 +529,36 @@ Phase 10 (묶음 A · 세로 배분)  ──▶  Phase 11 (묶음 B · 만들기
 - [X] T133 옛 주소 정규화 검사를 더한다 in `frontend/tests/ScreenUrl.test.ts` per FR-240 · research R12 · quickstart W-9 ⑧ (missing) — `?screen=create` · `?screen=ai-compose` 가 `compose` 국면으로 열리는지 세는 것이 없다. **열어 둔 탭을 끊지 않는 것이 이 정규화의 목적**인데 그것을 지키는 것이 없다. `locationToSearch` 왕복도 함께 센다
 - [X] T134 죽은 옛 이름을 정리한다 in `frontend/src/components/workbench/model.ts` per FR-218e-1 (unrequested) — `export type PhaseAside = WorkAreaView` 별칭을 **쓰는 곳이 0건**이다. 이행 중 호환을 위해 뒀으나 이행이 끝났다. 개명을 요구한 조항(FR-218e-1)에 죽은 옛 이름이 남아 있으면 다음 사람이 그것을 쓴다 — 제거한다
 
+---
+
+## Phase 15: Convergence (3회차)
+
+2회차의 6건은 전부 닫혔다. 3회차는 **계약 표 272칸(34조작 × 8국면)을 코드와 기계적으로
+대조**했고, 그 과정에서 2회차가 만든 표기 불일치 하나를 찾아 되돌렸다.
+
+- [X] T135 CRE 열의 `– Nn` 인라인 근거를 `–` 로 되돌린다 in `specs/007-unify-test-screens/contracts/ui-contract.md` §3 per UC-000 (contradicts) — 2회차가 CRE 열에만 근거를 셀 안에 적어 **한 열만 표기가 달랐다** (21칸). `–` 의 근거는 §4-2 의 닫힌 목록과 코드가 갖고 `CapabilityCoverage.test.ts` 가 세는 것이 1회차부터의 관례다. 열마다 표기가 다르면 근거 없는 `–` 를 찾을 때 무엇을 봐야 하는지 흐려진다. §3 기호표에 관례를 명시해 다시 붙지 않게 했고, 갈릴 수 있는 칸의 근거는 표 아래 산문(§3-4 끝)에 남긴다
+- [X] T136 `save` 셀의 키 표기를 파일 스타일에 맞춘다 in `frontend/src/lib/capabilities.ts` per 일관성 (contradicts) — 다른 7국면은 `save:` 인데 만들기 국면만 `"save":` 였다. 기능 차이는 없지만 **표를 기계로 대조할 때 그 한 칸이 빠져** 265/272 만 검증됐다
+
+### 3회차 대조 결과
+
+| 대상 | 결과 |
+|---|---|
+| 계약 §3 권한표 ↔ `capabilities.ts` | **272 / 272 일치** (34조작 × 8국면) |
+| 런타임 조건 C1~C15 | 코드·계약 양쪽에 15건 |
+| 미완료 작업 | 0 |
+| 코드에 남은 옛 이름(`PhaseAside`·`edit_summary`·`.aside`) | 실체 0건 — 남은 것은 전부 내력을 적은 주석 |
+| `frontend` | `tsc --noEmit` 통과 · vitest **647 passed** (50 files) |
+| `backend` | pytest **1428 passed** · timing **42 passed** (`-n 0`) |
+
 ### 이 회차가 알려 준 것
+
+**표를 기계로 대조하는 것이 실제로 값이 있었다.** 2회차 수렴은 사람이 읽어 어긋남 3건을
+찾았고, 3회차는 272칸을 대조해 **표기 불일치와 파싱 사각 하나**를 더 찾았다. 다만 그
+대조는 이 회차에 임시로 쓴 스크립트이며 리포지토리에 남지 않는다 — 계약 문서를 기계가
+읽는 형식으로 옮기는 것은 이 기능의 범위를 넘는다 (표를 코드에서 생성하거나 그 반대로
+하는 일이며, UC-000 이 정한 「표가 정본」의 뜻을 바꾼다).
+
+### 이 회차가 알려 준 것 (2회차 기록)
 
 **표와 코드가 어긋나는 것을 세는 검사가 없다.** `CapabilityCoverage` 는 코드의 표를
 자기 자신과 대조하므로(34개가 다 있나 · `–` 이 근거를 갖나) **계약 문서와의 어긋남은
