@@ -73,6 +73,9 @@ import {
   PHASE_LABEL,
   editSavedNotice,
   pausedAfterLabel,
+  pauseTargetProgress,
+  pauseTargetUnreached,
+  ARRIVED_RECORDING_STARTED,
   progressLabel as progressText,
   sessionPhaseLabel,
   runFromStepLabel,
@@ -319,6 +322,15 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   })();
 
   /**
+   * 아직 도달하지 않은 목표 지점 (009 FR-293·FR-294).
+   *
+   * **서버가 준다** (`SessionView.pause_before_index`). 화면 상태로 들고 있으면 새로 고침
+   * 한 번에 사라진다 — 005 U-18 과 같은 형태다 (research R5).
+   */
+  const pauseTarget = view.pause_before_index ?? null;
+  const failedIndex = failedStepIndex ?? -1;
+
+  /**
    * 007 T091 걷기(W-1)가 잡은 것 — **이벤트를 놓친 화면도 결말을 말한다.**
    *
    * 결말 요약은 `run_finished` 이벤트로만 채워진다. 그래서 목록의 「실행 화면 보기」로
@@ -400,11 +412,25 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       );
     }
     if (review) return `기록된 Step ${view.steps.length}개 · 브라우저 종료됨`;
+    /*
+      009 FR-294 — **도달과 실패를 구별한다.**
+
+      목표가 남아 있는데(= 닿지 못했다) 실패한 Step 이 있으면 그 사실을 말한다.
+      「일시정지됨」만 말하면 사용자는 도달한 것으로 읽고 없는 자리에 Step 을 넣으려 한다.
+      판정을 화면이 조립하지 않는다 — 「도달했는가」는 서버가 주는 목표 유무가 정한다.
+    */
+    if (pauseTarget !== null && failedIndex >= 0) {
+      return pauseTargetUnreached(failedIndex, pauseTarget);
+    }
     if (phase === "paused") return pausedAfterLabel(view.current_step_index);
     if (phase === "takeover") return "AI 실패 → 사람이 이어받음";
     // 005 FR-139 (U-14) — 끝난 실행에서는 진행 표시를 쓰지 않는다. 결말은 요약이 말한다.
     if (isDone) return null;
-    if (phase === "running") return progressText(view.current_step_index, view.steps.length);
+    if (phase === "running") {
+      // 009 FR-293 — 목표가 있으면 **어디서 멈출 예정인지**를 함께 말한다.
+      if (pauseTarget !== null) return pauseTargetProgress(view.current_step_index, pauseTarget);
+      return progressText(view.current_step_index, view.steps.length);
+    }
     return null;
   })();
 
@@ -1096,6 +1122,14 @@ function ReorderPanel({
 export interface SessionScreenProps {
   initial: SessionView;
   aiInstruction?: string | null;
+  /**
+   * 목표 자리에 도착하면 직접 조작 기록을 켠다 (009 FR-291·FR-295).
+   *
+   * 「이 앞에 추가」로 출발한 세션에만 참이다. **이 값은 화면 상태이며 서버에 없다** —
+   * 새로 고치면 기록은 켜지지 않은 채로 오고, 그때 팔레트의 같은 조작을 쓸 수 있다
+   * (research R5). 잃어도 막히지 않는 정보만 화면에 둔다.
+   */
+  recordOnArrival?: boolean;
   onFinished: () => void;
   onShowResult?: (testId: string, stepId?: string | null) => void;
   /** 다시 실행 — 이 세션을 버리고 같은 테스트로 새 세션을 연다 (UX U-02). */
@@ -1105,6 +1139,7 @@ export interface SessionScreenProps {
 export function SessionScreen({
   initial,
   aiInstruction = null,
+  recordOnArrival = false,
   onFinished,
   onShowResult,
   onRerun,
@@ -1371,6 +1406,32 @@ export function SessionScreen({
   const isSaveableWithoutBrowser = SAVEABLE_WITHOUT_BROWSER.has(view.state);
   const testId = view.test_id;
   const isPaused = view.state === "paused";
+
+  /*
+    009 FR-291·FR-295 — 목표 자리에 **도착하면** 기록을 켠다.
+
+    조건이 셋이다. ① 「이 앞에 추가」로 출발했다 ② 일시정지에 닿았다 ③ 목표가 비었다
+    (= 실제로 도달했다). ③ 이 없으면 목표 앞에서 **실패해 멈춘** 경우에도 기록이 켜져,
+    사용자는 실패한 자리에서 브라우저를 만지게 된다 (FR-294 가 없애려는 혼동이다).
+
+    한 번만 켠다 — 「기록 멈추기」를 누른 뒤 다시 켜지면 멈출 수 없다.
+  */
+  const armedRecord = useRef(false);
+  useEffect(() => {
+    if (!recordOnArrival || armedRecord.current) return;
+    if (view.state !== "paused") return;
+    if ((view.pause_before_index ?? null) !== null) return;
+    armedRecord.current = true;
+    setNotice(
+      localError(
+        ARRIVED_RECORDING_STARTED,
+        "그만 기록하려면 「기록 멈추기」를 누르세요.",
+      ),
+    );
+    void act(() => sessions.recordActionsStart(sessionId));
+    // `act` 는 위에서 선언됐다. 의존성에 넣으면 매 렌더마다 새 함수라 효과가 다시 돈다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordOnArrival, view.state, view.pause_before_index, sessionId]);
   /** 005 FR-142~FR-146 — 일시정지 **전이 중**인가 (U-04). */
   const isPausing =
     (pauseRequested || view.pause_settled === false) && !TERMINAL_STATES.has(view.state);

@@ -143,18 +143,18 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 
 ### 목표 지점을 상태로 노출한다 (FR-293·FR-294)
 
-- [ ] T033 [US2] `backend/src/itb/execution/runner.py` 의 `RunnerTask` 에 읽기 전용 `pause_before_index` 접근자를 더한다. **값의 뜻은 「아직 도달하지 않은 목표」**이며 도달 시 `None` 이 되는 기존 동작(`self._pause_before = None`)을 그대로 쓴다. 재생 경로에 새 분기를 만들지 않는다 (원칙 II)
-- [ ] T034 [US2] `backend/src/itb/api/routes/sessions.py` 의 `SessionView` 에 `pause_before_index: int | None = None` 를 더하고 `view_of(work)` 가 러너에서 읽게 한다. 러너가 없으면 `None` 이다. 필드 주석에 **왜 스냅샷에 싣는지**(005 U-18 — 이벤트 없이도 화면이 복원되게 한다)를 적는다 ([data-model.md](./data-model.md) §5)
-- [ ] T035 [P] [US2] `backend/tests/integration/test_pause_before_target.py` — 목표 앞에서 멈추는지, 멈추기 전 스냅샷에 목표가 실려 있는지, 도달 후 `None` 이 되는지, **목표 앞의 Step 이 실패하면 목표가 남아 있고 실패한 자리에서 멈추는지**(FR-294), 목표가 0이면 시작 주소만 열고 멈추는지(FR-296)
+- [X] T033 [US2] `backend/src/itb/execution/runner.py` 의 `RunnerTask` 에 읽기 전용 `pause_before_index` 접근자를 더한다. **값의 뜻은 「아직 도달하지 않은 목표」**이며 도달 시 `None` 이 되는 기존 동작(`self._pause_before = None`)을 그대로 쓴다. 재생 경로에 새 분기를 만들지 않는다 (원칙 II)
+- [X] T034 [US2] `backend/src/itb/api/routes/sessions.py` 의 `SessionView` 에 `pause_before_index: int | None = None` 를 더하고 `view_of(work)` 가 러너에서 읽게 한다. 러너가 없으면 `None` 이다. 필드 주석에 **왜 스냅샷에 싣는지**(005 U-18 — 이벤트 없이도 화면이 복원되게 한다)를 적는다 ([data-model.md](./data-model.md) §5)
+- [X] T035 [P] [US2] `backend/tests/integration/test_pause_before_target.py` — 목표 앞에서 멈추는지, 멈추기 전 스냅샷에 목표가 실려 있는지, 도달 후 `None` 이 되는지, **목표 앞의 Step 이 실패하면 목표가 남아 있고 실패한 자리에서 멈추는지**(FR-294), 목표가 0이면 시작 주소만 열고 멈추는지(FR-296)
 
 ### 화면 — 한 조작 흐름 (FR-291·FR-292·FR-295·FR-297)
 
-- [ ] T036 [US2] `frontend/src/pages/SessionScreen.tsx` 에 진행 표시를 더한다 — 목표가 있고 실행 중이면 「Step nn 앞에서 멈춥니다 — 지금 Step mm」, 목표가 있고 실패한 Step 이 있으면 「Step nn 에 도달하기 전에 Step mm 에서 실패했습니다」. 문구는 `lib/wording.ts` 가 만든다. 그만두는 길은 그 국면의 `run.stop` 이다 (FR-293·FR-294)
-- [ ] T037 [US2] `frontend/src/App.tsx` 와 `frontend/src/pages/EditView.tsx` 에서 `browser.openAt` 을 한 흐름으로 잇는다 — 저장(미저장이 있으면) → 세션 생성(`pause_before_index`) → 도착 후 기존 `record:start` 호출. 단계별 실패 처리는 계약 §5 의 표를 따른다. **도구 의도는 화면이 기억한다** — 서버 상태에 저장하지 않는다 ([research.md](./research.md) R5)
-- [ ] T038 [US2] `frontend/src/pages/SessionScreen.tsx` 의 도착 알림을 더한다 — 「지금부터 브라우저 조작이 기록됩니다」. 녹화가 자동으로 켜지는 것을 사용자가 모르는 상태를 만들지 않는다 (R5 의 완화 장치)
-- [ ] T039 [US2] `frontend/src/pages/ResultView.tsx` 의 「고치기」(`nav.editStep`)가 **그 Step 을 고른 상태로** 편집 화면을 열게 한다 (FR-297). 셀은 바뀌지 않고 해소 방법의 동작이 정확해진다
-- [ ] T040 [P] [US2] `frontend/tests/InsertViaBrowser.test.tsx` — 조작 한 번으로 저장·세션 생성·녹화 시작이 순서대로 일어나는지, 미저장이 있으면 「먼저 저장합니다」가 **누르기 전에** 보이는지, 진행 문구가 목표와 현재를 함께 말하는지, 도달 전 실패 문구가 「일시정지됨」과 구분되는지, 다른 세션이 잡고 있으면 그 세션으로 가는 길을 보이는지
-- [ ] T041 [US2] [quickstart.md](./quickstart.md) 「US2」 절 전체를 실측한다 — 2-1(새로 고침 후에도 목표가 남는가) · 2-2(도달 전 실패) · 2-3(목표가 맨 앞)을 포함한다. SC-502 는 **1회**를 요구한다
+- [X] T036 [US2] `frontend/src/pages/SessionScreen.tsx` 에 진행 표시를 더한다 — 목표가 있고 실행 중이면 「Step nn 앞에서 멈춥니다 — 지금 Step mm」, 목표가 있고 실패한 Step 이 있으면 「Step nn 에 도달하기 전에 Step mm 에서 실패했습니다」. 문구는 `lib/wording.ts` 가 만든다. 그만두는 길은 그 국면의 `run.stop` 이다 (FR-293·FR-294)
+- [X] T037 [US2] `frontend/src/App.tsx` 와 `frontend/src/pages/EditView.tsx` 에서 `browser.openAt` 을 한 흐름으로 잇는다 — 저장(미저장이 있으면) → 세션 생성(`pause_before_index`) → 도착 후 기존 `record:start` 호출. 단계별 실패 처리는 계약 §5 의 표를 따른다. **도구 의도는 화면이 기억한다** — 서버 상태에 저장하지 않는다 ([research.md](./research.md) R5)
+- [X] T038 [US2] `frontend/src/pages/SessionScreen.tsx` 의 도착 알림을 더한다 — 「지금부터 브라우저 조작이 기록됩니다」. 녹화가 자동으로 켜지는 것을 사용자가 모르는 상태를 만들지 않는다 (R5 의 완화 장치)
+- [X] T039 [US2] `frontend/src/pages/ResultView.tsx` 의 「고치기」(`nav.editStep`)가 **그 Step 을 고른 상태로** 편집 화면을 열게 한다 (FR-297). 셀은 바뀌지 않고 해소 방법의 동작이 정확해진다
+- [X] T040 [P] [US2] `frontend/tests/InsertViaBrowser.test.tsx` — 조작 한 번으로 저장·세션 생성·녹화 시작이 순서대로 일어나는지, 미저장이 있으면 「먼저 저장합니다」가 **누르기 전에** 보이는지, 진행 문구가 목표와 현재를 함께 말하는지, 도달 전 실패 문구가 「일시정지됨」과 구분되는지, 다른 세션이 잡고 있으면 그 세션으로 가는 길을 보이는지
+- [X] T041 [US2] [quickstart.md](./quickstart.md) 「US2」 절 전체를 실측한다 — 2-1(새로 고침 후에도 목표가 남는가) · 2-2(도달 전 실패) · 2-3(목표가 맨 앞)을 포함한다. SC-502 는 **1회**를 요구한다
 
 **Checkpoint**: 요소가 필요한 Step 도 한 조작으로 넣을 수 있다. 다섯 걸음이 없어졌다.
 

@@ -43,6 +43,18 @@ type Screen =
        * 자기가 출발한 화면을 잃는다. 고치던 Step 을 다시 찾아 들어가야 한다.
        */
       returnToEdit?: { testId: string; stepId: string | null } | null;
+      /**
+       * 도착하면 직접 조작 기록을 켠다 (009 FR-291·FR-295).
+       *
+       * 「이 앞에 추가」로 출발한 세션에만 있다. 사용자가 그 조작을 고른 뜻이 「여기서
+       * 브라우저를 만져 Step 을 만들겠다」이므로, 다섯 걸음을 한 걸음으로 줄이는 마지막
+       * 단계가 기록을 켜는 것이다 (관찰 M-04).
+       *
+       * **서버 상태에 저장하지 않는다** (research R5). 새로 고치면 기록은 켜지지 않은 채로
+       * 오고, 그때 팔레트의 같은 조작을 그대로 쓸 수 있다 — 잃어도 막히지 않는 정보만
+       * 화면에 둔다.
+       */
+      recordOnArrival?: boolean;
     }
   /**
    * 결과 국면. `focusStepId` 는 **국면을 넘어 유지되는 지목**이다 (007 FR-239 · S-10).
@@ -223,6 +235,12 @@ export function App() {
           session,
           // 006 FR-204 — 끝나면 출발한 편집 화면으로 돌아온다.
           returnToEdit: { testId, stepId },
+          /*
+            009 FR-291 — 이 조작의 목적이 「그 자리에 Step 을 넣는 것」이므로 도착하면
+            기록이 켜진 상태여야 한다. 이전에는 도착한 뒤 사용자가 팔레트에서 「직접
+            조작으로 Step 추가」를 다시 찾아야 했다 — 그것이 다섯 걸음의 마지막 걸음이다.
+          */
+          recordOnArrival: true,
         }),
       )
       .catch((exc: unknown) => setError(describeError(exc)))
@@ -373,6 +391,8 @@ export function App() {
         <SessionScreen
           initial={screen.session}
           aiInstruction={screen.aiInstruction ?? null}
+          /* 009 FR-291 — 목표 자리에 도착하면 기록을 켠다 */
+          recordOnArrival={screen.recordOnArrival ?? false}
           /*
             006 FR-204 — 편집 화면에서 출발한 세션은 그 화면으로 돌아온다. 편집 화면은
             마운트마다 `GET /definition` 을 다시 읽으므로 세션에서 저장한 내용이 반영된

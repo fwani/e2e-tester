@@ -200,6 +200,37 @@ export function progressLabel(currentIndex: number, total: number): string {
   return `${stepLabel(shown - 1)} / ${String(total).padStart(2, "0")}`;
 }
 
+/**
+ * 목표 앞에서 멈추는 재생의 진행 표시 (009 FR-293).
+ *
+ * **목표와 현재를 함께 말한다.** 보통 재실행의 「Step 03 / 12」는 끝까지 간다는 뜻이지만,
+ * 이 재생은 지정한 자리에서 멈춘다 — 어디서 멈출 예정인지를 말하지 않으면 사용자는
+ * 실행이 끝나기를 기다린다.
+ *
+ * 「앞에서」인 것이 중요하다: 그 Step 은 **실행되지 않는다**(`pause_before_index`). 그것이
+ * 곧 「그 자리에 넣을 수 있다」는 뜻이다.
+ */
+export function pauseTargetProgress(currentIndex: number, targetIndex: number): string {
+  return `${stepLabel(targetIndex)} 앞에서 멈춥니다 · 지금 ${stepLabel(currentIndex)}`;
+}
+
+/**
+ * 목표에 닿기 전에 실패했다 (009 FR-294).
+ *
+ * **「일시정지됨」만 말하면 위반이다.** 사용자는 도달한 것으로 읽고 없는 자리에 Step 을
+ * 넣으려 한다. 도달과 실패는 화면에서 구별되어야 한다.
+ */
+export function pauseTargetUnreached(failedIndex: number, targetIndex: number): string {
+  return (
+    `${stepLabel(targetIndex)} 에 도달하기 전에 ${stepLabel(failedIndex)} 에서 ` +
+    "실패했습니다. 그 자리를 고친 뒤 이어서 실행하세요."
+  );
+}
+
+/** 목표 자리에 도착해 기록이 켜졌다 (009 FR-295·FR-296 · research R5 의 완화 장치). */
+export const ARRIVED_RECORDING_STARTED =
+  "지금부터 브라우저 조작이 기록됩니다. 넣으려는 동작을 브라우저에서 해 보세요.";
+
 /** 부분 실행을 걸기 전 보조 안내 (FR-150). */
 export function partialRunNotice(startIndex: number): string | null {
   const skipped = skippedRange(startIndex);
