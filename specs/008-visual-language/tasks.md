@@ -128,17 +128,17 @@ FR-278~FR-284 이므로 검사 작성 작업이 선택이 아니다. 기존 657�
 
 ### 4-3. 국면 화면
 
-- [ ] T041 [US2] `frontend/src/pages/SessionScreen.tsx` 를 정본 소비로 바꾼다 (hex 29 · 인라인 18). 일곱 국면(REC·AI·AI 막힘·TKO·RUN·PAU·실행 종료)이 각자의 dc.html 과 맞는지 국면별로 확인한다. 잔존색 `#F0F7F2` 판정
-- [ ] T042 [P] [US2] `frontend/src/pages/EditView.tsx` 를 정본 소비로 바꾼다 (hex 5 · 인라인 18). `Main.dc.html` 기준. `.srow.sel` 선택 상태 포함
-- [ ] T043 [P] [US2] `frontend/src/pages/ComposeView.tsx` 를 정본 소비로 바꾼다 (인라인 1). `Create.dc.html` 기준
-- [ ] T044 [P] [US2] `frontend/src/components/MirrorView.tsx` 를 정본 소비로 바꾼다 (인라인 7)
-- [ ] T045 [P] [US2] `frontend/src/components/TabStrip.tsx` 를 정본 소비로 바꾼다 (인라인 2)
-- [ ] T046 [P] [US2] `frontend/src/components/PacingControl.tsx` 를 정본 소비로 바꾼다 (hex 9 · 인라인 5). 잔존색 `#8A5A00` 판정
-- [ ] T047 [P] [US2] `frontend/src/App.tsx` 의 인라인 3곳을 정본 소비로 바꾼다
-- [ ] T048 [US2] **국면 완주 확인.** 만들기→녹화→실행→일시정지→이어받기→실행 종료를 한 번 완주하고, 각 국면에서 이전 판에 보이던 정보·조작·문구가 하나도 사라지지 않았는지 확인한다 (FR-274 · SC-406 · 헌법 원칙 III)
-- [ ] T049 [US2] `npx vitest run` — **657건 + 신규 전부 초록**
-- [ ] T050 [US2] T001 재측정 → `baseline.md` 갱신. US2 대상 파일의 색 리터럴이 0인지 확인
-- [ ] T051 [US2] T009 상한을 US2 후 실측값으로 **내린다**
+- [X] T041 [US2] `frontend/src/pages/SessionScreen.tsx` 를 정본 소비로 바꾼다 (hex 29 · 인라인 18). 일곱 국면(REC·AI·AI 막힘·TKO·RUN·PAU·실행 종료)이 각자의 dc.html 과 맞는지 국면별로 확인한다. 잔존색 `#F0F7F2` 판정
+- [X] T042 [P] [US2] `frontend/src/pages/EditView.tsx` 를 정본 소비로 바꾼다 (hex 5 · 인라인 18). `Main.dc.html` 기준. `.srow.sel` 선택 상태 포함
+- [X] T043 [P] [US2] `frontend/src/pages/ComposeView.tsx` 를 정본 소비로 바꾼다 (인라인 1). `Create.dc.html` 기준
+- [X] T044 [P] [US2] `frontend/src/components/MirrorView.tsx` 를 정본 소비로 바꾼다 (인라인 7)
+- [X] T045 [P] [US2] `frontend/src/components/TabStrip.tsx` 를 정본 소비로 바꾼다 (인라인 2)
+- [X] T046 [P] [US2] `frontend/src/components/PacingControl.tsx` 를 정본 소비로 바꾼다 (hex 9 · 인라인 5). 잔존색 `#8A5A00` 판정
+- [X] T047 [P] [US2] `frontend/src/App.tsx` 의 인라인 3곳을 정본 소비로 바꾼다
+- [X] T048 [US2] **국면 완주 확인.** 만들기→녹화→실행→일시정지→이어받기→실행 종료를 한 번 완주하고, 각 국면에서 이전 판에 보이던 정보·조작·문구가 하나도 사라지지 않았는지 확인한다 (FR-274 · SC-406 · 헌법 원칙 III)
+- [X] T049 [US2] `npx vitest run` — **657건 + 신규 전부 초록**
+- [X] T050 [US2] T001 재측정 → `baseline.md` 갱신. US2 대상 파일의 색 리터럴이 0인지 확인
+- [X] T051 [US2] T009 상한을 US2 후 실측값으로 **내린다**
 
 **Checkpoint**: 아홉 국면 + Step 상세가 디자인과 같다. 잔재의 대부분이 사라졌다.
 

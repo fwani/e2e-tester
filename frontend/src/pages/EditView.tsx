@@ -49,7 +49,6 @@ import {
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
 
-const INK = "#14171C";
 
 export interface EditViewProps {
   testId: string;
@@ -621,7 +620,7 @@ export function EditView({
           current !== null ? (
             <>
               {/* Step 종류는 편집 대상이 아니다 — 지우고 새로 넣는 일이다 (006 FR-191). */}
-              <p className="dim" style={{ fontSize: 11.5, margin: 0 }}>
+              <p className="why" style={{ margin: 0 }}>
                 {lockedFieldNotice(
                   lockedReason("steps[].type") ?? "delete_and_insert_instead",
                 )}
@@ -638,19 +637,19 @@ export function EditView({
                 왜 못 고치는지 알 수 없다.
               */}
               {"target" in current && (
-                <p className="dim" style={{ fontSize: 11.5, margin: 0 }}>
+                <p className="why" style={{ margin: 0 }}>
                   {lockedFieldNotice(lockedReason("steps[].target") ?? "live_browser_required")}
                 </p>
               )}
               {current.type === "drag" && (
-                <p className="dim" style={{ fontSize: 11.5, margin: 0 }}>
+                <p className="why" style={{ margin: 0 }}>
                   {lockedFieldNotice(
                     lockedReason("steps[].drop_target") ?? "live_browser_required",
                   )}
                 </p>
               )}
               {current.type === "assertion" && current.assertion.target && (
-                <p className="dim" style={{ fontSize: 11.5, margin: 0 }}>
+                <p className="why" style={{ margin: 0 }}>
                   {lockedFieldNotice(
                     lockedReason("steps[].assertion.target") ?? "live_browser_required",
                   )}
@@ -675,27 +674,18 @@ export function EditView({
         <div
           role="alertdialog"
           aria-label="저장하지 않은 변경 확인"
+          className="modal-scrim"
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(20,19,15,0.45)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 30,
           }}
         >
-          <div
-            style={{
-              width: 520,
-              border: `1px solid ${INK}`,
-              borderRadius: "3px",
-              background: "#FFFFFF",
-              boxShadow: `10px 10px 0 ${INK}`,
-              padding: 24,
-            }}
-          >
-            <strong style={{ fontSize: 15 }}>{unsavedLeaveWarning(pending)}</strong>
+          <div className="modal" style={{ width: 520, padding: 24 }}>
+            <strong className="subtitle">{unsavedLeaveWarning(pending)}</strong>
             <div className="row" style={{ gap: 8, marginTop: 12 }}>
               <button
                 onClick={() => {
@@ -772,18 +762,15 @@ function EditFields({
           justifyContent: "center",
           gap: 10,
           textAlign: "center",
-          color: "#6E757F",
         }}
       >
-        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="#CBD0D8" strokeWidth="1.6">
+        <svg className="dim" width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.6">
           <rect x="3" y="5" width="26" height="6" rx="1.5" />
           <rect x="3" y="13" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
           <rect x="3" y="21" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
         </svg>
-        <div style={{ font: "600 13px/1.5 'IBM Plex Sans KR', system-ui, sans-serif", color: "#4A515C" }}>
-          고칠 Step 을 고르세요
-        </div>
-        <div style={{ font: "400 11.5px/1.6 'IBM Plex Sans KR', system-ui, sans-serif", maxWidth: 420 }}>
+        <div className="strong-sm">고칠 Step 을 고르세요</div>
+        <div className="why" style={{ maxWidth: 420 }}>
           오른쪽 목록에서 Step 을 누르면 상세가 열립니다. 값 · 순서 · 삭제는 브라우저 없이
           고칠 수 있고, 고친 것은 여기에 「저장하지 않은 변경」으로 쌓입니다.
         </div>
@@ -795,7 +782,7 @@ function EditFields({
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {/* FR-212 — 어떤 변수가 민감인지 밝히고, 값은 화면에 오지 않는다고 말한다. */}
       {sensitiveNames.length > 0 && (
-        <p className="dim" style={{ fontSize: 11.5, margin: 0 }}>
+        <p className="why" style={{ margin: 0 }}>
           민감 변수 <span className="mono">{sensitiveNames.join(", ")}</span> (값은 표시되지
           않습니다)
         </p>
@@ -804,12 +791,12 @@ function EditFields({
       {/* 개별 되돌리기 (006 FR-190). 되돌리기는 연산을 목록에서 빼는 것이다. */}
       {ops.length > 0 && (
         <div>
-          <strong style={{ fontSize: 11.5 }}>저장하지 않은 변경</strong>
-          <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12 }}>
+          <strong className="lbl">저장하지 않은 변경</strong>
+          <ul className="why" style={{ margin: "6px 0 0", paddingLeft: 18 }}>
             {ops.map((op, i) => (
               <li key={`${op.op}-${i}`} className="row" style={{ gap: 6 }}>
                 <span className="mono spacer">{describeOp(op, steps)}</span>
-                <button className="ghost" onClick={() => onRevert(i)}>
+                <button className="navlink" onClick={() => onRevert(i)}>
                   되돌리기
                 </button>
               </li>

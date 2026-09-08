@@ -517,3 +517,50 @@ input.ai, textarea.ai { border-color: var(--ai); }
 .table tr.in-use td { background: var(--pass-t); }
 /* 최후 수단 — 옅은 우물. 쓸 수는 있으나 마지막이라는 뜻이다 (원칙 IV). */
 .table tr.last-resort td { background: var(--sunken-2); }
+
+/* 붙어 있는 선택 — 실행 속도처럼 서로 배타적인 몇 개를 한 덩어리로 고르는 자리.
+   `.tabs` 와 문법이 같고 모서리만 갖는다. */
+.segmented { display: inline-flex; border: 1px solid var(--hair-2); border-radius: var(--radius); overflow: hidden; }
+.segmented > button {
+  border: 0;
+  border-left: 1px solid var(--hair-2);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.segmented > button:first-child { border-left: 0; }
+.segmented > button[aria-pressed="true"] { background: var(--sunken); color: var(--ink); font-weight: 700; }
+.segmented > button:disabled { background: transparent; border-style: solid; color: var(--ink-3); }
+
+/* 옅은 바닥 — 미러 아래 띠처럼 배경만 한 단계 내리는 자리. */
+.sunken { background: var(--sunken-2); }
+
+/* 창 표시 점. 실제 브라우저를 뜻하는 관용 표기이며 조작이 아니다. */
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hair-2); }
+/* 주소 칸. 읽기만 하는 자리이므로 조작으로 보이지 않게 둔다. */
+.addr {
+  flex: 1;
+  height: 19px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-chip);
+  font: 400 11px/1 var(--font-mono);
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 화면 전체를 덮는 확인 판. 겹침과 같은 문법이되 가운데 선다. */
+.modal-scrim { background: rgba(20, 23, 28, 0.45); }
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--hair-2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--e-2);
+}

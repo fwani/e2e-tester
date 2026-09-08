@@ -1,25 +1,42 @@
 /**
- * 대상 앱을 감싸는 브라우저 껍데기. `Main`·`RunnerPaused`·`Takeover`·`AiRecord` 공통.
+ * 대상 앱을 감싸는 껍데기. 확정 디자인의 ③-a 자리다.
  *
- * **안쪽 흰 영역은 대상 앱이지 우리 UI 가 아니다.** 확정 디자인이 그 안에 그려 놓은
- * 화면(프로젝트 목록 등)은 표본이므로 옮기지 않는다 — 옮기면 실제 대상 앱 위에 가짜
- * 화면을 덧그리는 것이 된다. 그 자리는 미러 뷰가 채운다 (001 FR-047).
+ * ## 2026-09-08 (008) — 어두운 껍데기를 버렸다
  *
- * 껍데기(주소줄·탐색 버튼·모드 배지)는 우리 UI 이므로 확정 디자인 그대로 옮긴다.
+ * v1 은 이 자리를 **잉크 판**으로 그렸다 — 검정 바탕에 회색 아이콘, `#2A303A` 주소 칸.
+ * 실제 브라우저처럼 보이게 하려던 것인데, 확정 디자인은 정반대로 간다: 30px 옅은 우물
+ * 띠 + 종이 주소 칸 + 상태 표식 하나다.
+ *
+ * **이유가 있다.** 이 안에 들어오는 것은 사용자의 앱이고 그 앱은 자기 색을 갖는다.
+ * 껍데기가 어두우면 두 색 체계가 화면에서 부딪히고, 무엇이 제품이고 무엇이 대상인지
+ * 경계가 흐려진다. 껍데기를 종이로 낮추면 대상 앱이 그 자리의 주인공이 된다.
+ *
+ * 확정 디자인 안의 `#1F2A37`·`#2563EB` 같은 색은 **미러되는 예시 앱의 색**이지 ITB 의
+ * 시각 언어가 아니다. 정본에 들이지 않는다 (FR-266).
  */
 import type { ReactNode } from "react";
 
-/** 확정 디자인의 뒤로·앞으로·새로고침 아이콘. `d` 를 그대로 옮겼다. */
-const NAV_ICONS = [
-  "M10 3.5L5.5 8l4.5 4.5",
-  "M6 3.5L10.5 8 6 12.5",
-  "M13 8a5 5 0 1 1-1.6-3.7M13 1.6v3.2h-3.2",
-];
-
+/**
+ * 지금 이 미러가 무엇인지 (읽기 전용 · 녹화 중 · 일시정지 …).
+ *
+ * 색을 직접 받지 않고 **뜻**을 받는다. 색을 받으면 부르는 쪽마다 다른 색을 넣게 되고,
+ * 실제로 그렇게 돼서 `SessionScreen` 이 여섯 가지 배경색을 손으로 정하고 있었다.
+ */
 export interface ModeBadge {
   label: string;
-  background: string;
-  color: string;
+  /** 정본의 `.chip` 변형. 빈 값이면 중립이다. */
+  tone: "" | "pass" | "fail" | "warn" | "run" | "ai";
+}
+
+/** 주소 칸 왼쪽의 점 셋. 실제 브라우저를 뜻하는 관용 표기이며 조작이 아니다. */
+function WindowDots() {
+  return (
+    <div style={{ display: "flex", gap: 4 }} aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <span key={i} className="dot" />
+      ))}
+    </div>
+  );
 }
 
 export function BrowserFrame({
@@ -33,88 +50,18 @@ export function BrowserFrame({
 }) {
   return (
     <div
-      style={{
-        border: "1px solid #14171C",
-        borderRadius: "3px",
-        background: "#14171C",
-        flex: "1",
-        minHeight: "0",
-        display: "flex",
-        flexDirection: "column",
-      }}
+      className="pane"
+      style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
     >
       <div
-        style={{
-          flex: "0 0 46px",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "0 12px",
-          background: "#14171C",
-        }}
+        className="pane-hd"
+        style={{ flex: "0 0 30px", display: "flex", alignItems: "center", gap: 8, padding: "0 10px" }}
       >
-        <div style={{ display: "flex", gap: "0", color: "#6E757F" }}>
-          {NAV_ICONS.map((d) => (
-            <div
-              key={d}
-              style={{
-                width: "44px",
-                height: "44px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d={d} />
-              </svg>
-            </div>
-          ))}
-        </div>
-        <div
-          style={{
-            flex: "1",
-            display: "flex",
-            alignItems: "center",
-            height: "28px",
-            padding: "0 10px",
-            background: "#2A303A",
-            color: "#CBD0D8",
-            font: "400 12px/1 'IBM Plex Mono', ui-monospace, monospace",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {url}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            height: "28px",
-            padding: "0 9px",
-            background: badge.background,
-            color: badge.color,
-            font: "700 11px/1 'IBM Plex Mono', ui-monospace, monospace",
-            letterSpacing: "0.08em",
-          }}
-        >
-          {badge.label}
-        </div>
+        <WindowDots />
+        <div className="addr">{url}</div>
+        <span className={`chip ${badge.tone}`.trimEnd()}>{badge.label}</span>
       </div>
-      <div
-        style={{
-          flex: "1",
-          minHeight: "0",
-          background: "#FFFFFF",
-          display: "flex",
-          borderTop: "1px solid #14171C",
-        }}
-      >
-        {children}
-      </div>
+      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>{children}</div>
     </div>
   );
 }

@@ -142,10 +142,11 @@ function describeFindings(found: Finding[], limit = 25): string {
    US1 목록 화면 뒤:        색 237 · 인라인 569
    US2 껍데기·Step 목록 뒤: 색 116 · 인라인 350
    US2 Step 상세 뒤:        색 78 · 인라인 262
+   US2 국면 화면 뒤:        색 25 · 인라인 172
    목표(US4 · T064):        색 0   · 인라인 0
    ──────────────────────────────────────────────────────────────────────────── */
-const MAX_COLOR = 78;
-const MAX_INLINE = 262;
+const MAX_COLOR = 25;
+const MAX_INLINE = 172;
 
 describe("L2 — 화면 코드가 정본만 소비하는가", () => {
   it("검사 대상을 손으로 적지 않는다 — 화면 파일 전체를 열거한다", () => {
