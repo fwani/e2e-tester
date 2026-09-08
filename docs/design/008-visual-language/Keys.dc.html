@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+  <style>
+    /* ITB 시각 언어 v2 — 「계기판(Instrument)」
+       무게(3px 테두리·하드 그림자) 대신 대비와 정렬로 위계를 만든다.
+       근거: ui-ux-pro-max style=data-dense-dashboard, color=light neutral + status chips.
+       한글 때문에 DB 가 권한 Fira Sans 대신 IBM Plex Sans KR 을 쓴다 (각색). */
+    :root {
+      --bg:#F2F4F7; --surface:#FFFFFF; --sunken:#EAEDF2; --sunken-2:#F7F8FA;
+      --ink:#14171C; --ink-2:#4A515C; --ink-3:#6E757F;
+      --hair:#E3E6EB; --hair-2:#CBD0D8;
+      --pass:#1A7F45; --pass-t:#E8F5ED;
+      --fail:#C8371D; --fail-t:#FCEDE9;
+      --warn:#8F5A00; --warn-t:#FBF3E2;
+      --run:#0B6BCB;  --run-t:#E8F1FB;
+      --ai:#6B3FD4;   --ai-t:#F0EBFB;
+      --r:3px; --r-chip:2px; --r-lg:6px;
+      --e-1:0 1px 2px rgba(20,23,28,.07);
+      --e-2:0 16px 40px rgba(20,23,28,.18);
+      --sans:"IBM Plex Sans KR",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+    }
+    *,*::before,*::after{box-sizing:border-box;}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+         font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;
+         font-variant-numeric:tabular-nums;}
+    a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
+
+    .lbl{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);}
+    .mono{font-family:var(--mono);}
+    .pane{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);}
+
+    /* 조작 — 높이 32. 주 동작만 채운다. 비활성은 점선이고 자리를 지킨다. */
+    .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;
+         border:1px solid var(--hair-2);border-radius:var(--r);background:var(--surface);
+         color:var(--ink);font:600 13px/1 var(--sans);box-shadow:var(--e-1);white-space:nowrap;}
+    .btn.primary{background:var(--ink);border-color:var(--ink);color:#fff;}
+    .btn.danger{background:var(--surface);border-color:var(--fail);color:var(--fail);}
+    .btn.off{background:transparent;border:1px dashed var(--hair-2);color:var(--ink-3);
+             box-shadow:none;font-weight:500;}
+    .btn.sm{height:26px;padding:0 9px;font-size:12px;}
+    .why{font:400 11px/1.4 var(--sans);color:var(--ink-3);}
+
+    /* 상태 — 색과 형태를 함께 쓴다. 색만으로 구분하지 않는다. */
+    .chip{display:inline-flex;align-items:center;gap:5px;height:19px;padding:0 6px;
+          border:1px solid var(--hair-2);border-radius:var(--r-chip);
+          font:600 10px/1 var(--mono);letter-spacing:.06em;color:var(--ink-2);background:var(--sunken-2);}
+    .chip.pass{border-color:var(--pass);color:var(--pass);background:var(--pass-t);}
+    .chip.fail{border-color:var(--fail);color:var(--fail);background:var(--fail-t);}
+    .chip.warn{border-color:var(--warn);color:var(--warn);background:var(--warn-t);}
+    .chip.run{border-color:var(--run);color:var(--run);background:var(--run-t);}
+    .chip.ai{border-color:var(--ai);color:var(--ai);background:var(--ai-t);}
+
+    /* 껍데기 층 */
+    .hdr{flex:0 0 56px;display:flex;align-items:center;gap:14px;padding:0 16px;
+         background:var(--surface);border-bottom:1px solid var(--hair);}
+    .phase{flex:0 0 48px;display:flex;align-items:center;gap:12px;padding:0 16px;
+           background:var(--surface);border-bottom:1px solid var(--hair-2);}
+    .notice{flex:0 0 32px;display:flex;align-items:center;gap:8px;padding:0 16px;
+            font:400 12px/1 var(--sans);border-bottom:1px solid var(--hair);}
+    .body{flex:1;min-height:0;display:flex;}
+    .left{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:12px;}
+    .steps{flex:0 0 460px;border-left:1px solid var(--hair-2);background:var(--surface);
+           display:flex;flex-direction:column;}
+    .steps-hd{flex:0 0 36px;display:flex;align-items:center;gap:8px;padding:0 12px;
+              background:var(--sunken);border-bottom:1px solid var(--hair-2);}
+
+    /* Step 행 — 52px 2줄. 125px 에서 왔다. 900px 화면에서 5행 → 13행. */
+    .srow{display:grid;grid-template-columns:26px 1fr 58px 20px;gap:10px;align-items:center;
+          height:52px;padding:6px 12px 6px 9px;border-bottom:1px solid var(--hair);
+          border-left:3px solid transparent;}
+    .srow .n{font:500 12px/1 var(--mono);color:var(--ink-3);text-align:right;}
+    .srow .t{min-width:0;display:flex;flex-direction:column;gap:3px;}
+    .srow .t b{font:600 13px/1.25 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .srow .m{display:flex;align-items:center;gap:6px;min-width:0;}
+    .srow .loc{font:400 11px/1 var(--mono);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .srow .d{font:400 11px/1 var(--mono);color:var(--ink-3);text-align:right;}
+    .srow.pass{border-left-color:var(--pass);}
+    .srow.fail{border-left-color:var(--fail);background:var(--fail-t);}
+    .srow.run{border-left-color:var(--run);background:var(--run-t);}
+    .srow.sel{background:var(--sunken-2);border-left-color:var(--ink);}
+  </style>
+</helmet>
+<div style="width:1440px;height:900px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;">
+  <div class="hdr">
+    <div style="display:flex;align-items:center;gap:9px;">
+      <div style="width:26px;height:26px;background:var(--ink);border-radius:var(--r);display:flex;align-items:center;justify-content:center;">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.6"><rect x="2" y="2" width="12" height="12" rx="1.5"></rect><path d="M5 8.2l2 2 4-4.4"></path></svg>
+      </div>
+      <div style="font:700 15px/1 var(--sans);letter-spacing:-.01em;">ITB</div>
+    </div>
+    <div style="width:1px;height:20px;background:var(--hair-2);"></div>
+    <div style="display:flex;align-items:center;gap:7px;font:400 13px/1 var(--sans);color:var(--ink-3);">
+      <a href="#" style="color:var(--ink-2);">데이터 플랫폼</a><span>/</span><span style="color:var(--ink);font-weight:600;">설정</span>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="btn">목록으로</div>
+  </div>
+  <div class="phase">
+    <div style="display:flex;gap:4px;">
+      <div style="height:30px;display:flex;align-items:center;padding:0 12px;border-radius:var(--r);background:var(--ink);color:#fff;font:600 13px/1 var(--sans);">키 관리</div>
+      <div style="height:30px;display:flex;align-items:center;padding:0 12px;border-radius:var(--r);font:500 13px/1 var(--sans);color:var(--ink-2);">비밀 값</div>
+      <div style="height:30px;display:flex;align-items:center;padding:0 12px;border-radius:var(--r);font:500 13px/1 var(--sans);color:var(--ink-2);">프로젝트</div>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="why">키는 이 컴퓨터의 운영체제 자격 증명 저장소에 들어갑니다. 프로젝트 폴더에는 쓰지 않습니다.</div>
+  </div>
+
+  <div style="flex:1;min-height:0;display:flex;justify-content:center;padding:20px 16px;overflow:hidden;">
+    <div style="width:100%;max-width:1000px;display:flex;flex-direction:column;gap:16px;">
+
+      <div class="pane" style="padding:14px 16px;display:flex;align-items:center;gap:14px;border-color:#E5D3AC;background:var(--warn-t);">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#8F5A00" stroke-width="2"><circle cx="8" cy="8" r="6.2"></circle><path d="M8 4.6v4M8 11.2v.2"></path></svg>
+        <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+          <div style="font:600 13.5px/1.4 var(--sans);">언어모델 자격 증명을 찾을 수 없습니다</div>
+          <div class="why" style="color:var(--ink-2);">AI 로 만들기 · 자연어로 Step 추가만 막힙니다. 직접 녹화와 저장된 테스트 실행은 키 없이 됩니다 — 다시 돌릴 때는 언어모델을 쓰지 않기 때문입니다.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        <div class="lbl">등록하는 방법 — 위에서부터 먼저 찾습니다</div>
+        <div class="pane" style="overflow:hidden;">
+          <div style="display:grid;grid-template-columns:30px 210px 1fr 96px;gap:14px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--hair);">
+            <div class="mono" style="font-size:12px;color:var(--ink-3);">1</div>
+            <div class="mono" style="font-size:12.5px;font-weight:600;">환경 변수</div>
+            <div style="min-width:0;display:flex;flex-direction:column;gap:3px;">
+              <div class="mono" style="font-size:12px;color:var(--ink-2);">ANTHROPIC_API_KEY</div>
+              <div class="why">셸에서 내보내고 ITB 를 다시 시작하세요. 값은 ITB 가 저장하지 않습니다.</div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;"><span class="chip" style="border-style:dashed;background:transparent;">없음</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:30px 210px 1fr 96px;gap:14px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--hair);">
+            <div class="mono" style="font-size:12px;color:var(--ink-3);">2</div>
+            <div class="mono" style="font-size:12.5px;font-weight:600;">CLI 로그인</div>
+            <div style="min-width:0;display:flex;flex-direction:column;gap:3px;">
+              <div class="mono" style="font-size:12px;color:var(--ink-2);">ant auth login</div>
+              <div class="why">이미 쓰고 있다면 이게 가장 간단합니다. ITB 가 그 세션을 그대로 씁니다.</div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;"><span class="chip" style="border-style:dashed;background:transparent;">없음</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:30px 210px 1fr 96px;gap:14px;align-items:center;padding:12px 14px;">
+            <div class="mono" style="font-size:12px;color:var(--ink-3);">3</div>
+            <div class="mono" style="font-size:12.5px;font-weight:600;">여기서 등록</div>
+            <div style="min-width:0;display:flex;gap:8px;align-items:center;">
+              <div style="flex:1;height:32px;display:flex;align-items:center;padding:0 10px;border:1px solid var(--hair-2);border-radius:var(--r);background:var(--surface);font:400 12px/1 var(--mono);color:var(--ink-3);">키를 붙여 넣으세요</div>
+              <div class="btn">저장</div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;"><span class="chip" style="border-style:dashed;background:transparent;">없음</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        <div class="lbl">등록된 키</div>
+        <div class="pane" style="padding:28px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--hair-2)" stroke-width="1.6"><circle cx="8" cy="12" r="4"></circle><path d="M12 12h9M18 12v3M21 12v2.4"></path></svg>
+          <div style="font:600 13px/1 var(--sans);color:var(--ink-2);">등록된 키가 없습니다</div>
+          <div class="why" style="text-align:center;max-width:440px;">위 세 방법 중 하나로 등록하면 여기에 이름 · 출처 · 마지막 확인 시각이 뜹니다. 값 자체는 어느 화면에도 다시 보이지 않습니다.</div>
+        </div>
+      </div>
+
+      <div style="flex:1;"></div>
+
+      <div class="pane" style="padding:12px 14px;display:flex;gap:12px;align-items:flex-start;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--ink-3)" stroke-width="1.6" style="margin-top:1px;flex:0 0 auto;"><rect x="3" y="7" width="10" height="6.4" rx="1.2"></rect><path d="M5.4 7V5.2a2.6 2.6 0 015.2 0V7"></path></svg>
+        <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+          <div style="font:600 12.5px/1.4 var(--sans);">키는 어디에도 평문으로 남지 않습니다</div>
+          <div class="why">화면 · 로그 · 스크린샷 메타데이터 · 내보낸 Playwright 프로젝트 어디에도 값이 들어가지 않습니다. 프로젝트 폴더에 쓰지 않으므로 버전 관리에 올라갈 일도 없습니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

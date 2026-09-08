@@ -54,7 +54,8 @@ MVP 위에서 **이미 만든 것이 무너지는 지점**을 찾아 고치는 �
 |------|------|
 | [`.specify/memory/constitution.md`](.specify/memory/constitution.md) | 프로젝트 헌법 v1.1.0. 원칙 I·II는 NON-NEGOTIABLE |
 | [`docs/prd.md`](docs/prd.md) | 제품 요구사항 정의서 |
-| [`docs/design/`](docs/design/) | 확정 화면 디자인 8종 |
+| [`docs/design/008-visual-language/`](docs/design/008-visual-language/) | 화면 디자인 18종 + 시각 언어 v2「계기판」. **대조 기준은 여기 하나다** |
+| [`docs/design/_retired/`](docs/design/_retired/) | 폐기된 v1 디자인 (2026-09-08). 기준이 아니다 — 과거 대조 판정을 읽기 위해서만 남긴다 |
 | [`specs/001-interactive-ai-test-builder/spec.md`](specs/001-interactive-ai-test-builder/spec.md) | 기능 명세 (FR 136 / SC 12 / US 7) |
 | [`.../research.md`](specs/001-interactive-ai-test-builder/research.md) | 기술 결정 R1~R8 + 실측 결과 |
 | [`.../data-model.md`](specs/001-interactive-ai-test-builder/data-model.md) | 엔티티·상태 기계·불변식 |

@@ -1,0 +1,247 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+  <style>
+    /* ITB 시각 언어 v2 — 「계기판(Instrument)」
+       무게(3px 테두리·하드 그림자) 대신 대비와 정렬로 위계를 만든다.
+       근거: ui-ux-pro-max style=data-dense-dashboard, color=light neutral + status chips.
+       한글 때문에 DB 가 권한 Fira Sans 대신 IBM Plex Sans KR 을 쓴다 (각색). */
+    :root {
+      --bg:#F2F4F7; --surface:#FFFFFF; --sunken:#EAEDF2; --sunken-2:#F7F8FA;
+      --ink:#14171C; --ink-2:#4A515C; --ink-3:#6E757F;
+      --hair:#E3E6EB; --hair-2:#CBD0D8;
+      --pass:#1A7F45; --pass-t:#E8F5ED;
+      --fail:#C8371D; --fail-t:#FCEDE9;
+      --warn:#8F5A00; --warn-t:#FBF3E2;
+      --run:#0B6BCB;  --run-t:#E8F1FB;
+      --ai:#6B3FD4;   --ai-t:#F0EBFB;
+      --r:3px; --r-chip:2px; --r-lg:6px;
+      --e-1:0 1px 2px rgba(20,23,28,.07);
+      --e-2:0 16px 40px rgba(20,23,28,.18);
+      --sans:"IBM Plex Sans KR",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+    }
+    *,*::before,*::after{box-sizing:border-box;}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+         font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;
+         font-variant-numeric:tabular-nums;}
+    a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
+
+    .lbl{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);}
+    .mono{font-family:var(--mono);}
+    .pane{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);}
+
+    /* 조작 — 높이 32. 주 동작만 채운다. 비활성은 점선이고 자리를 지킨다. */
+    .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;
+         border:1px solid var(--hair-2);border-radius:var(--r);background:var(--surface);
+         color:var(--ink);font:600 13px/1 var(--sans);box-shadow:var(--e-1);white-space:nowrap;}
+    .btn.primary{background:var(--ink);border-color:var(--ink);color:#fff;}
+    .btn.danger{background:var(--surface);border-color:var(--fail);color:var(--fail);}
+    .btn.off{background:transparent;border:1px dashed var(--hair-2);color:var(--ink-3);
+             box-shadow:none;font-weight:500;}
+    .btn.sm{height:26px;padding:0 9px;font-size:12px;}
+    .why{font:400 11px/1.4 var(--sans);color:var(--ink-3);}
+
+    /* 상태 — 색과 형태를 함께 쓴다. 색만으로 구분하지 않는다. */
+    .chip{display:inline-flex;align-items:center;gap:5px;height:19px;padding:0 6px;
+          border:1px solid var(--hair-2);border-radius:var(--r-chip);
+          font:600 10px/1 var(--mono);letter-spacing:.06em;color:var(--ink-2);background:var(--sunken-2);}
+    .chip.pass{border-color:var(--pass);color:var(--pass);background:var(--pass-t);}
+    .chip.fail{border-color:var(--fail);color:var(--fail);background:var(--fail-t);}
+    .chip.warn{border-color:var(--warn);color:var(--warn);background:var(--warn-t);}
+    .chip.run{border-color:var(--run);color:var(--run);background:var(--run-t);}
+    .chip.ai{border-color:var(--ai);color:var(--ai);background:var(--ai-t);}
+
+    /* 껍데기 층 */
+    .hdr{flex:0 0 56px;display:flex;align-items:center;gap:14px;padding:0 16px;
+         background:var(--surface);border-bottom:1px solid var(--hair);}
+    .phase{flex:0 0 48px;display:flex;align-items:center;gap:12px;padding:0 16px;
+           background:var(--surface);border-bottom:1px solid var(--hair-2);}
+    .notice{flex:0 0 32px;display:flex;align-items:center;gap:8px;padding:0 16px;
+            font:400 12px/1 var(--sans);border-bottom:1px solid var(--hair);}
+    .body{flex:1;min-height:0;display:flex;}
+    .left{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:12px;}
+    .steps{flex:0 0 460px;border-left:1px solid var(--hair-2);background:var(--surface);
+           display:flex;flex-direction:column;}
+    .steps-hd{flex:0 0 36px;display:flex;align-items:center;gap:8px;padding:0 12px;
+              background:var(--sunken);border-bottom:1px solid var(--hair-2);}
+
+    /* Step 행 — 52px 2줄. 125px 에서 왔다. 900px 화면에서 5행 → 13행. */
+    .srow{display:grid;grid-template-columns:26px 1fr 58px 20px;gap:10px;align-items:center;
+          height:52px;padding:6px 12px 6px 9px;border-bottom:1px solid var(--hair);
+          border-left:3px solid transparent;}
+    .srow .n{font:500 12px/1 var(--mono);color:var(--ink-3);text-align:right;}
+    .srow .t{min-width:0;display:flex;flex-direction:column;gap:3px;}
+    .srow .t b{font:600 13px/1.25 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .srow .m{display:flex;align-items:center;gap:6px;min-width:0;}
+    .srow .loc{font:400 11px/1 var(--mono);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .srow .d{font:400 11px/1 var(--mono);color:var(--ink-3);text-align:right;}
+    .srow.pass{border-left-color:var(--pass);}
+    .srow.fail{border-left-color:var(--fail);background:var(--fail-t);}
+    .srow.run{border-left-color:var(--run);background:var(--run-t);}
+    .srow.sel{background:var(--sunken-2);border-left-color:var(--ink);}
+  </style>
+</helmet>
+<div style="width:1440px;height:900px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;">
+  <div class="hdr">
+    <div style="display:flex;align-items:center;gap:9px;">
+      <div style="width:26px;height:26px;background:var(--ink);border-radius:var(--r);display:flex;align-items:center;justify-content:center;">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.6"><rect x="2" y="2" width="12" height="12" rx="1.5"></rect><path d="M5 8.2l2 2 4-4.4"></path></svg>
+      </div>
+      <div style="font:700 15px/1 var(--sans);letter-spacing:-.01em;">ITB</div>
+    </div>
+    <div style="width:1px;height:20px;background:var(--hair-2);"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="lbl">프로젝트</span>
+      <div style="height:26px;display:flex;align-items:center;gap:7px;padding:0 9px;border:1px solid var(--hair-2);border-radius:var(--r);background:var(--surface);font:600 12px/1 var(--sans);">데이터 플랫폼<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="var(--ink-3)" stroke-width="1.6"><path d="M2.5 4.5L6 8l3.5-3.5"></path></svg></div>
+    </div>
+    <div style="flex:1;"></div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <a href="#" style="height:28px;display:flex;align-items:center;padding:0 10px;border-radius:var(--r);font:500 13px/1 var(--sans);color:var(--ink-2);">비밀 값</a>
+      <a href="#" style="height:28px;display:flex;align-items:center;padding:0 10px;border-radius:var(--r);font:500 13px/1 var(--sans);color:var(--ink-2);">키 관리</a>
+    </div>
+    <div style="width:1px;height:20px;background:var(--hair-2);"></div>
+    <div class="btn primary"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="1.9"><path d="M7 2.4v9.2M2.4 7h9.2"></path></svg>테스트 만들기</div>
+  </div>
+
+  <div class="notice" style="background:var(--run-t);border-bottom-color:#BFD6F0;">
+    <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4.5" fill="#0B6BCB"></circle></svg>
+    <span style="color:var(--ink);"><b style="font-weight:600;">TC-004 「주문 취소 흐름」</b> 이 실행 중입니다 · Step 09 / 14</span>
+    <div style="flex:1;"></div>
+    <div class="btn sm">실행 화면 보기</div>
+    <div class="btn sm">중지</div>
+  </div>
+
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 16px 0 16px;gap:12px;">
+
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;max-width:520px;height:32px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--hair-2);border-radius:var(--r);background:var(--surface);">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--ink-3)" stroke-width="1.7"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.6 10.6L14 14"></path></svg>
+        <span style="font:400 13px/1 var(--sans);color:var(--ink-3);">이름 · ID · Step 안의 locator 로 검색</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <div class="btn sm primary">전체 <span class="mono" style="font-size:11px;opacity:.7;">9</span></div>
+        <div class="btn sm">통과 <span class="mono" style="font-size:11px;color:var(--pass);">4</span></div>
+        <div class="btn sm">실패 <span class="mono" style="font-size:11px;color:var(--fail);">2</span></div>
+        <div class="btn sm">미실행 <span class="mono" style="font-size:11px;color:var(--ink-3);">3</span></div>
+      </div>
+      <div style="flex:1;"></div>
+      <div class="btn sm">최근 실행 순<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="var(--ink-3)" stroke-width="1.6"><path d="M2.5 4.5L6 8l3.5-3.5"></path></svg></div>
+    </div>
+
+    <div class="pane" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="flex:0 0 34px;display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;padding:0 14px 0 17px;background:var(--sunken);border-bottom:1px solid var(--hair-2);">
+        <div class="lbl">마지막 결과</div><div class="lbl">ID</div><div class="lbl">이름</div><div class="lbl" style="text-align:right;">STEP</div><div class="lbl">작성</div><div class="lbl">마지막 실행</div><div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--fail);">
+        <div><span class="chip fail"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#C8371D" stroke-width="2.4"><path d="M4 4l8 8M12 4l-8 8"></path></svg>실패</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-001</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">로그인 후 대시보드</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">13</div>
+        <div><span class="chip">RECORD</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">5분 전 · 6/13</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+        <div><span class="chip pass"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2.4"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg>통과</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-002</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">로그인만</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">4</div>
+        <div><span class="chip">RECORD</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">12분 전 · 4/4</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--run);background:var(--run-t);">
+        <div><span class="chip run"><svg width="10" height="10" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#0B6BCB"></circle></svg>실행 중</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-004</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">주문 취소 흐름</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">14</div>
+        <div><span class="chip ai">AI</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">지금 · 9/14</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+        <div><span class="chip pass"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2.4"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg>통과</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-005</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">상품 검색 필터</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">9</div>
+        <div><span class="chip ai">AI</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">1시간 전 · 9/9</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--fail);">
+        <div><span class="chip fail"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#C8371D" stroke-width="2.4"><path d="M4 4l8 8M12 4l-8 8"></path></svg>실패</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-006</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">결제 수단 변경</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">17</div>
+        <div><span class="chip">RECORD</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">3시간 전 · 11/17</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid transparent;">
+        <div><span class="chip" style="border-style:dashed;color:var(--ink-3);background:transparent;">미실행</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-007</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">회원 탈퇴</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">8</div>
+        <div><span class="chip">RECORD</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">—</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+        <div><span class="chip pass"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2.4"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg>통과</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-008</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">장바구니 담기</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">6</div>
+        <div><span class="chip">RECORD</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">어제 · 6/6</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid transparent;">
+        <div><span class="chip" style="border-style:dashed;color:var(--ink-3);background:transparent;">미실행</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-009</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">쿠폰 적용</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">11</div>
+        <div><span class="chip ai">AI</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">—</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+        <div><span class="chip pass"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2.4"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg>통과</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-010</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">배송지 추가</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">7</div>
+        <div><span class="chip">RECORD</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">2일 전 · 7/7</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid transparent;">
+        <div><span class="chip" style="border-style:dashed;color:var(--ink-3);background:transparent;">미실행</span></div>
+        <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-011</div>
+        <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">알림 설정 저장</div>
+        <div class="mono" style="font-size:12px;color:var(--ink-3);text-align:right;">5</div>
+        <div><span class="chip">RECORD</span></div>
+        <div class="mono" style="font-size:11.5px;color:var(--ink-3);">—</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="flex:0 0 40px;display:flex;align-items:center;gap:14px;padding:0 14px;background:var(--sunken-2);border-top:1px solid var(--hair);">
+        <span class="why">테스트 10개 · Step 94개 · 마지막 전체 실행 3시간 전</span>
+        <div style="flex:1;"></div>
+        <div class="btn sm">전체 실행</div>
+        <div class="btn sm off">Playwright 로 내보내기</div>
+        <span class="why">MVP 미지원</span>
+      </div>
+    </div>
+    <div style="flex:0 0 14px;"></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

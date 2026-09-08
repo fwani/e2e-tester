@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
-"""확정 디자인 `docs/design/*.dc.html` 에서 대조 기준값을 기계적으로 추출한다.
+"""디자인 `docs/design/008-visual-language/*.dc.html` 에서 대조 기준값을 기계적으로 뽑는다.
 
-DC-012 의 대조 기록은 "보고 비슷한가" 가 아니라 **확정 디자인에서 뽑은 값과의 대조**여야
+DC-012 의 대조 기록은 "보고 비슷한가" 가 아니라 **디자인에서 뽑은 값과의 대조**여야
 한다. 이 스크립트는 그 기준값 칸만 채운다.
 
 **판정하지 않는다.** `관측값`·`판정` 칸은 리뷰어 소유다
-(contracts/design-conformance.md §4). 구현자가 자기 구현을 판정하면 대조가 아니라
-자기 확인이 되고, 001 T156 이 정확히 그 이유로 미완으로 남아 있다.
+(contracts/design-conformance.md §4).
+
+## 2026-09-08 — 기준이 008 로 옮겨졌다
+
+이전 기준(`docs/design/*.dc.html` 8종 · `007-rework/` 11장)은 폐기했고
+`docs/design/_retired/` 로 옮겼다. **이 스크립트는 그 디렉터리를 읽지 않는다** —
+남아 있는 이유는 002·007 의 과거 판정을 다시 읽기 위해서이지 기준으로 쓰기 위해서가
+아니다 (`_retired/README.md`).
+
+시각 언어가 v1「브루탈리스트」에서 v2「계기판」으로 바뀌었다. `assert_baseline` 의
+단언도 함께 뒤집혔다 — 아래 주석을 보라.
 
     python3 scripts/design_baseline.py --json     # 사실만 JSON 으로
-    python3 scripts/design_baseline.py --write    # 대조표 8개 + 미정의 상태 파일 생성
+    python3 scripts/design_baseline.py --write    # 대조표 + 미정의 상태 파일 생성
 
 기준이 바뀌면(디자인 파일이 갱신되면) 다시 돌린다.
 """
@@ -24,47 +33,62 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
-DESIGN = ROOT / "docs" / "design"
+DESIGN = ROOT / "docs" / "design" / "008-visual-language"
 CANVAS = DESIGN / "canvas.json"
-OUT_DIR = ROOT / "specs" / "002-defect-fix-design-conformance" / "design-conformance"
+OUT_DIR = DESIGN / "conformance"
 
-# 화면 식별자 → (dc.html 파일, 제품의 대응 파일). contracts/design-conformance.md §1
+# 화면 식별자 → (dc.html 파일, 제품의 대응 파일).
 #
-# **007 이 대체한 6종의 `대응 파일` 경로는 이제 존재하지 않는다.** 지우지 않는 이유는
-# 002 의 대조 기록이 그 파일을 대상으로 한 판정이기 때문이다 — 경로를 고치면 그 판정이
-# 무엇을 본 것인지 알 수 없게 된다. 대체 관계는
-# `specs/007-unify-test-screens/design-conformance/replacement-map.md` 가 갖는다.
+# 통합 작업 화면의 여덟 국면은 **같은 껍데기의 상태**이므로 대응 파일이 겹친다 —
+# 그것이 007 이 만든 구조이고, 겹치는 것이 정상이다 (SC-001 · 구현 1벌).
 SCREENS: dict[str, tuple[str, str]] = {
+    "ProjectSetup": ("ProjectSetup.dc.html", "frontend/src/pages/ProjectSetup.tsx"),
+    "EmptyList": ("EmptyList.dc.html", "frontend/src/pages/TestList.tsx (테스트 0개)"),
     "TestList": ("TestList.dc.html", "frontend/src/pages/TestList.tsx"),
-    "CreateTest": ("CreateTest.dc.html", "frontend/src/pages/CreateTest.tsx"),
-    "AiRecord": ("AiRecord.dc.html", "frontend/src/pages/AiRecord.tsx"),
-    "Main": ("Main.dc.html", "frontend/src/pages/Runner.tsx"),
-    "RunnerPaused": ("RunnerPaused.dc.html", "frontend/src/pages/RunnerPaused.tsx"),
-    "Takeover": ("Takeover.dc.html", "frontend/src/pages/Takeover.tsx"),
-    "RunResult": ("RunResult.dc.html", "frontend/src/pages/RunResult.tsx"),
-    "StepInspector": ("StepInspector.dc.html", "frontend/src/pages/StepInspector.tsx"),
-    # 007 — 통합 작업 화면. 위 6종(TestList·CreateTest 제외)을 대체한다.
-    # 이 항목의 대조 기록은 007 의 디렉터리로 나간다 (OUT_DIR_007) — 002 의 기록은
-    # 그 라운드의 판정이므로 덮어쓰지 않는다.
-    "Workbench": (
-        "Workbench.dc.html",
-        "frontend/src/components/workbench/* · "
-        "frontend/src/pages/{SessionScreen,ResultView,EditView}.tsx",
+    "Create": ("Create.dc.html", "frontend/src/pages/ComposeView.tsx"),
+    "Record": ("Record.dc.html", "frontend/src/pages/SessionScreen.tsx (REC)"),
+    "AiWriting": ("AiWriting.dc.html", "frontend/src/pages/SessionScreen.tsx (AI)"),
+    "AiBlocked": ("AiBlocked.dc.html", "frontend/src/pages/SessionScreen.tsx (AI 차단)"),
+    "Takeover": ("Takeover.dc.html", "frontend/src/pages/SessionScreen.tsx (TKO)"),
+    "Run": ("Run.dc.html", "frontend/src/pages/SessionScreen.tsx (RUN)"),
+    "Paused": ("Paused.dc.html", "frontend/src/pages/SessionScreen.tsx (PAU)"),
+    "Finished": ("Finished.dc.html", "frontend/src/pages/SessionScreen.tsx (실행 종료)"),
+    "Result": ("Result.dc.html", "frontend/src/pages/ResultView.tsx"),
+    "Edit": ("Main.dc.html", "frontend/src/pages/EditView.tsx"),
+    "StepDetail": ("StepDetail.dc.html", "frontend/src/components/workbench/StepDetail.tsx"),
+    "Keys": ("Keys.dc.html", "frontend/src/pages/KeyManagement.tsx"),
+    "Secrets": ("Secrets.dc.html", "frontend/src/pages/SecretValues.tsx"),
+    "Language": ("Language.dc.html", "frontend/src/theme/tokens.css"),
+    "States": (
+        "States.dc.html",
+        "frontend/src/components/{ErrorNotice,SessionLostBanner,"
+        "LiveConnectionBanner,StartingIndicator}.tsx",
     ),
 }
 
-# 007 의 대조 기록 위치. `Workbench` 만 여기로 나간다.
-OUT_DIR_007 = ROOT / "specs" / "007-unify-test-screens" / "design-conformance"
-SCREENS_007 = {"Workbench"}
+# 라운드별 기록 분기는 더 이상 필요 없다 — 기준이 한 벌이다. 과거 라운드의 기록은
+# `specs/00{2,7}-*/design-conformance/` 에 그대로 있고 그 파일들이 가리키는 디자인은
+# `docs/design/_retired/` 에 있다.
+
+
+# 국면 화면 → 그 국면의 이름. 국면이 아닌 화면(목록·설정·언어 시트)은 여기 없다.
+PHASE_OF: dict[str, str] = {
+    "Create": "만들기",
+    "Record": "녹화",
+    "AiWriting": "AI 작성",
+    "AiBlocked": "AI 작성 · 막힘",
+    "Takeover": "사람이 이어받기",
+    "Run": "실행 중",
+    "Paused": "일시정지",
+    "Finished": "실행 종료",
+    "Result": "결과",
+    "Edit": "편집",
+}
 
 
 def out_dir_for(name: str) -> Path:
-    """화면 식별자 → 대조 기록을 쓸 디렉터리.
-
-    라운드마다 기록이 갈리는 이유는 판정이 그 라운드의 것이기 때문이다. 002 의
-    `RunResult.md` 판정을 007 이 덮어쓰면 왜 그렇게 정했는지의 이력이 사라진다.
-    """
-    return OUT_DIR_007 if name in SCREENS_007 else OUT_DIR
+    """화면 식별자 → 대조 기록을 쓸 디렉터리. 지금은 한 곳이다."""
+    return OUT_DIR
 
 
 # ─── 추출 ───────────────────────────────────────────────────────────────────
@@ -83,7 +107,9 @@ def extract(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
 
     # 최상위 컨테이너의 선언 폭·최소 높이. 아트보드의 기준 치수다.
-    root = re.search(r"width:\s*(\d+)px;\s*min-height:\s*(\d+)px", text)
+    # 008 의 아트보드는 `width:1440px;height:900px` 로 쓴다. 이전 판은 `min-height` 만
+    # 받아서 008 을 읽으면 전부 None 이 됐다 — 둘 다 받는다.
+    root = re.search(r"width:\s*(\d+)px;\s*(?:min-)?height:\s*(\d+)px", text)
 
     return {
         "file": path.name,
@@ -113,11 +139,9 @@ def collect() -> dict[str, Any]:
     for name, (dc_name, target) in SCREENS.items():
         path = DESIGN / dc_name
         if not path.exists():
-            if name in SCREENS_007:
-                # 007 의 통합 화면 artboard 는 초안이 만들어지기 전까지 없다. 없는
-                # 것을 오류로 세우면 002 의 8종 기준값 추출까지 함께 막힌다.
-                continue
-            sys.exit(f"확정 디자인 파일이 없습니다: {path}")
+            # 기준이 한 벌이므로 빠진 파일은 언제나 오류다. 이전 판에는 "초안이 아직
+            # 없을 수 있다" 는 예외가 있었는데, 그 예외가 필요했던 라운드는 끝났다.
+            sys.exit(f"디자인 파일이 없습니다: {path}")
         facts = extract(path)
         frame = frames.get(dc_name, {})
         facts["artboard_w"] = frame.get("w")
@@ -138,18 +162,46 @@ def collect() -> dict[str, Any]:
 
 
 def assert_baseline(data: dict[str, Any]) -> None:
-    """T004 — 기준이 바뀌면 즉시 드러나야 한다.
+    """기준이 바뀌면 즉시 드러나야 한다.
 
-    `border-radius` 0회는 이 라운드 디자인 준수의 근거 중 하나다(DC-004). 확정 디자인이
-    나중에 둥근 모서리를 도입하면 구현 쪽 회귀 가드(`DesignTokens.test.tsx`)가 거꾸로
-    틀린 것이 된다. 그 순간을 조용히 지나치지 않도록 여기서 막는다.
+    ## 2026-09-08 — 이 단언은 뒤집혔다
+
+    이전 판은 `radius` 가 **0회**여야 한다고 단언했다. 그것이 v1「브루탈리스트」의
+    정의였고, 그 주석은 이렇게 예고하고 있었다 — "확정 디자인이 나중에 둥근 모서리를
+    도입하면 구현 쪽 회귀 가드가 거꾸로 틀린 것이 된다. 그 순간을 조용히 지나치지
+    않도록 여기서 막는다."
+
+    그 순간이 왔다. v2「계기판」은 모서리 2·3·6px 를 **의도적으로** 쓰고, 1px 실선
+    테두리를 기본으로 쓰며, 하드 오프셋 그림자를 쓰지 않는다. 그래서 단언을 뒤집는다 —
+    없어야 할 것을 세는 대신 **있어야 할 것**을 센다. 다음에 언어가 또 바뀌면 이 함수가
+    다시 멈춘다. 그것이 이 함수의 일이다.
+
+    `frontend/tests/DesignTokens.test.tsx` 가 아직 v1 을 단언하고 있다 — 코드 전환의
+    첫 관문이다.
     """
     radius = data["totals"]["radius_occurrences"]
-    if radius != 0:
+    if radius == 0:
         sys.exit(
-            f"기준이 바뀌었습니다: 확정 디자인에 'radius' 가 {radius}회 등장합니다. "
-            "DC-004 와 frontend/tests/DesignTokens.test.tsx 를 함께 재검토하세요."
+            "기준이 바뀌었습니다: 디자인에 'radius' 가 0회입니다. v2「계기판」은 모서리를 "
+            "씁니다. v1 로 되돌린 것이라면 DesignTokens.test.tsx 와 함께 재검토하세요."
         )
+
+    # 하드 오프셋 그림자(흐림 반경 0)는 v1 의 서명이었다. v2 에 남아 있으면 두 언어가
+    # 섞인 것이다.
+    #
+    # `Language` 만 예외다 — 그 시트는 v1 버튼과 v2 버튼을 **나란히 놓아 왜 바꿨는지**
+    # 보여준다. 표본으로 그린 것이지 이 언어의 일부가 아니다. 예외를 이름으로 못 박아
+    # 두면 다른 화면에 섞여 들어올 때는 그대로 걸린다.
+    SPECIMEN = {"Language"}
+    hard = [
+        (name, v)
+        for name, s in data["screens"].items()
+        if name not in SPECIMEN
+        for v, _ in s["shadows"]
+        if re.match(r"^\s*\d+px \d+px 0(\s|$)", v)
+    ]
+    if hard:
+        sys.exit(f"v1 의 하드 오프셋 그림자가 남아 있습니다: {hard[:5]}")
 
     missing = [n for n, s in data["screens"].items() if not s["colors"]]
     if missing:
@@ -204,23 +256,16 @@ def _rows(name: str, s: dict[str, Any]) -> list[tuple[str, str, str]]:
     for h in heights[:6]:
         rows.append(("치수", f"고정 높이 {h}px", "확정 디자인 선언값"))
 
-    rows.append(("치수", "border-radius", "0회 — 모든 모서리 직각"))
+    rows.append(("치수", "border-radius", f"{s['radius_occurrences']}회 — 칩 2 · 조작·패널 3 · 겹침 6"))
 
-    if name in SCREENS_007:
-        # **상태 축은 국면마다 행을 갖는다.** 일곱 국면이 하나의 화면이므로 상태가
-        # 일곱이고, 한 행으로 뭉개면 리뷰어가 어느 국면을 봤는지 기록에 남지 않는다.
-        for phase in (
-            "녹화 중",
-            "AI 작성 중",
-            "사람이 직접 조작",
-            "실행 중",
-            "일시정지",
-            "결과",
-            "편집",
-        ):
-            rows.append(("상태", f"국면 「{phase}」", "artboard 의 해당 상태 블록과 대조한다"))
+    # 국면 화면은 **하나의 껍데기의 한 상태**다. 그 국면 이름을 상태 축에 못 박아 두면
+    # 리뷰어가 어느 상태를 본 것인지 기록에 남는다 (007 이 일곱 행을 한 표에 넣던 것을
+    # 화면당 한 행으로 되돌린 것이다 — 이제 국면마다 아트보드가 따로 있다).
+    phase = PHASE_OF.get(name)
+    if phase is not None:
+        rows.append(("상태", f"국면 「{phase}」", "이 아트보드가 그 국면의 유일한 기준이다"))
     else:
-        rows.append(("상태", "확정 디자인이 보여주는 상태", "리뷰어가 dc.html 을 열어 확인한다"))
+        rows.append(("상태", "디자인이 보여주는 상태", "리뷰어가 dc.html 을 열어 확인한다"))
 
     rows += [
         ("가감", "dc.html 에 없는 요소", "0개여야 한다"),
@@ -247,16 +292,14 @@ def write_tables(data: dict[str, Any], only: str | None = None) -> list[Path]:
         # 007 의 artboard 는 아직 승인 전이다. 그 사실이 표의 첫 줄에 있어야 판정이
         # 승인 없이 성립한 것으로 읽히지 않는다 (FR-254c · design-conformance-007 §5).
         approval = (
-            "\n> **이 artboard 는 승인 대기 중이며 대조 기준으로 확정되지 않았다** "
-            "(FR-254c · `contracts/design-conformance-007.md` §5). 승인 전 판정은 성립하지 않는다.\n"
-            if name in SCREENS_007
-            else ""
+            "\n> **채택 2026-09-08** — 이 아트보드가 이 화면의 대조 기준이다. "
+            "이전 기준(`docs/design/_retired/`)은 폐기됐다.\n"
         )
         out = target_dir / f"{name}.md"
         out.write_text(
             f"""# 디자인 대조 — {name} ({s["title"]})
 
-**기준**: `docs/design/{s["file"]}` — 아트보드 {s["artboard_w"]}×{s["artboard_h"]}
+**기준**: `docs/design/008-visual-language/{s["file"]}` — 아트보드 {s["artboard_w"]}×{s["artboard_h"]}
 **대상**: `{s["target"]}`
 **요구사항**: DC-002 ~ DC-007 · 완료 판정 SC-108
 {approval}
@@ -276,7 +319,7 @@ def write_tables(data: dict[str, Any], only: str | None = None) -> list[Path]:
 ## 리뷰 방법
 
 ```bash
-open docs/design/{s["file"]}    # 확정 디자인
+open docs/design/008-visual-language/{s["file"]}    # 디자인
 # 제품의 같은 화면을 나란히 띄우고 위 항목을 하나씩 대조한다
 ```
 
@@ -339,8 +382,12 @@ def main() -> None:
             print(f"생성: {p.relative_to(ROOT)}")
         print(f"생성: {states.relative_to(ROOT)}")
         t = data["totals"]
-        print(f"\n확정 디자인 8종 — div {t['div']} / svg {t['svg']} / radius {t['radius_occurrences']}회")
-        print("판정 칸은 비어 있다. 리뷰어가 채운다 (T099).")
+        n = len(data["screens"])
+        print(
+            f"\n디자인 {n}종 — div {t['div']} / svg {t['svg']} / "
+            f"radius {t['radius_occurrences']}회"
+        )
+        print("판정 칸은 비어 있다. 리뷰어가 채운다.")
         return
 
     print(json.dumps(data, ensure_ascii=False, indent=2))
