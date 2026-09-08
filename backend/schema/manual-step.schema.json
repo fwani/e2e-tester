@@ -1,0 +1,280 @@
+{
+  "$defs": {
+    "AssertTextSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "assert_text",
+          "default": "assert_text",
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "match": {
+          "$ref": "#/$defs/MatchMode",
+          "default": "contains"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "timeout_ms": {
+          "anyOf": [
+            {
+              "maximum": 60000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Ms"
+        },
+        "value": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tab",
+        "timeout_ms",
+        "kind",
+        "value",
+        "match"
+      ],
+      "title": "AssertTextSpec",
+      "type": "object"
+    },
+    "AssertUrlSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "assert_url",
+          "default": "assert_url",
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "match": {
+          "$ref": "#/$defs/MatchMode",
+          "default": "equals"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "timeout_ms": {
+          "anyOf": [
+            {
+              "maximum": 60000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Ms"
+        },
+        "url": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tab",
+        "timeout_ms",
+        "kind",
+        "url",
+        "match"
+      ],
+      "title": "AssertUrlSpec",
+      "type": "object"
+    },
+    "CloseTabSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "close_tab",
+          "default": "close_tab",
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "timeout_ms": {
+          "anyOf": [
+            {
+              "maximum": 60000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Ms"
+        }
+      },
+      "required": [
+        "label",
+        "tab",
+        "timeout_ms",
+        "kind"
+      ],
+      "title": "CloseTabSpec",
+      "type": "object"
+    },
+    "MatchMode": {
+      "enum": [
+        "equals",
+        "contains"
+      ],
+      "title": "MatchMode",
+      "type": "string"
+    },
+    "NavigateSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "navigate",
+          "default": "navigate",
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "timeout_ms": {
+          "anyOf": [
+            {
+              "maximum": 60000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Ms"
+        },
+        "url": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tab",
+        "timeout_ms",
+        "kind",
+        "url"
+      ],
+      "title": "NavigateSpec",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "assert_text": "#/$defs/AssertTextSpec",
+      "assert_url": "#/$defs/AssertUrlSpec",
+      "close_tab": "#/$defs/CloseTabSpec",
+      "navigate": "#/$defs/NavigateSpec"
+    },
+    "propertyName": "kind"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/NavigateSpec"
+    },
+    {
+      "$ref": "#/$defs/CloseTabSpec"
+    },
+    {
+      "$ref": "#/$defs/AssertUrlSpec"
+    },
+    {
+      "$ref": "#/$defs/AssertTextSpec"
+    }
+  ],
+  "title": "manual-step"
+}

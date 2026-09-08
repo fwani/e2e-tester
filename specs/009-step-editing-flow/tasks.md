@@ -96,23 +96,23 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 
 ### 정본 모델 — 손으로 만들 수 있는 종류 (FR-286)
 
-- [ ] T013 [US1] `backend/src/itb/domain/manual_step.py` 를 만든다 — `InsertableKind`(`navigate`·`close_tab`·`assert_url`·`assert_text`) · `ManualStepSpec` 판별 유니온 · 순수 함수 `build_step(spec, step_id) -> Step`. 필드와 검증 규칙은 [data-model.md](./data-model.md) §1·§2 가 정본이다. **`target` 필드를 두지 않는다** — 요청 모델에 그 종류가 없는 것이 원칙 IV 를 타입으로 지키는 방법이다. 라벨 파생 규칙(§2)과 200자 절단을 포함한다
-- [ ] T014 [P] [US1] `backend/tests/unit/test_manual_step.py` — 네 종류가 각각 올바른 도메인 Step 을 만드는지, 라벨이 파생되는지, `label` 을 주면 그것을 쓰는지, `assert_url` 에 `target` 을 실으면 **모델 단계에서** 거절되는지, 긴 값이 200자로 잘리는지
-- [ ] T015 [US1] `backend/src/itb/schema/export.py` 의 `MODELS` 에 `"manual-step": TypeAdapter(ManualStepSpec)` 를 더하고 `uv run python -m itb.schema.export` 로 `backend/schema/manual-step.schema.json` 을 생성한다. 이어서 `cd frontend && npm run gen:types` 로 `frontend/src/types/generated/manual-step.d.ts` 를 만들고 `frontend/src/types/generated/README.md` 의 파일 목록에 추가한다
-- [ ] T016 [US1] `.github/workflows/ci.yml` 의 스키마 드리프트 비교 경로에 `backend/schema/manual-step.schema.json` 을 추가한다. 지금은 `step-dsl.schema.json` 만 비교하므로 새 스키마의 드리프트가 잡히지 않는다
-- [ ] T017 [US1] `cd backend && uv run lint-imports` — `domain-is-pure` 가 통과하는지 확인한다. 실패하면 `manual_step.py` 가 domain 밖을 임포트한 것이며 [research.md](./research.md) R1 의 결정이 깨진 것이다
+- [X] T013 [US1] `backend/src/itb/domain/manual_step.py` 를 만든다 — `InsertableKind`(`navigate`·`close_tab`·`assert_url`·`assert_text`) · `ManualStepSpec` 판별 유니온 · 순수 함수 `build_step(spec, step_id) -> Step`. 필드와 검증 규칙은 [data-model.md](./data-model.md) §1·§2 가 정본이다. **`target` 필드를 두지 않는다** — 요청 모델에 그 종류가 없는 것이 원칙 IV 를 타입으로 지키는 방법이다. 라벨 파생 규칙(§2)과 200자 절단을 포함한다
+- [X] T014 [P] [US1] `backend/tests/unit/test_manual_step.py` — 네 종류가 각각 올바른 도메인 Step 을 만드는지, 라벨이 파생되는지, `label` 을 주면 그것을 쓰는지, `assert_url` 에 `target` 을 실으면 **모델 단계에서** 거절되는지, 긴 값이 200자로 잘리는지
+- [X] T015 [US1] `backend/src/itb/schema/export.py` 의 `MODELS` 에 `"manual-step": TypeAdapter(ManualStepSpec)` 를 더하고 `uv run python -m itb.schema.export` 로 `backend/schema/manual-step.schema.json` 을 생성한다. 이어서 `cd frontend && npm run gen:types` 로 `frontend/src/types/generated/manual-step.d.ts` 를 만들고 `frontend/src/types/generated/README.md` 의 파일 목록에 추가한다
+- [X] T016 [US1] `.github/workflows/ci.yml` 의 스키마 드리프트 비교 경로에 `backend/schema/manual-step.schema.json` 을 추가한다. 지금은 `step-dsl.schema.json` 만 비교하므로 새 스키마의 드리프트가 잡히지 않는다
+- [X] T017 [US1] `cd backend && uv run lint-imports` — `domain-is-pure` 가 통과하는지 확인한다. 실패하면 `manual_step.py` 가 domain 밖을 임포트한 것이며 [research.md](./research.md) R1 의 결정이 깨진 것이다
 
 ### 세션 없는 편집에 삽입 연산 (FR-285·FR-288·FR-289·FR-312)
 
-- [ ] T018 [US1] `backend/src/itb/api/routes/tests.py` 에 `InsertStepOp`(`op`·`at`·`spec`)를 더하고 `EditOp` 유니온에 넣는다. `_apply_edits` 에 분기를 추가해 `build_step(spec, allocate_step_id(steps))` 로 만든 Step 을 `itb.execution.step_edits.insert_step(steps, 0, step, op.at)` 로 넣는다. **`step_edits` 를 고치지 않는다** — 그 모듈이 연산을 갖는다는 규칙은 그대로다 ([data-model.md](./data-model.md) §3)
-- [ ] T019 [US1] `backend/src/itb/api/routes/tests.py` 에 삽입 경고를 더한다 (FR-312 · 막지 않는다) — `close_tab` 의 `tab` 이 현재 정의에서 열리지 않는 번호일 때, `navigate` 를 목록 중간에 넣었을 때(기존 `_reorder_warning` 문장 재사용). 문장은 **한 곳에서만** 만든다
-- [ ] T020 [P] [US1] `backend/tests/contract/test_definition_edit_api.py` 에 삽입 계약을 더한다 — 네 종류가 각각 지정 위치에 들어가는지, `at` 범위 초과가 `DEFINITION_INVALID` 로 거절되는지, 요소를 요구하는 `kind` 가 거절되는지, **거절 응답 본문에 넘어온 값이 없는지**(003 EC-005 — 판별 유니온 거절은 전역 `RequestValidationError` 핸들러를 타고 `itb/api/errors.py` 의 `_reason` 이 닫힌 문구 집합만 쓴다. 그 경로를 실제로 타는지까지 확인한다), `revision` 없이 저장이 거절되는지, 삽입과 순서 변경이 한 묶음에서 순서대로 적용되는지, 하나가 실패하면 파일이 쓰이지 않는지(전부 또는 전무)
+- [X] T018 [US1] `backend/src/itb/api/routes/tests.py` 에 `InsertStepOp`(`op`·`at`·`spec`)를 더하고 `EditOp` 유니온에 넣는다. `_apply_edits` 에 분기를 추가해 `build_step(spec, allocate_step_id(steps))` 로 만든 Step 을 `itb.execution.step_edits.insert_step(steps, 0, step, op.at)` 로 넣는다. **`step_edits` 를 고치지 않는다** — 그 모듈이 연산을 갖는다는 규칙은 그대로다 ([data-model.md](./data-model.md) §3)
+- [X] T019 [US1] `backend/src/itb/api/routes/tests.py` 에 삽입 경고를 더한다 (FR-312 · 막지 않는다) — `close_tab` 의 `tab` 이 현재 정의에서 열리지 않는 번호일 때, `navigate` 를 목록 중간에 넣었을 때(기존 `_reorder_warning` 문장 재사용). 문장은 **한 곳에서만** 만든다
+- [X] T020 [P] [US1] `backend/tests/contract/test_definition_edit_api.py` 에 삽입 계약을 더한다 — 네 종류가 각각 지정 위치에 들어가는지, `at` 범위 초과가 `DEFINITION_INVALID` 로 거절되는지, 요소를 요구하는 `kind` 가 거절되는지, **거절 응답 본문에 넘어온 값이 없는지**(003 EC-005 — 판별 유니온 거절은 전역 `RequestValidationError` 핸들러를 타고 `itb/api/errors.py` 의 `_reason` 이 닫힌 문구 집합만 쓴다. 그 경로를 실제로 타는지까지 확인한다), `revision` 없이 저장이 거절되는지, 삽입과 순서 변경이 한 묶음에서 순서대로 적용되는지, 하나가 실패하면 파일이 쓰이지 않는지(전부 또는 전무)
 
 ### 일시정지 세션에 직접 입력 삽입 (FR-290)
 
-- [ ] T021 [US1] `backend/src/itb/api/routes/steps.py` 에 `POST /{session_id}/steps:manual` 을 더한다 — `require_paused` 를 지나고, `at` 을 생략하면 일시정지 위치, 응답은 기존 `StepsResponse`, 이벤트는 기존 `step_added` 를 그대로 발행한다. **브라우저에 아무 명령도 보내지 않는다** ([data-model.md](./data-model.md) §4). 기존 `POST /{session_id}/steps` 는 **건드리지 않는다** ([research.md](./research.md) R2)
-- [ ] T022 [P] [US1] `backend/tests/contract/test_step_edit_api.py` 에 새 입구의 계약을 더한다 — 일시정지가 아니면 거절되는지(FR-306), `at` 생략 시 일시정지 위치에 들어가는지, 실행 위치가 밀리지 않아 방금 넣은 Step 이 다음에 실행되는지, 기존 입구의 거절 규칙이 **그대로 통과하는지**(회귀)
-- [ ] T023 [US1] `backend/tests/integration/test_manual_insert_roundtrip.py` — 왕복 무결성 (SC-510 · 헌법 품질 게이트 2). 삽입 → 저장 → `GET /definition` 재확인 → `replay` 실행으로 그 Step 이 **실제로 수행됐음**까지 본다 ([research.md](./research.md) R9)
+- [X] T021 [US1] `backend/src/itb/api/routes/steps.py` 에 `POST /{session_id}/steps:manual` 을 더한다 — `require_paused` 를 지나고, `at` 을 생략하면 일시정지 위치, 응답은 기존 `StepsResponse`, 이벤트는 기존 `step_added` 를 그대로 발행한다. **브라우저에 아무 명령도 보내지 않는다** ([data-model.md](./data-model.md) §4). 기존 `POST /{session_id}/steps` 는 **건드리지 않는다** ([research.md](./research.md) R2)
+- [X] T022 [P] [US1] `backend/tests/contract/test_step_edit_api.py` 에 새 입구의 계약을 더한다 — 일시정지가 아니면 거절되는지(FR-306), `at` 생략 시 일시정지 위치에 들어가는지, 실행 위치가 밀리지 않아 방금 넣은 Step 이 다음에 실행되는지, 기존 입구의 거절 규칙이 **그대로 통과하는지**(회귀)
+- [X] T023 [US1] `backend/tests/integration/test_manual_insert_roundtrip.py` — 왕복 무결성 (SC-510 · 헌법 품질 게이트 2). 삽입 → 저장 → `GET /definition` 재확인 → `replay` 실행으로 그 Step 이 **실제로 수행됐음**까지 본다 ([research.md](./research.md) R9)
 
 ### 화면 — 편집 국면 (FR-287·FR-289·FR-310)
 

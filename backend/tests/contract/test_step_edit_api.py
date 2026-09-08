@@ -24,6 +24,8 @@ from itb.execution.state_machine import SessionState
 
 EDIT_ENDPOINTS: list[tuple[str, str, dict[str, Any] | None]] = [
     ("post", "/steps", {"step": {}}),
+    # 009 — 손으로 넣는 입구도 같은 게이트를 지난다 (FR-306).
+    ("post", "/steps:manual", {"spec": {"kind": "navigate", "url": "/a"}}),
     ("patch", "/steps/step-01", {"label": "바꾼 이름"}),
     ("delete", "/steps/step-01", None),
     ("post", "/steps:reorder", {"order": ["step-01"]}),
@@ -211,3 +213,167 @@ def test_repick_on_step_without_slot_is_rejected(
     )
     assert resp.status_code == 400
     assert "drop_target" in resp.json()["error"]["message"]
+
+
+# ─── 009 T022 · POST /steps:manual (FR-290·FR-306 · 계약 §4-2) ──────────────
+
+
+def _paused(worked_client: tuple[TestClient, str]) -> tuple[TestClient, str]:
+    client, sid = worked_client
+    sessions_mod._WORK[sid].session.state = SessionState.PAUSED  # type: ignore[attr-defined]
+    return client, sid
+
+
+@pytest.mark.parametrize(
+    ("spec", "expect_type"),
+    [
+        ({"kind": "navigate", "url": "/orders"}, "navigate"),
+        ({"kind": "close_tab", "tab": 0}, "close_tab"),
+        ({"kind": "assert_url", "url": "/done"}, "assertion"),
+        ({"kind": "assert_text", "value": "완료"}, "assertion"),
+    ],
+)
+def test_manual_네_종류를_넣을_수_있다(
+    worked_client: tuple[TestClient, str], spec: dict[str, Any], expect_type: str
+) -> None:
+    client, sid = _paused(worked_client)
+
+    resp = client.post(f"/api/sessions/{sid}/steps:manual", json={"spec": spec})
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert set(body) == {"steps", "edit_warnings", "current_step_index"}
+    assert any(s["type"] == expect_type for s in body["steps"])
+
+
+def test_manual_at_을_생략하면_일시정지_위치에_들어간다(
+    worked_client: tuple[TestClient, str],
+) -> None:
+    """`InsertStepRequest` 와 같은 규칙이다 (`step_edits._clamp`)."""
+    client, sid = _paused(worked_client)
+
+    resp = client.post(
+        f"/api/sessions/{sid}/steps:manual",
+        json={"spec": {"kind": "navigate", "url": "/orders"}},
+    )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    # 일시정지 위치는 1 이었다 — 그 자리에 들어간다.
+    assert body["steps"][1]["type"] == "navigate"
+
+
+def test_manual_넣은_step_이_다음에_실행된다(
+    worked_client: tuple[TestClient, str],
+) -> None:
+    """실행 위치를 밀지 않는다 — 밀면 방금 넣은 Step 이 조용히 건너뛰어진다.
+
+    `step_edits.insert_step` 의 규칙이며, 새 입구에도 그대로 적용된다.
+    """
+    client, sid = _paused(worked_client)
+
+    resp = client.post(
+        f"/api/sessions/{sid}/steps:manual",
+        json={"spec": {"kind": "navigate", "url": "/orders"}},
+    )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["current_step_index"] == 1
+    assert body["steps"][body["current_step_index"]]["type"] == "navigate"
+
+
+def test_manual_은_기존_step_added_이벤트를_쓴다(
+    worked_client: tuple[TestClient, str],
+) -> None:
+    """새 이벤트를 만들지 않는다 — 화면이 같은 일을 두 가지로 듣게 하지 않는다."""
+    client, sid = _paused(worked_client)
+
+    client.post(
+        f"/api/sessions/{sid}/steps:manual",
+        json={"spec": {"kind": "navigate", "url": "/orders"}, "at": 0},
+    )
+
+    emitted = sessions_mod._WORK[sid].session.emitted  # type: ignore[attr-defined]
+    kinds = [e[0] for e in emitted]
+    assert "step_added" in kinds
+    payload = next(p for k, p in emitted if k == "step_added")
+    assert payload["at_index"] == 0
+
+
+@pytest.mark.parametrize("kind", ["click", "fill", "select", "hover", "drag"])
+def test_manual_요소를_요구하는_종류는_거절한다(
+    worked_client: tuple[TestClient, str], kind: str
+) -> None:
+    """원칙 IV — 요청 모델에 그 종류가 없다 (FR-287)."""
+    client, sid = _paused(worked_client)
+
+    resp = client.post(
+        f"/api/sessions/{sid}/steps:manual", json={"spec": {"kind": kind, "url": "/x"}}
+    )
+
+    assert resp.status_code == 422, resp.text
+
+
+def test_manual_거절_응답에_넘어온_값이_실리지_않는다(
+    worked_client: tuple[TestClient, str],
+) -> None:
+    """003 EC-005 — 이 입구도 같은 규칙을 지킨다."""
+    client, sid = _paused(worked_client)
+    secret = "비밀번호1234"
+
+    resp = client.post(
+        f"/api/sessions/{sid}/steps:manual",
+        json={"spec": {"kind": "fill", "value": secret}},
+    )
+
+    assert resp.status_code == 422
+    assert secret not in resp.text
+
+
+def test_기존_입구의_거절_규칙이_그대로다(worked_client: tuple[TestClient, str]) -> None:
+    """회귀 — 새 입구를 더하면서 기존 입구를 좁히지 않았다 (research R2)."""
+    client, sid = _paused(worked_client)
+    secret = "비밀번호1234"
+
+    resp = client.post(
+        f"/api/sessions/{sid}/steps",
+        json={"step": {"type": "fill", "id": "나쁜id", "value": secret}},
+    )
+
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "DEFINITION_INVALID"
+    assert secret not in resp.text
+
+
+def test_세_입구가_같은_목록을_만든다(worked_client: tuple[TestClient, str]) -> None:
+    """research R2 의 전제 — 삽입 규칙이 갈리지 않는다.
+
+    같은 위치에 같은 종류를 넣으면 완성 Step 입구와 서술 입구의 결과가 같아야 한다.
+    정의 편집 입구는 세션이 없으므로 `test_definition_edit_api.py` 가 본다.
+    """
+    client, sid = _paused(worked_client)
+    raw = {
+        "type": "navigate",
+        "id": "step-09",
+        "label": "주소로 이동 — /orders",
+        "url": "/orders",
+    }
+
+    by_raw = client.post(f"/api/sessions/{sid}/steps", json={"step": raw, "at": 0})
+    assert by_raw.status_code == 200, by_raw.text
+    first = by_raw.json()["steps"][0]
+
+    # 되돌리고 서술 입구로 같은 자리에 넣는다.
+    assert client.delete(f"/api/sessions/{sid}/steps/step-09").status_code == 200
+    by_spec = client.post(
+        f"/api/sessions/{sid}/steps:manual",
+        json={"spec": {"kind": "navigate", "url": "/orders"}, "at": 0},
+    )
+    assert by_spec.status_code == 200, by_spec.text
+    second = by_spec.json()["steps"][0]
+
+    # id 만 다르다 — 자리·종류·라벨·작성자·값이 같다.
+    assert {k: v for k, v in first.items() if k != "id"} == {
+        k: v for k, v in second.items() if k != "id"
+    }

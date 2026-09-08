@@ -19,7 +19,14 @@ from itb.api.errors import (
     not_implemented,
 )
 from itb.api.state import AppState, get_state
+from itb.domain.manual_step import (
+    CloseTabSpec,
+    ManualStepSpec,
+    NavigateSpec,
+    build_step,
+)
 from itb.domain.run_result import Outcome, RunResult, RunScope
+from itb.domain.step import Step
 from itb.domain.test_case import (
     AuthoringMode,
     Test,
@@ -33,7 +40,9 @@ from itb.execution.step_edits import (
     ReorderMismatchError,
     StepNotFoundError,
     ValueNotSupportedError,
+    allocate_step_id,
     delete_step,
+    insert_step,
     reorder_steps,
     update_step,
 )
@@ -328,6 +337,28 @@ class UpdateStepOp(BaseModel):
         return self
 
 
+class InsertStepOp(BaseModel):
+    """Step 을 목록의 임의 위치에 넣는다 (009 FR-285 · 계약 §4-1).
+
+    **세션 없는 편집에 삽입이 없던 것이 비대칭이었다.** 같은 화면에서 삭제와 순서 변경은
+    되는데 추가만 안 됐다 (009 관찰 M-02). 006 이 그것을 뺀 근거는 원칙 IV 였고 그 판단은
+    옳았다 — 다만 요소를 요구하지 **않는** 종류까지 함께 빠졌다 (M-11).
+
+    ``spec`` 이 판별 유니온이므로 요소를 요구하는 종류는 **여기 도달하지 못한다.** 런타임
+    검사가 아니라 타입이 막는다 (``itb.domain.manual_step``).
+
+    ``at`` 은 **그 위치 앞**이다. 범위를 벗어나면 거절한다 — `insert_step` 은 클램프하지만
+    (일시정지 위치를 기준으로 쓰이는 함수라서) 정의 편집에서 조용히 다른 자리에 넣는 것은
+    사용자가 의도한 어떤 상태도 아니다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    op: Literal["insert"]
+    at: int = Field(ge=0)
+    spec: ManualStepSpec
+
+
 class DeleteStepOp(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -357,7 +388,7 @@ class SetStartUrlOp(BaseModel):
 
 
 EditOp = Annotated[
-    UpdateStepOp | DeleteStepOp | ReorderOp | SetNameOp | SetStartUrlOp,
+    InsertStepOp | UpdateStepOp | DeleteStepOp | ReorderOp | SetNameOp | SetStartUrlOp,
     Field(discriminator="op"),
 ]
 
@@ -517,11 +548,43 @@ def _reorder_warning(before: list[str], after: list[str], test: Test) -> str | N
         if kind != "navigate":
             continue
         if before.index(step_id) < after.index(step_id):
-            return (
-                "주소 이동 Step 이 뒤로 밀렸습니다. 로그인 같은 선행 상태가 필요한 Step 이 "
-                "앞으로 왔을 수 있습니다 — 저장 후 「처음부터 실행」으로 확인하세요."
-            )
+            return NAVIGATE_MOVED_BACK
     return None
+
+
+NAVIGATE_MOVED_BACK = (
+    "주소 이동 Step 이 뒤로 밀렸습니다. 로그인 같은 선행 상태가 필요한 Step 이 "
+    "앞으로 왔을 수 있습니다 — 저장 후 「처음부터 실행」으로 확인하세요."
+)
+"""순서가 바뀌어 선행 상태가 깨질 수 있다는 경고. **한 곳에서만 만든다.**
+
+순서 변경(`_reorder_warning`)과 삽입(`_insert_warnings`)이 같은 상황을 만들 수 있으므로
+문장을 공유한다. 두 곳에서 만들면 같은 상황에 다른 안내가 나가고, 사용자는 두 상황이 다른
+것이라고 읽는다.
+"""
+
+
+def _insert_warnings(steps: list[Step], op: InsertStepOp) -> list[str]:
+    """삽입이 남기는 경고 (009 FR-312). **저장을 막지 않는다.**
+
+    막지 않는 이유는 `_reorder_warning` 과 같다 — 무엇이 선행 상태인지는 대상 앱마다
+    다르므로 제품이 단정할 수 없다. 규칙은 얕게 시작한다.
+
+    `close_tab` 의 탭 번호를 저장 시점에 막지 않는 이유: 번호의 유효성이 **실행 흐름**에
+    달려 있다. 앞선 Step 이 새 탭을 열면 유효해지고, 그 판단은 정의만 봐서는 못 한다.
+    """
+    notes: list[str] = []
+    if isinstance(op.spec, CloseTabSpec) and op.spec.tab > 0:
+        opened = {s.tab for s in steps[: op.at]}
+        if op.spec.tab not in opened:
+            notes.append(
+                f"탭 {op.spec.tab} 은 이 자리까지의 Step 에 나오지 않습니다. "
+                "실행할 때 그 탭이 없으면 이 Step 에서 실패합니다 — "
+                "저장 후 「처음부터 실행」으로 확인하세요."
+            )
+    if isinstance(op.spec, NavigateSpec) and 0 < op.at < len(steps):
+        notes.append(NAVIGATE_MOVED_BACK)
+    return notes
 
 
 def _apply_edits(test: Test, edits: list[EditOp]) -> tuple[Test, list[str]]:
@@ -543,7 +606,21 @@ def _apply_edits(test: Test, edits: list[EditOp]) -> tuple[Test, list[str]]:
 
     for op in edits:
         try:
-            if isinstance(op, UpdateStepOp):
+            if isinstance(op, InsertStepOp):
+                if op.at > len(steps):
+                    raise bad_request(
+                        ErrorCode.DEFINITION_INVALID,
+                        f"넣을 위치가 범위를 벗어났습니다: {op.at} (Step {len(steps)}개)",
+                        next_action="목록에서 넣을 자리를 다시 고른 뒤 저장하세요.",
+                    )
+                for note in _insert_warnings(steps, op):
+                    if note not in warnings:
+                        warnings.append(note)
+                # id 는 서버가 매긴다 — 쓰인 번호를 피하는 규칙이 한 곳에 있다 (research R6).
+                step = build_step(op.spec, allocate_step_id(steps))
+                # `current_step_index=0` 은 다른 연산과 같다. 정의 편집에는 실행 위치가 없다.
+                steps = insert_step(steps, 0, step, op.at).steps
+            elif isinstance(op, UpdateStepOp):
                 _reject_plaintext_over_secret(test, op)
                 steps = update_step(
                     steps,

@@ -113,7 +113,7 @@ jobs:
           cd backend && uv run python -m itb.schema.export && cd ..
           cd frontend && npm run gen:types && cd ..
           git diff --exit-code -- \
-            backend/schema/step-dsl.schema.json \
+            backend/schema/ \
             frontend/src/types/generated/ \
             || { echo "::error::스키마 생성물이 커밋된 내용과 다릅니다. 재생성 후 커밋하세요."; exit 1; }
 
