@@ -359,3 +359,130 @@ Task: "replacement-map.md"
 1회차의 5건은 전부 닫혔다. 2회차가 찾은 것은 하나이며 **판정 주체**에 관한 것이다.
 
 - [X] T097 SC-008 을 사람 재확인 항목으로 등록 in `docs/PENDING-HUMAN-VERIFICATION.md` per SC-008 (missing) — 걷기(`docs/ux/ux-walkthrough-007.md`)는 **구현자가** 걸었고 「지금 무엇을 할 수 있는지 몰랐다 / 화면이 바뀌어 보던 것을 잃었다 0건」도 구현자의 판정이다. 이 저장소의 규칙은 그것을 검증으로 세지 않는다 (`PENDING-HUMAN-VERIFICATION.md` 서문 · 002 T099 · 001 T156 이 같은 이유로 열려 있다). 005 T124(「상」 9건 재확인)와 같은 형태로 등록한다 — 무엇을 다시 걷는지, 판정 값이 무엇인지, 구현자의 관측이 무엇이었는지
+
+---
+
+# 2회차 개정 (2026-09-08) — 주 자리와 보조 자리가 뒤바뀐 것을 고친다
+
+1회차 T001~T097 은 완료다. 아래는 2회차 개정(spec S-12~S-15 · FR-256~262 · US5·US6)의
+작업이다. `plan.md` 「Phase 2b」가 정한 **두 묶음이며 순서를 바꾸지 않는다.**
+
+## Phase 10: User Story 5 - 지금 하는 일이 큰 자리를 갖는다 (Priority: P1) 🎯 2회차 MVP
+
+**Goal**: ③ 좌측 두 자리의 세로 비율을 국면이 정한다. 편집 국면에서 편집면이 남는 높이
+전부를, 결과 국면에서 「왜 멈췄나」가 정해진 높이를 갖는다
+
+**Independent Test**: 여덟 국면을 차례로 열어 ③ 좌측 두 자리의 높이를 재고, 그 국면의 주
+작업이 들어간 자리가 다른 자리보다 크거나 같은지 대조한다 (`quickstart.md` W-8)
+
+**⚠️ 이 묶음은 쪼개서 멈출 수 없다** (research R13). 중간에 멈추면 어떤 국면은 새 규칙,
+어떤 국면은 옛 규칙이 되어 FR-256 이 성립하지 않는다. T098~T107 이 한 커밋이다
+
+### 규칙을 먼저 세운다
+
+- [ ] T098 [US5] 세로 배분 표 in `frontend/src/lib/layout.ts` (신설) — `SlotSize`(`fill` · `content` · `fixed`) · `VERTICAL_SPLIT: Record<Phase, VerticalSplit>` 여덟 국면. 값은 `ui-contract.md` §1-5 표 그대로. **`Record<Phase, …>` 이므로 국면을 더하면 컴파일러가 배분을 요구한다** — `PHASE_TABLE` 과 같은 규율 (research R9)
+- [ ] T099 [P] [US5] 배분 검사 in `frontend/tests/VerticalSplit.test.ts` (신설) per SC-010 · UC-100 — 넷을 센다: ① 여덟 국면 전부 채움 ② **한 국면에서 두 자리가 동시에 `fill` 이 아니고 동시에 `content` 도 아니다** ③ `fill` 인 자리가 그 국면의 주 작업이다 ④ `TargetPane.tsx`·`WorkArea.tsx` 원문에 `flex: "1"`·`flex: 0 0 auto` 리터럴이 없다 (S-12 재발 방지)
+
+### 타입과 이름을 고친다
+
+- [ ] T100 [US5] `PhaseAside` → `WorkAreaView` 개명 + `kind` 3종 추가 in `frontend/src/components/workbench/model.ts` per FR-218e-1 · data-model §2-3 — `WorkbenchModel.aside` → `.work`, `edit_summary` → `edit_fields`, 신설 `compose_form`(만들기) · `run_progress`(실행·녹화 42px 띠) · `failure_detail.attempts`(FR-262). **이름을 바꾸는 것이 이 작업의 목적이다** — 1회차 이름이 이 자리를 보조로 규정했고 그 규정이 편집 폼을 42px 띠에 넣는 판단으로 이어졌다 (S-12)
+- [ ] T101 [US5] `PhaseAside.tsx` → `WorkArea.tsx` 개명 in `frontend/src/components/workbench/` per FR-218e-1 — **`AlwaysVisibleFailure` 의 구조·인자·호출 위치를 손대지 않는다.** 국면·세션 상태를 인자로 받지 않는 성질이 001 R2 방지 장치의 전부다 (research R15). `AiFailureVisible.test.tsx` 통과를 유지한 채 개명한다
+
+### 크기를 인자로 내린다
+
+- [ ] T102 [US5] `TargetPane` 이 크기를 인자로 받는다 in `frontend/src/components/workbench/TargetPane.tsx` per FR-256 — 지금 하드코딩된 `flex: "1"` 을 제거하고 `size: SlotSize` 를 받는다. **자기 크기를 모르게 만드는 것이 요점이다**
+- [ ] T103 [US5] `WorkArea` 가 크기를 인자로 받는다 in `frontend/src/components/workbench/WorkArea.tsx` per FR-256 — 지금 하드코딩된 `flex: 0 0 auto` · `minHeight: 42` 를 제거하고 `size: SlotSize` 를 받는다. `content` 일 때만 최소 42px 을 적용한다
+- [ ] T104 [US5] `Workbench` 가 배분을 국면으로 조회해 두 자리에 내려 준다 in `frontend/src/components/workbench/Workbench.tsx` per FR-256 · UC-100 — `VERTICAL_SPLIT[model.phase]` 하나만 읽는다. 표시 컴포넌트가 표를 직접 읽지 않는다
+
+### 국면 어댑터를 새 자리로 옮긴다
+
+- [ ] T105 [US5] 편집 필드를 작업 영역으로 in `frontend/src/pages/EditView.tsx` per FR-257 · FR-261 — `work: { kind: "edit_fields", fields }` 가 남는 높이 전부를 갖고, `target: open_browser` 는 `fixed 118`. **브라우저 여는 조작은 그 자리 안에 유지한다** — 자리를 없애는 것과 줄이는 것은 다르다 (S-12)
+- [ ] T106 [US5] 시도한 locator 기록을 작업 영역으로 in `frontend/src/pages/ResultView.tsx` per FR-262 — `work: { kind: "failure_detail", attempts }`. 지금은 `StepDetail` 겹침을 열어야 보인다 (S-13). **겹침 상세의 표는 남긴다** — 그것은 지목한 Step 의 것이고 작업 영역의 것은 실패 Step 고정이다
+- [ ] T107 [US5] 실행·녹화의 42px 띠를 타입 안으로 in `frontend/src/pages/SessionScreen.tsx` per FR-256 · data-model §2-3 — 지금 `noticesExtra` 로 우회해 넣어 배분표에 잡히지 않는다. `work: { kind: "run_progress" }` 로 옮겨 ③-b 가 되게 한다
+- [ ] T108 [US5] 개명·이동으로 깨지는 기존 테스트 갱신 in `frontend/tests/` — 헌법 게이트 4: **삭제·건너뛰기 금지, 갱신으로만 통과시킨다.** 검증하는 행동이 바뀌면 회귀다
+
+**Checkpoint**: `VerticalSplit` 통과 · `AiFailureVisible` 통과 유지 · 편집 국면에서 아래가
+위보다 크다 · 결과 국면에서 겹침을 열지 않고 시도 기록이 보인다
+
+---
+
+## Phase 11: User Story 6 - 만들기부터 같은 화면이다 (Priority: P2)
+
+**Goal**: 만들기가 여덟째 국면이 된다. 한 번의 「테스트를 만든다」 안에서 껍데기가 바뀌는
+횟수가 0이 된다
+
+**Independent Test**: 목록에서 「새 테스트」로 들어가 방법을 고르고 시작할 때까지 껍데기
+(기준 폭·헤더 구성·영역 배치)가 바뀌는 횟수를 센다 — 0회여야 한다 (`quickstart.md` W-9)
+
+**⚠️ Phase 10 뒤에 온다** (research R13). 만들기 국면의 배분(③-a `fixed 118` / ③-b `fill`)이
+Phase 10 이 만든 규칙을 쓴다. 먼저 하면 만들기만 규칙 없이 서고 Phase 10 이 다시 고친다
+
+**⚠️ `CreateTest`·`AiCompose` 삭제가 이 묶음에 포함된다.** 남기면 껍데기가 3벌인 상태가
+유지된다 (1회차 R7 과 같은 규율)
+
+### 국면과 조작을 더한다
+
+- [ ] T109 [US6] `Phase` 에 `composing` 추가 in `frontend/src/lib/phase.ts` per FR-217b · research R10 — `PHASES` 에도 넣는다. **`phaseOfSession` 은 손대지 않는다** — 세션이 생기는 순간 이미 다른 국면이다. `SESSION_PHASES` 에 넣지 않는다
+- [ ] T110 [US6] `record.start` 조작 추가 in `frontend/src/lib/actions.ts` per FR-258b · UC-401 — `ACTION_IDS` · `ACTION_LABEL` 「녹화 시작」. 33 → 34. **이것은 `step.recordStart`(열린 세션 안에서 기록을 켠다)와 다른 조작이다** — 세션 자체를 녹화 모드로 만든다. 1회차가 만들기를 범위에서 빼 목록에 오르지 않았다 (research R11)
+- [ ] T111 [US6] CRE 열 34칸 + 조건 C14 in `frontend/src/lib/capabilities.ts` per ui-contract §3 · §3-5 — 표 그대로. C14(지시문이 비어 있지 않다)는 지금 `AiCompose.tsx:144` 의 `disabled` 가 하던 판정을 표로 옮긴 것이다. **`record.start`·`ai.start` 를 O2(`busy`) 덮어쓰기 대상에 넣는다** — 만들기 국면에서도 연타를 막는다 (005 U-06)
+- [ ] T112 [P] [US6] C14 이유와 만들기 국면 문구 in `frontend/src/lib/wording.ts` per ui-contract §5 — 「지시문을 쓰면 시작할 수 있습니다」 · 만들기의 `test.rename` 이유 「저장할 때 이름을 정합니다」. 컴포넌트에 문자열 리터럴을 두지 않는다
+
+### 국면 어댑터를 만들고 옛 화면을 없앤다
+
+- [ ] T113 [US6] 만들기 국면 어댑터 in `frontend/src/pages/ComposeView.tsx` (신설) per FR-258 · FR-258a — `target: { kind: "empty", reason: "not_started" }` · `work: { kind: "compose_form" }` · `steps: []` · `testId: null`. 항목은 **시작 URL · 방법 2택 · 지시문 · 취소뿐이다.** 테스트 이름 필드와 「빈 테스트」를 만들지 않는다 — 제품에 없는 조작이며 범위 위반이다 (research R11)
+- [ ] T114 [US6] Step 목록이 0개일 때 자리를 지킨다 in `frontend/src/pages/ComposeView.tsx` per FR-260 · S-15 — 기존 `stepEmptyNotice` 를 쓴다. 「아직 Step 이 없습니다 · 시작하면 여기 쌓입니다」. **목록을 그리지 않는 선택을 하지 않는다** — 조작이 어디에 쌓이는지 시작하기 전에 보여야 한다
+- [ ] T115 [US6] `create`·`ai-compose` 화면을 `compose` 하나로 in `frontend/src/App.tsx` per FR-259 — `sessions.create` 호출은 **기존 경로를 그대로** 쓴다. 경로를 새로 만들지 않는다 (FR-248 · 005 U-01·U-06). 화면을 갈아타지 않고 국면만 바뀐다
+- [ ] T116 [US6] 주소에 `compose` 추가 + 옛 이름 정규화 in `frontend/src/hooks/useScreenUrl.ts` per FR-240 · research R12 — `?screen=create` · `?screen=ai-compose` 로 들어온 주소를 `compose` 로 떨어뜨린다. **열어 둔 탭을 끊지 않는다.** 시작 주소·지시문·고른 방법은 주소에 싣지 않는다
+- [ ] T117 [US6] `pages/CreateTest.tsx` · `pages/AiCompose.tsx` 삭제 per FR-259 · SC-011 — 참조 0건 확인. **이 삭제가 이 묶음의 완료 조건이다**
+
+### 센다
+
+- [ ] T118 [US6] 껍데기 개수 검사 갱신 in `frontend/tests/ImplementationCount.test.tsx` per SC-011 — 한 테스트를 다루는 국면에서 `Artboard` 를 직접 부르는 페이지가 0개다. `CreateTest.tsx`·`AiCompose.tsx` 부재를 센다
+- [ ] T119 [US6] 권한 커버리지 검사 갱신 in `frontend/tests/CapabilityCoverage.test.ts` per SC-007 · FR-247 — 8국면 × 34조작. 모든 `–` 이 근거(N1·N2·N3)를 갖고 모든 `○` 이 이유를 갖는지
+- [ ] T120 [P] [US6] 만들기 국면 검사 in `frontend/tests/ComposePhase.test.tsx` (신설) per FR-258·FR-259·FR-260 — 껍데기 구성 · Step 목록 0개 자리 · 방법 2택 · C14 비활성 + 이유 · **테스트 이름 필드가 없음**(FR-258a 회귀 방지)
+- [ ] T121 [US6] 옛 `CreateTest`·`AiCompose` 테스트를 `ComposeView` 대상으로 갱신 in `frontend/tests/` — 헌법 게이트 4: **삭제하지 않는다.** 검증하던 행동(시작 URL 입력 · 방법 고르기 · 지시문 · 취소 · 세션 생성)이 새 자리에서도 성립하는지로 옮긴다
+
+**Checkpoint**: 두 파일 없음 · 참조 0건 · 옛 주소 둘이 만들기 국면으로 열림 · `ComposePhase`
+통과 · 껍데기 개수 0
+
+---
+
+## Phase 12: 기록과 대조 (2회차)
+
+**⚠️ 기록이 실제와 다르면 대조가 성립하지 않는다** (1회차 T092 가 같은 이유로 열렸다)
+
+- [ ] T122 [P] 대체 관계 기록 in `specs/007-unify-test-screens/design-conformance/replacement-map.md` per FR-254b · FR-254d — `Workbench.dc.html`(초안) + `CreateTest.dc.html`(**확정 디자인**) → `docs/design/007-rework/`. `CreateTest.dc.html` 의 모든 요소(시작 URL 필드 · 방법 2택의 설명 문구 · 취소 · 1000px 셸)가 어디로 갔는지 판정 넷(`그대로`/`이동`/`분리`/`옮기지 않음`)으로 적는다. **`옮기지 않음` 은 이유가 필수다**
+- [ ] T123 [P] 2회차 대조 기록 in `specs/007-unify-test-screens/design-conformance/Workbench.md` per DC-012 · FR-254c — B1~B10 의 기준값과 구현값. **첫 줄의 「승인 대기 중이며 대조 기준으로 확정되지 않았다」를 유지한다.** 만들기 국면은 승인 전까지 `CreateTest.dc.html` 이 기준임을 명시한다 (research R14)
+- [ ] T124 [P] 미정의 상태 갱신 in `specs/007-unify-test-screens/design-conformance/undefined-states.md` per DC-009 — 1회차의 `AiCompose` 항목을 **해소로 닫는다**(만들기 국면이 되었다). 2회차가 만든 미정의 상태를 등록한다
+- [ ] T125 [P] 캔버스 갱신 in `docs/design/canvas.json` — `Workbench.dc.html` 항목에 `007-rework` 로 대체됨을 표시. `CreateTest.dc.html` 의 `replaces` 관계 기록
+- [ ] T126 사람 판정 항목 등록 in `docs/PENDING-HUMAN-VERIFICATION.md` per FR-254c — B1~B10 승인 요청 · **`CreateTest.dc.html`(확정 디자인) 대체 승인** · W-8·W-9 걷기의 사람 재확인. 1회차 T096·T097 과 같은 형식
+
+---
+
+## 2회차 의존 관계
+
+```
+Phase 10 (묶음 A · 세로 배분)  ──▶  Phase 11 (묶음 B · 만들기 흡수)  ──▶  Phase 12 (기록)
+   T098~T108 한 커밋                    T109~T121 한 커밋                  T122~T126
+```
+
+- **Phase 10 안에서**: T098(표) → T099(검사) → T100·T101(타입·개명) → T102·T103(크기 인자)
+  → T104(전달) → T105~T107(어댑터) → T108(기존 테스트). T099 는 `[P]`
+- **Phase 11 안에서**: T109·T110 → T111 → T113·T114 → T115·T116 → T117(삭제) → T118~T121.
+  T112·T120 은 `[P]`
+- **Phase 12**: T122~T125 전부 `[P]`. T126 은 나머지가 끝난 뒤
+
+## 2회차에서 하지 말아야 할 것
+
+- **묶음 A 를 쪼개서 커밋** — 어떤 국면은 새 규칙, 어떤 국면은 옛 규칙이 된다
+- **`CreateTest`·`AiCompose` 를 남긴 채 `ComposeView` 추가** — 껍데기가 3벌에서 4벌이 된다
+- **만들기 국면에 테스트 이름 필드나 「빈 테스트」 추가** — 제품에 없는 조작이다 (FR-258a).
+  설계 초안이 이 둘을 그렸고 Phase 0 대조가 걸렀다
+- **최소 기준 폭 변경** — 2회차가 고치는 것은 세로 배분이다 (FR-218 유지)
+- **`AlwaysVisibleFailure` 의 구조 변경** — 개명은 파일명·타입명까지다 (001 R2)
+- **백엔드 변경** — 1회차와 같다. 필요해지면 설계가 틀렸다는 신호다
+- **깨진 테스트를 삭제·건너뛰기로 통과** — 헌법 게이트 4
+
+## 2회차 작업 수
+
+29개. Phase 10 이 11 · Phase 11 이 13 · Phase 12 가 5. 누적 T001~T126.
