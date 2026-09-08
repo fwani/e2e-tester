@@ -259,7 +259,6 @@ code { font-family: var(--font-mono); font-size: 12px; }
 .dim { color: var(--ink-3); }
 .row { display: flex; align-items: center; gap: var(--s-2); }
 .spacer { flex: 1; }
-.card { background: var(--panel); border: 1px solid var(--hair); border-radius: var(--radius); padding: var(--s-3); }
 
 /* 옅은 바탕 + 같은 계열 경계. 확정 디자인의 알림·주의 상자가 쓰는 짝이다. */
 .tint-warn { background: var(--warn-t); border: 1px solid var(--warn-line); border-radius: var(--radius); }

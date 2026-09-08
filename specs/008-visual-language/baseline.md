@@ -115,3 +115,25 @@ US1 이 0 으로 만든 파일: `pages/TestList.tsx`(90→0 · 141→0) · `comp
 사라졌다 — 앞의 둘은 v1 잔재라 지웠고, 뒤의 둘은 진짜 v2 값이라 `--warn-line`·
 `--fail-line` 으로 정본에 들어왔다.
 
+---
+
+## 이 기능이 만든 것 (T091)
+
+`plan.md` 의 Structure Decision 은 「신규 파일은 셋뿐」이라 적었다. 실제로는 **여덟**이다.
+다섯이 더 생겼고 전부 요구사항이 요구한 것이지만, 계획의 목록과 어긋나므로 무엇을 왜
+더 만들었는지 남긴다. (`plan.md` 는 고치지 않는다 — converge 의 계약)
+
+| 파일 | 계획에 | 왜 필요했나 |
+|---|---|---|
+| `frontend/src/theme/exceptions.ts` | ✅ | 예외 등록부. 검사가 읽어야 「등록되지 않은 예외는 존재할 수 없다」가 성립한다 (FR-267) |
+| `frontend/tests/VisualLanguage.test.tsx` | ✅ | L2 가드. 축 G-1~G-6 |
+| `scripts/design_render.py` | ✅ | L1 측정. chromium 으로 두 시트를 렌더해 계산값을 비교한다 |
+| `scripts/extract_canon.py` | ➕ | **정본을 추출한다.** 계획은 「기계 추출」을 결정했지만 그 일을 할 파일을 세지 않았다. 이것이 없으면 추출은 사람이 손으로 하는 일이 되고, 그것이 007 의 「전사」다 |
+| `frontend/scripts/count-violations.mjs` | ➕ | **세는 규칙의 정의처.** 가드와 완료 판정이 같은 함수를 써야 「판정과 강제가 한 규칙」이 된다. 규칙을 두 곳에 두면 그것 자체가 이 기능이 고치려는 결함이다 |
+| `frontend/src/theme/tone.ts` | ➕ | 결말의 **뜻**(`outcomeTone`)과 정본의 **형태**(`.chip.pass`)를 잇는다. 잇는 자리가 없어서 두 어휘가 말없이 어긋나 있었고, 통과한 테스트의 표식이 아무 변형도 받지 못한 채 그려지고 있었다 — 008 이 찾아 고친 결함이다 |
+| `frontend/tests/CanonMatchesDesign.test.ts` | ➕ | L1 을 **검사로** 만든다. `design_render.py` 는 재기만 하고, 낡은 보고서로 통과할 수 없게 하는 것은 이 파일이다 |
+| `frontend/tests/TestListFilters.test.tsx` | ➕ | FR-272(필터·정렬)와 FR-273(격자 공유)의 회귀 가드. 새로 만든 조작은 새로 만든 검사가 받쳐야 한다 |
+
+**고친 파일 중 계획이 세지 않은 것**: `scripts/design_baseline.py`(축 개편) ·
+`docs/design/008-visual-language/replacement-map.md`(「전사」 방침 폐기) ·
+`conformance/*.md` 18장(재생성) · `conformance/undefined-states.md`(실제 기록).

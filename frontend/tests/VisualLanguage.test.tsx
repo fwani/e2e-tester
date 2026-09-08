@@ -207,6 +207,36 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
     }
   });
 
+  it("G-3 — 화면이 정본에 없는 클래스를 쓰지 않는다", () => {
+    /*
+      C-8. 정본이 선언하지 않은 이름을 쓰면 그 자리는 **아무 형태도 받지 못한다** — 화면은
+      스타일이 빠진 채로 그려지고 검사는 초록이다. 008 전환 중에 실제로 그 상태가 있었다:
+      `.badge` 를 `.chip` 으로 통일한 순간 6개 파일이 존재하지 않는 클래스를 가리켰고,
+      675건이 전부 통과하는 동안 아무도 그것을 몰랐다.
+
+      **한계 — 문자열 리터럴만 본다.** `` className={`chip ${variant}`} `` 의 `${…}` 는
+      클래스 이름이 아니라 식이므로 통째로 버린다. 그 계산된 변형은 `theme/tone.ts` 의
+      `as const` 표가 좁히고, 아래 「정본이 형태 27종을 전부 선언한다」가 받친다.
+    */
+    const CLASS_ATTR = /className=(?:"([^"]*)"|\{`([^`]*)`\})/g;
+    const orphans: string[] = [];
+    for (const [key, raw] of Object.entries(SOURCES)) {
+      const file = repoPath(key);
+      for (const m of stripComments(raw).matchAll(CLASS_ATTR)) {
+        const literal = m[1] ?? (m[2] as string).replace(/\$\{[^}]*\}/g, " ");
+        for (const name of literal.split(/\s+/)) {
+          if (!/^[a-z][a-z0-9-]*$/.test(name)) continue;
+          if (CANON_CLASSES.has(name) || allowed(file, "G-3", name)) continue;
+          orphans.push(`${file} — .${name}`);
+        }
+      }
+    }
+    expect(
+      [...new Set(orphans)],
+      "정본이 선언하지 않은 클래스를 쓴다. 그 자리는 아무 형태도 받지 못한다",
+    ).toEqual([]);
+  });
+
   it("G-4 — 정본에 확정 디자인에 없는 값이 없다", () => {
     /*
       **정본이 값을 지어내지 않는지 센다** (FR-266 · C-3).
