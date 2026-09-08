@@ -752,3 +752,49 @@ def test_insert_뒤_다시_읽어도_그_자리에_있다(saved: TestClient) -> 
     assert steps[2]["type"] == "assertion"
     assert steps[2]["assertion"]["kind"] == "url"
     assert steps[2]["assertion"]["value"] == "/x"
+
+
+# ─── 009 T054·T055 · 세 입구의 잠금과 결과 일치 ─────────────────────────────
+
+
+def test_실행_중에는_삽입도_거절된다(saved: TestClient) -> None:
+    """009 FR-306 — 세 입구 **전부**가 잠긴다.
+
+    세션 두 입구는 `require_paused` 가 막고(`test_step_edit_api.py`), 이 입구는 실행
+    예약이 막는다 (FR-207). 근거가 다르지만 사용자에게는 같은 사실이어야 한다 — 러너가
+    전진하는 동안 목록을 고치면 같은 Step 이 두 번 돈다.
+    """
+    saved.app.state.itb.sessions.reserve_for_test("TC-001", "sess-running")
+    try:
+        resp = _save(saved, [_insert(0, {"kind": "navigate", "url": "/a"})])
+
+        assert resp.status_code == 409
+        assert resp.json()["error"]["code"] == "SESSION_ALREADY_ACTIVE"
+        # 저장되지 않았다.
+        assert len(_view(saved)["test"]["steps"]) == 5
+    finally:
+        saved.app.state.itb.sessions.release_reservation("TC-001", "sess-running")
+
+
+def test_정의_편집_입구도_같은_step_을_만든다(saved: TestClient) -> None:
+    """009 research R2 의 전제 — 세 입구가 같은 목록을 만든다.
+
+    세션 두 입구의 대조는 `test_step_edit_api.py::test_세_입구가_같은_목록을_만든다` 가
+    한다. 여기서는 **정의 편집 입구**가 같은 서술로 같은 Step 을 만드는지 본다 — 삽입
+    규칙이 갈리면 「어디서 넣었는지」에 따라 정의가 달라진다.
+    """
+    spec = {"kind": "assert_url", "url": "/done", "match": "contains"}
+    resp = _save(saved, [_insert(2, spec)])
+    assert resp.status_code == 200, resp.text
+
+    made = resp.json()["test"]["steps"][2]
+    # 서버가 조립한 결과 — 라벨·작성자·검증 모양이 `manual_step.build_step` 과 같다.
+    assert made["type"] == "assertion"
+    assert made["author"] == "human"
+    assert made["label"] == "주소 검증 — /done"
+    assert made["assertion"] == {
+        "kind": "url",
+        "target": None,
+        "match": "contains",
+        "value": "/done",
+    }

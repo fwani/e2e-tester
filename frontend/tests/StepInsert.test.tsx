@@ -12,6 +12,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EditView } from "../src/pages/EditView";
+import { renderSession } from "./helpers/session";
+import type { Step } from "../src/types/generated/step";
 
 const verified = (value: string) => ({ value, status: "verified" });
 
@@ -91,6 +93,9 @@ function stubFetch(first: Record<string, unknown> = view()) {
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+/** 세션 화면용 Step 목록 — 회귀 검사가 쓴다. */
+const SESSION_STEPS = TEST.steps as unknown as Step[];
 
 const action = (id: string) =>
   document.querySelector(`button[data-action="${id}"]`) as HTMLButtonElement;
@@ -306,5 +311,63 @@ describe("실행 중 잠금 (FR-306 · SC-508)", () => {
     const btn = action("step.insertManual");
     expect(btn, "조작이 감춰졌다 — 자리를 남겨야 한다 (FR-234)").toBeTruthy();
     expect(btn.disabled).toBe(true);
+  });
+});
+
+// ─── 009 T053 · 기존 추가 경로 회귀 (SC-509 · FR-309) ───────────────────────
+//
+// **009 는 추가 경로를 하나 더할 뿐 없애지 않는다.** 새 기능이 도는 것보다 기존 경로가
+// 그대로인 것이 더 자주 깨진다 — 특히 팔레트의 자리를 건드렸기 때문이다 (계약 §3-3-0).
+
+describe("기존 추가 경로 셋이 그대로다 (SC-509 · FR-309)", () => {
+  it("일시정지 화면에서 셋이 같은 자리·같은 문구로 있다", () => {
+    renderSession({ state: "paused", steps: SESSION_STEPS, current_step_index: 2 });
+
+    // 직접 조작 녹화 — 팔레트 버튼
+    expect(action("step.recordStart")).toBeTruthy();
+    expect(action("step.recordStart").textContent).toContain("직접 조작으로 Step 추가");
+    // 검증 추가 — 팔레트 버튼
+    expect(action("step.addAssertion")).toBeTruthy();
+    expect(action("step.addAssertion").textContent).toContain("검증 추가");
+    // 자연어 — 입력칸과 버튼이 한 쌍이다 (FR-078)
+    expect(screen.getByLabelText("자연어로 Step 추가")).toBeTruthy();
+    expect(action("step.addNaturalLanguage")).toBeTruthy();
+  });
+
+  it("새 조작이 그 셋의 자리를 차지하지 않는다 — 넷이 각각 하나다", () => {
+    renderSession({ state: "paused", steps: SESSION_STEPS, current_step_index: 2 });
+
+    for (const id of [
+      "step.recordStart",
+      "step.addAssertion",
+      "step.addNaturalLanguage",
+      "step.insertManual",
+    ]) {
+      expect(
+        document.querySelectorAll(`[data-action="${id}"]`),
+        `${id} 의 자리가 하나가 아니다`,
+      ).toHaveLength(1);
+    }
+  });
+
+  it("직접 조작 녹화를 누르면 그 조작이 그대로 나간다", () => {
+    const onRecordStart = vi.fn();
+    renderSession(
+      { state: "paused", steps: SESSION_STEPS, current_step_index: 2 },
+      { onRecordStart },
+    );
+
+    act(() => action("step.recordStart").click());
+
+    expect(onRecordStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("검증 추가를 누르면 검증 폼이 열린다 — 삽입 입력면이 대신 열리지 않는다", () => {
+    renderSession({ state: "paused", steps: SESSION_STEPS, current_step_index: 2 });
+
+    act(() => action("step.addAssertion").click());
+
+    // 검증 폼의 것이고 삽입 폼의 것이 아니다.
+    expect(screen.queryByLabelText("넣을 Step 종류")).toBeNull();
   });
 });

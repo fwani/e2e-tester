@@ -192,12 +192,12 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 **Purpose**: 이 기능이 **없애지 않았어야 하는 것**을 확인한다. 새 기능이 도는 것보다
 기존 경로가 그대로인 것이 더 자주 깨진다.
 
-- [ ] T053 [P] `frontend/tests/StepInsert.test.tsx` 에 기존 추가 경로 회귀를 더한다 (SC-509) — 일시정지 상태에서 「직접 조작으로 Step 추가」·「자연어로 Step 추가」·「검증 추가」의 **자리·문구·동작**이 이전과 같은지. 하나라도 달라지면 FR-309 위반이다
-- [ ] T054 [P] `backend/tests/contract/test_step_edit_api.py` 에 실행 중 잠금 회귀를 더한다 (FR-306) — 세 입구(기존 삽입 · 신규 직접 입력 · 정의 편집) 전부가 실행 중에 거절되는지. `require_paused` 를 지나지 않는 경로가 생기지 않았는지
-- [ ] T055 [P] `backend/tests/contract/test_step_edit_api.py` 에 세 입구의 결과 일치를 확인하는 검사를 더한다 — 같은 위치에 같은 종류를 넣으면 세 입구가 **같은 목록**을 만든다. 삽입 규칙이 갈리지 않는다는 것이 [research.md](./research.md) R2 의 전제다
-- [ ] T056 전량 기계 검증을 돌린다 — [quickstart.md](./quickstart.md) 「기계 검증」 절 6개(스키마 드리프트 · `lint-imports` · ruff · pytest · vitest · `extract_canon.py --check` · `count-violations.mjs`). T002 의 통과 건수가 줄지 않았는지 확인한다
-- [ ] T057 `specs/009-step-editing-flow/baseline.md` 를 완성한다 — SC-501~SC-510 각각의 **이전 값 → 이후 값**을 표로 적는다. 달성하지 못한 항목이 있으면 그것을 감추지 않고 이유와 함께 적는다
-- [ ] T058 `docs/prd.md` §18 의 성공 지표 중 「테스트 생성 시간」에 이 기능이 준 영향을 한 줄로 적는다 (헌법 품질 게이트 5). 측정값이 없으면 조작 횟수 감소를 근거로 적고 측정이 필요하다고 표시한다
+- [X] T053 [P] `frontend/tests/StepInsert.test.tsx` 에 기존 추가 경로 회귀를 더한다 (SC-509) — 일시정지 상태에서 「직접 조작으로 Step 추가」·「자연어로 Step 추가」·「검증 추가」의 **자리·문구·동작**이 이전과 같은지. 하나라도 달라지면 FR-309 위반이다
+- [X] T054 [P] `backend/tests/contract/test_step_edit_api.py` 에 실행 중 잠금 회귀를 더한다 (FR-306) — 세 입구(기존 삽입 · 신규 직접 입력 · 정의 편집) 전부가 실행 중에 거절되는지. `require_paused` 를 지나지 않는 경로가 생기지 않았는지
+- [X] T055 [P] `backend/tests/contract/test_step_edit_api.py` 에 세 입구의 결과 일치를 확인하는 검사를 더한다 — 같은 위치에 같은 종류를 넣으면 세 입구가 **같은 목록**을 만든다. 삽입 규칙이 갈리지 않는다는 것이 [research.md](./research.md) R2 의 전제다
+- [X] T056 전량 기계 검증을 돌린다 — [quickstart.md](./quickstart.md) 「기계 검증」 절 6개(스키마 드리프트 · `lint-imports` · ruff · pytest · vitest · `extract_canon.py --check` · `count-violations.mjs`). T002 의 통과 건수가 줄지 않았는지 확인한다
+- [X] T057 `specs/009-step-editing-flow/baseline.md` 를 완성한다 — SC-501~SC-510 각각의 **이전 값 → 이후 값**을 표로 적는다. 달성하지 못한 항목이 있으면 그것을 감추지 않고 이유와 함께 적는다
+- [X] T058 `docs/prd.md` §18 의 성공 지표 중 「테스트 생성 시간」에 이 기능이 준 영향을 한 줄로 적는다 (헌법 품질 게이트 5). 측정값이 없으면 조작 횟수 감소를 근거로 적고 측정이 필요하다고 표시한다
 
 **Checkpoint**: 새로 생긴 것이 돌고, 있던 것이 그대로다.
 
