@@ -89,9 +89,11 @@ interface PhaseBar {
 `runSummary` 는 `lib/wording.ts` 의 `runSummary()` 가 만든다. 국면마다 다시 조립하지
 않는다 — 지금 결과 화면과 세션 화면이 같은 문장을 각자 만들어 나란히 그린 것이 005 U-19 였다.
 
-### 2-2. 대상 앱 영역 (TargetView)
+### 2-2. 대상 앱 슬롯 (③-a · TargetView)
 
-자리는 고정, 내용만 국면이 정한다 (FR-244).
+자리는 고정, **내용은 국면이, 높이도 국면이** 정한다 (FR-244 · FR-256). 높이는 이 타입이
+아니라 §2-6 의 배분표가 갖는다 — 내용과 크기를 같은 값에 담으면 어댑터가 크기를 정하게 되고,
+그것이 S-12 의 형태다.
 
 ```ts
 type TargetView =
@@ -108,20 +110,43 @@ type EmptyReason = "not_started" | "not_collected" | "session_lost" | "not_suppo
 이 사용자에게 서로 다른 다음 행동을 요구하기 때문이다. 지금 결과 화면의 빈 산출물 탭이
 "(기록 없음)" 한 줄이었던 것이 005 U-22 다.
 
-### 2-3. 국면 보조 영역 (PhaseAside)
+### 2-3. 국면 작업 영역 (③-b · WorkAreaView)
 
-좌측 대상 앱 영역 **아래**. 국면 고유 내용의 유일한 자리 (FR-218e).
+③-a 대상 앱 슬롯 **아래**. 그 국면에서 사용자가 **실제로 하는 일**의 유일한 자리
+(FR-218e · FR-218e-1).
+
+> **이름이 「국면 보조 영역」에서 바뀐 이유** (FR-218e-1). 1회차의 이름은 이 자리가 담는
+> 것을 보조로 규정했고, 그 규정이 편집 폼 전체를 42px 띠에 넣는 판단으로 이어졌다 (S-12).
+> 이름은 판단을 유도한다.
 
 ```ts
-type PhaseAside =
+type WorkAreaView =
+  | { kind: "compose_form"; startUrl: string; mode: ComposeMode | null;
+      instruction: string; error: ErrorInfo | null }
   | { kind: "ai_progress"; instruction: string; messages: string[];
       error: ErrorInfo | null; blocked: AiBlockedState | null }
   | { kind: "takeover_guide"; recording: boolean; blocked: AiBlockedState | null }
   | { kind: "paused_tools"; assertionDraft: AssertionDraft | null; reordering: boolean }
-  | { kind: "failure_detail"; step: StepResult; diagnosis: string | null }
-  | { kind: "edit_summary"; pendingCount: number; warnings: string[];
-      stale: StaleInfo | null };
+  | { kind: "run_progress"; label: string; pacing: ReactNode | null }
+  | { kind: "failure_detail"; step: StepResult; diagnosis: string | null;
+      attempts: LocatorAttempt[] | null }
+  | { kind: "edit_fields"; pendingCount: number; warnings: string[];
+      stale: StaleInfo | null; fields: ReactNode };
+
+/** 만들기 국면의 방법 2택. 「빈 테스트」는 없다 — 제품에 없는 조작이다 (FR-258a) */
+type ComposeMode = "record" | "ai";
 ```
+
+**2회차가 더한 것 셋**:
+
+| 값 | 왜 | 요구사항 |
+|---|---|---|
+| `compose_form` | 만들기가 여덟째 국면이 되었다 | FR-258 |
+| `failure_detail.attempts` | 시도한 locator 기록이 겹침 상세에만 있어 결과 국면의 답이 두 자리로 갈렸다 (S-13) | FR-262 |
+| `run_progress` | 실행 중·녹화 국면의 42px 띠를 이 타입 안으로 들인다. 1회차는 어댑터가 `noticesExtra` 로 우회해 넣었고, 그래서 배분표에 잡히지 않았다 | FR-256 |
+
+`edit_summary` → `edit_fields` 로 이름을 바꾼다. 요약이 아니라 편집면이 이 자리의 주 내용
+이기 때문이다 (FR-257).
 
 **`error` 와 `blocked` 는 국면 상태와 무관하게 그린다** (FR-218f · FR-253). 값이 있으면
 보인다 — 접힘·탭·겹침 뒤에 두지 않는다. 001 research R2 가 규명한 결함이 정확히 "실패를
@@ -181,6 +206,52 @@ interface StepDetail {
 `attempts` 와 `candidates` 를 **둘 다** 두는 이유: 결과 국면에서 사용자가 알아야 하는 것은
 "정의에 무엇이 있는가" 가 아니라 "그때 무엇을 시도했고 왜 못 찾았는가" 다. 편집 국면에서는
 반대다. 한 칸에 뭉개면 국면에 따라 같은 자리가 다른 뜻을 갖게 된다.
+
+---
+
+### 2-6. 세로 배분 (VerticalSplit)
+
+③ 좌측 두 자리가 남는 높이를 나누는 방식. **국면이 정하고, 표가 소유한다** (FR-256 ·
+research R9).
+
+```ts
+type SlotSize =
+  /** 남는 높이 전부 */
+  | { kind: "fill" }
+  /** 내용에 맞는 높이 (최소 42px) */
+  | { kind: "content" }
+  /** 정해진 높이 */
+  | { kind: "fixed"; px: number };
+
+interface VerticalSplit {
+  targetSlot: SlotSize;   // ③-a
+  workArea: SlotSize;     // ③-b
+}
+
+/** `Record<Phase, …>` 이므로 국면을 더하면 컴파일러가 배분을 요구한다 */
+const VERTICAL_SPLIT: Record<Phase, VerticalSplit>;
+```
+
+| 국면 | ③-a | ③-b | 근거 |
+|---|---|---|---|
+| `composing` | `fixed 118` | `fill` | 아직 열지 않았다는 사실만 필요하다. 하는 일은 시작 조건 입력이다 (FR-258) |
+| `recording` | `fill` | `content` | 미러를 보면서 조작한다. ③-b 는 42px 안내 띠 (B9) |
+| `ai_authoring` | `fill` | `content` | 미러 + 지시문·진행·차단. 차단 시 내용이 늘어난다 (B10) |
+| `takeover` | `fill` | `content` | 녹화와 같다 |
+| `running` | `fill` | `content` | 미러 + 진행 한 줄·실행 속도 |
+| `paused` | `fill` | `content` | 미러를 보면서 고친다. 검증 추가 폼이 펼쳐지면 늘어난다 |
+| `result` | `fill` | `fixed 424` | 산출물이 남는 높이. ③-b 는 사유 + locator 4행이 스크롤 없이 들어가는 높이 (B4) |
+| `editing` | `fixed 118` | `fill` | 브라우저 여는 조작만 필요하다. 하는 일은 Step 편집이다 (FR-261) |
+
+**불변식 — 한 국면에서 두 자리가 동시에 `fill` 일 수 없다.** 그러면 그 국면의 주 작업이
+어느 자리인지 화면이 말하지 못한다. 검사가 이것을 센다 (SC-010).
+
+`content` 의 최소 42px 은 1회차 값을 그대로 쓴다 (`RunnerPaused`·`Takeover` 의 국면 안내
+띠). `fixed 118` 은 46px 버튼 + 상하 여백이며 승인 대상이다 (B1).
+
+**이 표는 표시 컴포넌트가 읽지 않는다.** `Workbench` 가 국면으로 조회해 두 자리에 `flex`
+값으로 내려 준다 — `TargetPane`·작업 영역은 자기 크기를 모른다. 1회차에는 둘이 각자
+하드코딩했고 그것이 S-12 였다.
 
 ---
 
@@ -268,6 +339,10 @@ interface WorkbenchLocation {
 
 `result` · `editing` 국면은 주소만으로 완전히 복원된다 (지금도 그렇다).
 
+**`composing` 국면은 국면만 남긴다** (2회차 · research R12). `testId` 도 `stepId` 도 없고,
+입력 중인 시작 주소·지시문·고른 방법은 주소에 싣지 않는다 — 새로 고침으로 되살릴 대상이
+아니다. 옛 이름 `create` · `ai-compose` 로 들어온 주소는 `composing` 으로 정규화한다.
+
 ---
 
 ## 6. 무엇을 만들지 않는가
@@ -277,3 +352,7 @@ interface WorkbenchLocation {
 - **전역 상태 저장소** — 소유는 국면 어댑터에 있고, 모델은 그 아래로만 흐른다 (R2).
 - **브라우저 저장소에 초안 보관** — 006 research R8 이 이미 배제했다. 정의 파일이 유일한
   진실이다.
+- **만들기 국면의 테스트 이름 · 「빈 테스트」 방법** — 현재 제품에 없는 조작이다. 이름은
+  저장 시점(일시정지 국면)에 정한다 (FR-258a · research R11).
+- **배분값을 어댑터가 넘기는 통로** — `WorkbenchModel` 에 세로 배분을 싣지 않는다. 어댑터가
+  넷이므로 판단이 넷으로 흩어지고, 하나가 빠지면 그 국면에서만 역전이 되살아난다 (R9).
