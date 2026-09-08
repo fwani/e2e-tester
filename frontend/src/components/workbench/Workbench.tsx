@@ -150,7 +150,7 @@ export function Workbench({
         {model.testId !== null ? (
           <Breadcrumb testId={model.testId} />
         ) : (
-          <div style={{ font: `500 14px/1 ${MONO}`, color: "#6B675C" }}>테스트 / 초안</div>
+          <div style={{ font: `500 14px/1 ${MONO}`, color: "#4A515C" }}>테스트 / 초안</div>
         )}
         <div style={{ flex: "1" }} />
         {headerActions}

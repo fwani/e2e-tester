@@ -34,8 +34,9 @@ export function BrowserFrame({
   return (
     <div
       style={{
-        border: "3px solid #14130F",
-        background: "#14130F",
+        border: "1px solid #14171C",
+        borderRadius: "3px",
+        background: "#14171C",
         flex: "1",
         minHeight: "0",
         display: "flex",
@@ -49,10 +50,10 @@ export function BrowserFrame({
           alignItems: "center",
           gap: "12px",
           padding: "0 12px",
-          background: "#14130F",
+          background: "#14171C",
         }}
       >
-        <div style={{ display: "flex", gap: "0", color: "#8E897C" }}>
+        <div style={{ display: "flex", gap: "0", color: "#6E757F" }}>
           {NAV_ICONS.map((d) => (
             <div
               key={d}
@@ -77,8 +78,8 @@ export function BrowserFrame({
             alignItems: "center",
             height: "28px",
             padding: "0 10px",
-            background: "#2A2823",
-            color: "#C9C4B4",
+            background: "#2A303A",
+            color: "#CBD0D8",
             font: "400 12px/1 'IBM Plex Mono', ui-monospace, monospace",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -109,7 +110,7 @@ export function BrowserFrame({
           minHeight: "0",
           background: "#FFFFFF",
           display: "flex",
-          borderTop: "3px solid #14130F",
+          borderTop: "1px solid #14171C",
         }}
       >
         {children}

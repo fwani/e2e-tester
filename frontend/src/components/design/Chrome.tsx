@@ -18,8 +18,8 @@ export function BrandMark() {
         style={{
           width: "34px",
           height: "34px",
-          background: "#14130F",
-          color: "#F5D000",
+          background: "#14171C",
+          color: "#FFFFFF",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -32,7 +32,7 @@ export function BrandMark() {
       </div>
       <div
         style={{
-          fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif",
+          fontFamily: "'IBM Plex Sans KR', system-ui, sans-serif",
           fontSize: "19px",
           letterSpacing: "0.01em",
         }}
@@ -45,7 +45,7 @@ export function BrandMark() {
 
 /** 로고와 그다음 블록 사이의 세로 막대. 8종 전부에서 동일하다. */
 export function HeaderDivider() {
-  return <div style={{ width: "3px", height: "32px", background: "#14130F" }} />;
+  return <div style={{ width: "3px", height: "32px", background: "#14171C" }} />;
 }
 
 /** 60px 헤더 껍데기. 8종 전부에서 동일하다. */
@@ -53,9 +53,9 @@ export function HeaderBar({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
-        flex: "0 0 60px",
-        borderBottom: "3px solid #14130F",
-        background: "#FFFDF6",
+        flex: "0 0 56px",
+        borderBottom: "1px solid #14171C",
+        background: "#FFFFFF",
         display: "flex",
         alignItems: "center",
         gap: "18px",
@@ -97,7 +97,7 @@ export function Artboard({
   children: ReactNode;
 }) {
   return (
-    <div style={{ overflowX: "auto", background: "#EFEBE0", minHeight: "100vh" }}>
+    <div style={{ overflowX: "auto", background: "#F2F4F7", minHeight: "100vh" }}>
       <div
         style={{
           ...(grow
@@ -105,7 +105,7 @@ export function Artboard({
             : { width: `${width}px` }),
           ...(height !== undefined ? { height: `${height}px` } : {}),
           ...(minHeight !== undefined ? { minHeight: `${minHeight}px` } : {}),
-          background: "#EFEBE0",
+          background: "#F2F4F7",
           display: "flex",
           flexDirection: "column",
         }}
@@ -125,14 +125,14 @@ export function Breadcrumb({ testId }: { testId: string }) {
         alignItems: "center",
         gap: "10px",
         font: "500 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
-        color: "#6B675C",
+        color: "#4A515C",
       }}
     >
       테스트
-      <span style={{ color: "#14130F" }}>/</span>
+      <span style={{ color: "#14171C" }}>/</span>
       <span
         style={{
-          color: "#14130F",
+          color: "#14171C",
           fontWeight: "600",
           fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
         }}
@@ -152,7 +152,7 @@ export function Breadcrumb({ testId }: { testId: string }) {
 export function StatusPill({
   background,
   color,
-  border = "3px solid #14130F",
+  border = "1px solid #14171C",
   children,
 }: {
   background: string;

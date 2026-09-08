@@ -33,7 +33,7 @@ import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../
 import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
 import type { SlotSize, SlotStyle } from "../../lib/layout";
 
-const INK = "#14130F";
+const INK = "#14171C";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
@@ -44,7 +44,7 @@ const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
  * 그 안에 놓이는 띠 하나의 높이다. 1회차에는 둘이 같은 `MIN_HEIGHT` 상수였고, 그래서
  * 자리의 크기를 고치려면 띠의 높이도 함께 움직였다.
  */
-const GUIDE_BAND_HEIGHT = 42;
+const GUIDE_BAND_HEIGHT = 32;
 
 export interface WorkAreaProps {
   work: WorkAreaView;
@@ -81,8 +81,8 @@ export function WorkArea({
       data-slot-size={sizeKind}
       style={{
         ...size,
-        borderTop: `3px solid ${INK}`,
-        background: "#FFFDF6",
+        borderTop: `1px solid ${INK}`,
+        background: "#FFFFFF",
         padding: "14px 20px",
         display: "flex",
         flexDirection: "column",
@@ -110,8 +110,9 @@ export function WorkArea({
                 height: 48,
                 minHeight: 48,
                 padding: "0 14px",
-                border: `3px solid ${INK}`,
-                background: "#FFFDF6",
+                border: `1px solid ${INK}`,
+                borderRadius: "3px",
+                background: "#FFFFFF",
                 font: `400 15px/1 ${MONO}`,
               }}
             />
@@ -124,7 +125,7 @@ export function WorkArea({
                 title="직접 녹화"
                 summary="브라우저를 직접 조작해서 테스트를 만듭니다."
                 bullets={["클릭 · 입력 · 선택 · 화면 이동을 그대로 기록", "기록 중 언제든 멈추고 고칠 수 있음"]}
-                tint="#FFFDF6"
+                tint="#FFFFFF"
                 selected={work.mode === "record"}
                 onPick={work.onModeChange}
               />
@@ -133,7 +134,7 @@ export function WorkArea({
                 title="AI로 만들기"
                 summary="할 일을 문장으로 쓰면 AI 가 조작하고 Step 을 만듭니다."
                 bullets={["성공한 동작만 Step으로 기록", "다시 돌릴 때는 AI를 쓰지 않음"]}
-                tint="#F0EBFC"
+                tint="#F0EBFB"
                 selected={work.mode === "ai"}
                 onPick={work.onModeChange}
               />
@@ -148,8 +149,9 @@ export function WorkArea({
             <div
               role="status"
               style={{
-                border: `2px solid ${INK}`,
-                background: "#FFF9D6",
+                border: `1px solid ${INK}`,
+                borderRadius: "3px",
+                background: "#FBF3E2",
                 padding: "10px 12px",
                 font: `500 13px/1.5 ${SANS}`,
                 whiteSpace: "pre-wrap",
@@ -178,8 +180,9 @@ export function WorkArea({
                   "로그인한 다음 프로젝트 메뉴로 이동해서\nTEST라는 프로젝트를 생성하고\n프로젝트 목록에 TEST가 있는지 확인해."
                 }
                 style={{
-                  border: `3px solid ${INK}`,
-                  background: work.mode === "ai" ? "#F0EBFC" : "#EDEAE0",
+                  border: `1px solid ${INK}`,
+                  borderRadius: "3px",
+                  background: work.mode === "ai" ? "#F0EBFB" : "#EAEDF2",
                   padding: 12,
                   font: `500 15px/1.5 ${SANS}`,
                   minHeight: "auto",
@@ -188,7 +191,7 @@ export function WorkArea({
             {work.composeReason !== null && (
               <span
                 data-disabled-reason="ai.compose"
-                style={{ font: `400 12px/1.5 ${SANS}`, color: "#6B675C" }}
+                style={{ font: `400 12px/1.5 ${SANS}`, color: "#4A515C" }}
               >
                 {work.composeReason}
               </span>
@@ -247,9 +250,10 @@ export function WorkArea({
               gap: 10,
               minHeight: GUIDE_BAND_HEIGHT,
               padding: "0 12px",
-              background: work.recording ? "#D9502F" : "#F5D000",
-              color: work.recording ? "#FFFDF6" : INK,
-              border: `3px solid ${INK}`,
+              background: work.recording ? "#FCEDE9" : "#FBF3E2",
+              color: INK,
+              border: `1px solid ${work.recording ? "#EFC7BC" : "#E5D3AC"}`,
+              borderRadius: "3px",
               font: `600 13px/1.4 ${SANS}`,
             }}
           >
@@ -272,7 +276,7 @@ export function WorkArea({
       {work.kind === "failure_detail" && (
         <>
           <Section title={`실패 — ${work.step.label}`}>
-            <p style={{ margin: 0, font: `500 14px/1.6 ${SANS}`, color: "#A83A22" }}>
+            <p style={{ margin: 0, font: `500 14px/1.6 ${SANS}`, color: "#A32C13" }}>
               {work.step.error_message ?? "실패 이유가 기록되지 않았습니다."}
             </p>
           </Section>
@@ -291,7 +295,7 @@ export function WorkArea({
                     key={`${a.candidate}-${a.expression}`}
                     style={{ display: "flex", alignItems: "center", gap: 10, font: `400 12.5px/1.4 ${MONO}` }}
                   >
-                    <span style={{ color: a.matched ? "#2E9455" : "#A83A22", fontWeight: 700 }}>
+                    <span style={{ color: a.matched ? "#1A7F45" : "#A32C13", fontWeight: 700 }}>
                       {a.matched ? "✓" : "×"}
                     </span>
                     <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -303,7 +307,7 @@ export function WorkArea({
                   004 FR-121 — **실제로 기다린 시간**이다. 예전에는 후보별 대기 중
                   최댓값을 "timeout" 이라 불렀는데, 그것은 설정값도 실측값도 아니었다.
                 */}
-                <div style={{ font: `400 12px/1.4 ${MONO}`, color: "#6B675C", paddingLeft: 20 }}>
+                <div style={{ font: `400 12px/1.4 ${MONO}`, color: "#4A515C", paddingLeft: 20 }}>
                   {`요소를 ${work.step.element_wait_ms} ms 기다렸습니다`}
                 </div>
               </div>
@@ -317,7 +321,8 @@ export function WorkArea({
             <div
               role="note"
               style={{
-                border: `3px solid ${INK}`,
+                border: `1px solid ${INK}`,
+                borderRadius: "3px",
                 background: "#FFF6D9",
                 padding: "12px 14px",
                 font: `500 13.5px/1.6 ${SANS}`,
@@ -367,7 +372,7 @@ export function WorkArea({
           {work.stale !== null && (
             <div
               role="alert"
-              style={{ border: `3px solid ${INK}`, background: "#FFF6D8", padding: 14 }}
+              style={{ border: `1px solid ${INK}`, background: "#FFF6D8", padding: 14 }}
             >
               <strong style={{ fontSize: 13 }}>
                 ⚠ 이 테스트의 정의 파일이 편집을 시작한 뒤에 바뀌었습니다.
@@ -425,9 +430,10 @@ function ModeCard({
         flex: 1,
         minWidth: 0,
         textAlign: "left",
-        border: `3px solid ${INK}`,
-        background: selected ? "#FFF9D6" : tint,
-        boxShadow: selected ? `5px 5px 0 ${INK}` : "none",
+        border: `1px solid ${INK}`,
+        borderRadius: "3px",
+        background: selected ? "#FBF3E2" : tint,
+        boxShadow: selected ? "0 1px 2px rgba(20, 23, 28, 0.07)" : "none",
         padding: "16px 18px",
         display: "flex",
         flexDirection: "column",
@@ -436,10 +442,10 @@ function ModeCard({
       }}
     >
       <span style={{ font: `700 15px/1.3 ${SANS}` }}>{title}</span>
-      <span style={{ font: `400 13px/1.6 ${SANS}`, color: "#6B675C" }}>{summary}</span>
+      <span style={{ font: `400 13px/1.6 ${SANS}`, color: "#4A515C" }}>{summary}</span>
       <span style={{ display: "flex", flexDirection: "column", gap: 5 }}>
         {bullets.map((b) => (
-          <span key={b} style={{ font: `400 12.5px/1.4 ${MONO}`, color: "#6B675C" }}>
+          <span key={b} style={{ font: `400 12.5px/1.4 ${MONO}`, color: "#4A515C" }}>
             {b}
           </span>
         ))}
@@ -451,7 +457,7 @@ function ModeCard({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ font: `600 11px/1 ${MONO}`, letterSpacing: "0.1em", color: "#6B675C" }}>
+      <div style={{ font: `600 11px/1 ${MONO}`, letterSpacing: "0.1em", color: "#4A515C" }}>
         {title}
       </div>
       {children}
@@ -488,7 +494,7 @@ function AlwaysVisibleFailure({
       <span
         data-action="ai.chooseBlocked"
         data-disabled-reason="ai.chooseBlocked"
-        style={{ font: `400 12px/1.4 ${SANS}`, color: "#6B675C" }}
+        style={{ font: `400 12px/1.4 ${SANS}`, color: "#4A515C" }}
       >
         {choose.reason}
       </span>
@@ -500,9 +506,9 @@ function AlwaysVisibleFailure({
       {blocked !== null && (
         <div
           role="alert"
-          style={{ border: `3px solid ${INK}`, background: "#FBEEEA", padding: "12px 14px" }}
+          style={{ border: `1px solid ${INK}`, background: "#FCEDE9", padding: "12px 14px" }}
         >
-          <strong style={{ font: `700 13px/1.4 ${SANS}`, color: "#A83A22" }}>
+          <strong style={{ font: `700 13px/1.4 ${SANS}`, color: "#A32C13" }}>
             AI 가 막혔습니다
           </strong>
           {blocked.attempted !== null && (

@@ -145,7 +145,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
   return (
     <main style={{ maxWidth: 720, margin: "32px auto", padding: "0 16px" }}>
       <div className="row" style={{ gap: 8, marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontFamily: "var(--font-display)" }}>키 관리</h1>
+        <h1 style={{ margin: 0, fontFamily: "var(--font-sans)" }}>키 관리</h1>
         <span className="spacer" />
         {onClose && (
           <button className="secondary" onClick={onClose}>
@@ -163,8 +163,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           role="status"
           style={{
             padding: "8px 10px",
-            background: "var(--warn-tint)",
-            border: "2px solid var(--warn)",
+            background: "var(--warn-t)",
+            border: "1px solid var(--warn)",
+            borderRadius: "3px",
           }}
         >
           {notice}
@@ -176,8 +177,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           role="alert"
           style={{
             padding: "8px 10px",
-            background: "var(--warn-tint)",
-            border: "2px solid var(--warn)",
+            background: "var(--warn-t)",
+            border: "1px solid var(--warn)",
+            borderRadius: "3px",
           }}
         >
           ⚠ {status.permission_warning}
@@ -186,8 +188,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
 
       <section
         style={{
-          border: "3px solid var(--ink)",
-          background: "var(--paper)",
+          border: "1px solid var(--ink)",
+          borderRadius: "3px",
+          background: "var(--panel)",
           padding: 14,
           display: "flex",
           flexDirection: "column",
@@ -238,8 +241,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         <section
           role="note"
           style={{
-            border: "3px solid var(--warn)",
-            background: "var(--warn-tint)",
+            border: "1px solid var(--warn)",
+            borderRadius: "3px",
+            background: "var(--warn-t)",
             padding: 14,
             marginTop: 16,
             display: "flex",
@@ -300,8 +304,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         <section
           role="note"
           style={{
-            border: "3px solid var(--ink)",
-            background: "var(--surface-soft)",
+            border: "1px solid var(--ink)",
+            borderRadius: "3px",
+            background: "var(--sunken-2)",
             padding: 14,
             marginTop: 16,
           }}
@@ -324,8 +329,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       {!hasKeys && (
         <section
           style={{
-            border: "3px solid var(--ink)",
-            background: "var(--surface-soft)",
+            border: "1px solid var(--ink)",
+            borderRadius: "3px",
+            background: "var(--sunken-2)",
             padding: 14,
             marginTop: 16,
             display: "flex",
@@ -349,7 +355,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           */}
           <p
             id="passphrase-rule"
-            style={{ margin: 0, fontSize: 12, color: tooShort ? "#A83A22" : "#6B675C" }}
+            style={{ margin: 0, fontSize: 12, color: tooShort ? "#A32C13" : "#4A515C" }}
           >
             {tooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${passphrase.length}자입니다.`
@@ -377,8 +383,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       {hasKeys && (
         <section
           style={{
-            border: "3px solid var(--fail)",
-            background: "var(--paper)",
+            border: "1px solid var(--fail)",
+            borderRadius: "3px",
+            background: "var(--panel)",
             padding: 14,
             marginTop: 16,
             display: "flex",
@@ -418,7 +425,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           />
           <p
             id="regen-passphrase-rule"
-            style={{ margin: 0, fontSize: 12, color: newTooShort ? "#A83A22" : "#6B675C" }}
+            style={{ margin: 0, fontSize: 12, color: newTooShort ? "#A32C13" : "#4A515C" }}
           >
             {newTooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${newPassphrase.length}자입니다.`

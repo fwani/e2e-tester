@@ -408,21 +408,21 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   /* ─── 층③ 좌측 — 대상 앱 ────────────────────────────────────────────────── */
 
   const badge = (() => {
-    if (finishedWhilePausing) return { label: "실행 종료", background: "#6B675C", color: "#FFFDF6" };
-    if (pausing) return { label: "일시정지 중…", background: "#EDEAE0", color: "#14130F" };
-    if (review) return { label: "SESSION ENDED", background: "#6B675C", color: "#FFFDF6" };
+    if (finishedWhilePausing) return { label: "실행 종료", background: "#4A515C", color: "#FFFFFF" };
+    if (pausing) return { label: "일시정지 중…", background: "#EAEDF2", color: "#14171C" };
+    if (review) return { label: "SESSION ENDED", background: "#4A515C", color: "#FFFFFF" };
     if (phase === "takeover") {
       return view.state === "takeover_recording"
-        ? { label: "HUMAN CONTROL", background: "#D9502F", color: "#FFFDF6" }
-        : { label: "AI STOPPED", background: "#7C4DDB", color: "#FFFDF6" };
+        ? { label: "HUMAN CONTROL", background: "#C8371D", color: "#FFFFFF" }
+        : { label: "AI STOPPED", background: "#6B3FD4", color: "#FFFFFF" };
     }
     if (phase === "paused") {
       return view.pacing === "step"
-        ? { label: "한 스텝씩 — 다음 Step 을 기다립니다", background: "#F5D000", color: "#14130F" }
-        : { label: "PAUSED", background: "#F5D000", color: "#14130F" };
+        ? { label: "한 스텝씩 — 다음 Step 을 기다립니다", background: "#8F5A00", color: "#FFFFFF" }
+        : { label: "PAUSED", background: "#8F5A00", color: "#FFFFFF" };
     }
-    if (manipulating) return { label: "RECORDING", background: "#D9502F", color: "#FFFDF6" };
-    return { label: "READ ONLY", background: "#6B675C", color: "#FFFDF6" };
+    if (manipulating) return { label: "RECORDING", background: "#C8371D", color: "#FFFFFF" };
+    return { label: "READ ONLY", background: "#4A515C", color: "#FFFFFF" };
   })();
 
   /* ─── 층③ 좌측 아래 — 국면 보조 영역 ────────────────────────────────────── */
@@ -787,7 +787,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           {capabilities["run.pacing"].kind === "disabled" && (
             <span
               data-disabled-reason="run.pacing"
-              style={{ font: `400 11.5px/1.3 ${SANS}`, color: "#6B675C" }}
+              style={{ font: `400 11.5px/1.3 ${SANS}`, color: "#4A515C" }}
             >
               {capabilities["run.pacing"].reason}
             </span>
@@ -836,12 +836,13 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           display: "flex",
           alignItems: "center",
           gap: 10,
-          border: "3px solid #2E9455",
+          border: "1px solid #1A7F45",
+          borderRadius: "3px",
           background: "#F0F7F2",
           padding: "8px 12px",
         }}
       >
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#2E9455" strokeWidth="2.8">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" strokeWidth="2.8">
           <path d="M3 8.5l3.5 3.5L13 4.5" />
         </svg>
         <span style={{ font: `600 13px/1.3 ${SANS}` }}>{editSavedNotice(title)}</span>
@@ -1016,7 +1017,7 @@ function ReorderPanel({
   };
 
   return (
-    <div style={{ border: "3px solid #14130F", background: "#FFFDF6", padding: 12, maxHeight: 240, overflowY: "auto" }}>
+    <div style={{ border: "1px solid #14171C", background: "#FFFFFF", padding: 12, maxHeight: 240, overflowY: "auto" }}>
       <strong style={{ font: "600 11px/1 'IBM Plex Mono', ui-monospace, monospace", letterSpacing: "0.1em" }}>
         순서 변경
       </strong>
@@ -1636,9 +1637,10 @@ function Modal({ label, children }: { label: string; children: ReactNode }) {
       <div
         style={{
           width: 520,
-          border: "3px solid #14130F",
-          background: "#FFFDF6",
-          boxShadow: "10px 10px 0 #14130F",
+          border: "1px solid #14171C",
+          borderRadius: "3px",
+          background: "#FFFFFF",
+          boxShadow: "10px 10px 0 #14171C",
           padding: 24,
         }}
       >
@@ -1651,10 +1653,10 @@ function Modal({ label, children }: { label: string; children: ReactNode }) {
 function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
   return (
     <Modal label="실행 화면 닫기 확인">
-      <div style={{ fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif", fontSize: 24 }}>
+      <div style={{ fontFamily: "'IBM Plex Sans KR', system-ui, sans-serif", fontSize: 24 }}>
         실행 화면을 닫습니다
       </div>
-      <p style={{ color: "#6B675C" }}>결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
+      <p style={{ color: "#4A515C" }}>결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
         <button className="secondary" onClick={onCancel}>
           돌아가기
@@ -1684,10 +1686,10 @@ function LeaveConfirm({
 }) {
   return (
     <Modal label="저장하지 않고 나가기 확인">
-      <div style={{ fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif", fontSize: 24 }}>
+      <div style={{ fontFamily: "'IBM Plex Sans KR', system-ui, sans-serif", fontSize: 24 }}>
         저장하지 않은 기록이 있습니다
       </div>
-      <p style={{ color: "#6B675C" }}>
+      <p style={{ color: "#4A515C" }}>
         기록된 Step {stepCount}개가 있습니다. 저장하지 않고 나가면 사라집니다.
       </p>
       <label htmlFor="leave-save-name">테스트 이름</label>

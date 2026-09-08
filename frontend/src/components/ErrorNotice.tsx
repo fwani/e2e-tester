@@ -181,7 +181,7 @@ export function ErrorNotice({
         data-error-next-action
         style={{
           font: "400 13px/1.5 'IBM Plex Sans KR', system-ui, sans-serif",
-          color: "#6B675C",
+          color: "#4A515C",
           overflowWrap: "anywhere",
         }}
       >

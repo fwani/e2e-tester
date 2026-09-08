@@ -29,7 +29,26 @@ import { displayOutcomeLabel, stepNumber } from "../../lib/wording";
 import type { Step, TargetLocator } from "../../types/generated/step";
 import type { StepOutcome, WorkbenchStep } from "./model";
 
-const INK = "#14130F";
+const INK = "#14171C";
+
+/**
+ * 행 왼쪽 3px 결말 표식의 색 (008 「계기판」).
+ *
+ * **색만으로 구분하지 않는다.** 이 표식은 오른쪽 칸 4 의 형태 표식(체크·X·이중 화살표·
+ * 점선 원)과 짝을 이루며, 접근 가능한 이름은 `displayOutcomeLabel` 이 준다
+ * (005 FR-141·FR-151). 색을 못 보는 사람에게도 형태와 이름이 남는다.
+ *
+ * `Record<StepOutcome, …>` 로 두면 결말이 늘어날 때 컴파일러가 요구한다.
+ */
+const OUTCOME_MARK: Record<StepOutcome, string> = {
+  pass: "#1A7F45",
+  fail: "#C8371D",
+  running: "#0B6BCB",
+  pending: "transparent",
+  skipped: "transparent",
+  not_run: "transparent",
+  recorded: "transparent",
+};
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
@@ -55,7 +74,7 @@ export function StepPanelHeader({
         gap: "10px",
         padding: "0 18px",
         background: INK,
-        color: "#EFEBE0",
+        color: "#F2F4F7",
       }}
     >
       <div style={{ font: `600 12px/1 ${MONO}`, letterSpacing: "0.12em" }}>TEST STEPS</div>
@@ -67,18 +86,19 @@ export function StepPanelHeader({
           alignItems: "center",
           gap: "7px",
           padding: "5px 9px",
-          border: "2px solid #6B675C",
+          border: "1px solid #4A515C",
+          borderRadius: "3px",
           font: `600 11px/1 ${MONO}`,
           letterSpacing: "0.06em",
         }}
       >
         {authoring === "ai" ? (
-          <svg width="10" height="10" viewBox="0 0 18 18" fill="none" stroke="#7C4DDB" strokeWidth="2.4">
+          <svg width="10" height="10" viewBox="0 0 18 18" fill="none" stroke="#6B3FD4" strokeWidth="2.4">
             <path d="M9 1.5v4M9 12.5v4M1.5 9h4M12.5 9h4" />
           </svg>
         ) : (
           <svg width="10" height="10" viewBox="0 0 12 12">
-            <circle cx="6" cy="6" r="4" fill="#D9502F" />
+            <circle cx="6" cy="6" r="4" fill="#C8371D" />
           </svg>
         )}
         작성 {authoring === "ai" ? "AI" : "RECORD"}
@@ -97,25 +117,51 @@ export function StepPanelHeader({
 export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   const label = displayOutcomeLabel(outcome);
 
-  if (outcome === "recorded") {
+  /*
+    008「계기판」 — **형태로 말한다** (Language.dc.html §04).
+
+    v1 은 24px 채운 상자 여섯 종이었다. 52px 행에서 그 상자는 너무 크고, 무엇보다
+    `pending` 의 빈 사각형이 **체크박스로 읽혔다** — 편집 국면의 목록 오른쪽 끝에 빈
+    네모가 13개 줄지어 있으면 고를 수 있는 것처럼 보인다.
+
+    아이콘으로 바꾸되 **접근 가능한 이름은 그대로 둔다** — 색과 형태만으로 구분하지
+    않는다는 규칙은 v1 과 같다 (005 FR-141·FR-151). 행 왼쪽 3px 표식(`OUTCOME_MARK`)이
+    같은 결말을 색으로도 말하므로 둘이 짝을 이룬다.
+  */
+  const box = {
+    width: "18px",
+    height: "18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  } as const;
+
+  if (outcome === "pass") {
     return (
-      <div
-        aria-label={label}
-        title={`${label} — 작성 중이라 재생 결말이 아직 없습니다`}
-        data-outcome="recorded"
-        style={{
-          width: "24px",
-          height: "24px",
-          border: "2px solid #9A968A",
-          background: "#FFFDF6",
-          color: "#6B675C",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          font: `600 10px/1 ${SANS}`,
-        }}
-      >
-        기록
+      <div aria-label={label} data-outcome="pass" style={box}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" strokeWidth="2.2">
+          <path d="M3 8.4l3.2 3.2L13 4.8" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (outcome === "fail") {
+    return (
+      <div aria-label={label} data-outcome="fail" style={box}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#C8371D" strokeWidth="2.2">
+          <path d="M4 4l8 8M12 4l-8 8" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (outcome === "running") {
+    return (
+      <div aria-label={label} data-outcome="running" style={box}>
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="4.5" fill="#0B6BCB" />
+        </svg>
       </div>
     );
   }
@@ -126,19 +172,11 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
         aria-label={label}
         title={`${label} — 이 실행에서 실행 대상이 아니었습니다`}
         data-outcome="skipped"
-        style={{
-          width: "24px",
-          height: "24px",
-          border: "2px solid #9A968A",
-          background: "#EDEAE0",
-          color: "#6B675C",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          font: `600 11px/1 ${SANS}`,
-        }}
+        style={box}
       >
-        건너뜀
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#6E757F" strokeWidth="2">
+          <path d="M4 4l4 4-4 4M9 4l4 4-4 4" />
+        </svg>
       </div>
     );
   }
@@ -149,80 +187,38 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
         aria-label={label}
         title={`${label} — 앞선 Step 이 실패해 도달하지 못했습니다`}
         data-outcome="not_run"
-        style={{
-          width: "24px",
-          height: "24px",
-          border: "2px dashed #9A968A",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      />
+        style={box}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#CBD0D8" strokeWidth="2" strokeDasharray="2.6 2.4">
+          <circle cx="8" cy="8" r="5" />
+        </svg>
+      </div>
     );
   }
 
-  if (outcome === "pending") {
+  if (outcome === "recorded") {
     return (
       <div
         aria-label={label}
-        data-outcome="pending"
-        style={{
-          width: "24px",
-          height: "24px",
-          border: "2px solid #9A968A",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      />
+        title={`${label} — 작성 중이라 재생 결말이 아직 없습니다`}
+        data-outcome="recorded"
+        style={box}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="3.4" fill="#C8371D" />
+        </svg>
+      </div>
     );
   }
 
-  if (outcome === "running") {
-    return (
-      <div
-        aria-label={label}
-        data-outcome="running"
-        style={{
-          width: "24px",
-          height: "24px",
-          border: `2px solid ${INK}`,
-          background: "#F5D000",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      />
-    );
-  }
-
-  const pass = outcome === "pass";
-  return (
-    <div
-      aria-label={label}
-      data-outcome={outcome}
-      style={{
-        width: "24px",
-        height: "24px",
-        background: pass ? "#2E9455" : "#D9502F",
-        color: "#FFFDF6",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {pass ? (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
-          <path d="M3 8.5l3.5 3.5L13 4.5" />
-        </svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
-          <path d="M4 4l8 8M12 4l-8 8" />
-        </svg>
-      )}
-    </div>
-  );
+  /*
+    `pending` — 아직 돌리지 않았다. **아무것도 그리지 않는다.** 칸은 남긴다
+    (FR-223 — 다른 칸을 그 자리로 당기지 않는다). 편집 국면의 목록 전체가 이 상태이고,
+    거기에 표식을 그리면 없는 결말을 있다고 말하는 것이 된다.
+  */
+  return <div aria-label={label} data-outcome={outcome} style={box} />;
 }
+
 
 /**
  * 요소를 어떻게 찾는지 한 줄로. 확정 디자인의 `role=menuitem`·`testId=…` 형태.
@@ -305,8 +301,8 @@ export function StepList({
       data-action="step.select"
       style={{
         flex: "0 0 460px",
-        borderLeft: `3px solid ${INK}`,
-        background: "#FFFDF6",
+        borderLeft: `1px solid ${INK}`,
+        background: "#FFFFFF",
         display: "flex",
         flexDirection: "column",
       }}
@@ -329,8 +325,8 @@ export function StepList({
             data-focus-missing
             style={{
               padding: "12px 18px",
-              borderBottom: "2px solid #DCD8CC",
-              background: "#FFF9D6",
+              borderBottom: "1px solid #E3E6EB",
+              background: "#FBF3E2",
               font: `400 12.5px/1.6 ${SANS}`,
             }}
           >
@@ -339,7 +335,7 @@ export function StepList({
           </div>
         )}
         {steps.length === 0 && (
-          <div style={{ padding: "18px", color: "#9A968A", font: `400 13px/1.5 ${SANS}` }}>
+          <div style={{ padding: "18px", color: "#6E757F", font: `400 13px/1.5 ${SANS}` }}>
             {emptyNotice ?? "아직 Step 이 없습니다."}
           </div>
         )}
@@ -358,8 +354,8 @@ export function StepList({
         <div
           data-workbench-step-footer
           style={{
-            borderTop: `3px solid ${INK}`,
-            background: "#EFEBE0",
+            borderTop: `1px solid ${INK}`,
+            background: "#F2F4F7",
             padding: "14px 18px 16px",
             maxHeight: "52%",
             overflowY: "auto",
@@ -395,20 +391,31 @@ function StepRow({
   return (
     <div
       data-step-row={step.id}
+      /* 일시정지 위치는 **속성으로** 말한다. 008 에서 모든 행이 결말 표식으로
+         왼쪽 테두리를 갖게 됐으므로, 인라인 스타일을 훑어서는 구분할 수 없다. */
+      data-paused-here={step.isPausedHere ? "" : undefined}
       style={{
         display: "flex",
-        gap: "14px",
-        padding: "15px 18px",
-        borderBottom: "2px solid #DCD8CC",
-        alignItems: "flex-start",
-        ...(step.isPausedHere ? { borderLeft: "4px solid #F5D000", background: "#FFF9D6" } : {}),
-        ...(selected && !step.isPausedHere ? { background: "#F6F4EE" } : {}),
+        gap: "10px",
+        // v1 은 `15px 18px` + 15px 이름 + 6px 간격이라 행이 125px 였고, 900px 창에서
+        // 5행밖에 보이지 않았다. 실무 테스트는 20~50 Step 이다. 칸은 그대로 넷이고
+        // 정보도 그대로다 — 여백과 글자 크기만 내렸다 (5행 → 13행).
+        minHeight: "52px",
+        padding: "6px 12px 6px 9px",
+        borderBottom: "1px solid #E3E6EB",
+        // 결말을 왼쪽 3px 표식으로도 말한다. 색만으로 구분하지 않기 위해서다 —
+        // 오른쪽 칸 4 의 형태 표식과 짝을 이룬다 (005 FR-141·FR-151).
+        borderLeft: `3px solid ${OUTCOME_MARK[step.outcome] ?? "transparent"}`,
+        alignItems: "center",
+        ...(step.outcome === "fail" ? { background: "#FCEDE9" } : {}),
+        ...(step.isPausedHere ? { borderLeftColor: "#8F5A00", background: "#FBF3E2" } : {}),
+        ...(selected && !step.isPausedHere ? { background: "#F7F8FA" } : {}),
       }}
     >
       {/* 칸 1 — 번호 26px. **모든 국면에서 보인다** (FR-224 · S-08) */}
       <div
         data-cell="number"
-        style={{ flex: "0 0 26px", font: `700 15px/1.2 ${MONO}`, color: "#9A968A" }}
+        style={{ flex: "0 0 26px", textAlign: "right", font: `500 12px/1 ${MONO}`, color: "#6E757F" }}
       >
         {stepNumber(step.index)}
       </div>
@@ -421,13 +428,19 @@ function StepRow({
           aria-pressed={selected}
           style={{
             border: "none",
+            borderRadius: "3px",
             background: "transparent",
             boxShadow: "none",
             padding: 0,
             textAlign: "left",
-            font: `600 15px/1.3 ${SANS}`,
+            font: `600 13px/1.25 ${SANS}`,
             color: INK,
             cursor: "pointer",
+            // 한 줄로 자른다. 감싸면 행 높이가 흔들려 52px 가 성립하지 않는다.
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            height: "18px",
           }}
         >
           {step.label}
@@ -435,7 +448,7 @@ function StepRow({
 
         <div
           data-cell="detail"
-          style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", minHeight: 18 }}
+          style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "nowrap", minWidth: 0, overflow: "hidden", height: 17 }}
         >
           {/*
             결과 국면에서 정의와 매칭되지 않은 행은 이 칸들이 **빈다.** 다른 칸을 그
@@ -446,11 +459,17 @@ function StepRow({
               <div
                 data-cell="type"
                 style={{
-                  padding: "4px 7px",
-                  border: `2px solid ${INK}`,
-                  background: dsl.author === "ai" ? "#F0EBFC" : "#EFEBE0",
-                  font: `700 10px/1 ${MONO}`,
-                  letterSpacing: "0.08em",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  flex: "0 0 auto",
+                  height: "19px",
+                  padding: "0 6px",
+                  border: `1px solid ${dsl.author === "ai" ? "#6B3FD4" : "#CBD0D8"}`,
+                  borderRadius: "2px",
+                  background: dsl.author === "ai" ? "#F0EBFB" : "#F7F8FA",
+                  color: dsl.author === "ai" ? "#6B3FD4" : "#4A515C",
+                  font: `600 10px/1 ${MONO}`,
+                  letterSpacing: "0.06em",
                 }}
               >
                 {dsl.type.toUpperCase()}
@@ -461,24 +480,30 @@ function StepRow({
                 <div
                   data-cell="tab"
                   style={{
-                    padding: "4px 7px",
-                    border: `2px solid ${INK}`,
-                    background: "#FFFDF6",
-                    font: `700 10px/1 ${MONO}`,
-                    letterSpacing: "0.08em",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    flex: "0 0 auto",
+                    height: "19px",
+                    padding: "0 6px",
+                    border: "1px solid #CBD0D8",
+                    borderRadius: "2px",
+                    background: "#FFFFFF",
+                    color: "#4A515C",
+                    font: `600 10px/1 ${MONO}`,
+                    letterSpacing: "0.06em",
                   }}
                 >
                   탭 {dsl.tab}
                 </div>
               )}
 
-              <div data-cell="locator" style={{ font: `400 13px/1 ${MONO}`, color: "#6B675C" }}>
+              <div data-cell="locator" style={{ minWidth: 0, font: `400 11px/1 ${MONO}`, color: "#6E757F", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {locatorSummary(dsl)}
               </div>
 
               {/* FR-083 — 민감 값은 참조로만 저장되므로 표시해도 평문이 새지 않는다 */}
               {value !== null && (
-                <div data-cell="value" style={{ font: `400 13px/1 ${MONO}`, color: "#5A31B8" }}>
+                <div data-cell="value" style={{ flex: "0 0 auto", font: `400 11px/1 ${MONO}`, color: "#5732B0", whiteSpace: "nowrap" }}>
                   {value}
                 </div>
               )}
@@ -492,18 +517,17 @@ function StepRow({
       <div
         data-cell="duration"
         style={{
-          flex: "0 0 66px",
+          flex: "0 0 58px",
           textAlign: "right",
-          font: `400 13px/1 ${MONO}`,
-          color: "#6B675C",
-          paddingTop: 4,
+          font: `400 11px/1 ${MONO}`,
+          color: "#6E757F",
         }}
       >
         {step.durationMs !== null ? `${step.durationMs} ms` : ""}
       </div>
 
       {/* 칸 4 — 결말 표식 24px. **오른쪽 끝이다** (S-02 해소) */}
-      <div data-cell="outcome" style={{ flex: "0 0 24px", paddingTop: 2 }}>
+      <div data-cell="outcome" style={{ flex: "0 0 20px" }}>
         <OutcomeMark outcome={step.outcome} />
       </div>
     </div>

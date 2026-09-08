@@ -31,7 +31,7 @@ import type { Step } from "../../types/generated/step";
 import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
 
-const INK = "#14130F";
+const INK = "#14171C";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
@@ -115,8 +115,8 @@ export function StepDetail({
       aria-label="Step 상세"
       style={{
         width: "640px",
-        background: "#FFFDF6",
-        borderLeft: `3px solid ${INK}`,
+        background: "#FFFFFF",
+        borderLeft: `1px solid ${INK}`,
         display: "flex",
         flexDirection: "column",
         overflowY: "auto",
@@ -126,7 +126,7 @@ export function StepDetail({
         style={{
           flex: "0 0 56px",
           background: INK,
-          color: "#EFEBE0",
+          color: "#F2F4F7",
           display: "flex",
           alignItems: "center",
           gap: "12px",
@@ -139,9 +139,10 @@ export function StepDetail({
           aria-label="닫기"
           onClick={onClose}
           style={{
-            width: "44px",
-            height: "44px",
-            border: "2px solid #6B675C",
+            width: "32px",
+            height: "32px",
+            border: "1px solid #4A515C",
+            borderRadius: "3px",
             background: "transparent",
             color: "inherit",
             display: "flex",
@@ -160,7 +161,7 @@ export function StepDetail({
       <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "18px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ font: `700 15px/1 ${MONO}`, color: "#6B675C" }}>
+            <div style={{ font: `700 15px/1 ${MONO}`, color: "#4A515C" }}>
               {stepNumber(detail.index)}
             </div>
             {step !== null && (
@@ -168,8 +169,9 @@ export function StepDetail({
                 <div
                   style={{
                     padding: "5px 8px",
-                    border: `2px solid ${INK}`,
-                    background: "#EFEBE0",
+                    border: `1px solid ${INK}`,
+                    borderRadius: "3px",
+                    background: "#F2F4F7",
                     font: `700 11px/1 ${MONO}`,
                     letterSpacing: "0.08em",
                   }}
@@ -182,18 +184,19 @@ export function StepDetail({
                     alignItems: "center",
                     gap: "6px",
                     padding: "5px 8px",
-                    border: `2px solid ${INK}`,
-                    background: step.author === "ai" ? "#F0EBFC" : "#FFFDF6",
+                    border: `1px solid ${INK}`,
+                    borderRadius: "3px",
+                    background: step.author === "ai" ? "#F0EBFB" : "#FFFFFF",
                     font: `700 11px/1 ${MONO}`,
                   }}
                 >
                   {step.author === "ai" ? (
-                    <svg width="10" height="10" viewBox="0 0 18 18" fill="none" stroke="#7C4DDB" strokeWidth="2.4">
+                    <svg width="10" height="10" viewBox="0 0 18 18" fill="none" stroke="#6B3FD4" strokeWidth="2.4">
                       <path d="M9 1.5v4M9 12.5v4M1.5 9h4M12.5 9h4" />
                     </svg>
                   ) : (
                     <svg width="10" height="10" viewBox="0 0 12 12">
-                      <circle cx="6" cy="6" r="4" fill="#D9502F" />
+                      <circle cx="6" cy="6" r="4" fill="#C8371D" />
                     </svg>
                   )}
                   {step.author === "ai" ? "AI" : "RECORD"}
@@ -203,7 +206,7 @@ export function StepDetail({
           </div>
           <div
             style={{
-              fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif",
+              fontFamily: "'IBM Plex Sans KR', system-ui, sans-serif",
               fontSize: "28px",
               lineHeight: "1.1",
             }}
@@ -220,11 +223,12 @@ export function StepDetail({
           <div
             role="note"
             style={{
-              border: "3px solid #D9502F",
-              background: "#FBEEEA",
+              border: "1px solid #C8371D",
+              borderRadius: "3px",
+              background: "#FCEDE9",
               padding: "12px 14px",
               font: `500 14px/1.5 ${SANS}`,
-              color: "#A83A22",
+              color: "#A32C13",
             }}
           >
             {detail.failure.message ?? "실패 이유가 기록되지 않았습니다."}
@@ -241,7 +245,7 @@ export function StepDetail({
             id="reason-step-sensitive"
             data-action="step.markSensitive"
             data-disabled-reason="step.markSensitive"
-            style={{ font: `400 12px/1.4 ${SANS}`, color: "#6B675C" }}
+            style={{ font: `400 12px/1.4 ${SANS}`, color: "#4A515C" }}
           >
             이 Step 은 입력값을 갖지 않아 민감 값으로 지정할 것이 없습니다.
           </span>
@@ -354,7 +358,7 @@ export function StepDetail({
           정의는 "무엇으로 찾을 계획인가" 이고 이것은 "무엇을 시도했고 몇 개가 맞았나" 다.
         */}
         {detail.attempts !== null && detail.attempts.length > 0 && (
-          <div style={{ border: `3px solid ${INK}`, background: "#FFFDF6" }}>
+          <div style={{ border: `1px solid ${INK}`, background: "#FFFFFF" }}>
             <div
               style={{
                 height: "36px",
@@ -362,7 +366,7 @@ export function StepDetail({
                 alignItems: "center",
                 padding: "0 12px",
                 background: INK,
-                color: "#EFEBE0",
+                color: "#F2F4F7",
                 font: `600 11px/1 ${MONO}`,
                 letterSpacing: "0.1em",
               }}
@@ -377,9 +381,9 @@ export function StepDetail({
                   alignItems: "center",
                   gap: 10,
                   padding: "8px 12px",
-                  borderTop: "2px solid #DCD8CC",
+                  borderTop: "1px solid #E3E6EB",
                   font: `400 12.5px/1.4 ${MONO}`,
-                  color: a.matched ? INK : "#6B675C",
+                  color: a.matched ? INK : "#4A515C",
                 }}
               >
                 <span style={{ width: 84, fontWeight: 700 }}>{a.candidate}</span>
@@ -437,7 +441,7 @@ export function StepDetail({
                 style={{
                   fontSize: 11,
                   background: "var(--ink)",
-                  color: "var(--paper)",
+                  color: "var(--panel)",
                   padding: 10,
                   overflowX: "auto",
                   margin: "6px 0 0",
@@ -477,7 +481,7 @@ export function StepDetail({
             onRun={() => onRepick("target")}
             icon={
               <svg width="15" height="15" viewBox="0 0 20 20">
-                <circle cx="10" cy="10" r="5" fill="#D9502F" />
+                <circle cx="10" cy="10" r="5" fill="#C8371D" />
               </svg>
             }
           />

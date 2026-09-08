@@ -49,7 +49,7 @@ import {
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
 
-const INK = "#14130F";
+const INK = "#14171C";
 
 export interface EditViewProps {
   testId: string;
@@ -675,8 +675,9 @@ export function EditView({
           <div
             style={{
               width: 520,
-              border: `3px solid ${INK}`,
-              background: "#FFFDF6",
+              border: `1px solid ${INK}`,
+              borderRadius: "3px",
+              background: "#FFFFFF",
               boxShadow: `10px 10px 0 ${INK}`,
               padding: 24,
             }}
@@ -732,6 +733,48 @@ function EditFields({
   steps: Step[];
   onRevert: (index: number) => void;
 }) {
+  /*
+    008 — **빈 자리를 빈 채로 두지 않는다.**
+
+    이 영역은 007 2회차에 남는 높이 전부를 갖게 됐다 (FR-257). 그런데 담을 것이
+    「민감 변수 안내」와 「저장하지 않은 변경」 둘뿐이라, 갓 들어온 편집 화면에서는 둘 다
+    비어 화면의 절반이 아무 말도 하지 않았다. 1회차에는 같은 내용이 42px 띠에 있어서
+    보이지 않던 공백이다.
+
+    무엇을 하면 되는지 말한다 — 자리를 없애지는 않는다 (FR-261).
+  */
+  if (sensitiveNames.length === 0 && ops.length === 0) {
+    return (
+      <div
+        data-edit-fields-empty
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          textAlign: "center",
+          color: "#6E757F",
+        }}
+      >
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="#CBD0D8" strokeWidth="1.6">
+          <rect x="3" y="5" width="26" height="6" rx="1.5" />
+          <rect x="3" y="13" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
+          <rect x="3" y="21" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
+        </svg>
+        <div style={{ font: "600 13px/1.5 'IBM Plex Sans KR', system-ui, sans-serif", color: "#4A515C" }}>
+          고칠 Step 을 고르세요
+        </div>
+        <div style={{ font: "400 11.5px/1.6 'IBM Plex Sans KR', system-ui, sans-serif", maxWidth: 420 }}>
+          오른쪽 목록에서 Step 을 누르면 상세가 열립니다. 값 · 순서 · 삭제는 브라우저 없이
+          고칠 수 있고, 고친 것은 여기에 「저장하지 않은 변경」으로 쌓입니다.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {/* FR-212 — 어떤 변수가 민감인지 밝히고, 값은 화면에 오지 않는다고 말한다. */}

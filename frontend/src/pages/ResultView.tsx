@@ -163,7 +163,7 @@ export function ResultView({
         {error !== null ? (
           <ErrorNotice error={error} />
         ) : (
-          <p style={{ color: "#9A968A" }}>결과를 불러오는 중…</p>
+          <p style={{ color: "#6E757F" }}>결과를 불러오는 중…</p>
         )}
       </main>
     );
@@ -532,10 +532,10 @@ function artifactBody({
 }) {
   if (artifactError !== null) {
     return (
-      <p style={{ font: `400 13px/1.6 ${SANS}`, color: "#A83A22" }}>{artifactError.message}</p>
+      <p style={{ font: `400 13px/1.6 ${SANS}`, color: "#A32C13" }}>{artifactError.message}</p>
     );
   }
-  if (artifact === null) return <p style={{ color: "#9A968A" }}>불러오는 중…</p>;
+  if (artifact === null) return <p style={{ color: "#6E757F" }}>불러오는 중…</p>;
   if (tab === "screenshot" && artifact.src !== undefined) {
     return (
       <img

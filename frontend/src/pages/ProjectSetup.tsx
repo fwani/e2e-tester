@@ -3,7 +3,7 @@
  *
  * **확정 디자인에 대응 화면이 없다** — 8종 artboard 어디에도 프로젝트 선택이 없다.
  * 따라서 1:1 대조 의무가 적용되지 않고(DC-010), 대신 8화면의 시각 언어를 따른다:
- * 직각 모서리, 3px 잉크 테두리, 하드 오프셋 그림자, `#EFEBE0` 배경.
+ * 직각 모서리, 3px 잉크 테두리, 하드 오프셋 그림자, `#F2F4F7` 배경.
  *
  * **경로를 타이핑하는 입력란이 없다** (DR-001·SC-102). 이전 판은 절대 경로를 손으로
  * 넣게 했는데, 서버가 어느 경로에서 실행 중인지 사용자는 알 방법이 없어 사실상 아무도
@@ -32,15 +32,16 @@ type Mode =
    *  어디에 생겼는지 모른 채 넘어가면 다음에 그것을 찾을 수 없다. */
   | { kind: "created"; project: ProjectView };
 
-const ink = "#14130F";
-const paper = "#FFFDF6";
-const surface = "#EFEBE0";
-const muted = "#6B675C";
-const dim = "#9A968A";
-const accent = "#F5D000";
-const fail = "#D9502F";
+const ink = "#14171C";
+const paper = "#FFFFFF";
+const surface = "#F2F4F7";
+const muted = "#4A515C";
+const dim = "#6E757F";
+// 잉크 사각형 위의 로고 표식. v1 은 노랑이었다 — v2 는 색을 상태에만 쓴다.
+const accent = "#FFFFFF";
+const fail = "#C8371D";
 
-const display = "'Black Han Sans', 'Arial Black', Impact, sans-serif";
+const display = "'IBM Plex Sans KR', system-ui, sans-serif";
 const mono = "'IBM Plex Mono', ui-monospace, monospace";
 
 /** 확정 디자인의 섹션 라벨 — 작은 대문자 모노에 넓은 자간. */
@@ -97,8 +98,8 @@ export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void 
     <div style={{ minHeight: "100vh", background: surface, display: "flex", flexDirection: "column" }}>
       <header
         style={{
-          flex: "0 0 60px",
-          borderBottom: `3px solid ${ink}`,
+          flex: "0 0 56px",
+          borderBottom: `1px solid ${ink}`,
           background: paper,
           display: "flex",
           alignItems: "center",
@@ -221,7 +222,8 @@ function ProjectList({
       {projects.length === 0 ? (
         <div
           style={{
-            border: `3px solid ${ink}`,
+            border: `1px solid ${ink}`,
+            borderRadius: "3px",
             background: paper,
             padding: 28,
             display: "flex",
@@ -236,7 +238,7 @@ function ProjectList({
           </div>
         </div>
       ) : (
-        <div style={{ border: `3px solid ${ink}`, background: paper }}>
+        <div style={{ border: `1px solid ${ink}`, background: paper }}>
           {projects.map((p, i) => (
             <ProjectRow
               key={p.root}
@@ -273,7 +275,7 @@ function ProjectRow({
         alignItems: "center",
         gap: 14,
         padding: "16px 18px",
-        borderTop: first ? "none" : `2px solid ${ink}`,
+        borderTop: first ? "none" : `1px solid ${ink}`,
         opacity: item.accessible ? 1 : 0.72,
       }}
     >
@@ -345,7 +347,7 @@ function CreateForm({
   ];
 
   return (
-    <div style={{ border: `3px solid ${ink}`, background: paper, padding: 24, boxShadow: `5px 5px 0 ${ink}` }}>
+    <div style={{ border: `1px solid ${ink}`, background: paper, padding: 24, boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)" }}>
       <Eyebrow>NEW PROJECT</Eyebrow>
 
       <p style={{ color: muted, marginTop: 10 }}>
@@ -423,7 +425,7 @@ function CreatedNotice({
   onContinue: () => void;
 }) {
   return (
-    <div style={{ border: `3px solid ${ink}`, background: paper, padding: 24, boxShadow: `5px 5px 0 ${accent}` }}>
+    <div style={{ border: `1px solid ${ink}`, background: paper, padding: 24, boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)" }}>
       <Eyebrow>PROJECT CREATED</Eyebrow>
 
       <div style={{ fontFamily: display, fontSize: 28, marginTop: 10 }}>{p.name}</div>
@@ -435,7 +437,8 @@ function CreatedNotice({
       <div
         style={{
           font: `400 13px/1.6 ${mono}`,
-          border: `2px solid ${ink}`,
+          border: `1px solid ${ink}`,
+          borderRadius: "3px",
           background: surface,
           padding: "10px 12px",
           marginTop: 10,
@@ -491,8 +494,8 @@ function FolderPicker({
   useEffect(() => go(), [go]);
 
   return (
-    <div style={{ border: `3px solid ${ink}`, background: paper, boxShadow: `5px 5px 0 ${ink}` }}>
-      <div style={{ padding: "18px 20px", borderBottom: `3px solid ${ink}` }}>
+    <div style={{ border: `1px solid ${ink}`, background: paper, boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)" }}>
+      <div style={{ padding: "18px 20px", borderBottom: `1px solid ${ink}` }}>
         <Eyebrow>OPEN EXISTING</Eyebrow>
         <div style={{ font: `400 13px/1.6 ${mono}`, color: muted, marginTop: 8, wordBreak: "break-all" }}>
           {here ?? "…"}
@@ -526,7 +529,7 @@ function FolderPicker({
               alignItems: "center",
               gap: 12,
               padding: "10px 20px",
-              borderTop: `2px solid ${ink}`,
+              borderTop: `1px solid ${ink}`,
             }}
           >
             <button
@@ -553,7 +556,7 @@ function FolderPicker({
           alignItems: "center",
           gap: 12,
           padding: "16px 20px",
-          borderTop: `3px solid ${ink}`,
+          borderTop: `1px solid ${ink}`,
         }}
       >
         <span style={{ color: dim, fontSize: 12 }}>
@@ -580,9 +583,10 @@ function Notice({ tone, children }: { tone: "warn" | "fail"; children: React.Rea
   return (
     <div
       style={{
-        border: `3px solid ${ink}`,
-        background: tone === "fail" ? "#FBEEEA" : "#FFF9D6",
-        color: tone === "fail" ? "#A83A22" : ink,
+        border: `1px solid ${ink}`,
+        borderRadius: "3px",
+        background: tone === "fail" ? "#FCEDE9" : "#FBF3E2",
+        color: tone === "fail" ? "#A32C13" : ink,
         padding: "12px 16px",
         marginBottom: 18,
         whiteSpace: "pre-wrap",

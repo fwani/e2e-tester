@@ -53,7 +53,7 @@ export function PacingControl({
       <span
         style={{
           font: "600 12px/1 'IBM Plex Sans KR', system-ui, sans-serif",
-          color: "#6B675C",
+          color: "#4A515C",
           letterSpacing: "0.04em",
         }}
       >
@@ -62,7 +62,7 @@ export function PacingControl({
       <div
         role="group"
         aria-label="실행 속도"
-        style={{ display: "inline-flex", border: "3px solid #14130F", background: "#FFFDF6" }}
+        style={{ display: "inline-flex", border: "1px solid #14171C", background: "#FFFFFF" }}
       >
         {PACING_ORDER.map((pacing, index) => {
           const active = pacing === value;
@@ -80,9 +80,10 @@ export function PacingControl({
                 height: "40px",
                 padding: "0 12px",
                 border: "none",
-                borderLeft: index === 0 ? "none" : "2px solid #14130F",
-                background: active ? "#F5D000" : "transparent",
-                color: disabled ? "#9A968B" : "#14130F",
+                borderRadius: "3px",
+                borderLeft: index === 0 ? "none" : "1px solid #14171C",
+                background: active ? "#14171C" : "transparent",
+                color: disabled ? "#6E757F" : active ? "#FFFFFF" : "#14171C",
                 cursor: busy || disabled ? "default" : "pointer",
                 font: `${active ? 700 : 500} 13px/1 'IBM Plex Sans KR', system-ui, sans-serif`,
               }}

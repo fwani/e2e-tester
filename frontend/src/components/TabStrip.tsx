@@ -24,8 +24,8 @@ export function TabStrip({ tabs, mirroredTabIndex, maxTabs, onSelect }: TabStrip
       style={{
         gap: 4,
         padding: "6px 8px",
-        background: "var(--surface)",
-        borderBottom: "1px solid var(--border)",
+        background: "var(--bg)",
+        borderBottom: "1px solid var(--hair)",
         overflowX: "auto",
       }}
     >

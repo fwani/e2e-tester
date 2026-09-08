@@ -1,185 +1,242 @@
 /**
- * 디자인 토큰. `docs/design/*.dc.html` 8종에서 **기계적으로 추출한 값만** 담는다.
+ * 디자인 토큰 v2 —「계기판」. `docs/design/008-visual-language/*.dc.html` 18종에서
+ * **기계적으로 추출한 값만** 담는다.
  *
- * 002 라운드에서 재작성했다. 이전 판은 팔레트를 정확히 옮겨 놓고 기하(모서리·테두리
- * 두께·그림자)를 지어냈다 — 확정 디자인에 `border-radius` 가 0회인데 `--radius: 10px`
- * 를 두었고, 테두리가 3px·2px 인데 1px 을 썼고, 하드 오프셋 그림자 26회를 통째로
- * 빠뜨렸다. 그것이 "개발자만의 해석" 의 실체다 (research R6).
+ * ## 왜 v1 을 버렸나
  *
- * **규칙: dc.html 에 나타나지 않는 값을 토큰으로 만들지 않는다** (DC-001·DC-007).
- * `--radius` 가 그렇게 들어왔다. 값을 추가하려면 먼저 확정 디자인에서 그 값을 찾아라.
+ * v1「브루탈리스트」는 3px 테두리 + 5px 하드 오프셋 그림자로 위계를 만들었다. 그 문법은
+ * 요소 하나의 경계에만 11px 를 쓴다. 실무 테스트는 20~50 Step 인데 그 비용 때문에
+ * Step 행이 125px 가 됐고, 900px 창에서 5행밖에 보이지 않았다 — 도구가 자기가 다루는
+ * 규모를 감당하지 못했다.
+ *
+ * v2 는 위계를 **대비와 정렬**로 만든다. 1px 실선, 부드러운 그림자, 직각 대신 2·3·6px
+ * 모서리. 정보는 하나도 줄이지 않고 행이 52px 가 됐다 (5행 → 13행).
+ *
+ * ## 규칙은 그대로다
+ *
+ * **dc.html 에 나타나지 않는 값을 토큰으로 만들지 않는다** (DC-001·DC-007). v1 판이
+ * 정확히 그것을 어겨서 002 라운드가 생겼다 — 확정 디자인에 `border-radius` 가 0회인데
+ * `--radius: 10px` 를 두었다. 값을 추가하려면 먼저 디자인에서 그 값을 찾아라.
  *
  * 값의 출처는 `scripts/design_baseline.py --json` 으로 언제든 다시 확인할 수 있다.
+ * 회귀 가드: `frontend/tests/DesignTokens.test.tsx`
  */
 
 :root {
   /* ─── 종이·잉크 ─────────────────────────────────────────────────────────
-     확정 디자인 8종 실측 등장 횟수를 주석에 남긴다. 팔레트는 이전 판에서
-     이미 정확했다 — 이 블록은 값이 바뀌지 않았다. */
-  --ink: #14130f;            /* 253회 — 텍스트·테두리·그림자 */
-  --ink-soft: #2a2823;
-  --paper: #fffdf6;          /* 98회 — 카드 표면 */
-  --paper-alt: #f6f4ee;
-  --surface: #efebe0;        /* 45회 — 화면 배경 */
-  --surface-soft: #f5f2e9;
+     v1 은 따뜻한 크림(#FFFDF6·#EFEBE0)이었다. v2 는 차가운 중립이다 — 색 예산을
+     전부 상태에 남기기 위해서다. 표면 자체는 아무것도 주장하지 않는다. */
+  --bg: #f2f4f7;             /* 화면 배경 */
+  --panel: #ffffff;          /* 패널·카드 표면 */
+  --sunken: #eaedf2;         /* 표 머리·우물 */
+  --sunken-2: #f7f8fa;       /* 옅은 우물 — 선택된 행, 바닥 띠 */
 
-  --muted: #6b675c;          /* 95회 — 보조 텍스트 */
-  --dim: #9a968a;            /* 33회 — 흐린 텍스트 */
-  --faint: #8e897c;
-  --border: #dcd8cc;         /* 49회 — 약한 구분선 */
-  --border-strong: #c9c4b4;
+  /* 글자 3단. 셋 다 흰 바탕에서 4.5:1 을 넘는다 — 흐린 회색 위 회색 글자를 없앴다. */
+  --ink: #14171c;            /* 본문 · 17:1 */
+  --ink-2: #4a515c;          /* 보조 · 7.9:1 */
+  --ink-3: #6e757f;          /* 3차·비활성 · 4.6:1 */
 
-  /* 상태 */
-  --pass: #2e9455;           /* 26회 */
-  --fail: #d9502f;           /* 24회 */
-  --fail-dark: #a83a22;
-  --fail-tint: #fbeeea;
-  --warn: #f5d000;           /* 24회 — 강조 노랑 */
-  --warn-tint: #fff9d6;
+  /* 선. v1 은 3px(67회)·2px(43회) 두 가지였고 1px 이 없었다. v2 는 정반대다. */
+  --hair: #e3e6eb;           /* 기본 구분선 */
+  --hair-2: #cbd0d8;         /* 강한 구분·조작 테두리·점선 */
 
-  /* AI — 사람 작성과 구분하는 유일한 색 (원칙 I: 구조는 같고 표시만 다르다) */
-  --ai: #7c4ddb;             /* 20회 */
-  --ai-dark: #5a31b8;
-  --ai-tint: #f0ebfc;
+  /* ─── 상태 ────────────────────────────────────────────────────────────
+     색은 오직 상태에만 쓴다. 주 동작조차 색이 아니라 잉크 채움이다 (--ink).
+     그래서 화면에 색이 보이면 그것은 언제나 상태를 뜻한다. */
+  --pass: #1a7f45;  --pass-t: #e8f5ed;   /* 5.2:1 */
+  --fail: #c8371d;  --fail-t: #fcede9;   /* 5.3:1 */
+  --fail-dark: #a32c13;
+  --warn: #8f5a00;  --warn-t: #fbf3e2;   /* 5.9:1 */
+  --run:  #0b6bcb;  --run-t:  #e8f1fb;   /* 5.3:1 */
+  --ai:   #6b3fd4;  --ai-t:   #f0ebfb;   /* 6.4:1 — 사람 작성과 구분하는 유일한 색 */
+  --ai-dark: #5732b0;
 
   /* ─── 기하 ────────────────────────────────────────────────────────────
-     여기가 이전 판에서 어긋난 곳이다. */
+     v1 과 가장 크게 갈리는 곳이다. */
 
-  /* 테두리 — 확정 디자인은 3px(67회)와 2px(43회) 두 가지만 쓴다. 1px 은 없다. */
-  --rule: 3px;               /* 주 구획: 화면 영역, 카드, 버튼, 입력 */
-  --rule-sub: 2px;           /* 부 구획: 뱃지, 칩, 내부 분할 */
+  --radius-chip: 2px;        /* 칩·뱃지 */
+  --radius: 3px;             /* 조작·입력·패널 */
+  --radius-lg: 6px;          /* 겹치는 것 — 다이얼로그 */
 
-  /* 하드 오프셋 그림자 — 26회 등장하는 핵심 시각 장치다.
-     `0 2px 6px rgba(...)` 같은 부드러운 그림자가 아니다. 흐림 반경이 0이다. */
-  --lift: 5px 5px 0 var(--ink);          /* 11회 — 가장 흔하다 */
-  --lift-accent: 5px 5px 0 var(--warn);  /*  5회 — 주 동작 버튼 */
-  --lift-sm: 4px 4px 0 var(--ink);       /*  4회 */
-  --lift-lg: 6px 6px 0 var(--ink);       /*  4회 */
+  /* 테두리는 1px 하나다. 2px 는 초점과 선택에만 쓴다.
+     행 왼쪽의 3px 상태 마커는 테두리가 아니라 표식이다 (--mark). */
+  --mark: 3px;
 
-  /* 떠 있는 요소 전용 부드러운 그림자. 확정 디자인에서 딱 두 번 쓰인다. */
-  --float: 0 18px 40px rgba(20, 19, 15, 0.22);
-  --float-sm: 0 12px 26px rgba(20, 19, 15, 0.2);
+  /* 그림자. 흐림 반경 0 의 하드 오프셋을 쓰지 않는다 — 그것이 v1 의 서명이었다. */
+  --e-1: 0 1px 2px rgba(20, 23, 28, 0.07);   /* 떠 있는 조작 */
+  --e-2: 0 16px 40px rgba(20, 23, 28, 0.18); /* 겹치는 패널 */
+
+  /* ─── 간격 ────────────────────────────────────────────────────────── */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+
+  /* ─── 껍데기 치수 ──────────────────────────────────────────────────────
+     `contracts/ui-contract.md` §1-2 의 표와 같은 값이다. 표가 정본이고 여기는 사본이다.
+     v1 대비: 60→56 · 74→48 · 47→32 · 44→32 · 125→52. 폭 두 개는 바뀌지 않았다. */
+  --h-header: 56px;
+  --h-phase: 48px;
+  --h-notice: 32px;
+  --h-control: 32px;
+  --h-control-sm: 26px;
+  --h-step: 52px;            /* Step 행. v1 은 125px 였다 */
+  --w-steps: 460px;          /* Step 패널 — 바뀌지 않았다 */
+  --w-detail: 640px;         /* Step 상세 겹침 — 바뀌지 않았다 */
+  --w-min: 1440px;           /* 최소 기준 폭 — 바뀌지 않았다 */
 
   /* ─── 글꼴 ────────────────────────────────────────────────────────────
-     대체 글꼴 순서를 확정 디자인 그대로 쓴다. 웹폰트를 못 불러올 때
-     무엇으로 떨어지는지도 디자인의 일부다. */
-  --font-display: "Black Han Sans", "Arial Black", Impact, sans-serif;
-  --font-body: "IBM Plex Sans KR", system-ui, sans-serif;
+     전용 디스플레이 서체를 버렸다. Black Han Sans 는 굵고 커서 밀도와 싸운다 —
+     큰 제목은 본문 서체의 700 으로 쓴다. 두 벌로 끝낸다. */
+  --font-sans: "IBM Plex Sans KR", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
   --gap: 12px;
 }
 
-/* `--radius` 는 없다. 확정 디자인 8종에 `radius` 라는 문자열이 0회 등장한다.
-   모든 모서리가 직각이다. 이것은 누락이 아니라 디자인이다 (DC-004).
-   회귀 가드: frontend/tests/DesignTokens.test.tsx */
-
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.55;
+  font-family: var(--font-sans);
+  font-size: 13px;           /* 도구의 기본 크기. v1 은 14px 였다 */
+  line-height: 1.5;
   color: var(--ink);
-  background: var(--surface); /* dc.html 의 화면 배경은 #EFEBE0 다 (--paper 가 아니다) */
+  background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  /* 숫자를 고정폭으로. 소요 시간 열이 자릿수마다 흔들리지 않는다. */
+  font-variant-numeric: tabular-nums;
 }
 
-a { color: var(--ai); text-decoration: none; }
-a:hover { color: var(--ai-dark); }
+a { color: var(--run); text-decoration: none; }
+a:hover { color: #08529e; }
+
+/* 초점 링을 지우지 않는다. 키보드로 도는 도구다. */
+:focus-visible {
+  outline: 2px solid var(--run);
+  outline-offset: 2px;
+}
 
 /* ─── 기본 컨트롤 ──────────────────────────────────────────────────────────
-   dc.html 의 버튼은 높이 44~46px, 좌우 여백 18px, 3px 테두리, 하드 그림자다.
-   예: `height: 44px; padding: 0 18px; background: #14130F; color: #F5F2E9;
-        border: 3px solid #14130F; box-shadow: 5px 5px 0 #F5D000` */
+   008 의 조작은 높이 32px, 좌우 여백 12px, 1px 테두리, 3px 모서리, 부드러운 그림자다.
+   주 동작만 잉크로 채운다. */
 
 button {
-  font: 600 15px/1 var(--font-body);
+  font: 600 13px/1 var(--font-sans);
   cursor: pointer;
-  height: 44px;
-  padding: 0 18px;
-  border: var(--rule) solid var(--ink);
-  background: var(--ink);
-  color: var(--surface-soft);
-  box-shadow: var(--lift-accent);
-}
-button:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--warn); }
-button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
-
-button.secondary {
-  background: var(--paper);
+  height: var(--h-control);
+  padding: 0 12px;
+  border: 1px solid var(--hair-2);
+  border-radius: var(--radius);
+  background: var(--panel);
   color: var(--ink);
-  box-shadow: var(--lift);
+  box-shadow: var(--e-1);
 }
-button.secondary:active { box-shadow: 3px 3px 0 var(--ink); }
+button:hover { background: var(--sunken-2); }
+button:active { box-shadow: none; }
+
+/* 주 동작 — 색이 아니라 채움으로 말한다. */
+button.primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #ffffff;
+}
+button.primary:hover { background: #262b33; }
+
+/* 이전 판의 이름. 지금은 기본형이 곧 보조 조작이다. */
+button.secondary { background: var(--panel); color: var(--ink); }
 
 button.ghost {
   background: transparent;
-  color: var(--muted);
+  color: var(--ink-2);
   border-color: transparent;
   box-shadow: none;
 }
-button.ghost:active { transform: none; }
+button.ghost:hover { background: var(--sunken); }
 
 button.danger {
-  background: var(--fail);
-  color: var(--paper);
-  box-shadow: var(--lift);
+  background: var(--panel);
+  border-color: var(--fail);
+  color: var(--fail);
 }
-button.danger:active { box-shadow: 3px 3px 0 var(--ink); }
+button.danger:hover { background: var(--fail-t); }
+
+/* 쓸 수 없는 조작은 **감추지 않는다** (SC-004). 바뀐 것은 무게다 —
+   v1 은 채운 상자에 불투명도만 낮춰서 활성 조작보다 더 큰 자리를 먹었다. */
+button:disabled {
+  background: transparent;
+  border: 1px dashed var(--hair-2);
+  color: var(--ink-3);
+  box-shadow: none;
+  font-weight: 500;
+  cursor: not-allowed;
+  opacity: 1;
+}
 
 input, select, textarea {
-  font: 400 15px/1.4 var(--font-body);
+  font: 400 13px/1.4 var(--font-sans);
   width: 100%;
-  min-height: 46px;
-  padding: 0 14px;
-  border: var(--rule) solid var(--ink);
-  background: var(--paper);
+  min-height: var(--h-control);
+  padding: 0 10px;
+  border: 1px solid var(--hair-2);
+  border-radius: var(--radius);
+  background: var(--panel);
   color: var(--ink);
 }
-textarea { padding: 12px 14px; line-height: 1.5; }
-input::placeholder, textarea::placeholder { color: var(--dim); }
+textarea { padding: 8px 10px; line-height: 1.5; }
+input::placeholder, textarea::placeholder { color: var(--ink-3); }
+input:disabled, select:disabled, textarea:disabled {
+  background: transparent;
+  border-style: dashed;
+  color: var(--ink-3);
+}
 
 label {
   display: block;
-  font: 600 12px/1 var(--font-mono);
-  letter-spacing: 0.14em;
-  color: var(--muted);
-  margin: 14px 0 6px;
+  font: 600 11px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin: 12px 0 6px;
   text-transform: uppercase;
 }
 
 code, .mono { font-family: var(--font-mono); font-size: 12px; }
 
 /* ─── 뱃지 ────────────────────────────────────────────────────────────────
-   dc.html 의 상태 칩은 채운 배경 + 2px 테두리 + 직각이다.
-   예: `background: #D9502F; color: #FFFDF6; border: 2px solid #14130F;
-        font: 700 10px/1 'IBM Plex Mono'; letter-spacing: 0.06em` */
+   상태 칩은 1px 테두리 + 2px 모서리다. **색만으로 구분하지 않는다** — 모든 상태가
+   색 + 형태 + 접근 가능한 이름 셋을 갖는다 (005 FR-141·FR-151). */
 
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font: 700 10px/1 var(--font-mono);
+  gap: 5px;
+  height: 19px;
+  padding: 0 6px;
+  font: 600 10px/1 var(--font-mono);
   letter-spacing: 0.06em;
-  padding: 5px 8px;
-  border: var(--rule-sub) solid var(--ink);
-  background: var(--surface-soft);
-  color: var(--ink);
+  border: 1px solid var(--hair-2);
+  border-radius: var(--radius-chip);
+  background: var(--sunken-2);
+  color: var(--ink-2);
 }
-.badge.pass { background: var(--pass); color: var(--paper); }
-.badge.fail { background: var(--fail); color: var(--paper); }
-.badge.ai { background: var(--ai); color: var(--paper); }
-.badge.warn { background: var(--warn); color: var(--ink); }
+.badge.pass { border-color: var(--pass); color: var(--pass); background: var(--pass-t); }
+.badge.fail { border-color: var(--fail); color: var(--fail); background: var(--fail-t); }
+.badge.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-t); }
+.badge.run  { border-color: var(--run);  color: var(--run);  background: var(--run-t); }
+.badge.ai   { border-color: var(--ai);   color: var(--ai);   background: var(--ai-t); }
+/* 아직 돌린 적 없는 것은 점선이다 — 빈 칸으로 두지 않는다. */
+.badge.none { border-style: dashed; background: transparent; color: var(--ink-3); }
 
 .card {
-  background: var(--paper);
-  border: var(--rule) solid var(--ink);
-  padding: 18px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius);
+  padding: 12px;
 }
 
-.muted { color: var(--muted); }
-.dim { color: var(--dim); }
+.muted { color: var(--ink-2); }
+.dim { color: var(--ink-3); }
 .row { display: flex; align-items: center; gap: 8px; }
 .spacer { flex: 1; }

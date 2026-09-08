@@ -40,7 +40,7 @@ export function StartingIndicator({
         justifyContent: "center",
         gap: 8,
         padding: 32,
-        color: "var(--muted)",
+        color: "var(--ink-2)",
       }}
     >
       <span className="badge">STARTING</span>

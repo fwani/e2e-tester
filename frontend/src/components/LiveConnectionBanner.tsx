@@ -22,9 +22,9 @@ export function LiveConnectionBanner({ onReconnect }: LiveConnectionBannerProps)
     <div
       role="status"
       style={{
-        background: "var(--warn-tint)",
+        background: "var(--warn-t)",
         color: "var(--ink)",
-        borderBottom: "var(--rule) solid var(--ink)",
+        borderBottom: "1px solid var(--ink)",
         padding: "10px 24px",
         display: "flex",
         alignItems: "center",

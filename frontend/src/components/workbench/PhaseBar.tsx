@@ -17,16 +17,16 @@ import type { ReactNode } from "react";
 import type { OutcomeTone } from "../../lib/wording";
 import type { PhaseBar as PhaseBarModel } from "./model";
 
-const INK = "#14130F";
+const INK = "#14171C";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 
 /** 결말 색 역할 → 실제 색 (005 FR-141). **색은 보조이며 라벨이 항상 함께 있다.** */
 const TONE_COLOR: Record<OutcomeTone, string> = {
-  success: "#2E9455",
-  danger: "#D9502F",
-  neutral: "#6B675C",
+  success: "#1A7F45",
+  danger: "#C8371D",
+  neutral: "#4A515C",
   warn: "#B8860B",
-  unknown: "#9A968A",
+  unknown: "#6E757F",
 };
 
 export interface PhaseBarProps {
@@ -41,9 +41,9 @@ export function PhaseBar({ bar, testName, actions }: PhaseBarProps) {
     <div
       data-workbench-phase-bar
       style={{
-        flex: "0 0 74px",
-        borderBottom: `3px solid ${INK}`,
-        background: "#EFEBE0",
+        flex: "0 0 48px",
+        borderBottom: `1px solid ${INK}`,
+        background: "#F2F4F7",
         display: "flex",
         alignItems: "center",
         gap: "16px",
@@ -59,11 +59,12 @@ export function PhaseBar({ bar, testName, actions }: PhaseBarProps) {
         style={{
           display: "inline-flex",
           alignItems: "center",
-          height: "30px",
+          height: "22px",
           padding: "0 11px",
           background: TONE_COLOR[bar.phaseTone],
-          color: "#FFFDF6",
-          border: `3px solid ${INK}`,
+          color: "#FFFFFF",
+          border: `1px solid ${INK}`,
+          borderRadius: "3px",
           font: `700 13px/1 ${MONO}`,
           letterSpacing: "0.06em",
           flex: "0 0 auto",
@@ -74,7 +75,7 @@ export function PhaseBar({ bar, testName, actions }: PhaseBarProps) {
 
       <div
         style={{
-          fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif",
+          fontFamily: "'IBM Plex Sans KR', system-ui, sans-serif",
           fontSize: "26px",
           lineHeight: "1",
           whiteSpace: "nowrap",
@@ -88,7 +89,7 @@ export function PhaseBar({ bar, testName, actions }: PhaseBarProps) {
       </div>
 
       {bar.progressLabel !== null && (
-        <div style={{ font: `400 14px/1 ${MONO}`, color: "#6B675C", flex: "0 0 auto" }}>
+        <div style={{ font: `400 14px/1 ${MONO}`, color: "#4A515C", flex: "0 0 auto" }}>
           {bar.progressLabel}
         </div>
       )}

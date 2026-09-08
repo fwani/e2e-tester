@@ -58,18 +58,22 @@ export type SlotName = "target" | "work";
 /**
  * `content` 자리의 최소 높이.
  *
- * 1회차 값을 그대로 쓴다 — `RunnerPaused.dc.html`·`Takeover.dc.html` 의 국면 안내 띠
- * (`flex: 0 0 42px`). 007 이 새로 정한 값이 아니다.
+ * 008 「계기판」의 안내 띠는 32px 다 (`Record`·`Takeover`·`Paused` 공통). v1 의 42px 는
+ * 3px 테두리와 15px 세로 여백을 안고 있던 값이다 — 경계 비용이 1px 로 내려가면서
+ * 같은 한 줄이 32px 에 들어간다.
  */
-export const CONTENT_MIN_HEIGHT = 42;
+export const CONTENT_MIN_HEIGHT = 32;
 
 /**
  * 세션이 없는 국면의 ③-a 높이 (승인 대상 B1).
  *
- * 46px 강조 버튼 + 상하 24px 여백 + 3px 테두리. **자리를 없애는 것이 아니라 줄이는
+ * 32px 강조 버튼 + 상하 27px 여백 + 1px 테두리 = 88. **자리를 없애는 것이 아니라 줄이는
  * 것이다** (FR-261) — 자리가 사라지면 「이 화면에는 원래 없는 것」과 구별되지 않는다.
+ *
+ * 008 에서 118 → 88 로 내렸다. 조작 높이가 46 → 32 로 내려간 만큼이며, 담는 것(안내
+ * 두 줄 + 「브라우저 열어 Step nn 에서 멈추기」)은 그대로다.
  */
-export const TARGET_SLOT_MIN_PX = 118;
+export const TARGET_SLOT_MIN_PX = 88;
 
 /**
  * 결과 국면 ③-b 높이 (승인 대상 B4).

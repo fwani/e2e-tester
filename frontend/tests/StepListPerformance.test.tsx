@@ -104,7 +104,7 @@ describe("Step 패널 — 200개 규모 (실제 렌더 경로)", () => {
   it("일시정지 위치를 한 곳만 구분한다 (FR-034)", () => {
     const { container } = render(<StepPanel steps={makeSteps(200)} pausedIndex={100} />);
     // 구분은 목록에서 정확히 한 곳이다 — 여러 개면 어디서 멈췄는지 알 수 없다.
-    // 패널 자체도 왼쪽 테두리를 갖는다(460px 경계)므로 **행 안에서만** 센다.
-    expect(container.querySelectorAll('[data-step-row][style*="border-left"]')).toHaveLength(1);
+    // 008 부터 모든 행이 결말 표식으로 왼쪽 테두리를 가지므로 속성으로 센다.
+    expect(container.querySelectorAll("[data-step-row][data-paused-here]")).toHaveLength(1);
   });
 });

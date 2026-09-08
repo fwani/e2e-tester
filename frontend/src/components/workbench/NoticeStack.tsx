@@ -17,13 +17,13 @@ import type { ActionId } from "../../lib/actions";
 import { ACTION_LABEL } from "../../lib/wording";
 import type { Notice } from "./model";
 
-const INK = "#14130F";
+const INK = "#14171C";
 const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
 const TONE: Record<Notice["tone"], { background: string; color: string }> = {
-  error: { background: "#FBEEEA", color: "#A83A22" },
-  warn: { background: "#FFF9D6", color: "#8A6A16" },
-  info: { background: "#FFFDF6", color: INK },
+  error: { background: "#FCEDE9", color: "#A32C13" },
+  warn: { background: "#FBF3E2", color: "#8A6A16" },
+  info: { background: "#FFFFFF", color: INK },
 };
 
 export interface NoticeStackProps {
@@ -42,7 +42,7 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
           role={n.role}
           data-notice={n.id}
           style={{
-            borderBottom: `3px solid ${INK}`,
+            borderBottom: `1px solid ${INK}`,
             padding: "12px 24px",
             display: "flex",
             alignItems: "flex-start",

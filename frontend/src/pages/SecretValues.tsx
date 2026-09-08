@@ -74,7 +74,7 @@ export function SecretValues({
   return (
     <main style={{ maxWidth: 720, margin: "32px auto", padding: "0 16px" }}>
       <div className="row" style={{ gap: 8, marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontFamily: "var(--font-display)" }}>비밀 값</h1>
+        <h1 style={{ margin: 0, fontFamily: "var(--font-sans)" }}>비밀 값</h1>
         <span className="spacer" />
         {onManageKeys && (
           <button className="secondary" onClick={onManageKeys}>
@@ -93,9 +93,10 @@ export function SecretValues({
           role="alert"
           style={{
             padding: "8px 10px",
-            background: "var(--fail-tint)",
+            background: "var(--fail-t)",
             color: "var(--fail-dark)",
-            border: "2px solid var(--fail)",
+            border: "1px solid var(--fail)",
+            borderRadius: "3px",
           }}
         >
           공개키가 교체되었습니다. 기존 암호문은 새 키로 읽을 수 없으므로 **모든 값을 다시
@@ -108,9 +109,10 @@ export function SecretValues({
           role="alert"
           style={{
             padding: "8px 10px",
-            background: "var(--fail-tint)",
+            background: "var(--fail-t)",
             color: "var(--fail-dark)",
-            border: "2px solid var(--fail)",
+            border: "1px solid var(--fail)",
+            borderRadius: "3px",
           }}
         >
           <ErrorNotice error={error} />
@@ -122,8 +124,9 @@ export function SecretValues({
           role="status"
           style={{
             padding: "8px 10px",
-            background: "var(--warn-tint)",
-            border: "2px solid var(--warn)",
+            background: "var(--warn-t)",
+            border: "1px solid var(--warn)",
+            borderRadius: "3px",
           }}
         >
           {notice}
@@ -139,8 +142,9 @@ export function SecretValues({
 
       <section
         style={{
-          border: "3px solid var(--ink)",
-          background: "var(--paper)",
+          border: "1px solid var(--ink)",
+          borderRadius: "3px",
+          background: "var(--panel)",
           padding: 14,
           display: "flex",
           flexDirection: "column",
@@ -191,8 +195,9 @@ export function SecretValues({
 
       <section
         style={{
-          border: "3px solid var(--ink)",
-          background: "var(--surface-soft)",
+          border: "1px solid var(--ink)",
+          borderRadius: "3px",
+          background: "var(--sunken-2)",
           padding: 14,
           marginTop: 16,
           display: "flex",

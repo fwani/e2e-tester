@@ -33,8 +33,9 @@ export function SessionLostBanner({
     <div
       role="alert"
       style={{
-        border: "3px solid var(--fail)",
-        background: "var(--fail-tint)",
+        border: "1px solid var(--fail)",
+        borderRadius: "3px",
+        background: "var(--fail-t)",
         padding: 14,
         display: "flex",
         flexDirection: "column",

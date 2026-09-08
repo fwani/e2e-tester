@@ -51,7 +51,7 @@ export function MirrorView({
       {degradedReason !== null && (
         <div
           className="row"
-          style={{ gap: 8, padding: "6px 14px", background: "var(--surface-soft)" }}
+          style={{ gap: 8, padding: "6px 14px", background: "var(--sunken-2)" }}
         >
           <span className="badge warn mono">1 FPS</span>
           <span className="muted">{degradedReason}</span>
@@ -63,7 +63,7 @@ export function MirrorView({
           flex: 1,
           display: "grid",
           placeItems: "center",
-          background: "var(--paper-alt)",
+          background: "var(--sunken-2)",
           overflow: "hidden",
           minHeight: 0,
         }}
@@ -110,7 +110,7 @@ function PhaseNotice({ phase, tabIndex }: { phase: MirrorPhase; tabIndex?: numbe
       style={{
         gap: 8,
         padding: "10px 14px",
-        background: phase === "manipulation" ? "var(--warn-tint)" : "var(--surface)",
+        background: phase === "manipulation" ? "var(--warn-t)" : "var(--bg)",
       }}
     >
       {asBadge ? (

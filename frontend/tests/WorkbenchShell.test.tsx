@@ -2,10 +2,10 @@
  * 007 T025 — 통합 화면 껍데기 (SC-003 · FR-217·FR-218·FR-218a~f).
  *
  * **이 파일이 지키는 것은 껍데기의 동일성이다.** 지금은 편집 국면만 껍데기 자체가 다르다 —
- * 다른 화면은 기준 폭 1440 아트보드 + 60px 헤더인데 편집 화면은 최대 폭 1080 의 가운데
+ * 다른 화면은 기준 폭 1440 아트보드 + 56px 헤더인데 편집 화면은 최대 폭 1080 의 가운데
  * 정렬 본문이고 헤더·경로·상태 표시가 없다 (S-06).
  *
- * 치수는 확정 디자인에서 온 값이다 (research R1) — 60px·74px 는 5종 공통, 460px 는
+ * 치수는 디자인에서 온 값이다 (008) — 56px·48px 는 국면 공통, 460px 는
  * Step 패널을 가진 3종 공통. **007 이 새로 정한 값이 아니다.**
  */
 import { render, screen } from "@testing-library/react";
@@ -42,9 +42,9 @@ describe("3층 구조 (T018 · FR-218c)", () => {
     expect(target.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("국면 띠는 74px 이다 — 확정 디자인 5종 공통값", () => {
+  it("국면 띠는 48px 이다 — 008 「계기판」 값 (v1 은 74px 였다)", () => {
     renderShell(workbenchModel("running"));
-    expect(el("[data-workbench-phase-bar]").style.flex).toBe("0 0 74px");
+    expect(el("[data-workbench-phase-bar]").style.flex).toBe("0 0 48px");
   });
 
   it("Step 패널은 460px 고정이다 — 확정 디자인 3종 공통값", () => {

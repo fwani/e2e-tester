@@ -22,7 +22,7 @@ import type { ActionId } from "../../lib/actions";
 import type { CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
 
-const INK = "#14130F";
+const INK = "#14171C";
 const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
 export interface ActionButtonProps {
@@ -69,9 +69,10 @@ export function ActionButton({
     display: "inline-flex",
     alignItems: "center",
     gap: compact ? "6px" : "9px",
-    height: compact ? "30px" : "46px",
+    height: compact ? "26px" : "32px",
     padding: compact ? "0 10px" : "0 18px",
-    border: `3px solid ${INK}`,
+    border: `1px solid ${INK}`,
+    borderRadius: "3px",
     font: compact ? `600 12px/1 ${SANS}` : `600 15px/1 ${SANS}`,
     color: INK,
   } as const;
@@ -79,23 +80,30 @@ export function ActionButton({
   const quiet = emphasis === "quiet";
   const live = {
     ...base,
-    background: emphasis === true ? "#F5D000" : "#FFFDF6",
-    border: `3px solid ${quiet ? "#9A968A" : INK}`,
-    color: quiet ? "#6B675C" : INK,
-    boxShadow: compact || quiet ? "none" : `5px 5px 0 ${INK}`,
+    background: emphasis === true ? INK : "#FFFFFF",
+    border: `1px solid ${emphasis === true ? INK : quiet ? "#CBD0D8" : "#CBD0D8"}`,
+    borderRadius: "3px",
+    color: emphasis === true ? "#FFFFFF" : quiet ? "#4A515C" : INK,
+    boxShadow: compact || quiet ? "none" : "0 1px 2px rgba(20, 23, 28, 0.07)",
     cursor: "pointer",
   } as const;
 
   /**
-   * 비활성의 모양. 확정 디자인에 비활성 버튼이 없으므로
-   * `design-conformance/undefined-states.md` 에 근거를 남긴다 — 결과 화면이 실행 요청
-   * 중에 쓰는 표현(`#EDEAE0` 배경 + 그림자 없음)을 따랐다.
+   * 비활성의 모양 (008「계기판」 · Language.dc.html §05).
+   *
+   * **감추지 않는다** (SC-004). 바뀐 것은 무게다 — v1 은 채운 상자(`#EAEDF2`)라 활성
+   * 조작과 시각적 무게가 비슷했고, 이유가 버튼 **아래** 줄로 붙어 층을 하나 더 만들었다.
+   * 48px 국면 띠 안에서 그 층은 아래 영역을 덮었다.
+   *
+   * 점선 + 그림자 없음 + 사유는 같은 줄. 층이 늘지 않는다.
    */
   const dead = {
     ...base,
-    background: "#EDEAE0",
+    background: "transparent",
+    border: "1px dashed #CBD0D8",
     boxShadow: "none",
-    color: "#6B675C",
+    color: "#6E757F",
+    fontWeight: 500,
     cursor: "not-allowed",
   } as const;
 
@@ -116,7 +124,7 @@ export function ActionButton({
   if (!disabled) return button;
 
   return (
-    <span style={{ display: "inline-flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+    <span style={{ display: "inline-flex", flexDirection: "row", gap: 8, alignItems: "center" }}>
       {button}
       {/*
         이유는 **시각적으로만** 두지 않는다. `aria-describedby` 로 버튼에 묶여 있어야
@@ -125,7 +133,7 @@ export function ActionButton({
       <span
         id={reasonId}
         data-disabled-reason={action}
-        style={{ font: `400 12px/1.4 ${SANS}`, color: "#6B675C", maxWidth: 340 }}
+        style={{ font: `400 11px/1.35 ${SANS}`, color: "#6E757F", maxWidth: 260 }}
       >
         {capability.reason}
         {capability.remedy !== null && onRemedy !== undefined && (
@@ -137,11 +145,12 @@ export function ActionButton({
               onClick={() => onRemedy(capability.remedy!.action)}
               style={{
                 border: "none",
+                borderRadius: "3px",
                 background: "transparent",
                 boxShadow: "none",
                 padding: 0,
                 font: `600 12px/1.4 ${SANS}`,
-                color: "#5A31B8",
+                color: "#5732B0",
                 textDecoration: "underline",
                 cursor: "pointer",
               }}

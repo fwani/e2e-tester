@@ -216,8 +216,10 @@ describe("DesignStepRow — 입력값 (FR-083)", () => {
 
 describe("DesignStepRow — 상태 표시 (FR-034·FR-046)", () => {
   // 패널 자체가 왼쪽 테두리를 갖는다(460px 경계). **행 안에서만** 찾는다.
+  // 008 — 모든 행이 결말 표식으로 왼쪽 3px 테두리를 갖는다. 일시정지는 스타일이 아니라
+  // 속성으로 구분한다.
   const pausedMark = (container: HTMLElement) =>
-    container.querySelector('[data-step-row][style*="border-left"]');
+    container.querySelector("[data-step-row][data-paused-here]");
 
   it("일시정지 위치를 구분해 표시한다", () => {
     const { container } = row(clickStep(), { paused: true });

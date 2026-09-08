@@ -31,7 +31,7 @@ import { ACTION_LABEL, openBrowserAtStepLabel } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 import type { EmptyReason, TargetView } from "./model";
 
-const INK = "#14130F";
+const INK = "#14171C";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
@@ -92,7 +92,7 @@ function Unavailable({
   return (
     <span
       data-disabled-reason={action}
-      style={{ font: `400 12px/1.5 ${SANS}`, color: "#6B675C" }}
+      style={{ font: `400 12px/1.5 ${SANS}`, color: "#4A515C" }}
     >
       {state.reason}
     </span>
@@ -140,8 +140,9 @@ export function TargetPane({
           style={{
             flex: 1,
             minHeight: 0,
-            border: `3px solid ${INK}`,
-            background: "#FFFDF6",
+            border: `1px solid ${INK}`,
+            borderRadius: "3px",
+            background: "#FFFFFF",
             display: "flex",
             flexDirection: "column",
           }}
@@ -158,8 +159,8 @@ export function TargetPane({
               flex: "0 0 46px",
               display: "flex",
               alignItems: "stretch",
-              borderBottom: `3px solid ${INK}`,
-              background: "#EFEBE0",
+              borderBottom: `1px solid ${INK}`,
+              background: "#F2F4F7",
             }}
           >
             {ARTIFACT_TABS.map((t) => {
@@ -177,10 +178,11 @@ export function TargetPane({
                   style={{
                     padding: "0 16px",
                     border: "none",
-                    borderRight: `2px solid ${INK}`,
+                    borderRadius: "3px",
+                    borderRight: `1px solid ${INK}`,
                     boxShadow: "none",
                     background: active ? INK : "transparent",
-                    color: active ? "#EFEBE0" : usable ? INK : "#9A968A",
+                    color: active ? "#F2F4F7" : usable ? INK : "#6E757F",
                     font: `600 11px/1 ${MONO}`,
                     letterSpacing: "0.1em",
                     cursor: usable ? "pointer" : "not-allowed",
@@ -201,9 +203,9 @@ export function TargetPane({
               data-disabled-reason="artifact.select"
               style={{
                 padding: "6px 16px",
-                borderBottom: "2px solid #DCD8CC",
+                borderBottom: "1px solid #E3E6EB",
                 font: `400 12px/1.4 ${MONO}`,
-                color: "#9A968A",
+                color: "#6E757F",
               }}
             >
               {ARTIFACT_TABS.filter((t) => !target.available.includes(t.kind))
@@ -220,26 +222,32 @@ export function TargetPane({
 
       {target.kind === "open_browser" && (
         <div
+          /*
+            008 — **가로 한 줄이다.** v1 은 제목 · 설명 · 버튼을 세로로 쌓아 166px 를
+            썼고, 그 자리가 118px 로 정해지면서 내용이 잘렸다. 담는 것은 그대로다.
+          */
           style={{
             flex: 1,
             minHeight: 0,
-            border: `3px solid ${INK}`,
-            background: "#FFFDF6",
+            border: "1px solid #E3E6EB",
+            borderRadius: "3px",
+            background: "#FFFFFF",
             display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            gap: 14,
-            padding: "24px",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 16,
+            padding: "0 14px",
           }}
         >
-          <div style={{ font: `600 16px/1.5 ${SANS}` }}>
-            브라우저가 열려 있지 않습니다.
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ font: `600 13px/1.4 ${SANS}` }}>
+              브라우저가 열려 있지 않습니다
+            </div>
+            <p className="dim" style={{ font: `400 11px/1.45 ${SANS}`, margin: 0 }}>
+              값·순서·삭제는 브라우저 없이 고칠 수 있습니다. 요소를 다시 집거나 직접
+              조작으로 Step 을 더하려면 브라우저가 필요합니다.
+            </p>
           </div>
-          <p className="dim" style={{ font: `400 13px/1.6 ${SANS}`, margin: 0, maxWidth: 460 }}>
-            값·순서·삭제는 브라우저 없이 고칠 수 있습니다. 요소를 다시 집거나 직접
-            조작으로 Step 을 더하려면 브라우저가 필요합니다.
-          </p>
           <ActionButton
             action="browser.openAt"
             capability={capabilities["browser.openAt"]}
@@ -267,14 +275,15 @@ export function TargetPane({
           style={{
             flex: 1,
             minHeight: 0,
-            border: `3px solid ${INK}`,
-            background: "#FFFDF6",
+            border: `1px solid ${INK}`,
+            borderRadius: "3px",
+            background: "#FFFFFF",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             padding: "24px",
             font: `400 14px/1.7 ${SANS}`,
-            color: "#6B675C",
+            color: "#4A515C",
             whiteSpace: "pre-wrap",
             textAlign: "center",
           }}

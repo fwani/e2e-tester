@@ -29,7 +29,7 @@ import type { CapabilityMap, CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 
-const INK = "#14130F";
+const INK = "#14171C";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
@@ -143,7 +143,7 @@ export function ActionPalette({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ font: `600 11px/1 ${MONO}`, letterSpacing: "0.1em", color: "#6B675C" }}>
+      <div style={{ font: `600 11px/1 ${MONO}`, letterSpacing: "0.1em", color: "#4A515C" }}>
         지금 할 수 있는 것
       </div>
 
@@ -162,8 +162,9 @@ export function ActionPalette({
               height: 40,
               minHeight: 40,
               padding: "0 12px",
-              border: "3px solid #7C4DDB",
-              background: usable("step.addNaturalLanguage") ? "#FFFDF6" : "#EDEAE0",
+              border: "1px solid #6B3FD4",
+              borderRadius: "3px",
+              background: usable("step.addNaturalLanguage") ? "#FFFFFF" : "#EAEDF2",
               font: `400 13px/1 ${SANS}`,
             }}
           />
@@ -185,7 +186,7 @@ export function ActionPalette({
             display: "flex",
             flexDirection: "column",
             gap: 8,
-            borderTop: "2px solid #DCD8CC",
+            borderTop: "1px solid #E3E6EB",
             paddingTop: 12,
           }}
         >
@@ -238,7 +239,7 @@ export function ActionPalette({
           style={{
             display: "flex",
             gap: 10,
-            borderTop: "2px solid #DCD8CC",
+            borderTop: "1px solid #E3E6EB",
             paddingTop: 12,
             alignItems: "flex-start",
             flexWrap: "wrap",
@@ -265,7 +266,7 @@ export function ActionPalette({
       {saveNotice}
 
       {stepCount === 0 && emptyHint !== undefined && (
-        <div style={{ color: "#6B675C", fontSize: 12.5 }}>{emptyHint}</div>
+        <div style={{ color: "#4A515C", fontSize: 12.5 }}>{emptyHint}</div>
       )}
     </div>
   );
@@ -323,8 +324,9 @@ function Field({
     style: {
       flex: 1,
       minWidth: 0,
-      border: `3px solid ${disabled ? "#9A968A" : INK}`,
-      background: disabled ? "#EDEAE0" : "#FFFDF6",
+      border: `1px solid ${disabled ? "#6E757F" : INK}`,
+      borderRadius: "3px",
+      background: disabled ? "#EAEDF2" : "#FFFFFF",
       font: `400 13px/1.4 ${mono ? MONO : SANS}`,
     } as const,
   };
@@ -345,7 +347,7 @@ function Field({
         <span
           id={reasonId}
           data-disabled-reason={action}
-          style={{ font: `400 12px/1.4 ${SANS}`, color: "#6B675C", paddingLeft: 84 }}
+          style={{ font: `400 12px/1.4 ${SANS}`, color: "#4A515C", paddingLeft: 84 }}
         >
           {capability.reason}
           {capability.remedy !== null && (
@@ -357,11 +359,12 @@ function Field({
                 onClick={() => onRemedy(capability.remedy!.action)}
                 style={{
                   border: "none",
+                  borderRadius: "3px",
                   background: "transparent",
                   boxShadow: "none",
                   padding: 0,
                   font: `600 12px/1.4 ${SANS}`,
-                  color: "#5A31B8",
+                  color: "#5732B0",
                   textDecoration: "underline",
                   cursor: "pointer",
                 }}

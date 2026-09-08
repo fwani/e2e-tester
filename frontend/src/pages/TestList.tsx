@@ -141,11 +141,12 @@ export function TestList({
             font: "500 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
           }}
         >
-          <span style={{ color: "#6B675C" }}>프로젝트</span>
+          <span style={{ color: "#4A515C" }}>프로젝트</span>
           <span
             style={{
-              border: "2px solid #14130F",
-              background: "#EFEBE0",
+              border: "1px solid #14171C",
+              borderRadius: "3px",
+              background: "#F2F4F7",
               padding: "7px 12px",
               fontWeight: "600",
             }}
@@ -158,7 +159,7 @@ export function TestList({
             style={{
               padding: "8px 12px",
               font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
-              borderBottom: "3px solid #14130F",
+              borderBottom: "1px solid #14171C",
             }}
           >
             테스트
@@ -182,12 +183,13 @@ export function TestList({
             display: "inline-flex",
             alignItems: "center",
             gap: "9px",
-            height: "44px",
+            height: "32px",
             padding: "0 18px",
-            background: "#14130F",
-            color: "#F5F2E9",
-            border: "3px solid #14130F",
-            boxShadow: "5px 5px 0 #F5D000",
+            background: "#14171C",
+            color: "#F7F8FA",
+            border: "1px solid #14171C",
+            borderRadius: "3px",
+            boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)",
             font: "600 15px/1 'IBM Plex Sans KR', system-ui, sans-serif",
           }}
         >
@@ -221,14 +223,14 @@ export function TestList({
               style={{
                 font: "600 12px/1 'IBM Plex Mono', ui-monospace, monospace",
                 letterSpacing: "0.14em",
-                color: "#6B675C",
+                color: "#4A515C",
               }}
             >
               INTEGRATION TESTS
             </div>
             <div
               style={{
-                fontFamily: "'Black Han Sans', 'Arial Black', Impact, sans-serif",
+                fontFamily: "'IBM Plex Sans KR', system-ui, sans-serif",
                 fontSize: "40px",
                 lineHeight: "1",
                 letterSpacing: "-0.01em",
@@ -246,13 +248,14 @@ export function TestList({
               display: "flex",
               alignItems: "center",
               gap: "10px",
-              height: "46px",
+              height: "32px",
               padding: "0 14px",
-              border: "3px solid #14130F",
-              background: "#FFFDF6",
+              border: "1px solid #14171C",
+              borderRadius: "3px",
+              background: "#FFFFFF",
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6B675C" strokeWidth="2.2">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#4A515C" strokeWidth="2.2">
               <circle cx="7.5" cy="7.5" r="5" />
               <path d="M11.5 11.5L16 16" />
             </svg>
@@ -264,6 +267,7 @@ export function TestList({
               style={{
                 flex: 1,
                 border: "none",
+                borderRadius: "3px",
                 background: "transparent",
                 padding: 0,
                 minHeight: "auto",
@@ -272,16 +276,16 @@ export function TestList({
               }}
             />
           </div>
-          <div style={{ display: "flex", gap: "0", border: "3px solid #14130F" }}>
+          <div style={{ display: "flex", gap: "0", border: "1px solid #14171C" }}>
             <div
               style={{
-                height: "46px",
+                height: "32px",
                 padding: "0 16px",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                background: "#14130F",
-                color: "#F5F2E9",
+                background: "#14171C",
+                color: "#F7F8FA",
                 font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
               }}
             >
@@ -292,35 +296,35 @@ export function TestList({
             </div>
             <div
               style={{
-                height: "46px",
+                height: "32px",
                 padding: "0 16px",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                background: "#FFFDF6",
-                borderLeft: "3px solid #14130F",
+                background: "#FFFFFF",
+                borderLeft: "1px solid #14171C",
                 font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
               }}
             >
               PASS
-              <span style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace", color: "#2E9455" }}>
+              <span style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace", color: "#1A7F45" }}>
                 {counts.pass}
               </span>
             </div>
             <div
               style={{
-                height: "46px",
+                height: "32px",
                 padding: "0 16px",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                background: "#FFFDF6",
-                borderLeft: "3px solid #14130F",
+                background: "#FFFFFF",
+                borderLeft: "1px solid #14171C",
                 font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
               }}
             >
               FAIL
-              <span style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace", color: "#D9502F" }}>
+              <span style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace", color: "#C8371D" }}>
                 {counts.fail}
               </span>
             </div>
@@ -330,10 +334,11 @@ export function TestList({
         {error !== null && (
           <div
             style={{
-              border: "3px solid #14130F",
-              background: "#FBEEEA",
-              color: "#A83A22",
-              padding: "12px 16px",
+              border: "1px solid #14171C",
+              borderRadius: "3px",
+              background: "#FCEDE9",
+              color: "#A32C13",
+              padding: "8px 14px",
               whiteSpace: "pre-wrap",
             }}
             role="alert"
@@ -345,9 +350,10 @@ export function TestList({
         {data !== null && data.problems.length > 0 && (
           <div
             style={{
-              border: "3px solid #14130F",
-              background: "#FFF9D6",
-              padding: "12px 16px",
+              border: "1px solid #14171C",
+              borderRadius: "3px",
+              background: "#FBF3E2",
+              padding: "8px 14px",
             }}
             role="status"
           >
@@ -362,14 +368,14 @@ export function TestList({
           </div>
         )}
 
-        <div style={{ border: "3px solid #14130F", background: "#FFFDF6", boxShadow: "7px 7px 0 #14130F" }}>
+        <div style={{ border: "1px solid #14171C", background: "#FFFFFF", boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)" }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              height: "44px",
-              background: "#14130F",
-              color: "#EFEBE0",
+              height: "32px",
+              background: "#14171C",
+              color: "#F2F4F7",
               padding: "0 18px",
               font: "600 12px/1 'IBM Plex Mono', ui-monospace, monospace",
               letterSpacing: "0.12em",
@@ -388,19 +394,19 @@ export function TestList({
             style={{
               display: "flex",
               alignItems: "center",
-              height: "46px",
+              height: "32px",
               padding: "0 18px",
               background: "#E4DFD1",
-              borderTop: "3px solid #14130F",
+              borderTop: "1px solid #14171C",
               font: "600 13px/1 'IBM Plex Sans KR', system-ui, sans-serif",
               gap: "10px",
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#14130F" strokeWidth="2.4">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#14171C" strokeWidth="2.4">
               <path d="M3.5 5L7 9l3.5-4" />
             </svg>
             Project Tests
-            <span style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace", color: "#6B675C" }}>
+            <span style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace", color: "#4A515C" }}>
               {counts.total}
             </span>
           </div>
@@ -408,13 +414,13 @@ export function TestList({
           {/* 확정 디자인은 목록에 항상 행이 있는 상태만 보여준다. 로딩·빈 목록은
               undefined-states.md 에 기록했다 (DC-009). */}
           {data === null && (
-            <div style={{ padding: "24px 18px", borderTop: "2px solid #14130F", color: "#9A968A" }}>
+            <div style={{ padding: "24px 18px", borderTop: "1px solid #E3E6EB", color: "#6E757F" }}>
               불러오는 중…
             </div>
           )}
 
           {data !== null && rows.length === 0 && (
-            <div style={{ padding: "24px 18px", borderTop: "2px solid #14130F", color: "#6B675C" }}>
+            <div style={{ padding: "24px 18px", borderTop: "1px solid #E3E6EB", color: "#4A515C" }}>
               {query.trim() === ""
                 ? "아직 테스트가 없습니다. 「테스트 만들기」로 첫 테스트를 만드세요."
                 : `"${query}" 에 해당하는 테스트가 없습니다.`}
@@ -522,11 +528,13 @@ function Row({
       style={{
         display: "flex",
         alignItems: "center",
-        minHeight: "74px",
-        padding: "0 18px",
-        borderTop: "2px solid #14130F",
+        // 008 — 44px. v1 은 74px 였고, 조작 높이가 46 → 32 로 내려간 만큼 행도 내려간다.
+        // 목록은 스무 개가 넘으면 조망이 필요하다.
+        minHeight: "44px",
+        padding: "0 14px",
+        borderTop: "1px solid #E3E6EB",
         // 확정 디자인은 실패 행에 옅은 붉은 배경을 준다.
-        ...(failed ? { background: "#FBEEEA" } : {}),
+        ...(failed ? { background: "#FCEDE9" } : {}),
       }}
     >
       <div style={{ width: "92px" }}>
@@ -573,7 +581,7 @@ function Row({
           <div
             style={{
               font: "400 13px/1.3 'IBM Plex Mono', ui-monospace, monospace",
-              color: "#A83A22",
+              color: "#A32C13",
             }}
           >
             {stepLabel(row.failure_summary.step_index)} ·{" "}
@@ -583,7 +591,7 @@ function Row({
 
         {confirming && (
           <div style={{ display: "flex", gap: 8, alignItems: "center", paddingTop: 4 }}>
-            <span style={{ color: "#A83A22", fontSize: 13 }}>
+            <span style={{ color: "#A32C13", fontSize: 13 }}>
               「{row.name}」을 지웁니다. 되돌릴 수 없습니다.
             </span>
             <button className="danger" disabled={busy} onClick={onDeleteConfirm}>
@@ -601,7 +609,7 @@ function Row({
           width: "74px",
           textAlign: "right",
           font: "400 14px/1 'IBM Plex Mono', ui-monospace, monospace",
-          color: "#6B675C",
+          color: "#4A515C",
         }}
       >
         {row.step_count}
@@ -615,7 +623,7 @@ function Row({
         style={{
           width: "130px",
           font: "400 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
-          color: "#6B675C",
+          color: "#4A515C",
         }}
       >
         {liveSession !== null && isRunning(liveSession.state)
@@ -640,12 +648,13 @@ function Row({
               display: "inline-flex",
               alignItems: "center",
               gap: "7px",
-              height: "44px",
+              height: "32px",
               padding: "0 12px",
-              border: "3px solid #14130F",
-              background: "#F5D000",
-              color: "#14130F",
-              boxShadow: "4px 4px 0 #14130F",
+              border: "1px solid #14171C",
+              borderRadius: "3px",
+              background: "#14171C",
+              color: "#FFFFFF",
+              boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)",
               font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
             }}
           >
@@ -666,12 +675,13 @@ function Row({
               display: "inline-flex",
               alignItems: "center",
               gap: "7px",
-              height: "44px",
+              height: "32px",
               padding: "0 12px",
-              border: "3px solid #14130F",
-              background: failed ? "#F5D000" : "#FFFDF6",
-              color: "#14130F",
-              boxShadow: "4px 4px 0 #14130F",
+              border: "1px solid #14171C",
+              borderRadius: "3px",
+              background: failed ? "#14171C" : "#FFFFFF",
+              color: failed ? "#FFFFFF" : "#14171C",
+              boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)",
               font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
             }}
           >
@@ -685,12 +695,13 @@ function Row({
             display: "inline-flex",
             alignItems: "center",
             gap: "7px",
-            height: "44px",
+            height: "32px",
             padding: "0 12px",
-            border: "3px solid #14130F",
-            background: runPending ? "#EDEAE0" : "#FFFDF6",
-            color: "#14130F",
-            boxShadow: runPending ? "none" : "4px 4px 0 #14130F",
+            border: "1px solid #14171C",
+            borderRadius: "3px",
+            background: runPending ? "#EAEDF2" : "#FFFFFF",
+            color: "#14171C",
+            boxShadow: runPending ? "none" : "0 1px 2px rgba(20, 23, 28, 0.07)",
             font: "600 14px/1 'IBM Plex Sans KR', system-ui, sans-serif",
             cursor: runPending ? "progress" : "pointer",
           }}
@@ -709,18 +720,19 @@ function Row({
           aria-label={`${row.name} 추가 동작`}
           onClick={onToggleMenu}
           style={{
-            width: "44px",
-            height: "44px",
+            width: "32px",
+            height: "32px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            border: "3px solid #14130F",
-            background: "#FFFDF6",
+            border: "1px solid #14171C",
+            borderRadius: "3px",
+            background: "#FFFFFF",
             padding: 0,
             boxShadow: "none",
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="#14130F">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="#14171C">
             <circle cx="8" cy="3" r="1.6" />
             <circle cx="8" cy="8" r="1.6" />
             <circle cx="8" cy="13" r="1.6" />
@@ -734,9 +746,10 @@ function Row({
               top: "48px",
               right: 0,
               zIndex: 5,
-              border: "3px solid #14130F",
-              background: "#FFFDF6",
-              boxShadow: "5px 5px 0 #14130F",
+              border: "1px solid #14171C",
+              borderRadius: "3px",
+              background: "#FFFFFF",
+              boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)",
               display: "flex",
               flexDirection: "column",
               minWidth: "160px",
@@ -756,7 +769,7 @@ function Row({
             <button className="ghost" onClick={onRenameStart} style={{ justifyContent: "flex-start" }}>
               이름
             </button>
-            <button className="ghost" onClick={onDeleteStart} style={{ justifyContent: "flex-start", color: "#A83A22" }}>
+            <button className="ghost" onClick={onDeleteStart} style={{ justifyContent: "flex-start", color: "#A32C13" }}>
               삭제
             </button>
           </div>
@@ -769,11 +782,11 @@ function Row({
 // ─── 확정 디자인의 칩 ───────────────────────────────────────────────────────
 
 const CHIP_COLOR: Record<string, string> = {
-  success: "#2E9455",
-  danger: "#D9502F",
-  neutral: "#6B675C",
+  success: "#1A7F45",
+  danger: "#C8371D",
+  neutral: "#4A515C",
   warn: "#B8860B",
-  unknown: "#9A968A",
+  unknown: "#6E757F",
 };
 
 /**
@@ -801,9 +814,10 @@ function OutcomeChip({
           gap: "6px",
           height: "28px",
           padding: "0 10px",
-          background: "#F5D000",
-          color: "#14130F",
-          border: "2px solid #14130F",
+          background: "#FBF3E2",
+          color: "#8F5A00",
+          border: "1px solid #8F5A00",
+          borderRadius: "3px",
           font: "700 12px/1 'IBM Plex Mono', ui-monospace, monospace",
           letterSpacing: "0.06em",
         }}
@@ -813,23 +827,30 @@ function OutcomeChip({
     );
   }
   if (outcome === null) {
-    // 확정 디자인에 "실행한 적 없음" 표현이 없다. undefined-states.md 참조.
+    /*
+      008 — 「미실행」이라고 **말한다.**
+
+      v1 은 여기에 `—` 를 그렸다. 한 번도 돌리지 않은 테스트가 기본 상태인데, 목록의
+      첫 칸이 빈 칸이면 사용자가 처음 보는 것이 "아무것도 없음" 이 된다. 점선 칩은
+      「아직 결과가 없다」는 사실 자체를 상태로 보여준다 (Language.dc.html §04).
+    */
     return (
       <div
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: "6px",
-          height: "28px",
-          padding: "0 10px",
-          background: "#EFEBE0",
-          color: "#6B675C",
-          border: "2px solid #14130F",
-          font: "700 12px/1 'IBM Plex Mono', ui-monospace, monospace",
+          height: "19px",
+          padding: "0 6px",
+          background: "transparent",
+          color: "#6E757F",
+          border: "1px dashed #CBD0D8",
+          borderRadius: "2px",
+          font: "600 10px/1 'IBM Plex Mono', ui-monospace, monospace",
           letterSpacing: "0.06em",
         }}
       >
-        —
+        미실행
       </div>
     );
   }
@@ -842,8 +863,9 @@ function OutcomeChip({
         height: "28px",
         padding: "0 10px",
         background: CHIP_COLOR[outcomeTone(outcome)],
-        color: "#FFFDF6",
-        border: "2px solid #14130F",
+        color: "#FFFFFF",
+        border: "1px solid #14171C",
+        borderRadius: "3px",
         font: "700 12px/1 'IBM Plex Mono', ui-monospace, monospace",
         letterSpacing: "0.06em",
       }}
@@ -865,12 +887,13 @@ function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
           gap: "7px",
           height: "28px",
           padding: "0 10px",
-          border: "2px solid #14130F",
-          background: "#F0EBFC",
+          border: "1px solid #14171C",
+          borderRadius: "3px",
+          background: "#F0EBFB",
           font: "600 12px/1 'IBM Plex Sans KR', system-ui, sans-serif",
         }}
       >
-        <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="#7C4DDB" strokeWidth="2.4">
+        <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="#6B3FD4" strokeWidth="2.4">
           <path d="M9 1.5v4M9 12.5v4M1.5 9h4M12.5 9h4" />
         </svg>
         AI
@@ -885,13 +908,14 @@ function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
         gap: "7px",
         height: "28px",
         padding: "0 10px",
-        border: "2px solid #14130F",
-        background: "#FFFDF6",
+        border: "1px solid #14171C",
+        borderRadius: "3px",
+        background: "#FFFFFF",
         font: "600 12px/1 'IBM Plex Sans KR', system-ui, sans-serif",
       }}
     >
       <svg width="12" height="12" viewBox="0 0 12 12">
-        <circle cx="6" cy="6" r="4" fill="#D9502F" />
+        <circle cx="6" cy="6" r="4" fill="#C8371D" />
       </svg>
       RECORD
     </div>
@@ -925,9 +949,10 @@ function ActiveSessionsBanner({
       role="status"
       data-active-sessions
       style={{
-        border: "3px solid #14130F",
-        background: "#FFF9D6",
-        boxShadow: "5px 5px 0 #14130F",
+        border: "1px solid #14171C",
+        borderRadius: "3px",
+        background: "#FBF3E2",
+        boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)",
         padding: "14px 18px",
         display: "flex",
         flexDirection: "column",
@@ -992,7 +1017,7 @@ function ActiveSessionsBanner({
             </span>
             {asking ? (
               <>
-                <span style={{ color: saved ? "#6B675C" : "#A83A22" }}>
+                <span style={{ color: saved ? "#4A515C" : "#A32C13" }}>
                   {saved
                     ? `${s.test_id ?? "테스트"} 로 저장돼 있습니다. 이 작업 창만 닫습니다.`
                     : `Step ${s.steps.length}개가 사라집니다. 정말 버릴까요?`}

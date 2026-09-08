@@ -62,8 +62,9 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
   return (
     <div
       style={{
-        border: "3px solid var(--ink)",
-        background: "var(--paper)",
+        border: "1px solid var(--ink)",
+        borderRadius: "3px",
+        background: "var(--panel)",
         padding: 14,
         display: "flex",
         flexDirection: "column",
