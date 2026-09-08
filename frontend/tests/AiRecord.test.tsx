@@ -16,13 +16,17 @@
  * **"세션 상태·메시지 유무와 무관하게 보인다"** 다.
  *
  * **007 이행 4** — `AiRecord` 화면이 사라지고 AI 작성 국면이 통합 화면의 한 상태가 됐다.
- * 지시문 작성(세션 이전)은 `AiCompose` 가 맡는다.
+ *
+ * **007 2회차** — 지시문 작성도 통합 화면의 한 상태(`composing` 국면)가 됐다.
+ * `AiCompose` 가 사라졌으므로 아래 「지시문 작성」 묶음을 `ComposeView` 대상으로
+ * 옮겼다. **검사를 지우지 않는다** — 검증하던 행동(지시문 자리가 있다 · 저장되지
+ * 않는다고 알린다 · 비면 시작할 수 없다)이 새 자리에서도 성립해야 한다 (헌법 게이트 4).
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ErrorInfo } from "../src/components/ErrorNotice";
 
-import { AiCompose } from "../src/pages/AiCompose";
+import { ComposeView } from "../src/pages/ComposeView";
 import { SessionWorkbench } from "../src/pages/SessionScreen";
 import { sessionProps } from "./helpers/session";
 import { sessionView } from "./helpers/workbench";
@@ -111,20 +115,56 @@ describe("AI 작성 국면 — 저장 (001 FR-028·FR-029·FR-064)", () => {
   });
 });
 
-describe("지시문 작성 (AiCompose)", () => {
+/**
+ * 2회차 — 같은 행동을 만들기 국면(`ComposeView`)에서 센다 (T121 · 헌법 게이트 4).
+ *
+ * 「AI 실행 →」 이 「AI 시작」으로 바뀐 것은 조작 식별자(`ai.start`)의 라벨이
+ * `wording.ts` 하나로 모였기 때문이다 (ui-contract §5). 라벨이 바뀐 것은 회귀가
+ * 아니고, **검증하는 행동이 바뀌면** 회귀다.
+ */
+describe("지시문 작성 (만들기 국면)", () => {
+  const compose = () =>
+    render(
+      <ComposeView
+        project={null}
+        onCancel={() => undefined}
+        onRecord={() => undefined}
+        onStartAi={() => undefined}
+      />,
+    );
+
+  /** 지시문 자리는 「AI로 만들기」를 고른 뒤에 펼쳐진다 — 1회차에는 별도 화면이었다 */
+  const pickAi = () => fireEvent.click(screen.getByRole("button", { name: /AI로 만들기/ }));
+
   it("지시문을 쓰는 자리가 있다", () => {
-    render(<AiCompose startUrl="http://t/" onCancel={() => undefined} onStarted={() => undefined} />);
-    expect(screen.getByText("지시문 작성")).toBeTruthy();
+    compose();
+    pickAi();
     expect(screen.getByLabelText("자연어 지시")).toBeTruthy();
   });
 
   it("지시문이 저장되지 않는다는 것을 알린다 (FR-064)", () => {
-    render(<AiCompose startUrl="http://t/" onCancel={() => undefined} onStarted={() => undefined} />);
+    compose();
+    pickAi();
     expect(screen.getByText(/지시문은 테스트로 저장되지 않습니다/)).toBeTruthy();
   });
 
-  it("지시문이 비면 실행할 수 없다", () => {
-    render(<AiCompose startUrl="http://t/" onCancel={() => undefined} onStarted={() => undefined} />);
-    expect((screen.getByRole("button", { name: "AI 실행 →" }) as HTMLButtonElement).disabled).toBe(true);
+  it("지시문이 비면 시작할 수 없고 이유가 붙는다 (조건 C14)", () => {
+    compose();
+    pickAi();
+    const start = screen.getByRole("button", { name: /AI 시작/ }) as HTMLButtonElement;
+    expect(start.disabled).toBe(true);
+    // 1회차에는 `disabled` 만 있었다. 2회차는 **왜** 못 누르는지도 화면에 있다 (FR-234)
+    expect(screen.getByText(/지시문을 쓰면 시작할 수 있습니다/)).toBeTruthy();
+  });
+
+  it("지시문을 쓰면 시작할 수 있다", () => {
+    compose();
+    pickAi();
+    fireEvent.change(screen.getByLabelText("자연어 지시"), {
+      target: { value: "로그인한 다음 프로젝트를 만들어" },
+    });
+    expect((screen.getByRole("button", { name: /AI 시작/ }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
   });
 });

@@ -24,6 +24,7 @@ import { PHASES, type Phase } from "../src/lib/phase";
 import { SessionWorkbench } from "../src/pages/SessionScreen";
 import { ResultView } from "../src/pages/ResultView";
 import { EditView } from "../src/pages/EditView";
+import { ComposeView } from "../src/pages/ComposeView";
 import { sessionProps } from "./helpers/session";
 import { definitionView, runResult, sessionView } from "./helpers/workbench";
 import type { SessionState } from "../src/api/client";
@@ -101,6 +102,25 @@ const SESSION_STATE: Record<string, { state: SessionState; mode: "record" | "ai"
  * 거기이기 때문이다 (§4-1). 닫힌 상태만 재면 그 셋이 늘 빠진 것으로 세어진다.
  */
 async function renderPhase(phase: Phase) {
+  /*
+    2회차 — 만들기 국면 (FR-217b). 세션도 저장된 테스트도 Step 도 없으므로 다른
+    국면과 다른 어댑터를 쓴다. **국면을 더하면 이 함수가 그것을 몰라 터진다** — 그것이
+    「빠뜨릴 수 없게 한다」의 실제 동작이다.
+  */
+  if (phase === "composing") {
+    render(
+      <ComposeView
+        project={null}
+        onCancel={() => undefined}
+        onRecord={() => undefined}
+        onStartAi={() => undefined}
+      />,
+    );
+    await waitFor(() =>
+      expect(document.querySelector("[data-workbench-step-panel]")).not.toBeNull(),
+    );
+    return;
+  }
   if (phase === "result") {
     stubResult();
     render(
@@ -206,12 +226,35 @@ describe("예외 목록은 비어 있어야 한다", () => {
     expect(EXEMPT).toEqual([]);
   });
 
-  it("Step 지목은 일곱 국면 전부에서 같은 방식이다 (FR-227)", async () => {
+  /**
+   * FR-227 은 **지목하는 방식**이 같아야 한다는 것이다. Step 행이 없는 국면에서 행을
+   * 요구하는 것이 아니다 — 만들기 국면은 Step 이 0개다 (FR-260).
+   *
+   * 그래서 둘을 나눠 센다: 모든 국면에서 **Step 패널의 자리**가 있고, Step 이 있는
+   * 국면에서는 그 행이 같은 방식으로 지목된다.
+   */
+  it("Step 목록의 자리는 모든 국면에 있다 (FR-260 · S-15)", async () => {
     for (const phase of PHASES) {
+      await renderPhase(phase);
+      expect(document.querySelector("[data-workbench-step-panel]"), phase).not.toBeNull();
+      cleanup();
+    }
+  });
+
+  it("Step 이 있는 국면 전부에서 지목 방식이 같다 (FR-227)", async () => {
+    for (const phase of PHASES) {
+      if (phase === "composing") continue; // Step 이 0개다 — 아래 검사가 그것을 센다
       await renderPhase(phase);
       expect(document.querySelector("[data-step-row]"), phase).not.toBeNull();
       cleanup();
     }
+  });
+
+  it("만들기 국면은 목록이 비었음과 어디에 쌓이는지를 그 자리에서 말한다 (FR-260)", async () => {
+    await renderPhase("composing");
+    expect(document.querySelector("[data-step-row]")).toBeNull();
+    // 자리를 감추면 「조작이 어디에 쌓이는지」를 시작 전에 보여 줄 수 없다 (S-15)
+    expect(screen.getByText(/시작하면 조작 하나가 행 하나로 여기 쌓입니다/)).toBeTruthy();
   });
 
   it("검사가 실제로 무언가를 세고 있다", () => {

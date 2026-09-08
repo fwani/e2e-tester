@@ -89,11 +89,13 @@ const fixed = (px: number): SlotSize => ({ kind: "fixed", px });
  * ③-a 가 `fill` 이다 — **미러를 보면서 하는 일**이므로 1회차 배분이 이미 옳았다.
  * 2회차가 고치는 것은 세션이 없는 `editing` 과 끝난 실행 `result` 다.
  *
- * `composing`(만들기)은 **여기 없다.** `Phase` 에 그 값을 더하는 것은 묶음 B(T109)이고,
- * 더하는 순간 이 표와 `PHASE_TABLE`·`PRIMARY_SLOT` 셋이 동시에 값을 요구한다. 셋을 한
- * 커밋에 채우는 것이 묶음 B 의 일이다 — 묶음 A 는 **기존 일곱 국면의 배분만** 세운다.
+ * `composing`(만들기)은 묶음 B 에서 더했다. `Phase` 에 그 값을 넣는 순간 이 표와
+ * `PHASE_TABLE`·`PRIMARY_SLOT` 셋이 **동시에** 값을 요구했다 — 타입이 빠뜨림을 막는다는
+ * 것이 이 배치의 값이다 (research R9).
  */
 export const VERTICAL_SPLIT: Record<Phase, VerticalSplit> = {
+  /** 아직 열지 않았다는 사실만 필요하다. 하는 일은 시작 조건 입력이다 (FR-258) */
+  composing: { targetSlot: fixed(TARGET_SLOT_MIN_PX), workArea: FILL },
   /** 미러를 보면서 조작한다. ③-b 는 42px 안내 띠 (B9) */
   recording: { targetSlot: FILL, workArea: CONTENT },
   /** 미러 + 지시문·진행·차단. 차단 시 내용이 늘어난다 (B10) */
@@ -120,6 +122,7 @@ export const VERTICAL_SPLIT: Record<Phase, VerticalSplit> = {
  * 작업」인데 배분은 대상 앱 슬롯에 `fill` 을 준 상태.
  */
 export const PRIMARY_SLOT: Record<Phase, SlotName> = {
+  composing: "work",
   recording: "target",
   ai_authoring: "target",
   takeover: "target",

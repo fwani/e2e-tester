@@ -8,13 +8,12 @@ import { initialLocation, useScreenUrl } from "./hooks/useScreenUrl";
 
 import { project, sessions, type ProjectView, type SessionView } from "./api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
-import { CreateTest } from "./pages/CreateTest";
+import { ComposeView } from "./pages/ComposeView";
 import { KeyManagement } from "./pages/KeyManagement";
 import { ProjectSetup } from "./pages/ProjectSetup";
 import { ResultView } from "./pages/ResultView";
 import { SecretValues } from "./pages/SecretValues";
 import { EditView } from "./pages/EditView";
-import { AiCompose } from "./pages/AiCompose";
 import { SessionScreen } from "./pages/SessionScreen";
 import { TestList } from "./pages/TestList";
 
@@ -22,7 +21,14 @@ type Screen =
   | { name: "loading" }
   | { name: "setup" }
   | { name: "list" }
-  | { name: "create" }
+  /**
+   * 만들기 국면 (2회차 · FR-217b·FR-259).
+   *
+   * 1회차의 `create` 와 `ai-compose` 두 화면을 **하나로 합친 것**이다. 방법을 고르고
+   * 지시문을 쓰는 일이 같은 화면 안에서 일어나므로 중간 상태가 없다 — 그것이
+   * SC-011(껍데기가 바뀌는 횟수 0)의 뜻이다.
+   */
+  | { name: "compose" }
   | {
       name: "runner";
       session: SessionView;
@@ -38,8 +44,6 @@ type Screen =
        */
       returnToEdit?: { testId: string; stepId: string | null } | null;
     }
-  /** AI 지시문 작성. 확정 디자인이 독립 artboard 로 정의한다 (DC-008). */
-  | { name: "ai-compose"; startUrl: string }
   /**
    * 결과 국면. `focusStepId` 는 **국면을 넘어 유지되는 지목**이다 (007 FR-239 · S-10).
    *
@@ -287,7 +291,7 @@ export function App() {
       {screen.name === "list" && (
         <TestList
           projectName={opened.name}
-          onCreate={() => setScreen({ name: "create" })}
+          onCreate={() => setScreen({ name: "compose" })}
           onRun={(testId) => startRun(testId)}
           pendingRunId={pendingRun}
           onRefreshSessions={refreshActive}
@@ -341,28 +345,27 @@ export function App() {
         />
       )}
 
-      {screen.name === "create" && (
-        <CreateTest
+      {screen.name === "compose" && (
+        <ComposeView
           project={opened}
           onCancel={() => setScreen({ name: "list" })}
+          /*
+            **세션 생성 경로를 새로 만들지 않는다** (FR-248 · 005 U-01·U-06).
+            아래 두 호출은 1회차에 `CreateTest`·`AiCompose` 가 부르던 것과 같다 —
+            화면이 하나로 합쳐졌을 뿐 경로는 그대로다.
+          */
           onRecord={(startUrl) => {
             void sessions
               .create({ mode: "record", start_url: startUrl })
               .then((session) => setScreen({ name: "runner", session }))
               .catch((exc: unknown) => setError(describeError(exc)));
           }}
-          // 지시문은 다음 화면에서 쓴다 — 확정 디자인의 「지시문 쓰기」다 (DC-008).
-          onWriteInstruction={(startUrl) => setScreen({ name: "ai-compose", startUrl })}
-        />
-      )}
-
-      {screen.name === "ai-compose" && (
-        <AiCompose
-          startUrl={screen.startUrl}
-          onCancel={() => setScreen({ name: "create" })}
-          onStarted={(session, aiInstruction) =>
-            setScreen({ name: "runner", session, aiInstruction })
-          }
+          onStartAi={(startUrl, aiInstruction) => {
+            void sessions
+              .create({ mode: "ai", start_url: startUrl, ai_instruction: aiInstruction })
+              .then((session) => setScreen({ name: "runner", session, aiInstruction }))
+              .catch((exc: unknown) => setError(describeError(exc)));
+          }}
         />
       )}
 

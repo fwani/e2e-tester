@@ -24,9 +24,14 @@ import { useEffect, useRef } from "react";
  * `name` 의 값은 007 이전 그대로 둔다. 주소 문자열을 바꾸면 사용자가 열어 둔 탭과
  * 북마크가 끊기는데, 그것은 이 라운드가 고치려는 문제와 무관하다.
  *
+ *   `compose`    → 만들기 국면 (2회차)
  *   `runner`     → 세션 다섯 국면 (녹화·AI 작성·사람이 직접 조작·실행 중·일시정지)
  *   `result`     → 결과 국면
  *   `definition` → 편집 국면
+ *
+ * 2회차가 `compose` 를 더하면서 1회차의 `create`·`ai-compose` 두 이름을 **하나로
+ * 합쳤다.** 옛 이름으로 들어온 주소는 `compose` 로 정규화한다 — 열어 둔 탭과 북마크를
+ * 끊지 않는 것이 이 파일의 원래 규율이다.
  *
  * 세션처럼 수명이 짧은 것은 식별자만 싣는다 — URL 만으로 되살리면 죽은 세션을 그린다.
  */
@@ -51,6 +56,17 @@ export type ScreenLocation = WorkbenchLocation;
 
 const PARAM = "screen";
 
+/**
+ * 1회차 이름 → 2회차 이름 (research R12).
+ *
+ * 만들기가 화면 둘에서 국면 하나로 합쳐졌다. 옛 주소를 떨어뜨리면 사용자가 열어 둔
+ * 탭이 목록으로 튕긴다 — 그것은 이 라운드가 고치려는 문제와 무관한 손해다.
+ */
+const RENAMED: Record<string, string> = {
+  create: "compose",
+  "ai-compose": "compose",
+};
+
 /** 화면 상태를 질의 문자열로. 목록은 `/` 다 — 기본 화면에 파라미터를 남기지 않는다. */
 export function locationToSearch(loc: WorkbenchLocation): string {
   if (loc.name === "list" || loc.name === "loading" || loc.name === "setup") return "";
@@ -65,8 +81,9 @@ export function locationToSearch(loc: WorkbenchLocation): string {
 /** 질의 문자열을 화면 상태로. 알 수 없는 값은 목록으로 떨어뜨린다. */
 export function searchToLocation(search: string): WorkbenchLocation {
   const params = new URLSearchParams(search);
-  const name = params.get(PARAM);
-  if (!name) return { name: "list" };
+  const raw = params.get(PARAM);
+  if (!raw) return { name: "list" };
+  const name = RENAMED[raw] ?? raw;
   return {
     name,
     testId: params.get("test"),

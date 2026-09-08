@@ -91,7 +91,13 @@ describe("화면이 공용 통로를 지나는가 (RG-104-4)", () => {
    * 이 수보다 적어지면 그때는 실제로 목록을 못 읽은 것이다.
    */
   it("훑을 화면이 실제로 있다", () => {
-    expect(pages.length).toBeGreaterThanOrEqual(9);
+    /*
+      2회차 — **화면이 하나 줄었다.** `CreateTest`·`AiCompose` 두 화면이 만들기 국면
+      하나(`ComposeView`)로 합쳐졌다 (FR-259 · SC-011). 이 검사는 「훑을 대상을 못 읽은
+      채 통과하는 상태」를 막는 것이므로 하한을 실제 개수에 맞춘다 — 개수가 **늘어나는**
+      것을 막는 검사가 아니다.
+    */
+    expect(pages.length).toBeGreaterThanOrEqual(8);
   });
 
   it.each(pages)("%s 는 오류를 직접 그리지 않는다", (file, source) => {

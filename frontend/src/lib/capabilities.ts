@@ -77,7 +77,9 @@ export type ConditionKey =
   | "C10"
   | "C11"
   | "C12"
-  | "C13";
+  | "C13"
+  | "C14"
+  | "C15";
 
 /**
  * 조건을 평가하는 데 필요한 사실. **화면이 아는 것만** 담는다.
@@ -112,6 +114,10 @@ export interface CapabilityFacts {
   resultViewable?: boolean;
   /** C13 — 그 테스트에 결과가 있다 */
   hasResult?: boolean;
+  /** C14 — 지시문이 비어 있지 않다 (2회차 · 만들기 국면) */
+  hasInstruction?: boolean;
+  /** C15 — 만드는 방법으로 AI 를 골랐다 (2회차 · 만들기 국면) */
+  aiModeChosen?: boolean;
 
   /* ─── 전 국면 덮어쓰기 O1~O4 (§3-6) ─── */
   /** O1 — 실행 요청이 진행 중이다 */
@@ -145,6 +151,10 @@ const CONDITION_FACT: Record<ConditionKey, keyof CapabilityFacts> = {
   C11: "aiBlocked",
   C12: "resultViewable",
   C13: "hasResult",
+  /** C14 — 지시문이 비어 있지 않다 (2회차). `AiCompose` 가 하던 판정을 표로 옮겼다 */
+  C14: "hasInstruction",
+  /** C15 — 만드는 방법으로 AI 를 골랐다 (2회차) */
+  C15: "aiModeChosen",
 };
 
 /** 조건이 거짓일 때의 해소 방법. 표의 셀이 지정하지 않으면 이것을 쓴다. */
@@ -154,6 +164,7 @@ const CONDITION_REMEDY: Partial<Record<ConditionKey, ActionId>> = {
   C6: "step.recordStart",
   C7: "session.open",
   C13: "run.all",
+  C14: "ai.compose",
 };
 
 /* ─── 전 국면 덮어쓰기 O1~O4 (ui-contract §3-6) ─────────────────────────────── */
@@ -297,12 +308,75 @@ const NEGATED_OVERRIDES = new Set<DisabledReasonKey>(["O4", "O9"]);
 type PhaseRow = Record<ActionId, Cell>;
 
 /**
- * 일곱 국면 × 33 조작.
+ * 여덟 국면 × 34 조작.
  *
  * 표를 읽는 법 — 각 국면 열이 그 국면 화면의 **전부**다. 여기 ●·○ 인 것은 화면에
  * 있어야 하고, – 인 것만 없어도 된다.
  */
 const PHASE_TABLE: Record<Phase, PhaseRow> = {
+  /*
+    만들기 — 시작 주소를 정하고 만드는 방법을 고른다 (2회차 · FR-217b·FR-258).
+
+    **저장된 테스트도 세션도 Step 도 없다.** 그래서 대부분이 「대상이 없음」(N2) 또는
+    「세션이 없음」(N3)이다. 실제로 쓸 수 있는 것은 넷 — `test.setStartUrl` ·
+    `ai.compose` · `record.start` · `nav.back`. `ai.start` 는 지시문이 비면 못 누른다.
+
+    Step 조작을 `–` 가 아니라 `○` 로 두는 것이 FR-260 이다. 자리를 감추면 목록이
+    0개일 때 「조작이 어디에 쌓이는지」를 보여 줄 수 없다 (S-15).
+  */
+  composing: {
+    "run.all": na("N2"),
+    "run.from": na("N2"),
+    "run.fromHere": na("N2"),
+    "run.pause": na("N3"),
+    "run.resume": na("N3"),
+    "run.resumeSkipFailure": na("N3"),
+    "run.stop": na("N3"),
+    "run.pacing": na("N3"),
+    "browser.openAt": na("N2"),
+    "session.open": na("N2"),
+    /** 이 국면의 주 조작. 세션을 녹화 모드로 만든다 */
+    "record.start": ON,
+    "step.recordStart": off("NOT_STARTED_YET", "record.start"),
+    "step.recordStop": na("N2"),
+    "step.addNaturalLanguage": off("NOT_STARTED_YET", "record.start"),
+    "step.addAssertion": off("NOT_STARTED_YET", "record.start"),
+    /* 목록이 그 자리다. 0개여도 목록은 남으므로 ○ 다 (FR-260) */
+    "step.select": off("NOT_STARTED_YET", "record.start"),
+    /*
+      **이 셋의 자리는 Step 상세다.** Step 이 0개면 상세가 열릴 수 없으므로 자리가
+      존재하지 않는다 — 「대상이 없음」(N2)이며 감춘 조작이 아니다 (§4-2).
+
+      `step.select`·`delete`·`reorder` 와 갈리는 이유: 그것들의 자리는 목록과 조작
+      팔레트이고, 둘 다 0개 상태에서도 있다. 자리가 있으면 ○, 자리 자체가 성립하지
+      않으면 – 다.
+    */
+    "step.update": na("N2"),
+    "step.markSensitive": na("N2"),
+    "step.repick": na("N2"),
+    /* 조작 팔레트가 그 자리다 */
+    "step.delete": off("NOT_STARTED_YET", "record.start"),
+    "step.reorder": off("NOT_STARTED_YET", "record.start"),
+    /** 이름은 저장 시점에 정한다. 자리는 남기고 이유를 붙인다 (FR-258a) */
+    "test.rename": off("NAME_ON_SAVE"),
+    "test.setStartUrl": ON,
+    "save": off("NOTHING_TO_SAVE_YET", "record.start"),
+    "save.overwriteStale": na("N2"),
+    "edits.revert": na("N2"),
+    /*
+       지시문 자리는 방법을 고르기 전에도 **있다.** 고른 뒤에만 쓸 수 있으므로 조건이다
+       (C15) — 감추면 「AI 로 만들 때 지시문을 쓴다」를 고른 뒤에야 알게 된다 (FR-234).
+     */
+    "ai.compose": cond("C15"),
+    "ai.start": cond("C14"),
+    "ai.chooseBlocked": na("N2"),
+    "artifact.select": na("N2"),
+    "result.show": na("N2"),
+    "nav.editStep": na("N2"),
+    "nav.back": ON,
+    /** 대상 앱을 아직 열지 않았으므로 탭이라는 것이 존재하지 않는다 */
+    "tab.select": na("N1"),
+  },
   /* 녹화 — 사람이 대상 앱을 조작해 Step 을 만든다 */
   recording: {
     "run.all": na("N2"),
@@ -315,6 +389,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.pacing": ON,
     "browser.openAt": na("N1"),
     "session.open": na("N1"),
+    /** 이미 세션이 있다 — 「이미 충족됨」이며 감춘 조작이 아니다 */
+    "record.start": na("N1"),
     "step.recordStart": na("N1"),
     "step.recordStop": ON,
     "step.addNaturalLanguage": off("NEEDS_PAUSE", "run.pause"),
@@ -352,6 +428,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.pacing": ON,
     "browser.openAt": na("N1"),
     "session.open": na("N1"),
+    /** 이미 세션이 있다 — 「이미 충족됨」이며 감춘 조작이 아니다 */
+    "record.start": na("N1"),
     "step.recordStart": off("AI_RUNNING", "run.pause"),
     "step.recordStop": na("N2"),
     "step.addNaturalLanguage": off("NEEDS_PAUSE", "run.pause"),
@@ -397,6 +475,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.pacing": ON,
     "browser.openAt": na("N1"),
     "session.open": na("N1"),
+    /** 이미 세션이 있다 — 「이미 충족됨」이며 감춘 조작이 아니다 */
+    "record.start": na("N1"),
     "step.recordStart": ON,
     "step.recordStop": cond("C6"),
     "step.addNaturalLanguage": off("NEEDS_PAUSE", "run.resume"),
@@ -440,6 +520,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.pacing": ON,
     "browser.openAt": na("N1"),
     "session.open": na("N1"),
+    /** 이미 세션이 있다 — 「이미 충족됨」이며 감춘 조작이 아니다 */
+    "record.start": na("N1"),
     "step.recordStart": off("RUNNING_NO_EDIT", "run.pause"),
     "step.recordStop": na("N2"),
     "step.addNaturalLanguage": off("RUNNING_NO_EDIT", "run.pause"),
@@ -484,6 +566,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.pacing": cond("C2"),
     "browser.openAt": na("N1"),
     "session.open": na("N1"),
+    /** 이미 세션이 있다 — 「이미 충족됨」이며 감춘 조작이 아니다 */
+    "record.start": na("N1"),
     "step.recordStart": cond("C2"),
     "step.recordStop": cond("C6"),
     "step.addNaturalLanguage": cond("C2"),
@@ -521,6 +605,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.pacing": na("N3"),
     "browser.openAt": off("RESULT_NO_EDIT", "nav.editStep"),
     "session.open": cond("C5"),
+    /** 만들 대상이 없다. 새 테스트는 목록에서 시작한다 */
+    "record.start": na("N2"),
     "step.recordStart": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.recordStop": na("N3"),
     "step.addNaturalLanguage": off("RESULT_NO_EDIT", "nav.editStep"),
@@ -558,6 +644,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "run.pacing": na("N3"),
     "browser.openAt": ON,
     "session.open": cond("C5"),
+    /** 만들 대상이 없다. 새 테스트는 목록에서 시작한다 */
+    "record.start": na("N2"),
     "step.recordStart": off("NEEDS_BROWSER", "browser.openAt"),
     "step.recordStop": na("N3"),
     "step.addNaturalLanguage": off("NEEDS_BROWSER", "browser.openAt"),

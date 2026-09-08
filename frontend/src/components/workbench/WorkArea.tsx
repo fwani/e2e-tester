@@ -30,7 +30,7 @@
  */
 import { ErrorNotice } from "../ErrorNotice";
 import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../lib/wording";
-import type { AiBlockedState, WorkAreaView } from "./model";
+import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
 import type { SlotSize, SlotStyle } from "../../lib/layout";
 
 const INK = "#14130F";
@@ -89,6 +89,121 @@ export function WorkArea({
         gap: 12,
       }}
     >
+      {/*
+        만들기 국면 — 시작 조건 (2회차 · FR-258).
+
+        문구와 항목은 `CreateTest.tsx`·`AiCompose.tsx` 에서 그대로 옮겼다. **새로 만든
+        항목이 없다** (FR-258a) — 이름 입력과 「빈 테스트」를 그리지 않는 것이 그 뜻이다.
+      */}
+      {work.kind === "compose_form" && (
+        <>
+          {/* `test.setStartUrl` 의 자리 — 이 국면에서는 작업 영역이다 (FR-235) */}
+          <Section title="시작 URL">
+            <input
+              id="start-url"
+              data-action="test.setStartUrl"
+              aria-label="시작 URL"
+              value={work.startUrl}
+              onChange={(e) => work.onStartUrlChange(e.target.value)}
+              placeholder="https://[대상 앱 URL]/login"
+              style={{
+                height: 48,
+                minHeight: 48,
+                padding: "0 14px",
+                border: `3px solid ${INK}`,
+                background: "#FFFDF6",
+                font: `400 15px/1 ${MONO}`,
+              }}
+            />
+          </Section>
+
+          <Section title="만드는 방법">
+            <div style={{ display: "flex", gap: 14 }}>
+              <ModeCard
+                mode="record"
+                title="직접 녹화"
+                summary="브라우저를 직접 조작해서 테스트를 만듭니다."
+                bullets={["클릭 · 입력 · 선택 · 화면 이동을 그대로 기록", "기록 중 언제든 멈추고 고칠 수 있음"]}
+                tint="#FFFDF6"
+                selected={work.mode === "record"}
+                onPick={work.onModeChange}
+              />
+              <ModeCard
+                mode="ai"
+                title="AI로 만들기"
+                summary="할 일을 문장으로 쓰면 AI 가 조작하고 Step 을 만듭니다."
+                bullets={["성공한 동작만 Step으로 기록", "다시 돌릴 때는 AI를 쓰지 않음"]}
+                tint="#F0EBFC"
+                selected={work.mode === "ai"}
+                onPick={work.onModeChange}
+              />
+            </div>
+          </Section>
+
+          {/*
+            001 DR-021 — AI 를 쓸 수 있는지 **눌러 보기 전에** 말한다. 확정 디자인이
+            정의하지 않은 상태이며 `CreateTest` 에 있던 것을 그대로 옮겼다.
+          */}
+          {work.mode === "ai" && work.aiReady !== null && !work.aiReady.available && (
+            <div
+              role="status"
+              style={{
+                border: `2px solid ${INK}`,
+                background: "#FFF9D6",
+                padding: "10px 12px",
+                font: `500 13px/1.5 ${SANS}`,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {work.aiReady.reason ?? "AI 를 사용할 수 없습니다."}
+            </div>
+          )}
+
+          {/*
+            `ai.compose` 의 자리 — **방법을 고르기 전에도 있다** (FR-234 · 조건 C15).
+
+            고른 뒤에만 나타나게 하면 「AI 로 만들 때 지시문을 쓴다」는 사실을 고른
+            뒤에야 알게 된다. S-15(목록이 0개면 자리도 없다)와 같은 종류의 결함이다.
+          */}
+          <Section title="자연어 지시">
+            <textarea
+                id="ai-instruction"
+                data-action="ai.compose"
+                aria-label="자연어 지시"
+                disabled={work.mode !== "ai"}
+                rows={6}
+                value={work.instruction}
+                onChange={(e) => work.onInstructionChange(e.target.value)}
+                placeholder={
+                  "로그인한 다음 프로젝트 메뉴로 이동해서\nTEST라는 프로젝트를 생성하고\n프로젝트 목록에 TEST가 있는지 확인해."
+                }
+                style={{
+                  border: `3px solid ${INK}`,
+                  background: work.mode === "ai" ? "#F0EBFC" : "#EDEAE0",
+                  padding: 12,
+                  font: `500 15px/1.5 ${SANS}`,
+                  minHeight: "auto",
+                }}
+              />
+            {work.composeReason !== null && (
+              <span
+                data-disabled-reason="ai.compose"
+                style={{ font: `400 12px/1.5 ${SANS}`, color: "#6B675C" }}
+              >
+                {work.composeReason}
+              </span>
+            )}
+            {/* 001 FR-064 — 지시문은 기록이며 저장 대상이 아니다. 그 사실을 미리 말한다 */}
+            <p className="dim" style={{ margin: 0, font: `400 12.5px/1.6 ${SANS}` }}>
+              지시문은 테스트로 저장되지 않습니다. 만들어진 Step 만 저장됩니다.
+            </p>
+          </Section>
+
+          {/* 실패는 조건 없이 그린다 (FR-218f · 001 R2) */}
+          {work.error !== null && <ErrorNotice error={work.error} />}
+        </>
+      )}
+
       {work.kind === "ai_progress" && (
         <>
           {/*
@@ -274,6 +389,62 @@ export function WorkArea({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * 만드는 방법 카드 (2회차 · FR-258 · 승인 대상 B7).
+ *
+ * `CreateTest.dc.html` 의 카드 두 장을 국면 작업 영역 폭에 맞춰 옮겼다. 선택 표시는
+ * 확정 디자인의 강조 버튼과 같은 문법이다 — 채움 + 하드 오프셋 그림자.
+ */
+function ModeCard({
+  mode,
+  title,
+  summary,
+  bullets,
+  tint,
+  selected,
+  onPick,
+}: {
+  mode: ComposeMode;
+  title: string;
+  summary: string;
+  bullets: string[];
+  tint: string;
+  selected: boolean;
+  onPick: (next: ComposeMode) => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-compose-mode={mode}
+      aria-pressed={selected}
+      onClick={() => onPick(mode)}
+      style={{
+        flex: 1,
+        minWidth: 0,
+        textAlign: "left",
+        border: `3px solid ${INK}`,
+        background: selected ? "#FFF9D6" : tint,
+        boxShadow: selected ? `5px 5px 0 ${INK}` : "none",
+        padding: "16px 18px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        cursor: "pointer",
+      }}
+    >
+      <span style={{ font: `700 15px/1.3 ${SANS}` }}>{title}</span>
+      <span style={{ font: `400 13px/1.6 ${SANS}`, color: "#6B675C" }}>{summary}</span>
+      <span style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+        {bullets.map((b) => (
+          <span key={b} style={{ font: `400 12.5px/1.4 ${MONO}`, color: "#6B675C" }}>
+            {b}
+          </span>
+        ))}
+      </span>
+    </button>
   );
 }
 

@@ -474,6 +474,7 @@ export function skipFailureNotice(failedIndex: number): string {
 
 /** 국면 이름. 화면 상단의 국면 표시에 그대로 쓴다 (FR-219). */
 export const PHASE_LABEL: Record<Phase, string> = {
+  composing: "만들기",
   recording: "녹화 중",
   ai_authoring: "AI 작성 중",
   takeover: "사람이 직접 조작",
@@ -528,6 +529,8 @@ export const ACTION_LABEL: Record<ActionId, string> = {
   "run.pacing": "실행 속도",
   "browser.openAt": "브라우저 열어 이 Step 에서 멈추기",
   "session.open": OPEN_RUNNING_SESSION,
+  /** 2회차 — 세션을 녹화 모드로 만든다. `step.recordStart` 와 다른 조작이다 */
+  "record.start": "녹화 시작",
   "step.recordStart": "직접 조작으로 Step 추가",
   "step.recordStop": "기록 멈추기",
   "step.addNaturalLanguage": "자연어로 Step 추가",
@@ -581,6 +584,20 @@ export const DISABLED_REASON = {
   C11: "고를 선택지가 없습니다",
   C12: "실행이 끝나면 볼 수 있습니다",
   C13: "아직 실행한 적이 없습니다",
+  /**
+   * C14 — 지시문이 비어 있다 (2회차 · ui-contract §3-5).
+   *
+   * 지금 `AiCompose.tsx` 의 `disabled={busy || instruction.trim() === ""}` 가 하던
+   * 판정을 표로 옮긴 것이다. 화면이 스스로 판단하면 다른 화면이 같은 판단을 빠뜨린다.
+   */
+  C14: "지시문을 쓰면 시작할 수 있습니다",
+  /**
+   * C15 — 만드는 방법으로 AI 를 골랐다 (2회차 · 만들기 국면).
+   *
+   * 지시문 자리는 **방법을 고르기 전에도 있다.** 감추면 「AI 로 만들 때 지시문을 쓴다」는
+   * 사실을 고른 뒤에야 알게 되고, 그것이 S-15 와 같은 종류의 결함이다 (FR-234).
+   */
+  C15: "「AI로 만들기」를 고르면 쓸 수 있습니다",
   O1: "실행을 준비하는 중…",
   O2: "요청을 보내는 중…",
   O3: "브라우저 세션이 유실됐습니다",
@@ -620,6 +637,24 @@ export const DISABLED_REASON = {
    * 것이 006 E-03 이었다.
    */
   EDIT_AFTER_SESSION: "세션을 끝낸 뒤 편집에서 바꿀 수 있습니다",
+  /**
+   * 만들기 국면 — 아직 아무것도 시작하지 않았다 (2회차 · FR-260).
+   *
+   * Step 조작 전부의 이유다. **자리를 감추지 않는 것이 요점이다** — 목록이 0개여도
+   * 자리를 지키고(FR-260), 그 자리의 조작이 왜 지금 안 되는지와 어떻게 하면 되는지가
+   * 함께 있어야 한다. 「조작이 어디에 쌓이는지 시작하기 전에 보인다」가 S-15 의 수정이다.
+   */
+  NOT_STARTED_YET: "아직 시작하지 않았습니다. 시작하면 Step 이 여기 쌓입니다",
+  /**
+   * 만들기 국면의 테스트 이름 (2회차 · FR-258a).
+   *
+   * **이름 입력을 만들기 국면으로 옮기지 않는다.** 지금 제품은 저장 시점(일시정지
+   * 국면)에 이름을 정하고, 옮기는 것은 새 조작이므로 범위 밖이다. 자리는 남기고 이유를
+   * 붙인다 — 감추면 「만들기에는 이름이 없는 것」으로 읽힌다.
+   */
+  NAME_ON_SAVE: "저장할 때 이름을 정합니다",
+  /** 만들기 국면 — 저장할 정의가 아직 없다 (2회차). */
+  NOTHING_TO_SAVE_YET: "아직 저장할 것이 없습니다. 먼저 Step 을 만드세요",
 } as const;
 
 export type DisabledReasonKey = keyof typeof DISABLED_REASON;

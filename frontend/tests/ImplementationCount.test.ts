@@ -66,6 +66,14 @@ const RETIRED: { path: string; kind: "목록" | "상세" | "화면"; 이행: num
   { path: "pages/RunResult.tsx", kind: "화면", 이행: 5 },
   { path: "pages/StepInspector.tsx", kind: "상세", 이행: 6 },
   { path: "pages/TestDefinition.tsx", kind: "화면", 이행: 6 },
+  /*
+    2회차 묶음 B — 만들기가 통합 국면이 됐다 (FR-217b·FR-259 · S-14).
+
+    이 둘은 1회차에 「통합 대상이 아니다」로 남겨 둔 화면이다. 그 판정이 한 번의
+    「테스트를 만든다」 안에서 껍데기가 두 번 바뀌는 원인이었다.
+  */
+  { path: "pages/CreateTest.tsx", kind: "화면", 이행: 10 },
+  { path: "pages/AiCompose.tsx", kind: "화면", 이행: 10 },
 ];
 
 /**
@@ -78,6 +86,7 @@ const RETIRED: { path: string; kind: "목록" | "상세" | "화면"; 이행: num
  * | 3 | 이행 5 종료 — 결과 국면이 옮겨졌다 |
  * | 0 | 이행 3·6 종료 — 옛 Step 목록·상세·편집 화면이 사라졌다 |
  * | 0 | 이행 6 종료 — SC-001 달성 |
+ * | 0 | 2회차 묶음 B 종료 — 만들기 화면 둘이 사라졌다 (SC-011) |
  *
  * 이 숫자를 **올리는 변경은 허용되지 않는다.** 올려야 한다면 통합이 구현을 늘리고 있는
  * 것이고, 그것이 사용자가 제기한 문제를 키우는 일이다.
@@ -90,6 +99,40 @@ describe("구현 개수 (T027 · SC-001)", () => {
   it("통합 구현이 있다 — StepList 1개 · StepDetail 1개", () => {
     expect(exists("components/workbench/StepList.tsx")).toBe(true);
     expect(exists("components/workbench/StepDetail.tsx")).toBe(true);
+  });
+
+  /**
+   * 2회차 SC-011 — **한 테스트를 다루는 국면은 스스로 껍데기를 만들지 않는다.**
+   *
+   * `Artboard` 를 직접 부르는 페이지가 있으면 그 화면은 자기 껍데기를 갖는다. 그것이
+   * 1회차에 만들기 흐름의 껍데기가 3벌이던 형태다 (S-14). 국면 어댑터는 `Workbench`
+   * 를 지나야 하고, `Workbench` 하나만 `Artboard` 를 부른다.
+   *
+   * `TestList`·`ProjectSetup`·`KeyManagement`·`SecretValues` 는 한 테스트의 국면이
+   * 아니므로 예외다 (FR-217a).
+   */
+  it("국면 어댑터가 스스로 껍데기를 만들지 않는다 (SC-011 · FR-259)", () => {
+    /** 한 테스트를 다루지 않는 화면 — 통합 대상이 아니다 (FR-217a) */
+    const NOT_A_PHASE = ["TestList", "ProjectSetup", "KeyManagement", "SecretValues"];
+
+    const offenders = Object.entries(SOURCES)
+      .filter(([path]) => /\/src\/pages\//.test(path))
+      .filter(([path]) => !NOT_A_PHASE.some((n) => path.includes(n)))
+      .filter(([, text]) => /<Artboard[\s>]/.test(text))
+      .map(([path]) => path.replace(/^\.\.\/src\//, ""));
+
+    expect(
+      offenders,
+      `국면 어댑터가 자기 Artboard 를 갖는다 — 껍데기가 둘이 된다:\n  ${offenders.join("\n  ")}`,
+    ).toEqual([]);
+  });
+
+  it("Artboard 를 부르는 통합 껍데기가 하나다 (SC-003 · FR-217)", () => {
+    const callers = Object.entries(SOURCES)
+      .filter(([path]) => /\/src\/components\/workbench\//.test(path))
+      .filter(([, text]) => /<Artboard[\s>]/.test(text))
+      .map(([path]) => path.replace(/^\.\.\/src\//, ""));
+    expect(callers).toEqual(["components/workbench/Workbench.tsx"]);
   });
 
   it(`남은 옛 구현이 예산(${REMAINING_BUDGET})을 넘지 않는다`, () => {

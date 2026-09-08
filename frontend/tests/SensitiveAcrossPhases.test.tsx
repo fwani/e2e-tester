@@ -20,6 +20,7 @@ import { PHASES, type Phase } from "../src/lib/phase";
 import { SessionWorkbench } from "../src/pages/SessionScreen";
 import { ResultView } from "../src/pages/ResultView";
 import { EditView } from "../src/pages/EditView";
+import { ComposeView } from "../src/pages/ComposeView";
 import { sessionProps } from "./helpers/session";
 import { definitionView, fillStep, runResult, sessionView, test as testFixture } from "./helpers/workbench";
 import type { SessionState } from "../src/api/client";
@@ -87,6 +88,25 @@ function stub(kind: "result" | "definition") {
 }
 
 async function renderPhase(phase: Phase) {
+  /*
+    2회차 — 만들기 국면 (FR-217b). **Step 이 0개이므로 민감 값이 있을 수 없다.**
+    그래도 훑는 대상에서 빼지 않는다 — 「이 국면에는 원래 없다」는 판단이 언젠가
+    틀리면(예: 초안을 이어 만드는 기능이 생기면) 아무것도 세지 않는 상태가 된다.
+  */
+  if (phase === "composing") {
+    render(
+      <ComposeView
+        project={null}
+        onCancel={() => undefined}
+        onRecord={() => undefined}
+        onStartAi={() => undefined}
+      />,
+    );
+    await waitFor(() =>
+      expect(document.querySelector("[data-workbench-step-panel]")).not.toBeNull(),
+    );
+    return;
+  }
   if (phase === "result") {
     stub("result");
     render(
@@ -146,7 +166,15 @@ describe("민감 값 (T068 · FR-252)", () => {
     }
   });
 
-  it.each(PHASES)("%s — 참조 형태로만 보인다", async (phase) => {
+  /**
+   * 이 검사는 「참조가 **없어지지 않았는가**」를 센다 — 값이 있다는 사실 자체가
+   * 사라지면 사용자는 그 Step 이 무엇을 넣는지 모른다.
+   *
+   * 만들기 국면은 Step 이 0개이므로 **보여 줄 참조가 애초에 없다.** 위의 두 검사
+   * (평문이 없다 · 참조 칸을 고칠 수 없다)는 그 국면에서도 그대로 돈다 — 「있어서는
+   * 안 되는 것」을 세는 검사는 대상이 없어도 뜻이 있다.
+   */
+  it.each(PHASES.filter((p) => p !== "composing"))("%s — 참조 형태로만 보인다", async (phase) => {
     await renderPhase(phase);
     const shownAsText = (document.body.textContent ?? "").includes(REFERENCE);
     const shownAsValue = [...document.querySelectorAll("input, textarea")].some((el) =>

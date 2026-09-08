@@ -13,7 +13,8 @@ import { describe, expect, it } from "vitest";
 // Vite 의 `?raw` 로 원문을 그대로 읽는다. node:fs 를 쓰면 @types/node 가 필요해진다.
 import tokens from "../src/theme/tokens.css?raw";
 import chrome from "../src/components/design/Chrome.tsx?raw";
-import createTest from "../src/pages/CreateTest.tsx?raw";
+// 2회차 — `CreateTest` 가 만들기 국면(`ComposeView`)으로 흡수됐다 (FR-217b · T117)
+import compose from "../src/pages/ComposeView.tsx?raw";
 import workbench from "../src/components/workbench/Workbench.tsx?raw";
 
 /** 주석을 걷어낸 실제 선언부. 주석의 설명 문구가 단언을 통과시키면 안 된다. */
@@ -69,8 +70,17 @@ describe("DC-011 — 기준 폭을 유지한 채 스크롤한다", () => {
   });
 
   it("고정 폭 화면이 맨몸으로 놓이지 않는다", () => {
-    // converge 2회차가 잡은 것: 8화면 중 둘만 Artboard 없이 고정 폭을 두고 있었다.
-    expect(createTest).toMatch(/<Artboard\s+width=\{1000\}/);
+    /*
+      1회차 converge 2회차가 잡은 것: 8화면 중 둘만 `Artboard` 없이 고정 폭을 두고
+      있었고, 만들기 화면은 `<Artboard width={1000}>` 으로 감쌌다.
+
+      **2회차에 그 화면이 사라졌다.** 만들기가 통합 국면이 되면서 껍데기를 스스로 갖지
+      않고 `Workbench` 의 1440 `Artboard` 를 지난다 (FR-258·FR-259). 그러므로 이 검사가
+      세는 것은 「1000px 아트보드가 있는가」가 아니라 **「스스로 껍데기를 만들지 않는가」**
+      다 — 자기 `Artboard` 를 가지면 껍데기가 다시 둘이 된다 (SC-011).
+    */
+    expect(compose).not.toMatch(/<Artboard/);
+    expect(compose).toMatch(/<Workbench/);
   });
 
   it("Step 상세 겹침에 가로 스크롤이 있다", () => {

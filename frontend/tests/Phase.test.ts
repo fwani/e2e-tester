@@ -21,13 +21,44 @@ import {
 import { sessionView } from "./helpers/workbench";
 
 describe("국면 판정 (T006·T007)", () => {
-  it("국면은 일곱이다", () => {
-    expect(PHASES).toHaveLength(7);
+  /** 2회차에 만들기가 들어와 여덟이 됐다 (FR-217b · S-14) */
+  it("국면은 여덟이다", () => {
+    expect(PHASES).toHaveLength(8);
   });
 
-  it("세션이 없는 국면은 결과보기와 편집 둘뿐이다", () => {
+  it("세션이 없는 국면은 만들기·결과보기·편집 셋이다", () => {
     const withoutSession = PHASES.filter((p) => !isSessionPhase(p));
-    expect(withoutSession).toEqual(["result", "editing"]);
+    expect(withoutSession).toEqual(["composing", "result", "editing"]);
+  });
+
+  /**
+   * **`composing` 은 세션 판정에서 나오지 않는다** (research R10).
+   *
+   * 세션이 생기는 순간 이미 다른 국면(녹화 또는 AI 작성)이므로 `phaseOfSession` 은
+   * 2회차에도 그대로다. 만들기 국면은 「세션이 아직 없다」는 위치이고 세션에서 판정할
+   * 대상이 아니다 — 이 성질이 깨지면 만들기 국면이 살아 있는 세션 위에 그려진다.
+   */
+  it("세션에서는 만들기 국면이 나오지 않는다", () => {
+    const states: SessionState[] = [
+      "starting",
+      "recording",
+      "replaying",
+      "ai_running",
+      "ai_blocked",
+      "takeover_recording",
+      "paused",
+      "review",
+      "lost",
+      "completed",
+      "failed",
+      "stopped",
+    ];
+    for (const state of states) {
+      for (const authoring of ["record", "ai"] as const) {
+        const phase = phaseOfSession(sessionView({ state, authoring_mode: authoring }));
+        expect(phase, `${state}/${authoring}`).not.toBe("composing");
+      }
+    }
   });
 
   const cases: {

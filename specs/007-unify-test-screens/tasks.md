@@ -424,25 +424,25 @@ Phase 10 이 만든 규칙을 쓴다. 먼저 하면 만들기만 규칙 없이 �
 
 ### 국면과 조작을 더한다
 
-- [ ] T109 [US6] `Phase` 에 `composing` 추가 in `frontend/src/lib/phase.ts` per FR-217b · research R10 — `PHASES` 에도 넣는다. **`phaseOfSession` 은 손대지 않는다** — 세션이 생기는 순간 이미 다른 국면이다. `SESSION_PHASES` 에 넣지 않는다
-- [ ] T110 [US6] `record.start` 조작 추가 in `frontend/src/lib/actions.ts` per FR-258b · UC-401 — `ACTION_IDS` · `ACTION_LABEL` 「녹화 시작」. 33 → 34. **이것은 `step.recordStart`(열린 세션 안에서 기록을 켠다)와 다른 조작이다** — 세션 자체를 녹화 모드로 만든다. 1회차가 만들기를 범위에서 빼 목록에 오르지 않았다 (research R11)
-- [ ] T111 [US6] CRE 열 34칸 + 조건 C14 in `frontend/src/lib/capabilities.ts` per ui-contract §3 · §3-5 — 표 그대로. C14(지시문이 비어 있지 않다)는 지금 `AiCompose.tsx:144` 의 `disabled` 가 하던 판정을 표로 옮긴 것이다. **`record.start`·`ai.start` 를 O2(`busy`) 덮어쓰기 대상에 넣는다** — 만들기 국면에서도 연타를 막는다 (005 U-06)
-- [ ] T112 [P] [US6] C14 이유와 만들기 국면 문구 in `frontend/src/lib/wording.ts` per ui-contract §5 — 「지시문을 쓰면 시작할 수 있습니다」 · 만들기의 `test.rename` 이유 「저장할 때 이름을 정합니다」. 컴포넌트에 문자열 리터럴을 두지 않는다
+- [X] T109 [US6] `Phase` 에 `composing` 추가 in `frontend/src/lib/phase.ts` per FR-217b · research R10 — `PHASES` 에도 넣는다. **`phaseOfSession` 은 손대지 않는다** — 세션이 생기는 순간 이미 다른 국면이다. `SESSION_PHASES` 에 넣지 않는다
+- [X] T110 [US6] `record.start` 조작 추가 in `frontend/src/lib/actions.ts` per FR-258b · UC-401 — `ACTION_IDS` · `ACTION_LABEL` 「녹화 시작」. 33 → 34. **이것은 `step.recordStart`(열린 세션 안에서 기록을 켠다)와 다른 조작이다** — 세션 자체를 녹화 모드로 만든다. 1회차가 만들기를 범위에서 빼 목록에 오르지 않았다 (research R11)
+- [X] T111 [US6] CRE 열 34칸 + 조건 C14 in `frontend/src/lib/capabilities.ts` per ui-contract §3 · §3-5 — 표 그대로. C14(지시문이 비어 있지 않다)는 지금 `AiCompose.tsx:144` 의 `disabled` 가 하던 판정을 표로 옮긴 것이다. **`record.start`·`ai.start` 를 O2(`busy`) 덮어쓰기 대상에 넣는다** — 만들기 국면에서도 연타를 막는다 (005 U-06)
+- [X] T112 [P] [US6] C14 이유와 만들기 국면 문구 in `frontend/src/lib/wording.ts` per ui-contract §5 — 「지시문을 쓰면 시작할 수 있습니다」 · 만들기의 `test.rename` 이유 「저장할 때 이름을 정합니다」. 컴포넌트에 문자열 리터럴을 두지 않는다
 
 ### 국면 어댑터를 만들고 옛 화면을 없앤다
 
-- [ ] T113 [US6] 만들기 국면 어댑터 in `frontend/src/pages/ComposeView.tsx` (신설) per FR-258 · FR-258a — `target: { kind: "empty", reason: "not_started" }` · `work: { kind: "compose_form" }` · `steps: []` · `testId: null`. 항목은 **시작 URL · 방법 2택 · 지시문 · 취소뿐이다.** 테스트 이름 필드와 「빈 테스트」를 만들지 않는다 — 제품에 없는 조작이며 범위 위반이다 (research R11)
-- [ ] T114 [US6] Step 목록이 0개일 때 자리를 지킨다 in `frontend/src/pages/ComposeView.tsx` per FR-260 · S-15 — 기존 `stepEmptyNotice` 를 쓴다. 「아직 Step 이 없습니다 · 시작하면 여기 쌓입니다」. **목록을 그리지 않는 선택을 하지 않는다** — 조작이 어디에 쌓이는지 시작하기 전에 보여야 한다
-- [ ] T115 [US6] `create`·`ai-compose` 화면을 `compose` 하나로 in `frontend/src/App.tsx` per FR-259 — `sessions.create` 호출은 **기존 경로를 그대로** 쓴다. 경로를 새로 만들지 않는다 (FR-248 · 005 U-01·U-06). 화면을 갈아타지 않고 국면만 바뀐다
-- [ ] T116 [US6] 주소에 `compose` 추가 + 옛 이름 정규화 in `frontend/src/hooks/useScreenUrl.ts` per FR-240 · research R12 — `?screen=create` · `?screen=ai-compose` 로 들어온 주소를 `compose` 로 떨어뜨린다. **열어 둔 탭을 끊지 않는다.** 시작 주소·지시문·고른 방법은 주소에 싣지 않는다
-- [ ] T117 [US6] `pages/CreateTest.tsx` · `pages/AiCompose.tsx` 삭제 per FR-259 · SC-011 — 참조 0건 확인. **이 삭제가 이 묶음의 완료 조건이다**
+- [X] T113 [US6] 만들기 국면 어댑터 in `frontend/src/pages/ComposeView.tsx` (신설) per FR-258 · FR-258a — `target: { kind: "empty", reason: "not_started" }` · `work: { kind: "compose_form" }` · `steps: []` · `testId: null`. 항목은 **시작 URL · 방법 2택 · 지시문 · 취소뿐이다.** 테스트 이름 필드와 「빈 테스트」를 만들지 않는다 — 제품에 없는 조작이며 범위 위반이다 (research R11)
+- [X] T114 [US6] Step 목록이 0개일 때 자리를 지킨다 in `frontend/src/pages/ComposeView.tsx` per FR-260 · S-15 — 기존 `stepEmptyNotice` 를 쓴다. 「아직 Step 이 없습니다 · 시작하면 여기 쌓입니다」. **목록을 그리지 않는 선택을 하지 않는다** — 조작이 어디에 쌓이는지 시작하기 전에 보여야 한다
+- [X] T115 [US6] `create`·`ai-compose` 화면을 `compose` 하나로 in `frontend/src/App.tsx` per FR-259 — `sessions.create` 호출은 **기존 경로를 그대로** 쓴다. 경로를 새로 만들지 않는다 (FR-248 · 005 U-01·U-06). 화면을 갈아타지 않고 국면만 바뀐다
+- [X] T116 [US6] 주소에 `compose` 추가 + 옛 이름 정규화 in `frontend/src/hooks/useScreenUrl.ts` per FR-240 · research R12 — `?screen=create` · `?screen=ai-compose` 로 들어온 주소를 `compose` 로 떨어뜨린다. **열어 둔 탭을 끊지 않는다.** 시작 주소·지시문·고른 방법은 주소에 싣지 않는다
+- [X] T117 [US6] `pages/CreateTest.tsx` · `pages/AiCompose.tsx` 삭제 per FR-259 · SC-011 — 참조 0건 확인. **이 삭제가 이 묶음의 완료 조건이다**
 
 ### 센다
 
-- [ ] T118 [US6] 껍데기 개수 검사 갱신 in `frontend/tests/ImplementationCount.test.tsx` per SC-011 — 한 테스트를 다루는 국면에서 `Artboard` 를 직접 부르는 페이지가 0개다. `CreateTest.tsx`·`AiCompose.tsx` 부재를 센다
-- [ ] T119 [US6] 권한 커버리지 검사 갱신 in `frontend/tests/CapabilityCoverage.test.ts` per SC-007 · FR-247 — 8국면 × 34조작. 모든 `–` 이 근거(N1·N2·N3)를 갖고 모든 `○` 이 이유를 갖는지
-- [ ] T120 [P] [US6] 만들기 국면 검사 in `frontend/tests/ComposePhase.test.tsx` (신설) per FR-258·FR-259·FR-260 — 껍데기 구성 · Step 목록 0개 자리 · 방법 2택 · C14 비활성 + 이유 · **테스트 이름 필드가 없음**(FR-258a 회귀 방지)
-- [ ] T121 [US6] 옛 `CreateTest`·`AiCompose` 테스트를 `ComposeView` 대상으로 갱신 in `frontend/tests/` — 헌법 게이트 4: **삭제하지 않는다.** 검증하던 행동(시작 URL 입력 · 방법 고르기 · 지시문 · 취소 · 세션 생성)이 새 자리에서도 성립하는지로 옮긴다
+- [X] T118 [US6] 껍데기 개수 검사 갱신 in `frontend/tests/ImplementationCount.test.tsx` per SC-011 — 한 테스트를 다루는 국면에서 `Artboard` 를 직접 부르는 페이지가 0개다. `CreateTest.tsx`·`AiCompose.tsx` 부재를 센다
+- [X] T119 [US6] 권한 커버리지 검사 갱신 in `frontend/tests/CapabilityCoverage.test.ts` per SC-007 · FR-247 — 8국면 × 34조작. 모든 `–` 이 근거(N1·N2·N3)를 갖고 모든 `○` 이 이유를 갖는지
+- [X] T120 [P] [US6] 만들기 국면 검사 in `frontend/tests/ComposePhase.test.tsx` (신설) per FR-258·FR-259·FR-260 — 껍데기 구성 · Step 목록 0개 자리 · 방법 2택 · C14 비활성 + 이유 · **테스트 이름 필드가 없음**(FR-258a 회귀 방지)
+- [X] T121 [US6] 옛 `CreateTest`·`AiCompose` 테스트를 `ComposeView` 대상으로 갱신 in `frontend/tests/` — 헌법 게이트 4: **삭제하지 않는다.** 검증하던 행동(시작 URL 입력 · 방법 고르기 · 지시문 · 취소 · 세션 생성)이 새 자리에서도 성립하는지로 옮긴다
 
 **Checkpoint**: 두 파일 없음 · 참조 0건 · 옛 주소 둘이 만들기 국면으로 열림 · `ComposePhase`
 통과 · 껍데기 개수 0

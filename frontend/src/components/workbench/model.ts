@@ -44,6 +44,13 @@ export type StepOutcome =
   /** 기록됨 — 작성 국면. **통과가 아니다** (FR-225) */
   | "recorded";
 
+/**
+ * 만들기 국면의 방법. **둘뿐이다** (FR-258a).
+ *
+ * 「빈 테스트」 같은 새 방법을 만들지 않는다 — 지금 제품에 없다.
+ */
+export type ComposeMode = "record" | "ai";
+
 /** 층② 국면 띠 (74px). */
 export interface PhaseBar {
   /** 국면 표시. 화면에 하나뿐이다 (FR-219) */
@@ -112,6 +119,28 @@ export interface StaleInfo {
  * "실패를 그리는 유일한 컴포넌트가 조건 뒤에 숨은 것" 이었다.
  */
 export type WorkAreaView =
+  /**
+   * 만들기 국면의 시작 조건 (2회차 · FR-258·FR-258a).
+   *
+   * 항목은 **현재 만들기 흐름에 있는 것뿐이다** — 시작 URL · 방법 2택 · 지시문.
+   * 테스트 이름과 「빈 테스트」는 없다. 이름은 저장 시점(일시정지 국면)에 정하고,
+   * 둘 다 지금 제품에 없는 조작이므로 만드는 것은 범위 밖이다 (research R11).
+   */
+  | {
+      kind: "compose_form";
+      startUrl: string;
+      /** 고른 방법. 아직 안 골랐으면 `null` */
+      mode: ComposeMode | null;
+      instruction: string;
+      /** AI 사용 가능 여부. 눌러 봐야 아는 것은 늦다 (001 DR-021) */
+      aiReady: { available: boolean; reason: string | null } | null;
+      /** `ai.compose` 가 비활성인 이유. 자리는 늘 있고 이유가 붙는다 (FR-234 · 조건 C15) */
+      composeReason: string | null;
+      error: ErrorInfo | null;
+      onStartUrlChange: (next: string) => void;
+      onModeChange: (next: ComposeMode) => void;
+      onInstructionChange: (next: string) => void;
+    }
   | {
       kind: "ai_progress";
       instruction: string;

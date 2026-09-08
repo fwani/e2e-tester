@@ -113,6 +113,8 @@ interface StepProgress {
 
 /** 국면 띠의 색 역할. **색은 보조이며 라벨이 항상 함께 있다** (005 FR-141). */
 const PHASE_TONE: Record<Phase, OutcomeTone> = {
+  /** 만들기는 아직 아무 결말도 없다 — 중립이다 */
+  composing: "neutral",
   recording: "danger",
   ai_authoring: "neutral",
   takeover: "warn",
