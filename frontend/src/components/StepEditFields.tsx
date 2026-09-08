@@ -67,7 +67,7 @@ export function StepEditFields({
   return (
     <div>
       <label style={rowStyle}>
-        <span className="dim" style={{ fontSize: 12 }}>
+        <span className="field-label">
           표시 이름
         </span>
         <input
@@ -82,7 +82,7 @@ export function StepEditFields({
       {value !== null && (
         <>
           <label style={rowStyle}>
-            <span className="dim" style={{ fontSize: 12 }}>
+            <span className="field-label">
               입력값
             </span>
             <input
@@ -104,7 +104,7 @@ export function StepEditFields({
 
       {isNavigate(step) && (
         <label style={rowStyle}>
-          <span className="dim" style={{ fontSize: 12 }}>
+          <span className="field-label">
             주소
           </span>
           <input
@@ -120,7 +120,7 @@ export function StepEditFields({
 
       {step.type === "assertion" && (
         <label style={rowStyle}>
-          <span className="dim" style={{ fontSize: 12 }}>
+          <span className="field-label">
             기대값
           </span>
           <input
@@ -135,7 +135,7 @@ export function StepEditFields({
       )}
 
       <label style={rowStyle}>
-        <span className="dim" style={{ fontSize: 12 }}>
+        <span className="field-label">
           대기 시간
         </span>
         <span className="row" style={{ gap: 6 }}>
@@ -154,14 +154,14 @@ export function StepEditFields({
               }
             }}
           />
-          <span className="dim" style={{ fontSize: 11.5 }}>
+          <span className="why">
             ms
           </span>
         </span>
       </label>
 
       <label style={rowStyle}>
-        <span className="dim" style={{ fontSize: 12 }}>
+        <span className="field-label">
           대상 탭
         </span>
         <input

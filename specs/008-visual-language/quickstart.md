@@ -132,21 +132,26 @@ L3 3항목(가감·구조·상태)만 사람이 본다. **구현자가 자기 �
 ## 완료 판정 (전체)
 
 ```bash
-# SC-402 — 색 리터럴 0
-grep -roE '#[0-9A-Fa-f]{6}' --include='*.tsx' frontend/src | wc -l
+# SC-402 색 리터럴 0 · SC-403 팔레트 밖 0종 · SC-404 값이 두 곳에 없다
+node frontend/scripts/count-violations.mjs
+#   합계   0   0   0종
 
-# SC-403 — 팔레트 밖 색 0종
-grep -rhoE '#[0-9A-Fa-f]{6}' --include='*.tsx' frontend/src | tr 'a-f' 'A-F' | sort -u > /tmp/used
-grep -oE '#[0-9a-f]{6}' frontend/src/theme/tokens.css | tr 'a-f' 'A-F' | sort -u > /tmp/canon
-comm -23 /tmp/used /tmp/canon        # 아무것도 안 나와야 한다
+# 어디가 걸렸는지
+node frontend/scripts/count-violations.mjs --lines
 
-# SC-405 — 가드가 실제로 잡는지: 위반을 일부러 심고 검사가 실패하는지 본다
-# SC-407 — 657건 전부 통과
+# SC-405 — 가드가 실제로 잡는지: 위반을 심어 검사가 실패하는지 본다
+# SC-407 — 657건 이상 전부 통과
 cd frontend && npx vitest run --reporter=basic 2>&1 | tail -3
 
 # SC-401 — 미판정 0 · 불일치 0
 grep -c '미판정\|불일치' docs/design/008-visual-language/conformance/*.md
 ```
+
+> **`grep -roE '#[0-9A-Fa-f]{6}'` 를 완료 판정에 쓰지 않는다.** 그것은 **주석 안의 색까지**
+> 센다. 이 기능의 결과로 코드에는 「v1 은 `#C9A227` 을 직접 정했다」처럼 **제거한 값을
+> 증거로 인용하는 주석**이 남았고, 그 문장들은 화면에 나가지 않는다. 세는 규칙은
+> `contracts/visual-language.md` §4 가 정하고 `count-violations.mjs` 가 그것을 구현하며,
+> 가드(`tests/VisualLanguage.test.tsx`)가 같은 함수를 쓴다 — 판정과 강제가 한 규칙이다.
 
 **SC-409(900px 에서 Step 13행)** 는 렌더로 확인한다 — `.srow` 52px × 13 = 676px 가 Step 패널
 가용 높이에 들어가는지 본다.

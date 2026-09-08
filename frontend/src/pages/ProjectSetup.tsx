@@ -13,6 +13,7 @@
  * 자기 파일을 찾는다 (DR-005).
  */
 import { useCallback, useEffect, useState } from "react";
+import { BrandMark, HeaderBar } from "../components/design/Chrome";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
@@ -32,31 +33,9 @@ type Mode =
    *  어디에 생겼는지 모른 채 넘어가면 다음에 그것을 찾을 수 없다. */
   | { kind: "created"; project: ProjectView };
 
-const ink = "#14171C";
-const paper = "#FFFFFF";
-const surface = "#F2F4F7";
-const muted = "#4A515C";
-const dim = "#6E757F";
-// 잉크 사각형 위의 로고 표식. v1 은 노랑이었다 — v2 는 색을 상태에만 쓴다.
-const accent = "#FFFFFF";
-const fail = "#C8371D";
-
-const display = "'IBM Plex Sans KR', system-ui, sans-serif";
-const mono = "'IBM Plex Mono', ui-monospace, monospace";
-
-/** 확정 디자인의 섹션 라벨 — 작은 대문자 모노에 넓은 자간. */
+/** 구획 라벨 — 정본의 `.lbl` 이다. 이름만 확정 디자인의 관용어를 쓴다. */
 function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        font: `600 12px/1 ${mono}`,
-        letterSpacing: "0.14em",
-        color: muted,
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className="lbl">{children}</div>;
 }
 
 export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void }) {
@@ -95,45 +74,16 @@ export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void 
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: surface, display: "flex", flexDirection: "column" }}>
-      <header
-        style={{
-          flex: "0 0 56px",
-          borderBottom: `1px solid ${ink}`,
-          background: paper,
-          display: "flex",
-          alignItems: "center",
-          gap: 18,
-          padding: "0 24px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 34,
-              height: 34,
-              background: ink,
-              color: accent,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20">
-              <rect x="2.5" y="2.5" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5" />
-              <circle cx="10" cy="10" r="3.5" fill="currentColor" />
-            </svg>
-          </div>
-          <div style={{ fontFamily: display, fontSize: 19, letterSpacing: "0.01em" }}>TEST BUILDER</div>
-        </div>
-      </header>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* 제품의 **첫 화면**이다. 껍데기는 다른 화면과 같아야 한다 (FR-217). */}
+      <HeaderBar>
+        <BrandMark />
+      </HeaderBar>
 
-      <main style={{ flex: 1, padding: "30px 40px 40px", maxWidth: 960, width: "100%", margin: "0 auto" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+      <main style={{ flex: 1, padding: "24px 32px 32px", maxWidth: 960, width: "100%", margin: "0 auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
           <Eyebrow>PROJECT</Eyebrow>
-          <div style={{ fontFamily: display, fontSize: 40, lineHeight: 1, letterSpacing: "-0.01em" }}>
-            프로젝트
-          </div>
+          <div className="title">프로젝트</div>
         </div>
 
         {warning !== null && <Notice tone="warn">{warning}</Notice>}
@@ -205,40 +155,33 @@ function ProjectList({
 }) {
   if (projects === null) {
     // 확정 디자인이 로딩 상태를 정의하지 않는다 — undefined-states.md 에 기록했다.
-    return <p style={{ color: dim }}>프로젝트를 찾는 중…</p>;
+    return <p className="why">프로젝트를 찾는 중…</p>;
   }
 
   return (
     <>
       <div style={{ display: "flex", gap: 12, marginBottom: 22 }}>
-        <button onClick={onCreate} disabled={busy}>
+        <button className="btn primary" onClick={onCreate} disabled={busy}>
           + 새 프로젝트 만들기
         </button>
-        <button className="secondary" onClick={onBrowse} disabled={busy}>
+        <button className="btn" onClick={onBrowse} disabled={busy}>
           기존 프로젝트 열기
         </button>
       </div>
 
       {projects.length === 0 ? (
         <div
-          style={{
-            border: `1px solid ${ink}`,
-            borderRadius: "3px",
-            background: paper,
-            padding: 28,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
+          className="pane"
+          style={{ padding: 28, display: "flex", flexDirection: "column", gap: 8 }}
         >
-          <div style={{ fontWeight: 600, fontSize: 16 }}>아직 프로젝트가 없습니다</div>
-          <div style={{ color: muted }}>
+          <div className="subtitle">아직 프로젝트가 없습니다</div>
+          <div className="note">
             새 프로젝트를 만들면 이 도구가 관리하는 위치에 저장되고, 다음에 열 때 여기 목록에
             바로 나타납니다. 다른 곳에 있는 프로젝트는 「기존 프로젝트 열기」로 찾아 여세요.
           </div>
         </div>
       ) : (
-        <div style={{ border: `1px solid ${ink}`, background: paper }}>
+        <div className="pane">
           {projects.map((p, i) => (
             <ProjectRow
               key={p.root}
@@ -270,47 +213,38 @@ function ProjectRow({
 }) {
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: "16px 18px",
-        borderTop: first ? "none" : `1px solid ${ink}`,
-        opacity: item.accessible ? 1 : 0.72,
-      }}
+      className={`${first ? "" : "rule-top "}${item.accessible ? "" : "dim"}`.trim() || undefined}
+      style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px" }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontWeight: 600, fontSize: 16 }}>{item.name}</span>
+          <span className="subtitle">{item.name}</span>
           {item.origin === "external" && <span className="chip">외부 위치</span>}
           {!item.accessible && (
             <span className="chip fail">열 수 없음</span>
           )}
         </div>
         <div
-          style={{
-            font: `400 12px/1.5 ${mono}`,
-            color: dim,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
+          className="why mono"
+          style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
           title={item.root}
         >
           {item.root}
         </div>
         {!item.accessible && item.unavailable_reason !== null && (
-          <div style={{ color: fail, fontSize: 13, marginTop: 4 }}>{item.unavailable_reason}</div>
+          <div className="line fail-ink" style={{ marginTop: 4 }}>
+            {item.unavailable_reason}
+          </div>
         )}
       </div>
 
       {item.accessible ? (
-        <button className="secondary" onClick={onOpen} disabled={busy}>
+        <button className="btn" onClick={onOpen} disabled={busy}>
           열기
         </button>
       ) : (
         <button
-          className="ghost"
+          className="navlink"
           onClick={onForget}
           disabled={busy}
           // 목록 정리와 자산 삭제는 다른 조작이다 (DR-009). 오해할 여지를 없앤다.
@@ -347,10 +281,10 @@ function CreateForm({
   ];
 
   return (
-    <div style={{ border: `1px solid ${ink}`, background: paper, padding: 24, boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)" }}>
+    <div className="pane" style={{ padding: 24 }}>
       <Eyebrow>NEW PROJECT</Eyebrow>
 
-      <p style={{ color: muted, marginTop: 10 }}>
+      <p className="note" style={{ marginTop: 10 }}>
         저장 위치는 도구가 정합니다. 만들고 나면 어디에 만들어졌는지 알려 드립니다. 테스트
         정의는 그 안의 <code>tests/</code> 에 평문 YAML 로 저장되어 그대로 버전 관리에 넣을 수
         있습니다.
@@ -367,14 +301,14 @@ function CreateForm({
         placeholder="https://example.internal/login"
       />
       {startUrl.trim() !== "" && !urlLooksValid && (
-        <p style={{ color: fail, fontSize: 13, marginTop: 6 }}>
+        <p className="line fail-ink" style={{ marginTop: 6 }}>
           http:// 또는 https:// 로 시작해야 합니다.
         </p>
       )}
 
       <label htmlFor="attr">testId 속성명</label>
       <input id="attr" value={testIdAttr} onChange={(e) => setTestIdAttr(e.target.value)} />
-      <p style={{ color: dim, fontSize: 12, marginTop: 6 }}>
+      <p className="why" style={{ marginTop: 6 }}>
         대상 앱이 쓰는 속성명입니다. <code>data-test</code>, <code>data-cy</code> 를 쓰는 앱도
         흔합니다. 요소를 찾는 최우선 기준이 됩니다.
       </p>
@@ -386,7 +320,8 @@ function CreateForm({
       */}
       <p
         id="create-blockers"
-        style={{ margin: "16px 0 0", fontSize: 12.5, color: ready ? muted : fail }}
+        className={`why ${ready ? "" : "fail-ink"}`.trimEnd()}
+        style={{ margin: "16px 0 0" }}
       >
         {ready
           ? "만들 준비가 되었습니다."
@@ -394,7 +329,7 @@ function CreateForm({
       </p>
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-        <button className="secondary" onClick={onCancel} disabled={busy}>
+        <button className="btn" onClick={onCancel} disabled={busy}>
           취소
         </button>
         <button
@@ -425,30 +360,22 @@ function CreatedNotice({
   onContinue: () => void;
 }) {
   return (
-    <div style={{ border: `1px solid ${ink}`, background: paper, padding: 24, boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)" }}>
+    <div className="pane" style={{ padding: 24 }}>
       <Eyebrow>PROJECT CREATED</Eyebrow>
 
-      <div style={{ fontFamily: display, fontSize: 28, marginTop: 10 }}>{p.name}</div>
+      <div className="title" style={{ marginTop: 10 }}>
+        {p.name}
+      </div>
 
-      <p style={{ color: muted, marginTop: 12 }}>
+      <p className="note" style={{ marginTop: 12 }}>
         아래 위치에 만들었습니다. 다음에 도구를 열면 이 프로젝트가 목록에 바로 나타납니다.
       </p>
 
-      <div
-        style={{
-          font: `400 13px/1.6 ${mono}`,
-          border: `1px solid ${ink}`,
-          borderRadius: "3px",
-          background: surface,
-          padding: "10px 12px",
-          marginTop: 10,
-          wordBreak: "break-all",
-        }}
-      >
+      <div className="log sunken" style={{ padding: "10px 12px", marginTop: 10, wordBreak: "break-all" }}>
         {p.root}
       </div>
 
-      <p style={{ color: dim, fontSize: 12, marginTop: 10 }}>
+      <p className="why" style={{ marginTop: 10 }}>
         테스트 정의는 이 폴더의 <code>tests/</code> 에 평문 YAML 로 저장됩니다. 비밀 값과 실행
         산출물은 <code>.gitignore</code> 로 제외됩니다.
       </p>
@@ -494,10 +421,10 @@ function FolderPicker({
   useEffect(() => go(), [go]);
 
   return (
-    <div style={{ border: `1px solid ${ink}`, background: paper, boxShadow: "0 1px 2px rgba(20, 23, 28, 0.07)" }}>
-      <div style={{ padding: "18px 20px", borderBottom: `1px solid ${ink}` }}>
+    <div className="pane">
+      <div className="rule-bottom" style={{ padding: "16px 18px" }}>
         <Eyebrow>OPEN EXISTING</Eyebrow>
-        <div style={{ font: `400 13px/1.6 ${mono}`, color: muted, marginTop: 8, wordBreak: "break-all" }}>
+        <div className="log muted" style={{ marginTop: 8, wordBreak: "break-all" }}>
           {here ?? "…"}
         </div>
       </div>
@@ -507,7 +434,7 @@ function FolderPicker({
       <div style={{ maxHeight: 360, overflowY: "auto" }}>
         {parent !== null && (
           <button
-            className="ghost"
+            className="navlink"
             onClick={() => go(parent)}
             style={{ width: "100%", height: 44, justifyContent: "flex-start", textAlign: "left", padding: "0 20px" }}
           >
@@ -515,25 +442,22 @@ function FolderPicker({
           </button>
         )}
 
-        {entries === null && <p style={{ padding: "16px 20px", color: dim }}>불러오는 중…</p>}
+        {entries === null && <p className="why" style={{ padding: "16px 20px" }}>불러오는 중…</p>}
 
         {entries !== null && entries.length === 0 && (
-          <p style={{ padding: "16px 20px", color: dim }}>이 폴더에는 하위 폴더가 없습니다.</p>
+          <p className="why" style={{ padding: "16px 20px" }}>
+            이 폴더에는 하위 폴더가 없습니다.
+          </p>
         )}
 
         {entries?.map((e) => (
           <div
             key={e.path}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "10px 20px",
-              borderTop: `1px solid ${ink}`,
-            }}
+            className="rule-top"
+            style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px" }}
           >
             <button
-              className="ghost"
+              className="navlink"
               onClick={() => go(e.path)}
               style={{ flex: 1, justifyContent: "flex-start", textAlign: "left", padding: 0, height: 32 }}
             >
@@ -541,7 +465,7 @@ function FolderPicker({
             </button>
             {e.is_project && <span className="chip">프로젝트</span>}
             {e.is_project && (
-              <button className="secondary" disabled={busy} onClick={() => onPick(e.path)}>
+              <button className="btn" disabled={busy} onClick={() => onPick(e.path)}>
                 열기
               </button>
             )}
@@ -550,24 +474,24 @@ function FolderPicker({
       </div>
 
       <div
+        className="rule-top"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           gap: 12,
-          padding: "16px 20px",
-          borderTop: `1px solid ${ink}`,
+          padding: "16px 18px",
         }}
       >
-        <span style={{ color: dim, fontSize: 12 }}>
+        <span className="why">
           「프로젝트」 표시가 붙은 폴더만 열 수 있습니다.
         </span>
         <div style={{ display: "flex", gap: 12 }}>
-          <button className="secondary" onClick={onCancel} disabled={busy}>
+          <button className="btn" onClick={onCancel} disabled={busy}>
             취소
           </button>
           {here !== null && (
-            <button disabled={busy} onClick={() => onPick(here)}>
+            <button className="btn primary" disabled={busy} onClick={() => onPick(here)}>
               이 폴더 열기
             </button>
           )}
@@ -582,11 +506,8 @@ function FolderPicker({
 function Notice({ tone, children }: { tone: "warn" | "fail"; children: React.ReactNode }) {
   return (
     <div
+      className={tone === "fail" ? "tint-fail" : "tint-warn"}
       style={{
-        border: `1px solid ${ink}`,
-        borderRadius: "3px",
-        background: tone === "fail" ? "#FCEDE9" : "#FBF3E2",
-        color: tone === "fail" ? "#A32C13" : ink,
         padding: "12px 16px",
         marginBottom: 18,
         whiteSpace: "pre-wrap",

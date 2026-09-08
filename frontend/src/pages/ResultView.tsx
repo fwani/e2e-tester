@@ -51,8 +51,6 @@ import {
 import type { Step } from "../types/generated/step";
 import type { ErrorCode, StepResult } from "../types/generated/run-result";
 
-const MONO = "'IBM Plex Mono', ui-monospace, monospace";
-const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
 /** 산출물 종류. `trace` 는 서버가 501 을 돌려준다 (001 의 알려진 차이 · DC-007). */
 const SUPPORTED_ARTIFACTS: ArtifactKind[] = ["screenshot", "console", "network"];
@@ -163,7 +161,7 @@ export function ResultView({
         {error !== null ? (
           <ErrorNotice error={error} />
         ) : (
-          <p style={{ color: "#6E757F" }}>결과를 불러오는 중…</p>
+          <p className="why">결과를 불러오는 중…</p>
         )}
       </main>
     );
@@ -532,10 +530,10 @@ function artifactBody({
 }) {
   if (artifactError !== null) {
     return (
-      <p style={{ font: `400 13px/1.6 ${SANS}`, color: "#A32C13" }}>{artifactError.message}</p>
+      <p className="line fail-ink">{artifactError.message}</p>
     );
   }
-  if (artifact === null) return <p style={{ color: "#6E757F" }}>불러오는 중…</p>;
+  if (artifact === null) return <p className="why">불러오는 중…</p>;
   if (tab === "screenshot" && artifact.src !== undefined) {
     return (
       <img
@@ -550,7 +548,8 @@ function artifactBody({
   return (
     <pre
       data-artifact-text
-      style={{ margin: 0, font: `400 12px/1.6 ${MONO}`, whiteSpace: "pre-wrap" }}
+      className="log"
+      style={{ margin: 0 }}
     >
       {artifact.text === "" || artifact.text === undefined
         ? emptyArtifactMessage(tab)

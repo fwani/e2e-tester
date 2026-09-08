@@ -564,3 +564,17 @@ input.ai, textarea.ai { border-color: var(--ai); }
   border-radius: var(--radius-lg);
   box-shadow: var(--e-2);
 }
+
+/* 여러 줄 원문 — 콘솔·네트워크 로그처럼 그대로 보여야 하는 것. */
+.log { font: 400 12px/1.6 var(--font-mono); white-space: pre-wrap; }
+
+/* 되돌릴 수 없는 조작이 모인 구획. 경계만 실패 계열이고 안은 종이 그대로다 —
+   바탕까지 물들이면 아직 일어나지 않은 일을 이미 실패한 것처럼 보이게 한다. */
+.danger-edge { border-color: var(--fail); }
+
+/* 입력 앞의 이름표. `label` 과 달리 같은 줄에 서는 자리다. */
+.field-label { font: 400 12px/1 var(--font-sans); color: var(--ink-3); }
+/* 표 안에서 열쇠말이 되는 칸 — 후보 이름·판정처럼 눈이 먼저 닿아야 하는 것. */
+.key-cell { font-weight: 700; }
+/* 알림의 본문 — 한 줄 이상이 될 수 있다. */
+.notice-body { font: 600 13px/1.5 var(--font-sans); }

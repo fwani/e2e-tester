@@ -113,11 +113,17 @@ export function fromEvent(
   return { message: reason, nextAction: fallbackAction, category: "blocked", code: "UNKNOWN" };
 }
 
-const TONE: Record<Category, { border: string; bg: string; label: string }> = {
-  // 막은 것 — 고치면 되는 일이라 경고 색으로 둔다.
-  blocked: { border: "#C9A227", bg: "#FDF8E7", label: "확인이 필요합니다" },
-  // 깨진 것 — 사용자가 할 수 있는 일이 없다. 실패 색으로 분명히 구분한다.
-  broken: { border: "#B4453C", bg: "#FBEDEB", label: "도구에 문제가 생겼습니다" },
+/**
+ * 두 갈래는 **색으로만 갈리지 않는다** — 제목 문장이 먼저 갈린다 (003 · States.dc.html).
+ *
+ * 008 전에는 여기서 `#C9A227`·`#FDF8E7`·`#B4453C`·`#FBEDEB` 네 색을 직접 정했고 넷 다
+ * 확정 디자인에 없는 색이었다. 옅은 바탕 + 같은 계열 경계는 정본의 `.tint-*` 가 갖는다.
+ */
+const TONE: Record<Category, { tint: string; ink: string; label: string }> = {
+  // 막은 것 — 고치면 되는 일이라 주의 계열이다.
+  blocked: { tint: "tint-warn", ink: "warn-ink", label: "확인이 필요합니다" },
+  // 깨진 것 — 사용자가 할 수 있는 일이 없다. 실패 계열로 분명히 구분한다.
+  broken: { tint: "tint-fail", ink: "fail-ink", label: "도구에 문제가 생겼습니다" },
 };
 
 export function ErrorNotice({
@@ -145,31 +151,21 @@ export function ErrorNotice({
       data-error-notice
       data-category={error.category}
       data-code={error.code}
+      className={tone.tint}
       style={{
         display: "flex",
         flexDirection: "column",
         gap: 6,
         padding: compact ? "8px 10px" : "12px 14px",
-        border: `1px solid ${tone.border}`,
-        background: tone.bg,
-        borderRadius: 2,
       }}
     >
       {!compact && (
-        <div
-          style={{
-            font: "700 12px/1 'IBM Plex Mono', ui-monospace, monospace",
-            letterSpacing: "0.06em",
-            color: tone.border,
-          }}
-        >
-          {tone.label}
-        </div>
+        <div className={`lbl ${tone.ink}`}>{tone.label}</div>
       )}
       <div
         data-error-message
+        className="notice-body"
         style={{
-          font: "500 14px/1.5 'IBM Plex Sans KR', system-ui, sans-serif",
           whiteSpace: "pre-wrap",
           // 아주 긴 입력이 그대로 되돌아와도 화면을 밀어내지 않는다 (AP-015).
           overflowWrap: "anywhere",
@@ -179,11 +175,8 @@ export function ErrorNotice({
       </div>
       <div
         data-error-next-action
-        style={{
-          font: "400 13px/1.5 'IBM Plex Sans KR', system-ui, sans-serif",
-          color: "#4A515C",
-          overflowWrap: "anywhere",
-        }}
+        className="line muted"
+        style={{ overflowWrap: "anywhere" }}
       >
         {error.nextAction}
       </div>

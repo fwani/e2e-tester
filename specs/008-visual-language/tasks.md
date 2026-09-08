@@ -152,18 +152,18 @@ FR-278~FR-284 이므로 검사 작성 작업이 선택이 아니다. 기존 657�
 
 **이 묶음의 잔존색**: `#C9A227` · `#FDF8E7` · `#FBEDEB` · `#B4453C`(ErrorNotice) · `#2A303A`(BrowserFrame)
 
-- [ ] T052 [P] [US3] `frontend/src/pages/ProjectSetup.tsx` 를 정본 소비로 바꾼다 (hex 11 · 인라인 46 — **인라인 2위**). `ProjectSetup.dc.html` 기준. **제품의 첫 화면**이므로 첫 실행 경로를 실제로 지나가 본다
-- [ ] T053 [P] [US3] `frontend/src/pages/KeyManagement.tsx` 를 정본 소비로 바꾼다 (hex 4 · 인라인 29). `Keys.dc.html` 기준. **키 값 가림을 건드리지 않는다** (FR-277)
-- [ ] T054 [P] [US3] `frontend/src/pages/SecretValues.tsx` 를 정본 소비로 바꾼다 (인라인 15). `Secrets.dc.html` 기준. **비밀 값 가림을 건드리지 않는다** (FR-277)
-- [ ] T055 [P] [US3] `frontend/src/pages/ResultView.tsx` 를 정본 소비로 바꾼다 (hex 3 · 인라인 6). `Result.dc.html` 기준. 실패 사유·시도한 locator 표·산출물이 이전과 같이 도달 가능한지 확인
-- [ ] T056 [P] [US3] `frontend/src/components/ErrorNotice.tsx` 를 `.notice`·`.pane`·`.why` 로 바꾼다 (hex 5 · 인라인 4). `States.dc.html` 의 문구·형태 규칙을 따른다. 잔존색 4종(`#C9A227`·`#FDF8E7`·`#FBEDEB`·`#B4453C`) 판정
-- [ ] T057 [P] [US3] `frontend/src/components/SessionLostBanner.tsx` 를 `.notice` 로 바꾼다 (인라인 7)
-- [ ] T058 [P] [US3] `frontend/src/components/LiveConnectionBanner.tsx` 를 `.notice` 로 바꾼다 (인라인 2)
-- [ ] T059 [P] [US3] `frontend/src/components/StartingIndicator.tsx` 를 정본 소비로 바꾼다 (인라인 3)
-- [ ] T060 [P] [US3] `frontend/src/components/design/BrowserFrame.tsx` 를 정본 소비로 바꾼다 (hex 8 · 인라인 7). 잔존색 `#2A303A` 판정
-- [ ] T061 [US3] `npx vitest run` — **657건 + 신규 전부 초록.** `KeyManagement.test.tsx`·`InlineSecret.test.tsx`·`ProjectSetup.test.tsx`·`abnormal/error-notice.test.tsx` 를 특히 확인
-- [ ] T062 [US3] T001 재측정 → `baseline.md` 갱신
-- [ ] T063 [US3] T009 상한을 **0 직전까지** 내린다
+- [X] T052 [P] [US3] `frontend/src/pages/ProjectSetup.tsx` 를 정본 소비로 바꾼다 (hex 11 · 인라인 46 — **인라인 2위**). `ProjectSetup.dc.html` 기준. **제품의 첫 화면**이므로 첫 실행 경로를 실제로 지나가 본다
+- [X] T053 [P] [US3] `frontend/src/pages/KeyManagement.tsx` 를 정본 소비로 바꾼다 (hex 4 · 인라인 29). `Keys.dc.html` 기준. **키 값 가림을 건드리지 않는다** (FR-277)
+- [X] T054 [P] [US3] `frontend/src/pages/SecretValues.tsx` 를 정본 소비로 바꾼다 (인라인 15). `Secrets.dc.html` 기준. **비밀 값 가림을 건드리지 않는다** (FR-277)
+- [X] T055 [P] [US3] `frontend/src/pages/ResultView.tsx` 를 정본 소비로 바꾼다 (hex 3 · 인라인 6). `Result.dc.html` 기준. 실패 사유·시도한 locator 표·산출물이 이전과 같이 도달 가능한지 확인
+- [X] T056 [P] [US3] `frontend/src/components/ErrorNotice.tsx` 를 `.notice`·`.pane`·`.why` 로 바꾼다 (hex 5 · 인라인 4). `States.dc.html` 의 문구·형태 규칙을 따른다. 잔존색 4종(`#C9A227`·`#FDF8E7`·`#FBEDEB`·`#B4453C`) 판정
+- [X] T057 [P] [US3] `frontend/src/components/SessionLostBanner.tsx` 를 `.notice` 로 바꾼다 (인라인 7)
+- [X] T058 [P] [US3] `frontend/src/components/LiveConnectionBanner.tsx` 를 `.notice` 로 바꾼다 (인라인 2)
+- [X] T059 [P] [US3] `frontend/src/components/StartingIndicator.tsx` 를 정본 소비로 바꾼다 (인라인 3)
+- [X] T060 [P] [US3] `frontend/src/components/design/BrowserFrame.tsx` 를 정본 소비로 바꾼다 (hex 8 · 인라인 7). 잔존색 `#2A303A` 판정
+- [X] T061 [US3] `npx vitest run` — **657건 + 신규 전부 초록.** `KeyManagement.test.tsx`·`InlineSecret.test.tsx`·`ProjectSetup.test.tsx`·`abnormal/error-notice.test.tsx` 를 특히 확인
+- [X] T062 [US3] T001 재측정 → `baseline.md` 갱신
+- [X] T063 [US3] T009 상한을 **0 직전까지** 내린다
 
 **Checkpoint**: 18장 전부의 대상 코드가 정본을 소비한다.
 

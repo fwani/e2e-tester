@@ -309,7 +309,7 @@ function Field({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span className="dim" style={{ width: 76, fontSize: 12 }}>
+        <span className="field-label" style={{ width: 76 }}>
           {label}
         </span>
         {multiline ? (

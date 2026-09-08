@@ -346,16 +346,18 @@ export function StepDetail({
             {detail.attempts.map((a, i) => (
               <div
                 key={`${a.candidate}-${i}`}
-                className={`row rule-top mono${a.matched ? "" : " muted"}`}
-                style={{ padding: "8px 12px", fontSize: 12 }}
+                className={`row rule-top why mono${a.matched ? "" : " muted"}`}
+                style={{ padding: "8px 12px" }}
               >
-                <span style={{ width: 84, fontWeight: 700 }}>{a.candidate}</span>
+                <span className="key-cell" style={{ width: 84 }}>
+                  {a.candidate}
+                </span>
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
                   {a.expression}
                 </span>
                 <span style={{ width: 54, textAlign: "right" }}>{a.match_count}개</span>
                 <span style={{ width: 62, textAlign: "right" }}>{a.waited_ms} ms</span>
-                <span style={{ width: 44, textAlign: "right", fontWeight: 700 }}>
+                <span className="key-cell" style={{ width: 44, textAlign: "right" }}>
                   {a.matched ? "맞음" : "아님"}
                 </span>
               </div>

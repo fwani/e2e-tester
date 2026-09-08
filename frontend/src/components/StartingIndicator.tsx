@@ -40,13 +40,14 @@ export function StartingIndicator({
         justifyContent: "center",
         gap: 8,
         padding: 32,
-        color: "var(--ink-2)",
       }}
     >
       <span className="chip">STARTING</span>
-      <p style={{ margin: 0, fontSize: 13 }}>{message}</p>
+      <p className="line muted" style={{ margin: 0 }}>
+        {message}
+      </p>
       {slow && (
-        <p className="dim" style={{ margin: 0, fontSize: 11.5, textAlign: "center" }}>
+        <p className="why" style={{ margin: 0, textAlign: "center" }}>
           평소보다 오래 걸리고 있습니다. 브라우저가 설치되어 있는지, 다른 창이 자원을 쓰고
           있지 않은지 확인하세요.
         </p>

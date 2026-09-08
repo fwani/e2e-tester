@@ -145,10 +145,10 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
   return (
     <main style={{ maxWidth: 720, margin: "32px auto", padding: "0 16px" }}>
       <div className="row" style={{ gap: 8, marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontFamily: "var(--font-sans)" }}>키 관리</h1>
+        <h1 className="title" style={{ margin: 0 }}>키 관리</h1>
         <span className="spacer" />
         {onClose && (
-          <button className="secondary" onClick={onClose}>
+          <button className="btn" onClick={onClose}>
             닫기
           </button>
         )}
@@ -161,12 +161,8 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       {notice !== null && (
         <p
           role="status"
-          style={{
-            padding: "8px 10px",
-            background: "var(--warn-t)",
-            border: "1px solid var(--warn)",
-            borderRadius: "3px",
-          }}
+          className="tint-warn"
+          style={{ padding: "8px 10px" }}
         >
           {notice}
         </p>
@@ -175,27 +171,16 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       {status !== null && status.permission_warning !== null && (
         <p
           role="alert"
-          style={{
-            padding: "8px 10px",
-            background: "var(--warn-t)",
-            border: "1px solid var(--warn)",
-            borderRadius: "3px",
-          }}
+          className="tint-warn"
+          style={{ padding: "8px 10px" }}
         >
           ⚠ {status.permission_warning}
         </p>
       )}
 
       <section
-        style={{
-          border: "1px solid var(--ink)",
-          borderRadius: "3px",
-          background: "var(--panel)",
-          padding: 14,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}
+        className="pane"
+        style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
       >
         <div className="row" style={{ gap: 8 }}>
           <strong>키 상태</strong>
@@ -222,7 +207,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           </dd>
         </dl>
 
-        <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+        <p className="why" style={{ margin: 0 }}>
           키는 프로젝트 밖(
           <span className="mono">{status?.key_dir ?? "…"}</span>
           )에 있습니다. 이 장비의 모든 ITB 프로젝트가 이 키 하나를 씁니다. 테스트 정의에는
@@ -240,11 +225,8 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       {needsUnlock && (
         <section
           role="note"
-          style={{
-            border: "1px solid var(--warn)",
-            borderRadius: "3px",
-            background: "var(--warn-t)",
-            padding: 14,
+          className="tint-warn"
+          style={{ padding: 14,
             marginTop: 16,
             display: "flex",
             flexDirection: "column",
@@ -252,7 +234,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           }}
         >
           <strong>비밀키가 잠겨 있습니다</strong>
-          <p style={{ margin: 0, fontSize: 12.5 }}>
+          <p className="line" style={{ margin: 0 }}>
             비밀 값을 저장하는 데에는 문제가 없지만, <b>재실행과 AI 작성은 비밀키를 열어야
             합니다.</b> 암호구를 입력해 잠금을 해제하세요. 해제하지 않으면 민감 변수를 쓰는
             Step 이 사유와 함께 실패합니다.
@@ -274,8 +256,8 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           />
           <p
             id="unlock-rule"
-            className="dim"
-            style={{ margin: 0, fontSize: 11.5 }}
+            className="why"
+            style={{ margin: 0 }}
           >
             {unlockTooShort
               ? `암호구는 8자 이상입니다. 지금 ${unlockPassphrase.length}자입니다.`
@@ -290,7 +272,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
               잠금 해제
             </button>
           </div>
-          <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+          <p className="why" style={{ margin: 0 }}>
             사람이 없는 실행(CI 등)에서는 백엔드 프로세스에 환경 변수{" "}
             <span className="mono">{PASSPHRASE_ENV}</span> 로 공급할 수도 있습니다. 암호구
             자체를 없애려면 아래에서 키를 교체하세요 — 교체하면 보관된 민감 값은 다시
@@ -303,22 +285,19 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       {protectedKey && unlocked && (
         <section
           role="note"
-          style={{
-            border: "1px solid var(--ink)",
-            borderRadius: "3px",
-            background: "var(--sunken-2)",
-            padding: 14,
+          className="pane sunken"
+          style={{ padding: 14,
             marginTop: 16,
           }}
         >
           <div className="row" style={{ gap: 8, alignItems: "center" }}>
             <strong>비밀키가 열려 있습니다</strong>
             <span className="spacer" />
-            <button className="secondary" disabled={busy} onClick={lock}>
+            <button className="btn" disabled={busy} onClick={lock}>
               다시 잠그기
             </button>
           </div>
-          <p style={{ margin: "8px 0 0", fontSize: 12.5 }}>
+          <p className="line" style={{ margin: "8px 0 0" }}>
             암호구로 보호된 키이며, 이 백엔드 프로세스가 암호구를 들고 있습니다. 민감
             변수를 쓰는 재실행과 AI 작성이 가능합니다. <b>백엔드를 다시 띄우면 다시
             잠깁니다.</b>
@@ -328,11 +307,8 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
 
       {!hasKeys && (
         <section
-          style={{
-            border: "1px solid var(--ink)",
-            borderRadius: "3px",
-            background: "var(--sunken-2)",
-            padding: 14,
+          className="pane sunken"
+          style={{ padding: 14,
             marginTop: 16,
             display: "flex",
             flexDirection: "column",
@@ -355,13 +331,14 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           */}
           <p
             id="passphrase-rule"
-            style={{ margin: 0, fontSize: 12, color: tooShort ? "#A32C13" : "#4A515C" }}
+            className={`why ${tooShort ? "fail-ink" : ""}`.trimEnd()}
+            style={{ margin: 0 }}
           >
             {tooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${passphrase.length}자입니다.`
               : "암호구를 걸려면 8자 이상 200자 이하로 적으세요."}
           </p>
-          <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+          <p className="why" style={{ margin: 0 }}>
             암호구를 걸면 비밀키 <b>파일</b>이 잠깁니다. 잊으면 보관된 값을 읽을 수 없고,
             제품이 복구해 줄 방법은 없습니다. 만든 직후에는 바로 실행할 수 있고, 백엔드를
             다시 띄운 뒤에는 이 화면에서 잠금을 해제하면 됩니다.
@@ -382,26 +359,23 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       */}
       {hasKeys && (
         <section
-          style={{
-            border: "1px solid var(--fail)",
-            borderRadius: "3px",
-            background: "var(--panel)",
-            padding: 14,
+          className="pane danger-edge"
+          style={{ padding: 14,
             marginTop: 16,
             display: "flex",
             flexDirection: "column",
             gap: 10,
           }}
         >
-          <strong style={{ color: "var(--fail-dark)" }}>키 교체·삭제</strong>
-          <p style={{ margin: 0, fontSize: 12.5 }}>
+          <strong className="fail-ink">키 교체·삭제</strong>
+          <p className="line" style={{ margin: 0 }}>
             <b>되돌릴 수 없습니다.</b> 키는 장비에 하나이므로 <b>이 장비의 모든 ITB 프로젝트</b>
             에서 지금 키로 봉인된 민감 값이 전부 못 읽게 됩니다. 열려 있는 프로젝트의 암호문은
             함께 비우고, 다른 프로젝트의 암호문은 그 프로젝트를 열 때 재입력을 안내합니다.
           </p>
           {/* 영향 범위를 숫자와 이름으로 보인다 — "이 프로젝트" 라고만 말하면 나머지가
               조용히 깨진다 (UX U-09). */}
-          <p style={{ margin: 0, fontSize: 12.5 }} data-sealed-projects>
+          <p className="line" style={{ margin: 0 }} data-sealed-projects>
             {status === null ? (
               "영향받는 프로젝트를 확인하는 중…"
             ) : status.sealed_projects.length === 0 ? (
@@ -425,7 +399,8 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           />
           <p
             id="regen-passphrase-rule"
-            style={{ margin: 0, fontSize: 12, color: newTooShort ? "#A32C13" : "#4A515C" }}
+            className={`why ${newTooShort ? "fail-ink" : ""}`.trimEnd()}
+            style={{ margin: 0 }}
           >
             {newTooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${newPassphrase.length}자입니다.`
@@ -448,11 +423,11 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
             <button disabled={busy || !confirmed || newTooShort} onClick={regenerate}>
               키 교체
             </button>
-            <button className="secondary" disabled={busy || !confirmed} onClick={destroy}>
+            <button className="btn" disabled={busy || !confirmed} onClick={destroy}>
               키 삭제
             </button>
           </div>
-          <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+          <p className="why" style={{ margin: 0 }}>
             <b>교체</b>는 지우고 새 키를 바로 만듭니다. <b>삭제</b>는 지우기만 합니다 — 키가
             없으면 민감 값을 새로 저장할 수도, 기존 값을 읽을 수도 없습니다.
           </p>

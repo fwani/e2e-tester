@@ -32,31 +32,24 @@ export function SessionLostBanner({
   return (
     <div
       role="alert"
-      style={{
-        border: "1px solid var(--fail)",
-        borderRadius: "3px",
-        background: "var(--fail-t)",
-        padding: 14,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
+      className="tint-fail"
+      style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
     >
       <div className="row" style={{ gap: 8 }}>
-        <strong style={{ fontSize: 14, color: "var(--fail-dark)" }}>
-          브라우저 세션이 유실됐습니다
-        </strong>
+        <strong className="strong-sm fail-ink">브라우저 세션이 유실됐습니다</strong>
         <span className="spacer" />
         {onClose && (
-          <button className="ghost" onClick={onClose}>
+          <button className="btn sm quiet" onClick={onClose}>
             닫기
           </button>
         )}
       </div>
 
-      <p style={{ margin: 0, fontSize: 13, whiteSpace: "pre-wrap" }}>{reason}</p>
+      <p className="line" style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+        {reason}
+      </p>
 
-      <p style={{ margin: 0, fontSize: 12.5 }}>
+      <p className="line" style={{ margin: 0 }}>
         {hasSteps ? (
           <>
             기록된 Step <strong>{stepCount}개</strong>는 보존됐습니다. 저장하거나 처음부터
@@ -67,7 +60,7 @@ export function SessionLostBanner({
         )}
       </p>
 
-      <p className="dim" style={{ margin: 0, fontSize: 11.5 }}>
+      <p className="why" style={{ margin: 0 }}>
         이어서 실행과 Step 편집은 브라우저가 없어 할 수 없습니다.
       </p>
 
