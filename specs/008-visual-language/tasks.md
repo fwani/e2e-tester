@@ -40,8 +40,8 @@ FR-278~FR-284 이므로 검사 작성 작업이 선택이 아니다. 기존 657�
 
 **Purpose**: 이후 모든 단계가 "줄었는가"를 판정할 수 있게 한다
 
-- [ ] T001 `frontend/scripts/count-violations.mjs` 를 만들어 색 리터럴·인라인 시각 언어 선언·팔레트 밖 색을 파일별로 세고 합계를 출력한다. `contracts/visual-language.md` §4 의 G-1·G-2 정의를 따르고 출력에 `파일:줄` 을 포함한다 (FR-279)
-- [ ] T002 T001 로 기준선을 측정해 `specs/008-visual-language/baseline.md` 에 파일별 표로 남긴다. 합계가 색 327 · 인라인 437 · 팔레트 밖 17종과 일치하는지 확인한다. 다르면 그 차이를 먼저 조사한다 — 기준선이 틀리면 이후 판정이 전부 틀린다
+- [X] T001 `frontend/scripts/count-violations.mjs` 를 만들어 색 리터럴·인라인 시각 언어 선언·팔레트 밖 색을 파일별로 세고 합계를 출력한다. `contracts/visual-language.md` §4 의 G-1·G-2 정의를 따르고 출력에 `파일:줄` 을 포함한다 (FR-279)
+- [X] T002 T001 로 기준선을 측정해 `specs/008-visual-language/baseline.md` 에 파일별 표로 남긴다. 합계가 색 327 · 인라인 437 · 팔레트 밖 17종과 일치하는지 확인한다. 다르면 그 차이를 먼저 조사한다 — 기준선이 틀리면 이후 판정이 전부 틀린다
 
 **Checkpoint**: 위반 수가 파일별로 보인다. 이후 단계가 이 수를 내린다.
 
