@@ -7,6 +7,7 @@
  * Cross-language schema duty 를 위반한다.
  */
 import type { Category, ErrorBody, ErrorCode } from "../types/generated/error-response";
+import type { ManualStep as GeneratedManualStep } from "../types/generated/manual-step";
 import type { RunResult } from "../types/generated/run-result";
 
 /**
@@ -289,8 +290,48 @@ export type ManualStepSpec =
       timeout_ms?: number;
     };
 
-/** 손으로 넣을 수 있는 종류. `ManualStepSpec` 에서 파생한다 — 별도 배열을 두지 않는다. */
-export type InsertableKind = ManualStepSpec["kind"];
+/**
+ * 손으로 넣을 수 있는 종류. **생성 타입에서 파생한다** (009 FR-286 · T062).
+ *
+ * 이전 판은 위의 손으로 쓴 `ManualStepSpec` 에서 파생했다. 그러면 백엔드가 다섯째 종류를
+ * 더해도 화면은 모르고 **아무 검사도 실패하지 않는다** — FR-286 이 요구하는 「한 곳만
+ * 고쳐 반영된다」가 성립하지 않는다.
+ *
+ * 이제 `types/generated/manual-step.d.ts` 가 근원이고, 그 파일은
+ * `backend/src/itb/domain/manual_step.py` 에서 나온다. CI 의 스키마 드리프트 잡이 생성물이
+ * 커밋된 것과 같은지 확인하므로, 백엔드에서 종류가 늘면 생성 타입이 늘고 아래 `_Exhaustive`
+ * 가 **컴파일에서** 터진다.
+ */
+export type InsertableKind = GeneratedManualStep["kind"];
+
+/**
+ * 참이어야 하는 타입 조건. `Assert<false>` 는 **컴파일되지 않는다.**
+ *
+ * 조건 타입을 그냥 선언만 하면 아무 오류도 나지 않는다 — 쓰이지 않는 타입 별칭은 검사받지
+ * 않기 때문이다. 그래서 조건을 이 형태로 **소비한다.** 런타임 산출물은 없다.
+ */
+type Assert<T extends true> = T;
+
+/**
+ * 요청 타입의 종류 집합이 생성 타입과 **같은지** 컴파일 시점에 못박는다 (FR-286).
+ *
+ * 두 방향을 모두 본다.
+ *
+ *   생성에만 있다 → 백엔드가 종류를 늘렸는데 화면이 모른다 (FR-286 이 없애려는 것)
+ *   요청에만 있다 → 화면이 서버가 모르는 종류를 보낸다 (422 로 거절된다)
+ *
+ * 어느 쪽이든 컴파일이 멈춘다. 실측으로 확인했다 — 요청 타입에서 `close_tab` 을 빼면
+ * 네 곳에서 타입 오류가 난다.
+ */
+type _KindsMatch = Assert<
+  [Exclude<ManualStepSpec["kind"], GeneratedManualStep["kind"]>] extends [never]
+    ? [Exclude<GeneratedManualStep["kind"], ManualStepSpec["kind"]>] extends [never]
+      ? true
+      : false
+    : false
+>;
+/** 위 단언을 내보내 「쓰이지 않는 타입」으로 지워지지 않게 한다. */
+export type ManualStepKindsAreExhaustive = _KindsMatch;
 
 /** 편집 연산 하나. 이 목록의 길이가 곧 「저장할 변경 건수」다 (FR-189). */
 export type EditOp =

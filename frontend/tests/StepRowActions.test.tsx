@@ -262,3 +262,48 @@ describe("잠긴 국면 (SC-508 · FR-306·FR-308)", () => {
     }
   });
 });
+
+// ─── 009 T059 · 팔레트 경로도 표대로 동작한다 (계약 §3-3-0 · 005 U-01) ──────
+//
+// **조작의 자리는 팔레트가 선언하고 행은 사례다.** 자리가 선언되어 있으면 그 경로도
+// 동작해야 한다 — 활성인데 아무 일도 하지 않는 조작이 005 U-01 의 형태였다.
+
+describe("팔레트 경로 (계약 §3-3-0)", () => {
+  const paletteAction = (id: string) =>
+    document.querySelector(`button[data-action="${id}"]`) as HTMLButtonElement;
+
+  it("고른 Step 이 없으면 팔레트 이동이 비활성이고 이유가 붙는다", () => {
+    renderSession({ state: "paused", steps: SIX as unknown as Step[], current_step_index: 6 });
+
+    for (const id of ["step.moveUp", "step.moveDown"]) {
+      const btn = paletteAction(id);
+      expect(btn, `${id} 이 팔레트에 없다`).toBeTruthy();
+      expect(btn.disabled, `${id} 이 활성이다 — 누르면 아무 일도 안 한다`).toBe(true);
+    }
+    expect(screen.getAllByText("먼저 Step 을 고르세요").length).toBeGreaterThan(0);
+  });
+
+  it("고른 Step 이 있으면 팔레트 이동이 실제로 옮긴다", () => {
+    const onApplyReorder = vi.fn();
+    renderSession(
+      {
+        state: "paused",
+        steps: SIX as unknown as Step[],
+        current_step_index: 6,
+      },
+      { onApplyReorder, focusedStepId: "step-02" },
+    );
+
+    act(() => paletteAction("step.moveDown").click());
+
+    expect(onApplyReorder).toHaveBeenCalledTimes(1);
+    expect(onApplyReorder.mock.calls[0]?.[0]).toEqual([
+      "step-01",
+      "step-03",
+      "step-02",
+      "step-04",
+      "step-05",
+      "step-06",
+    ]);
+  });
+});

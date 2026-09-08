@@ -1118,10 +1118,24 @@ function dropCandidatesOf(step: Step | undefined) {
   return step.type === "drag" ? step.drop_target : null;
 }
 
-/** 지목한 Step 이 있어야 뜻이 있는 조작. */
+/**
+ * 지목한 Step 이 있어야 뜻이 있는 조작.
+ *
+ * **009 T059 — 이동 두 조작을 더했다.** 빠져 있는 동안 일시정지 국면에서 Step 을 고르지
+ * 않은 채 팔레트의 「위로/아래로 옮기기」를 누르면 `moveStep(-1, …)` 이 조용히 아무 일도
+ * 하지 않았다 — **활성인데 동작하지 않는 조작**이며 005 U-01 이 그 형태였다.
+ *
+ * 조작의 **자리**는 팔레트가 선언하고 행은 사례다 (009 계약 §3-3-0). 자리가 선언되어
+ * 있으면 그 경로도 동작해야 한다 — 그것이 표가 거짓말하지 않는다는 뜻이다.
+ *
+ * `step.insertManual` 은 **넣지 않는다.** 고른 Step 이 없으면 일시정지 위치에 넣으므로
+ * 지목 없이도 뜻이 있다 (`step_edits._clamp`).
+ */
 const STEP_SCOPED = new Set<ActionId>([
   "step.update",
   "step.delete",
+  "step.moveUp",
+  "step.moveDown",
   "run.fromHere",
   "run.from",
 ]);

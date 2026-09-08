@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EditView } from "../src/pages/EditView";
 import { renderSession } from "./helpers/session";
+import { INSERTABLE_KIND_LABEL } from "../src/lib/wording";
 import type { Step } from "../src/types/generated/step";
 
 const verified = (value: string) => ({ value, status: "verified" });
@@ -369,5 +370,44 @@ describe("기존 추가 경로 셋이 그대로다 (SC-509 · FR-309)", () => {
 
     // 검증 폼의 것이고 삽입 폼의 것이 아니다.
     expect(screen.queryByLabelText("넣을 Step 종류")).toBeNull();
+  });
+});
+
+// ─── 009 T062 · 종류 목록이 한 곳에서만 자란다 (FR-286) ─────────────────────
+//
+// 타입은 두 가지를 이미 막는다 — `InsertableKind` 가 생성 타입에서 파생되고(`client.ts`),
+// `INSERTABLE_KIND_LABEL` 이 `Record<InsertableKind, string>` 이므로 종류가 늘면 컴파일이
+// 멈춘다. 실측으로 확인했다: 생성 타입에 하나를 더하면 `client.ts` 의 단언과 라벨 표가
+// 각각 터진다.
+//
+// **배열은 그것을 강제하지 않는다.** `KINDS: InsertableKind[]` 는 하나가 빠져도 통과한다 —
+// 그러면 화면에 그 종류를 고르는 자리가 없고, 사용자에게는 없는 종류가 된다.
+
+describe("고를 수 있는 종류가 목록 전부다 (FR-286)", () => {
+  beforeEach(() => stubFetch());
+
+  it("화면의 종류 버튼이 라벨 표의 키 전부를 덮는다", async () => {
+    await renderScreen();
+    openInsert();
+
+    const shown = [...screen.getByLabelText("넣을 Step 종류").querySelectorAll("button")].map(
+      (b) => b.textContent,
+    );
+    const all = Object.values(INSERTABLE_KIND_LABEL);
+
+    expect([...shown].sort()).toEqual([...all].sort());
+  });
+
+  it("라벨 표의 키가 생성 타입의 종류와 같다", () => {
+    /*
+      생성 타입은 `backend/src/itb/domain/manual_step.py` 에서 나온다 (CI 의 스키마 드리프트
+      잡이 그것을 고정한다). 그래서 이 단언이 곧 「백엔드 목록과 같다」다.
+    */
+    expect(Object.keys(INSERTABLE_KIND_LABEL).sort()).toEqual([
+      "assert_text",
+      "assert_url",
+      "close_tab",
+      "navigate",
+    ]);
   });
 });
