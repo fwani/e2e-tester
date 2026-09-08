@@ -198,7 +198,11 @@ EXPECTED_BARE_SUPPRESS: dict[str, int] = {
     # 않은 이유도 그것이다. 목록은 이미 서버에서 걷혔으므로 REST 조회가 진실을 준다.
     "runner.py": 2,
     "session_loss.py": 5,
-    "element_probe.py": 1,
+    # 2번째: 검증 기준 요소를 **토큰으로 되찾는** 경로다. 페이지가 교체되는 중이거나
+    # 참조가 이미 회수됐으면 읽히지 않는다 — 그때는 CSS 재조회로 떨어지고, 그것도
+    # 실패하면 기준 없이 `UNVERIFIED` 로 남는다. 확인하지 못한 것을 확인된 것으로 적지
+    # 않으므로 삼켜도 안전하다.
+    "element_probe.py": 2,
 }
 """`contextlib.suppress(Exception)` 이 허용된 횟수.
 

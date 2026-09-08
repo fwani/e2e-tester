@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>중첩 구조 화면</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .ico { width: 14px; height: 14px; vertical-align: middle; }
+    .workspace { display: flex; gap: 16px; align-items: flex-start; }
+  </style>
+</head>
+<body>
+  <!-- 버튼을 만드는 방식은 앱마다 다르다. 클릭이 닿는 노드가 조작의 주체가 아닌 경우만
+       모아 둔다 — 리코더가 이벤트 타깃을 그대로 기록하면 최우선 후보인 role+접근 이름이
+       사라지고 위치 기반 CSS 하나만 남는다.
+
+       **재현에 필요한 조건이 두 가지다. 둘 다 갖춰야 결함이 드러난다.**
+
+       1. **껍데기가 깊다.** `panel > inner > section > row > cell > button > span` 처럼
+          겹겹이 쌓여 있어야 위치 경로가 잘려 상대 경로가 된다. 얕은 화면에서는 경로가
+          `main` 이나 `body` 에 닿아 우연히 유일해지고, 결함이 통과한다.
+       2. **같은 구조가 두 벌 있고, 잘린 자리가 두 벌을 구별하지 못한다.** `inner` 는
+          `panel` 의 유일한 자식이라 `:nth-of-type` 이 붙지 않으므로, 잘린 경로가 양쪽
+          판에 그대로 맞아 모호해진다. 그때 아이콘만 있는 버튼은 role 도 텍스트도 없으므로
+          **확보 후보가 0개**가 되고, 그 Step 은 재실행에서 반드시 "요소를 찾지 못했다" 로
+          끝난다. `inner` 를 지우면 잘린 자리가 `panel` 이 되어 `:nth-of-type` 으로
+          구별되고, 이 화면은 결함을 재현하지 못한다.
+
+       **조상에 `id` 를 두지 않는다.** 위치 경로가 `id` 에 닿으면 그 자리에서 유일해져
+       모호해질 기회가 사라진다. 요소 지목은 `data-case` 로 한다. -->
+  <main>
+    <div class="workspace">
+    <div class="panel">
+      <div class="inner">
+      <section class="card">
+        <h2>첫 묶음</h2>
+        <div class="row"><div class="cell">
+          <button class="btn" data-case="span-in-button"><span class="lbl">첫 저장</span></button>
+        </div></div>
+        <div class="row"><div class="cell">
+          <button class="btn" data-case="svg-in-button"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1 L15 15"/></svg><span class="lbl">첫 삭제</span></button>
+        </div></div>
+        <div class="row"><div class="cell">
+          <a href="#detail" class="link" data-case="span-in-anchor"><div class="wrap"><span>첫 상세</span></div></a>
+        </div></div>
+        <div class="row"><div class="cell">
+          <div role="button" tabindex="0" data-case="span-in-role-button"><div><span>첫 추가</span></div></div>
+        </div></div>
+        <div class="row"><div class="cell">
+          <button class="btn" aria-label="첫 닫기" data-case="icon-only"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2 L14 14"/><path d="M14 2 L2 14"/></svg></button>
+        </div></div>
+      </section>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="inner">
+      <section class="card">
+        <h2>둘째 묶음</h2>
+        <div class="row"><div class="cell">
+          <button class="btn"><span class="lbl">둘째 저장</span></button>
+        </div></div>
+        <div class="row"><div class="cell">
+          <button class="btn"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1 L15 15"/></svg><span class="lbl">둘째 삭제</span></button>
+        </div></div>
+        <div class="row"><div class="cell">
+          <a href="#detail" class="link"><div class="wrap"><span>둘째 상세</span></div></a>
+        </div></div>
+        <div class="row"><div class="cell">
+          <div role="button" tabindex="0"><div><span>둘째 추가</span></div></div>
+        </div></div>
+        <div class="row"><div class="cell">
+          <button class="btn" aria-label="둘째 닫기"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2 L14 14"/><path d="M14 2 L2 14"/></svg></button>
+        </div></div>
+      </section>
+      </div>
+    </div>
+    </div>
+  </main>
+</body>
+</html>

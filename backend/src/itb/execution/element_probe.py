@@ -76,11 +76,7 @@ async def collect_and_verify(
         # CSS 조차 없다. `TargetLocator` 불변식이 거절한 경우이며 기록할 수 없다.
         return None
 
-    css = target.css.value if target.css else None
-    anchor: ElementHandle | None = None
-    if css:
-        with contextlib.suppress(Exception):
-            anchor = await page.query_selector(css)
+    anchor = await _anchor(page, element, target.css.value if target.css else None)
 
     # **동작 시점에 페이지 안에서 잰 결과를 우선한다** (CSS·testId 에 한해).
     # 클릭이 화면 이동을 유발하면 여기서 다시 재는 시점에는 문서가 이미 교체돼 있어 모든
@@ -95,6 +91,36 @@ async def collect_and_verify(
             continue
         statuses[kind] = await verify_candidate(page, strategy, anchor)
     return apply_statuses(target, statuses)
+
+
+async def _anchor(
+    page: Page, element: dict[str, Any], css: str | None
+) -> ElementHandle | None:
+    """후보 검증의 기준 요소. **주입 스크립트가 남긴 참조를 우선한다.**
+
+    CSS 로 다시 찾으면 그 후보가 여러 요소를 매칭할 때 **다른 요소**가 기준이 된다. 그러면
+    맞는 `role`·`text` 후보가 "다른 요소를 가리킨다" 로 판정되어 `UNVERIFIED` 로 버려진다.
+    실측에서 같은 구조가 두 번 나오는 화면의 버튼이 확보 후보 0개로 기록됐고, 그 Step 은
+    재실행에서 반드시 실패했다.
+
+    참조가 없거나(구버전 페이로드, 문서 교체) 이미 회수됐으면 CSS 재조회로 떨어진다 —
+    기준이 없으면 검증은 `UNVERIFIED` 로 남지, 확인하지 못한 것을 확인된 것으로 적지 않는다.
+    """
+    ref = element.get("ref")
+    if isinstance(ref, str) and ref:
+        with contextlib.suppress(Exception):
+            handle = await page.evaluate_handle(
+                "(token) => (typeof window.__itbResolveRef === 'function'"
+                " ? window.__itbResolveRef(token) : null)",
+                ref,
+            )
+            resolved = handle.as_element()
+            if resolved is not None:
+                return resolved
+    if css:
+        with contextlib.suppress(Exception):
+            return await page.query_selector(css)
+    return None
 
 
 _PAYLOAD_KINDS: dict[str, StrategyKind] = {
