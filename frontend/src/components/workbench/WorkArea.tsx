@@ -1,12 +1,24 @@
 /**
- * 층③ 좌측 아래 국면 보조 영역 (007 T024 · FR-218e·FR-218f).
+ * 층③-b 국면 작업 영역 (007 T024·T101·T103 · FR-218e·FR-218e-1·FR-218f·FR-256).
  *
- * **국면 고유 내용의 유일한 자리다.** AI 지시문·진행 로그·차단 사유와 선택지, 사람이
- * 직접 조작 안내, 일시정지의 검증 추가 폼, 편집의 변경 요약이 여기 온다.
+ * **그 국면에서 사용자가 실제로 하는 일의 유일한 자리다.** 만들기의 시작 조건, AI
+ * 지시문·진행 로그·차단 사유와 선택지, 사람이 직접 조작 안내, 일시정지의 검증 추가 폼,
+ * 결과의 실패 상세와 시도한 locator, 편집의 Step 편집면이 여기 온다.
  *
  * 자리의 근거는 `RunnerPaused.dc.html`·`Takeover.dc.html` 이 미러에 붙여 둔 국면 안내
  * 띠(`flex: 0 0 42px`)다. 내용에 따라 늘어나는 것은 **확정 디자인에 대응이 없으므로**
  * 승인 대상이다 (research R8 A1 · `design-conformance/undefined-states.md`).
+ *
+ * ## 이 파일은 자기 높이를 모른다 (2회차 · FR-256)
+ *
+ * 1회차에는 여기서 `flex: 0 0 auto` 와 `maxHeight: 45%` 를 하드코딩했다. 그것과
+ * `TargetPane` 의 `flex: "1"` 이 합쳐져 **편집 국면에서 주 자리와 보조 자리가 뒤바뀌었다**
+ * (spec S-12). 크기는 이제 `size` 인자로만 온다 — `Workbench` 가 `lib/layout.ts` 의
+ * 배분표를 국면으로 조회해 내려 준다.
+ *
+ * 이름이 `PhaseAside`(국면 **보조** 영역)에서 바뀐 것도 같은 수정의 일부다 (FR-218e-1).
+ * 그 이름이 이 자리가 담는 것을 보조로 규정했고, 그 규정이 편집 폼 전체를 42px 띠에 넣는
+ * 판단으로 이어졌다.
  *
  * ## 이 파일의 유일한 불변식
  *
@@ -18,17 +30,33 @@
  */
 import { ErrorNotice } from "../ErrorNotice";
 import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../lib/wording";
-import type { AiBlockedState, PhaseAside as PhaseAsideModel } from "./model";
+import type { AiBlockedState, WorkAreaView } from "./model";
+import type { SlotSize, SlotStyle } from "../../lib/layout";
 
 const INK = "#14130F";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
-/** 이 영역의 최소 높이 (승인 대상 A1). `RunnerPaused`·`Takeover` 의 42px 띠. */
-const MIN_HEIGHT = 42;
+/**
+ * 국면 안내 띠 **자체**의 높이. `RunnerPaused`·`Takeover` 의 `flex: 0 0 42px`.
+ *
+ * **자리의 최소 높이와 다른 값이다.** 자리의 크기는 `size` 인자로 오고 (FR-256), 이것은
+ * 그 안에 놓이는 띠 하나의 높이다. 1회차에는 둘이 같은 `MIN_HEIGHT` 상수였고, 그래서
+ * 자리의 크기를 고치려면 띠의 높이도 함께 움직였다.
+ */
+const GUIDE_BAND_HEIGHT = 42;
 
-export interface PhaseAsideProps {
-  aside: PhaseAsideModel;
+export interface WorkAreaProps {
+  work: WorkAreaView;
+  /**
+   * 이 자리의 크기. **국면이 정하고 `Workbench` 가 내려 준다** (FR-256).
+   *
+   * 이미 CSS `flex`·`minHeight` 로 환산된 값이다 — 이 파일은 `SlotSize` 의 뜻(42px 최소,
+   * 424px 고정 등)을 알 필요가 없다.
+   */
+  size: SlotStyle;
+  /** 어느 국면의 것인지. 검사와 대조 기록이 읽는 표식일 뿐 분기에 쓰지 않는다 */
+  sizeKind: SlotSize["kind"];
   /** AI 선택지 조작의 상태. 고를 것이 없어도 자리와 이유는 남는다 (FR-234) */
   chooseBlocked?: { kind: "enabled" } | { kind: "disabled"; reason: string } | { kind: "not_applicable" };
   onChooseBlocked?: (choice: string) => void;
@@ -37,31 +65,31 @@ export interface PhaseAsideProps {
   busy?: boolean;
 }
 
-export function PhaseAside({
-  aside,
+export function WorkArea({
+  work,
+  size,
+  sizeKind,
   chooseBlocked,
   onChooseBlocked,
   onReload,
   onOverwriteStale,
   busy = false,
-}: PhaseAsideProps) {
+}: WorkAreaProps) {
   return (
     <div
-      data-workbench-aside={aside.kind}
+      data-workbench-work={work.kind}
+      data-slot-size={sizeKind}
       style={{
-        flex: `0 0 auto`,
-        minHeight: MIN_HEIGHT,
+        ...size,
         borderTop: `3px solid ${INK}`,
         background: "#FFFDF6",
         padding: "14px 20px",
         display: "flex",
         flexDirection: "column",
         gap: 12,
-        maxHeight: "45%",
-        overflowY: "auto",
       }}
     >
-      {aside.kind === "ai_progress" && (
+      {work.kind === "ai_progress" && (
         <>
           {/*
             **지시문은 여기 없다.** 그것은 `ai.compose` 조작이고 집은 조작 팔레트다
@@ -71,21 +99,21 @@ export function PhaseAside({
             실패는 **먼저** 온다. 로그 아래로 밀면 스크롤에 묻힌다.
           */}
           <AlwaysVisibleFailure
-            error={aside.error}
-            blocked={aside.blocked}
+            error={work.error}
+            blocked={work.blocked}
             choose={chooseBlocked}
             onChoose={onChooseBlocked}
             busy={busy}
           />
 
           <Section title="진행">
-            {aside.messages.length === 0 ? (
+            {work.messages.length === 0 ? (
               <p className="dim" style={{ margin: 0, font: `400 12.5px/1.6 ${MONO}` }}>
                 아직 기록이 없습니다.
               </p>
             ) : (
               <ol style={{ margin: 0, paddingLeft: 18, font: `400 12.5px/1.7 ${MONO}` }}>
-                {aside.messages.map((m, i) => (
+                {work.messages.map((m, i) => (
                   <li key={`${i}-${m}`}>{m}</li>
                 ))}
               </ol>
@@ -94,7 +122,7 @@ export function PhaseAside({
         </>
       )}
 
-      {aside.kind === "takeover_guide" && (
+      {work.kind === "takeover_guide" && (
         <>
           <div
             role="status"
@@ -102,21 +130,21 @@ export function PhaseAside({
               display: "flex",
               alignItems: "center",
               gap: 10,
-              minHeight: MIN_HEIGHT,
+              minHeight: GUIDE_BAND_HEIGHT,
               padding: "0 12px",
-              background: aside.recording ? "#D9502F" : "#F5D000",
-              color: aside.recording ? "#FFFDF6" : INK,
+              background: work.recording ? "#D9502F" : "#F5D000",
+              color: work.recording ? "#FFFDF6" : INK,
               border: `3px solid ${INK}`,
               font: `600 13px/1.4 ${SANS}`,
             }}
           >
-            {aside.recording
+            {work.recording
               ? "사람이 조작하는 중입니다 — 지금 하는 조작이 Step 으로 기록됩니다."
               : "AI 가 멈췄습니다. 직접 조작해 이어가거나 AI 에게 돌려줄 수 있습니다."}
           </div>
           <AlwaysVisibleFailure
-            error={aside.error}
-            blocked={aside.blocked}
+            error={work.error}
+            blocked={work.blocked}
             choose={chooseBlocked}
             onChoose={onChooseBlocked}
             busy={busy}
@@ -124,13 +152,13 @@ export function PhaseAside({
         </>
       )}
 
-      {aside.kind === "paused_tools" && aside.tools}
+      {work.kind === "paused_tools" && work.tools}
 
-      {aside.kind === "failure_detail" && (
+      {work.kind === "failure_detail" && (
         <>
-          <Section title={`실패 — ${aside.step.label}`}>
+          <Section title={`실패 — ${work.step.label}`}>
             <p style={{ margin: 0, font: `500 14px/1.6 ${SANS}`, color: "#A83A22" }}>
-              {aside.step.error_message ?? "실패 이유가 기록되지 않았습니다."}
+              {work.step.error_message ?? "실패 이유가 기록되지 않았습니다."}
             </p>
           </Section>
 
@@ -140,10 +168,10 @@ export function PhaseAside({
             보여야 한다 — 실패는 이 화면에 온 이유이고, 한 번 더 누르게 하면 그만큼
             원인 파악이 늦어진다 (SC-009).
           */}
-          {aside.step.locator_attempts.length > 0 && (
+          {work.step.locator_attempts.length > 0 && (
             <Section title="시도한 LOCATOR (우선순위 순)">
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {aside.step.locator_attempts.map((a) => (
+                {work.step.locator_attempts.map((a) => (
                   <div
                     key={`${a.candidate}-${a.expression}`}
                     style={{ display: "flex", alignItems: "center", gap: 10, font: `400 12.5px/1.4 ${MONO}` }}
@@ -161,7 +189,7 @@ export function PhaseAside({
                   최댓값을 "timeout" 이라 불렀는데, 그것은 설정값도 실측값도 아니었다.
                 */}
                 <div style={{ font: `400 12px/1.4 ${MONO}`, color: "#6B675C", paddingLeft: 20 }}>
-                  {`요소를 ${aside.step.element_wait_ms} ms 기다렸습니다`}
+                  {`요소를 ${work.step.element_wait_ms} ms 기다렸습니다`}
                 </div>
               </div>
             </Section>
@@ -170,7 +198,7 @@ export function PhaseAside({
             004 FR-122·FR-123 — 진단은 **`code` 로 분기한다.** 문구를 파싱하지 않는다.
             규칙 기반이며 언어모델을 쓰지 않는다 (Principle II).
           */}
-          {aside.diagnosis !== null && (
+          {work.diagnosis !== null && (
             <div
               role="note"
               style={{
@@ -180,48 +208,48 @@ export function PhaseAside({
                 font: `500 13.5px/1.6 ${SANS}`,
               }}
             >
-              {aside.diagnosis}
+              {work.diagnosis}
             </div>
           )}
         </>
       )}
 
-      {aside.kind === "edit_summary" && (
+      {work.kind === "edit_fields" && (
         <>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: 12,
-              minHeight: MIN_HEIGHT,
+              minHeight: GUIDE_BAND_HEIGHT,
               font: `600 13px/1.4 ${SANS}`,
             }}
           >
             <span data-pending-edits>
-              {aside.pendingCount === 0
+              {work.pendingCount === 0
                 ? "바꾼 것이 없습니다"
-                : `저장할 변경 ${aside.pendingCount}건`}
+                : `저장할 변경 ${work.pendingCount}건`}
             </span>
-            {aside.savedName !== null && (
+            {work.savedName !== null && (
               <span role="status" style={{ color: "#1F7A3D", font: `600 13px/1.4 ${SANS}` }}>
-                ✓ {editSavedNotice(aside.savedName)}
+                ✓ {editSavedNotice(work.savedName)}
               </span>
             )}
           </div>
 
           {/* FR-216 — 저장을 막지 않는 것들. 경고로만 알린다. */}
-          {aside.warnings.length > 0 && (
+          {work.warnings.length > 0 && (
             <ul style={{ margin: 0, paddingLeft: 18, font: `400 12.5px/1.6 ${SANS}`, color: "#8A6A16" }}>
-              {aside.warnings.map((w) => (
+              {work.warnings.map((w) => (
                 <li key={w}>{w}</li>
               ))}
             </ul>
           )}
 
-          {aside.fields}
+          {work.fields}
 
           {/* 006 FR-209 — 편집 도중 정의 파일이 밖에서 바뀌었다. */}
-          {aside.stale !== null && (
+          {work.stale !== null && (
             <div
               role="alert"
               style={{ border: `3px solid ${INK}`, background: "#FFF6D8", padding: 14 }}
@@ -235,7 +263,7 @@ export function PhaseAside({
               {/* 무엇을 버리는지 라벨에 적는다 (006 FR-209 · ui-contract §7). */}
               <div className="row" style={{ gap: 8 }}>
                 <button className="secondary" onClick={onReload}>
-                  {staleReloadLabel(aside.pendingCount)}
+                  {staleReloadLabel(work.pendingCount)}
                 </button>
                 <button data-action="save.overwriteStale" onClick={onOverwriteStale}>
                   {STALE_OVERWRITE_LABEL}
@@ -275,7 +303,7 @@ function AlwaysVisibleFailure({
 }: {
   error: import("../ErrorNotice").ErrorInfo | null;
   blocked: AiBlockedState | null;
-  choose?: PhaseAsideProps["chooseBlocked"];
+  choose?: WorkAreaProps["chooseBlocked"];
   onChoose?: (choice: string) => void;
   busy: boolean;
 }) {

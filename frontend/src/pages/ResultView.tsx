@@ -29,7 +29,7 @@ import { ActionPalette } from "../components/workbench/ActionPalette";
 import { Workbench } from "../components/workbench/Workbench";
 import type {
   Notice,
-  PhaseAside,
+  WorkAreaView,
   StepOutcome,
   TargetView,
   WorkbenchModel,
@@ -220,9 +220,15 @@ export function ResultView({
           }),
         };
 
-  /* ─── 국면 보조 영역 — 실패 상세 (FR-231) ─────────────────────────────────── */
+  /*
+    ③-b 국면 작업 영역 — 왜 멈췄나 (FR-231·FR-262).
 
-  const aside: PhaseAside | null =
+    **시도한 locator 를 여기서 싣지 않는다.** `failedStep.locator_attempts` 에 이미
+    있고 `WorkArea` 가 그것을 그린다. 2회차가 고친 것은 그 표가 놓이는 **자리의
+    크기**다 (`layout.ts` 의 `result.workArea = fixed 424`).
+  */
+
+  const work: WorkAreaView | null =
     failedStep !== null
       ? {
           kind: "failure_detail",
@@ -435,7 +441,7 @@ export function ResultView({
       progressLabel: result.browser,
     },
     target,
-    aside,
+    work,
     steps,
     focusedStepId: focused,
     detail:

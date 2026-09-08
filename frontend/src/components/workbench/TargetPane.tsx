@@ -1,5 +1,5 @@
 /**
- * 층③ 좌측 대상 앱 영역 (007 T023 · FR-244·FR-245·FR-246).
+ * 층③-a 대상 앱 슬롯 (007 T023·T102 · FR-244·FR-245·FR-246·FR-256·FR-261).
  *
  * **자리는 고정, 내용만 국면이 정한다.** 살아 있는 세션은 실시간 미러, 끝난 실행은 그
  * 실행의 산출물, 세션이 없는 편집은 브라우저를 여는 조작이 **같은 자리**를 쓴다.
@@ -11,11 +11,22 @@
  * "세션 유실" 은 사용자에게 **서로 다른 다음 행동**을 요구한다. 결과 화면의 빈 산출물
  * 탭이 큰 빈 상자에 "(기록 없음)" 한 줄이었던 것이 005 U-22 였다.
  *
- * 인라인 style 값은 `docs/design/Main.dc.html`(좌측 `flex: 1; padding: 20px`)과
+ * 인라인 style 값은 `docs/design/Main.dc.html`(좌측 `padding: 20px`)과
  * `RunResult.dc.html`(산출물 영역)에서 그대로 옮겼다 (DC-001).
+ *
+ * ## 이 파일은 자기 높이를 모른다 (2회차 · FR-256)
+ *
+ * 1회차에는 여기서 `flex: "1"` 을 하드코딩했다. 그것과 `PhaseAside` 의 `flex: 0 0 auto`
+ * 가 합쳐져 **편집 국면에서 채울 것이 없는 이 자리가 700px 를 가져갔다** (spec S-12) —
+ * 「브라우저가 열려 있지 않습니다」 두 줄과 버튼 하나를 위해서였다.
+ *
+ * 높이는 이제 `size` 인자로만 온다. `Workbench` 가 `lib/layout.ts` 의 배분표를 국면으로
+ * 조회해 내려 주며, 편집·만들기 국면에서는 118px 이다 (B1). **자리를 없애는 것이 아니라
+ * 줄이는 것이다** (FR-261) — 브라우저를 여는 조작은 이 자리 안에 그대로 있다.
  */
 import type { ArtifactKind } from "../../api/client";
 import type { CapabilityMap } from "../../lib/capabilities";
+import type { SlotSize, SlotStyle } from "../../lib/layout";
 import { ACTION_LABEL, openBrowserAtStepLabel } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 import type { EmptyReason, TargetView } from "./model";
@@ -50,6 +61,14 @@ const EMPTY_MESSAGE: Record<EmptyReason, string> = {
 
 export interface TargetPaneProps {
   target: TargetView;
+  /**
+   * 이 자리의 크기. **국면이 정하고 `Workbench` 가 내려 준다** (FR-256).
+   *
+   * 이미 CSS 값으로 환산되어 있다 — 이 파일은 118px 이 어디서 왔는지 알 필요가 없다.
+   */
+  size: SlotStyle;
+  /** 어느 배분인지. 검사와 대조 기록이 읽는 표식일 뿐 분기에 쓰지 않는다 */
+  sizeKind: SlotSize["kind"];
   capabilities: CapabilityMap;
   onSelectArtifact?: (kind: ArtifactKind) => void;
   onOpenBrowser?: () => void;
@@ -82,6 +101,8 @@ function Unavailable({
 
 export function TargetPane({
   target,
+  size,
+  sizeKind,
   capabilities,
   onSelectArtifact,
   onOpenBrowser,
@@ -90,14 +111,14 @@ export function TargetPane({
   return (
     <div
       data-workbench-target
+      data-slot-size={sizeKind}
       style={{
-        flex: "1",
+        ...size,
         minWidth: "0",
         padding: "20px",
         display: "flex",
         flexDirection: "column",
         gap: "14px",
-        minHeight: 0,
       }}
     >
       {target.kind === "mirror" && (

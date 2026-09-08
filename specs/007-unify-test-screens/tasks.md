@@ -381,27 +381,27 @@ T108(기존 테스트 갱신)이 빠지면 그 커밋은 깨진 테스트를 남
 
 ### 규칙을 먼저 세운다
 
-- [ ] T098 [US5] 세로 배분 표 in `frontend/src/lib/layout.ts` (신설) — `SlotSize`(`fill` · `content` · `fixed`) · `VERTICAL_SPLIT: Record<Phase, VerticalSplit>` 여덟 국면. 값은 `ui-contract.md` §1-5 표 그대로. **`Record<Phase, …>` 이므로 국면을 더하면 컴파일러가 배분을 요구한다** — `PHASE_TABLE` 과 같은 규율 (research R9)
-- [ ] T099 [P] [US5] 배분 검사 in `frontend/tests/VerticalSplit.test.ts` (신설) per SC-010 · UC-100 — 넷을 센다: ① 여덟 국면 전부 채움 ② **한 국면에서 두 자리가 동시에 `fill` 이 아니고 동시에 `content` 도 아니다** ③ **`fill` 인 자리의 `kind` 가 그 국면이 선언한 작업 종류와 일치한다** — 「주 작업」을 검사가 알 방법이 필요하다. `PRIMARY_SLOT: Record<Phase, "target" | "work">` 를 `layout.ts` 에 함께 두고, `fill`(또는 국면이 `fixed` 를 쓰는 경우 더 큰 쪽)인 자리가 그것과 같은지 센다 ④ `TargetPane.tsx`·`WorkArea.tsx` 원문에 `flex: "1"`·`flex: 0 0 auto` 리터럴이 없다 (S-12 재발 방지)
+- [X] T098 [US5] 세로 배분 표 in `frontend/src/lib/layout.ts` (신설) — `SlotSize`(`fill` · `content` · `fixed`) · `VERTICAL_SPLIT: Record<Phase, VerticalSplit>` 여덟 국면. 값은 `ui-contract.md` §1-5 표 그대로. **`Record<Phase, …>` 이므로 국면을 더하면 컴파일러가 배분을 요구한다** — `PHASE_TABLE` 과 같은 규율 (research R9)
+- [X] T099 [P] [US5] 배분 검사 in `frontend/tests/VerticalSplit.test.ts` (신설) per SC-010 · UC-100 — 넷을 센다: ① 여덟 국면 전부 채움 ② **한 국면에서 두 자리가 동시에 `fill` 이 아니고 동시에 `content` 도 아니다** ③ **`fill` 인 자리의 `kind` 가 그 국면이 선언한 작업 종류와 일치한다** — 「주 작업」을 검사가 알 방법이 필요하다. `PRIMARY_SLOT: Record<Phase, "target" | "work">` 를 `layout.ts` 에 함께 두고, `fill`(또는 국면이 `fixed` 를 쓰는 경우 더 큰 쪽)인 자리가 그것과 같은지 센다 ④ `TargetPane.tsx`·`WorkArea.tsx` 원문에 `flex: "1"`·`flex: 0 0 auto` 리터럴이 없다 (S-12 재발 방지)
 
 ### 타입과 이름을 고친다
 
-- [ ] T100 [US5] `PhaseAside` → `WorkAreaView` 개명 + `kind` 3종 추가 in `frontend/src/components/workbench/model.ts` per FR-218e-1 · data-model §2-3 — `WorkbenchModel.aside` → `.work`, `edit_summary` → `edit_fields`, 신설 `compose_form`(만들기) · `run_progress`(실행·녹화 42px 띠) · `failure_detail.attempts`(FR-262). **이름을 바꾸는 것이 이 작업의 목적이다** — 1회차 이름이 이 자리를 보조로 규정했고 그 규정이 편집 폼을 42px 띠에 넣는 판단으로 이어졌다 (S-12)
-- [ ] T101 [US5] `PhaseAside.tsx` → `WorkArea.tsx` 개명 in `frontend/src/components/workbench/` per FR-218e-1 — **`AlwaysVisibleFailure` 의 구조·인자·호출 위치를 손대지 않는다.** 국면·세션 상태를 인자로 받지 않는 성질이 001 R2 방지 장치의 전부다 (research R15). `AiFailureVisible.test.tsx` 통과를 유지한 채 개명한다
+- [X] T100 [US5] `PhaseAside` → `WorkAreaView` 개명 + `kind` 3종 추가 in `frontend/src/components/workbench/model.ts` per FR-218e-1 · data-model §2-3 — `WorkbenchModel.aside` → `.work`, `edit_summary` → `edit_fields`, 신설 `compose_form`(만들기) · `run_progress`(실행·녹화 42px 띠) · `failure_detail.attempts`(FR-262). **이름을 바꾸는 것이 이 작업의 목적이다** — 1회차 이름이 이 자리를 보조로 규정했고 그 규정이 편집 폼을 42px 띠에 넣는 판단으로 이어졌다 (S-12)
+- [X] T101 [US5] `PhaseAside.tsx` → `WorkArea.tsx` 개명 in `frontend/src/components/workbench/` per FR-218e-1 — **`AlwaysVisibleFailure` 의 구조·인자·호출 위치를 손대지 않는다.** 국면·세션 상태를 인자로 받지 않는 성질이 001 R2 방지 장치의 전부다 (research R15). `AiFailureVisible.test.tsx` 통과를 유지한 채 개명한다
 
 ### 크기를 인자로 내린다
 
-- [ ] T102 [US5] `TargetPane` 이 크기를 인자로 받는다 in `frontend/src/components/workbench/TargetPane.tsx` per FR-256 — 지금 하드코딩된 `flex: "1"` 을 제거하고 `size: SlotSize` 를 받는다. **자기 크기를 모르게 만드는 것이 요점이다**
-- [ ] T103 [US5] `WorkArea` 가 크기를 인자로 받는다 in `frontend/src/components/workbench/WorkArea.tsx` per FR-256 — 지금 하드코딩된 `flex: 0 0 auto` · `minHeight: 42` 를 제거하고 `size: SlotSize` 를 받는다. `content` 일 때만 최소 42px 을 적용한다
-- [ ] T104 [US5] `Workbench` 가 배분을 국면으로 조회해 두 자리에 내려 준다 in `frontend/src/components/workbench/Workbench.tsx` per FR-218c · FR-256 · UC-100 — ③ 좌측이 **③-a 대상 앱 슬롯 + ③-b 국면 작업 영역 두 자리**임을 이 파일이 정한다 (FR-218c) — `VERTICAL_SPLIT[model.phase]` 하나만 읽는다. 표시 컴포넌트가 표를 직접 읽지 않는다
+- [X] T102 [US5] `TargetPane` 이 크기를 인자로 받는다 in `frontend/src/components/workbench/TargetPane.tsx` per FR-256 — 지금 하드코딩된 `flex: "1"` 을 제거하고 `size: SlotSize` 를 받는다. **자기 크기를 모르게 만드는 것이 요점이다**
+- [X] T103 [US5] `WorkArea` 가 크기를 인자로 받는다 in `frontend/src/components/workbench/WorkArea.tsx` per FR-256 — 지금 하드코딩된 `flex: 0 0 auto` · `minHeight: 42` 를 제거하고 `size: SlotSize` 를 받는다. `content` 일 때만 최소 42px 을 적용한다
+- [X] T104 [US5] `Workbench` 가 배분을 국면으로 조회해 두 자리에 내려 준다 in `frontend/src/components/workbench/Workbench.tsx` per FR-218c · FR-256 · UC-100 — ③ 좌측이 **③-a 대상 앱 슬롯 + ③-b 국면 작업 영역 두 자리**임을 이 파일이 정한다 (FR-218c) — `VERTICAL_SPLIT[model.phase]` 하나만 읽는다. 표시 컴포넌트가 표를 직접 읽지 않는다
 
 ### 국면 어댑터를 새 자리로 옮긴다
 
-- [ ] T105 [US5] 편집 필드를 작업 영역으로 in `frontend/src/pages/EditView.tsx` per FR-257 · FR-261 — `work: { kind: "edit_fields", fields }` 가 남는 높이 전부를 갖고, `target: open_browser` 는 `fixed 118`. **브라우저 여는 조작은 그 자리 안에 유지한다** — 자리를 없애는 것과 줄이는 것은 다르다 (S-12)
-- [ ] T106 [US5] 시도한 locator 기록을 작업 영역으로 in `frontend/src/pages/ResultView.tsx` per FR-262 — `work: { kind: "failure_detail", attempts }`. 지금은 `StepDetail` 겹침을 열어야 보인다 (S-13). **겹침 상세의 표는 남긴다** — 그것은 지목한 Step 의 것이고 작업 영역의 것은 실패 Step 고정이다
-- [ ] T107 [US5] 실행·녹화의 42px 띠를 타입 안으로 in `frontend/src/pages/SessionScreen.tsx` per FR-256 · data-model §2-3 — 지금 `noticesExtra` 로 우회해 넣어 배분표에 잡히지 않는다. `work: { kind: "run_progress" }` 로 옮겨 ③-b 가 되게 한다
-- [ ] T107a [P] [US5] 결과 국면 시도 기록 검사 in `frontend/tests/ResultAttemptsVisible.test.tsx` (신설) per SC-012 · FR-262 · quickstart §1-8 — 실패 결과로 `ResultView` 를 렌더하고 **겹침 상세를 열지 않은 상태에서** 시도한 locator 행이 보이는지 센다. 1회차에는 `StepDetail` 을 열어야 보였다 (S-13). **동작을 만드는 T106 만으로는 회귀를 막지 못한다** — 다음 라운드에 누가 다시 겹침으로 옮겨도 아무것도 세지 않는다
-- [ ] T108 [US5] 개명·이동으로 깨지는 기존 테스트 갱신 in `frontend/tests/` — 헌법 게이트 4: **삭제·건너뛰기 금지, 갱신으로만 통과시킨다.** 검증하는 행동이 바뀌면 회귀다
+- [X] T105 [US5] 편집 필드를 작업 영역으로 in `frontend/src/pages/EditView.tsx` per FR-257 · FR-261 — `work: { kind: "edit_fields", fields }` 가 남는 높이 전부를 갖고, `target: open_browser` 는 `fixed 118`. **브라우저 여는 조작은 그 자리 안에 유지한다** — 자리를 없애는 것과 줄이는 것은 다르다 (S-12)
+- [X] T106 [US5] 시도한 locator 기록을 작업 영역으로 in `frontend/src/pages/ResultView.tsx` per FR-262 — `work: { kind: "failure_detail", attempts }`. 지금은 `StepDetail` 겹침을 열어야 보인다 (S-13). **겹침 상세의 표는 남긴다** — 그것은 지목한 Step 의 것이고 작업 영역의 것은 실패 Step 고정이다
+- [X] ~~T107~~ **드롭 (전제 오류)** — 계획은 「실행·녹화의 42px 진행 띠가 `noticesExtra` 로 우회해 들어가 있으니 타입 안으로 들이자」였는데, 구현에서 대조하니 **그런 띠가 없다.** `noticesExtra` 가 나르는 것은 실시간 통로 끊김 배너이며 그것은 알림이고 알림 자리(국면 띠 아래)가 제 집이다. 진행은 `phaseBar.progressLabel`, 실행 속도는 `phaseActions` 에 이미 있다. 없는 것을 만들면 (가) 없던 요소가 생기고 (나) `run.pacing` 이 확립된 자리에서 옮겨져 FR-235 를 어긴다. 두 국면은 `work: null` 로 남고 판정 근거를 `model.ts` 에 적었다
+- [X] T107a [P] [US5] 결과 국면 시도 기록 검사 in `frontend/tests/ResultAttemptsVisible.test.tsx` (신설) per SC-012 · FR-262 · quickstart §1-8 — 실패 결과로 `ResultView` 를 렌더하고 **겹침 상세를 열지 않은 상태에서** 시도한 locator 행이 보이는지 센다. 1회차에는 `StepDetail` 을 열어야 보였다 (S-13). **동작을 만드는 T106 만으로는 회귀를 막지 못한다** — 다음 라운드에 누가 다시 겹침으로 옮겨도 아무것도 세지 않는다
+- [X] T108 [US5] 개명·이동으로 깨지는 기존 테스트 갱신 in `frontend/tests/` — 헌법 게이트 4: **삭제·건너뛰기 금지, 갱신으로만 통과시킨다.** 검증하는 행동이 바뀌면 회귀다
 
 **Checkpoint**: `VerticalSplit` 통과 · `AiFailureVisible` 통과 유지 · 편집 국면에서 아래가
 위보다 크다 · 결과 국면에서 겹침을 열지 않고 시도 기록이 보인다

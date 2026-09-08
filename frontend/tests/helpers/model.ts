@@ -78,7 +78,7 @@ export function workbenchModel(
       progressLabel: null,
     },
     target: { kind: "empty", reason: "not_started" },
-    aside: null,
+    work: null,
     steps: workbenchSteps(),
     focusedStepId: null,
     detail: null,

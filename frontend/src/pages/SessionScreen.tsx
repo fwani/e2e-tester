@@ -52,7 +52,7 @@ import { Workbench } from "../components/workbench/Workbench";
 import type {
   AiBlockedState,
   Notice,
-  PhaseAside,
+  WorkAreaView,
   StepOutcome,
   WorkbenchModel,
   WorkbenchStep,
@@ -432,7 +432,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
    * 자리다 (FR-235). 여기 오는 것은 국면이 **다른 국면과 공유하지 않는 내용** 뿐이다 —
    * AI 진행과 차단, 사람이 이어받았다는 사실, 그리고 펼쳐진 편집 폼.
    */
-  const aside: PhaseAside | null = (() => {
+  const work: WorkAreaView | null = (() => {
     if (phase === "ai_authoring") {
       return {
         kind: "ai_progress",
@@ -880,7 +880,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       currentUrl,
       tabs: tabs ?? null,
     },
-    aside,
+    work,
     steps,
     focusedStepId,
     detail:

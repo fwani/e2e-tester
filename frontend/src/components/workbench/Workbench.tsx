@@ -31,12 +31,13 @@ import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard, BrandMark, Breadcrumb, HeaderBar, HeaderDivider } from "../design/Chrome";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
+import { flexOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
-import { PhaseAside } from "./PhaseAside";
 import { PhaseBar } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
 import { StepList } from "./StepList";
 import { TargetPane } from "./TargetPane";
+import { WorkArea } from "./WorkArea";
 import type { WorkbenchModel } from "./model";
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
@@ -125,6 +126,16 @@ export function Workbench({
 }: WorkbenchProps) {
   const capabilities: CapabilityMap = model.capabilities;
 
+  /**
+   * 세로 배분 — **국면으로 한 번 조회한다** (FR-256 · `lib/layout.ts`).
+   *
+   * 표시 컴포넌트가 배분표를 직접 읽지 않는다. 읽게 하면 각자 해석하게 되고, 그것이
+   * 1회차에 두 파일이 각자 하드코딩한 것과 같은 상태다 (spec S-12).
+   */
+  const split = splitFor(model.phase);
+  const targetStyle = flexOf(split.targetSlot);
+  const workStyle = flexOf(split.workArea);
+
   return (
     <Artboard width={BASE_WIDTH} minHeight={900} grow>
       {/* ─── 층① 헤더 60px ────────────────────────────────────────────────── */}
@@ -159,23 +170,31 @@ export function Workbench({
         007 이 그 안쪽 배치를 바꾸지 않는다.
       */}
       <div style={{ flex: "1", minHeight: "0", display: "flex", position: "relative" }}>
-        {/* 좌 — 대상 앱 영역 + 국면 보조 영역. 남는 폭을 가져간다 (FR-218a) */}
+        {/*
+          좌 — ③-a 대상 앱 슬롯 + ③-b 국면 작업 영역. 남는 **폭**을 가져간다 (FR-218a).
+          두 자리의 **순서와 개수**는 국면에 따라 바뀌지 않고 (FR-218c), 세로 비율만
+          국면이 정한다 (FR-256).
+        */}
         <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column" }}>
           <TargetPane
             target={model.target}
+            size={targetStyle}
+            sizeKind={split.targetSlot.kind}
             capabilities={capabilities}
             onSelectArtifact={onSelectArtifact}
             onOpenBrowser={onOpenBrowser}
             onRemedy={onAction}
           />
           {/*
-            국면 보조 영역이 없으면 **자리를 차지하지 않는다.** 그것 때문에 다른 영역의
-            자리가 바뀌어서는 안 된다 (FR-218e) — 위의 `TargetPane` 이 `flex: 1` 이므로
-            아래가 없어지면 위가 그만큼 늘어난다. 영역의 순서·개수는 그대로다.
+            국면 작업 영역이 없으면 **자리를 차지하지 않는다.** 그것 때문에 다른 영역의
+            자리가 바뀌어서는 안 된다 (FR-218e) — 배분표가 그 국면에서 ③-a 를 `fill` 로
+            정하므로 아래가 없어지면 위가 그만큼 늘어난다. 영역의 순서·개수는 그대로다.
           */}
-          {model.aside !== null && (
-            <PhaseAside
-              aside={model.aside}
+          {model.work !== null && (
+            <WorkArea
+              work={model.work}
+              size={workStyle}
+              sizeKind={split.workArea.kind}
               chooseBlocked={capabilities["ai.chooseBlocked"]}
               onChooseBlocked={onChooseBlocked}
               onReload={onReloadDefinition}

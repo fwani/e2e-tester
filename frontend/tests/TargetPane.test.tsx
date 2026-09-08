@@ -5,11 +5,20 @@
  * 오른쪽 별도 영역(`flex: 0 0 640px`)에 있어, 다른 국면의 미러 자리와 대응하지 않았다
  * (S-11). 사용자는 "그 화면에서 무엇을 봤는가" 를 국면마다 다른 곳에서 찾았다.
  *
- * 여기서 재는 것은 셋이다.
+ * 여기서 재는 것은 넷이다.
  *
  * 1. 네 내용(미러·산출물·브라우저 열기·빈 상태)이 **같은 자리**를 쓴다
  * 2. 비어 있으면 **왜 비었는지** 넷을 구별해 말한다 (FR-245 · 005 U-22)
  * 3. 고를 수 없는 산출물을 **감추지 않고** 이유를 붙여 남긴다 (FR-246 · DC-007)
+ * 4. **자리는 국면과 무관하게 같고, 높이만 국면이 정한다** (2회차 · FR-256·FR-218c)
+ *
+ * ## 4번이 2회차에 바뀐 것이다
+ *
+ * 1회차의 이 파일은 「일곱 국면에서 `flex` 가 같다」를 셌다. 그것이 자리의 **크기까지**
+ * 고정한 규칙이었고, 그래서 편집 국면에서 채울 것이 없는 이 자리가 남는 높이 전부를
+ * 가져갔다 (spec S-12). FR-256 이 그 규칙을 「순서·개수·폭은 고정, 세로 비율은 국면의
+ * 것」으로 바꿨으므로, 검사도 **같은 것을 세지 않는다** — 자리의 동일성과 높이의
+ * 국면별 차이를 나눠 센다.
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -17,6 +26,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Workbench } from "../src/components/workbench/Workbench";
 import type { EmptyReason, TargetView } from "../src/components/workbench/model";
 import { PHASES, type Phase } from "../src/lib/phase";
+import { flexOf, splitFor } from "../src/lib/layout";
 import { workbenchModel } from "./helpers/model";
 
 const el = (selector: string) => document.querySelector<HTMLElement>(selector);
@@ -32,10 +42,16 @@ function show(target: TargetView, phase: Phase = "running") {
   );
 }
 
-/** 좌측 열에서 대상 앱 영역이 차지하는 자리 — 부모의 배치와 자기 배치. */
+/**
+ * 좌측 열에서 이 자리가 **어디인가** — 부모의 배치와 자기 폭.
+ *
+ * **높이를 넣지 않는다.** 높이는 국면이 정하는 값이므로(FR-256) 자리의 동일성을 재는
+ * 잣대가 될 수 없다. 1회차에는 `pane.style.flex` 를 넣었고, 그것이 크기까지 고정하는
+ * 규칙을 검사에 굳혀 둔 것이었다.
+ */
 function place(): string {
   const pane = el("[data-workbench-target]")!;
-  return `${pane.parentElement!.style.flex}|${pane.style.flex}|${pane.style.minWidth}`;
+  return `${pane.parentElement!.style.flex}|${pane.style.minWidth}`;
 }
 
 const ALL_TARGETS: TargetView[] = [
@@ -63,14 +79,41 @@ describe("네 내용이 같은 자리를 쓴다 (FR-244 · S-11 해소)", () => 
     expect(places.size, `내용마다 자리가 달라졌다: ${[...places].join(" / ")}`).toBe(1);
   });
 
-  it("일곱 국면에서 같은 자리다", () => {
+  it("모든 국면에서 같은 자리다 — 순서·부모 배치·폭이 같다 (FR-218c)", () => {
     const places = new Set<string>();
     for (const phase of PHASES) {
       const view = show(ALL_TARGETS[0]!, phase);
       places.add(place());
       view.unmount();
     }
-    expect(places.size).toBe(1);
+    expect(places.size, `국면마다 자리가 달라졌다: ${[...places].join(" / ")}`).toBe(1);
+  });
+
+  /**
+   * 2회차 — **높이는 국면이 정한다** (FR-256).
+   *
+   * 그리는 값이 배분표와 일치하는지 센다. 어긋나면 표시 컴포넌트가 표를 무시하고 자기
+   * 크기를 쓴 것이며, 그것이 S-12 의 형태다.
+   */
+  it("높이는 배분표가 정한 대로 국면마다 다르다 (FR-256)", () => {
+    for (const phase of PHASES) {
+      const view = show(ALL_TARGETS[0]!, phase);
+      const pane = el("[data-workbench-target]")!;
+      const expected = flexOf(splitFor(phase).targetSlot);
+      expect(pane.style.flex, `${phase} 의 ③-a 높이가 배분표와 다르다`).toBe(expected.flex);
+      expect(pane.dataset.slotSize, `${phase} 의 배분 표식`).toBe(
+        splitFor(phase).targetSlot.kind,
+      );
+      view.unmount();
+    }
+  });
+
+  it("편집 국면에서 이 자리가 사라지지 않고 줄어든다 (FR-261)", () => {
+    const view = show({ kind: "open_browser", stepIndex: 1 }, "editing");
+    // 자리가 없어지면 「이 화면에는 원래 브라우저가 없는 것」과 구별되지 않는다
+    expect(el("[data-workbench-target]")).not.toBeNull();
+    expect(el("[data-workbench-target]")!.dataset.slotSize).toBe("fixed");
+    view.unmount();
   });
 
   it("Step 패널보다 앞에 온다 — 좌우 배치가 국면과 무관하다", () => {
@@ -173,7 +216,7 @@ describe("브라우저를 여는 자리 (T079 · FR-244)", () => {
 describe("국면 보조 영역이 자리를 바꾸지 않는다 (T080 · FR-218e)", () => {
   it("없으면 자리를 차지하지 않는다", () => {
     show(ALL_TARGETS[0]!);
-    expect(el("[data-workbench-aside]")).toBeNull();
+    expect(el("[data-workbench-work]")).toBeNull();
   });
 
   it("있어도 대상 앱 영역과 Step 패널의 자리가 그대로다", () => {
@@ -185,7 +228,7 @@ describe("국면 보조 영역이 자리를 바꾸지 않는다 (T080 · FR-218e
       <Workbench
         model={workbenchModel("running", {
           target: ALL_TARGETS[0]!,
-          aside: {
+          work: {
             kind: "ai_progress",
             instruction: "x",
             messages: ["a", "b", "c"],
@@ -198,7 +241,7 @@ describe("국면 보조 영역이 자리를 바꾸지 않는다 (T080 · FR-218e
         onCloseDetail={vi.fn()}
       />,
     );
-    expect(el("[data-workbench-aside]")).not.toBeNull();
+    expect(el("[data-workbench-work]")).not.toBeNull();
     expect(`${place()}|${el("[data-workbench-step-panel]")!.style.flex}`).toBe(before);
   });
 });

@@ -200,8 +200,12 @@ cd frontend && npx vitest run tests/ImplementationCount.test.tsx
 
 ## 1-8. 결과 국면의 시도 기록 (SC-012 · FR-262)
 
-`ResultView` 를 실패 결과로 렌더하고, 겹침 상세를 **열지 않은 상태에서** 시도한 locator
-행이 보이는지 센다. 1회차에는 `StepDetail` 을 열어야 보였다.
+`ResultView` 를 실패 결과로 렌더하고 ③-b 의 배분이 `fixed 424` 인지, 실패 사유와 시도한
+locator 행이 **잘리지 않고** 보이는지 센다.
+
+**1회차에도 그 표는 그려지고 있었다** — `PhaseAside` 가 `step.locator_attempts` 를 조건
+없이 그린다. 문제는 그 영역이 `maxHeight: 45%` 라서 내용이 스크롤에 갇힌 것이었다.
+그러므로 이 검사는 「보이는가」가 아니라 **「자리가 충분한가」**를 센다.
 
 ## W-8. 지금 하는 일이 큰 자리를 갖는다 (US5 · SC-010)
 

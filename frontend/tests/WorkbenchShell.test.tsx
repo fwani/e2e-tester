@@ -161,7 +161,7 @@ describe("결말 요약은 화면에 하나뿐이다 (FR-218d · 005 FR-140 · U
           runSummary: "실패 · Step 02 에서 멈춤",
           progressLabel: null,
         },
-        aside: {
+        work: {
           kind: "failure_detail",
           step: stepResult({ outcome: "fail", error_message: "요소를 찾지 못했습니다" }),
           diagnosis: null,
@@ -174,14 +174,14 @@ describe("결말 요약은 화면에 하나뿐이다 (FR-218d · 005 FR-140 · U
 
 describe("국면 보조 영역 (FR-218e)", () => {
   it("없으면 자리를 차지하지 않는다", () => {
-    renderShell(workbenchModel("running", { aside: null }));
-    expect(document.querySelector("[data-workbench-aside]")).toBeNull();
+    renderShell(workbenchModel("running", { work: null }));
+    expect(document.querySelector("[data-workbench-work]")).toBeNull();
   });
 
   it("있으면 좌측 대상 앱 영역 아래에 온다", () => {
     renderShell(
       workbenchModel("ai_authoring", {
-        aside: {
+        work: {
           kind: "ai_progress",
           instruction: "로그인하고 프로젝트를 만든다",
           messages: [],
@@ -191,20 +191,20 @@ describe("국면 보조 영역 (FR-218e)", () => {
       }),
     );
     const target = el("[data-workbench-target]");
-    const aside = el("[data-workbench-aside='ai_progress']");
+    const aside = el("[data-workbench-work='ai_progress']");
     expect(target.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // 같은 부모(좌측 열) 안에 있다 — Step 패널 쪽이 아니다.
     expect(aside.parentElement).toBe(target.parentElement);
   });
 
   it("보조 영역이 있든 없든 다른 영역의 자리가 바뀌지 않는다", () => {
-    const without = renderShell(workbenchModel("running", { aside: null }));
+    const without = renderShell(workbenchModel("running", { work: null }));
     const shapeA = el("[data-workbench-step-panel]").style.flex;
     without.unmount();
 
     renderShell(
       workbenchModel("running", {
-        aside: {
+        work: {
           kind: "ai_progress",
           instruction: "x",
           messages: [],
@@ -227,7 +227,7 @@ describe("AI 실패는 국면·세션 상태와 무관하게 보인다 (FR-218f 
   it("AI 작성 국면에서 차단 사유가 상시 보인다", () => {
     renderShell(
       workbenchModel("ai_authoring", {
-        aside: {
+        work: {
           kind: "ai_progress",
           instruction: "x",
           messages: [],
@@ -245,7 +245,7 @@ describe("AI 실패는 국면·세션 상태와 무관하게 보인다 (FR-218f 
     // 순간 실패를 그리는 컴포넌트가 조건 뒤로 숨었다.
     renderShell(
       workbenchModel("paused", {
-        aside: {
+        work: {
           kind: "ai_progress",
           instruction: "x",
           messages: [],
@@ -260,7 +260,7 @@ describe("AI 실패는 국면·세션 상태와 무관하게 보인다 (FR-218f 
   it("사람이 직접 조작 국면에서도 보인다", () => {
     renderShell(
       workbenchModel("takeover", {
-        aside: { kind: "takeover_guide", recording: false, blocked, error: null },
+        work: { kind: "takeover_guide", recording: false, blocked, error: null },
       }),
     );
     expect(screen.getByText("저장 버튼을 찾지 못했습니다")).toBeTruthy();

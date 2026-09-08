@@ -508,15 +508,29 @@ export function EditView({
       runSummary: null,
       progressLabel: `Step ${steps.length}개`,
     },
-    // T079 — 브라우저를 여는 조작이 대상 앱 영역 **안에** 있다 (FR-244).
+    /*
+      T079·T105 — 브라우저를 여는 조작이 ③-a 대상 앱 슬롯 **안에** 있다 (FR-244·FR-261).
+
+      2회차: 이 자리의 높이는 118px 다 (`layout.ts` 의 `editing.targetSlot`). 1회차에는
+      남는 높이 전부(약 700px)를 가져갔고, 담는 것은 안내 두 줄과 버튼 하나였다
+      (spec S-12). **자리를 없애지 않고 줄인다** — 없애면 「이 화면에는 원래 브라우저가
+      없는 것」과 구별되지 않는다.
+    */
     target: {
       kind: "open_browser",
       stepIndex: currentIndex >= 0 ? currentIndex : null,
       // 006 FR-203 — 저장하지 않은 변경이 있으면 라벨이 **먼저 저장한다는 사실**을 말한다.
       label: pending > 0 ? SAVE_THEN_OPEN_BROWSER : undefined,
     },
-    aside: {
-      kind: "edit_summary",
+    /*
+      ③-b 국면 작업 영역 — **편집 국면에서 실제로 하는 일이 여기 있다** (FR-257).
+
+      2회차: 이 자리가 남는 높이 전부를 갖는다 (`layout.ts` 의 `editing.workArea`).
+      1회차에는 같은 내용이 42px 띠(최대 45%)에 들어갔다 — 그것이 사용자가 다시 제기한
+      것이고, 「국면 보조 영역」이라는 이름이 그 판단을 유도했다 (FR-218e-1).
+    */
+    work: {
+      kind: "edit_fields",
       pendingCount: pending,
       warnings: [],
       stale,

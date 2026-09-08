@@ -96,13 +96,22 @@ export interface StaleInfo {
 }
 
 /**
- * 층③ 좌측 아래 국면 보조 영역 — 국면 고유 내용의 **유일한 자리** (FR-218e).
+ * 층③-b 국면 작업 영역 — 그 국면에서 사용자가 **실제로 하는 일**의 유일한 자리
+ * (FR-218e · FR-218e-1).
+ *
+ * ## 이름이 바뀐 이유 (FR-218e-1)
+ *
+ * 1회차의 이름은 `PhaseAside`(국면 **보조** 영역)였고, 그 이름이 이 자리가 담는 것을
+ * 보조로 규정했다. 그 규정이 **편집 폼 전체를 42px 띠에 넣는 판단**으로 이어졌다
+ * (spec S-12). 이름은 판단을 유도한다 — 그래서 이름을 고치는 것이 2회차 수정의 일부다.
+ *
+ * 높이는 이 타입이 갖지 않는다. `lib/layout.ts` 의 배분표가 국면별로 정한다 (FR-256).
  *
  * **`error` 와 `blocked` 는 국면 상태와 무관하게 그린다** (FR-218f · FR-253). 값이 있으면
  * 보인다 — 접힘·탭·겹침 뒤에 두지 않는다. 001 research R2 가 규명한 결함이 정확히
  * "실패를 그리는 유일한 컴포넌트가 조건 뒤에 숨은 것" 이었다.
  */
-export type PhaseAside =
+export type WorkAreaView =
   | {
       kind: "ai_progress";
       instruction: string;
@@ -117,9 +126,32 @@ export type PhaseAside =
       error: ErrorInfo | null;
     }
   | { kind: "paused_tools"; tools: ReactNode }
+  /*
+    **실행 중·녹화 국면에는 이 자리의 내용이 없다** (2회차 T107 판정).
+
+    계획은 「42px 진행 띠가 `noticesExtra` 로 우회해 들어가 있으니 타입 안으로 들이자」
+    였는데, 구현에서 대조해 보니 **그런 띠가 없다.** `noticesExtra` 가 나르는 것은
+    실시간 통로 끊김 배너이며 그것은 알림이고 알림 자리(국면 띠 아래)가 제 집이다.
+    진행은 `phaseBar.progressLabel`, 실행 속도는 `phaseActions` 에 이미 있다.
+
+    없는 것을 만들면 (가) 없던 요소가 생기고 (나) `run.pacing` 이 확립된 자리에서
+    옮겨져 FR-235(같은 자리)를 어긴다. 그래서 이 국면들은 `work: null` 이고, 배분표의
+    `content` 는 「내용이 있으면 그 높이」라는 뜻으로 남는다 (FR-218e).
+  */
+  /*
+    실패 상세 (FR-262).
+
+    **시도한 locator 를 따로 싣지 않는다.** `step.locator_attempts` 에 이미 있고,
+    `WorkArea` 가 1회차부터 그것을 그려 왔다 — 같은 값을 두 곳에 두면 흡수 시점에 어느
+    쪽이 진실인지 알 수 없다 (T015 가 `recorded` 에서 같은 판단을 했다).
+
+    2회차가 고치는 것은 **내용이 아니라 자리의 크기**다. 1회차에는 이 영역이
+    `minHeight: 42` · `maxHeight: 45%` 였고, 실패 사유와 시도한 locator 표가 그 안에서
+    스크롤에 갇혔다. `layout.ts` 의 `result.workArea = fixed 424` 가 그것을 푼다.
+  */
   | { kind: "failure_detail"; step: StepResult; diagnosis: string | null }
   | {
-      kind: "edit_summary";
+      kind: "edit_fields";
       pendingCount: number;
       warnings: string[];
       stale: StaleInfo | null;
@@ -128,11 +160,17 @@ export type PhaseAside =
        * 편집 국면 고유의 나머지 — 테스트 이름·시작 주소·지시문 기록·개별 되돌리기.
        *
        * **Step 이 아니라 테스트에 속한 것들**이라 Step 패널 바닥(조작 팔레트)에 둘 수
-       * 없고, 그렇다고 국면 띠에 넣으면 74px 안에 입력칸이 들어간다. 국면 보조 영역이
-       * 「국면 고유 내용의 유일한 자리」(FR-218e)이므로 여기가 그 자리다.
+       * 없고, 그렇다고 국면 띠에 넣으면 74px 안에 입력칸이 들어간다. 국면 작업 영역이
+       * 「그 국면에서 실제로 하는 일의 유일한 자리」(FR-218e)이므로 여기가 그 자리다.
+       *
+       * **2회차: 이 자리가 남는 높이 전부를 갖는다** (FR-257 · `layout.ts` 의
+       * `editing: { workArea: fill }`). 1회차에는 같은 내용이 42px 띠에 있었다.
        */
       fields?: ReactNode;
     };
+
+/** 1회차 이름. 부르는 곳이 남아 있어도 같은 것을 가리킨다 (FR-218e-1 이행 중). */
+export type PhaseAside = WorkAreaView;
 
 /**
  * 층③ 우측 Step 행 — **단일 구현이 그리는 단일 모델** (FR-221·FR-222).
@@ -204,9 +242,15 @@ export interface WorkbenchModel {
   testName: string;
 
   phaseBar: PhaseBar;
+  /** ③-a 대상 앱 슬롯. 높이는 `layout.ts` 의 배분표가 정한다 (FR-256) */
   target: TargetView;
-  /** `null` 이면 자리를 차지하지 않는다 (FR-218e) */
-  aside: PhaseAside | null;
+  /**
+   * ③-b 국면 작업 영역. `null` 이면 자리를 차지하지 않는다 (FR-218e).
+   *
+   * 1회차 이름은 `aside` 였다. 이름이 이 자리를 보조로 규정한 것이 S-12 의 뿌리이므로
+   * 필드 이름도 함께 고친다 (FR-218e-1).
+   */
+  work: WorkAreaView | null;
   steps: WorkbenchStep[];
   /** 국면을 넘어 유지된다 (FR-239) */
   focusedStepId: string | null;
