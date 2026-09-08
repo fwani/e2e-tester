@@ -327,3 +327,20 @@ open docs/design/008-visual-language/conformance/<Screen>.md
 
 **시작 전에 알아야 할 것** — 구현자가 아는 차이 2건이
 `conformance/undefined-states.md` §2·§3 에 적혀 있다. 판정을 대신하지는 않는다.
+
+---
+
+## Phase 8: Convergence
+
+**수렴 1회차 (2026-09-08).** 요구사항 22 · 성공 기준 10 · 헌법 5원칙을 코드와 대조해
+남은 것을 찾았다. **헌법 위반 0건.** 아래는 전부 「기계가 할 수 있는데 아직 안 한 것」이다.
+
+- [ ] T083 `frontend/tests/CanonMatchesDesign.test.ts` 에 **확정 디자인 쪽 digest 단언**을 넣는다 per FR-280 · DC-D (partial). 지금은 `canonDigest` 만 본다 — 확정 디자인이 바뀌어도 `tokens.css` 가 그대로면 통과한다. `assert_baseline` 은 `npm test` 가 부르지 않으므로 빈틈이 남는다. vitest 가 `../../docs/design/008-visual-language/Language.dc.html?raw` 로 확정 디자인을 읽을 수 있음을 실험으로 확인했다 — 그 원문에서 `<style>` 을 뽑아 `design_render.py` 의 `digest()` 와 같은 규칙(SHA-256 앞 16자리)으로 재고 `report.designDigest` 와 비교한다
+- [ ] T084 `frontend/tests/VisualLanguage.test.tsx` 에 **G-4 를 구현한다** per FR-266 · `contracts/visual-language.md` C-3 (missing). 「정본에 있으나 확정 디자인에 없는 값」을 센다. 정본은 두 구획으로 나뉘어 있다 — 추출 구획(디자인에서 기계로 온 것)과 파생 구획(`.pill`·`.navlink`·`.tint-*`·`.modal`·`.segmented`·`.table` 등). **파생 구획이 더한 값이 확정 디자인의 원문(시트 + 인라인)에 실제로 나타나는지** 확인하고, 나타나지 않으면 실패시킨다. 002 가 확정 디자인에 `border-radius` 가 0회인데 `--radius:10px` 를 지어낸 것과 같은 자리가 지금 열려 있다. **`Language.dc.html` 의 v1 대조 예시(「03 · 기하」)는 출처로 인정하지 않는다** — 그 값들은 폐기된 언어다
+- [ ] T085 `frontend/tests/VisualLanguage.test.tsx` 에 **G-5 를 구현한다** per FR-263 · C-5 (missing). 껍데기 치수 토큰(`--h-header` 56 · `--h-phase` 48 · `--h-notice` 32 · `--h-control` 32 · `--h-control-sm` 26 · `--h-step` 52 · `--w-steps` 460 · `--w-detail` 640 · `--w-min` 1440)은 `specs/007-unify-test-screens/contracts/ui-contract.md` §1-2 표의 **사본**이다. 정본은 그 표이므로 둘이 어긋나면 멈춰야 한다. 그 표도 vitest 가 `?raw` 로 읽을 수 있다
+- [ ] T086 **FR-269 와 확정 디자인의 충돌을 기록한다** per FR-269 (contradicts). FR-269 는 「잉크 채움(`.btn.primary`)은 한 화면에 주 동작 하나」인데 확정 디자인은 화면당 **1~3개**를 쓴다 — TestList 2(헤더 「테스트 만들기」 + 고른 결말 필터) · Secrets 3 · Result 1 · Keys 0. 코드는 디자인을 따랐고 그것이 옳다 (spec Assumptions — 코드가 디자인과 다르면 코드를 고친다). 따라서 **FR-269 문장이 확정 디자인보다 엄격하다.** `conformance/undefined-states.md` §3 에 근거와 함께 적고, 문장을 「주 동작은 화면당 하나이며 선택 상태 표시는 그와 별개다」로 고칠지 판단을 받는다. **spec.md 를 이 작업에서 직접 고치지 않는다**
+- [ ] T087 `frontend/src/components/workbench/StepDetail.tsx:343` 의 인라인 `height: "36px"` 를 없앤다 per SC-404 (partial). 정본의 `.pane-hd` 가 이미 그 자리의 형태이고, 높이만 코드가 다시 적고 있다 — 값이 두 곳에 있는 마지막 자리다. `.pane-hd` 에 높이를 주거나 그 자리 전용 파생 클래스로 옮긴다
+- [ ] T088 `frontend/tests/TestListFilters.test.tsx` 에 **표 머리와 행이 같은 격자를 쓰는지** 세는 검사를 넣는다 per FR-273 (partial). 지금은 `GRID` 상수 하나로 지켜지지만 강제하는 것이 없어서, 누가 한쪽만 고쳐도 아무도 모른다 — V-08 이 정확히 그 형태였다(열 폭 7개 중 6개가 달랐다). 렌더한 DOM 에서 표 머리와 행의 `gridTemplateColumns` 가 같은 문자열인지 본다
+
+**Checkpoint**: 이 여섯이 끝나면 기계가 셀 수 있는 것은 전부 센다. 남는 것은 L3 판정
+54항목뿐이며 그것은 사람의 몫이다 (DC-C).
