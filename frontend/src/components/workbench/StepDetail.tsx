@@ -17,8 +17,11 @@
  * (UC-000). 이전에는 편집 화면과 세션 화면이 각자 판단했고, 그래서 편집 화면은 "실행을
  * 시작해 일시정지한 뒤 하세요" 라고 안내하면서 그리로 가는 버튼을 주지 않았다 (006 E-03).
  *
- * 인라인 style 값은 `docs/design/StepInspector.dc.html` 에서 그대로 옮겼다 (DC-001) —
- * `pages/StepInspector.tsx` 가 이미 전사해 둔 것을 이식했다.
+ * ## 2026-09-08 (008)
+ *
+ * 형태는 정본이 갖는다. 이 화면이 검정 바탕 머리 띠를 **두 곳**(패널 머리 · 시도한
+ * locator 표 머리)에 갖고 있었는데, 640px 판 안에서 잉크 띠 둘은 내용보다 무겁다.
+ * 둘 다 옅은 우물(`.pane-hd`)로 내렸다 — 색은 상태에만 쓴다.
  */
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -30,10 +33,6 @@ import { stepNumber } from "../../lib/wording";
 import type { Step } from "../../types/generated/step";
 import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
-
-const INK = "#14171C";
-const MONO = "'IBM Plex Mono', ui-monospace, monospace";
-const SANS = "'IBM Plex Sans KR', system-ui, sans-serif";
 
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
@@ -142,26 +141,25 @@ export function StepDetail({
       role={placement === "overlay" ? "dialog" : "region"}
       aria-label="Step 상세"
       data-detail-placement={placement}
+      className={placement === "overlay" ? "overlay-pane" : "pane"}
       style={{
         // 겹침은 우측 640px 고정. 인라인은 ③-b 를 채운다 — 그 자리의 폭은 국면이 정한다.
         ...(placement === "overlay"
-          ? { width: "640px", borderLeft: `1px solid ${INK}` }
-          : { flex: 1, minHeight: 0, width: "100%", border: "1px solid #E3E6EB", borderRadius: "3px" }),
-        background: "#FFFFFF",
+          ? { width: "640px" }
+          : { flex: 1, minHeight: 0, width: "100%" }),
         display: "flex",
         flexDirection: "column",
         overflowY: "auto",
       }}
     >
       <div
+        className="pane-hd"
         style={{
-          flex: placement === "inline" ? "0 0 36px" : "0 0 56px",
-          background: INK,
-          color: "#F2F4F7",
+          flex: placement === "inline" ? "0 0 36px" : "0 0 44px",
           display: "flex",
           alignItems: "center",
           gap: "12px",
-          padding: placement === "inline" ? "0 12px" : "0 20px",
+          padding: placement === "inline" ? "0 12px" : "0 16px",
         }}
       >
         {/*
@@ -170,24 +168,13 @@ export function StepDetail({
           (WorkbenchShell.test.tsx — 「배치는 껍데기만 바꾼다」). 번호와 종류는 바로
           아래 줄이 이미 말한다.
         */}
-        <div style={{ font: `600 12px/1 ${MONO}`, letterSpacing: "0.12em" }}>STEP 상세</div>
-        <div style={{ flex: "1" }} />
+        <div className="lbl">STEP 상세</div>
+        <div className="spacer" />
         <button
           aria-label="닫기"
+          className="btn sm quiet"
           onClick={onClose}
-          style={{
-            width: "32px",
-            height: "32px",
-            border: "1px solid #4A515C",
-            borderRadius: "3px",
-            background: "transparent",
-            color: "inherit",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-            boxShadow: "none",
-          }}
+          style={{ padding: "0 7px" }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M4 4l8 8M12 4l-8 8" />
@@ -195,61 +182,25 @@ export function StepDetail({
         </button>
       </div>
 
-      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "18px" }}>
+      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ font: `700 15px/1 ${MONO}`, color: "#4A515C" }}>
-              {stepNumber(detail.index)}
-            </div>
+            <div className="num">{stepNumber(detail.index)}</div>
             {step !== null && (
               <>
-                <div
-                  style={{
-                    padding: "5px 8px",
-                    border: `1px solid ${INK}`,
-                    borderRadius: "3px",
-                    background: "#F2F4F7",
-                    font: `700 11px/1 ${MONO}`,
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  {step.type.toUpperCase()}
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "5px 8px",
-                    border: `1px solid ${INK}`,
-                    borderRadius: "3px",
-                    background: step.author === "ai" ? "#F0EBFB" : "#FFFFFF",
-                    font: `700 11px/1 ${MONO}`,
-                  }}
-                >
-                  {step.author === "ai" ? (
-                    <svg width="10" height="10" viewBox="0 0 18 18" fill="none" stroke="#6B3FD4" strokeWidth="2.4">
-                      <path d="M9 1.5v4M9 12.5v4M1.5 9h4M12.5 9h4" />
-                    </svg>
-                  ) : (
-                    <svg width="10" height="10" viewBox="0 0 12 12">
-                      <circle cx="6" cy="6" r="4" fill="#C8371D" />
-                    </svg>
-                  )}
+                <span className="chip">{step.type.toUpperCase()}</span>
+                <span className={step.author === "ai" ? "chip ai" : "chip"}>
                   {step.author === "ai" ? "AI" : "RECORD"}
-                </div>
+                </span>
               </>
             )}
           </div>
           <div
-            style={{
-              fontFamily: "'IBM Plex Sans KR', system-ui, sans-serif",
-              // 겹침은 640px 안에서 혼자 서므로 크게 둔다. 인라인은 ③-b 안이고 위에
-              // 국면 띠의 테스트 이름이 이미 있으므로, 여기서 또 크면 제목이 둘이 된다.
-              fontSize: placement === "inline" ? "17px" : "28px",
-              fontWeight: placement === "inline" ? 700 : 400,
-              lineHeight: "1.2",
-            }}
+            /*
+              겹침은 640px 안에서 혼자 서므로 크게 둔다. 인라인은 ③-b 안이고 위에 국면
+              띠의 테스트 이름이 이미 있으므로, 여기서 또 크면 제목이 둘이 된다.
+            */
+            className={placement === "inline" ? "subtitle" : "title"}
           >
             {step?.label ?? "이 결과 이후 정의에서 사라진 Step"}
           </div>
@@ -262,14 +213,8 @@ export function StepDetail({
         {detail.failure !== null && (
           <div
             role="note"
-            style={{
-              border: "1px solid #C8371D",
-              borderRadius: "3px",
-              background: "#FCEDE9",
-              padding: "12px 14px",
-              font: `500 14px/1.5 ${SANS}`,
-              color: "#A32C13",
-            }}
+            className="tint-fail line fail-ink"
+            style={{ padding: "12px 14px" }}
           >
             {detail.failure.message ?? "실패 이유가 기록되지 않았습니다."}
           </div>
@@ -285,14 +230,14 @@ export function StepDetail({
             id="reason-step-sensitive"
             data-action="step.markSensitive"
             data-disabled-reason="step.markSensitive"
-            style={{ font: `400 12px/1.4 ${SANS}`, color: "#4A515C" }}
+            className="why"
           >
             이 Step 은 입력값을 갖지 않아 민감 값으로 지정할 것이 없습니다.
           </span>
         )}
 
         {step === null ? (
-          <p className="dim" style={{ font: `400 13px/1.6 ${SANS}` }}>
+          <p className="note">
             이 실행에는 있었지만 지금 정의에는 없는 Step 입니다. 결말과 소요 시간은 그때의
             기록이고, 동작 종류·대상 요약·값은 보여줄 수 없습니다.
           </p>
@@ -321,16 +266,12 @@ export function StepDetail({
                 />
                 {alreadyReference ? (
                   <>
-                    <p className="dim" style={{ fontSize: 11.5, margin: "4px 0 0" }}>
+                    <p className="why" style={{ margin: "4px 0 0" }}>
                       변수 참조입니다. 실제 값은 비밀 파일의 암호문에 있으며 화면에 표시되지
                       않습니다.
                     </p>
                     {canMarkSensitive && (
-                      <button
-                        className="ghost"
-                        style={{ padding: 0, height: 28 }}
-                        onClick={() => setSecretOpen((v) => !v)}
-                      >
+                      <button className="navlink" onClick={() => setSecretOpen((v) => !v)}>
                         {secretOpen ? "▾" : "▸"} 비밀 값 다시 넣기
                       </button>
                     )}
@@ -354,11 +295,7 @@ export function StepDetail({
 
                 {/* DR-023·SC-106 — 화면 이동 0회. 비밀 값을 이 자리에서 넣는다. */}
                 {!alreadyReference && canMarkSensitive && (
-                  <button
-                    className="ghost"
-                    style={{ padding: 0, height: 28, marginTop: 4 }}
-                    onClick={() => setSecretOpen((v) => !v)}
-                  >
+                  <button className="navlink" style={{ marginTop: 4 }} onClick={() => setSecretOpen((v) => !v)}>
                     {secretOpen ? "▾" : "▸"} 여기서 비밀 값 넣기
                   </button>
                 )}
@@ -402,33 +339,15 @@ export function StepDetail({
           정의는 "무엇으로 찾을 계획인가" 이고 이것은 "무엇을 시도했고 몇 개가 맞았나" 다.
         */}
         {detail.attempts !== null && detail.attempts.length > 0 && (
-          <div style={{ border: `1px solid ${INK}`, background: "#FFFFFF" }}>
-            <div
-              style={{
-                height: "36px",
-                display: "flex",
-                alignItems: "center",
-                padding: "0 12px",
-                background: INK,
-                color: "#F2F4F7",
-                font: `600 11px/1 ${MONO}`,
-                letterSpacing: "0.1em",
-              }}
-            >
+          <div className="pane">
+            <div className="pane-hd lbl" style={{ height: "36px", display: "flex", alignItems: "center", padding: "0 12px" }}>
               시도한 LOCATOR (우선순위 순)
             </div>
             {detail.attempts.map((a, i) => (
               <div
                 key={`${a.candidate}-${i}`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 12px",
-                  borderTop: "1px solid #E3E6EB",
-                  font: `400 12.5px/1.4 ${MONO}`,
-                  color: a.matched ? INK : "#4A515C",
-                }}
+                className={`row rule-top mono${a.matched ? "" : " muted"}`}
+                style={{ padding: "8px 12px", fontSize: 12 }}
               >
                 <span style={{ width: 84, fontWeight: 700 }}>{a.candidate}</span>
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -476,21 +395,11 @@ export function StepDetail({
 
         {step !== null && (
           <div>
-            <button className="ghost" onClick={() => setShowDsl((v) => !v)}>
+            <button className="navlink" onClick={() => setShowDsl((v) => !v)}>
               {showDsl ? "▾" : "▸"} 테스트 DSL 미리보기
             </button>
             {showDsl && (
-              <pre
-                className="mono"
-                style={{
-                  fontSize: 11,
-                  background: "var(--ink)",
-                  color: "var(--panel)",
-                  padding: 10,
-                  overflowX: "auto",
-                  margin: "6px 0 0",
-                }}
-              >
+              <pre className="code-block" style={{ padding: 10, overflowX: "auto", margin: "6px 0 0" }}>
                 {dslPreview(step)}
               </pre>
             )}
@@ -524,8 +433,8 @@ export function StepDetail({
             onRemedy={onRemedy}
             onRun={() => onRepick("target")}
             icon={
-              <svg width="15" height="15" viewBox="0 0 20 20">
-                <circle cx="10" cy="10" r="5" fill="#C8371D" />
+              <svg className="fail-ink" width="15" height="15" viewBox="0 0 20 20">
+                <circle cx="10" cy="10" r="5" fill="currentColor" />
               </svg>
             }
           />

@@ -93,32 +93,18 @@ export function InlineSecretInput({
 
   return (
     <div
-      style={{
-        border: "1px solid #14171C",
-        borderRadius: "3px",
-        background: "#FFFFFF",
-        padding: 12,
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-      }}
+      className="pane"
+      style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}
     >
-      <div
-        style={{
-          font: "600 11px/1 'IBM Plex Mono', ui-monospace, monospace",
-          letterSpacing: "0.12em",
-          color: "#4A515C",
-        }}
-      >
-        비밀 값
-      </div>
+      <div className="lbl">비밀 값</div>
 
       {hasKey === false && (
         <div
           role="status"
-          style={{ border: "1px solid #14171C", background: "#FBF3E2", padding: "10px 12px" }}
+          className="tint-warn"
+          style={{ padding: "10px 12px" }}
         >
-          <div style={{ fontSize: 13, marginBottom: 8 }}>
+          <div className="line" style={{ marginBottom: 8 }}>
             공개키가 없어 값을 봉인할 수 없습니다. 여기서 바로 만들 수 있습니다.
           </div>
           <button disabled={disabled} onClick={makeKey}>
@@ -162,7 +148,7 @@ export function InlineSecretInput({
           placeholder="LOGIN_PASSWORD"
         />
         {name !== "" && !nameOk && (
-          <p style={{ color: "#A32C13", fontSize: 12, margin: "4px 0 0" }}>
+          <p className="why fail-ink" style={{ margin: "4px 0 0" }}>
             대문자로 시작하고 대문자·숫자·밑줄만 쓸 수 있습니다.
           </p>
         )}
@@ -181,17 +167,17 @@ export function InlineSecretInput({
       </div>
 
       {error !== null && (
-        <p role="alert" style={{ color: "#A32C13", fontSize: 13, margin: 0 }}>
+        <p role="alert" className="line fail-ink" style={{ margin: 0 }}>
           {error}
         </p>
       )}
       {notice !== null && (
-        <p role="status" style={{ color: "#4A515C", fontSize: 13, margin: 0 }}>
+        <p role="status" className="line muted" style={{ margin: 0 }}>
           {notice}
         </p>
       )}
 
-      <p style={{ color: "#6E757F", fontSize: 12, margin: 0 }}>
+      <p className="why" style={{ margin: 0 }}>
         값은 공개키로 암호화되어 테스트 정의와 분리된 비밀 파일에 저장됩니다. Step 에는{" "}
         <code>{"{{변수명}}"}</code> 참조만 남습니다.
       </p>

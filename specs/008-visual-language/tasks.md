@@ -119,12 +119,12 @@ FR-278~FR-284 이므로 검사 작성 작업이 선택이 아니다. 기존 657�
 
 ### 4-2. Step 상세 (겹침 640)
 
-- [ ] T035 [P] [US2] `frontend/src/components/workbench/StepDetail.tsx` 를 정본 소비로 바꾼다 (hex 20 · 인라인 30). 겹침 폭 640 · 모서리 `--radius-lg` 6px · 그림자 `--e-2`. `StepDetail.dc.html` 기준
-- [ ] T036 [P] [US2] `frontend/src/components/LocatorPriorityTable.tsx` 를 `.pane`·`.lbl`·`.mono`·`.chip` 으로 바꾼다 (hex 10 · 인라인 13). 잔존색 `#EAF5EE` 판정. **우선순위 로직은 건드리지 않는다** (헌법 원칙 IV)
-- [ ] T037 [P] [US2] `frontend/src/components/StepEditFields.tsx` 를 정본 소비로 바꾼다 (인라인 11)
-- [ ] T038 [P] [US2] `frontend/src/components/AssertionForm.tsx` 를 정본 소비로 바꾼다 (인라인 11)
-- [ ] T039 [P] [US2] `frontend/src/components/InlineSecretInput.tsx` 를 정본 소비로 바꾼다 (hex 9 · 인라인 8). **가림 표시 로직을 건드리지 않는다** (FR-277 · 헌법 보안 제약)
-- [ ] T040 [US2] `npx vitest run` — Step 상세 묶음 회귀. **`InlineSecret.test.tsx`·`SensitiveAcrossPhases.test.tsx` 가 초록인지 특히 확인한다**
+- [X] T035 [P] [US2] `frontend/src/components/workbench/StepDetail.tsx` 를 정본 소비로 바꾼다 (hex 20 · 인라인 30). 겹침 폭 640 · 모서리 `--radius-lg` 6px · 그림자 `--e-2`. `StepDetail.dc.html` 기준
+- [X] T036 [P] [US2] `frontend/src/components/LocatorPriorityTable.tsx` 를 `.pane`·`.lbl`·`.mono`·`.chip` 으로 바꾼다 (hex 10 · 인라인 13). 잔존색 `#EAF5EE` 판정. **우선순위 로직은 건드리지 않는다** (헌법 원칙 IV)
+- [X] T037 [P] [US2] `frontend/src/components/StepEditFields.tsx` 를 정본 소비로 바꾼다 (인라인 11)
+- [X] T038 [P] [US2] `frontend/src/components/AssertionForm.tsx` 를 정본 소비로 바꾼다 (인라인 11)
+- [X] T039 [P] [US2] `frontend/src/components/InlineSecretInput.tsx` 를 정본 소비로 바꾼다 (hex 9 · 인라인 8). **가림 표시 로직을 건드리지 않는다** (FR-277 · 헌법 보안 제약)
+- [X] T040 [US2] `npx vitest run` — Step 상세 묶음 회귀. **`InlineSecret.test.tsx`·`SensitiveAcrossPhases.test.tsx` 가 초록인지 특히 확인한다**
 
 ### 4-3. 국면 화면
 

@@ -485,3 +485,35 @@ input.ai, textarea.ai { border-color: var(--ai); }
    떠 있는 무게를 갖는다. 채우지 않는다 — 채움은 주 동작의 것이다. */
 .pick { text-align: left; color: var(--ink); }
 .pick.on { border-color: var(--ink); box-shadow: var(--e-1); }
+
+/* 겹침 패널 — Step 상세. 확정 디자인 `StepDetail.dc.html` 의 640px 판이다. */
+.overlay-pane {
+  background: var(--panel);
+  border-left: 1px solid var(--hair-2);
+  box-shadow: var(--e-2);
+}
+/* 구획의 머리 띠 — 표·목록 위에 붙는 라벨 줄. 옅은 우물이며 채우지 않는다. */
+.pane-hd {
+  background: var(--sunken);
+  border-bottom: 1px solid var(--hair-2);
+  color: var(--ink-2);
+}
+/* 코드·DSL 미리보기. 확정 디자인이 잉크 판 위에 종이 글자를 얹는 유일한 자리다. */
+.code-block {
+  background: var(--ink);
+  color: var(--panel);
+  border-radius: var(--radius);
+  font: 400 11px/1.6 var(--font-mono);
+}
+
+/* 상자를 만들지 않는 묶음 — `fieldset` 처럼 기본 테두리가 딸려 오는 요소를 정리한다. */
+.bare { border: 0; }
+
+/* 표 — 후보 우선순위처럼 줄이 늘어선 것. 행 사이는 실선 하나로 가른다. */
+.table { width: 100%; border-collapse: collapse; background: var(--panel); }
+.table td { padding: 0 12px; height: 40px; font: 400 12px/1 var(--font-sans); }
+.table tr + tr td { border-top: 1px solid var(--hair); }
+/* 지금 쓰이는 줄 — 옅은 통과 바탕. 나머지와 구분되되 주장하지 않는다. */
+.table tr.in-use td { background: var(--pass-t); }
+/* 최후 수단 — 옅은 우물. 쓸 수는 있으나 마지막이라는 뜻이다 (원칙 IV). */
+.table tr.last-resort td { background: var(--sunken-2); }

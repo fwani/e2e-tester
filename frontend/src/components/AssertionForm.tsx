@@ -61,20 +61,13 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
 
   return (
     <div
-      style={{
-        border: "1px solid var(--ink)",
-        borderRadius: "3px",
-        background: "var(--panel)",
-        padding: 14,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
+      className="pane"
+      style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
     >
-      <strong style={{ fontSize: 13 }}>검증 Step 추가</strong>
+      <strong className="strong-sm">검증 Step 추가</strong>
 
-      <fieldset style={{ border: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-        <legend className="muted" style={{ fontSize: 12, padding: 0 }}>
+      <fieldset className="bare" style={{ padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <legend className="lbl" style={{ padding: 0 }}>
           조건
         </legend>
         {KINDS.map((k) => (
@@ -89,7 +82,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
             <span>
               {k.label}
               <br />
-              <span className="dim" style={{ fontSize: 11.5 }}>
+              <span className="why">
                 {k.hint}
               </span>
             </span>
@@ -121,7 +114,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
           onChange={(e) => setValue(e.target.value)}
           placeholder="{{PROJECT_NAME}}"
         />
-        <p className="dim" style={{ fontSize: 11.5, margin: "4px 0 0" }}>
+        <p className="why" style={{ margin: "4px 0 0" }}>
           {"{{변수명}}"} 으로 변수를 참조할 수 있습니다 (FR-013b). 민감 변수의 실제 값은
           화면에 표시되지 않습니다.
         </p>
