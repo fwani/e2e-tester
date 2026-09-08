@@ -666,7 +666,12 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       case "step.recordStop":
         onRecordStop?.();
         break;
-      case "step.reorder":
+      /*
+        Phase 2 는 **이름만** 바꾼다. 아직 별도 패널을 여는 동작이며, 두 방향이 같은
+        패널을 연다 — 행 조작으로 옮기는 것은 US3 (FR-301) 이 한다.
+      */
+      case "step.moveUp":
+      case "step.moveDown":
         onToggleReorder?.();
         break;
       case "step.addAssertion":

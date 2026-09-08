@@ -65,19 +65,19 @@ SC-508(실행 중 활성 0건)·SC-509(기존 경로 회귀 0건)·SC-510(왕복
 
 ### 조작 표 (FR-305 · SC-506)
 
-- [ ] T003 `frontend/src/lib/actions.ts` 의 `ACTION_IDS` 를 34 → 36 으로 바꾼다. `step.insertManual` · `step.moveDown` 을 추가하고 `step.reorder` 를 `step.moveUp` 으로 **개칭**한다. 개칭이므로 컴파일러가 남은 참조 21곳을 전수로 요구한다 ([contracts/step-editing.md](./contracts/step-editing.md) §1)
-- [ ] T004 `frontend/src/lib/wording.ts` 의 `ACTION_LABEL` 에 라벨을 넣는다 — `step.insertManual`「직접 입력으로 Step 추가」· `step.moveDown`「아래로 옮기기」· `step.moveUp`「위로 옮기기」. `browser.openAt` 라벨을 「브라우저 열어 이 Step **앞에서** 멈추기」로 고친다. **새 `DISABLED_REASON` 키를 만들지 않는다** — 기존 `NOT_STARTED_YET`·`NEEDS_PAUSE`·`RUNNING_NO_EDIT`·`RESULT_NO_EDIT`·`C7` 로 충분하다 (계약 §2)
-- [ ] T005 `frontend/src/lib/capabilities.ts` 의 `PHASE_TABLE` 을 채운다 — **신규 2개(`step.insertManual`·`step.moveDown`)의 16칸을 새로 쓰고, 개칭된 `step.moveUp` 의 8칸은 `step.reorder` 의 값을 그대로 이관한다**. 값은 계약 §2 의 표가 정본이다. 각 셀에 그 국면을 그렇게 정한 이유를 주석으로 적는다 — 특히 **EDT 열의 `step.insertManual` 이 `NEEDS_BROWSER` 가 아니라 `C7` 인 근거**(FR-307)를 적는다
-- [ ] T006 `frontend/src/lib/capabilities.ts` 의 런타임 덮어쓰기 목록에 조작 id 를 더한다 — `O2`·`O3`·`O6` 에 `step.insertManual`, `O4`·`O6` 에 `step.moveUp`·`step.moveDown`. **`step.insertManual` 을 `O4` 에 넣지 않는다** (Step 이 0개일 때야말로 넣을 수 있어야 한다). 그 판단을 주석으로 남긴다 (계약 §2-2)
-- [ ] T007 `frontend/tests/CapabilityCoverage.test.ts` 를 36 조작 기준으로 갱신한다 — 조작 수 단언 `34` → `36`, 커버리지 8 × 36 = **288칸**. 개칭된 `step.reorder` 참조를 `step.moveUp` 으로 고친다. 해소 방법이 36개 목록 안을 가리키는지 보는 단언은 그대로 둔다
-- [ ] T008 남은 개칭 참조를 정리한다 — `frontend/src/components/workbench/ActionPalette.tsx` · `frontend/src/pages/SessionScreen.tsx` · `frontend/src/pages/EditView.tsx` · `frontend/tests/RunnerReview.test.tsx`. **이 단계에서는 동작을 바꾸지 않는다** — 이름만 바꾼다. 동작 변경은 Phase 5 가 한다
-- [ ] T009 `frontend/` 에서 `npm run typecheck && npm test -- --run` — T002 의 건수가 줄지 않았고 새 검사가 통과하는지 확인한다. 이 시점에 화면 동작은 하나도 바뀌지 않았으므로 기존 검사는 그대로 통과해야 한다
+- [X] T003 `frontend/src/lib/actions.ts` 의 `ACTION_IDS` 를 34 → 36 으로 바꾼다. `step.insertManual` · `step.moveDown` 을 추가하고 `step.reorder` 를 `step.moveUp` 으로 **개칭**한다. 개칭이므로 컴파일러가 남은 참조 21곳을 전수로 요구한다 ([contracts/step-editing.md](./contracts/step-editing.md) §1)
+- [X] T004 `frontend/src/lib/wording.ts` 의 `ACTION_LABEL` 에 라벨을 넣는다 — `step.insertManual`「직접 입력으로 Step 추가」· `step.moveDown`「아래로 옮기기」· `step.moveUp`「위로 옮기기」. `browser.openAt` 라벨을 「브라우저 열어 이 Step **앞에서** 멈추기」로 고친다. **새 `DISABLED_REASON` 키를 만들지 않는다** — 기존 `NOT_STARTED_YET`·`NEEDS_PAUSE`·`RUNNING_NO_EDIT`·`RESULT_NO_EDIT`·`C7` 로 충분하다 (계약 §2)
+- [X] T005 `frontend/src/lib/capabilities.ts` 의 `PHASE_TABLE` 을 채운다 — **신규 2개(`step.insertManual`·`step.moveDown`)의 16칸을 새로 쓰고, 개칭된 `step.moveUp` 의 8칸은 `step.reorder` 의 값을 그대로 이관한다**. 값은 계약 §2 의 표가 정본이다. 각 셀에 그 국면을 그렇게 정한 이유를 주석으로 적는다 — 특히 **EDT 열의 `step.insertManual` 이 `NEEDS_BROWSER` 가 아니라 `C7` 인 근거**(FR-307)를 적는다
+- [X] T006 `frontend/src/lib/capabilities.ts` 의 런타임 덮어쓰기 목록에 조작 id 를 더한다 — `O2`·`O3`·`O6` 에 `step.insertManual`, `O4`·`O6` 에 `step.moveUp`·`step.moveDown`. **`step.insertManual` 을 `O4` 에 넣지 않는다** (Step 이 0개일 때야말로 넣을 수 있어야 한다). 그 판단을 주석으로 남긴다 (계약 §2-2)
+- [X] T007 `frontend/tests/CapabilityCoverage.test.ts` 를 36 조작 기준으로 갱신한다 — 조작 수 단언 `34` → `36`, 커버리지 8 × 36 = **288칸**. 개칭된 `step.reorder` 참조를 `step.moveUp` 으로 고친다. 해소 방법이 36개 목록 안을 가리키는지 보는 단언은 그대로 둔다
+- [X] T008 남은 개칭 참조를 정리한다 — `frontend/src/components/workbench/ActionPalette.tsx` · `frontend/src/pages/SessionScreen.tsx` · `frontend/src/pages/EditView.tsx` · `frontend/tests/RunnerReview.test.tsx`. **이 단계에서는 동작을 바꾸지 않는다** — 이름만 바꾼다. 동작 변경은 Phase 5 가 한다
+- [X] T009 `frontend/` 에서 `npm run typecheck && npm test -- --run` — T002 의 건수가 줄지 않았고 새 검사가 통과하는지 확인한다. 이 시점에 화면 동작은 하나도 바뀌지 않았으므로 기존 검사는 그대로 통과해야 한다
 
 ### 시각 언어 정본 (FR-304 · FR-313)
 
-- [ ] T010 `docs/design/008-visual-language/*.dc.html` **18장 전부**의 `<style>` 블록에서 `.srow` 격자를 `26px 1fr 58px 20px` → `26px 1fr 58px 20px auto` 로 고치고 `.srow-ops`(행 조작 묶음, 간격 4px)를 정의한다. **18장이 글자 하나까지 같아야 한다** — 하나라도 다르면 `extract_canon.py` 가 멈춘다 (계약 §6 의 1번)
-- [ ] T011 `python3 scripts/extract_canon.py --check` 로 18장 동일성을 확인한 뒤 `python3 scripts/extract_canon.py` 결과로 `frontend/src/theme/tokens.css` 를 갱신한다. **손으로 고치지 않는다** (계약 §6 의 3번)
-- [ ] T012 `cd frontend && npm test -- --run` — L1 대조(`CanonMatchesDesign.test.ts`)와 L2 가드(`VisualLanguage.test.tsx`)가 통과하는지 확인한다. 격자만 바뀌었으므로 값 대조는 영향을 받지 않아야 한다
+- [X] T010 `docs/design/008-visual-language/*.dc.html` **18장 전부**의 `<style>` 블록에서 `.srow` 격자를 `26px 1fr 58px 20px` → `26px 1fr 58px 20px auto` 로 고치고 `.srow-ops`(행 조작 묶음, 간격 4px)를 정의한다. **18장이 글자 하나까지 같아야 한다** — 하나라도 다르면 `extract_canon.py` 가 멈춘다 (계약 §6 의 1번)
+- [X] T011 `python3 scripts/extract_canon.py --check` 로 18장 동일성을 확인한 뒤 `python3 scripts/extract_canon.py` 결과로 `frontend/src/theme/tokens.css` 를 갱신한다. **손으로 고치지 않는다** (계약 §6 의 3번)
+- [X] T012 `cd frontend && npm test -- --run` — L1 대조(`CanonMatchesDesign.test.ts`)와 L2 가드(`VisualLanguage.test.tsx`)가 통과하는지 확인한다. 격자만 바뀌었으므로 값 대조는 영향을 받지 않아야 한다
 
 **Checkpoint**: 표가 288칸을 갖고, 정본 격자에 조작 칸이 생겼다. 화면 작업을 시작할 수 있다.
 

@@ -367,8 +367,11 @@ export function EditView({
       case "step.delete":
         if (current !== null) apply({ op: "delete", step_id: current.id });
         break;
-      case "step.reorder":
+      case "step.moveUp":
         if (currentIndex >= 0) move(currentIndex, -1);
+        break;
+      case "step.moveDown":
+        if (currentIndex >= 0) move(currentIndex, 1);
         break;
       default:
         break;
@@ -376,7 +379,12 @@ export function EditView({
   }
 
   /** 지목한 Step 이 있어야 뜻이 있는 조작. 표는 국면을, 이것은 화면이 아는 사실을 본다. */
-  const STEP_SCOPED: ActionId[] = ["step.reorder", "step.delete", "browser.openAt"];
+  const STEP_SCOPED: ActionId[] = [
+    "step.moveUp",
+    "step.moveDown",
+    "step.delete",
+    "browser.openAt",
+  ];
   const narrowByPick = (id: ActionId, base: CapabilityState) =>
     STEP_SCOPED.includes(id) && currentIndex < 0 && base.kind === "enabled"
       ? ({
@@ -588,7 +596,6 @@ export function EditView({
             onRun={runAction}
             onRemedy={runAction}
             narrow={narrowByPick}
-            labels={{ "step.reorder": "위로 옮기기" }}
             /*
               이 국면에서 자리가 다른 둘 — 브라우저 열기는 대상 앱 영역(T079), 충돌
               중의 덮어쓰기는 「다시 읽기」와 짝을 이루는 보조 영역(FR-209)이 갖는다.

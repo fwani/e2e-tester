@@ -527,7 +527,14 @@ export const ACTION_LABEL: Record<ActionId, string> = {
   "run.resumeSkipFailure": RESUME_SKIPPING_FAILURE,
   "run.stop": "중지",
   "run.pacing": "실행 속도",
-  "browser.openAt": "브라우저 열어 이 Step 에서 멈추기",
+  /**
+   * 009 — 「에서」를 「앞에서」로 고쳤다.
+   *
+   * 이 조작은 그 Step 을 **실행하지 않고 그 앞에서** 멈춘다(`pause_before_index`). 「이
+   * Step 에서 멈추기」는 그 Step 이 이미 수행된 뒤로 읽히고, 무엇을 끼워 넣을 수 있는
+   * 자리인지가 뒤집힌다.
+   */
+  "browser.openAt": "브라우저 열어 이 Step 앞에서 멈추기",
   "session.open": OPEN_RUNNING_SESSION,
   /** 2회차 — 세션을 녹화 모드로 만든다. `step.recordStart` 와 다른 조작이다 */
   "record.start": "녹화 시작",
@@ -535,12 +542,21 @@ export const ACTION_LABEL: Record<ActionId, string> = {
   "step.recordStop": "기록 멈추기",
   "step.addNaturalLanguage": "자연어로 Step 추가",
   "step.addAssertion": "검증 추가",
+  /** 009 FR-285 — 브라우저 없이 넣는다. 위 셋과 갈리는 유일한 추가 경로다 */
+  "step.insertManual": "직접 입력으로 Step 추가",
   "step.select": "Step 상세 보기",
   "step.update": "Step 고치기",
   "step.markSensitive": "민감 값으로 지정",
   "step.repick": "요소 다시 집기",
   "step.delete": "Step 삭제",
-  "step.reorder": "순서 변경",
+  /**
+   * 009 — `step.reorder`「순서 변경」을 개칭했다.
+   *
+   * 이전 이름은 별도 패널을 가리켰고 그 패널은 없어진다(FR-301). 이름이 두 방향을 뜻하는
+   * 것처럼 읽히면서 실제로는 위로만 옮긴 것이 관찰 M-05 였다.
+   */
+  "step.moveUp": "위로 옮기기",
+  "step.moveDown": "아래로 옮기기",
   "test.rename": "테스트 이름",
   "test.setStartUrl": "시작 주소",
   save: "저장",
