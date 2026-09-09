@@ -173,6 +173,41 @@ describe("UC-011-24 — 기존 「저장하고 열기」가 그대로 걸린다"
   });
 });
 
+/* ─── 5. 되돌릴 수 있는 경로 (FR-386) ──────────────────────────────────────── */
+
+describe("FR-386 — 편집의 복수 삭제는 되돌릴 수 있다", () => {
+  /**
+   * 세션과 **성질이 다르다.** 편집은 연산을 쌓았다가 저장할 때 보내므로 「변경 전부
+   * 되돌리기」로 되돌아간다 — 그래서 확인에 「되돌릴 수 없습니다」를 붙이지 않는다.
+   *
+   * 같은 확인 컴포넌트를 두 경로가 쓰므로, 한쪽만 재면 다른 쪽이 조용히 갈린다.
+   */
+  it("확인에 「되돌릴 수 없습니다」가 붙지 않는다", async () => {
+    const user = userEvent.setup();
+    await renderEdit();
+
+    const check = document.querySelector(
+      '[data-row-action="step.toggleDeleteTarget"]',
+    ) as HTMLInputElement | null;
+    expect(check, "편집 국면에 체크 칸이 없다").not.toBeNull();
+    await user.click(check!);
+
+    const del = document.querySelector(
+      'button[data-action="step.deleteSelected"]',
+    ) as HTMLButtonElement;
+    await waitFor(() => expect(del.disabled).toBe(false));
+    await user.click(del);
+
+    await waitFor(() =>
+      expect(document.querySelector("[data-bulk-delete-confirm]")).not.toBeNull(),
+    );
+    expect(
+      document.querySelector("[data-bulk-delete-irreversible]"),
+      "편집인데 되돌릴 수 없다고 말한다 — edits.revert 로 되돌아간다",
+    ).toBeNull();
+  });
+});
+
 /* ─── 4. 지시문이 실려 나간다 (FR-375) ─────────────────────────────────────── */
 
 describe("FR-374a·FR-375 — 지시문이 목표 자리와 함께 실려 나간다", () => {
@@ -189,6 +224,33 @@ describe("FR-374a·FR-375 — 지시문이 목표 자리와 함께 실려 나간
     const [testId, , , instruction] = onOpenBrowserAt.mock.calls[0]!;
     expect(testId).toBe("TC-001");
     expect(instruction, "지시문이 실리지 않았다").toBe("장바구니에 담아");
+  });
+
+  /**
+   * FR-377 — **명령과 기록은 다른 것이다.**
+   *
+   * `instructionOnArrival` 은 「도착하면 이것을 수행하라」이고 한 번 쓰이면 끝난다.
+   * `aiInstruction` 은 「무엇을 시켰는가」라는 기록이며 화면에 계속 남아야 한다 —
+   * 보이지 않으면 사용자는 자기가 무엇을 시켰는지 잃는다 (001 FR-063 · UX U-07).
+   *
+   * 수렴 1회차가 잡은 것이 이것이었다: 명령만 싣고 기록을 빠뜨렸다.
+   */
+  it("지시문이 세션의 기록으로도 실린다", async () => {
+    const user = userEvent.setup();
+    const onOpenBrowserAt = vi.fn();
+    await renderEdit({ onOpenBrowserAt });
+
+    await user.type(screen.getByLabelText("자연어로 Step 추가"), "장바구니에 담아");
+    await user.click(btn("step.addNaturalLanguage")!);
+
+    await waitFor(() => expect(onOpenBrowserAt).toHaveBeenCalled());
+    /*
+      `EditView` 는 네 번째 인자로 문장을 넘기고, `App` 이 그것을 **둘로** 나눠 싣는다
+      (`instructionOnArrival` + `aiInstruction`). 여기서는 화면 경계까지만 재고, 둘로
+      나뉘는지는 `App` 의 그 줄이 갖는다 — 이 검사가 재는 것은 문장이 실려 나간다는 것이다.
+    */
+    const [, , , instruction] = onOpenBrowserAt.mock.calls[0]!;
+    expect(instruction).toBe("장바구니에 담아");
   });
 
   it("녹화로 더하기는 지시문 없이 나간다 — 도착하면 기록이 켜진다", async () => {

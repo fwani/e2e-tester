@@ -26,7 +26,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StepList } from "../src/components/workbench/StepList";
 import { capabilitiesFor } from "../src/lib/capabilities";
-import { NO_DELETE_SELECTION, NO_STEPS_AFTER, deleteManyConfirm } from "../src/lib/wording";
+import {
+  BULK_DELETE_IRREVERSIBLE,
+  NO_DELETE_SELECTION,
+  NO_STEPS_AFTER,
+  deleteManyConfirm,
+} from "../src/lib/wording";
 import { SessionScreen } from "../src/pages/SessionScreen";
 import { workbenchStep } from "./helpers/model";
 import { clickStep, sessionView } from "./helpers/workbench";
@@ -303,6 +308,32 @@ describe("SC-607 — 재녹화 뒤 정리가 3회 이하로 끝난다", () => {
     await click(screen.getByRole("button", { name: "지우기" }));
 
     expect(clicks, `조작이 ${clicks}회 걸렸다 — SC-607 은 3회 이하를 요구한다`).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("FR-386 — 되돌릴 수 없는 삭제는 그 사실을 말한다", () => {
+  /**
+   * **두 경로의 성질이 다르다.**
+   *
+   * 세션은 요청이 즉시 서버에 적용되어 되돌릴 수 없고, 편집은 연산을 쌓았다가 저장할 때
+   * 보내므로 「변경 전부 되돌리기」로 되돌아간다. 같은 확인 컴포넌트를 쓰므로 한쪽이
+   * 조용히 갈릴 수 있다 — 그때 사용자는 되돌릴 수 있다고 믿고 누른다.
+   */
+  it("세션의 확인에는 되돌릴 수 없다는 사실이 붙는다", async () => {
+    const user = userEvent.setup();
+    renderPausedSession(3);
+    await waitFor(() => expect(checkFor("st-1")).not.toBeNull());
+    await user.click(checkFor("st-1"));
+    await user.click(paletteButton("step.deleteSelected")!);
+
+    await waitFor(() =>
+      expect(document.querySelector("[data-bulk-delete-confirm]")).not.toBeNull(),
+    );
+    expect(
+      document.querySelector("[data-bulk-delete-irreversible]"),
+      "세션인데 되돌릴 수 없다는 사실을 말하지 않는다",
+    ).not.toBeNull();
+    expect(document.body.textContent).toContain(BULK_DELETE_IRREVERSIBLE);
   });
 });
 

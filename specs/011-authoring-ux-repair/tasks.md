@@ -326,3 +326,26 @@ Task: "결과 화면 검증 in frontend/tests/StepScreenshot.test.tsx"
 **2회차** (2026-09-10). 1회차 지적 5건은 전부 닫혔다. 잔여 1건.
 
 - [X] T069 지목을 바꿔도 상세의 자리·크기가 같은지 센다 — `frontend/tests/DetailPlacement.test.tsx`: 「상세 대상만 바뀐다」의 앞 절반(내용 전환)은 `StepScreenshot` 이 세지만 뒤 절반(자리·크기 불변)을 세는 검사가 없다. 코드상 자리는 상수라 실제로는 지켜지지만, 증거가 없으면 다음 사람이 국면별·Step별 분기를 넣을 때 잡히지 않는다 per FR-370 (partial)
+
+---
+
+## Phase 11: Convergence
+
+**3회차** (2026-09-10). 2회차가 고친 셋이 **검사 없이** 들어갔다 — 구현은 옳고 전량이
+통과하지만, 그 동작을 고정하는 것이 없다. 수렴 회차가 만든 공백이므로 여기서 닫는다.
+
+- [X] T070 지시문이 도착한 세션에 **기록으로** 남는지 센다 — `frontend/tests/AuthoringParity.test.tsx`: `App.openBrowserAt` 이 `aiInstruction` 을 함께 싣는지. 지금은 `instructionOnArrival`(명령)만 검사하고 기록 쪽은 비어 있다 per FR-377 (partial)
+- [X] T071 되돌릴 수 없는 삭제의 문구를 센다 — `frontend/tests/DeleteSelection.test.tsx`: 세션의 확인에는 「되돌릴 수 없습니다」가 붙고 편집의 확인에는 붙지 않는다. 두 경로가 같은 컴포넌트를 쓰므로 한쪽이 조용히 갈릴 수 있다 per FR-386 (partial)
+- [X] T072 [P] 저장 확인줄이 **이름**을 말하는지 센다 — `frontend/tests/SaveFeedback.test.tsx`: 「저장했습니다 · 〈이름〉」이며 id 가 아니다 per FR-367 (partial)
+
+- [ ] T073 지시문이 **수행 중 화면에 남게** 한다 — `frontend/src/lib/capabilities.ts`: T064 가 `App` 이 `aiInstruction` 을 싣게 했지만 **충분하지 않았다.** 「지시문으로 더하기」가 여는 세션은 `mode: "replay"` 라 `authoring_mode` 가 `record` 이고, 그 흐름이 도달하는 국면(`running`·`paused`)에서 권한표가 `ai.compose` 를 `na("N2")` 로 둔다 — 사용자가 무엇을 시켰는지 화면에 나타나지 않는다 (001 FR-063 · UX U-07 이 막으려던 그 상태).
+
+      **실측으로 확인했다** (2026-09-10): `App` 을 그려 편집 국면에서 지시문으로 더하기를
+      누르고 세션이 `ai_running` 으로 답하게 해도 `[data-action="ai.compose"]` 가 없다.
+      `authoring_mode` 를 `ai` 로 바꿔도 같다 — 국면이 「실행 중」으로 판정된다.
+
+      고치는 방법은 둘 중 하나이며 **어느 쪽인지가 판단을 요구한다**: (a) 지시문이 있는
+      세션은 `authoring_mode` 와 무관하게 `ai.compose` 자리를 갖게 표를 고친다, (b) 지시문
+      경로가 여는 세션의 `authoring_mode` 를 AI 로 둔다. (b)는 원칙 I 의 「작성 주체는
+      메타데이터이며 실행을 바꾸지 않는다」와 맞물리므로 그 영향을 먼저 봐야 한다.
+      per FR-377 (partial)
