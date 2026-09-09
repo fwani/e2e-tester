@@ -39,14 +39,17 @@ import type { Notice, WorkbenchModel, WorkbenchStep } from "../components/workbe
 import type { ActionId } from "../lib/actions";
 import {
   capabilitiesFor,
+  isShown,
   type CapabilityFacts,
   type CapabilityState,
 } from "../lib/capabilities";
 import {
+  DISABLED_REASON,
   EDIT_BLOCKED_BY_RUN,
   OPEN_RUNNING_SESSION,
   PHASE_LABEL,
   SAVE_BEFORE_OPEN_BROWSER,
+  SAVE_NEEDS_NAME,
   SAVE_THEN_OPEN_BROWSER,
   lockedFieldNotice,
   manualStepLabel,
@@ -562,6 +565,27 @@ export function EditView({
     저장에 성공한 뒤에만 실행 버튼이 나타나, 사용자는 그것이 저장의 결과인지 원래
     있던 것인지 알 수 없었다.
   */
+  /**
+   * 저장할 수 있는가 (011 · 006 FR-195).
+   *
+   * 편집 국면은 세션과 규칙이 다르다 — **이름을 묻는 일이 원래 없다.** 저장된 정의를
+   * 고치는 화면이므로 이름은 이미 있고, 라벨은 「변경 저장 (N건)」이다. 011 이 이 화면에
+   * 고치는 것은 자리뿐이다 (팔레트 바닥 → 국면 띠).
+   *
+   * 화면이 좁히는 사실 둘: 바꾼 것이 없다, 이름을 비웠다. 뒤는 011 이 더한다 —
+   * 이름 자리가 입력칸이 되면서 비울 수 있게 됐고, 이름 없는 테스트를 만들 수는 없다
+   * (FR-366).
+   */
+  const nameEmpty = test.name.trim() === "";
+  const saveCapability: CapabilityState =
+    capabilities.save.kind !== "enabled"
+      ? capabilities.save
+      : nameEmpty
+        ? { kind: "disabled", reason: SAVE_NEEDS_NAME, remedy: null, visibility: "keep" }
+        : pending === 0
+          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null, visibility: "keep" }
+          : { kind: "enabled" };
+
   const phaseActions = (
     <>
       <ActionButton
@@ -577,6 +601,35 @@ export function EditView({
         onRun={() => runAction("run.from")}
         onRemedy={runAction}
       />
+      {/*
+        ─── 저장·되돌리기 (011 · 007 계약 §2-7) ──────────────────────────────
+
+        011 이전 이 둘의 집은 Step 패널 바닥의 조작 팔레트였다. 편집 화면에서 Step 을
+        고친 뒤 저장하려면 목록을 다 지나 내려와야 했다 (사용자 보고 1).
+
+        **순서는 실행 조작 뒤로 고정한다.** 세션 화면의 국면 띠와 같은 순서다 — 국면마다
+        자리가 바뀌면 근육 기억이 서지 않는다 (FR-235).
+      */}
+      {isShown(saveCapability) && (
+        <ActionButton
+          action="save"
+          capability={saveCapability}
+          label={saveEditsLabel(pending, saving)}
+          compact
+          emphasis
+          onRun={() => runAction("save")}
+          onRemedy={runAction}
+        />
+      )}
+      {isShown(capabilities["edits.revert"]) && (
+        <ActionButton
+          action="edits.revert"
+          capability={capabilities["edits.revert"]}
+          compact
+          onRun={() => runAction("edits.revert")}
+          onRemedy={runAction}
+        />
+      )}
     </>
   );
 
@@ -744,6 +797,15 @@ export function EditView({
       <Workbench
         model={model}
         phaseActions={phaseActions}
+        /*
+          011 UC-011-2 — 이름을 국면 띠 그 자리에서 고친다. 입력할 때마다 `set_name` 연산이
+          쌓이므로 저장하지 않은 변경 건수가 실시간으로 는다 (006 FR-188~FR-190).
+        */
+        phaseName={{
+          capability: capabilities["test.rename"],
+          onChange: (v) => apply({ op: "set_name", name: v }),
+          onRemedy: runAction,
+        }}
         headerActions={headerActions}
         /*
           009 FR-298 — 행 조작. `rowActions` 자리는 007 이 열어 두었고 넘기는 화면이
@@ -800,12 +862,9 @@ export function EditView({
                 />
               ),
             }}
-            name={test.name}
-            onNameChange={(v) => apply({ op: "set_name", name: v })}
             startUrl={test.start_url}
             onStartUrlChange={(v) => apply({ op: "set_start_url", url: v })}
             instruction={test.ai_instruction ?? null}
-            saveLabel={saveEditsLabel(pending, saving)}
             stepCount={dslSteps.length}
             emptyHint="이 테스트에는 Step 이 없습니다."
           />

@@ -33,7 +33,7 @@ import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
 import { flexOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
-import { PhaseBar } from "./PhaseBar";
+import { PhaseBar, type PhaseNameEdit } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
 import { StepList } from "./StepList";
 import { TargetPane } from "./TargetPane";
@@ -49,6 +49,13 @@ export interface WorkbenchProps {
 
   /** 국면 띠 오른쪽의 주요 조작. 어댑터가 `ActionButton` 으로 만들어 넘긴다 */
   phaseActions: ReactNode;
+  /**
+   * 국면 띠의 테스트 이름을 **그 자리에서** 고친다 (011 UC-011-2).
+   *
+   * `phaseActions` 와 같은 규율이다 — 국면 어댑터가 만들어 넘기고 이 컴포넌트는 자리만
+   * 준다. 주지 않으면 이름은 읽기 전용 표시로 남는다.
+   */
+  phaseName?: PhaseNameEdit;
   /**
    * 알림 자리에 함께 오는 것 (실시간 통로 끊김 배너 등).
    *
@@ -111,6 +118,7 @@ type WorkbenchStepActions = NonNullable<
 export function Workbench({
   model,
   phaseActions,
+  phaseName,
   noticesExtra,
   headerActions,
   rowActions,
@@ -200,7 +208,12 @@ export function Workbench({
       </HeaderBar>
 
       {/* ─── 층② 국면 띠 74px ─────────────────────────────────────────────── */}
-      <PhaseBar bar={model.phaseBar} testName={model.testName} actions={phaseActions} />
+      <PhaseBar
+        bar={model.phaseBar}
+        testName={model.testName}
+        rename={phaseName}
+        actions={phaseActions}
+      />
 
       {/* ─── 층③ 본문 ──────────────────────────────────────────────────────── */}
       {/*

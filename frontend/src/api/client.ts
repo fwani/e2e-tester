@@ -412,6 +412,14 @@ export interface SessionView {
   state: SessionState;
   state_label: string;
   test_id: string | null;
+  /**
+   * 저장된 테스트의 이름 (011 FR-362). 아직 저장된 적 없으면 `null`.
+   *
+   * **`test_id` 와 갈라서 갖는다.** 화면은 「이름이 이미 있는가」로 저장 라벨과 이름
+   * 요구를 정하는데(UC-011-4), id 만 알면 그 이름을 보여 줄 수도 다시 저장할 때 실을
+   * 수도 없다 — 011 이전에 국면 띠가 이름 자리에 「TC-001」을 그리고 있었다.
+   */
+  test_name?: string | null;
   current_step_index: number;
   steps: Step[];
   tabs_open: number;

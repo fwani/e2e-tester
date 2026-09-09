@@ -89,6 +89,7 @@ export function sessionView(overrides: Partial<SessionView> = {}): SessionView {
     state: "replaying",
     state_label: "실행 중",
     test_id: "TC-001",
+    test_name: "로그인",
     current_step_index: 0,
     steps: steps(),
     tabs_open: 1,

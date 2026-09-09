@@ -427,6 +427,28 @@ code { font-family: var(--font-mono); font-size: 12px; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 국면 띠 안에서 **그 자리 그대로** 고치는 이름 (011 UC-011-2).
+
+   새 자리를 만들지 않는다 — 표시하던 요소가 곧 입력칸이다. 011 이전에는 이름이 화면에
+   두 번 있었다(국면 띠의 표시 + 팔레트의 입력칸). 같은 값에 자리가 둘이면 어느 쪽을
+   고쳐야 하는지가 사용자의 판단이 된다.
+
+   그래서 평소에는 **표시처럼 보인다** — 테두리도 바탕도 없다. 손을 올리거나 초점이
+   가면 고칠 수 있다는 것을 드러낸다. 잉크는 `.phase-name` 과 같은 700 17px 다. */
+input.phase-name {
+  width: auto;
+  min-height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+}
+input.phase-name:hover:not(:disabled) { border-color: var(--hair-2); }
+input.phase-name:focus { border-color: var(--hair-2); background: var(--panel); outline: none; }
+/* 잠긴 이름은 기본 입력칸의 점선을 쓰지 않는다 — 띠 안에서 점선 상자는 무겁고,
+   왜 잠겼는지는 옆의 사유 문구가 말한다 (FR-234). */
+input.phase-name:disabled { border-color: transparent; color: var(--ink-2); }
+
 /* 국면 띠의 진행 표시 (`font:400 12px/1 · ink-3`). */
 .phase-progress { font: 400 12px/1 var(--font-sans); color: var(--ink-3); }
 

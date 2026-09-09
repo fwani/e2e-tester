@@ -64,6 +64,8 @@ function pausedProps(overrides: Record<string, unknown> = {}) {
       state: "paused",
       // 저장하면 정의 파일이 생긴다 — 그때부터 「초안」이 아니다 (005 재점검 U-03-a).
       test_id: savedAt ? "TC-001" : null,
+      /* 011 — 파일이 생기면 이름도 생긴다. 이름과 저장 상태가 갈렸다 (UC-011-2) */
+      test_name: savedAt ? "TC-001" : null,
       steps: steps(6),
       current_step_index: 2,
       saved_at: savedAt ?? null,
@@ -91,15 +93,25 @@ describe("저장 성공 표시 (FR-154·FR-155·FR-156 · U-09)", () => {
     expect(screen.getByText("저장했습니다 · TC-001")).toBeTruthy();
   });
 
+  /*
+    011 — **재는 자리가 둘로 갈렸다.** 이름은 국면 띠의 입력칸이 갖고 저장 상태는 그 옆의
+    칩(`data-phase-save-state`)이 갖는다. 한 문장이었던 「TC-001 · 저장됨」을 입력칸에
+    넣으면 「· 저장됨」까지 저장 이름이 된다 (UC-011-2).
+
+    요구는 그대로다 — 저장한 뒤에는 「초안」이 보이지 않아야 하고, 저장하지 않은 세션은
+    「초안」이어야 한다.
+  */
+  const saveState = () => (document.querySelector("[data-phase-save-state]")?.textContent ?? "").trim();
+
   it("저장 성공 후 제목에 「초안」이 없다 (FR-155)", () => {
     render(<SessionWorkbench {...pausedProps({ savedAt: "2026-09-07T05:00:00Z" })} />);
     expect(screen.queryByText(/초안/)).toBeNull();
-    expect(screen.getByText("TC-001 · 저장됨")).toBeTruthy();
+    expect(saveState()).toBe("저장됨");
   });
 
   it("저장하지 않은 세션의 제목은 「초안」이다", () => {
     render(<SessionWorkbench {...pausedProps({ savedAt: null })} />);
-    expect(screen.getByText("새 테스트 초안")).toBeTruthy();
+    expect(saveState()).toBe("초안");
   });
 
   it("저장 후 버튼이 「변경 저장」이고 바뀐 것이 없으면 비활성이다 (FR-156)", () => {

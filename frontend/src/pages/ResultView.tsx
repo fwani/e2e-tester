@@ -489,12 +489,9 @@ export function ResultView({
           onRun={runAction}
           onRemedy={runAction}
           nl={{ value: "", onChange: () => undefined, onSubmit: () => undefined }}
-          name={defn?.test.name ?? testId}
-          onNameChange={() => undefined}
           startUrl={defn?.test.start_url ?? ""}
           onStartUrlChange={() => undefined}
           instruction={defn?.test.ai_instruction ?? null}
-          saveLabel="저장"
           stepCount={steps.length}
         />
       }

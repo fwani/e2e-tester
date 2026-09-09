@@ -97,7 +97,7 @@ import {
   runFromStepLabel,
   runSummary,
   sessionSaveLabel,
-  sessionTitle,
+  sessionSaveState,
   skipFailureNotice,
   stepLabel,
   stopLabel,
@@ -373,6 +373,36 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   const phase = phaseOfSession(view);
   const testId = view.test_id;
   const title = testId ?? "새 테스트";
+
+  /**
+   * 이 테스트에 **이름이 이미 있는가** (011 UC-011-4 · FR-362).
+   *
+   * **`view.saved_at` 이 아니다.** 그 값은 「이 **세션에서** 저장했는가」이고, 저장된
+   * 테스트를 열어 만든 세션은 첫 저장 전까지 `null` 이다. 그래서 이름이 멀쩡히 있는데도
+   * 라벨이 「저장」이 되고 빈 이름칸을 채워야 저장이 열렸다 — 사용자 보고 2번이 그것이다.
+   *
+   * 물어야 할 것은 「이 **테스트에** 이름이 있는가」이고, 그것은 `test_id` 다.
+   */
+  const hasName = testId !== null;
+
+  /**
+   * 국면 띠에 그릴 이름 (011 UC-011-2).
+   *
+   * 세션에서 테스트 이름은 **저장 이름을 겸한다** — 세션이 저장될 때 그 이름으로 파일이
+   * 생긴다. 그래서 표시하는 값과 저장에 실리는 값이 하나여야 한다.
+   *
+   * **이 컴포넌트는 되돌림 규칙을 갖지 않는다.** `saveName` 을 그대로 그린다 — 서버가 준
+   * 이름을 기본값으로 쓰는 판단은 상태를 소유한 `SessionScreen` 이 한다.
+   *
+   * 처음에는 여기서 「비었으면 서버 이름을 쓴다」로 메웠다. 그러면 **이름을 지울 수
+   * 없다** — 사용자가 칸을 비우는 순간 서버 값이 되돌려 놓고, 저장이 잠기지 않아
+   * FR-366(이름 없는 저장 거절)을 검사할 수도 없다. 되돌림을 표시 쪽에 두면 그 규칙이
+   * 사용자 입력과 싸운다.
+   */
+  const displayName = saveName;
+  /** 저장 요청에 실릴 이름. 표시와 같은 값이다 (두 칸에 넣게 하지 않는다) */
+  const effectiveSaveName = displayName;
+
   const isDone = TERMINAL_STATES.has(view.state);
   const review = SAVEABLE_WITHOUT_BROWSER.has(view.state);
   const manipulating = MANIPULATION_STATES.has(view.state);
@@ -742,12 +772,17 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         view.saved_at == null
           ? `기록된 Step ${view.steps.length}개가 아직 저장되지 않았습니다.`
           : `저장한 뒤 바뀐 것이 있습니다. 기록된 Step ${view.steps.length}개.`,
-      nextAction:
-        saveName.trim() === ""
-          ? "Step 목록 아래에서 테스트 이름을 정하고 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다."
-          : "Step 목록 아래의 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다.",
       /*
-        **버튼을 달지 않는다.** 저장의 자리는 조작 팔레트 하나이고(FR-235), 여기 버튼을
+        011 — **자리 안내가 화면 위쪽을 가리킨다.** 저장과 이름의 집이 Step 패널 바닥에서
+        국면 띠로 옮겨졌으므로(007 계약 §2-7), 「Step 목록 아래에서」는 이제 틀린 안내다.
+        문구가 자리를 말하는 이상 자리가 바뀔 때 함께 바뀌어야 한다.
+      */
+      nextAction:
+        effectiveSaveName.trim() === ""
+          ? "화면 위 국면 띠에서 테스트 이름을 정하고 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다."
+          : "화면 위 국면 띠의 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다.",
+      /*
+        **버튼을 달지 않는다.** 저장의 자리는 국면 띠 하나이고(FR-235), 여기 버튼을
         또 두면 같은 라벨이 두 자리에 생긴다 — 바로 위 「run-failure」 알림이 같은 이유로
         결과 버튼을 달지 않았고, 이 파일이 그 결정을 이미 기록해 두었다. 검사가 그것을
         즉시 잡았다(`RunnerReview`: 「저장」 버튼이 둘). 알림은 자리를 **가리키기만** 한다.
@@ -1096,6 +1131,37 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     </>
   );
 
+  /**
+   * 저장할 수 있는가 (005 FR-156).
+   *
+   * 표는 국면을 말하고(Step 이 있는가·실행 중인가), 이름과 변경 유무는 화면이 안다.
+   * 라벨은 바뀌지 않는다 — 「변경 저장」이 상황마다 다른 말이 되면 배운 것이 흔들린다.
+   */
+  const hasChangesToSave = view.saved_at == null || view.has_unsaved_changes;
+  const saveCapability: CapabilityState =
+    capabilities.save.kind !== "enabled"
+      ? capabilities.save
+      : effectiveSaveName.trim() === ""
+        ? /*
+             **저장 자리는 절대 사라지지 않는다** (`keep`).
+
+             사용자가 보고한 「녹화하고 저장하는 부분이 명확하지 않다」의 절반이 이것이다.
+             이름을 아직 안 썼다는 것은 사용자가 이 화면에서 곧바로 해소할 수 있는
+             전제이고, 그때 저장 버튼이 사라지면 저장하는 방법을 배울 자리가 없어진다.
+
+             011 — 이름이 **이미 있는** 테스트는 이 가지에 들어오지 않는다.
+             `effectiveSaveName` 이 서버가 준 이름으로 채워져 있기 때문이다. 사용자가
+             그것을 지우면 다시 들어온다 (FR-366 — 이름 없는 테스트로 만들지 않는다).
+           */
+          /*
+             해소 방법은 **달지 않는다.** 이름칸은 국면 띠의 바로 왼쪽에 있고, 그것은
+             누를 버튼이 아니라 채울 칸이다 — 링크로 만들면 눌러도 아무 일이 없다.
+           */
+          { kind: "disabled", reason: SAVE_NEEDS_NAME, remedy: null, visibility: "keep" }
+        : !hasChangesToSave
+          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null, visibility: "keep" }
+          : { kind: "enabled" };
+
   /*
     **국면 띠의 조작 순서는 고정이다** (FR-235·FR-236). 국면마다 목록을 다르게 만들지
     않는다 — 「해당 없음」인 조작은 `ActionButton` 이 스스로 그리지 않으므로, 하나의
@@ -1157,35 +1223,28 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         // 005 FR-147 (U-08) — 끝난 실행의 「닫기」에서는 강조를 뺀다.
         emphasis: isDone || review ? "quiet" : false,
       })}
+      {/*
+        ─── 저장 (011 · 007 계약 §2-7) ──────────────────────────────────────
+
+        **실행 조작 뒤, 띠의 오른쪽 끝이다.** 순서를 고정하는 이유는 위 주석과 같다 —
+        국면마다 자리가 바뀌면 근육 기억이 서지 않는다.
+
+        011 이전 이 조작의 집은 Step 패널 바닥의 조작 팔레트였다. 저장하려면 Step 목록을
+        다 지나 내려와야 했고, 못 찾고 나가면 기록이 사라졌다 (사용자 보고 1).
+      */}
+      {isShown(saveCapability) && (
+        <ActionButton
+          action="save"
+          capability={saveCapability}
+          label={sessionSaveLabel(hasName)}
+          compact
+          emphasis
+          onRun={() => runAction("save")}
+          onRemedy={onRemedy}
+        />
+      )}
     </>
   );
-
-  /**
-   * 저장할 수 있는가 (005 FR-156).
-   *
-   * 표는 국면을 말하고(Step 이 있는가·실행 중인가), 이름과 변경 유무는 화면이 안다.
-   * 라벨은 바뀌지 않는다 — 「변경 저장」이 상황마다 다른 말이 되면 배운 것이 흔들린다.
-   */
-  const hasChangesToSave = view.saved_at == null || view.has_unsaved_changes;
-  const saveCapability: CapabilityState =
-    capabilities.save.kind !== "enabled"
-      ? capabilities.save
-      : saveName.trim() === ""
-        ? /*
-             **저장 자리는 절대 사라지지 않는다** (`keep`).
-
-             사용자가 보고한 「녹화하고 저장하는 부분이 명확하지 않다」의 절반이 이것이다.
-             이름을 아직 안 썼다는 것은 사용자가 이 화면에서 곧바로 해소할 수 있는
-             전제이고, 그때 저장 버튼이 사라지면 저장하는 방법을 배울 자리가 없어진다.
-           */
-          /*
-             해소 방법은 **달지 않는다.** 이름칸은 같은 화면의 바로 위 줄에 있고, 그것은
-             누를 버튼이 아니라 채울 칸이다 — 링크로 만들면 눌러도 아무 일이 없다.
-           */
-          { kind: "disabled", reason: SAVE_NEEDS_NAME, remedy: null, visibility: "keep" }
-        : !hasChangesToSave
-          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null, visibility: "keep" }
-          : { kind: "enabled" };
 
   /*
     005 FR-154·FR-158 (U-09) — **저장 성공을 화면을 옮기지 않고 알 수 있다.**
@@ -1215,12 +1274,16 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     phase,
     testId,
     // 005 FR-134·FR-155 — 저장된 것은 「초안」이 아니다. 판정 규칙은 사전이 소유한다.
-    testName: sessionTitle({
-      title,
-      persisted: testId !== null,
-      savedAt: view.saved_at ?? null,
-      hasUnsavedChanges: view.has_unsaved_changes,
-    }),
+    /*
+      011 UC-011-2 — **이름만** 넣는다. 저장 상태는 이름 옆의 칩이 갖는다 (`phaseName.status`).
+
+      이전에는 `sessionTitle` 이 둘을 한 문장으로 붙였다 — 「TC-001 · 저장됨」. 이름 자리가
+      입력칸이 된 뒤로 그 문장을 넣으면 「· 저장됨」까지 저장 이름이 된다.
+
+      **이름이 「TC-001」에서 실제 이름으로 바뀌었다.** 세션이 그 값을 몰라 id 를 그리고
+      있었고(`title = testId ?? "새 테스트"`), 011 이 `SessionView.test_name` 을 실었다.
+    */
+    testName: displayName,
     phaseBar: {
       // 걷기 W-1 이 잡은 것 — 끝난 실행에서 「실행 중」이라고 말하면 그 옆의 결말
       // 요약과 한 화면이 두 가지를 주장한다 (005 U-20).
@@ -1270,6 +1333,21 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     <Workbench
       model={model}
       phaseActions={phaseActions}
+      /*
+        011 UC-011-2 — 이름을 국면 띠 그 자리에서 고친다. 세션에서 이 값은 **저장 이름을
+        겸한다**: 세션이 저장될 때 그 이름으로 파일이 생긴다. 조작을 둘로 나누면 같은
+        값을 두 칸에 넣게 된다.
+      */
+      phaseName={{
+        capability: capabilities["test.rename"],
+        onChange: (v) => onSaveNameChange?.(v),
+        onRemedy,
+        status: sessionSaveState({
+          persisted: testId !== null,
+          savedAt: view.saved_at ?? null,
+          hasUnsavedChanges: view.has_unsaved_changes,
+        }),
+      }}
       headerActions={headerActions}
       /*
         009 FR-298 — 행 조작. **결과 국면은 이 화면이 아니다**(`ResultView` 가 그린다)
@@ -1322,17 +1400,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
               setNl("");
             },
           }}
-          /*
-            세션에서 테스트 이름은 **저장 이름을 겸한다** — 세션이 저장될 때 그 이름으로
-            파일이 생긴다. 조작을 둘로 나누면 같은 값을 두 칸에 넣게 된다.
-          */
-          name={saveName}
-          onNameChange={(v) => onSaveNameChange?.(v)}
           startUrl={view.steps[0]?.type === "navigate" ? view.steps[0].url : ""}
           onStartUrlChange={() => undefined}
           instruction={aiInstruction}
-          saveLabel={sessionSaveLabel(view.saved_at != null)}
-          saveCapability={saveCapability}
           saveNotice={savedNotice}
           stepCount={steps.length}
           emptyHint="Step 이 없으면 저장할 수 없습니다."
@@ -1486,7 +1556,21 @@ export function SessionScreen({
   const [runningIndex, setRunningIndex] = useState<number | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [failure, setFailure] = useState<{ index: number; message: string } | null>(null);
-  const [saveName, setSaveName] = useState("");
+  /**
+   * 사용자가 친 이름. **`null` 은 「아직 손대지 않았다」다** (011 FR-362).
+   *
+   * 빈 문자열과 갈라야 한다. 011 이전에는 이 상태가 `""` 로 시작했고, 그래서 「아직
+   * 안 썼다」와 「지웠다」가 같은 값이었다 — 저장된 테스트를 연 세션은 이름이 멀쩡히
+   * 있는데도 사용자가 처음부터 다시 쳐야 했고(사용자 보고 2), 반대로 「비었으면 서버
+   * 이름을 쓴다」로 메우면 이름을 **지울 수 없게** 된다.
+   *
+   * `null` 이면 서버가 준 이름을 쓰고, 문자열이면 — 빈 문자열이라도 — 그것이 이긴다.
+   */
+  const [nameOverride, setNameOverride] = useState<string | null>(null);
+  /** 저장 요청과 표시에 함께 쓰이는 이름. 두 칸에 넣게 하지 않는다 */
+  const effectiveSaveName = nameOverride ?? view.test_name ?? "";
+  /** 이 테스트에 이름이 이미 있는가. 확인 대화상자가 이름을 묻는지를 정한다 (UC-011-5) */
+  const testHasName = (view.test_id ?? null) !== null;
   const [busy, setBusy] = useState(false);
   const sessionId = initial.session_id;
   const [progress, setProgress] = useState<Record<string, StepProgress>>({});
@@ -1813,7 +1897,7 @@ export function SessionScreen({
   const save = () => {
     setBusy(true);
     void sessions
-      .save(sessionId, saveName.trim())
+      .save(sessionId, effectiveSaveName.trim())
       .then(() => {
         // 005 FR-158 (U-09) — 성공 시 이전 오류 배너를 걷어낸다.
         setError(null);
@@ -2211,7 +2295,7 @@ export function SessionScreen({
   const saveThenRerun = (fromStepIndex?: number) => {
     setBusy(true);
     void sessions
-      .save(sessionId, saveName.trim())
+      .save(sessionId, effectiveSaveName.trim())
       .then(() => {
         setError(null);
         setNotice(null);
@@ -2265,7 +2349,7 @@ export function SessionScreen({
   const saveAndLeave = () => {
     setBusy(true);
     void sessions
-      .save(sessionId, saveName.trim())
+      .save(sessionId, effectiveSaveName.trim())
       .then(() => {
         setConfirmingLeave(false);
         onFinished();
@@ -2311,7 +2395,7 @@ export function SessionScreen({
         focusedStepId={selectedStepId}
         detailOpen={inspecting}
         repickWaiting={repickWaiting}
-        saveName={saveName}
+        saveName={effectiveSaveName}
         onSelectStep={(stepId) => setSelectedStepId(stepId)}
         onOpenDetail={(stepId) => {
           setSelectedStepId(stepId);
@@ -2337,7 +2421,7 @@ export function SessionScreen({
               setNotice(describeError(exc));
             });
         }}
-        onSaveNameChange={setSaveName}
+        onSaveNameChange={setNameOverride}
         onSave={save}
         onShowList={onFinished}
         onPause={() => {
@@ -2413,9 +2497,11 @@ export function SessionScreen({
       {confirmingLeave && (
         <LeaveConfirm
           stepCount={view.steps.length}
-          saveName={saveName}
+          /* 011 UC-011-5 — 이름이 이미 있으면 묻지 않는다 */
+          askName={!testHasName}
+          saveName={effectiveSaveName}
           busy={busy}
-          onSaveNameChange={setSaveName}
+          onSaveNameChange={setNameOverride}
           onSave={saveAndLeave}
           onDiscard={leaveConfirmed}
           onCancel={() => setConfirmingLeave(false)}
@@ -2428,9 +2514,11 @@ export function SessionScreen({
         <RerunConfirm
           stepCount={view.steps.length}
           fromStepIndex={confirmingRerun.fromStepIndex}
-          saveName={saveName}
+          /* 011 UC-011-5 — 이름이 이미 있으면 묻지 않는다 */
+          askName={!testHasName}
+          saveName={effectiveSaveName}
           busy={busy}
-          onSaveNameChange={setSaveName}
+          onSaveNameChange={setNameOverride}
           onSaveAndRun={() => saveThenRerun(confirmingRerun.fromStepIndex ?? undefined)}
           onDiscardAndRun={() => runRerun(confirmingRerun.fromStepIndex ?? undefined)}
           onCancel={() => setConfirmingRerun(null)}
@@ -2490,6 +2578,7 @@ function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
 function RerunConfirm({
   stepCount,
   fromStepIndex,
+  askName,
   saveName,
   busy,
   onSaveNameChange,
@@ -2500,6 +2589,13 @@ function RerunConfirm({
   stepCount: number;
   /** `null` 이면 처음부터. 값이 있으면 그 자리부터 */
   fromStepIndex: number | null;
+  /**
+   * 이름을 물어야 하는가 (011 UC-011-5 · FR-364).
+   *
+   * 이름이 이미 있는 테스트에서는 **거짓**이다. 이전에는 이 칸을 무조건 그렸고, 사용자는
+   * 「이름을 바꾸려는 것이 아닌데 왜 묻는가」를 판단해야 했다. 잘못 채우면 이름이 바뀐다.
+   */
+  askName: boolean;
   saveName: string;
   busy: boolean;
   onSaveNameChange: (v: string) => void;
@@ -2516,14 +2612,18 @@ function RerunConfirm({
         세션을 버리고 <strong>저장된 정의</strong>를 재생하므로, 저장하지 않은 기록은
         사라집니다.
       </p>
-      <label htmlFor="rerun-save-name">테스트 이름</label>
-      <input
-        id="rerun-save-name"
-        value={saveName}
-        autoFocus
-        onChange={(e) => onSaveNameChange(e.target.value)}
-        placeholder="프로젝트 생성"
-      />
+      {askName && (
+        <>
+          <label htmlFor="rerun-save-name">테스트 이름</label>
+          <input
+            id="rerun-save-name"
+            value={saveName}
+            autoFocus
+            onChange={(e) => onSaveNameChange(e.target.value)}
+            placeholder="프로젝트 생성"
+          />
+        </>
+      )}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
         <button className="secondary" onClick={onCancel}>
           돌아가기
@@ -2541,6 +2641,7 @@ function RerunConfirm({
 
 function LeaveConfirm({
   stepCount,
+  askName,
   saveName,
   busy,
   onSaveNameChange,
@@ -2549,6 +2650,8 @@ function LeaveConfirm({
   onCancel,
 }: {
   stepCount: number;
+  /** 이름을 물어야 하는가 (011 UC-011-5 · FR-364). 이름이 있으면 거짓 */
+  askName: boolean;
   saveName: string;
   busy: boolean;
   onSaveNameChange: (v: string) => void;
@@ -2562,14 +2665,18 @@ function LeaveConfirm({
       <p className="note">
         기록된 Step {stepCount}개가 있습니다. 저장하지 않고 나가면 사라집니다.
       </p>
-      <label htmlFor="leave-save-name">테스트 이름</label>
-      <input
-        id="leave-save-name"
-        value={saveName}
-        autoFocus
-        onChange={(e) => onSaveNameChange(e.target.value)}
-        placeholder="프로젝트 생성"
-      />
+      {askName && (
+        <>
+          <label htmlFor="leave-save-name">테스트 이름</label>
+          <input
+            id="leave-save-name"
+            value={saveName}
+            autoFocus
+            onChange={(e) => onSaveNameChange(e.target.value)}
+            placeholder="프로젝트 생성"
+          />
+        </>
+      )}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
         <button className="secondary" onClick={onCancel}>
           돌아가기

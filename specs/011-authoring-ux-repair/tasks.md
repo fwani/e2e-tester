@@ -73,18 +73,18 @@ web application — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `fron
 
 > 먼저 쓰고, **실패하는 것을 확인한 뒤** 구현한다.
 
-- [ ] T008 [P] [US1] 저장 자리 검증 — `frontend/tests/SavePlacement.test.tsx`: `data-action="save"`·`edits.revert`·`test.rename` 요소의 조상에 `data-workbench-phase-bar` 가 있고 Step 패널 안에는 없다 (UC-011-1). 이름을 표시하는 요소와 고치는 요소가 하나다 (UC-011-2)
-- [ ] T009 [P] [US1] 이름 요구 조건 검증 — `frontend/tests/SaveNamePrompt.test.tsx`: `test_id` 유무 × (저장 라벨 · 이름칸 유무) 조합표 (UC-011-4), 나가기·다시 실행 확인의 이름칸 조건부 (UC-011-5), 빈 이름 저장 거절과 그 자리의 사유 (UC-011-6)
+- [X] T008 [P] [US1] 저장 자리 검증 — `frontend/tests/SavePlacement.test.tsx`: `data-action="save"`·`edits.revert`·`test.rename` 요소의 조상에 `data-workbench-phase-bar` 가 있고 Step 패널 안에는 없다 (UC-011-1). 이름을 표시하는 요소와 고치는 요소가 하나다 (UC-011-2)
+- [X] T009 [P] [US1] 이름 요구 조건 검증 — `frontend/tests/SaveNamePrompt.test.tsx`: `test_id` 유무 × (저장 라벨 · 이름칸 유무) 조합표 (UC-011-4), 나가기·다시 실행 확인의 이름칸 조건부 (UC-011-5), 빈 이름 저장 거절과 그 자리의 사유 (UC-011-6)
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] 국면 띠에 저장 묶음을 만든다 — `frontend/src/components/workbench/PhaseBar.tsx`: 기존 테스트 이름 표시를 **그 자리에서 고칠 수 있는 형태**로 바꾸고(새 칸을 더하지 않는다), 오른쪽 조작 자리에 저장·되돌리기가 들어갈 수 있게 한다. 조작 묶음과 이름칸 모두 `flex: 0 1 auto`·`minWidth: 0` 로 줄어들 수 있어야 한다 (UC-011-3)
-- [ ] T011 [US1] 팔레트에서 저장 블록과 이름 칸을 뺀다 — `frontend/src/components/workbench/ActionPalette.tsx`: `save`·`edits.revert`·`test.rename` 제거. **`test.setStartUrl`·`ai.compose` 는 남긴다** (research R1). `PALETTE_ACTIONS` 와 props 를 그에 맞춘다
-- [ ] T012 [US1] 배선 — `frontend/src/components/workbench/Workbench.tsx`: 어댑터가 국면 띠에 내려주는 `phaseActions` 에 저장 묶음이 들어갈 수 있게 하고, 이름 값·변경 콜백을 `PhaseBar` 로 넘긴다
-- [ ] T013 [US1] 저장 판정식을 고친다 — `frontend/src/pages/SessionScreen.tsx`: `sessionSaveLabel(view.saved_at != null)` → **`view.test_id != null`** 기준으로. `saveCapability` 의 「이름이 비었다」 좁히기도 `test_id === null` 일 때만 걸리게 한다 (UC-011-4 · research R2)
-- [ ] T014 [US1] 확인 대화상자의 이름칸을 조건부로 만든다 — `frontend/src/pages/SessionScreen.tsx` 의 `RerunConfirm`·`LeaveConfirm`: `test_id === null` 일 때만 `rerun-save-name`·`leave-save-name` 을 그린다. 이름이 있으면 「저장하고 …」 버튼이 이름 없이 활성이다 (UC-011-5)
-- [ ] T015 [US1] 편집 국면의 저장을 국면 띠로 옮긴다 — `frontend/src/pages/EditView.tsx`: `saveEditsLabel` 을 쓰는 저장·`edits.revert` 를 `phaseActions` 로 보내고 팔레트에서 뺀다. 이름은 국면 띠의 `test.name` 인라인 편집이 받고 `set_name` 연산으로 이어진다
-- [ ] T016 [US1] 기존 검증을 개정한다 — `frontend/tests/CapabilityUI.test.tsx`(자리 이동), `frontend/tests/PhaseBarWidth.test.tsx`(띠에 조작·입력칸이 늘었다), `frontend/tests/SaveFeedback.test.tsx`(판정식 변경). 기대값을 새 계약에 맞춰 고친다 — 지우거나 건너뛰지 않는다
+- [X] T010 [US1] 국면 띠에 저장 묶음을 만든다 — `frontend/src/components/workbench/PhaseBar.tsx`: 기존 테스트 이름 표시를 **그 자리에서 고칠 수 있는 형태**로 바꾸고(새 칸을 더하지 않는다), 오른쪽 조작 자리에 저장·되돌리기가 들어갈 수 있게 한다. 조작 묶음과 이름칸 모두 `flex: 0 1 auto`·`minWidth: 0` 로 줄어들 수 있어야 한다 (UC-011-3)
+- [X] T011 [US1] 팔레트에서 저장 블록과 이름 칸을 뺀다 — `frontend/src/components/workbench/ActionPalette.tsx`: `save`·`edits.revert`·`test.rename` 제거. **`test.setStartUrl`·`ai.compose` 는 남긴다** (research R1). `PALETTE_ACTIONS` 와 props 를 그에 맞춘다
+- [X] T012 [US1] 배선 — `frontend/src/components/workbench/Workbench.tsx`: 어댑터가 국면 띠에 내려주는 `phaseActions` 에 저장 묶음이 들어갈 수 있게 하고, 이름 값·변경 콜백을 `PhaseBar` 로 넘긴다
+- [X] T013 [US1] 저장 판정식을 고친다 — `frontend/src/pages/SessionScreen.tsx`: `sessionSaveLabel(view.saved_at != null)` → **`view.test_id != null`** 기준으로. `saveCapability` 의 「이름이 비었다」 좁히기도 `test_id === null` 일 때만 걸리게 한다 (UC-011-4 · research R2)
+- [X] T014 [US1] 확인 대화상자의 이름칸을 조건부로 만든다 — `frontend/src/pages/SessionScreen.tsx` 의 `RerunConfirm`·`LeaveConfirm`: `test_id === null` 일 때만 `rerun-save-name`·`leave-save-name` 을 그린다. 이름이 있으면 「저장하고 …」 버튼이 이름 없이 활성이다 (UC-011-5)
+- [X] T015 [US1] 편집 국면의 저장을 국면 띠로 옮긴다 — `frontend/src/pages/EditView.tsx`: `saveEditsLabel` 을 쓰는 저장·`edits.revert` 를 `phaseActions` 로 보내고 팔레트에서 뺀다. 이름은 국면 띠의 `test.name` 인라인 편집이 받고 `set_name` 연산으로 이어진다
+- [X] T016 [US1] 기존 검증을 개정한다 — `frontend/tests/CapabilityUI.test.tsx`(자리 이동), `frontend/tests/PhaseBarWidth.test.tsx`(띠에 조작·입력칸이 늘었다), `frontend/tests/SaveFeedback.test.tsx`(판정식 변경). 기대값을 새 계약에 맞춰 고친다 — 지우거나 건너뛰지 않는다
 
 **Checkpoint**: US1 이 독립적으로 동작한다. 저장이 국면 띠에 있고 이름을 두 번 묻지 않는다.
 

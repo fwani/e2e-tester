@@ -377,10 +377,28 @@ export function sessionTitle(input: {
   /** 저장하지 않은 편집이 남아 있는가. */
   hasUnsavedChanges: boolean;
 }): string {
+  const state = sessionSaveState(input);
+  return state === "초안" ? `${input.title} 초안` : `${input.title} · ${state}`;
+}
+
+/**
+ * 세션의 **저장 상태만** (011 · UC-011-2 에서 갈라졌다).
+ *
+ * `sessionTitle` 은 이름과 상태를 한 문장으로 붙였다 — 「TC-001 · 저장됨」. 011 이
+ * 국면 띠의 이름 자리를 **입력칸**으로 만들면서 그 문장을 넣을 수 없게 됐다: 사용자가
+ * 이름을 고치는 칸에 「· 저장됨」이 들어 있으면 그것까지 저장 이름이 된다.
+ *
+ * 그래서 상태를 갈라 낸다. **판정은 한 곳에 남는다** — `sessionTitle` 이 이 함수를
+ * 부르므로 두 벌이 되지 않는다. 문구를 고치면 둘이 함께 바뀐다.
+ */
+export function sessionSaveState(input: {
+  persisted: boolean;
+  savedAt: string | null;
+  hasUnsavedChanges: boolean;
+}): "초안" | "저장됨" | "저장하지 않은 변경 있음" {
   const saved = input.persisted || input.savedAt !== null;
-  if (!saved) return `${input.title} 초안`;
-  if (input.hasUnsavedChanges) return `${input.title} · 저장하지 않은 변경 있음`;
-  return `${input.title} · 저장됨`;
+  if (!saved) return "초안";
+  return input.hasUnsavedChanges ? "저장하지 않은 변경 있음" : "저장됨";
 }
 
 /**

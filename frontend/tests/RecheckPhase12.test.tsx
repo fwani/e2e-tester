@@ -79,6 +79,11 @@ function pausedProps(overrides: Record<string, unknown> = {}) {
     view: sessionView({
       state: review ? "review" : "paused",
       test_id: persisted ? (title ?? "TC-001") : null,
+      /*
+        011 — 이름과 저장 상태가 갈렸다. 정의 파일이 없으면 이름도 없다 (그때가 곧
+        「초안」이다). 있으면 서버가 준 이름이 국면 띠의 입력칸에 들어간다.
+      */
+      test_name: persisted ? "로그인 흐름" : null,
       steps: stepList ?? steps(7),
       current_step_index: currentStepIndex ?? 5,
       saved_at: savedAt,
@@ -97,19 +102,44 @@ const act = (id: string) =>
 
 // ─── T112 — 재실행 세션 제목의 「초안」 (U-03-a · FR-134) ────────────────────
 
+/**
+ * **2026-09-10 (011) — 재는 자리가 둘로 갈렸다.**
+ *
+ * T112 가 잰 것은 「TC-001 · 저장됨」이라는 **한 문장**이었다. 011 이 국면 띠의 이름
+ * 자리를 입력칸으로 만들면서 그 문장을 넣을 수 없게 됐다 — 사용자가 이름을 고치는 칸에
+ * 「· 저장됨」이 들어 있으면 그것까지 저장 이름이 된다 (UC-011-2).
+ *
+ * 그래서 이름은 입력칸이 갖고 저장 상태는 그 옆의 칩(`data-phase-save-state`)이 갖는다.
+ * **재는 요구는 그대로다** — 재실행 세션이 「초안」으로 보이지 않아야 하고, 파일이 없는
+ * 녹화는 「초안」이어야 한다. 자리만 둘이 됐으므로 단언도 둘이 된다.
+ */
+function saveStateText(): string {
+  const el = document.querySelector("[data-phase-save-state]");
+  expect(el, "국면 띠에 저장 상태 칩이 없다").not.toBeNull();
+  return (el!.textContent ?? "").trim();
+}
+
+function nameFieldValue(): string {
+  const el = document.querySelector('[data-action="test.rename"]') as HTMLInputElement | null;
+  expect(el, "국면 띠에 이름 자리가 없다").not.toBeNull();
+  return el!.value;
+}
+
 describe("T112 저장된 테스트의 재실행 세션은 초안이 아니다 (FR-134 · U-03-a)", () => {
   it("이 세션에서 저장하지 않았어도 정의 파일이 있으면 초안이 아니다", () => {
     // 재점검이 본 상태 그대로 — 재실행 세션은 `saved_at` 이 없다.
     render(<SessionWorkbench {...pausedProps({ persisted: true, savedAt: null })} />);
     expect(screen.queryByText(/초안/)).toBeNull();
-    expect(screen.getByText("TC-001 · 저장됨")).toBeTruthy();
+    expect(saveStateText()).toBe("저장됨");
   });
 
   it("아직 파일이 없는 녹화는 초안이다 — 「초안」을 없애는 것이 목적이 아니다", () => {
     render(
       <SessionWorkbench {...pausedProps({ persisted: false, savedAt: null })} />,
     );
-    expect(screen.getByText("새 테스트 초안")).toBeTruthy();
+    expect(saveStateText()).toBe("초안");
+    // 011 — 이름이 아직 없다. 입력칸은 비어 있고 무엇을 넣는지는 placeholder 가 말한다.
+    expect(nameFieldValue()).toBe("");
   });
 
   it("저장된 테스트에 저장하지 않은 편집이 남으면 「저장됨」을 단정하지 않는다", () => {
@@ -118,7 +148,7 @@ describe("T112 저장된 테스트의 재실행 세션은 초안이 아니다 (F
         {...pausedProps({ persisted: true, savedAt: null, hasUnsavedChanges: true })}
       />,
     );
-    expect(screen.getByText("TC-001 · 저장하지 않은 변경 있음")).toBeTruthy();
+    expect(saveStateText()).toBe("저장하지 않은 변경 있음");
   });
 
   it("판정 규칙은 사전 한 곳에 있다 — 화면이 각자 만들지 않는다", () => {
