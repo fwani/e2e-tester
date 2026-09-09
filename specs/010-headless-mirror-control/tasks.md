@@ -254,16 +254,16 @@ description: "Task list for 010-headless-mirror-control"
 
 ### 구현
 
-- [ ] T052 [US3] 일시정지·인수 국면에서 채널이 열리게 한다 — 세션 상태(인증·화면·
+- [X] T052 [US3] 일시정지·인수 국면에서 채널이 열리게 한다 — 세션 상태(인증·화면·
       입력값)가 유지되어야 한다 in `backend/src/itb/api/ws/control_channel.py`
       (FR-314 · 헌법 원칙 III)
-- [ ] T053 [US3] 인수 흐름에서 창을 전제한 부분을 미러 조작으로 바꾼다
+- [X] T053 [US3] 인수 흐름에서 창을 전제한 부분을 미러 조작으로 바꾼다
       in `backend/src/itb/recording/takeover.py` (FR-314)
-- [ ] T054 [US3] 일시정지 화면에서 미러 조작 수단을 그린다
+- [X] T054 [US3] 일시정지 화면에서 미러 조작 수단을 그린다
       in `frontend/src/pages/SessionScreen.tsx` (FR-319)
-- [ ] T055 [P] [US3] 일시정지 중 미러 조작 후 재개가 정상 진행되는지 검증
+- [X] T055 [P] [US3] 일시정지 중 미러 조작 후 재개가 정상 진행되는지 검증
       in `backend/tests/integration/test_mirror_takeover.py` (헌법 원칙 III)
-- [ ] T056 [P] [US3] 실행 중·AI 수행 중 조작이 전달되지 않고 사유가 보이는지 검증
+- [X] T056 [P] [US3] 실행 중·AI 수행 중 조작이 전달되지 않고 사유가 보이는지 검증
       in `frontend/tests/MirrorInput.test.ts` (FR-315)
 
 **Checkpoint**: 인수인계가 한 화면에서 끝난다.
