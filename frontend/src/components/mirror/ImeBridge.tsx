@@ -49,7 +49,7 @@ export interface ImeBridgeProps {
 }
 
 /**
- * 조합 중 미러 밖을 클릭했을 때 (명세 Edge Cases).
+ * 조합 중 미러 밖을 클릭했을 때 어떻게 하는가 (명세 Edge Cases · 010 T046).
  *
  * **확정한다. 버리지 않는다.**
  *
@@ -61,11 +61,11 @@ export interface ImeBridgeProps {
  * 사용자가 이미 아는 동작을 따르는 편이 새 규칙을 만드는 것보다 낫다.
  *
  * 실제 확정은 브라우저가 한다: 초점이 떠나면 `compositionend` 가 발생하고, 아래
- * `onCompositionEnd` 가 그것을 `ime.commit` 으로 보낸다. 이 상수는 **그 동작이
- * 의도된 것임을 기록**하기 위해 있다 — 나중에 "버려야 하는 것 아닌가" 를 다시 묻지
- * 않도록.
+ * `onEnd` 가 그것을 `ime.commit` 으로 보낸다. **이 상수는 코드를 바꾸지 않는다** —
+ * 결정을 이름으로 남겨, 나중에 「버려야 하는 것 아닌가」를 다시 묻지 않게 한다.
+ * `MirrorInput.test.ts` 가 이 값을 읽어 결정이 조용히 뒤집히지 않게 고정한다.
  */
-export const COMMIT_ON_BLUR = true;
+export const COMPOSITION_ON_BLUR = "commit" as const;
 
 /**
  * 조합 사건을 채널로 흘린다.

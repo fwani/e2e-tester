@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import contextlib
+from typing import Any
 
 from itb.execution.session import BrowserSession
 from itb.execution.state_machine import mirror_should_run
@@ -44,6 +45,13 @@ class MirrorController:
         """
         self._pinned = False
         """사용자가 탭을 직접 골랐는가. 골랐다면 자동 추적을 하지 않는다."""
+        self._on_liveness: Any = None
+        """프레임이 흐르는지 알려 줄 대상 (010 T088 · FR-346).
+
+        **미러는 이것이 무엇에 쓰이는지 모른다.** 조작 채널이 듣고 `suspended` ↔ `open`
+        을 전이시키지만, 그 사실을 여기서 알 필요가 없다 — 미러가 조작을 모르는 모듈로
+        남는 것이 research R5 의 결정이다.
+        """
 
     @property
     def current_tab(self) -> int | None:
@@ -80,7 +88,9 @@ class MirrorController:
         # 바꾼 순간부터 조작 국면인데 관찰 국면의 주기로 돈다.
         control_phase = self._current is not None and self._current.control_phase
         await self._stop_current()
-        screencast = TabScreencast(handle.page, tab_index, self._session.emit)
+        screencast = TabScreencast(
+            handle.page, tab_index, self._session.emit, self._on_liveness
+        )
         self._current = screencast
         self._session.mirrored_tab_index = tab_index
         # FR-317 — 조작 통로가 열려 있었다면 **새 표시 탭으로 함께 옮긴다.** 옮기지 않으면
@@ -143,6 +153,17 @@ class MirrorController:
     def input(self) -> TabInput | None:
         """보고 있는 탭의 조작 통로. 열려 있지 않으면 `None`."""
         return self._input
+
+    def observe_liveness(self, observer: Any) -> None:
+        """프레임 흐름을 들을 대상을 등록한다 (010 T088 · FR-346).
+
+        **표시 탭을 바꾸면 새 스크린캐스트가 이것을 이어받는다** — 등록을 여기 두는
+        이유가 그것이다. `TabScreencast` 마다 따로 걸면 탭을 바꾸는 순간 통보가 끊기고,
+        그때 채널은 프레임이 흐르는 줄 알고 열린 채로 남는다.
+        """
+        self._on_liveness = observer
+        if self._current is not None:
+            self._current.observe_liveness(observer)
 
     def set_control_phase(self, active: bool) -> None:
         """지금이 조작 국면인지 미러에 알린다 (010 FR-335 · research R8).

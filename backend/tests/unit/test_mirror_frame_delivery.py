@@ -444,3 +444,74 @@ async def test_a_silent_screen_is_refreshed_quickly_while_controlling() -> None:
     assert len(_frames(events)) > before, (
         "조작 국면에서 조용한 화면이 갱신되지 않았다 — 사용자에게는 클릭이 안 먹은 것으로 보인다"
     )
+
+
+# ─── T088 FR-346: 미러가 프레임 흐름을 알린다 ───────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_a_sent_frame_reports_liveness_once() -> None:
+    """프레임이 나가면 「흐른다」고 알린다. **바뀔 때만 알린다** (FR-346).
+
+    프레임마다 알리면 초당 열 번씩 같은 말을 하게 되고, 그 소음이 진짜 전이를 묻는다.
+    """
+    seen: list[bool] = []
+
+    async def on_liveness(alive: bool) -> None:
+        seen.append(alive)
+
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit, on_liveness)
+    page.context = None
+    await cast.start()
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
+    await cast.stop()
+
+    assert seen[0] is True, "프레임이 나갔는데 흐른다고 알리지 않았다"
+    assert seen.count(True) == 1, f"같은 상태를 여러 번 알렸다: {seen}"
+    assert seen[-1] is False, "정지했는데 끊겼다고 알리지 않았다"
+
+
+@pytest.mark.asyncio
+async def test_a_screen_that_cannot_be_captured_reports_a_stall() -> None:
+    """**찍지 못하면 끊긴 것이다** (FR-346).
+
+    감시가 도는데도 한 장이 나오지 않는 화면은 「조용한」 것이 아니라 「멈춘」 것이다.
+    그 구분이 사용자에게 「화면이 멈춤」과 「페이지가 멈춤」을 갈라 말해 준다.
+    """
+    seen: list[bool] = []
+
+    async def on_liveness(alive: bool) -> None:
+        seen.append(alive)
+
+    page = FakePage(fail=True)
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit, on_liveness)
+    page.context = None
+    await cast.start()
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
+    await cast.stop()
+
+    assert False in seen, f"찍지 못했는데 끊겼다고 알리지 않았다: {seen}"
+
+
+@pytest.mark.asyncio
+async def test_a_broken_liveness_observer_does_not_break_the_mirror() -> None:
+    """통보가 실패해도 프레임 전달이 멈추지 않는다 (FR-047b).
+
+    미러 실패가 실행에 영향을 주지 않는다는 성질이 이 훅에서 새면 안 된다.
+    """
+
+    async def on_liveness(_alive: bool) -> None:
+        msg = "듣는 쪽이 터졌다"
+        raise RuntimeError(msg)
+
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit, on_liveness)
+    page.context = None
+    await cast.start()  # 예외가 새면 여기서 터진다
+    await cast.stop()
+
+    assert _frames(events), "통보 실패가 프레임 전달을 막았다"

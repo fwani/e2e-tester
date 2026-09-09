@@ -184,3 +184,47 @@ def test_a_deleted_file_is_not_returned() -> None:
     entry.path.unlink()
 
     assert store.path_of(entry.file_id) is None
+
+
+# ─── T090 FR-337b: 기동이 남은 것을 정리한다 ────────────────────────────────
+
+
+def test_startup_sweeps_leftovers() -> None:
+    """**기동이 이전 실행의 잔여를 지운다** (FR-337b · T090).
+
+    정상 종료 경로는 세션마다 지운다. 프로세스가 죽으면 그 경로가 돌지 않으므로 사용자가
+    보낸 파일이 기계에 쌓인다 — 「세션보다 오래 남지 않는다」가 깨지는 유일한 자리다.
+
+    `sweep_orphans` 가 **정의만 되고 불리지 않던 것**이 converge 1회차의 발견이었다.
+    이 검증은 기동 경로가 실제로 그것을 부르는지를 본다.
+    """
+    from itb.api.app import _sweep_session_files
+
+    leftover = sf.SessionFileStore("죽은-세션")
+    entry = leftover.add("a.txt", b"x")
+    assert entry.path.is_file()
+
+    _sweep_session_files()
+
+    assert not entry.path.exists(), "기동이 잔여 파일을 지우지 않았다"
+
+
+def test_startup_sweep_never_blocks_boot() -> None:
+    """정리가 실패해도 기동이 멈추지 않는다.
+
+    정리는 위생이지 기능이 아니다. 여기서 터지면 제품이 아예 뜨지 못하고, 그 실패는
+    원인이 파일 정리라는 것을 드러내지 않는다.
+    """
+    import itb.api.app as app_module
+    from itb.api.app import _sweep_session_files
+
+    def boom(_active: set[str]) -> int:
+        msg = "정리가 터졌다"
+        raise OSError(msg)
+
+    original = app_module.sweep_orphans
+    app_module.sweep_orphans = boom  # type: ignore[assignment]
+    try:
+        _sweep_session_files()  # 예외가 새면 여기서 터진다
+    finally:
+        app_module.sweep_orphans = original  # type: ignore[assignment]

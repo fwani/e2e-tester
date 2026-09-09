@@ -274,6 +274,32 @@ def _control_phase_watcher(state: AppState, session_id: str):  # noqa: ANN202
     return watch
 
 
+def _frame_liveness_watcher(state: AppState, session_id: str):  # noqa: ANN202
+    """프레임 흐름이 바뀌면 조작 채널의 상태를 옮긴다 (010 T088 · FR-346).
+
+    **화면이 안 보내는 것에 의존하지 않는다.** 프론트도 `mirrorLive` 로 조작을 막지만,
+    그것은 표시의 문제이고 이쪽은 통로의 문제다 — FR-342 가 「화면 단에서 막는 것으로
+    충분하지 않다」고 정한 것과 같은 이유로 서버가 자기 상태를 갖는다.
+
+    `close` 가 아니라 `suspend` 다. 닫으면 클라이언트가 다시 붙어야 하고, 프레임이 잠깐
+    끊긴 것과 국면이 바뀐 것이 화면에서 같아 보인다 (data-model §3).
+    """
+
+    async def watch(alive: bool) -> None:
+        channel = state.control.get(session_id)
+        if channel is None or not channel.attached:
+            return
+        if alive:
+            await channel.resume()
+        else:
+            await channel.suspend(
+                "대상 화면이 끊겨 지금은 조작을 전달할 수 없습니다. "
+                "화면이 멈춘 것이며 대상 페이지가 멈춘 것은 아닙니다."
+            )
+
+    return watch
+
+
 def _frame_size(w: SessionWork) -> tuple[float | None, float | None]:
     """지금 표시 중인 프레임의 대상 화면 크기 (FR-333·FR-341).
 
@@ -740,6 +766,10 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     # **상태가 채널에 알린다.** 반대로 두면 그 사이에 관찰 국면으로 열린 채널이 남는 창이
     # 생기고, 그 창에서 사람 조작이 러너와 겹친다 (FR-315).
     session.observe_state(_control_phase_watcher(state, session.session_id))
+    # 010 T088 FR-346 — 프레임이 끊기면 조작 채널을 `suspended` 로 내리고, 회복하면
+    # 되돌린다. **닫지 않는다**: 프레임이 잠깐 끊긴 것과 국면이 바뀐 것이 화면에서 같아
+    # 보이면 사용자는 「화면이 멈춘 것」과 「페이지가 멈춘 것」을 구분할 수 없다.
+    work.mirror.observe_liveness(_frame_liveness_watcher(state, session.session_id))
 
     if body.mode == "record":
         await session.apply(Command.BEGIN_RECORD)

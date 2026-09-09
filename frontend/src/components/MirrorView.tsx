@@ -27,6 +27,7 @@ import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent, t
 
 import type { CapabilityState } from "../lib/capabilities";
 import {
+  MIRROR_DEGRADED_WARNING,
   MIRROR_FOCUS_HINT,
   MIRROR_KEYS_GO_TO_TARGET,
   mirrorEmptyMessage,
@@ -166,12 +167,54 @@ export function MirrorView({
     if (!controllable) return refuse();
     // 미러가 초점을 가져간다 (FR-320) — 이후 키 입력이 대상 브라우저로 간다.
     event.currentTarget.parentElement?.focus();
+    /*
+      **포인터를 붙잡는다** (010 T089 · FR-318).
+
+      붙잡지 않으면 누른 채 미러 밖으로 끌고 나가 놓았을 때 `pointerup` 이 이 요소로
+      오지 않는다. 그러면 대상 페이지는 **누른 상태로 남는다** — 서버가 채널을 닫을 때
+      풀어 주지만, 채널이 열려 있는 동안은 그대로다.
+
+      끌어놓기가 미러 영역 안에서만 끝난다고 가정할 수 없다. 목록에서 끌어 화면 밖으로
+      빼는 조작은 흔하고, 그때 사용자는 미러 밖에서 손을 뗀다.
+    */
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // 캡처를 못 잡아도 조작은 전달한다. 미러 안에서 끝나는 끌어놓기는 그대로 동작하고,
+      // 밖으로 나가는 경우는 아래 `pointercancel`·채널 닫힘이 받는다.
+    }
     emit(pointerEventOf("pointer.down", nativeOf(event), context));
   };
 
   const onPointerUp = (event: PointerEvent<HTMLImageElement>) => {
     if (!controllable) return;
+    releaseCapture(event);
     emit(pointerEventOf("pointer.up", nativeOf(event), context));
+  };
+
+  /**
+   * 브라우저가 포인터를 거둬 갔다 (010 T089 · FR-318).
+   *
+   * 창이 가려지거나 다른 제스처가 시작되면 `pointerup` 없이 `pointercancel` 이 온다.
+   * **그때도 놓아야 한다** — 놓지 않으면 대상 페이지가 누른 상태로 남는다.
+   *
+   * 좌표는 마지막으로 알려진 위치를 쓴다. 취소 사건의 좌표는 의미가 없을 수 있지만,
+   * 놓는 위치보다 **놓는다는 사실**이 중요하다.
+   */
+  const onPointerCancel = (event: PointerEvent<HTMLImageElement>) => {
+    if (!controllable) return;
+    releaseCapture(event);
+    emit(pointerEventOf("pointer.up", nativeOf(event), context));
+  };
+
+  const releaseCapture = (event: PointerEvent<HTMLImageElement>) => {
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // 이미 놓였거나 캡처한 적이 없다. 어느 쪽이든 할 일이 없다.
+    }
   };
 
   const onPointerMove = (event: PointerEvent<HTMLImageElement>) => {
@@ -241,6 +284,13 @@ export function MirrorView({
         <div className="row sunken" style={{ gap: 8, padding: "6px 14px" }}>
           <span className="chip warn mono">1 FPS</span>
           <span className="muted">{degradedReason}</span>
+          {/*
+            FR-345 — **왜 그것이 조작에 문제인지**를 말한다. 강등 사유(`degradedReason`)는
+            서버가 보낸 「무엇이 일어났는가」이고, 이 문장은 「그것이 지금 조작에 어떤
+            뜻인가」다. 둘은 다른 사실이며, 뒤엣것이 없으면 사용자는 1 FPS 라는 말을 읽고도
+            자기 클릭이 왜 빗나갔는지 알 수 없다.
+          */}
+          {controllable && <span className="why">{MIRROR_DEGRADED_WARNING}</span>}
           {/*
             FR-345·FR-353a — 강등 상태에서 **조작은 막지 않되** 정확하지 않을 수 있다는
             사실과 전환 수단을 **같은 자리에** 둔다. 사실만 말하고 수단을 다른 곳에 두면
@@ -328,6 +378,7 @@ export function MirrorView({
               draggable={false}
               onPointerDown={onPointerDown}
               onPointerUp={onPointerUp}
+              onPointerCancel={onPointerCancel}
               onPointerMove={onPointerMove}
               onWheel={onWheel}
               onContextMenu={(event) => event.preventDefault()}

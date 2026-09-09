@@ -397,3 +397,64 @@ def test_validation_drops_unknown_fields() -> None:
 def test_non_object_events_are_refused() -> None:
     for bad in ("pointer.down", 42, None, ["pointer.down"]):
         assert "객체여야 합니다" in refused(bad)  # type: ignore[arg-type]
+
+
+# ─── T088 FR-346: 프레임이 끊기면 채널이 내려간다 ──────────────────────────
+#
+# `suspend`/`resume` 이 **실제로 불리는지**가 요점이다. 구현만 있고 부르는 곳이 없으면
+# 상태 전이는 코드에만 존재하고, 사용자는 끊긴 화면을 클릭하며 아무 일도 없는 것을 본다.
+
+
+@pytest.mark.asyncio
+async def test_the_frame_liveness_watcher_suspends_and_resumes() -> None:
+    """프레임 흐름이 채널 상태를 옮긴다 (FR-346 · data-model §3).
+
+    **닫지 않고 내린다.** 닫으면 클라이언트가 다시 붙어야 하고, 프레임이 잠깐 끊긴 것과
+    국면이 바뀐 것이 화면에서 같아 보인다.
+    """
+    from itb.api.routes.sessions import _frame_liveness_watcher
+    from itb.api.state import AppState
+
+    state = AppState(
+        playwright=None,  # type: ignore[arg-type]
+        sessions=None,  # type: ignore[arg-type]
+        broker=None,  # type: ignore[arg-type]
+        key_paths=None,  # type: ignore[arg-type]
+    )
+    channel = state.control.channel("s1")
+    socket, controller = FakeSocket(), FakeInput()
+    await channel.open(socket, controller)
+
+    watch = _frame_liveness_watcher(state, "s1")
+
+    await watch(False)
+    assert channel.state is ChannelState.SUSPENDED
+    assert not socket.closed, "끊김이 소켓을 닫았다 — 내리는 것과 닫는 것은 다르다"
+    reason = socket.sent[-1]["reason"]
+    assert "화면이 멈춘 것" in reason, (
+        "「화면이 멈춤」과 「페이지가 멈춤」을 갈라 말하지 않았다 (FR-346)"
+    )
+
+    await watch(True)
+    assert channel.state is ChannelState.OPEN
+
+
+@pytest.mark.asyncio
+async def test_the_watcher_does_nothing_without_a_channel() -> None:
+    """채널이 없으면 아무것도 하지 않는다.
+
+    미러는 조작 채널이 붙었는지 모른다 (research R5). 붙지 않은 세션에서도 프레임은
+    흐르므로, 이 통보가 예외를 내면 그 예외가 프레임 전달 경로로 번진다 (FR-047b).
+    """
+    from itb.api.routes.sessions import _frame_liveness_watcher
+    from itb.api.state import AppState
+
+    state = AppState(
+        playwright=None,  # type: ignore[arg-type]
+        sessions=None,  # type: ignore[arg-type]
+        broker=None,  # type: ignore[arg-type]
+        key_paths=None,  # type: ignore[arg-type]
+    )
+    watch = _frame_liveness_watcher(state, "없는-세션")
+    await watch(False)
+    await watch(True)

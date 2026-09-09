@@ -122,10 +122,27 @@ class TabScreencast:
     전송 실패가 이 클래스의 관심사가 아니게 되고, 실행 경로와 완전히 분리된다.
     """
 
-    def __init__(self, page: Page, tab_index: int, emit: Any) -> None:
+    def __init__(
+        self, page: Page, tab_index: int, emit: Any, on_liveness: Any = None
+    ) -> None:
         self._page = page
         self._tab_index = tab_index
         self._emit = emit
+        self._on_liveness = on_liveness
+        """프레임이 흐르는지 알려 줄 대상 (010 T088 · FR-346).
+
+        **미러가 조작 채널을 모르는 채로 알린다.** 훅으로 두는 이유가 그것이다 — 이
+        모듈은 조작을 모르고(research R5), 프레임이 오는지 안 오는지만 안다. 그 사실을
+        무엇에 쓸지는 받는 쪽이 정한다.
+        """
+        self._alive: bool | None = None
+        """마지막으로 알린 상태. **바뀔 때만 알린다** — 프레임마다 알리면 초당 열 번씩
+        같은 말을 하게 되고, 그 소음이 진짜 전이를 묻는다.
+
+        **`None` 은 「아직 모른다」이고 `False` 와 다르다.** `False` 로 시작하면 처음부터
+        프레임이 오지 않는 화면에서 첫 「끊김」 통보가 억제된다 — 상태가 바뀌지 않았다고
+        읽기 때문이다. 그런 화면이야말로 듣는 쪽이 알아야 하는 경우다.
+        """
         self._cdp: CDPSession | None = None
         self._acking = True
         self._degraded_task: asyncio.Task[None] | None = None
@@ -172,6 +189,10 @@ class TabScreencast:
     @property
     def degraded(self) -> bool:
         return self._degraded_task is not None
+
+    def observe_liveness(self, observer: Any) -> None:
+        """프레임 흐름을 들을 대상을 바꾼다 (010 T088). 탭을 갈아 끼울 때 쓴다."""
+        self._on_liveness = observer
 
     @property
     def control_phase(self) -> bool:
@@ -261,6 +282,7 @@ class TabScreencast:
                 await self._cdp.detach()
             self._cdp = None
 
+        await self._notify_liveness(alive=False)
         if reason is not None:
             await self._emit("mirror_stopped", reason=reason)
 
@@ -336,6 +358,7 @@ class TabScreencast:
         self._last_frame = payload
         self._last_sent_at = time.monotonic()
         await self._emit("mirror_frame", **payload)
+        await self._notify_liveness(alive=True)
 
     def last_frame(self) -> dict[str, object] | None:
         """구독이 붙을 때 보낼 마지막 프레임. 아직 한 장도 없으면 `None` (005 FR-162)."""
@@ -399,14 +422,33 @@ class TabScreencast:
             if quiet_for < self.idle_interval():
                 continue
             try:
-                await self._shoot_once()
+                # 010 T088 — **찍지 못하면 끊긴 것이다** (FR-346). 감시가 도는데도 한 장이
+                # 나오지 않는 화면은 「조용한」 것이 아니라 「멈춘」 것이다. 그 구분이
+                # 사용자에게 「화면이 멈춤」과 「페이지가 멈춤」을 갈라 말해 준다.
+                if not await self._shoot_once():
+                    await self._notify_liveness(alive=False)
             except asyncio.CancelledError:
                 raise
             # BLE001·S112 — 미러 실패는 실행에 영향을 주지 않는다 (FR-047b). 사유를
             # 남기지 않는 것도 의도다: 찍히지 않는 화면은 매 주기 같은 예외를 내므로
             # 로그를 채워 정작 봐야 할 실행 로그를 밀어낸다.
             except Exception:  # noqa: BLE001, S112
+                await self._notify_liveness(alive=False)
                 continue
+
+    async def _notify_liveness(self, *, alive: bool) -> None:
+        """프레임이 흐르는지 알린다 (010 T088 · FR-346).
+
+        **바뀔 때만 알린다.** 프레임마다 알리면 초당 열 번씩 같은 말을 하게 된다.
+
+        **예외를 삼킨다.** 받는 쪽의 사정이 프레임 전달을 막아서는 안 된다 — 미러 실패가
+        실행에 영향을 주지 않는다는 성질(FR-047b)이 이 훅에서 새면 안 된다.
+        """
+        if self._on_liveness is None or self._alive == alive:
+            return
+        self._alive = alive
+        with contextlib.suppress(Exception):
+            await self._on_liveness(alive)
 
     async def _shoot_once(self) -> bool:
         """현재 화면을 한 장 찍어 보낸다. 보냈으면 True.

@@ -237,6 +237,7 @@ describe("수정자 비트 (FR-341)", () => {
  * 따름을 잰다).
  */
 
+import { COMPOSITION_ON_BLUR } from "../src/components/mirror/ImeBridge";
 import { capabilitiesFor } from "../src/lib/capabilities";
 import { PHASES, type Phase } from "../src/lib/phase";
 
@@ -339,5 +340,23 @@ describe("런타임 덮어쓰기 O10~O13 (contracts §1 · T032)", () => {
     */
     const state = capabilitiesFor("recording", {})["mirror.control"];
     expect(state.kind).toBe("disabled");
+  });
+});
+
+describe("조합 중 초점이 떠날 때의 결정 (T046·T092 · 명세 Edge Cases)", () => {
+  it("**확정한다. 버리지 않는다.**", () => {
+    /*
+      사용자는 이미 그 글자를 화면에서 봤다 — 조합 중 상태가 대상 입력 요소에 실시간으로
+      들어가 있기 때문이다 (FR-327). 그 상태에서 값을 버리면 화면에 보이던 글자가
+      사라지고, 사용자는 자기가 무엇을 잃었는지 모른다.
+
+      운영체제 IME 도 같은 선택을 한다. 사용자가 이미 아는 동작을 따르는 편이 새 규칙을
+      만드는 것보다 낫다.
+
+      **이 검증은 코드가 아니라 결정을 고정한다.** 실제 확정은 브라우저의
+      `compositionend` 가 일으키므로 바꿀 코드가 없다 — 바꾸려면 이 값을 먼저 뒤집게
+      되고, 그때 위 근거를 다시 읽게 된다.
+    */
+    expect(COMPOSITION_ON_BLUR).toBe("commit");
   });
 });

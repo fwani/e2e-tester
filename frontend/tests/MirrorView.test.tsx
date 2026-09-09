@@ -288,4 +288,89 @@ describe("MirrorView", () => {
     render(<MirrorView frame={FRAME} phase="observation" tabIndex={2} />);
     expect(screen.getByText(/탭 2/)).toBeDefined();
   });
+
+  /* ─── 010 T089 — 끌어놓기가 미러 밖에서 끝나는 경우 (FR-318) ─────────── */
+
+  it("**포인터를 붙잡는다** — 미러 밖에서 놓아도 놓음이 전달된다 (FR-318)", () => {
+    /*
+      붙잡지 않으면 누른 채 미러 밖으로 끌고 나가 놓았을 때 `pointerup` 이 이 요소로
+      오지 않는다. 그러면 대상 페이지는 누른 상태로 남는다 — 서버가 채널을 닫을 때
+      풀어 주지만 채널이 열려 있는 동안은 그대로다.
+
+      목록에서 끌어 화면 밖으로 빼는 조작은 흔하고, 그때 사용자는 미러 밖에서 손을 뗀다.
+    */
+    const captured: number[] = [];
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="manipulation"
+        control={ENABLED}
+        geometry={GEOMETRY}
+        onInput={vi.fn()}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+    layoutImage(img);
+    img.setPointerCapture = (id: number) => captured.push(id);
+    img.hasPointerCapture = () => captured.length > 0;
+    img.releasePointerCapture = () => captured.pop();
+
+    fireEvent.pointerDown(img, { clientX: 100, clientY: 100, button: 0, pointerId: 7 });
+    expect(captured, "포인터를 붙잡지 않았다").toContain(7);
+  });
+
+  it("포인터가 취소되면 **놓음을 보낸다** (FR-318)", () => {
+    /*
+      창이 가려지거나 다른 제스처가 시작되면 `pointerup` 없이 `pointercancel` 이 온다.
+      그때도 놓지 않으면 대상 페이지가 누른 상태로 남는다.
+    */
+    const onInput = vi.fn();
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="manipulation"
+        control={ENABLED}
+        geometry={GEOMETRY}
+        onInput={onInput}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+    layoutImage(img);
+    img.setPointerCapture = () => undefined;
+    img.hasPointerCapture = () => true;
+    img.releasePointerCapture = () => undefined;
+
+    fireEvent.pointerDown(img, { clientX: 100, clientY: 100, button: 0, pointerId: 7 });
+    onInput.mockClear();
+    fireEvent.pointerCancel(img, { clientX: 120, clientY: 120, button: 0, pointerId: 7 });
+
+    expect(onInput).toHaveBeenCalledTimes(1);
+    expect(onInput.mock.calls[0]?.[0]).toMatchObject({ kind: "pointer.up" });
+  });
+
+  it("캡처를 잡을 수 없어도 조작은 전달된다", () => {
+    /*
+      `setPointerCapture` 가 없는 환경(오래된 브라우저·테스트 도구)에서 조작 자체가
+      멈추면 안 된다. 미러 안에서 끝나는 끌어놓기는 캡처 없이도 동작한다.
+    */
+    const onInput = vi.fn();
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="manipulation"
+        control={ENABLED}
+        geometry={GEOMETRY}
+        onInput={onInput}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+    layoutImage(img);
+    img.setPointerCapture = () => {
+      throw new Error("이 환경에는 없다");
+    };
+
+    fireEvent.pointerDown(img, { clientX: 100, clientY: 100, button: 0, pointerId: 7 });
+    expect(onInput).toHaveBeenCalledTimes(1);
+    expect(onInput.mock.calls[0]?.[0]).toMatchObject({ kind: "pointer.down" });
+  });
 });
