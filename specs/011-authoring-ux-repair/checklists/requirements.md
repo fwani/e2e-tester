@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — **2건 남음** (스크린샷 보관 정책, Step 상세의 겹침/나란히)
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,9 +31,14 @@
 
 ## Notes
 
-- 미해결 2건은 **의도적으로 남겼다.** 둘 다 informed default 로 메우면 되돌리기 비싼 판단이다:
-  - 스크린샷 보관 정책 — 장수 상한과 버리는 규칙은 디스크 사용량과 진단 능력을 맞바꾼다.
-  - Step 상세의 겹침/나란히 — 미러를 가리는 것과 대상 앱 영역이 좁아지는 것 중 어느 쪽을
-    받아들일지는 사용자가 정할 일이다.
-  이어지는 `/speckit-clarify` 가 이 둘을 물어 spec 에 반영한다.
+- clarify Session 2026-09-09 에서 5건을 물어 전부 해소했다. 처음 남겼던 미해결 2건(스크린샷 보관
+  정책, Step 상세의 겹침/나란히)은 둘 다 사용자 결정으로 확정됐고, 결정 내용은 spec 의
+  `## Clarifications` 와 해당 FR·Assumptions 에 반영됐다.
+- 확정된 결정 5건:
+  1. Step 상세 — 자리만 왼쪽으로, 대상 앱 위에 **겹친다**
+  2. 복수 삭제 — 행마다 **체크 칸**. 행 본문 누름(지목)과 갈라 둔다
+  3. 스크린샷 — 장수 상한 없음, 테스트당 **최근 실행 1회분만**
+  4. 지시문으로 Step 더하기 — 브라우저가 닫혀 있으면 **자동으로 열고** 이어서 수행
+  5. 저장·이름 — **국면 띠**. 이름은 그 자리에 표시되는 테스트 이름을 직접 고친다
 - FR 번호는 FR-360 부터, SC 번호는 SC-600 부터 쓴다 (기존 최대 FR-353 · SC-519 와 겹치지 않게).
+  clarify 반영으로 FR 50건 · SC 17건이 됐다.
