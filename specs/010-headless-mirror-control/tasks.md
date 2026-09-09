@@ -280,51 +280,51 @@ description: "Task list for 010-headless-mirror-control"
 
 ### 브라우저 요구 가로채기
 
-- [ ] T057 [US4] `mirror/prompts.py` 를 만든다 — 대화상자를 가로채 관찰 WS 로 알리고
+- [X] T057 [US4] `mirror/prompts.py` 를 만든다 — 대화상자를 가로채 관찰 WS 로 알리고
       응답을 대상에 전달한다. **가로채지 않으면 대상 페이지가 멈춘다**는 것이 이 모듈이
       조작 국면에서 항상 켜져 있어야 하는 이유다
       in `backend/src/itb/mirror/prompts.py` (FR-338 · research R7)
-- [ ] T058 [US4] 파일 선택 요구를 가로채 알린다 — 운영체제 창은 뜨지 않는다
+- [X] T058 [US4] 파일 선택 요구를 가로채 알린다 — 운영체제 창은 뜨지 않는다
       in `backend/src/itb/mirror/prompts.py` (FR-337 · research R6)
-- [ ] T059 [US4] 처리 수단이 없는 요구를 `unsupported` 로 알린다 — 인증 요구 팝업 등.
+- [X] T059 [US4] 처리 수단이 없는 요구를 `unsupported` 로 알린다 — 인증 요구 팝업 등.
       무엇이 막혔고 어떤 수단이 남아 있는지를 담는다
       in `backend/src/itb/mirror/prompts.py` (FR-339)
-- [ ] T060 [US4] `browser_prompt`·`browser_prompt_resolved` 이벤트를 관찰 WS 에
+- [X] T060 [US4] `browser_prompt`·`browser_prompt_resolved` 이벤트를 관찰 WS 에
       추가한다 — 방향(서버→클라)은 그대로다
       in `backend/src/itb/api/ws/session_events.py` (contracts §4)
-- [ ] T061 [US4] 요구 응답 엔드포인트를 만든다 — 이미 해소된 요구, 다른 세션의
+- [X] T061 [US4] 요구 응답 엔드포인트를 만든다 — 이미 해소된 요구, 다른 세션의
       `prompt_id` 는 거절한다 in `backend/src/itb/api/routes/control.py`
       (FR-340 · contracts §3)
 
 ### 파일 수신
 
-- [ ] T062 [US4] 파일 업로드 엔드포인트를 만든다 — 파일당 크기 상한·세션당 개수 상한,
+- [X] T062 [US4] 파일 업로드 엔드포인트를 만든다 — 파일당 크기 상한·세션당 개수 상한,
       초과는 **사유와 함께 거절** in `backend/src/itb/api/routes/session_files.py`
       (FR-337a)
-- [ ] T063 [US4] 저장 경로를 서버 발급 `fileId` 로 만든다 — 사용자가 보낸 이름을 경로에
+- [X] T063 [US4] 저장 경로를 서버 발급 `fileId` 로 만든다 — 사용자가 보낸 이름을 경로에
       쓰지 않는다. 표시 이름은 정리해 따로 둔다
       in `backend/src/itb/storage/paths.py` (FR-337c)
-- [ ] T064 [US4] 세션 종료·유실 시 업로드 파일을 지운다. 비정상 종료로 남은 것을 정리하는
+- [X] T064 [US4] 세션 종료·유실 시 업로드 파일을 지운다. 비정상 종료로 남은 것을 정리하는
       경로도 둔다 in `backend/src/itb/api/routes/sessions.py` (FR-337b)
-- [ ] T065 [US4] `file.attach` 사건으로 파일을 대상에 지정한다 —
+- [X] T065 [US4] `file.attach` 사건으로 파일을 대상에 지정한다 —
       `DOM.setFileInputFiles`. 파일 지정과 그 다음 조작의 순서를 보장하는 방식을 정하고
       주석으로 남긴다 in `backend/src/itb/mirror/input.py`
       (FR-337 · research 미해결 항목)
 
 ### 화면
 
-- [ ] T066 [US4] 브라우저 요구를 화면에 그린다 — 대화상자 문구는 **대상 페이지에서 온
+- [X] T066 [US4] 브라우저 요구를 화면에 그린다 — 대화상자 문구는 **대상 페이지에서 온
       값이므로 이스케이프한다.** 파일 고르기 수단을 제시한다
       in `frontend/src/pages/SessionScreen.tsx` (FR-338 · 헌법 보안 요건)
-- [ ] T067 [US4] 파일 업로드·요구 응답 클라이언트를 추가한다
+- [X] T067 [US4] 파일 업로드·요구 응답 클라이언트를 추가한다
       in `frontend/src/api/client.ts`
-- [ ] T068 [P] [US4] 대화상자 가로채기·응답 검증 (헤드리스)
+- [X] T068 [P] [US4] 대화상자 가로채기·응답 검증 (헤드리스)
       in `backend/tests/integration/test_browser_prompts.py` (FR-338)
-- [ ] T069 [P] [US4] 업로드 상한 초과 거절과 세션 종료 후 정리 검증
+- [X] T069 [P] [US4] 업로드 상한 초과 거절과 세션 종료 후 정리 검증
       in `backend/tests/unit/test_session_files.py` (FR-337a · FR-337b)
-- [ ] T070 [P] [US4] 파일 이름에 경로 구분자·상위 참조가 들어와도 무해한지 검증
+- [X] T070 [P] [US4] 파일 이름에 경로 구분자·상위 참조가 들어와도 무해한지 검증
       in `backend/tests/unit/test_session_files.py` (FR-337c)
-- [ ] T071 [P] [US4] 요구 표시와 응답의 화면 동작 검증
+- [X] T071 [P] [US4] 요구 표시와 응답의 화면 동작 검증
       in `frontend/tests/BrowserPrompt.test.tsx` (FR-338 · FR-339)
 
 **Checkpoint**: 파일 첨부와 대화상자를 포함한 화면의 녹화가 미러 안에서 완결된다 (SC-517).
@@ -345,7 +345,7 @@ description: "Task list for 010-headless-mirror-control"
       in `backend/src/itb/api/routes/control.py` (FR-349 · FR-353)
 - [X] T073 [US5] 창을 띄울 수 없는 환경에서 전환 요청을 **사유와 함께 거절한다**
       in `backend/src/itb/api/routes/control.py` (FR-351)
-- [ ] T074 [US5] `control_surface` 이벤트를 관찰 WS 에 추가한다
+- [X] T074 [US5] `control_surface` 이벤트를 관찰 WS 에 추가한다
       in `backend/src/itb/api/ws/session_events.py` (contracts §4)
 - [ ] T075 [US5] 강등(1 FPS) 상태에서 조작 가능하되 **정확하지 않을 수 있다는 사실과
       전환 수단을 같은 자리에** 둔다 in `frontend/src/components/MirrorView.tsx`

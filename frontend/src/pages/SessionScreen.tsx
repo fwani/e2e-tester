@@ -43,6 +43,10 @@ import {
 } from "../api/ws";
 import { AssertionForm } from "../components/AssertionForm";
 import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
+import {
+  BrowserPromptPanel,
+  type BrowserPromptState,
+} from "../components/BrowserPromptPanel";
 import { MirrorView, type MirrorPhase } from "../components/MirrorView";
 import type {
   FrameGeometry,
@@ -1258,6 +1262,14 @@ export function SessionScreen({
    * 아무 일도 일어나지 않는 경우가 0건이어야 한다**는 것이 이 상태의 존재 이유다.
    */
   const [controlNotice, setControlNotice] = useState<string | null>(null);
+  /**
+   * 응답을 기다리는 브라우저 요구 (010 FR-338·FR-339).
+   *
+   * **하나만 들고 있는다.** 대화상자는 페이지를 세우므로 둘이 동시에 뜰 수 없고, 파일
+   * 선택은 사용자가 하나씩 고른다. 목록으로 두면 화면이 무엇을 먼저 물을지 정해야 하고,
+   * 그 순서는 대상 페이지가 정할 일이다.
+   */
+  const [prompt, setPrompt] = useState<BrowserPromptState | null>(null);
   const control = useRef<ControlChannel | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
@@ -1338,6 +1350,28 @@ export function SessionScreen({
           case "mirror_stopped":
             setMirrorStopped(event.reason ?? "미러가 중단됐습니다.");
             setMirrorLive(false);
+            break;
+          case "browser_prompt":
+            setPrompt({
+              promptId: event.promptId,
+              kind: event.kind,
+              message: event.message,
+              multiple: event.multiple,
+              blocking: event.blocking,
+            });
+            break;
+          case "browser_prompt_resolved":
+            // `promptId: "*"` 는 세션 종료 시의 일괄 정리다 (`prompts.dismiss_all`).
+            setPrompt((current) =>
+              current === null ||
+              event.promptId === "*" ||
+              current.promptId === event.promptId
+                ? null
+                : current,
+            );
+            break;
+          case "control_surface":
+            setSurface(event.surface);
             break;
           case "session_lost":
             setLost(event.reason ?? "브라우저 세션이 유실됐습니다.");
@@ -1625,6 +1659,39 @@ export function SessionScreen({
   }, []);
 
   /**
+   * 브라우저 요구에 답한다 (FR-337·FR-338).
+   *
+   * **파일을 먼저 올리고 식별자를 보낸다** (research R6). 조작 채널이 큰 페이로드에
+   * 막히면 FR-336 이 깨지므로 파일은 REST 를 탄다. 업로드 응답을 받은 **뒤에** 응답을
+   * 보내는 순서가 곧 파일 지정과 그 다음 조작의 순서 보장이다.
+   */
+  const answerPrompt = useCallback(
+    (answer: { accept: boolean; text?: string; files?: File[] }) => {
+      const current = prompt;
+      if (current === null) return;
+      void (async () => {
+        try {
+          const ids: string[] = [];
+          for (const file of answer.files ?? []) {
+            const uploaded = await sessions.uploadFile(sessionId, file);
+            ids.push(uploaded.file_id);
+          }
+          await sessions.answerPrompt(sessionId, current.promptId, {
+            accept: answer.accept,
+            text: answer.text,
+            file_ids: ids,
+          });
+          setPrompt(null);
+        } catch (exc) {
+          // **조용히 실패하지 않는다** (FR-339 · SC-516). 상한 초과 거절도 여기로 온다.
+          setControlNotice(describeError(exc).message);
+        }
+      })();
+    },
+    [prompt, sessionId],
+  );
+
+  /**
    * 실제 창으로 전환한다 (FR-349·FR-353 · US5).
    *
    * **사용자가 누를 때만 일어난다.** 제품이 상황을 판단해 자동으로 창을 열지 않는다.
@@ -1700,7 +1767,18 @@ export function SessionScreen({
   const mirrorCaps = capabilitiesFor(mirrorPhaseOfSession, mirrorFacts);
 
   const mirror = (
-    <MirrorView
+    <>
+      {/*
+        010 FR-338·FR-339 — 브라우저 요구를 **미러 바로 위에** 둔다. 그 요구는 미러가
+        보여 주지 못하는 것에 대한 것이므로, 미러를 보던 눈이 곧바로 닿는 자리가 맞다.
+      */}
+      <BrowserPromptPanel
+        prompt={prompt}
+        onAnswer={answerPrompt}
+        onUseWindow={useWindow}
+        canUseWindow={mirrorCaps["mirror.useWindow"].kind === "enabled"}
+      />
+      <MirrorView
       frame={frame}
       phase={mirrorPhase}
       stoppedReason={mirrorStopped}
@@ -1713,7 +1791,8 @@ export function SessionScreen({
       onInput={sendInput}
       onBlockedAttempt={setControlNotice}
       onUseWindow={useWindow}
-    />
+      />
+    </>
   );
 
   const tabStrip =

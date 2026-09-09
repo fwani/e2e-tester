@@ -55,6 +55,7 @@ from itb.execution.state_machine import (
 )
 from itb.execution.step_edits import allocate_step_id
 from itb.execution.step_executor import StepExecutor
+from itb.mirror.prompts import BrowserPrompts
 from itb.mirror.tab_switch import MirrorController
 from itb.recording.inline_record import InlineRecording
 from itb.recording.recorder import Recorder
@@ -108,6 +109,17 @@ class SessionWork:
     saved_test_id: str | None = None
     saved_at: datetime | None = None
     """마지막 저장 시각 (005 FR-154). 화면이 저장 성공을 스스로 알 수 있게 한다."""
+
+    prompts: BrowserPrompts | None = None
+    """브라우저 요구 가로채기 (010 FR-338·FR-339).
+
+    **조작 국면에서 항상 켜져 있어야 한다** (research R7). 가로채지 않으면 대화상자가
+    대상 페이지를 세우고, 헤드리스에서는 그 사실이 화면에 나타나지 않는다 — 사용자에게는
+    「클릭했는데 아무 일도 없다」로 보인다.
+
+    모드와 무관하게 붙이는 이유는 미러와 같다: 어느 국면에서든 대상 페이지가 대화상자를
+    띄울 수 있고, 그때 멈추는 것은 국면을 가리지 않는다.
+    """
 
     # ─── 조작 위치 (010 · data-model §6) ──────────────────────────────────
     control_surface: str = "mirror"
@@ -282,6 +294,24 @@ def _frame_size(w: SessionWork) -> tuple[float | None, float | None]:
 def _open_tabs(w: SessionWork) -> set[int]:
     """조작을 받을 수 있는 탭 번호들. 닫힌 탭은 뺀다 (FR-341)."""
     return {t.tab_index for t in w.session.tabs if not t.closed}
+
+
+async def _cleanup_session_extras(
+    state: AppState, w: SessionWork, session_id: str, reason: str
+) -> None:
+    """세션이 끝났다. 요구와 파일을 치운다 (010 FR-337b · research R7).
+
+    **남은 요구를 응답 없이 버리지 않는다.** 가로챈 대화상자를 그대로 두면 그 페이지는
+    영원히 멈춰 있고, 그 상태는 세션을 닫는 경로에서 시간 초과로 나타난다.
+
+    **받은 파일은 세션보다 오래 남지 않는다** (FR-337b). 사용자가 보낸 것이므로 그 수명이
+    세션의 수명을 넘어서는 안 된다.
+    """
+    if w.prompts is not None:
+        with contextlib.suppress(Exception):
+            await w.prompts.dismiss_all(reason)
+    with contextlib.suppress(Exception):
+        state.session_files.drop(session_id)
 
 
 async def _close_control_channel(state: AppState, session_id: str, reason: str) -> None:
@@ -702,6 +732,10 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     )
     work.loss_watcher.attach()
     work.mirror = MirrorController(session)
+    # 010 FR-338 — 브라우저 요구 가로채기. **컨텍스트 단위로 건다** — 새 탭에도 자동으로
+    # 붙는다 (리코더가 `add_init_script` 를 컨텍스트에 거는 것과 같은 이유다).
+    work.prompts = BrowserPrompts(emit=session.emit)
+    work.prompts.attach(session.context)
     # 010 FR-342 — 국면이 조작 채널의 개폐를 정한다. 채널이 상태를 감시하는 것이 아니라
     # **상태가 채널에 알린다.** 반대로 두면 그 사이에 관찰 국면으로 열린 채널이 남는 창이
     # 생기고, 그 창에서 사람 조작이 러너와 겹친다 (FR-315).
@@ -1065,6 +1099,7 @@ def _loss_handler(state: AppState, session_id: str):  # noqa: ANN201 - LossHandl
                 await w.engine.finalize(False, session_lost=True)
         # 010 FR-347 — 세션이 유실됐다. 남은 마지막 프레임을 클릭해도 보낼 대상이 없다.
         await _close_control_channel(state, session_id, reason)
+        await _cleanup_session_extras(state, w, session_id, reason)
         if w.mirror is not None:
             with contextlib.suppress(Exception):
                 await w.mirror.stop(reason)
@@ -1583,6 +1618,7 @@ async def stop(session_id: str, state: State) -> SessionView:
     # 010 FR-347 — 세션이 끝나면 조작을 받지 않는다. 미러를 세우기 **전에** 닫는다:
     # 순서가 반대면 프레임이 멈춘 사이에 마지막 조작이 들어올 수 있다.
     await _close_control_channel(state, session_id, "세션을 종료했습니다.")
+    await _cleanup_session_extras(state, w, session_id, "세션을 종료했습니다.")
     if w.mirror is not None:
         await w.mirror.stop("세션을 종료했습니다.")
     if w.runner is not None:
@@ -1624,6 +1660,7 @@ async def discard(session_id: str, state: State) -> None:
     w.recorder.stop()
     await _cancel_agent(w)
     await _close_control_channel(state, session_id, "세션을 종료했습니다.")
+    await _cleanup_session_extras(state, w, session_id, "세션을 종료했습니다.")
     if w.mirror is not None:
         await w.mirror.stop("세션을 종료했습니다.")
     if w.runner is not None:
@@ -1821,6 +1858,27 @@ async def _handle_control_event(state: AppState, session_id: str, event: object)
             )
         )
         return
+
+    if clean["kind"] == "file.attach":
+        # 010 T065 — **파일 자체는 이 통로로 오지 않는다** (research R6). REST 로 올린
+        # 것의 식별자만 오고, 여기서 실제 경로로 바꾼다. 큰 페이로드가 조작 채널을 막으면
+        # FR-336 이 깨지므로 채널의 책임을 좁게 유지한다.
+        #
+        # **순서 보장**: 클라이언트가 업로드 응답을 받은 뒤에 이 사건을 보낸다. 서버가
+        # 아직 오지 않은 파일을 기다리게 만드는 경로를 두지 않는다 (research 미해결 항목).
+        store = state.session_files.get(session_id)
+        paths: list[str] = []
+        for file_id in clean.get("fileIds", []):
+            path = store.path_of(file_id) if store is not None else None
+            if path is None:
+                await channel.send_rejection(
+                    ControlRejected(
+                        "그 파일을 찾을 수 없습니다. 다시 올려 주세요.", clean["kind"]
+                    )
+                )
+                return
+            paths.append(str(path))
+        clean["paths"] = paths
 
     try:
         await controller.dispatch(clean)

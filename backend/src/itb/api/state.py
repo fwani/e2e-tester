@@ -18,6 +18,7 @@ from itb.execution.session import SessionManager
 from itb.secrets.keys import KeyPaths
 from itb.secrets.unlock import KeyUnlock
 from itb.storage.repository import ProjectRepository
+from itb.storage.session_files import SessionFileRegistry
 
 BIND_HOST = "127.0.0.1"
 """로컬 인터페이스 전용 (FR-088a).
@@ -40,6 +41,13 @@ class AppState:
     broker: EventBroker
     key_paths: KeyPaths
     control: ControlChannelRegistry = field(default_factory=ControlChannelRegistry)
+    session_files: SessionFileRegistry = field(default_factory=SessionFileRegistry)
+    """사용자가 보낸 파일 (010 FR-337b).
+
+    **세션과 함께 사라진다.** 앱 수명에 두는 이유는 그 정리를 한 곳에서 보장하기
+    위해서다 — 세션마다 흩어 두면 비정상 종료 경로에서 한 곳이 빠진다.
+    """
+
     """조작 채널 모음 (010 · contracts §2).
 
     `broker` 와 **나란히 두는 것이 요점이다.** 둘은 방향이 반대인 두 통로이고, 한쪽의

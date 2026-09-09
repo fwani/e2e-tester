@@ -461,6 +461,66 @@ export type ControlSurface = "mirror" | "window";
  * 갈리는 것이 그 구분이다 — 하나로 뭉개면 사용자는 자기 키가 어디로 갔는지 모른 채
  * 두 번 누른다.
  */
+/**
+ * 브라우저 요구의 종류 (010 data-model §4).
+ *
+ * 대상 브라우저가 사용자에게 요구하는 것 중 **페이지 화면이 아닌 것**이다.
+ */
+export type BrowserPromptKind =
+  | "dialog.alert"
+  | "dialog.confirm"
+  | "dialog.prompt"
+  | "file.choose"
+  /** 제품이 대신 받을 수 없는 요구. 인증 요구 팝업 등 (FR-339) */
+  | "unsupported";
+
+export function promptTitle(kind: BrowserPromptKind): string {
+  switch (kind) {
+    case "dialog.alert":
+      return "대상 페이지가 알립니다";
+    case "dialog.confirm":
+      return "대상 페이지가 확인을 요청합니다";
+    case "dialog.prompt":
+      return "대상 페이지가 입력을 요청합니다";
+    case "file.choose":
+      return "대상 페이지가 파일을 요청합니다";
+    case "unsupported":
+      return "제품 화면이 대신 받을 수 없는 요구입니다";
+  }
+}
+
+/**
+ * 요구에 딸린 설명. **문구가 비어 있을 때만 쓴다.**
+ *
+ * 대화상자의 문구는 대상 페이지가 정하고, 그것이 비어 있을 수 있다. 그때 아무것도
+ * 그리지 않으면 사용자는 무엇을 고르는지 모른 채 버튼 둘을 만난다.
+ */
+export function promptDetail(kind: BrowserPromptKind): string {
+  switch (kind) {
+    case "dialog.alert":
+      return "확인을 누르면 대상 페이지가 계속 진행합니다.";
+    case "dialog.confirm":
+      return "고른 결과가 대상 페이지에 전달됩니다.";
+    case "dialog.prompt":
+      return "입력한 값이 대상 페이지에 전달됩니다.";
+    case "file.choose":
+      return "이 기계에서 파일을 고르면 대상 브라우저에 전달됩니다.";
+    case "unsupported":
+      return "실제 브라우저 창으로 전환하면 처리할 수 있습니다.";
+  }
+}
+
+/** 요구 화면의 조작 라벨. 컴포넌트에 문자열 리터럴을 두지 않는다 (007 T013). */
+export const PROMPT_ACTIONS = {
+  accept: "확인",
+  /** **취소도 응답이다.** 보내지 않으면 대상 페이지가 계속 기다린다 (FR-339) */
+  dismiss: "취소",
+  attach: "이 파일 보내기",
+  useWindow: "실제 창에서 조작하기",
+  textLabel: "대상 페이지에 보낼 값",
+  fileLabel: "대상 페이지에 보낼 파일",
+} as const;
+
 export const MIRROR_KEYS_GO_TO_TARGET =
   "키 입력이 대상 브라우저로 가고 있습니다. 제품 화면 단축키를 쓰려면 미러 밖을 클릭하세요.";
 

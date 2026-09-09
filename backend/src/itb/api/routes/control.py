@@ -5,10 +5,6 @@
 명령이다 — 상태를 바꾸고, 한 번만 일어나야 하며, 결과를 응답으로 확인해야 한다
 (research R4).
 
-브라우저 요구 응답(FR-338·FR-340)은 `mirror/prompts.py` 와 함께 US4 에서 이 파일에
-붙는다 — 답할 요구를 만드는 쪽이 아직 없는 상태에서 응답 경로만 두면, 그 경로는 아무도
-부르지 않는 채 검증만 통과한다.
-
 **전환은 사용자 요청으로만 일어난다** (FR-353). 서버가 상황을 판단해 스스로 창을 열지
 않는다 — 요청하지 않은 창은 그 자체로 조작 위치를 잃게 만들고, 화면 없는 기계에서는
 자동 전환이 실패한다. 이 파일에 「강등을 감지하면 창을 연다」 같은 경로가 없는 것이
@@ -25,7 +21,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 
-from itb.api.errors import ErrorCode, bad_request
+from itb.api.errors import ErrorCode, bad_request, not_found
 from itb.api.state import AppState, get_state
 from itb.execution.session import HEADLESS_ENV
 
@@ -52,6 +48,19 @@ class ControlSurfaceResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     surface: ControlSurface
+
+
+class PromptResponseRequest(BaseModel):
+    """브라우저 요구에 대한 사용자의 응답 (contracts §3 · data-model §4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    accept: bool = True
+    text: str | None = None
+    """`prompt` 대화상자의 입력값. 다른 종류에서는 무시된다."""
+
+    file_ids: list[str] = []
+    """파일 선택 응답. 업로드로 얻은 식별자다 (FR-337)."""
 
 
 def can_open_a_window() -> bool:
@@ -112,3 +121,66 @@ async def set_control_surface(
     surface = surface_of(w, body.surface)
     await w.session.emit("control_surface", surface=surface)
     return ControlSurfaceResponse(surface=surface)
+
+
+@router.post("/{session_id}/prompts/{prompt_id}", status_code=204)
+async def answer_prompt(
+    session_id: str, prompt_id: str, body: PromptResponseRequest, state: State
+) -> None:
+    """브라우저 요구에 답한다 (FR-338·FR-340 · contracts §3).
+
+    **이미 해소된 요구와 다른 세션의 `prompt_id` 는 거절한다** (FR-340). 세션 식별자만으로
+    임의의 다른 세션을 조작할 수 없어야 하고, `prompt_id` 는 그 세션 안에서만 뜻을 갖는다 —
+    요구 사전이 세션마다 따로 있으므로 그 격리가 **검사가 아니라 구조로** 성립한다.
+    """
+    from itb.api.routes.sessions import work_of
+
+    w = work_of(session_id)
+    prompts = w.prompts
+    if prompts is None:
+        raise not_found(
+            ErrorCode.PROMPT_NOT_FOUND,
+            "이 세션은 브라우저 요구를 받고 있지 않습니다.",
+            prompt_id=prompt_id,
+        )
+
+    paths = _resolve_files(state, session_id, body.file_ids)
+    answered = await prompts.answer(
+        prompt_id, accept=body.accept, text=body.text, paths=paths
+    )
+    if not answered:
+        raise not_found(
+            ErrorCode.PROMPT_NOT_FOUND,
+            "그 요구는 이미 처리되었거나 이 세션의 것이 아닙니다.",
+            prompt_id=prompt_id,
+        )
+
+
+def _resolve_files(state: AppState, session_id: str, file_ids: list[str]) -> list[str]:
+    """업로드 식별자를 실제 경로로 바꾼다 (FR-340).
+
+    **다른 세션의 파일은 찾을 수 없다.** 저장소가 세션 단위로 나뉘어 있으므로 그 격리가
+    조회 자체에서 성립한다 — 검사로 막는 것이 아니라 구조로 막는다. 여기서 사용자가 보낸
+    값으로 경로를 만들지 않는 것도 같은 성질이다 (FR-337c): 경로는 업로드 시점에 서버가
+    발급한 식별자로 이미 만들어져 있고, 여기서는 사전 조회만 한다.
+    """
+    if not file_ids:
+        return []
+    store = state.session_files.get(session_id)
+    if store is None:
+        raise not_found(
+            ErrorCode.UPLOAD_NOT_FOUND,
+            "이 세션에 올린 파일이 없습니다.",
+            file_ids=file_ids,
+        )
+    paths: list[str] = []
+    for file_id in file_ids:
+        path = store.path_of(file_id)
+        if path is None:
+            raise not_found(
+                ErrorCode.UPLOAD_NOT_FOUND,
+                "그 파일을 찾을 수 없습니다. 다시 올려 주세요.",
+                file_id=file_id,
+            )
+        paths.append(str(path))
+    return paths

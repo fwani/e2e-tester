@@ -119,6 +119,32 @@ export type SessionEvent =
   | (SessionEventBase & { type: "mirror_tab_changed"; tab: number })
   | (SessionEventBase & { type: "mirror_degraded"; mode: string; reason?: string })
   | (SessionEventBase & { type: "mirror_stopped"; reason?: string })
+  /**
+   * 대상 브라우저가 사용자에게 요구하는 것 (010 · contracts/mirror-control.md §4).
+   *
+   * 대화상자·파일 선택처럼 **페이지 화면이 아닌 것**이다. 미러는 페이지 화면을 그리므로
+   * 여기 나타나지 않고, 창이 없으면 운영체제도 대신 보여 주지 않는다.
+   *
+   * **`message` 는 대상 페이지에서 온 값이다.** 표시할 때 이스케이프해야 한다 —
+   * 외부 입력은 경계에서 검증한다는 헌법 보안 요건이 화면에 걸리는 자리다.
+   */
+  | (SessionEventBase & {
+      type: "browser_prompt";
+      promptId: string;
+      kind:
+        | "dialog.alert"
+        | "dialog.confirm"
+        | "dialog.prompt"
+        | "file.choose"
+        | "unsupported";
+      message: string;
+      multiple?: boolean;
+      /** 응답이 없으면 대상 페이지가 멈추는가. 대화상자는 참 */
+      blocking?: boolean;
+    })
+  | (SessionEventBase & { type: "browser_prompt_resolved"; promptId: string; reason?: string })
+  /** 조작 위치가 바뀌었다 (010 FR-350 · data-model §6). */
+  | (SessionEventBase & { type: "control_surface"; surface: "mirror" | "window" })
   /** 조용한 실패를 막는 진단 이벤트 (contracts/websocket.md §진단 이벤트). */
   | (SessionEventBase & { type: "run_error"; reason: string; error?: ErrorBody })
   | (SessionEventBase & { type: "artifact_note"; message: string })

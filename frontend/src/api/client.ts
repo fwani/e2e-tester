@@ -548,6 +548,13 @@ export interface ControlSurfaceResponse {
   surface: ControlSurfaceValue;
 }
 
+/** 업로드된 파일 하나 (010 data-model §5). `fileId` 는 **서버가 발급한다.** */
+export interface UploadedFileView {
+  file_id: string;
+  display_name: string;
+  size: number;
+}
+
 export const sessions = {
   /** 살아 있는 세션 전부. 새로고침으로 놓친 세션을 되찾는 길이다 (UX U-05). */
   list: () => get<SessionListResponse>("/api/sessions"),
@@ -618,6 +625,35 @@ export const sessions = {
    */
   setControlSurface: (id: string, surface: ControlSurfaceValue) =>
     post<ControlSurfaceResponse>(`/api/sessions/${id}/control-surface`, { surface }),
+  /**
+   * 브라우저 요구에 답한다 (010 FR-338 · contracts §3).
+   *
+   * 이미 해소된 요구나 다른 세션의 `promptId` 는 서버가 거절한다 (FR-340).
+   */
+  answerPrompt: (
+    id: string,
+    promptId: string,
+    body: { accept: boolean; text?: string; file_ids?: string[] },
+  ) => post<void>(`/api/sessions/${id}/prompts/${promptId}`, body),
+  /**
+   * 사용자가 자기 기계에서 고른 파일을 올린다 (010 FR-337).
+   *
+   * **제품이 도는 기계의 경로를 사용자가 입력하는 방식이 아니다.** 그러면 화면 없는
+   * 원격 기계에서 파일 첨부 녹화가 성립하지 않는다 (SC-518).
+   *
+   * 상한을 넘으면 서버가 **사유와 함께** 거절한다 (FR-337a). 자르지 않는다.
+   */
+  uploadFile: async (id: string, file: File): Promise<UploadedFileView> => {
+    const form = new FormData();
+    form.append("file", file);
+    // `request` 를 쓰지 않는다 — 그것은 `Content-Type: application/json` 을 붙이고,
+    // multipart 요청에 그 헤더가 붙으면 경계 문자열이 사라져 서버가 본문을 읽지 못한다.
+    // 브라우저가 `FormData` 에 맞는 헤더를 스스로 붙이게 둔다.
+    const response = await fetch(`/api/sessions/${id}/files`, { method: "POST", body: form });
+    const text = await response.text();
+    if (!response.ok) throw apiErrorFromBody(response.status, text);
+    return JSON.parse(text) as UploadedFileView;
+  },
   deleteStep: (id: string, stepId: string) =>
     del<StepsResponse>(`/api/sessions/${id}/steps/${stepId}`),
   reorderSteps: (id: string, order: string[]) =>
