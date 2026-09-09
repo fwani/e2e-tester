@@ -477,3 +477,39 @@ Task: "미해제 포인터 해제 검증 (T015)"
   코드에 남긴다
 - 각 작업 또는 논리적 묶음 후 커밋한다
 - Step DSL 을 바꾸는 작업은 이 목록에 **하나도 없다.** 생기면 원칙 I 위반을 의심한다
+
+---
+
+## Phase 9: Convergence
+
+`/speckit-converge` 가 spec·plan·tasks 대비 코드 현재 상태를 점검해 찾은 잔여 작업이다.
+**헌법 위반은 없다** — 원칙 I(두 경로 동등성)은 T033 이 살아 있는 브라우저에서 확인했다.
+
+- [ ] T088 프레임 끊김·회복을 조작 채널에 알려 `suspended` ↔ `open` 전이를 실제로
+      일으킨다 per FR-346 · data-model §3 (partial). 지금은 `ControlChannel.suspend()` ·
+      `resume()` 이 구현돼 있으나 **부르는 곳이 없다** — 서버가 프레임 끊김을 모르므로
+      그 상태 전이가 일어나지 않는다. 화면은 `mirrorLive` 로 막지만, 「화면 단에서 막는
+      것으로 충분하지 않다」가 FR-342 의 요점이고 FR-346 도 같은 성질이다
+      in `backend/src/itb/mirror/screencast.py` · `backend/src/itb/mirror/tab_switch.py` ·
+      `backend/src/itb/api/routes/sessions.py`
+- [ ] T089 미러 영역에 포인터 캡처를 붙이고 `pointercancel` 을 처리한다 per FR-318 ·
+      contracts §2 (partial). 지금은 누른 채 미러 **밖으로** 끌고 나가 놓으면 `<img>` 에
+      `pointerup` 이 오지 않아 대상 페이지가 누른 상태로 남는다. 서버는 채널을 **닫을
+      때만** 풀어 주므로, 채널이 열려 있는 동안은 그대로다 — 「전달이 중간에 실패해도
+      놓음을 보장한다」가 지켜지지 않는 창이다
+      in `frontend/src/components/MirrorView.tsx`
+- [ ] T090 세션 파일 저장소를 기동 시 훑어 비정상 종료로 남은 것을 정리한다 per FR-337b
+      (partial). `sweep_orphans()` 는 있으나 **부르는 곳이 없다** — 프로세스가 죽으면
+      `cleanup` 이 돌지 않고, 사용자가 보낸 파일이 기계에 쌓인다
+      in `backend/src/itb/api/app.py`
+- [ ] T091 화면 없는 기계에서 **전체 흐름**이 도는 것을 끝까지 확인하는 검증을 만든다
+      per SC-518 (missing). 지금은 조각만 있다 — 헤드리스 기본값(T002), 파일 첨부
+      (T068), 미러 조작(T033). 창 없이 **녹화 → 입력 → 저장 → 재실행**을 한 번에 도는
+      검증이 없으면, 조각들이 각각 통과하면서 이어 붙는 자리에서 깨질 수 있다
+      in `backend/tests/integration/test_headless_end_to_end.py`
+- [ ] T092 [P] 쓰이지 않는 문구·상수 셋을 화면에 쓰거나 근거를 남기고 정리한다 per
+      T025·T073 (unrequested). `MIRROR_DEGRADED_WARNING`·`NO_WINDOW_AVAILABLE` 은
+      `wording.ts` 에 있으나 어디서도 소비되지 않고, `COMMIT_ON_BLUR` 은 결정을 기록하는
+      상수인데 그 사실이 이름만으로 드러나지 않는다. **문구를 정본에 두는 이유가 「화면이
+      그것을 쓴다」이므로, 쓰이지 않는 문구는 정본을 흐린다**
+      in `frontend/src/lib/wording.ts` · `frontend/src/components/mirror/ImeBridge.tsx`
