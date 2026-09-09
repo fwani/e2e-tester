@@ -40,6 +40,7 @@ from itb.domain.step import (
     NavigateStep,
     SelectStep,
     Step,
+    UploadStep,
 )
 from itb.execution.element_probe import collect_by_selector, describe_element
 from itb.execution.session import BrowserSession, TabNotFoundError
@@ -344,6 +345,38 @@ class BrowserToolbox:
             ),
         )
 
+    async def upload(self, element_ref: str, file_name: str) -> dict[str, Any]:
+        """파일 입력에 파일을 넣는다 (2026-09-09 · `upload` Step).
+
+        **AI 도 이 Step 을 만들 수 있어야 한다.** 도구 표면과 Step 종류는 1:1 이고
+        (T163 · `test_agent_tools`), 그 불변식이 지키는 것은 「사람은 만들 수 있는데 AI 는
+        만들 수 없는 Step 종류」가 생기지 않는 것이다. 새 종류를 더하면서 도구를 빼면
+        AI 작성은 그 자리에서 조용히 막힌다.
+
+        **파일 내용은 다루지 않는다.** 정의에 남는 것은 이름뿐이고(`UploadStep`) 실행은
+        같은 이름의 빈 파일을 올린다 — 사람이 녹화한 경우와 같은 동작이다. AI 가 실제
+        파일을 만들거나 고르는 경로는 없다 (FR-086 — 브라우저 조작 범위를 넘지 않는다).
+        """
+        name = file_name.strip()
+        if not name:
+            return {
+                "error": (
+                    "올릴 파일 이름이 비어 있습니다. 확장자를 포함한 이름을 주세요 "
+                    "(예: 보고서.xlsx)."
+                )
+            }
+        return await self._act_on_element(
+            element_ref,
+            lambda step_id, target, tab: UploadStep(
+                id=step_id,
+                label=f"{self._label(element_ref, '에 파일 올리기')} ({name})",
+                author=self.author,
+                tab=tab,
+                target=target,
+                file_name=name,
+            ),
+        )
+
     async def drag(self, element_ref: str, drop_ref: str) -> dict[str, Any]:
         """끌어다 놓기. **양 끝을 모두 요구한다** (contracts/step-dsl §hover 와 drag)."""
         drop = self.refs.get(drop_ref)
@@ -595,6 +628,7 @@ TOOL_NAMES: tuple[str, ...] = (
     "navigate",
     "hover",
     "drag",
+    "upload",
     "assert_condition",
     "close_tab",
     "report_blocked",
@@ -608,10 +642,16 @@ STEP_PRODUCING_TOOLS: tuple[str, ...] = (
     "navigate",
     "hover",
     "drag",
+    "upload",
     "assert_condition",
     "close_tab",
 )
-"""Step 을 만드는 도구. Step 종류 8종과 정확히 대응한다 (T163)."""
+"""Step 을 만드는 도구. **Step 종류와 정확히 대응한다** (T163).
+
+2026-09-09 에 `upload` 가 들어와 9종이 됐다 (사용자 보고 — 파일 업로드 녹화). 검사가
+그것을 요구했다: 종류를 더하고 도구를 빼면 「사람은 만들 수 있는데 AI 는 만들 수 없는
+Step 종류」가 생긴다.
+"""
 
 
 def build_tools(toolbox: BrowserToolbox) -> list[Any]:
@@ -667,6 +707,15 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         return await toolbox.drag(element_ref, drop_ref)
 
     @beta_async_tool
+    async def upload(element_ref: str, file_name: str) -> dict[str, Any]:
+        """파일 입력에 파일을 넣는다.
+
+        확장자를 포함한 이름을 주면 그 이름으로 기록된다 (예: ``보고서.xlsx``). 내용은
+        비어 있으므로, 서버가 파일 내용을 읽는 화면에는 쓸 수 없다.
+        """
+        return await toolbox.upload(element_ref, file_name)
+
+    @beta_async_tool
     async def assert_condition(
         kind: str,
         element_ref: str | None = None,
@@ -699,6 +748,7 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         navigate,
         hover,
         drag,
+        upload,
         assert_condition,
         close_tab,
         report_blocked,
@@ -755,6 +805,15 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
     "hover": (
         "요소에 마우스를 올린다. hover 로만 열리는 메뉴에 쓴다.",
         {"type": "object", "properties": {"element_ref": _REF}, "required": ["element_ref"]},
+    ),
+    "upload": (
+        "파일 입력에 파일을 넣는다. 확장자를 포함한 이름을 주면 그 이름으로 기록된다 "
+        "(내용은 비어 있다).",
+        {
+            "type": "object",
+            "properties": {"element_ref": _REF, "file_name": {"type": "string"}},
+            "required": ["element_ref", "file_name"],
+        },
     ),
     "drag": (
         "요소를 다른 요소 위로 끌어다 놓는다. 양 끝 참조가 모두 필요하다.",
@@ -821,6 +880,7 @@ def build_mcp_tools(toolbox: BrowserToolbox) -> list[Any]:
         "navigate": toolbox.navigate,
         "hover": toolbox.hover,
         "drag": toolbox.drag,
+        "upload": toolbox.upload,
         "assert_condition": toolbox.assert_condition,
         "close_tab": toolbox.close_tab,
         "report_blocked": toolbox.report_blocked,

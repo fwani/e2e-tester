@@ -25,7 +25,7 @@
  * 줄이는 것이다** (FR-261) — 브라우저를 여는 조작은 이 자리 안에 그대로 있다.
  */
 import type { ArtifactKind } from "../../api/client";
-import type { CapabilityMap } from "../../lib/capabilities";
+import { isShown, type CapabilityMap } from "../../lib/capabilities";
 import type { SlotSize, SlotStyle } from "../../lib/layout";
 import { ACTION_LABEL, openBrowserAtStepLabel } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
@@ -85,6 +85,8 @@ function Unavailable({
 }) {
   const state = capabilities[action];
   if (state.kind !== "disabled") return null;
+  // 「이 상태의 조작이 아니다」는 사유도 그리지 않는다 (2026-09-09 · `capabilities.ts`).
+  if (state.visibility === "hide") return null;
   return (
     <span
       data-disabled-reason={action}
@@ -124,9 +126,16 @@ export function TargetPane({
             왜 고를 수 없는지 그 자리에서 말한다 (FR-234) — 자리가 사라지면 사용자는
             탭이라는 것이 없는 줄 안다.
           */}
-          <div data-action="tab.select">
-            {target.tabs ?? <Unavailable action="tab.select" capabilities={capabilities} />}
-          </div>
+          {/*
+            2026-09-09 — **자리째 접는다.** 브라우저가 닫힌 국면(검토·실행 종료)에서는
+            고를 탭이 존재하지 않는다. 이전에는 빈 자리가 남아 「탭 줄이 사라졌다」가
+            아니라 「탭 줄이 비었다」로 보였고, 그 둘은 사용자에게 다른 뜻이다.
+          */}
+          {isShown(capabilities["tab.select"]) && (
+            <div data-action="tab.select">
+              {target.tabs ?? <Unavailable action="tab.select" capabilities={capabilities} />}
+            </div>
+          )}
           <div style={{ flex: 1, minHeight: 0, display: "flex" }}>{target.mirror}</div>
         </>
       )}

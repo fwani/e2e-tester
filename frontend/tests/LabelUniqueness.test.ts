@@ -122,15 +122,29 @@ describe("라벨↔조작 대응 (T067 · FR-235)", () => {
 describe("국면 표시가 상태와 어긋나지 않는다 (T091 W-1 · FR-219 · 005 U-20)", () => {
   const still = { finished: false, review: false, pausing: false };
 
-  it("끝난 실행은 「실행 종료」다", () => {
-    expect(sessionPhaseLabel("running", { ...still, finished: true })).toBe("실행 종료");
-    expect(sessionPhaseLabel("running", { ...still, finished: true })).not.toBe(
+  /*
+    2026-09-09 — **예외 셋 중 둘이 국면이 됐다.**
+
+    이전에는 `running` 국면의 라벨을 상태 플래그(`finished`·`review`)로 갈아 끼웠다.
+    그것으로 표시는 맞았지만 **권한표는 여전히 `running` 열**이었고, 그 열이 편집 조작
+    11개에 「실행 중이어서 편집할 수 없습니다」를 붙였다 — 라벨과 사유가 서로 다른 말을
+    했다. 지금은 판정이 갈리므로 라벨도 사전에서 곧바로 나온다.
+
+    남는 예외는 전이 중(`pausing`) 하나뿐이다. 그것은 국면이 아니라 한 국면 안에서 몇 초
+    지나가는 사정이다 (005 FR-143).
+  */
+  it("끝난 실행은 「실행 종료」다 — 국면이 그것을 말한다", () => {
+    expect(sessionPhaseLabel("finished", { ...still, finished: true })).toBe("실행 종료");
+    expect(sessionPhaseLabel("finished", { ...still, finished: true })).not.toBe(
       PHASE_LABEL.running,
     );
   });
 
-  it("검토와 전이 중도 자기 말을 한다", () => {
-    expect(sessionPhaseLabel("running", { ...still, review: true })).toBe("검토");
+  it("검토는 「검토」다", () => {
+    expect(sessionPhaseLabel("review", { ...still, review: true })).toBe("검토");
+  });
+
+  it("전이 중은 라벨이 말한다 — 국면이 아니라 몇 초 지나가는 사정이다", () => {
     expect(sessionPhaseLabel("running", { ...still, pausing: true })).toBe("일시정지 중…");
   });
 

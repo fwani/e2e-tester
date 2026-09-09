@@ -33,6 +33,8 @@ from itb.domain.step import (
     NavigateStep,
     SelectStep,
     Step,
+    UploadStep,
+    mime_type_of,
 )
 from itb.domain.test_case import Test, Variable
 from itb.locator.strategy import LocatorStrategy, StrategyKind, choose_strategy
@@ -217,6 +219,22 @@ def step_lines(step: Step, values: ValueRenderer) -> list[str]:
             return [
                 f"await {loc}.selectOption({values.render(step.value)}, {_timeout(step)});"
             ]
+        case UploadStep():
+            loc = _locator_for(step.target, root, step.label)
+            """파일 업로드 (2026-09-09).
+
+            **제품의 재실행과 같은 것을 올린다** — 같은 이름·같은 MIME 의 빈 바이트다
+            (`step_executor._upload`). 디스크를 만지지 않으므로 내보낸 코드가 다른
+            기계에서도 그대로 돈다.
+            """
+            payload = (
+                "{ "
+                f"name: {_js(step.file_name)}, "
+                f"mimeType: {_js(mime_type_of(step.file_name))}, "
+                "buffer: Buffer.alloc(0) "
+                "}"
+            )
+            return [f"await {loc}.setInputFiles({payload}, {_timeout(step)});"]
         case DragStep():
             source = _locator_for(step.target, root, step.label)
             destination = _locator_for(step.drop_target, root, f"{step.label} (놓는 위치)")

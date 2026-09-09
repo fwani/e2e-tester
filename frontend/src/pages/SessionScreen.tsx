@@ -43,7 +43,20 @@ import {
 } from "../api/ws";
 import { AssertionForm } from "../components/AssertionForm";
 import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
+import {
+  BrowserPromptPanel,
+  type BrowserPromptState,
+} from "../components/BrowserPromptPanel";
 import { MirrorView, type MirrorPhase } from "../components/MirrorView";
+import type {
+  FrameGeometry,
+  InputEvent as MirrorInputEvent,
+} from "../components/mirror/useMirrorInput";
+import { createMoveThrottle } from "../components/mirror/useMirrorInput";
+import {
+  connectControlChannel,
+  type ControlChannel,
+} from "../api/control";
 import { PacingControl } from "../components/PacingControl";
 import { TabStrip } from "../components/TabStrip";
 import { BrowserFrame } from "../components/design/BrowserFrame";
@@ -63,8 +76,10 @@ import type {
 import type { ActionId } from "../lib/actions";
 import {
   capabilitiesFor,
+  narrowByWindowAvailability,
   type CapabilityFacts,
   type CapabilityState,
+  isShown,
 } from "../lib/capabilities";
 import { hasLiveBrowser, isFinished, phaseOfSession, type Phase } from "../lib/phase";
 import {
@@ -86,7 +101,11 @@ import {
   skipFailureNotice,
   stepLabel,
   stopLabel,
+  type ControlSurface,
   type OutcomeTone,
+  SAVE_NEEDS_NAME,
+  EDIT_NEEDS_SAVE,
+  RUN_NEEDS_SAVE,
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
 import type { Outcome, StepOutcome as RunStepOutcome } from "../types/generated/run-result";
@@ -101,6 +120,18 @@ const OFFLINE_NOTICE_DELAY_MS = 1500;
 
 
 const MANIPULATION_STATES = new Set(["recording", "takeover_recording"]);
+
+/**
+ * 조작 국면 — 미러가 조작을 받는 상태들 (010 FR-314 · contracts/mirror-control.md §1).
+ *
+ * `MANIPULATION_STATES` 와 **다르다.** 그것은 「실제 브라우저 창을 앞으로 가져와야
+ * 하는가」를 묻고 `paused` 를 뺀다. 이것은 「사람이 지금 브라우저를 조작하는가」를 묻고
+ * `paused` 를 넣는다 — 일시정지에서 사람이 막힌 곳을 손으로 지나야 하기 때문이다 (US3).
+ *
+ * 서버의 `is_control_phase` 와 같은 집합이다 (`execution/state_machine.py`). 갈리면
+ * 화면은 붙으려 하고 서버는 거절한다.
+ */
+const CONTROL_PHASE_STATES = new Set(["recording", "takeover_recording", "paused"]);
 /** 세션이 살아 있지 않은 상태. `review` 는 여기 없다 — 편집·저장을 받는다 (DR-010). */
 const TERMINAL_STATES = new Set(["completed", "failed", "stopped", "lost"]);
 /** 중지 후 검토 상태. 브라우저는 없지만 Step 은 살아 있다 (contracts §6). */
@@ -124,6 +155,16 @@ const PHASE_TONE: Record<Phase, OutcomeTone> = {
   takeover: "warn",
   running: "neutral",
   paused: "warn",
+  /** 검토 — 아직 결말이 아니다. 저장할 것이 남아 있으므로 주의색이다 */
+  review: "warn",
+  /**
+   * 실행 종료 — **중립이다.**
+   *
+   * 결말 색을 여기서 정하지 않는다. 통과·실패는 `phaseTone` 계산이 요약에서 가져오고
+   * (`SessionWorkbench` 의 `phaseTone`), 이 표는 결말이 없을 때의 기본값이다. 여기에
+   * 실패색을 박으면 중지한 세션이 실패로 보인다 (005 U-03).
+   */
+  finished: "neutral",
   result: "neutral",
   editing: "neutral",
 };
@@ -175,6 +216,23 @@ export interface SessionWorkbenchProps {
   currentUrl?: string;
   mirroredTab?: number;
 
+  /* ─── 010 미러 조작의 런타임 사정 (contracts/mirror-control.md §1) ───
+   *
+   * **국면이 아니라 런타임 사정이다.** 권한표에 사실로 넘기고, 판정은 표가 한다
+   * (FR-316). 이 컴포넌트가 스스로 「지금 조작할 수 있나」를 계산하지 않는다.
+   *
+   * 값을 주지 않으면 `undefined` 이고, 표는 그것을 **거짓**으로 읽는다 — 모르는 것을
+   * 조작 가능으로 그리지 않는다 (`CapabilityFacts` 의 규칙).
+   */
+  /** 프레임을 한 장이라도 받았는가 (FR-333) */
+  mirrorFrameSeen?: boolean;
+  /** 프레임이 지금 흐르고 있는가 (FR-346) */
+  mirrorLive?: boolean;
+  /** 조작 통로가 붙었는가 */
+  controlChannelOpen?: boolean;
+  /** 지금 조작이 어디서 이루어지는가 (FR-350 · data-model §6) */
+  controlSurface?: ControlSurface;
+
   focusedStepId?: string | null;
   /** Step 상세 겹침이 열려 있는가. 지목과 상세 열기는 다른 조작이다 (FR-227·FR-230). */
   detailOpen?: boolean;
@@ -189,6 +247,8 @@ export interface SessionWorkbenchProps {
     value?: string;
     timeout_ms?: number;
     sensitive?: boolean;
+    /** 올릴 파일의 이름 — `upload` Step 만 갖는다 (2026-09-09) */
+    file_name?: string;
   }) => void;
   onRepick?: (slot: RepickSlot) => void;
   onSaveNameChange?: (name: string) => void;
@@ -219,6 +279,13 @@ export interface SessionWorkbenchProps {
   onRerunAll?: () => void;
   onRerunFrom?: (stepIndex: number) => void;
   onShowResult?: () => void;
+  /**
+   * 고치러 간다 (2026-09-09 사용자 보고 — 「실행 후 에러가 났을 때 고치는 방법이 없음」).
+   *
+   * 인자는 고칠 Step 의 식별자와 **자리**다. 자리가 필요한 이유는 목적지가 그 자리 앞까지
+   * 재생한 세션이기 때문이다 (아래 `editStep` 의 주석).
+   */
+  onEditStep?: (stepId: string | null, stepIndex: number) => void;
   onChooseBlocked?: (choice: string) => void;
   onPacingChange?: (next: RunPacing) => void;
   onReconnect?: () => void;
@@ -296,6 +363,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     onRerunAll,
     onRerunFrom,
     onShowResult,
+    onEditStep,
     onChooseBlocked,
     onPacingChange,
     onReconnect,
@@ -352,6 +420,23 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
    * 오래됐을 수 있고, 총 소요 시간처럼 뷰에 없는 값도 있다.
    */
   const restoredSummary = (() => {
+    /*
+      **실행이 도는 동안에는 결말을 말하지 않는다** (사용자 보고 · 2026-09-09).
+
+      `summary` 는 `run_finished` 로 채워지고 **지워지는 곳이 없었다.** 그래서 같은
+      세션에서 다시 실행하면 국면 표시는 「실행 중」인데 그 옆에 지난 실행의
+      「실패 · … · 10.07 s」가 그대로 남았다 — 한 화면이 두 가지를 주장하는 상태이며,
+      005 U-19·U-20 이 고친 것과 같은 형태다.
+
+      **그리고 그것이 국면 띠를 터뜨렸다.** 실측: 그 문장이 남으면 요약 칸이 폭 0 으로
+      찌그러진 채 글자를 한 줄에 하나씩 쌓아 **높이 546px** 이 된다 (48px 짜리 띠에서).
+
+      `step_started` 에서도 지우지만(아래 이벤트 처리), **여기서도 막는다.** 이벤트를
+      놓친 화면이 있다는 것이 아래 주석의 전제이고, 그 화면에서도 같은 모순이
+      나와서는 안 된다. 조건은 국면 표시가 「실행 중」이 되는 조건과 **같은 것**을 쓴다
+      (`sessionPhaseLabel`) — 둘이 갈리면 그 틈에서 다시 두 주장이 공존한다.
+    */
+    if (phase === "running" && !isDone && !review && !pausing) return null;
     if (summary !== null) return summary;
     if (!finished || steps.length === 0) return null;
     const outcome: Outcome | null =
@@ -449,6 +534,16 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     stopRequested,
     runPending,
     sessionLost: lost !== null,
+    /*
+      010 미러 조작의 런타임 사정 (contracts/mirror-control.md §1).
+
+      넷 다 **국면이 아니다.** 국면 열에 적으면 한 국면이 빠지고, 빠진 국면에서 화면은
+      쓸 수 없는 조작을 활성으로 그린다 (research R9).
+    */
+    mirrorFrameSeen: props.mirrorFrameSeen,
+    mirrorLive: props.mirrorLive,
+    controlChannelOpen: props.controlChannelOpen,
+    controlSurfaceIsMirror: (props.controlSurface ?? "mirror") === "mirror",
   };
   const capabilities = capabilitiesFor(phase, facts);
 
@@ -617,6 +712,48 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       nextAction: "보고 있던 Step 은 그대로 있습니다.",
       action: null,
       dismissible: true,
+    });
+  }
+
+  /*
+    2026-09-09 — **저장하지 않은 기록이 있으면 화면이 먼저 말한다** (사용자 보고).
+
+    보고된 것: 「녹화하고 저장하는 부분이 명확하지 않다」. 실측에서 저장 자리는 Step 패널
+    **바닥**에 있고(FR-235 가 정한 집이다), 잠긴 이유는 그 옆 작은 글씨였다. 녹화를 끝낸
+    사용자의 눈은 국면 띠와 Step 목록에 있으므로 저장이 남았다는 사실이 보이지 않았고,
+    그대로 「처음부터 실행」을 눌러 기록을 잃었다.
+
+    **조작을 옮기지 않는다.** 자리는 그대로 두고 알림이 그 자리를 가리킨다 (`action` 이
+    `save` 를 나른다) — 조작을 두 자리에 두면 FR-235 를 어긴다.
+
+    브라우저가 없는 두 국면에만 낸다. 녹화·실행 중에는 아직 기록이 쌓이는 중이고, 그때
+    저장을 재촉하면 매 Step 마다 알림이 뜬다.
+  */
+  if (
+    (phase === "review" || phase === "finished") &&
+    view.steps.length > 0 &&
+    (view.saved_at == null || view.has_unsaved_changes)
+  ) {
+    push({
+      id: "unsaved-record",
+      tone: "warn",
+      role: "status",
+      message:
+        view.saved_at == null
+          ? `기록된 Step ${view.steps.length}개가 아직 저장되지 않았습니다.`
+          : `저장한 뒤 바뀐 것이 있습니다. 기록된 Step ${view.steps.length}개.`,
+      nextAction:
+        saveName.trim() === ""
+          ? "Step 목록 아래에서 테스트 이름을 정하고 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다."
+          : "Step 목록 아래의 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다.",
+      /*
+        **버튼을 달지 않는다.** 저장의 자리는 조작 팔레트 하나이고(FR-235), 여기 버튼을
+        또 두면 같은 라벨이 두 자리에 생긴다 — 바로 위 「run-failure」 알림이 같은 이유로
+        결과 버튼을 달지 않았고, 이 파일이 그 결정을 이미 기록해 두었다. 검사가 그것을
+        즉시 잡았다(`RunnerReview`: 「저장」 버튼이 둘). 알림은 자리를 **가리키기만** 한다.
+      */
+      action: null,
+      dismissible: false,
     });
   }
 
@@ -804,6 +941,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       case "result.show":
         onShowResult?.();
         break;
+      case "nav.editStep":
+        onEditStep?.(steps[editTargetIndex]?.id ?? null, editTargetIndex);
+        break;
       case "save":
         onSave?.();
         break;
@@ -840,7 +980,34 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     // `run.from` 은 여기서 제외한다 — 지목이 없어도 실패한 자리·멈춘 자리를 쓸 수 있고,
     // 그 판단은 `runFromIndex` 가 한다.
     id !== "run.from" && STEP_SCOPED.has(id) && focusedStepId === null && base.kind === "enabled"
-      ? { kind: "disabled", reason: "먼저 Step 을 고르세요", remedy: { action: "step.select" } }
+      ? {
+            kind: "disabled",
+            reason: "먼저 Step 을 고르세요",
+            remedy: { action: "step.select" },
+            // `keep` — Step 을 고르면 곧바로 풀린다
+            visibility: "keep",
+          }
+      : base;
+
+  /**
+   * **저장하지 않은 세션에는 실행할 대상이 없다** (2026-09-09 · 사용자 보고).
+   *
+   * 실행 조작 둘은 저장된 정의로 **새 세션을 연다** (`SessionScreen.rerun` → `App.startRun`).
+   * 아직 저장하지 않은 녹화 세션(`test_id === null`)에는 그 정의가 없으므로 `rerun` 이
+   * 첫 줄에서 그대로 돌아간다 — 실측에서 검토 국면의 「처음부터 실행」이 **활성인데
+   * 눌러도 아무 일이 없는 버튼**이었다.
+   *
+   * 국면 표에 담을 수 없다: 「저장됐는가」는 국면이 아니라 세션의 사실이고, 같은 검토
+   * 국면 안에서 갈린다. 표가 국면을 말하고 이 좁히기가 사실을 말한다.
+   *
+   * **`keep` 이다.** 자리를 남기는 것이 여기서는 안내가 된다 — 녹화한 뒤 무엇을 먼저
+   * 해야 하는지(저장)를 실행 버튼 자리가 말해 준다. 해소 방법은 달지 않는다: 저장은 이름을
+   * 요구하고 그 칸은 같은 화면의 조작 팔레트에 있으므로, 링크로 대신 누르면 이름 없는
+   * 저장이 서버에서 거절된다.
+   */
+  const narrowByUnsaved = (id: ActionId, base: CapabilityState): CapabilityState =>
+    (id === "run.all" || id === "run.from") && testId === null && base.kind === "enabled"
+      ? { kind: "disabled", reason: RUN_NEEDS_SAVE, remedy: null, visibility: "keep" }
       : base;
 
   const action = (
@@ -853,8 +1020,14 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       capability={
         // `run.from` 은 지목이 없어도 **끝난 세션이 멈춘 자리**를 쓸 수 있다.
         id === "run.from" && runFromIndex < 0 && capabilities[id].kind === "enabled"
-          ? { kind: "disabled", reason: "먼저 Step 을 고르세요", remedy: { action: "step.select" } }
-          : narrowByPick(id, capabilities[id])
+          ? {
+            kind: "disabled",
+            reason: "먼저 Step 을 고르세요",
+            remedy: { action: "step.select" },
+            // `keep` — Step 을 고르면 곧바로 풀린다
+            visibility: "keep",
+          }
+          : narrowByUnsaved(id, narrowByPick(id, capabilities[id]))
       }
       onRun={() => runAction(id)}
       onRemedy={onRemedy}
@@ -868,8 +1041,44 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
    * 자리를 묶음으로 정하면 "같은 자리의 같은 조작" (FR-235)이 배치 규칙으로 보장된다 —
    * 국면마다 결과·목록으로 가는 길이 다른 곳에 있던 것이 사용자가 매번 찾게 만들었다.
    */
+  /**
+   * 편집 화면으로 가는 조작의 상태 (2026-09-09 사용자 보고).
+   *
+   * 표는 국면을 말한다(`finished` 에서 ●). **저장 여부는 화면이 안다** — 편집 화면은
+   * 저장된 정의를 읽으므로, 저장하지 않은 기록을 두고 넘어가면 그 기록이 사라진다.
+   * `keep` 이다: 같은 화면의 「저장」으로 곧바로 해소된다.
+   */
+  const editStepCapability: CapabilityState = (() => {
+    const base = capabilities["nav.editStep"];
+    if (base.kind !== "enabled") return base;
+    if (testId === null || view.has_unsaved_changes) {
+      return { kind: "disabled", reason: EDIT_NEEDS_SAVE, remedy: null, visibility: "keep" };
+    }
+    return base;
+  })();
+
+  /**
+   * 고치러 갈 Step. **실패한 자리를 먼저 고른다** (005 FR-136 · 009 FR-294).
+   *
+   * 실행이 실패해서 이 국면에 온 사용자가 고치려는 것은 그 Step 이다. 지목한 것이 있으면
+   * 그것을 존중한다 — 사용자가 방금 고른 것을 화면이 되돌리면 안 된다.
+   */
+  const editTargetIndex = selectedIndex >= 0 ? selectedIndex : (failedStepIndex ?? -1);
+
   const headerActions = (
     <>
+      <ActionButton
+        action="nav.editStep"
+        capability={editStepCapability}
+        label={
+          editTargetIndex >= 0
+            ? `${stepLabel(editTargetIndex)} 고치기`
+            : ACTION_LABEL["nav.editStep"]
+        }
+        compact
+        onRun={() => runAction("nav.editStep")}
+        onRemedy={onRemedy}
+      />
       <ActionButton
         action="result.show"
         capability={capabilities["result.show"]}
@@ -894,16 +1103,37 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   */
   const phaseActions = (
     <>
-      {capabilities["run.pacing"].kind !== "not_applicable" && (
-        /* 실행 속도의 **자리**. 잠겨도 자리와 이유는 남는다 (FR-234). */
-        <span data-action="run.pacing" style={{ display: "inline-flex", flexDirection: "column", gap: 4 }}>
+      {/*
+        실행 속도의 자리.
+
+        **2026-09-09 — 「이 상태의 조작이 아니다」면 접는다.** 이전에는 「해당 없음」만
+        보고 그렸고, 그래서 브라우저가 없는 국면(검토·실행 종료)에서 속도 선택 넷이
+        「실행이 이미 끝났습니다」를 달고 국면 띠에 남았다. 돌릴 것이 없는 자리에서
+        고르라고 내놓는 컨트롤이었다.
+      */}
+      {isShown(capabilities["run.pacing"]) && (
+        <span
+          data-action="run.pacing"
+          /*
+            **줄지 않는다.** 안의 버튼 넷은 `white-space: nowrap` 이라 좁아지면 줄어드는
+            대신 잘린다 — 국면 띠에서 줄어드는 몫은 이유 문구가 받는다 (`ActionButton`).
+          */
+          style={{ display: "inline-flex", flexDirection: "column", gap: 4, flex: "0 0 auto" }}
+        >
           <PacingControl
             value={view.pacing}
             busy={busy}
             disabled={capabilities["run.pacing"].kind === "disabled"}
             preferenceSaved={pacingSaved}
-            // 005 FR-174 (U-23) — 녹화·인수 국면에서는 「다음 실행 속도」로 밝힌다 (T041).
-            manipulationPhase={manipulating}
+            /*
+              005 FR-174 (U-23) — 지금 실행에 쓰이지 않는 국면에서는 「다음 실행 속도」로
+              밝힌다 (T041).
+
+              **검토·실행 종료를 더했다** (2026-09-09). 두 국면에는 돌고 있는 실행이 없고
+              「처음부터 실행」이 활성으로 있다 — 여기서 고른 값은 그 실행의 속도다
+              (004 FR-109). 「속도」라고만 쓰면 사용자는 지금 무언가에 적용된다고 읽는다.
+            */
+            manipulationPhase={manipulating || phase === "review" || phase === "finished"}
             onChange={(next) => onPacingChange?.(next)}
           />
           {capabilities["run.pacing"].kind === "disabled" && (
@@ -941,9 +1171,20 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     capabilities.save.kind !== "enabled"
       ? capabilities.save
       : saveName.trim() === ""
-        ? { kind: "disabled", reason: "테스트 이름을 입력하세요", remedy: null }
+        ? /*
+             **저장 자리는 절대 사라지지 않는다** (`keep`).
+
+             사용자가 보고한 「녹화하고 저장하는 부분이 명확하지 않다」의 절반이 이것이다.
+             이름을 아직 안 썼다는 것은 사용자가 이 화면에서 곧바로 해소할 수 있는
+             전제이고, 그때 저장 버튼이 사라지면 저장하는 방법을 배울 자리가 없어진다.
+           */
+          /*
+             해소 방법은 **달지 않는다.** 이름칸은 같은 화면의 바로 위 줄에 있고, 그것은
+             누를 버튼이 아니라 채울 칸이다 — 링크로 만들면 눌러도 아무 일이 없다.
+           */
+          { kind: "disabled", reason: SAVE_NEEDS_NAME, remedy: null, visibility: "keep" }
         : !hasChangesToSave
-          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null }
+          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null, visibility: "keep" }
           : { kind: "enabled" };
 
   /*
@@ -1171,6 +1412,14 @@ export interface SessionScreenProps {
   recordOnArrival?: boolean;
   onFinished: () => void;
   onShowResult?: (testId: string, stepId?: string | null) => void;
+  /**
+   * 편집 화면으로 간다 (2026-09-09 사용자 보고).
+   *
+   * **세션을 먼저 버린다** — 그 일은 `SessionScreen` 이 한다 (아래 `editStep`). 편집
+   * 화면은 저장된 정의를 읽고, 살아 있는 세션이 그 테스트를 잡고 있으면 편집이 잠긴다
+   * (006 FR-206 · 조건 C7).
+   */
+  onEditStep?: (testId: string, stepId: string | null, stepIndex: number) => void;
   /** 다시 실행 — 이 세션을 버리고 같은 테스트로 새 세션을 연다 (UX U-02). */
   onRerun?: (testId: string, fromStepIndex?: number) => void;
 }
@@ -1181,6 +1430,7 @@ export function SessionScreen({
   recordOnArrival = false,
   onFinished,
   onShowResult,
+  onEditStep,
   onRerun,
 }: SessionScreenProps) {
   const [view, setView] = useState<SessionView>(initial);
@@ -1189,6 +1439,45 @@ export function SessionScreen({
   const [mirrorTab, setMirrorTab] = useState<number>(initial.mirrored_tab_index);
   const [mirrorStopped, setMirrorStopped] = useState<string | null>(null);
   const [mirrorDegraded, setMirrorDegraded] = useState<string | null>(null);
+  /**
+   * 010 — 마지막 프레임이 실어 온 좌표 변환의 근거 (FR-331 · data-model §2).
+   *
+   * `null` 이면 프레임을 한 장도 받지 못한 상태다. 그 상태에서는 좌표를 보낼 근거가
+   * 없으므로 조작을 전달하지 않는다 (FR-333).
+   */
+  const [geometry, setGeometry] = useState<FrameGeometry | null>(null);
+  /** 프레임이 지금 흐르고 있는가 (FR-346). 끊김과 정적 화면은 다르다 */
+  const [mirrorLive, setMirrorLive] = useState(false);
+  /** 조작 통로가 붙었는가 (contracts §1 런타임 덮어쓰기) */
+  const [controlOpen, setControlOpen] = useState(false);
+  /** 지금 조작이 어디서 이루어지는가 (FR-350 · data-model §6) */
+  const [surface, setSurface] = useState<ControlSurface>(
+    /*
+      **서버가 아는 값에서 출발한다** (010 FR-349).
+
+      이벤트로만 받으면 새로 고친 화면은 조작 위치를 잊는다 — 서버는 「창」이라고 알고
+      화면은 「미러」라고 아는 상태가 되고, 그때 미러는 조작을 받는 것처럼 보인다.
+      `SessionWork.control_surface` 는 처음부터 이 목적으로 있었는데 응답에 실리지
+      않아 쓰이지 않고 있었다.
+    */
+    initial.control_surface ?? "mirror",
+  );
+  /**
+   * 조작이 전달되지 않은 사유 (SC-516).
+   *
+   * 서버가 거절했거나, 화면이 조작을 받지 않는 상태에서 사용자가 시도했다. **조용히
+   * 아무 일도 일어나지 않는 경우가 0건이어야 한다**는 것이 이 상태의 존재 이유다.
+   */
+  const [controlNotice, setControlNotice] = useState<string | null>(null);
+  /**
+   * 응답을 기다리는 브라우저 요구 (010 FR-338·FR-339).
+   *
+   * **하나만 들고 있는다.** 대화상자는 페이지를 세우므로 둘이 동시에 뜰 수 없고, 파일
+   * 선택은 사용자가 하나씩 고른다. 목록으로 두면 화면이 무엇을 먼저 물을지 정해야 하고,
+   * 그 순서는 대상 페이지가 정할 일이다.
+   */
+  const [prompt, setPrompt] = useState<BrowserPromptState | null>(null);
+  const control = useRef<ControlChannel | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [lost, setLost] = useState<string | null>(null);
@@ -1199,6 +1488,31 @@ export function SessionScreen({
   const [busy, setBusy] = useState(false);
   const sessionId = initial.session_id;
   const [progress, setProgress] = useState<Record<string, StepProgress>>({});
+  /**
+   * **이번 실행에서 아직 돌지 않은 Step** (2026-09-09 사용자 보고).
+   *
+   * 보고 문장: 「테스트를 다시 실행하는 스텝이면, 상태 표기가 업데이트 되어야함」.
+   *
+   * 왜 갱신되지 않았나. 결말은 두 곳에서 온다 — 이 화면이 모은 `progress`(이벤트)와
+   * 서버가 준 `view.step_results`(지난 실행의 기록). 세션 안에서 다시 실행하면
+   * (「이 Step 부터 이어 실행」·「계속하기」) 화면이 다시 마운트되지 않으므로 **둘 다
+   * 지난 실행의 값을 그대로 들고 있었다.** 그래서 다시 도는 Step 의 행이 지난 실행의
+   * 「통과」를 계속 보여 줬고, 「실행 중」 표시조차 그 뒤에 가려 나오지 못했다
+   * (`outcomeOf` 의 판정 순서 — 아래에서 함께 고쳤다).
+   *
+   * 담는 것은 **자리 하나**다 — 이 자리부터 뒤는 이번 실행에서 아직 돌지 않았다.
+   * `step_started(i)` 가 올 때마다 i 로 올라간다. 앞으로 진행하는 경우에도 참이므로
+   * 「다시 실행인가」를 화면이 추측하지 않는다 — 추측이 틀린 국면에서 옛 결말이 되살아난다.
+   *
+   * **Step 목록을 훑지 않는다.** 처음에는 무효화된 Step 의 `id` 집합으로 만들었는데,
+   * 그러려면 이벤트를 받는 시점에 Step 목록이 필요하고 그 목록은 이벤트 핸들러가 붙은
+   * 시점의 것이다(닫힘). 자리 하나면 그 문제가 없다.
+   *
+   * `null` 이면 이 화면은 이번 세션에서 실행 시작을 보지 못했다 — 새로 고침으로 복원한
+   * 화면이 그렇다. 그때 화면이 아는 것은 서버가 준 기록뿐이고, 그것을 사실이 아니라고
+   * 말할 근거가 없다.
+   */
+  const [staleFromIndex, setStaleFromIndex] = useState<number | null>(null);
   const durations = useRef<Record<string, number>>({});
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [inspecting, setInspecting] = useState(false);
@@ -1207,6 +1521,16 @@ export function SessionScreen({
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   /** 끝난 실행 화면을 닫기 전 확인 (005 FR-148 · U-08). */
   const [confirmingClose, setConfirmingClose] = useState(false);
+  /**
+   * 「처음부터 실행」·「Step nn부터 실행」이 저장하지 않은 기록을 만난 자리 (2026-09-09).
+   *
+   * `null` 이면 확인 창이 없다. 값이 있으면 그 안의 `fromStepIndex` 가 확인 뒤에 걸
+   * 실행의 시작 자리다 — 확인 창이 어느 버튼에서 왔는지를 잊으면 「처음부터」를 눌렀는데
+   * 부분 실행이 걸린다.
+   */
+  const [confirmingRerun, setConfirmingRerun] = useState<{ fromStepIndex: number | null } | null>(
+    null,
+  );
   const [aiMessages, setAiMessages] = useState<string[]>([]);
   const [aiError, setAiError] = useState<ErrorInfo | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
@@ -1248,6 +1572,16 @@ export function SessionScreen({
           case "mirror_frame":
             setFrame(event.data);
             setMirrorStopped(null);
+            setMirrorLive(true);
+            // 좌표 변환의 근거를 프레임과 **함께** 갱신한다 (FR-331). 따로 두면 프레임이
+            // 바뀐 뒤 옛 배율로 좌표를 계산하는 순간이 생긴다.
+            setGeometry({
+              width: event.width,
+              height: event.height,
+              pageScale: event.pageScale,
+              offsetTop: event.offsetTop,
+              frameSeq: event.frameSeq,
+            });
             break;
           case "mirror_tab_changed":
             setMirrorTab(event.tab);
@@ -1257,14 +1591,62 @@ export function SessionScreen({
             break;
           case "mirror_stopped":
             setMirrorStopped(event.reason ?? "미러가 중단됐습니다.");
+            setMirrorLive(false);
+            break;
+          case "browser_prompt":
+            setPrompt({
+              promptId: event.promptId,
+              kind: event.kind,
+              message: event.message,
+              multiple: event.multiple,
+              blocking: event.blocking,
+            });
+            break;
+          case "browser_prompt_resolved":
+            // `promptId: "*"` 는 세션 종료 시의 일괄 정리다 (`prompts.dismiss_all`).
+            setPrompt((current) =>
+              current === null ||
+              event.promptId === "*" ||
+              current.promptId === event.promptId
+                ? null
+                : current,
+            );
+            break;
+          case "control_surface":
+            setSurface(event.surface);
             break;
           case "session_lost":
             setLost(event.reason ?? "브라우저 세션이 유실됐습니다.");
             void resync();
             break;
-          case "step_started":
+          case "step_started": {
+            // 새 실행이 결과를 내기 시작했다. 지난 실행의 결말 요약은 이 시점부터
+            // 사실이 아니다 — 남겨 두면 「실행 중」 옆에서 끝난 실행을 말한다.
+            setSummary(null);
             setRunningIndex(event.index);
+            /*
+              2026-09-09 — **이 자리부터의 지난 결과를 걷는다** (사용자 보고).
+
+              `event.index` 부터 뒤는 이번 실행에서 아직 돌지 않았다. 다시 실행이든 앞으로
+              진행이든 같은 사실이므로 조건을 나누지 않는다.
+
+              **결말도 소요 시간도 지우지 않는다 — 가린다.** 처음에는 `progress` 에서
+              지우고 `durations`(ref)에서도 지웠는데, 검사가 그것을 잡았다: 상태 갱신
+              함수 안에서 ref 를 변형하면 그 함수가 다시 불릴 때(React 는 갱신 함수를
+              순수하다고 보고 여러 번 부를 수 있다) 방금 도착한 이번 실행의 값이 함께
+              지워진다. 실제로 `step_finished` 의 55ms 가 사라졌다.
+
+              자리 하나를 올려 두고 **읽는 쪽이 가리는** 방식이면 그 위험이 없다
+              (`outcomeOf`·`durationOf`).
+            */
+            setStaleFromIndex((prev) => (prev === null ? event.index : Math.max(prev, event.index)));
+            /*
+              실패 배너도 그 자리에서 걷는다. 실패한 Step 을 고쳐 다시 돌리는 중에 「Step
+              06 이 실패했습니다」가 남아 있으면, 사용자는 방금 고친 것이 또 실패한 줄 안다.
+            */
+            setFailure((prev) => (prev !== null && prev.index >= event.index ? null : prev));
             break;
+          }
           case "step_finished": {
             const stepId = event.step_id;
             const durationMs = event.duration_ms;
@@ -1485,6 +1867,122 @@ export function SessionScreen({
     return () => window.removeEventListener("beforeunload", guard);
   }, [view.has_unsaved_changes, isDone]);
 
+  /* ─── 010 조작 채널 (contracts/mirror-control.md §2) ─────────────────────
+   *
+   * **국면이 조작 국면일 때만 붙는다.** 서버도 같은 판정을 하고 아니면 수립을 거절한다
+   * (FR-342) — 화면이 붙지 않는 것에 의존하지 않는 것이 그 요구의 요점이므로, 여기서
+   * 거는 조건은 헛된 접속을 줄이기 위한 것이지 안전장치가 아니다.
+   *
+   * 국면이 바뀌면 붙였다 끊는다. 이 효과가 `view.state` 에 의존하는 이유다.
+   */
+  const controlPhase = CONTROL_PHASE_STATES.has(view.state);
+
+  useEffect(() => {
+    if (!controlPhase) {
+      control.current?.close();
+      control.current = null;
+      setControlOpen(false);
+      return;
+    }
+    const channel = connectControlChannel(sessionId, {
+      onState: (state, reason) => {
+        setControlOpen(state === "open");
+        // **사유 없이 끊긴 것으로 두지 않는다** (SC-516). 서버가 닫을 때 사유를 싣는다.
+        if (reason !== null) setControlNotice(reason);
+      },
+      onRejected: (reason) => setControlNotice(reason),
+    });
+    control.current = channel;
+    return () => {
+      channel.close();
+      control.current = null;
+      setControlOpen(false);
+    };
+  }, [sessionId, controlPhase]);
+
+  /**
+   * 이동 사건의 전송량 억제 (FR-336).
+   *
+   * 마우스 이동은 초당 수십 건이다. 전부 보내면 채널이 이동으로 가득 차고 그 뒤의 클릭이
+   * 밀린다. **마지막 위치는 반드시 보낸다** — 마우스 올리기로 열리는 메뉴는 포인터가
+   * 머무는 위치로 판정되므로, 마지막 이동을 버리면 메뉴가 열리지 않는다.
+   */
+  const moveThrottle = useRef(createMoveThrottle());
+
+  const sendInput = useCallback((event: MirrorInputEvent) => {
+    const channel = control.current;
+    if (channel === null) return;
+    if (event.kind === "pointer.move") {
+      const now = Date.now();
+      const due = moveThrottle.current.offer(event, now);
+      if (due !== null) channel.send(due);
+      return;
+    }
+    // 이동이 아닌 사건 앞에서는 **미뤄 둔 이동을 먼저 흘린다.** 순서가 뒤집히면 클릭이
+    // 포인터가 아직 도착하지 않은 자리에서 일어난다.
+    const pending = moveThrottle.current.flush(Date.now());
+    if (pending !== null) channel.send(pending);
+    channel.send(event);
+  }, []);
+
+  /**
+   * 브라우저 요구에 답한다 (FR-337·FR-338).
+   *
+   * **파일을 먼저 올리고 식별자를 보낸다** (research R6). 조작 채널이 큰 페이로드에
+   * 막히면 FR-336 이 깨지므로 파일은 REST 를 탄다. 업로드 응답을 받은 **뒤에** 응답을
+   * 보내는 순서가 곧 파일 지정과 그 다음 조작의 순서 보장이다.
+   */
+  const answerPrompt = useCallback(
+    (answer: { accept: boolean; text?: string; files?: File[] }) => {
+      const current = prompt;
+      if (current === null) return;
+      void (async () => {
+        try {
+          const ids: string[] = [];
+          for (const file of answer.files ?? []) {
+            const uploaded = await sessions.uploadFile(sessionId, file);
+            ids.push(uploaded.file_id);
+          }
+          await sessions.answerPrompt(sessionId, current.promptId, {
+            accept: answer.accept,
+            text: answer.text,
+            file_ids: ids,
+          });
+          setPrompt(null);
+        } catch (exc) {
+          // **조용히 실패하지 않는다** (FR-339 · SC-516). 상한 초과 거절도 여기로 온다.
+          const failure = describeError(exc);
+          setControlNotice(failure.message);
+          /*
+            2026-09-09 — **끝난 요구의 패널은 걷는다.**
+
+            이전에는 어떤 실패에서도 `prompt` 를 그대로 뒀다. 상한 초과(`UPLOAD_REJECTED`)
+            에서는 그것이 맞다 — 사용자가 작은 파일로 다시 고를 수 있어야 한다. 그러나
+            **이미 끝난 요구**(`PROMPT_NOT_FOUND`)에서는 응답할 대상이 없으므로 패널이
+            영구히 남고, 그 패널이 미러 자리를 계속 잠식한다 (사용자 보고: 「파일 업로드
+            후에 미러 화면이 작아지는 버그」의 한 경로).
+
+            판정은 서버가 준 코드로 한다 — 문구로 판정하면 문구를 고칠 때 조용히 갈린다.
+          */
+          if (failure.code === "PROMPT_NOT_FOUND") setPrompt(null);
+        }
+      })();
+    },
+    [prompt, sessionId],
+  );
+
+  /**
+   * 실제 창으로 전환한다 (FR-349·FR-353 · US5).
+   *
+   * **사용자가 누를 때만 일어난다.** 제품이 상황을 판단해 자동으로 창을 열지 않는다.
+   */
+  const useWindow = useCallback(() => {
+    void sessions
+      .setControlSurface(sessionId, "window")
+      .then((next) => setSurface(next.surface))
+      .catch((exc) => setControlNotice(describeError(exc).message));
+  }, [sessionId]);
+
   /*
     005 재점검 U-04-b — 미리보기 국면이 **전이와 종료를 구분한다.**
     순서가 판정이다: 조작 > 종료(브라우저 없음) > 실행 끝남 > 전이 중 > 일시정지.
@@ -1520,24 +2018,107 @@ export function SessionScreen({
     view.state === "takeover_recording";
 
   const outcomeOf = (step: Step, index: number): StepOutcome => {
+    /*
+      **판정 순서가 바뀌었다** (2026-09-09 사용자 보고 — 「다시 실행하는 스텝이면 상태
+      표기가 업데이트 되어야함」).
+
+      「지금 돌고 있다」가 **맨 위**다. 이전에는 `progress` → `restored` → `running` 순서
+      였고, 다시 도는 Step 은 앞의 둘에 지난 실행의 결말을 갖고 있으므로 `running` 에
+      닿지 못했다. 사용자가 본 것은 「다시 돌리는데 여전히 통과라고 적힌 행」이다.
+
+      지금 돌고 있다는 것은 **관측된 사실**이고 지난 결말은 **기록**이다. 사실이 기록을
+      이긴다 — 그 순서가 어긋나면 화면이 지난 실행을 현재로 말한다 (005 U-20 과 같은 형태).
+    */
+    if (runningIndex === index) return "running";
     const recorded = progress[step.id]?.outcome;
     if (recorded !== undefined) return recorded;
+    /*
+      이번 실행이 이 자리를 지나갔거나 아직 닿지 않았으면 **서버 기록을 쓰지 않는다.**
+      그 기록은 지난 실행의 것이다 (`staleResults` 의 주석).
+    */
+    if (staleFromIndex !== null && index >= staleFromIndex) {
+      return authoringPhase ? "recorded" : "pending";
+    }
     const fromView = restored.get(step.id)?.outcome;
     if (fromView !== undefined && fromView !== "not_run") return fromView;
-    if (runningIndex === index) return "running";
     return authoringPhase ? "recorded" : "pending";
   };
-  const durationOf = (step: Step) =>
-    durations.current[step.id] ?? restored.get(step.id)?.duration_ms;
+  const durationOf = (step: Step) => {
+    /*
+      **이번 실행이 실제로 잰 값이 먼저다.** `step_finished` 가 넣은 것이며, 그 자리가
+      가려질 대상인지와 무관하게 참이다 — 방금 잰 값을 가리면 행이 결말만 있고 시간이
+      없는 반쪽 상태가 된다.
+    */
+    const measured = durations.current[step.id];
+    if (measured !== undefined) return measured;
+    // 결말과 같은 규칙 — 지난 실행의 소요 시간을 이번 실행의 것으로 보여 주지 않는다.
+    const index = view.steps.findIndex((s) => s.id === step.id);
+    if (staleFromIndex !== null && index >= staleFromIndex) return undefined;
+    return restored.get(step.id)?.duration_ms;
+  };
+
+  /*
+    010 — 미러 조작의 권한표 판정.
+
+    `SessionWorkbench` 가 같은 표를 지나 자기 사실로 계산하지만, `MirrorView` 는 그
+    컴포넌트 **밖에서** 그려져 props 로 들어간다. 그래서 여기서도 한 번 계산한다 —
+    같은 함수·같은 사실을 지나므로 두 값이 갈릴 수 없다 (FR-316).
+  */
+  const mirrorPhaseOfSession = phaseOfSession(view);
+  const mirrorFacts: CapabilityFacts = {
+    mirrorFrameSeen: frame !== null && geometry !== null,
+    mirrorLive: mirrorLive && mirrorStopped === null,
+    controlChannelOpen: controlOpen,
+    controlSurfaceIsMirror: surface === "mirror",
+    sessionLost: lost !== null,
+    liveBrowser: hasLiveBrowser(view) && lost === null,
+  };
+  const mirrorCaps = capabilitiesFor(mirrorPhaseOfSession, mirrorFacts);
+
+  /**
+   * 실제 창으로 갈 수 없으면 **누르기 전에** 잠근다 (010 FR-351 · FR-234).
+   *
+   * **문구는 서버가 준다.** 그 판정은 서버만 할 수 있고(운영체제·표시 서버의 사정,
+   * 그리고 이 브라우저를 창 없이 띄웠는지), 화면이 같은 뜻의 문장을 따로 가지면 서버가
+   * 거절할 때 쓰는 문장과 갈린다 — `wording.ts` 의 O13 옆 주석이 남긴 결정이다.
+   * 그 결정을 지키면서 FR-234 를 채우는 방법이 **서버가 문장을 주는 것**이다.
+   *
+   * 이것이 없던 동안: 창 없이 띄운 세션에서도 버튼이 눌렸고, 서버는 「옮겼다」고 답한
+   * 뒤 미러의 조작 통로를 닫았다. 창은 뜨지 않아 조작할 곳이 하나도 남지 않았다
+   * (사용자 보고 2026-09-09).
+   */
+  const useWindowCapability = narrowByWindowAvailability(
+    mirrorCaps["mirror.useWindow"],
+    view.window_unavailable_reason ?? null,
+  );
 
   const mirror = (
-    <MirrorView
+    <>
+      {/*
+        010 FR-338·FR-339 — 브라우저 요구를 **미러 바로 위에** 둔다. 그 요구는 미러가
+        보여 주지 못하는 것에 대한 것이므로, 미러를 보던 눈이 곧바로 닿는 자리가 맞다.
+      */}
+      <BrowserPromptPanel
+        prompt={prompt}
+        onAnswer={answerPrompt}
+        onUseWindow={useWindow}
+        canUseWindow={useWindowCapability.kind === "enabled"}
+      />
+      <MirrorView
       frame={frame}
       phase={mirrorPhase}
       stoppedReason={mirrorStopped}
       degradedReason={mirrorDegraded}
       tabIndex={mirrorTab}
-    />
+      control={mirrorCaps["mirror.control"]}
+      useWindowCapability={useWindowCapability}
+      surface={surface}
+      geometry={geometry}
+      onInput={sendInput}
+      onBlockedAttempt={setControlNotice}
+      onUseWindow={useWindow}
+      />
+    </>
   );
 
   const tabStrip =
@@ -1588,14 +2169,87 @@ export function SessionScreen({
       .finally(onFinished);
   };
 
-  /** 이 세션을 버리고 다시 실행한다. 같은 테스트에 세션이 둘일 수는 없다 (FR-043). */
+  /**
+   * 이 세션을 버리고 다시 실행한다. 같은 테스트에 세션이 둘일 수는 없다 (FR-043).
+   *
+   * ## 2026-09-09 — **확인 없이 세션을 버리던 경로였다** (사용자 보고)
+   *
+   * 사용자가 보고한 것: 「처음부터 실행을 누르니 새로운 녹화가 사라지고 기존 스텝으로
+   * 변경됨」. 경로는 정확히 이 함수였다 — `discard` 로 세션을 버리면 세션이 들고 있던
+   * 기록이 함께 사라지고, `onRerun` 이 여는 새 세션은 **저장된 정의**를 재생한다
+   * (`App.startRun`). 그래서 화면이 기존 Step 으로 바뀐다.
+   *
+   * 같은 파일의 `leave()` 는 이미 같은 상황에서 확인을 받는다 (DR-014). 빠져 있던 것은
+   * 이 경로 하나였고, 그것이 「어느 버튼이 무엇을 버리는지」를 사용자가 알 수 없게 했다.
+   *
+   * **자동 저장하지 않는다.** 저장은 이름을 요구하는 별개의 명령이고, 제품이 대신
+   * 결정하지 않는다 (`sessions.py` 의 `has_unsaved_changes` 주석과 같은 판단).
+   */
   const rerun = (fromStepIndex?: number) => {
     if (testId === null || onRerun === undefined) return;
+    if (view.has_unsaved_changes && view.steps.length > 0) {
+      setConfirmingRerun({ fromStepIndex: fromStepIndex ?? null });
+      return;
+    }
+    runRerun(fromStepIndex);
+  };
+
+  /** 확인을 마친 뒤의 실제 실행. 확인을 거치지 않는 경로는 위 `rerun` 뿐이다. */
+  const runRerun = (fromStepIndex?: number) => {
+    if (testId === null || onRerun === undefined) return;
+    setConfirmingRerun(null);
     setBusy(true);
     void sessions
       .discard(sessionId)
       .catch(() => undefined)
       .finally(() => onRerun(testId, fromStepIndex));
+  };
+
+  /** 저장한 뒤 그대로 다시 실행한다 — 확인 창의 주 선택 (2026-09-09). */
+  const saveThenRerun = (fromStepIndex?: number) => {
+    setBusy(true);
+    void sessions
+      .save(sessionId, saveName.trim())
+      .then(() => {
+        setError(null);
+        setNotice(null);
+        runRerun(fromStepIndex);
+      })
+      .catch((exc: unknown) => {
+        // 저장이 실패하면 **실행하지 않는다.** 버리는 쪽으로 넘어가면 유실이 된다.
+        setConfirmingRerun(null);
+        setError(describeError(exc));
+      })
+      .finally(() => setBusy(false));
+  };
+
+  /**
+   * 고치러 간다 — **세션을 버리고, 그 자리 앞까지 다시 세운다** (2026-09-09 사용자 결정).
+   *
+   * ## 왜 「그 자리 앞까지 다시 세운다」인가
+   *
+   * 첫 판은 편집 화면으로만 보냈다. 사용자가 그 결과를 곧바로 지적했다: 「실행과정에서
+   * 에러가 발생하여, 스텝을 편집 할 경우, 직전 스텝까지의 세션을 제공하던지 해서, 이어서
+   * 편집이 가능해야함」. 옳은 지적이다 — 실패한 Step 을 고치는 일은 대개 **요소를 다시
+   * 집는 것**이고, 그것은 살아 있는 페이지에서만 된다 (헌법 원칙 IV).
+   *
+   * 그 장치는 이미 있다. 009 FR-291 의 「브라우저 열어 Step nn 앞에서 멈추기」가 지정한
+   * 자리 전까지 재생한 뒤 멈추고 **직접 조작 기록을 켠다** (FR-295). 없던 것은 실패한
+   * 실행에서 거기로 가는 길뿐이었다.
+   *
+   * **세션을 먼저 버린다.** 테스트당 세션은 하나다 (FR-043) — 버리지 않으면 새 세션
+   * 생성이 거절된다.
+   *
+   * **저장 여부는 여기서 묻지 않는다.** 저장되지 않은 상태에서는 조작이 이미 잠겨 있고
+   * (`editStepCapability`), 새 세션은 **저장된 정의**를 재생하므로 저장이 전제다.
+   */
+  const editStep = (stepId: string | null, stepIndex: number) => {
+    if (testId === null || onEditStep === undefined) return;
+    setBusy(true);
+    void sessions
+      .discard(sessionId)
+      .catch(() => undefined)
+      .finally(() => onEditStep(testId, stepId, stepIndex));
   };
 
   const leaveConfirmed = () => {
@@ -1637,7 +2291,15 @@ export function SessionScreen({
         autoTransition={autoTransition}
         error={error}
         notice={notice}
-        notes={notes}
+        /*
+          010 SC-516 — **조작이 전달되지 않은 사유를 화면에 남긴다.**
+
+          서버가 거절했거나 화면이 조작을 받지 않는 상태에서 사용자가 시도했다. 조용히
+          아무 일도 일어나지 않으면 사용자는 제품이 고장난 것으로 읽는다. `notes` 에
+          싣는 이유는 그 자리가 이미 「사용자 조작 없이 알려야 하는 사실」의 집이기
+          때문이다 — 새 자리를 만들면 같은 종류가 두 곳에 흩어진다.
+        */
+        notes={controlNotice === null ? notes : [...notes, controlNotice]}
         lost={lost}
         offline={showOffline}
         mirror={mirror}
@@ -1733,6 +2395,7 @@ export function SessionScreen({
               () => onShowResult(testId, selectedStepId)
             : undefined
         }
+        onEditStep={editStep}
         onChooseBlocked={(choice) => {
           setAiBlocked(null);
           void act(() => sessions.aiChoice(sessionId, choice as AiChoice));
@@ -1758,6 +2421,18 @@ export function SessionScreen({
       )}
       {confirmingClose && (
         <CloseConfirm onCancel={() => setConfirmingClose(false)} onConfirm={closeConfirmed} />
+      )}
+      {confirmingRerun !== null && (
+        <RerunConfirm
+          stepCount={view.steps.length}
+          fromStepIndex={confirmingRerun.fromStepIndex}
+          saveName={saveName}
+          busy={busy}
+          onSaveNameChange={setSaveName}
+          onSaveAndRun={() => saveThenRerun(confirmingRerun.fromStepIndex ?? undefined)}
+          onDiscardAndRun={() => runRerun(confirmingRerun.fromStepIndex ?? undefined)}
+          onCancel={() => setConfirmingRerun(null)}
+        />
       )}
     </>
   );
@@ -1797,6 +2472,66 @@ function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
           돌아가기
         </button>
         <button onClick={onConfirm}>닫기</button>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * 「처음부터 실행」이 저장하지 않은 기록을 만났다 (2026-09-09 · 사용자 보고).
+ *
+ * **선택이 셋이고, 무엇을 버리는지 문장이 말한다.** `LeaveConfirm` 과 같은 문법을 쓴다 —
+ * 두 창이 다른 모양이면 사용자는 같은 종류의 결정을 두 번 배운다.
+ *
+ * 주 선택은 **저장하고 실행**이다. 유실이 일어나는 쪽을 기본으로 두지 않는다.
+ */
+function RerunConfirm({
+  stepCount,
+  fromStepIndex,
+  saveName,
+  busy,
+  onSaveNameChange,
+  onSaveAndRun,
+  onDiscardAndRun,
+  onCancel,
+}: {
+  stepCount: number;
+  /** `null` 이면 처음부터. 값이 있으면 그 자리부터 */
+  fromStepIndex: number | null;
+  saveName: string;
+  busy: boolean;
+  onSaveNameChange: (v: string) => void;
+  onSaveAndRun: () => void;
+  onDiscardAndRun: () => void;
+  onCancel: () => void;
+}) {
+  const scope = fromStepIndex === null ? "처음부터" : `${stepLabel(fromStepIndex)}부터`;
+  return (
+    <Modal label="저장하지 않고 다시 실행 확인">
+      <div className="title">저장하지 않은 기록이 있습니다</div>
+      <p className="note">
+        기록된 Step {stepCount}개 중 저장하지 않은 변경이 있습니다. {scope} 실행하면 지금
+        세션을 버리고 <strong>저장된 정의</strong>를 재생하므로, 저장하지 않은 기록은
+        사라집니다.
+      </p>
+      <label htmlFor="rerun-save-name">테스트 이름</label>
+      <input
+        id="rerun-save-name"
+        value={saveName}
+        autoFocus
+        onChange={(e) => onSaveNameChange(e.target.value)}
+        placeholder="프로젝트 생성"
+      />
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+        <button className="secondary" onClick={onCancel}>
+          돌아가기
+        </button>
+        <button className="danger" disabled={busy} onClick={onDiscardAndRun}>
+          버리고 실행
+        </button>
+        <button disabled={busy || saveName.trim() === ""} onClick={onSaveAndRun}>
+          저장하고 실행
+        </button>
       </div>
     </Modal>
   );

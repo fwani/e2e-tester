@@ -53,16 +53,41 @@ export function PhaseBar({ bar, testName, actions }: PhaseBarProps) {
         </div>
       )}
 
-      {/* 결말 요약 — **이 자리 하나뿐이다** (FR-218d · 005 FR-140 · U-19) */}
+      {/*
+        결말 요약 — **이 자리 하나뿐이다** (FR-218d · 005 FR-140 · U-19).
+
+        **한 줄로만 그린다** (사용자 보고 · 2026-09-09). 이 칸은 남는 폭을 가져가는
+        자리이고 `minWidth: 0` 이라 줄일 수 있는데, 줄 바꿈을 허용해 두면 폭이 모자랄 때
+        폭 0 까지 찌그러진 채 **글자 하나씩 세로로 쌓인다** — 실제로 그 화면이 나왔다.
+        말줄임이면 좁아져도 읽히는 만큼은 읽히고, 폭을 되찾으면 그대로 돌아온다.
+      */}
       {bar.runSummary !== null && (
-        <div data-run-summary className="line" style={{ flex: 1, minWidth: 0 }}>
+        <div
+          data-run-summary
+          className="line"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+          title={typeof bar.runSummary === "string" ? bar.runSummary : undefined}
+        >
           {bar.runSummary}
         </div>
       )}
 
       {bar.runSummary === null && <div className="spacer" />}
 
-      <div className="row" style={{ flex: "0 0 auto" }}>
+      {/*
+        조작 묶음. **줄어들 수 있어야 한다** (`0 1 auto` · `minWidth: 0`).
+
+        `0 0 auto` 였을 때, 여러 조작이 동시에 잠겨 이유 문구가 나란히 붙으면 이 묶음이
+        제 내용 폭을 끝까지 요구했고 띠가 창 밖으로 밀려났다. 줄어드는 몫은 이유 문구가
+        받는다 — 버튼과 해소 수단은 `ActionButton` 이 `0 0 auto` 로 지킨다.
+      */}
+      <div className="row" style={{ flex: "0 1 auto", minWidth: 0 }}>
         {actions}
       </div>
     </div>

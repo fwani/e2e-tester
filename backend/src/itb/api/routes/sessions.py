@@ -25,6 +25,12 @@ from itb.api.errors import (
     not_found,
 )
 from itb.api.state import AppState, get_state
+from itb.api.ws.control_channel import (
+    ChannelState,
+    ControlRejected,
+    state_message,
+    validate,
+)
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.run_result import RunScope, StepOutcome, scope_of
 from itb.domain.step import Author, NavigateStep, Step
@@ -43,11 +49,13 @@ from itb.execution.state_machine import (
     InvalidTransitionError,
     SessionState,
     allowed_commands,
+    is_control_phase,
     is_manipulation_phase,
     state_label,
 )
 from itb.execution.step_edits import allocate_step_id
 from itb.execution.step_executor import StepExecutor
+from itb.mirror.prompts import BrowserPrompts
 from itb.mirror.tab_switch import MirrorController
 from itb.recording.inline_record import InlineRecording
 from itb.recording.recorder import Recorder
@@ -101,6 +109,28 @@ class SessionWork:
     saved_test_id: str | None = None
     saved_at: datetime | None = None
     """마지막 저장 시각 (005 FR-154). 화면이 저장 성공을 스스로 알 수 있게 한다."""
+
+    prompts: BrowserPrompts | None = None
+    """브라우저 요구 가로채기 (010 FR-338·FR-339).
+
+    **조작 국면에서 항상 켜져 있어야 한다** (research R7). 가로채지 않으면 대화상자가
+    대상 페이지를 세우고, 헤드리스에서는 그 사실이 화면에 나타나지 않는다 — 사용자에게는
+    「클릭했는데 아무 일도 없다」로 보인다.
+
+    모드와 무관하게 붙이는 이유는 미러와 같다: 어느 국면에서든 대상 페이지가 대화상자를
+    띄울 수 있고, 그때 멈추는 것은 국면을 가리지 않는다.
+    """
+
+    # ─── 조작 위치 (010 · data-model §6) ──────────────────────────────────
+    control_surface: str = "mirror"
+    """지금 조작이 어디서 이루어지는가. **기본은 미러다** (FR-352 이후).
+
+    **전이는 사용자 요청으로만 일어난다** (FR-353). 서버가 상황을 판단해 바꾸지 않는다 —
+    강등이나 처리할 수 없는 요구를 만나도 자동으로 창을 열지 않고, 화면이 전환 수단을
+    그 자리에 보여 준다 (FR-353a).
+
+    저장되지 않는다 (data-model 「저장 형식 변경 요약」).
+    """
 
     # ─── 재실행 (US2) ──────────────────────────────────────────────────────
     mirror: MirrorController | None = None
@@ -200,6 +230,125 @@ def mirror_of(session_id: str) -> MirrorController | None:
     return w.mirror if w is not None else None
 
 
+def surface_of(w: SessionWork, surface: str) -> str:
+    """조작 위치를 바꾸고 그 값을 돌려준다 (010 FR-349 · data-model §6).
+
+    `control.py` 가 부른다. 값을 `SessionWork` 에 두는 이유는 화면이 세션 조회로 그것을
+    다시 받을 수 있어야 하기 때문이다 — 이벤트만으로 두면 재연결한 화면이 조작 위치를
+    잊는다 (`session_events.py` 의 "재전송하지 않는다" 와 같은 이유).
+    """
+    w.control_surface = surface
+    return surface
+
+
+def _control_phase_watcher(state: AppState, session_id: str):  # noqa: ANN202
+    """국면이 바뀌면 조작 채널을 정리한다 (010 FR-342 · contracts §2).
+
+    관찰 국면으로 전이하면 **서버가 사유와 함께 닫는다.** 화면이 안 보내는 것에 의존하지
+    않는 것이 FR-342 의 요점이다 — 화면 단에서만 막으면 화면을 우회한 조작 경로가 남는다.
+
+    조작 국면 사이의 전이(녹화 → 일시정지 등)에서는 닫지 않는다. 닫으면 사용자가 일시정지
+    할 때마다 조작 통로가 끊기고 다시 붙기를 기다려야 한다.
+    """
+
+    async def watch(new_state: SessionState) -> None:
+        control_phase = is_control_phase(new_state)
+
+        # 010 FR-335 — 조작 국면에서는 무프레임 감시가 빨라진다. 조작이 화면을 바꾸지
+        # 않을 때 2초를 기다리면 사용자는 그것을 「클릭이 안 먹었다」로 읽는다.
+        w = _WORK.get(session_id)
+        if w is not None and w.mirror is not None:
+            with contextlib.suppress(Exception):
+                w.mirror.set_control_phase(control_phase)
+
+        channel = state.control.get(session_id)
+        if channel is None or not channel.attached:
+            return
+        if control_phase:
+            return
+        await channel.close(
+            f"'{state_label(new_state)}' 국면에서는 미러에서 조작할 수 없습니다. "
+            "러너가 전진하는 중에 사람 조작이 끼어들면 같은 Step 이 두 번 돕니다."
+        )
+
+    return watch
+
+
+def _frame_liveness_watcher(state: AppState, session_id: str):  # noqa: ANN202
+    """프레임 흐름이 바뀌면 조작 채널의 상태를 옮긴다 (010 T088 · FR-346).
+
+    **화면이 안 보내는 것에 의존하지 않는다.** 프론트도 `mirrorLive` 로 조작을 막지만,
+    그것은 표시의 문제이고 이쪽은 통로의 문제다 — FR-342 가 「화면 단에서 막는 것으로
+    충분하지 않다」고 정한 것과 같은 이유로 서버가 자기 상태를 갖는다.
+
+    `close` 가 아니라 `suspend` 다. 닫으면 클라이언트가 다시 붙어야 하고, 프레임이 잠깐
+    끊긴 것과 국면이 바뀐 것이 화면에서 같아 보인다 (data-model §3).
+    """
+
+    async def watch(alive: bool) -> None:
+        channel = state.control.get(session_id)
+        if channel is None or not channel.attached:
+            return
+        if alive:
+            await channel.resume()
+        else:
+            await channel.suspend(
+                "대상 화면이 끊겨 지금은 조작을 전달할 수 없습니다. "
+                "화면이 멈춘 것이며 대상 페이지가 멈춘 것은 아닙니다."
+            )
+
+    return watch
+
+
+def _frame_size(w: SessionWork) -> tuple[float | None, float | None]:
+    """지금 표시 중인 프레임의 대상 화면 크기 (FR-333·FR-341).
+
+    `None` 이면 프레임을 한 장도 받지 못한 상태다 — 그 상태에서는 좌표를 보낼 근거가
+    없으므로 포인터 사건이 거절된다.
+    """
+    if w.mirror is None:
+        return None, None
+    frame = w.mirror.last_frame()
+    if frame is None:
+        return None, None
+    width, height = frame.get("width"), frame.get("height")
+    if not isinstance(width, (int, float)) or not isinstance(height, (int, float)):
+        return None, None
+    return float(width), float(height)
+
+
+def _open_tabs(w: SessionWork) -> set[int]:
+    """조작을 받을 수 있는 탭 번호들. 닫힌 탭은 뺀다 (FR-341)."""
+    return {t.tab_index for t in w.session.tabs if not t.closed}
+
+
+async def _cleanup_session_extras(
+    state: AppState, w: SessionWork, session_id: str, reason: str
+) -> None:
+    """세션이 끝났다. 요구와 파일을 치운다 (010 FR-337b · research R7).
+
+    **남은 요구를 응답 없이 버리지 않는다.** 가로챈 대화상자를 그대로 두면 그 페이지는
+    영원히 멈춰 있고, 그 상태는 세션을 닫는 경로에서 시간 초과로 나타난다.
+
+    **받은 파일은 세션보다 오래 남지 않는다** (FR-337b). 사용자가 보낸 것이므로 그 수명이
+    세션의 수명을 넘어서는 안 된다.
+    """
+    if w.prompts is not None:
+        with contextlib.suppress(Exception):
+            await w.prompts.dismiss_all(reason)
+    with contextlib.suppress(Exception):
+        state.session_files.drop(session_id)
+
+
+async def _close_control_channel(state: AppState, session_id: str, reason: str) -> None:
+    """세션이 끝났다. 채널을 닫는다 (FR-347).
+
+    **마지막 프레임이 남아 있어도 조작을 전달하지 않는다.** 보낼 대상이 없기 때문이다.
+    """
+    with contextlib.suppress(Exception):
+        await state.control.drop(session_id, reason)
+
+
 def require_paused(w: SessionWork) -> None:
     """FR-035a·DR-012 — 편집 명령은 `PAUSED` 와 `REVIEW` 에서만 받는다.
 
@@ -284,6 +433,28 @@ class SessionView(BaseModel):
     tabs_open: int
     active_tab_index: int
     mirrored_tab_index: int
+    control_surface: str = "mirror"
+    """지금 조작이 어디서 이루어지는가 — `"mirror"` 또는 `"window"` (010 FR-349).
+
+    **이벤트만으로 두면 재연결한 화면이 조작 위치를 잊는다.** `SessionWork` 는 이 값을
+    처음부터 들고 있었고 그 주석도 「화면이 세션 조회로 다시 받을 수 있어야 한다」고
+    적어 두었는데, 정작 이 응답에 실리지 않아 **쓰이지 않는 값**이었다. 새로 고치면
+    서버는 「창」이라고 알고 화면은 「미러」라고 아는 상태가 됐다.
+    """
+
+    window_unavailable_reason: str | None = None
+    """실제 창으로 옮겨 갈 수 없는 이유. 옮겨 갈 수 있으면 `None` (010 FR-351 · FR-234).
+
+    **참·거짓이 아니라 문장을 보낸다.** 화면은 쓸 수 없는 조작을 이유와 함께 비활성으로
+    두어야 하는데(FR-234), 그 이유를 화면이 자기 사전에 갖고 있으면 서버가 거절할 때
+    쓰는 문장과 갈린다 — `wording.ts` 의 O13 옆 주석이 그것을 금지한 이유이며, 그 결정을
+    깨지 않고 요구를 채우는 방법이 **서버가 문장을 주는 것**이다.
+
+    사용자 보고 2026-09-09 「실제창에서 조작하기 변환이 안됨」이 이것이 없던 상태다.
+    화면은 눌러 본 뒤에야 안 된다는 것을 알 수 있었고, 그 전에는 서버가 창 없는 세션에도
+    「옮겼다」고 답하고 있었다.
+    """
+
     edit_warnings: list[str]
     recorder_warnings: list[str]
     allowed_commands: list[str]
@@ -413,6 +584,7 @@ def _create_lock(test_id: str) -> asyncio.Lock:
 
 
 def view_of(w: SessionWork) -> SessionView:
+    from itb.api.routes.control import window_unavailable_reason
     from itb.execution.state_machine import allowed_commands
 
     return SessionView(
@@ -425,6 +597,10 @@ def view_of(w: SessionWork) -> SessionView:
         tabs_open=len(w.session.open_tabs()),
         active_tab_index=w.session.active_tab_index,
         mirrored_tab_index=w.session.mirrored_tab_index,
+        control_surface=w.control_surface,
+        # 판정은 `control.py` 하나가 갖는다 — 화면이 보는 값과 전환 요청이 받는 답이
+        # 갈리면, 눌러도 되는 버튼이 눌리지 않거나 그 반대가 된다.
+        window_unavailable_reason=window_unavailable_reason(w.session),
         edit_warnings=list(w.session.edit_warnings),
         recorder_warnings=list(w.recorder.warnings),
         allowed_commands=[c.value for c in allowed_commands(w.session.state)],
@@ -604,9 +780,27 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
 
     # 미러와 유실 감지는 모드와 무관하게 붙인다 — 미러는 모든 활성 상태에서 돌아야 하고
     # (FR-047d), 세션 유실은 어느 상태에서든 감지해야 한다 (FR-041).
-    work.loss_watcher = SessionLossWatcher(session, on_lost=_loss_handler(session.session_id))
+    work.loss_watcher = SessionLossWatcher(
+        session, on_lost=_loss_handler(state, session.session_id)
+    )
     work.loss_watcher.attach()
     work.mirror = MirrorController(session)
+    # FR-030a·FR-030f — **새 탭이 열리면 미러가 그리로 옮겨간다.** 없으면 표시 탭이 0 에
+    # 남고, 조작 통로는 표시 탭을 따르므로 (FR-317) 새 탭을 보며 누른다고 믿는 조작이
+    # 전부 탭 0 으로 간다 — 새 탭의 Step 이 하나도 생기지 않는다.
+    work.mirror.follow_new_tabs()
+    # 010 FR-338 — 브라우저 요구 가로채기. **컨텍스트 단위로 건다** — 새 탭에도 자동으로
+    # 붙는다 (리코더가 `add_init_script` 를 컨텍스트에 거는 것과 같은 이유다).
+    work.prompts = BrowserPrompts(emit=session.emit)
+    work.prompts.attach(session.context)
+    # 010 FR-342 — 국면이 조작 채널의 개폐를 정한다. 채널이 상태를 감시하는 것이 아니라
+    # **상태가 채널에 알린다.** 반대로 두면 그 사이에 관찰 국면으로 열린 채널이 남는 창이
+    # 생기고, 그 창에서 사람 조작이 러너와 겹친다 (FR-315).
+    session.observe_state(_control_phase_watcher(state, session.session_id))
+    # 010 T088 FR-346 — 프레임이 끊기면 조작 채널을 `suspended` 로 내리고, 회복하면
+    # 되돌린다. **닫지 않는다**: 프레임이 잠깐 끊긴 것과 국면이 바뀐 것이 화면에서 같아
+    # 보이면 사용자는 「화면이 멈춘 것」과 「페이지가 멈춘 것」을 구분할 수 없다.
+    work.mirror.observe_liveness(_frame_liveness_watcher(state, session.session_id))
 
     if body.mode == "record":
         await session.apply(Command.BEGIN_RECORD)
@@ -635,6 +829,9 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         _start_agent(work, body.ai_instruction)
 
     await work.mirror.show(0)
+    # 010 FR-335 — 첫 국면도 알려 준다. 상태 관찰자는 **전이**에서만 불리므로, 녹화로
+    # 시작한 세션은 통보를 한 번도 받지 못한 채 관찰 국면의 주기로 돈다.
+    work.mirror.set_control_phase(is_control_phase(session.state))
     return view_of(work)
 
 
@@ -944,7 +1141,7 @@ async def _start_runner(
     runner.start()
 
 
-def _loss_handler(session_id: str):  # noqa: ANN201 - LossHandler 를 만든다
+def _loss_handler(state: AppState, session_id: str):  # noqa: ANN201 - LossHandler 를 만든다
     """세션 유실 뒷정리. FR-041a~c.
 
     실행 중이던 태스크를 세우고 **그때까지의 Step별 결과를 보존**한다. 결과를 버리면
@@ -961,6 +1158,9 @@ def _loss_handler(session_id: str):  # noqa: ANN201 - LossHandler 를 만든다
         if w.engine is not None:
             with contextlib.suppress(Exception):
                 await w.engine.finalize(False, session_lost=True)
+        # 010 FR-347 — 세션이 유실됐다. 남은 마지막 프레임을 클릭해도 보낼 대상이 없다.
+        await _close_control_channel(state, session_id, reason)
+        await _cleanup_session_extras(state, w, session_id, reason)
         if w.mirror is not None:
             with contextlib.suppress(Exception):
                 await w.mirror.stop(reason)
@@ -1040,29 +1240,35 @@ async def get_session(session_id: str) -> SessionView:
 async def set_pacing(session_id: str, body: PacingRequest) -> SessionView:
     """실행 속도를 바꾼다 (004 FR-103).
 
-    **실행 중에도 부를 수 있다.** 진행 중인 Step 을 끊지 않으며, 러너가 다음 Step 경계에서
-    이 값을 다시 읽는다. 브라우저에는 아무 명령도 보내지 않는다 (원칙 III 계열).
+    **상태를 보지 않는다.** 실행 중이든 끝났든 유실됐든 받는다.
+
+    실행 중에 받는 이유는 처음부터 그랬다 — 진행 중인 Step 을 끊지 않으며, 러너가 다음
+    Step 경계에서 이 값을 다시 읽는다. 브라우저에는 아무 명령도 보내지 않는다
+    (원칙 III 계열).
 
     취향 파일에도 남긴다 — FR-109 의 "다음 실행에서 마지막 선택이 기본값" 은 실행 중
     변경까지 반영되어야 성립한다. **다만 그 쓰기 실패로 이 호출이 실패하지는 않는다.**
     속도는 이미 바뀌었고, 취향을 못 남긴 것 때문에 실행을 방해할 이유가 없다. 대신
-    조용히 넘기지 않고 `preference_saved: false` 로 알린다.
+    조용히 넘기지 않고 ``preference_saved: false`` 로 알린다.
+
+    ## 2026-09-09 — 거절 둘을 없앴다 (사용자 결정)
+
+    이전에는 종료 상태(``TERMINAL_STATES``)와 유실(``LOST``)을 거절했다. 사용자가 그
+    거절을 문제로 지목했다: 「속도 선택은 실행중이든 아니든 바꿀수있어야함」.
+
+    **거절에 실질적 근거가 없었다.** 이 연산이 하는 일은 두 가지뿐이다 — 세션의 값을
+    바꾸고, 취향 파일에 남긴다. 끝난 세션에는 그 값을 읽을 러너가 없으므로 첫 번째는
+    아무 효과가 없고, 두 번째는 **바로 그 상태에서 가장 쓸모 있다**: 실행이 끝난 화면에는
+    「처음부터 실행」이 있고 (국면 `finished`), 여기서 고른 값이 그 실행의 속도가 된다
+    (FR-109). 거절은 사용자가 다음 실행을 준비하는 것을 막고 있었다.
+
+    화면 쪽도 같은 사정이었다 — 권한표가 이 거절을 비활성으로 옮겨 그리느라, 실행 종료
+    화면의 속도 컨트롤이 「실행이 이미 끝났습니다」를 달고 눌리지 않는 채 서 있었다.
+
+    유실도 함께 받는다. 세션은 사라졌지만 취향은 사용자의 것이고, 유실 화면에서 남은
+    길이 「저장하고 처음부터 다시 실행」이므로 그 실행의 속도를 여기서 정하게 된다.
     """
     w = work_of(session_id)
-    if w.session.state is SessionState.LOST:
-        raise conflict(
-            ErrorCode.SESSION_LOST,
-            "세션이 유실되어 실행 속도를 바꿀 수 없습니다.",
-            state=w.session.state.value,
-        )
-    if w.session.state in TERMINAL_STATES:
-        raise conflict(
-            ErrorCode.INVALID_TRANSITION,
-            "이미 끝난 세션의 실행 속도는 바꿀 수 없습니다.",
-            state=w.session.state.value,
-            allowed=[c.value for c in allowed_commands(w.session.state)],
-        )
-
     w.session.pacing = body.pacing
 
     saved = True
@@ -1476,6 +1682,10 @@ async def stop(session_id: str, state: State) -> SessionView:
 
     w.recorder.stop()
     await _cancel_agent(w)
+    # 010 FR-347 — 세션이 끝나면 조작을 받지 않는다. 미러를 세우기 **전에** 닫는다:
+    # 순서가 반대면 프레임이 멈춘 사이에 마지막 조작이 들어올 수 있다.
+    await _close_control_channel(state, session_id, "세션을 종료했습니다.")
+    await _cleanup_session_extras(state, w, session_id, "세션을 종료했습니다.")
     if w.mirror is not None:
         await w.mirror.stop("세션을 종료했습니다.")
     if w.runner is not None:
@@ -1516,6 +1726,8 @@ async def discard(session_id: str, state: State) -> None:
 
     w.recorder.stop()
     await _cancel_agent(w)
+    await _close_control_channel(state, session_id, "세션을 종료했습니다.")
+    await _cleanup_session_extras(state, w, session_id, "세션을 종료했습니다.")
     if w.mirror is not None:
         await w.mirror.stop("세션을 종료했습니다.")
     if w.runner is not None:
@@ -1602,3 +1814,142 @@ async def session_events(websocket: WebSocket, session_id: str) -> None:
         pass
     finally:
         hub.disconnect(websocket)
+
+
+# ─── WebSocket (조작, 양방향) ──────────────────────────────────────────────
+#
+# 010 · contracts/mirror-control.md §2. **위 관찰 소켓과 별개의 소켓이다** — 그쪽의
+# 단방향 계약은 그대로 유지된다 (research R4). 한 소켓이 프레임 밀기와 조작 받기를 같이
+# 하면 조작 폭주가 프레임 전달을 막고 그 역도 성립한다 (FR-336).
+
+
+@router.websocket("/{session_id}/control")
+async def session_control(websocket: WebSocket, session_id: str) -> None:
+    """조작 사건을 받아 대상 브라우저로 흘린다 (FR-314 · contracts §2).
+
+    **조작 국면에서만 수립된다** (FR-342). 세션이 없거나 관찰 국면이면 수립 자체를
+    거절한다 — 화면 단에서 막는 것으로 충분하지 않다.
+
+    **세션당 하나** (명세 Out of Scope — 한 세션당 한 조작자). 이미 열려 있으면 새 접속을
+    거절한다. 둘이 붙으면 같은 화면에 두 사람의 조작이 섞이고, 어느 조작이 어느 Step 이
+    되었는지 아무도 답할 수 없다.
+
+    **성공 응답을 보내지 않는다** (contracts §5 불변식 5). 성공의 증거는 프레임이다.
+    거절과 채널 상태만 돌려준다.
+    """
+    state: AppState = websocket.app.state.itb
+
+    w = _WORK.get(session_id)
+    if w is None:
+        await websocket.close(code=4404, reason="세션이 이미 끝났습니다.")
+        return
+    if not is_control_phase(w.session.state):
+        await websocket.close(
+            code=4403,
+            reason=f"'{state_label(w.session.state)}' 국면에서는 미러에서 조작할 수 없습니다.",
+        )
+        return
+
+    channel = state.control.channel(session_id)
+    if channel.attached:
+        await websocket.close(code=4409, reason="이 세션은 이미 다른 곳에서 조작 중입니다.")
+        return
+
+    controller = await w.mirror.attach_input() if w.mirror is not None else None
+    await websocket.accept()
+    await channel.open(websocket, controller)
+    await websocket.send_json(state_message(ChannelState.OPEN, None))
+
+    try:
+        while True:
+            event = await websocket.receive_json()
+            await _handle_control_event(state, session_id, event)
+    except WebSocketDisconnect:
+        channel.detached()
+    except Exception:  # noqa: BLE001 - 조작 채널의 장애가 실행을 실패시키지 않는다 (FR-348)
+        channel.detached()
+    finally:
+        # 끌어놓기 도중 끊겼을 수 있다. 누른 채로 남은 포인터를 놓는다 (FR-318).
+        if w.mirror is not None:
+            with contextlib.suppress(Exception):
+                await w.mirror.detach_input()
+
+
+async def _handle_control_event(state: AppState, session_id: str, event: object) -> None:
+    """조작 사건 하나. **검증 → 전달**이고 그 사이에 아무것도 없다.
+
+    Step 을 만들지 않는다 (헌법 원칙 I). 조작은 대상 브라우저의 입력이 될 뿐이고, Step 은
+    대상 페이지의 리코더가 만든다 — 주입한 입력이 페이지에서 `isTrusted: true` 이벤트가
+    되기 때문에 미러 조작과 창 조작이 리코더에게 구분되지 않는다 (research R1).
+    """
+    channel = state.control.get(session_id)
+    if channel is None:
+        return
+    w = _WORK.get(session_id)
+    if w is None:
+        await channel.close("세션이 이미 끝났습니다.")
+        return
+
+    if not channel.can_accept(w.session.state):
+        await channel.send_rejection(
+            ControlRejected(
+                f"'{state_label(w.session.state)}' 국면에서는 조작을 전달하지 않습니다."
+                if not is_control_phase(w.session.state)
+                else "지금은 화면이 끊겨 조작을 전달할 수 없습니다."
+            )
+        )
+        return
+
+    width, height = _frame_size(w)
+    try:
+        clean = validate(event, frame_width=width, frame_height=height, tabs=_open_tabs(w))
+    except ControlRejected as exc:
+        await channel.send_rejection(exc)
+        return
+
+    # FR-317 — **보고 있는 탭**에 보낸다. 표시 탭과 조작 대상이 갈리면 사용자가 보지 않는
+    # 화면이 조작된다. 요청한 탭이 표시 탭과 다르면 거절한다 — 조용히 다른 탭에 보내지 않는다.
+    mirror = w.mirror
+    controller = mirror.input if mirror is not None else None
+    if controller is None:
+        await channel.send_rejection(
+            ControlRejected("조작 통로가 준비되지 않았습니다.", clean["kind"])
+        )
+        return
+    if clean["tab"] != controller.tab_index:
+        await channel.send_rejection(
+            ControlRejected(
+                f"지금 보고 있는 탭은 {controller.tab_index} 입니다. "
+                "보고 있지 않은 탭은 조작하지 않습니다.",
+                clean["kind"],
+            )
+        )
+        return
+
+    if clean["kind"] == "file.attach":
+        # 010 T065 — **파일 자체는 이 통로로 오지 않는다** (research R6). REST 로 올린
+        # 것의 식별자만 오고, 여기서 실제 경로로 바꾼다. 큰 페이로드가 조작 채널을 막으면
+        # FR-336 이 깨지므로 채널의 책임을 좁게 유지한다.
+        #
+        # **순서 보장**: 클라이언트가 업로드 응답을 받은 뒤에 이 사건을 보낸다. 서버가
+        # 아직 오지 않은 파일을 기다리게 만드는 경로를 두지 않는다 (research 미해결 항목).
+        store = state.session_files.get(session_id)
+        paths: list[str] = []
+        for file_id in clean.get("fileIds", []):
+            path = store.path_of(file_id) if store is not None else None
+            if path is None:
+                await channel.send_rejection(
+                    ControlRejected(
+                        "그 파일을 찾을 수 없습니다. 다시 올려 주세요.", clean["kind"]
+                    )
+                )
+                return
+            paths.append(str(path))
+        clean["paths"] = paths
+
+    try:
+        await controller.dispatch(clean)
+    except Exception as exc:  # noqa: BLE001 - 전달 실패가 실행을 실패시키지 않는다 (FR-348)
+        await channel.send_rejection(
+            ControlRejected(f"조작을 전달하지 못했습니다: {type(exc).__name__}", clean["kind"])
+        )

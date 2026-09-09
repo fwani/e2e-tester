@@ -66,6 +66,7 @@ export function Artboard({
   minHeight,
   height,
   grow = false,
+  fill = false,
   children,
 }: {
   width: number;
@@ -79,6 +80,27 @@ export function Artboard({
    * 가져간다. 좁은 창 정책은 그대로다: 재배치하지 않고 스크롤한다.
    */
   grow?: boolean;
+  /**
+   * 창 높이에 **맞춘다** — 내용이 늘어도 아트보드가 늘어나지 않는다.
+   *
+   * ## 왜 필요한가
+   *
+   * `minHeight` 만 두면 아트보드는 내용만큼 늘어난다. 안쪽에 `overflowY: auto` 인
+   * 스크롤 영역이 있어도 소용이 없다 — 부모가 무한히 늘어나면 그 영역도 함께 늘어나
+   * 스크롤할 것이 남지 않는다. 그래서 Step 이 쌓일수록 **페이지 전체가 길어지고**,
+   * 헤더·국면 띠·미러가 위로 밀려 올라간다.
+   *
+   * ## 왜 `minHeight` 를 지우지 않는가
+   *
+   * 둘은 다른 상황을 맡는다. 창이 기준 높이보다 **크면** `height` 가 이겨 아트보드가
+   * 창에 맞고 안쪽이 스크롤한다. 창이 기준보다 **작으면** `minHeight` 가 이겨 아트보드가
+   * 기준 높이를 지키고 페이지가 스크롤한다 — 좁은 창에서 재배치하지 않고 스크롤한다는
+   * 기존 정책(위 `grow` 주석)과 같은 판단이다. 층이 눌려 읽을 수 없게 되는 것보다
+   * 스크롤이 낫다.
+   *
+   * `100dvh` 는 주소 표시줄이 접히는 브라우저에서 창의 **실제** 높이다.
+   */
+  fill?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -87,6 +109,7 @@ export function Artboard({
         style={{
           ...(grow ? { minWidth: `${width}px`, width: "100%" } : { width: `${width}px` }),
           ...(height !== undefined ? { height: `${height}px` } : {}),
+          ...(fill ? { height: "100dvh" } : {}),
           ...(minHeight !== undefined ? { minHeight: `${minHeight}px` } : {}),
           display: "flex",
           flexDirection: "column",

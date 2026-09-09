@@ -79,10 +79,27 @@ describe("간격 중 진행 표시 (FR-107)", () => {
     expect(onPacingChange).toHaveBeenCalledWith("fast");
   });
 
-  it("실행이 끝나면 속도를 바꿀 수 없되 무엇을 골랐는지는 남는다", () => {
+  /*
+    2026-09-09 — **끝난 실행에서도 바꿀 수 있다** (사용자 결정).
+
+    이전 단언은 「바꿀 수 없되 무엇을 골랐는지는 남는다」였다. 서버가 종료 상태의 속도
+    변경을 거절했으므로(`sessions.set_pacing` 의 `TERMINAL_STATES`) 화면이 그보다 관대해서
+    는 안 된다는 규율(005 U-01)에 따른 단언이었고, 그 규율 자체는 그대로다.
+
+    바뀐 것은 **서버의 거절**이다. 사용자가 그것을 지목했다: 「속도 선택은 실행중이든
+    아니든 바꿀수있어야함」. 거절에 실질적 근거가 없었다 — 이 연산은 세션의 값을 바꾸고
+    취향 파일에 남기는 것이 전부이고, 끝난 세션에는 그 값을 읽을 러너가 없다. 반대로
+    **가장 쓸모 있는 자리**였다: 실행 종료 화면에는 「처음부터 실행」이 있고, 여기서 고른
+    값이 그 실행의 속도가 된다 (004 FR-109).
+
+    「무엇을 골랐는지 남는다」는 그대로 지킨다 — `aria-pressed` 가 그것을 말한다.
+  */
+  it("실행이 끝나도 속도를 바꿀 수 있고, 무엇을 골랐는지도 남는다", () => {
+    const onPacingChange = vi.fn();
     render(
       <SessionWorkbench
         {...inTheGap({
+          onPacingChange,
           view: sessionView({
             state: "completed",
             steps,
@@ -93,8 +110,19 @@ describe("간격 중 진행 표시 (FR-107)", () => {
       />,
     );
     const slow = screen.getByTestId("pacing-slow") as HTMLButtonElement;
-    // 감추지 않는다 — 컨트롤이 사라지면 자기가 고른 속도가 무엇이었는지도 알 수 없다.
-    expect(slow.disabled).toBe(true);
+    expect(slow.disabled).toBe(false);
     expect(slow.getAttribute("aria-pressed")).toBe("true");
+
+    // 다음 실행의 속도를 여기서 정한다 (FR-109).
+    fireEvent.click(screen.getByTestId("pacing-fast"));
+    expect(onPacingChange).toHaveBeenCalledWith("fast");
+
+    /*
+      **라벨이 「다음 실행 속도」다** (005 FR-174). 지금 돌고 있는 것에 적용되지 않는다는
+      사실을 밝히지 않으면, 사용자는 끝난 실행의 기록이 바뀌는 줄 안다.
+    */
+    expect(document.querySelector('[data-action="run.pacing"]')?.textContent).toContain(
+      "다음 실행 속도",
+    );
   });
 });

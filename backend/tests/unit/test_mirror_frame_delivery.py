@@ -27,6 +27,7 @@ from itb.mirror.screencast import (
 # 먼저 일어나므로 이 두 값은 제품에 적힌 값 그대로다.
 PRODUCT_IDLE_INTERVAL_S = sc.IDLE_INTERVAL_S
 PRODUCT_FALLBACK_INTERVAL_S = sc.FALLBACK_INTERVAL_S
+PRODUCT_CONTROL_INTERVAL_S = sc.CONTROL_IDLE_INTERVAL_S
 
 
 @pytest.fixture(autouse=True)
@@ -45,6 +46,9 @@ def _short_intervals(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     monkeypatch.setattr(sc, "IDLE_INTERVAL_S", 0.10)
     monkeypatch.setattr(sc, "FALLBACK_INTERVAL_S", 0.05)
+    # 010 — 조작 국면 주기도 함께 내린다. 제품 값(0.25초)은 아래
+    # `test_product_control_interval_is_shorter_than_the_observation_one` 이 못 박는다.
+    monkeypatch.setattr(sc, "CONTROL_IDLE_INTERVAL_S", 0.05)
 
 
 def test_product_intervals_are_the_measured_ones() -> None:
@@ -226,3 +230,288 @@ async def test_stop_cancels_idle_watch() -> None:
     settled = page.shots
     await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
     assert page.shots == settled, "정지 후에도 화면을 찍고 있다"
+
+
+# ─── 010 FR-331: 좌표 변환의 근거가 세 경로 모두에 실린다 ───────────────────
+#
+# T008. 프레임을 내보내는 경로는 셋이다 — 스크린캐스트(`_forward`) · 강등 루프 ·
+# 무프레임 보충. 프론트는 어느 경로로 온 프레임인지 알 수 없으므로, **하나라도 필드를
+# 빠뜨리면 그 경로에서만 좌표가 어긋나고 원인이 드러나지 않는다.**
+
+
+GEOMETRY_FIELDS = ("width", "height", "pageScale", "offsetTop", "frameSeq")
+"""프레임마다 반드시 있어야 하는 것. `data`·`tab` 은 이전부터 있었다."""
+
+
+def _frames(events: list[tuple[str, dict]]) -> list[dict]:
+    return [payload for kind, payload in events if kind == "mirror_frame"]
+
+
+class ViewportPage(FakePage):
+    """뷰포트 크기를 아는 화면. 스크린샷 경로가 그 값을 실어야 한다 (T006)."""
+
+    def __init__(self, width: int = 1600, height: int = 1200) -> None:
+        super().__init__()
+        self.viewport_size = {"width": width, "height": height}
+
+
+@pytest.mark.asyncio
+async def test_screenshot_paths_carry_geometry() -> None:
+    """강등·무프레임 보충 경로가 좌표 변환의 근거를 함께 보낸다 (FR-331 · T006)."""
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+    page.context = None  # CDP 를 못 쓰는 환경 → 강등 경로
+    await cast.start()
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
+    await cast.stop()
+
+    frames = _frames(events)
+    assert frames, "강등 경로가 프레임을 내지 않았다"
+    for frame in frames:
+        missing = [f for f in GEOMETRY_FIELDS if f not in frame]
+        assert not missing, f"강등 프레임에 {missing} 가 없다 — 그 경로에서만 좌표가 어긋난다"
+
+
+@pytest.mark.asyncio
+async def test_screenshot_frames_report_the_viewport_not_the_request_cap() -> None:
+    """스크린샷 경로의 `width`·`height` 는 **대상 화면 크기**다 (T006 · data-model §2).
+
+    이전에는 `MAX_WIDTH`·`MAX_HEIGHT` 를 그대로 실었다. 그것은 스크린캐스트에 **요청하는
+    상한**이지 화면 크기가 아니다 — 실측에서 1280×800 을 요청해 1067×800 을 받았다
+    (research R3). 두 값이 다르므로 강등 프레임으로 좌표를 되돌리면 어긋난다.
+    """
+    page = ViewportPage(1600, 1200)
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+    page.context = None
+    await cast.start()
+    await cast.stop()
+
+    frames = _frames(events)
+    assert frames
+    assert frames[0]["width"] == 1600
+    assert frames[0]["height"] == 1200
+
+
+@pytest.mark.asyncio
+async def test_frame_seq_increases_within_a_tab() -> None:
+    """프레임 번호가 증가한다. 조작 사건의 `frameSeq` 가 이 값을 가리킨다 (data-model §1)."""
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+    page.context = None
+    await cast.start()
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
+    await cast.stop()
+
+    seqs = [f["frameSeq"] for f in _frames(events)]
+    assert len(seqs) >= 2, "번호를 비교할 프레임이 모자라다"
+    assert seqs == sorted(seqs), f"프레임 번호가 뒤로 갔다: {seqs}"
+    assert len(set(seqs)) == len(seqs), f"같은 번호를 두 번 썼다: {seqs}"
+
+
+@pytest.mark.asyncio
+async def test_screencast_path_reads_geometry_from_metadata() -> None:
+    """스크린캐스트 경로는 `metadata` 에서 배율·오프셋을 읽는다 (T005 · research R3).
+
+    프론트가 추정해서는 안 된다는 것이 FR-331 이다. 값이 1·0 이 아닌 환경을 여기서만
+    재현할 수 있다 — 실제 브라우저로는 그 환경을 만들 수 없다.
+    """
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+
+    await cast._forward(
+        {
+            "data": "ZnJhbWU=",
+            "sessionId": "s1",
+            "metadata": {
+                "deviceWidth": 1600,
+                "deviceHeight": 1200,
+                "pageScaleFactor": 2.5,
+                "offsetTop": 64,
+            },
+        }
+    )
+
+    frames = _frames(events)
+    assert len(frames) == 1
+    assert frames[0]["width"] == 1600
+    assert frames[0]["height"] == 1200
+    assert frames[0]["pageScale"] == 2.5
+    assert frames[0]["offsetTop"] == 64
+
+
+@pytest.mark.asyncio
+async def test_unusable_scale_falls_back_to_one() -> None:
+    """읽을 수 없는 배율은 1 로 붙는다. **0 을 그대로 넘기면 프론트가 0 으로 나눈다.**
+
+    배율은 역변환식의 분모다 (data-model §2). 미러가 낸 값 하나가 프론트의 좌표 계산을
+    무한대로 만드는 경로를 두지 않는다.
+    """
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+
+    for bad in (0, -1, None, "글자", float("nan")):
+        await cast._forward(
+            {
+                "data": "ZnJhbWU=",
+                "sessionId": "s1",
+                "metadata": {"deviceWidth": 800, "deviceHeight": 600, "pageScaleFactor": bad},
+            }
+        )
+
+    for frame in _frames(events):
+        assert frame["pageScale"] == 1.0, f"쓸 수 없는 배율이 그대로 나갔다: {frame['pageScale']}"
+        assert frame["offsetTop"] == 0.0
+
+
+# ─── 010 FR-335: 조작 직후에 화면이 확인된다 (T041) ─────────────────────────
+#
+# 조작이 화면을 바꾸면 프레임이 온다 — 실측 중앙값 25ms (research R8). 문제는 **화면을
+# 바꾸지 않는 조작**이다: 초점 이동, 값이 같은 입력. 그때 기존 2초 감시가 채워 주는데,
+# 2초는 조작 피드백으로 너무 길다. 사용자는 그 2초를 「내 클릭이 안 먹었다」로 읽고 같은
+# 곳을 다시 누른다 (FR-334 가 금지하는 상태다).
+
+
+def test_product_control_interval_is_shorter_than_the_observation_one() -> None:
+    """조작 국면의 감시 주기가 관찰 국면보다 **짧다** (FR-335 · research R8).
+
+    이 파일은 속도 때문에 주기를 내려 쓴다. 제품 값 자체의 관계는 여기서 못 박는다 —
+    두 값이 같아지면 FR-335 가 조용히 사라지고, 사라진 것을 알려 줄 것이 없다.
+    """
+    assert PRODUCT_CONTROL_INTERVAL_S < PRODUCT_IDLE_INTERVAL_S
+    assert 0 < PRODUCT_CONTROL_INTERVAL_S <= 0.5, (
+        "조작 피드백 주기가 0.5초를 넘으면 사용자가 같은 곳을 다시 누른다 (FR-334)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_control_phase_uses_the_shorter_interval() -> None:
+    """조작 국면이면 짧은 주기를 쓴다. **미러가 스스로 판정하지 않는다.**
+
+    국면은 상태 기계가 알고 미러는 통보를 받는다 — 프론트의 `MirrorView` 가 국면을 보지
+    않는 것(FR-316)과 같은 이유다.
+    """
+    cast = TabScreencast(ViewportPage(), 0, collector()[1])
+
+    assert cast.control_phase is False
+    assert cast.idle_interval() == sc.IDLE_INTERVAL_S
+
+    cast.set_control_phase(True)
+    assert cast.control_phase is True
+    assert cast.idle_interval() == sc.CONTROL_IDLE_INTERVAL_S
+
+    cast.set_control_phase(False)
+    assert cast.idle_interval() == sc.IDLE_INTERVAL_S
+
+
+@pytest.mark.asyncio
+async def test_entering_a_control_phase_resumes_acking() -> None:
+    """조작 국면에 들어오면 ack 를 다시 켠다 (research R8 · FR-339).
+
+    **ack 가 멈추면 3프레임 뒤 프레임 밀기가 정지한다** — 실측으로 확인된 성질이고,
+    그 상태는 사용자에게 「조작해도 화면이 안 바뀐다」로 보인다. 통로가 끊겨 ack 를 멈춘
+    채로 조작 국면에 들어오면 정확히 그 상태가 된다.
+    """
+    cast = TabScreencast(ViewportPage(), 0, collector()[1])
+    cast.pause_acking()
+    assert cast._acking is False
+
+    cast.set_control_phase(True)
+    assert cast._acking is True, "조작 국면인데 ack 가 멈춘 채로 남았다"
+
+
+@pytest.mark.asyncio
+async def test_a_silent_screen_is_refreshed_quickly_while_controlling() -> None:
+    """화면이 변하지 않는 조작에서도 **현재 화면이 곧 확인된다** (FR-335).
+
+    주기를 읽어 기다린다 — 픽스처가 내린 값을 쓰므로 실시간을 낭비하지 않는다.
+    """
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+    page.context = None
+    cast.set_control_phase(True)
+    await cast.start()
+
+    before = len(_frames(events))
+    await asyncio.sleep(sc.CONTROL_IDLE_INTERVAL_S * 1.5)
+    await cast.stop()
+
+    assert len(_frames(events)) > before, (
+        "조작 국면에서 조용한 화면이 갱신되지 않았다 — 사용자에게는 클릭이 안 먹은 것으로 보인다"
+    )
+
+
+# ─── T088 FR-346: 미러가 프레임 흐름을 알린다 ───────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_a_sent_frame_reports_liveness_once() -> None:
+    """프레임이 나가면 「흐른다」고 알린다. **바뀔 때만 알린다** (FR-346).
+
+    프레임마다 알리면 초당 열 번씩 같은 말을 하게 되고, 그 소음이 진짜 전이를 묻는다.
+    """
+    seen: list[bool] = []
+
+    async def on_liveness(alive: bool) -> None:
+        seen.append(alive)
+
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit, on_liveness)
+    page.context = None
+    await cast.start()
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
+    await cast.stop()
+
+    assert seen[0] is True, "프레임이 나갔는데 흐른다고 알리지 않았다"
+    assert seen.count(True) == 1, f"같은 상태를 여러 번 알렸다: {seen}"
+    assert seen[-1] is False, "정지했는데 끊겼다고 알리지 않았다"
+
+
+@pytest.mark.asyncio
+async def test_a_screen_that_cannot_be_captured_reports_a_stall() -> None:
+    """**찍지 못하면 끊긴 것이다** (FR-346).
+
+    감시가 도는데도 한 장이 나오지 않는 화면은 「조용한」 것이 아니라 「멈춘」 것이다.
+    그 구분이 사용자에게 「화면이 멈춤」과 「페이지가 멈춤」을 갈라 말해 준다.
+    """
+    seen: list[bool] = []
+
+    async def on_liveness(alive: bool) -> None:
+        seen.append(alive)
+
+    page = FakePage(fail=True)
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit, on_liveness)
+    page.context = None
+    await cast.start()
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
+    await cast.stop()
+
+    assert False in seen, f"찍지 못했는데 끊겼다고 알리지 않았다: {seen}"
+
+
+@pytest.mark.asyncio
+async def test_a_broken_liveness_observer_does_not_break_the_mirror() -> None:
+    """통보가 실패해도 프레임 전달이 멈추지 않는다 (FR-047b).
+
+    미러 실패가 실행에 영향을 주지 않는다는 성질이 이 훅에서 새면 안 된다.
+    """
+
+    async def on_liveness(_alive: bool) -> None:
+        msg = "듣는 쪽이 터졌다"
+        raise RuntimeError(msg)
+
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit, on_liveness)
+    page.context = None
+    await cast.start()  # 예외가 새면 여기서 터진다
+    await cast.stop()
+
+    assert _frames(events), "통보 실패가 프레임 전달을 막았다"

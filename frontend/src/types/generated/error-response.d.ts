@@ -43,6 +43,9 @@ export type ErrorCode =
   | "ELEMENT_AMBIGUOUS"
   | "AI_FAILED"
   | "STORAGE_WRITE_FAILED"
+  | "PROMPT_NOT_FOUND"
+  | "UPLOAD_REJECTED"
+  | "UPLOAD_NOT_FOUND"
   | "NOT_SUPPORTED"
   | "INTERNAL_ERROR";
 export type Message = string;

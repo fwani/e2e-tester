@@ -226,6 +226,14 @@ function describeTarget(t: TargetLocator): string {
 /** 입력값. 민감 값은 `{{변수명}}` 참조로만 저장되므로 그대로 보여도 안전하다 (FR-083). */
 function stepValue(step: Step): string | null {
   if (step.type === "fill" || step.type === "select") return step.value;
+  /*
+    **파일 이름이 이 Step 의 값이다** (2026-09-09 사용자 보고).
+
+    사용자가 요구한 것은 확장자다 — 「실제 서비스에서는 확장자를 보는경우가 있기 때문」.
+    확장자는 이름의 일부이므로 이름을 그대로 보이면 행에서 바로 읽힌다. 행을 열지 않고
+    「어느 Step 이 xlsx 를 올리는가」를 알 수 있어야 목록이 쓸모 있다.
+  */
+  if (step.type === "upload") return step.file_name;
   return null;
 }
 

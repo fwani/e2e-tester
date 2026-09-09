@@ -36,32 +36,41 @@ from itb.execution.state_machine import (
 )
 
 HEADLESS_ENV = "ITB_HEADLESS"
-"""브라우저를 **창 없이** 띄우게 하는 환경 변수.
+"""브라우저를 창 없이 띄울지 정하는 환경 변수. **기본값은 창 없음이다** (010 FR-352).
 
-기본값(변수 없음)은 창을 띄우는 것이다 — 녹화·인수인계는 사람이 실제로 조작하는
-국면이고, 창이 없으면 그 국면 자체가 성립하지 않는다 (clarify 결정 3).
+001 에서는 반대였다 — 기본이 창이었고, 조작 국면은 그 창에서만 성립했다 (clarify 결정 3).
+010 이 그것을 뒤집는다. 조작 수단이 제품 화면 안 미러가 되었으므로 창은 기본으로
+필요하지 않고, 창이 기본이면 **화면 없는 기계에서 제품이 아예 뜨지 않는다** (SC-518).
 
-창이 없어야 하는 실행이 두 가지 있다.
+`ITB_HEADLESS=0` (또는 `false`·`no`·`off`) 로 창을 띄운다. 그것은 폴백이며 사용자가
+명시적으로 요청할 때만 일어난다 (FR-353).
 
-1. **자동 검증** — 창이 뜨면 개발자의 화면을 빼앗아 초점을 가져간다. 검증이 도는
-   동안 다른 작업을 할 수 없고, 초점이 옮겨 가면 `blur` 에 기대는 녹화 검증이
-   엉뚱하게 실패하기도 한다.
-2. **화면 없는 장비** — CI 러너·원격 서버에는 X 서버가 없다.
-
-`ITB_HEADLESS=1` (또는 `true`·`yes`·`on`) 로 켠다. **켜면 수동 조작·인수인계는 쓸 수
-없다** — 볼 창이 없다. 그래서 기본값으로 두지 않는다.
+**알 수 없는 값·오타는 기본값(창 없음)으로 붙는다.** 001 의 반대 방향 규칙이 지키던 것은
+「사람이 조작할 수단이 조용히 사라지지 않는다」였고, 그 수단이 창에서 미러로 옮겨갔으므로
+규칙도 함께 옮겨간다 — 이제 오타로 사라지면 안 되는 것은 창이 아니라 미러의 조작
+가능성이며, 그것은 이 값과 무관하게 항상 살아 있다 (research R10).
 """
 
 _TRUE = frozenset({"1", "true", "yes", "on"})
+_FALSE = frozenset({"0", "false", "no", "off"})
 
 
 def headless_default() -> bool:
-    """환경 변수로 정한 창 없음 여부. 값이 없거나 알 수 없으면 창을 띄운다.
+    """환경 변수로 정한 창 없음 여부. **값이 없거나 알 수 없으면 창 없이 띄운다.**
 
-    알 수 없는 값을 창 없음으로 읽지 않는다 — 오타 하나로 사람이 조작할 창이 사라지고,
-    그 실패는 원인이 오타라는 것을 드러내지 않는다.
+    창을 띄우는 것은 `_FALSE` 의 값을 명시했을 때만이다. 알 수 없는 값은 기본값 쪽으로
+    붙는다 — 오타 하나로 화면 없는 기계에서 브라우저가 뜨지 못하는 것을 막는다
+    (FR-352 · research R10).
     """
-    return os.environ.get(HEADLESS_ENV, "").strip().lower() in _TRUE
+    raw = os.environ.get(HEADLESS_ENV)
+    if raw is None:
+        return True
+    value = raw.strip().lower()
+    if value in _FALSE:
+        return False
+    if value in _TRUE:
+        return True
+    return True
 
 
 class SessionError(Exception):
@@ -128,6 +137,9 @@ EventSink = Callable[[str, dict[str, object]], Awaitable[None]]
 PageObserver = Callable[[Page], None]
 """새 탭을 관찰할 대상. 리코더가 네비게이션·탭 닫힘 감시를 붙이는 데 쓴다."""
 
+StateObserver = Callable[[SessionState], Awaitable[None]]
+"""상태 전이를 관찰할 대상 (010 FR-342). 조작 채널이 국면 변화를 여기서 듣는다."""
+
 
 @dataclass(slots=True)
 class BrowserSession:
@@ -141,6 +153,18 @@ class BrowserSession:
     active_tab_index: int = 0
     mirrored_tab_index: int = 0
     test_id: str | None = None
+    headless: bool = True
+    """이 브라우저를 **창 없이** 띄웠는가 (010 FR-351·FR-352).
+
+    **세션이 알아야 하는 사실이다.** 기계에 화면이 있는지와 이 브라우저에 창이 있는지는
+    다른 물음이다 — Chromium 은 띄울 때 정해지고 나중에 바뀌지 않으므로, 창 없이 띄운
+    브라우저는 화면 있는 기계에서도 옮겨 갈 창이 없다.
+
+    이것이 없던 동안 「실제 창에서 조작하기」는 macOS 에서 **항상 성공했다** — 판정이
+    기계만 보았기 때문이다. 서버는 「창으로 옮겼다」고 답하고 미러의 조작 통로를 닫았고,
+    창은 어디에도 뜨지 않았다. 사용자에게는 조작할 곳이 하나도 남지 않는다.
+    """
+
     current_step_index: int = 0
     """다음에 실행할 Step 위치.
 
@@ -190,11 +214,28 @@ class BrowserSession:
     일어났는지 알려 주는 것이 맞다.
     """
 
-    _page_observer: PageObserver | None = None
-    """새 탭이 열렸을 때 알려 줄 대상. 리코더가 등록한다.
+    _page_observers: list[PageObserver] = field(default_factory=list)
+    """새 탭이 열렸을 때 알려 줄 대상들. 리코더와 미러가 각각 등록한다.
 
     세션이 리코더를 직접 임포트하지 않는 이유는 방향이다 — 리코더가 세션을 임포트하므로
-    반대 방향을 두면 고리가 생긴다. 훅 하나로 방향을 유지한다.
+    반대 방향을 두면 고리가 생긴다. 훅으로 방향을 유지한다.
+
+    **하나가 아니라 목록이다.** 새 탭을 알아야 하는 쪽이 둘이기 때문이다 — 리코더는 그
+    탭의 이동·닫힘을 감시해야 하고, 미러는 표시 탭을 그리로 옮겨야 한다 (FR-030f).
+    하나만 둘 수 있던 동안에는 나중에 등록한 쪽이 앞엣것을 조용히 밀어냈고, 실제로는
+    미러가 등록되지 않아 새 탭이 열려도 탭 0 을 계속 보고 있었다.
+    """
+
+    _state_observer: StateObserver | None = None
+    """상태가 바뀌었을 때 알려 줄 대상 (010 FR-342). 조작 채널이 등록한다.
+
+    **채널이 국면을 감시하는 것이 아니라 국면이 채널에 알린다.** 반대로 두면 채널이
+    주기적으로 상태를 읽어야 하고, 그 사이 관찰 국면에 열린 채널이 남는 창이 생긴다.
+    화면이 안 보내는 것에 의존하지 않는다는 것이 FR-342 의 요점이다.
+
+    훅으로 두는 이유는 `_page_observer` 와 같다 — 세션이 API 계층을 임포트하지 않는다.
+    **이 훅은 상태를 바꾸지 못한다.** 반환값을 쓰지 않고 예외도 삼킨다. 조작 채널의
+    어떤 일도 실행 상태 기계를 전이시켜서는 안 된다 (contracts §5 불변식 4 · FR-348).
     """
 
     # ─── 이벤트 ─────────────────────────────────────────────────────────────
@@ -232,7 +273,16 @@ class BrowserSession:
             current_step_index=self.current_step_index,
             active_tab=self.active_tab_index,
         )
+        # 010 FR-342 — 국면이 바뀌었다는 것을 조작 채널에 알린다. **예외를 삼킨다**:
+        # 채널의 사정이 상태 전이를 실패시켜서는 안 된다 (contracts §5 불변식 4).
+        if self._state_observer is not None:
+            with contextlib.suppress(Exception):
+                await self._state_observer(new_state)
         return new_state
+
+    def observe_state(self, observer: StateObserver | None) -> None:
+        """상태 전이를 들을 대상을 등록한다 (010 FR-342)."""
+        self._state_observer = observer
 
     # ─── 일시정지 / 이어서 실행 (원칙 III) ─────────────────────────────────
 
@@ -295,15 +345,28 @@ class BrowserSession:
             self._all_closed_hook()
 
     def attach_page_observer(self, observer: PageObserver | None) -> None:
-        """새 탭 통보 대상을 등록한다. 리코더가 `install()` 에서 부른다."""
-        self._page_observer = observer
+        """새 탭 통보 대상을 **더한다.** 리코더가 `install()` 에서, 미러가 세션 조립에서 부른다.
+
+        `None` 이면 전부 지운다 — 예전의 「하나를 갈아 끼운다」 계약에서 남은 통로다.
+
+        같은 객체를 두 번 넣지 않는다. 중복되면 새 탭 하나에 같은 감시가 두 번 붙고,
+        리코더 쪽에서는 그것이 Step 중복으로 나타난다.
+        """
+        if observer is None:
+            self._page_observers.clear()
+            return
+        if observer not in self._page_observers:
+            self._page_observers.append(observer)
 
     def notify_page(self, page: Page) -> None:
-        """새 탭이 열렸음을 관찰자에게 알린다. 실패해도 탭 등록에 영향을 주지 않는다."""
-        if self._page_observer is None:
-            return
-        with contextlib.suppress(Exception):
-            self._page_observer(page)
+        """새 탭이 열렸음을 관찰자들에게 알린다. 실패해도 탭 등록에 영향을 주지 않는다.
+
+        **한 관찰자의 실패가 다음 관찰자를 막지 않는다.** 미러가 프레임을 시작하지 못한
+        것이 리코더의 감시까지 없애서는 안 된다 (FR-047b).
+        """
+        for observer in list(self._page_observers):
+            with contextlib.suppress(Exception):
+                observer(page)
 
     def tab_of(self, page: Page) -> TabHandle | None:
         """페이지가 어느 탭인지. `expose_binding` 의 source 를 tab_index 로 바꿀 때 쓴다."""
@@ -550,6 +613,7 @@ class SessionManager:
             context=context,
             state=SessionState.STARTING,
             test_id=test_id,
+            headless=headless,
             max_tabs=max_tabs,
         )
 

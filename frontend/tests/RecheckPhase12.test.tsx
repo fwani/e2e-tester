@@ -370,26 +370,38 @@ describe("T121 실패한 Step 을 건너뛰는 별도 조작이 화면에 있다
     expect(screen.getByText(/Step 06 을 건너뛰고 다음 Step 부터 이어갑니다/)).toBeTruthy();
   });
 
-  it("실패가 없으면 잠긴다 — 건너뛸 것이 없다", () => {
-    // 007 FR-234 — 감추지 않고 이유를 붙여 남긴다. 「없다」와 「지금은 안 된다」는
-    // 사용자에게 다른 뜻이고, 감추면 그 구별이 사라진다.
+  /*
+    2026-09-09 — **건너뛸 것이 없으면 자리도 없다** (사용자 결정).
+
+    이전 단언의 근거는 「「없다」와 「지금은 안 된다」는 사용자에게 다른 뜻이고, 감추면 그
+    구별이 사라진다」였다. 그 구별은 실재하지만, 이 조작에서는 값이 없다 — **건너뛸 실패가
+    없는 것은 정상 상태**이고 사용자가 해소할 일이 아니다. 실측에서 이 버튼은 실패 없는
+    모든 일시정지 화면에 「건너뛸 실패가 없습니다」를 달고 남아 있었다.
+
+    **짝인 「계속하기」는 남는다** (`REASON_VISIBILITY` 의 O7 = `keep`). 그래서 실패가
+    있을 때는 두 버튼이 나란히 서고 (위 검사), 없을 때는 「계속하기」 하나만 남는다 —
+    자리 수가 상태를 말한다.
+  */
+  it("실패가 없으면 자리에 없다 — 건너뛸 것이 없다", () => {
     render(<SessionWorkbench {...pausedProps({ onResumeSkippingFailure: noop })} />);
-    expect(act("run.resumeSkipFailure")!.disabled).toBe(true);
-    expect(
-      document.querySelector("[data-disabled-reason='run.resumeSkipFailure']")?.textContent,
-    ).toContain("건너뛸 실패가 없습니다");
+    expect(act("run.resumeSkipFailure")).toBeNull();
+    expect(document.querySelector("[data-disabled-reason='run.resumeSkipFailure']")).toBeNull();
+    // 짝은 남는다 — 실패가 없으므로 활성이다.
+    expect(act("run.resume")!.disabled).toBe(false);
   });
 
-  it("검토 상태(브라우저 없음)에서는 잠긴다 — 이어갈 실행이 없다", () => {
+  it("검토 상태(브라우저 없음)에서는 자리에 없다 — 이어갈 실행이 없다", () => {
     render(
       <SessionWorkbench
         {...pausedProps({ ...failing, review: true, onResumeSkippingFailure: noop })}
       />,
     );
-    expect(act("run.resumeSkipFailure")!.disabled).toBe(true);
-    expect(
-      document.querySelector("[data-disabled-reason='run.resumeSkipFailure']")?.textContent,
-    ).toContain("브라우저");
+    // 브라우저가 없으면 이어가는 조작 둘 다 성립하지 않는다 (국면 `review`).
+    expect(act("run.resumeSkipFailure")).toBeNull();
+    expect(act("run.resume")).toBeNull();
+    // 그 대신 이 국면의 조작이 있다 — 저장하고, 처음부터 다시 실행한다.
+    expect(act("save")).not.toBeNull();
+    expect(act("run.all")).not.toBeNull();
   });
 });
 

@@ -1,16 +1,85 @@
 /**
- * MirrorView 컴포넌트 테스트 (T088).
+ * MirrorView 컴포넌트 테스트 (T088 · **010 T030 에서 방향을 바꿨다**).
  *
- * **FR-047a 를 UI 계층에서 고정한다**: 읽기 전용 표시 영역은 사용자 입력을 대상 브라우저로
- * 전달하지 않는다. 나중에 누군가 "미러에서 바로 클릭하게 해 달라"는 요청을 받아 핸들러를
- * 붙이면 이 테스트가 먼저 실패한다.
+ * ## 무엇이 왜 뒤집혔나
+ *
+ * 001 은 여기에 이렇게 적었다 — 「FR-047a 를 UI 계층에서 고정한다: 읽기 전용 표시 영역은
+ * 사용자 입력을 대상 브라우저로 전달하지 않는다. 나중에 누군가 «미러에서 바로 클릭하게 해
+ * 달라»는 요청을 받아 핸들러를 붙이면 이 테스트가 먼저 실패한다.」
+ *
+ * 010 이 정확히 그 요청이다. 그리고 이 파일은 **의도한 대로 먼저 실패했다** — 그것이
+ * 이 검증이 제 일을 했다는 증거다.
+ *
+ * **삭제하지 않는다** (헌법 품질 게이트 4). 지키려던 성질은 사라지지 않았고 조건이
+ * 붙었다: 「전달하지 않는다」가 「**관찰 국면에서** 전달하지 않는다」가 된다. 판정은
+ * 컴포넌트가 아니라 국면 × 조작 권한표가 하므로(FR-316), 이 파일은 **표가 준 판정을
+ * 컴포넌트가 그대로 따르는지**를 본다.
+ *
+ * 지우는 것과 방향을 바꾸는 것은 다르다. 지우면 「미러는 아무 때나 조작을 받는다」로
+ * 흘러가도 아무도 알려 주지 않는다.
  */
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { MirrorView } from "../src/components/MirrorView";
+import type { CapabilityState } from "../src/lib/capabilities";
+import type { FrameGeometry } from "../src/components/mirror/useMirrorInput";
 
 const FRAME = "AAAABBBBCCCC";
+
+/** 표가 「쓸 수 있다」고 답한 경우 */
+const ENABLED: CapabilityState = { kind: "enabled" };
+
+/** 표가 「지금은 안 된다」고 답한 경우 — 관찰 국면이 그렇다 */
+const DISABLED: CapabilityState = {
+  kind: "disabled",
+  reason: "실행을 멈춘 뒤에 할 수 있습니다",
+  remedy: null,
+  /*
+    `mirror.control` 은 `ALWAYS_KEEP` 이다 (2026-09-09 · `capabilities.ts`) — 그 조작의
+    자리는 버튼이 아니라 미러 화면이고, 사용자는 그 위를 클릭해 본다. 숨기면 클릭이
+    조용히 삼켜진다 (010 SC-516).
+  */
+  visibility: "keep",
+};
+
+const GEOMETRY: FrameGeometry = { width: 800, height: 600, pageScale: 1, offsetTop: 0 };
+
+/**
+ * jsdom 은 이미지를 디코드하지 않아 `naturalWidth` 가 0 이고 `getBoundingClientRect` 가
+ * 전부 0 이다. 좌표 변환이 성립하려면 둘 다 필요하므로 여기서 심는다.
+ *
+ * 좌표 변환 자체의 정확성은 `MirrorInput.test.ts` 가 순수 함수로 잰다 — 이 파일이 재는
+ * 것은 「국면이 조작 여부를 정하는가」이지 좌표가 아니다.
+ */
+/**
+ * jsdom 은 `PointerEvent` 를 구현하지 않는다 — `fireEvent.pointerDown` 이 만드는 사건에
+ * `clientX`·`button` 이 없고, React 는 그것을 `null` 로 넘긴다.
+ *
+ * **이것은 제품의 성질이 아니라 환경의 한계다.** 실제 브라우저에서는 좌표가 온다.
+ * 폴리필을 두지 않으면 「조작 국면에서 전달한다」를 잴 수 없고, 재지 않으면 그 경로가
+ * 깨져도 아무도 알려 주지 않는다.
+ */
+if (typeof window.PointerEvent === "undefined") {
+  class PointerEventPolyfill extends MouseEvent {
+    readonly pointerId: number;
+    readonly pointerType: string;
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 1;
+      this.pointerType = init.pointerType ?? "mouse";
+    }
+  }
+  // @ts-expect-error jsdom 에 없는 생성자를 심는다
+  window.PointerEvent = PointerEventPolyfill;
+}
+
+function layoutImage(img: HTMLImageElement): void {
+  Object.defineProperty(img, "naturalWidth", { value: 800, configurable: true });
+  Object.defineProperty(img, "naturalHeight", { value: 600, configurable: true });
+  img.getBoundingClientRect = () =>
+    ({ left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0 }) as DOMRect;
+}
 
 describe("MirrorView", () => {
   it("프레임을 이미지로 그린다", () => {
@@ -19,17 +88,264 @@ describe("MirrorView", () => {
     expect(img.src).toContain(`base64,${FRAME}`);
   });
 
-  it("표시 영역이 포인터 입력을 받지 않는다 (FR-047a)", () => {
-    render(<MirrorView frame={FRAME} phase="observation" />);
-    const img = screen.getByAltText("대상 브라우저 화면 (읽기 전용)");
-    expect(img.style.pointerEvents).toBe("none");
+  /* ─── 010 T030 — 방향을 바꾼 검증 ─────────────────────────────────── */
+
+  it("**관찰 국면에서** 입력을 대상 브라우저로 전달하지 않는다 (FR-315 · 옛 FR-047a)", () => {
+    const onInput = vi.fn();
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="observation"
+        control={DISABLED}
+        geometry={GEOMETRY}
+        onInput={onInput}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (읽기 전용)") as HTMLImageElement;
+    layoutImage(img);
+
+    fireEvent.pointerDown(img, { clientX: 10, clientY: 10, button: 0 });
+    fireEvent.wheel(img, { clientX: 10, clientY: 10, deltaY: 100 });
+
+    expect(onInput).not.toHaveBeenCalled();
     expect(img.getAttribute("draggable")).toBe("false");
   });
 
-  it("조작 국면에서는 실제 창에서 조작 중임을 알린다 (FR-023b)", () => {
-    render(<MirrorView frame={FRAME} phase="manipulation" />);
+  it("표가 「안 된다」고 하면 그 이유를 화면에 남긴다 (SC-516 · FR-234)", () => {
+    /*
+      조용히 아무 일도 일어나지 않는 것이 SC-516 이 0건으로 두려는 상태다. 전달하지
+      않는 것과 이유를 말하지 않는 것은 다르다.
+    */
+    const onBlocked = vi.fn();
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="observation"
+        control={DISABLED}
+        geometry={GEOMETRY}
+        onBlockedAttempt={onBlocked}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (읽기 전용)") as HTMLImageElement;
+    layoutImage(img);
+    fireEvent.pointerDown(img, { clientX: 10, clientY: 10, button: 0 });
+
+    expect(onBlocked).toHaveBeenCalledWith("실행을 멈춘 뒤에 할 수 있습니다");
+    expect(screen.getByText("실행을 멈춘 뒤에 할 수 있습니다")).toBeDefined();
+  });
+
+  it("조작 국면에서 표가 「된다」고 하면 전달한다 (FR-314)", () => {
+    const onInput = vi.fn();
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="manipulation"
+        control={ENABLED}
+        geometry={GEOMETRY}
+        onInput={onInput}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+    layoutImage(img);
+    fireEvent.pointerDown(img, { clientX: 400, clientY: 300, button: 0 });
+
+    expect(onInput).toHaveBeenCalledTimes(1);
+    expect(onInput.mock.calls[0]?.[0]).toMatchObject({
+      kind: "pointer.down",
+      x: 400,
+      y: 300,
+      button: "left",
+    });
+  });
+
+  it("**컴포넌트가 스스로 국면을 보지 않는다** (FR-316)", () => {
+    /*
+      같은 `phase` 에 판정만 다르게 준다. 컴포넌트가 국면을 보고 스스로 정한다면 두
+      경우가 같아야 하고, 표를 따른다면 갈려야 한다.
+
+      이것이 research R9 가 세운 설계다 — 표 밖에 판정을 두면 둘이 갈리는 날 화면은 켤
+      수 있다고 그리고 서버는 거절한다.
+    */
+    const allowed = vi.fn();
+    const { unmount } = render(
+      <MirrorView
+        frame={FRAME}
+        phase="observation"
+        control={ENABLED}
+        geometry={GEOMETRY}
+        onInput={allowed}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+    layoutImage(img);
+    fireEvent.pointerDown(img, { clientX: 10, clientY: 10, button: 0 });
+    expect(allowed).toHaveBeenCalledTimes(1);
+    unmount();
+
+    const refused = vi.fn();
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="manipulation"
+        control={DISABLED}
+        geometry={GEOMETRY}
+        onInput={refused}
+      />,
+    );
+    const img2 = screen.getByAltText("대상 브라우저 화면 (읽기 전용)") as HTMLImageElement;
+    layoutImage(img2);
+    fireEvent.pointerDown(img2, { clientX: 10, clientY: 10, button: 0 });
+    expect(refused).not.toHaveBeenCalled();
+  });
+
+  it("조작 국면이어도 프레임이 없으면 전달하지 않는다 (FR-333)", () => {
+    /*
+      무엇을 클릭하는지 볼 수 없는 상태에서 좌표를 보내면 그것은 조작이 아니라 추측이다.
+      서버도 같은 이유로 거절한다 (`control_channel.validate`).
+    */
+    const onInput = vi.fn();
+    render(
+      <MirrorView frame={null} phase="manipulation" control={ENABLED} onInput={onInput} />,
+    );
+    expect(screen.queryByAltText(/대상 브라우저 화면/)).toBeNull();
+    expect(onInput).not.toHaveBeenCalled();
+  });
+
+  it("실제 창으로 전환한 동안에는 미러가 관찰용이라고 말한다 (FR-350 · M-05)", () => {
+    /*
+      **001 의 문구를 지우지 않았다.** 「실제 브라우저 창에서 조작 중 · 이 영역은
+      관찰용이며 조작 대상이 아닙니다」는 이 상태에서 여전히 정확하다. 010 은 그 문구가
+      참인 상태를 `window` 로 좁혔을 뿐이다.
+    */
+    const onInput = vi.fn();
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="manipulation"
+        surface="window"
+        control={ENABLED}
+        geometry={GEOMETRY}
+        onInput={onInput}
+      />,
+    );
     expect(screen.getByText(/실제 브라우저 창에서 조작 중/)).toBeDefined();
     expect(screen.getByText(/조작 대상이 아닙니다/)).toBeDefined();
+
+    const img = screen.getByAltText("대상 브라우저 화면 (읽기 전용)") as HTMLImageElement;
+    layoutImage(img);
+    fireEvent.pointerDown(img, { clientX: 10, clientY: 10, button: 0 });
+    expect(onInput).not.toHaveBeenCalled();
+  });
+
+  it("미러에서 조작하는 동안에는 그 사실을 말한다 (FR-319·FR-350)", () => {
+    render(
+      <MirrorView frame={FRAME} phase="manipulation" control={ENABLED} geometry={GEOMETRY} />,
+    );
+    expect(screen.getByText(/이 화면에서 조작합니다/)).toBeDefined();
+    expect(screen.getByText(/대상 브라우저에 전달됩니다/)).toBeDefined();
+    // 조작을 받는 자리인지가 눈으로 구분되어야 한다 (FR-319).
+    expect(
+      document.querySelector('[data-action="mirror.control"][data-controllable="true"]'),
+    ).not.toBeNull();
+  });
+
+  /**
+   * 한글 조합 (FR-325~FR-327). **사용자 보고 — 「자모분리되어 넘어간다」.**
+   *
+   * 원인은 조합이 일어날 자리가 없던 것이다. 미러 면은 `<div>` 였고 브라우저는 편집
+   * 가능한 요소에만 IME 를 건다. 그래서 `compositionstart` 가 오지 않았고, 한글은 낱개
+   * 자모의 `keydown` 으로 떨어져 서버의 문자 키 경로(`_produces_text`)로 한 글자씩
+   * 들어갔다 — 대상 화면에 「ㅈㅜㅁㅜㄴ」이 남는다.
+   *
+   * jsdom 은 IME 를 흉내내지 못하므로 **조합 사건이 실제로 오는지**는 여기서 잴 수 없다.
+   * 잴 수 있고 또 재야 하는 것은 그 사건이 올 **자리가 있는가**와, 오면 채널로 나가는가다.
+   * 이 둘이 지켜지면 위 결함은 되돌아오지 않는다.
+   */
+  describe("한글 조합 (FR-325~FR-327)", () => {
+    it("조작 국면의 미러 면에는 조합이 가능한 편집 요소가 있다", () => {
+      render(
+        <MirrorView frame={FRAME} phase="manipulation" control={ENABLED} geometry={GEOMETRY} />,
+      );
+      const surface = document.querySelector('[data-action="mirror.control"]');
+      expect(surface).not.toBeNull();
+      // `<div>` 에는 IME 가 붙지 않는다. 조합을 받을 편집 요소가 미러 면 **안**에 있어야
+      // 한다 — 밖에 두면 초점이 둘로 갈린다 (FR-320).
+      expect(surface?.querySelector("textarea")).not.toBeNull();
+    });
+
+    it("미러를 누르면 조합 요소가 초점을 갖는다 (FR-320)", () => {
+      render(
+        <MirrorView frame={FRAME} phase="manipulation" control={ENABLED} geometry={GEOMETRY} />,
+      );
+      const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+      layoutImage(img);
+      fireEvent.pointerDown(img, { clientX: 10, clientY: 10, button: 0 });
+      // 초점이 미러 면 자체에 앉으면 IME 가 붙지 않는다 — 그것이 자모분리의 원인이었다.
+      expect(document.activeElement?.tagName).toBe("TEXTAREA");
+    });
+
+    it("조합 중간과 확정이 각각 ime.compose·ime.commit 으로 나간다 (FR-327)", () => {
+      const onInput = vi.fn();
+      render(
+        <MirrorView
+          frame={FRAME}
+          phase="manipulation"
+          control={ENABLED}
+          geometry={GEOMETRY}
+          tabIndex={2}
+          onInput={onInput}
+        />,
+      );
+      const surface = document.querySelector('[data-action="mirror.control"]') as HTMLElement;
+      const ime = surface.querySelector("textarea") as HTMLTextAreaElement;
+
+      fireEvent.compositionStart(ime);
+      fireEvent.compositionUpdate(ime, { data: "ㅈ" });
+      fireEvent.compositionUpdate(ime, { data: "주" });
+      fireEvent.compositionEnd(ime, { data: "주문" });
+
+      expect(onInput.mock.calls.map(([e]) => [e.kind, e.text, e.tab])).toEqual([
+        ["ime.compose", "ㅈ", 2],
+        ["ime.compose", "주", 2],
+        ["ime.commit", "주문", 2],
+      ]);
+    });
+
+    it("확정된 글자는 조합 요소에 남지 않는다", () => {
+      render(
+        <MirrorView frame={FRAME} phase="manipulation" control={ENABLED} geometry={GEOMETRY} />,
+      );
+      const surface = document.querySelector('[data-action="mirror.control"]') as HTMLElement;
+      const ime = surface.querySelector("textarea") as HTMLTextAreaElement;
+
+      ime.value = "주문";
+      fireEvent.compositionEnd(ime, { data: "주문" });
+      // 남기면 다음 조합의 중간 문자열에 섞여, 이미 확정된 글자가 다시 조합 상태가 된다.
+      expect(ime.value).toBe("");
+    });
+
+    it("조합 중의 키는 대상으로 보내지 않는다 (FR-326)", () => {
+      const onInput = vi.fn();
+      render(
+        <MirrorView
+          frame={FRAME}
+          phase="manipulation"
+          control={ENABLED}
+          geometry={GEOMETRY}
+          onInput={onInput}
+        />,
+      );
+      const surface = document.querySelector('[data-action="mirror.control"]') as HTMLElement;
+      const ime = surface.querySelector("textarea") as HTMLTextAreaElement;
+
+      // IME 가 처리 중인 키다. 대상에도 보내면 같은 자모가 두 번 들어간다.
+      fireEvent.keyDown(ime, { key: "Process", keyCode: 229 });
+      expect(onInput).not.toHaveBeenCalled();
+
+      // 조합이 아닌 키는 그대로 나간다 — 영문·편집 키 경로가 막히면 안 된다.
+      fireEvent.keyDown(ime, { key: "a", code: "KeyA" });
+      expect(onInput.mock.calls.map(([e]) => e.kind)).toEqual(["key.down"]);
+    });
   });
 
   it("일시정지에서는 세션이 유지되고 있음을 알린다 (FR-033)", () => {
@@ -66,11 +382,100 @@ describe("MirrorView", () => {
     expect(
       screen.getByText(/대상 화면이 표시되기를 기다리고 있습니다/),
     ).toBeDefined();
-    expect(screen.getByText(/대상 브라우저 창은 이미 열려 있습니다/)).toBeDefined();
+    /*
+      010 T037 — **「창」을 말하지 않는다.** 창 없이 뜬 세션에서 그 문장은 거짓이고
+      (FR-352), 거짓을 말하는 안내는 사용자를 없는 창을 찾게 만든다.
+    */
+    expect(screen.getByText(/대상 브라우저 세션은 이미 열려 있습니다/)).toBeDefined();
   });
 
   it("최초 탭이 아니면 어느 탭을 보고 있는지 알려 준다 (FR-030f)", () => {
     render(<MirrorView frame={FRAME} phase="observation" tabIndex={2} />);
     expect(screen.getByText(/탭 2/)).toBeDefined();
+  });
+
+  /* ─── 010 T089 — 끌어놓기가 미러 밖에서 끝나는 경우 (FR-318) ─────────── */
+
+  it("**포인터를 붙잡는다** — 미러 밖에서 놓아도 놓음이 전달된다 (FR-318)", () => {
+    /*
+      붙잡지 않으면 누른 채 미러 밖으로 끌고 나가 놓았을 때 `pointerup` 이 이 요소로
+      오지 않는다. 그러면 대상 페이지는 누른 상태로 남는다 — 서버가 채널을 닫을 때
+      풀어 주지만 채널이 열려 있는 동안은 그대로다.
+
+      목록에서 끌어 화면 밖으로 빼는 조작은 흔하고, 그때 사용자는 미러 밖에서 손을 뗀다.
+    */
+    const captured: number[] = [];
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="manipulation"
+        control={ENABLED}
+        geometry={GEOMETRY}
+        onInput={vi.fn()}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+    layoutImage(img);
+    img.setPointerCapture = (id: number) => captured.push(id);
+    img.hasPointerCapture = () => captured.length > 0;
+    img.releasePointerCapture = () => captured.pop();
+
+    fireEvent.pointerDown(img, { clientX: 100, clientY: 100, button: 0, pointerId: 7 });
+    expect(captured, "포인터를 붙잡지 않았다").toContain(7);
+  });
+
+  it("포인터가 취소되면 **놓음을 보낸다** (FR-318)", () => {
+    /*
+      창이 가려지거나 다른 제스처가 시작되면 `pointerup` 없이 `pointercancel` 이 온다.
+      그때도 놓지 않으면 대상 페이지가 누른 상태로 남는다.
+    */
+    const onInput = vi.fn();
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="manipulation"
+        control={ENABLED}
+        geometry={GEOMETRY}
+        onInput={onInput}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+    layoutImage(img);
+    img.setPointerCapture = () => undefined;
+    img.hasPointerCapture = () => true;
+    img.releasePointerCapture = () => undefined;
+
+    fireEvent.pointerDown(img, { clientX: 100, clientY: 100, button: 0, pointerId: 7 });
+    onInput.mockClear();
+    fireEvent.pointerCancel(img, { clientX: 120, clientY: 120, button: 0, pointerId: 7 });
+
+    expect(onInput).toHaveBeenCalledTimes(1);
+    expect(onInput.mock.calls[0]?.[0]).toMatchObject({ kind: "pointer.up" });
+  });
+
+  it("캡처를 잡을 수 없어도 조작은 전달된다", () => {
+    /*
+      `setPointerCapture` 가 없는 환경(오래된 브라우저·테스트 도구)에서 조작 자체가
+      멈추면 안 된다. 미러 안에서 끝나는 끌어놓기는 캡처 없이도 동작한다.
+    */
+    const onInput = vi.fn();
+    render(
+      <MirrorView
+        frame={FRAME}
+        phase="manipulation"
+        control={ENABLED}
+        geometry={GEOMETRY}
+        onInput={onInput}
+      />,
+    );
+    const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+    layoutImage(img);
+    img.setPointerCapture = () => {
+      throw new Error("이 환경에는 없다");
+    };
+
+    fireEvent.pointerDown(img, { clientX: 100, clientY: 100, button: 0, pointerId: 7 });
+    expect(onInput).toHaveBeenCalledTimes(1);
+    expect(onInput.mock.calls[0]?.[0]).toMatchObject({ kind: "pointer.down" });
   });
 });

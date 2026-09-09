@@ -24,6 +24,24 @@ MIRROR_EVENTS = frozenset(
 """유실 가능한 이벤트. 프론트는 마지막 프레임만 그리면 되고, 전송 실패가 실행에 영향을
 주어서는 안 된다 (FR-047b)."""
 
+CONTROL_EVENTS = frozenset(
+    {"browser_prompt", "browser_prompt_resolved", "control_surface"}
+)
+"""010 이 더한 이벤트 (contracts/mirror-control.md §4).
+
+**방향은 바뀌지 않는다** — 서버 → 클라이언트 단방향이다. 조작은 별개의 소켓으로 받는다
+(`api/ws/control_channel.py`). 이 소켓의 계약을 010 이 깨지 않았다는 것이 이 상수가
+`MIRROR_EVENTS` 와 나란히 있는 이유다.
+
+**`MIRROR_EVENTS` 와 성질이 다르다.** 프레임은 유실 가능하지만 이쪽은 아니다 —
+`browser_prompt` 를 놓치면 대상 페이지가 대화상자에서 멈춘 채로 남고, 사용자는 무엇이
+막혔는지 알 수 없다 (FR-339 가 금지하는 조용한 실패). 유실이 의심되면 화면은 세션을 다시
+조회한다 (이 모듈이 처음부터 정한 복구 방식이다).
+
+**`browser_prompt.message` 는 대상 페이지에서 온 값이다.** 표시할 때 이스케이프해야
+한다 — 헌법 보안 요건(외부 입력은 경계에서 검증한다)이 화면 쪽에 걸리는 자리다.
+"""
+
 
 class SessionEventHub:
     """한 세션의 WebSocket 구독자들.

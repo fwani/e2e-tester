@@ -110,6 +110,34 @@ class ErrorCode(StrEnum):
     AI_FAILED = "AI_FAILED"
     STORAGE_WRITE_FAILED = "STORAGE_WRITE_FAILED"
 
+    # 브라우저 요구·업로드 (010 FR-337a·FR-340)
+    PROMPT_NOT_FOUND = "PROMPT_NOT_FOUND"
+    """브라우저 요구가 이미 처리됐거나 이 세션의 것이 아니다 (010 FR-340).
+
+    `SESSION_NOT_FOUND` 와 갈라 두는 이유는 **사용자가 할 일이 다르기 때문**이다. 세션은
+    살아 있고 요구 하나만 사라진 것이므로, 사용자는 화면을 떠날 것이 아니라 다음 요구를
+    기다리면 된다. 같은 코드로 내보내면 화면은 「세션이 끝났습니다」를 띄우고 사용자는
+    멀쩡한 세션을 버린다.
+    """
+
+    UPLOAD_REJECTED = "UPLOAD_REJECTED"
+    """올린 파일이 상한을 넘었다 (010 FR-337a).
+
+    크기와 개수를 한 코드로 두는 이유는 사용자가 할 일이 같기 때문이다 — 더 작은 파일을
+    고르거나, 세션을 정리하고 다시 시작한다. 무엇이 상한이었는지는 `detail` 이 말한다.
+
+    **자르지 않고 거절한다.** 잘린 파일을 대상 페이지가 받으면 그 실패는 원인을 드러내지
+    않는다.
+    """
+
+    UPLOAD_NOT_FOUND = "UPLOAD_NOT_FOUND"
+    """지정한 파일을 이 세션에서 찾을 수 없다 (010 FR-337b·FR-340).
+
+    세션이 끝나면 올린 파일이 정리되므로(FR-337b), 오래된 화면이 남은 식별자를 보내면
+    여기로 온다. 다른 세션의 식별자도 마찬가지다 — 저장소가 세션 단위로 나뉘어 있어
+    조회 자체가 실패한다.
+    """
+
     # 미지원
     NOT_SUPPORTED = "NOT_SUPPORTED"
 
@@ -174,6 +202,10 @@ CATEGORY: dict[ErrorCode, Category] = {
     # 확인하면 된다.
     ErrorCode.AI_FAILED: Category.BLOCKED,
     ErrorCode.STORAGE_WRITE_FAILED: Category.BLOCKED,
+    # 010 브라우저 요구·업로드 — 셋 다 사용자가 할 일이 있다. 제품이 깨진 것이 아니다.
+    ErrorCode.PROMPT_NOT_FOUND: Category.BLOCKED,
+    ErrorCode.UPLOAD_REJECTED: Category.BLOCKED,
+    ErrorCode.UPLOAD_NOT_FOUND: Category.BLOCKED,
     # 미지원 — 다른 방법을 쓰면 된다
     ErrorCode.NOT_SUPPORTED: Category.BLOCKED,
     # 내부 — 사용자가 할 수 있는 일이 없다
@@ -236,6 +268,10 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ErrorCode.DECRYPT_FAILED: "이 값을 암호화한 키와 암호구가 맞는지 확인하세요.",
     ErrorCode.FINGERPRINT_MISMATCH: "이 값은 다른 키로 암호화됐습니다. 해당 키로 여세요.",
     ErrorCode.SECRET_NOT_FOUND: "비밀 값 화면에서 이 이름의 값을 먼저 등록하세요.",
+    # 010 — 셋 다 **그 자리에서 할 수 있는 일**을 가리킨다. 화면을 떠나게 만들지 않는다.
+    ErrorCode.PROMPT_NOT_FOUND: "그 요구는 이미 끝났습니다. 다음 요구를 기다리세요.",
+    ErrorCode.UPLOAD_REJECTED: "더 작은 파일을 고르거나, 올린 파일을 정리한 뒤 다시 시도하세요.",
+    ErrorCode.UPLOAD_NOT_FOUND: "파일을 다시 올린 뒤 지정하세요.",
     ErrorCode.NOT_SUPPORTED: "지원되는 다른 방법을 쓰세요.",
     ErrorCode.INTERNAL_ERROR: (
         "작업 내용은 그대로 있습니다. 화면을 새로 고쳐 이어서 진행하고, "

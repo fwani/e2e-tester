@@ -20,8 +20,10 @@ export type StartUrl = string;
  * @minItems 1
  */
 export type Steps = [
-  ClickStep | FillStep | SelectStep | NavigateStep | AssertionStep | CloseTabStep | HoverStep | DragStep,
-  ...(ClickStep | FillStep | SelectStep | NavigateStep | AssertionStep | CloseTabStep | HoverStep | DragStep)[]
+  ClickStep | FillStep | SelectStep | NavigateStep | AssertionStep | CloseTabStep | HoverStep | DragStep | UploadStep,
+  ...(
+    ClickStep | FillStep | SelectStep | NavigateStep | AssertionStep | CloseTabStep | HoverStep | DragStep | UploadStep
+  )[]
 ];
 export type Author = "human" | "ai";
 export type FrameUrl = string | null;
@@ -95,6 +97,14 @@ export type Label7 = string;
 export type Tab7 = number;
 export type TimeoutMs7 = number;
 export type Type7 = "drag";
+export type Author8 = "human" | "ai";
+export type FileName = string;
+export type FrameUrl8 = string | null;
+export type Id9 = string;
+export type Label8 = string;
+export type Tab8 = number;
+export type TimeoutMs8 = number;
+export type Type8 = "upload";
 export type UpdatedAt = string;
 export type Name2 = string;
 export type Sensitive = boolean;
@@ -255,6 +265,35 @@ export interface DragStep {
   target: TargetLocator;
   timeout_ms: TimeoutMs7;
   type: Type7;
+}
+/**
+ * 파일을 올리는 동작 (2026-09-09 사용자 보고).
+ *
+ * ## 무엇을 기록하는가 — **파일 이름 하나다**
+ *
+ * 사용자가 요구한 것은 확장자다: 「파일업로드 녹화의 경우, 파일의 확장자 기록되 되어야함.
+ * 실제 서비스에서는 확장자를 보는경우가 있기 때문」.
+ *
+ * 그래서 이 Step 은 ``file_name`` 을 갖고, **확장자는 그 이름의 일부다.** 확장자를 별도
+ * 필드로 두지 않는 이유는 진실이 둘이 되기 때문이다 — 이름이 ``보고서.xlsx`` 인데
+ * 확장자 필드가 ``csv`` 인 Step 이 만들어질 수 있고, 그때 어느 쪽이 맞는지 아무도 모른다.
+ * 확장자가 필요한 곳은 `extension_of` 로 꺼낸다.
+ *
+ * **파일 내용은 기록하지 않는다.** 녹화 시점에 브라우저가 주는 것은 이름뿐이고
+ * (``File.name``), 내용을 정의 파일에 담으면 테스트가 옮겨 다닐 수 없게 된다. 재실행은
+ * 같은 이름의 빈 파일을 만들어 올린다 — 확장자를 보는 검증은 통과하고, 내용을 파싱하는
+ * 검증은 통과하지 못한다. 그 한계는 실행기 쪽에 적어 두었다.
+ */
+export interface UploadStep {
+  author: Author8;
+  file_name: FileName;
+  frame_url: FrameUrl8;
+  id: Id9;
+  label: Label8;
+  tab: Tab8;
+  target: TargetLocator;
+  timeout_ms: TimeoutMs8;
+  type: Type8;
 }
 /**
  * 테스트 안에서 값을 대신하는 이름.

@@ -1,9 +1,23 @@
 /**
  * 007 T065 — **감춰진 조작 0건** (SC-004 · FR-234·FR-247).
  *
- * 이 파일이 재는 것은 하나다. `contracts/ui-contract.md` §3 의 표에서 `–`(해당 없음)가
- * **아닌** 칸은 전부 그 국면 화면에 **있어야 한다.** 있고 없고를 국면마다 눈으로 세는
- * 대신 표를 읽어 센다 — 눈으로 세면 한 국면을 빠뜨리고, 빠진 자리가 감춰진 조작이 된다.
+ * ## 2026-09-09 — 재는 것이 좁아졌다 (사용자 결정)
+ *
+ * 이전에 이 파일이 잰 것은 「표에서 `–` 가 아닌 칸은 전부 화면에 있다」였다. 그 규칙이
+ * 지켜지는 채로 사용자가 보고한 것: 검토 국면의 조작 자리 24개 중 14개가 비활성이고,
+ * 「처음부터 실행」이 버튼 하나 + 해소 링크 둘로 한 띠에 세 번 나왔다.
+ *
+ * 그래서 비활성을 둘로 갈랐다 (`capabilities.ts` 의 `REASON_VISIBILITY`). 이 파일이
+ * 재는 것도 함께 갈린다.
+ *
+ * - **`keep`** — 사용자가 이 화면에서 곧바로 해소할 수 있는 전제(이름 미입력·Step
+ *   미선택·요청 진행 중). 그 자리는 **여전히 반드시 있어야 한다** (`alwaysPresent`).
+ * - **`hide`** — 「이 상태의 조작이 아니다」. 접히는 것이 맞고, 접혔는지는 세지 않는다.
+ *   대신 **접혀야 할 사유가 화면에 새지 않았는지**를 센다 (아래 「사유가 새지 않는다」).
+ *
+ * 두 번째가 이 개정의 이빨이다. 조작을 접는 결정을 내리면 「접혔어야 할 것이 남는」
+ * 실수가 조용해지는데, `ActionButton` 을 지나지 않는 자리(실행 속도·미러·탭 줄)가 실제로
+ * 그랬다 — 속도 선택 넷이 검토 국면에 「실행이 이미 끝났습니다」를 달고 남아 있었다.
  *
  * `CapabilityCoverage` 와 무엇이 다른가: 그것은 **표 자체**가 온전한지 본다(빠진 칸·근거
  * 없는 `–`·화면에 없는 해소 방법). 이 파일은 **화면이 표를 따르는지** 본다. 표가 옳아도
@@ -19,7 +33,15 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ACTION_IDS, type ActionId } from "../src/lib/actions";
-import { rawCell } from "../src/lib/capabilities";
+import { alwaysPresent, reasonVisibility } from "../src/lib/capabilities";
+import { AT_BOTTOM, AT_TOP } from "../src/components/workbench/StepRowOps";
+import {
+  DISABLED_REASON,
+  RUN_NEEDS_SAVE,
+  SAVE_NEEDS_NAME,
+  SENSITIVE_NO_VALUE,
+  type DisabledReasonKey,
+} from "../src/lib/wording";
 import { PHASES, type Phase } from "../src/lib/phase";
 import { SessionWorkbench } from "../src/pages/SessionScreen";
 import { ResultView } from "../src/pages/ResultView";
@@ -32,10 +54,59 @@ import type { SessionState } from "../src/api/client";
 /**
  * 그 국면에서 **화면에 있어야 하는** 조작.
  *
- * `–` 인 칸만 없어도 된다 — 그 근거(N1·N2·N3)는 `CapabilityCoverage` 가 이미 센다.
+ * 판정은 `capabilities.ts` 의 `alwaysPresent` 가 한다 — 검사가 사본을 들면 표와 갈린다.
  */
 function required(phase: Phase): ActionId[] {
-  return ACTION_IDS.filter((a) => rawCell(phase, a).t !== "na");
+  return ACTION_IDS.filter((a) => alwaysPresent(phase, a));
+}
+
+/**
+ * 화면에 **나타나도 되는** 비활성 사유의 전부.
+ *
+ * 표의 `keep` 사유 + 화면이 좁혀 붙이는 사유들이다. 이 목록에 없는 문구가 화면에
+ * 나타나면 접혀야 할 조작이 접히지 않은 것이다.
+ */
+const ALLOWED_REASONS: Set<string> = new Set<string>([
+  ...(Object.keys(DISABLED_REASON) as DisabledReasonKey[])
+    .filter((k) => reasonVisibility(k) === "keep")
+    .map((k) => DISABLED_REASON[k]),
+  // 화면이 아는 사실로 좁힌 것들 — 표에 담을 수 없고 전부 `keep` 이다.
+  SAVE_NEEDS_NAME,
+  RUN_NEEDS_SAVE,
+  "먼저 Step 을 고르세요",
+  AT_TOP,
+  AT_BOTTOM,
+  SENSITIVE_NO_VALUE,
+]);
+
+/**
+ * 접히는 규칙 밖에 있는 조작 — **자리가 버튼이 아닌 것들**.
+ *
+ * - `mirror.control` — `ALWAYS_KEEP` 이다 (`capabilities.ts`). 자리가 미러 화면 전체이고
+ *   사용자가 그 위를 클릭해 보므로, 어떤 사유로든 화면 위에 남아야 한다 (010 SC-516).
+ * - `ai.compose` — `ALWAYS_KEEP` 이다. 자리가 지시문 칸이고 그 **내용이 정보다** —
+ *   접으면 무엇을 시켰는지 잃는다 (001 FR-063 · UX U-07).
+ * - `artifact.select` — 자리가 **탭 줄**이고 탭마다 자기 사유를 갖는다 (FR-246). 조작
+ *   전체가 접히는지와 개별 탭이 지원되지 않는지는 다른 축이다.
+ */
+const EXEMPT_FROM_FOLDING = new Set<string>([
+  "mirror.control",
+  "ai.compose",
+  "artifact.select",
+]);
+
+/** 접혀야 할 사유가 화면에 남았는가. */
+function leakedReasons(): string[] {
+  const out: string[] = [];
+  for (const el of document.querySelectorAll("[data-disabled-reason]")) {
+    const id = el.getAttribute("data-disabled-reason");
+    if (id === null || EXEMPT_FROM_FOLDING.has(id)) continue;
+    const text = (el.textContent ?? "").trim();
+    // 해소 방법 버튼의 라벨이 같은 요소에 붙는다 — 사유로 시작하는지만 본다.
+    if ([...ALLOWED_REASONS].some((r) => text.startsWith(r))) continue;
+    out.push(`${id}: "${text}"`);
+  }
+  return out;
 }
 
 /**
@@ -93,6 +164,9 @@ const SESSION_STATE: Record<string, { state: SessionState; mode: "record" | "ai"
   takeover: { state: "takeover_recording", mode: "ai" },
   running: { state: "replaying", mode: "record" },
   paused: { state: "paused", mode: "record" },
+  /** 2026-09-09 에 갈라진 둘 (`phase.ts`) */
+  review: { state: "review", mode: "record" },
+  finished: { state: "completed", mode: "record" },
 };
 
 /**
@@ -213,6 +287,16 @@ describe("감춰진 조작 0건 (SC-004 · FR-234)", () => {
     ).toEqual([]);
   });
 
+  it.each(PHASES)("%s — 접혀야 할 사유가 화면에 새지 않는다", async (phase) => {
+    await renderPhase(phase);
+    const leaked = leakedReasons();
+    expect(
+      leaked,
+      `${phase} 에서 「이 상태의 조작이 아니다」인 사유가 화면에 남았다:\n  ${leaked.join("\n  ")}\n` +
+        "그 자리는 접혀야 한다 (`capabilities.ts` 의 REASON_VISIBILITY).",
+    ).toEqual([]);
+  });
+
   it.each(PHASES)("%s — 한 조작이 두 자리를 갖지 않는다 (FR-235)", async (phase) => {
     await renderPhase(phase);
     const dup = duplicated();
@@ -258,9 +342,24 @@ describe("예외 목록은 비어 있어야 한다", () => {
   });
 
   it("검사가 실제로 무언가를 세고 있다", () => {
-    // 표를 못 읽은 채 초록이 되는 상태를 막는다.
-    expect(required("running").length).toBeGreaterThan(10);
-    expect(required("editing").length).toBeGreaterThan(10);
+    /*
+      표를 못 읽은 채 초록이 되는 상태를 막는다.
+
+      **기준이 낮아졌다** (2026-09-09). 이전에는 국면마다 10개를 넘게 요구했는데, 그 수는
+      「`–` 가 아닌 칸」의 수였고 지금 세는 것은 「반드시 자리에 있어야 하는 칸」이다 —
+      접히는 것이 정상인 칸이 빠졌으므로 국면별 수가 준다 (실행 중 국면은 6개다).
+
+      그래서 두 가지로 센다: **어느 국면도 통째로 비지 않는다**(화면이 아무 조작도 갖지
+      않는 국면은 없다)와 **합계가 유의미하다**. 둘 중 하나만으로는 한 국면이 0 이 되는
+      실수나 표를 통째로 못 읽는 실수를 놓친다.
+    */
+    for (const phase of PHASES) {
+      expect(required(phase).length, `${phase} 에 반드시 있어야 하는 조작이 없다`).toBeGreaterThan(
+        2,
+      );
+    }
+    const total = PHASES.reduce((n, p) => n + required(p).length, 0);
+    expect(total).toBeGreaterThan(40);
   });
 });
 

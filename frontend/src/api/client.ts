@@ -351,6 +351,8 @@ export type EditOp =
       tab?: number;
       url?: string;
       assertion_value?: string;
+      /** 올릴 파일의 이름 — `upload` Step 만 갖는다 (2026-09-09) */
+      file_name?: string;
     }
   | { op: "delete"; step_id: string }
   | { op: "reorder"; order: string[] }
@@ -415,6 +417,15 @@ export interface SessionView {
   tabs_open: number;
   active_tab_index: number;
   mirrored_tab_index: number;
+  /** 지금 조작이 어디서 이루어지는가 (010 FR-349). 새로 고쳐도 잃지 않는다 */
+  control_surface?: ControlSurfaceValue;
+  /**
+   * 실제 창으로 옮겨 갈 수 없는 이유. 옮겨 갈 수 있으면 `null` (010 FR-351).
+   *
+   * **문장을 서버가 준다.** 화면이 같은 뜻의 문구를 따로 가지면 서버가 거절할 때 쓰는
+   * 문장과 갈린다 (`wording.ts` 의 O13 옆 주석).
+   */
+  window_unavailable_reason?: string | null;
   edit_warnings: string[];
   recorder_warnings: string[];
   allowed_commands: string[];
@@ -541,6 +552,20 @@ export interface SessionListResponse {
   sessions: SessionView[];
 }
 
+/** 조작 위치 (010 data-model §6). `mirror` 가 기본이고 `window` 는 폴백이다. */
+export type ControlSurfaceValue = "mirror" | "window";
+
+export interface ControlSurfaceResponse {
+  surface: ControlSurfaceValue;
+}
+
+/** 업로드된 파일 하나 (010 data-model §5). `fileId` 는 **서버가 발급한다.** */
+export interface UploadedFileView {
+  file_id: string;
+  display_name: string;
+  size: number;
+}
+
 export const sessions = {
   /** 살아 있는 세션 전부. 새로고침으로 놓친 세션을 되찾는 길이다 (UX U-05). */
   list: () => get<SessionListResponse>("/api/sessions"),
@@ -600,6 +625,46 @@ export const sessions = {
   tabs: (id: string) => get<TabsResponse>(`/api/sessions/${id}/tabs`),
   setMirrorTab: (id: string, tabIndex: number) =>
     post<TabsResponse>(`/api/sessions/${id}/mirror-tab`, { tab_index: tabIndex }),
+  /**
+   * 조작 위치를 옮긴다 (010 FR-349·FR-353 · contracts/mirror-control.md §3).
+   *
+   * **사용자 요청으로만 일어난다.** 서버가 상황을 판단해 스스로 창을 열지 않는다 —
+   * 요청하지 않은 창은 그 자체로 조작 위치를 잃게 만들고, 화면 없는 기계에서는 자동
+   * 전환이 실패한다 (FR-353).
+   *
+   * 창을 띄울 수 없는 환경이면 **사유와 함께 거절된다** (FR-351). 조용히 실패하지 않는다.
+   */
+  setControlSurface: (id: string, surface: ControlSurfaceValue) =>
+    post<ControlSurfaceResponse>(`/api/sessions/${id}/control-surface`, { surface }),
+  /**
+   * 브라우저 요구에 답한다 (010 FR-338 · contracts §3).
+   *
+   * 이미 해소된 요구나 다른 세션의 `promptId` 는 서버가 거절한다 (FR-340).
+   */
+  answerPrompt: (
+    id: string,
+    promptId: string,
+    body: { accept: boolean; text?: string; file_ids?: string[] },
+  ) => post<void>(`/api/sessions/${id}/prompts/${promptId}`, body),
+  /**
+   * 사용자가 자기 기계에서 고른 파일을 올린다 (010 FR-337).
+   *
+   * **제품이 도는 기계의 경로를 사용자가 입력하는 방식이 아니다.** 그러면 화면 없는
+   * 원격 기계에서 파일 첨부 녹화가 성립하지 않는다 (SC-518).
+   *
+   * 상한을 넘으면 서버가 **사유와 함께** 거절한다 (FR-337a). 자르지 않는다.
+   */
+  uploadFile: async (id: string, file: File): Promise<UploadedFileView> => {
+    const form = new FormData();
+    form.append("file", file);
+    // `request` 를 쓰지 않는다 — 그것은 `Content-Type: application/json` 을 붙이고,
+    // multipart 요청에 그 헤더가 붙으면 경계 문자열이 사라져 서버가 본문을 읽지 못한다.
+    // 브라우저가 `FormData` 에 맞는 헤더를 스스로 붙이게 둔다.
+    const response = await fetch(`/api/sessions/${id}/files`, { method: "POST", body: form });
+    const text = await response.text();
+    if (!response.ok) throw apiErrorFromBody(response.status, text);
+    return JSON.parse(text) as UploadedFileView;
+  },
   deleteStep: (id: string, stepId: string) =>
     del<StepsResponse>(`/api/sessions/${id}/steps/${stepId}`),
   reorderSteps: (id: string, order: string[]) =>
@@ -625,6 +690,8 @@ export const sessions = {
       value?: string;
       timeout_ms?: number;
       sensitive?: boolean;
+      /** 올릴 파일의 이름 — `upload` Step 만 갖는다 (2026-09-09) */
+      file_name?: string;
     },
   ) => patch<StepsResponse>(`/api/sessions/${id}/steps/${stepId}`, body),
   /** 검증 Step 추가 (FR-037·FR-013a). */

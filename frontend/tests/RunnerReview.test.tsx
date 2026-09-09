@@ -98,12 +98,23 @@ describe("중지 후 검토 (DR-010)", () => {
     expect((screen.getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("브라우저가 없으므로 「계속하기」를 잠그고 이유를 붙인다 (001 FR-043a)", () => {
+  /*
+    2026-09-09 — **잠그는 것에서 접는 것으로 바뀌었다** (사용자 결정).
+
+    이전 단언은 「비활성으로 남기고 이유를 붙인다」였다. 실측에서 그 규칙이 검토 화면에
+    비활성 조작 14개를 남겼고, 사용자는 「누를 수 없는 버튼이 다 보이고 애매하다」고
+    보고했다. 브라우저가 없는 것은 사용자가 이 화면에서 해소할 수 없는 사정이므로
+    (`REASON_VISIBILITY` 의 C2·NEEDS_BROWSER = `hide`) 자리를 접는다.
+
+    **재는 것이 사라지지 않았다.** 「검토에서는 안 되고 일시정지에서는 된다」는 성질을
+    그대로 재고, 다만 「안 된다」의 모양이 비활성에서 부재로 바뀌었다. 조건이 브라우저
+    생존임을 못 박는 뒷부분(일시정지에서는 눌린다)이 그 성질을 지킨다.
+  */
+  it("브라우저가 없으므로 「계속하기」가 자리에 없다 (001 FR-043a)", () => {
     render(<SessionWorkbench {...props()} />);
-    expect(act("run.resume").disabled).toBe(true);
-    expect(
-      document.querySelector("[data-disabled-reason='run.resume']")?.textContent,
-    ).toContain("브라우저");
+    expect(document.querySelector("[data-action='run.resume']")).toBeNull();
+    // 접힌 조작은 사유도 남기지 않는다 — 남으면 그것이 「접히지 않은 것」이다.
+    expect(document.querySelector("[data-disabled-reason='run.resume']")).toBeNull();
 
     // 일시정지 상태에서는 눌린다 — 잠그는 조건이 「브라우저 없음」임을 못 박는다.
     cleanup();
@@ -111,19 +122,20 @@ describe("중지 후 검토 (DR-010)", () => {
     expect(act("run.resume").disabled).toBe(false);
   });
 
-  it("검토 상태에서는 브라우저가 필요한 도구를 잠그되 감추지 않는다", () => {
+  it("검토 상태에서는 브라우저가 필요한 도구가 접히고, 없이 되는 것만 남는다", () => {
     render(<SessionWorkbench {...props({}, { focusedStepId: "step-01" })} />);
 
-    expect(act("step.recordStart").disabled).toBe(true);
-    expect(act("step.addAssertion").disabled).toBe(true);
-    expect((screen.getByLabelText("자연어로 Step 추가") as HTMLInputElement).disabled).toBe(true);
+    // 브라우저를 만져야 하는 셋은 자리에 없다.
+    expect(document.querySelector("[data-action='step.recordStart']")).toBeNull();
+    expect(document.querySelector("[data-action='step.addAssertion']")).toBeNull();
+    expect(screen.queryByLabelText("자연어로 Step 추가")).toBeNull();
     // 브라우저 없이도 되는 것은 눌린다 (DR-012).
     expect(act("step.delete").disabled).toBe(false);
     expect(act("step.moveUp").disabled).toBe(false);
     expect(act("step.moveDown").disabled).toBe(false);
     /*
       009 — 직접 입력 삽입도 이 부류다 (계약 §2-1). 위의 셋(녹화·검증·자연어)은 브라우저를
-      만져야 하므로 잠기지만, 이것은 정의 목록만 고치고 브라우저에 명령을 보내지 않는다.
+      만져야 하므로 접히지만, 이것은 정의 목록만 고치고 브라우저에 명령을 보내지 않는다.
     */
     expect(act("step.insertManual").disabled).toBe(false);
   });

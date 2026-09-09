@@ -25,7 +25,7 @@
 import type { ReactNode } from "react";
 
 import type { ActionId } from "../../lib/actions";
-import type { CapabilityMap, CapabilityState } from "../../lib/capabilities";
+import { isShown, type CapabilityMap, type CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 
@@ -139,8 +139,14 @@ export function ActionPalette({
     return narrow ? narrow(action, base) : base;
   };
   const usable = (action: ActionId) => capabilityOf(action).kind === "enabled";
-  const shown = (action: ActionId) =>
-    capabilities[action].kind !== "not_applicable" && !hidden.includes(action);
+  /*
+    그 조작을 이 자리에 그리는가.
+
+    **좁힌 뒤의 상태를 본다** (`capabilityOf`, 이전에는 `capabilities[action]` 이었다).
+    화면이 좁혀 붙이는 사유(「먼저 Step 을 고르세요」)는 `keep` 이고, 표가 「이 상태의
+    조작이 아니다」로 정한 것은 `hide` 다. 좁히기 전의 상태를 보면 그 둘이 갈리지 않는다.
+  */
+  const shown = (action: ActionId) => isShown(capabilityOf(action)) && !hidden.includes(action);
 
   const button = (action: ActionId, run: () => void) => (
     <ActionButton
@@ -313,6 +319,8 @@ function Field({
   onRemedy: (action: ActionId) => void;
 }) {
   if (capability.kind === "not_applicable") return null;
+  // 「이 상태의 조작이 아니다」는 그리지 않는다 (2026-09-09 · `capabilities.ts`).
+  if (capability.kind === "disabled" && capability.visibility === "hide") return null;
   const disabled = capability.kind === "disabled";
   const reasonId = `reason-${action}`;
   const common = {

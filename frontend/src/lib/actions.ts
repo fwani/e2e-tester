@@ -1,5 +1,7 @@
 /**
- * 조작 식별자 36개 (007 T008 · contracts/ui-contract.md §2 · 009 계약 §1).
+ * 조작 식별자 38개 (007 T008 · contracts/ui-contract.md §2 · 009 계약 §1 · 010 §1).
+ *
+ * 010 이 미러 조작 둘을 더했다 — 「미러에서 조작하기」·「실제 창으로 전환하기」.
  *
  * **이 목록이 FR-247 의 검사 대상이다** — 통합으로 사라지는 조작이 있어서는 안 된다.
  * 지금 조작은 7개 화면의 props 로 흩어져 있고, 같은 일이 다른 이름으로 여러 곳에 있다.
@@ -99,6 +101,31 @@ export const TEST_ACTIONS = [
 /** AI (3) */
 export const AI_ACTIONS = ["ai.compose", "ai.start", "ai.chooseBlocked"] as const;
 
+/**
+ * 미러 조작 (2) — 010 FR-316 · contracts/mirror-control.md §1.
+ *
+ * **조작 가능 여부를 권한표에 넣는 것이 요점이다.** 미러 컴포넌트가 국면을 보고 스스로
+ * 판단하면, 표 밖에 국면 판정이 하나 더 생긴다. 기존 표의 설계는 「각 국면 열이 그 국면
+ * 화면의 전부」인데(`capabilities.ts` 머리말), 표 밖에 두면 그 성질이 깨진다 (research R9).
+ */
+export const MIRROR_ACTIONS = [
+  /**
+   * 미러 영역에서 대상 브라우저를 조작한다 (FR-314).
+   *
+   * 001 에서는 존재하지 않던 조작이다 — 조작 국면은 실제 브라우저 창에서만 성립했고,
+   * 미러는 포인터 이벤트를 아예 받지 않았다 (FR-047a). 010 이 그 결정을 뒤집는다.
+   */
+  "mirror.control",
+  /**
+   * 실제 브라우저 창으로 조작 위치를 옮긴다 (FR-349·FR-353).
+   *
+   * **폴백이며, 사용자가 누를 때만 일어난다.** 제품이 상황을 판단해 자동으로 창을 열지
+   * 않는다 — 요청하지 않은 창은 그 자체로 조작 위치를 잃게 만들고, 화면 없는 환경에서는
+   * 자동 전환이 실패한다 (FR-353).
+   */
+  "mirror.useWindow",
+] as const;
+
 /** 결과·이동 (5) */
 export const NAV_ACTIONS = [
   "artifact.select",
@@ -114,6 +141,7 @@ export const ACTION_IDS = [
   ...STEP_ACTIONS,
   ...TEST_ACTIONS,
   ...AI_ACTIONS,
+  ...MIRROR_ACTIONS,
   ...NAV_ACTIONS,
 ] as const;
 

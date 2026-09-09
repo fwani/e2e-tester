@@ -28,8 +28,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { RepickSlot } from "../../api/client";
 import { InlineSecretInput, referenceName } from "../InlineSecretInput";
 import { LocatorPriorityTable } from "../LocatorPriorityTable";
-import type { CapabilityMap } from "../../lib/capabilities";
-import { stepNumber } from "../../lib/wording";
+import { isShown, type CapabilityMap } from "../../lib/capabilities";
+import { SENSITIVE_NO_VALUE, stepNumber, uploadFileNote } from "../../lib/wording";
 import type { Step } from "../../types/generated/step";
 import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
@@ -43,6 +43,17 @@ function hasValue(step: Step): step is Extract<Step, { value: string }> {
   return step.type === "fill" || step.type === "select";
 }
 
+/**
+ * 파일 이름을 갖는 Step 인가 (2026-09-09 · `upload`).
+ *
+ * **`hasValue` 와 갈라 둔다.** `upload` 는 `value` 필드를 갖지 않고 `file_name` 을 갖는다.
+ * 한 칸으로 뭉개면 서버로 보내는 필드가 갈리고(`value` vs `file_name`), 서버는 「입력값을
+ * 갖지 않는 Step 에 값을 지정했다」로 거절한다.
+ */
+function hasFileName(step: Step): step is Extract<Step, { file_name: string }> {
+  return step.type === "upload";
+}
+
 /** 저장된 정의 그대로의 미리보기 (FR-016). 파일 내용과 일치해야 한다. */
 function dslPreview(step: Step): string {
   return JSON.stringify(step, null, 2);
@@ -51,14 +62,6 @@ function dslPreview(step: Step): string {
 export interface StepDetailProps {
   detail: StepDetailModel;
   capabilities: CapabilityMap;
-  /**
-   * 어디에 걸렸는가 (008 · `lib/layout.ts` 의 `DETAIL_PLACEMENT`).
-   *
-   * **이 값이 바꾸는 것은 껍데기뿐이다** — 폭·테두리·닫기 버튼의 모양. 안에 그리는
-   * 항목과 순서는 두 배치에서 같다 (FR-231). 스스로 판단하지 않는다: 국면이 표로
-   * 정하고 `Workbench` 가 내려 준다 (UC-000 과 같은 규율).
-   */
-  placement?: "overlay" | "inline";
   /**
    * 이 컴포넌트가 **자기 편집 입력을 갖는가** (008).
    *
@@ -81,6 +84,8 @@ export interface StepDetailProps {
     tab?: number;
     url?: string;
     assertion_value?: string;
+    /** 올릴 파일의 이름 — `upload` Step 만 갖는다 (2026-09-09) */
+    file_name?: string;
   }) => void;
   onRepick: (slot: RepickSlot) => void;
   onClose: () => void;
@@ -99,7 +104,6 @@ export interface StepDetailProps {
 export function StepDetail({
   detail,
   capabilities,
-  placement = "overlay",
   ownFields = true,
   busy = false,
   onSave,
@@ -111,6 +115,7 @@ export function StepDetail({
   const step = detail.step;
   const [label, setLabel] = useState(step?.label ?? "");
   const [value, setValue] = useState(step && hasValue(step) ? step.value : "");
+  const [fileName, setFileName] = useState(step && hasFileName(step) ? step.file_name : "");
   const [timeoutMs, setTimeoutMs] = useState(step?.timeout_ms ?? 5000);
   const [sensitive, setSensitive] = useState(false);
   const [showDsl, setShowDsl] = useState(false);
@@ -120,6 +125,7 @@ export function StepDetail({
   useEffect(() => {
     setLabel(step?.label ?? "");
     setValue(step && hasValue(step) ? step.value : "");
+    setFileName(step && hasFileName(step) ? step.file_name : "");
     setTimeoutMs(step?.timeout_ms ?? 5000);
     setSensitive(false);
     setSecretOpen(false);
@@ -128,25 +134,25 @@ export function StepDetail({
   const canEdit = capabilities["step.update"].kind === "enabled";
   const canMarkSensitive = capabilities["step.markSensitive"].kind === "enabled";
   const hasValueField = step !== null && hasValue(step);
+  const hasFileField = step !== null && hasFileName(step);
   const alreadyReference = hasValueField && isReference(value);
 
   return (
     <div
       data-workbench-step-detail
       /*
-        겹침은 대화상자다 — 뒤를 가리고 초점을 가둔다. 인라인은 그 자리에 늘 있는
-        영역이므로 `region` 이다. 가리지 않는 것을 대화상자라고 말하면 보조 기술이
-        "닫아야 뒤로 갈 수 있다" 고 잘못 안내한다.
+        **대화상자다** — 뒤를 가리고 초점을 가둔다.
+
+        2026-09-09 에 배치가 하나로 돌아오면서 `region` 갈래가 없어졌다. 인라인 배치가
+        있던 동안에는 그것을 `region` 으로 두어야 했다 — 가리지 않는 것을 대화상자라고
+        말하면 보조 기술이 "닫아야 뒤로 갈 수 있다" 고 잘못 안내한다.
       */
-      role={placement === "overlay" ? "dialog" : "region"}
+      role="dialog"
       aria-label="Step 상세"
-      data-detail-placement={placement}
-      className={placement === "overlay" ? "overlay-pane" : "pane"}
+      className="overlay-pane"
       style={{
-        // 겹침은 우측 640px 고정. 인라인은 ③-b 를 채운다 — 그 자리의 폭은 국면이 정한다.
-        ...(placement === "overlay"
-          ? { width: "640px" }
-          : { flex: 1, minHeight: 0, width: "100%" }),
+        // 우측 640px 고정 — 모든 국면에서 같다 (FR-230).
+        width: "640px",
         display: "flex",
         flexDirection: "column",
         overflowY: "auto",
@@ -155,11 +161,11 @@ export function StepDetail({
       <div
         className="pane-hd"
         style={{
-          flex: placement === "inline" ? "0 0 36px" : "0 0 44px",
+          flex: "0 0 44px",
           display: "flex",
           alignItems: "center",
           gap: "12px",
-          padding: placement === "inline" ? "0 12px" : "0 16px",
+          padding: "0 16px",
         }}
       >
         {/*
@@ -195,13 +201,8 @@ export function StepDetail({
               </>
             )}
           </div>
-          <div
-            /*
-              겹침은 640px 안에서 혼자 서므로 크게 둔다. 인라인은 ③-b 안이고 위에 국면
-              띠의 테스트 이름이 이미 있으므로, 여기서 또 크면 제목이 둘이 된다.
-            */
-            className={placement === "inline" ? "subtitle" : "title"}
-          >
+          {/* 640px 안에서 혼자 서므로 크게 둔다 */}
+          <div className="title">
             {step?.label ?? "이 결과 이후 정의에서 사라진 Step"}
           </div>
         </div>
@@ -225,14 +226,14 @@ export function StepDetail({
           비우지 않고 이유를 남긴다 (FR-234) — 비우면 사용자는 그 조작이 이 제품에
           없는 줄 안다.
         */}
-        {step !== null && !hasValue(step) && capabilities["step.markSensitive"].kind !== "not_applicable" && (
+        {step !== null && !hasValue(step) && isShown(capabilities["step.markSensitive"]) && (
           <span
             id="reason-step-sensitive"
             data-action="step.markSensitive"
             data-disabled-reason="step.markSensitive"
             className="why"
           >
-            이 Step 은 입력값을 갖지 않아 민감 값으로 지정할 것이 없습니다.
+            {SENSITIVE_NO_VALUE}
           </span>
         )}
 
@@ -312,6 +313,29 @@ export function StepDetail({
                     />
                   </div>
                 )}
+              </div>
+            )}
+
+            {/*
+              올릴 파일 (2026-09-09 사용자 보고 — 「파일의 확장자 기록되 되어야함」).
+
+              **확장자를 따로 묻지 않는다.** 확장자는 이름의 일부이고, 둘을 따로 두면
+              「보고서.xlsx 인데 확장자는 csv」인 Step 이 만들어질 수 있다. 아래 안내가
+              지금 이름에서 읽히는 확장자를 그대로 보여 주므로, 사용자는 자기가 고친
+              이름이 어떤 확장자로 올라가는지 확인할 수 있다.
+            */}
+            {ownFields && hasFileField && (
+              <div>
+                <label htmlFor="detail-file-name">올릴 파일 이름</label>
+                <input
+                  id="detail-file-name"
+                  value={fileName}
+                  disabled={!canEdit}
+                  onChange={(e) => setFileName(e.target.value)}
+                />
+                <p className="why" style={{ margin: "4px 0 0" }}>
+                  {uploadFileNote(fileName)}
+                </p>
               </div>
             )}
 
@@ -423,6 +447,7 @@ export function StepDetail({
               onSave({
                 label: label.trim() !== "" ? label.trim() : undefined,
                 value: hasValueField && !alreadyReference ? value : undefined,
+                file_name: hasFileField && fileName.trim() !== "" ? fileName.trim() : undefined,
                 timeout_ms: timeoutMs,
                 sensitive: sensitive || undefined,
               })

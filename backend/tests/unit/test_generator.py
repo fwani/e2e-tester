@@ -3,7 +3,7 @@
 게이트가 Generator 단위 테스트를 필수로 요구한다. 여기서 고정하는 것은 네 가지다.
 
 1. **후보별 표현** — `choose_strategy` 가 고른 후보가 그대로 코드가 된다 (원칙 IV)
-2. **Step 8종 전부** — hover·drag 포함 (T164). 종류가 늘면 여기서 실패해야 한다
+2. **Step 종류 전부** — hover·drag·upload 포함. 종류가 늘면 여기서 실패해야 한다
 3. **민감 변수는 변수 참조로만** — 복호화된 값이 코드에 들어갈 경로가 없다 (FR-089d-1)
 4. **이스케이프** — 대상 화면에서 온 텍스트가 코드를 깨거나 주입되지 않는다 (헌법 §보안)
 """
@@ -26,6 +26,7 @@ from itb.domain.step import (
     NavigateStep,
     SelectStep,
     StepType,
+    UploadStep,
 )
 from itb.domain.test_case import AuthoringMode, Test, Variable
 from itb.generator.playwright_gen import (
@@ -128,11 +129,11 @@ def test_unusable_candidates_are_refused_not_silently_downgraded() -> None:
     assert "다시 집으세요" in str(exc.value)
 
 
-# ─── 2. Step 8종 전부 (T164) ───────────────────────────────────────────────
+# ─── 2. Step 종류 전부 (T164) ──────────────────────────────────────────────
 
 
 def test_every_step_type_is_generated() -> None:
-    """**Step 종류 8종 전부에 대응이 있다.**
+    """**Step 종류 전부에 대응이 있다.**
 
     종류가 늘었는데 생성기가 따라오지 않으면 내보낸 테스트가 원본보다 적게 실행된다.
     hover·drag 가 실제로 그럴 뻔했다 (T164) — 그래서 열거를 테스트로 고정한다.
@@ -155,6 +156,10 @@ def test_every_step_type_is_generated() -> None:
         StepType.HOVER: HoverStep(id="step-07", label="올리기", target=loc),
         StepType.DRAG: DragStep(
             id="step-08", label="끌기", target=loc, drop_target=drop
+        ),
+        # 2026-09-09 — 파일 업로드 (사용자 보고). 이 줄이 없으면 아래 열거 단언이 잡는다.
+        StepType.UPLOAD: UploadStep(
+            id="step-09", label="올리기", target=loc, file_name="보고서.xlsx"
         ),
     }
     assert set(samples) == set(StepType), "Step 종류가 늘었는데 표본이 없다"
@@ -179,6 +184,45 @@ def test_hover_and_drag_match_the_documented_mapping() -> None:
     generated = line_of(drag)
     assert 'page.getByTestId("chip-events").dragTo(' in generated
     assert 'page.getByLabel("보관함", { exact: true })' in generated
+
+
+def test_upload_carries_the_file_name_and_its_mime_type() -> None:
+    """파일 업로드 (2026-09-09 사용자 보고).
+
+    **확장자가 코드에 그대로 남아야 한다.** 사용자가 요구한 것이 그것이다 — 「실제
+    서비스에서는 확장자를 보는경우가 있기 때문」. 이름을 통째로 실으므로 확장자는 그
+    안에 있고, MIME 은 이름에서 유추한 값이다 (`mime_type_of`).
+
+    **디스크를 만지지 않는다.** `Buffer.alloc(0)` 으로 내용을 넘기므로 내보낸 코드가
+    다른 기계에서도 그대로 돈다 — 제품의 재실행(`step_executor._upload`)과 같은 방식이다.
+    """
+    step = UploadStep(
+        id="step-01",
+        label="첨부",
+        target=target(test_id=cand("attach")),
+        file_name="보고서.xlsx",
+    )
+    generated = line_of(step)
+    assert 'page.getByTestId("attach").setInputFiles(' in generated
+    assert '"보고서.xlsx"' in generated
+    assert "spreadsheetml.sheet" in generated, "확장자에서 유추한 MIME 이 실려야 한다"
+    assert "Buffer.alloc(0)" in generated
+
+
+def test_upload_without_extension_still_generates() -> None:
+    """확장자 없는 파일도 올릴 수 있다 — 오류가 아니다.
+
+    그때 MIME 은 `application/octet-stream` 이다. 지어내면 서버가 다른 이유로 거절한다.
+    """
+    step = UploadStep(
+        id="step-01",
+        label="첨부",
+        target=target(test_id=cand("attach")),
+        file_name="README",
+    )
+    generated = line_of(step)
+    assert '"README"' in generated
+    assert "application/octet-stream" in generated
 
 
 def test_drag_requires_both_ends_to_be_resolvable() -> None:

@@ -41,6 +41,7 @@ from itb.execution.assertion_builder import (
 from itb.execution.element_probe import collect_by_selector
 from itb.execution.step_edits import (
     EditResult,
+    FieldNotSupportedError,
     ReorderMismatchError,
     StepNotFoundError,
     ValueNotSupportedError,
@@ -104,6 +105,16 @@ class PatchStepRequest(BaseModel):
     label: str | None = Field(default=None, min_length=1, max_length=200)
     value: str | None = Field(default=None, max_length=4000)
     timeout_ms: int | None = Field(default=None, ge=1, le=60_000)
+    file_name: str | None = Field(default=None, min_length=1, max_length=255)
+    """올릴 파일의 이름 (2026-09-09 사용자 보고 — 파일 업로드 녹화).
+
+    **확장자를 포함한다.** 사용자가 요구한 것이 확장자이고(「실제 서비스에서는 확장자를
+    보는경우가 있기 때문」), 재실행은 이 이름 그대로의 빈 파일을 올린다.
+
+    `value` 와 갈라 두는 이유: `upload` Step 은 `value` 필드를 갖지 않는다. 같은 칸으로
+    받으면 「입력값을 갖지 않는 Step 에 값을 지정했다」는 거절과 뜻이 섞인다.
+    """
+
     sensitive: bool | None = None
     """FR-082b — 민감 여부를 사용자가 지정한다.
 
@@ -281,8 +292,9 @@ async def patch(
             label=body.label,
             value=body.value,
             timeout_ms=body.timeout_ms,
+            file_name=body.file_name,
         )
-    except ValueNotSupportedError as exc:
+    except (ValueNotSupportedError, FieldNotSupportedError) as exc:
         raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
     _apply_edit(w, result)
 
