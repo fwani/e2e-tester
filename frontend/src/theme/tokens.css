@@ -127,10 +127,24 @@ a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
 .srow .m{display:flex;align-items:center;gap:6px;min-width:0;}
 .srow .loc{font:400 11px/1 var(--font-mono);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .srow .d{font:400 11px/1 var(--font-mono);color:var(--ink-3);text-align:right;}
+/* ── 행의 네 상태는 **서로 다른 채널**을 갖는다 (011 UC-011-11) ──────────────
+   011 이전에는 결말·일시정지·지목이 `border-left-color` 와 `background` 둘을 다퉜고,
+   `StepRow` 의 삼항이 셋을 줄 세워 언제나 하나만 남았다 — 통과한 Step 을 고르면 결말이
+   사라지고, 일시정지 행은 골라도 선택이 보이지 않았다 (사용자 보고 7).
+
+     결말      왼쪽 3px 테두리 + 오른쪽 결말 칸의 형태 아이콘
+     일시정지  바탕
+     지목      안쪽 링 (`box-shadow: inset`)
+     삭제 대상 칸 0 의 체크 칸 (`.srow-check`)
+
+   **새 색을 만들지 않았다.** 넷 다 기존 토큰을 쓴다 — 008 의 규율이다. */
 .srow.pass{border-left-color:var(--pass);}
 .srow.fail{border-left-color:var(--fail);background:var(--fail-t);}
 .srow.run{border-left-color:var(--run);background:var(--run-t);}
-.srow.sel{background:var(--sunken-2);border-left-color:var(--ink);}
+/* 지목 — **안쪽 링.** 위 셋의 채널을 건드리지 않는다. 2px 인 이유는 1px 이 행 경계선
+   (`--hair`)과 구별되지 않기 때문이고, 잉크를 쓰는 이유는 지목이 상태가 아니라 「지금
+   보고 있는 곳」이어서다 — 색 계열(통과·실패·경고)에 섞이면 없는 결말을 말하게 된다. */
+.srow.sel{box-shadow:inset 0 0 0 2px var(--ink);}
 /* 칸 5 — 행 조작. 위로·아래로·이 앞에 추가·지우기 (009 계약 §3-2).
    항상 보인다. hover 로 드러내면 없는 조작이 된다. */
 .srow-ops{display:flex;align-items:center;gap:4px;}
@@ -487,7 +501,11 @@ input.phase-name:disabled { border-color: transparent; color: var(--ink-2); }
   text-overflow: ellipsis;
 }
 /* 일시정지가 걸린 행. 확정 디자인 `Paused.dc.html` 이 그 행에 주의 계열을 쓴다. */
-.srow.paused { border-left-color: var(--warn); background: var(--warn-t); }
+/* 일시정지 — **바탕만.** 011 이전에는 왼쪽 테두리도 가져가 결말을 덮었다. 결말과
+   일시정지는 동시에 성립할 수 있는 사실이므로(실패한 Step 에서 멈출 수 있다) 채널을
+   나눈다. 바탕이 실패·실행 중의 바탕과 겹치면 이 규칙이 뒤에 있어 이긴다 — 지금 어디에
+   멈춰 있는지가 더 급한 사실이다. */
+.srow.paused { background: var(--warn-t); }
 /* Step 패널의 바닥 — 그 국면의 Step 조작이 모이는 유일한 자리 (007 FR-235). */
 .steps-ft { border-top: 1px solid var(--hair-2); background: var(--sunken-2); }
 

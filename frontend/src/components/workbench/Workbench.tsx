@@ -35,7 +35,7 @@ import { flexOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
 import { PhaseBar, type PhaseNameEdit } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
-import { StepList } from "./StepList";
+import { StepList, STEP_PANEL_WIDTH } from "./StepList";
 import { TargetPane } from "./TargetPane";
 import { WorkArea } from "./WorkArea";
 import type { WorkbenchModel } from "./model";
@@ -43,6 +43,7 @@ import type { WorkbenchModel } from "./model";
 
 /** 최소 기준 폭. 확정 디자인 6종 공통값 (research R1). */
 export const BASE_WIDTH = 1440;
+
 
 export interface WorkbenchProps {
   model: WorkbenchModel;
@@ -255,7 +256,7 @@ export function Workbench({
             position: "absolute",
             left: 16,
             bottom: 16,
-            width: "min(560px, calc(100% - 492px))",
+            width: `min(560px, calc(100% - ${STEP_PANEL_WIDTH + 32}px))`,
             maxHeight: "60%",
             overflowY: "auto",
             zIndex: 12,
@@ -282,7 +283,17 @@ export function Workbench({
           두 자리의 **순서와 개수**는 국면에 따라 바뀌지 않고 (FR-218c), 세로 비율만
           국면이 정한다 (FR-256).
         */}
-        <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column" }}>
+        {/*
+          좌 — 대상 앱 + 국면 작업 영역. **남는 폭 전부** (FR-218a).
+
+          `data-workbench-left-column` 은 011 이 더한 표식이다. Step 상세가 이 영역 **위로**
+          겹치므로(밀어내지 않으므로), 「상세를 열고 닫아도 이 열의 폭 선언이 같은가」를
+          검사가 셀 수 있어야 한다 (UC-011-8).
+        */}
+        <div
+          data-workbench-left-column
+          style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column" }}
+        >
           <TargetPane
             target={model.target}
             size={targetStyle}
@@ -330,14 +341,33 @@ export function Workbench({
           갈라진 것이었다. 008 은 그 사실에 근거해 자리를 국면별 표로 뺐지만, 사용자가
           필요로 한 것은 **자리도 하나**라는 성질이었다 — 같은 것을 보는 곳이 두 군데면
           매번 어디를 볼지 판단해야 한다.
+
+          ## 2026-09-10 (011) — 오른쪽에서 왼쪽으로
+
+          사용자 보고: 「STEP 상세 는 오버레이로 오른쪽으로 뜨고있는데 스텝리스트 왼쪽으로
+          수정한다」. `right: 0` 이면 상세가 **Step 목록을 덮는다** — 방금 고른 행을 보면서
+          상세를 읽을 수 없고, 무엇을 골랐는지 확인하려면 닫아야 했다.
+
+          `right: STEP_PANEL_WIDTH` 로 목록 왼쪽 가장자리에 붙인다. 1440px 기준으로 상세
+          640px 왼쪽에 대상 앱 340px 가 남는다.
+
+          **겹침은 유지한다** (clarify 결정 1). 대상 앱을 밀어 나란히 놓으면 최소 기준
+          폭에서 미러가 **상시로** 좁아지는데, 상세가 닫혀 있는 시간이 열려 있는 시간보다
+          길다. 볼 때만 가리는 쪽이 총비용이 작다.
+
+          **`left: 0` 이 필요하다** (UC-011-9). 없으면 절대 배치 상자가 내용 폭으로 줄어들고,
+          판 옆의 빈 자리에서 클릭이 그 아래 미러에 닿는다 — 010 이 미러 조작을 만들었으므로
+          사용자가 보이지 않는 곳을 실제로 조작하게 된다. 층이 그 영역을 덮어 삼킨다.
         */}
         {model.detail !== null && (
           <div
+            data-workbench-detail-layer
             className="scrim"
             style={{
               position: "absolute",
               top: 0,
-              right: 0,
+              left: 0,
+              right: STEP_PANEL_WIDTH,
               bottom: 0,
               display: "flex",
               justifyContent: "flex-end",

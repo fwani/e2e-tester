@@ -86,7 +86,7 @@
     .srow.pass{border-left-color:var(--pass);}
     .srow.fail{border-left-color:var(--fail);background:var(--fail-t);}
     .srow.run{border-left-color:var(--run);background:var(--run-t);}
-    .srow.sel{background:var(--sunken-2);border-left-color:var(--ink);}
+    .srow.sel{box-shadow:inset 0 0 0 2px var(--ink);} /* 011 — 지목은 안쪽 링이다. 결말(왼쪽 3px)·일시정지(바탕)의 채널을 건드리지 않는다: 셋이 한 채널을 다투어 고르면 결말이 사라졌다 (사용자 보고 7) */
     /* 칸 5 — 행 조작. 위로·아래로·이 앞에 추가·지우기 (009 계약 §3-2).
        항상 보인다. hover 로 드러내면 없는 조작이 된다. */
     .srow-ops{display:flex;align-items:center;gap:4px;}

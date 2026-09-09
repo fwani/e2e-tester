@@ -177,6 +177,13 @@ export function StepDetail({
         <div className="lbl">STEP 상세</div>
         <div className="spacer" />
         <button
+          /*
+            011 UC-011-10 — 닫는 조작은 **상세 안에** 있고 모든 국면에서 같은 자리다.
+            표식을 두는 이유: 011 이 상세를 대상 앱 위로 옮겼으므로, 닫을 방법이 판 안에
+            있다는 것이 검사로 세져야 한다. 겹침이 미러를 덮은 채 닫을 수 없으면 사용자는
+            조작 위치를 잃는다.
+          */
+          data-detail-close
           aria-label="닫기"
           className="btn sm quiet"
           onClick={onClose}

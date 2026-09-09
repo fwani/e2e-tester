@@ -100,18 +100,18 @@ web application — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `fron
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] 상세 자리 검증 — `frontend/tests/DetailPlacement.test.tsx`: 열 국면 전부에서 상세의 자리가 같고(UC-011-7), Step 목록이 가려지지 않으며, 상세를 열고 닫아도 대상 앱 영역의 폭이 변하지 않는다(UC-011-8). 닫는 조작이 상세 안에 있다(UC-011-10)
-- [ ] T018 [P] [US2] 네 상태 검증 — `frontend/tests/StepRowStates.test.tsx`: 결말 × 일시정지 × 지목 × 삭제 대상의 **성립 가능한 모든 조합**에서 넷의 표시가 동시에 존재한다 (UC-011-11). 지목이 결말을 대체하지 않고, 일시정지가 지목을 대체하지 않는다
-- [ ] T019 [P] [US2] 입력 차단 검증 — `frontend/tests/DetailBlocksMirrorInput.test.tsx`: 상세가 열린 동안 상세가 덮은 영역의 포인터·키 입력이 미러 조작 채널로 나가지 않는다 (UC-011-9)
+- [X] T017 [P] [US2] 상세 자리 검증 — `frontend/tests/DetailPlacement.test.tsx`: 열 국면 전부에서 상세의 자리가 같고(UC-011-7), Step 목록이 가려지지 않으며, 상세를 열고 닫아도 대상 앱 영역의 폭이 변하지 않는다(UC-011-8). 닫는 조작이 상세 안에 있다(UC-011-10)
+- [X] T018 [P] [US2] 네 상태 검증 — `frontend/tests/StepRowStates.test.tsx`: 결말 × 일시정지 × 지목 × 삭제 대상의 **성립 가능한 모든 조합**에서 넷의 표시가 동시에 존재한다 (UC-011-11). 지목이 결말을 대체하지 않고, 일시정지가 지목을 대체하지 않는다
+- [X] T019 [P] [US2] 입력 차단 검증 — `frontend/tests/DetailBlocksMirrorInput.test.tsx`: 상세가 열린 동안 상세가 덮은 영역의 포인터·키 입력이 미러 조작 채널로 나가지 않는다 (UC-011-9)
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] 겹침 자리를 오른쪽 → 왼쪽으로 옮긴다 — `frontend/src/components/workbench/Workbench.tsx`: 상세 640px 의 **오른쪽 가장자리가 Step 패널의 왼쪽 가장자리에 붙는다.** `lib/layout.ts` 는 손대지 않는다 — 이 변경은 가로에만 걸린다 (UC-011-7)
-- [ ] T021 [US2] 상세가 덮은 영역의 입력을 막는다 — `frontend/src/components/workbench/Workbench.tsx` (또는 `StepDetail.tsx` 의 컨테이너): 010 의 미러 조작이 그 아래에 있으므로 통과시켜서는 안 된다 (UC-011-9)
-- [ ] T022 [US2] 행의 네 상태를 나눈다 — `frontend/src/components/workbench/StepList.tsx` 의 `StepRow`: `className={paused ? … : selected ? … : OUTCOME_MARK[…]}` 의 **배타 삼항을 없애고** 결말(왼쪽 3px + 결말 칸)·일시정지(`data-paused-here`)·지목(행 배경 + `aria-current="true"`)을 각자 자리로 보낸다. 삭제 대상 칸은 US4 가 붙인다 (UC-011-11)
-- [ ] T023 [US2] 지목 표시의 형태를 정본에서 가져온다 — `frontend/src/theme/tokens.css`(또는 `theme/tone.ts`): 지목 표시를 위한 **새 색을 만들지 않는다.** 008 정본의 기존 토큰 조합으로 만들고, 어느 토큰을 쓰는지 근거를 주석으로 남긴다
-- [ ] T024 [US2] 상세 안에 닫는 조작을 둔다 — `frontend/src/components/workbench/StepDetail.tsx`: 모든 국면에서 같은 자리 (UC-011-10)
-- [ ] T025 [US2] 기존 검증을 개정한다 — `frontend/tests/VisualLanguage.test.tsx`·`frontend/tests/CanonMatchesDesign.test.ts`(새 표시가 정본 토큰을 쓴다), `frontend/tests/StepRowLayout.test.tsx`(상태 축이 늘었다)
+- [X] T020 [US2] 겹침 자리를 오른쪽 → 왼쪽으로 옮긴다 — `frontend/src/components/workbench/Workbench.tsx`: 상세 640px 의 **오른쪽 가장자리가 Step 패널의 왼쪽 가장자리에 붙는다.** `lib/layout.ts` 는 손대지 않는다 — 이 변경은 가로에만 걸린다 (UC-011-7)
+- [X] T021 [US2] 상세가 덮은 영역의 입력을 막는다 — `frontend/src/components/workbench/Workbench.tsx` (또는 `StepDetail.tsx` 의 컨테이너): 010 의 미러 조작이 그 아래에 있으므로 통과시켜서는 안 된다 (UC-011-9)
+- [X] T022 [US2] 행의 네 상태를 나눈다 — `frontend/src/components/workbench/StepList.tsx` 의 `StepRow`: `className={paused ? … : selected ? … : OUTCOME_MARK[…]}` 의 **배타 삼항을 없애고** 결말(왼쪽 3px + 결말 칸)·일시정지(`data-paused-here`)·지목(행 배경 + `aria-current="true"`)을 각자 자리로 보낸다. 삭제 대상 칸은 US4 가 붙인다 (UC-011-11)
+- [X] T023 [US2] 지목 표시의 형태를 정본에서 가져온다 — `frontend/src/theme/tokens.css`(또는 `theme/tone.ts`): 지목 표시를 위한 **새 색을 만들지 않는다.** 008 정본의 기존 토큰 조합으로 만들고, 어느 토큰을 쓰는지 근거를 주석으로 남긴다
+- [X] T024 [US2] 상세 안에 닫는 조작을 둔다 — `frontend/src/components/workbench/StepDetail.tsx`: 모든 국면에서 같은 자리 (UC-011-10)
+- [X] T025 [US2] 기존 검증을 개정한다 — `frontend/tests/VisualLanguage.test.tsx`·`frontend/tests/CanonMatchesDesign.test.ts`(새 표시가 정본 토큰을 쓴다), `frontend/tests/StepRowLayout.test.tsx`(상태 축이 늘었다)
 
 **Checkpoint**: US1·US2 가 각각 독립적으로 동작한다. 네 번째 축(삭제 대상)의 자리가 열려 있다.
 
