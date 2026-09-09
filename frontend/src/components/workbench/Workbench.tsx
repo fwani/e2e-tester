@@ -35,7 +35,6 @@ import { flexOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
 import { PhaseBar } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
-import { DETAIL_PLACEMENT } from "../../lib/layout";
 import { StepList } from "./StepList";
 import { TargetPane } from "./TargetPane";
 import { WorkArea } from "./WorkArea";
@@ -146,16 +145,17 @@ export function Workbench({
   const workStyle = flexOf(split.workArea);
 
   /*
-    Step 상세 — **한 번만 만든다.** 겹침이든 인라인이든 같은 원소를 쓴다. 자리마다 따로
-    만들면 그 순간 구현이 둘이 되고, 그것이 007 이 고친 S-05 의 원인이다 (FR-229).
+    Step 상세 — **구현도 하나, 자리도 하나다** (FR-229·FR-230).
+
+    008 은 자리를 국면별 표(`DETAIL_PLACEMENT`)로 뺐고 편집 국면만 ③-b 인라인이었다.
+    사용자가 그 배치를 문제로 보고했다 (2026-09-09 — 「한쪽에 뜨도록 해야함」). 자리는
+    우측 겹침 하나로 돌아왔고 표는 없어졌다 (`lib/layout.ts` 의 그 자리 주석).
   */
-  const placement = DETAIL_PLACEMENT[model.phase];
   const detailNode =
     model.detail === null ? null : (
       <StepDetail
         detail={model.detail}
         capabilities={capabilities}
-        placement={placement}
         ownFields={stepDetailOwnFields}
         busy={busy}
         onSave={onSaveStep ?? (() => undefined)}
@@ -202,10 +202,6 @@ export function Workbench({
       {/* ─── 층② 국면 띠 74px ─────────────────────────────────────────────── */}
       <PhaseBar bar={model.phaseBar} testName={model.testName} actions={phaseActions} />
 
-      {/* 알림 — 국면 띠 바로 아래 한 자리 */}
-      {noticesExtra}
-      <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
-
       {/* ─── 층③ 본문 ──────────────────────────────────────────────────────── */}
       {/*
         `position: relative` 는 Step 상세 겹침 패널의 기준이다. `Artboard` 를 고치지
@@ -213,6 +209,61 @@ export function Workbench({
         007 이 그 안쪽 배치를 바꾸지 않는다.
       */}
       <div style={{ flex: "1", minHeight: "0", display: "flex", position: "relative" }}>
+        {/*
+          알림 — **한 자리이고, 화면을 밀어내지 않는다** (2026-09-09 사용자 보고).
+
+          ## 무엇이 문제였나
+
+          이전에는 국면 띠 바로 아래 **문서 흐름 안에** 있었다. 자리를 하나로 모은 것은
+          007 T020 의 옳은 결정이었지만, 흐름 안에 있으면 알림이 뜰 때마다 아래 전부가
+          그만큼 내려간다. 사용자가 보고한 것: 「알림으로 인해 아래 화면들이 내려가는데,
+          화면이 내려가서 문제」. 미러가 줄고, 보고 있던 Step 행의 자리가 바뀐다.
+
+          ## 왜 사라지는 토스트가 아닌가
+
+          사용자는 「토스트로 만들어야함」이라고 적었고, 요구의 실체는 **화면을 밀지 말라**
+          는 것이다. 그러나 이 저장소는 알림을 사라지게 두지 않는다 — 005 FR-154·FR-158
+          (U-09)이 「토스트로 끝내지 않는 이유는 사라지면 근거가 남지 않기 때문이다」로
+          정했고, 실패 사유·세션 유실·저장 안내는 사용자가 다시 읽어야 하는 것들이다.
+
+          그래서 **띄우기만 한다**: 겹쳐 뜨고, 스스로 사라지지 않는다. 지울 수 있는 것은
+          지금처럼 「닫기」로 지운다.
+
+          ## 자리
+
+          좌측 영역 **아래쪽**이다. 위쪽에 두면 미러의 머리(대상 앱의 주소·상단 바)를
+          가리는데, 녹화 중 사용자가 보는 곳이 정확히 거기다. 폭은 560px 로 묶어 미러를
+          통째로 덮지 않고, 넘치면 이 묶음 안에서 스크롤한다 — 알림이 많다고 화면이
+          늘어나지 않는다.
+        */}
+        <div
+          data-workbench-notice-layer
+          style={{
+            position: "absolute",
+            left: 16,
+            bottom: 16,
+            width: "min(560px, calc(100% - 492px))",
+            maxHeight: "60%",
+            overflowY: "auto",
+            zIndex: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            /*
+              **비어 있을 때 아래를 막지 않는다.** 이 층은 알림이 없어도 자리를 잡고
+              있으므로, 포인터를 통과시키지 않으면 미러의 그 띠가 조용히 클릭을 먹는다 —
+              010 SC-516 이 0건으로 두려는 조용한 실패와 같은 형태다. 알림 자체는 아래
+              `auto` 로 되돌려 버튼을 누를 수 있게 한다.
+            */
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ pointerEvents: "auto" }}>{noticesExtra}</div>
+          <div style={{ pointerEvents: "auto" }}>
+            <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
+          </div>
+        </div>
+
         {/*
           좌 — ③-a 대상 앱 슬롯 + ③-b 국면 작업 영역. 남는 **폭**을 가져간다 (FR-218a).
           두 자리의 **순서와 개수**는 국면에 따라 바뀌지 않고 (FR-218c), 세로 비율만
@@ -233,27 +284,6 @@ export function Workbench({
             자리가 바뀌어서는 안 된다 (FR-218e) — 배분표가 그 국면에서 ③-a 를 `fill` 로
             정하므로 아래가 없어지면 위가 그만큼 늘어난다. 영역의 순서·개수는 그대로다.
           */}
-          {/*
-            008 — `work` 가 없는데 상세를 인라인으로 걸어야 하는 경우에도 ③-b 는 있다.
-            자리의 **개수와 순서**는 국면에 따라 바뀌지 않는다 (FR-218c) — 담는 것만
-            바뀐다. 이 분기가 없으면 그 국면에서 층이 하나 사라진다.
-          */}
-          {model.work === null && placement === "inline" && detailNode !== null && (
-            <div
-              data-workbench-work="step_detail"
-              data-slot-size={split.workArea.kind}
-              className="steps-ft"
-              style={{
-                ...workStyle,
-                padding: "12px 16px",
-                display: "flex",
-                flexDirection: "column",
-                minHeight: 0,
-              }}
-            >
-              {detailNode}
-            </div>
-          )}
           {model.work !== null && (
             <WorkArea
               work={model.work}
@@ -263,7 +293,6 @@ export function Workbench({
               onChooseBlocked={onChooseBlocked}
               onReload={onReloadDefinition}
               onOverwriteStale={onOverwriteStale}
-              detail={placement === "inline" ? detailNode : undefined}
               busy={busy}
             />
           )}
@@ -282,13 +311,14 @@ export function Workbench({
         />
 
         {/*
-          Step 상세 — **구현은 한 벌이고 거는 자리만 국면이 정한다** (008 ·
-          `DETAIL_PLACEMENT`). 겹침이면 여기, 인라인이면 위의 ③-b 안이다.
+          Step 상세 — **모든 국면에서 이 자리다** (FR-230 · 2026-09-09 사용자 보고).
 
-          007 이 자리를 하나로 고정한 이유(S-05)는 **두 구현이 갈라진 것**이었다. 구현이
-          하나로 남는 한 그 원인은 재발하지 않는다 — 그래서 자리만 표로 뺐다.
+          007 이 자리를 하나로 고정한 이유는 S-05 였고, 그 실제 원인은 구현이 둘이라
+          갈라진 것이었다. 008 은 그 사실에 근거해 자리를 국면별 표로 뺐지만, 사용자가
+          필요로 한 것은 **자리도 하나**라는 성질이었다 — 같은 것을 보는 곳이 두 군데면
+          매번 어디를 볼지 판단해야 한다.
         */}
-        {model.detail !== null && placement === "overlay" && (
+        {model.detail !== null && (
           <div
             className="scrim"
             style={{

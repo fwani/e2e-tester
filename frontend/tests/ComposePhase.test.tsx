@@ -213,6 +213,33 @@ describe("시작을 걸면 기존 경로를 그대로 쓴다 (FR-248 · 005 U-01
     expect(onStartAi).toHaveBeenCalledWith("http://t/login.html", "로그인한 다음 프로젝트를 만들어");
   });
 
+  /**
+   * 사용자 보고 — 「녹화 시작 준비가 오래 걸리는데 버튼이 계속 눌려서 중복이 난다」.
+   *
+   * 005 U-06 과 **같은 결함이 다른 국면에서** 남아 있었다. 표의 O2(`busy`)가 막을
+   * 조건인데 `record.start` 가 그 목록에 없었고, 화면도 사실을 넘기지 않았다.
+   * 브라우저를 띄우는 데 1초 남짓 걸리고, 그 사이의 클릭이 그대로 세션 생성이 됐다.
+   */
+  it("세션을 만드는 중에는 녹화 시작이 잠기고 이유가 붙는다 (표 O2)", () => {
+    const onRecord = vi.fn();
+    show({ onRecord, busy: true });
+    fireEvent.change(screen.getByLabelText("시작 URL"), {
+      target: { value: "http://t/login.html" },
+    });
+    pickRecord();
+
+    const button = act("record.start");
+    expect(button.disabled).toBe(true);
+    // 잠긴 이유를 말하지 않으면 사용자는 제품이 멈춘 것으로 읽는다 (FR-234).
+    // 이유는 `aria-describedby` 로 버튼에 묶인다 — 눈으로만 두지 않는다.
+    const reason = el('[data-disabled-reason="record.start"]');
+    expect(reason?.textContent ?? "").not.toBe("");
+    expect(button.getAttribute("aria-describedby")).toBe(reason?.id);
+
+    fireEvent.click(button);
+    expect(onRecord).not.toHaveBeenCalled();
+  });
+
   it("시작 URL 형식이 틀리면 세션을 만들지 않고 이유를 말한다", () => {
     const onRecord = vi.fn();
     show({ onRecord });

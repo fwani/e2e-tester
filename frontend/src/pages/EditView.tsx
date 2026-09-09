@@ -541,6 +541,8 @@ export function EditView({
           kind: "disabled",
           reason: "먼저 Step 을 고르세요",
           remedy: { action: "step.select" as ActionId },
+          // `keep` — Step 을 고르면 곧바로 풀린다 (`capabilities.ts` 의 REASON_VISIBILITY)
+          visibility: "keep",
         } as const)
       : base;
 
@@ -550,6 +552,8 @@ export function EditView({
           kind: "disabled",
           reason: "먼저 Step 을 고르세요",
           remedy: { action: "step.select" as ActionId },
+          // `keep` — Step 을 고르면 곧바로 풀린다 (`capabilities.ts` 의 REASON_VISIBILITY)
+          visibility: "keep",
         } as const)
       : capabilities[id];
 

@@ -13,6 +13,20 @@
  * 3번이 006 E-03 의 수정이다. "실행을 시작해 일시정지한 뒤 하세요" 라고 안내하면서 그리로
  * 가는 버튼을 주지 않은 것이 그 결함이었다.
  *
+ * ## 2026-09-09 — 1번이 좁아졌다 (사용자 결정)
+ *
+ * 위 1번은 예외 없는 규칙이었고, 그것을 한 줄 국면 띠에 평면으로 펼친 결과가 보고됐다:
+ * 검토 국면에서 조작 자리 24개 중 14개가 비활성이었고 「처음부터 실행」이 버튼 하나 +
+ * 해소 링크 둘로 한 띠에 세 번 나왔다.
+ *
+ * 이제 1번은 **`visibility: "keep"` 인 비활성**에만 적용된다 — 사용자가 지금 이 화면에서
+ * 곧바로 해소할 수 있는 전제(이름 미입력·Step 미선택·요청 진행 중·저장할 것 없음)다.
+ * `"hide"` 인 것은 「이 상태의 조작이 아니다」이며 그리지 않는다.
+ *
+ * **판정은 여기 없다.** 어느 이유가 어느 쪽인지는 `capabilities.ts` 의 `REASON_VISIBILITY`
+ * 하나가 정한다 — 이 컴포넌트가 이유 문구를 보고 판단하면 그 판단이 표 밖으로 새고,
+ * 새는 순간이 UC-000 이 없애려던 상태다.
+ *
  * ## 2026-09-08 (008)
  *
  * 이전 판은 확정 디자인의 인라인 값을 전사했고, 주 조작의 배경으로 **v1 의 노란색**
@@ -69,6 +83,8 @@ export function ActionButton({
 
   // 「해당 없음」은 그리지 않는다. 근거는 표가 갖고 있고 검사가 그것을 센다 (§4-2).
   if (capability.kind === "not_applicable") return null;
+  // 「이 상태의 조작이 아니다」도 그리지 않는다 (2026-09-09). 판정은 표가 했다.
+  if (capability.kind === "disabled" && capability.visibility === "hide") return null;
 
   const disabled = capability.kind === "disabled";
   const text = label ?? ACTION_LABEL[action];
@@ -91,6 +107,11 @@ export function ActionButton({
       aria-describedby={disabled ? reasonId : undefined}
       onClick={disabled ? undefined : onRun}
       className={`btn ${compact ? "sm " : ""}${variant}`.trimEnd()}
+      /*
+        **버튼은 줄지 않는다.** 국면 띠는 한 줄이고, 줄 폭이 모자랄 때 눌러야 할 것이
+        먼저 찌그러지면 안 된다 — 줄어드는 것은 이유 문구 쪽이다 (아래).
+      */
+      style={{ flex: "0 0 auto" }}
     >
       {icon}
       {text}
@@ -99,27 +120,56 @@ export function ActionButton({
 
   if (!disabled) return button;
 
+  /*
+    **이유는 자리를 무한히 쓰지 않는다** (사용자 보고 · 2026-09-09 — 국면 띠가 가로로
+    터짐).
+
+    한 줄짜리 국면 띠에서 여러 조작이 동시에 잠기면 이유 문구가 나란히 붙어 띠를 창 밖
+    으로 밀어낸다. 실제로 실행 중 네 조작이 한꺼번에 잠기자 띠가 두 배 폭으로 늘어났고,
+    같은 줄의 결말 요약은 폭 0 으로 찌그러져 **한 글자씩 세로로 쌓였다.**
+
+    그래서 보이는 문구는 줄어들고 넘치면 말줄임한다. **버리는 것이 아니다** —
+    `aria-describedby` 로 버튼에 묶인 전체 문장은 그대로이고 (ui-contract §7), `title`
+    이 마우스에도 전체를 준다. 해소 수단은 **줄지 않는다**: 빠져나갈 길이 말줄임에
+    잘리면 이유를 읽고도 할 수 있는 일이 없다 (ui-contract §4-1 의 3번).
+  */
   return (
-    <span className="row" style={{ gap: 8 }}>
+    <span className="row" style={{ gap: 8, minWidth: 0 }}>
       {button}
       {/*
         이유는 **시각적으로만** 두지 않는다. `aria-describedby` 로 버튼에 묶여 있어야
         비활성 이유가 보조 기술에 전달된다 (ui-contract §7).
       */}
-      <span id={reasonId} data-disabled-reason={action} className="why" style={{ maxWidth: 260 }}>
-        {capability.reason}
+      <span
+        id={reasonId}
+        data-disabled-reason={action}
+        className="why"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          flex: "0 1 auto",
+          minWidth: 0,
+          maxWidth: 260,
+        }}
+      >
+        <span
+          data-disabled-reason-text
+          title={capability.reason}
+          style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
+          {capability.reason}
+        </span>
         {capability.remedy !== null && onRemedy !== undefined && (
-          <>
-            {" "}
-            <button
-              type="button"
-              data-remedy-for={action}
-              className="textlink"
-              onClick={() => onRemedy(capability.remedy!.action)}
-            >
-              {ACTION_LABEL[capability.remedy.action]}
-            </button>
-          </>
+          <button
+            type="button"
+            data-remedy-for={action}
+            className="textlink"
+            style={{ flex: "0 0 auto" }}
+            onClick={() => onRemedy(capability.remedy!.action)}
+          >
+            {ACTION_LABEL[capability.remedy.action]}
+          </button>
         )}
       </span>
     </span>

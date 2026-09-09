@@ -351,6 +351,8 @@ export type EditOp =
       tab?: number;
       url?: string;
       assertion_value?: string;
+      /** 올릴 파일의 이름 — `upload` Step 만 갖는다 (2026-09-09) */
+      file_name?: string;
     }
   | { op: "delete"; step_id: string }
   | { op: "reorder"; order: string[] }
@@ -415,6 +417,15 @@ export interface SessionView {
   tabs_open: number;
   active_tab_index: number;
   mirrored_tab_index: number;
+  /** 지금 조작이 어디서 이루어지는가 (010 FR-349). 새로 고쳐도 잃지 않는다 */
+  control_surface?: ControlSurfaceValue;
+  /**
+   * 실제 창으로 옮겨 갈 수 없는 이유. 옮겨 갈 수 있으면 `null` (010 FR-351).
+   *
+   * **문장을 서버가 준다.** 화면이 같은 뜻의 문구를 따로 가지면 서버가 거절할 때 쓰는
+   * 문장과 갈린다 (`wording.ts` 의 O13 옆 주석).
+   */
+  window_unavailable_reason?: string | null;
   edit_warnings: string[];
   recorder_warnings: string[];
   allowed_commands: string[];
@@ -679,6 +690,8 @@ export const sessions = {
       value?: string;
       timeout_ms?: number;
       sensitive?: boolean;
+      /** 올릴 파일의 이름 — `upload` Step 만 갖는다 (2026-09-09) */
+      file_name?: string;
     },
   ) => patch<StepsResponse>(`/api/sessions/${id}/steps/${stepId}`, body),
   /** 검증 Step 추가 (FR-037·FR-013a). */

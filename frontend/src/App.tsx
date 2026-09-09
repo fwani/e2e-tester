@@ -2,7 +2,7 @@
  * 화면 전환. 단독 로컬 도구이므로 라우터를 두지 않고 상태로 화면을 고른다 —
  * 화면이 4개이고 딥링크 요구가 없다.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { initialLocation, useScreenUrl } from "./hooks/useScreenUrl";
 
@@ -81,6 +81,38 @@ export function App() {
    * 그것이 세션 중복으로 직결됐다(U-06).
    */
   const [pendingRun, setPendingRun] = useState<string | null>(null);
+  /**
+   * 세션을 만드는 중인가 (만들기 국면 · 005 U-06 과 같은 결함).
+   *
+   * `pendingRun` 이 **저장된 테스트의 실행**을 막는 것과 같은 일을, 아직 테스트가 없는
+   * 만들기 국면에서 한다. 여기에는 막을 테스트 ID 가 없으므로 별도의 플래그다.
+   *
+   * 없는 동안 사용자 보고 — 「녹화 시작 준비가 오래 걸리는데 버튼이 계속 눌려서 중복이
+   * 난다」. 브라우저를 띄우는 데 1초 남짓 걸리고, 그 사이의 클릭이 그대로 세션 생성
+   * 요청이 됐다. 표의 O2(`busy`)가 막을 조건인데 이 화면이 사실을 넘기지 않았다.
+   */
+  const [composePending, setComposePending] = useState(false);
+  /**
+   * 같은 틱 안의 두 번째 클릭을 막는 잠금.
+   *
+   * `composePending` 만으로는 부족하다 — 상태는 다시 그려진 뒤에야 보이므로, 한 틱 안에
+   * 두 번 눌리면 **두 콜백이 모두 `false` 를 본다.** 버튼의 `disabled` 도 같은 이유로
+   * 한 박자 늦다. `ref` 는 즉시 바뀌므로 그 창이 없다.
+   */
+  const composeLock = useRef(false);
+
+  /** 만들기 국면의 잠금을 건다. 이미 걸려 있으면 `false` — 그 요청은 버린다. */
+  const lockCompose = () => {
+    if (composeLock.current) return false;
+    composeLock.current = true;
+    setComposePending(true);
+    return true;
+  };
+
+  const unlockCompose = () => {
+    composeLock.current = false;
+    setComposePending(false);
+  };
   /** 살아 있는 세션. 목록 화면이 이것을 배너로 알린다 (UX U-05). */
   const [active, setActive] = useState<SessionView[]>([]);
 
@@ -282,6 +314,11 @@ export function App() {
           setOpened(p);
           setScreen({ name: "list" });
         }}
+        /*
+          **열려 있던 프로젝트가 있을 때만** 되돌아가는 길을 준다. 첫 실행에는 돌아갈
+          곳이 없으므로 그 길도 없다 — `opened === null` 이 그 조건이다.
+        */
+        onCancel={opened !== null ? () => setScreen({ name: "list" }) : undefined}
       />
     );
   }
@@ -309,9 +346,15 @@ export function App() {
       {screen.name === "list" && (
         <TestList
           projectName={opened.name}
-          onCreate={() => setScreen({ name: "compose" })}
+          onCreate={() => {
+            // 지난 시도의 잠금을 들고 들어가지 않는다 — 세션 생성에 실패하고 목록으로
+            // 돌아온 뒤 다시 들어오면 버튼이 눌리지 않는 채로 남는다.
+            unlockCompose();
+            setScreen({ name: "compose" });
+          }}
           onRun={(testId) => startRun(testId)}
           pendingRunId={pendingRun}
+          onOpenProjects={() => setScreen({ name: "setup" })}
           onRefreshSessions={refreshActive}
           onOpenResult={(testId) => setScreen({ name: "result", testId })}
           onOpenDefinition={(testId) => setScreen({ name: "definition", testId })}
@@ -372,17 +415,34 @@ export function App() {
             아래 두 호출은 1회차에 `CreateTest`·`AiCompose` 가 부르던 것과 같다 —
             화면이 하나로 합쳐졌을 뿐 경로는 그대로다.
           */
+          /*
+            **진행 중에는 다시 받지 않는다.** 표의 O2 가 버튼을 막지만, 그 판정은 화면이
+            사실을 넘겨야 성립한다 — 그리고 화면 단의 `disabled` 만으로는 부족하다
+            (키보드 연타·이중 발화). 요청을 내는 자리에서도 한 번 더 잠근다.
+
+            실패하면 다시 풀어 준다. 성공하면 화면이 바뀌므로 풀 자리가 없다 — 그리고
+            풀면 안 된다. 돌아오는 길에 잠깐 눌리는 창이 생긴다.
+          */
+          busy={composePending}
           onRecord={(startUrl) => {
+            if (!lockCompose()) return;
             void sessions
               .create({ mode: "record", start_url: startUrl })
               .then((session) => setScreen({ name: "runner", session }))
-              .catch((exc: unknown) => setError(describeError(exc)));
+              .catch((exc: unknown) => {
+                unlockCompose();
+                setError(describeError(exc));
+              });
           }}
           onStartAi={(startUrl, aiInstruction) => {
+            if (!lockCompose()) return;
             void sessions
               .create({ mode: "ai", start_url: startUrl, ai_instruction: aiInstruction })
               .then((session) => setScreen({ name: "runner", session, aiInstruction }))
-              .catch((exc: unknown) => setError(describeError(exc)));
+              .catch((exc: unknown) => {
+                unlockCompose();
+                setError(describeError(exc));
+              });
           }}
         />
       )}
@@ -413,6 +473,35 @@ export function App() {
           onShowResult={(testId, stepId) =>
             setScreen({ name: "result", testId, focusStepId: stepId ?? null })
           }
+          /*
+            2026-09-09 사용자 보고 — 「실행 후 에러가 났을 때 고치는 방법이 없음」.
+
+            실패한 실행 화면에서 곧바로 편집으로 간다. 세션을 버리는 일은 `SessionScreen`
+            이 먼저 한다 — 살아 있는 세션이 그 테스트를 잡고 있으면 편집이 잠긴다
+            (006 FR-206). 편집 화면은 마운트마다 정의를 다시 읽으므로 저장한 내용이
+            반영된 상태로 열린다.
+          */
+          /*
+            2026-09-09 사용자 결정 — 「직전 스텝까지의 세션을 제공하던지 해서, 이어서
+            편집이 가능해야함」.
+
+            **새 화면을 만들지 않는다.** 목적지는 009 FR-291 이 이미 만든 것이다 —
+            그 자리 전까지 재생한 뒤 멈추고 직접 조작 기록을 켠 세션(`openBrowserAt`).
+            거기서는 요소를 다시 집을 수도 있고(살아 있는 페이지가 있다) 값·순서·삭제도
+            고칠 수 있다(일시정지 국면). 끝내면 `returnToEdit` 로 편집 화면에 닿는다.
+
+            **편집 화면을 먼저 띄우고 거기서 다시 옮기지 않는다.** 한 번의 「고치기」
+            안에서 껍데기가 두 번 바뀌면 사용자는 자기가 어디 있는지 놓친다 (S-14).
+
+            자리를 모르면(지목도 실패도 없다) 편집 화면으로 간다 — 재생할 목표가 없다.
+          */
+          onEditStep={(testId, stepId, stepIndex) => {
+            if (stepIndex < 0) {
+              setScreen({ name: "definition", testId, focusStepId: stepId });
+              return;
+            }
+            openBrowserAt(testId, stepIndex, stepId);
+          }}
           onRerun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
         />
       )}

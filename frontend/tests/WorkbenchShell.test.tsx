@@ -11,14 +11,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { StepDetail } from "../src/components/workbench/StepDetail";
 import { Workbench } from "../src/components/workbench/Workbench";
 import type { WorkbenchModel } from "../src/components/workbench/model";
-import { capabilitiesFor } from "../src/lib/capabilities";
-import { DETAIL_PLACEMENT } from "../src/lib/layout";
 import { PHASES } from "../src/lib/phase";
 import { PHASE_LABEL } from "../src/lib/wording";
-import { ALL_FACTS, workbenchModel } from "./helpers/model";
+import { workbenchModel } from "./helpers/model";
 import { stepResult } from "./helpers/workbench";
 
 function renderShell(model: WorkbenchModel) {
@@ -350,7 +347,7 @@ const DETAIL_FIXTURE = {
  * 그래서 지키는 것을 바꾼다 — **구현이 한 벌인가**, **자리를 표가 정하는가**,
  * **항목이 두 배치에서 같은가**. 셋이 지켜지면 S-05 는 재발할 수 없다.
  */
-describe("Step 상세 — 구현은 한 벌이고 자리는 표가 정한다 (FR-229·FR-231 · 008)", () => {
+describe("Step 상세 — 구현도 하나, 자리도 하나다 (FR-229·FR-230·FR-231)", () => {
   it("모든 국면에서 정확히 한 벌만 그려진다 (SC-001)", () => {
     for (const phase of PHASES) {
       const view = renderShell(
@@ -364,76 +361,49 @@ describe("Step 상세 — 구현은 한 벌이고 자리는 표가 정한다 (FR
     }
   });
 
-  it("거는 자리가 DETAIL_PLACEMENT 와 한 글자도 다르지 않다", () => {
-    // 컴포넌트가 스스로 판단하면 그 판단이 두 곳으로 갈리고, 갈리는 순간이 S-05 다.
+  it("자리가 모든 국면에서 같다 — 우측 겹침 하나다 (FR-230 · 2026-09-09)", () => {
+    /*
+      **008 의 표가 없어졌다.** 그 라운드는 자리를 국면별 표(`DETAIL_PLACEMENT`)로 빼고
+      편집 국면만 ③-b 인라인으로 걸었다. 근거는 「편집 국면에는 미러가 없어 가릴 것이
+      없다」였고 그 자체로는 옳았다.
+
+      사용자가 그 배치를 문제로 보고했다 (2026-09-09): 「step 상세 보는 위치는 오른쪽에
+      뜨고, 편집하기하면 왼쪽 아래에 뜨는데, 한쪽에 뜨도록 해야함」. 같은 것을 보는 자리가
+      두 곳이면 사용자는 매번 어디를 볼지 판단해야 한다 — 007 이 FR-230 으로 정한 성질이
+      실제로 필요한 것이었다.
+
+      그래서 이 검사는 표와 대조하지 않고 **자리가 하나임을** 센다. 표와 대조하는 검사는
+      표가 없어졌으므로 있을 수 없고, 있으면 그것이 표를 되살리라는 압력이 된다.
+    */
     for (const phase of PHASES) {
-      const view = renderShell(
-        workbenchModel(phase, { focusedStepId: "st-1", detail: { ...DETAIL_FIXTURE } }),
-      );
-      expect(
-        el("[data-workbench-step-detail]").dataset.detailPlacement,
-        `국면 ${phase}`,
-      ).toBe(DETAIL_PLACEMENT[phase]);
-      view.unmount();
-    }
-  });
-
-  it("겹침 국면은 640px 고정이고 인라인 국면은 겹침을 만들지 않는다", () => {
-    const overlay = PHASES.filter((p) => DETAIL_PLACEMENT[p] === "overlay");
-    const inline = PHASES.filter((p) => DETAIL_PLACEMENT[p] === "inline");
-    expect(overlay.length, "겹침 국면이 하나도 없으면 이 검사가 아무것도 세지 않는다").toBeGreaterThan(0);
-    expect(inline.length, "인라인 국면이 없으면 표가 무의미하다").toBeGreaterThan(0);
-
-    for (const phase of overlay) {
       const view = renderShell(
         workbenchModel(phase, { focusedStepId: "st-1", detail: { ...DETAIL_FIXTURE } }),
       );
       const detail = el("[data-workbench-step-detail]");
       expect(detail.style.width, `국면 ${phase}`).toBe("640px");
       expect(detail.getAttribute("role"), `국면 ${phase}`).toBe("dialog");
-      view.unmount();
-    }
-
-    for (const phase of inline) {
-      const view = renderShell(
-        workbenchModel(phase, { focusedStepId: "st-1", detail: { ...DETAIL_FIXTURE } }),
-      );
-      const detail = el("[data-workbench-step-detail]");
-      expect(detail.style.width, `국면 ${phase}`).toBe("100%");
-      // 가리지 않는 것을 대화상자라고 말하면 보조 기술이 잘못 안내한다.
-      expect(detail.getAttribute("role"), `국면 ${phase}`).toBe("region");
+      // ③-b 안에 상세가 걸린 국면이 없다 — 인라인 자리는 사라졌다.
+      expect(
+        document.querySelector('[data-workbench-work="step_detail"]'),
+        `국면 ${phase}`,
+      ).toBeNull();
       view.unmount();
     }
   });
 
-  it("배치는 껍데기만 바꾼다 — 담는 것은 같다 (FR-231)", () => {
-    /*
-      국면을 통해 비교하면 배치와 **조작 권한**이 섞인다 — 국면이 다르면 잠긴 조작의
-      사유 문구가 달라지므로, 그 차이를 배치 탓으로 읽게 된다. 그래서 같은 입력을 주고
-      `placement` 만 바꿔 컴포넌트를 직접 그린다.
-    */
-    const detail = { ...DETAIL_FIXTURE };
-    const capabilities = capabilitiesFor("editing", ALL_FACTS);
-    const noop = () => undefined;
+  /*
+    ─── 「배치는 껍데기만 바꾼다」 검사가 없어졌다 (2026-09-09) ───────────────────
 
-    const bodyText = (placement: "overlay" | "inline") => {
-      const view = render(
-        <StepDetail
-          detail={detail}
-          capabilities={capabilities}
-          placement={placement}
-          onSave={noop}
-          onRepick={noop}
-          onClose={noop}
-        />,
-      );
-      const text = (el("[data-workbench-step-detail]").textContent ?? "")
-        .replace(/\s+/g, " ")
-        .trim();
-      view.unmount();
-      return text;
-    };
+    008 판은 같은 입력을 주고 `placement` 만 바꿔 두 껍데기의 본문 텍스트가 **같은지**
+    봤다. FR-231 이 요구한 「항목이 두 배치에서 같다」를 그대로 센 검사였다.
 
-    expect(bodyText("inline")).toBe(bodyText("overlay"));
-  });
+    배치가 하나로 돌아왔으므로 **비교할 두 번째 배치가 없다.** 대신 국면끼리 비교해
+    보았고, 그것은 성립하지 않는다는 것을 곧 확인했다 — 같은 입력이어도 국면마다 접히는
+    조작이 다르므로 본문이 다르다 (편집 국면에는 「다시 집기」가 없고 일시정지에는 있다).
+    그 차이는 결함이 아니라 이 라운드가 만든 정상 동작이다.
+
+    남은 성질은 위 두 검사가 센다 — **구현이 한 벌**(「정확히 한 벌만 그려진다」)이고
+    **자리가 하나**(「우측 겹침 하나다」)라는 것. FR-231 이 막으려던 S-05 의 원인은
+    구현이 둘이라 갈라진 것이었고, 그 원인은 첫 번째 검사가 계속 지킨다.
+  */
 });

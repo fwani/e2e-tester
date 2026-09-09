@@ -66,10 +66,11 @@ export function StepRowOps({
     const base = capabilities[action];
     if (base.kind !== "enabled") return base;
     if (action === "step.moveUp" && index === 0) {
-      return { kind: "disabled", reason: AT_TOP, remedy: null };
+      // `keep` — 갈 곳이 없다는 사실은 그 자리에서 말한다 (행 조작은 자리가 고정이다).
+      return { kind: "disabled", reason: AT_TOP, remedy: null, visibility: "keep" };
     }
     if (action === "step.moveDown" && index >= total - 1) {
-      return { kind: "disabled", reason: AT_BOTTOM, remedy: null };
+      return { kind: "disabled", reason: AT_BOTTOM, remedy: null, visibility: "keep" };
     }
     return base;
   };

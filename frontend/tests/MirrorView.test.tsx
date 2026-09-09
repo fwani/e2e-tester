@@ -35,6 +35,12 @@ const DISABLED: CapabilityState = {
   kind: "disabled",
   reason: "실행을 멈춘 뒤에 할 수 있습니다",
   remedy: null,
+  /*
+    `mirror.control` 은 `ALWAYS_KEEP` 이다 (2026-09-09 · `capabilities.ts`) — 그 조작의
+    자리는 버튼이 아니라 미러 화면이고, 사용자는 그 위를 클릭해 본다. 숨기면 클릭이
+    조용히 삼켜진다 (010 SC-516).
+  */
+  visibility: "keep",
 };
 
 const GEOMETRY: FrameGeometry = { width: 800, height: 600, pageScale: 1, offsetTop: 0 };
@@ -241,6 +247,105 @@ describe("MirrorView", () => {
     expect(
       document.querySelector('[data-action="mirror.control"][data-controllable="true"]'),
     ).not.toBeNull();
+  });
+
+  /**
+   * 한글 조합 (FR-325~FR-327). **사용자 보고 — 「자모분리되어 넘어간다」.**
+   *
+   * 원인은 조합이 일어날 자리가 없던 것이다. 미러 면은 `<div>` 였고 브라우저는 편집
+   * 가능한 요소에만 IME 를 건다. 그래서 `compositionstart` 가 오지 않았고, 한글은 낱개
+   * 자모의 `keydown` 으로 떨어져 서버의 문자 키 경로(`_produces_text`)로 한 글자씩
+   * 들어갔다 — 대상 화면에 「ㅈㅜㅁㅜㄴ」이 남는다.
+   *
+   * jsdom 은 IME 를 흉내내지 못하므로 **조합 사건이 실제로 오는지**는 여기서 잴 수 없다.
+   * 잴 수 있고 또 재야 하는 것은 그 사건이 올 **자리가 있는가**와, 오면 채널로 나가는가다.
+   * 이 둘이 지켜지면 위 결함은 되돌아오지 않는다.
+   */
+  describe("한글 조합 (FR-325~FR-327)", () => {
+    it("조작 국면의 미러 면에는 조합이 가능한 편집 요소가 있다", () => {
+      render(
+        <MirrorView frame={FRAME} phase="manipulation" control={ENABLED} geometry={GEOMETRY} />,
+      );
+      const surface = document.querySelector('[data-action="mirror.control"]');
+      expect(surface).not.toBeNull();
+      // `<div>` 에는 IME 가 붙지 않는다. 조합을 받을 편집 요소가 미러 면 **안**에 있어야
+      // 한다 — 밖에 두면 초점이 둘로 갈린다 (FR-320).
+      expect(surface?.querySelector("textarea")).not.toBeNull();
+    });
+
+    it("미러를 누르면 조합 요소가 초점을 갖는다 (FR-320)", () => {
+      render(
+        <MirrorView frame={FRAME} phase="manipulation" control={ENABLED} geometry={GEOMETRY} />,
+      );
+      const img = screen.getByAltText("대상 브라우저 화면 (조작 가능)") as HTMLImageElement;
+      layoutImage(img);
+      fireEvent.pointerDown(img, { clientX: 10, clientY: 10, button: 0 });
+      // 초점이 미러 면 자체에 앉으면 IME 가 붙지 않는다 — 그것이 자모분리의 원인이었다.
+      expect(document.activeElement?.tagName).toBe("TEXTAREA");
+    });
+
+    it("조합 중간과 확정이 각각 ime.compose·ime.commit 으로 나간다 (FR-327)", () => {
+      const onInput = vi.fn();
+      render(
+        <MirrorView
+          frame={FRAME}
+          phase="manipulation"
+          control={ENABLED}
+          geometry={GEOMETRY}
+          tabIndex={2}
+          onInput={onInput}
+        />,
+      );
+      const surface = document.querySelector('[data-action="mirror.control"]') as HTMLElement;
+      const ime = surface.querySelector("textarea") as HTMLTextAreaElement;
+
+      fireEvent.compositionStart(ime);
+      fireEvent.compositionUpdate(ime, { data: "ㅈ" });
+      fireEvent.compositionUpdate(ime, { data: "주" });
+      fireEvent.compositionEnd(ime, { data: "주문" });
+
+      expect(onInput.mock.calls.map(([e]) => [e.kind, e.text, e.tab])).toEqual([
+        ["ime.compose", "ㅈ", 2],
+        ["ime.compose", "주", 2],
+        ["ime.commit", "주문", 2],
+      ]);
+    });
+
+    it("확정된 글자는 조합 요소에 남지 않는다", () => {
+      render(
+        <MirrorView frame={FRAME} phase="manipulation" control={ENABLED} geometry={GEOMETRY} />,
+      );
+      const surface = document.querySelector('[data-action="mirror.control"]') as HTMLElement;
+      const ime = surface.querySelector("textarea") as HTMLTextAreaElement;
+
+      ime.value = "주문";
+      fireEvent.compositionEnd(ime, { data: "주문" });
+      // 남기면 다음 조합의 중간 문자열에 섞여, 이미 확정된 글자가 다시 조합 상태가 된다.
+      expect(ime.value).toBe("");
+    });
+
+    it("조합 중의 키는 대상으로 보내지 않는다 (FR-326)", () => {
+      const onInput = vi.fn();
+      render(
+        <MirrorView
+          frame={FRAME}
+          phase="manipulation"
+          control={ENABLED}
+          geometry={GEOMETRY}
+          onInput={onInput}
+        />,
+      );
+      const surface = document.querySelector('[data-action="mirror.control"]') as HTMLElement;
+      const ime = surface.querySelector("textarea") as HTMLTextAreaElement;
+
+      // IME 가 처리 중인 키다. 대상에도 보내면 같은 자모가 두 번 들어간다.
+      fireEvent.keyDown(ime, { key: "Process", keyCode: 229 });
+      expect(onInput).not.toHaveBeenCalled();
+
+      // 조합이 아닌 키는 그대로 나간다 — 영문·편집 키 경로가 막히면 안 된다.
+      fireEvent.keyDown(ime, { key: "a", code: "KeyA" });
+      expect(onInput.mock.calls.map(([e]) => e.kind)).toEqual(["key.down"]);
+    });
   });
 
   it("일시정지에서는 세션이 유지되고 있음을 알린다 (FR-033)", () => {

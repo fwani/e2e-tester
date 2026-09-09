@@ -119,8 +119,47 @@ export function MirrorView({
    * 로 두면 요소가 생겼을 때 브리지가 다시 붙지 않는다.
    */
   const [surfaceEl, setSurfaceEl] = useState<HTMLDivElement | null>(null);
+  /**
+   * 조합이 실제로 일어나는 요소 (FR-325~FR-327).
+   *
+   * **미러 영역은 `<div>` 라 IME 가 붙지 않는다.** 브라우저는 편집 가능한 요소에만
+   * 조합을 건다 — `<input>`·`<textarea>`·`contenteditable`. 편집 불가 요소에 초점이
+   * 있으면 `compositionstart` 자체가 오지 않고, 한글은 자모가 낱개 `keydown` 으로
+   * 떨어진다. 그 자모를 서버가 한 글자씩 넣으므로 대상 화면에 「ㅈㅜㅁㅜㄴ」이 남는다 —
+   * research R2 가 버리려던 바로 그 결과이며, 실제 사용자 보고가 그것이었다.
+   *
+   * 그래서 조합만 받는 **투명한 `<textarea>`** 를 미러 면 안에 둔다. 포인터는 받지
+   * 않으므로(`pointerEvents: "none"`) 클릭은 그대로 화면으로 가고, 초점만 이쪽이
+   * 갖는다. 미러 영역 **안**에 있으므로 초점 표시(`:focus-within`)와 「키가 어디로
+   * 가는가」의 답은 여전히 미러 영역 하나다 — FR-320 이 금지한 「초점이 둘로 갈리는」
+   * 상태가 되지 않는다.
+   *
+   * 화면에 글자가 남지 않는다. 조합이 끝나면 값을 비운다 (`clearIme`).
+   */
+  const imeRef = useRef<HTMLTextAreaElement | null>(null);
   /** 미러가 지금 키 입력을 받는가 (FR-320). 화면이 그 사실을 말해야 한다 */
   const [focused, setFocused] = useState(false);
+
+  /**
+   * 미러가 초점을 가져간다 (FR-320). **조합 요소로 준다** — 그래야 IME 가 붙는다.
+   *
+   * 조합 요소가 아직 없으면 미러 면이 받는다. 초점이 아무 데도 없는 것보다는 낫고,
+   * 그 상태에서도 영문·숫자 키는 그대로 전달된다.
+   */
+  const takeFocus = () => {
+    if (imeRef.current !== null) imeRef.current.focus({ preventScroll: true });
+    else surfaceEl?.focus({ preventScroll: true });
+  };
+
+  /**
+   * 조합 요소를 비운다. 확정된 글자는 **대상 브라우저**에 들어갔고 여기 남을 이유가 없다.
+   *
+   * 비우지 않으면 다음 조합의 `compositionupdate` 가 앞 글자를 포함한 문자열을 싣고,
+   * `imeSetComposition` 이 이미 확정된 글자를 다시 조합 상태로 만든다.
+   */
+  const clearIme = () => {
+    if (imeRef.current !== null) imeRef.current.value = "";
+  };
 
   /**
    * 조작을 받는가. **표가 정한다** (FR-316).
@@ -166,7 +205,7 @@ export function MirrorView({
   const onPointerDown = (event: PointerEvent<HTMLImageElement>) => {
     if (!controllable) return refuse();
     // 미러가 초점을 가져간다 (FR-320) — 이후 키 입력이 대상 브라우저로 간다.
-    event.currentTarget.parentElement?.focus();
+    takeFocus();
     /*
       **포인터를 붙잡는다** (010 T089 · FR-318).
 
@@ -266,7 +305,13 @@ export function MirrorView({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
+    /*
+      `minWidth: 0` — 2026-09-09. `flex: 1` 만으로는 flex 항목의 최소 폭이 콘텐츠 폭이라,
+      옆에 무엇이 서면 미러가 줄어드는 대신 부모(`.pane` 의 `overflow: hidden`)에서
+      잘린다. 잘리는 것과 줄어드는 것은 사용자에게 다르게 보이고, 잘리면 대상 화면의
+      오른쪽이 조용히 사라진다.
+    */
+    <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, flex: 1 }}>
       {/*
         FR-325~FR-327 — 한글 조합을 대상 브라우저로 옮긴다. 아무것도 그리지 않는다.
         조합의 주인은 미러 영역 자체이고, 이 컴포넌트는 그 영역의 조합 사건을 채널로
@@ -341,15 +386,62 @@ export function MirrorView({
             className={controllable ? "tint-run" : undefined}
             onKeyDown={(event) => onKey(event, "key.down")}
             onKeyUp={(event) => onKey(event, "key.up")}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            /*
+              `onFocus`/`onBlur` 는 React 에서 `focusin`/`focusout` 이므로 **안쪽 조합
+              요소의 초점도 여기로 올라온다.** 미러 면과 조합 요소 사이를 오가는 것은
+              초점이 떠난 것이 아니므로, 나가는 곳이 아직 미러 면 안이면 무시한다 —
+              그러지 않으면 클릭할 때마다 안내 문구가 깜빡인다.
+            */
+            onFocus={(event) => {
+              setFocused(true);
+              // Tab 으로 들어온 초점은 미러 면 자체에 앉는다. 조합 요소로 넘겨야 IME 가
+              // 붙는다 — 넘기지 않으면 키보드만 쓰는 사용자에게 자모분리가 그대로 남는다.
+              if (event.target === event.currentTarget) takeFocus();
+            }}
+            onBlur={(event) => {
+              const next = event.relatedTarget as Node | null;
+              if (next !== null && event.currentTarget.contains(next)) return;
+              setFocused(false);
+            }}
             style={{
+              position: "relative",
               display: "grid",
               placeItems: "center",
               maxWidth: "100%",
               maxHeight: "100%",
             }}
           >
+            {/*
+              FR-325~FR-327 — **조합이 실제로 일어나는 자리.** 위 `imeRef` 주석이 왜
+              필요한지를 적어 두었다: `<div>` 에는 IME 가 붙지 않아 한글이 자모로 쪼개진다.
+
+              `aria-hidden` 이 아니다 — 초점을 갖는 요소를 보조기술에서 숨기면 초점이
+              어디 있는지 말할 수 없게 된다. 대신 `tabIndex={-1}` 로 Tab 순서에서 빼고
+              (Tab 은 미러 면 자체가 받는다), 이름은 미러 면과 같은 것을 쓴다.
+            */}
+            <textarea
+              ref={imeRef}
+              tabIndex={-1}
+              aria-label="대상 브라우저 입력"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              /*
+                조합이 끝나면 비운다. 조합 중(`isComposing`)에는 건드리지 않는다 —
+                그때 값을 지우면 브라우저가 조합을 취소한다.
+              */
+              onInput={(event) => {
+                if ((event.nativeEvent as globalThis.InputEvent).isComposing) return;
+                event.currentTarget.value = "";
+              }}
+              onCompositionEnd={clearIme}
+              /*
+                보이지 않고 포인터도 받지 않는다 — 클릭·끌기·휠은 그대로 화면(`<img>`)
+                으로 간다. 형태는 정본의 `.ime-capture` 가 갖는다 (C-7).
+              */
+              className="ime-capture"
+            />
             <img
               ref={imageRef}
               src={`data:image/jpeg;base64,${frame}`}
@@ -442,6 +534,14 @@ function UseWindowAction({
   compact?: boolean;
 }) {
   if (capability.kind === "not_applicable") return null;
+  /*
+    2026-09-09 — 「이 상태의 조작이 아니다」는 그리지 않는다 (`capabilities.ts`).
+
+    **`mirror.control` 과 갈린다.** 그것은 `ALWAYS_KEEP` 이라 미러 위에 사유가 남는다 —
+    사용자가 미러를 클릭해 보기 때문이다. 이 버튼은 클릭할 대상이 자기 자신뿐이므로,
+    브라우저가 없는 국면(검토·실행 종료)에서는 자리를 접는 것이 맞다.
+  */
+  if (capability.kind === "disabled" && capability.visibility === "hide") return null;
   const disabled = capability.kind === "disabled";
   return (
     <span className="row" style={{ gap: 6 }}>

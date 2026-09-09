@@ -658,6 +658,16 @@ export const PHASE_LABEL: Record<Phase, string> = {
   takeover: "사람이 직접 조작",
   running: "실행 중",
   paused: "일시정지",
+  /**
+   * 검토 — 기록을 확인하고 고치고 저장한다 (2026-09-09).
+   *
+   * 이전에는 `paused` 국면의 라벨 예외로 `sessionPhaseLabel` 안에 문자열이 박혀 있었다.
+   * 국면이 생겼으므로 사전이 갖는다 — 예외가 함수 안에 있으면 다음 사람이 사전에서
+   * 찾지 못한다.
+   */
+  review: "검토",
+  /** 실행 종료 — 결말을 보고, 다시 실행하거나 저장한다 */
+  finished: "실행 종료",
   result: "결과",
   editing: "편집",
 };
@@ -681,11 +691,19 @@ export function sessionPhaseLabel(
   phase: Phase,
   state: { finished: boolean; review: boolean; pausing: boolean },
 ): string {
-  if (phase !== "running") return PHASE_LABEL[phase];
-  if (state.review) return "검토";
-  if (state.finished) return "실행 종료";
-  if (state.pausing) return "일시정지 중…";
-  return PHASE_LABEL.running;
+  /*
+    **2026-09-09 — 예외 셋 중 둘이 국면이 됐다.**
+
+    위 주석이 「판정을 고치지 않고 표시만 고친다」고 적은 판단은 오래 버티지 못했다.
+    표시만 고친 상태에서 `running` 국면의 권한표가 끝난 세션에도 적용됐고, 그 표는
+    「실행 중이어서 편집할 수 없습니다」를 11개 조작에 붙였다 — 라벨은 「실행 종료」인데
+    사유는 「실행 중」이라 같은 화면이 다시 두 가지를 주장했다. 국면을 갈라야 풀린다.
+
+    남는 예외는 **하나뿐이다** — 일시정지 전이 중(`pausing`). 그것은 국면이 아니라
+    한 국면 안에서 몇 초 지나가는 사정이므로 라벨에서 처리하는 것이 맞다 (005 FR-143).
+  */
+  if (phase === "running" && state.pausing) return "일시정지 중…";
+  return PHASE_LABEL[phase];
 }
 
 /**
@@ -806,10 +824,84 @@ export const BROWSER_ONLY_KIND_LABEL: Record<string, string> = {
   select: "선택",
   hover: "마우스 올리기",
   drag: "끌어놓기",
+  /*
+    2026-09-09 — `upload` 도 여기다. 파일 입력 요소를 지목해야 하므로 브라우저 없이는
+    만들 수 없다 (헌법 원칙 IV). 손으로 넣는 목록(`ManualStepSpec`)에 넣지 않은 것도
+    같은 근거다 — 그 유니온에는 `target` 을 받는 종류가 하나도 없다.
+  */
+  upload: "파일 올리기",
 };
 
 export const BROWSER_ONLY_KIND_REASON =
   "요소는 살아 있는 화면에서만 지목할 수 있습니다";
+
+/**
+ * 저장의 전제 — 이름이 비었다 (005 FR-156).
+ *
+ * **`DISABLED_REASON` 에 두지 않는다.** 그 사전의 키는 국면 표와 덮어쓰기가 쓰는
+ * 이름공간이고 `REASON_VISIBILITY` 가 키마다 보임/숨김을 정한다. 이것은 표가 아니라
+ * **화면이 아는 사실**이며(이름칸에 무엇이 있는지는 표가 모른다) 언제나 `keep` 이다.
+ */
+export const SAVE_NEEDS_NAME = "테스트 이름을 입력하세요";
+
+/**
+ * 실행의 전제 — 아직 저장되지 않았다 (2026-09-09 · 사용자 보고).
+ *
+ * 「처음부터 실행」은 **저장된 정의로 새 세션을 연다.** 저장되지 않은 녹화 세션에는 그
+ * 정의가 없어 눌러도 아무 일이 일어나지 않았고, 그 침묵이 사용자가 말한 「애매함」의
+ * 한 조각이었다. 이 문장이 그 자리에서 순서를 말한다 — 녹화 → 저장 → 실행.
+ */
+export const RUN_NEEDS_SAVE = "저장한 뒤 실행할 수 있습니다";
+
+/**
+ * 편집으로 가는 전제 — 아직 저장되지 않았다 (2026-09-09 사용자 보고).
+ *
+ * 편집 화면은 **저장된 정의**를 읽는다. 저장하지 않은 기록을 두고 넘어가면 방금 만든
+ * 것이 화면에서 사라지므로, 순서를 그 자리에서 말한다 — 저장 → 편집.
+ */
+export const EDIT_NEEDS_SAVE = "저장한 뒤 고칠 수 있습니다";
+
+/**
+ * 민감 값 지정의 전제 — 그 Step 이 입력값을 갖지 않는다 (FR-234).
+ *
+ * 언제나 `keep` 이다: 값을 갖는 Step 을 고르면 곧바로 풀린다. 문구를 사전으로 옮긴 것은
+ * 2026-09-09 이며, 이유는 검사가 「화면에 나타나도 되는 사유」를 셀 수 있어야 하기
+ * 때문이다 — 컴포넌트 안의 리터럴은 셀 수 없다.
+ */
+/**
+ * 파일 이름에서 확장자를 꺼낸다 — **점 없이, 소문자로** (2026-09-09).
+ *
+ * 백엔드의 `itb.domain.step.extension_of` 와 **같은 규칙이다**: 마지막 점 뒤만 본다
+ * (`보고서.tar.gz` → `gz`). 두 곳이 다르게 자르면 화면이 「xlsx 로 올립니다」라고 적고
+ * 실제로는 다른 이름이 올라가는 상태가 된다.
+ *
+ * 값이 아니라 **판정**이므로 사전에 둔다 — 컴포넌트가 각자 자르면 그 규칙이 흩어진다.
+ */
+export function uploadExtension(fileName: string): string {
+  const at = fileName.lastIndexOf(".");
+  if (at <= 0 || at === fileName.length - 1) return "";
+  return fileName.slice(at + 1).trim().toLowerCase();
+}
+
+/**
+ * 파일 이름 칸 아래의 안내 (2026-09-09 사용자 보고).
+ *
+ * 사용자가 요구한 것은 확장자다 — 「실제 서비스에서는 확장자를 보는경우가 있기 때문」.
+ * 그래서 이 문장은 **지금 이름에서 읽히는 확장자**를 말하고, 재실행이 무엇을 올리는지도
+ * 함께 말한다. 내용이 비어 있다는 사실을 숨기면, 내용을 파싱하는 서버에서 실패했을 때
+ * 사용자가 이유를 찾을 곳이 없다 (`step_executor._upload` 의 한계 주석과 같은 사실).
+ */
+export function uploadFileNote(fileName: string): string {
+  const ext = uploadExtension(fileName);
+  const kind = ext === "" ? "확장자 없는 파일" : `확장자 ${ext}`;
+  return (
+    `재실행은 이 이름 그대로 빈 파일을 올립니다 (${kind}). ` +
+    "내용을 읽는 검증이 있으면 그 검증은 통과하지 못합니다."
+  );
+}
+
+export const SENSITIVE_NO_VALUE =
+  "이 Step 은 입력값을 갖지 않아 민감 값으로 지정할 것이 없습니다.";
 
 export const DISABLED_REASON = {
   C1: "실행 중인 세션이 열려 있습니다",
@@ -891,6 +983,18 @@ export const DISABLED_REASON = {
   O9: "건너뛸 실패가 없습니다",
   /** 국면 자체가 그 조작을 허용하지 않는 경우. 조건이 아니라 국면의 성질이다. */
   RUNNING_NO_EDIT: EDIT_BLOCKED_BY_RUN,
+  /**
+   * 실행이 **끝난** 세션 — 편집이 닫혔다 (2026-09-09 · 국면 `finished`).
+   *
+   * **`RUNNING_NO_EDIT` 과 갈라야 했다.** 끝난 세션도 `running` 국면으로 판정되던 동안
+   * 편집 조작 11개가 「실행 중이어서 편집할 수 없습니다 → 일시정지」를 달고 있었다.
+   * 실행은 끝났고 그 「일시정지」는 화면에 없다 — 화면이 두 번 거짓을 말한 것이다.
+   *
+   * 해소 방법은 **저장**이다. 서버가 이 상태에서 받는 편집 명령은 없지만 저장은 받는다
+   * (`sessions.py` 의 `save` 는 상태 전이를 거치지 않는다). 저장하면 목록에서 편집으로
+   * 들어가 고칠 수 있고, 그것이 이 화면에 실제로 있는 다음 걸음이다.
+   */
+  RUN_FINISHED_NO_EDIT: "실행이 끝나 고칠 수 없습니다. 저장한 뒤 편집에서 고치세요",
   RESULT_NO_EDIT: "끝난 실행의 기록은 고칠 수 없습니다",
   NEEDS_BROWSER: "살아 있는 브라우저가 필요합니다",
   NEEDS_PAUSE: "실행을 멈춘 뒤에 할 수 있습니다",

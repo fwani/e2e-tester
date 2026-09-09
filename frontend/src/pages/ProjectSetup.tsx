@@ -38,7 +38,22 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   return <div className="lbl">{children}</div>;
 }
 
-export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void }) {
+export function ProjectSetup({
+  onOpened,
+  onCancel,
+}: {
+  onOpened: (p: ProjectView) => void;
+  /**
+   * 열려 있던 프로젝트로 되돌아간다. **첫 화면일 때는 없다** (사용자 보고 · 2026-09-09).
+   *
+   * 이 화면은 제품의 첫 화면이었고, 그때는 돌아갈 곳이 없으므로 되돌아가는 길도 없었다.
+   * 목록에서 이리로 오는 길이 생기면서 **중간 화면**이기도 하게 됐다 — 그 경로로 들어온
+   * 사용자는 마음을 바꿀 수 있어야 한다. 없으면 프로젝트를 하나 열어야만 빠져나간다.
+   *
+   * 있을 때만 그린다. 첫 화면의 모습은 그대로다.
+   */
+  onCancel?: () => void;
+}) {
   const [mode, setMode] = useState<Mode>({ kind: "list" });
   const [projects, setProjects] = useState<ProjectListItem[] | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -78,6 +93,12 @@ export function ProjectSetup({ onOpened }: { onOpened: (p: ProjectView) => void 
       {/* 제품의 **첫 화면**이다. 껍데기는 다른 화면과 같아야 한다 (FR-217). */}
       <HeaderBar>
         <BrandMark />
+        <div className="spacer" />
+        {onCancel !== undefined && (
+          <button className="navlink" onClick={onCancel}>
+            돌아가기
+          </button>
+        )}
       </HeaderBar>
 
       <main style={{ flex: 1, padding: "24px 32px 32px", maxWidth: 960, width: "100%", margin: "0 auto" }}>

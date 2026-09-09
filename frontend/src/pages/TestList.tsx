@@ -32,7 +32,8 @@
  * 함께 적었다 — 바닥 띠의 「전체 실행」이며, 여러 테스트를 잇달아 돌리는 것은 화면 작업이
  * 아니라 실행 기능이라 이 기능의 범위 밖이다.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { tests, type SessionView, type TestListRow, type TestListResponse } from "../api/client";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
@@ -94,6 +95,8 @@ export interface TestListProps {
   /** 확정 디자인에 없는 화면들로 가는 진입점 (DC-010). */
   onOpenSecrets?: () => void;
   onOpenKeys?: () => void;
+  /** 프로젝트 선택 화면으로 간다. 없으면 그 길을 그리지 않는다 */
+  onOpenProjects?: () => void;
   /**
    * 살아 있는 세션. 새로고침으로 화면만 잃은 녹화·실행을 되찾는 길이다 (UX U-05).
    * 서버에는 Step 과 브라우저가 그대로 있는데 화면이 그것을 말하지 않으면 사용자는
@@ -120,6 +123,7 @@ export function TestList({
   onOpenDefinition,
   onOpenSecrets,
   onOpenKeys,
+  onOpenProjects,
   activeSessions = [],
   onRefreshSessions,
   onResumeSession,
@@ -228,6 +232,24 @@ export function TestList({
         <div className="row">
           <span className="lbl">프로젝트</span>
           <span className="pill">{projectName}</span>
+          {/*
+            **프로젝트 목록으로 가는 길** (사용자 보고 · 2026-09-09 — 「프로젝트 목록으로
+            가는 방법이 없다」).
+
+            프로젝트 선택 화면은 처음부터 있었지만 **`project.current()` 가 실패할 때만**
+            그리로 갔다. 즉 한 번 프로젝트를 열면 다른 프로젝트로 갈 길이 화면 어디에도
+            없었다 — 서버를 다시 띄우는 것 말고는 방법이 없는 상태였다.
+
+            자리를 프로젝트 이름 **바로 옆**에 둔다. 「어느 프로젝트인가」를 읽는 자리가
+            「다른 것으로 간다」를 찾는 자리다. 형태는 오른쪽의 다른 진입점들과 같은
+            `navlink` 다 — 확정 디자인에 없는 화면으로 가는 길은 눈에 띄지 않게 둔다
+            (DC-010).
+          */}
+          {onOpenProjects && (
+            <button className="navlink" onClick={onOpenProjects}>
+              바꾸기
+            </button>
+          )}
         </div>
         <div className="spacer" />
         {/* 확정 디자인에 없는 화면들의 진입점. 눈에 띄지 않게 둔다 (DC-010). */}
@@ -441,6 +463,13 @@ export function TestList({
                     void act(() => tests.remove(row.id)).then(() => setConfirmingDelete(null))
                   }
                   onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}
+                  /*
+                    **여는 것과 닫는 것을 나눈다.** 메뉴는 목록 밖(`document.body`)에
+                    떠 있으므로 목록이 스크롤하면 행에서 떨어진다 — 그때 닫아야 한다.
+                    그 자리에서 `onToggleMenu` 를 쓰면 한 프레임에 두 번 온 사건이
+                    닫았다 다시 여는 일이 생긴다.
+                  */
+                  onCloseMenu={() => setMenuFor(null)}
                   onRun={() => onRun(row.id)}
                   runPending={pendingRunId === row.id}
                   /*
@@ -486,6 +515,20 @@ export function TestList({
   );
 }
 
+/** 떠 있는 행 메뉴의 치수. 여는 자리를 계산할 때 쓴다. */
+const MENU_MIN_WIDTH = 160;
+/** 단추와 메뉴 사이. 붙여 놓으면 어느 쪽을 눌렀는지 눈으로 갈리지 않는다. */
+const MENU_GAP = 2;
+/** 창 가장자리와의 최소 간격. 0 이면 메뉴가 화면 끝에 물린다. */
+const MENU_EDGE = 8;
+/**
+ * 떠 있는 메뉴의 겹침 순서.
+ *
+ * 이 화면에서 가장 높다. 목록 위에 겹치는 것이 메뉴뿐이므로 다른 값과 겨루지 않는다 —
+ * 겹침이 문제였던 적은 없고, 문제는 잘림이었다 (`Row` 의 `menuPos` 주석).
+ */
+const MENU_Z = 40;
+
 // ─── 행 ─────────────────────────────────────────────────────────────────────
 
 function Row({
@@ -502,6 +545,7 @@ function Row({
   onDeleteCancel,
   onDeleteConfirm,
   onToggleMenu,
+  onCloseMenu,
   onRun,
   onOpenResult,
   onOpenDefinition,
@@ -513,6 +557,7 @@ function Row({
   renaming: string | null;
   confirming: boolean;
   menuOpen: boolean;
+  onCloseMenu: () => void;
   onRenameChange: (name: string) => void;
   onRenameStart: () => void;
   onRenameCancel: () => void;
@@ -537,6 +582,85 @@ function Row({
   const live = liveSession !== null && isRunning(liveSession.state);
   /** 열어 볼 결과가 있는가 (005 FR-130). 결말 종류와 무관하다 — U-13 이 이것이었다. */
   const hasResult = row.outcome != null || row.last_run_at != null;
+
+  const menuAnchor = useRef<HTMLButtonElement | null>(null);
+  const menuBox = useRef<HTMLDivElement | null>(null);
+  /**
+   * 떠 있는 메뉴의 화면 좌표 (사용자 보고 · 2026-09-09 — 「메뉴가 안 보임」).
+   *
+   * ## 왜 목록 밖으로 내보내는가
+   *
+   * 메뉴는 행 안에 `position: absolute` 로 있었다. **그 위로 조상 셋이 잘라 낸다** —
+   * 목록 스크롤 상자(`overflow: auto`)와 그것을 감싼 `.pane`(`overflow: hidden`), 그리고
+   * 바깥 아트보드다. `overflow` 가 `visible` 이 아닌 조상은 자식을 잘라 내고, **`z-index`
+   * 로는 거기서 빠져나갈 수 없다.**
+   *
+   * 실측(1440×900, 40행, 목록을 끝까지 내린 상태): 마지막 행의 메뉴는 `top=844
+   * bottom=942` 인데 스크롤 상자가 845 에서 잘라, 그 자리에서 실제로 잡히는 것은 바닥
+   * 띠의 「Playwright 로 내보내기」였다. 보고된 화면이 정확히 그것이다.
+   *
+   * 그래서 `document.body` 로 내보내고 `position: fixed` 로 붙인다. 잘라 낼 조상이
+   * 없으므로 어느 행에서 열어도 온전히 보인다.
+   *
+   * ## 대신 감당하는 것
+   *
+   * 떠 있으므로 목록이 스크롤해도 따라오지 않는다 — 그때는 **닫는다** (`onCloseMenu`).
+   * 행에서 떨어진 채 떠 있는 메뉴는 어느 행의 것인지 말할 수 없다.
+   */
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  /**
+   * 자리를 잴 때의 단추 위치. 스크롤이 **실제로 행을 움직였는지** 판정하는 기준이다.
+   *
+   * 스크롤 사건 하나만 보고 닫으면 **메뉴가 열리자마자 닫힌다.** 화면에 반쯤 걸친 행의
+   * 단추를 누르면 브라우저가 그것을 보이게 하려고 스스로 스크롤하고, 그 사건이 곧바로
+   * 도착하기 때문이다 — 실측에서 마지막 행의 메뉴가 그렇게 사라졌다.
+   *
+   * 그 스크롤은 자리를 재기 **전에** 끝나 있다. 그래서 「사건이 왔는가」가 아니라
+   * 「기준보다 움직였는가」를 묻는다.
+   */
+  const anchorTop = useRef(0);
+
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      setMenuPos(null);
+      return;
+    }
+    const anchor = menuAnchor.current;
+    if (anchor === null) return;
+    const a = anchor.getBoundingClientRect();
+    anchorTop.current = a.top;
+    const box = menuBox.current;
+    const h = box?.offsetHeight ?? 0;
+    const w = box?.offsetWidth ?? MENU_MIN_WIDTH;
+    // 아래에 자리가 모자라면 **위로 연다.** 창 밖으로 나가면 잘리던 것과 같은 결과다.
+    const below = a.bottom + MENU_GAP;
+    const flip = h > 0 && below + h + MENU_EDGE > window.innerHeight;
+    setMenuPos({
+      top: flip ? Math.max(MENU_EDGE, a.top - MENU_GAP - h) : below,
+      // 오른쪽 정렬. 창 왼쪽으로 넘어가지 않게 막는다.
+      left: Math.max(MENU_EDGE, a.right - w),
+    });
+  }, [menuOpen, onOpenDefinition]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    // 목록이 스크롤하거나 창이 바뀌면 메뉴는 제 행에서 떨어진다. 따라가게 만드는 것보다
+    // 닫는 편이 낫다 — 따라가더라도 그 행이 스크롤 밖으로 나가면 가리킬 대상이 없다.
+    const closeIfMoved = () => {
+      const a = menuAnchor.current?.getBoundingClientRect();
+      if (a === undefined) return onCloseMenu();
+      if (Math.abs(a.top - anchorTop.current) > 1) onCloseMenu();
+    };
+    const close = () => onCloseMenu();
+    // `capture` 여야 목록 **안쪽** 스크롤 상자의 스크롤도 잡는다. 스크롤 사건은 위로
+    // 올라오지 않는다.
+    window.addEventListener("scroll", closeIfMoved, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", closeIfMoved, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [menuOpen, onCloseMenu]);
 
   return (
     <div
@@ -668,6 +792,7 @@ function Row({
         </button>
 
         <button
+          ref={menuAnchor}
           className="btn sm"
           aria-label={`${row.name} 추가 동작`}
           onClick={onToggleMenu}
@@ -680,21 +805,26 @@ function Row({
           </svg>
         </button>
 
-        {menuOpen && (
-          <div
-            className="pane"
-            style={{
-              position: "absolute",
-              top: "34px",
-              right: 0,
-              zIndex: 5,
-              display: "flex",
-              flexDirection: "column",
-              minWidth: "160px",
-              padding: "4px",
-              gap: "2px",
-            }}
-          >
+        {menuOpen &&
+          createPortal(
+            <div
+              ref={menuBox}
+              className="pane"
+              data-row-menu={row.id}
+              style={{
+                position: "fixed",
+                top: menuPos?.top ?? 0,
+                left: menuPos?.left ?? 0,
+                zIndex: MENU_Z,
+                // 자리를 재기 전에는 그리지 않는다 — 그리면 왼쪽 위에서 제자리로 튄다.
+                visibility: menuPos === null ? "hidden" : "visible",
+                display: "flex",
+                flexDirection: "column",
+                minWidth: `${MENU_MIN_WIDTH}px`,
+                padding: "4px",
+                gap: "2px",
+              }}
+            >
             {/*
               006 FR-175 — 「정의 보기」를 **「편집」으로 대체한다.** 보기만 하는 별도 항목을
               남기면 사용자는 다시 "고치려면 어디로 가지" 를 묻게 되고, 그것이 006 이 없앤
@@ -709,11 +839,12 @@ function Row({
             <button className="navlink" onClick={onRenameStart} style={{ justifyContent: "flex-start" }}>
               이름
             </button>
-            <button className="navlink fail-ink" onClick={onDeleteStart} style={{ justifyContent: "flex-start" }}>
-              삭제
-            </button>
-          </div>
-        )}
+              <button className="navlink fail-ink" onClick={onDeleteStart} style={{ justifyContent: "flex-start" }}>
+                삭제
+              </button>
+            </div>,
+            document.body,
+          )}
       </div>
     </div>
   );
