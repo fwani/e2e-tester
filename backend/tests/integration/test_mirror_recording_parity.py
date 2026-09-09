@@ -457,3 +457,173 @@ def test_sensitive_input_through_the_mirror_is_stored_as_a_variable(
         f"비밀번호가 변수 참조로 저장되지 않았다: {values}"
     )
     assert secret not in str(fills), "민감 Step 안에 평문이 남았다"
+
+
+# ─── FR-325: 문자 키 타이핑 (사용자 보고 · 2026-09-09) ──────────────────────
+#
+# **이 검증이 없어서 놓쳤다.** 한글은 `ImeBridge` 가 `insertText` 경로를 타므로 동작했고,
+# 영문·숫자는 `dispatchKeyEvent` 를 타는데 `text` 를 싣지 않아 **아무것도 들어가지
+# 않았다.** 두 경로가 갈리는데 한쪽만 재고 있었다.
+#
+# 실측: `key`/`code` 만 보내면 입력 값이 `''`, `text` 를 실으면 `'abc'`.
+
+
+def _type_keys_through_mirror(
+    client: TestClient, session_id: str, selector: str, text: str
+) -> None:
+    """미러 경로로 **문자 키**를 친다 — 사람이 영문·숫자를 타이핑하는 것과 같다.
+
+    `text.insert` 가 아니라 `key.down`/`key.up` 을 쓴다. 그것이 프론트가 보내는 것이고
+    (`MirrorView.onKey`), 조합이 필요 없는 문자는 그 경로를 탄다.
+    """
+    x, y = _center(client, session_id, selector)
+    with client.websocket_connect(CONTROL_PATH.format(sid=session_id)) as ws:
+        for event in (
+            {"kind": "pointer.down", "tab": 0, "x": x, "y": y, "button": "left"},
+            {"kind": "pointer.up", "tab": 0, "x": x, "y": y, "button": "left"},
+        ):
+            ws.send_text(json.dumps(event))
+        for ch in text:
+            code = f"Key{ch.upper()}" if ch.isalpha() else f"Digit{ch}" if ch.isdigit() else ""
+            ws.send_text(
+                json.dumps({"kind": "key.down", "tab": 0, "key": ch, "code": code})
+            )
+            ws.send_text(
+                json.dumps({"kind": "key.up", "tab": 0, "key": ch, "code": code})
+            )
+        _settle(client)
+
+
+@pytest.mark.browser
+def test_typing_plain_characters_through_the_mirror_reaches_the_target(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**미러에서 친 영문·숫자가 대상 입력 요소에 들어간다** (FR-325).
+
+    사용자 보고로 드러난 결함이다. `Input.dispatchKeyEvent` 는 `text` 가 있을 때만 문자
+    입력 이벤트를 만드는데, 구현이 `key`·`code` 만 보내고 있었다. 한글은 조합 경로
+    (`insertText`)를 타므로 동작했고, 그래서 검증이 통과하는 채로 결함이 남았다.
+    """
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        _type_keys_through_mirror(keyed_client, session_id, "#email", "abc123")
+        value = _value_of(keyed_client, session_id, "#email")
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    assert value == "abc123", (
+        f"미러에서 친 문자가 대상에 들어가지 않았다: {value!r}. "
+        "`Input.dispatchKeyEvent` 에 `text` 를 실었는지 확인하라 (FR-325)."
+    )
+
+
+@pytest.mark.browser
+def test_typed_characters_become_a_step(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """친 문자가 **Step 이 된다** (FR-321·FR-328).
+
+    값이 대상에 들어가는 것과 그것이 Step 이 되는 것은 별개다. 리코더가 `input` 을
+    디바운스해 Step 을 만드는 경로를 문자 키도 지나야 한다.
+    """
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        _type_keys_through_mirror(keyed_client, session_id, "#email", "abc")
+        fills = [s for s in _steps(keyed_client, session_id) if s["type"] == "fill"]
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    assert fills, "미러에서 친 문자가 Step 으로 남지 않았다 (FR-328)"
+    assert fills[-1].get("value") == "abc", f"Step 의 값이 다르다: {fills[-1].get('value')!r}"
+
+
+@pytest.mark.browser
+def test_editing_keys_work_through_the_mirror(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**Backspace 같은 편집 키가 동작한다** (FR-325).
+
+    실측: `key`/`code` 만 보내면 값이 그대로 남는다. CDP 가 편집 명령을 만들려면
+    `rawKeyDown` 과 가상 키 코드가 필요하다.
+
+    고치기 전에는 사용자가 오타를 지울 수 없었다 — 타이핑이 되더라도 그 상태로는 쓸 수
+    없다.
+    """
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        _type_keys_through_mirror(keyed_client, session_id, "#email", "abcd")
+        x, y = _center(keyed_client, session_id, "#email")
+        with keyed_client.websocket_connect(CONTROL_PATH.format(sid=session_id)) as ws:
+            for _ in range(2):
+                for kind in ("key.down", "key.up"):
+                    ws.send_text(
+                        json.dumps(
+                            {"kind": kind, "tab": 0, "key": "Backspace", "code": "Backspace"}
+                        )
+                    )
+            _settle(keyed_client)
+        value = _value_of(keyed_client, session_id, "#email")
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    assert value == "ab", (
+        f"Backspace 두 번 뒤 값이 {value!r} 다. 가상 키 코드를 실었는지 확인하라 (FR-325)."
+    )
+
+
+@pytest.mark.browser
+def test_shift_produces_uppercase(keyed_client: TestClient, fixture_app: str) -> None:
+    """Shift 조합이 대문자를 만든다 (FR-325)."""
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        x, y = _center(keyed_client, session_id, "#email")
+        with keyed_client.websocket_connect(CONTROL_PATH.format(sid=session_id)) as ws:
+            for event in (
+                {"kind": "pointer.down", "tab": 0, "x": x, "y": y, "button": "left"},
+                {"kind": "pointer.up", "tab": 0, "x": x, "y": y, "button": "left"},
+            ):
+                ws.send_text(json.dumps(event))
+            for kind in ("key.down", "key.up"):
+                ws.send_text(
+                    json.dumps(
+                        {"kind": kind, "tab": 0, "key": "A", "code": "KeyA", "modifiers": 8}
+                    )
+                )
+            _settle(keyed_client)
+        value = _value_of(keyed_client, session_id, "#email")
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    assert value == "A", f"Shift+a 가 {value!r} 를 만들었다"
+
+
+@pytest.mark.browser
+def test_a_shortcut_does_not_type_its_letter(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**단축키 자리에 글자가 들어가지 않는다** (FR-325).
+
+    Ctrl·Meta 가 눌렸으면 그것은 문자가 아니라 단축키다. `text` 를 실으면 사용자가
+    Ctrl+S 를 누른 자리에 `s` 가 입력된다 — 저장하려던 사람이 오염된 값을 얻는다.
+    """
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        x, y = _center(keyed_client, session_id, "#email")
+        with keyed_client.websocket_connect(CONTROL_PATH.format(sid=session_id)) as ws:
+            for event in (
+                {"kind": "pointer.down", "tab": 0, "x": x, "y": y, "button": "left"},
+                {"kind": "pointer.up", "tab": 0, "x": x, "y": y, "button": "left"},
+            ):
+                ws.send_text(json.dumps(event))
+            for kind in ("key.down", "key.up"):
+                ws.send_text(
+                    json.dumps(
+                        {"kind": kind, "tab": 0, "key": "s", "code": "KeyS", "modifiers": 2}
+                    )
+                )
+            _settle(keyed_client)
+        value = _value_of(keyed_client, session_id, "#email")
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    assert value == "", f"Ctrl+S 가 입력 요소에 {value!r} 를 남겼다"

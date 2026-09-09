@@ -65,6 +65,68 @@ KNOWN_MODIFIERS = 0b1111
 _BUTTONS = {"left": 1, "middle": 4, "right": 2}
 """버튼 이름 → CDP `buttons` 비트마스크. 목록 밖 이름은 경계에서 거절된다."""
 
+_ALT, _CTRL, _META, _SHIFT = 1, 2, 4, 8
+"""CDP 수정자 비트. `KNOWN_MODIFIERS` 가 이 넷의 합이다."""
+
+_NAMED_KEYS: dict[str, int] = {
+    "Backspace": 8,
+    "Tab": 9,
+    "Enter": 13,
+    "Escape": 27,
+    "PageUp": 33,
+    "PageDown": 34,
+    "End": 35,
+    "Home": 36,
+    "ArrowLeft": 37,
+    "ArrowUp": 38,
+    "ArrowRight": 39,
+    "ArrowDown": 40,
+    "Insert": 45,
+    "Delete": 46,
+}
+"""이름 있는 키 → 가상 키 코드 (010 · FR-325).
+
+**이 값이 없으면 그 키는 동작하지 않는다.** 실측: Backspace 를 `key`/`code` 만으로
+보내면 입력 값이 그대로 남는다. CDP 가 편집 명령을 만들려면 가상 키 코드가 필요하다.
+
+목록에 없는 이름 있는 키(F1~F12 등)는 `rawKeyDown` 으로 나가되 가상 키 코드가 없다 —
+대상 페이지가 `keydown` 은 받지만 브라우저 기본 동작은 일어나지 않는다. 그 키들이
+녹화에 쓰이는 일은 드물고, 필요해지면 여기 한 줄을 더한다.
+"""
+
+
+def _produces_text(key: str, modifiers: int) -> bool:
+    """이 키가 문자를 만드는가 (FR-325).
+
+    `KeyboardEvent.key` 는 문자 키에서 **한 글자**다. 이름 있는 키는 `"Enter"` 처럼 여러
+    글자이므로 길이로 갈린다.
+
+    Ctrl·Meta 가 눌렸으면 문자가 아니라 **단축키**다. 그때 `text` 를 실으면 사용자가
+    Ctrl+S 를 누른 자리에 `s` 가 입력된다.
+    """
+    return len(key) == 1 and not modifiers & (_CTRL | _META)
+
+
+def _virtual_key_code(key: str, code: str) -> int | None:
+    """가상 키 코드. 모르면 `None`.
+
+    문자 키는 대문자의 ASCII 값이 그대로 가상 키 코드다 (`a`·`A` → 65). 숫자도 같다.
+    그 규칙이 통하지 않는 키만 위 표에 있다.
+    """
+    named = _NAMED_KEYS.get(key)
+    if named is not None:
+        return named
+    if len(key) == 1:
+        upper = key.upper()
+        if "A" <= upper <= "Z" or "0" <= upper <= "9":
+            return ord(upper)
+    # `code` 가 `KeyA`·`Digit1` 이면 거기서 읽는다 — 한글 자판에서 `key` 가 자모일 때다.
+    if code.startswith("Key") and len(code) == 4:
+        return ord(code[3].upper())
+    if code.startswith("Digit") and len(code) == 6:
+        return ord(code[5])
+    return None
+
 
 class MirrorCommandForbiddenError(RuntimeError):
     """조작 모듈이 목록 밖 CDP 명령을 보내려 했다 (FR-344).
@@ -240,18 +302,55 @@ class TabInput:
         params.update(extra)
         await _send(self._cdp, "Input.dispatchMouseEvent", params)
 
-    async def _key(self, event: dict[str, Any], *, type_: str) -> None:
+    async def _key(self, event: dict[str, Any], *, down: bool) -> None:
+        """키 하나를 대상에 보낸다 (FR-325).
+
+        **`key`·`code` 만 보내면 문자가 들어가지 않는다.** CDP 는 `text` 가 있을 때만
+        문자 입력 이벤트를 만든다 — 실측으로 확인했다 (`key`/`code` 만: 값 `''`,
+        `text` 포함: 값 `'abc'`). 이것을 빠뜨리면 미러에서 영문·숫자를 아무리 쳐도
+        대상 입력 요소가 비어 있고, 사용자에게는 「타이핑이 안 된다」로 보인다.
+
+        **편집 키는 가상 키 코드가 있어야 동작한다.** Backspace 를 `key`/`code` 만으로
+        보내면 아무 일도 일어나지 않는다 (실측: 값이 `'xyz'` 그대로). `rawKeyDown` 과
+        `windowsVirtualKeyCode` 를 함께 보내야 한다.
+
+        그래서 키를 둘로 가른다.
+
+        - **문자 키** (`key` 가 한 글자이고 Ctrl·Meta 가 눌리지 않음) → `keyDown` +
+          `text`. 그 조합이 문자를 만든다.
+        - **그 밖** (이름 있는 키, 또는 Ctrl·Meta 조합) → `rawKeyDown`. `text` 를 실으면
+          단축키 자리에 글자가 들어간다.
+
+        `unmodifiedText` 는 Shift 를 뗀 값이다. 대상 페이지가 그 둘을 갈라 읽는 경우가
+        있어(단축키 판정) 함께 보낸다.
+        """
         assert self._cdp is not None  # noqa: S101
-        await _send(
-            self._cdp,
-            "Input.dispatchKeyEvent",
-            {
-                "type": type_,
-                "key": event.get("key", ""),
-                "code": event.get("code", ""),
-                "modifiers": int(event.get("modifiers", 0)),
-            },
-        )
+        key = str(event.get("key", ""))
+        code = str(event.get("code", ""))
+        modifiers = int(event.get("modifiers", 0))
+
+        params: dict[str, Any] = {
+            "type": "keyUp" if not down else "keyDown",
+            "key": key,
+            "code": code,
+            "modifiers": modifiers,
+        }
+
+        virtual = _virtual_key_code(key, code)
+        if virtual is not None:
+            params["windowsVirtualKeyCode"] = virtual
+            params["nativeVirtualKeyCode"] = virtual
+
+        if down:
+            if _produces_text(key, modifiers):
+                params["text"] = key
+                # Shift 를 뗀 값. `A` 를 친 것과 `a` 를 친 것을 대상이 갈라 읽을 수 있다.
+                params["unmodifiedText"] = key.lower() if modifiers & _SHIFT else key
+            else:
+                # 이름 있는 키와 단축키. `text` 를 실으면 단축키 자리에 글자가 들어간다.
+                params["type"] = "rawKeyDown"
+
+        await _send(self._cdp, "Input.dispatchKeyEvent", params)
 
     async def _insert_text(self, event: dict[str, Any]) -> None:
         assert self._cdp is not None  # noqa: S101
@@ -335,8 +434,8 @@ _HANDLERS: dict[str, Any] = {
     "pointer.up": TabInput._pointer_up,
     "pointer.move": TabInput._pointer_move,
     "wheel": TabInput._wheel,
-    "key.down": lambda self, event: TabInput._key(self, event, type_="keyDown"),
-    "key.up": lambda self, event: TabInput._key(self, event, type_="keyUp"),
+    "key.down": lambda self, event: TabInput._key(self, event, down=True),
+    "key.up": lambda self, event: TabInput._key(self, event, down=False),
     "text.insert": TabInput._insert_text,
     "ime.compose": TabInput._ime_compose,
     "ime.commit": TabInput._ime_commit,
