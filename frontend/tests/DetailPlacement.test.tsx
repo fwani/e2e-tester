@@ -20,7 +20,8 @@
  * 그래서 이 파일이 재는 것은 셋이다 — 자리가 목록 왼쪽인가, 목록을 덮지 않는가, 대상 앱의
  * **폭을 바꾸지 않는가**. 마지막이 겹침의 정의다: 밀어내면 폭이 변한다.
  */
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { STEP_PANEL_WIDTH } from "../src/components/workbench/StepList";
@@ -151,6 +152,39 @@ describe("UC-011-7 — 상세의 자리는 Step 목록 왼쪽이고 국면마다
       vi.unstubAllGlobals();
     }
     expect(seen.size, `자리가 ${seen.size}가지다: ${[...seen.keys()].join(" / ")}`).toBe(1);
+  });
+});
+
+describe("FR-370 — 지목을 바꿔도 자리와 크기가 같다", () => {
+  /**
+   * 「상세 대상만 바뀐다」의 **뒤 절반**이다. 앞 절반(내용이 그 Step 으로 바뀐다)은
+   * `StepScreenshot` 이 센다.
+   *
+   * 지금은 자리가 상수라 저절로 지켜진다. 그래도 재는 이유: 다음 사람이 「이 Step 은
+   * 길어서 더 넓게」 같은 분기를 넣으면 조용히 깨지고, 사용자에게는 고를 때마다 판이
+   * 움직이는 것으로 보인다.
+   */
+  it("다른 행을 골라도 상세 층의 자리 선언이 그대로다", async () => {
+    const user = userEvent.setup();
+    render(
+      <SessionWorkbench
+        {...sessionProps({
+          view: sessionView({ state: "paused" }),
+          focusedStepId: "st-1",
+          detailOpen: true,
+        })}
+      />,
+    );
+    await waitFor(() => expect(detailLayer()).not.toBeNull());
+
+    const snapshot = (el: HTMLElement) =>
+      [el.style.position, el.style.top, el.style.right, el.style.bottom, el.style.left].join("|");
+    const before = snapshot(detailLayer()!);
+
+    await user.click(screen.getByRole("button", { name: "아이디 입력" }));
+    await waitFor(() => expect(detailLayer()).not.toBeNull());
+
+    expect(snapshot(detailLayer()!), "지목이 바뀌면서 상세의 자리가 움직였다").toBe(before);
   });
 });
 

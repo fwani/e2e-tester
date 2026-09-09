@@ -318,3 +318,11 @@ Task: "결과 화면 검증 in frontend/tests/StepScreenshot.test.tsx"
 - [X] T066 저장 확인줄이 **이름**을 말하게 한다 — `frontend/src/pages/SessionScreen.tsx` 의 `editSavedNotice(title)` 이 `title = testId ?? "새 테스트"` 라 「저장했습니다 · TC-001」로 id 가 나온다. 011 이 `SessionView.test_name` 을 실었으므로 이름을 쓸 수 있다 per FR-367 (partial)
 - [X] T067 세션에서도 저장 이후 더해진 행에 미저장 표식을 세운다 — `frontend/src/pages/SessionScreen.tsx` 가 `WorkbenchStep.isUnsaved` 를 채우지 않아 지시문·녹화로 더해진 Step 이 저장된 것과 구별되지 않는다. 판정 근거는 `view.saved_snapshot` 이후에 생긴 Step 인가다 per FR-379 (partial)
 - [X] T068 [P] 조작 횟수와 다시 실행 확인을 검사로 고정한다 — `frontend/tests/DeleteSelection.test.tsx` 에 「Step 15개 중 뒤의 11개를 3회 이하로 정리」를 세는 검사를, `frontend/tests/SaveNamePrompt.test.tsx` 에 `RerunConfirm` 의 이름칸 조건부 검사를 더한다. 지금은 SC-607 을 세는 자동 검사가 없고 이름칸 조건부는 `LeaveConfirm` 만 검증됐다 per SC-607 · FR-364 (partial)
+
+---
+
+## Phase 10: Convergence
+
+**2회차** (2026-09-10). 1회차 지적 5건은 전부 닫혔다. 잔여 1건.
+
+- [X] T069 지목을 바꿔도 상세의 자리·크기가 같은지 센다 — `frontend/tests/DetailPlacement.test.tsx`: 「상세 대상만 바뀐다」의 앞 절반(내용 전환)은 `StepScreenshot` 이 세지만 뒤 절반(자리·크기 불변)을 세는 검사가 없다. 코드상 자리는 상수라 실제로는 지켜지지만, 증거가 없으면 다음 사람이 국면별·Step별 분기를 넣을 때 잡히지 않는다 per FR-370 (partial)
