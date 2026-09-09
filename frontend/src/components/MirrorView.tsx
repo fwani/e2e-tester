@@ -23,16 +23,18 @@
  * 않는다 (FR-047b).
  */
 
-import { useRef, type KeyboardEvent, type PointerEvent, type WheelEvent } from "react";
+import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from "react";
 
 import type { CapabilityState } from "../lib/capabilities";
 import {
   MIRROR_FOCUS_HINT,
+  MIRROR_KEYS_GO_TO_TARGET,
   mirrorEmptyMessage,
   mirrorNotice,
   type ControlSurface,
   type MirrorNoticePhase,
 } from "../lib/wording";
+import { ImeBridge, isComposingKey } from "./mirror/ImeBridge";
 import type { FrameGeometry, InputEvent } from "./mirror/useMirrorInput";
 import {
   buttonNameOf,
@@ -106,6 +108,18 @@ export function MirrorView({
   useWindowCapability,
 }: MirrorViewProps) {
   const imageRef = useRef<HTMLImageElement | null>(null);
+  /**
+   * 조합을 받는 요소 (FR-320 · T045).
+   *
+   * **미러 영역 자체가 초점을 갖는다.** 숨은 입력칸을 따로 두면 초점이 둘로 갈리고
+   * 「지금 키가 어디로 가는가」가 화면에서 불분명해진다.
+   *
+   * 상태로 두는 이유는 `ImeBridge` 가 이 요소에 청취자를 붙여야 하기 때문이다 — `ref`
+   * 로 두면 요소가 생겼을 때 브리지가 다시 붙지 않는다.
+   */
+  const [surfaceEl, setSurfaceEl] = useState<HTMLDivElement | null>(null);
+  /** 미러가 지금 키 입력을 받는가 (FR-320). 화면이 그 사실을 말해야 한다 */
+  const [focused, setFocused] = useState(false);
 
   /**
    * 조작을 받는가. **표가 정한다** (FR-316).
@@ -131,6 +145,12 @@ export function MirrorView({
     if (event === null || onInput === undefined) return;
     onInput(event);
   };
+
+  /** `ImeBridge` 에 넘길 통로. 참조가 매번 바뀌면 브리지가 매번 다시 붙는다. */
+  const emitStable = useCallback(
+    (event: InputEvent) => onInput?.(event),
+    [onInput],
+  );
 
   const context = { imageRef, frame: geometry, tab: tabIndex ?? 0 };
 
@@ -189,7 +209,9 @@ export function MirrorView({
    */
   const onKey = (event: KeyboardEvent<HTMLDivElement>, kind: "key.down" | "key.up") => {
     if (!controllable) return;
-    if (event.nativeEvent.isComposing) return;
+    // 조합 중의 키는 로컬 IME 가 소비한다. 대상에도 보내면 같은 자모가 두 번 들어가고,
+    // 그 결과는 사용자가 본 화면과 다르다 (FR-326 · `ImeBridge` 와 같은 판정).
+    if (isComposingKey(event.nativeEvent)) return;
     event.preventDefault();
     emit({
       kind,
@@ -202,6 +224,17 @@ export function MirrorView({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
+      {/*
+        FR-325~FR-327 — 한글 조합을 대상 브라우저로 옮긴다. 아무것도 그리지 않는다.
+        조합의 주인은 미러 영역 자체이고, 이 컴포넌트는 그 영역의 조합 사건을 채널로
+        옮기기만 한다.
+      */}
+      <ImeBridge
+        target={surfaceEl}
+        active={controllable}
+        tab={tabIndex ?? 0}
+        onInput={emitStable}
+      />
       <PhaseNotice phase={phase} tabIndex={tabIndex} surface={surface} />
 
       {degradedReason !== null && (
@@ -249,13 +282,17 @@ export function MirrorView({
             그대로 붙는다 — 초점이 어디 있는지(FR-320)를 정본이 말한다.
           */
           <div
+            ref={setSurfaceEl}
             data-action="mirror.control"
             data-controllable={controllable ? "true" : "false"}
+            data-key-target={controllable && focused ? "mirror" : "product"}
             aria-disabled={controllable ? undefined : "true"}
             tabIndex={controllable ? 0 : -1}
             className={controllable ? "tint-run" : undefined}
             onKeyDown={(event) => onKey(event, "key.down")}
             onKeyUp={(event) => onKey(event, "key.up")}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             style={{
               display: "grid",
               placeItems: "center",
@@ -324,7 +361,11 @@ export function MirrorView({
             {blockedReason}
           </span>
         )}
-        {controllable && <span className="muted">{MIRROR_FOCUS_HINT}</span>}
+        {controllable && (
+          <span className="muted">
+            {focused ? MIRROR_KEYS_GO_TO_TARGET : MIRROR_FOCUS_HINT}
+          </span>
+        )}
         {useWindowCapability !== undefined && degradedReason === null && (
           <UseWindowAction capability={useWindowCapability} onUseWindow={onUseWindow} />
         )}

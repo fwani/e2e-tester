@@ -278,7 +278,18 @@ class TabInput:
         )
 
     async def _ime_commit(self, event: dict[str, Any]) -> None:
-        """조합을 확정한다. `insertText` 가 `compositionend` 를 만든다 (research R2)."""
+        """조합을 확정한다. `insertText` 가 `compositionend` 를 만든다 (research R2).
+
+        **민감 입력의 치환은 여기서 하지 않는다** (T047 · FR-329). 이 모듈은 값을 대상
+        브라우저로 지나 보낼 뿐이고, Step 은 대상 페이지의 리코더가 만든다. 따라서 기존
+        치환 파이프라인(수집 → 검증 → 치환 → Step → 이벤트)이 미러 경로에도 그대로
+        적용된다 — 리코더가 `type="password"` 를 보고 민감으로 판정하고, Python 쪽이
+        변수 참조로 바꾼 뒤에야 이벤트가 나간다 (`recorder.js` 의 `sensitive` 필드).
+
+        **여기서 한 번 더 치환하면 안 된다.** 치환 책임을 두 곳에 두면 어느 쪽이 빠졌는지
+        알 수 없어지고, 이 모듈은 어느 요소가 비밀번호인지 알 방법도 없다 — 좌표와 문자열
+        만 받기 때문이다. 그 무지가 이 모듈이 민감 값을 흘릴 수 없는 이유이기도 하다.
+        """
         await self._insert_text(event)
 
     async def _file_attach(self, event: dict[str, Any]) -> None:

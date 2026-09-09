@@ -790,24 +790,60 @@
   let composing = false;
   const pending = new WeakMap();
 
+  /** 입력 하나에 대해 디바운스를 건다. `input` 과 `compositionend` 가 함께 쓴다. */
+  const scheduleSettle = (event, el) => {
+    const timer = pending.get(el);
+    if (timer) clearTimeout(timer);
+    pending.set(
+      el,
+      setTimeout(() => {
+        pending.delete(el);
+        if (composing) return;
+        onSettled(event);
+      }, INPUT_DEBOUNCE_MS),
+    );
+  };
+
   document.addEventListener("compositionstart", () => { composing = true; }, true);
-  document.addEventListener("compositionend", () => { composing = false; }, true);
+
+  /*
+    조합이 끝나면 **디바운스를 건다** (010 T048 · FR-328).
+
+    이전에는 `composing` 을 내리기만 했다. 창에서 운영체제 IME 로 입력할 때는 그것으로
+    충분하다 — 브라우저가 `compositionend` 뒤에 `input` 을 한 번 더 내보내고, 위의 `input`
+    처리가 디바운스를 건다.
+
+    **미러 경로는 그 `input` 이 오지 않는다.** 조합 확정은 CDP `Input.insertText` 로
+    일어나고, 실측 결과 그 뒤에 `input` 이 발생하지 않았다 (010 T048 실측:
+    compositionstart → compositionupdate → input(isComposing:true) ×3 → compositionend,
+    끝). 조합 중의 `input` 은 전부 `composing` 때문에 건너뛰었으므로 걸린 디바운스도 없다.
+
+    그 결과가 둘이었다.
+
+    1. 입력만 하고 다른 곳을 누르지 않은 채 녹화를 멈추면 그 입력이 Step 으로 남지
+       않는다 — FR-328 이 금지하는 상태다.
+    2. 같은 입력이 창 경로와 미러 경로에서 다른 시점에 Step 이 된다 — 원칙 I 이
+       요구하는 동등성(FR-324)이 시점에서 깨진다.
+
+    여기서 디바운스를 거는 것으로 두 경로가 같아진다. 창 경로에서는 뒤따르는 `input` 이
+    같은 타이머를 다시 걸 뿐이므로 동작이 바뀌지 않는다.
+  */
+  document.addEventListener(
+    "compositionend",
+    (event) => {
+      composing = false;
+      const el = targetOf(event);
+      if (el) scheduleSettle(event, el);
+    },
+    true,
+  );
 
   document.addEventListener(
     "input",
     (event) => {
       const el = targetOf(event);
       if (!el || composing) return;
-      const timer = pending.get(el);
-      if (timer) clearTimeout(timer);
-      pending.set(
-        el,
-        setTimeout(() => {
-          pending.delete(el);
-          if (composing) return;
-          onSettled(event);
-        }, INPUT_DEBOUNCE_MS),
-      );
+      scheduleSettle(event, el);
     },
     true,
   );

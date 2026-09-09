@@ -209,35 +209,35 @@ description: "Task list for 010-headless-mirror-control"
 
 ### 구현
 
-- [ ] T042 [US2] 키 사건과 문자 입력을 전달한다 — `key.down`/`key.up`/`text.insert`
+- [X] T042 [US2] 키 사건과 문자 입력을 전달한다 — `key.down`/`key.up`/`text.insert`
       in `backend/src/itb/mirror/input.py` (FR-325)
-- [ ] T043 [US2] 조합 사건을 전달한다 — `ime.compose` → `Input.imeSetComposition`,
+- [X] T043 [US2] 조합 사건을 전달한다 — `ime.compose` → `Input.imeSetComposition`,
       `ime.commit` → `Input.insertText`. 조합 중 값이 입력 요소에 실시간으로 들어가야
       한다 in `backend/src/itb/mirror/input.py` (FR-327 · research R2)
-- [ ] T044 [US2] 조합을 조작 채널로 흘리는 프론트 브리지를 만든다 — 로컬 IME 의
+- [X] T044 [US2] 조합을 조작 채널로 흘리는 프론트 브리지를 만든다 — 로컬 IME 의
       `compositionstart`/`update`/`end` 를 채널 사건으로 옮기고, **다음 키가 앞 키의
       전달 완료를 기다리지 않게** 한다
       in `frontend/src/components/mirror/ImeBridge.tsx` (FR-327a)
-- [ ] T045 [US2] 미러 영역의 초점 소유를 정한다 — 초점이 있으면 키가 대상으로 가고
+- [X] T045 [US2] 미러 영역의 초점 소유를 정한다 — 초점이 있으면 키가 대상으로 가고
       없으면 제품 화면이 받는다. 어느 쪽이 받는 상태인지 화면에서 구분되어야 한다
       in `frontend/src/components/MirrorView.tsx` (FR-320)
-- [ ] T046 [US2] 조합 중 미러 밖을 클릭했을 때의 처리를 정한다 — 확정할지 버릴지를
+- [X] T046 [US2] 조합 중 미러 밖을 클릭했을 때의 처리를 정한다 — 확정할지 버릴지를
       한 곳에서 결정하고 그 결정을 주석으로 남긴다
       in `frontend/src/components/mirror/ImeBridge.tsx` (명세 Edge Cases)
-- [ ] T047 [US2] 민감 입력이 미러 경로에서도 변수 참조로 저장되는지 확인한다 — 리코더가
+- [X] T047 [US2] 민감 입력이 미러 경로에서도 변수 참조로 저장되는지 확인한다 — 리코더가
       Step 을 만들기 때문에 기존 치환 파이프라인(수집 → 검증 → 치환 → Step → 이벤트)이
       그대로 적용되어야 한다 in `backend/src/itb/mirror/input.py` (FR-329)
-- [ ] T048 [US2] **FR-328 확인 작업** — 입력만 하고 확정 계기가 없는 상태에서 녹화를
+- [X] T048 [US2] **FR-328 확인 작업** — 입력만 하고 확정 계기가 없는 상태에서 녹화를
       멈출 때 Step 이 남는지 코드로 확인한다. 리코더의 `change`/`blur` 확정과 150ms
       디바운스 경로 중 무엇이 Step 을 만드는지 밝히고, 남지 않으면 그 자리를 고친다
       in `backend/src/itb/recording/recorder.py` (research 미해결 항목)
-- [ ] T049 [P] [US2] 조합 중 값이 Step 으로 새지 않는지 검증 — 리코더의 `composing`
+- [X] T049 [P] [US2] 조합 중 값이 Step 으로 새지 않는지 검증 — 리코더의 `composing`
       플래그가 조합 중 `input` 을 무시하는 것을 미러 경로에서도 확인한다
       in `backend/tests/integration/test_mirror_recording_parity.py` (FR-326 · FR-327c)
-- [ ] T050 [P] [US2] 연속 타이핑 유실·순서 검증 — 8자 이상을 연속 입력해 최종 값이
+- [X] T050 [P] [US2] 연속 타이핑 유실·순서 검증 — 8자 이상을 연속 입력해 최종 값이
       정확한지 in `backend/tests/integration/test_mirror_recording_parity.py`
       (SC-515b · FR-327b)
-- [ ] T051 [P] [US2] 민감 값이 화면·이벤트·로그에 평문으로 나타나지 않는지 검증
+- [X] T051 [P] [US2] 민감 값이 화면·이벤트·로그에 평문으로 나타나지 않는지 검증
       in `backend/tests/unit/test_mirror_input.py` (FR-329)
 
 **Checkpoint**: 녹화가 미러 안에서 완결된다 — SC-511 이 온전히 성립한다.

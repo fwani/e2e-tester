@@ -281,3 +281,179 @@ def test_mirror_wheel_scrolls_without_making_a_step(
 
     assert scrolled > 0, "미러에서 굴린 휠이 대상 페이지를 스크롤하지 못했다"
     assert after == before, f"스크롤만으로 Step 이 {after - before}개 쌓였다"
+
+
+# ─── US2: 한글 입력 (T049·T050 · FR-326~FR-328 · SC-515) ────────────────────
+
+
+def _type_korean_through_mirror(
+    client: TestClient, session_id: str, selector: str, text: str
+) -> None:
+    """미러 경로로 한글을 입력한다 — 조합 중 상태를 그대로 옮긴다 (FR-327).
+
+    사용자의 기계에 있는 IME 가 만드는 것과 같은 순서다: 글자마다 조합 갱신, 마지막에
+    확정 하나. 확정만 보내면 대상 화면이 실제 사용자와 다르게 반응한다 (research R2).
+    """
+    x, y = _center(client, session_id, selector)
+    with client.websocket_connect(CONTROL_PATH.format(sid=session_id)) as ws:
+        for event in (
+            {"kind": "pointer.down", "tab": 0, "x": x, "y": y, "button": "left"},
+            {"kind": "pointer.up", "tab": 0, "x": x, "y": y, "button": "left"},
+        ):
+            ws.send_text(json.dumps(event))
+        for i in range(1, len(text) + 1):
+            partial = text[:i]
+            ws.send_text(
+                json.dumps(
+                    {
+                        "kind": "ime.compose",
+                        "tab": 0,
+                        "text": partial,
+                        "compositionRange": [len(partial), len(partial)],
+                    }
+                )
+            )
+        ws.send_text(json.dumps({"kind": "ime.commit", "tab": 0, "text": text}))
+        _settle(client)
+
+
+def _value_of(client: TestClient, session_id: str, selector: str) -> str:
+    page = _page(client, session_id)
+
+    async def read(p: Any = page) -> str:
+        return str(await p.input_value(selector))
+
+    return client.portal.call(read)  # type: ignore[attr-defined]
+
+
+@pytest.mark.browser
+def test_korean_typed_through_the_mirror_reaches_the_target(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**미러에서 친 한글이 대상 입력 요소에 정확히 들어간다** (FR-325 · SC-515).
+
+    자모를 그대로 보내면 「ㅈㅜㅁㅜㄴ」이 된다 — 대상 브라우저에는 IME 가 없기 때문이다
+    (research R2 가 버린 대안). 조합 상태를 옮기는 것이 그 문제의 해법이고, 이 검증이
+    그 해법이 실제로 동작하는지를 본다.
+    """
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        _type_korean_through_mirror(keyed_client, session_id, "#email", "주문 내역")
+        value = _value_of(keyed_client, session_id, "#email")
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    assert value == "주문 내역", f"대상 입력 요소의 값이 다르다: {value!r}"
+
+
+@pytest.mark.browser
+def test_composing_values_never_become_steps(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**조합 중인 값이 Step 으로 새지 않는다** (FR-326·FR-327c · SC-515).
+
+    조합 중 값이 대상 입력 요소에 들어가 있는 것과 그것이 Step 이 되는 것은 별개다.
+    리코더의 `composing` 플래그가 조합 중 `input` 을 무시하는 것이 그 구분이고, 이
+    검증은 그것이 **미러 경로에서도** 성립하는지를 본다.
+    """
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        _type_korean_through_mirror(keyed_client, session_id, "#email", "주문 내역")
+        fills = [s for s in _steps(keyed_client, session_id) if s["type"] == "fill"]
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    leaked = [s for s in fills if s.get("value") not in ("주문 내역", None)]
+    assert not leaked, (
+        "조합 중인 값이 Step 으로 새어 나왔다 (FR-326). "
+        f"새어 나온 값: {[s.get('value') for s in leaked]}"
+    )
+
+
+@pytest.mark.browser
+def test_input_survives_without_a_confirming_click(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**확정 계기가 없어도 입력이 Step 으로 남는다** (FR-328 · T048).
+
+    입력만 하고 다른 곳을 누르지 않은 채 녹화를 멈추는 경우다. 확정 계기(`change`·`blur`)
+    가 없으므로 150ms 디바운스 경로가 Step 을 만들어야 한다.
+
+    **미러 경로에는 그 경로가 원래 없었다** (T048 실측). CDP `Input.insertText` 로 조합을
+    확정하면 그 뒤에 `input` 이 발생하지 않고, 조합 중의 `input` 은 `composing` 때문에
+    전부 건너뛰었으므로 걸린 디바운스도 없었다. 리코더가 `compositionend` 에서 디바운스를
+    걸도록 고친 것이 T048 이고, 이 검증이 그 수정을 고정한다.
+    """
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        _type_korean_through_mirror(keyed_client, session_id, "#email", "주문 내역")
+        # **아무 곳도 클릭하지 않는다.** 확정 계기를 만들지 않는 것이 이 검증의 조건이다.
+        fills = [s for s in _steps(keyed_client, session_id) if s["type"] == "fill"]
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    assert fills, "확정 계기가 없다는 이유로 입력이 통째로 사라졌다 (FR-328)"
+    assert fills[-1].get("value") == "주문 내역", (
+        f"남은 입력 Step 의 값이 다르다: {fills[-1].get('value')!r}"
+    )
+
+
+@pytest.mark.browser
+def test_long_korean_input_keeps_order_and_loses_nothing(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**연속 타이핑에서 키가 유실되거나 순서가 바뀌지 않는다** (SC-515b · FR-327b).
+
+    중간 상태의 유실이 최종 값의 오류로 남아서는 안 된다. 확정을 전체 문자열 하나로
+    보내는 설계가 그것을 보장한다 — 중간 상태는 화면 반응을 위한 것이고 값의 근거가
+    아니다.
+    """
+    text = "주문 내역 조회"  # 8자 — research R2 의 측정 문자열
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        _type_korean_through_mirror(keyed_client, session_id, "#email", text)
+        value = _value_of(keyed_client, session_id, "#email")
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    assert value == text, f"연속 입력의 최종 값이 어긋났다: {value!r}"
+
+
+@pytest.mark.browser
+def test_sensitive_input_through_the_mirror_is_stored_as_a_variable(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**미러 경로의 비밀번호도 변수 참조로 저장된다** (FR-329 · T047 · 헌법 보안 요건).
+
+    치환은 미러가 하지 않는다 — 리코더가 Step 을 만들기 때문에 기존 파이프라인(수집 →
+    검증 → 치환 → Step → 이벤트)이 그대로 적용된다. 이 검증은 그 전제가 실제로 성립하는지,
+    즉 **평문이 Step 에 남지 않는지**를 본다.
+    """
+    secret = "mirror-path-not-a-real-secret"
+    session_id = _start(keyed_client, f"{fixture_app}/login.html")
+    try:
+        x, y = _center(keyed_client, session_id, "#password")
+        with keyed_client.websocket_connect(CONTROL_PATH.format(sid=session_id)) as ws:
+            for event in (
+                {"kind": "pointer.down", "tab": 0, "x": x, "y": y, "button": "left"},
+                {"kind": "pointer.up", "tab": 0, "x": x, "y": y, "button": "left"},
+                {"kind": "text.insert", "tab": 0, "text": secret},
+            ):
+                ws.send_text(json.dumps(event))
+            _settle(keyed_client)
+        raw = keyed_client.get(f"/api/sessions/{session_id}").text
+        fills = [s for s in _steps(keyed_client, session_id) if s["type"] == "fill"]
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+    assert secret not in raw, "비밀번호 평문이 세션 응답에 그대로 있다 (FR-329)"
+    assert fills, "비밀번호 입력이 Step 으로 남지 않았다"
+
+    # **민감함은 별도 표식이 아니라 값의 모습으로 나타난다.** 저장된 Step 의 값이 변수
+    # 참조(`{{...}}`)이고 평문이 아니라는 것이 FR-329 가 요구하는 상태다 — 치환이
+    # 이벤트 발행보다 먼저 일어났다는 증거이기도 하다.
+    values = [str(s.get("value", "")) for s in fills]
+    assert any(v.startswith("{{") and v.endswith("}}") for v in values), (
+        f"비밀번호가 변수 참조로 저장되지 않았다: {values}"
+    )
+    assert secret not in str(fills), "민감 Step 안에 평문이 남았다"
