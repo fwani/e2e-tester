@@ -35,16 +35,16 @@ description: "Task list for 010-headless-mirror-control"
 **⚠️ 개정 작업이 포함된다.** 기존 검증을 **삭제하지 않고 방향을 바꾼다** (헌법 품질
 게이트 4 · plan.md Complexity Tracking).
 
-- [ ] T001 `headless_default()` 기본값을 `True` 로 뒤집고 알 수 없는 값·오타를 헤드리스
+- [X] T001 `headless_default()` 기본값을 `True` 로 뒤집고 알 수 없는 값·오타를 헤드리스
       유지로 읽게 바꾼다 in `backend/src/itb/execution/session.py` (FR-352)
-- [ ] T002 헤드리스 기본값 검증 2건을 개정한다 — `test_headless_is_off_by_default_in_the_product`
+- [X] T002 헤드리스 기본값 검증 2건을 개정한다 — `test_headless_is_off_by_default_in_the_product`
       와 `test_unknown_headless_value_keeps_the_window` 를 **반대 방향**(기본이 창 없음,
       오타는 기본값으로 붙음)으로 바꾸고, 무엇이 왜 뒤집혔는지를 독스트링에 남긴다
       in `backend/tests/unit/test_test_tiers.py` (research R10)
-- [ ] T003 [P] `_headless_browsers` 픽스처의 의미를 재정리한다 — 제품 기본값과 같아졌으므로
+- [X] T003 [P] `_headless_browsers` 픽스처의 의미를 재정리한다 — 제품 기본값과 같아졌으므로
       그 픽스처가 지금 무엇을 위해 있는지를 주석으로 명시하고, 창을 띄우는 검증이 있으면
       그것만 명시적으로 반대로 둔다 in `backend/tests/conftest.py`
-- [ ] T004 [P] 창 존재를 전제한 안내 문구를 조사해 목록으로 남긴다 — 이후 US5 에서
+- [X] T004 [P] 창 존재를 전제한 안내 문구를 조사해 목록으로 남긴다 — 이후 US5 에서
       `window` 상태의 문구로 옮길 대상이다 in `frontend/src/lib/wording.ts` (M-05)
 
 **Checkpoint**: `uv run pytest -m "not browser and not timing" -q` 가 통과한다. 대상

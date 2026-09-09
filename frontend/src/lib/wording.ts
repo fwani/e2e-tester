@@ -407,6 +407,25 @@ export function pausedAfterLabel(nextIndex: number | null | undefined): string {
  * 끝난 뒤에는 일시정지가 아니다. 같은 화면의 배지는 이미 그 사실을 말하고 있었으므로
  * 한 화면이 두 가지를 주장했다.
  */
+/**
+ * **010 T004 — 창 존재를 전제한 문구 목록.**
+ *
+ * 010 이후 대상 브라우저는 창 없이 뜨는 것이 기본이고 (FR-352), 조작은 제품 화면 안
+ * 미러에서 한다 (FR-314). 아래 넷은 001 이 「창이 항상 있다」를 전제하고 쓴 문구다.
+ * 지우지 않고 **`window` 조작 위치의 문구로 옮긴다** — 사용자가 실제 창으로 전환했을
+ * 때 그 문구는 여전히 참이고, 그때가 유일하게 참인 때다 (FR-350 · M-05).
+ *
+ * | 자리 | 문구 | 010 에서 |
+ * |---|---|---|
+ * | `mirrorNotice("manipulation")` | 「실제 브라우저 창에서 조작 중 · 이 영역은 관찰용이며 조작 대상이 아닙니다」 | `window` 위치의 문구로 (T037·T077) |
+ * | `mirrorNotice("finished")` | 「브라우저 창은 아직 열려 있습니다」 | 창 없이 뜬 세션에서 거짓 → 「브라우저 세션은 아직 살아 있습니다」 (T037) |
+ * | `mirrorEmptyMessage("observation")` | 「대상 브라우저 창은 이미 열려 있습니다」 | 같은 이유로 창을 언급하지 않게 (T037) |
+ * | `mirrorEmptyMessage("manipulation")` | 「실제 브라우저 창에서 조작하세요」 | `window` 위치의 문구로 (T037·T077) |
+ *
+ * 조작 위치(`ControlSurface`)를 문구가 알아야 하므로, 위 함수들은 T037 에서 위치를
+ * 인자로 받는다. 그전까지 이 표가 무엇을 옮길지의 목록이다.
+ */
+
 export type MirrorNoticePhase =
   | "manipulation"
   | "observation"

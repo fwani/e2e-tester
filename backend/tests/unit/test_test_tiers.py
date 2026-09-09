@@ -112,15 +112,21 @@ def test_timing_modules_all_exist() -> None:
     )
 
 
-def test_headless_is_off_by_default_in_the_product() -> None:
-    """제품 기본값은 **창을 띄우는 것**이다.
+def test_headless_is_on_by_default_in_the_product() -> None:
+    """제품 기본값은 **창 없이 띄우는 것**이다 (010 FR-352).
 
-    검증은 창 없이 돈다 (`tests/conftest.py` 의 `_headless_browsers`). 그 편의가
-    제품 기본값으로 새면 녹화·인수인계에서 사람이 조작할 창이 사라지고, 그때의 실패는
-    원인이 이 설정이라는 것을 드러내지 않는다.
+    **이 검증은 010 이 방향을 뒤집은 것이다.** 이전 이름은
+    `test_headless_is_off_by_default_in_the_product` 였고, 제품 기본값이 「창을 띄우는
+    것」임을 고정했다. 그때의 근거는 조작 국면이 실제 브라우저 창에서만 성립한다는
+    것이었다 (001 clarify 결정 3).
 
-    환경 변수가 **켜져 있지 않을 때** 창을 띄우는지를 본다 — 픽스처가 켜 둔 값을
-    잠시 걷어내고 판정한다.
+    010 이 그 전제를 바꿨다 — 조작은 제품 화면 안 미러에서 한다. 창이 기본이면 화면 없는
+    기계에서 제품이 뜨지 못하고, 그것이 SC-518 이 막으려는 상태다. 검증을 **지우지 않고**
+    반대 방향으로 돌린 이유는 지키려는 성질이 그대로이기 때문이다: 기본값이 무엇인지가
+    한 곳에 못 박혀 있어야, 나중에 조용히 흔들렸을 때 여기가 먼저 실패한다
+    (헌법 품질 게이트 4 · research R10).
+
+    환경 변수가 **켜져 있지 않을 때**를 본다 — 픽스처가 켜 둔 값을 잠시 걷어내고 판정한다.
     """
     import os
 
@@ -128,17 +134,24 @@ def test_headless_is_off_by_default_in_the_product() -> None:
 
     saved = os.environ.pop(HEADLESS_ENV, None)
     try:
-        assert headless_default() is False
+        assert headless_default() is True
     finally:
         if saved is not None:
             os.environ[HEADLESS_ENV] = saved
 
 
-def test_unknown_headless_value_keeps_the_window() -> None:
-    """알 수 없는 값을 창 없음으로 읽지 않는다.
+def test_unknown_headless_value_keeps_the_default() -> None:
+    """알 수 없는 값은 **기본값(창 없음)으로 붙는다**. 창을 여는 쪽으로 읽지 않는다.
 
-    오타 하나로 사람이 조작할 창이 사라지면 안 된다 — 그 실패는 원인이 오타라는 것을
-    드러내지 않는다.
+    **이 검증도 010 이 방향을 뒤집었다.** 이전 이름은
+    `test_unknown_headless_value_keeps_the_window` 이고, 오타가 창을 없애지 않게 하는
+    것이 목적이었다 — 사람이 조작할 창이 조용히 사라지면 그 실패는 원인을 드러내지 않는다.
+
+    그 목적은 사라진 것이 아니라 **대상이 옮겨갔다.** 조작 수단이 미러가 되었으므로 오타로
+    사라지면 안 되는 것은 창이 아니다. 반대로, 오타가 창을 열어 버리면 화면 없는 기계에서
+    브라우저 실행 자체가 실패한다 — 그 실패야말로 원인을 드러내지 않는다.
+
+    창은 `_FALSE` 의 값을 **명시했을 때만** 열린다 (research R10).
     """
     import os
 
@@ -146,18 +159,19 @@ def test_unknown_headless_value_keeps_the_window() -> None:
 
     saved = os.environ.get(HEADLESS_ENV)
     try:
-        for value in ("", "0", "no", "off", "ture", "yes please"):
+        for value in ("0", "false", "no", "off", " OFF "):
             os.environ[HEADLESS_ENV] = value
             assert headless_default() is False, f"{value!r} 를 창 없음으로 읽었다"
-        for value in ("1", "true", "TRUE", " yes ", "on"):
+        for value in ("", "1", "true", "TRUE", " yes ", "on", "ture", "yes please"):
             os.environ[HEADLESS_ENV] = value
-            assert headless_default() is True, f"{value!r} 를 창 없음으로 읽지 못했다"
+            assert headless_default() is True, (
+                f"{value!r} 를 창 띄움으로 읽었다 — 알 수 없는 값은 기본값으로 붙어야 한다"
+            )
     finally:
         if saved is None:
             os.environ.pop(HEADLESS_ENV, None)
         else:
             os.environ[HEADLESS_ENV] = saved
-
 
 def test_ci_runs_the_timing_tier() -> None:
     """CI 가 **순차 계층을 반드시 돈다.**
