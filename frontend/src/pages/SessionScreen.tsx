@@ -62,6 +62,7 @@ import { TabStrip } from "../components/TabStrip";
 import { BrowserFrame } from "../components/design/BrowserFrame";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
+import { BulkDeleteConfirm } from "../components/workbench/BulkDeleteConfirm";
 import { InsertStepForm } from "../components/workbench/InsertStepForm";
 import { ConfirmDelete, StepRowOps } from "../components/workbench/StepRowOps";
 import { Workbench } from "../components/workbench/Workbench";
@@ -105,6 +106,8 @@ import {
   type OutcomeTone,
   SAVE_NEEDS_NAME,
   EDIT_NEEDS_SAVE,
+  NO_DELETE_SELECTION,
+  NO_STEPS_AFTER,
   RUN_NEEDS_SAVE,
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
@@ -266,6 +269,16 @@ export interface SessionWorkbenchProps {
   onNaturalLanguage?: (instruction: string) => void;
   onDeleteStep?: (stepId: string) => void;
   /**
+   * 여러 Step 을 **한 번에** 지운다 (011 FR-382·FR-388).
+   *
+   * `onDeleteStep` 을 반복 호출하지 않는다 — 중간에 끊기면 부분 적용이 남는다.
+   */
+  onDeleteSteps?: (stepIds: string[]) => void;
+  /** 삭제 대상으로 고른 Step id 들. 소유는 `SessionScreen` 이다 */
+  deleteSelection?: string[];
+  onToggleDeleteTarget?: (stepId: string) => void;
+  onToggleAllDeleteTargets?: () => void;
+  /**
    * 009 FR-298·FR-301 — **행에서** 순서를 바꾼다.
    *
    * 이전에는 `onToggleReorder` 로 별도 패널을 열고 그 안에서 옮긴 뒤 「적용」을 눌렀다.
@@ -309,6 +322,13 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   const [insertOpen, setInsertOpen] = useState(false);
   /** 지우기 확인을 기다리는 Step (009 FR-302). **행 안에서** 묻는다. */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /**
+   * 복수 삭제 확인을 기다리는 Step id 들 (011 FR-384 · UC-011-18).
+   *
+   * **개수와 범위를 문장으로 보여 준 뒤에 지운다.** 여러 개를 한 번에 지우는 조작은
+   * 되돌리기가 비싸고, 「11개」만으로는 어느 11개인지 알 수 없다.
+   */
+  const [pendingBulk, setPendingBulk] = useState<string[] | null>(null);
   /** 자연어 Step 입력. 팔레트가 아니라 어댑터가 갖는다 — 보내는 것은 어댑터다. */
   const [nl, setNl] = useState("");
   const {
@@ -358,6 +378,10 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     onInsertManual,
     onNaturalLanguage,
     onDeleteStep,
+    onDeleteSteps,
+    deleteSelection = [],
+    onToggleDeleteTarget,
+    onToggleAllDeleteTargets,
     onApplyReorder,
     onRunFromHere,
     onRerunAll,
@@ -496,6 +520,16 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     });
   })();
   const selectedIndex = steps.findIndex((s) => s.id === focusedStepId);
+  /**
+   * 「이 뒤 전부」의 대상 (011 FR-383).
+   *
+   * **화면이 계산한다 — 서버 개념이 아니다.** 서버에 범위를 넣으면 「그 사이 목록이
+   * 바뀌면 무엇을 지우는가」가 서버와 화면 양쪽에 생긴다 (research R5).
+   *
+   * 지목이 없으면 빈 배열이고, 그때 조작은 `narrowByPick` 이 이미 잠근다.
+   */
+  const afterTargets =
+    selectedIndex >= 0 ? steps.slice(selectedIndex + 1).map((s) => s.id) : [];
 
   /**
    * 자리를 한 칸 옮긴다 (009 FR-299).
@@ -970,6 +1004,17 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       case "step.delete":
         if (focusedStepId !== null) onDeleteStep?.(focusedStepId);
         break;
+      /*
+        011 — 복수 삭제. **확인은 팔레트가 아니라 이 화면이 세운다** (아래 `pendingBulk`).
+        겹침 대화상자를 쓰지 않는 것은 009 FR-302 와 같은 근거다: 대상이 화면에서
+        사라지면 무엇을 지우려던 것인지 다시 확인해야 한다.
+      */
+      case "step.deleteSelected":
+        if (deleteSelection.length > 0) setPendingBulk(deleteSelection);
+        break;
+      case "step.deleteAfter":
+        if (afterTargets.length > 0) setPendingBulk(afterTargets);
+        break;
       case "step.update":
         if (focusedStepId !== null) onOpenDetail?.(focusedStepId);
         break;
@@ -1011,6 +1056,24 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
    * 표는 **국면**을 말한다. "지목한 Step 이 없다" 는 국면이 아니므로 표에 담을 수 없고,
    * 담지 않으면 무엇에 걸지 모르는 조작이 활성으로 남아 눌러도 아무 일이 없다.
    */
+  /**
+   * 011 — 고른 것이 없으면 「고른 것 지우기」는 뜻이 없다 (FR-385 · UC-011-19).
+   *
+   * 「이 뒤 전부」가 **마지막 Step 에서** 잠기는 것도 여기서 본다. 둘 다 국면이 아니라
+   * 화면이 아는 사실이라 표에 담을 수 없다.
+   */
+  const narrowByDeleteSelection = (id: ActionId, base: CapabilityState): CapabilityState => {
+    if (base.kind !== "enabled") return base;
+    if (id === "step.deleteSelected" && deleteSelection.length === 0) {
+      return { kind: "disabled", reason: NO_DELETE_SELECTION, remedy: null, visibility: "keep" };
+    }
+    if (id === "step.deleteAfter" && selectedIndex >= 0 && afterTargets.length === 0) {
+      // 해소 방법을 달지 않는다 — 끝단이라는 사실은 사용자가 고칠 것이 아니다 (009 AT_BOTTOM).
+      return { kind: "disabled", reason: NO_STEPS_AFTER, remedy: null, visibility: "keep" };
+    }
+    return base;
+  };
+
   const narrowByPick = (id: ActionId, base: CapabilityState): CapabilityState =>
     // `run.from` 은 여기서 제외한다 — 지목이 없어도 실패한 자리·멈춘 자리를 쓸 수 있고,
     // 그 판단은 `runFromIndex` 가 한다.
@@ -1305,8 +1368,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     work,
     steps,
     focusedStepId,
-    /* 011 — 실제 선택 상태는 US4(T034)가 연결한다. 자리를 먼저 만든다 */
-    deleteSelection: [],
+    deleteSelection,
     detail:
       detailOpen && selectedIndex >= 0
         ? {
@@ -1374,6 +1436,24 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           />
         )
       }
+      /*
+        011 — 삭제 대상 고르기 (UC-011-14·15).
+
+        **언제나 넘긴다.** 그릴지 말지는 `StepList` 가 **권한표**를 보고 정한다 — prop 이
+        있는지로 정하면 표 밖에 판정이 하나 더 생기고, 그것이 007 이 없앤 형태다
+        (`capabilities.ts` 머리말 — 각 국면 열이 그 국면 화면의 전부).
+
+        결과 국면처럼 삭제 대상 선택이 없는 곳에서는 표가 접으라고 하므로 칸이 그려지지
+        않는다. 콜백이 없어도 안전하다 — 그때는 조작 자체가 비활성이다.
+      */
+      deleteTargets={{
+        selected: deleteSelection,
+        capability: capabilities["step.toggleDeleteTarget"],
+        allCapability: capabilities["step.selectAllDeleteTargets"],
+        onToggle: (stepId) => onToggleDeleteTarget?.(stepId),
+        onToggleAll: () => onToggleAllDeleteTargets?.(),
+        onRemedy,
+      }}
       noticesExtra={
         offline ? <LiveConnectionBanner onReconnect={() => onReconnect?.()} /> : null
       }
@@ -1381,11 +1461,29 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         phase === "running" ? "아직 기록된 Step 이 없습니다." : "기록된 Step 이 없습니다."
       }
       stepFooter={
+        <>
+        {/*
+          011 UC-011-18 — 복수 삭제 확인. **겹침 대화상자를 쓰지 않는다** (009 FR-302 와
+          같은 근거) — 대상이 화면에서 사라지면 무엇을 지우려던 것인지 다시 확인해야 한다.
+          목록 바로 아래이므로 지울 것을 보면서 답한다.
+        */}
+        {pendingBulk !== null && (
+          <BulkDeleteConfirm
+            targets={pendingBulk}
+            steps={steps}
+            busy={busy}
+            onConfirm={() => {
+              onDeleteSteps?.(pendingBulk);
+              setPendingBulk(null);
+            }}
+            onCancel={() => setPendingBulk(null)}
+          />
+        )}
         <ActionPalette
           capabilities={capabilities}
           onRun={runAction}
           onRemedy={onRemedy}
-          narrow={narrowByPick}
+          narrow={(id, base) => narrowByDeleteSelection(id, narrowByPick(id, base))}
           labels={{
             "run.fromHere":
               selectedIndex >= 0 ? `${stepLabel(selectedIndex)} 부터 이어 실행` : undefined,
@@ -1407,6 +1505,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           stepCount={steps.length}
           emptyHint="Step 이 없으면 저장할 수 없습니다."
         />
+        </>
       }
       onSelectStep={onSelectStep}
       onCloseDetail={() => onCloseDetail?.()}
@@ -1451,6 +1550,15 @@ const STEP_SCOPED = new Set<ActionId>([
   "step.moveDown",
   "run.fromHere",
   "run.from",
+  /*
+    011 — 「이 뒤 전부 지우기」는 **어디 뒤인지**를 알아야 뜻이 있다. 지목이 없으면
+    대상이 정해지지 않는다.
+
+    `step.deleteSelected` 는 여기 없다 — 그것의 전제는 지목이 아니라 **체크한 것이
+    있는가**이며, 아래 `narrowByDeleteSelection` 이 따로 좁힌다. 둘을 같은 사유로
+    묶으면 「먼저 Step 을 고르세요」가 체크를 뜻하는지 지목을 뜻하는지 갈리지 않는다.
+  */
+  "step.deleteAfter",
 ]);
 
 /*
@@ -1569,6 +1677,34 @@ export function SessionScreen({
   const [nameOverride, setNameOverride] = useState<string | null>(null);
   /** 저장 요청과 표시에 함께 쓰이는 이름. 두 칸에 넣게 하지 않는다 */
   const effectiveSaveName = nameOverride ?? view.test_name ?? "";
+
+  /**
+   * 삭제 대상으로 고른 Step (011 FR-380·FR-380b · UC-011-16).
+   *
+   * **인덱스가 아니라 id 다.** 인덱스로 가지면 순서 변경 뒤에 다른 Step 이 지워진다 —
+   * 고른 것은 「세 번째 행」이 아니라 「그 Step」이다.
+   *
+   * **저장되지 않는다.** 화면 안에서만 사는 일시 상태이며 서버로 가지 않는다
+   * (data-model §6).
+   */
+  const [deleteSelection, setDeleteSelection] = useState<string[]>([]);
+  /*
+    목록이 바뀌면 **사라진 id 만** 뺀다 (data-model §4-1).
+
+    비우지 않는 이유: 녹화가 Step 을 더하는 동안에도 고른 것은 그대로여야 한다. 순서가
+    바뀌어도 남는 것이 FR-380b 이며, id 로 갖는 것이 그것을 공짜로 만든다.
+
+    `join` 으로 비교하는 이유는 `view.steps` 가 매 응답마다 새 배열이라서다 — 참조로 비교하면
+    내용이 같아도 매번 돈다.
+  */
+  const stepIdsKey = view.steps.map((s) => s.id).join(",");
+  useEffect(() => {
+    const alive = new Set(stepIdsKey === "" ? [] : stepIdsKey.split(","));
+    setDeleteSelection((prev) => {
+      const next = prev.filter((id) => alive.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [stepIdsKey]);
   /** 이 테스트에 이름이 이미 있는가. 확인 대화상자가 이름을 묻는지를 정한다 (UC-011-5) */
   const testHasName = (view.test_id ?? null) !== null;
   const [busy, setBusy] = useState(false);
@@ -2467,6 +2603,33 @@ export function SessionScreen({
             .finally(() => setBusy(false));
         }}
         onDeleteStep={(stepId) => void edit(() => sessions.deleteStep(sessionId, stepId))}
+        /*
+          011 FR-382·FR-388 — **한 번의 요청으로 지운다.** `deleteStep` 을 반복하면
+          중간에 끊길 때 부분 적용이 남는다.
+
+          지운 뒤 선택을 비운다 (data-model §4-1) — 지워진 id 가 남아 있으면 다음 삭제가
+          없는 것을 지우려 한다.
+        */
+        onDeleteSteps={(stepIds) => {
+          void edit(() => sessions.deleteSteps(sessionId, stepIds)).then(() =>
+            setDeleteSelection([]),
+          );
+        }}
+        deleteSelection={deleteSelection}
+        onToggleDeleteTarget={(stepId) =>
+          setDeleteSelection((prev) =>
+            prev.includes(stepId) ? prev.filter((id) => id !== stepId) : [...prev, stepId],
+          )
+        }
+        /*
+          전부 고르기 / 전부 풀기 (FR-380c). **지금 목록을 기준으로 판정한다** — 고른 것이
+          목록 전체와 같으면 풀고, 아니면 전부 고른다.
+        */
+        onToggleAllDeleteTargets={() =>
+          setDeleteSelection((prev) =>
+            prev.length === view.steps.length ? [] : view.steps.map((s) => s.id),
+          )
+        }
         onApplyReorder={(order) => void edit(() => sessions.reorderSteps(sessionId, order))}
         onRunFromHere={(stepIndex) => void act(() => sessions.runFrom(sessionId, stepIndex))}
         onRerunAll={() => rerun()}

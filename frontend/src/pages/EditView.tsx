@@ -32,6 +32,7 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 import { StepEditFields } from "../components/StepEditFields";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
+import { BulkDeleteConfirm } from "../components/workbench/BulkDeleteConfirm";
 import { InsertStepForm } from "../components/workbench/InsertStepForm";
 import { ConfirmDelete, StepRowOps } from "../components/workbench/StepRowOps";
 import { Workbench } from "../components/workbench/Workbench";
@@ -46,6 +47,8 @@ import {
 import {
   DISABLED_REASON,
   EDIT_BLOCKED_BY_RUN,
+  NO_DELETE_SELECTION,
+  NO_STEPS_AFTER,
   OPEN_RUNNING_SESSION,
   PHASE_LABEL,
   SAVE_BEFORE_OPEN_BROWSER,
@@ -229,6 +232,15 @@ export function EditView({
 }: EditViewProps) {
   const [view, setView] = useState<DefinitionView | null>(null);
   const [ops, setOps] = useState<EditOp[]>([]);
+  /**
+   * 삭제 대상으로 고른 Step (011 FR-380 · UC-011-16).
+   *
+   * **id 로 갖는다** — 인덱스로 가지면 순서 변경 뒤 다른 Step 이 지워진다. 편집 국면은
+   * 순서 변경이 잦은 곳이라 이 성질이 특히 중요하다.
+   */
+  const [deleteSelection, setDeleteSelection] = useState<string[]>([]);
+  /** 복수 삭제 확인 대기 (FR-384). 목록 아래에서 개수·범위를 보인 뒤 지운다 */
+  const [pendingBulk, setPendingBulk] = useState<string[] | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [selected, setSelected] = useState<string | null>(focusStepId);
   const [detailOpen, setDetailOpen] = useState(focusStepId !== null);
@@ -312,6 +324,24 @@ export function EditView({
   const apply = (op: EditOp) => {
     setSavedName(null);
     setOps((prev) => mergeOps(prev, op));
+  };
+
+  /**
+   * 여러 Step 을 **한 묶음으로** 지운다 (011 FR-382·FR-388).
+   *
+   * **라우트를 더하지 않는다.** 저장 요청이 이미 편집 연산 목록을 받으므로 `delete` 를
+   * 여러 개 실으면 그대로 원자적 복수 삭제다 (research R5 · api-contract §2). 서버가
+   * 하나라도 못 찾으면 파일을 쓰지 않는다.
+   *
+   * **id 로 보낸다.** 인덱스로 보내면 앞의 삭제가 뒤의 인덱스를 밀어 다른 Step 이
+   * 지워진다 — 연산이 id 를 받는 것이 그 함정을 구조적으로 막는다.
+   */
+  const applyBulkDelete = (stepIds: string[]) => {
+    setSavedName(null);
+    setOps((prev) =>
+      stepIds.reduce<EditOp[]>((acc, id) => mergeOps(acc, { op: "delete", step_id: id }), prev),
+    );
+    setDeleteSelection([]);
   };
 
   const revert = (index: number) => setOps((prev) => prev.filter((_, i) => i !== index));
@@ -520,6 +550,12 @@ export function EditView({
       case "step.delete":
         if (current !== null) apply({ op: "delete", step_id: current.id });
         break;
+      case "step.deleteSelected":
+        if (deleteSelection.length > 0) setPendingBulk(deleteSelection);
+        break;
+      case "step.deleteAfter":
+        if (afterTargets.length > 0) setPendingBulk(afterTargets);
+        break;
       case "step.moveUp":
         if (currentIndex >= 0) move(currentIndex, -1);
         break;
@@ -531,13 +567,33 @@ export function EditView({
     }
   }
 
+  /**
+   * 「이 뒤 전부」의 대상 (011 FR-383). **화면이 계산한다** — 서버 개념이 아니다.
+   */
+  const afterTargets =
+    currentIndex >= 0 ? dslSteps.slice(currentIndex + 1).map((s) => s.id) : [];
+
   /** 지목한 Step 이 있어야 뜻이 있는 조작. 표는 국면을, 이것은 화면이 아는 사실을 본다. */
   const STEP_SCOPED: ActionId[] = [
     "step.moveUp",
     "step.moveDown",
     "step.delete",
     "browser.openAt",
+    /* 011 — 「어디 뒤인지」를 알아야 뜻이 있다. `deleteSelected` 는 아래에서 따로 좁힌다 */
+    "step.deleteAfter",
   ];
+
+  /** 011 — 고른 것이 없거나 뒤에 아무것도 없으면 잠근다 (FR-385 · UC-011-19). */
+  const narrowByDeleteSelection = (id: ActionId, base: CapabilityState): CapabilityState => {
+    if (base.kind !== "enabled") return base;
+    if (id === "step.deleteSelected" && deleteSelection.length === 0) {
+      return { kind: "disabled", reason: NO_DELETE_SELECTION, remedy: null, visibility: "keep" };
+    }
+    if (id === "step.deleteAfter" && currentIndex >= 0 && afterTargets.length === 0) {
+      return { kind: "disabled", reason: NO_STEPS_AFTER, remedy: null, visibility: "keep" };
+    }
+    return base;
+  };
   const narrowByPick = (id: ActionId, base: CapabilityState) =>
     STEP_SCOPED.includes(id) && currentIndex < 0 && base.kind === "enabled"
       ? ({
@@ -766,8 +822,7 @@ export function EditView({
     },
     steps,
     focusedStepId: selected,
-    /* 011 — 실제 선택 상태는 US4(T035)가 연결한다. 자리를 먼저 만든다 */
-    deleteSelection: [],
+    deleteSelection,
     detail:
       detailOpen && current !== null
         ? {
@@ -806,6 +861,21 @@ export function EditView({
           onChange: (v) => apply({ op: "set_name", name: v }),
           onRemedy: runAction,
         }}
+        /* 011 — 삭제 대상 고르기 (UC-011-14·15) */
+        deleteTargets={{
+          selected: deleteSelection,
+          capability: capabilities["step.toggleDeleteTarget"],
+          allCapability: capabilities["step.selectAllDeleteTargets"],
+          onToggle: (stepId) =>
+            setDeleteSelection((prev) =>
+              prev.includes(stepId) ? prev.filter((id) => id !== stepId) : [...prev, stepId],
+            ),
+          onToggleAll: () =>
+            setDeleteSelection((prev) =>
+              prev.length === dslSteps.length ? [] : dslSteps.map((s) => s.id),
+            ),
+          onRemedy: runAction,
+        }}
         headerActions={headerActions}
         /*
           009 FR-298 — 행 조작. `rowActions` 자리는 007 이 열어 두었고 넘기는 화면이
@@ -834,11 +904,25 @@ export function EditView({
         }
         stepEmptyNotice="이 테스트에는 Step 이 없습니다."
         stepFooter={
+          <>
+          {/* 011 UC-011-18 — 복수 삭제 확인. 세션 화면과 **같은 구현**을 쓴다 */}
+          {pendingBulk !== null && (
+            <BulkDeleteConfirm
+              targets={pendingBulk}
+              steps={steps}
+              busy={saving}
+              onConfirm={() => {
+                applyBulkDelete(pendingBulk);
+                setPendingBulk(null);
+              }}
+              onCancel={() => setPendingBulk(null)}
+            />
+          )}
           <ActionPalette
             capabilities={capabilities}
             onRun={runAction}
             onRemedy={runAction}
-            narrow={narrowByPick}
+            narrow={(id, base) => narrowByDeleteSelection(id, narrowByPick(id, base))}
             /*
               이 국면에서 자리가 다른 둘 — 브라우저 열기는 대상 앱 영역(T079), 충돌
               중의 덮어쓰기는 「다시 읽기」와 짝을 이루는 보조 영역(FR-209)이 갖는다.
@@ -868,6 +952,7 @@ export function EditView({
             stepCount={dslSteps.length}
             emptyHint="이 테스트에는 Step 이 없습니다."
           />
+          </>
         }
         onSelectStep={(stepId) => {
           setSelected(stepId);

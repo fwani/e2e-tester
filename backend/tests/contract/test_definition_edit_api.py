@@ -798,3 +798,94 @@ def test_정의_편집_입구도_같은_step_을_만든다(saved: TestClient) ->
         "match": "contains",
         "value": "/done",
     }
+
+
+# ─── 011 복수 삭제 — 편집 경로는 라우트를 더하지 않는다 (api-contract §2) ────
+#
+# **이 절이 그 주장의 증거다.** 011 research R5 는 「편집 API 가 이미 편집 연산 목록을
+# 받으므로 `delete` 를 여러 개 실으면 그대로 원자적 복수 삭제다」로 판단해 라우트를 더하지
+# 않았다. 판단이 옳은지 재는 검사가 없으면 그것은 주장일 뿐이다.
+
+
+def test_011_delete_여러_개가_한_묶음에서_전부_지워진다(saved: TestClient) -> None:
+    """FR-382 — 「고른 것 지우기」가 편집 국면에서 도는 방식이다."""
+    resp = _save(
+        saved,
+        [
+            {"op": "delete", "step_id": "step-02"},
+            {"op": "delete", "step_id": "step-04"},
+            {"op": "delete", "step_id": "step-05"},
+        ],
+    )
+    assert resp.status_code == 200, resp.text
+    assert [s["id"] for s in resp.json()["test"]["steps"]] == ["step-01", "step-03"]
+
+
+def test_011_delete_는_id_로_지우므로_순서에_의존하지_않는다(saved: TestClient) -> None:
+    """**인덱스로 보내면 앞의 삭제가 뒤의 인덱스를 밀어 다른 Step 이 지워진다.**
+
+    화면이 「이 뒤 전부」를 인덱스로 보내면 그 함정에 빠진다. 연산이 id 를 받는다는 것이
+    그것을 구조적으로 막는다 — 어느 순서로 보내도 같은 결과여야 한다.
+    """
+    forward = _save(
+        saved,
+        [{"op": "delete", "step_id": f"step-0{i}"} for i in (2, 3, 4)],
+    )
+    assert forward.status_code == 200, forward.text
+    forward_ids = [s["id"] for s in forward.json()["test"]["steps"]]
+
+    # 같은 재료를 다시 만들고 **역순**으로 보낸다.
+    _repo(saved).write_test(
+        Test(
+            id="TC-002",
+            name="로그인",
+            authoring_mode="record",
+            start_url=START_URL,
+            variables=[{"name": "SECRET_PASSWORD", "sensitive": True}],
+            steps=_steps(),
+        )
+    )
+    rev = _view(saved, "TC-002")["revision"]
+    backward = saved.put(
+        "/api/tests/TC-002/definition",
+        json={
+            "revision": rev,
+            "edits": [{"op": "delete", "step_id": f"step-0{i}"} for i in (4, 3, 2)],
+        },
+    )
+    assert backward.status_code == 200, backward.text
+    assert [s["id"] for s in backward.json()["test"]["steps"]] == forward_ids
+
+
+def test_011_없는_id_가_섞이면_아무것도_지워지지_않는다(saved: TestClient) -> None:
+    """FR-388 — 부분 적용이 남지 않는다. 세션 경로의 배치 삭제와 같은 성질이다."""
+    before = _view(saved)
+    resp = _save(
+        saved,
+        [
+            {"op": "delete", "step_id": "step-02"},
+            {"op": "delete", "step_id": "step-99"},
+            {"op": "delete", "step_id": "step-04"},
+        ],
+    )
+    assert resp.status_code == 400, resp.text
+
+    after = _view(saved)
+    assert after["revision"] == before["revision"], "파일이 쓰였다"
+    assert len(after["test"]["steps"]) == 5, "부분 적용이 남았다"
+
+
+def test_011_전부_지우는_묶음은_저장에서_거절된다(saved: TestClient) -> None:
+    """**두 경로의 규칙이 다르다.**
+
+    세션의 배치 삭제는 Step 0개를 허용한다 — 메모리 상 목록이고 이어서 녹화할 수 있다.
+    편집은 **정의 파일을 쓰는** 일이라 빈 정의를 남길 수 없다 (기존 `STEP_LIST_EMPTY`).
+
+    011 이 그 규칙을 바꾸지 않았다는 것을 여기서 고정한다. 복수 삭제가 생겼다고 해서
+    「전부 지우고 저장」이 새로 열리면 안 된다.
+    """
+    before = _view(saved)
+    resp = _save(saved, [{"op": "delete", "step_id": f"step-0{i}"} for i in range(1, 6)])
+    assert resp.status_code == 400, resp.text
+    assert resp.json()["error"]["code"] == "STEP_LIST_EMPTY"
+    assert _view(saved)["revision"] == before["revision"], "거절했는데 파일이 쓰였다"

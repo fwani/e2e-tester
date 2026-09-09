@@ -73,6 +73,13 @@ export interface WorkbenchProps {
   stepHeaderExtra?: ReactNode;
   /** Step 이 0개일 때의 안내. 국면마다 다르다 */
   stepEmptyNotice?: ReactNode;
+  /**
+   * 삭제 대상 고르기 (011). `StepList` 로 그대로 내려간다.
+   *
+   * `rowActions`·`phaseName` 과 같은 규율이다 — 국면 어댑터가 만들고 이 컴포넌트는
+   * 자리만 준다. 주지 않으면 체크 칸을 그리지 않는다 (UC-011-14).
+   */
+  deleteTargets?: Parameters<typeof StepList>[0]["deleteTargets"];
   /** Step 패널 바닥의 조작 블록. **일곱 국면에서 같은 자리다** (FR-235) */
   stepFooter?: ReactNode;
   /**
@@ -125,6 +132,7 @@ export function Workbench({
   rowActions,
   stepHeaderExtra,
   stepEmptyNotice,
+  deleteTargets,
   stepFooter,
   stepDetailExtra,
   stepDetailOwnFields = true,
@@ -331,6 +339,7 @@ export function Workbench({
           rowActions={rowActions}
           headerExtra={stepHeaderExtra}
           emptyNotice={stepEmptyNotice}
+          deleteTargets={deleteTargets}
           footer={stepFooter}
         />
 

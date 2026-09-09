@@ -37,6 +37,8 @@ import { alwaysPresent, reasonVisibility } from "../src/lib/capabilities";
 import { AT_BOTTOM, AT_TOP } from "../src/components/workbench/StepRowOps";
 import {
   DISABLED_REASON,
+  NO_DELETE_SELECTION,
+  NO_STEPS_AFTER,
   RUN_NEEDS_SAVE,
   SAVE_NEEDS_NAME,
   SENSITIVE_NO_VALUE,
@@ -77,6 +79,15 @@ const ALLOWED_REASONS: Set<string> = new Set<string>([
   AT_TOP,
   AT_BOTTOM,
   SENSITIVE_NO_VALUE,
+  /*
+    011 — 복수 삭제가 화면에서 좁히는 두 사실 (FR-385 · UC-011-19).
+
+    「먼저 Step 을 고르세요」와 같은 성격이다: 표는 국면을 말하고, 「체크한 것이 있는가」와
+    「뒤에 Step 이 남았는가」는 국면이 아니다. 둘 다 사용자가 이 화면에서 곧바로 해소할 수
+    있으므로 `keep` 이고, 자리는 남아야 한다.
+  */
+  NO_DELETE_SELECTION,
+  NO_STEPS_AFTER,
 ]);
 
 /**

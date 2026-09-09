@@ -121,6 +121,16 @@ a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
 .srow{display:grid;grid-template-columns:26px 1fr 58px 20px auto;gap:10px;align-items:center;
       height:52px;padding:6px 12px 6px 9px;border-bottom:1px solid var(--hair);
       border-left:3px solid transparent;}
+/* 011 — 삭제 대상 체크 칸이 있으면 칸이 다섯 + 조작이다 (UC-011-12).
+   **행 높이는 그대로다** (52px). 칸이 늘어도 높이가 바뀌면 목록에 보이는 행 수가 줄고,
+   그것은 009 가 「행 높이는 국면과 무관하게 고정」으로 정한 성질을 깬다 (FR-304). */
+.srow:has(> [data-cell="check"]){grid-template-columns:22px 26px 1fr 58px 20px auto;}
+.srow-check{display:flex;align-items:center;justify-content:center;}
+/* 체크 상자 — 결말 아이콘(체크 ✓·X·점)과 **형태가 갈린다.** 이것만 사각형이다.
+   입력칸 기본 스타일(높이 32px·폭 100%)을 받지 않게 크기를 명시한다. */
+.srow-check input[type="checkbox"]{width:14px;height:14px;min-height:0;margin:0;padding:0;
+      accent-color:var(--ink);cursor:pointer;}
+.srow-check input[type="checkbox"]:disabled{cursor:default;opacity:.4;}
 .srow .n{font:500 12px/1 var(--font-mono);color:var(--ink-3);text-align:right;}
 .srow .t{min-width:0;display:flex;flex-direction:column;gap:3px;}
 .srow .t b{font:600 13px/1.25 var(--font-sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}

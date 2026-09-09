@@ -18,6 +18,8 @@ htmlcov/
 node_modules/
 frontend/dist/
 frontend/build/
+# vitest·vite 가 저장소 뿌리에 남기는 캐시 (011 에서 실제로 생겼다)
+.vite/
 *.log
 
 # Interactive AI Test Builder — 사용자 자산 보호 (헌법 보안 요건, FR-088b/FR-089c)

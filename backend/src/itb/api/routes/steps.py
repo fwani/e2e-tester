@@ -40,6 +40,7 @@ from itb.execution.assertion_builder import (
 )
 from itb.execution.element_probe import collect_by_selector
 from itb.execution.step_edits import (
+    DuplicateStepIdsError,
     EditResult,
     FieldNotSupportedError,
     ReorderMismatchError,
@@ -47,6 +48,7 @@ from itb.execution.step_edits import (
     ValueNotSupportedError,
     allocate_step_id,
     delete_step,
+    delete_steps,
     find_index,
     insert_step,
     reorder_steps,
@@ -127,6 +129,19 @@ class ReorderRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     order: list[str] = Field(min_length=1)
+
+
+class DeleteStepsRequest(BaseModel):
+    """복수 삭제 (011 FR-382·FR-388 · api-contract §1).
+
+    **`DELETE` 에 본문을 싣지 않는다.** 프록시·클라이언트에 따라 벗겨지고, 쿼리에 실으면
+    목록이 길 때 URL 길이에 걸리며 삭제 대상이 접근 로그에 남는다. `POST …:delete` 는
+    이 저장소가 이미 쓰는 형태다 (`steps:manual`·`steps:reorder`).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    step_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(min_length=1)
 
 
 class AddAssertionRequest(BaseModel):
@@ -378,6 +393,37 @@ async def remove(session_id: str, step_id: str) -> StepsResponse:
     result = delete_step(w.steps, w.current_step_index, step_id)
     _apply_edit(w, result)
     await w.session.emit("step_removed", step_id=step_id)
+    return await _response(w)
+
+
+@router.post("/{session_id}/steps:delete")
+async def remove_many(session_id: str, body: DeleteStepsRequest) -> StepsResponse:
+    """여러 Step 을 한 번에 삭제한다 (011 FR-382·FR-388).
+
+    **단건 삭제(`DELETE …/steps/{step_id}`)를 대체하지 않는다.** 한 개를 지우는 행 조작이
+    그것을 그대로 쓰고, 배치로 대체하면 한 개 삭제가 더 비싸진다 (research R9).
+
+    ## 원자성
+
+    판정은 전부 `delete_steps` 안에서 끝난다 — 검증에 걸리면 예외가 나가고 `_apply_edit` 에
+    닿지 않으므로 목록은 손대지 않은 상태로 남는다. 「셋 중 둘만 지워진 채 오류」가 되는
+    경로가 없다.
+
+    ## 이벤트
+
+    지운 id 를 **한 번에** 싣는다. `step_removed` 를 개수만큼 쏘면 화면이 그 사이 중간
+    상태를 그리게 되고, 원자적으로 지운다는 성질이 화면에서 사라진다.
+    """
+    w = work_of(session_id)
+    require_paused(w)
+    try:
+        result = delete_steps(w.steps, w.current_step_index, body.step_ids)
+    except DuplicateStepIdsError as exc:
+        raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
+    except StepNotFoundError as exc:
+        raise not_found(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
+    _apply_edit(w, result)
+    await w.session.emit("steps_removed", step_ids=list(body.step_ids))
     return await _response(w)
 
 

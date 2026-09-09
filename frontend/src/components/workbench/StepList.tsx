@@ -32,7 +32,10 @@
  */
 import type { ReactNode } from "react";
 
-import { displayOutcomeLabel, stepNumber } from "../../lib/wording";
+import type { ActionId } from "../../lib/actions";
+import { isShown, type CapabilityState } from "../../lib/capabilities";
+import { ACTION_LABEL, deleteSelectionCount, displayOutcomeLabel, stepNumber } from "../../lib/wording";
+import { ActionButton } from "./ActionButton";
 import type { Step, TargetLocator } from "../../types/generated/step";
 import type { StepOutcome, WorkbenchStep } from "./model";
 
@@ -269,6 +272,23 @@ export interface StepListProps {
    * 자리이며, 조작이 국면마다 다른 곳에 있던 것을 여기 하나로 모은다.
    */
   footer?: ReactNode;
+
+  /**
+   * 삭제 대상 고르기 (011 FR-380 · UC-011-14·15).
+   *
+   * **주지 않으면 체크 칸을 그리지 않는다.** 읽기 전용 국면(결과)에는 삭제 대상 선택이
+   * 없고, 그때 칸을 그리면 고를 수 있는 것처럼 보인다 — 근거 있는 부재다 (007 §4-2).
+   */
+  deleteTargets?: {
+    /** 지금 고른 Step id 들 */
+    selected: string[];
+    capability: CapabilityState;
+    /** 전부 고르기·전부 풀기 */
+    allCapability: CapabilityState;
+    onToggle: (stepId: string) => void;
+    onToggleAll: () => void;
+    onRemedy: (action: ActionId) => void;
+  };
 }
 
 /**
@@ -283,7 +303,10 @@ export function StepList({
   headerExtra,
   emptyNotice,
   footer,
+  deleteTargets,
 }: StepListProps) {
+  const chosen = new Set(deleteTargets?.selected ?? []);
+  const allChosen = steps.length > 0 && steps.every((s) => chosen.has(s.id));
   return (
     <div
       data-workbench-step-panel
@@ -296,10 +319,52 @@ export function StepList({
       style={{ flex: `0 0 ${STEP_PANEL_WIDTH}px` }}
     >
       <StepPanelHeader authoring={authoring} count={steps.length}>
+        {/*
+          011 UC-011-17 — 고른 개수와 「전부 고르기」. **자리는 패널 머리다.**
+
+          목록 안에 두면 스크롤에 따라 사라지고, 팔레트에 두면 고른 것과 멀어진다.
+          머리는 목록과 함께 늘 보이는 유일한 자리다.
+        */}
+        {deleteTargets !== undefined && isShown(deleteTargets.allCapability) && (
+          <>
+            <span className="why" data-delete-selection-count>
+              {deleteSelectionCount(chosen.size)}
+            </span>
+            <ActionButton
+              action="step.selectAllDeleteTargets"
+              capability={deleteTargets.allCapability}
+              label={allChosen ? "전부 풀기" : undefined}
+              compact
+              onRun={deleteTargets.onToggleAll}
+              onRemedy={deleteTargets.onRemedy}
+            />
+          </>
+        )}
         {headerExtra}
       </StepPanelHeader>
 
-      <div style={{ flex: "1", minHeight: "0", overflowY: "auto" }}>
+      <div
+        /*
+          011 — 체크 칸의 **자리 선언**은 여기 한 번이다 (UC-011-15 · 007 계약 §2-7).
+
+          `step.select` 가 패널에 한 번 선언된 것과 같은 규율이다: 행마다 `data-action` 을
+          달면 자리가 200개가 되고 「한 조작에 한 자리」를 셀 수 없다 (FR-235). 행의 체크는
+          `data-row-action` 으로 표시한다.
+
+          패널 뿌리가 아니라 목록 본문인 이유: 한 요소는 `data-action` 을 하나만 가질 수
+          있고 뿌리는 이미 `step.select` 를 갖는다. 본문은 행들이 사는 자리이므로 「체크가
+          여기 있다」는 선언에 맞다.
+
+          표가 그 국면에서 접으라고 하면 선언도 하지 않는다 — 결과 국면에는 삭제 대상
+          선택이 없다 (UC-011-14).
+        */
+        data-action={
+          deleteTargets !== undefined && isShown(deleteTargets.capability)
+            ? "step.toggleDeleteTarget"
+            : undefined
+        }
+        style={{ flex: "1", minHeight: "0", overflowY: "auto" }}
+      >
         {/*
           007 T071 (FR-243) — **지목한 Step 이 더 이상 없다.**
 
@@ -325,6 +390,15 @@ export function StepList({
             selected={s.id === focusedStepId}
             onSelect={() => onSelect(s.id)}
             actions={rowActions?.(s)}
+            deleteTarget={
+              deleteTargets === undefined || !isShown(deleteTargets.capability)
+                ? undefined
+                : {
+                    chosen: chosen.has(s.id),
+                    capability: deleteTargets.capability,
+                    onToggle: () => deleteTargets.onToggle(s.id),
+                  }
+            }
           />
         ))}
       </div>
@@ -368,11 +442,18 @@ function StepRow({
   selected,
   onSelect,
   actions,
+  deleteTarget,
 }: {
   step: WorkbenchStep;
   selected: boolean;
   onSelect: () => void;
   actions?: ReactNode;
+  /** 칸 0 의 체크 칸 (011). 없으면 그 칸을 그리지 않는다 (UC-011-14) */
+  deleteTarget?: {
+    chosen: boolean;
+    capability: CapabilityState;
+    onToggle: () => void;
+  };
 }) {
   const dsl = step.step;
   const value = dsl ? stepValue(dsl) : null;
@@ -409,6 +490,35 @@ function StepRow({
       */
       className={rowClassName(step, selected)}
     >
+      {/*
+        칸 0 — 삭제 대상 체크 (011 FR-380 · UC-011-13·15).
+
+        **행 본문과 다른 누름 대상이다.** 행을 누르는 것은 지목(상세 열기)이고 이것은
+        삭제 대상 선택이다. 같은 누름에 두 뜻을 주면 사용자는 상세를 보려다 삭제 대상을
+        만든다.
+
+        **형태가 결말 아이콘과 갈린다** (UC-011-13). 결말의 통과는 이미 체크(✓)이고,
+        008 에 「빈 사각형이 체크박스로 읽혔다」는 기록이 있다 — 이번엔 진짜 체크 칸이
+        생기므로 반대 방향의 혼동이 생긴다. 그래서 이 칸은 사각형 상자이고 결말 칸은
+        형태 아이콘이다.
+      */}
+      {deleteTarget !== undefined && (
+        <div data-cell="check" className="srow-check">
+          <input
+            type="checkbox"
+            data-row-action="step.toggleDeleteTarget"
+            aria-label={`${step.label} ${ACTION_LABEL["step.toggleDeleteTarget"]}`}
+            checked={deleteTarget.chosen}
+            disabled={deleteTarget.capability.kind !== "enabled"}
+            onClick={(e) => {
+              // 행 전체가 지목 대상이므로 체크가 지목까지 일으키지 않게 막는다.
+              e.stopPropagation();
+            }}
+            onChange={deleteTarget.onToggle}
+          />
+        </div>
+      )}
+
       {/* 칸 1 — 번호. **모든 국면에서 보인다** (FR-224 · S-08) */}
       <div data-cell="number" className="n">
         {stepNumber(step.index)}

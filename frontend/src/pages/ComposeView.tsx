@@ -218,6 +218,21 @@ export function ComposeView({
           onChange: () => undefined,
           onRemedy: () => undefined,
         }}
+        /*
+          011 — 삭제 대상 고르기의 **자리**. 만들기 국면에는 Step 이 0개라 고를 것이 없고,
+          권한표가 그 사실을 「아직 시작하지 않았습니다」로 말한다.
+
+          그래도 넘기는 이유는 FR-260 이다 — 자리를 감추면 목록이 0개일 때 조작이 어디에
+          쌓이는지 보여 줄 수 없다 (S-15). 그릴지 말지는 `StepList` 가 표를 보고 정한다.
+        */
+        deleteTargets={{
+          selected: [],
+          capability: capabilities["step.toggleDeleteTarget"],
+          allCapability: capabilities["step.selectAllDeleteTargets"],
+          onToggle: () => undefined,
+          onToggleAll: () => undefined,
+          onRemedy: () => undefined,
+        }}
         stepEmptyNotice="아직 Step 이 없습니다. 시작하면 조작 하나가 행 하나로 여기 쌓입니다."
         /*
           Step 패널 바닥의 조작 블록 — **여덟 국면에서 같은 자리다** (FR-235).

@@ -131,20 +131,20 @@ web application — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `fron
 
 ### Tests for User Story 4
 
-- [ ] T026 [P] [US4] 배치 삭제 계약 검증 — `backend/tests/contract/test_step_batch_delete.py`: `POST /api/sessions/{id}/steps:delete` 의 요청 형(`min_length=1`·`extra="forbid"`), 응답 `StepsResponse`, 오류표 4종 (api-contract §1)
-- [ ] T027 [P] [US4] 원자성 검증 — `backend/tests/integration/test_batch_delete_atomicity.py`: 없는 `step_id` 를 하나 섞으면 `404` 이고 **아무것도 지워지지 않는다**. 중복 id 는 `400`. 부분 적용이 남지 않는다 (FR-388)
-- [ ] T028 [P] [US4] 선택 모델 검증 — `frontend/tests/DeleteSelection.test.tsx`: 행 본문 클릭 후 `deleteSelection` 불변 · 체크 칸 클릭 후 `focusedStepId` 불변 (UC-011-15), 순서 변경 후에도 같은 Step 이 선택 상태 (UC-011-16), 고른 개수 표시 (UC-011-17), 확인 문구에 개수와 범위 (UC-011-18), 「이 뒤 전부」 대상 0개면 비활성 + 사유 (UC-011-19)
+- [X] T026 [P] [US4] 배치 삭제 계약 검증 — `backend/tests/contract/test_step_batch_delete.py`: `POST /api/sessions/{id}/steps:delete` 의 요청 형(`min_length=1`·`extra="forbid"`), 응답 `StepsResponse`, 오류표 4종 (api-contract §1)
+- [X] T027 [P] [US4] 원자성 검증 — `backend/tests/integration/test_batch_delete_atomicity.py`: 없는 `step_id` 를 하나 섞으면 `404` 이고 **아무것도 지워지지 않는다**. 중복 id 는 `400`. 부분 적용이 남지 않는다 (FR-388)
+- [X] T028 [P] [US4] 선택 모델 검증 — `frontend/tests/DeleteSelection.test.tsx`: 행 본문 클릭 후 `deleteSelection` 불변 · 체크 칸 클릭 후 `focusedStepId` 불변 (UC-011-15), 순서 변경 후에도 같은 Step 이 선택 상태 (UC-011-16), 고른 개수 표시 (UC-011-17), 확인 문구에 개수와 범위 (UC-011-18), 「이 뒤 전부」 대상 0개면 비활성 + 사유 (UC-011-19)
 
 ### Implementation for User Story 4
 
-- [ ] T029 [US4] 세션 배치 삭제 라우트를 만든다 — `backend/src/itb/api/routes/steps.py`: `POST /{session_id}/steps:delete`. 검증(존재·중복) → 새 목록 구성 → **한 번에 교체** 순. 기존 `DELETE /{session_id}/steps/{step_id}` 는 남긴다. `execution/step_edits.py` 의 삭제 규칙을 그대로 쓰고 두 벌로 만들지 않는다 (api-contract §1)
-- [ ] T030 [US4] 행에 체크 칸을 붙인다 — `frontend/src/components/workbench/StepList.tsx`: 칸 구성을 `[체크 22][번호 26][이름 1fr][시간 58][결말 20][조작]` 으로 (UC-011-12). 체크 칸은 결말 아이콘(체크 ✓)과 **다른 형태**를 쓴다 (UC-011-13). 삭제 대상 선택이 없는 국면에서는 그리지 않는다 (UC-011-14)
-- [ ] T031 [US4] 패널 머리에 전부 고르기를 둔다 — `frontend/src/components/workbench/StepList.tsx` 의 `StepPanelHeader`: `step.selectAllDeleteTargets` 와 고른 개수 (UC-011-17 · FR-380c)
-- [ ] T032 [US4] 팔레트에 복수 삭제 조작을 둔다 — `frontend/src/components/workbench/ActionPalette.tsx`: `PALETTE_ACTIONS` 에 `step.deleteSelected`·`step.deleteAfter` 를 고정 순서로 넣고, 대상이 0개면 화면이 아는 사실로 좁힌다(`narrow`)
-- [ ] T033 [US4] API 호출을 만든다 — `frontend/src/api/client.ts`: 세션 배치 삭제 호출. 편집 경로는 라우트를 더하지 않고 `edits` 에 `{"op":"delete","step_id":…}` 를 **id 로** 여러 개 싣는다 (api-contract §2 — 인덱스로 보내면 앞의 삭제가 뒤 인덱스를 밀어 다른 Step 이 지워진다)
-- [ ] T034 [US4] 세션 화면이 선택을 소유한다 — `frontend/src/pages/SessionScreen.tsx`: `deleteSelection` 상태와 전이(체크 토글·전부·삭제 후 비우기·목록 변경 시 사라진 id 제거·화면 이동 시 비우기, data-model §4-1). 상세가 열린 채 대상이 지워지면 기존 `data-focus-missing` 안내가 그대로 뜬다 (FR-387)
-- [ ] T035 [US4] 편집 화면이 선택을 소유한다 — `frontend/src/pages/EditView.tsx`: 같은 상태·같은 전이. 저장은 `edits` 에 `delete` 를 모아 한 번에 보낸다 (원자적)
-- [ ] T036 [US4] 기존 검증을 개정한다 — `frontend/tests/StepRowActions.test.tsx`(행 조작 옆에 체크 칸이 생겼다), `frontend/tests/StepListPerformance.test.tsx`(칸이 늘어도 기준선을 지킨다)
+- [X] T029 [US4] 세션 배치 삭제 라우트를 만든다 — `backend/src/itb/api/routes/steps.py`: `POST /{session_id}/steps:delete`. 검증(존재·중복) → 새 목록 구성 → **한 번에 교체** 순. 기존 `DELETE /{session_id}/steps/{step_id}` 는 남긴다. `execution/step_edits.py` 의 삭제 규칙을 그대로 쓰고 두 벌로 만들지 않는다 (api-contract §1)
+- [X] T030 [US4] 행에 체크 칸을 붙인다 — `frontend/src/components/workbench/StepList.tsx`: 칸 구성을 `[체크 22][번호 26][이름 1fr][시간 58][결말 20][조작]` 으로 (UC-011-12). 체크 칸은 결말 아이콘(체크 ✓)과 **다른 형태**를 쓴다 (UC-011-13). 삭제 대상 선택이 없는 국면에서는 그리지 않는다 (UC-011-14)
+- [X] T031 [US4] 패널 머리에 전부 고르기를 둔다 — `frontend/src/components/workbench/StepList.tsx` 의 `StepPanelHeader`: `step.selectAllDeleteTargets` 와 고른 개수 (UC-011-17 · FR-380c)
+- [X] T032 [US4] 팔레트에 복수 삭제 조작을 둔다 — `frontend/src/components/workbench/ActionPalette.tsx`: `PALETTE_ACTIONS` 에 `step.deleteSelected`·`step.deleteAfter` 를 고정 순서로 넣고, 대상이 0개면 화면이 아는 사실로 좁힌다(`narrow`)
+- [X] T033 [US4] API 호출을 만든다 — `frontend/src/api/client.ts`: 세션 배치 삭제 호출. 편집 경로는 라우트를 더하지 않고 `edits` 에 `{"op":"delete","step_id":…}` 를 **id 로** 여러 개 싣는다 (api-contract §2 — 인덱스로 보내면 앞의 삭제가 뒤 인덱스를 밀어 다른 Step 이 지워진다)
+- [X] T034 [US4] 세션 화면이 선택을 소유한다 — `frontend/src/pages/SessionScreen.tsx`: `deleteSelection` 상태와 전이(체크 토글·전부·삭제 후 비우기·목록 변경 시 사라진 id 제거·화면 이동 시 비우기, data-model §4-1). 상세가 열린 채 대상이 지워지면 기존 `data-focus-missing` 안내가 그대로 뜬다 (FR-387)
+- [X] T035 [US4] 편집 화면이 선택을 소유한다 — `frontend/src/pages/EditView.tsx`: 같은 상태·같은 전이. 저장은 `edits` 에 `delete` 를 모아 한 번에 보낸다 (원자적)
+- [X] T036 [US4] 기존 검증을 개정한다 — `frontend/tests/StepRowActions.test.tsx`(행 조작 옆에 체크 칸이 생겼다), `frontend/tests/StepListPerformance.test.tsx`(칸이 늘어도 기준선을 지킨다)
 
 **Checkpoint**: US1·US2·US4 가 각각 독립적으로 동작한다.
 

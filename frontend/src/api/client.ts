@@ -675,6 +675,17 @@ export const sessions = {
   },
   deleteStep: (id: string, stepId: string) =>
     del<StepsResponse>(`/api/sessions/${id}/steps/${stepId}`),
+  /**
+   * 여러 Step 을 **한 번에** 지운다 (011 FR-382·FR-388 · api-contract §1).
+   *
+   * `deleteStep` 을 반복하지 않는다 — 중간에 끊기면 부분 적용이 남는다. 서버가 검증 →
+   * 새 목록 구성 → 교체 순으로 처리하므로 「셋 중 둘만 지워진 채 오류」가 되지 않는다.
+   *
+   * **단건은 그대로 남는다.** 한 개를 지우는 행 조작이 그것을 쓰고, 배치로 대체하면
+   * 한 개 삭제가 더 비싸진다.
+   */
+  deleteSteps: (id: string, stepIds: string[]) =>
+    post<StepsResponse>(`/api/sessions/${id}/steps:delete`, { step_ids: stepIds }),
   reorderSteps: (id: string, order: string[]) =>
     post<StepsResponse>(`/api/sessions/${id}/steps:reorder`, { order }),
   /** Step 삽입. `at` 을 생략하면 일시정지 위치다 (FR-035). */

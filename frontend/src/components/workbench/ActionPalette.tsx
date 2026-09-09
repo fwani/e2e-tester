@@ -61,6 +61,16 @@ export const PALETTE_ACTIONS: ActionId[] = [
   "step.moveUp",
   "step.moveDown",
   "step.delete",
+  /*
+    011 복수 삭제 (FR-382·FR-383). **`step.delete` 바로 뒤다** — 셋이 같은 종류의 일이므로
+    묶여 있어야 하고, 순서가 「하나 → 고른 것 → 이 뒤 전부」로 범위가 넓어지는 차례여야
+    사용자가 무엇을 누르는지 헷갈리지 않는다.
+
+    행마다의 체크(`step.toggleDeleteTarget`)와 전부 고르기는 여기 없다 — 그것들의 집은
+    Step 행과 패널 머리다 (007 계약 §2-7).
+  */
+  "step.deleteSelected",
+  "step.deleteAfter",
   "run.fromHere",
   "browser.openAt",
   "ai.start",
