@@ -433,6 +433,28 @@ class SessionView(BaseModel):
     tabs_open: int
     active_tab_index: int
     mirrored_tab_index: int
+    control_surface: str = "mirror"
+    """지금 조작이 어디서 이루어지는가 — `"mirror"` 또는 `"window"` (010 FR-349).
+
+    **이벤트만으로 두면 재연결한 화면이 조작 위치를 잊는다.** `SessionWork` 는 이 값을
+    처음부터 들고 있었고 그 주석도 「화면이 세션 조회로 다시 받을 수 있어야 한다」고
+    적어 두었는데, 정작 이 응답에 실리지 않아 **쓰이지 않는 값**이었다. 새로 고치면
+    서버는 「창」이라고 알고 화면은 「미러」라고 아는 상태가 됐다.
+    """
+
+    window_unavailable_reason: str | None = None
+    """실제 창으로 옮겨 갈 수 없는 이유. 옮겨 갈 수 있으면 `None` (010 FR-351 · FR-234).
+
+    **참·거짓이 아니라 문장을 보낸다.** 화면은 쓸 수 없는 조작을 이유와 함께 비활성으로
+    두어야 하는데(FR-234), 그 이유를 화면이 자기 사전에 갖고 있으면 서버가 거절할 때
+    쓰는 문장과 갈린다 — `wording.ts` 의 O13 옆 주석이 그것을 금지한 이유이며, 그 결정을
+    깨지 않고 요구를 채우는 방법이 **서버가 문장을 주는 것**이다.
+
+    사용자 보고 2026-09-09 「실제창에서 조작하기 변환이 안됨」이 이것이 없던 상태다.
+    화면은 눌러 본 뒤에야 안 된다는 것을 알 수 있었고, 그 전에는 서버가 창 없는 세션에도
+    「옮겼다」고 답하고 있었다.
+    """
+
     edit_warnings: list[str]
     recorder_warnings: list[str]
     allowed_commands: list[str]
@@ -562,6 +584,7 @@ def _create_lock(test_id: str) -> asyncio.Lock:
 
 
 def view_of(w: SessionWork) -> SessionView:
+    from itb.api.routes.control import window_unavailable_reason
     from itb.execution.state_machine import allowed_commands
 
     return SessionView(
@@ -574,6 +597,10 @@ def view_of(w: SessionWork) -> SessionView:
         tabs_open=len(w.session.open_tabs()),
         active_tab_index=w.session.active_tab_index,
         mirrored_tab_index=w.session.mirrored_tab_index,
+        control_surface=w.control_surface,
+        # 판정은 `control.py` 하나가 갖는다 — 화면이 보는 값과 전환 요청이 받는 답이
+        # 갈리면, 눌러도 되는 버튼이 눌리지 않거나 그 반대가 된다.
+        window_unavailable_reason=window_unavailable_reason(w.session),
         edit_warnings=list(w.session.edit_warnings),
         recorder_warnings=list(w.recorder.warnings),
         allowed_commands=[c.value for c in allowed_commands(w.session.state)],
@@ -758,6 +785,10 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     )
     work.loss_watcher.attach()
     work.mirror = MirrorController(session)
+    # FR-030a·FR-030f — **새 탭이 열리면 미러가 그리로 옮겨간다.** 없으면 표시 탭이 0 에
+    # 남고, 조작 통로는 표시 탭을 따르므로 (FR-317) 새 탭을 보며 누른다고 믿는 조작이
+    # 전부 탭 0 으로 간다 — 새 탭의 Step 이 하나도 생기지 않는다.
+    work.mirror.follow_new_tabs()
     # 010 FR-338 — 브라우저 요구 가로채기. **컨텍스트 단위로 건다** — 새 탭에도 자동으로
     # 붙는다 (리코더가 `add_init_script` 를 컨텍스트에 거는 것과 같은 이유다).
     work.prompts = BrowserPrompts(emit=session.emit)
@@ -1209,29 +1240,35 @@ async def get_session(session_id: str) -> SessionView:
 async def set_pacing(session_id: str, body: PacingRequest) -> SessionView:
     """실행 속도를 바꾼다 (004 FR-103).
 
-    **실행 중에도 부를 수 있다.** 진행 중인 Step 을 끊지 않으며, 러너가 다음 Step 경계에서
-    이 값을 다시 읽는다. 브라우저에는 아무 명령도 보내지 않는다 (원칙 III 계열).
+    **상태를 보지 않는다.** 실행 중이든 끝났든 유실됐든 받는다.
+
+    실행 중에 받는 이유는 처음부터 그랬다 — 진행 중인 Step 을 끊지 않으며, 러너가 다음
+    Step 경계에서 이 값을 다시 읽는다. 브라우저에는 아무 명령도 보내지 않는다
+    (원칙 III 계열).
 
     취향 파일에도 남긴다 — FR-109 의 "다음 실행에서 마지막 선택이 기본값" 은 실행 중
     변경까지 반영되어야 성립한다. **다만 그 쓰기 실패로 이 호출이 실패하지는 않는다.**
     속도는 이미 바뀌었고, 취향을 못 남긴 것 때문에 실행을 방해할 이유가 없다. 대신
-    조용히 넘기지 않고 `preference_saved: false` 로 알린다.
+    조용히 넘기지 않고 ``preference_saved: false`` 로 알린다.
+
+    ## 2026-09-09 — 거절 둘을 없앴다 (사용자 결정)
+
+    이전에는 종료 상태(``TERMINAL_STATES``)와 유실(``LOST``)을 거절했다. 사용자가 그
+    거절을 문제로 지목했다: 「속도 선택은 실행중이든 아니든 바꿀수있어야함」.
+
+    **거절에 실질적 근거가 없었다.** 이 연산이 하는 일은 두 가지뿐이다 — 세션의 값을
+    바꾸고, 취향 파일에 남긴다. 끝난 세션에는 그 값을 읽을 러너가 없으므로 첫 번째는
+    아무 효과가 없고, 두 번째는 **바로 그 상태에서 가장 쓸모 있다**: 실행이 끝난 화면에는
+    「처음부터 실행」이 있고 (국면 `finished`), 여기서 고른 값이 그 실행의 속도가 된다
+    (FR-109). 거절은 사용자가 다음 실행을 준비하는 것을 막고 있었다.
+
+    화면 쪽도 같은 사정이었다 — 권한표가 이 거절을 비활성으로 옮겨 그리느라, 실행 종료
+    화면의 속도 컨트롤이 「실행이 이미 끝났습니다」를 달고 눌리지 않는 채 서 있었다.
+
+    유실도 함께 받는다. 세션은 사라졌지만 취향은 사용자의 것이고, 유실 화면에서 남은
+    길이 「저장하고 처음부터 다시 실행」이므로 그 실행의 속도를 여기서 정하게 된다.
     """
     w = work_of(session_id)
-    if w.session.state is SessionState.LOST:
-        raise conflict(
-            ErrorCode.SESSION_LOST,
-            "세션이 유실되어 실행 속도를 바꿀 수 없습니다.",
-            state=w.session.state.value,
-        )
-    if w.session.state in TERMINAL_STATES:
-        raise conflict(
-            ErrorCode.INVALID_TRANSITION,
-            "이미 끝난 세션의 실행 속도는 바꿀 수 없습니다.",
-            state=w.session.state.value,
-            allowed=[c.value for c in allowed_commands(w.session.state)],
-        )
-
     w.session.pacing = body.pacing
 
     saved = True

@@ -49,22 +49,24 @@ def _start(client: TestClient, url: str) -> str:
     return str(created.json()["session_id"])
 
 
-def _page(client: TestClient, session_id: str) -> Any:
-    return client.app.state.itb.sessions.require(session_id).tabs[0].page
+def _page(client: TestClient, session_id: str, tab: int = 0) -> Any:
+    return client.app.state.itb.sessions.require(session_id).find_tab(tab).page
 
 
 def _steps(client: TestClient, session_id: str) -> list[dict[str, Any]]:
     return list(client.get(f"/api/sessions/{session_id}").json()["steps"])
 
 
-def _center(client: TestClient, session_id: str, selector: str) -> tuple[float, float]:
+def _center(
+    client: TestClient, session_id: str, selector: str, tab: int = 0
+) -> tuple[float, float]:
     """대상 화면 좌표계에서의 요소 중심.
 
     **프레임이 실어 오는 `width`·`height` 와 같은 좌표계다** (data-model §2). 프론트는
     표시 좌표를 여기로 되돌려 보내고, 이 검증은 그 되돌림이 끝난 지점부터 잰다 — 변환
     자체는 `frontend/tests/MirrorInput.test.ts` 가 순수 함수로 잰다.
     """
-    page = _page(client, session_id)
+    page = _page(client, session_id, tab)
 
     async def read(p: Any = page) -> dict[str, float]:
         box = await p.locator(selector).bounding_box()
@@ -75,18 +77,20 @@ def _center(client: TestClient, session_id: str, selector: str) -> tuple[float, 
     return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
 
 
-def _click_through_mirror(client: TestClient, session_id: str, selector: str) -> None:
+def _click_through_mirror(
+    client: TestClient, session_id: str, selector: str, tab: int = 0
+) -> None:
     """미러 경로로 클릭한다 — 조작 채널에 사건을 보낸다.
 
     사람이 미러 영역에서 하는 것과 같은 순서다: 올려놓기 → 누르기 → 놓기. 순서를 줄이면
     호버로 열리는 메뉴가 열리지 않고, 그것은 창 조작과 다른 결과를 만든다.
     """
-    x, y = _center(client, session_id, selector)
+    x, y = _center(client, session_id, selector, tab)
     with client.websocket_connect(CONTROL_PATH.format(sid=session_id)) as ws:
         for event in (
-            {"kind": "pointer.move", "tab": 0, "x": x, "y": y},
-            {"kind": "pointer.down", "tab": 0, "x": x, "y": y, "button": "left"},
-            {"kind": "pointer.up", "tab": 0, "x": x, "y": y, "button": "left"},
+            {"kind": "pointer.move", "tab": tab, "x": x, "y": y},
+            {"kind": "pointer.down", "tab": tab, "x": x, "y": y, "button": "left"},
+            {"kind": "pointer.up", "tab": tab, "x": x, "y": y, "button": "left"},
         ):
             ws.send_text(json.dumps(event))
         _settle(client)
@@ -126,6 +130,81 @@ def _comparable(step: dict[str, Any]) -> dict[str, Any]:
     """
     ignored = {"id", "created_at", "recorded_at", "index", "order"}
     return {k: v for k, v in step.items() if k not in ignored}
+
+
+def _pass_login_gate(client: TestClient, session_id: str, target: str) -> None:
+    """픽스처 앱의 로그인 관문을 지난다. **녹화 대상이 아니라 준비 과정이다.**
+
+    새 탭 링크가 있는 화면이 로그인 뒤에 있을 뿐이고, 이 검증이 재는 것은 새 탭이다.
+    """
+    page = _page(client, session_id)
+
+    async def act(p: Any = page) -> None:
+        # 관문은 이미 login.html 로 보냈다. 표식을 남기고 **원래 가려던 곳으로** 다시
+        # 간다 — `reload()` 는 login.html 을 다시 읽을 뿐이다.
+        await p.evaluate("sessionStorage.setItem('itb-fixture-auth','1')")
+        await p.goto(target)
+        await p.wait_for_load_state()
+
+    client.portal.call(act)  # type: ignore[attr-defined]
+    _settle(client)
+
+
+@pytest.mark.browser
+def test_new_tab_becomes_the_mirrored_tab(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**새 탭이 열리면 미러가 그리로 옮겨간다** (FR-030a·FR-030f).
+
+    사용자 보고 — 「새 탭에서 진행되는 내용이 녹화가 되지 않는다」.
+
+    조작 통로는 **표시 탭**에 붙는다 (FR-317). 그래서 표시 탭이 옮겨가지 않으면 사용자가
+    새 탭을 보며 누른다고 믿는 조작이 전부 탭 0 으로 가고, 탭 0 에는 그 요소가 없으니
+    Step 도 생기지 않는다. 새 탭 조작이 통째로 사라진다.
+
+    **왜 `test_multitab_record.py` 가 이것을 놓쳤나**: 그 파일은 `page.click()` 으로
+    대상 페이지를 직접 조작한다. 그 경로에는 표시 탭이라는 개념이 없어서, 표시 탭이 0 에
+    멈춰 있어도 Step 이 정상으로 만들어졌다. 사람이 실제로 쓰는 경로는 미러이고, 미러
+    경로를 재는 것이 이 파일의 몫이다.
+    """
+    sid = _start(keyed_client, f"{fixture_app}/projects.html")
+    try:
+        _pass_login_gate(keyed_client, sid, f"{fixture_app}/projects.html")
+        _click_through_mirror(keyed_client, sid, "[data-testid=terms-link]")
+
+        tabs = keyed_client.get(f"/api/sessions/{sid}/tabs").json()
+        assert len(tabs["tabs"]) >= 2, f"새 탭이 열리지 않았다: {tabs}"
+        assert tabs["mirrored_tab_index"] == 1, (
+            "새 탭이 열렸는데 미러가 탭 0 을 보고 있다. 이 상태에서 사용자가 하는 조작은 "
+            f"전부 탭 0 으로 간다 (FR-317): {tabs}"
+        )
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+@pytest.mark.browser
+def test_actions_in_a_new_tab_are_recorded_through_the_mirror(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """새 탭에서 미러로 한 조작이 그 탭의 Step 이 된다 (FR-030a).
+
+    위 검증이 「표시 탭이 옮겨갔는가」를 보고, 이것이 「그래서 기록이 되는가」를 본다.
+    둘을 나눈 이유는 실패했을 때 어디가 깨졌는지 바로 알기 위해서다.
+    """
+    sid = _start(keyed_client, f"{fixture_app}/projects.html")
+    try:
+        _pass_login_gate(keyed_client, sid, f"{fixture_app}/projects.html")
+        _click_through_mirror(keyed_client, sid, "[data-testid=terms-link]")
+        _click_through_mirror(keyed_client, sid, "[data-testid=close-terms]", tab=1)
+
+        steps = _steps(keyed_client, sid)
+        tabs_used = {s["tab"] for s in steps}
+        assert 1 in tabs_used, (
+            "새 탭에서 미러로 한 조작이 Step 이 되지 않았다. "
+            f"기록된 탭 참조: {tabs_used} / Step: {[s['type'] for s in steps]}"
+        )
+    finally:
+        stop_quietly(keyed_client, sid)
 
 
 @pytest.mark.browser

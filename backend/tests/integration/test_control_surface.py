@@ -23,6 +23,8 @@ import pytest
 from fastapi.testclient import TestClient
 from us2_support import stop_quietly
 
+from itb.execution.session import HEADLESS_ENV
+
 SURFACE_PATH = "/api/sessions/{sid}/control-surface"
 
 
@@ -214,8 +216,15 @@ def test_switching_to_the_window_closes_the_mirror_control_channel(
         with keyed_client.websocket_connect(f"/api/sessions/{session_id}/control") as ws:
             assert ws.receive_json()["state"] == "open"
 
-            if not control.can_open_a_window():
-                pytest.skip("이 기계에서는 창을 띄울 수 없어 전환 자체가 거절된다")
+            # **판정은 세션 단위다** (사용자 보고 2026-09-09 이후).
+            #
+            # 예전에는 `can_open_a_window()` 만 물었다. 그것은 기계에 화면이 있는지만
+            # 답하므로 macOS 에서는 언제나 참이고, **창 없이 띄운 세션에서도 이 검증이
+            # 전환을 기대했다.** 제품도 같은 맹점을 갖고 있었으므로 그때는 통과했다 —
+            # 검증이 결함과 같은 착각을 공유하면 결함을 잡지 못한다.
+            session = keyed_client.app.state.itb.sessions.require(session_id)
+            if control.window_unavailable_reason(session) is not None:
+                pytest.skip("이 세션은 옮겨 갈 창이 없어 전환 자체가 거절된다")
 
             switched = keyed_client.post(
                 SURFACE_PATH.format(sid=session_id), json={"surface": "window"}
@@ -226,5 +235,75 @@ def test_switching_to_the_window_closes_the_mirror_control_channel(
             assert closing["type"] == "control_state"
             assert closing["state"] == "closed"
             assert "실제 브라우저 창" in (closing["reason"] or "")
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+
+@pytest.mark.browser
+def test_a_windowless_session_refuses_with_its_own_reason(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """**창 없이 띄운 세션은 옮겨 갈 창이 없다** (FR-351 · 사용자 보고 2026-09-09).
+
+    > 실제창에서 조작하기 변환이 안됨
+
+    판정이 기계만 보고 있었다. macOS·Windows 는 창 서버가 항상 있으므로 `can_open_a_window()`
+    는 언제나 참이었고, 서버는 **창 없이 띄운 브라우저에도** 「옮겼다」고 200 을 돌려주며
+    미러의 조작 통로를 닫았다. 창은 어디에도 뜨지 않으니 사용자에게 조작할 곳이 하나도
+    남지 않는다 — 조용한 실패이며 FR-351 이 금지하는 형태다.
+
+    Chromium 의 창 유무는 **띄울 때 정해지고 나중에 바뀌지 않는다.** 그래서 여기서 할 수
+    있는 정직한 일은 사유를 말하는 것이고, 이 검증이 그 사유가 실제로 나오는지를 본다.
+
+    창을 띄운 세션(`ITB_HEADLESS=false`)에서는 이 검증이 성립하지 않으므로 건너뛴다 —
+    제품 기본값은 창 없음이다 (FR-352).
+    """
+    session_id = _start(keyed_client, fixture_app)
+    try:
+        session = keyed_client.app.state.itb.sessions.require(session_id)
+        if not session.headless:
+            pytest.skip("창을 띄운 세션이다 — 이 검증의 조건이 아니다")
+
+        refused = keyed_client.post(
+            SURFACE_PATH.format(sid=session_id), json={"surface": "window"}
+        )
+        assert refused.status_code == 400, refused.text
+        body = refused.json()["error"]
+        assert "창 없이 떠 있어" in body["message"], body["message"]
+        # **이 기계에서 고칠 수 있는 사유다.** 고치는 방법을 말하지 않으면 사용자는
+        # 기계를 탓하고 물러선다.
+        assert HEADLESS_ENV in body["next_action"], body["next_action"]
+        assert "미러" in body["next_action"]
+        # 거절이 위치를 바꾸지 않았다.
+        assert _surface_of(keyed_client, session_id) == "mirror"
+    finally:
+        stop_quietly(keyed_client, session_id)
+
+
+@pytest.mark.browser
+def test_the_view_carries_the_surface_and_why_the_window_is_out_of_reach(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """세션 조회가 **조작 위치와 창이 안 되는 이유**를 함께 싣는다 (FR-349·FR-351·FR-234).
+
+    둘 다 이벤트로만 흐르면 **새로 고친 화면이 잊는다.** `SessionWork.control_surface` 는
+    처음부터 이 목적으로 있었는데 응답에 실리지 않아 쓰이지 않는 값이었다 — 서버는
+    「창」이라고 알고 화면은 「미러」라고 아는 상태가 만들어졌다.
+
+    이유를 **문장으로** 싣는 이유는 화면이 같은 뜻의 문구를 따로 갖지 않게 하기 위해서다
+    (`wording.ts` 의 O13 옆 주석). 화면은 이것을 받아 버튼을 **누르기 전에** 잠근다.
+    """
+    session_id = _start(keyed_client, fixture_app)
+    try:
+        view = keyed_client.get(f"/api/sessions/{session_id}").json()
+        assert view["control_surface"] == "mirror"
+
+        session = keyed_client.app.state.itb.sessions.require(session_id)
+        reason = view["window_unavailable_reason"]
+        if session.headless:
+            assert reason is not None, "창 없는 세션인데 이유가 비어 있다"
+            assert "창" in reason
+        else:
+            assert reason is None, f"창이 있는 세션인데 막는 이유가 있다: {reason}"
     finally:
         stop_quietly(keyed_client, session_id)

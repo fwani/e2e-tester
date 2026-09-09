@@ -767,7 +767,21 @@
     if (["checkbox", "radio", "button", "submit", "reset", "file"].includes(type)) {
       // 체크박스·라디오는 click 으로 이미 잡힌다. 파일 입력은 별도 처리한다.
       if (type === "file") {
-        send({ kind: "file_input", element: describe(el) });
+        /*
+          2026-09-09 — **고른 파일의 이름을 함께 보낸다** (사용자 보고).
+
+          이전에는 `element` 만 보냈고, Python 쪽은 그것을 받아 「기록할 수 없다」는 경고만
+          남겼다. 그러나 브라우저는 이름을 준다 — `File.name` 이다. 내용은 읽지 않는다
+          (읽을 이유가 없고, 정의 파일에 담으면 테스트가 옮겨 다닐 수 없다).
+
+          사용자가 요구한 것이 **확장자**이며(「실제 서비스에서는 확장자를 보는경우가
+          있기 때문」) 확장자는 이름의 일부다.
+
+          `el.files` 는 `FileList` 이고 배열이 아니다 — `Array.from` 없이 `map` 을 부르면
+          그 자리에서 터진다. 취소로 비어 있을 수도 있다(그때는 Step 을 만들지 않는다).
+        */
+        const names = el.files ? Array.from(el.files).map((f) => f.name) : [];
+        send({ kind: "file_input", files: names, element: describe(el) });
       }
       return;
     }

@@ -125,7 +125,9 @@ def test_step_union_covers_every_step_type() -> None:
     **이 집합을 늘리는 것은 DSL 변경이다** — 원칙 I 은 스키마를 먼저 바꾸고 소비자가
     따라오게 요구한다. 이 단언이 그 절차를 밟지 않은 추가를 막는다.
 
-    `hover`·`drag` 는 T161(FR-023c)에서 더했다.
+    `hover`·`drag` 는 T161(FR-023c)에서 더했다. `upload` 는 2026-09-09 에 더했다 —
+    사용자 보고(「파일업로드 녹화가 제대로 안됨」)이며, 그 종류가 없어서 파일 업로드가
+    정의에 전혀 남지 않았다.
     """
     assert {t.value for t in StepType} == {
         "click",
@@ -136,6 +138,7 @@ def test_step_union_covers_every_step_type() -> None:
         "close_tab",
         "hover",
         "drag",
+        "upload",
     }
 
 

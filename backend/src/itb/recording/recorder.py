@@ -38,6 +38,7 @@ from itb.domain.step import (
     NavigateStep,
     SelectStep,
     Step,
+    UploadStep,
 )
 from itb.execution.element_probe import collect_and_verify
 from itb.execution.frame_resolver import SearchRoot
@@ -423,10 +424,7 @@ class Recorder:
         elif kind == "select":
             await self._record_select(origin, element, payload)
         elif kind == "file_input":
-            self._warn(
-                "파일 입력이 감지됐습니다. 운영체제 파일 선택 대화상자는 기록할 수 없으므로, "
-                "Step 편집에서 파일 경로를 직접 지정해야 합니다."
-            )
+            await self._record_upload(origin, element, payload)
 
     @staticmethod
     def _basis(element: dict[str, Any]) -> str:
@@ -914,6 +912,72 @@ class Recorder:
                 frame_url=origin.frame_url,
                 target=target,
                 value=value,
+            )
+        )
+
+    async def _record_upload(
+        self, origin: Any, element: dict[str, Any], payload: dict[str, Any]
+    ) -> None:
+        """파일 입력 → upload Step (2026-09-09 사용자 보고).
+
+        ## 이전에는 경고 하나였다
+
+        같은 자리에 이런 문구가 있었다 — 「파일 입력이 감지됐습니다. 운영체제 파일 선택
+        대화상자는 기록할 수 없으므로, Step 편집에서 파일 경로를 직접 지정해야 합니다.」
+
+        **두 번 틀렸다.** 첫째, 기록할 수 없다는 것이 사실이 아니다 — 브라우저는 고른
+        파일의 이름을 준다(``File.name``). 운영체제 대화상자를 기록할 수 없는 것과 그
+        결과를 기록할 수 없는 것은 다른 이야기다. 둘째, 안내한 「Step 편집에서 파일 경로를
+        직접 지정」이 **제품에 없었다** — 그런 칸도 Step 종류도 없었으므로 사용자는 안내를
+        따를 수 없었다 (006 E-03 과 같은 형태의 결함).
+
+        ## 무엇을 기록하는가
+
+        파일 이름 하나다. 확장자가 그 안에 있고, 사용자가 요구한 것이 확장자다 — 「실제
+        서비스에서는 확장자를 보는경우가 있기 때문」.
+
+        **여러 개를 고른 경우 첫 번째만 쓴다.** 다중 업로드(``multiple``)는 Step 하나가
+        여러 파일을 갖는 형태를 요구하는데, 그것은 이 Step 의 모양을 바꾸는 일이고 지금
+        요구에 없다. 첫 번째를 기록하고 나머지는 경고로 알린다 — 조용히 버리면 사용자는
+        재실행이 왜 다르게 도는지 알 수 없다.
+
+        **비우는 것(취소)은 Step 이 아니다.** 파일을 고르지 않고 대화상자를 닫으면
+        ``change`` 가 빈 목록으로 올 수 있다. 그때 만들 Step 이 없다.
+        """
+        raw = payload.get("files")
+        names = [str(n) for n in raw if str(n).strip()] if isinstance(raw, list) else []
+        if not names:
+            return
+
+        if len(names) > 1:
+            self._warn(
+                f"파일 {len(names)}개를 골랐습니다. 첫 번째({names[0]})만 기록합니다 — "
+                "재실행도 한 개만 올립니다."
+            )
+
+        target = await self._collect_target(origin, element)
+        if target is None:
+            return
+        key = origin.key(target.css.value if target.css else "")
+        target = self._best_target(key, target)
+
+        self._last_fill_key = None
+        # 파일 선택이 기록됐다 → 페이지가 살아 있으므로 앞선 클릭은 이동을 만들지 않았다.
+        self._nav_suppress.pop(origin.tab, None)
+
+        file_name = names[0]
+        label = element.get("label") or element.get("accessibleName") or "파일"
+        await self._emit(
+            UploadStep(
+                id=self._next_step_id(),
+                # 라벨에 **파일 이름을 넣는다.** 목록에서 어느 파일을 올린 Step 인지
+                # 행을 열지 않고 알 수 있어야 한다 (확장자가 요구의 핵심이다).
+                label=f"{label} 에 {file_name} 올리기",
+                author=self.author,
+                tab=origin.tab,
+                frame_url=origin.frame_url,
+                target=target,
+                file_name=file_name,
             )
         )
 

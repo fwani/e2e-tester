@@ -254,10 +254,40 @@ def test_an_uploaded_file_reaches_the_target_page(
         async def read(p: Any = page) -> Any:
             await asyncio.sleep(0.4)
             return await p.evaluate(
-                "document.getElementById('pick').files.length"
+                "(() => { const f = document.getElementById('pick').files;"
+                " return { count: f.length, name: f[0] ? f[0].name : null }; })()"
             )
 
-        assert keyed_client.portal.call(read) == 1, "대상 페이지가 파일을 받지 못했다"  # type: ignore[attr-defined]
+        seen = keyed_client.portal.call(read)  # type: ignore[attr-defined]
+        assert seen["count"] == 1, "대상 페이지가 파일을 받지 못했다"
+        """**이름과 확장자가 대상 페이지까지 간다** (2026-09-09 사용자 보고).
+
+        보고 문장: 「파일 이름 에 확장자가 포함되어야한다」. 이유는 「실제 서비스에서는
+        확장자를 보는경우가 있기 때문」이다.
+
+        이 단언이 없던 동안 결함이 통과했다. 이전 판은 `files.length` 만 봤고, 그 수는
+        저장 경로가 ``f_1a2b3c…`` (확장자 없음)여도 1 이었다. 대상 페이지가 받는 이름은
+        **경로의 마지막 조각**이므로, 확장자를 보는 화면에서는 그 업로드가 거절된다 —
+        개수만 세면 그 사실이 드러나지 않는다.
+        """
+        assert seen["name"] == "주문내역.csv", (
+            f"대상 페이지가 받은 이름에 확장자가 없다: {seen['name']!r}"
+        )
+
+        """그리고 **그것이 Step 으로 남는다** (2026-09-09 사용자 보고 — 「파일업로드 녹화가
+        제대로 안됨」).
+
+        이 세션은 녹화 모드다(`_start`). 제품이 파일을 지정하면 대상 페이지에서 `change`
+        가 발생하고, 주입 스크립트가 그것을 보내 리코더가 `upload` Step 을 만든다. 그
+        Step 의 `file_name` 이 곧 확장자를 담은 이름이다.
+
+        이전에는 이 자리에서 아무 Step 도 만들어지지 않았다 — Step 종류가 없었고, 리코더는
+        「Step 편집에서 파일 경로를 직접 지정해야 합니다」라는, 따를 수 없는 안내만 남겼다.
+        """
+        steps = keyed_client.get(f"/api/sessions/{session_id}").json()["steps"]
+        uploads = [s for s in steps if s["type"] == "upload"]
+        assert uploads, f"업로드가 Step 으로 남지 않았다: {[s['type'] for s in steps]}"
+        assert uploads[-1]["file_name"] == "주문내역.csv"
     finally:
         stop_quietly(keyed_client, session_id)
 
@@ -302,6 +332,10 @@ def test_uploaded_files_are_gone_after_the_session_ends(
     assert store is not None
     path = Path(str(store.path_of(uploaded.json()["file_id"])))
     assert path.is_file()
+    # 2026-09-09 — **경로가 이름을 실어야 한다** (사용자 보고: 「파일 이름 에 확장자가
+    # 포함되어야한다」). 대상 브라우저가 받는 파일 이름은 경로의 마지막 조각이고,
+    # `FileChooser.set_files` 와 `DOM.setFileInputFiles` 는 둘 다 경로만 받는다.
+    assert path.name == "a.txt"
 
     stop_quietly(keyed_client, session_id)
     keyed_client.post(f"/api/sessions/{session_id}/discard")

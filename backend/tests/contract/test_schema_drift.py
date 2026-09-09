@@ -49,6 +49,7 @@ def test_step_schema_keeps_discriminated_union() -> None:
         "assertion",
         "close_tab",
         "hover",
+        "upload",
         "drag",
     }
 

@@ -23,7 +23,7 @@ from pydantic import BaseModel, ConfigDict
 
 from itb.api.errors import ErrorCode, bad_request, not_found
 from itb.api.state import AppState, get_state
-from itb.execution.session import HEADLESS_ENV
+from itb.execution.session import HEADLESS_ENV, BrowserSession
 
 router = APIRouter(prefix="/api/sessions", tags=["control"])
 
@@ -84,6 +84,35 @@ def can_open_a_window() -> bool:
     return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
 
+NO_WINDOW_ON_MACHINE = "이 기계에는 띄울 창이 없어 실제 창으로 전환할 수 없습니다."
+NO_WINDOW_IN_SESSION = (
+    "이 세션의 브라우저는 창 없이 떠 있어 옮겨 갈 창이 없습니다."
+)
+"""**두 사유를 나눈다** (010 FR-351 · 사용자 보고 2026-09-09 「실제창에서 조작하기 변환이 안됨」).
+
+기계에 화면이 없는 것과 이 브라우저를 창 없이 띄운 것은 다른 사실이고, 사용자가 할 수
+있는 일도 다르다. 앞엣것은 다른 기계로 가야 하고, 뒤엣것은 이 기계에서 세션을 다시
+시작하면 된다. 한 문장으로 뭉뚱그리면 고칠 수 있는 쪽도 못 고친다.
+"""
+
+
+def window_unavailable_reason(session: BrowserSession) -> str | None:
+    """이 세션이 실제 창으로 갈 수 없는 이유. 갈 수 있으면 `None` (FR-351).
+
+    **두 가지를 모두 본다.** 예전에는 기계만 봤고, 그래서 macOS 에서는 창 없이 띄운
+    세션에도 「전환했다」고 답했다 — 서버는 미러의 조작 통로를 닫고 창은 뜨지 않아,
+    사용자에게 조작할 곳이 하나도 남지 않았다. 실측으로 확인한 결함이다.
+
+    Chromium 의 창 유무는 **띄울 때 정해지고 나중에 바뀌지 않는다.** 그래서 이미 떠 있는
+    세션을 창으로 옮기는 길은 없고, 여기서 할 수 있는 정직한 일은 사유를 말하는 것이다.
+    """
+    if not can_open_a_window():
+        return NO_WINDOW_ON_MACHINE
+    if session.headless:
+        return NO_WINDOW_IN_SESSION
+    return None
+
+
 @router.post("/{session_id}/control-surface")
 async def set_control_surface(
     session_id: str, body: ControlSurfaceRequest, state: State
@@ -101,14 +130,21 @@ async def set_control_surface(
     w = work_of(session_id)
 
     if body.surface == "window":
-        if not can_open_a_window():
+        unavailable = window_unavailable_reason(w.session)
+        if unavailable is not None:
+            in_session = unavailable is NO_WINDOW_IN_SESSION
             raise bad_request(
                 ErrorCode.NOT_SUPPORTED,
-                "이 기계에는 띄울 창이 없어 실제 창으로 전환할 수 없습니다.",
+                unavailable,
                 next_action=(
-                    "미러에서 계속 조작하세요. 화면이 있는 기계에서는 창을 열 수 있습니다."
+                    # **할 수 있는 일을 사유에 맞춰 말한다.** 세션 쪽 사유는 이 기계에서
+                    # 고칠 수 있다 — 그 방법을 알려 주지 않으면 사용자는 기계를 탓한다.
+                    f"미러에서 계속 조작하세요. 창에서 조작하려면 {HEADLESS_ENV}=false "
+                    "로 두고 세션을 다시 시작하세요."
+                    if in_session
+                    else "미러에서 계속 조작하세요. 화면이 있는 기계에서는 창을 열 수 있습니다."
                 ),
-                reason="headless_environment",
+                reason="headless_session" if in_session else "headless_environment",
                 env=HEADLESS_ENV,
             )
         # 이미 살아 있는 탭을 앞으로 가져온다. 실패해도 전환 자체는 성립한다 —

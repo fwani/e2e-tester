@@ -824,6 +824,81 @@
       "title": "TargetLocator",
       "type": "object"
     },
+    "UploadStep": {
+      "additionalProperties": false,
+      "description": "파일을 올리는 동작 (2026-09-09 사용자 보고).\n\n## 무엇을 기록하는가 — **파일 이름 하나다**\n\n사용자가 요구한 것은 확장자다: 「파일업로드 녹화의 경우, 파일의 확장자 기록되 되어야함.\n실제 서비스에서는 확장자를 보는경우가 있기 때문」.\n\n그래서 이 Step 은 ``file_name`` 을 갖고, **확장자는 그 이름의 일부다.** 확장자를 별도\n필드로 두지 않는 이유는 진실이 둘이 되기 때문이다 — 이름이 ``보고서.xlsx`` 인데\n확장자 필드가 ``csv`` 인 Step 이 만들어질 수 있고, 그때 어느 쪽이 맞는지 아무도 모른다.\n확장자가 필요한 곳은 `extension_of` 로 꺼낸다.\n\n**파일 내용은 기록하지 않는다.** 녹화 시점에 브라우저가 주는 것은 이름뿐이고\n(``File.name``), 내용을 정의 파일에 담으면 테스트가 옮겨 다닐 수 없게 된다. 재실행은\n같은 이름의 빈 파일을 만들어 올린다 — 확장자를 보는 검증은 통과하고, 내용을 파싱하는\n검증은 통과하지 못한다. 그 한계는 실행기 쪽에 적어 두었다.",
+      "properties": {
+        "author": {
+          "$ref": "#/$defs/Author",
+          "default": "human"
+        },
+        "file_name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "File Name",
+          "type": "string"
+        },
+        "frame_url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Url"
+        },
+        "id": {
+          "pattern": "^step-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "tab": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tab",
+          "type": "integer"
+        },
+        "target": {
+          "$ref": "#/$defs/TargetLocator"
+        },
+        "timeout_ms": {
+          "default": 10000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "upload",
+          "default": "upload",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "author",
+        "tab",
+        "timeout_ms",
+        "frame_url",
+        "type",
+        "target",
+        "file_name"
+      ],
+      "title": "UploadStep",
+      "type": "object"
+    },
     "Variable": {
       "additionalProperties": false,
       "description": "테스트 안에서 값을 대신하는 이름.",
@@ -924,7 +999,8 @@
             "fill": "#/$defs/FillStep",
             "hover": "#/$defs/HoverStep",
             "navigate": "#/$defs/NavigateStep",
-            "select": "#/$defs/SelectStep"
+            "select": "#/$defs/SelectStep",
+            "upload": "#/$defs/UploadStep"
           },
           "propertyName": "type"
         },
@@ -952,6 +1028,9 @@
           },
           {
             "$ref": "#/$defs/DragStep"
+          },
+          {
+            "$ref": "#/$defs/UploadStep"
           }
         ]
       },

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>메뉴가 덮는 화면 · 데이터 플랫폼</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* **hover 로 열리고, 포인터가 있는 동안 유지되는 메뉴.** 클릭으로는 닫히지 않는다. */
+    .haspopup { position: relative; display: inline-block; }
+    .haspopup > .popup { display: none; position: absolute; left: 0; top: 100%;
+      background: #fff; border: 1px solid #d6dae1; padding: 10px; min-width: 220px;
+      z-index: 20; }
+    /* 버튼 자신에 올라가도 열린다 — 클릭한 뒤 포인터가 버튼에 머무는 상황을 만든다. */
+    .haspopup:hover > .popup { display: block; }
+    /* 메뉴가 아래 내용을 **실제로 덮도록** 높이를 준다. */
+    .popup { height: 180px; }
+    .below { margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <!-- **재실행에서 포인터가 클릭 위치에 남아 생기는 가림을 재현하는 화면**
+       (2026-09-09 사용자 보고).
+
+       보고 문장: 「step9번으로 클릭한 다음에 메뉴에 마우스가 그대로 있어서 확장된
+       형태라서 메뉴 뒤에 가려진 원천데이터를 클릭하지 못한다. 측정은 잘되었으나,
+       재실행시 클릭한 위치에 마우스가 가게되면서 발생한 문제로 보인다.」
+
+       재현에 필요한 조건이 셋이다.
+
+       1. **메뉴가 hover 로 유지된다.** 클릭으로 토글되는 메뉴는 포인터와 무관하게
+          닫히므로 이 문제가 생기지 않는다.
+       2. **메뉴를 여는 것이 클릭 대상이다.** Playwright 의 클릭은 포인터를 그 위로
+          옮기고 그대로 두므로, 클릭이 끝난 뒤에도 메뉴가 열린 채 남는다.
+       3. **다음 대상이 그 메뉴 뒤에 있다.** 메뉴에 높이를 준 이유가 그것이다 —
+          겹치지 않으면 잴 것이 없다.
+
+       녹화는 문제없이 된다(사람은 곧 마우스를 움직인다). 재현되는 것은 **재실행**이다. -->
+  <nav>
+    <span class="brand">데이터 플랫폼</span>
+    <a href="projects.html" role="menuitem">프로젝트</a>
+  </nav>
+  <main>
+    <div class="card">
+      <h1>원천 데이터</h1>
+
+      <span class="haspopup">
+        <button type="button" data-testid="menu-trigger" aria-haspopup="true">메뉴</button>
+        <span class="popup" role="menu">
+          <button type="button" data-testid="menu-export" role="menuitem">내보내기</button>
+        </span>
+      </span>
+
+      <div class="below">
+        <!-- 메뉴가 열려 있는 동안 이 버튼은 메뉴 뒤에 있다. -->
+        <button type="button" data-testid="source-data">원천데이터</button>
+        <p id="result" class="muted"></p>
+      </div>
+    </div>
+  </main>
+  <script src="app.js"></script>
+  <script>
+    document.querySelector('[data-testid=source-data]').addEventListener('click', () => {
+      document.getElementById('result').textContent = '원천데이터 열림';
+    });
+  </script>
+</body>
+</html>

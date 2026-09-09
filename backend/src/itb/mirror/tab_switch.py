@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 from typing import Any
 
@@ -106,6 +107,41 @@ class MirrorController:
         if self._pinned:
             return
         await self.show(tab_index)
+
+    def follow_new_tabs(self) -> None:
+        """새로 열리는 탭을 표시 탭으로 삼는다 (FR-030a·FR-030f).
+
+        **녹화에서 이것이 없으면 새 탭의 조작이 통째로 사라진다.** 미러는 조작 통로를
+        표시 탭에 붙이므로 (FR-317), 표시 탭이 0 에 남아 있으면 사용자가 새 탭을 보며
+        누른다고 믿는 클릭이 전부 탭 0 으로 간다. 탭 0 에는 그 요소가 없으니 Step 도
+        생기지 않고, 화면에는 「녹화가 안 된다」로만 보인다.
+
+        실행 중 Step 을 따라가는 `follow` 와 **같은 판정을 쓴다** — 사용자가 탭을 직접
+        골랐으면(`_pinned`) 따라가지 않는다. 자동 추적이 사람의 선택을 덮으면, 사용자는
+        보려던 탭을 계속 놓친다.
+
+        실제 브라우저는 새 탭을 앞으로 가져온다. 미러가 그러지 않으면 미러를 통해 보는
+        화면과 대상 브라우저의 상태가 갈린다.
+        """
+        self._session.attach_page_observer(self._on_new_page)
+
+    def _on_new_page(self, page: Any) -> None:
+        """`BrowserSession.notify_page` 가 새 탭마다 부른다.
+
+        **여기서 기다릴 수 없다.** 이벤트 핸들러는 동기이고, 세션은 이 호출이 실패해도
+        탭 등록을 마쳐야 한다 (`notify_page` 가 예외를 삼키는 이유와 같다).
+        """
+        handle = self._session.tab_of(page)
+        if handle is None:
+            return
+        asyncio.create_task(  # noqa: RUF006 - 이벤트 핸들러에서 대기할 수 없다
+            self._follow_quietly(handle.tab_index)
+        )
+
+    async def _follow_quietly(self, tab_index: int) -> None:
+        """미러 실패는 실행 실패가 아니다 (FR-047b). 여기서 삼킨다."""
+        with contextlib.suppress(Exception):
+            await self.follow(tab_index)
 
     def unpin(self) -> None:
         """자동 추적을 다시 켠다."""

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 from enum import StrEnum
 from typing import Annotated, Literal
 
@@ -50,6 +51,16 @@ class StepType(StrEnum):
 
     DRAG = "drag"
     """끌어다 놓는 동작 (FR-023c)."""
+
+    UPLOAD = "upload"
+    """파일을 올리는 동작 (2026-09-09 사용자 보고 — 「파일 업로드 녹화가 제대로 안됨」).
+
+    **이 종류가 없어서 업로드가 기록되지 않았다.** 리코더는 파일 입력을 감지하고도
+    ``파일 입력이 감지됐습니다 … Step 편집에서 파일 경로를 직접 지정해야 합니다`` 라는
+    경고만 남겼는데, 그 「Step 편집」에는 파일을 지정할 칸도 Step 종류도 없었다. 001
+    research 가 「감지해 Step 을 만들되 경로는 사용자가 지정한다」로 정했지만(research.md)
+    구현이 비어 있었고 문구만 남아 있었다.
+    """
 
 
 class _StepBase(BaseModel):
@@ -129,6 +140,31 @@ class DragStep(_StepBase):
     drop_target: TargetLocator
 
 
+class UploadStep(_StepBase):
+    """파일을 올리는 동작 (2026-09-09 사용자 보고).
+
+    ## 무엇을 기록하는가 — **파일 이름 하나다**
+
+    사용자가 요구한 것은 확장자다: 「파일업로드 녹화의 경우, 파일의 확장자 기록되 되어야함.
+    실제 서비스에서는 확장자를 보는경우가 있기 때문」.
+
+    그래서 이 Step 은 ``file_name`` 을 갖고, **확장자는 그 이름의 일부다.** 확장자를 별도
+    필드로 두지 않는 이유는 진실이 둘이 되기 때문이다 — 이름이 ``보고서.xlsx`` 인데
+    확장자 필드가 ``csv`` 인 Step 이 만들어질 수 있고, 그때 어느 쪽이 맞는지 아무도 모른다.
+    확장자가 필요한 곳은 `extension_of` 로 꺼낸다.
+
+    **파일 내용은 기록하지 않는다.** 녹화 시점에 브라우저가 주는 것은 이름뿐이고
+    (``File.name``), 내용을 정의 파일에 담으면 테스트가 옮겨 다닐 수 없게 된다. 재실행은
+    같은 이름의 빈 파일을 만들어 올린다 — 확장자를 보는 검증은 통과하고, 내용을 파싱하는
+    검증은 통과하지 못한다. 그 한계는 실행기 쪽에 적어 두었다.
+    """
+
+    type: Literal[StepType.UPLOAD] = StepType.UPLOAD
+    target: TargetLocator
+    file_name: str = Field(min_length=1, max_length=255)
+    """녹화 때 고른 파일의 이름. **확장자를 포함한다** — 그것이 이 Step 의 핵심 정보다."""
+
+
 class CloseTabStep(_StepBase):
     """탭 닫기 (FR-030c). 대상은 공통 ``tab`` 필드가 가리킨다."""
 
@@ -143,10 +179,46 @@ Step = Annotated[
     | AssertionStep
     | CloseTabStep
     | HoverStep
-    | DragStep,
+    | DragStep
+    | UploadStep,
     Field(discriminator="type"),
 ]
 """판별 유니온. 이 하나가 제품 전체의 유일한 테스트 표현이다 (원칙 I)."""
+
+
+def extension_of(file_name: str) -> str:
+    """파일 이름에서 확장자를 꺼낸다 — **점 없이, 소문자로** (2026-09-09).
+
+    판정을 한 곳에 두는 이유는 이 값이 두 곳에서 쓰이기 때문이다: 화면이 행에 표시하고,
+    실행기가 올릴 임시 파일의 이름을 만든다. 각자 잘라 쓰면 ``.tar.gz`` 같은 이름에서
+    답이 갈린다 (여기서는 마지막 조각만 본다 — ``gz``).
+
+    확장자가 없으면 빈 문자열이다. 확장자 없는 파일도 올릴 수 있으므로 오류가 아니다.
+
+    **숨김 파일은 확장자가 없다** (``.gitignore`` → ``""``). 검사가 이것을 잡았다 —
+    첫 판은 마지막 점 뒤를 그대로 돌려줘 ``gitignore`` 를 확장자로 봤고, 화면 쪽
+    (`uploadExtension`)은 처음부터 점이 맨 앞이면 확장자가 없다고 봤다. 같은 파일에 대해
+    두 곳이 다른 답을 내는 상태이며, 이 함수의 주석이 경계한 바로 그 갈림이었다.
+    """
+    stem, dot, tail = file_name.rpartition(".")
+    if not dot or not tail or not stem:
+        return ""
+    return tail.strip().lower()
+
+
+def mime_type_of(file_name: str) -> str:
+    """파일 이름에서 MIME 유형을 정한다 (2026-09-09).
+
+    업로드를 받는 서버가 확장자 대신 ``Content-Type`` 을 보는 경우가 있다. 이름에서
+    유추할 수 있는 것은 여기서 유추하고, 모르면 ``application/octet-stream`` 이다 —
+    그것이 「모르는 바이트 묶음」의 표준 표기이며, 지어내면 서버가 다른 이유로 거절한다.
+
+    **판정을 여기 두는 이유**는 두 곳이 같은 답을 써야 하기 때문이다: 제품의 재실행
+    (`step_executor`)과 생성된 Playwright 코드(`playwright_gen`). 갈리면 「제품에서는
+    되는데 내보낸 코드에서는 안 되는」 테스트가 만들어진다 (FR-118 이 막으려는 것).
+    """
+    guessed, _ = mimetypes.guess_type(file_name)
+    return guessed or "application/octet-stream"
 
 
 def target_of(step: object) -> TargetLocator | None:

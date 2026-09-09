@@ -272,10 +272,36 @@ async def _send_an_edit_after_the_pause_was_lifted(ctx: Any) -> Attempt:
         # 화면이 그 조작을 이미 거두어 갔으면 요청은 나가지 않았다. 오류 본문이 없는
         # 것이 정상이며, 그때는 **무엇이 막는지가 보이는가**만 남는다.
         prevented=not sent,
-        surfaced=(await ctx.status_summary(page))
-        if sent
-        else await ctx.disabled_reason(page, "Step 추가"),
+        # 2026-09-09 — 자리가 접히는 경우까지 함께 읽는다 (아래 주석).
+        surfaced=(await ctx.status_summary(page)) if sent else await _why_blocked(ctx, page),
     )
+
+
+async def _why_blocked(ctx: Any, page: Any) -> str:
+    """조작을 보내지 못했을 때 **화면이 그 사실을 말하는가** (AP-003 · 판정축 ②).
+
+    ## 왜 두 곳을 읽는가 (2026-09-09)
+
+    이전에는 비활성 버튼의 사유(`disabled_reason`)만 읽었다. 그것이 그때의 계약이었다 —
+    007 FR-234 는 「쓸 수 없는 조작은 감추지 않고 같은 자리에 비활성으로 두고 이유를
+    붙인다」로 예외 없이 정해 두었으므로, 막힌 조작은 **항상 사유를 가진 버튼**이었다.
+
+    그 계약이 사용자 결정으로 좁아졌다 (`frontend/src/lib/capabilities.ts` 의
+    `REASON_VISIBILITY`): 사용자가 지금 화면에서 곧바로 해소할 수 있는 전제만 자리에
+    남고, 「이 상태의 조작이 아니다」는 접힌다. 실측 근거는 검토 화면의 조작 자리 24개 중
+    14개가 비활성이었다는 것이다.
+
+    그래서 이 시나리오(바깥에서 상태가 바뀌어 조작이 사라진 경우)에서 사용자가 읽는 것은
+    버튼 옆 사유가 아니라 **국면이 바뀌었다는 알림**이다 (`SessionScreen` 의
+    `autoTransition`). 재는 것은 그대로다 — 조작이 조용히 삼켜지지 않는가.
+
+    **버튼 사유를 먼저 읽는다.** 아직 자리에 남아 있는 경우(`keep`)에는 그것이 가장
+    가까운 설명이고, 접힌 경우에만 화면 상태로 넘어간다.
+    """
+    reason = await ctx.disabled_reason(page, "Step 추가")
+    if reason.strip():
+        return reason
+    return await ctx.status_summary(page)
 
 
 @driver("AS-026")

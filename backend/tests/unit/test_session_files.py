@@ -55,10 +55,24 @@ def test_hostile_names_never_become_paths(raw: str | None) -> None:
     store = sf.SessionFileStore("s1")
     entry = store.add(sf.sanitize_display_name(raw), b"x")
 
-    # 저장 경로는 **식별자 하나**다. 이름의 어떤 조각도 들어가지 않는다.
-    assert entry.path.name == entry.file_id
-    assert entry.path.parent == store.directory
-    # 뿌리 밖으로 나가지 않는다.
+    """2026-09-09 — **재는 것이 한 겹 옮겨졌다** (사용자 보고).
+
+    이전 단언은 「저장 경로는 식별자 하나다. 이름의 어떤 조각도 들어가지 않는다」였다.
+    대상 브라우저가 받는 파일 이름이 경로의 마지막 조각이라는 사실 때문에 그 배치로는
+    확장자를 전달할 수 없었다 (`SessionFileStore.add` 의 주석).
+
+    그래서 이름은 **마지막 조각에만** 온다. 재는 것은 여전히 같다 — 「이름이 경로를
+    벗어날 수 없다」. 방법이 「이름을 아예 안 쓴다」에서 「이름을 한 조각에 가두고 담김을
+    확인한다」로 바뀌었다.
+    """
+    # 이름이 들어오는 조각은 **마지막 하나**이고, 그 위는 서버가 발급한 식별자다.
+    assert entry.path.parent.name == entry.file_id
+    assert entry.path.parent.parent == store.directory
+    # 이름 조각에 경로 구분자·상위 참조가 남지 않는다.
+    assert "/" not in entry.path.name
+    assert "\\" not in entry.path.name
+    assert entry.path.name not in (".", "..")
+    # 뿌리 밖으로 나가지 않는다 — 담김 검사가 `add` 안에도 있다.
     assert store.directory.resolve() in entry.path.resolve().parents
 
 
@@ -228,3 +242,75 @@ def test_startup_sweep_never_blocks_boot() -> None:
         _sweep_session_files()  # 예외가 새면 여기서 터진다
     finally:
         app_module.sweep_orphans = original  # type: ignore[assignment]
+
+
+# ─── 확장자가 대상 페이지까지 간다 (2026-09-09 사용자 보고) ──────────────────
+
+
+class ExtensionSurvivesTests:
+    """「파일 이름 에 확장자가 포함되어야한다」.
+
+    ## 왜 이것이 검사할 값인가
+
+    사용자가 든 이유는 「실제 서비스에서는 확장자를 보는경우가 있기 때문」이다. 확장자가
+    없으면 그 서비스는 업로드를 거절하고, 그 실패는 ITB 의 결함으로 보이지 않는다 —
+    사용자는 자기 파일이 잘못됐다고 생각한다.
+
+    **대상 브라우저가 받는 이름은 경로의 마지막 조각이다.** 저장이 이름을 버리면 그 뒤의
+    어떤 코드도 이름을 되살릴 수 없으므로, 재는 자리는 저장이다.
+    """
+
+    def test_the_stored_path_ends_with_the_file_name(self) -> None:
+        store = sf.SessionFileStore("s1")
+        entry = store.add(sf.sanitize_display_name("보고서.xlsx"), b"x")
+
+        assert entry.path.name == "보고서.xlsx"
+        assert entry.display_name == "보고서.xlsx"
+        # 이것이 결함의 형태였다 — 경로가 식별자로 끝나면 확장자가 사라진다.
+        assert entry.path.name != entry.file_id
+
+    def test_names_that_lose_their_letters_keep_the_extension(self) -> None:
+        """허용 문자 밖의 이름도 **확장자는 남는다.**
+
+        ``報告.xlsx`` 는 줄기가 통째로 정리되지만 확장자는 이 기능의 핵심 정보다.
+        이전 판은 줄기가 ``-`` 가 된 뒤 마지막 `strip("-. ")` 이 앞의 ``-.`` 를 함께 떼어
+        **``xlsx``** 만 남겼다 — 이름이 확장자였던 것이 되고 확장자는 사라졌다.
+        """
+        assert sf.sanitize_display_name("報告.xlsx") == "file.xlsx"
+        assert sf.sanitize_display_name("報告書.tar.gz").endswith(".gz")
+
+    def test_a_long_name_never_loses_the_extension(self) -> None:
+        """길이 상한이 확장자를 자르지 않는다.
+
+        잘린 확장자(``.xls``)는 없는 확장자보다 나쁘다 — 엉뚱한 유형으로 읽히고, 그것은
+        조용히 다른 검증을 통과하거나 실패한다.
+        """
+        name = sf.sanitize_display_name("가" * 300 + ".xlsx")
+        assert name.endswith(".xlsx")
+        assert len(name) <= sf.MAX_DISPLAY_NAME
+
+    def test_files_with_the_same_name_do_not_overwrite_each_other(self) -> None:
+        """이름이 경로에 들어오면 겹침을 생각해야 한다.
+
+        파일마다 자기 디렉터리(`f_<hex>`)를 가지므로 같은 이름을 두 번 올려도 서로 덮지
+        않는다. 덮으면 먼저 올린 파일을 가리키는 식별자가 다른 내용을 돌려준다.
+        """
+        store = sf.SessionFileStore("s1")
+        first = store.add(sf.sanitize_display_name("같은.csv"), b"first")
+        second = store.add(sf.sanitize_display_name("같은.csv"), b"second")
+
+        assert first.file_id != second.file_id
+        assert first.path != second.path
+        assert first.path.read_bytes() == b"first"
+        assert second.path.read_bytes() == b"second"
+
+    def test_cleanup_still_removes_everything(self) -> None:
+        """디렉터리가 한 겹 깊어졌어도 정리는 그대로다 (FR-337b)."""
+        store = sf.SessionFileStore("s1")
+        entry = store.add(sf.sanitize_display_name("보고서.xlsx"), b"x")
+        assert entry.path.is_file()
+
+        store.cleanup()
+
+        assert not entry.path.exists()
+        assert not store.directory.exists()

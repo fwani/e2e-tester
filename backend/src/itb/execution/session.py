@@ -153,6 +153,18 @@ class BrowserSession:
     active_tab_index: int = 0
     mirrored_tab_index: int = 0
     test_id: str | None = None
+    headless: bool = True
+    """이 브라우저를 **창 없이** 띄웠는가 (010 FR-351·FR-352).
+
+    **세션이 알아야 하는 사실이다.** 기계에 화면이 있는지와 이 브라우저에 창이 있는지는
+    다른 물음이다 — Chromium 은 띄울 때 정해지고 나중에 바뀌지 않으므로, 창 없이 띄운
+    브라우저는 화면 있는 기계에서도 옮겨 갈 창이 없다.
+
+    이것이 없던 동안 「실제 창에서 조작하기」는 macOS 에서 **항상 성공했다** — 판정이
+    기계만 보았기 때문이다. 서버는 「창으로 옮겼다」고 답하고 미러의 조작 통로를 닫았고,
+    창은 어디에도 뜨지 않았다. 사용자에게는 조작할 곳이 하나도 남지 않는다.
+    """
+
     current_step_index: int = 0
     """다음에 실행할 Step 위치.
 
@@ -202,11 +214,16 @@ class BrowserSession:
     일어났는지 알려 주는 것이 맞다.
     """
 
-    _page_observer: PageObserver | None = None
-    """새 탭이 열렸을 때 알려 줄 대상. 리코더가 등록한다.
+    _page_observers: list[PageObserver] = field(default_factory=list)
+    """새 탭이 열렸을 때 알려 줄 대상들. 리코더와 미러가 각각 등록한다.
 
     세션이 리코더를 직접 임포트하지 않는 이유는 방향이다 — 리코더가 세션을 임포트하므로
-    반대 방향을 두면 고리가 생긴다. 훅 하나로 방향을 유지한다.
+    반대 방향을 두면 고리가 생긴다. 훅으로 방향을 유지한다.
+
+    **하나가 아니라 목록이다.** 새 탭을 알아야 하는 쪽이 둘이기 때문이다 — 리코더는 그
+    탭의 이동·닫힘을 감시해야 하고, 미러는 표시 탭을 그리로 옮겨야 한다 (FR-030f).
+    하나만 둘 수 있던 동안에는 나중에 등록한 쪽이 앞엣것을 조용히 밀어냈고, 실제로는
+    미러가 등록되지 않아 새 탭이 열려도 탭 0 을 계속 보고 있었다.
     """
 
     _state_observer: StateObserver | None = None
@@ -328,15 +345,28 @@ class BrowserSession:
             self._all_closed_hook()
 
     def attach_page_observer(self, observer: PageObserver | None) -> None:
-        """새 탭 통보 대상을 등록한다. 리코더가 `install()` 에서 부른다."""
-        self._page_observer = observer
+        """새 탭 통보 대상을 **더한다.** 리코더가 `install()` 에서, 미러가 세션 조립에서 부른다.
+
+        `None` 이면 전부 지운다 — 예전의 「하나를 갈아 끼운다」 계약에서 남은 통로다.
+
+        같은 객체를 두 번 넣지 않는다. 중복되면 새 탭 하나에 같은 감시가 두 번 붙고,
+        리코더 쪽에서는 그것이 Step 중복으로 나타난다.
+        """
+        if observer is None:
+            self._page_observers.clear()
+            return
+        if observer not in self._page_observers:
+            self._page_observers.append(observer)
 
     def notify_page(self, page: Page) -> None:
-        """새 탭이 열렸음을 관찰자에게 알린다. 실패해도 탭 등록에 영향을 주지 않는다."""
-        if self._page_observer is None:
-            return
-        with contextlib.suppress(Exception):
-            self._page_observer(page)
+        """새 탭이 열렸음을 관찰자들에게 알린다. 실패해도 탭 등록에 영향을 주지 않는다.
+
+        **한 관찰자의 실패가 다음 관찰자를 막지 않는다.** 미러가 프레임을 시작하지 못한
+        것이 리코더의 감시까지 없애서는 안 된다 (FR-047b).
+        """
+        for observer in list(self._page_observers):
+            with contextlib.suppress(Exception):
+                observer(page)
 
     def tab_of(self, page: Page) -> TabHandle | None:
         """페이지가 어느 탭인지. `expose_binding` 의 source 를 tab_index 로 바꿀 때 쓴다."""
@@ -583,6 +613,7 @@ class SessionManager:
             context=context,
             state=SessionState.STARTING,
             test_id=test_id,
+            headless=headless,
             max_tabs=max_tabs,
         )
 
