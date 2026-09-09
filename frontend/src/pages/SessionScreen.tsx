@@ -44,6 +44,15 @@ import {
 import { AssertionForm } from "../components/AssertionForm";
 import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
 import { MirrorView, type MirrorPhase } from "../components/MirrorView";
+import type {
+  FrameGeometry,
+  InputEvent as MirrorInputEvent,
+} from "../components/mirror/useMirrorInput";
+import { createMoveThrottle } from "../components/mirror/useMirrorInput";
+import {
+  connectControlChannel,
+  type ControlChannel,
+} from "../api/control";
 import { PacingControl } from "../components/PacingControl";
 import { TabStrip } from "../components/TabStrip";
 import { BrowserFrame } from "../components/design/BrowserFrame";
@@ -86,6 +95,7 @@ import {
   skipFailureNotice,
   stepLabel,
   stopLabel,
+  type ControlSurface,
   type OutcomeTone,
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
@@ -101,6 +111,18 @@ const OFFLINE_NOTICE_DELAY_MS = 1500;
 
 
 const MANIPULATION_STATES = new Set(["recording", "takeover_recording"]);
+
+/**
+ * 조작 국면 — 미러가 조작을 받는 상태들 (010 FR-314 · contracts/mirror-control.md §1).
+ *
+ * `MANIPULATION_STATES` 와 **다르다.** 그것은 「실제 브라우저 창을 앞으로 가져와야
+ * 하는가」를 묻고 `paused` 를 뺀다. 이것은 「사람이 지금 브라우저를 조작하는가」를 묻고
+ * `paused` 를 넣는다 — 일시정지에서 사람이 막힌 곳을 손으로 지나야 하기 때문이다 (US3).
+ *
+ * 서버의 `is_control_phase` 와 같은 집합이다 (`execution/state_machine.py`). 갈리면
+ * 화면은 붙으려 하고 서버는 거절한다.
+ */
+const CONTROL_PHASE_STATES = new Set(["recording", "takeover_recording", "paused"]);
 /** 세션이 살아 있지 않은 상태. `review` 는 여기 없다 — 편집·저장을 받는다 (DR-010). */
 const TERMINAL_STATES = new Set(["completed", "failed", "stopped", "lost"]);
 /** 중지 후 검토 상태. 브라우저는 없지만 Step 은 살아 있다 (contracts §6). */
@@ -174,6 +196,23 @@ export interface SessionWorkbenchProps {
   tabs?: ReactNode;
   currentUrl?: string;
   mirroredTab?: number;
+
+  /* ─── 010 미러 조작의 런타임 사정 (contracts/mirror-control.md §1) ───
+   *
+   * **국면이 아니라 런타임 사정이다.** 권한표에 사실로 넘기고, 판정은 표가 한다
+   * (FR-316). 이 컴포넌트가 스스로 「지금 조작할 수 있나」를 계산하지 않는다.
+   *
+   * 값을 주지 않으면 `undefined` 이고, 표는 그것을 **거짓**으로 읽는다 — 모르는 것을
+   * 조작 가능으로 그리지 않는다 (`CapabilityFacts` 의 규칙).
+   */
+  /** 프레임을 한 장이라도 받았는가 (FR-333) */
+  mirrorFrameSeen?: boolean;
+  /** 프레임이 지금 흐르고 있는가 (FR-346) */
+  mirrorLive?: boolean;
+  /** 조작 통로가 붙었는가 */
+  controlChannelOpen?: boolean;
+  /** 지금 조작이 어디서 이루어지는가 (FR-350 · data-model §6) */
+  controlSurface?: ControlSurface;
 
   focusedStepId?: string | null;
   /** Step 상세 겹침이 열려 있는가. 지목과 상세 열기는 다른 조작이다 (FR-227·FR-230). */
@@ -449,6 +488,16 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     stopRequested,
     runPending,
     sessionLost: lost !== null,
+    /*
+      010 미러 조작의 런타임 사정 (contracts/mirror-control.md §1).
+
+      넷 다 **국면이 아니다.** 국면 열에 적으면 한 국면이 빠지고, 빠진 국면에서 화면은
+      쓸 수 없는 조작을 활성으로 그린다 (research R9).
+    */
+    mirrorFrameSeen: props.mirrorFrameSeen,
+    mirrorLive: props.mirrorLive,
+    controlChannelOpen: props.controlChannelOpen,
+    controlSurfaceIsMirror: (props.controlSurface ?? "mirror") === "mirror",
   };
   const capabilities = capabilitiesFor(phase, facts);
 
@@ -1189,6 +1238,27 @@ export function SessionScreen({
   const [mirrorTab, setMirrorTab] = useState<number>(initial.mirrored_tab_index);
   const [mirrorStopped, setMirrorStopped] = useState<string | null>(null);
   const [mirrorDegraded, setMirrorDegraded] = useState<string | null>(null);
+  /**
+   * 010 — 마지막 프레임이 실어 온 좌표 변환의 근거 (FR-331 · data-model §2).
+   *
+   * `null` 이면 프레임을 한 장도 받지 못한 상태다. 그 상태에서는 좌표를 보낼 근거가
+   * 없으므로 조작을 전달하지 않는다 (FR-333).
+   */
+  const [geometry, setGeometry] = useState<FrameGeometry | null>(null);
+  /** 프레임이 지금 흐르고 있는가 (FR-346). 끊김과 정적 화면은 다르다 */
+  const [mirrorLive, setMirrorLive] = useState(false);
+  /** 조작 통로가 붙었는가 (contracts §1 런타임 덮어쓰기) */
+  const [controlOpen, setControlOpen] = useState(false);
+  /** 지금 조작이 어디서 이루어지는가 (FR-350 · data-model §6) */
+  const [surface, setSurface] = useState<ControlSurface>("mirror");
+  /**
+   * 조작이 전달되지 않은 사유 (SC-516).
+   *
+   * 서버가 거절했거나, 화면이 조작을 받지 않는 상태에서 사용자가 시도했다. **조용히
+   * 아무 일도 일어나지 않는 경우가 0건이어야 한다**는 것이 이 상태의 존재 이유다.
+   */
+  const [controlNotice, setControlNotice] = useState<string | null>(null);
+  const control = useRef<ControlChannel | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [lost, setLost] = useState<string | null>(null);
@@ -1248,6 +1318,16 @@ export function SessionScreen({
           case "mirror_frame":
             setFrame(event.data);
             setMirrorStopped(null);
+            setMirrorLive(true);
+            // 좌표 변환의 근거를 프레임과 **함께** 갱신한다 (FR-331). 따로 두면 프레임이
+            // 바뀐 뒤 옛 배율로 좌표를 계산하는 순간이 생긴다.
+            setGeometry({
+              width: event.width,
+              height: event.height,
+              pageScale: event.pageScale,
+              offsetTop: event.offsetTop,
+              frameSeq: event.frameSeq,
+            });
             break;
           case "mirror_tab_changed":
             setMirrorTab(event.tab);
@@ -1257,6 +1337,7 @@ export function SessionScreen({
             break;
           case "mirror_stopped":
             setMirrorStopped(event.reason ?? "미러가 중단됐습니다.");
+            setMirrorLive(false);
             break;
           case "session_lost":
             setLost(event.reason ?? "브라우저 세션이 유실됐습니다.");
@@ -1485,6 +1566,76 @@ export function SessionScreen({
     return () => window.removeEventListener("beforeunload", guard);
   }, [view.has_unsaved_changes, isDone]);
 
+  /* ─── 010 조작 채널 (contracts/mirror-control.md §2) ─────────────────────
+   *
+   * **국면이 조작 국면일 때만 붙는다.** 서버도 같은 판정을 하고 아니면 수립을 거절한다
+   * (FR-342) — 화면이 붙지 않는 것에 의존하지 않는 것이 그 요구의 요점이므로, 여기서
+   * 거는 조건은 헛된 접속을 줄이기 위한 것이지 안전장치가 아니다.
+   *
+   * 국면이 바뀌면 붙였다 끊는다. 이 효과가 `view.state` 에 의존하는 이유다.
+   */
+  const controlPhase = CONTROL_PHASE_STATES.has(view.state);
+
+  useEffect(() => {
+    if (!controlPhase) {
+      control.current?.close();
+      control.current = null;
+      setControlOpen(false);
+      return;
+    }
+    const channel = connectControlChannel(sessionId, {
+      onState: (state, reason) => {
+        setControlOpen(state === "open");
+        // **사유 없이 끊긴 것으로 두지 않는다** (SC-516). 서버가 닫을 때 사유를 싣는다.
+        if (reason !== null) setControlNotice(reason);
+      },
+      onRejected: (reason) => setControlNotice(reason),
+    });
+    control.current = channel;
+    return () => {
+      channel.close();
+      control.current = null;
+      setControlOpen(false);
+    };
+  }, [sessionId, controlPhase]);
+
+  /**
+   * 이동 사건의 전송량 억제 (FR-336).
+   *
+   * 마우스 이동은 초당 수십 건이다. 전부 보내면 채널이 이동으로 가득 차고 그 뒤의 클릭이
+   * 밀린다. **마지막 위치는 반드시 보낸다** — 마우스 올리기로 열리는 메뉴는 포인터가
+   * 머무는 위치로 판정되므로, 마지막 이동을 버리면 메뉴가 열리지 않는다.
+   */
+  const moveThrottle = useRef(createMoveThrottle());
+
+  const sendInput = useCallback((event: MirrorInputEvent) => {
+    const channel = control.current;
+    if (channel === null) return;
+    if (event.kind === "pointer.move") {
+      const now = Date.now();
+      const due = moveThrottle.current.offer(event, now);
+      if (due !== null) channel.send(due);
+      return;
+    }
+    // 이동이 아닌 사건 앞에서는 **미뤄 둔 이동을 먼저 흘린다.** 순서가 뒤집히면 클릭이
+    // 포인터가 아직 도착하지 않은 자리에서 일어난다.
+    const pending = moveThrottle.current.flush(Date.now());
+    if (pending !== null) channel.send(pending);
+    channel.send(event);
+  }, []);
+
+  /**
+   * 실제 창으로 전환한다 (FR-349·FR-353 · US5).
+   *
+   * **사용자가 누를 때만 일어난다.** 제품이 상황을 판단해 자동으로 창을 열지 않는다.
+   */
+  const useWindow = useCallback(() => {
+    void sessions
+      .setControlSurface(sessionId, "window")
+      .then((next) => setSurface(next.surface))
+      .catch((exc) => setControlNotice(describeError(exc).message));
+  }, [sessionId]);
+
   /*
     005 재점검 U-04-b — 미리보기 국면이 **전이와 종료를 구분한다.**
     순서가 판정이다: 조작 > 종료(브라우저 없음) > 실행 끝남 > 전이 중 > 일시정지.
@@ -1530,6 +1681,24 @@ export function SessionScreen({
   const durationOf = (step: Step) =>
     durations.current[step.id] ?? restored.get(step.id)?.duration_ms;
 
+  /*
+    010 — 미러 조작의 권한표 판정.
+
+    `SessionWorkbench` 가 같은 표를 지나 자기 사실로 계산하지만, `MirrorView` 는 그
+    컴포넌트 **밖에서** 그려져 props 로 들어간다. 그래서 여기서도 한 번 계산한다 —
+    같은 함수·같은 사실을 지나므로 두 값이 갈릴 수 없다 (FR-316).
+  */
+  const mirrorPhaseOfSession = phaseOfSession(view);
+  const mirrorFacts: CapabilityFacts = {
+    mirrorFrameSeen: frame !== null && geometry !== null,
+    mirrorLive: mirrorLive && mirrorStopped === null,
+    controlChannelOpen: controlOpen,
+    controlSurfaceIsMirror: surface === "mirror",
+    sessionLost: lost !== null,
+    liveBrowser: hasLiveBrowser(view) && lost === null,
+  };
+  const mirrorCaps = capabilitiesFor(mirrorPhaseOfSession, mirrorFacts);
+
   const mirror = (
     <MirrorView
       frame={frame}
@@ -1537,6 +1706,13 @@ export function SessionScreen({
       stoppedReason={mirrorStopped}
       degradedReason={mirrorDegraded}
       tabIndex={mirrorTab}
+      control={mirrorCaps["mirror.control"]}
+      useWindowCapability={mirrorCaps["mirror.useWindow"]}
+      surface={surface}
+      geometry={geometry}
+      onInput={sendInput}
+      onBlockedAttempt={setControlNotice}
+      onUseWindow={useWindow}
     />
   );
 
@@ -1637,7 +1813,15 @@ export function SessionScreen({
         autoTransition={autoTransition}
         error={error}
         notice={notice}
-        notes={notes}
+        /*
+          010 SC-516 — **조작이 전달되지 않은 사유를 화면에 남긴다.**
+
+          서버가 거절했거나 화면이 조작을 받지 않는 상태에서 사용자가 시도했다. 조용히
+          아무 일도 일어나지 않으면 사용자는 제품이 고장난 것으로 읽는다. `notes` 에
+          싣는 이유는 그 자리가 이미 「사용자 조작 없이 알려야 하는 사실」의 집이기
+          때문이다 — 새 자리를 만들면 같은 종류가 두 곳에 흩어진다.
+        */
+        notes={controlNotice === null ? notes : [...notes, controlNotice]}
         lost={lost}
         offline={showOffline}
         mirror={mirror}

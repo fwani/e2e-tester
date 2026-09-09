@@ -1,18 +1,45 @@
 /**
- * 관찰용 읽기 전용 미러 (T088). FR-047·FR-023b.
+ * 대상 브라우저 미러 (T088 · 010 T027·T036·T045·T075). FR-047·FR-023b·FR-314~FR-320.
  *
- * **이 영역은 조작 대상이 아니다** (FR-047a). 사용자 입력을 대상 브라우저로 전달하는
- * 경로를 두지 않는다 — 그래서 프레임을 `<img>` 로 그리고 포인터 이벤트를 끈다.
- * 클릭·키 입력을 받아 전달하는 코드가 이 파일에 없다는 것이 요구사항의 구현이다.
+ * ## 이 파일의 머리말이 010 에서 뒤집힌 자리
  *
- * 조작 국면(직접 녹화·직접 동작 추가·사람 인수)에서는 **실제 브라우저 창에서 조작한다**
- * (clarify 결정 3). 그 사실을 화면에 명시해야 사용자가 이 영역을 클릭하며 헤매지 않는다.
+ * 001 은 여기에 이렇게 적었다 — 「이 영역은 조작 대상이 아니다 (FR-047a). 사용자 입력을
+ * 대상 브라우저로 전달하는 경로를 두지 않는다. **클릭·키 입력을 받아 전달하는 코드가 이
+ * 파일에 없다는 것이 요구사항의 구현이다.**」
+ *
+ * 010 이 그 문장을 개정한다. 코드가 없다는 것으로 지키던 성질을 **국면이 지킨다.**
+ *
+ * - 조작 국면(직접 녹화·사람 인수·일시정지)에서는 이 영역이 조작을 받는다 (FR-314).
+ * - 관찰 국면(실행 중·AI 수행 중)에서는 종전과 같이 전달하지 않는다 (FR-315).
+ * - **그 판정을 이 컴포넌트가 하지 않는다** (FR-316). `controllable` 을 props 로 받는다.
+ *   국면 × 조작 권한표(`lib/capabilities.ts`)가 정하고, 여기는 결과만 그린다. 컴포넌트가
+ *   스스로 국면을 보면 표 밖에 판정이 하나 더 생기고, 둘이 갈리는 날 화면은 켤 수 있다고
+ *   그리고 서버는 거절한다.
+ *
+ * **조작을 받는 상태인지가 화면에서 구분되어야 한다** (FR-319). 사용자가 클릭해 보고 나서
+ * 알게 되어서는 안 된다 — 테두리와 상단 안내가 그 구분이다.
  *
  * 프레임은 유실 가능하다 — 마지막 프레임만 그리면 되고, 유실이 실행에 영향을 주지
  * 않는다 (FR-047b).
  */
 
-import { mirrorEmptyMessage, mirrorNotice, type MirrorNoticePhase } from "../lib/wording";
+import { useRef, type KeyboardEvent, type PointerEvent, type WheelEvent } from "react";
+
+import type { CapabilityState } from "../lib/capabilities";
+import {
+  MIRROR_FOCUS_HINT,
+  mirrorEmptyMessage,
+  mirrorNotice,
+  type ControlSurface,
+  type MirrorNoticePhase,
+} from "../lib/wording";
+import type { FrameGeometry, InputEvent } from "./mirror/useMirrorInput";
+import {
+  buttonNameOf,
+  modifiersOf,
+  pointerEventOf,
+  wheelEventOf,
+} from "./mirror/useMirrorInput";
 
 /**
  * 미리보기의 국면 (005 재점검 U-04-b).
@@ -21,7 +48,7 @@ import { mirrorEmptyMessage, mirrorNotice, type MirrorNoticePhase } from "../lib
  * 전이 중에도, 실행이 끝난 뒤에도 오버레이가 「일시정지」를 단정했고 같은 화면의
  * 배지는 「일시정지 중…」·「실행 종료」라고 말했다. 값이 없으면 화면이 구분할 수 없다.
  *
- * 문구는 `wording.ts` 가 소유한다 (005 T107 · 006 T084).
+ * 문구는 `wording.ts` 가 소유한다 (005 T107 · 006 T084 · 010 T037).
  */
 export type MirrorPhase = MirrorNoticePhase;
 
@@ -35,6 +62,33 @@ export interface MirrorViewProps {
   degradedReason?: string | null;
   /** 현재 표시 중인 탭. 여러 탭일 때 무엇을 보고 있는지 알려 준다 (FR-030f). */
   tabIndex?: number;
+
+  /* ─── 010 미러 조작 ─────────────────────────────────────────────────── */
+
+  /**
+   * 「미러에서 조작하기」의 권한표 판정 (FR-316).
+   *
+   * **이 컴포넌트는 스스로 국면을 보지 않는다.** 표가 준 결과를 그대로 쓴다.
+   * 주지 않으면 조작을 받지 않는다 — 모르는 것을 조작 가능으로 그리지 않는다.
+   */
+  control?: CapabilityState;
+  /** 지금 조작이 어디서 이루어지는가 (data-model §6). 기본은 미러다 */
+  surface?: ControlSurface;
+  /** 지금 프레임이 실어 온 좌표 변환의 근거. 없으면 좌표를 보내지 않는다 (FR-333) */
+  geometry?: FrameGeometry | null;
+  /** 조작 사건 하나를 채널로 보낸다. 성공 응답을 기다리지 않는다 */
+  onInput?: (event: InputEvent) => void;
+  /**
+   * 조작을 시도했지만 지금은 전달되지 않는다 (SC-516).
+   *
+   * 조용히 아무 일도 일어나지 않는 것을 막는다 — 사용자가 클릭했다는 사실을 화면이
+   * 받아 이유를 말한다.
+   */
+  onBlockedAttempt?: (reason: string) => void;
+  /** 실제 창으로 전환한다 (FR-353). **사용자가 누를 때만 일어난다** */
+  onUseWindow?: () => void;
+  /** 「실제 창에서 조작하기」의 권한표 판정 */
+  useWindowCapability?: CapabilityState;
 }
 
 export function MirrorView({
@@ -43,18 +97,129 @@ export function MirrorView({
   stoppedReason = null,
   degradedReason = null,
   tabIndex,
+  control,
+  surface = "mirror",
+  geometry = null,
+  onInput,
+  onBlockedAttempt,
+  onUseWindow,
+  useWindowCapability,
 }: MirrorViewProps) {
+  const imageRef = useRef<HTMLImageElement | null>(null);
+
+  /**
+   * 조작을 받는가. **표가 정한다** (FR-316).
+   *
+   * `enabled` 가 아니면 받지 않는다. `not_applicable` 은 그 국면의 조작이 아니라는 뜻
+   * 이므로 역시 받지 않는다.
+   */
+  const controllable = control?.kind === "enabled" && surface === "mirror" && frame !== null;
+
+  /** 왜 지금 조작할 수 없는가. 표가 이유를 갖고 있으면 그것을 쓴다 (SC-516). */
+  const blockedReason =
+    control === undefined
+      ? "이 화면은 조작을 받도록 준비되지 않았습니다."
+      : control.kind === "disabled"
+        ? control.reason
+        : control.kind === "not_applicable"
+          ? control.note
+          : surface !== "mirror"
+            ? "지금은 실제 브라우저 창에서 조작하고 있습니다."
+            : "대상 화면을 아직 받지 못했습니다.";
+
+  const emit = (event: InputEvent | null) => {
+    if (event === null || onInput === undefined) return;
+    onInput(event);
+  };
+
+  const context = { imageRef, frame: geometry, tab: tabIndex ?? 0 };
+
+  /**
+   * 조작을 받지 않는 상태에서의 클릭. **조용히 버리지 않는다** (SC-516 · FR-315).
+   *
+   * 사용자가 클릭했는데 아무 일도 일어나지 않으면 그것은 제품이 고장난 것으로 읽힌다.
+   * 이유를 말하는 것이 이 함수의 전부다.
+   */
+  const refuse = () => onBlockedAttempt?.(blockedReason);
+
+  const onPointerDown = (event: PointerEvent<HTMLImageElement>) => {
+    if (!controllable) return refuse();
+    // 미러가 초점을 가져간다 (FR-320) — 이후 키 입력이 대상 브라우저로 간다.
+    event.currentTarget.parentElement?.focus();
+    emit(pointerEventOf("pointer.down", nativeOf(event), context));
+  };
+
+  const onPointerUp = (event: PointerEvent<HTMLImageElement>) => {
+    if (!controllable) return;
+    emit(pointerEventOf("pointer.up", nativeOf(event), context));
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLImageElement>) => {
+    if (!controllable) return;
+    emit(pointerEventOf("pointer.move", nativeOf(event), context));
+  };
+
+  const onWheel = (event: WheelEvent<HTMLImageElement>) => {
+    if (!controllable) return refuse();
+    emit(
+      wheelEventOf(
+        {
+          clientX: event.clientX,
+          clientY: event.clientY,
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+          altKey: event.altKey,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          shiftKey: event.shiftKey,
+        },
+        context,
+      ),
+    );
+  };
+
+  /**
+   * 키 입력 (FR-320 · T042).
+   *
+   * **초점이 이 영역에 있을 때만 대상으로 간다.** 없으면 제품 화면의 단축키가 받는다.
+   * 어느 쪽이 받는 상태인지는 테두리와 안내 문구가 말한다 — 그러지 않으면 사용자는
+   * 자기 키가 어디로 갔는지 모른 채 두 번 누른다.
+   *
+   * 조합 중(`isComposing`)에는 보내지 않는다. 조합은 `ImeBridge` 가 맡는다 (FR-327).
+   */
+  const onKey = (event: KeyboardEvent<HTMLDivElement>, kind: "key.down" | "key.up") => {
+    if (!controllable) return;
+    if (event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    emit({
+      kind,
+      tab: tabIndex ?? 0,
+      key: event.key,
+      code: event.code,
+      modifiers: modifiersOf(event),
+    });
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
-      <PhaseNotice phase={phase} tabIndex={tabIndex} />
+      <PhaseNotice phase={phase} tabIndex={tabIndex} surface={surface} />
 
       {degradedReason !== null && (
-        <div
-          className="row sunken"
-          style={{ gap: 8, padding: "6px 14px" }}
-        >
+        <div className="row sunken" style={{ gap: 8, padding: "6px 14px" }}>
           <span className="chip warn mono">1 FPS</span>
           <span className="muted">{degradedReason}</span>
+          {/*
+            FR-345·FR-353a — 강등 상태에서 **조작은 막지 않되** 정확하지 않을 수 있다는
+            사실과 전환 수단을 **같은 자리에** 둔다. 사실만 말하고 수단을 다른 곳에 두면
+            사용자는 읽은 자리에서 할 수 있는 일이 없다.
+          */}
+          {useWindowCapability !== undefined && (
+            <UseWindowAction
+              capability={useWindowCapability}
+              onUseWindow={onUseWindow}
+              compact
+            />
+          )}
         </div>
       )}
 
@@ -67,31 +232,156 @@ export function MirrorView({
             {stoppedReason}
           </p>
         ) : frame !== null ? (
-          <img
-            src={`data:image/jpeg;base64,${frame}`}
-            alt="대상 브라우저 화면 (읽기 전용)"
-            /* FR-047a — 입력을 대상 브라우저로 전달하지 않는다. 포인터를 아예 받지 않는다. */
+          /*
+            조작을 받는 자리를 `data-action` 으로 표시한다 (ui-contract §4-1).
+            **조작마다 자리가 하나**이고, 그 자리가 여기다 — 미러 영역 자체가 「미러에서
+            조작하기」의 집이다. 버튼이 아니라 영역인 것이 이 조작의 성질이다.
+          */
+          /*
+            FR-319 — **조작을 받는 상태가 눈으로 구분되어야 한다.** 사용자가 클릭해 보고
+            나서 알게 되어서는 안 된다.
+
+            색과 테두리를 여기 적지 않고 정본의 `tint-run` 을 쓴다 (008 FR-263 ·
+            contracts/visual-language.md C-1). 「지금 살아 움직이는 것」의 색이 이미
+            정본에 있으므로 새 시각 언어를 만들 이유가 없다.
+
+            조작 가능일 때 `tabIndex={0}` 이므로 정본의 `:focus-visible` 초점 링이
+            그대로 붙는다 — 초점이 어디 있는지(FR-320)를 정본이 말한다.
+          */
+          <div
+            data-action="mirror.control"
+            data-controllable={controllable ? "true" : "false"}
+            aria-disabled={controllable ? undefined : "true"}
+            tabIndex={controllable ? 0 : -1}
+            className={controllable ? "tint-run" : undefined}
+            onKeyDown={(event) => onKey(event, "key.down")}
+            onKeyUp={(event) => onKey(event, "key.up")}
             style={{
+              display: "grid",
+              placeItems: "center",
               maxWidth: "100%",
               maxHeight: "100%",
-              pointerEvents: "none",
-              userSelect: "none",
             }}
-            draggable={false}
-          />
+          >
+            <img
+              ref={imageRef}
+              src={`data:image/jpeg;base64,${frame}`}
+              alt={
+                controllable
+                  ? "대상 브라우저 화면 (조작 가능)"
+                  : "대상 브라우저 화면 (읽기 전용)"
+              }
+              /*
+                010 FR-316 — **포인터를 받을지는 국면이 정한다.**
+
+                001 은 여기를 `"none"` 으로 못박고 그것을 FR-047a 의 구현이라고 적었다.
+                지키던 성질(관찰 국면에서 전달하지 않는다)은 유지되고, 판정만 표로 옮겼다.
+
+                받지 않는 상태에서도 `"auto"` 인 이유는 SC-516 이다 — 포인터를 아예 끄면
+                클릭이 이 컴포넌트에 닿지 않고, 사용자는 왜 안 되는지 들을 자리가 없다.
+                전달하지 않는 것과 이유를 말하지 않는 것은 다르다.
+              */
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                pointerEvents: "auto",
+                userSelect: "none",
+                cursor: controllable ? "default" : "not-allowed",
+              }}
+              draggable={false}
+              onPointerDown={onPointerDown}
+              onPointerUp={onPointerUp}
+              onPointerMove={onPointerMove}
+              onWheel={onWheel}
+              onContextMenu={(event) => event.preventDefault()}
+            />
+          </div>
         ) : (
-          <p className="muted" style={{ textAlign: "center", padding: 24 }}>
-            {mirrorEmptyMessage(phase)}
-          </p>
+          <div
+            data-action="mirror.control"
+            data-controllable="false"
+            aria-disabled="true"
+            style={{ padding: 24 }}
+          >
+            <p className="muted" style={{ textAlign: "center" }}>
+              {mirrorEmptyMessage(phase, surface)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="row" style={{ gap: 8, padding: "6px 14px" }}>
+        {/*
+          FR-234·SC-516 — **조작을 받지 않는 모든 상태에서 이유가 같은 자리에 있다.**
+
+          표가 「안 된다」고 한 경우만 붙이면 부족하다. 표는 「된다」고 했는데 프레임이
+          아직 없거나 창에서 조작 중인 경우가 남고, 그 상태에서 사용자는 클릭했는데
+          아무 일도 일어나지 않는 것을 본다 — SC-516 이 0건으로 두려는 상태다.
+          `blockedReason` 이 그 네 경우를 한 문장으로 모은다.
+        */}
+        {!controllable && (
+          <span className="why" data-disabled-reason="mirror.control">
+            {blockedReason}
+          </span>
+        )}
+        {controllable && <span className="muted">{MIRROR_FOCUS_HINT}</span>}
+        {useWindowCapability !== undefined && degradedReason === null && (
+          <UseWindowAction capability={useWindowCapability} onUseWindow={onUseWindow} />
         )}
       </div>
     </div>
   );
 }
 
-/** 국면별 안내. 어디서 조작해야 하는지를 매번 분명히 한다 (FR-023b). */
-function PhaseNotice({ phase, tabIndex }: { phase: MirrorPhase; tabIndex?: number }) {
-  const notice = mirrorNotice(phase);
+/**
+ * 「실제 창에서 조작하기」 (FR-349·FR-353 · US5).
+ *
+ * **폴백이고, 사용자가 누를 때만 일어난다.** 제품이 상황을 판단해 자동으로 창을 열지
+ * 않는다 — 요청하지 않은 창은 그 자체로 조작 위치를 잃게 만들고, 화면 없는 환경에서는
+ * 자동 전환이 실패한다.
+ */
+function UseWindowAction({
+  capability,
+  onUseWindow,
+  compact = false,
+}: {
+  capability: CapabilityState;
+  onUseWindow?: () => void;
+  compact?: boolean;
+}) {
+  if (capability.kind === "not_applicable") return null;
+  const disabled = capability.kind === "disabled";
+  return (
+    <span className="row" style={{ gap: 6 }}>
+      <button
+        type="button"
+        data-action="mirror.useWindow"
+        className={`btn ${compact ? "sm" : ""}`.trimEnd()}
+        disabled={disabled}
+        onClick={disabled ? undefined : onUseWindow}
+      >
+        실제 창에서 조작하기
+      </button>
+      {disabled && (
+        <span className="why" data-disabled-reason="mirror.useWindow">
+          {capability.reason}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** 국면별 안내. 어디서 조작해야 하는지를 매번 분명히 한다 (FR-023b · FR-350). */
+function PhaseNotice({
+  phase,
+  tabIndex,
+  surface,
+}: {
+  phase: MirrorPhase;
+  tabIndex?: number;
+  surface: ControlSurface;
+}) {
+  const notice = mirrorNotice(phase, surface);
   if (notice === null) return null;
 
   const tabSuffix = tabIndex !== undefined && tabIndex > 0 ? ` (탭 ${tabIndex})` : "";
@@ -118,3 +408,18 @@ function PhaseNotice({ phase, tabIndex }: { phase: MirrorPhase; tabIndex?: numbe
     </div>
   );
 }
+
+function nativeOf(event: PointerEvent<HTMLImageElement>) {
+  return {
+    clientX: event.clientX,
+    clientY: event.clientY,
+    button: event.button,
+    altKey: event.altKey,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey,
+  };
+}
+
+/** 버튼 이름 변환을 재수출한다 — 검증이 같은 규칙을 쓴다. */
+export { buttonNameOf };

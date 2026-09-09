@@ -31,6 +31,7 @@ from itb.api.errors import (
 )
 from itb.api.routes import (
     ai,
+    control,
     fs,
     preferences_routes,
     project,
@@ -60,6 +61,7 @@ ROUTERS = (
     tests.router,
     sessions.router,
     steps.router,
+    control.router,
     tabs.router,
     secrets_routes.router,
     preferences_routes.router,

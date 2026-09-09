@@ -135,6 +135,30 @@ export interface CapabilityFacts {
   pausing?: boolean;
   /** O8 — 중지 요청이 진행 중이다 (005 FR-147). 「중지 중…」의 근거. */
   stopRequested?: boolean;
+
+  /* ─── 010 미러 조작의 런타임 사정 O10~O13 (contracts/mirror-control.md §1) ───
+   *
+   * **국면 열에 적지 않는다.** 넷 다 국면과 무관한 사정이고, 국면마다 표에 적으면 한
+   * 국면이 빠진다. 빠진 국면에서 화면은 쓸 수 없는 조작을 활성으로 그리고, 사용자는
+   * 클릭해 보고 나서 알게 된다 — FR-319 가 금지하는 상태다 (research R9).
+   *
+   * 이름을 **참인 방향**으로 짓는다 (`mirrorFrameSeen` 이지 `mirrorNoFrame` 이 아니다).
+   * `undefined` 는 거짓으로 읽히므로(이 인터페이스의 규칙), 모르는 상태가 「조작할 수
+   * 없다」로 붙는다 — 모르는 것을 활성으로 그리지 않는다.
+   */
+  /** O10 — 프레임을 한 장이라도 받았는가 (FR-333) */
+  mirrorFrameSeen?: boolean;
+  /** O11 — 프레임이 지금 흐르고 있는가 (FR-346) */
+  mirrorLive?: boolean;
+  /** O12 — 조작 통로가 붙었는가 */
+  controlChannelOpen?: boolean;
+  /**
+   * O13 — 지금 조작 위치가 미러인가 (FR-350 · data-model §6).
+   *
+   * 실제 창으로 전환한 동안 미러는 관찰용이다 — 그때 「실제 브라우저 창에서 조작 중」
+   * 이라는 001 의 문구가 참이 된다. 010 은 그 문구를 지우지 않고 **참인 상태를 좁힌다.**
+   */
+  controlSurfaceIsMirror?: boolean;
 }
 
 const CONDITION_FACT: Record<ConditionKey, keyof CapabilityFacts> = {
@@ -315,10 +339,58 @@ const OVERRIDES: {
     actions: ["run.resumeSkipFailure"],
     remedy: null,
   },
+  /*
+    O10~O13 — 010 미러 조작의 런타임 사정 (contracts/mirror-control.md §1).
+
+    **순서가 곧 우선순위다.** 위에서부터 걸리는 첫 사유가 화면에 나온다. 프레임을 한 장도
+    못 받은 것 → 끊긴 것 → 통로가 없는 것 → 창에서 조작 중인 것 순으로 둔 이유는 그것이
+    사용자가 할 수 있는 일의 순서이기 때문이다. 프레임이 아예 없는데 「조작 통로가 준비되지
+    않았습니다」를 보여 주면, 사용자는 통로를 기다리다 화면이 오지 않는다는 것을 놓친다.
+
+    **넷 다 `mirror.useWindow` 를 막지 않는다.** 막히는 상황일수록 실제 창으로 내려가는
+    수단이 살아 있어야 한다 (FR-353a) — 그것이 이 기능의 안전망이다.
+  */
+  {
+    key: "O10",
+    fact: "mirrorFrameSeen",
+    actions: ["mirror.control"],
+    remedy: null,
+  },
+  {
+    key: "O11",
+    fact: "mirrorLive",
+    actions: ["mirror.control"],
+    remedy: "mirror.useWindow",
+  },
+  {
+    key: "O12",
+    fact: "controlChannelOpen",
+    actions: ["mirror.control"],
+    remedy: "mirror.useWindow",
+  },
+  {
+    key: "O13",
+    fact: "controlSurfaceIsMirror",
+    actions: ["mirror.control"],
+    remedy: null,
+  },
 ];
 
-/** O4 는 「Step 이 있다」가 거짓일 때 걸린다 — 다른 덮어쓰기와 참·거짓 방향이 반대다. */
-const NEGATED_OVERRIDES = new Set<DisabledReasonKey>(["O4", "O9"]);
+/**
+ * 「…이다」가 **거짓일 때** 걸리는 덮어쓰기 — 다른 것들과 참·거짓 방향이 반대다.
+ *
+ * O10~O13 이 여기 있는 이유는 이름을 참인 방향으로 지었기 때문이다 (`mirrorFrameSeen`).
+ * 반대로 지으면(`mirrorNoFrame`) `undefined` 가 「프레임이 있다」로 읽혀, 모르는 상태에서
+ * 화면이 조작을 활성으로 그린다.
+ */
+const NEGATED_OVERRIDES = new Set<DisabledReasonKey>([
+  "O4",
+  "O9",
+  "O10",
+  "O11",
+  "O12",
+  "O13",
+]);
 
 /* ─── 표 (ui-contract §3-1 ~ §3-4) ─────────────────────────────────────────── */
 
@@ -394,6 +466,12 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "nav.editStep": na("N2"),
     "nav.back": ON,
     /** 대상 앱을 아직 열지 않았으므로 탭이라는 것이 존재하지 않는다 */
+    /*
+      010 미러 조작 (contracts/mirror-control.md §1). **세션이 없다** — 조작할 대상
+      브라우저가 아직 없으므로 「세션 명령이며 이 국면에는 세션이 없습니다」(N3)다.
+    */
+    "mirror.control": na("N3"),
+    "mirror.useWindow": na("N3"),
     "tab.select": na("N1"),
   },
   /* 녹화 — 사람이 대상 앱을 조작해 Step 을 만든다 */
@@ -434,6 +512,15 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "result.show": na("N2"),
     "nav.editStep": na("N2"),
     "nav.back": ON,
+    /*
+      010 FR-314 — **이 국면의 새 주 조작이다.** 001 에서는 조작을 실제 브라우저 창에서
+      했고 미러는 포인터를 아예 받지 않았다 (FR-047a). 010 이 그것을 뒤집는다.
+
+      실제 창은 폴백으로 남는다 (FR-349). 사용자가 누를 때만 열린다 — 제품이 상황을
+      판단해 자동으로 창을 열지 않는다 (FR-353).
+    */
+    "mirror.control": ON,
+    "mirror.useWindow": ON,
     "tab.select": ON,
   },
 
@@ -476,6 +563,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "result.show": na("N2"),
     "nav.editStep": na("N2"),
     "nav.back": ON,
+    /*
+      010 FR-315 — **관찰 국면이다.** AI 가 전진하는 중에 사람 조작이 끼어들면 같은
+      Step 이 두 번 돈다. 감추지 않고 이유를 붙이는 이유는 SC-516 이다 — 조작할 수
+      없는 모든 상황에서 사용자가 사유를 읽을 수 있어야 한다.
+    */
+    "mirror.control": off("AI_RUNNING", "run.pause"),
+    "mirror.useWindow": off("AI_RUNNING", "run.pause"),
     "tab.select": ON,
   },
 
@@ -524,6 +618,9 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "result.show": na("N2"),
     "nav.editStep": na("N2"),
     "nav.back": ON,
+    /* 010 FR-314 — 사람이 이어받는 국면이다. 미러에서 조작한다 */
+    "mirror.control": ON,
+    "mirror.useWindow": ON,
     "tab.select": ON,
   },
 
@@ -572,6 +669,12 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "result.show": cond("C12"),
     "nav.editStep": na("N2"),
     "nav.back": ON,
+    /*
+      010 FR-315 — **관찰 국면이다.** 러너가 전진하는 중이다. 「일시정지」가 해소
+      방법인 것이 요점이다 — 멈추면 미러에서 조작할 수 있다 (US3).
+    */
+    "mirror.control": off("NEEDS_PAUSE", "run.pause"),
+    "mirror.useWindow": off("NEEDS_PAUSE", "run.pause"),
     "tab.select": ON,
   },
 
@@ -627,6 +730,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "result.show": cond("C12"),
     "nav.editStep": na("N2"),
     "nav.back": ON,
+    /*
+      010 FR-314 · US3 — **일시정지가 조작 국면인 것이 이 기능의 요점 하나다.**
+      실패한 실행을 같은 화면에서 이어받는다. 세션 상태(인증·화면·입력값)는 그대로
+      유지된다 (헌법 원칙 III).
+    */
+    "mirror.control": ON,
+    "mirror.useWindow": ON,
     "tab.select": cond("C2"),
   },
 
@@ -668,6 +778,9 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "result.show": na("N1"),
     "nav.editStep": ON,
     "nav.back": ON,
+    /* 010 — 끝난 실행이다. 조작할 브라우저 세션이 없다 (FR-347) */
+    "mirror.control": na("N3"),
+    "mirror.useWindow": na("N3"),
     "tab.select": na("N3"),
   },
 
@@ -740,6 +853,9 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "result.show": cond("C13"),
     "nav.editStep": na("N1"),
     "nav.back": ON,
+    /* 010 — 세션 없이 정의를 고치는 국면이다. 조작할 브라우저가 없다 */
+    "mirror.control": na("N3"),
+    "mirror.useWindow": na("N3"),
     "tab.select": na("N3"),
   },
 };

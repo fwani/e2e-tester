@@ -3,11 +3,11 @@
  *
  * **이 파일이 지키는 것은 셋이다.**
  *
- * 1. 36개 조작 전부가 여덟 국면에 답을 갖는다 — 빠진 칸이 있으면 화면은 `undefined` 를
+ * 1. 38개 조작 전부가 여덟 국면에 답을 갖는다 — 빠진 칸이 있으면 화면은 `undefined` 를
  *    받고 조용히 아무것도 그리지 않는다. 감춰진 조작이 되고 FR-234 위반이다.
  * 2. 모든 「해당 없음」이 §4-2 의 닫힌 목록(N1·N2·N3)에서 근거를 갖는다 — 근거 없이
  *    그리지 않는 것이 곧 조작을 잃는 것이다 (FR-247).
- * 3. 모든 해소 방법이 **36개 목록 안의 조작**을 가리킨다 — 006 E-03 이 정확히 그
+ * 3. 모든 해소 방법이 **38개 목록 안의 조작**을 가리킨다 — 006 E-03 이 정확히 그
  *    결함이었다. "실행을 시작해 일시정지한 뒤 하세요" 라고 안내하면서 그리로 가는
  *    버튼을 주지 않았다.
  */
@@ -44,9 +44,13 @@ describe("조작 목록 (T008)", () => {
   /**
    * 2회차에 `record.start` 가 들어와 34개가 됐다 (FR-258b · UC-401).
    * 009 가 `step.insertManual`·`step.moveDown` 을 더해 36개가 됐다 (FR-305 · 계약 §1).
+   * 010 이 `mirror.control`·`mirror.useWindow` 를 더해 38개가 됐다 (FR-316 · 계약 §1).
+   *
+   * **미러 조작을 표에 넣는 것이 010 의 설계 결정이다** (research R9). 표 밖에 두면
+   * 「각 국면 열이 그 국면 화면의 전부」라는 이 표의 성질이 깨진다.
    */
-  it("36개다 — 009 계약 §1 의 합계와 같아야 한다", () => {
-    expect(ACTION_IDS).toHaveLength(36);
+  it("38개다 — 010 계약 §1 의 합계와 같아야 한다", () => {
+    expect(ACTION_IDS).toHaveLength(38);
   });
 
   it("중복이 없다", () => {
@@ -55,13 +59,13 @@ describe("조작 목록 (T008)", () => {
 });
 
 describe("권한표 커버리지 (T012)", () => {
-  it("여덟 국면 × 36 조작 전부에 답이 있다", () => {
+  it("여덟 국면 × 38 조작 전부에 답이 있다", () => {
     for (const phase of PHASES) {
       const map = capabilitiesFor(phase);
       for (const action of ACTION_IDS) {
         expect(map[action], `${phase} × ${action} 이 비어 있다`).toBeDefined();
       }
-      expect(Object.keys(map)).toHaveLength(36);
+      expect(Object.keys(map)).toHaveLength(38);
     }
   });
 
@@ -92,7 +96,7 @@ describe("권한표 커버리지 (T012)", () => {
     }
   });
 
-  it("모든 해소 방법이 34개 목록 안의 조작을 가리킨다 (006 E-03)", () => {
+  it("모든 해소 방법이 38개 목록 안의 조작을 가리킨다 (006 E-03)", () => {
     const known = new Set<string>(ACTION_IDS);
     for (const phase of PHASES) {
       for (const action of ACTION_IDS) {
@@ -320,7 +324,7 @@ describe("표의 모양 — 국면별 성질 (§3)", () => {
     expect(capabilityOf("editing", "save", noEdits).kind).toBe("disabled");
   });
 
-  it("어느 국면도 34개 전부를 「해당 없음」으로 두지 않는다", () => {
+  it("어느 국면도 38개 전부를 「해당 없음」으로 두지 않는다", () => {
     for (const phase of PHASES) {
       const map = capabilitiesFor(phase, ALL_TRUE);
       const usable = ACTION_IDS.filter((a) => map[a].kind !== "not_applicable");

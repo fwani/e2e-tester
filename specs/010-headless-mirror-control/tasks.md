@@ -119,33 +119,33 @@ description: "Task list for 010-headless-mirror-control"
 
 ### 국면 × 조작 권한표
 
-- [ ] T024 조작 항목 두 개를 권한표에 추가한다 — 「미러에서 조작하기」·「실제 창으로
+- [X] T024 조작 항목 두 개를 권한표에 추가한다 — 「미러에서 조작하기」·「실제 창으로
       전환하기」. 조작 국면에서 켜고 관찰 국면에서 끄며, 끈 사유를 기존 잠금 사유 체계로
       표현한다 in `frontend/src/lib/capabilities.ts` (FR-316 · research R9)
-- [ ] T025 런타임 덮어쓰기를 추가한다 — 프레임 없음·끊김·강등·채널 미접속. 국면 열에
+- [X] T025 런타임 덮어쓰기를 추가한다 — 프레임 없음·끊김·강등·채널 미접속. 국면 열에
       적지 않는다 in `frontend/src/lib/capabilities.ts` (FR-333 · FR-345~FR-347)
-- [ ] T026 [P] 국면별 조작 가능성 검증 — 8국면 전부와 런타임 덮어쓰기 4건
+- [X] T026 [P] 국면별 조작 가능성 검증 — 8국면 전부와 런타임 덮어쓰기 4건
       in `frontend/tests/Capabilities.test.ts`
 
 ### 미러의 조작 수용
 
-- [ ] T027 `MirrorView` 가 「조작을 받는가」를 props 로 받게 바꾼다 — `pointerEvents`
+- [X] T027 `MirrorView` 가 「조작을 받는가」를 props 로 받게 바꾼다 — `pointerEvents`
       를 그 값으로 결정하고, **스스로 국면을 보지 않는다.** 파일 머리말의 「입력을 전달하는
       코드가 없다」 선언을 「국면이 정한다」로 개정한다
       in `frontend/src/components/MirrorView.tsx` (FR-316 · FR-319)
-- [ ] T028 좌표 변환과 사건 전송을 만든다 — 표시 좌표 → 대상 화면 좌표. **상수
+- [X] T028 좌표 변환과 사건 전송을 만든다 — 표시 좌표 → 대상 화면 좌표. **상수
       1280·800 을 쓰지 않고** 이미지의 자연 크기·표시 크기·`width`/`height`·`pageScale`·
       `offsetTop` 으로 계산한다 in `frontend/src/components/mirror/useMirrorInput.ts`
       (FR-330 · FR-331 · research R3)
-- [ ] T029 조작 채널 클라이언트를 만든다 — 접속·재접속·사유 표시. 조작 성공 응답을
+- [X] T029 조작 채널 클라이언트를 만든다 — 접속·재접속·사유 표시. 조작 성공 응답을
       기다리지 않는다 in `frontend/src/api/control.ts` (contracts §2)
-- [ ] T030 **`MirrorView.test.tsx` 를 개정한다** — 「입력을 전달하지 않는다」를
+- [X] T030 **`MirrorView.test.tsx` 를 개정한다** — 「입력을 전달하지 않는다」를
       「**관찰 국면에서** 전달하지 않는다」로 바꾼다. 삭제하지 않는다
       in `frontend/tests/MirrorView.test.tsx` (헌법 품질 게이트 4)
-- [ ] T031 [P] 좌표 변환 검증 — 축소 프레임(1600×1200 → 1067×800, 배율 비정수)에서
+- [X] T031 [P] 좌표 변환 검증 — 축소 프레임(1600×1200 → 1067×800, 배율 비정수)에서
       왕복 변환이 의도한 좌표를 내는지. **12px 밀집 요소 3개**를 포함한다
       in `frontend/tests/MirrorInput.test.ts` (FR-332 · SC-512 · research R3)
-- [ ] T032 [P] 프레임 없음·끊김 상태에서 사건을 보내지 않는지 검증
+- [X] T032 [P] 프레임 없음·끊김 상태에서 사건을 보내지 않는지 검증
       in `frontend/tests/MirrorInput.test.ts` (FR-333 · FR-346)
 
 **Checkpoint**: 조작 통로가 서고, 국면표가 조작 가능성을 정하고, 좌표 변환이 검증된다.
@@ -175,12 +175,12 @@ description: "Task list for 010-headless-mirror-control"
 - [ ] T034 [US1] 포인터 사건(누름·놓음·이동)과 휠을 대상에 전달하고 리코더가 잡는 것을
       확인한다 — 전용 수집 경로를 만들지 않는다 in `backend/src/itb/mirror/input.py`
       (FR-314 · FR-321 · research R1)
-- [ ] T035 [US1] 미러 영역의 포인터 사건을 채널로 흘린다 — 누름·놓음·이동·휠. 이동은
+- [X] T035 [US1] 미러 영역의 포인터 사건을 채널로 흘린다 — 누름·놓음·이동·휠. 이동은
       전송량을 억제한다(throttle) in `frontend/src/components/mirror/useMirrorInput.ts`
       (FR-314 · FR-336)
-- [ ] T036 [US1] 조작을 받는 상태·받지 않는 상태를 화면에 구분해 그린다 — 클릭해 보고
+- [X] T036 [US1] 조작을 받는 상태·받지 않는 상태를 화면에 구분해 그린다 — 클릭해 보고
       나서 알게 되어서는 안 된다 in `frontend/src/components/MirrorView.tsx` (FR-319)
-- [ ] T037 [US1] 조작 국면의 미러 문구를 바꾼다 — 「실제 브라우저 창에서 조작 중」은
+- [X] T037 [US1] 조작 국면의 미러 문구를 바꾼다 — 「실제 브라우저 창에서 조작 중」은
       `window` 상태의 문구로 옮기고, `mirror` 상태의 문구를 새로 둔다
       in `frontend/src/lib/wording.ts` (FR-350 · T004 의 목록)
 - [ ] T038 [US1] 조작 후 짧은 시간 안에 프레임이 오지 않으면 한 장을 찍어 보낸다 —
@@ -340,10 +340,10 @@ description: "Task list for 010-headless-mirror-control"
 
 ### 구현
 
-- [ ] T072 [US5] 조작 위치 전환 엔드포인트를 만든다 — `mirror` ↔ `window`. 세션 상태와
+- [X] T072 [US5] 조작 위치 전환 엔드포인트를 만든다 — `mirror` ↔ `window`. 세션 상태와
       녹화를 유지한다. **서버가 스스로 전환하지 않는다**
       in `backend/src/itb/api/routes/control.py` (FR-349 · FR-353)
-- [ ] T073 [US5] 창을 띄울 수 없는 환경에서 전환 요청을 **사유와 함께 거절한다**
+- [X] T073 [US5] 창을 띄울 수 없는 환경에서 전환 요청을 **사유와 함께 거절한다**
       in `backend/src/itb/api/routes/control.py` (FR-351)
 - [ ] T074 [US5] `control_surface` 이벤트를 관찰 WS 에 추가한다
       in `backend/src/itb/api/ws/session_events.py` (contracts §4)

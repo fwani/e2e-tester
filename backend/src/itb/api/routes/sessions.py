@@ -109,6 +109,17 @@ class SessionWork:
     saved_at: datetime | None = None
     """마지막 저장 시각 (005 FR-154). 화면이 저장 성공을 스스로 알 수 있게 한다."""
 
+    # ─── 조작 위치 (010 · data-model §6) ──────────────────────────────────
+    control_surface: str = "mirror"
+    """지금 조작이 어디서 이루어지는가. **기본은 미러다** (FR-352 이후).
+
+    **전이는 사용자 요청으로만 일어난다** (FR-353). 서버가 상황을 판단해 바꾸지 않는다 —
+    강등이나 처리할 수 없는 요구를 만나도 자동으로 창을 열지 않고, 화면이 전환 수단을
+    그 자리에 보여 준다 (FR-353a).
+
+    저장되지 않는다 (data-model 「저장 형식 변경 요약」).
+    """
+
     # ─── 재실행 (US2) ──────────────────────────────────────────────────────
     mirror: MirrorController | None = None
     """미러는 **모든 활성 상태**에서 돈다 (FR-047d). 그래서 모드와 무관하게 붙인다."""
@@ -205,6 +216,17 @@ def mirror_of(session_id: str) -> MirrorController | None:
     """
     w = _WORK.get(session_id)
     return w.mirror if w is not None else None
+
+
+def surface_of(w: SessionWork, surface: str) -> str:
+    """조작 위치를 바꾸고 그 값을 돌려준다 (010 FR-349 · data-model §6).
+
+    `control.py` 가 부른다. 값을 `SessionWork` 에 두는 이유는 화면이 세션 조회로 그것을
+    다시 받을 수 있어야 하기 때문이다 — 이벤트만으로 두면 재연결한 화면이 조작 위치를
+    잊는다 (`session_events.py` 의 "재전송하지 않는다" 와 같은 이유).
+    """
+    w.control_surface = surface
+    return surface
 
 
 def _control_phase_watcher(state: AppState, session_id: str):  # noqa: ANN202

@@ -441,27 +441,65 @@ export interface MirrorNotice {
   detail: string;
 }
 
-export function mirrorNotice(phase: MirrorNoticePhase): MirrorNotice | null {
+/**
+ * 지금 조작이 어디서 이루어지는가 (010 · data-model §6).
+ *
+ * `mirror` 가 기본이고 `window` 는 사용자가 명시적으로 전환했을 때다 (FR-353).
+ */
+export type ControlSurface = "mirror" | "window";
+
+/**
+ * 미러 영역이 조작을 받는 동안의 보조 문구 (FR-320).
+ *
+ * 초점이 어디 있는지가 항상 분명해야 한다 — 사용자가 자기 키가 어디로 갔는지 모른 채
+ * 두 번 누르게 만들어서는 안 된다.
+ */
+export const MIRROR_FOCUS_HINT =
+  "이 영역을 클릭하면 키 입력이 대상 브라우저로 갑니다. 다른 곳을 클릭하면 제품 화면이 받습니다.";
+
+export function mirrorNotice(
+  phase: MirrorNoticePhase,
+  surface: ControlSurface = "mirror",
+): MirrorNotice | null {
   switch (phase) {
     case "manipulation":
-      return {
-        title: "실제 브라우저 창에서 조작 중",
-        detail: "이 영역은 관찰용이며 조작 대상이 아닙니다.",
-      };
+    case "paused":
+      /*
+        010 T037·T077 — **001 의 문구를 지우지 않고, 그것이 참인 상태를 좁혔다** (FR-350).
+
+        「실제 브라우저 창에서 조작 중 · 이 영역은 관찰용이며 조작 대상이 아닙니다」는
+        `window` 로 전환한 동안 여전히 정확하다. 001 이 틀렸던 것이 아니라, 그때는 그
+        상태가 유일한 조작 상태였다 (M-05). 010 이 미러 조작을 열면서 상태가 둘이 됐고,
+        문구도 둘이 된다.
+      */
+      if (surface === "window") {
+        return {
+          title: "실제 브라우저 창에서 조작 중",
+          detail: "이 영역은 관찰용이며 조작 대상이 아닙니다.",
+        };
+      }
+      return phase === "manipulation"
+        ? {
+            title: "이 화면에서 조작합니다",
+            detail: "미러 영역을 클릭·스크롤·입력하면 대상 브라우저에 전달됩니다.",
+          }
+        : {
+            title: "일시정지",
+            detail:
+              "브라우저 세션과 화면 상태를 그대로 유지하고 있습니다. 미러에서 직접 조작할 수 있습니다.",
+          };
     case "pausing":
       return {
         title: "일시정지 중…",
         detail: "현재 Step 이 끝나면 멈춥니다. 아직 실행 중입니다.",
       };
-    case "paused":
-      return {
-        title: "일시정지",
-        detail: "브라우저 세션과 화면 상태를 그대로 유지하고 있습니다.",
-      };
     case "finished":
       return {
         title: "실행 종료",
-        detail: "브라우저 창은 아직 열려 있습니다. 마지막 화면을 표시합니다.",
+        detail:
+          // 010 FR-352 — 창이 기본이 아니게 되었으므로 「브라우저 창은 아직 열려
+          // 있습니다」가 거짓일 수 있다. 참인 사실만 말한다 (T004 의 목록).
+          "브라우저 세션은 아직 살아 있습니다. 마지막 화면을 표시합니다.",
       };
     case "observation":
       return { title: "읽기 전용", detail: "실행 중인 화면을 관찰합니다" };
@@ -470,13 +508,19 @@ export function mirrorNotice(phase: MirrorNoticePhase): MirrorNotice | null {
   }
 }
 
-/** 프레임을 한 장도 못 받은 미리보기의 안내 (FR-163). */
-export function mirrorEmptyMessage(phase: MirrorNoticePhase): string {
+/** 프레임을 한 장도 못 받은 미리보기의 안내 (FR-163 · 010 T037). */
+export function mirrorEmptyMessage(
+  phase: MirrorNoticePhase,
+  surface: ControlSurface = "mirror",
+): string {
   switch (phase) {
     case "observation":
-      return "대상 화면이 표시되기를 기다리고 있습니다. 대상 브라우저 창은 이미 열려 있습니다.";
+      // 010 — 창을 언급하지 않는다. 창 없이 뜬 세션에서 거짓이 된다 (FR-352 · T004).
+      return "대상 화면이 표시되기를 기다리고 있습니다. 대상 브라우저 세션은 이미 열려 있습니다.";
     case "manipulation":
-      return "실제 브라우저 창에서 조작하세요. 이 영역은 관찰용입니다.";
+      return surface === "window"
+        ? "실제 브라우저 창에서 조작하세요. 이 영역은 관찰용입니다."
+        : "대상 화면이 표시되기를 기다리고 있습니다. 화면이 오면 이 영역에서 바로 조작할 수 있습니다.";
     case "pausing":
       return "현재 Step 이 끝나기를 기다리고 있습니다. 멈추면 마지막 화면을 표시합니다.";
     case "paused":
@@ -620,6 +664,9 @@ export const ACTION_LABEL: Record<ActionId, string> = {
   "result.show": SHOW_RESULT_DETAIL,
   "nav.editStep": "이 Step 고치기",
   "nav.back": "목록으로",
+  /* 010 미러 조작 (contracts/mirror-control.md §1) */
+  "mirror.control": "미러에서 조작하기",
+  "mirror.useWindow": "실제 창에서 조작하기",
   "tab.select": "탭 고르기",
 };
 
@@ -717,6 +764,39 @@ export const DISABLED_REASON = {
    * 사실을 고른 뒤에야 알게 되고, 그것이 S-15 와 같은 종류의 결함이다 (FR-234).
    */
   C15: "「AI로 만들기」를 고르면 쓸 수 있습니다",
+  /* ─── 010 미러 조작 (contracts/mirror-control.md §1 런타임 덮어쓰기) ───
+   *
+   * 넷 다 **국면이 아니라 런타임 사정**이다. 국면 열에 적으면 한 국면이 빠지고, 빠진
+   * 국면에서 화면은 쓸 수 없는 조작을 활성으로 그린다 — 이 파일이 이미 겪고 기록해 둔
+   * 실수다 (O1 을 덮어쓰기로 둔 것과 같은 이유 · research R9).
+   *
+   * SC-516 이 요구하는 것은 「조작할 수 없는 모든 상황에서 사유를 읽을 수 있다」이며,
+   * 조용히 아무 일도 일어나지 않는 경우가 0건이어야 한다. 아래 넷이 그 사유다.
+   */
+  /** O10 — 프레임을 한 장도 받지 못했다 (FR-333) */
+  O10: "대상 화면을 아직 받지 못했습니다. 화면이 표시되면 조작할 수 있습니다",
+  /**
+   * O11 — 프레임이 끊겼다 (FR-346).
+   *
+   * **「화면이 멈춘 것」과 「페이지가 멈춘 것」을 구분해 말한다.** 둘을 뭉개면 사용자는
+   * 대상 앱이 죽은 줄 알고 세션을 버린다.
+   */
+  O11: "화면이 끊겼습니다. 대상 페이지가 멈춘 것이 아니라 표시가 멈춘 것입니다",
+  /** O12 — 조작 통로가 아직 붙지 않았다 */
+  O12: "조작 통로가 준비되지 않았습니다",
+  /** O13 — 실제 창에서 조작 중이다. 미러는 그때 관찰용이다 (FR-350) */
+  O13: "지금은 실제 브라우저 창에서 조작하고 있습니다",
+  /**
+   * 강등 상태의 경고 (FR-345·FR-353a).
+   *
+   * **조작을 막지 않는다.** 1 FPS 로도 조작은 전달되고, 다만 보고 있는 화면이 낡았을 수
+   * 있다. 막아 버리면 사용자에게 남는 수단이 없어진다 — 사실을 말하고 전환 수단을 같은
+   * 자리에 두는 것이 FR-353a 다.
+   */
+  MIRROR_DEGRADED_WARNING:
+    "1초에 한 장만 표시되고 있어 지금 조작은 의도한 곳에 닿지 않을 수 있습니다",
+  /** 창을 띄울 수 없는 환경 (FR-351) */
+  NO_WINDOW_AVAILABLE: "이 기계에는 띄울 창이 없습니다",
   O1: "실행을 준비하는 중…",
   O2: "요청을 보내는 중…",
   O3: "브라우저 세션이 유실됐습니다",

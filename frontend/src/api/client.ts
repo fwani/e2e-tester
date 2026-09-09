@@ -541,6 +541,13 @@ export interface SessionListResponse {
   sessions: SessionView[];
 }
 
+/** 조작 위치 (010 data-model §6). `mirror` 가 기본이고 `window` 는 폴백이다. */
+export type ControlSurfaceValue = "mirror" | "window";
+
+export interface ControlSurfaceResponse {
+  surface: ControlSurfaceValue;
+}
+
 export const sessions = {
   /** 살아 있는 세션 전부. 새로고침으로 놓친 세션을 되찾는 길이다 (UX U-05). */
   list: () => get<SessionListResponse>("/api/sessions"),
@@ -600,6 +607,17 @@ export const sessions = {
   tabs: (id: string) => get<TabsResponse>(`/api/sessions/${id}/tabs`),
   setMirrorTab: (id: string, tabIndex: number) =>
     post<TabsResponse>(`/api/sessions/${id}/mirror-tab`, { tab_index: tabIndex }),
+  /**
+   * 조작 위치를 옮긴다 (010 FR-349·FR-353 · contracts/mirror-control.md §3).
+   *
+   * **사용자 요청으로만 일어난다.** 서버가 상황을 판단해 스스로 창을 열지 않는다 —
+   * 요청하지 않은 창은 그 자체로 조작 위치를 잃게 만들고, 화면 없는 기계에서는 자동
+   * 전환이 실패한다 (FR-353).
+   *
+   * 창을 띄울 수 없는 환경이면 **사유와 함께 거절된다** (FR-351). 조용히 실패하지 않는다.
+   */
+  setControlSurface: (id: string, surface: ControlSurfaceValue) =>
+    post<ControlSurfaceResponse>(`/api/sessions/${id}/control-surface`, { surface }),
   deleteStep: (id: string, stepId: string) =>
     del<StepsResponse>(`/api/sessions/${id}/steps/${stepId}`),
   reorderSteps: (id: string, order: string[]) =>
