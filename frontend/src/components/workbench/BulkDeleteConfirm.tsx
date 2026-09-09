@@ -1,4 +1,4 @@
-import { deleteManyConfirm } from "../../lib/wording";
+import { BULK_DELETE_IRREVERSIBLE, deleteManyConfirm } from "../../lib/wording";
 import type { WorkbenchStep } from "./model";
 
 /**
@@ -19,12 +19,21 @@ export function BulkDeleteConfirm({
   targets,
   steps,
   busy,
+  revertible,
   onConfirm,
   onCancel,
 }: {
   targets: string[];
   steps: WorkbenchStep[];
   busy: boolean;
+  /**
+   * 지운 뒤 되돌릴 수 있는가 (011 FR-386).
+   *
+   * **두 경로의 성질이 다르다.** 편집은 연산을 쌓았다가 저장할 때 보내므로
+   * 「변경 전부 되돌리기」로 되돌아간다. 세션은 요청이 즉시 서버에 적용되어 되돌릴 수
+   * 없다 — 그 사실을 확인 시점에 말하지 않으면 사용자는 되돌릴 수 있다고 믿고 누른다.
+   */
+  revertible: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -43,6 +52,11 @@ export function BulkDeleteConfirm({
       }}
     >
       <span className="strong-sm">{deleteManyConfirm(indices)}</span>
+      {!revertible && (
+        <span data-bulk-delete-irreversible className="why">
+          {BULK_DELETE_IRREVERSIBLE}
+        </span>
+      )}
       <div className="spacer" />
       <button className="btn sm" onClick={onCancel} disabled={busy}>
         돌아가기

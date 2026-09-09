@@ -432,6 +432,14 @@ export interface SessionView {
    * 수도 없다 — 011 이전에 국면 띠가 이름 자리에 「TC-001」을 그리고 있었다.
    */
   test_name?: string | null;
+  /**
+   * 저장한 뒤 **더해진** Step 의 id (011 FR-379).
+   *
+   * `has_unsaved_changes` 는 「무언가 달라졌는가」 한 값이고, 이것은 **어느 행이** 아직
+   * 파일에 없는지다. 세션에서는 서버만 그것을 안다 — 저장 시점의 목록을 들고 있는 곳이
+   * 거기다.
+   */
+  unsaved_step_ids?: string[];
   current_step_index: number;
   steps: Step[];
   tabs_open: number;

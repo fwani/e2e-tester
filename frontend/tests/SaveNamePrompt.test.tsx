@@ -51,7 +51,17 @@ function renderPaused(overrides: Parameters<typeof sessionView>[0] = {}) {
     "fetch",
     vi.fn(async () => new Response(JSON.stringify(view), { status: 200 })),
   );
-  return render(<SessionScreen initial={view} onFinished={() => undefined} />);
+  /*
+    `onRerun` 을 준다 — 없으면 `rerun()` 이 첫 줄에서 돌아가고 확인이 열리지 않는다.
+    실제 화면(`App`)은 항상 넘긴다.
+  */
+  return render(
+    <SessionScreen
+      initial={view}
+      onFinished={() => undefined}
+      onRerun={() => undefined}
+    />,
+  );
 }
 
 function saveButton(): HTMLElement {
@@ -172,5 +182,58 @@ describe("UC-011-5 — 확인 대화상자의 이름칸은 조건부다", () => 
       document.querySelector("#leave-save-name"),
       "이름이 없는데 확인 대화상자가 이름을 묻지 않는다 — 저장할 수 없게 된다",
     ).not.toBeNull();
+  });
+
+  /**
+   * **다시 실행 확인도 같은 규칙이다** (011 converge T068).
+   *
+   * 1회차에서는 나가기만 검증했다. 두 대화상자가 같은 규칙을 쓰는데 한쪽만 재면, 다른
+   * 쪽이 조용히 갈릴 수 있다 — 011 이전에 둘 다 이름칸을 무조건 그린 것도 같은 형태였다.
+   *
+   * 「처음부터 실행」은 저장하지 않은 기록이 있으면 확인을 받는다 (`rerun`).
+   */
+  async function openRerunConfirm(view: Parameters<typeof sessionView>[0]) {
+    const user = userEvent.setup();
+    renderPaused({ state: "review", has_unsaved_changes: true, ...view });
+    const run = await waitFor(() => {
+      const el = document.querySelector('button[data-action="run.all"]') as HTMLButtonElement | null;
+      expect(el, "「처음부터 실행」이 없다").not.toBeNull();
+      return el!;
+    });
+    await user.click(run);
+    await waitFor(() => {
+      expect(screen.queryByText(/저장하지 않은 기록이 있습니다/)).not.toBeNull();
+    });
+  }
+
+  it("다시 실행 확인은 이름을 묻지 않는다", async () => {
+    await openRerunConfirm({ test_id: "TC-001", test_name: "로그인 흐름" });
+    expect(
+      document.querySelector("#rerun-save-name"),
+      "다시 실행 확인이 이름을 묻는다 (UC-011-5)",
+    ).toBeNull();
+    // 저장 경로는 그대로 열려 있어야 한다 — 물음만 없앤 것이지 저장을 없앤 것이 아니다.
+    expect(screen.getByRole("button", { name: "저장하고 실행" })).toBeTruthy();
+  });
+
+  /**
+   * **이름 없는 테스트는 이 확인에 닿지 못한다.**
+   *
+   * `rerun()` 이 `testId === null` 이면 먼저 돌아간다 — 「처음부터 실행」은 저장된 정의로
+   * 새 세션을 여는 조작이라 정의가 없으면 할 일이 없다. 그 조작은 `RUN_NEEDS_SAVE` 로
+   * 잠겨 있다 (2026-09-09 사용자 보고).
+   *
+   * 011 이 이름칸을 조건부로 만들자 그 가지가 **한 번도 참이 되지 않는다**는 것이
+   * 드러났고, 그래서 아예 걷었다. 이 검사는 그 전제가 유지되는지 본다 — 전제가 깨지면
+   * 이름 없이 저장하는 경로가 생긴다.
+   */
+  it("이름 없는 테스트에서는 「처음부터 실행」이 잠겨 있다 — 확인에 닿지 못한다", async () => {
+    renderPaused({ state: "review", has_unsaved_changes: true, test_id: null, test_name: null });
+    const run = await waitFor(() => {
+      const el = document.querySelector('button[data-action="run.all"]') as HTMLButtonElement | null;
+      expect(el).not.toBeNull();
+      return el!;
+    });
+    expect(run.disabled, "저장되지 않은 세션에서 실행이 열려 있다").toBe(true);
   });
 });

@@ -959,6 +959,8 @@ export function EditView({
           {pendingBulk !== null && (
             <BulkDeleteConfirm
               targets={pendingBulk}
+            /* 011 FR-386 — 편집은 연산을 쌓았다가 저장할 때 보낸다 — `edits.revert` 로 되돌아간다 */
+            revertible={true}
               steps={steps}
               busy={saving}
               onConfirm={() => {

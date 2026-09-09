@@ -435,6 +435,15 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   /** 멈추기 전에 실행이 끝났다 (005 FR-146). 실행 결말과 세션 상태는 다른 축이다. */
   const finishedWhilePausing = view.state === "paused" && summary !== null;
 
+  /**
+   * 저장한 뒤 더해진 Step (011 FR-379). 행의 「미저장」 표식이 이것을 본다.
+   *
+   * 009 가 편집 국면에 만든 표식과 **같은 뜻·같은 자리**다. 세션에서는 판정 근거가
+   * 서버에 있어(`saved_snapshot`) 그때 붙이지 못했다 — 011 이 `unsaved_step_ids` 로
+   * 그것을 실었다.
+   */
+  const unsavedIds = new Set(view.unsaved_step_ids ?? []);
+
   const steps: WorkbenchStep[] = view.steps.map((step, index) => ({
     id: step.id,
     index,
@@ -443,6 +452,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     outcome: outcomeOf(step, index),
     durationMs: durationOf(step) ?? null,
     isPausedHere: !review && phase === "paused" && index === view.current_step_index,
+    isUnsaved: unsavedIds.has(step.id),
   }));
 
   const failedStepIndex = (() => {
@@ -1323,7 +1333,15 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         <svg className="pass-ink" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
           <path d="M3 8.5l3.5 3.5L13 4.5" />
         </svg>
-        <span className="strong-sm">{editSavedNotice(title)}</span>
+        {/*
+          011 converge — **이름을 말한다** (FR-367).
+
+          `title` 은 `testId ?? "새 테스트"` 라 「저장했습니다 · TC-001」로 **id** 가
+          나왔다. 011 이 `SessionView.test_name` 을 실었으므로 이제 사용자가 정한 이름을
+          쓸 수 있다 — 확인줄이 id 를 말하면 사용자는 방금 저장한 것이 무엇인지 그 문장
+          에서 알 수 없다.
+        */}
+        <span className="strong-sm">{editSavedNotice(displayName || title)}</span>
         <div className="spacer" />
         {onShowList && (
           <button className="btn sm" onClick={onShowList} disabled={busy}>
@@ -1470,6 +1488,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         {pendingBulk !== null && (
           <BulkDeleteConfirm
             targets={pendingBulk}
+            /* 011 FR-386 — 세션은 요청이 즉시 서버에 적용된다 — 되돌릴 수 없다 */
+            revertible={false}
             steps={steps}
             busy={busy}
             onConfirm={() => {
@@ -2568,7 +2588,13 @@ export function SessionScreen({
         offline={showOffline}
         mirror={mirror}
         tabs={tabStrip}
-        currentUrl={tabs?.tabs[mirrorTab]?.url ?? ""}
+        /*
+          `tabs` 만 지키고 `tabs.tabs` 를 지키지 않으면, 탭 응답이 기대한 형이 아닐 때
+          화면이 통째로 죽는다 — 이 저장소가 두 번 겪은 형태다 (baseline.md 의 미처리 오류
+          3건 중 「`run-from` 이 `{ok: true}` 로 떨어졌다」). 011 의 검사가 그것을 다시
+          드러냈으므로 여기서 닫는다.
+        */
+        currentUrl={tabs?.tabs?.[mirrorTab]?.url ?? ""}
         mirroredTab={mirrorTab}
         focusedStepId={selectedStepId}
         detailOpen={inspecting}
@@ -2719,11 +2745,8 @@ export function SessionScreen({
         <RerunConfirm
           stepCount={view.steps.length}
           fromStepIndex={confirmingRerun.fromStepIndex}
-          /* 011 UC-011-5 — 이름이 이미 있으면 묻지 않는다 */
-          askName={!testHasName}
           saveName={effectiveSaveName}
           busy={busy}
-          onSaveNameChange={setNameOverride}
           onSaveAndRun={() => saveThenRerun(confirmingRerun.fromStepIndex ?? undefined)}
           onDiscardAndRun={() => runRerun(confirmingRerun.fromStepIndex ?? undefined)}
           onCancel={() => setConfirmingRerun(null)}
@@ -2783,10 +2806,8 @@ function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
 function RerunConfirm({
   stepCount,
   fromStepIndex,
-  askName,
   saveName,
   busy,
-  onSaveNameChange,
   onSaveAndRun,
   onDiscardAndRun,
   onCancel,
@@ -2795,15 +2816,17 @@ function RerunConfirm({
   /** `null` 이면 처음부터. 값이 있으면 그 자리부터 */
   fromStepIndex: number | null;
   /**
-   * 이름을 물어야 하는가 (011 UC-011-5 · FR-364).
+   * 저장에 실릴 이름. **묻지 않는다** (011 UC-011-5 · FR-364).
    *
-   * 이름이 이미 있는 테스트에서는 **거짓**이다. 이전에는 이 칸을 무조건 그렸고, 사용자는
-   * 「이름을 바꾸려는 것이 아닌데 왜 묻는가」를 판단해야 했다. 잘못 채우면 이름이 바뀐다.
+   * 이 확인은 **저장된 테스트에서만 열린다** — `rerun()` 이 `testId === null` 이면 먼저
+   * 돌아간다. 즉 여기 닿았다는 것은 이름이 이미 있다는 뜻이다.
+   *
+   * 011 이전에는 그런데도 이름칸을 그렸다. 사용자는 「이름을 바꾸려는 것이 아닌데 왜
+   * 묻는가」를 판단해야 했고, 잘못 채우면 이름이 바뀌었다 (사용자 보고 2). 011 이
+   * 조건부로 만들자 그 가지가 **한 번도 참이 되지 않는다**는 것이 드러나 아예 걷었다.
    */
-  askName: boolean;
   saveName: string;
   busy: boolean;
-  onSaveNameChange: (v: string) => void;
   onSaveAndRun: () => void;
   onDiscardAndRun: () => void;
   onCancel: () => void;
@@ -2817,18 +2840,7 @@ function RerunConfirm({
         세션을 버리고 <strong>저장된 정의</strong>를 재생하므로, 저장하지 않은 기록은
         사라집니다.
       </p>
-      {askName && (
-        <>
-          <label htmlFor="rerun-save-name">테스트 이름</label>
-          <input
-            id="rerun-save-name"
-            value={saveName}
-            autoFocus
-            onChange={(e) => onSaveNameChange(e.target.value)}
-            placeholder="프로젝트 생성"
-          />
-        </>
-      )}
+
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
         <button className="secondary" onClick={onCancel}>
           돌아가기

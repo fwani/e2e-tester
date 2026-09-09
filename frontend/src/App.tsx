@@ -296,6 +296,17 @@ export function App() {
           */
           recordOnArrival: instruction === null,
           instructionOnArrival: instruction,
+          /*
+            011 converge — **지시문을 기록으로도 남긴다** (FR-377).
+
+            `instructionOnArrival` 은 「도착하면 이것을 수행하라」는 **명령**이고 한 번
+            쓰이면 끝난다. `aiInstruction` 은 「무엇을 시켰는가」라는 **기록**이며 화면에
+            계속 남아야 한다 (001 FR-063 · UX U-07 — 보이지 않으면 사용자는 자기가 무엇을
+            시켰는지 잃는다).
+
+            둘을 갈라 두고 같은 문장을 싣는다. 하나로 합치면 수행이 끝난 뒤 기록도 사라진다.
+          */
+          aiInstruction: instruction,
         }),
       )
       .catch((exc: unknown) => setError(describeError(exc)))

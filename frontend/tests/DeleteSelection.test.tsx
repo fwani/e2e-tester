@@ -139,9 +139,18 @@ function renderPausedSession(count = 5) {
     steps: steps(count),
     current_step_index: 0,
   });
+  /*
+    **탭 응답은 세션 뷰가 아니다.** 아무 URL 에나 같은 것을 돌려주면 화면이 기대하지 않은
+    형을 받고, 그 상태로 통과하는 검사는 제품이 아니라 대역을 잰다 (007 T004 가 같은
+    이유로 팩토리를 쓰게 한 기록이 있다).
+  */
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => new Response(JSON.stringify(view), { status: 200 })),
+    vi.fn(async (input: RequestInfo | URL) =>
+      String(input).includes("/tabs")
+        ? new Response(JSON.stringify({ tabs: [], active_index: 0 }), { status: 200 })
+        : new Response(JSON.stringify(view), { status: 200 }),
+    ),
   );
   render(<SessionScreen initial={view} onFinished={() => undefined} />);
 }
@@ -251,6 +260,49 @@ describe("UC-011-18 — 확인이 개수와 범위를 말한다", () => {
     );
     // 체크는 그대로다 — 물린 것은 삭제이지 선택이 아니다.
     expect(checkFor("st-1").checked).toBe(true);
+  });
+});
+
+describe("SC-607 — 재녹화 뒤 정리가 3회 이하로 끝난다", () => {
+  /**
+   * spec 이 적은 수치가 이것이다 — 「Step 15개 중 뒤의 11개를 정리하는 데 필요한 조작이
+   * 3회 이하다 (지금은 22회)」.
+   *
+   * 011 이전에는 한 행씩만 지울 수 있어 **11번 지우고 11번 확인**해야 했다. 정리 비용이
+   * 재녹화 자체보다 크면 사용자는 테스트를 처음부터 다시 만든다.
+   *
+   * **누름 횟수를 직접 센다.** 「기능이 있다」를 재는 검사는 이미 위에 있고, 이 검사가
+   * 재는 것은 **몇 번 걸리는가**다 — 그것이 사용자가 겪는 것이다.
+   */
+  it("지목 → 이 뒤 전부 → 확인, 세 번이면 11개가 사라진다", async () => {
+    const user = userEvent.setup();
+    renderPausedSession(15);
+    await waitFor(() => expect(checkFor("st-1")).not.toBeNull());
+    expect(document.querySelectorAll("[data-step-row]")).toHaveLength(15);
+
+    let clicks = 0;
+    const click = async (el: Element) => {
+      clicks += 1;
+      await user.click(el);
+    };
+
+    // 1. 새로 녹화한 마지막 Step(4번째)을 지목한다.
+    await click(screen.getByRole("button", { name: "Step 4" }));
+    await waitFor(() => expect(paletteButton("step.deleteAfter")!.disabled).toBe(false));
+
+    // 2. 「이 뒤 전부 지우기」
+    await click(paletteButton("step.deleteAfter")!);
+    await waitFor(() =>
+      expect(document.querySelector("[data-bulk-delete-confirm]")).not.toBeNull(),
+    );
+
+    // 확인 문구가 무엇을 지우는지 말한다 — 5번째부터 15번째까지 11개다.
+    expect(document.body.textContent).toContain(deleteManyConfirm([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]));
+
+    // 3. 지우기
+    await click(screen.getByRole("button", { name: "지우기" }));
+
+    expect(clicks, `조작이 ${clicks}회 걸렸다 — SC-607 은 3회 이하를 요구한다`).toBeLessThanOrEqual(3);
   });
 });
 

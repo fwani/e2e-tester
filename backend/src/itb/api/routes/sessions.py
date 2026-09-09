@@ -200,6 +200,22 @@ class SessionWork:
         )
 
     @property
+    def unsaved_step_ids(self) -> list[str]:
+        """저장한 뒤에 **더해진** Step 의 id (011 FR-379).
+
+        `has_unsaved_changes` 는 「무언가 달라졌는가」라는 한 값이고, 화면은 **어느 행이**
+        아직 파일에 없는지를 행마다 표시해야 한다 (009 FR-310 이 편집 국면에 만든 그
+        표식). 세션에서는 그 판정을 서버만 할 수 있다 — 저장 시점의 목록을 들고 있는
+        것이 여기다.
+
+        **고쳐진 Step 은 세지 않는다.** 이 표식의 뜻은 「파일에 없다」이고, 고친 것은
+        파일에 있되 내용이 다른 것이라 다른 사실이다. 그것은 `has_unsaved_changes` 와
+        국면 띠의 저장 상태 칩이 말한다.
+        """
+        saved = {s.id for s in self.saved_snapshot}
+        return [s.id for s in self.steps if s.id not in saved]
+
+    @property
     def current_step_index(self) -> int:
         """다음에 실행할 Step 위치. **세션이 소유한 값을 그대로 읽는다.**
 
@@ -443,6 +459,11 @@ class SessionView(BaseModel):
     state: SessionState
     state_label: str
     test_id: str | None
+    unsaved_step_ids: list[str] = Field(default_factory=list)
+    """저장한 뒤 더해진 Step 의 id (011 FR-379).
+
+    **선택 필드다** — 없이 온 응답도 그대로 읽힌다.
+    """
     test_name: str | None = None
     """저장된 테스트의 이름 (011 FR-362). 아직 저장된 적 없으면 `None`.
 
@@ -613,6 +634,7 @@ def view_of(w: SessionWork) -> SessionView:
         state_label=state_label(w.session.state),
         test_id=w.saved_test_id or w.session.test_id,
         test_name=w.saved_test_name,
+        unsaved_step_ids=w.unsaved_step_ids,
         current_step_index=w.current_step_index,
         steps=w.steps,
         tabs_open=len(w.session.open_tabs()),

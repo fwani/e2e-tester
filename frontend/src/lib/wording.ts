@@ -895,6 +895,15 @@ export function deleteManyConfirm(indices: number[]): string {
     : `${span} 사이에서 고른 ${sorted.length}개를 지웁니다`;
 }
 
+/**
+ * 되돌릴 수 없는 복수 삭제 (011 FR-386).
+ *
+ * **세션에서만 붙는다.** 편집은 연산을 쌓았다가 저장할 때 보내므로 「변경 전부
+ * 되돌리기」로 되돌아가고, 세션은 요청이 즉시 서버에 적용된다. 같은 확인 문구를 쓰면서
+ * 이 사실을 말하지 않으면 사용자는 되돌릴 수 있다고 믿고 누른다.
+ */
+export const BULK_DELETE_IRREVERSIBLE = "되돌릴 수 없습니다";
+
 /** 「이 뒤 전부」의 대상이 없다 (FR-385 · UC-011-19). **해소 방법을 달지 않는다** */
 export const NO_STEPS_AFTER = "마지막 Step 입니다";
 

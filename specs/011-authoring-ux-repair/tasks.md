@@ -313,8 +313,8 @@ Task: "결과 화면 검증 in frontend/tests/StepScreenshot.test.tsx"
 점검 범위: FR 50건 · SC 17건 · 인수 시나리오 33건 · plan 결정 9건(research R1~R9) ·
 헌법 원칙 5개. **위반 0건**, 요청하지 않은 코드 0건.
 
-- [ ] T064 지시문을 세션의 **기록**으로도 남긴다 — `frontend/src/App.tsx` 의 `openBrowserAt` 이 `instructionOnArrival` 만 싣고 `aiInstruction` 을 싣지 않아, 도착한 세션의 지시문 칸이 비어 있다. 사용자는 자기가 무엇을 시켰는지 잃는다 (001 FR-063 이 UX U-07 로 막은 그 형태) per FR-377 (missing)
-- [ ] T065 되돌릴 수 없는 복수 삭제는 확인에서 그 사실을 밝힌다 — `frontend/src/components/workbench/BulkDeleteConfirm.tsx` 에 되돌림 가능 여부를 받아 문구를 가른다. 세션은 즉시 서버에 적용되어 되돌릴 수 없고(`sessions.deleteSteps`), 편집은 `edits.revert` 로 되돌릴 수 있다 — 두 경로의 성질이 다른데 같은 문장을 쓰고 있다 per FR-386 (partial)
-- [ ] T066 저장 확인줄이 **이름**을 말하게 한다 — `frontend/src/pages/SessionScreen.tsx` 의 `editSavedNotice(title)` 이 `title = testId ?? "새 테스트"` 라 「저장했습니다 · TC-001」로 id 가 나온다. 011 이 `SessionView.test_name` 을 실었으므로 이름을 쓸 수 있다 per FR-367 (partial)
-- [ ] T067 세션에서도 저장 이후 더해진 행에 미저장 표식을 세운다 — `frontend/src/pages/SessionScreen.tsx` 가 `WorkbenchStep.isUnsaved` 를 채우지 않아 지시문·녹화로 더해진 Step 이 저장된 것과 구별되지 않는다. 판정 근거는 `view.saved_snapshot` 이후에 생긴 Step 인가다 per FR-379 (partial)
-- [ ] T068 [P] 조작 횟수와 다시 실행 확인을 검사로 고정한다 — `frontend/tests/DeleteSelection.test.tsx` 에 「Step 15개 중 뒤의 11개를 3회 이하로 정리」를 세는 검사를, `frontend/tests/SaveNamePrompt.test.tsx` 에 `RerunConfirm` 의 이름칸 조건부 검사를 더한다. 지금은 SC-607 을 세는 자동 검사가 없고 이름칸 조건부는 `LeaveConfirm` 만 검증됐다 per SC-607 · FR-364 (partial)
+- [X] T064 지시문을 세션의 **기록**으로도 남긴다 — `frontend/src/App.tsx` 의 `openBrowserAt` 이 `instructionOnArrival` 만 싣고 `aiInstruction` 을 싣지 않아, 도착한 세션의 지시문 칸이 비어 있다. 사용자는 자기가 무엇을 시켰는지 잃는다 (001 FR-063 이 UX U-07 로 막은 그 형태) per FR-377 (missing)
+- [X] T065 되돌릴 수 없는 복수 삭제는 확인에서 그 사실을 밝힌다 — `frontend/src/components/workbench/BulkDeleteConfirm.tsx` 에 되돌림 가능 여부를 받아 문구를 가른다. 세션은 즉시 서버에 적용되어 되돌릴 수 없고(`sessions.deleteSteps`), 편집은 `edits.revert` 로 되돌릴 수 있다 — 두 경로의 성질이 다른데 같은 문장을 쓰고 있다 per FR-386 (partial)
+- [X] T066 저장 확인줄이 **이름**을 말하게 한다 — `frontend/src/pages/SessionScreen.tsx` 의 `editSavedNotice(title)` 이 `title = testId ?? "새 테스트"` 라 「저장했습니다 · TC-001」로 id 가 나온다. 011 이 `SessionView.test_name` 을 실었으므로 이름을 쓸 수 있다 per FR-367 (partial)
+- [X] T067 세션에서도 저장 이후 더해진 행에 미저장 표식을 세운다 — `frontend/src/pages/SessionScreen.tsx` 가 `WorkbenchStep.isUnsaved` 를 채우지 않아 지시문·녹화로 더해진 Step 이 저장된 것과 구별되지 않는다. 판정 근거는 `view.saved_snapshot` 이후에 생긴 Step 인가다 per FR-379 (partial)
+- [X] T068 [P] 조작 횟수와 다시 실행 확인을 검사로 고정한다 — `frontend/tests/DeleteSelection.test.tsx` 에 「Step 15개 중 뒤의 11개를 3회 이하로 정리」를 세는 검사를, `frontend/tests/SaveNamePrompt.test.tsx` 에 `RerunConfirm` 의 이름칸 조건부 검사를 더한다. 지금은 SC-607 을 세는 자동 검사가 없고 이름칸 조건부는 `LeaveConfirm` 만 검증됐다 per SC-607 · FR-364 (partial)
