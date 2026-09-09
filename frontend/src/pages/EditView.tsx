@@ -713,6 +713,8 @@ export function EditView({
     },
     steps,
     focusedStepId: selected,
+    /* 011 — 실제 선택 상태는 US4(T035)가 연결한다. 자리를 먼저 만든다 */
+    deleteSelection: [],
     detail:
       detailOpen && current !== null
         ? {

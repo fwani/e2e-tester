@@ -125,7 +125,7 @@
 
 ### 3-4. 조작의 집 — 바뀌는 줄만
 
-007 `ui-contract.md` §4-1 의 배치 규칙에서 **이 세 줄이 바뀐다.**
+007 `ui-contract.md` §2-7 「조작의 집」에서 **이 세 줄이 바뀐다** (그 표는 011 이 계약으로 올렸다).
 
 | 조작 | 이전 집 | 새 집 |
 |---|---|---|
@@ -139,10 +139,22 @@
 
 | 국면 | 조작 | 이전 | 이후 |
 |---|---|---|---|
-| `editing` | `step.recordStart` | `off("NEEDS_BROWSER", "browser.openAt")` | `ON` (누르면 자동으로 연다) |
-| `editing` | `step.addNaturalLanguage` | `off("NEEDS_BROWSER", "browser.openAt")` | `ON` (같음) |
+| `editing` | `step.recordStart` | `off("NEEDS_BROWSER", "browser.openAt")` | `cond("C7")` (누르면 자동으로 연다) |
+| `editing` | `step.addNaturalLanguage` | `off("NEEDS_BROWSER", "browser.openAt")` | `cond("C7")` (같음) |
+
+**`ON` 이 아니라 `cond("C7")` 이다.** 이 둘은 이제 세션을 **만든다** — 그러므로
+`browser.openAt` 과 같은 전제를 갖는다. 다른 세션이 그 테스트를 잡고 있으면 서버가 `409
+SESSION_ALREADY_ACTIVE` 로 거절하며, `ON` 으로 두면 009 T063 이 고친 결함(활성으로 그렸다가
+눌리면 거절)이 이 두 셀에서 되살아난다. `C7` 은 「정의가 편집 가능하다」 = 「이 테스트를 잡은
+세션이 없다」이고 해소 방법도 이미 맞다 (`session.open`).
+
+`step.addAssertion` 은 **바꾸지 않는다.** 검증 추가는 요소를 지목해야 하고(원칙 IV) 지목은
+살아 있는 화면에서 사용자가 하는 일이다 — 브라우저를 열어 주는 것으로 끝나지 않는다.
 
 새 조작 4개는 열 국면 전부에 값을 채워야 한다 — `Record<Phase, …>` 가 컴파일 시점에 요구한다.
+판정은 각 국면의 `step.delete` 와 같게 두었다: 한 개를 지울 수 없는 상태에서 여러 개를 지울 수
+있으면 안 되고 그 역도 안 된다. 전 국면 덮어쓰기 `O4`(Step 이 0개)·`O6`(일시정지 전이 중)에도
+넷을 함께 넣었다.
 
 ---
 

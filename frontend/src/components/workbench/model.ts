@@ -232,6 +232,35 @@ export interface WorkbenchStep {
    * 통과한 것처럼 보이는 경로는 어느 국면에도 없다 — 결말이 없으면 표식도 없다.
    */
   isUnsaved?: boolean;
+
+  /**
+   * 지금 **삭제 대상으로** 골라져 있는가 (011 FR-380 · UC-011-11).
+   *
+   * **`WorkbenchModel.focusedStepId`(지목)와 다른 축이다.** 행 본문을 누르는 것은 지목
+   * (상세 열기)이고 이것은 칸 0 의 체크 칸이다. 같은 누름에 두 뜻을 주면 사용자는 상세를
+   * 보려다 삭제 대상을 만든다 (FR-380a).
+   *
+   * 007~010 은 이 행에 상태를 셋 두었고(결말·일시정지·지목) 표시 자리를 **하나**로
+   * 두어 배타적으로 다투게 했다. 그래서 통과한 Step 을 고르면 결말이 사라지고, 일시정지
+   * 행은 골라도 선택이 보이지 않았다 (사용자 보고 7). 011 이 넷을 각자 자리로 보낸다.
+   */
+  isDeleteTarget?: boolean;
+
+  /**
+   * 이 Step 이 끝난 시점의 화면 (011 FR-389·FR-390). 결과 국면에만 있다.
+   *
+   * **표시용 URL 이며 저장 형식이 아니다.** 저장되는 것은 프로젝트 루트 기준 상대 경로
+   * (`StepResult.screenshot`)이고, 이 필드는 어댑터가 그것을 API 주소로 바꾼 값이다.
+   */
+  screenshotUrl?: string | null;
+  /**
+   * 화면이 없는 사유 (FR-391 · UC-011-21).
+   *
+   * **없다는 사실만으로는 부족하다.** 민감 값 때문에 남기지 않은 것과 촬영이 실패한 것과
+   * 실행 대상이 아니었던 것은 사용자에게 서로 다른 뜻이다 — 첫째는 의도된 보호이고,
+   * 실패로 읽히면 사용자가 없는 결함을 찾는다 (`wording.MISSING_SHOT_REASON`).
+   */
+  screenshotNote?: string | null;
 }
 
 /**
@@ -294,6 +323,16 @@ export interface WorkbenchModel {
   focusedStepId: string | null;
   /** 겹침 640px. `focusedStepId` 가 있을 때만 */
   detail: StepDetail | null;
+  /**
+   * 삭제 대상으로 고른 Step 들 (011 FR-380·FR-380b · UC-011-16).
+   *
+   * **인덱스가 아니라 id 로 갖는다.** 인덱스로 가지면 순서 변경 뒤에 다른 Step 이
+   * 지워진다 — 고른 것은 「세 번째 행」이 아니라 「그 Step」이다.
+   *
+   * **서버에 보내지도, 저장되지도 않는다.** 화면 안에서만 사는 일시 상태이며 화면을
+   * 옮기면 비워진다 (data-model §4-1). 그래서 이 파일에 있고 `types/generated` 에 없다.
+   */
+  deleteSelection: string[];
 
   /** 조작 → 상태. **화면이 읽는 유일한 근거** (FR-233) */
   capabilities: CapabilityMap;

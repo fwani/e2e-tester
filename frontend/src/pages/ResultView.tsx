@@ -444,6 +444,11 @@ export function ResultView({
     work,
     steps,
     focusedStepId: focused,
+    /*
+      011 — 결과는 읽기 전용 국면이다. 삭제 대상 선택이 없으므로 체크 칸도 그리지
+      않는다 (UC-011-14) — 근거 있는 부재다.
+    */
+    deleteSelection: [],
     detail:
       detailOpen && focusedResult !== null
         ? {

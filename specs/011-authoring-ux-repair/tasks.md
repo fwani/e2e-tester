@@ -38,7 +38,7 @@ web application — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `fron
 
 **Purpose**: 이 기능은 새 프로젝트·새 의존성을 만들지 않는다. 설치는 기존 절차 그대로다.
 
-- [ ] T001 기존 개발 환경을 확인한다 — `cd backend && uv sync` · `cd frontend && npm install` 후 `cd backend && uv run pytest -m "not browser" -q` 와 `cd frontend && npx vitest run` 이 **지금** 통과하는지 본다 (011 이 깨뜨린 것과 이미 깨져 있던 것을 가르는 기준선)
+- [X] T001 기존 개발 환경을 확인한다 — `cd backend && uv sync` · `cd frontend && npm install` 후 `cd backend && uv run pytest -m "not browser" -q` 와 `cd frontend && npx vitest run` 이 **지금** 통과하는지 본다 (011 이 깨뜨린 것과 이미 깨져 있던 것을 가르는 기준선)
 
 ---
 
@@ -50,12 +50,12 @@ web application — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `fron
 
 **⚠️ CRITICAL**: 이 단계가 끝나기 전에는 어떤 사용자 이야기도 시작할 수 없다.
 
-- [ ] T002 [P] 조작 식별자 4개를 더한다 — `frontend/src/lib/actions.ts` 에 `step.toggleDeleteTarget`·`step.selectAllDeleteTargets`·`step.deleteSelected`·`step.deleteAfter` 를 `STEP_ACTIONS` 에 넣고 `ACTION_GROUP` 매핑이 자동으로 따라오는지 확인한다 (data-model §3-3)
-- [ ] T003 [P] 문구를 더한다 — `frontend/src/lib/wording.ts` 에 새 조작 4개의 `ACTION_LABEL`, 복수 삭제 확인 문구(개수 + 범위, UC-011-18), 「마지막 Step 입니다」(UC-011-19), 스크린샷 없음 사유 4종(UC-011-21), 고른 개수 표시(UC-011-17)
-- [ ] T004 권한표를 채운다 — `frontend/src/lib/capabilities.ts` 의 `PHASE_TABLE` 열 국면 전부에 새 조작 4개 값을 넣고(`Record<Phase, …>` 가 컴파일 시점에 요구한다), `editing` 행의 `step.recordStart`·`step.addNaturalLanguage` 를 `off("NEEDS_BROWSER", …)` → `ON` 으로 바꾼다 (research R7 · data-model §3-5) — T002·T003 의뢰
-- [ ] T005 [P] 화면 모델을 넓힌다 — `frontend/src/components/workbench/model.ts` 에 `WorkbenchStep.isDeleteTarget`·`screenshotUrl`·`screenshotNote` 와 `WorkbenchModel.deleteSelection: string[]` 을 더한다. `focusedStepId` 는 **그대로 둔다** (data-model §3-1·3-2)
-- [ ] T006 007 계약의 조작의 집 표를 고친다 — `specs/007-unify-test-screens/contracts/ui-contract.md` §4-1 에서 `save`·`edits.revert`·`test.rename` 을 국면 띠로 옮기고, 새 조작 4개의 집을 적고, 011 계약(`specs/011-authoring-ux-repair/contracts/ui-contract.md`)을 참조로 건다
-- [ ] T007 조작 커버리지 검사를 갱신한다 — `frontend/tests/CapabilityCoverage.test.ts` 가 새 조작 4개와 `editing` 두 셀의 변경을 반영하게 고친다 (T004 의뢰)
+- [X] T002 [P] 조작 식별자 4개를 더한다 — `frontend/src/lib/actions.ts` 에 `step.toggleDeleteTarget`·`step.selectAllDeleteTargets`·`step.deleteSelected`·`step.deleteAfter` 를 `STEP_ACTIONS` 에 넣고 `ACTION_GROUP` 매핑이 자동으로 따라오는지 확인한다 (data-model §3-3)
+- [X] T003 [P] 문구를 더한다 — `frontend/src/lib/wording.ts` 에 새 조작 4개의 `ACTION_LABEL`, 복수 삭제 확인 문구(개수 + 범위, UC-011-18), 「마지막 Step 입니다」(UC-011-19), 스크린샷 없음 사유 4종(UC-011-21), 고른 개수 표시(UC-011-17)
+- [X] T004 권한표를 채운다 — `frontend/src/lib/capabilities.ts` 의 `PHASE_TABLE` 열 국면 전부에 새 조작 4개 값을 넣고(`Record<Phase, …>` 가 컴파일 시점에 요구한다), `editing` 행의 `step.recordStart`·`step.addNaturalLanguage` 를 `off("NEEDS_BROWSER", …)` → `ON` 으로 바꾼다 (research R7 · data-model §3-5) — T002·T003 의뢰
+- [X] T005 [P] 화면 모델을 넓힌다 — `frontend/src/components/workbench/model.ts` 에 `WorkbenchStep.isDeleteTarget`·`screenshotUrl`·`screenshotNote` 와 `WorkbenchModel.deleteSelection: string[]` 을 더한다. `focusedStepId` 는 **그대로 둔다** (data-model §3-1·3-2)
+- [X] T006 007 계약의 조작의 집 표를 고친다 — `specs/007-unify-test-screens/contracts/ui-contract.md` §4-1 에서 `save`·`edits.revert`·`test.rename` 을 국면 띠로 옮기고, 새 조작 4개의 집을 적고, 011 계약(`specs/011-authoring-ux-repair/contracts/ui-contract.md`)을 참조로 건다
+- [X] T007 조작 커버리지 검사를 갱신한다 — `frontend/tests/CapabilityCoverage.test.ts` 가 새 조작 4개와 `editing` 두 셀의 변경을 반영하게 고친다 (T004 의뢰)
 
 **Checkpoint**: 정본이 새 계약을 말한다. 이제 사용자 이야기를 붙일 수 있다.
 

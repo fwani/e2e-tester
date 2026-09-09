@@ -496,6 +496,15 @@ const OVERRIDES: {
       "step.moveUp",
       "step.moveDown",
       "step.delete",
+      /*
+        011 — 복수 삭제도 대상이 없으면 뜻이 없다. `step.insertManual` 을 여기 넣지 않은
+        것과 갈리는 이유는 같다: 삽입은 0개일 때야말로 필요하고, 삭제는 0개일 때 할 것이
+        없다.
+      */
+      "step.toggleDeleteTarget",
+      "step.selectAllDeleteTargets",
+      "step.deleteSelected",
+      "step.deleteAfter",
     ],
     remedy: null,
   },
@@ -538,6 +547,10 @@ const OVERRIDES: {
       "step.markSensitive",
       "step.repick",
       "step.delete",
+      "step.toggleDeleteTarget",
+      "step.selectAllDeleteTargets",
+      "step.deleteSelected",
+      "step.deleteAfter",
       "step.moveUp",
       "step.moveDown",
       "step.insertManual",
@@ -636,7 +649,7 @@ const REQUIRE_TRUE_OVERRIDES = new Set<DisabledReasonKey>(["O10", "O11", "O12", 
 type PhaseRow = Record<ActionId, Cell>;
 
 /**
- * 여덟 국면 × 34 조작.
+ * 열 국면 × 42 조작 (011 이 복수 삭제 넷을 더했다).
  *
  * 표를 읽는 법 — 각 국면 열이 그 국면 화면의 **전부**다. 여기 ●·○ 인 것은 화면에
  * 있어야 하고, – 인 것만 없어도 된다.
@@ -685,6 +698,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.repick": na("N2"),
     /* 조작 팔레트가 그 자리다 */
     "step.delete": off("NOT_STARTED_YET", "record.start"),
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": off("NOT_STARTED_YET", "record.start"),
+    "step.selectAllDeleteTargets": off("NOT_STARTED_YET", "record.start"),
+    "step.deleteSelected": off("NOT_STARTED_YET", "record.start"),
+    "step.deleteAfter": off("NOT_STARTED_YET", "record.start"),
     "step.moveUp": off("NOT_STARTED_YET", "record.start"),
     "step.moveDown": off("NOT_STARTED_YET", "record.start"),
     /** 이름은 저장 시점에 정한다. 자리는 남기고 이유를 붙인다 (FR-258a) */
@@ -737,6 +757,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.markSensitive": off("NEEDS_PAUSE", "run.pause"),
     "step.repick": off("NEEDS_PAUSE", "run.pause"),
     "step.delete": off("NEEDS_PAUSE", "run.pause"),
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": off("NEEDS_PAUSE", "run.pause"),
+    "step.selectAllDeleteTargets": off("NEEDS_PAUSE", "run.pause"),
+    "step.deleteSelected": off("NEEDS_PAUSE", "run.pause"),
+    "step.deleteAfter": off("NEEDS_PAUSE", "run.pause"),
     "step.moveUp": off("NEEDS_PAUSE", "run.pause"),
     "step.moveDown": off("NEEDS_PAUSE", "run.pause"),
     "test.rename": ON,
@@ -787,6 +814,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.markSensitive": off("NEEDS_PAUSE", "run.pause"),
     "step.repick": off("NEEDS_PAUSE", "run.pause"),
     "step.delete": off("NEEDS_PAUSE", "run.pause"),
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": off("NEEDS_PAUSE", "run.pause"),
+    "step.selectAllDeleteTargets": off("NEEDS_PAUSE", "run.pause"),
+    "step.deleteSelected": off("NEEDS_PAUSE", "run.pause"),
+    "step.deleteAfter": off("NEEDS_PAUSE", "run.pause"),
     "step.moveUp": off("NEEDS_PAUSE", "run.pause"),
     "step.moveDown": off("NEEDS_PAUSE", "run.pause"),
     "test.rename": ON,
@@ -843,6 +877,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.markSensitive": off("NEEDS_PAUSE", "run.resume"),
     "step.repick": ON,
     "step.delete": off("NEEDS_PAUSE", "run.resume"),
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": off("NEEDS_PAUSE", "run.resume"),
+    "step.selectAllDeleteTargets": off("NEEDS_PAUSE", "run.resume"),
+    "step.deleteSelected": off("NEEDS_PAUSE", "run.resume"),
+    "step.deleteAfter": off("NEEDS_PAUSE", "run.resume"),
     "step.moveUp": off("NEEDS_PAUSE", "run.resume"),
     "step.moveDown": off("NEEDS_PAUSE", "run.resume"),
     "test.rename": ON,
@@ -893,6 +934,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.markSensitive": off("RUNNING_NO_EDIT", "run.pause"),
     "step.repick": off("RUNNING_NO_EDIT", "run.pause"),
     "step.delete": off("RUNNING_NO_EDIT", "run.pause"),
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": off("RUNNING_NO_EDIT", "run.pause"),
+    "step.selectAllDeleteTargets": off("RUNNING_NO_EDIT", "run.pause"),
+    "step.deleteSelected": off("RUNNING_NO_EDIT", "run.pause"),
+    "step.deleteAfter": off("RUNNING_NO_EDIT", "run.pause"),
     "step.moveUp": off("RUNNING_NO_EDIT", "run.pause"),
     "step.moveDown": off("RUNNING_NO_EDIT", "run.pause"),
     "test.rename": off("RUNNING_NO_EDIT", "run.pause"),
@@ -955,6 +1003,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.markSensitive": ON,
     "step.repick": cond("C2"),
     "step.delete": ON,
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": ON,
+    "step.selectAllDeleteTargets": ON,
+    "step.deleteSelected": ON,
+    "step.deleteAfter": ON,
     "step.moveUp": ON,
     "step.moveDown": ON,
     "test.rename": ON,
@@ -1028,6 +1083,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.markSensitive": ON,
     "step.repick": cond("C2"),
     "step.delete": ON,
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": ON,
+    "step.selectAllDeleteTargets": ON,
+    "step.deleteSelected": ON,
+    "step.deleteAfter": ON,
     "step.moveUp": ON,
     "step.moveDown": ON,
     /** 저장 이름이다. 이 국면에서 정한다 (005 FR-156) */
@@ -1108,6 +1170,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.markSensitive": off("RUN_FINISHED_NO_EDIT", "save"),
     "step.repick": off("RUN_FINISHED_NO_EDIT", "save"),
     "step.delete": off("RUN_FINISHED_NO_EDIT", "save"),
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": off("RUN_FINISHED_NO_EDIT", "save"),
+    "step.selectAllDeleteTargets": off("RUN_FINISHED_NO_EDIT", "save"),
+    "step.deleteSelected": off("RUN_FINISHED_NO_EDIT", "save"),
+    "step.deleteAfter": off("RUN_FINISHED_NO_EDIT", "save"),
     "step.moveUp": off("RUN_FINISHED_NO_EDIT", "save"),
     "step.moveDown": off("RUN_FINISHED_NO_EDIT", "save"),
     /** 저장이 살아 있으므로 이름도 살아 있어야 한다 */
@@ -1168,6 +1237,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "step.markSensitive": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.repick": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.delete": off("RESULT_NO_EDIT", "nav.editStep"),
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": off("RESULT_NO_EDIT", "nav.editStep"),
+    "step.selectAllDeleteTargets": off("RESULT_NO_EDIT", "nav.editStep"),
+    "step.deleteSelected": off("RESULT_NO_EDIT", "nav.editStep"),
+    "step.deleteAfter": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.moveUp": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.moveDown": off("RESULT_NO_EDIT", "nav.editStep"),
     "test.rename": off("RESULT_NO_EDIT", "nav.editStep"),
@@ -1216,9 +1292,32 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "session.open": cond("C5"),
     /** 만들 대상이 없다. 새 테스트는 목록에서 시작한다 */
     "record.start": na("N2"),
-    "step.recordStart": off("NEEDS_BROWSER", "browser.openAt"),
+    /*
+      ─── 011 — 두 셀이 `off("NEEDS_BROWSER")` 에서 `cond("C7")` 로 열렸다 ──────────
+
+      **사용자 보고 3번의 실체가 이 두 줄이었다** — 「스텝을 새로 녹화하는것처럼, ai
+      지시문으로도 스텝을 추가할 수 있어야한다」. 두 조작은 이미 있었고 해소 방법
+      (`browser.openAt`)도 맞았다. 문제는 사용자가 **두 걸음을 걸어야** 했다는 것이고,
+      그래서 두 길이 대등하게 보이지 않았다.
+
+      이제 화면이 그 걸음을 대신 걷는다 — 누르면 브라우저를 열고 이어서 수행한다
+      (FR-374a · UC-011-23). 009 가 `browser.openAt` 을 다섯 걸음에서 한 걸음으로 만든
+      것과 같은 종류의 수정이다.
+
+      **`cond("C7")` 인 이유**: 이 둘은 이제 세션을 **만든다.** 그러므로
+      `browser.openAt` 과 같은 전제를 갖는다 — 다른 세션이 그 테스트를 잡고 있으면 만들
+      수 없고, 서버가 `409` 로 거절한다. `ON` 으로 두면 009 T063 이 고친 결함
+      (활성으로 그렸다가 눌리면 거절)이 이 두 셀에서 되살아난다.
+
+      **둘 다 바꾼다.** 하나만 자동으로 열면 대등성이 다시 깨진다 (research R7).
+
+      `step.addAssertion` 은 **바꾸지 않는다.** 검증 추가는 요소를 지목해야 하고
+      (헌법 원칙 IV), 지목은 살아 있는 화면에서 사용자가 하는 일이다 — 브라우저를 열어
+      주는 것으로 끝나지 않는다.
+    */
+    "step.recordStart": cond("C7"),
     "step.recordStop": na("N3"),
-    "step.addNaturalLanguage": off("NEEDS_BROWSER", "browser.openAt"),
+    "step.addNaturalLanguage": cond("C7"),
     "step.addAssertion": off("NEEDS_BROWSER", "browser.openAt"),
     /*
       **009 의 핵심 셀이다** (FR-307 · 계약 §2-1).
@@ -1242,6 +1341,13 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     // 새 요소를 브라우저 없이 지목할 수는 없다 (006 의 범위 밖).
     "step.repick": off("NEEDS_BROWSER", "browser.openAt"),
     "step.delete": cond("C7"),
+    /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
+       상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
+       대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
+    "step.toggleDeleteTarget": cond("C7"),
+    "step.selectAllDeleteTargets": cond("C7"),
+    "step.deleteSelected": cond("C7"),
+    "step.deleteAfter": cond("C7"),
     "step.moveUp": cond("C7"),
     "step.moveDown": cond("C7"),
     "test.rename": cond("C7"),

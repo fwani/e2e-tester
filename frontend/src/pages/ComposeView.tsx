@@ -136,6 +136,8 @@ export function ComposeView({
     */
     steps: [],
     focusedStepId: null,
+    /* 만들기 국면에는 Step 이 없다. 자리는 두고 비운다 (011 FR-380) */
+    deleteSelection: [],
     detail: null,
     capabilities,
     notices: [],

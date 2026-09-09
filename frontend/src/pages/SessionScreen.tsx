@@ -1242,6 +1242,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     work,
     steps,
     focusedStepId,
+    /* 011 — 실제 선택 상태는 US4(T034)가 연결한다. 자리를 먼저 만든다 */
+    deleteSelection: [],
     detail:
       detailOpen && selectedIndex >= 0
         ? {

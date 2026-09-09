@@ -745,6 +745,15 @@ export const ACTION_LABEL: Record<ActionId, string> = {
   "step.markSensitive": "민감 값으로 지정",
   "step.repick": "요소 다시 집기",
   "step.delete": "Step 삭제",
+  /*
+    011 복수 삭제 (계약 §5). **`step.delete` 와 라벨이 갈린다** — 「Step 삭제」는 이 행
+    하나이고, 아래 둘은 여러 개다. 라벨이 비슷하면 사용자는 어느 것이 무엇을 지우는지
+    누르기 전에 알 수 없다.
+  */
+  "step.toggleDeleteTarget": "지울 대상으로 고르기",
+  "step.selectAllDeleteTargets": "전부 고르기",
+  "step.deleteSelected": "고른 것 지우기",
+  "step.deleteAfter": "이 뒤 전부 지우기",
   /**
    * 009 — `step.reorder`「순서 변경」을 개칭했다.
    *
@@ -834,6 +843,76 @@ export const BROWSER_ONLY_KIND_LABEL: Record<string, string> = {
 
 export const BROWSER_ONLY_KIND_REASON =
   "요소는 살아 있는 화면에서만 지목할 수 있습니다";
+
+/* ─── 011 복수 삭제 (계약 §5 · FR-381·FR-384·FR-385) ─────────────────────── */
+
+/**
+ * 고른 개수 (FR-381 · UC-011-17). 0개일 때도 문장을 낸다 — 자리를 비우면 「고를 수 있는
+ * 것인지」가 화면에서 사라진다.
+ */
+export function deleteSelectionCount(count: number): string {
+  return count === 0 ? "고른 것 없음" : `${count}개 고름`;
+}
+
+/**
+ * 복수 삭제 확인 (FR-384 · UC-011-18). **개수와 범위를 둘 다 담는다.**
+ *
+ * 개수만 있으면 "11개" 가 어느 11개인지 알 수 없고, 범위만 있으면 그 사이에서 고르지
+ * 않은 것이 몇 개인지 알 수 없다. 「이 뒤 전부」는 연속 구간이므로 둘이 일치하지만,
+ * 체크로 고른 것은 띄어져 있을 수 있어 **둘이 다른 사실**이다.
+ *
+ * 겹침 대화상자를 쓰지 않는다 — 자리는 행 조작의 확인과 같은 규율을 따른다 (009 FR-302).
+ */
+export function deleteManyConfirm(indices: number[]): string {
+  if (indices.length === 0) return "지울 것이 없습니다";
+  const sorted = [...indices].sort((a, b) => a - b);
+  const first = sorted[0]!;
+  const last = sorted[sorted.length - 1]!;
+  if (sorted.length === 1) return `${stepLabel(first)} 를 지웁니다`;
+  const span = `${stepLabel(first)} ~ ${stepLabel(last)}`;
+  // 연속 구간이면 범위가 곧 개수다 — 같은 사실을 두 번 적지 않는다.
+  const contiguous = last - first + 1 === sorted.length;
+  return contiguous
+    ? `${span} · ${sorted.length}개를 지웁니다`
+    : `${span} 사이에서 고른 ${sorted.length}개를 지웁니다`;
+}
+
+/** 「이 뒤 전부」의 대상이 없다 (FR-385 · UC-011-19). **해소 방법을 달지 않는다** */
+export const NO_STEPS_AFTER = "마지막 Step 입니다";
+
+/** 고른 것이 없다 (FR-385). 체크를 해야 한다는 사실을 그 자리에서 말한다 */
+export const NO_DELETE_SELECTION = "지울 Step 을 먼저 고르세요";
+
+/* ─── 011 Step 별 스크린샷 (계약 §6 · FR-391·FR-393·FR-396b) ─────────────── */
+
+/**
+ * 스크린샷이 없는 사유 (UC-011-21). **네 상황이 서로 다른 말을 쓴다.**
+ *
+ * 「없습니다」 하나로 뭉개면 사용자는 제품이 못 찍은 것인지 자기가 못 볼 이유가 있는
+ * 것인지 알 수 없다. `sensitive` 는 특히 갈라야 한다 — 그것은 실패가 아니라 **의도된
+ * 보호**이며, 실패로 읽히면 사용자가 없는 결함을 찾는다.
+ */
+export type MissingShotReason = "sensitive" | "capture_failed" | "not_attempted" | "superseded";
+
+export const MISSING_SHOT_REASON: Record<MissingShotReason, string> = {
+  sensitive: "민감 값이 화면에 있어 남기지 않았습니다",
+  capture_failed: "이 Step 의 화면을 남기지 못했습니다",
+  not_attempted: "이 실행에서 실행 대상이 아니어서 남을 화면이 없습니다",
+  superseded: "이후 실행으로 대체되어 이 실행의 화면은 남아 있지 않습니다",
+};
+
+/**
+ * 서버가 준 사유가 있으면 그것을, 없으면 분류 문구를 쓴다.
+ *
+ * 서버 사유(`screenshot_note`)가 더 구체적이다 — 어떤 오류였는지를 담는다. 분류 문구는
+ * 서버가 아무 말도 남기지 않은 경우의 바닥이다.
+ */
+export function missingShotText(
+  note: string | null,
+  reason: MissingShotReason,
+): string {
+  return note !== null && note.trim() !== "" ? note : MISSING_SHOT_REASON[reason];
+}
 
 /**
  * 저장의 전제 — 이름이 비었다 (005 FR-156).
