@@ -270,19 +270,74 @@ async def get_artifact(
     if path is None:
         raise not_found(ErrorCode.TEST_NOT_FOUND, f"{kind} 산출물이 없습니다.")
 
-    # 결과 파일의 경로는 프로젝트 루트 기준 상대 경로다. 루트 밖을 가리키면 — 결과 파일이
-    # 손으로 고쳐졐 경우다 — 서빙하지 않는다 (FR-085 의 경계와 같은 이유).
-    root = repo.paths.root.resolve()
-    file = (root / path).resolve() if not pathlib.Path(path).is_absolute() else pathlib.Path(path)
-    if root not in file.parents:
-        raise bad_request(ErrorCode.INVALID_PATH, f"{kind} 산출물 경로가 프로젝트 밖을 가리킵니다.")
+    file = _artifact_file(repo.paths.root, path, kind)
+    return FileResponse(file, media_type=_ARTIFACT_MEDIA_TYPE[kind])
+
+
+def _artifact_file(root: pathlib.Path, path: str, what: str) -> pathlib.Path:
+    """상대 경로를 실제 파일로 바꾸되 **프로젝트 밖은 거절한다**.
+
+    결과 파일의 경로는 프로젝트 루트 기준 상대 경로다. 루트 밖을 가리키면 — 결과 파일이
+    손으로 고쳐진 경우다 — 서빙하지 않는다 (FR-085 의 경계와 같은 이유).
+
+    **011 이 함수로 뽑았다.** Step 별 화면 서빙이 같은 검사를 필요로 했고, 복제하면 한쪽만
+    고쳐지는 날이 온다 — 그날 프로젝트 밖 파일이 나간다 (api-contract §3).
+    """
+    resolved = root.resolve()
+    file = (
+        (resolved / path).resolve()
+        if not pathlib.Path(path).is_absolute()
+        else pathlib.Path(path)
+    )
+    if resolved not in file.parents:
+        raise bad_request(ErrorCode.INVALID_PATH, f"{what} 산출물 경로가 프로젝트 밖을 가리킵니다.")
     if not file.is_file():
         raise not_found(
             ErrorCode.TEST_NOT_FOUND,
-            f"{kind} 산출물 파일이 없습니다: {path}",
+            f"{what} 산출물 파일이 없습니다: {path}",
             next_action="실행 산출물(.runs/)이 지워졌을 수 있습니다. 다시 실행하면 새로 남습니다.",
         )
-    return FileResponse(file, media_type=_ARTIFACT_MEDIA_TYPE[kind])
+    return file
+
+
+@router.get("/{test_id}/result/steps/{index}/screenshot")
+async def get_step_screenshot(test_id: str, index: int, state: State) -> FileResponse:
+    """그 Step 이 끝난 시점의 화면 (011 FR-390 · api-contract §3).
+
+    **`kind` 를 늘리지 않았다.** `GET …/result/artifacts/{kind}` 는 실행 전체에 하나씩인
+    산출물을 위한 것이고 `kind` 별 media type 표가 그 전제 위에 있다. Step 별은 인덱스를
+    갖는 다른 성질이라, `kind` 에 넣으면 인덱스를 실을 자리가 없다.
+
+    **없음의 사유를 실어 보낸다** (FR-391·FR-396b). 「없습니다」만 돌려주면 화면은 민감 값
+    때문에 남기지 않은 것과 촬영이 실패한 것을 구분할 수 없다.
+    """
+    repo = state.require_repository()
+    if index < 0:
+        raise bad_request(ErrorCode.DEFINITION_INVALID, "Step 번호는 0 이상이어야 합니다.")
+    try:
+        result = repo.read_result(test_id)
+    except ResultUnreadableError as exc:
+        raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
+    if result is None:
+        raise not_found(
+            ErrorCode.TEST_NOT_FOUND,
+            f"{test_id} 의 실행 결과가 없습니다. 먼저 실행하세요.",
+        )
+    if index >= len(result.steps):
+        raise not_found(
+            ErrorCode.TEST_NOT_FOUND,
+            f"이 실행에는 Step 이 {len(result.steps)}개뿐입니다.",
+        )
+
+    step = result.steps[index]
+    if step.screenshot is None:
+        raise not_found(
+            ErrorCode.TEST_NOT_FOUND,
+            step.screenshot_note or "이 Step 의 화면이 남아 있지 않습니다.",
+            next_action="다시 실행하면 이 실행의 화면이 새로 남습니다.",
+        )
+    file = _artifact_file(repo.paths.root, step.screenshot, "화면")
+    return FileResponse(file, media_type="image/png")
 
 
 # ─── 정의 편집 (006) ────────────────────────────────────────────────────────

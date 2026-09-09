@@ -84,6 +84,8 @@ export type WaitedMs = number;
 export type LocatorAttempts = LocatorAttempt[];
 export type StepOutcome = "pass" | "fail" | "skipped" | "not_run";
 export type ResolvedCandidate = string | null;
+export type Screenshot = string | null;
+export type ScreenshotNote = string | null;
 export type StepId = string;
 export type Tab = number;
 export type TabWaitMs = number;
@@ -128,6 +130,8 @@ export interface StepResult {
   locator_attempts: LocatorAttempts;
   outcome: StepOutcome;
   resolved_candidate: ResolvedCandidate;
+  screenshot: Screenshot;
+  screenshot_note: ScreenshotNote;
   step_id: StepId;
   tab: Tab;
   tab_wait_ms: TabWaitMs;

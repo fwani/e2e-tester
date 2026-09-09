@@ -12,10 +12,10 @@
 
 from __future__ import annotations
 
-import contextlib
 import re
 import time
 from dataclasses import dataclass, field
+from typing import Any
 
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Page
@@ -36,12 +36,12 @@ from itb.domain.step import (
     UploadStep,
     mime_type_of,
 )
+from itb.execution import pointer
 from itb.execution.frame_resolver import (
     FrameNotFoundError,
     SearchRoot,
     resolve_frame,
 )
-from itb.execution import pointer
 from itb.execution.locator_runtime import (
     MIN_ACTION_TIMEOUT_MS,
     ElementNotFoundError,

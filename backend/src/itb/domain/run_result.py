@@ -109,6 +109,33 @@ class StepResult(BaseModel):
     resolved_candidate: str | None = None
     """어느 후보로 요소를 찾았는지."""
 
+    screenshot: str | None = None
+    """이 Step 이 **끝난 시점**의 화면 (011 FR-389 · FR-397).
+
+    **프로젝트 루트 기준 상대 경로다.** 절대 경로를 넣으면 결과 파일이 장비에 묶이고
+    사용자 홈 경로가 노출된다 (`Artifacts` 의 경로들과 같은 규칙).
+
+    없을 수 있는 경우가 셋이다.
+
+    - 실행 대상이 아니었다 (`skipped`·`not_run`) — `screenshot_note` 도 비운다. 찍지
+      못한 것이 아니라 찍을 일이 없었다 (FR-393).
+    - 민감 값이 화면에 있어 남기지 않았다 — 사유를 남긴다 (FR-392).
+    - 촬영이 실패했다 — 사유를 남긴다 (FR-391).
+
+    실패한 Step 은 `Artifacts.failure_screenshot` 과 **같은 경로**를 가리킨다. 파일을 두 벌
+    만들지 않는다 (FR-394).
+
+    **선택 필드다** — 011 이전에 저장된 결과 파일이 그대로 읽힌다 (SC-613).
+    """
+
+    screenshot_note: str | None = None
+    """화면을 남기지 못한 사유 (011 FR-391). `screenshot` 이 `None` 일 때만 뜻이 있다.
+
+    **없다는 사실만으로는 부족하다.** 민감 값 때문에 남기지 않은 것과 촬영이 실패한 것은
+    사용자에게 서로 다른 뜻이다 — 첫째는 의도된 보호이며, 실패로 읽히면 사용자가 없는
+    결함을 찾는다.
+    """
+
     locator_attempts: list[LocatorAttempt] = Field(default_factory=list)
     error_message: str | None = None
     candidate_disagreement: list[str] = Field(default_factory=list)

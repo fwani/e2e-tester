@@ -184,24 +184,24 @@ Step 별로 본다.
 
 ### Tests for User Story 5
 
-- [ ] T042 [P] [US5] 촬영·보관 단위 검증 — `backend/tests/unit/test_step_screenshots.py`: 정상 촬영, 민감 값이 있으면 **쓰지 않고 사유만**(FR-392), 촬영 오류 시 사유 기록 후 계속(FR-398), `clear_step_screenshots` 가 `steps/` 를 비우고 실패해도 예외를 밖으로 내지 않음(FR-396c)
-- [ ] T043 [P] [US5] 서빙 계약 검증 — `backend/tests/contract/test_step_screenshot_route.py`: `GET /api/tests/{id}/result/steps/{index}/screenshot` 의 성공과 오류표 6종 — 결과 없음·읽을 수 없음·인덱스 범위 밖·`screenshot === null`(사유 포함)·파일 없음·루트 밖 경로 (api-contract §3)
-- [ ] T044 [P] [US5] 실행 왕복 검증 — `backend/tests/integration/test_step_screenshot_lifecycle.py`: 실행 후 `steps/` 에 실행 대상 Step 수만큼 남고, 재실행 시 이전 실행 파일이 **사라지며**(FR-396a), Step 수를 줄여 재실행하면 높은 인덱스 파일이 남지 않는다. 건너뜀·미도달 Step 은 파일도 사유도 없다(FR-393). 실패 Step 의 `screenshot` 이 `failure.png` 를 가리키고 파일이 **두 벌이 아니다**(FR-394)
-- [ ] T045 [P] [US5] 호환 검증 — `backend/tests/integration/test_old_result_compat.py`: 새 필드가 없는 구버전 `result.json` 을 그대로 읽고, 결말·소요 시간이 정상이며 스크린샷은 「없음 + 사유」가 된다 (SC-613 · FR-396b)
-- [ ] T046 [P] [US5] 결과 화면 검증 — `frontend/tests/StepScreenshot.test.tsx`: Step 을 고르면 그 화면이 상세에 보이고(UC-011-20), 없음의 네 상황 각각에 사유 문구가 있으며(UC-011-21), 결말·소요 시간·시도한 locator 표시를 밀어내지 않는다(UC-011-22)
+- [X] T042 [P] [US5] 촬영·보관 단위 검증 — `backend/tests/unit/test_step_screenshots.py`: 정상 촬영, 민감 값이 있으면 **쓰지 않고 사유만**(FR-392), 촬영 오류 시 사유 기록 후 계속(FR-398), `clear_step_screenshots` 가 `steps/` 를 비우고 실패해도 예외를 밖으로 내지 않음(FR-396c)
+- [X] T043 [P] [US5] 서빙 계약 검증 — `backend/tests/contract/test_step_screenshot_route.py`: `GET /api/tests/{id}/result/steps/{index}/screenshot` 의 성공과 오류표 6종 — 결과 없음·읽을 수 없음·인덱스 범위 밖·`screenshot === null`(사유 포함)·파일 없음·루트 밖 경로 (api-contract §3)
+- [X] T044 [P] [US5] 실행 왕복 검증 — `backend/tests/integration/test_step_screenshot_lifecycle.py`: 실행 후 `steps/` 에 실행 대상 Step 수만큼 남고, 재실행 시 이전 실행 파일이 **사라지며**(FR-396a), Step 수를 줄여 재실행하면 높은 인덱스 파일이 남지 않는다. 건너뜀·미도달 Step 은 파일도 사유도 없다(FR-393). 실패 Step 의 `screenshot` 이 `failure.png` 를 가리키고 파일이 **두 벌이 아니다**(FR-394)
+- [X] T045 [P] [US5] 호환 검증 — `backend/tests/integration/test_old_result_compat.py`: 새 필드가 없는 구버전 `result.json` 을 그대로 읽고, 결말·소요 시간이 정상이며 스크린샷은 「없음 + 사유」가 된다 (SC-613 · FR-396b)
+- [X] T046 [P] [US5] 결과 화면 검증 — `frontend/tests/StepScreenshot.test.tsx`: Step 을 고르면 그 화면이 상세에 보이고(UC-011-20), 없음의 네 상황 각각에 사유 문구가 있으며(UC-011-21), 결말·소요 시간·시도한 locator 표시를 밀어내지 않는다(UC-011-22)
 
 ### Implementation for User Story 5
 
-- [ ] T047 [P] [US5] 결과 모델을 넓힌다 — `backend/src/itb/domain/run_result.py`: `StepResult.screenshot: str | None = None` 과 `screenshot_note: str | None = None`. 둘 다 기본값이 있어 기존 파일이 그대로 읽힌다. `Artifacts` 는 바꾸지 않는다 (data-model §1-1·1-2)
-- [ ] T048 [US5] 산출물 수집기를 넓힌다 — `backend/src/itb/execution/artifacts.py`: `STEP_SHOTS_DIR = "steps"`, `write_step_screenshot(...)`, `clear_step_screenshots(...)`. **`_write_screenshot` 을 복제하지 않는다** — 민감 값 검사(`_contains_secret`)가 두 벌이 되면 한쪽만 고쳐지는 날 평문이 남는다 (data-model §1-3)
-- [ ] T049 [US5] Step 종료 시 촬영한다 — `backend/src/itb/execution/step_executor.py`: **`duration_ms` 를 확정한 뒤** 찍는다. 촬영 시간이 시간 초과 판정에 들어가지 않는다 (FR-395). 촬영 실패가 결말을 바꾸지 않는다 (FR-398)
-- [ ] T050 [US5] 실행 시작 시 비우고 결과에 싣는다 — `backend/src/itb/execution/runner.py`: 실행 시작에 `clear_step_screenshots(run_dir)`, 결과 조립 시 각 `StepResult` 에 경로·사유를 채운다. 실패 Step 은 기존 `failure.png` 의 상대 경로를 가리킨다 (FR-394·FR-396a)
-- [ ] T051 [US5] 서빙 라우트를 만든다 — `backend/src/itb/api/routes/tests.py`: 먼저 `get_artifact` 안의 **루트 밖 경로 거절 검사를 함수로 뽑고**(복제 금지), `GET /{test_id}/result/steps/{index}/screenshot` 을 그 함수 위에 만든다. 기존 `kind` Literal 은 늘리지 않는다 (api-contract §3)
-- [ ] T052 [US5] 스키마 생성물과 드리프트 검사를 갱신한다 — `cd backend && uv run python -m itb.schema.export` · `cd frontend && npm run gen:types` 로 생성물을 갱신해 **함께 커밋**하고, `backend/tests/contract/test_schema_drift.py` 의 기대값을 고친다 (헌법 Cross-language schema duty)
-- [ ] T053 [US5] 화면 API 를 넓힌다 — `frontend/src/api/client.ts`: Step 스크린샷 URL 만들기(`stepScreenshotUrl(testId, index)`)와 없음 응답의 사유 읽기
-- [ ] T054 [US5] 상세에 스크린샷 자리를 둔다 — `frontend/src/components/workbench/StepDetail.tsx`: 결과 국면에서 그 Step 의 화면. **새 영역을 만들지 않는다** — 상세가 그 자리다 (UC-011-20). 없으면 사유를 말한다 (UC-011-21)
-- [ ] T055 [US5] 결과 화면이 전달한다 — `frontend/src/pages/ResultView.tsx`: `WorkbenchStep.screenshotUrl`·`screenshotNote` 를 채운다. 「이후 실행으로 대체됨」 사유도 여기서 판단한다 (FR-396b)
-- [ ] T056 [US5] 기존 검증을 개정한다 — `frontend/tests/RunResult.test.tsx`·`frontend/tests/ResultAttemptsVisible.test.tsx`: 상세에 자리가 하나 늘었고 기존 표시가 밀려나지 않는다
+- [X] T047 [P] [US5] 결과 모델을 넓힌다 — `backend/src/itb/domain/run_result.py`: `StepResult.screenshot: str | None = None` 과 `screenshot_note: str | None = None`. 둘 다 기본값이 있어 기존 파일이 그대로 읽힌다. `Artifacts` 는 바꾸지 않는다 (data-model §1-1·1-2)
+- [X] T048 [US5] 산출물 수집기를 넓힌다 — `backend/src/itb/execution/artifacts.py`: `STEP_SHOTS_DIR = "steps"`, `write_step_screenshot(...)`, `clear_step_screenshots(...)`. **`_write_screenshot` 을 복제하지 않는다** — 민감 값 검사(`_contains_secret`)가 두 벌이 되면 한쪽만 고쳐지는 날 평문이 남는다 (data-model §1-3)
+- [X] T049 [US5] Step 종료 시 촬영한다 — `backend/src/itb/execution/step_executor.py`: **`duration_ms` 를 확정한 뒤** 찍는다. 촬영 시간이 시간 초과 판정에 들어가지 않는다 (FR-395). 촬영 실패가 결말을 바꾸지 않는다 (FR-398)
+- [X] T050 [US5] 실행 시작 시 비우고 결과에 싣는다 — `backend/src/itb/execution/runner.py`: 실행 시작에 `clear_step_screenshots(run_dir)`, 결과 조립 시 각 `StepResult` 에 경로·사유를 채운다. 실패 Step 은 기존 `failure.png` 의 상대 경로를 가리킨다 (FR-394·FR-396a)
+- [X] T051 [US5] 서빙 라우트를 만든다 — `backend/src/itb/api/routes/tests.py`: 먼저 `get_artifact` 안의 **루트 밖 경로 거절 검사를 함수로 뽑고**(복제 금지), `GET /{test_id}/result/steps/{index}/screenshot` 을 그 함수 위에 만든다. 기존 `kind` Literal 은 늘리지 않는다 (api-contract §3)
+- [X] T052 [US5] 스키마 생성물과 드리프트 검사를 갱신한다 — `cd backend && uv run python -m itb.schema.export` · `cd frontend && npm run gen:types` 로 생성물을 갱신해 **함께 커밋**하고, `backend/tests/contract/test_schema_drift.py` 의 기대값을 고친다 (헌법 Cross-language schema duty)
+- [X] T053 [US5] 화면 API 를 넓힌다 — `frontend/src/api/client.ts`: Step 스크린샷 URL 만들기(`stepScreenshotUrl(testId, index)`)와 없음 응답의 사유 읽기
+- [X] T054 [US5] 상세에 스크린샷 자리를 둔다 — `frontend/src/components/workbench/StepDetail.tsx`: 결과 국면에서 그 Step 의 화면. **새 영역을 만들지 않는다** — 상세가 그 자리다 (UC-011-20). 없으면 사유를 말한다 (UC-011-21)
+- [X] T055 [US5] 결과 화면이 전달한다 — `frontend/src/pages/ResultView.tsx`: `WorkbenchStep.screenshotUrl`·`screenshotNote` 를 채운다. 「이후 실행으로 대체됨」 사유도 여기서 판단한다 (FR-396b)
+- [X] T056 [US5] 기존 검증을 개정한다 — `frontend/tests/RunResult.test.tsx`·`frontend/tests/ResultAttemptsVisible.test.tsx`: 상세에 자리가 하나 늘었고 기존 표시가 밀려나지 않는다
 
 **Checkpoint**: 다섯 이야기가 모두 독립적으로 동작한다.
 

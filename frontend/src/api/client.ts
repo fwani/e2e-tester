@@ -220,6 +220,18 @@ export const tests = {
    * 이미지와 경로 문자열만 남았다 (UX U-03).
    */
   artifactUrl: (id: string, kind: ArtifactKind) => `/api/tests/${id}/result/artifacts/${kind}`,
+  /**
+   * 그 Step 이 끝난 시점의 화면 (011 FR-390 · api-contract §3).
+   *
+   * **`artifactUrl` 과 갈라 둔다.** 그쪽은 실행 전체에 하나씩인 산출물이고 `kind` 별
+   * media type 표가 그 전제 위에 있다. Step 별은 인덱스를 갖는 다른 성질이라 `kind` 에
+   * 넣으면 인덱스를 실을 자리가 없다.
+   *
+   * **인덱스는 0-기반이다** — 저장·API·이벤트와 같다. 화면에 보이는 번호로 바꾸는 것은
+   * `stepNumber()` 한 곳뿐이며 여기서 하지 않는다 (FR-138).
+   */
+  stepScreenshotUrl: (id: string, index: number) =>
+    `/api/tests/${id}/result/steps/${index}/screenshot`,
   /** 로그 산출물 본문. 실패는 계약 형태 오류로 온다. */
   artifactText: async (id: string, kind: ArtifactKind): Promise<string> => {
     const resp = await fetch(`/api/tests/${id}/result/artifacts/${kind}`);

@@ -239,6 +239,30 @@
           "default": null,
           "title": "Resolved Candidate"
         },
+        "screenshot": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Screenshot"
+        },
+        "screenshot_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Screenshot Note"
+        },
         "step_id": {
           "title": "Step Id",
           "type": "string"
@@ -267,6 +291,8 @@
         "error_code",
         "element_wait_ms",
         "resolved_candidate",
+        "screenshot",
+        "screenshot_note",
         "locator_attempts",
         "error_message",
         "candidate_disagreement"

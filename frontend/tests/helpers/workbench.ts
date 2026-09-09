@@ -176,6 +176,9 @@ export function stepResult(overrides: Partial<StepResult> = {}): StepResult {
     element_wait_ms: 0,
     tab: 0,
     tab_wait_ms: 0,
+    /* 011 — 서버는 이 둘을 **항상** 싣는다 (`error_code` 와 같은 규칙). 없음은 `null` 이다 */
+    screenshot: null,
+    screenshot_note: null,
     error_code: null,
     error_message: null,
     locator_attempts: [],

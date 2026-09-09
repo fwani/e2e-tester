@@ -63,6 +63,15 @@ export interface StepDetailProps {
   detail: StepDetailModel;
   capabilities: CapabilityMap;
   /**
+   * 그 Step 이 끝난 시점의 화면 (011 UC-011-20·21).
+   *
+   * **주지 않으면 그 판을 그리지 않는다.** 결과 국면에만 있는 것이고, 다른 국면에서 빈
+   * 판을 그리면 「여기도 화면이 남는다」로 읽힌다.
+   *
+   * `url` 이 `null` 이면 없다는 뜻이고 `note` 가 그 사유다 — 둘 중 하나는 반드시 있다.
+   */
+  shot?: { url: string | null; note: string };
+  /**
    * 이 컴포넌트가 **자기 편집 입력을 갖는가** (008).
    *
    * 기본은 갖는다 — 세션 국면들은 여기가 유일한 편집면이고, 지역 상태에 모아 두었다가
@@ -104,6 +113,7 @@ export interface StepDetailProps {
 export function StepDetail({
   detail,
   capabilities,
+  shot,
   ownFields = true,
   busy = false,
   onSave,
@@ -363,6 +373,43 @@ export function StepDetail({
             </div>
             )}
           </>
+        )}
+
+        {/*
+          011 UC-011-20·21 — **그 Step 이 끝난 시점의 화면.**
+
+          자리는 여기다. 새 영역을 만들지 않는다 — 사용자가 「몇 번째에서 무엇이 화면에
+          있었는가」를 묻는 곳이 Step 상세이고, 그것을 위해 결과 국면에서 이 판을 연다.
+
+          **시도한 locator 표 위에 온다.** 화면은 「무엇이 보였나」이고 표는 「왜 못 찾았나」
+          라 순서가 그 차례다. 그리고 다른 표시를 밀어내지 않는다 (UC-011-22) — 판 자체가
+          세로로 스크롤하므로 아래가 잘리지 않는다.
+
+          **없으면 사유를 말한다.** 빈 채로 두면 사용자는 제품이 못 찍은 것인지 자기가 못
+          볼 이유가 있는 것인지 알 수 없다.
+        */}
+        {shot !== undefined && (
+          <div className="pane" data-step-shot>
+            <div className="pane-hd lbl band" style={{ padding: "0 12px" }}>
+              이 STEP 이 끝난 화면
+            </div>
+            {shot.url !== null ? (
+              <img
+                data-step-shot-image
+                src={shot.url}
+                alt={`${stepNumber(detail.index)} 이 끝난 시점의 화면`}
+                style={{ display: "block", width: "100%", height: "auto" }}
+              />
+            ) : (
+              <div
+                data-step-shot-missing
+                className="why"
+                style={{ padding: "12px" }}
+              >
+                {shot.note}
+              </div>
+            )}
+          </div>
         )}
 
         {/*

@@ -168,11 +168,32 @@ export function Workbench({
     사용자가 그 배치를 문제로 보고했다 (2026-09-09 — 「한쪽에 뜨도록 해야함」). 자리는
     우측 겹침 하나로 돌아왔고 표는 없어졌다 (`lib/layout.ts` 의 그 자리 주석).
   */
+  /**
+   * 지목한 Step 의 화면 (011). 모델의 Step 목록에서 지목한 것을 찾아 꺼낸다.
+   *
+   * **`WorkbenchStep` 에서 읽는다** — 상세 모델(`StepDetail`)에 넣지 않은 이유는 그것이
+   * 「정의와 그때 시도한 것」의 모음이고, 화면은 **행의 사실**이기 때문이다. 결과 목록의
+   * 행이 이미 그 값을 들고 있다.
+   */
+  const focusedStep = model.steps.find((s) => s.id === model.focusedStepId);
+  const detailShot =
+    focusedStep === undefined || focusedStep.screenshotUrl === undefined
+      ? undefined
+      : {
+          url: focusedStep.screenshotUrl,
+          note: focusedStep.screenshotNote ?? "이 Step 의 화면이 남아 있지 않습니다.",
+        };
+
   const detailNode =
     model.detail === null ? null : (
       <StepDetail
         detail={model.detail}
         capabilities={capabilities}
+        /*
+          011 UC-011-20 — 지목한 Step 의 화면. **모델에서 온다** — 이 컴포넌트는 데이터를
+          읽지 않는다 (007 의 소유와 표시 분리). 결과 국면 어댑터만 값을 채운다.
+        */
+        shot={detailShot}
         ownFields={stepDetailOwnFields}
         busy={busy}
         onSave={onSaveStep ?? (() => undefined)}

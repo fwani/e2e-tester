@@ -40,6 +40,7 @@ import { capabilitiesFor, type CapabilityFacts } from "../lib/capabilities";
 import {
   ACTION_LABEL,
   PHASE_LABEL,
+  missingShotText,
   outcomeTone,
   partialRunDiagnosis,
   partialRunNotice,
@@ -167,6 +168,30 @@ export function ResultView({
     );
   }
 
+/**
+ * 결과 행 → 화면 표시용 두 필드 (011 FR-390·FR-391·FR-393).
+ *
+ * 셋으로 갈린다.
+ *
+ * - **실행 대상이 아니었다** (`skipped`·`not_run`) → 판을 그리지 않는다. 찍지 못한 것이
+ *   아니라 찍을 일이 없었다. 사유를 남기면 사용자가 없는 결함을 찾는다.
+ * - **화면이 있다** → 주소를 만든다.
+ * - **없다** → 서버가 준 사유를 쓰고, 없으면 분류 문구로 메운다.
+ */
+function stepShot(
+  testId: string,
+  r: StepResult,
+): { screenshotUrl?: string | null; screenshotNote?: string | null } {
+  if (r.outcome === "skipped" || r.outcome === "not_run") return {};
+  if (r.screenshot !== null) {
+    return { screenshotUrl: tests.stepScreenshotUrl(testId, r.index), screenshotNote: null };
+  }
+  return {
+    screenshotUrl: null,
+    screenshotNote: missingShotText(r.screenshot_note ?? null, "capture_failed"),
+  };
+}
+
   /* ─── 결과 행 × 정의 (research R3) ────────────────────────────────────────── */
 
   const byId = new Map<string, Step>((defn?.test.steps ?? []).map((s) => [s.id, s]));
@@ -179,6 +204,16 @@ export function ResultView({
     outcome: r.outcome as StepOutcome,
     durationMs: r.outcome === "skipped" || r.outcome === "not_run" ? null : r.duration_ms,
     isPausedHere: false,
+    /*
+      011 UC-011-20·21 — 그 Step 이 끝난 시점의 화면.
+
+      **URL 은 여기서 만든다.** 저장되는 것은 프로젝트 루트 기준 상대 경로이고, 그것을
+      API 주소로 바꾸는 곳이 한 군데여야 한다 — 화면마다 만들면 경로 규칙이 갈린다.
+
+      실행 대상이 아니던 Step 은 **판 자체를 그리지 않는다** (`undefined`) — 「없다」가
+      아니라 「해당 없다」다. 사유를 남기면 결함으로 읽힌다 (FR-393).
+    */
+    ...stepShot(testId, r),
   }));
   /** 정의를 실제로 읽었을 때만 어긋남을 센다. 모르는 것과 바뀐 것은 다르다. */
   const unmatched = defn === null ? 0 : steps.filter((s) => s.step === null).length;

@@ -33,9 +33,9 @@ from itb.domain.step import (
     mime_type_of,
     target_of,
 )
+from itb.domain.test_case import AuthoringMode, Test
 from itb.execution.step_edits import FieldNotSupportedError, update_step
 from itb.storage.yaml_io import dump_model, load_model
-from itb.domain.test_case import AuthoringMode, Test
 
 
 def _target() -> TargetLocator:
