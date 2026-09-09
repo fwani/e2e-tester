@@ -165,14 +165,14 @@ description: "Task list for 010-headless-mirror-control"
 
 > 이 검증이 깨지면 미러 조작을 켜 둘 수 없다. 기능이 아니라 결함이다.
 
-- [ ] T033 [US1] 두 경로 동등성 검증을 만든다 — 같은 화면·같은 조작을 미러 경로와 창
+- [X] T033 [US1] 두 경로 동등성 검증을 만든다 — 같은 화면·같은 조작을 미러 경로와 창
       경로로 하고, 만들어진 Step 의 **종류·값·요소 후보 집합·검증 상태 전부**를 비교한다
       in `backend/tests/integration/test_mirror_recording_parity.py`
       (FR-322~FR-324 · SC-513 · 헌법 원칙 I·IV)
 
 ### 구현
 
-- [ ] T034 [US1] 포인터 사건(누름·놓음·이동)과 휠을 대상에 전달하고 리코더가 잡는 것을
+- [X] T034 [US1] 포인터 사건(누름·놓음·이동)과 휠을 대상에 전달하고 리코더가 잡는 것을
       확인한다 — 전용 수집 경로를 만들지 않는다 in `backend/src/itb/mirror/input.py`
       (FR-314 · FR-321 · research R1)
 - [X] T035 [US1] 미러 영역의 포인터 사건을 채널로 흘린다 — 누름·놓음·이동·휠. 이동은
@@ -183,15 +183,15 @@ description: "Task list for 010-headless-mirror-control"
 - [X] T037 [US1] 조작 국면의 미러 문구를 바꾼다 — 「실제 브라우저 창에서 조작 중」은
       `window` 상태의 문구로 옮기고, `mirror` 상태의 문구를 새로 둔다
       in `frontend/src/lib/wording.ts` (FR-350 · T004 의 목록)
-- [ ] T038 [US1] 조작 후 짧은 시간 안에 프레임이 오지 않으면 한 장을 찍어 보낸다 —
+- [X] T038 [US1] 조작 후 짧은 시간 안에 프레임이 오지 않으면 한 장을 찍어 보낸다 —
       기존 2초 무프레임 감시를 **조작 국면에서만** 줄인다
       in `backend/src/itb/mirror/screencast.py` (FR-335 · research R8)
-- [ ] T039 [US1] 조작 국면에서 프레임 ack 가 반드시 흐르게 한다 — ack 가 멈추면 3프레임
+- [X] T039 [US1] 조작 국면에서 프레임 ack 가 반드시 흐르게 한다 — ack 가 멈추면 3프레임
       뒤 프레임 밀기가 정지하고, 그것은 사용자에게 「조작해도 화면이 안 바뀐다」로 보인다
       in `backend/src/itb/mirror/screencast.py` (research R8)
-- [ ] T040 [P] [US1] 관찰 국면에서 조작이 전달되지 않고 사유가 보이는지 검증
+- [X] T040 [P] [US1] 관찰 국면에서 조작이 전달되지 않고 사유가 보이는지 검증
       in `frontend/tests/MirrorInput.test.ts` (FR-315 · SC-516)
-- [ ] T041 [P] [US1] 조작 후 프레임 보충 검증 — 화면이 변하지 않는 조작에서도 현재
+- [X] T041 [P] [US1] 조작 후 프레임 보충 검증 — 화면이 변하지 않는 조작에서도 현재
       화면이 확인되는지 in `backend/tests/unit/test_mirror_frame_delivery.py` (FR-335)
 
 **Checkpoint**: 창 전환 0회로 클릭·스크롤·호버 녹화가 완결된다 (SC-511). US2 없이도

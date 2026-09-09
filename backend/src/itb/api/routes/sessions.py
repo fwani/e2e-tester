@@ -240,10 +240,19 @@ def _control_phase_watcher(state: AppState, session_id: str):  # noqa: ANN202
     """
 
     async def watch(new_state: SessionState) -> None:
+        control_phase = is_control_phase(new_state)
+
+        # 010 FR-335 — 조작 국면에서는 무프레임 감시가 빨라진다. 조작이 화면을 바꾸지
+        # 않을 때 2초를 기다리면 사용자는 그것을 「클릭이 안 먹었다」로 읽는다.
+        w = _WORK.get(session_id)
+        if w is not None and w.mirror is not None:
+            with contextlib.suppress(Exception):
+                w.mirror.set_control_phase(control_phase)
+
         channel = state.control.get(session_id)
         if channel is None or not channel.attached:
             return
-        if is_control_phase(new_state):
+        if control_phase:
             return
         await channel.close(
             f"'{state_label(new_state)}' 국면에서는 미러에서 조작할 수 없습니다. "
@@ -725,6 +734,9 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         _start_agent(work, body.ai_instruction)
 
     await work.mirror.show(0)
+    # 010 FR-335 — 첫 국면도 알려 준다. 상태 관찰자는 **전이**에서만 불리므로, 녹화로
+    # 시작한 세션은 통보를 한 번도 받지 못한 채 관찰 국면의 주기로 돈다.
+    work.mirror.set_control_phase(is_control_phase(session.state))
     return view_of(work)
 
 

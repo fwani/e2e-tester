@@ -76,6 +76,9 @@ class MirrorController:
             return False
 
         was_controlling = self._input is not None
+        # 탭을 바꾸면 `TabScreencast` 가 새로 만들어진다. 국면을 이어 주지 않으면 탭을
+        # 바꾼 순간부터 조작 국면인데 관찰 국면의 주기로 돈다.
+        control_phase = self._current is not None and self._current.control_phase
         await self._stop_current()
         screencast = TabScreencast(handle.page, tab_index, self._session.emit)
         self._current = screencast
@@ -84,6 +87,7 @@ class MirrorController:
         # 다음 조작이 사용자가 더 이상 보고 있지 않은 탭에 간다.
         if was_controlling:
             await self.attach_input()
+        screencast.set_control_phase(control_phase or was_controlling)
         await self._session.emit("mirror_tab_changed", tab=tab_index)
         return await screencast.start()
 
@@ -139,6 +143,16 @@ class MirrorController:
     def input(self) -> TabInput | None:
         """보고 있는 탭의 조작 통로. 열려 있지 않으면 `None`."""
         return self._input
+
+    def set_control_phase(self, active: bool) -> None:
+        """지금이 조작 국면인지 미러에 알린다 (010 FR-335 · research R8).
+
+        **미러가 스스로 국면을 판정하지 않는다.** 상태 기계가 알고 통보한다 — 프론트의
+        `MirrorView` 가 국면을 보지 않는 것(FR-316)과 같은 이유다. 판정이 두 곳에 있으면
+        한 곳이 빠지고, 빠진 자리에서 조작 국면인데 2초 주기로 도는 미러가 남는다.
+        """
+        if self._current is not None:
+            self._current.set_control_phase(active)
 
     async def attach_input(self) -> TabInput | None:
         """지금 보고 있는 탭에 조작 통로를 연다 (FR-317).

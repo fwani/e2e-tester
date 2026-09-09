@@ -229,3 +229,115 @@ describe("수정자 비트 (FR-341)", () => {
     expect(modifiersOf({ altKey: true, ctrlKey: true, metaKey: true, shiftKey: true })).toBe(15);
   });
 });
+
+/* ─── 국면별 조작 가능성 (T040·T056 · FR-315·SC-516) ────────────────────────
+ *
+ * **화면이 아니라 표가 정한다** (FR-316 · research R9). 그래서 여기서 재는 것은 표다 —
+ * 표가 옳으면 `MirrorView` 는 그 결과를 그대로 따른다 (`MirrorView.test.tsx` 가 그
+ * 따름을 잰다).
+ */
+
+import { capabilitiesFor } from "../src/lib/capabilities";
+import { PHASES, type Phase } from "../src/lib/phase";
+
+/** 미러가 정상인 상태 — 국면만으로 갈리는지 보려면 런타임 사정을 전부 참으로 둔다. */
+const HEALTHY = {
+  mirrorFrameSeen: true,
+  mirrorLive: true,
+  controlChannelOpen: true,
+  controlSurfaceIsMirror: true,
+};
+
+describe("국면 × 미러 조작 (contracts/mirror-control.md §1)", () => {
+  it("조작 국면 셋에서 켜진다 (FR-314)", () => {
+    for (const phase of ["recording", "takeover", "paused"] as Phase[]) {
+      const state = capabilitiesFor(phase, HEALTHY)["mirror.control"];
+      expect(state.kind, `${phase} 에서 미러 조작이 ${state.kind} 다`).toBe("enabled");
+    }
+  });
+
+  it("관찰 국면에서 꺼지고 **이유가 있다** (FR-315 · SC-516)", () => {
+    /*
+      러너·AI 가 전진하는 중에 사람 조작이 끼어들면 같은 Step 이 두 번 돈다.
+
+      감추지 않고 이유를 붙이는 것이 요점이다 — 조용히 아무 일도 일어나지 않는 경우가
+      0건이어야 한다.
+    */
+    for (const phase of ["running", "ai_authoring"] as Phase[]) {
+      const state = capabilitiesFor(phase, HEALTHY)["mirror.control"];
+      expect(state.kind, `${phase} 에서 미러 조작이 켜져 있다`).toBe("disabled");
+      if (state.kind === "disabled") {
+        expect(state.reason.length, `${phase} 의 비활성 사유가 비어 있다`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("실행 중에는 **일시정지가 해소 방법이다** (US3)", () => {
+    const state = capabilitiesFor("running", HEALTHY)["mirror.control"];
+    expect(state.kind).toBe("disabled");
+    if (state.kind === "disabled") {
+      expect(state.remedy?.action).toBe("run.pause");
+    }
+  });
+
+  it("여덟 국면 전부가 두 조작에 답을 갖는다 (FR-234)", () => {
+    for (const phase of PHASES) {
+      const caps = capabilitiesFor(phase, HEALTHY);
+      expect(caps["mirror.control"], `${phase} × mirror.control 이 비어 있다`).toBeDefined();
+      expect(caps["mirror.useWindow"], `${phase} × mirror.useWindow 가 비어 있다`).toBeDefined();
+    }
+  });
+});
+
+describe("런타임 덮어쓰기 O10~O13 (contracts §1 · T032)", () => {
+  const cases: { name: string; facts: Record<string, boolean>; hint: RegExp }[] = [
+    {
+      name: "프레임을 한 장도 못 받았다 (O10 · FR-333)",
+      facts: { ...HEALTHY, mirrorFrameSeen: false },
+      hint: /아직 받지 못했습니다/,
+    },
+    {
+      name: "프레임이 끊겼다 (O11 · FR-346)",
+      facts: { ...HEALTHY, mirrorLive: false },
+      hint: /표시가 멈춘 것입니다/,
+    },
+    {
+      name: "조작 통로가 붙지 않았다 (O12)",
+      facts: { ...HEALTHY, controlChannelOpen: false },
+      hint: /통로가 준비되지 않았습니다/,
+    },
+    {
+      name: "실제 창에서 조작 중이다 (O13 · FR-350)",
+      facts: { ...HEALTHY, controlSurfaceIsMirror: false },
+      hint: /실제 브라우저 창에서 조작하고 있습니다/,
+    },
+  ];
+
+  for (const { name, facts, hint } of cases) {
+    it(`${name} — 꺼지고 사유가 있다`, () => {
+      const state = capabilitiesFor("recording", facts)["mirror.control"];
+      expect(state.kind).toBe("disabled");
+      if (state.kind === "disabled") expect(state.reason).toMatch(hint);
+    });
+  }
+
+  it("**넷 다 실제 창 전환을 막지 않는다** (FR-353a)", () => {
+    /*
+      막히는 상황일수록 실제 창으로 내려가는 수단이 살아 있어야 한다. 그것이 이 기능의
+      안전망이고, 그 수단까지 잠그면 막힌 사용자에게 남는 것이 없다.
+    */
+    for (const { name, facts } of cases) {
+      const state = capabilitiesFor("recording", facts)["mirror.useWindow"];
+      expect(state.kind, `${name} 에서 실제 창 전환까지 잠갔다`).toBe("enabled");
+    }
+  });
+
+  it("모르는 사정은 **거짓으로 읽힌다** — 모르는 것을 활성으로 그리지 않는다", () => {
+    /*
+      `CapabilityFacts` 의 규칙이다. 이름을 참인 방향으로 지은 이유가 여기 있다 —
+      `mirrorNoFrame` 이라 지었다면 `undefined` 가 「프레임이 있다」로 읽힌다.
+    */
+    const state = capabilitiesFor("recording", {})["mirror.control"];
+    expect(state.kind).toBe("disabled");
+  });
+});

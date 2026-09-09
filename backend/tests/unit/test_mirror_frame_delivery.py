@@ -27,6 +27,7 @@ from itb.mirror.screencast import (
 # 먼저 일어나므로 이 두 값은 제품에 적힌 값 그대로다.
 PRODUCT_IDLE_INTERVAL_S = sc.IDLE_INTERVAL_S
 PRODUCT_FALLBACK_INTERVAL_S = sc.FALLBACK_INTERVAL_S
+PRODUCT_CONTROL_INTERVAL_S = sc.CONTROL_IDLE_INTERVAL_S
 
 
 @pytest.fixture(autouse=True)
@@ -45,6 +46,9 @@ def _short_intervals(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     monkeypatch.setattr(sc, "IDLE_INTERVAL_S", 0.10)
     monkeypatch.setattr(sc, "FALLBACK_INTERVAL_S", 0.05)
+    # 010 — 조작 국면 주기도 함께 내린다. 제품 값(0.25초)은 아래
+    # `test_product_control_interval_is_shorter_than_the_observation_one` 이 못 박는다.
+    monkeypatch.setattr(sc, "CONTROL_IDLE_INTERVAL_S", 0.05)
 
 
 def test_product_intervals_are_the_measured_ones() -> None:
@@ -362,3 +366,81 @@ async def test_unusable_scale_falls_back_to_one() -> None:
     for frame in _frames(events):
         assert frame["pageScale"] == 1.0, f"쓸 수 없는 배율이 그대로 나갔다: {frame['pageScale']}"
         assert frame["offsetTop"] == 0.0
+
+
+# ─── 010 FR-335: 조작 직후에 화면이 확인된다 (T041) ─────────────────────────
+#
+# 조작이 화면을 바꾸면 프레임이 온다 — 실측 중앙값 25ms (research R8). 문제는 **화면을
+# 바꾸지 않는 조작**이다: 초점 이동, 값이 같은 입력. 그때 기존 2초 감시가 채워 주는데,
+# 2초는 조작 피드백으로 너무 길다. 사용자는 그 2초를 「내 클릭이 안 먹었다」로 읽고 같은
+# 곳을 다시 누른다 (FR-334 가 금지하는 상태다).
+
+
+def test_product_control_interval_is_shorter_than_the_observation_one() -> None:
+    """조작 국면의 감시 주기가 관찰 국면보다 **짧다** (FR-335 · research R8).
+
+    이 파일은 속도 때문에 주기를 내려 쓴다. 제품 값 자체의 관계는 여기서 못 박는다 —
+    두 값이 같아지면 FR-335 가 조용히 사라지고, 사라진 것을 알려 줄 것이 없다.
+    """
+    assert PRODUCT_CONTROL_INTERVAL_S < PRODUCT_IDLE_INTERVAL_S
+    assert 0 < PRODUCT_CONTROL_INTERVAL_S <= 0.5, (
+        "조작 피드백 주기가 0.5초를 넘으면 사용자가 같은 곳을 다시 누른다 (FR-334)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_control_phase_uses_the_shorter_interval() -> None:
+    """조작 국면이면 짧은 주기를 쓴다. **미러가 스스로 판정하지 않는다.**
+
+    국면은 상태 기계가 알고 미러는 통보를 받는다 — 프론트의 `MirrorView` 가 국면을 보지
+    않는 것(FR-316)과 같은 이유다.
+    """
+    cast = TabScreencast(ViewportPage(), 0, collector()[1])
+
+    assert cast.control_phase is False
+    assert cast.idle_interval() == sc.IDLE_INTERVAL_S
+
+    cast.set_control_phase(True)
+    assert cast.control_phase is True
+    assert cast.idle_interval() == sc.CONTROL_IDLE_INTERVAL_S
+
+    cast.set_control_phase(False)
+    assert cast.idle_interval() == sc.IDLE_INTERVAL_S
+
+
+@pytest.mark.asyncio
+async def test_entering_a_control_phase_resumes_acking() -> None:
+    """조작 국면에 들어오면 ack 를 다시 켠다 (research R8 · FR-339).
+
+    **ack 가 멈추면 3프레임 뒤 프레임 밀기가 정지한다** — 실측으로 확인된 성질이고,
+    그 상태는 사용자에게 「조작해도 화면이 안 바뀐다」로 보인다. 통로가 끊겨 ack 를 멈춘
+    채로 조작 국면에 들어오면 정확히 그 상태가 된다.
+    """
+    cast = TabScreencast(ViewportPage(), 0, collector()[1])
+    cast.pause_acking()
+    assert cast._acking is False
+
+    cast.set_control_phase(True)
+    assert cast._acking is True, "조작 국면인데 ack 가 멈춘 채로 남았다"
+
+
+@pytest.mark.asyncio
+async def test_a_silent_screen_is_refreshed_quickly_while_controlling() -> None:
+    """화면이 변하지 않는 조작에서도 **현재 화면이 곧 확인된다** (FR-335).
+
+    주기를 읽어 기다린다 — 픽스처가 내린 값을 쓰므로 실시간을 낭비하지 않는다.
+    """
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+    page.context = None
+    cast.set_control_phase(True)
+    await cast.start()
+
+    before = len(_frames(events))
+    await asyncio.sleep(sc.CONTROL_IDLE_INTERVAL_S * 1.5)
+    await cast.stop()
+
+    assert len(_frames(events)) > before, (
+        "조작 국면에서 조용한 화면이 갱신되지 않았다 — 사용자에게는 클릭이 안 먹은 것으로 보인다"
+    )

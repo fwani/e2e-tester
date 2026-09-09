@@ -38,6 +38,20 @@ EVERY_NTH_FRAME = 1
 FALLBACK_INTERVAL_S = 1.0
 """스크린캐스트를 시작할 수 없을 때의 강등 주기. 1 fps (research R3 폴백)."""
 
+CONTROL_IDLE_INTERVAL_S = 0.25
+"""**조작 국면의** 무프레임 감시 주기 (010 FR-335 · research R8).
+
+조작이 화면을 바꾸면 프레임이 온다 — 실측 중앙값 25ms 다. 화면을 바꾸지 않는 조작(초점
+이동, 값이 같은 입력)은 프레임을 만들지 않고, 그때 기존 2초 감시가 채워 준다.
+
+**2초는 조작 피드백으로 너무 길다.** 사용자는 그 2초를 「내 클릭이 안 먹었다」로 읽고 같은
+곳을 다시 누른다 — FR-334 가 금지하는 상태다. 조작 국면에서만 주기를 줄이는 것으로
+충분하다는 것이 research R8 의 판단이다.
+
+**관찰 국면에서는 줄이지 않는다.** 그쪽에서 초당 네 장을 찍으면 실행 중인 브라우저를
+갉아먹고, 얻는 것은 없다 — 사람이 조작하고 있지 않으므로 기다리게 만들 피드백도 없다.
+"""
+
 IDLE_INTERVAL_S = 2.0
 """무프레임 감시 주기 (005 FR-160).
 
@@ -129,6 +143,12 @@ class TabScreencast:
         """
         self._idle_task: asyncio.Task[None] | None = None
         self._last_sent_at: float = 0.0
+        self._control_phase = False
+        """지금이 조작 국면인가 (010 FR-335).
+
+        **미러가 스스로 판정하지 않는다.** 국면은 상태 기계가 알고, 여기는 통보를 받는다
+        (FR-316 과 같은 이유). 이 값이 하는 일은 무프레임 감시 주기를 고르는 것 하나다.
+        """
         self._frame_seq = itertools.count(1)
         """프레임 일련번호 (010 FR-331 · data-model §2).
 
@@ -152,6 +172,11 @@ class TabScreencast:
     @property
     def degraded(self) -> bool:
         return self._degraded_task is not None
+
+    @property
+    def control_phase(self) -> bool:
+        """조작 국면인가. 탭을 갈아 끼울 때 새 스크린캐스트가 이 값을 이어받는다."""
+        return self._control_phase
 
     # ─── 시작·정지 ─────────────────────────────────────────────────────────
 
@@ -238,6 +263,23 @@ class TabScreencast:
 
         if reason is not None:
             await self._emit("mirror_stopped", reason=reason)
+
+    def set_control_phase(self, active: bool) -> None:
+        """조작 국면 여부를 알려 준다 (010 FR-335 · FR-339).
+
+        조작 국면에서는 무프레임 감시가 빨라지고, ack 를 다시 켠다 — 조작해도 화면이
+        바뀌지 않는 상태를 만들지 않기 위해서다 (아래 `_acking` 의 설명).
+        """
+        self._control_phase = active
+        if active:
+            # research R8 — **ack 가 멈추면 3프레임 뒤 프레임 밀기가 정지한다.** 그 상태는
+            # 사용자에게 「조작해도 화면이 안 바뀐다」로 보인다. 조작 국면에 들어올 때
+            # 반드시 다시 켠다: 그전에 통로가 끊겨 ack 를 멈춘 채로 남아 있을 수 있다.
+            self._acking = True
+
+    def idle_interval(self) -> float:
+        """지금 쓸 무프레임 감시 주기 (010 FR-335)."""
+        return CONTROL_IDLE_INTERVAL_S if self._control_phase else IDLE_INTERVAL_S
 
     def pause_acking(self) -> None:
         """ack 를 멈춘다. WebSocket 이 끊긴 경우의 정지 수단이다 (FR-047b).
@@ -347,11 +389,14 @@ class TabScreencast:
         깨서는 안 된다.
         """
         while self._running:
-            await asyncio.sleep(IDLE_INTERVAL_S / 2)
+            interval = self.idle_interval()
+            await asyncio.sleep(interval / 2)
             if not self._running or self.degraded:
                 continue
+            # 주기를 **매 회전마다 다시 읽는다.** 국면은 루프가 도는 동안 바뀐다 —
+            # 시작 시점의 값을 잡아 두면 녹화를 켠 뒤에도 2초 주기로 돈다.
             quiet_for = time.monotonic() - self._last_sent_at
-            if quiet_for < IDLE_INTERVAL_S:
+            if quiet_for < self.idle_interval():
                 continue
             try:
                 await self._shoot_once()

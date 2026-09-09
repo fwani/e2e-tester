@@ -376,21 +376,23 @@ const OVERRIDES: {
   },
 ];
 
+/** O4·O9 는 「…이 있다」가 **거짓일 때** 걸린다 — 다른 덮어쓰기와 참·거짓 방향이 반대다. */
+const NEGATED_OVERRIDES = new Set<DisabledReasonKey>(["O4", "O9", "O10", "O11", "O12", "O13"]);
+
 /**
- * 「…이다」가 **거짓일 때** 걸리는 덮어쓰기 — 다른 것들과 참·거짓 방향이 반대다.
+ * **명시적으로 참일 때만 통과시키는 덮어쓰기** (010 O10~O13).
  *
- * O10~O13 이 여기 있는 이유는 이름을 참인 방향으로 지었기 때문이다 (`mirrorFrameSeen`).
- * 반대로 지으면(`mirrorNoFrame`) `undefined` 가 「프레임이 있다」로 읽혀, 모르는 상태에서
- * 화면이 조작을 활성으로 그린다.
+ * `NEGATED_OVERRIDES` 는 사실이 `false` 일 때만 걸린다 — `undefined` 는 걸리지 않는다.
+ * O4·O9 에는 그 규칙이 맞다: 「Step 이 있는지 모른다」는 화면이 Step 목록을 아직 못 받은
+ * 순간이고, 그때 저장을 잠그면 화면이 뜨자마자 전부 회색이 된다.
+ *
+ * **미러 조작에는 반대가 맞다.** 「프레임을 받았는지 모른다」에서 조작을 활성으로 그리면,
+ * 사용자는 클릭해 보고 나서 안 된다는 것을 알게 된다 — FR-319 가 정확히 그것을 금지한다.
+ * 게다가 서버가 그 조작을 거절하므로(FR-333·FR-341) 화면과 서버가 갈린 상태가 된다.
+ *
+ * 그래서 이 넷은 `undefined` 도 「아니다」로 읽는다.
  */
-const NEGATED_OVERRIDES = new Set<DisabledReasonKey>([
-  "O4",
-  "O9",
-  "O10",
-  "O11",
-  "O12",
-  "O13",
-]);
+const REQUIRE_TRUE_OVERRIDES = new Set<DisabledReasonKey>(["O10", "O11", "O12", "O13"]);
 
 /* ─── 표 (ui-contract §3-1 ~ §3-4) ─────────────────────────────────────────── */
 
@@ -902,7 +904,11 @@ export function capabilityOf(
   for (const o of OVERRIDES) {
     if (!o.actions.includes(action)) continue;
     const value = facts[o.fact];
-    const triggered = NEGATED_OVERRIDES.has(o.key) ? value === false : value === true;
+    const triggered = REQUIRE_TRUE_OVERRIDES.has(o.key)
+      ? value !== true
+      : NEGATED_OVERRIDES.has(o.key)
+        ? value === false
+        : value === true;
     if (!triggered) continue;
     // 그 국면에서 애초에 해당 없는 조작은 덮어쓰기도 하지 않는다 — 없는 조작에
     // 「실행을 준비하는 중…」을 붙이면 화면이 쓸 수 없는 조작으로 뒤덮인다.
