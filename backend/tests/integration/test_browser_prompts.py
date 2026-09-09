@@ -82,7 +82,9 @@ def _wait_for_prompt(client: TestClient, session_id: str, timeout_s: float = 10.
 
 
 @pytest.mark.browser
-def test_a_confirm_dialog_is_intercepted_and_announced(keyed_client: TestClient, fixture_app: str) -> None:
+def test_a_confirm_dialog_is_intercepted_and_announced(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
     """`confirm` 이 가로채이고 그 사실이 알려진다 (FR-338 · research R7).
 
     **자동으로 닫지 않는다.** 닫으면 사용자가 고를 기회를 잃고, 그 선택은 대상 페이지의
@@ -108,7 +110,9 @@ def test_a_confirm_dialog_is_intercepted_and_announced(keyed_client: TestClient,
 
 
 @pytest.mark.browser
-def test_the_users_choice_reaches_the_target_page(keyed_client: TestClient, fixture_app: str) -> None:
+def test_the_users_choice_reaches_the_target_page(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
     """사용자의 선택이 대상 페이지에 전달된다 (FR-338 · US4 인수 2).
 
     수락하면 `confirm` 이 `true` 를 돌려주고 페이지가 계속 간다. 그것이 「제품 화면이
@@ -214,7 +218,9 @@ def test_a_file_chooser_is_intercepted_without_an_os_window(
 
 
 @pytest.mark.browser
-def test_an_uploaded_file_reaches_the_target_page(keyed_client: TestClient, fixture_app: str) -> None:
+def test_an_uploaded_file_reaches_the_target_page(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
     """**사용자가 올린 파일이 대상 페이지에 전달된다** (FR-337 · US4 인수 1 · SC-517).
 
     사용자가 자기 기계에서 고른 파일을 제품이 받아 대상 브라우저에 지정한다 — 제품이
@@ -280,7 +286,9 @@ def test_upload_over_the_size_limit_is_refused_with_a_reason(
 
 
 @pytest.mark.browser
-def test_uploaded_files_are_gone_after_the_session_ends(keyed_client: TestClient, fixture_app: str) -> None:
+def test_uploaded_files_are_gone_after_the_session_ends(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
     """**사용자가 보낸 파일이 세션보다 오래 남지 않는다** (FR-337b)."""
     from pathlib import Path
 
@@ -302,7 +310,9 @@ def test_uploaded_files_are_gone_after_the_session_ends(keyed_client: TestClient
 
 
 @pytest.mark.browser
-def test_a_prompt_is_announced_on_the_observation_socket(keyed_client: TestClient, fixture_app: str) -> None:
+def test_a_prompt_is_announced_on_the_observation_socket(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
     """요구가 **관찰 소켓으로** 나간다 (contracts §4).
 
     방향은 바뀌지 않는다 — 서버 → 클라이언트다. 조작은 별개의 소켓으로 받는다. 이

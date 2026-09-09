@@ -146,19 +146,32 @@ class BrowserPrompts:
         self._announce(prompt)
 
     def _announce(self, prompt: PendingPrompt) -> None:
+        """요구를 기록하고 알린다.
+
+        **요구를 먼저 기록한다.** 알림이 나가지 못해도 요구 자체는 살아 있어야 한다 —
+        사용자가 세션을 다시 조회하면 그것을 볼 수 있고, 응답 경로도 그대로 동작한다.
+
+        Playwright 이벤트 핸들러는 **동기 호출**이므로 발행을 태스크로 넘긴다. 돌고 있는
+        루프가 없으면 태스크를 만들 수 없는데, 그때 코루틴을 먼저 만들어 두면 그것이
+        await 되지 않은 채 버려지고 파이썬이 경고를 낸다 — **루프를 먼저 확인하는 이유가
+        그것이다.** 실제로 루프가 없는 경우는 검증이 직접 부르는 경로뿐이고, 그때도 요구는
+        위에서 이미 기록됐다.
+        """
         self.pending[prompt.prompt_id] = prompt
-        # CDP·Playwright 이벤트 핸들러는 동기 호출이므로 태스크로 넘긴다.
-        with contextlib.suppress(RuntimeError):
-            asyncio.create_task(  # noqa: RUF006
-                self.emit(
-                    "browser_prompt",
-                    promptId=prompt.prompt_id,
-                    kind=prompt.kind,
-                    message=prompt.message,
-                    multiple=prompt.multiple,
-                    blocking=prompt.blocking,
-                )
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        loop.create_task(  # noqa: RUF006
+            self.emit(
+                "browser_prompt",
+                promptId=prompt.prompt_id,
+                kind=prompt.kind,
+                message=prompt.message,
+                multiple=prompt.multiple,
+                blocking=prompt.blocking,
             )
+        )
 
     # ─── 응답 ──────────────────────────────────────────────────────────────
 

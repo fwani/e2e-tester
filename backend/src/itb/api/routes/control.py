@@ -103,10 +103,13 @@ async def set_control_surface(
     if body.surface == "window":
         if not can_open_a_window():
             raise bad_request(
-                ErrorCode.INVALID_REQUEST,
-                "이 기계에는 띄울 창이 없어 실제 창으로 전환할 수 없습니다. "
-                "미러에서 계속 조작하세요.",
-                detail={"reason": "headless_environment", "env": HEADLESS_ENV},
+                ErrorCode.NOT_SUPPORTED,
+                "이 기계에는 띄울 창이 없어 실제 창으로 전환할 수 없습니다.",
+                next_action=(
+                    "미러에서 계속 조작하세요. 화면이 있는 기계에서는 창을 열 수 있습니다."
+                ),
+                reason="headless_environment",
+                env=HEADLESS_ENV,
             )
         # 이미 살아 있는 탭을 앞으로 가져온다. 실패해도 전환 자체는 성립한다 —
         # 창이 뒤에 있는 것과 창이 없는 것은 다르다.

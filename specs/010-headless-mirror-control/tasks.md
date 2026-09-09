@@ -347,19 +347,19 @@ description: "Task list for 010-headless-mirror-control"
       in `backend/src/itb/api/routes/control.py` (FR-351)
 - [X] T074 [US5] `control_surface` 이벤트를 관찰 WS 에 추가한다
       in `backend/src/itb/api/ws/session_events.py` (contracts §4)
-- [ ] T075 [US5] 강등(1 FPS) 상태에서 조작 가능하되 **정확하지 않을 수 있다는 사실과
+- [X] T075 [US5] 강등(1 FPS) 상태에서 조작 가능하되 **정확하지 않을 수 있다는 사실과
       전환 수단을 같은 자리에** 둔다 in `frontend/src/components/MirrorView.tsx`
       (FR-345 · FR-353a)
-- [ ] T076 [US5] 막힌 상황(`unsupported` 요구·끊김)에서 전환 수단을 그 자리에 그린다
+- [X] T076 [US5] 막힌 상황(`unsupported` 요구·끊김)에서 전환 수단을 그 자리에 그린다
       in `frontend/src/pages/SessionScreen.tsx` (FR-339 · FR-353a)
-- [ ] T077 [US5] `window` 상태의 미러 문구를 확정한다 — 「실제 브라우저 창에서 조작 중 ·
+- [X] T077 [US5] `window` 상태의 미러 문구를 확정한다 — 「실제 브라우저 창에서 조작 중 ·
       이 영역은 관찰용입니다」가 이 상태의 문구다
       in `frontend/src/lib/wording.ts` (FR-350 · M-05)
-- [ ] T078 [P] [US5] 전환 후 세션 상태·녹화 유지 검증
+- [X] T078 [P] [US5] 전환 후 세션 상태·녹화 유지 검증
       in `backend/tests/integration/test_control_surface.py` (FR-349)
-- [ ] T079 [P] [US5] 창을 띄울 수 없는 환경에서 거절 사유가 오는지 검증
+- [X] T079 [P] [US5] 창을 띄울 수 없는 환경에서 거절 사유가 오는지 검증
       in `backend/tests/integration/test_control_surface.py` (FR-351)
-- [ ] T080 [P] [US5] 제품이 스스로 창을 열지 않는지 검증 — 강등·`unsupported` 발생만으로
+- [X] T080 [P] [US5] 제품이 스스로 창을 열지 않는지 검증 — 강등·`unsupported` 발생만으로
       전환이 일어나지 않아야 한다 in `backend/tests/integration/test_control_surface.py`
       (FR-353)
 
@@ -369,24 +369,24 @@ description: "Task list for 010-headless-mirror-control"
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T081 조작할 수 없는 **모든** 상황에서 사유가 화면에 있는지 전수 확인하는 검증을
+- [X] T081 조작할 수 없는 **모든** 상황에서 사유가 화면에 있는지 전수 확인하는 검증을
       만든다 — 관찰 국면·프레임 없음·끊김·강등·채널 미접속·세션 종료·`unsupported`.
       조용한 실패 0건 in `frontend/tests/abnormal/mirror-control-blockers.test.tsx`
       (SC-516)
-- [ ] T082 [P] 001 의 계약 문서에 개정 표시를 남긴다 — `contracts/websocket.md` 와
+- [X] T082 [P] 001 의 계약 문서에 개정 표시를 남긴다 — `contracts/websocket.md` 와
       `spec.md` 의 FR-047a·clarify 결정 3 자리에 010 이 개정했다는 것과 그 위치
       in `specs/001-interactive-ai-test-builder/`
-- [ ] T083 [P] 시각 언어 정본과의 정합성을 확인한다 — 미러의 새 상태 표시가 정본을
+- [X] T083 [P] 시각 언어 정본과의 정합성을 확인한다 — 미러의 새 상태 표시가 정본을
       벗어나지 않는지 (`python3 scripts/extract_canon.py --check`)
-- [ ] T084 [P] `docs/` 에 조작 위치 개념을 반영한다 — 창이 기본이 아니게 되었다는 것과
+- [X] T084 [P] `docs/` 에 조작 위치 개념을 반영한다 — 창이 기본이 아니게 되었다는 것과
       전환 방법
-- [ ] T085 임포트 경계를 확인한다 (`uv run lint-imports`) — `mirror/input.py` 가
+- [X] T085 임포트 경계를 확인한다 (`uv run lint-imports`) — `mirror/input.py` 가
       `screencast.py` 를 임포트하지 않고, 그 역도 아닌지 (research R5)
-- [ ] T086 지연을 실측해 기준선과 비교하는 검증을 둔다 — 클릭 → 프레임 중앙값 25ms·
+- [X] T086 지연을 실측해 기준선과 비교하는 검증을 둔다 — 클릭 → 프레임 중앙값 25ms·
       최대 43ms 에서 멀어졌으면 ack 흐름을 먼저 의심한다.
       `timing` 마커를 붙인다 in `backend/tests/integration/test_mirror_input_latency.py`
       (SC-514 · research R8)
-- [ ] T087 검증 절차 전체를 실행해 통과 조건을 확인한다 in
+- [X] T087 검증 절차 전체를 실행해 통과 조건을 확인한다 in
       `specs/010-headless-mirror-control/quickstart.md`
 
 ---

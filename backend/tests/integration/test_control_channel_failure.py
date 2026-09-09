@@ -71,9 +71,15 @@ def test_a_flooded_control_channel_does_not_break_the_run(
         finally:
             stop_quietly(keyed_client, session_id)
 
-        result = replay(keyed_client, test_id)
-        assert result["outcome"] in ("pass", "partial_pass"), (
-            f"{attempt + 1}회차: 조작 채널 폭주 뒤 실행이 완주하지 못했다 — {result}"
+        view = replay(keyed_client, test_id)
+        # **끝났다는 것이 재는 것이다** — 결말이 통과인지 실패인지는 이 검증의 관심이
+        # 아니다. 관심은 조작 채널의 사정이 실행을 세우거나 유실시키지 않았는가 하나다
+        # (FR-348). `replay` 는 세션 뷰를 돌려주므로 `state` 를 본다.
+        assert view["state"] in ("completed", "failed", "stopped"), (
+            f"{attempt + 1}회차: 조작 채널 폭주 뒤 실행이 완주하지 못했다 — {view['state']}"
+        )
+        assert view["state"] != "lost", (
+            f"{attempt + 1}회차: 조작 채널 폭주가 세션을 유실시켰다 (FR-348 위반)"
         )
 
 
@@ -102,9 +108,12 @@ def test_an_abruptly_dropped_control_channel_does_not_break_the_run(
         finally:
             stop_quietly(keyed_client, session_id)
 
-        result = replay(keyed_client, test_id)
-        assert result["outcome"] in ("pass", "partial_pass"), (
-            f"{attempt + 1}회차: 채널이 끊긴 뒤 실행이 완주하지 못했다 — {result}"
+        view = replay(keyed_client, test_id)
+        assert view["state"] in ("completed", "failed", "stopped"), (
+            f"{attempt + 1}회차: 채널이 끊긴 뒤 실행이 완주하지 못했다 — {view['state']}"
+        )
+        assert view["state"] != "lost", (
+            f"{attempt + 1}회차: 끊긴 채널이 세션을 유실시켰다 (FR-348 위반)"
         )
 
 
