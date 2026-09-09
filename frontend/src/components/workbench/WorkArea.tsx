@@ -28,8 +28,6 @@
  * 컴포넌트가 `isAiSession` 조건 뒤에 숨어, 실패가 상태에 담겨도 화면에 도달하지 못했다.
  * 사용자에게는 "아무 일도 일어나지 않음" 으로 보였다. 접힘·탭·겹침 뒤에 두지 않는다.
  */
-import type { ReactNode } from "react";
-
 import { ErrorNotice } from "../ErrorNotice";
 import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../lib/wording";
 import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
@@ -60,13 +58,6 @@ export interface WorkAreaProps {
   onChooseBlocked?: (choice: string) => void;
   onReload?: () => void;
   onOverwriteStale?: () => void;
-  /**
-   * Step 상세를 이 자리에 걸었을 때의 그것 (008 · `DETAIL_PLACEMENT`).
-   *
-   * `Workbench` 가 국면 표를 보고 인라인이면 여기로, 겹침이면 자기가 직접 띄운다.
-   * **이 파일은 어느 쪽인지 판단하지 않는다** — 받으면 그린다.
-   */
-  detail?: ReactNode;
   busy?: boolean;
 }
 
@@ -78,7 +69,6 @@ export function WorkArea({
   onChooseBlocked,
   onReload,
   onOverwriteStale,
-  detail,
   busy = false,
 }: WorkAreaProps) {
   return (
@@ -359,16 +349,16 @@ export function WorkArea({
         </>
       )}
       {/*
-        008 — **Step 편집면이 이 자리의 본체다.**
+        **Step 상세는 이 자리에 오지 않는다** (2026-09-09).
 
-        `VERTICAL_SPLIT.editing` 이 이 자리에 `fill` 을 주는 근거가 「하는 일은 Step
-        편집이다」였는데 정작 그 폼은 겹침에 있었다. 007 이 남긴 모순이며, 자리 배분과
-        내용이 어긋난 채였다 (S-12 와 같은 형태).
+        008 은 편집 국면에서 상세를 여기 인라인으로 걸었다 — 근거는 `VERTICAL_SPLIT.editing`
+        이 이 자리에 `fill` 을 주면서 그 이유를 「하는 일은 Step 편집이다」로 적어 둔 것이
+        었다. 사용자가 그 배치를 문제로 보고해(「한쪽에 뜨도록 해야함」) 자리가 우측 겹침
+        하나로 돌아왔다 (`lib/layout.ts` 의 그 자리 주석).
 
-        **kind 분기 밖에 둔다.** 안에 두면 그 국면의 작업 종류가 바뀌는 순간 상세가
-        조용히 사라진다 — 받으면 그린다. 구현은 겹침과 같은 한 벌이다 (FR-229 · SC-001).
+        그래서 편집 국면의 이 자리는 `edit_fields` 가 채운다 — 민감 변수·저장하지 않은
+        변경이고, 둘 다 없으면 무엇을 하면 되는지 말한다 (008 이 S-12 로 넣은 빈 상태).
       */}
-      {detail}
     </div>
   );
 }

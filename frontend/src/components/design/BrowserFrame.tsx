@@ -61,7 +61,23 @@ export function BrowserFrame({
         <div className="addr">{url}</div>
         <span className={`chip ${badge.tone}`.trimEnd()}>{badge.label}</span>
       </div>
-      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>{children}</div>
+      {/*
+        2026-09-09 — **`column` 이 빠져 있었다** (사용자 보고: 「파일 업로드 후에 미러
+        화면이 작아지는 버그」).
+
+        `flexDirection` 이 없으면 기본값은 `row` 다. 이 자리에 들어오는 것은 브라우저
+        요구 패널(`BrowserPromptPanel`) + 미러 둘이고(`SessionScreen` 의 `mirror`),
+        `row` 였으므로 요구 패널이 미러 **위**가 아니라 **왼쪽 옆**에 서서 자기 콘텐츠
+        폭(제목·설명·파일 선택칸·버튼 둘)을 가져갔다. 그래서 파일 선택 요구가 뜨는
+        순간 미러가 가로로 눌렸다.
+
+        `SessionScreen` 의 그 자리 주석은 「브라우저 요구를 **미러 바로 위에** 둔다」
+        (010 FR-338·FR-339)라고 적고 있었다 — 의도는 처음부터 세로였고, 이 한 줄이
+        그것과 어긋나 있었다.
+      */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        {children}
+      </div>
     </div>
   );
 }

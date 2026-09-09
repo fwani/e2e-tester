@@ -86,10 +86,65 @@ export type SessionEvent =
       stopped_step_index?: number | null;
       failed_step_index: number | null;
     })
-  | (SessionEventBase & { type: "mirror_frame"; tab: number; data: string; width: number; height: number })
+  /**
+   * 프레임 한 장 (010 T007 · contracts/mirror-control.md §4).
+   *
+   * **`width`·`height` 는 대상 화면 크기다** — 프레임 이미지의 픽셀 크기가 아니다.
+   * 이미지 크기는 `<img>` 의 `naturalWidth`/`naturalHeight` 로 읽는다. 요청한 상한과
+   * 실제 프레임 크기가 다르기 때문이다 (1280×800 을 요청해 1067×800 을 받았다 —
+   * research R3). 서버가 보낸 값과 이미지가 어긋날 여지를 만들지 않는다.
+   *
+   * 뒤의 셋은 010 이 더한 **좌표 역변환의 근거**다 (FR-331). 옛 서버에는 없으므로
+   * 선택 항목이고, 없으면 변환이 기본값(배율 1 · 오프셋 0)으로 붙는다.
+   */
+  | (SessionEventBase & {
+      type: "mirror_frame";
+      tab: number;
+      data: string;
+      width: number;
+      height: number;
+      /** 페이지 배율 (`pageScaleFactor`). 없으면 1. */
+      pageScale?: number;
+      /** 화면 상단 오프셋. 없으면 0. */
+      offsetTop?: number;
+      /**
+       * 프레임 일련번호. 조작 사건이 이 값을 되돌려 보낸다 (data-model §1).
+       *
+       * 봉투의 `seq` 와 **다른 값이다** — 봉투의 것은 서버 재시작 감지용이고 이것은
+       * 「이 좌표를 계산한 근거가 어느 프레임인가」다. 계약 문서는 이 필드를 `seq` 라
+       * 불렀으나 봉투와 이름이 겹쳐 구현이 `frameSeq` 로 두었다 (contracts §4 정정).
+       */
+      frameSeq?: number;
+    })
   | (SessionEventBase & { type: "mirror_tab_changed"; tab: number })
   | (SessionEventBase & { type: "mirror_degraded"; mode: string; reason?: string })
   | (SessionEventBase & { type: "mirror_stopped"; reason?: string })
+  /**
+   * 대상 브라우저가 사용자에게 요구하는 것 (010 · contracts/mirror-control.md §4).
+   *
+   * 대화상자·파일 선택처럼 **페이지 화면이 아닌 것**이다. 미러는 페이지 화면을 그리므로
+   * 여기 나타나지 않고, 창이 없으면 운영체제도 대신 보여 주지 않는다.
+   *
+   * **`message` 는 대상 페이지에서 온 값이다.** 표시할 때 이스케이프해야 한다 —
+   * 외부 입력은 경계에서 검증한다는 헌법 보안 요건이 화면에 걸리는 자리다.
+   */
+  | (SessionEventBase & {
+      type: "browser_prompt";
+      promptId: string;
+      kind:
+        | "dialog.alert"
+        | "dialog.confirm"
+        | "dialog.prompt"
+        | "file.choose"
+        | "unsupported";
+      message: string;
+      multiple?: boolean;
+      /** 응답이 없으면 대상 페이지가 멈추는가. 대화상자는 참 */
+      blocking?: boolean;
+    })
+  | (SessionEventBase & { type: "browser_prompt_resolved"; promptId: string; reason?: string })
+  /** 조작 위치가 바뀌었다 (010 FR-350 · data-model §6). */
+  | (SessionEventBase & { type: "control_surface"; surface: "mirror" | "window" })
   /** 조용한 실패를 막는 진단 이벤트 (contracts/websocket.md §진단 이벤트). */
   | (SessionEventBase & { type: "run_error"; reason: string; error?: ErrorBody })
   | (SessionEventBase & { type: "artifact_note"; message: string })

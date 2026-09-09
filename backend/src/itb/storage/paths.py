@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 import pathlib
 import re
+import tempfile
 import unicodedata
 
 CONFIG_DIRNAME = "itb"
@@ -91,6 +92,33 @@ def resolve_within_home(raw: str | pathlib.Path) -> pathlib.Path:
 # ─── 슬러그 ────────────────────────────────────────────────────────────────
 
 _UNSAFE = re.compile(r"[^0-9A-Za-z가-힣._-]+")
+
+
+def session_files_dir(session_id: str) -> pathlib.Path:
+    """세션이 사용자에게 받은 파일이 머무는 곳 (010 T063 · FR-337b·FR-337c).
+
+    **설정도 사용자 자산도 아니다.** 테스트 정의는 사용자가 버전 관리에 넣는 평문이지만
+    (원칙 V), 여기 들어오는 파일은 **그 세션의 조작을 위해서만 쓰이고 세션과 함께
+    사라진다.** 자산 디렉터리에 두면 사용자는 그것을 자기 것으로 인식하고, 지워지면
+    잃어버린 것으로 읽는다.
+
+    그래서 임시 위치에 둔다. 프로세스가 비정상 종료해도 운영체제가 언젠가 정리하고,
+    제품은 세션 종료 시점에 명시적으로 지운다 (FR-337b).
+
+    `session_id` 는 서버가 만든 UUID 이므로 경로 조각으로 안전하다 — 사용자가 보낸 값이
+    아니다. 그래도 한 겹 더 좁히는 이유는, 이 함수가 나중에 다른 식별자로 불릴 때
+    조용히 위험해지지 않게 하기 위해서다.
+    """
+    safe = _UNSAFE.sub("-", session_id).strip("-.") or "session"
+    return session_files_root() / safe[:64]
+
+
+def session_files_root() -> pathlib.Path:
+    """세션 파일 저장소의 뿌리. 검증이 여기를 갈아 끼운다."""
+    base = os.environ.get("ITB_SESSION_FILES_DIR")
+    if base:
+        return pathlib.Path(base)
+    return pathlib.Path(tempfile.gettempdir()) / "itb-session-files"
 
 
 def slugify(name: str) -> str:

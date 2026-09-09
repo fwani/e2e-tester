@@ -767,7 +767,21 @@
     if (["checkbox", "radio", "button", "submit", "reset", "file"].includes(type)) {
       // 체크박스·라디오는 click 으로 이미 잡힌다. 파일 입력은 별도 처리한다.
       if (type === "file") {
-        send({ kind: "file_input", element: describe(el) });
+        /*
+          2026-09-09 — **고른 파일의 이름을 함께 보낸다** (사용자 보고).
+
+          이전에는 `element` 만 보냈고, Python 쪽은 그것을 받아 「기록할 수 없다」는 경고만
+          남겼다. 그러나 브라우저는 이름을 준다 — `File.name` 이다. 내용은 읽지 않는다
+          (읽을 이유가 없고, 정의 파일에 담으면 테스트가 옮겨 다닐 수 없다).
+
+          사용자가 요구한 것이 **확장자**이며(「실제 서비스에서는 확장자를 보는경우가
+          있기 때문」) 확장자는 이름의 일부다.
+
+          `el.files` 는 `FileList` 이고 배열이 아니다 — `Array.from` 없이 `map` 을 부르면
+          그 자리에서 터진다. 취소로 비어 있을 수도 있다(그때는 Step 을 만들지 않는다).
+        */
+        const names = el.files ? Array.from(el.files).map((f) => f.name) : [];
+        send({ kind: "file_input", files: names, element: describe(el) });
       }
       return;
     }
@@ -790,24 +804,60 @@
   let composing = false;
   const pending = new WeakMap();
 
+  /** 입력 하나에 대해 디바운스를 건다. `input` 과 `compositionend` 가 함께 쓴다. */
+  const scheduleSettle = (event, el) => {
+    const timer = pending.get(el);
+    if (timer) clearTimeout(timer);
+    pending.set(
+      el,
+      setTimeout(() => {
+        pending.delete(el);
+        if (composing) return;
+        onSettled(event);
+      }, INPUT_DEBOUNCE_MS),
+    );
+  };
+
   document.addEventListener("compositionstart", () => { composing = true; }, true);
-  document.addEventListener("compositionend", () => { composing = false; }, true);
+
+  /*
+    조합이 끝나면 **디바운스를 건다** (010 T048 · FR-328).
+
+    이전에는 `composing` 을 내리기만 했다. 창에서 운영체제 IME 로 입력할 때는 그것으로
+    충분하다 — 브라우저가 `compositionend` 뒤에 `input` 을 한 번 더 내보내고, 위의 `input`
+    처리가 디바운스를 건다.
+
+    **미러 경로는 그 `input` 이 오지 않는다.** 조합 확정은 CDP `Input.insertText` 로
+    일어나고, 실측 결과 그 뒤에 `input` 이 발생하지 않았다 (010 T048 실측:
+    compositionstart → compositionupdate → input(isComposing:true) ×3 → compositionend,
+    끝). 조합 중의 `input` 은 전부 `composing` 때문에 건너뛰었으므로 걸린 디바운스도 없다.
+
+    그 결과가 둘이었다.
+
+    1. 입력만 하고 다른 곳을 누르지 않은 채 녹화를 멈추면 그 입력이 Step 으로 남지
+       않는다 — FR-328 이 금지하는 상태다.
+    2. 같은 입력이 창 경로와 미러 경로에서 다른 시점에 Step 이 된다 — 원칙 I 이
+       요구하는 동등성(FR-324)이 시점에서 깨진다.
+
+    여기서 디바운스를 거는 것으로 두 경로가 같아진다. 창 경로에서는 뒤따르는 `input` 이
+    같은 타이머를 다시 걸 뿐이므로 동작이 바뀌지 않는다.
+  */
+  document.addEventListener(
+    "compositionend",
+    (event) => {
+      composing = false;
+      const el = targetOf(event);
+      if (el) scheduleSettle(event, el);
+    },
+    true,
+  );
 
   document.addEventListener(
     "input",
     (event) => {
       const el = targetOf(event);
       if (!el || composing) return;
-      const timer = pending.get(el);
-      if (timer) clearTimeout(timer);
-      pending.set(
-        el,
-        setTimeout(() => {
-          pending.delete(el);
-          if (composing) return;
-          onSettled(event);
-        }, INPUT_DEBOUNCE_MS),
-      );
+      scheduleSettle(event, el);
     },
     true,
   );

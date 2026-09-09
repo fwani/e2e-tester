@@ -325,12 +325,27 @@ class UpdateStepOp(BaseModel):
     tab: int | None = Field(default=None, ge=0)
     url: str | None = Field(default=None, min_length=1, max_length=2000)
     assertion_value: str | None = Field(default=None, max_length=4000)
+    file_name: str | None = Field(default=None, min_length=1, max_length=255)
+    """올릴 파일의 이름 (2026-09-09 · `upload` Step).
+
+    세션 편집(`PATCH /sessions/{id}/steps/{step_id}`)과 **같은 칸을 갖는다.** 한쪽에만
+    두면 「세션에서는 고칠 수 있는데 편집 화면에서는 못 고치는」 필드가 생기고, 006 이
+    두 편집 경로를 하나의 `update_step` 으로 모은 이유가 무너진다.
+    """
 
     @model_validator(mode="after")
     def _at_least_one_field(self) -> Self:
         if all(
             getattr(self, f) is None
-            for f in ("label", "value", "timeout_ms", "tab", "url", "assertion_value")
+            for f in (
+                "label",
+                "value",
+                "timeout_ms",
+                "tab",
+                "url",
+                "assertion_value",
+                "file_name",
+            )
         ):
             msg = "update 연산은 고칠 필드를 최소 하나 지정해야 합니다."
             raise ValueError(msg)
@@ -632,6 +647,7 @@ def _apply_edits(test: Test, edits: list[EditOp]) -> tuple[Test, list[str]]:
                     tab=op.tab,
                     url=op.url,
                     assertion_value=op.assertion_value,
+                    file_name=op.file_name,
                 ).steps
             elif isinstance(op, DeleteStepOp):
                 steps = delete_step(steps, 0, op.step_id).steps

@@ -31,10 +31,12 @@ from itb.api.errors import (
 )
 from itb.api.routes import (
     ai,
+    control,
     fs,
     preferences_routes,
     project,
     secrets_routes,
+    session_files,
     sessions,
     steps,
     tabs,
@@ -49,6 +51,7 @@ from itb.secrets.keys import (
     KeyStoreError,
     default_key_dir,
 )
+from itb.storage.session_files import sweep_orphans
 
 # 처리되지 않은 오류는 응답에 스택을 싣지 않는다. 진단은 서버 로그가 맡는다 (003 EC-005).
 logger = logging.getLogger(__name__)
@@ -60,10 +63,31 @@ ROUTERS = (
     tests.router,
     sessions.router,
     steps.router,
+    control.router,
+    session_files.router,
     tabs.router,
     secrets_routes.router,
     preferences_routes.router,
 )
+
+
+def _sweep_session_files() -> None:
+    """남은 세션 파일 디렉터리를 지운다 (010 T090 · FR-337b).
+
+    **실패해도 기동을 막지 않는다.** 정리는 위생이지 기능이 아니고, 여기서 터지면
+    제품이 아예 뜨지 못한다. 남은 것은 다음 기동이 다시 시도한다.
+
+    지운 개수를 기동 경고로 남기지 않는 이유: 고아 정리는 정상 동작이며 사용자가 할 일이
+    없다. 경고 자리는 사용자가 손댈 것이 있을 때를 위한 것이다.
+
+    상태를 받지 않는다 — **기동 직후이므로 활성 세션이 없고**, 뿌리에 남은 것은 전부
+    고아다. 인자로 상태를 받으면 「살아 있는 세션을 걸러 준다」는 인상을 주지만 그럴
+    세션이 아직 없다.
+    """
+    with contextlib.suppress(Exception):
+        removed = sweep_orphans(set())
+        if removed:
+            logger.info("이전 실행에서 남은 세션 파일 %d건을 정리했습니다.", removed)
 
 
 def _unlock_from_env(state: AppState) -> None:
@@ -98,10 +122,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.itb = state
     _unlock_from_env(state)
+    # 010 T090 FR-337b — **비정상 종료로 남은 사용자 파일을 기동 시 정리한다.**
+    #
+    # 정상 종료 경로는 세션마다 지운다 (`_cleanup_session_extras`). 프로세스가 죽으면 그
+    # 경로가 돌지 않으므로, 사용자가 보낸 파일이 기계에 쌓인다 — 「세션보다 오래 남지
+    # 않는다」가 깨지는 유일한 자리다.
+    #
+    # **활성 세션이 없는 시점이다.** 기동 직후이므로 뿌리에 남은 것은 전부 고아다.
+    _sweep_session_files()
     try:
         yield
     finally:
         await state.broker.close_all()
+        await state.control.close_all("서버를 종료했습니다.")
+        state.session_files.drop_all()
         await state.sessions.close_all()
         await playwright.stop()
 

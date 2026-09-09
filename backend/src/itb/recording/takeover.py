@@ -31,11 +31,22 @@ class TakeoverRecording:
     async def start(self) -> None:
         """인수 녹화를 시작한다.
 
-        실제 창을 앞으로 가져온다 — 사용자는 미러가 아니라 실제 창에서 조작한다
-        (clarify 결정 3, FR-023a). 창이 뒤에 있으면 무엇을 해야 할지 알 수 없다.
+        **010 이 여기서 창을 앞으로 가져오던 것을 없앴다** (T053 · FR-314·FR-353).
+
+        001 은 여기서 `bring_tab_to_front` 를 불렀다. 근거는 「사용자는 미러가 아니라 실제
+        창에서 조작한다」였고(clarify 결정 3 · FR-023a), 그 전제에서는 옳았다 — 창이 뒤에
+        있으면 사용자는 무엇을 해야 할지 알 수 없다.
+
+        010 이 그 전제를 뒤집는다. 조작은 제품 화면 안 미러에서 하고, 이 국면
+        (`TAKEOVER_RECORDING`)은 조작 국면이므로 채널이 열린다. 창은 폴백으로 남지만
+        **사용자가 명시적으로 요청할 때만 열린다** (FR-353) — 요청하지 않은 창이 뜨는 것은
+        그 자체로 조작 위치를 잃게 만들고, 화면 없는 기계에서는 이 호출이 실패한다
+        (SC-518 이 막으려는 상태다).
+
+        기록되는 것은 그대로다. 인수 녹화의 성질(화면을 되돌리지 않는다 · `author=human` ·
+        목록 끝에 붙인다)은 조작 위치와 무관하다.
         """
         self.recorder.start(author=Author.HUMAN, insert_at=None)
-        await self.session.bring_tab_to_front(self.session.active_tab_index)
 
     def stop(self) -> None:
         """인수 녹화를 끝낸다. AI 가 이어받을 수 있는 상태로 돌려 둔다."""

@@ -41,6 +41,9 @@ const SESSION_STATE: Record<string, { state: SessionState; mode: "record" | "ai"
   takeover: { state: "takeover_recording", mode: "ai" },
   running: { state: "replaying", mode: "record" },
   paused: { state: "paused", mode: "record" },
+  /** 2026-09-09 에 갈라진 둘 (`phase.ts`). 민감 값 규칙은 국면과 무관하게 같다 */
+  review: { state: "review", mode: "record" },
+  finished: { state: "completed", mode: "record" },
 };
 
 function stub(kind: "result" | "definition") {

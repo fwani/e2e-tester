@@ -407,6 +407,25 @@ export function pausedAfterLabel(nextIndex: number | null | undefined): string {
  * 끝난 뒤에는 일시정지가 아니다. 같은 화면의 배지는 이미 그 사실을 말하고 있었으므로
  * 한 화면이 두 가지를 주장했다.
  */
+/**
+ * **010 T004 — 창 존재를 전제한 문구 목록.**
+ *
+ * 010 이후 대상 브라우저는 창 없이 뜨는 것이 기본이고 (FR-352), 조작은 제품 화면 안
+ * 미러에서 한다 (FR-314). 아래 넷은 001 이 「창이 항상 있다」를 전제하고 쓴 문구다.
+ * 지우지 않고 **`window` 조작 위치의 문구로 옮긴다** — 사용자가 실제 창으로 전환했을
+ * 때 그 문구는 여전히 참이고, 그때가 유일하게 참인 때다 (FR-350 · M-05).
+ *
+ * | 자리 | 문구 | 010 에서 |
+ * |---|---|---|
+ * | `mirrorNotice("manipulation")` | 「실제 브라우저 창에서 조작 중 · 이 영역은 관찰용이며 조작 대상이 아닙니다」 | `window` 위치의 문구로 (T037·T077) |
+ * | `mirrorNotice("finished")` | 「브라우저 창은 아직 열려 있습니다」 | 창 없이 뜬 세션에서 거짓 → 「브라우저 세션은 아직 살아 있습니다」 (T037) |
+ * | `mirrorEmptyMessage("observation")` | 「대상 브라우저 창은 이미 열려 있습니다」 | 같은 이유로 창을 언급하지 않게 (T037) |
+ * | `mirrorEmptyMessage("manipulation")` | 「실제 브라우저 창에서 조작하세요」 | `window` 위치의 문구로 (T037·T077) |
+ *
+ * 조작 위치(`ControlSurface`)를 문구가 알아야 하므로, 위 함수들은 T037 에서 위치를
+ * 인자로 받는다. 그전까지 이 표가 무엇을 옮길지의 목록이다.
+ */
+
 export type MirrorNoticePhase =
   | "manipulation"
   | "observation"
@@ -422,27 +441,148 @@ export interface MirrorNotice {
   detail: string;
 }
 
-export function mirrorNotice(phase: MirrorNoticePhase): MirrorNotice | null {
+/**
+ * 지금 조작이 어디서 이루어지는가 (010 · data-model §6).
+ *
+ * `mirror` 가 기본이고 `window` 는 사용자가 명시적으로 전환했을 때다 (FR-353).
+ */
+export type ControlSurface = "mirror" | "window";
+
+/**
+ * 미러 영역이 조작을 받는 동안의 보조 문구 (FR-320).
+ *
+ * 초점이 어디 있는지가 항상 분명해야 한다 — 사용자가 자기 키가 어디로 갔는지 모른 채
+ * 두 번 누르게 만들어서는 안 된다.
+ */
+/**
+ * 미러가 지금 키 입력을 받고 있다 (FR-320).
+ *
+ * **어느 쪽이 받는 상태인지 화면에서 구분되어야 한다.** 초점이 있을 때와 없을 때의 문구가
+ * 갈리는 것이 그 구분이다 — 하나로 뭉개면 사용자는 자기 키가 어디로 갔는지 모른 채
+ * 두 번 누른다.
+ */
+/**
+ * 브라우저 요구의 종류 (010 data-model §4).
+ *
+ * 대상 브라우저가 사용자에게 요구하는 것 중 **페이지 화면이 아닌 것**이다.
+ */
+/**
+ * 강등 상태의 경고 (010 FR-345·FR-353a).
+ *
+ * **`DISABLED_REASON` 에 두지 않는다.** 그 사전은 「이 조작을 지금 쓸 수 없는 이유」를
+ * 담고, 강등은 조작을 **막지 않는다** — 1 FPS 로도 조작은 전달되고 다만 보고 있는 화면이
+ * 낡았을 수 있다. 막아 버리면 막힌 사용자에게 남는 수단이 없어진다.
+ *
+ * 사실을 말하고 전환 수단을 같은 자리에 두는 것이 FR-353a 다. 그래서 이 문장은 비활성
+ * 사유가 아니라 **활성 상태에 붙는 경고**이고, 자리도 그렇게 갈라 둔다.
+ */
+export const MIRROR_DEGRADED_WARNING =
+  "1초에 한 장만 표시되고 있어 지금 조작은 의도한 곳에 닿지 않을 수 있습니다";
+
+export type BrowserPromptKind =
+  | "dialog.alert"
+  | "dialog.confirm"
+  | "dialog.prompt"
+  | "file.choose"
+  /** 제품이 대신 받을 수 없는 요구. 인증 요구 팝업 등 (FR-339) */
+  | "unsupported";
+
+export function promptTitle(kind: BrowserPromptKind): string {
+  switch (kind) {
+    case "dialog.alert":
+      return "대상 페이지가 알립니다";
+    case "dialog.confirm":
+      return "대상 페이지가 확인을 요청합니다";
+    case "dialog.prompt":
+      return "대상 페이지가 입력을 요청합니다";
+    case "file.choose":
+      return "대상 페이지가 파일을 요청합니다";
+    case "unsupported":
+      return "제품 화면이 대신 받을 수 없는 요구입니다";
+  }
+}
+
+/**
+ * 요구에 딸린 설명. **문구가 비어 있을 때만 쓴다.**
+ *
+ * 대화상자의 문구는 대상 페이지가 정하고, 그것이 비어 있을 수 있다. 그때 아무것도
+ * 그리지 않으면 사용자는 무엇을 고르는지 모른 채 버튼 둘을 만난다.
+ */
+export function promptDetail(kind: BrowserPromptKind): string {
+  switch (kind) {
+    case "dialog.alert":
+      return "확인을 누르면 대상 페이지가 계속 진행합니다.";
+    case "dialog.confirm":
+      return "고른 결과가 대상 페이지에 전달됩니다.";
+    case "dialog.prompt":
+      return "입력한 값이 대상 페이지에 전달됩니다.";
+    case "file.choose":
+      return "이 기계에서 파일을 고르면 대상 브라우저에 전달됩니다.";
+    case "unsupported":
+      return "실제 브라우저 창으로 전환하면 처리할 수 있습니다.";
+  }
+}
+
+/** 요구 화면의 조작 라벨. 컴포넌트에 문자열 리터럴을 두지 않는다 (007 T013). */
+export const PROMPT_ACTIONS = {
+  accept: "확인",
+  /** **취소도 응답이다.** 보내지 않으면 대상 페이지가 계속 기다린다 (FR-339) */
+  dismiss: "취소",
+  attach: "이 파일 보내기",
+  useWindow: "실제 창에서 조작하기",
+  textLabel: "대상 페이지에 보낼 값",
+  fileLabel: "대상 페이지에 보낼 파일",
+} as const;
+
+export const MIRROR_KEYS_GO_TO_TARGET =
+  "키 입력이 대상 브라우저로 가고 있습니다. 제품 화면 단축키를 쓰려면 미러 밖을 클릭하세요.";
+
+export const MIRROR_FOCUS_HINT =
+  "이 영역을 클릭하면 키 입력이 대상 브라우저로 갑니다. 다른 곳을 클릭하면 제품 화면이 받습니다.";
+
+export function mirrorNotice(
+  phase: MirrorNoticePhase,
+  surface: ControlSurface = "mirror",
+): MirrorNotice | null {
   switch (phase) {
     case "manipulation":
-      return {
-        title: "실제 브라우저 창에서 조작 중",
-        detail: "이 영역은 관찰용이며 조작 대상이 아닙니다.",
-      };
+    case "paused":
+      /*
+        010 T037·T077 — **001 의 문구를 지우지 않고, 그것이 참인 상태를 좁혔다** (FR-350).
+
+        「실제 브라우저 창에서 조작 중 · 이 영역은 관찰용이며 조작 대상이 아닙니다」는
+        `window` 로 전환한 동안 여전히 정확하다. 001 이 틀렸던 것이 아니라, 그때는 그
+        상태가 유일한 조작 상태였다 (M-05). 010 이 미러 조작을 열면서 상태가 둘이 됐고,
+        문구도 둘이 된다.
+      */
+      if (surface === "window") {
+        return {
+          title: "실제 브라우저 창에서 조작 중",
+          detail: "이 영역은 관찰용이며 조작 대상이 아닙니다.",
+        };
+      }
+      return phase === "manipulation"
+        ? {
+            title: "이 화면에서 조작합니다",
+            detail: "미러 영역을 클릭·스크롤·입력하면 대상 브라우저에 전달됩니다.",
+          }
+        : {
+            title: "일시정지",
+            detail:
+              "브라우저 세션과 화면 상태를 그대로 유지하고 있습니다. 미러에서 직접 조작할 수 있습니다.",
+          };
     case "pausing":
       return {
         title: "일시정지 중…",
         detail: "현재 Step 이 끝나면 멈춥니다. 아직 실행 중입니다.",
       };
-    case "paused":
-      return {
-        title: "일시정지",
-        detail: "브라우저 세션과 화면 상태를 그대로 유지하고 있습니다.",
-      };
     case "finished":
       return {
         title: "실행 종료",
-        detail: "브라우저 창은 아직 열려 있습니다. 마지막 화면을 표시합니다.",
+        detail:
+          // 010 FR-352 — 창이 기본이 아니게 되었으므로 「브라우저 창은 아직 열려
+          // 있습니다」가 거짓일 수 있다. 참인 사실만 말한다 (T004 의 목록).
+          "브라우저 세션은 아직 살아 있습니다. 마지막 화면을 표시합니다.",
       };
     case "observation":
       return { title: "읽기 전용", detail: "실행 중인 화면을 관찰합니다" };
@@ -451,13 +591,19 @@ export function mirrorNotice(phase: MirrorNoticePhase): MirrorNotice | null {
   }
 }
 
-/** 프레임을 한 장도 못 받은 미리보기의 안내 (FR-163). */
-export function mirrorEmptyMessage(phase: MirrorNoticePhase): string {
+/** 프레임을 한 장도 못 받은 미리보기의 안내 (FR-163 · 010 T037). */
+export function mirrorEmptyMessage(
+  phase: MirrorNoticePhase,
+  surface: ControlSurface = "mirror",
+): string {
   switch (phase) {
     case "observation":
-      return "대상 화면이 표시되기를 기다리고 있습니다. 대상 브라우저 창은 이미 열려 있습니다.";
+      // 010 — 창을 언급하지 않는다. 창 없이 뜬 세션에서 거짓이 된다 (FR-352 · T004).
+      return "대상 화면이 표시되기를 기다리고 있습니다. 대상 브라우저 세션은 이미 열려 있습니다.";
     case "manipulation":
-      return "실제 브라우저 창에서 조작하세요. 이 영역은 관찰용입니다.";
+      return surface === "window"
+        ? "실제 브라우저 창에서 조작하세요. 이 영역은 관찰용입니다."
+        : "대상 화면이 표시되기를 기다리고 있습니다. 화면이 오면 이 영역에서 바로 조작할 수 있습니다.";
     case "pausing":
       return "현재 Step 이 끝나기를 기다리고 있습니다. 멈추면 마지막 화면을 표시합니다.";
     case "paused":
@@ -512,6 +658,16 @@ export const PHASE_LABEL: Record<Phase, string> = {
   takeover: "사람이 직접 조작",
   running: "실행 중",
   paused: "일시정지",
+  /**
+   * 검토 — 기록을 확인하고 고치고 저장한다 (2026-09-09).
+   *
+   * 이전에는 `paused` 국면의 라벨 예외로 `sessionPhaseLabel` 안에 문자열이 박혀 있었다.
+   * 국면이 생겼으므로 사전이 갖는다 — 예외가 함수 안에 있으면 다음 사람이 사전에서
+   * 찾지 못한다.
+   */
+  review: "검토",
+  /** 실행 종료 — 결말을 보고, 다시 실행하거나 저장한다 */
+  finished: "실행 종료",
   result: "결과",
   editing: "편집",
 };
@@ -535,11 +691,19 @@ export function sessionPhaseLabel(
   phase: Phase,
   state: { finished: boolean; review: boolean; pausing: boolean },
 ): string {
-  if (phase !== "running") return PHASE_LABEL[phase];
-  if (state.review) return "검토";
-  if (state.finished) return "실행 종료";
-  if (state.pausing) return "일시정지 중…";
-  return PHASE_LABEL.running;
+  /*
+    **2026-09-09 — 예외 셋 중 둘이 국면이 됐다.**
+
+    위 주석이 「판정을 고치지 않고 표시만 고친다」고 적은 판단은 오래 버티지 못했다.
+    표시만 고친 상태에서 `running` 국면의 권한표가 끝난 세션에도 적용됐고, 그 표는
+    「실행 중이어서 편집할 수 없습니다」를 11개 조작에 붙였다 — 라벨은 「실행 종료」인데
+    사유는 「실행 중」이라 같은 화면이 다시 두 가지를 주장했다. 국면을 갈라야 풀린다.
+
+    남는 예외는 **하나뿐이다** — 일시정지 전이 중(`pausing`). 그것은 국면이 아니라
+    한 국면 안에서 몇 초 지나가는 사정이므로 라벨에서 처리하는 것이 맞다 (005 FR-143).
+  */
+  if (phase === "running" && state.pausing) return "일시정지 중…";
+  return PHASE_LABEL[phase];
 }
 
 /**
@@ -601,6 +765,9 @@ export const ACTION_LABEL: Record<ActionId, string> = {
   "result.show": SHOW_RESULT_DETAIL,
   "nav.editStep": "이 Step 고치기",
   "nav.back": "목록으로",
+  /* 010 미러 조작 (contracts/mirror-control.md §1) */
+  "mirror.control": "미러에서 조작하기",
+  "mirror.useWindow": "실제 창에서 조작하기",
   "tab.select": "탭 고르기",
 };
 
@@ -657,10 +824,84 @@ export const BROWSER_ONLY_KIND_LABEL: Record<string, string> = {
   select: "선택",
   hover: "마우스 올리기",
   drag: "끌어놓기",
+  /*
+    2026-09-09 — `upload` 도 여기다. 파일 입력 요소를 지목해야 하므로 브라우저 없이는
+    만들 수 없다 (헌법 원칙 IV). 손으로 넣는 목록(`ManualStepSpec`)에 넣지 않은 것도
+    같은 근거다 — 그 유니온에는 `target` 을 받는 종류가 하나도 없다.
+  */
+  upload: "파일 올리기",
 };
 
 export const BROWSER_ONLY_KIND_REASON =
   "요소는 살아 있는 화면에서만 지목할 수 있습니다";
+
+/**
+ * 저장의 전제 — 이름이 비었다 (005 FR-156).
+ *
+ * **`DISABLED_REASON` 에 두지 않는다.** 그 사전의 키는 국면 표와 덮어쓰기가 쓰는
+ * 이름공간이고 `REASON_VISIBILITY` 가 키마다 보임/숨김을 정한다. 이것은 표가 아니라
+ * **화면이 아는 사실**이며(이름칸에 무엇이 있는지는 표가 모른다) 언제나 `keep` 이다.
+ */
+export const SAVE_NEEDS_NAME = "테스트 이름을 입력하세요";
+
+/**
+ * 실행의 전제 — 아직 저장되지 않았다 (2026-09-09 · 사용자 보고).
+ *
+ * 「처음부터 실행」은 **저장된 정의로 새 세션을 연다.** 저장되지 않은 녹화 세션에는 그
+ * 정의가 없어 눌러도 아무 일이 일어나지 않았고, 그 침묵이 사용자가 말한 「애매함」의
+ * 한 조각이었다. 이 문장이 그 자리에서 순서를 말한다 — 녹화 → 저장 → 실행.
+ */
+export const RUN_NEEDS_SAVE = "저장한 뒤 실행할 수 있습니다";
+
+/**
+ * 편집으로 가는 전제 — 아직 저장되지 않았다 (2026-09-09 사용자 보고).
+ *
+ * 편집 화면은 **저장된 정의**를 읽는다. 저장하지 않은 기록을 두고 넘어가면 방금 만든
+ * 것이 화면에서 사라지므로, 순서를 그 자리에서 말한다 — 저장 → 편집.
+ */
+export const EDIT_NEEDS_SAVE = "저장한 뒤 고칠 수 있습니다";
+
+/**
+ * 민감 값 지정의 전제 — 그 Step 이 입력값을 갖지 않는다 (FR-234).
+ *
+ * 언제나 `keep` 이다: 값을 갖는 Step 을 고르면 곧바로 풀린다. 문구를 사전으로 옮긴 것은
+ * 2026-09-09 이며, 이유는 검사가 「화면에 나타나도 되는 사유」를 셀 수 있어야 하기
+ * 때문이다 — 컴포넌트 안의 리터럴은 셀 수 없다.
+ */
+/**
+ * 파일 이름에서 확장자를 꺼낸다 — **점 없이, 소문자로** (2026-09-09).
+ *
+ * 백엔드의 `itb.domain.step.extension_of` 와 **같은 규칙이다**: 마지막 점 뒤만 본다
+ * (`보고서.tar.gz` → `gz`). 두 곳이 다르게 자르면 화면이 「xlsx 로 올립니다」라고 적고
+ * 실제로는 다른 이름이 올라가는 상태가 된다.
+ *
+ * 값이 아니라 **판정**이므로 사전에 둔다 — 컴포넌트가 각자 자르면 그 규칙이 흩어진다.
+ */
+export function uploadExtension(fileName: string): string {
+  const at = fileName.lastIndexOf(".");
+  if (at <= 0 || at === fileName.length - 1) return "";
+  return fileName.slice(at + 1).trim().toLowerCase();
+}
+
+/**
+ * 파일 이름 칸 아래의 안내 (2026-09-09 사용자 보고).
+ *
+ * 사용자가 요구한 것은 확장자다 — 「실제 서비스에서는 확장자를 보는경우가 있기 때문」.
+ * 그래서 이 문장은 **지금 이름에서 읽히는 확장자**를 말하고, 재실행이 무엇을 올리는지도
+ * 함께 말한다. 내용이 비어 있다는 사실을 숨기면, 내용을 파싱하는 서버에서 실패했을 때
+ * 사용자가 이유를 찾을 곳이 없다 (`step_executor._upload` 의 한계 주석과 같은 사실).
+ */
+export function uploadFileNote(fileName: string): string {
+  const ext = uploadExtension(fileName);
+  const kind = ext === "" ? "확장자 없는 파일" : `확장자 ${ext}`;
+  return (
+    `재실행은 이 이름 그대로 빈 파일을 올립니다 (${kind}). ` +
+    "내용을 읽는 검증이 있으면 그 검증은 통과하지 못합니다."
+  );
+}
+
+export const SENSITIVE_NO_VALUE =
+  "이 Step 은 입력값을 갖지 않아 민감 값으로 지정할 것이 없습니다.";
 
 export const DISABLED_REASON = {
   C1: "실행 중인 세션이 열려 있습니다",
@@ -698,6 +939,38 @@ export const DISABLED_REASON = {
    * 사실을 고른 뒤에야 알게 되고, 그것이 S-15 와 같은 종류의 결함이다 (FR-234).
    */
   C15: "「AI로 만들기」를 고르면 쓸 수 있습니다",
+  /* ─── 010 미러 조작 (contracts/mirror-control.md §1 런타임 덮어쓰기) ───
+   *
+   * 넷 다 **국면이 아니라 런타임 사정**이다. 국면 열에 적으면 한 국면이 빠지고, 빠진
+   * 국면에서 화면은 쓸 수 없는 조작을 활성으로 그린다 — 이 파일이 이미 겪고 기록해 둔
+   * 실수다 (O1 을 덮어쓰기로 둔 것과 같은 이유 · research R9).
+   *
+   * SC-516 이 요구하는 것은 「조작할 수 없는 모든 상황에서 사유를 읽을 수 있다」이며,
+   * 조용히 아무 일도 일어나지 않는 경우가 0건이어야 한다. 아래 넷이 그 사유다.
+   */
+  /** O10 — 프레임을 한 장도 받지 못했다 (FR-333) */
+  O10: "대상 화면을 아직 받지 못했습니다. 화면이 표시되면 조작할 수 있습니다",
+  /**
+   * O11 — 프레임이 끊겼다 (FR-346).
+   *
+   * **「화면이 멈춘 것」과 「페이지가 멈춘 것」을 구분해 말한다.** 둘을 뭉개면 사용자는
+   * 대상 앱이 죽은 줄 알고 세션을 버린다.
+   */
+  O11: "화면이 끊겼습니다. 대상 페이지가 멈춘 것이 아니라 표시가 멈춘 것입니다",
+  /** O12 — 조작 통로가 아직 붙지 않았다 */
+  O12: "조작 통로가 준비되지 않았습니다",
+  /** O13 — 실제 창에서 조작 중이다. 미러는 그때 관찰용이다 (FR-350) */
+  O13: "지금은 실제 브라우저 창에서 조작하고 있습니다",
+  /*
+    창을 띄울 수 없는 환경의 문구는 **여기 두지 않는다** (FR-351 · 010 T092).
+
+    그 판정은 서버만 할 수 있고(운영체제·표시 서버의 사정이다), 서버는 거절에 사유와
+    다음 행동을 실어 보낸다. 화면이 같은 뜻의 문구를 따로 가지면 둘이 갈리고, 갈린 날
+    사용자는 서버가 말한 것과 다른 문장을 읽는다.
+
+    이 주석을 남기는 이유는 「왜 여기 없는가」가 다음 사람에게 보이게 하기 위해서다 —
+    빠진 것과 두지 않기로 한 것은 다르다.
+  */
   O1: "실행을 준비하는 중…",
   O2: "요청을 보내는 중…",
   O3: "브라우저 세션이 유실됐습니다",
@@ -710,6 +983,18 @@ export const DISABLED_REASON = {
   O9: "건너뛸 실패가 없습니다",
   /** 국면 자체가 그 조작을 허용하지 않는 경우. 조건이 아니라 국면의 성질이다. */
   RUNNING_NO_EDIT: EDIT_BLOCKED_BY_RUN,
+  /**
+   * 실행이 **끝난** 세션 — 편집이 닫혔다 (2026-09-09 · 국면 `finished`).
+   *
+   * **`RUNNING_NO_EDIT` 과 갈라야 했다.** 끝난 세션도 `running` 국면으로 판정되던 동안
+   * 편집 조작 11개가 「실행 중이어서 편집할 수 없습니다 → 일시정지」를 달고 있었다.
+   * 실행은 끝났고 그 「일시정지」는 화면에 없다 — 화면이 두 번 거짓을 말한 것이다.
+   *
+   * 해소 방법은 **저장**이다. 서버가 이 상태에서 받는 편집 명령은 없지만 저장은 받는다
+   * (`sessions.py` 의 `save` 는 상태 전이를 거치지 않는다). 저장하면 목록에서 편집으로
+   * 들어가 고칠 수 있고, 그것이 이 화면에 실제로 있는 다음 걸음이다.
+   */
+  RUN_FINISHED_NO_EDIT: "실행이 끝나 고칠 수 없습니다. 저장한 뒤 편집에서 고치세요",
   RESULT_NO_EDIT: "끝난 실행의 기록은 고칠 수 없습니다",
   NEEDS_BROWSER: "살아 있는 브라우저가 필요합니다",
   NEEDS_PAUSE: "실행을 멈춘 뒤에 할 수 있습니다",

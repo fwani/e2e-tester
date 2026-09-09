@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import re
 import time
 from dataclasses import dataclass, field
@@ -32,12 +33,15 @@ from itb.domain.step import (
     NavigateStep,
     SelectStep,
     Step,
+    UploadStep,
+    mime_type_of,
 )
 from itb.execution.frame_resolver import (
     FrameNotFoundError,
     SearchRoot,
     resolve_frame,
 )
+from itb.execution import pointer
 from itb.execution.locator_runtime import (
     MIN_ACTION_TIMEOUT_MS,
     ElementNotFoundError,
@@ -210,7 +214,7 @@ class StepExecutor:
                 await page.goto(url, timeout=self._left(deadline))
             case ClickStep():
                 located = await self._locate(root, step, deadline, record)
-                await located.locator.click(timeout=self._left(deadline))
+                await self._click(page, located.locator, deadline)
             case FillStep():
                 located = await self._locate(root, step, deadline, record)
                 value = self._resolver.substitute(step.value)
@@ -222,6 +226,9 @@ class StepExecutor:
             case HoverStep():
                 located = await self._locate(root, step, deadline, record)
                 await located.locator.hover(timeout=self._left(deadline))
+            case UploadStep():
+                located = await self._locate(root, step, deadline, record)
+                await self._upload(located.locator, step, deadline)
             case DragStep():
                 await self._drag(step, root, deadline, record)
             case AssertionStep():
@@ -229,6 +236,93 @@ class StepExecutor:
             case _:  # pragma: no cover - 판별 유니온이 모든 종류를 덮는다
                 msg = f"실행할 수 없는 Step 종류입니다: {type(step).__name__}"
                 raise StepFailure(msg, record.attempts, record.tab_wait_ms)
+
+    async def _click(self, page: Page, locator: Any, deadline: float) -> None:
+        """클릭한다. **가려져 있으면 포인터를 먼저 비운다** (2026-09-09 사용자 보고).
+
+        ## 무엇이 문제였나
+
+        보고 문장: 「step9번으로 클릭한 다음에 메뉴에 마우스가 그대로 있어서 확장된
+        형태라서 메뉴 뒤에 가려진 원천데이터를 클릭하지 못한다. 측정은 잘되었으나, 재실행시
+        클릭한 위치에 마우스가 가게되면서 발생한 문제로 보인다.」
+
+        진단이 맞다. Playwright 의 `click()` 은 포인터를 요소 위로 **옮기고 그대로 둔다.**
+        녹화 때는 사람이 곧 다른 곳으로 마우스를 움직이므로 hover 로 열린 메뉴가 접히지만,
+        재생 때는 포인터가 그 자리에 머문다.
+
+        그리고 그것이 **교착이 된다.** Playwright 는 클릭 전에 히트 검사를 하는데, 그
+        검사는 포인터를 옮기기 **전에** 한다. 그래서 「메뉴가 덮고 있다 → 검사 실패 →
+        재시도 → 포인터는 그대로 → 메뉴도 그대로」가 예산이 끝날 때까지 돈다.
+
+        ## 첫 판은 실패한 뒤에 고치려 했다 — 그것으로는 안 됐다
+
+        처음에는 클릭이 실패하면 포인터를 비우고 한 번 더 시도했다. 사용자가 「안 됨」이라고
+        답했고, 이유는 둘이다.
+
+        1. **재시도에 남는 예산이 250ms 뿐이다.** 첫 시도가 Step 예산을 통째로 쓰고 실패
+           하므로 `_left` 가 하한(`MIN_ACTION_TIMEOUT_MS`)을 돌려준다. 메뉴가 접히는
+           전환 시간까지 있으면 그 안에 끝나지 않는다.
+        2. **막힌 Step 마다 예산을 통째로 버린다.** 고쳐도 재실행이 Step 당 10초씩 느려진다.
+
+        그래서 **실패를 기다리지 않는다.** 클릭 지점이 가려졌는지 먼저 물어보고
+        (`pointer.is_occluded` — 평가 한 번), 가려졌을 때만 포인터를 비운다.
+
+        ## 왜 「항상 비우기」가 아닌가
+
+        모든 클릭 앞에서 포인터를 옮기면 **반대 방향의 흐름이 깨진다**: hover 로 열려
+        포인터가 안에 있어야 유지되는 메뉴는 옮기는 순간 접히고, 그 안을 누르려던 클릭이
+        실패한다. 가림을 실제로 확인하면 그 흐름은 건드리지 않는다 — 그 경우 대상은
+        가려져 있지 않다(메뉴 **안**에 있다).
+
+        재시도는 그대로 남긴다. 가림 확인이 놓치는 경우(전환 중, 확인 자체가 실패)에도
+        마지막 한 번의 기회가 있어야 한다.
+
+        가림 판정과 포인터 이동은 `itb.execution.pointer` 가 갖는다 — 그 모듈의 머리말에
+        왜 여기 있지 않은지 적어 두었다.
+        """
+        if await pointer.is_occluded(locator):
+            await pointer.park(page)
+
+        try:
+            await locator.click(timeout=self._left(deadline))
+            return
+        except PlaywrightError:
+            # 가림 확인이 놓친 경우의 마지막 기회. 이미 실패한 클릭이므로 더 나빠질 것이 없다.
+            await pointer.park(page)
+            await locator.click(timeout=self._left(deadline))
+
+    async def _upload(self, locator: Any, step: UploadStep, deadline: float) -> None:
+        """파일을 올린다 (2026-09-09 사용자 보고).
+
+        ## 무엇을 올리는가 — **같은 이름의 빈 파일**
+
+        정의에 남는 것은 파일 이름뿐이다 (`UploadStep` 의 주석). 그래서 재실행은 그 이름을
+        가진 빈 파일을 올린다 — 이름이 같으면 **확장자도 같고**, 사용자가 요구한 것이
+        그것이다 (「실제 서비스에서는 확장자를 보는경우가 있기 때문」).
+
+        **디스크에 쓰지 않는다.** Playwright 가 이름·MIME·바이트를 그대로 받으므로
+        (``FilePayload``) 임시 파일을 만들 이유가 없다. 처음에는 ``tempfile`` 로 만들었는데,
+        그러면 언제 지울지가 문제가 된다 — 실행 중에 지우면 브라우저가 아직 읽는 중일 수
+        있고, 안 지우면 남는다. 만들지 않으면 그 문제가 없다.
+
+        ## 한계를 적어 둔다
+
+        내용은 비어 있다. 확장자·이름·MIME 을 보는 검증은 통과하고, **내용을 파싱하는
+        검증은 통과하지 못한다** (예: 서버가 xlsx 를 실제로 열어 보는 경우). 그때 실패는
+        업로드가 아니라 그 다음 Step 에서 나며, 사용자는 이유를 알기 어렵다.
+
+        그 경우까지 덮으려면 정의가 실제 파일을 가리켜야 하고(경로 또는 첨부), 그것은
+        「테스트 정의가 옮겨 다닐 수 있는가」를 건드리는 결정이다 — 지금 요구에 없으므로
+        하지 않는다. 대신 이 한계가 어디에 적혀 있는지 남긴다.
+        """
+        await locator.set_input_files(
+            {
+                "name": step.file_name,
+                "mimeType": mime_type_of(step.file_name),
+                "buffer": b"",
+            },
+            timeout=self._left(deadline),
+        )
 
     async def _close_tab(self, step: CloseTabStep) -> StepExecution:
         """탭 닫기 (FR-030c).

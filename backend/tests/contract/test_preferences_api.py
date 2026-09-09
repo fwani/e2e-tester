@@ -142,14 +142,21 @@ def test_unknown_session_is_not_found(client: TestClient) -> None:
     assert resp.json()["error"]["code"] == "SESSION_NOT_FOUND"
 
 
-def test_lost_session_rejects_pacing_change(
+def test_lost_session_accepts_pacing_change(
     keyed_client: TestClient, fixture_app: str
 ) -> None:
-    """유실된 세션의 속도는 바꿀 수 없다 (contracts/rest-api.md §2).
+    """유실된 세션에서도 속도를 바꿀 수 있다 (2026-09-09 사용자 결정).
 
-    유실 후에는 저장과 처음부터 재실행만 허용된다는 기존 불변식을 따른다
-    (state_machine 불변식 5). 속도를 받아 주면 사용자는 다음 실행에 반영될 것으로
-    믿지만, 그 세션에는 다음 실행이 없다.
+    ## 이전 단언과 그 근거
+
+    이전에는 409 `SESSION_LOST` 를 요구했고 근거는 이렇게 적혀 있었다 — 「속도를 받아 주면
+    사용자는 다음 실행에 반영될 것으로 믿지만, 그 세션에는 다음 실행이 없다」.
+
+    **그 전제가 사실이 아니었다.** 속도는 세션의 값이면서 **취향 파일에 남는 값**이고
+    (FR-109 — 다음 실행에서 마지막 선택이 기본값), 유실 화면에 남는 길이 바로 「저장하고
+    처음부터 다시 실행」이다. 사용자가 다음 실행을 준비하는 것을 막고 있었다.
+
+    사용자 결정: 「속도 선택은 실행중이든 아니든 바꿀수있어야함」.
     """
     from itb.execution.state_machine import Command
 
@@ -163,19 +170,24 @@ def test_lost_session_rejects_pacing_change(
         resp = keyed_client.post(
             f"/api/sessions/{sid}/pacing", json={"pacing": RunPacing.SLOW.value}
         )
-        assert resp.status_code == 409, resp.text
-        assert resp.json()["error"]["code"] == "SESSION_LOST"
+        assert resp.status_code == 200, resp.text
+        # 세션의 값이 실제로 바뀐다 — 화면이 무엇을 골랐는지 되읽을 수 있어야 한다.
+        assert resp.json()["pacing"] == RunPacing.SLOW.value
     finally:
         stop_quietly(keyed_client, sid)
 
 
-def test_finished_session_rejects_pacing_change(
+def test_finished_session_accepts_pacing_change(
     keyed_client: TestClient, fixture_app: str
 ) -> None:
-    """끝난 세션의 속도도 바꿀 수 없다 (contracts/rest-api.md §2).
+    """끝난 세션의 속도도 바꿀 수 있다 (2026-09-09 사용자 결정).
 
-    거부는 **지금 무엇이 가능한지 함께 알린다** — "안 된다"만 말하면 사용자가 되는 것을
-    하나씩 눌러 찾아야 한다 (003 AP-020).
+    이 자리가 **가장 쓸모 있는 자리**다. 실행이 끝난 화면에는 「처음부터 실행」이 활성으로
+    있고(국면 `finished`), 여기서 고른 값이 그 실행의 속도가 된다 (004 FR-109).
+
+    거절이 있던 동안 화면 쪽도 함께 굳어 있었다 — 권한표가 그 거절을 비활성으로 옮겨
+    그리느라, 실행 종료 화면의 속도 컨트롤 넷이 「실행이 이미 끝났습니다」를 달고 눌리지
+    않는 채 서 있었다. 사용자가 지목한 것이 그 화면이다.
     """
     import time
 
@@ -194,10 +206,9 @@ def test_finished_session_rejects_pacing_change(
         resp = keyed_client.post(
             f"/api/sessions/{sid}/pacing", json={"pacing": RunPacing.SLOW.value}
         )
-        assert resp.status_code == 409, resp.text
-        body = resp.json()["error"]
-        assert body["code"] == "INVALID_TRANSITION"
-        assert body["detail"]["state"] in ("completed", "failed")
-        assert "allowed" in body["detail"], "지금 가능한 동작을 함께 알려야 한다"
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["pacing"] == RunPacing.SLOW.value
+        # 상태는 그대로다 — 속도 변경이 끝난 세션을 되살리지 않는다.
+        assert resp.json()["state"] in ("completed", "failed")
     finally:
         stop_quietly(keyed_client, sid)

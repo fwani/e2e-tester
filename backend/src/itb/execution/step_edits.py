@@ -185,8 +185,9 @@ def update_step(
     tab: int | None = None,
     url: str | None = None,
     assertion_value: str | None = None,
+    file_name: str | None = None,
 ) -> EditResult:
-    """표시 이름·입력값·타임아웃·탭·주소·기대값을 고친다 (FR-035·FR-082b·006 FR-183).
+    """표시 이름·입력값·타임아웃·탭·주소·기대값·파일 이름을 고친다 (FR-035·FR-082b·006 FR-183).
 
     Step 종류를 바꾸지 않는다. 종류가 바뀌면 대상 요소의 의미도 바뀌므로 그것은 삭제와
     삽입이며, 편집으로 위장하면 후보 묶음이 엉뚱한 종류에 남는다.
@@ -194,6 +195,9 @@ def update_step(
     **006 이 인자를 늘렸다** — `tab`·`url`·`assertion_value`. 정의 편집(세션 없는 편집)이
     이 세 가지를 요구하는데(006 FR-183), 그것을 위한 두 번째 편집 함수를 만들면 규칙이 두
     벌이 된다. 편집 핵심은 한 곳이므로 인자를 여기 더한다 (006 research R2·R3).
+
+    **2026-09-09 이 `file_name` 을 더했다** (사용자 보고 — 파일 업로드 녹화). 같은 근거다:
+    편집 핵심은 한 곳이므로 두 번째 편집 함수를 만들지 않고 인자를 여기 더한다.
 
     **`target` 을 받지 않는 것은 의도다.** 요소 후보는 살아 있는 페이지에서만 수집·검증되며
     (헌법 원칙 IV), 손으로 넣은 후보는 검증 상태를 얻을 수 없다. 다시 집기는
@@ -217,6 +221,10 @@ def update_step(
         if not hasattr(current, "url"):
             raise FieldNotSupportedError(str(current.type), "url")
         update["url"] = url
+    if file_name is not None:
+        if not hasattr(current, "file_name"):
+            raise FieldNotSupportedError(str(current.type), "file_name")
+        update["file_name"] = file_name
     if assertion_value is not None:
         assertion = getattr(current, "assertion", None)
         if assertion is None:
