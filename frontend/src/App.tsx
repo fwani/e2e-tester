@@ -55,6 +55,16 @@ type Screen =
        * 화면에 둔다.
        */
       recordOnArrival?: boolean;
+      /**
+       * 도착하면 이 지시문을 수행한다 (011 FR-374a · UC-011-23).
+       *
+       * `recordOnArrival` 과 **대칭이다** — 편집 국면에서 「지시문으로 더하기」로 출발한
+       * 세션에만 있다. 사용자가 그 조작을 고른 뜻이 「여기서 지시문으로 Step 을
+       * 만들겠다」이므로, 브라우저를 여는 것으로 끝내면 두 걸음이 남는다.
+       *
+       * 서버 상태에 저장하지 않는다 — 잃어도 막히지 않는 정보만 화면에 둔다.
+       */
+      instructionOnArrival?: string | null;
     }
   /**
    * 결과 국면. `focusStepId` 는 **국면을 넘어 유지되는 지목**이다 (007 FR-239 · S-10).
@@ -255,6 +265,13 @@ export function App() {
     testId: string,
     stepIndex: number,
     stepId: string | null = null,
+    /**
+     * 도착하면 수행할 지시문 (011 FR-374a).
+     *
+     * **같은 함수를 쓴다.** 녹화와 지시문이 다른 경로로 세션을 열면 「도착하면 무엇을
+     * 하는가」만 다른 두 벌이 생기고, 그 둘이 갈리는 것이 사용자 보고 3번의 형태다.
+     */
+    instruction: string | null = null,
   ) => {
     if (pendingRun !== null) return;
     setPendingRun(testId);
@@ -272,7 +289,13 @@ export function App() {
             기록이 켜진 상태여야 한다. 이전에는 도착한 뒤 사용자가 팔레트에서 「직접
             조작으로 Step 추가」를 다시 찾아야 했다 — 그것이 다섯 걸음의 마지막 걸음이다.
           */
-          recordOnArrival: true,
+          /*
+            011 — 지시문으로 출발했으면 도착해서 그것을 수행한다. 녹화와 **하나만**
+            켜진다: 지시문 수행 중에 기록까지 켜지면 AI 가 만든 Step 과 사용자가 만든
+            Step 이 같은 자리에 섞인다.
+          */
+          recordOnArrival: instruction === null,
+          instructionOnArrival: instruction,
         }),
       )
       .catch((exc: unknown) => setError(describeError(exc)))
@@ -382,8 +405,8 @@ export function App() {
           testId={screen.testId}
           focusStepId={screen.focusStepId ?? null}
           onRun={(testId, fromStepIndex) => startReplay(testId, fromStepIndex)}
-          onOpenBrowserAt={(testId, stepIndex, stepId) =>
-            openBrowserAt(testId, stepIndex, stepId)
+          onOpenBrowserAt={(testId, stepIndex, stepId, instruction) =>
+            openBrowserAt(testId, stepIndex, stepId, instruction ?? null)
           }
           onOpenSession={openSession}
           /* 007 FR-239 — 편집 ↔ 결과 왕복에서도 보던 Step 을 잃지 않는다. */
@@ -453,6 +476,8 @@ export function App() {
           aiInstruction={screen.aiInstruction ?? null}
           /* 009 FR-291 — 목표 자리에 도착하면 기록을 켠다 */
           recordOnArrival={screen.recordOnArrival ?? false}
+          /* 011 FR-374a — 목표 자리에 도착하면 지시문을 수행한다 */
+          instructionOnArrival={screen.instructionOnArrival ?? null}
           /*
             006 FR-204 — 편집 화면에서 출발한 세션은 그 화면으로 돌아온다. 편집 화면은
             마운트마다 `GET /definition` 을 다시 읽으므로 세션에서 저장한 내용이 반영된

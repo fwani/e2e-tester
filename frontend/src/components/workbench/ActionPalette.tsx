@@ -54,8 +54,14 @@ import { ActionButton } from "./ActionButton";
  * 집이고, 두 곳에 두면 같은 라벨이 두 자리에 생긴다 (FR-235).
  */
 export const PALETTE_ACTIONS: ActionId[] = [
-  "step.recordStart",
-  "step.recordStop",
+  /*
+    `step.recordStart`·`step.recordStop`·`step.addNaturalLanguage` 는 여기 없다 — 011 이
+    셋을 **Step 을 더하는 묶음**으로 모았다 (`AUTHORING_ROW` · FR-374).
+
+    이전에는 자연어 입력칸이 버튼 줄 **위**에 따로 있고 녹화 시작은 버튼 줄 **안**에
+    섞여 있었다. 같은 일을 하는 두 길이 다른 무게로 놓이면 사용자는 한쪽을 「주된 방법」
+    으로 읽는다 — 그것이 사용자 보고 3번의 절반이다.
+  */
   "step.addAssertion",
   "step.insertManual",
   "step.moveUp",
@@ -76,6 +82,14 @@ export const PALETTE_ACTIONS: ActionId[] = [
   "ai.start",
   "save.overwriteStale",
 ];
+
+/**
+ * Step 을 더하는 두 길이 나란히 서는 줄 (011 FR-374).
+ *
+ * 자연어 입력칸 바로 아래다. `PALETTE_ACTIONS` 에서 뽑아낸 이유는 자리이지 성격이
+ * 아니다 — 같은 묶음에 있어야 대등하게 읽힌다.
+ */
+const AUTHORING_ROW: ActionId[] = ["step.recordStart", "step.recordStop"];
 
 export interface ActionPaletteProps {
   capabilities: CapabilityMap;
@@ -194,24 +208,43 @@ export function ActionPalette({
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="lbl">지금 할 수 있는 것</div>
 
-      {/* 자연어로 Step 추가 (FR-078). 쓸 수 없으면 입력칸을 잠그고 이유는 버튼이 말한다. */}
-      {shown("step.addNaturalLanguage") && (
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <input
-            aria-label="자연어로 Step 추가"
-            value={nl.value}
-            disabled={!usable("step.addNaturalLanguage")}
-            onChange={(e) => nl.onChange(e.target.value)}
-            placeholder="생성된 프로젝트가 목록에 있는지 확인해."
-            className="ai"
-            style={{ flex: "1", minWidth: 0 }}
-          />
-          {button("step.addNaturalLanguage", () => {
-            if (nl.value.trim() === "") return;
-            nl.onSubmit();
-          })}
+      {/*
+        ─── Step 을 더하는 두 길 (011 FR-374 · UC-011-23) ──────────────────────
+
+        **같은 묶음, 같은 무게다.** 지시문은 입력칸 + 버튼이고 녹화는 버튼 하나라 모양이
+        다를 수밖에 없지만, 자리가 붙어 있고 버튼이 같은 `compact` 형이면 둘 중 하나가
+        「주된 방법」으로 읽히지 않는다.
+
+        011 이전에는 입력칸이 버튼 줄 **위**에 따로 있고 녹화 시작은 버튼 줄 **안**에
+        다른 조작들과 섞여 있었다. 사용자 보고: 「스텝을 새로 녹화하는것처럼, ai
+        지시문으로도 스텝을 추가할 수 있어야한다」.
+
+        쓸 수 없으면 입력칸을 잠그고 이유는 버튼이 말한다 (FR-234).
+      */}
+      {AUTHORING_ROW.some(shown) || shown("step.addNaturalLanguage") ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {shown("step.addNaturalLanguage") && (
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <input
+                aria-label="자연어로 Step 추가"
+                value={nl.value}
+                disabled={!usable("step.addNaturalLanguage")}
+                onChange={(e) => nl.onChange(e.target.value)}
+                placeholder="생성된 프로젝트가 목록에 있는지 확인해."
+                className="ai"
+                style={{ flex: "1", minWidth: 0 }}
+              />
+              {button("step.addNaturalLanguage", () => {
+                if (nl.value.trim() === "") return;
+                nl.onSubmit();
+              })}
+            </div>
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
+            {AUTHORING_ROW.filter(shown).map((action) => button(action, () => onRun(action)))}
+          </div>
         </div>
-      )}
+      ) : null}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
         {PALETTE_ACTIONS.filter(shown).map((action) => button(action, () => onRun(action)))}

@@ -1590,6 +1590,17 @@ export interface SessionScreenProps {
    * (research R5). 잃어도 막히지 않는 정보만 화면에 둔다.
    */
   recordOnArrival?: boolean;
+  /**
+   * 도착하면 이 지시문을 수행한다 (011 FR-374a·FR-375 · UC-011-23).
+   *
+   * `recordOnArrival` 과 **대칭이다.** 편집 국면에서 「지시문으로 더하기」를 누르면
+   * 브라우저가 열리고 그 자리에서 지시문이 돈다 — 녹화가 도착하면 기록을 켜는 것과
+   * 같은 흐름이다. 그 대칭이 없어서 두 길이 대등하게 보이지 않았다 (사용자 보고 3).
+   *
+   * **서버 상태에 저장하지 않는다** (009 research R5 와 같은 규칙). 새로 고치면 지시문은
+   * 수행되지 않은 채로 오고, 그때 팔레트의 같은 조작을 그대로 쓸 수 있다.
+   */
+  instructionOnArrival?: string | null;
   onFinished: () => void;
   onShowResult?: (testId: string, stepId?: string | null) => void;
   /**
@@ -1608,6 +1619,7 @@ export function SessionScreen({
   initial,
   aiInstruction = null,
   recordOnArrival = false,
+  instructionOnArrival = null,
   onFinished,
   onShowResult,
   onEditStep,
@@ -2074,6 +2086,36 @@ export function SessionScreen({
     // `act` 는 위에서 선언됐다. 의존성에 넣으면 매 렌더마다 새 함수라 효과가 다시 돈다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordOnArrival, view.state, view.pause_before_index, sessionId]);
+
+  /*
+    011 FR-374a — 목표 자리에 **도착하면** 지시문을 수행한다.
+
+    위 효과와 **같은 조건 셋**이다 (출발 의도가 있다 · 일시정지에 닿았다 · 목표가 비었다).
+    같게 두는 이유는 대등성 그 자체다 — 조건이 다르면 한쪽만 되는 상황이 생기고, 그것이
+    사용자가 「녹화처럼 되지 않는다」로 겪는 것이다.
+
+    한 번만 수행한다. 두 번 돌면 같은 Step 이 두 벌 들어간다.
+  */
+  const armedInstruction = useRef(false);
+  useEffect(() => {
+    const instruction = (instructionOnArrival ?? "").trim();
+    if (instruction === "" || armedInstruction.current) return;
+    if (view.state !== "paused") return;
+    if ((view.pause_before_index ?? null) !== null) return;
+    armedInstruction.current = true;
+    setBusy(true);
+    setNotice(null);
+    void sessions
+      .aiStep(sessionId, instruction)
+      .then((resp) => {
+        setNotice(localError(resp.message, "표시된 내용을 확인한 뒤 이어서 진행하세요."));
+        return resync();
+      })
+      .catch((exc: unknown) => setNotice(describeError(exc)))
+      .finally(() => setBusy(false));
+    // `resync` 는 매 렌더마다 새 함수다 — 넣으면 효과가 다시 돈다 (위 효과와 같은 이유).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instructionOnArrival, view.state, view.pause_before_index, sessionId]);
   /** 005 FR-142~FR-146 — 일시정지 **전이 중**인가 (U-04). */
   const isPausing =
     (pauseRequested || view.pause_settled === false) && !TERMINAL_STATES.has(view.state);

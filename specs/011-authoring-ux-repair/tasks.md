@@ -160,14 +160,14 @@ web application — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `fron
 
 ### Tests for User Story 3
 
-- [ ] T037 [P] [US3] 대등성 검증 — `frontend/tests/AuthoringParity.test.tsx`: 브라우저가 닫힌 편집 국면에서 `step.recordStart`·`step.addNaturalLanguage` 가 같은 자리에 **둘 다 활성**(UC-011-23), 저장하지 않은 변경이 있으면 기존 「저장하고 열기」 확인이 걸리고 **새 확인이 생기지 않는다**(UC-011-24), 브라우저 열기 실패 시 진행 표시를 켜지 않는다(UC-011-25)
+- [X] T037 [P] [US3] 대등성 검증 — `frontend/tests/AuthoringParity.test.tsx`: 브라우저가 닫힌 편집 국면에서 `step.recordStart`·`step.addNaturalLanguage` 가 같은 자리에 **둘 다 활성**(UC-011-23), 저장하지 않은 변경이 있으면 기존 「저장하고 열기」 확인이 걸리고 **새 확인이 생기지 않는다**(UC-011-24), 브라우저 열기 실패 시 진행 표시를 켜지 않는다(UC-011-25)
 
 ### Implementation for User Story 3
 
-- [ ] T038 [US3] 두 조작 앞에 브라우저 열기를 붙인다 — `frontend/src/pages/EditView.tsx`: 기존 `openBrowser()`(457~480행)를 `step.recordStart`·`step.addNaturalLanguage` 실행의 선행 단계로 쓴다. **둘 다 같은 규칙으로** — 하나만 자동으로 열면 대등성이 다시 깨진다 (research R7)
-- [ ] T039 [US3] 실패 경로를 만든다 — `frontend/src/pages/EditView.tsx`: 브라우저 열기가 실패하면 사유를 알리고 지시문·녹화를 시작하지 않는다. 진행 표시를 켰다가 끄지 않는다 (UC-011-25 · FR-374c)
-- [ ] T040 [US3] 두 조작을 같은 자리·같은 무게로 놓는다 — `frontend/src/components/workbench/ActionPalette.tsx`: 지금 자연어 입력칸은 버튼 줄 **위**에, `step.recordStart` 는 버튼 줄 **안**에 있다. 둘이 같은 묶음에서 같은 무게로 읽히게 배치한다 (FR-374)
-- [ ] T041 [US3] 쓰이지 않게 된 문구를 정리한다 — `frontend/src/lib/wording.ts`: `NEEDS_BROWSER` 사유가 다른 국면에서 아직 쓰이는지 확인하고, 쓰이지 않으면 근거를 남기고 지운다. 쓰이면 그대로 둔다 (research R7 주의)
+- [X] T038 [US3] 두 조작 앞에 브라우저 열기를 붙인다 — `frontend/src/pages/EditView.tsx`: 기존 `openBrowser()`(457~480행)를 `step.recordStart`·`step.addNaturalLanguage` 실행의 선행 단계로 쓴다. **둘 다 같은 규칙으로** — 하나만 자동으로 열면 대등성이 다시 깨진다 (research R7)
+- [X] T039 [US3] 실패 경로를 만든다 — `frontend/src/pages/EditView.tsx`: 브라우저 열기가 실패하면 사유를 알리고 지시문·녹화를 시작하지 않는다. 진행 표시를 켰다가 끄지 않는다 (UC-011-25 · FR-374c)
+- [X] T040 [US3] 두 조작을 같은 자리·같은 무게로 놓는다 — `frontend/src/components/workbench/ActionPalette.tsx`: 지금 자연어 입력칸은 버튼 줄 **위**에, `step.recordStart` 는 버튼 줄 **안**에 있다. 둘이 같은 묶음에서 같은 무게로 읽히게 배치한다 (FR-374)
+- [X] T041 [US3] 쓰이지 않게 된 문구를 정리한다 — `frontend/src/lib/wording.ts`: `NEEDS_BROWSER` 사유가 다른 국면에서 아직 쓰이는지 확인하고, 쓰이지 않으면 근거를 남기고 지운다. 쓰이면 그대로 둔다 (research R7 주의)
 
 **Checkpoint**: US1·US2·US3·US4 가 각각 독립적으로 동작한다.
 
