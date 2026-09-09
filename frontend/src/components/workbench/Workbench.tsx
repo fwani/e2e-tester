@@ -167,7 +167,17 @@ export function Workbench({
     );
 
   return (
-    <Artboard width={BASE_WIDTH} minHeight={900} grow>
+    /*
+      `fill` — **화면 전체 높이를 창에 맞추고 Step 목록이 스크롤한다.**
+
+      이전에는 `minHeight` 만 있어 Step 이 쌓일수록 아트보드가 길어졌다. 목록에는 이미
+      `overflowY: auto` 가 있었지만 부모가 무한히 늘어나므로 스크롤할 것이 남지 않았고,
+      그 결과 헤더·국면 띠·미러가 위로 밀려 올라갔다 — 사용자가 Step 을 볼수록 지금
+      무엇이 일어나는지를 보지 못하게 된다.
+
+      창이 기준 높이(900)보다 작으면 `minHeight` 가 이겨 종전처럼 페이지가 스크롤한다.
+    */
+    <Artboard width={BASE_WIDTH} minHeight={900} grow fill>
       {/* ─── 층① 헤더 60px ────────────────────────────────────────────────── */}
       <HeaderBar>
         <BrandMark />
