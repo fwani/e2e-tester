@@ -342,8 +342,44 @@ def mirror_should_run(state: SessionState) -> bool:
     return state in MIRROR_ACTIVE_STATES
 
 
+CONTROL_PHASE_STATES: frozenset[SessionState] = frozenset(
+    {
+        SessionState.RECORDING,
+        SessionState.TAKEOVER_RECORDING,
+        SessionState.PAUSED,
+    }
+)
+"""**조작 국면** — 사용자가 대상 브라우저를 직접 조작하는 상태들 (010 FR-314 · contracts §1).
+
+010 이 이 집합을 세운다. 조작 채널은 여기서만 열리고 (FR-342), 나머지에서는 채널 자체가
+사건을 받지 않는다 — 화면 단에서 막는 것으로 충분하지 않다.
+
+`is_manipulation_phase` 와 **다르다.** 그것은 「실제 브라우저 창을 앞으로 가져와야 하는가」
+를 묻고 `PAUSED` 를 뺀다. 이것은 「사람이 지금 브라우저를 조작하는가」를 묻고 `PAUSED` 를
+넣는다 — 일시정지에서 사람이 막힌 곳을 손으로 지나야 하기 때문이다 (US3). 실행이 멈춰
+있으므로 러너 명령과 경쟁하지도 않는다.
+
+`REPLAYING`·`AI_RUNNING` 이 빠진 이유는 러너가 전진하는 중이기 때문이다. 사람 조작이
+끼어들면 같은 Step 이 두 번 도는 것을 막던 기존 잠금과 같은 이유다 (FR-315).
+`AI_BLOCKED` 도 빠진다 — 사용자가 네 선택지 중 하나를 고르기 전이고, 「직접 수행」을
+고르면 `TAKEOVER_RECORDING` 으로 전이해 조작 국면이 된다.
+"""
+
+
+def is_control_phase(state: SessionState) -> bool:
+    """조작 채널을 열 수 있는 국면인가 (010 FR-314·FR-342 · contracts §1).
+
+    **채널의 개폐가 이 함수 하나를 지난다.** 판정이 여러 곳에 있으면 한 곳이 빠지고,
+    빠진 자리에서 관찰 국면에 열린 채널이 남는다.
+    """
+    return state in CONTROL_PHASE_STATES
+
+
 def is_manipulation_phase(state: SessionState) -> bool:
-    """조작 국면인가. 실제 브라우저 창을 앞으로 가져와야 한다 (FR-023a·FR-030e)."""
+    """조작 국면인가. 실제 브라우저 창을 앞으로 가져와야 한다 (FR-023a·FR-030e).
+
+    **`is_control_phase` 와 다르다** — 위 `CONTROL_PHASE_STATES` 의 설명을 보라.
+    """
     return state in {SessionState.RECORDING, SessionState.TAKEOVER_RECORDING}
 
 

@@ -1,8 +1,15 @@
 """읽기 전용 미러. CDP `Page.startScreencast` (research R3, FR-047).
 
-**이 모듈은 CDP `Input` 도메인을 임포트하지도 호출하지도 않는다** (FR-047a). 미러가 조작
-경로를 갖지 않는다는 요구사항을 주석이 아니라 코드 구조로 지킨다 — 여기서 보내는 CDP 명령은
-아래 `_ALLOWED_COMMANDS` 에 열거된 것뿐이고, 그 목록을 벗어난 전송은 함수 자체가 거절한다.
+**이 모듈은 CDP `Input` 도메인을 임포트하지도 호출하지도 않는다.** 여기서 보내는 CDP
+명령은 아래 `_ALLOWED_COMMANDS` 에 열거된 것뿐이고, 그 목록을 벗어난 전송은 함수 자체가
+거절한다.
+
+**010 이 미러 조작을 열었지만 이 성질은 그대로다** (research R5). 010 이 뒤집은 것은
+「미러가 조작 경로를 갖지 않는다」가 아니라 「조작 경로가 아예 없다」다. 조작은
+`mirror/input.py` 가 **자기 CDP 세션과 자기 명령 목록**으로 담당하고, 이 파일은 프레임만
+다루는 모듈로 남는다. 목록도 그대로 둔다 — 여기서 조작 명령을 보내려는 시도는 계속
+거부되어야 한다. 두 모듈이 서로를 임포트하지 않는 것이 FR-336(조작과 프레임이 서로를
+막지 않는다)을 파일 경계로 만든다. `tests/unit/test_mirror_input.py` 가 이것을 고정한다.
 
 **전용 CDP 세션을 쓴다.** 러너가 쓰는 `Page` 객체의 API를 경유하지 않으므로 미러가 러너의
 명령과 경쟁하지 않는다. 이 분리가 FR-047b(미러가 끊겨도 실행 무영향)를 구조로 만든다.
@@ -15,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import itertools
 import time
 from typing import Any
 
@@ -68,6 +76,31 @@ async def _send(cdp: CDPSession, command: str, params: dict[str, Any] | None = N
     await cdp.send(command, params or {})
 
 
+def _finite(value: Any) -> float:
+    """메타데이터의 수치 하나를 유한한 실수로 읽는다. 읽을 수 없으면 0.
+
+    CDP 가 보내는 값이므로 형이 보장된 것처럼 다루기 쉽지만, 미러가 예외를 내면 그것이
+    프레임 전달을 끊는다 — 미러 실패는 실행에 영향을 주지 않아야 한다 (FR-047b).
+    """
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.0
+    if number != number or number in (float("inf"), float("-inf")):  # NaN·무한
+        return 0.0
+    return number
+
+
+def _positive_scale(value: Any) -> float:
+    """페이지 배율. 0 이하거나 읽을 수 없으면 1 로 본다.
+
+    **0 을 그대로 넘기면 프론트의 역변환이 0 으로 나눈다.** 배율은 나눗셈의 분모이므로
+    (data-model §2 역변환식) 여기서 막는 편이 싸다.
+    """
+    number = _finite(value)
+    return number if number > 0 else 1.0
+
+
 class TabScreencast:
     """탭 하나의 스크린캐스트. 한 번에 한 탭만 돌린다 (research R3).
 
@@ -96,6 +129,17 @@ class TabScreencast:
         """
         self._idle_task: asyncio.Task[None] | None = None
         self._last_sent_at: float = 0.0
+        self._frame_seq = itertools.count(1)
+        """프레임 일련번호 (010 FR-331 · data-model §2).
+
+        클라이언트가 보내는 조작 사건의 `frameSeq` 가 이 값을 가리킨다 — **그 좌표를
+        계산한 근거가 어느 프레임이었는가.** 이번 범위에서 서버가 이 값으로 조작을
+        거절하지는 않는다. 원격 조작의 본질적 한계(사용자가 본 화면이 이미 낡았을 수
+        있다)는 감출 수 없기 때문이다. 진단에 필요하고, 정책을 넣을 자리를 남긴다.
+
+        **탭마다 새로 센다.** 표시 탭이 바뀌면 `TabScreencast` 도 새로 만들어지므로
+        번호가 1 부터 다시 시작한다 — 프레임의 `tab` 과 함께 읽어야 하는 값이다.
+        """
 
     @property
     def tab_index(self) -> int:
@@ -209,17 +253,43 @@ class TabScreencast:
         with contextlib.suppress(RuntimeError):
             asyncio.create_task(self._forward(params))  # noqa: RUF006
 
-    async def _send_frame(self, data: str, width: int, height: int) -> None:
+    async def _send_frame(
+        self,
+        data: str,
+        width: int,
+        height: int,
+        *,
+        page_scale: float = 1.0,
+        offset_top: float = 0.0,
+    ) -> None:
         """프레임 하나를 보내고 **마지막 프레임으로 기억한다** (005 FR-162).
 
         전송 경로를 한 곳으로 모으는 이유는 캐시가 빠지는 경로를 만들지 않기 위해서다 —
-        스크린캐스트·강등 루프·무프레임 감시 셋이 모두 여기를 지난다.
+        스크린캐스트·강등 루프·무프레임 감시 셋이 모두 여기를 지난다. 010 이 좌표 변환의
+        근거(`pageScale`·`offsetTop`·`seq`)를 더하면서 그 이유가 하나 늘었다: **세 경로가
+        모두 같은 모양의 프레임을 내야** 프론트가 경로를 구분하지 않고 역변환할 수 있다
+        (T006 · FR-331).
+
+        `width`·`height` 의 의미는 **바뀌지 않는다** — 대상 화면 크기다. 프레임의 실제
+        픽셀 크기는 보내지 않는다. 클라이언트가 `<img>` 에서 직접 읽는 편이 서버가 보낸
+        값과 이미지가 어긋날 여지를 만들지 않는다 (data-model §2).
+
+        **계약(contracts/mirror-control.md §4)은 이 필드를 `seq` 라 불렀다. `frameSeq` 로
+        둔다.** 이벤트 봉투가 이미 `seq` 를 쓰고 있고(`SessionEventHub.publish`), 그 값은
+        프론트에서 **서버 재시작 감지**의 근거다 — 뒤로 가면 전체 상태를 다시 받는다
+        (`frontend/src/api/ws.ts`). 페이로드의 `seq` 는 봉투의 `seq` 를 덮으므로, 계약대로
+        두면 탭을 바꿀 때마다(프레임 번호가 1 로 되돌아간다) 프론트가 서버 재시작으로 읽고
+        헛되이 재동기화한다. 클라이언트가 되돌려 보내는 필드 이름이 이미 `frameSeq` 이므로
+        (data-model §1) 양쪽이 같은 이름을 쓰게 되는 이점도 있다.
         """
         payload: dict[str, object] = {
             "tab": self._tab_index,
             "data": data,
             "width": width,
             "height": height,
+            "pageScale": page_scale,
+            "offsetTop": offset_top,
+            "frameSeq": next(self._frame_seq),
         }
         self._last_frame = payload
         self._last_sent_at = time.monotonic()
@@ -230,11 +300,22 @@ class TabScreencast:
         return self._last_frame
 
     async def _forward(self, params: dict[str, Any]) -> None:
+        """스크린캐스트 프레임 하나. **메타데이터에서 좌표 변환의 근거를 꺼낸다** (T005).
+
+        `Page.screencastFrame` 의 `metadata` 는 `pageScaleFactor` 와 `offsetTop` 을 실제로
+        담고 있다 (research R3). 이전에는 `deviceWidth`·`deviceHeight` 둘만 읽었고, 그래서
+        프론트는 배율과 상단 오프셋을 추정할 수밖에 없었다 — FR-331 이 금지하는 상태다.
+
+        일반적인 데스크톱 크롬에서 두 값은 각각 1 과 0 이다. 그렇지 않은 환경에서만
+        좌표가 어긋나고 원인이 드러나지 않는 것을 막기 위해 **값과 무관하게 전달한다.**
+        """
         metadata = params.get("metadata") or {}
         await self._send_frame(
             params.get("data", ""),
             int(metadata.get("deviceWidth") or MAX_WIDTH),
             int(metadata.get("deviceHeight") or MAX_HEIGHT),
+            page_scale=_positive_scale(metadata.get("pageScaleFactor")),
+            offset_top=_finite(metadata.get("offsetTop")),
         )
         if not self._acking or self._cdp is None:
             return
@@ -296,7 +377,23 @@ class TabScreencast:
             raise
         except Exception:  # noqa: BLE001 - 화면이 닫혔거나 이동 중이다
             return False
-        await self._send_frame(
-            base64.b64encode(shot).decode("ascii"), MAX_WIDTH, MAX_HEIGHT
-        )
+        width, height = self._viewport()
+        await self._send_frame(base64.b64encode(shot).decode("ascii"), width, height)
         return True
+
+    def _viewport(self) -> tuple[int, int]:
+        """대상 화면 크기 (T006 · FR-331).
+
+        스크린샷 경로는 이전까지 `MAX_WIDTH`·`MAX_HEIGHT` 를 그대로 실었다. 그것은
+        **스크린캐스트에 요청하는 상한**이지 대상 화면 크기가 아니다 — 실측에서 1280×800
+        을 요청해 1067×800 을 받았다 (research R3). 두 값이 다르므로, 강등·무프레임 보충
+        경로의 프레임으로 좌표를 역변환하면 어긋난다.
+
+        `page.viewport_size` 를 읽을 수 없으면 종전 값으로 붙는다 — 미러가 예외로 실행을
+        건드리지 않는다 (FR-047b).
+        """
+        with contextlib.suppress(Exception):
+            size = self._page.viewport_size
+            if size:
+                return int(size["width"]), int(size["height"])
+        return MAX_WIDTH, MAX_HEIGHT

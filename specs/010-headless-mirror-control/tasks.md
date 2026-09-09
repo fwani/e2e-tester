@@ -61,59 +61,59 @@ description: "Task list for 010-headless-mirror-control"
 
 ### 프레임 좌표계 확장 (좌표 변환의 근거)
 
-- [ ] T005 프레임 페이로드에 `pageScale`·`offsetTop`·`seq` 를 추가한다 — `_forward` 가
+- [X] T005 프레임 페이로드에 `pageScale`·`offsetTop`·`seq` 를 추가한다 — `_forward` 가
       metadata 에서 `pageScaleFactor`·`offsetTop` 을 읽어 넣고, 프레임마다 증가하는
       `seq` 를 발급한다. `width`·`height` 의 의미는 바꾸지 않는다
       in `backend/src/itb/mirror/screencast.py` (FR-331 · data-model §2)
-- [ ] T006 강등 경로(1 FPS 스크린샷)와 무프레임 보충 경로도 같은 필드를 채우게 한다 —
+- [X] T006 강등 경로(1 FPS 스크린샷)와 무프레임 보충 경로도 같은 필드를 채우게 한다 —
       `_send_frame` 을 지나는 세 경로가 모두 같은 모양이어야 한다
       in `backend/src/itb/mirror/screencast.py`
-- [ ] T007 [P] 새 프레임 필드를 수신하고 타입에 반영한다 in `frontend/src/api/ws.ts`
-- [ ] T008 [P] 프레임 필드 확장 검증 — 세 경로(스크린캐스트·강등·무프레임 보충)가 모두
+- [X] T007 [P] 새 프레임 필드를 수신하고 타입에 반영한다 in `frontend/src/api/ws.ts`
+- [X] T008 [P] 프레임 필드 확장 검증 — 세 경로(스크린캐스트·강등·무프레임 보충)가 모두
       새 필드를 채우는지 in `backend/tests/unit/test_mirror_frame_delivery.py`
 
 ### 조작 모듈 (CDP Input)
 
-- [ ] T009 `mirror/input.py` 를 만든다 — 전용 CDP 세션, **자기 명령 목록**
+- [X] T009 `mirror/input.py` 를 만든다 — 전용 CDP 세션, **자기 명령 목록**
       (`Input.dispatchMouseEvent`·`Input.dispatchKeyEvent`·`Input.insertText`·
       `Input.imeSetComposition`·`DOM.setFileInputFiles`), 목록 밖 전송 거부.
       `screencast.py` 를 임포트하지 않는다 in `backend/src/itb/mirror/input.py`
       (research R5 · FR-344)
-- [ ] T010 조작 사건 → CDP 명령 변환을 구현한다 — contracts §2 의 표 그대로. 좌표는
+- [X] T010 조작 사건 → CDP 명령 변환을 구현한다 — contracts §2 의 표 그대로. 좌표는
       이미 대상 화면 좌표계로 도착한다고 가정한다 in `backend/src/itb/mirror/input.py`
-- [ ] T011 미해제 포인터 추적을 넣는다 — `pointer.down` 후 `pointer.up` 이 없는 상태를
+- [X] T011 미해제 포인터 추적을 넣는다 — `pointer.down` 후 `pointer.up` 이 없는 상태를
       기억하고, 채널이 닫히거나 정지할 때 `pointer.up` 을 보낸다
       in `backend/src/itb/mirror/input.py` (FR-318 · contracts §2)
-- [ ] T012 보고 있는 탭을 조작 대상으로 넘긴다 — 활성 탭이 아니라 표시 중인 탭이다
+- [X] T012 보고 있는 탭을 조작 대상으로 넘긴다 — 활성 탭이 아니라 표시 중인 탭이다
       in `backend/src/itb/mirror/tab_switch.py` (FR-317)
-- [ ] T013 [P] `screencast.py` 가 여전히 `Input` 명령을 보내지 않는지 고정하는 검증
+- [X] T013 [P] `screencast.py` 가 여전히 `Input` 명령을 보내지 않는지 고정하는 검증
       in `backend/tests/unit/test_mirror_input.py` (research R5)
-- [ ] T014 [P] 명령 목록 한정 검증 — 목록 밖 명령 전송이 거부되는지
+- [X] T014 [P] 명령 목록 한정 검증 — 목록 밖 명령 전송이 거부되는지
       in `backend/tests/unit/test_mirror_input.py` (FR-344)
-- [ ] T015 [P] 미해제 포인터 해제 검증 — 누른 상태에서 채널을 닫으면 `pointer.up` 이
+- [X] T015 [P] 미해제 포인터 해제 검증 — 누른 상태에서 채널을 닫으면 `pointer.up` 이
       가는지 in `backend/tests/unit/test_mirror_input.py` (FR-318)
 
 ### 조작 채널 (새 WebSocket)
 
-- [ ] T016 조작 사건 모델과 경계 검증을 만든다 — `kind` 목록 한정, 좌표 범위, `text`
+- [X] T016 조작 사건 모델과 경계 검증을 만든다 — `kind` 목록 한정, 좌표 범위, `text`
       길이 상한, `modifiers` 비트, `tab` 실재 여부. 어기면 **버리고 사유를 돌려준다**
       in `backend/src/itb/api/ws/control_channel.py` (FR-341 · data-model §1)
-- [ ] T017 `WS /api/sessions/{id}/control` 을 만든다 — 조작 국면에서만 수립되고, 세션당
+- [X] T017 `WS /api/sessions/{id}/control` 을 만든다 — 조작 국면에서만 수립되고, 세션당
       하나, 관찰 국면 전이·세션 유실 시 서버가 **사유와 함께** 닫는다
       in `backend/src/itb/api/ws/control_channel.py` (FR-342 · FR-347 · contracts §2)
-- [ ] T018 채널 상태 전이를 구현한다 — `closed`/`open`/`suspended`. 프레임 끊김에
+- [X] T018 채널 상태 전이를 구현한다 — `closed`/`open`/`suspended`. 프레임 끊김에
       `suspended`, 회복에 `open` in `backend/src/itb/api/ws/control_channel.py`
       (FR-346 · data-model §3)
-- [ ] T019 조작 국면 판정을 채널 개폐에 노출한다 — 채널이 상태 기계를 **전이시키지
+- [X] T019 조작 국면 판정을 채널 개폐에 노출한다 — 채널이 상태 기계를 **전이시키지
       않는다**는 것이 불변식이다 in `backend/src/itb/execution/state_machine.py`
       (contracts §5 불변식 4)
-- [ ] T020 채널을 세션 라우터에 등록하고, 국면 전이 시 채널을 정리한다
+- [X] T020 채널을 세션 라우터에 등록하고, 국면 전이 시 채널을 정리한다
       in `backend/src/itb/api/routes/sessions.py`
-- [ ] T021 [P] 채널 상태 전이 검증 — 국면별 개폐, 관찰 국면에서 `open` 이 존재할 수
+- [X] T021 [P] 채널 상태 전이 검증 — 국면별 개폐, 관찰 국면에서 `open` 이 존재할 수
       없음 in `backend/tests/unit/test_control_channel.py` (FR-315 · FR-342)
-- [ ] T022 [P] 경계 검증 — 범위를 벗어난 좌표·키·값이 거절되고 잘려서 전달되지 않는지
+- [X] T022 [P] 경계 검증 — 범위를 벗어난 좌표·키·값이 거절되고 잘려서 전달되지 않는지
       in `backend/tests/unit/test_control_channel.py` (FR-341)
-- [ ] T023 [P] 채널 장애 주입 검증 — 채널을 끊거나 폭주시켜도 진행 중인 실행이 완주하는지
+- [X] T023 [P] 채널 장애 주입 검증 — 채널을 끊거나 폭주시켜도 진행 중인 실행이 완주하는지
       (10회) in `backend/tests/integration/test_control_channel_failure.py`
       (FR-348 · SC-519)
 

@@ -12,6 +12,7 @@ from fastapi import Request
 from playwright.async_api import Playwright
 
 from itb.api.errors import ErrorCode, bad_request
+from itb.api.ws.control_channel import ControlChannelRegistry
 from itb.api.ws.session_events import EventBroker
 from itb.execution.session import SessionManager
 from itb.secrets.keys import KeyPaths
@@ -38,6 +39,14 @@ class AppState:
     sessions: SessionManager
     broker: EventBroker
     key_paths: KeyPaths
+    control: ControlChannelRegistry = field(default_factory=ControlChannelRegistry)
+    """조작 채널 모음 (010 · contracts §2).
+
+    `broker` 와 **나란히 두는 것이 요점이다.** 둘은 방향이 반대인 두 통로이고, 한쪽의
+    장애가 다른 쪽에 번지지 않아야 한다 (FR-336·FR-348). 같은 객체에 담으면 그 독립성이
+    구조에서 사라진다.
+    """
+
     key_unlock: KeyUnlock = field(default_factory=KeyUnlock)
     """암호구로 잠긴 비밀키의 잠금 해제 상태 (FR-089e-3).
 

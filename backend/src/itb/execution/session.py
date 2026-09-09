@@ -137,6 +137,9 @@ EventSink = Callable[[str, dict[str, object]], Awaitable[None]]
 PageObserver = Callable[[Page], None]
 """새 탭을 관찰할 대상. 리코더가 네비게이션·탭 닫힘 감시를 붙이는 데 쓴다."""
 
+StateObserver = Callable[[SessionState], Awaitable[None]]
+"""상태 전이를 관찰할 대상 (010 FR-342). 조작 채널이 국면 변화를 여기서 듣는다."""
+
 
 @dataclass(slots=True)
 class BrowserSession:
@@ -206,6 +209,18 @@ class BrowserSession:
     반대 방향을 두면 고리가 생긴다. 훅 하나로 방향을 유지한다.
     """
 
+    _state_observer: StateObserver | None = None
+    """상태가 바뀌었을 때 알려 줄 대상 (010 FR-342). 조작 채널이 등록한다.
+
+    **채널이 국면을 감시하는 것이 아니라 국면이 채널에 알린다.** 반대로 두면 채널이
+    주기적으로 상태를 읽어야 하고, 그 사이 관찰 국면에 열린 채널이 남는 창이 생긴다.
+    화면이 안 보내는 것에 의존하지 않는다는 것이 FR-342 의 요점이다.
+
+    훅으로 두는 이유는 `_page_observer` 와 같다 — 세션이 API 계층을 임포트하지 않는다.
+    **이 훅은 상태를 바꾸지 못한다.** 반환값을 쓰지 않고 예외도 삼킨다. 조작 채널의
+    어떤 일도 실행 상태 기계를 전이시켜서는 안 된다 (contracts §5 불변식 4 · FR-348).
+    """
+
     # ─── 이벤트 ─────────────────────────────────────────────────────────────
 
     def attach_sink(self, sink: EventSink | None) -> None:
@@ -241,7 +256,16 @@ class BrowserSession:
             current_step_index=self.current_step_index,
             active_tab=self.active_tab_index,
         )
+        # 010 FR-342 — 국면이 바뀌었다는 것을 조작 채널에 알린다. **예외를 삼킨다**:
+        # 채널의 사정이 상태 전이를 실패시켜서는 안 된다 (contracts §5 불변식 4).
+        if self._state_observer is not None:
+            with contextlib.suppress(Exception):
+                await self._state_observer(new_state)
         return new_state
+
+    def observe_state(self, observer: StateObserver | None) -> None:
+        """상태 전이를 들을 대상을 등록한다 (010 FR-342)."""
+        self._state_observer = observer
 
     # ─── 일시정지 / 이어서 실행 (원칙 III) ─────────────────────────────────
 

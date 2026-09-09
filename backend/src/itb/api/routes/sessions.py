@@ -25,6 +25,12 @@ from itb.api.errors import (
     not_found,
 )
 from itb.api.state import AppState, get_state
+from itb.api.ws.control_channel import (
+    ChannelState,
+    ControlRejected,
+    state_message,
+    validate,
+)
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.run_result import RunScope, StepOutcome, scope_of
 from itb.domain.step import Author, NavigateStep, Step
@@ -43,6 +49,7 @@ from itb.execution.state_machine import (
     InvalidTransitionError,
     SessionState,
     allowed_commands,
+    is_control_phase,
     is_manipulation_phase,
     state_label,
 )
@@ -198,6 +205,61 @@ def mirror_of(session_id: str) -> MirrorController | None:
     """
     w = _WORK.get(session_id)
     return w.mirror if w is not None else None
+
+
+def _control_phase_watcher(state: AppState, session_id: str):  # noqa: ANN202
+    """국면이 바뀌면 조작 채널을 정리한다 (010 FR-342 · contracts §2).
+
+    관찰 국면으로 전이하면 **서버가 사유와 함께 닫는다.** 화면이 안 보내는 것에 의존하지
+    않는 것이 FR-342 의 요점이다 — 화면 단에서만 막으면 화면을 우회한 조작 경로가 남는다.
+
+    조작 국면 사이의 전이(녹화 → 일시정지 등)에서는 닫지 않는다. 닫으면 사용자가 일시정지
+    할 때마다 조작 통로가 끊기고 다시 붙기를 기다려야 한다.
+    """
+
+    async def watch(new_state: SessionState) -> None:
+        channel = state.control.get(session_id)
+        if channel is None or not channel.attached:
+            return
+        if is_control_phase(new_state):
+            return
+        await channel.close(
+            f"'{state_label(new_state)}' 국면에서는 미러에서 조작할 수 없습니다. "
+            "러너가 전진하는 중에 사람 조작이 끼어들면 같은 Step 이 두 번 돕니다."
+        )
+
+    return watch
+
+
+def _frame_size(w: SessionWork) -> tuple[float | None, float | None]:
+    """지금 표시 중인 프레임의 대상 화면 크기 (FR-333·FR-341).
+
+    `None` 이면 프레임을 한 장도 받지 못한 상태다 — 그 상태에서는 좌표를 보낼 근거가
+    없으므로 포인터 사건이 거절된다.
+    """
+    if w.mirror is None:
+        return None, None
+    frame = w.mirror.last_frame()
+    if frame is None:
+        return None, None
+    width, height = frame.get("width"), frame.get("height")
+    if not isinstance(width, (int, float)) or not isinstance(height, (int, float)):
+        return None, None
+    return float(width), float(height)
+
+
+def _open_tabs(w: SessionWork) -> set[int]:
+    """조작을 받을 수 있는 탭 번호들. 닫힌 탭은 뺀다 (FR-341)."""
+    return {t.tab_index for t in w.session.tabs if not t.closed}
+
+
+async def _close_control_channel(state: AppState, session_id: str, reason: str) -> None:
+    """세션이 끝났다. 채널을 닫는다 (FR-347).
+
+    **마지막 프레임이 남아 있어도 조작을 전달하지 않는다.** 보낼 대상이 없기 때문이다.
+    """
+    with contextlib.suppress(Exception):
+        await state.control.drop(session_id, reason)
 
 
 def require_paused(w: SessionWork) -> None:
@@ -604,9 +666,15 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
 
     # 미러와 유실 감지는 모드와 무관하게 붙인다 — 미러는 모든 활성 상태에서 돌아야 하고
     # (FR-047d), 세션 유실은 어느 상태에서든 감지해야 한다 (FR-041).
-    work.loss_watcher = SessionLossWatcher(session, on_lost=_loss_handler(session.session_id))
+    work.loss_watcher = SessionLossWatcher(
+        session, on_lost=_loss_handler(state, session.session_id)
+    )
     work.loss_watcher.attach()
     work.mirror = MirrorController(session)
+    # 010 FR-342 — 국면이 조작 채널의 개폐를 정한다. 채널이 상태를 감시하는 것이 아니라
+    # **상태가 채널에 알린다.** 반대로 두면 그 사이에 관찰 국면으로 열린 채널이 남는 창이
+    # 생기고, 그 창에서 사람 조작이 러너와 겹친다 (FR-315).
+    session.observe_state(_control_phase_watcher(state, session.session_id))
 
     if body.mode == "record":
         await session.apply(Command.BEGIN_RECORD)
@@ -944,7 +1012,7 @@ async def _start_runner(
     runner.start()
 
 
-def _loss_handler(session_id: str):  # noqa: ANN201 - LossHandler 를 만든다
+def _loss_handler(state: AppState, session_id: str):  # noqa: ANN201 - LossHandler 를 만든다
     """세션 유실 뒷정리. FR-041a~c.
 
     실행 중이던 태스크를 세우고 **그때까지의 Step별 결과를 보존**한다. 결과를 버리면
@@ -961,6 +1029,8 @@ def _loss_handler(session_id: str):  # noqa: ANN201 - LossHandler 를 만든다
         if w.engine is not None:
             with contextlib.suppress(Exception):
                 await w.engine.finalize(False, session_lost=True)
+        # 010 FR-347 — 세션이 유실됐다. 남은 마지막 프레임을 클릭해도 보낼 대상이 없다.
+        await _close_control_channel(state, session_id, reason)
         if w.mirror is not None:
             with contextlib.suppress(Exception):
                 await w.mirror.stop(reason)
@@ -1476,6 +1546,9 @@ async def stop(session_id: str, state: State) -> SessionView:
 
     w.recorder.stop()
     await _cancel_agent(w)
+    # 010 FR-347 — 세션이 끝나면 조작을 받지 않는다. 미러를 세우기 **전에** 닫는다:
+    # 순서가 반대면 프레임이 멈춘 사이에 마지막 조작이 들어올 수 있다.
+    await _close_control_channel(state, session_id, "세션을 종료했습니다.")
     if w.mirror is not None:
         await w.mirror.stop("세션을 종료했습니다.")
     if w.runner is not None:
@@ -1516,6 +1589,7 @@ async def discard(session_id: str, state: State) -> None:
 
     w.recorder.stop()
     await _cancel_agent(w)
+    await _close_control_channel(state, session_id, "세션을 종료했습니다.")
     if w.mirror is not None:
         await w.mirror.stop("세션을 종료했습니다.")
     if w.runner is not None:
@@ -1602,3 +1676,121 @@ async def session_events(websocket: WebSocket, session_id: str) -> None:
         pass
     finally:
         hub.disconnect(websocket)
+
+
+# ─── WebSocket (조작, 양방향) ──────────────────────────────────────────────
+#
+# 010 · contracts/mirror-control.md §2. **위 관찰 소켓과 별개의 소켓이다** — 그쪽의
+# 단방향 계약은 그대로 유지된다 (research R4). 한 소켓이 프레임 밀기와 조작 받기를 같이
+# 하면 조작 폭주가 프레임 전달을 막고 그 역도 성립한다 (FR-336).
+
+
+@router.websocket("/{session_id}/control")
+async def session_control(websocket: WebSocket, session_id: str) -> None:
+    """조작 사건을 받아 대상 브라우저로 흘린다 (FR-314 · contracts §2).
+
+    **조작 국면에서만 수립된다** (FR-342). 세션이 없거나 관찰 국면이면 수립 자체를
+    거절한다 — 화면 단에서 막는 것으로 충분하지 않다.
+
+    **세션당 하나** (명세 Out of Scope — 한 세션당 한 조작자). 이미 열려 있으면 새 접속을
+    거절한다. 둘이 붙으면 같은 화면에 두 사람의 조작이 섞이고, 어느 조작이 어느 Step 이
+    되었는지 아무도 답할 수 없다.
+
+    **성공 응답을 보내지 않는다** (contracts §5 불변식 5). 성공의 증거는 프레임이다.
+    거절과 채널 상태만 돌려준다.
+    """
+    state: AppState = websocket.app.state.itb
+
+    w = _WORK.get(session_id)
+    if w is None:
+        await websocket.close(code=4404, reason="세션이 이미 끝났습니다.")
+        return
+    if not is_control_phase(w.session.state):
+        await websocket.close(
+            code=4403,
+            reason=f"'{state_label(w.session.state)}' 국면에서는 미러에서 조작할 수 없습니다.",
+        )
+        return
+
+    channel = state.control.channel(session_id)
+    if channel.attached:
+        await websocket.close(code=4409, reason="이 세션은 이미 다른 곳에서 조작 중입니다.")
+        return
+
+    controller = await w.mirror.attach_input() if w.mirror is not None else None
+    await websocket.accept()
+    await channel.open(websocket, controller)
+    await websocket.send_json(state_message(ChannelState.OPEN, None))
+
+    try:
+        while True:
+            event = await websocket.receive_json()
+            await _handle_control_event(state, session_id, event)
+    except WebSocketDisconnect:
+        channel.detached()
+    except Exception:  # noqa: BLE001 - 조작 채널의 장애가 실행을 실패시키지 않는다 (FR-348)
+        channel.detached()
+    finally:
+        # 끌어놓기 도중 끊겼을 수 있다. 누른 채로 남은 포인터를 놓는다 (FR-318).
+        if w.mirror is not None:
+            with contextlib.suppress(Exception):
+                await w.mirror.detach_input()
+
+
+async def _handle_control_event(state: AppState, session_id: str, event: object) -> None:
+    """조작 사건 하나. **검증 → 전달**이고 그 사이에 아무것도 없다.
+
+    Step 을 만들지 않는다 (헌법 원칙 I). 조작은 대상 브라우저의 입력이 될 뿐이고, Step 은
+    대상 페이지의 리코더가 만든다 — 주입한 입력이 페이지에서 `isTrusted: true` 이벤트가
+    되기 때문에 미러 조작과 창 조작이 리코더에게 구분되지 않는다 (research R1).
+    """
+    channel = state.control.get(session_id)
+    if channel is None:
+        return
+    w = _WORK.get(session_id)
+    if w is None:
+        await channel.close("세션이 이미 끝났습니다.")
+        return
+
+    if not channel.can_accept(w.session.state):
+        await channel.send_rejection(
+            ControlRejected(
+                f"'{state_label(w.session.state)}' 국면에서는 조작을 전달하지 않습니다."
+                if not is_control_phase(w.session.state)
+                else "지금은 화면이 끊겨 조작을 전달할 수 없습니다."
+            )
+        )
+        return
+
+    width, height = _frame_size(w)
+    try:
+        clean = validate(event, frame_width=width, frame_height=height, tabs=_open_tabs(w))
+    except ControlRejected as exc:
+        await channel.send_rejection(exc)
+        return
+
+    # FR-317 — **보고 있는 탭**에 보낸다. 표시 탭과 조작 대상이 갈리면 사용자가 보지 않는
+    # 화면이 조작된다. 요청한 탭이 표시 탭과 다르면 거절한다 — 조용히 다른 탭에 보내지 않는다.
+    mirror = w.mirror
+    controller = mirror.input if mirror is not None else None
+    if controller is None:
+        await channel.send_rejection(
+            ControlRejected("조작 통로가 준비되지 않았습니다.", clean["kind"])
+        )
+        return
+    if clean["tab"] != controller.tab_index:
+        await channel.send_rejection(
+            ControlRejected(
+                f"지금 보고 있는 탭은 {controller.tab_index} 입니다. "
+                "보고 있지 않은 탭은 조작하지 않습니다.",
+                clean["kind"],
+            )
+        )
+        return
+
+    try:
+        await controller.dispatch(clean)
+    except Exception as exc:  # noqa: BLE001 - 전달 실패가 실행을 실패시키지 않는다 (FR-348)
+        await channel.send_rejection(
+            ControlRejected(f"조작을 전달하지 못했습니다: {type(exc).__name__}", clean["kind"])
+        )

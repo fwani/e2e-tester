@@ -158,8 +158,15 @@ POST /api/sessions/{session_id}/control-surface
 { "type": "mirror_frame", "tab": 0,
   "data": "<base64 jpeg>",
   "width": 1600, "height": 1200,
-  "pageScale": 1, "offsetTop": 0, "seq": 1841 }
+  "pageScale": 1, "offsetTop": 0, "frameSeq": 1841 }
 ```
+
+> **정정 (T005 구현).** 이 문서는 프레임 일련번호를 `seq` 라 불렀다. 구현은 `frameSeq`
+> 로 둔다 — 이벤트 봉투가 이미 `seq` 를 쓰고 있고(`SessionEventHub.publish`), 프론트는
+> 그 값이 뒤로 가면 서버 재시작으로 읽어 전체 상태를 다시 받는다. 페이로드의 `seq` 는
+> 봉투의 것을 덮으므로, 이 이름을 그대로 쓰면 탭을 바꿀 때마다(프레임 번호가 1 로
+> 되돌아간다) 재동기화가 헛돈다. 클라이언트가 되돌려 보내는 필드가 이미 `frameSeq`
+> 이므로(data-model §1) 양쪽 이름이 같아지는 이점도 있다.
 
 `width`·`height` 의 의미는 **바뀌지 않는다** — 대상 화면 크기다. 프레임의 실제 픽셀
 크기는 보내지 않는다 (data-model §2).

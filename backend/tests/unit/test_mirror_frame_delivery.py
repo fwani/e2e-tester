@@ -226,3 +226,139 @@ async def test_stop_cancels_idle_watch() -> None:
     settled = page.shots
     await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
     assert page.shots == settled, "정지 후에도 화면을 찍고 있다"
+
+
+# ─── 010 FR-331: 좌표 변환의 근거가 세 경로 모두에 실린다 ───────────────────
+#
+# T008. 프레임을 내보내는 경로는 셋이다 — 스크린캐스트(`_forward`) · 강등 루프 ·
+# 무프레임 보충. 프론트는 어느 경로로 온 프레임인지 알 수 없으므로, **하나라도 필드를
+# 빠뜨리면 그 경로에서만 좌표가 어긋나고 원인이 드러나지 않는다.**
+
+
+GEOMETRY_FIELDS = ("width", "height", "pageScale", "offsetTop", "frameSeq")
+"""프레임마다 반드시 있어야 하는 것. `data`·`tab` 은 이전부터 있었다."""
+
+
+def _frames(events: list[tuple[str, dict]]) -> list[dict]:
+    return [payload for kind, payload in events if kind == "mirror_frame"]
+
+
+class ViewportPage(FakePage):
+    """뷰포트 크기를 아는 화면. 스크린샷 경로가 그 값을 실어야 한다 (T006)."""
+
+    def __init__(self, width: int = 1600, height: int = 1200) -> None:
+        super().__init__()
+        self.viewport_size = {"width": width, "height": height}
+
+
+@pytest.mark.asyncio
+async def test_screenshot_paths_carry_geometry() -> None:
+    """강등·무프레임 보충 경로가 좌표 변환의 근거를 함께 보낸다 (FR-331 · T006)."""
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+    page.context = None  # CDP 를 못 쓰는 환경 → 강등 경로
+    await cast.start()
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
+    await cast.stop()
+
+    frames = _frames(events)
+    assert frames, "강등 경로가 프레임을 내지 않았다"
+    for frame in frames:
+        missing = [f for f in GEOMETRY_FIELDS if f not in frame]
+        assert not missing, f"강등 프레임에 {missing} 가 없다 — 그 경로에서만 좌표가 어긋난다"
+
+
+@pytest.mark.asyncio
+async def test_screenshot_frames_report_the_viewport_not_the_request_cap() -> None:
+    """스크린샷 경로의 `width`·`height` 는 **대상 화면 크기**다 (T006 · data-model §2).
+
+    이전에는 `MAX_WIDTH`·`MAX_HEIGHT` 를 그대로 실었다. 그것은 스크린캐스트에 **요청하는
+    상한**이지 화면 크기가 아니다 — 실측에서 1280×800 을 요청해 1067×800 을 받았다
+    (research R3). 두 값이 다르므로 강등 프레임으로 좌표를 되돌리면 어긋난다.
+    """
+    page = ViewportPage(1600, 1200)
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+    page.context = None
+    await cast.start()
+    await cast.stop()
+
+    frames = _frames(events)
+    assert frames
+    assert frames[0]["width"] == 1600
+    assert frames[0]["height"] == 1200
+
+
+@pytest.mark.asyncio
+async def test_frame_seq_increases_within_a_tab() -> None:
+    """프레임 번호가 증가한다. 조작 사건의 `frameSeq` 가 이 값을 가리킨다 (data-model §1)."""
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+    page.context = None
+    await cast.start()
+    await asyncio.sleep(sc.IDLE_INTERVAL_S * 1.2)
+    await cast.stop()
+
+    seqs = [f["frameSeq"] for f in _frames(events)]
+    assert len(seqs) >= 2, "번호를 비교할 프레임이 모자라다"
+    assert seqs == sorted(seqs), f"프레임 번호가 뒤로 갔다: {seqs}"
+    assert len(set(seqs)) == len(seqs), f"같은 번호를 두 번 썼다: {seqs}"
+
+
+@pytest.mark.asyncio
+async def test_screencast_path_reads_geometry_from_metadata() -> None:
+    """스크린캐스트 경로는 `metadata` 에서 배율·오프셋을 읽는다 (T005 · research R3).
+
+    프론트가 추정해서는 안 된다는 것이 FR-331 이다. 값이 1·0 이 아닌 환경을 여기서만
+    재현할 수 있다 — 실제 브라우저로는 그 환경을 만들 수 없다.
+    """
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+
+    await cast._forward(
+        {
+            "data": "ZnJhbWU=",
+            "sessionId": "s1",
+            "metadata": {
+                "deviceWidth": 1600,
+                "deviceHeight": 1200,
+                "pageScaleFactor": 2.5,
+                "offsetTop": 64,
+            },
+        }
+    )
+
+    frames = _frames(events)
+    assert len(frames) == 1
+    assert frames[0]["width"] == 1600
+    assert frames[0]["height"] == 1200
+    assert frames[0]["pageScale"] == 2.5
+    assert frames[0]["offsetTop"] == 64
+
+
+@pytest.mark.asyncio
+async def test_unusable_scale_falls_back_to_one() -> None:
+    """읽을 수 없는 배율은 1 로 붙는다. **0 을 그대로 넘기면 프론트가 0 으로 나눈다.**
+
+    배율은 역변환식의 분모다 (data-model §2). 미러가 낸 값 하나가 프론트의 좌표 계산을
+    무한대로 만드는 경로를 두지 않는다.
+    """
+    page = ViewportPage()
+    events, emit = collector()
+    cast = TabScreencast(page, 0, emit)
+
+    for bad in (0, -1, None, "글자", float("nan")):
+        await cast._forward(
+            {
+                "data": "ZnJhbWU=",
+                "sessionId": "s1",
+                "metadata": {"deviceWidth": 800, "deviceHeight": 600, "pageScaleFactor": bad},
+            }
+        )
+
+    for frame in _frames(events):
+        assert frame["pageScale"] == 1.0, f"쓸 수 없는 배율이 그대로 나갔다: {frame['pageScale']}"
+        assert frame["offsetTop"] == 0.0
