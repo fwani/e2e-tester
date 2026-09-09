@@ -29,7 +29,12 @@ import type { RepickSlot } from "../../api/client";
 import { InlineSecretInput, referenceName } from "../InlineSecretInput";
 import { LocatorPriorityTable } from "../LocatorPriorityTable";
 import { isShown, type CapabilityMap } from "../../lib/capabilities";
-import { SENSITIVE_NO_VALUE, stepNumber, uploadFileNote } from "../../lib/wording";
+import {
+  MISSING_SHOT_REASON,
+  SENSITIVE_NO_VALUE,
+  stepNumber,
+  uploadFileNote,
+} from "../../lib/wording";
 import type { Step } from "../../types/generated/step";
 import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
@@ -123,6 +128,17 @@ export function StepDetail({
   extraFields,
 }: StepDetailProps) {
   const step = detail.step;
+  /**
+   * 그 화면 파일이 실제로는 없었다 (011 FR-396b).
+   *
+   * 결과 파일에 경로가 있어도 파일은 사라졌을 수 있다 — 보관이 테스트당 최근 1회분이므로,
+   * 지난 실행의 결과를 열면 그 화면은 이미 이번 실행이 지웠다.
+   *
+   * **지목이 바뀌면 되돌린다.** 한 Step 에서 깨졌다고 다음 Step 까지 없는 것으로 두면,
+   * 있는 화면을 보여 주지 못한다.
+   */
+  const [shotBroken, setShotBroken] = useState(false);
+  useEffect(() => setShotBroken(false), [shot?.url]);
   const [label, setLabel] = useState(step?.label ?? "");
   const [value, setValue] = useState(step && hasValue(step) ? step.value : "");
   const [fileName, setFileName] = useState(step && hasFileName(step) ? step.file_name : "");
@@ -393,12 +409,23 @@ export function StepDetail({
             <div className="pane-hd lbl band" style={{ padding: "0 12px" }}>
               이 STEP 이 끝난 화면
             </div>
-            {shot.url !== null ? (
+            {shot.url !== null && !shotBroken ? (
               <img
                 data-step-shot-image
                 src={shot.url}
                 alt={`${stepNumber(detail.index)} 이 끝난 시점의 화면`}
                 style={{ display: "block", width: "100%", height: "auto" }}
+                /*
+                  011 FR-396b — **파일이 사라졌을 수 있다.**
+
+                  결과 파일에는 경로가 있는데 그 실행의 화면은 이후 실행이 지웠다
+                  (보관은 테스트당 최근 1회분이다). 그대로 두면 깨진 이미지 아이콘이
+                  뜨고, 그것은 제품이 고장난 것으로 읽힌다 — UX U-03 이 정확히 그
+                  형태였다.
+
+                  깨지면 사유로 바꾼다. 「없다」를 말할 수 있으면 깨진 그림을 보이지 않는다.
+                */
+                onError={() => setShotBroken(true)}
               />
             ) : (
               <div
@@ -406,7 +433,7 @@ export function StepDetail({
                 className="why"
                 style={{ padding: "12px" }}
               >
-                {shot.note}
+                {shotBroken ? MISSING_SHOT_REASON.superseded : shot.note}
               </div>
             )}
           </div>

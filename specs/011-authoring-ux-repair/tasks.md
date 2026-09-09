@@ -209,13 +209,17 @@ Step 별로 본다.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T057 [P] 개발 문서를 갱신한다 — `docs/DEVELOPMENT.md`: `.runs/<ID>/steps/` 구조와 「테스트당 최근 실행 1회분」 보관 규칙, 저장·이름의 새 자리
-- [ ] T058 [P] 사람만 확인할 수 있는 항목을 등록한다 — `docs/PENDING-HUMAN-VERIFICATION.md`: 상세가 대상 앱을 덮는 정도가 실제로 받아들일 만한가(clarify 결정 1 의 사후 확인), 체크 칸과 결말 아이콘이 눈으로 혼동되지 않는가(UC-011-13)
-- [ ] T059 시간 초과 판정 회귀를 고정한다 — `backend/tests/integration/test_timeout_unaffected_by_shots.py`: 같은 Step 을 촬영 켠 상태·끈 상태로 돌려 `duration_ms` 와 시간 초과 판정이 같은지 본다. 촬영 시간이 판정에 들어가면 안 된다 (SC-611 · FR-395)
-- [ ] T060 쓰이지 않게 된 문구·상수를 정리한다 — `frontend/src/lib/wording.ts`·`ActionPalette.tsx` 의 props: 자리 이동으로 남은 것을 화면에 쓰거나 근거를 남기고 지운다 (010 T092 와 같은 성격)
-- [ ] T061 전체 자동 검증을 돌린다 — [quickstart.md](quickstart.md) §1 의 7개 명령 전부. 개정된 기존 검증 10건이 함께 통과해야 한다
+- [X] T057 [P] 개발 문서를 갱신한다 — `docs/DEVELOPMENT.md`: `.runs/<ID>/steps/` 구조와 「테스트당 최근 실행 1회분」 보관 규칙, 저장·이름의 새 자리
+- [X] T058 [P] 사람만 확인할 수 있는 항목을 등록한다 — `docs/PENDING-HUMAN-VERIFICATION.md`: 상세가 대상 앱을 덮는 정도가 실제로 받아들일 만한가(clarify 결정 1 의 사후 확인), 체크 칸과 결말 아이콘이 눈으로 혼동되지 않는가(UC-011-13)
+- [X] T059 시간 초과 판정 회귀를 고정한다 — `backend/tests/integration/test_timeout_unaffected_by_shots.py`: 같은 Step 을 촬영 켠 상태·끈 상태로 돌려 `duration_ms` 와 시간 초과 판정이 같은지 본다. 촬영 시간이 판정에 들어가면 안 된다 (SC-611 · FR-395)
+- [X] T060 쓰이지 않게 된 문구·상수를 정리한다 — `frontend/src/lib/wording.ts`·`ActionPalette.tsx` 의 props: 자리 이동으로 남은 것을 화면에 쓰거나 근거를 남기고 지운다 (010 T092 와 같은 성격)
+- [X] T061 전체 자동 검증을 돌린다 — [quickstart.md](quickstart.md) §1 의 7개 명령 전부. 개정된 기존 검증 10건이 함께 통과해야 한다
 - [ ] T062 손 검증을 돌린다 — [quickstart.md](quickstart.md) §2 의 다섯 이야기와 §3 의 호환 확인 1·2
-- [ ] T063 계약이 실제로 세지는지 확인한다 — [contracts/ui-contract.md](contracts/ui-contract.md) §8 의 9개 항목이 각각 자동 검사로 세지고 있는지 대조한다. 세지 않는 것이 있으면 검사를 더한다
+      **열어 둔다.** 구현자가 자기 구현을 판정하면 대조가 아니라 자기 확인이 된다
+      (002 T099 · 001 T156 이 같은 이유로 사람에게 넘긴 항목이다). 자동 검증은 전부
+      통과했고 준비물은 다 있다 — 판정 칸만 비어 있다. 사람이 봐야 하는 세 가지는
+      `docs/PENDING-HUMAN-VERIFICATION.md` 11번에 절차까지 적어 두었다.
+- [X] T063 계약이 실제로 세지는지 확인한다 — [contracts/ui-contract.md](contracts/ui-contract.md) §8 의 9개 항목이 각각 자동 검사로 세지고 있는지 대조한다. 세지 않는 것이 있으면 검사를 더한다
 
 ---
 

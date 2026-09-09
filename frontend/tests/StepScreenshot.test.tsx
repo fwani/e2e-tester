@@ -151,6 +151,46 @@ describe("UC-011-21 — 없으면 사유를 말한다", () => {
     },
   );
 
+  /**
+   * FR-396b — **파일이 사라졌을 수 있다.**
+   *
+   * 보관이 테스트당 최근 1회분이므로, 지난 실행의 결과를 열면 그 화면은 이미 이번 실행이
+   * 지웠다. 결과 파일에는 경로가 남아 있으므로 그대로 두면 **깨진 이미지 아이콘**이 뜨고,
+   * 그것은 제품이 고장난 것으로 읽힌다 — UX U-03 이 정확히 그 형태였다.
+   */
+  it("화면 파일이 사라졌으면 깨진 그림 대신 사유를 보여 준다", async () => {
+    await renderResult([
+      stepResult({ step_id: "st-1", index: 0, screenshot: ".runs/TC-001/steps/0.png" }),
+    ]);
+    const img = image()!;
+    expect(img).not.toBeNull();
+
+    // 브라우저가 파일을 못 받았을 때 일어나는 일을 그대로 일으킨다.
+    img.dispatchEvent(new Event("error"));
+
+    await waitFor(() => expect(image(), "깨진 그림이 남아 있다").toBeNull());
+    expect(missing()?.textContent).toBe(MISSING_SHOT_REASON.superseded);
+  });
+
+  it("다른 Step 을 고르면 깨짐 상태가 되돌아간다", async () => {
+    const user = userEvent.setup();
+    await renderResult([
+      stepResult({ step_id: "st-1", index: 0, screenshot: ".runs/TC-001/steps/0.png" }),
+      stepResult({
+        step_id: "st-2",
+        index: 1,
+        label: "두 번째",
+        screenshot: ".runs/TC-001/steps/1.png",
+      }),
+    ]);
+    image()!.dispatchEvent(new Event("error"));
+    await waitFor(() => expect(image()).toBeNull());
+
+    await user.click(screen.getByRole("button", { name: "두 번째" }));
+    // 한 Step 에서 깨졌다고 다음 Step 까지 없는 것으로 두면 있는 화면을 보여 주지 못한다.
+    await waitFor(() => expect(image(), "다음 Step 의 화면이 가려졌다").not.toBeNull());
+  });
+
   it("실패한 Step 도 화면을 갖는다 — 실패 시점 산출물과 같은 파일이다 (FR-394)", async () => {
     await renderResult([
       stepResult({

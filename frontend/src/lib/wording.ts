@@ -904,18 +904,31 @@ export const NO_DELETE_SELECTION = "지울 Step 을 먼저 고르세요";
 /* ─── 011 Step 별 스크린샷 (계약 §6 · FR-391·FR-393·FR-396b) ─────────────── */
 
 /**
- * 스크린샷이 없는 사유 (UC-011-21). **네 상황이 서로 다른 말을 쓴다.**
+ * 스크린샷이 없는 사유 (UC-011-21).
  *
  * 「없습니다」 하나로 뭉개면 사용자는 제품이 못 찍은 것인지 자기가 못 볼 이유가 있는
- * 것인지 알 수 없다. `sensitive` 는 특히 갈라야 한다 — 그것은 실패가 아니라 **의도된
- * 보호**이며, 실패로 읽히면 사용자가 없는 결함을 찾는다.
+ * 것인지 알 수 없다. 특히 민감 값 보호는 **실패가 아니므로**, 실패로 읽히면 사용자가
+ * 없는 결함을 찾는다.
+ *
+ * ## 왜 둘뿐인가
+ *
+ * UC-011-21 은 상황을 넷으로 적었지만 **화면이 고르는 것은 둘뿐이다.** 나머지 둘은 다른
+ * 방식으로 답한다 — 그 편이 문구보다 정확하다.
+ *
+ * | 상황 | 누가 답하는가 |
+ * |---|---|
+ * | 민감 값이 있어 남기지 않음 | **서버**가 `screenshot_note` 로 구체적인 문장을 준다 |
+ * | 실행 대상이 아니었음 | **판 자체를 그리지 않는다** — 「없다」가 아니라 「해당 없다」다 |
+ * | 촬영 실패 | `capture_failed` — 서버가 사유를 남기지 않았을 때의 바닥 |
+ * | 이후 실행으로 대체 | `superseded` — 결과에는 경로가 있는데 파일이 사라졌다 |
+ *
+ * 화면이 고르지 않는 것을 사전에 남겨 두면, 다음 사람이 「이 분기는 언제 도는가」를
+ * 코드에서 찾다가 못 찾는다.
  */
-export type MissingShotReason = "sensitive" | "capture_failed" | "not_attempted" | "superseded";
+export type MissingShotReason = "capture_failed" | "superseded";
 
 export const MISSING_SHOT_REASON: Record<MissingShotReason, string> = {
-  sensitive: "민감 값이 화면에 있어 남기지 않았습니다",
   capture_failed: "이 Step 의 화면을 남기지 못했습니다",
-  not_attempted: "이 실행에서 실행 대상이 아니어서 남을 화면이 없습니다",
   superseded: "이후 실행으로 대체되어 이 실행의 화면은 남아 있지 않습니다",
 };
 
