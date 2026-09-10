@@ -255,6 +255,7 @@ def write_workbook(sheets: list[SheetSpec]) -> bytes:
     header_font = Font(bold=True)
     header_fill = PatternFill("solid", fgColor="EEEEEE")
     wrap = Alignment(vertical="top", wrap_text=True)
+    center = Alignment(vertical="center", horizontal="center")
 
     for spec in sheets:
         ws = wb.create_sheet(title=spec.name)
@@ -276,6 +277,19 @@ def write_workbook(sheets: list[SheetSpec]) -> bytes:
             for cell in row_cells:
                 cell.alignment = wrap
 
+        # 결과 칸 서식 (US4 · FR-006a). **다섯 상태가 눈으로 구분돼야 한다** — 이 파일은
+        # 회의 자료가 되고, 거기서 통과와 부분 통과가 같아 보이면 보고가 틀린다.
+        if spec.outcome_column is not None:
+            letter = get_column_letter(spec.outcome_column + 1)
+            for pos in range(2, ws.max_row + 1):
+                cell = ws[f"{letter}{pos}"]
+                style = _OUTCOME_STYLE.get(str(cell.value or ""))
+                cell.alignment = center
+                if style is None:
+                    continue
+                cell.fill = PatternFill("solid", fgColor=style[0])
+                cell.font = Font(bold=True, color=style[1])
+
     buffer = io.BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
@@ -283,3 +297,16 @@ def write_workbook(sheets: list[SheetSpec]) -> bytes:
 
 _WIDTHS = {0: 12, 1: 28, 2: 34, 3: 12, 4: 46, 5: 46, 6: 10}
 """열 너비. 「수행 절차」·「기대 결과」는 여러 줄이라 넓게 잡는다 (US4)."""
+
+_OUTCOME_STYLE: dict[str, tuple[str, str]] = {
+    "P": ("DFF3E3", "1B5E20"),
+    "F": ("FBE3E3", "8E1B1B"),
+    "P(부분)": ("FFF3D6", "7A5200"),
+    "중지": ("EDEDED", "4A4A4A"),
+}
+"""결과 표기 → (배경, 글자) 색 (US4 · FR-006a).
+
+**색만으로 구분하지 않는다.** 칸 안에 글자가 이미 있고(`P`·`F`·`P(부분)`·`중지`) 색은
+그것을 거드는 것뿐이다 — 색을 못 보는 사람도 표를 읽을 수 있어야 한다. 미실행은 빈 칸이라
+여기 없다.
+"""

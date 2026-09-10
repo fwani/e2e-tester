@@ -101,3 +101,57 @@ class StructureGateTests:
             data[i] = 0
         with pytest.raises(ArchiveRejected):
             read_sheets(bytes(data))
+
+
+class XmlBombTests:
+    """XML 폭탄 방어 (014 T081 · research R1 미해결 항목의 해소).
+
+    `.xlsx` 안은 XML 이다. 압축 크기·해제 총량 검사를 다 통과해도, 실체 참조가 중첩된
+    작은 XML 하나가 파싱 중에 메모리를 수 GB 로 부풀릴 수 있다 (billion laughs).
+
+    **openpyxl 은 `defusedxml` 이 설치돼 있을 때만 그것을 막는다** (`openpyxl.xml` 의
+    `defusedxml_available`). 선언하지 않으면 조용히 표준 파서로 떨어지고 방어가 사라진다 —
+    그래서 `pyproject.toml` 에 런타임 의존성으로 명시했고, 여기서 그 사실을 못박는다.
+    """
+
+    def test_defusedxml_이_실제로_쓰인다(self) -> None:
+        from openpyxl.xml import DEFUSEDXML
+
+        assert DEFUSEDXML, (
+            "openpyxl 이 defusedxml 을 쓰지 않는다. 의존성이 빠졌거나 "
+            "OPENPYXL_DEFUSEDXML 환경변수가 꺼져 있다 — XML 폭탄 방어가 사라진 상태다."
+        )
+
+    def test_파서가_defusedxml_에서_온다(self) -> None:
+        from openpyxl.xml.functions import fromstring
+
+        assert fromstring.__module__.startswith("defusedxml")
+
+    def test_실체_참조가_든_파일을_거절한다(self) -> None:
+        # 정상적인 스프레드시트에는 DOCTYPE 도 ENTITY 도 없다.
+        bomb = (
+            '<?xml version="1.0"?>'
+            '<!DOCTYPE r ['
+            '<!ENTITY a "aaaaaaaaaa">'
+            '<!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">'
+            '<!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">'
+            ']>'
+            "<worksheet>&c;</worksheet>"
+        )
+        data = _repack_with(build_xlsx({"s": [["TC-001", "가"]]}), bomb)
+        with pytest.raises(Exception) as exc:  # noqa: B017 — 어떤 방식으로든 막히면 된다
+            read_sheets(data)
+        # defusedxml 은 EntitiesForbidden 을, 우리 방어는 ArchiveRejected 를 낸다.
+        assert exc.type.__name__ in ("EntitiesForbidden", "ArchiveRejected", "DTDForbidden")
+
+
+def _repack_with(original: bytes, sheet_xml: str) -> bytes:
+    """워크북의 첫 시트 XML 을 바꿔치기한다."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(original)) as src, zipfile.ZipFile(out, "w") as dst:
+        for info in src.infolist():
+            payload = src.read(info.filename)
+            if info.filename.startswith("xl/worksheets/sheet"):
+                payload = sheet_xml.encode("utf-8")
+            dst.writestr(info.filename, payload)
+    return out.getvalue()

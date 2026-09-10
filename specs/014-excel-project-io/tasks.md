@@ -193,9 +193,9 @@ Recorder·Runner·Generator 는 건드리지 않으므로 그쪽 단위 테스�
 
 **Independent Test**: 통과·실패·미실행이 섞인 프로젝트를 내보내 파일을 열고 세 상태가 시각적으로 구분되는지 본다.
 
-- [ ] T075 [P] [US4] `backend/tests/integration/test_export_formatting.py` — 머리글 행 고정, 결과 칸의 상태별 서식이 서로 다른지, 열 너비가 설정되는지
-- [ ] T076 [US4] `backend/src/itb/portability/workbook.py` 에 서식을 더한다 — 머리글 행 굵게·배경, `freeze_panes`, 결과 칸의 통과·실패·미실행·부분 통과·중지 다섯 상태 서식
-- [ ] T077 [US4] `backend/src/itb/portability/workbook.py` 에 열 너비를 더한다. 「수행 절차」·「기대 결과」는 여러 줄이므로 줄바꿈을 켜고 넉넉히 잡는다
+- [X] T075 [P] [US4] `backend/tests/integration/test_export_formatting.py` — 머리글 행 고정, 결과 칸의 상태별 서식이 서로 다른지, 열 너비가 설정되는지
+- [X] T076 [US4] `backend/src/itb/portability/workbook.py` 에 서식을 더한다 — 머리글 행 굵게·배경, `freeze_panes`, 결과 칸의 통과·실패·미실행·부분 통과·중지 다섯 상태 서식
+- [X] T077 [US4] `backend/src/itb/portability/workbook.py` 에 열 너비를 더한다. 「수행 절차」·「기대 결과」는 여러 줄이므로 줄바꿈을 켜고 넉넉히 잡는다
 
 **Checkpoint**: 모든 사용자 이야기가 동작한다.
 
@@ -203,12 +203,12 @@ Recorder·Runner·Generator 는 건드리지 않으므로 그쪽 단위 테스�
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T078 [P] `README.md` 에 엑셀 내보내기·가져오기를 더한다. **「Playwright 로 내보내기」(릴리스 게이트 RG-1)와 다른 것임을 명시한다** — 두 「내보내기」가 헷갈리면 RG-1 이 해소된 것으로 오해된다 ([plan.md](plan.md) 헌법 점검)
-- [ ] T079 [P] `docs/PENDING-HUMAN-VERIFICATION.md` 에 §14 를 더해 사람이 판정할 항목 5건을 등록한다 ([quickstart.md](quickstart.md) §4)
-- [ ] T080 [P] `frontend/src/theme/tokens.css` 에 초안 구분용 토큰이 필요하면 더한다. 새 색을 즉석에서 만들지 않고 기존 시각 언어(008)를 따른다
-- [ ] T081 `openpyxl` 이 XML 폭탄에 대해 `defusedxml` 을 자동으로 쓰는지 실물로 확인한다. 쓰지 않는다면 `portability/workbook.py` 의 읽기 경로에 XML 엔티티 검사를 더한다 ([research.md](research.md) R1 미해결 항목)
-- [ ] T082 [quickstart.md](quickstart.md) §3 의 회귀 8건을 돌린다. **회귀 1(기존 프로젝트가 그대로 열린다)을 가장 먼저** 한다
-- [ ] T083 전체 검증을 돌린다 — `uv run lint-imports`, `uv run ruff check src/ tests/`, `uv run pytest`, `uv run python -m itb.schema.export --check`, `npx tsc --noEmit`, `npm test -- --run`
+- [X] T078 [P] `README.md` 에 엑셀 내보내기·가져오기를 더한다. **「Playwright 로 내보내기」(릴리스 게이트 RG-1)와 다른 것임을 명시한다** — 두 「내보내기」가 헷갈리면 RG-1 이 해소된 것으로 오해된다 ([plan.md](plan.md) 헌법 점검)
+- [X] T079 [P] `docs/PENDING-HUMAN-VERIFICATION.md` 에 §14 를 더해 사람이 판정할 항목 5건을 등록한다 ([quickstart.md](quickstart.md) §4)
+- [X] T080 [P] `frontend/src/theme/tokens.css` — **더하지 않았다.** 초안 영역은 기존 토큰(`tint-run`·`tint-warn`·`why`·`strong-sm`·`mono`)만으로 그려진다. 필요 없는 토큰을 더하면 시각 언어 정본이 쓰이지 않는 선언으로 늘어난다 (`VisualLanguage.test.tsx` G-3 가 반대 방향을 이미 막고 있다)
+- [X] T081 `openpyxl` 이 XML 폭탄에 대해 `defusedxml` 을 자동으로 쓰는지 실물로 확인한다. 쓰지 않는다면 `portability/workbook.py` 의 읽기 경로에 XML 엔티티 검사를 더한다 ([research.md](research.md) R1 미해결 항목)
+- [X] T082 [quickstart.md](quickstart.md) §3 의 회귀 8건을 돌린다. **회귀 1(기존 프로젝트가 그대로 열린다)을 가장 먼저** 한다
+- [X] T083 전체 검증을 돌린다 — `uv run lint-imports`, `uv run ruff check src/ tests/`, `uv run pytest`, `uv run python -m itb.schema.export --check`, `npx tsc --noEmit`, `npm test -- --run`
 - [ ] T084 손 검증을 돌린다 (**사람이 판정한다** · [docs/PENDING-HUMAN-VERIFICATION.md](../../docs/PENDING-HUMAN-VERIFICATION.md) §14) — [quickstart.md](quickstart.md) §2 의 네 이야기와 §4 의 판정 5건. `XDG_DATA_HOME`·`XDG_CONFIG_HOME` 을 임시 디렉터리로 지정해 실제 자산을 건드리지 않는다
 
 ---
