@@ -49,7 +49,7 @@ tokens.css 에 남은 의미 클래스 수  ==  이 표의 「완료」 아닌 �
 | `.sm` | 1 | T027 | `ui/Button` size=sm 로 흡수 · 남은 사용은 다른 부품의 작은 변종 | 교체 |
 | `.row` | 54 | T025 | ui/Table · ui/Grid | 미착수 |
 | `.mono` | 45 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.chip` | 38 | T020 | ui/Chip · ui/Badge | 미착수 |
+| `.chip` | 38 | T020 | ui/Chip · ui/Badge | 구현 |
 | `.line` | 35 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.lbl` | 31 | T024 | ui/Field · ui/FileInput | 미착수 |
 | `.pane` | 29 | T023 | ui/Pane · ui/Header | 미착수 |
