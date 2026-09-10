@@ -395,7 +395,6 @@ function ProjectRow({
     <div
       className={`${first ? "" : "rule-top "}${item.accessible ? "" : "dim"}`.trim() || undefined}
       style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px" }}
-      data-project-row={item.root}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
