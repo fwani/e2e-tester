@@ -934,9 +934,6 @@ export function deleteTestsConfirm(names: string[]): string {
 /** 되돌릴 수 있다는 사실 (013 FR-437b). **`BULK_DELETE_IRREVERSIBLE` 의 반대다.** */
 export const TESTS_DELETE_REVERTIBLE = "휴지통으로 옮깁니다 · 되돌릴 수 있습니다";
 
-/** 고른 것이 없다 (013 FR-427). Step 쪽 문구와 나란히 둔다 */
-export const NO_TEST_DELETE_SELECTION = "지울 테스트를 먼저 고르세요";
-
 /** 되돌리는 방법 (013 FR-437b · UC-013-05) */
 export const TESTS_RESTORE_HINT =
   "되돌리려면 각 폴더의 .yaml 을 프로젝트의 tests/ 로 옮기세요.";

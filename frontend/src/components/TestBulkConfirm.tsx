@@ -1,5 +1,4 @@
 import {
-  NO_TEST_DELETE_SELECTION,
   TESTS_DELETE_REVERTIBLE,
   TESTS_RESTORE_HINT,
   deleteTestsConfirm,
@@ -172,13 +171,12 @@ export function TestSelectionBar({
       </button>
       <div className="spacer" />
       {extra}
-      <button
-        data-test-bulk-delete
-        className="btn sm danger"
-        onClick={onDelete}
-        disabled={busy}
-        title={selectedCount === 0 ? NO_TEST_DELETE_SELECTION : undefined}
-      >
+      {/*
+        「왜 못 누르는가」를 말할 자리가 없다 — **이 띠는 고른 것이 1개 이상일 때만
+        그려지기 때문이다** (UC-013-02 · SC-627). 0개일 때의 안내를 여기에 두면 닿을 수
+        없는 가지가 된다.
+      */}
+      <button data-test-bulk-delete className="btn sm danger" onClick={onDelete} disabled={busy}>
         선택한 항목 삭제
       </button>
     </div>
