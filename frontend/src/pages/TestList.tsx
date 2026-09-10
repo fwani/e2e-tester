@@ -38,7 +38,9 @@ import { createPortal } from "react-dom";
 import {
   ai,
   ApiError,
+  excel,
   groups as groupsApi,
+  saveBlob,
   tests,
   type AiAvailability,
   type SessionView,
@@ -157,6 +159,8 @@ export function TestList({
   const [filter, setFilter] = useState<OutcomeFilter>("all");
   const [recentFirst, setRecentFirst] = useState(true);
   const [error, setError] = useState<ErrorInfo | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState<{ filename: string; warnings: number } | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -645,6 +649,39 @@ export function TestList({
               >
                 번호 정리
               </button>
+
+              {/*
+                엑셀로 내보내기 (014 US1 · FR-001).
+
+                자리가 「번호 정리」 옆인 이유는 둘 다 **프로젝트 전체에 대한 조작**이기
+                때문이다. 걸러 보기와 무관하게 전부 나간다.
+
+                `btn primary` 를 쓰지 않는다 — 이 화면의 잉크 채움은 「테스트 만들기」
+                하나뿐이다 (이 파일 헤더바 주석).
+
+                「Playwright 로 내보내기」(릴리스 게이트 RG-1)와 **다른 것**이다.
+                그쪽은 아직 없고, 이름이 섞이지 않게 「엑셀로」를 앞에 둔다.
+              */}
+              <button
+                className="btn sm"
+                data-action="tests.export-excel"
+                disabled={busy || exporting}
+                onClick={() => {
+                  setError(null);
+                  setExported(null);
+                  setExporting(true);
+                  void excel
+                    .exportProject()
+                    .then(({ blob, filename, warnings }) => {
+                      saveBlob(blob, filename);
+                      setExported({ filename, warnings });
+                    })
+                    .catch((exc: unknown) => setError(describeError(exc)))
+                    .finally(() => setExporting(false));
+                }}
+              >
+                {exporting ? "내보내는 중…" : "엑셀로 내보내기"}
+              </button>
             </>
           )}
         </div>
@@ -692,6 +729,31 @@ export function TestList({
         )}
         {!isEmptyProject && renumbered !== null && (
           <RenumberedNotice result={renumbered} onDismiss={() => setRenumbered(null)} />
+        )}
+        {/*
+          내보내기 결과 (014 FR-008·FR-010·FR-013).
+
+          **경고가 있으면 그 사실을 말한다.** 시트 이름이 바뀌었거나 긴 칸이 잘렸는데
+          조용히 성공하면, 사용자는 자기가 쓴 그룹 이름을 파일에서 찾지 못하고 그 이유를
+          알 길이 없다.
+        */}
+        {exported !== null && (
+          <div
+            data-export-notice
+            role="status"
+            className={exported.warnings > 0 ? "tint-warn" : "tint-run"}
+            style={{ padding: "10px 12px", marginBottom: 10 }}
+          >
+            <div className="strong-sm">{exported.filename} 을 내려받았습니다.</div>
+            {exported.warnings > 0 && (
+              <div className="why" style={{ marginTop: 4 }}>
+                시트 이름이 바뀌었거나 긴 칸이 잘린 곳이 {exported.warnings}건 있습니다.
+              </div>
+            )}
+            <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setExported(null)}>
+              확인
+            </button>
+          </div>
         )}
         {!isEmptyProject && confirmingBulk && (
           <TestBulkConfirm

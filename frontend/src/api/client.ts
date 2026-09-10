@@ -1049,3 +1049,83 @@ export const health = () =>
   get<{ status: string; bind: string; project_open: boolean; active_sessions: number }>(
     "/api/health",
   );
+
+/* ─── 엑셀 통로 (014) ────────────────────────────────────────────────────── */
+
+export interface SheetRenameView {
+  group_name: string;
+  sheet_name: string;
+  reason: string;
+}
+
+export interface TruncationView {
+  test_id: string;
+  column: string;
+  kept_lines: number;
+  dropped_lines: number;
+}
+
+export interface ExportWarningsView {
+  sheet_renames: SheetRenameView[];
+  truncations: TruncationView[];
+  unreadable: string[];
+  test_count: number;
+  sheet_count: number;
+}
+
+/**
+ * `Content-Disposition` 에서 파일 이름을 읽는다.
+ *
+ * 서버는 ASCII 대체 이름(`filename=`)과 RFC 5987 이름(`filename*=UTF-8''…`)을 **둘 다**
+ * 싣는다 (014 research R9). 한글 이름을 살리려면 후자를 먼저 본다 — 전자는 한글이
+ * 떨어져 나간 나머지다.
+ */
+export function filenameFromDisposition(header: string | null, fallback: string): string {
+  if (!header) return fallback;
+  const extended = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (extended) {
+    try {
+      return decodeURIComponent(extended[1] ?? "") || fallback;
+    } catch {
+      /* 인코딩이 깨졌으면 아래 ASCII 이름으로 떨어진다 */
+    }
+  }
+  const plain = /filename="([^"]*)"/i.exec(header);
+  return plain?.[1] || fallback;
+}
+
+/**
+ * 받은 바이트를 사용자의 다운로드로 넘긴다.
+ *
+ * 이 저장소의 **첫 파일 내려받기**다. `<a href="/api/export">` 로 끝내지 않는 이유는,
+ * 그러면 `X-ITB-Project-Root` 헤더가 붙지 않아 서버의 프로젝트 대조를 지나칠 수 없기
+ * 때문이다 — 화면이 보여 주는 프로젝트와 서버가 연 프로젝트가 다를 때 조용히 남의 것을
+ * 받게 된다.
+ */
+export function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export const excel = {
+  /** 프로젝트를 워크북으로 내려받는다. 파일 이름은 서버가 정한다. */
+  exportProject: async (): Promise<{ blob: Blob; filename: string; warnings: number }> => {
+    const resp = await send("/api/export");
+    if (!resp.ok) throw apiErrorFromBody(resp.status, await resp.text());
+    const filename = filenameFromDisposition(
+      resp.headers.get("Content-Disposition"),
+      "itb-export.xlsx",
+    );
+    const warnings = Number(resp.headers.get("X-ITB-Export-Warnings") ?? 0);
+    return { blob: await resp.blob(), filename, warnings };
+  },
+
+  /** 내보내면 무엇이 바뀌는지 미리 본다. 파일을 만들지 않는다. */
+  warnings: () => get<ExportWarningsView>("/api/export/warnings"),
+};

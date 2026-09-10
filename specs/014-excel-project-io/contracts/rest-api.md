@@ -19,7 +19,13 @@
 
 ## 1. 내보내기
 
-### `GET /api/project/export`
+> **경로가 `/api/project` 아래가 아닌 이유** (구현 중 정정). 프로젝트 대조 가드는
+> `/api/project` 로 시작하는 경로를 제외한다 — 서버(`api/app.py` 의 `_project_guard`)와
+> 클라이언트(`client.ts` 의 `isProjectPath`) 양쪽이 그렇다. 프로젝트를 바꾸는 조작 자체를
+> 막으면 프로젝트를 옮길 수 없기 때문이다. 내보내기를 그 아래 두면 가드가 걸리지 않아,
+> 화면이 프로젝트 A 를 보여 주는데 서버가 B 를 연 상태에서 조용히 B 를 내보낸다.
+
+### `GET /api/export`
 
 열린 프로젝트 전체를 워크북 하나로 만들어 돌려준다. 프로젝트의 어떤 파일도 바꾸지 않는다(FR-012).
 
@@ -43,7 +49,7 @@ X-ITB-Export-Warnings: 2
 읽을 수 없는 테스트 정의가 있어도 내보내기는 성공한다. 그 테스트는 빠지고 경고에 잡힌다 —
 `GET /api/tests` 가 `problems` 로 같은 일을 하는 것과 같은 태도다.
 
-### `GET /api/project/export/warnings`
+### `GET /api/export/warnings`
 
 내보내기에서 무엇이 바뀌었는지 미리 본다. 파일을 만들지 않는다.
 

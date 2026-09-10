@@ -33,6 +33,7 @@ from itb.api.errors import (
 from itb.api.routes import (
     ai,
     control,
+    excel,
     fs,
     groups,
     preferences_routes,
@@ -77,6 +78,8 @@ ROUTERS = (
     tabs.router,
     secrets_routes.router,
     preferences_routes.router,
+    # 014 엑셀 통로 — 내보내기·가져오기
+    excel.router,
 )
 
 

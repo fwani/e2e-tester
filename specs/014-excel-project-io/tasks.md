@@ -99,21 +99,21 @@ Recorder·Runner·Generator 는 건드리지 않으므로 그쪽 단위 테스�
 
 > 먼저 쓰고, 실패하는 것을 확인한 뒤 구현한다.
 
-- [ ] T027 [P] [US1] `backend/tests/contract/test_excel_export_api.py` — `GET /api/project/export` 의 200 응답(MIME·`Content-Disposition` 두 이름·`X-ITB-Export-Warnings`), 404 `PROJECT_NOT_OPEN`, `GET /api/project/export/warnings` 의 응답 형태 ([contracts/rest-api.md](contracts/rest-api.md) §1)
-- [ ] T028 [P] [US1] `backend/tests/integration/test_export_no_secrets.py` — 민감 변수를 쓰는 테스트가 있는 프로젝트를 내보내고, 만들어진 워크북 바이트 어디에도 그 값이 없으며 `{{SECRET_*}}` 참조는 남아 있는지 (FR-007 · SC-008)
-- [ ] T029 [P] [US1] `backend/tests/integration/test_export_shapes.py` — 시트 수·순서(`그룹 없음` 우선 → `Project.groups` 저장 순), 빈 그룹의 머리글만 있는 시트, 행의 TC ID 정렬, 절차/기대 결과의 검증 스텝 분리, 결과 칸 다섯 표기, 셀 한도 초과 시 자름 표시 (FR-002~FR-006a · FR-010)
-- [ ] T030 [P] [US1] `backend/tests/e2e/test_us7_excel_export.py` — 프로젝트를 만들고 테스트를 저장하고 실행한 뒤 내보내 워크북을 다시 읽어 확인하는 한 흐름
-- [ ] T031 [P] [US1] `frontend/tests/ExcelExport.test.tsx` — 내보내기 버튼이 blob 을 받아 저장을 트리거하는지, 실패 시 오류 알림이 뜨는지
+- [X] T027 [P] [US1] `backend/tests/contract/test_excel_export_api.py` — `GET /api/project/export` 의 200 응답(MIME·`Content-Disposition` 두 이름·`X-ITB-Export-Warnings`), 404 `PROJECT_NOT_OPEN`, `GET /api/project/export/warnings` 의 응답 형태 ([contracts/rest-api.md](contracts/rest-api.md) §1)
+- [X] T028 [P] [US1] `backend/tests/integration/test_export_no_secrets.py` — 민감 변수를 쓰는 테스트가 있는 프로젝트를 내보내고, 만들어진 워크북 바이트 어디에도 그 값이 없으며 `{{SECRET_*}}` 참조는 남아 있는지 (FR-007 · SC-008)
+- [X] T029 [P] [US1] `backend/tests/integration/test_export_shapes.py` — 시트 수·순서(`그룹 없음` 우선 → `Project.groups` 저장 순), 빈 그룹의 머리글만 있는 시트, 행의 TC ID 정렬, 절차/기대 결과의 검증 스텝 분리, 결과 칸 다섯 표기, 셀 한도 초과 시 자름 표시 (FR-002~FR-006a · FR-010)
+- [X] T030 [P] [US1] `backend/tests/e2e/test_us7_excel_export.py` — 프로젝트를 만들고 테스트를 저장하고 실행한 뒤 내보내 워크북을 다시 읽어 확인하는 한 흐름
+- [X] T031 [P] [US1] `frontend/tests/ExcelExport.test.tsx` — 내보내기 버튼이 blob 을 받아 저장을 트리거하는지, 실패 시 오류 알림이 뜨는지
 
 ### Implementation for User Story 1
 
-- [ ] T032 [US1] `backend/src/itb/portability/workbook.py` 에 쓰기 쪽을 구현한다 — `write_workbook(sheets) -> bytes`. `openpyxl` 과 닿는 유일한 지점이며 `BytesIO` 로 만든다 ([research.md](research.md) R9)
-- [ ] T033 [US1] `backend/src/itb/portability/exporter.py` — `Project` + `Test[]` + 최근 실행 결과 → 시트·행. 절차/기대 결과 조립(번호 매김·자름 표시), 결과 칸 다섯 표기 매핑, 경고 수집 ([research.md](research.md) R5 · [data-model.md](data-model.md) §6)
-- [ ] T034 [US1] `backend/src/itb/api/routes/project.py` 에 `GET /api/project/export` 와 `GET /api/project/export/warnings` 를 더한다. `Content-Disposition` 은 ASCII 대체 이름과 RFC 5987 이름을 **둘 다** 싣는다. 읽을 수 없는 정의가 있어도 성공하고 경고에 잡는다
-- [ ] T035 [US1] `frontend/src/api/client.ts` 에 `excel` 네임스페이스를 더한다 — `exportProject()` 는 `send()` 로 헤더를 붙여 요청하고 `blob()` 으로 받는다. `<a href>` 로 끝내지 않는다 (`X-ITB-Project-Root` 가드가 빠진다) ([research.md](research.md) R10)
-- [ ] T036 [US1] `frontend/src/api/client.ts` 에 blob 저장 도우미를 더한다 — `createObjectURL` → 보이지 않는 `<a download>` 클릭 → `revokeObjectURL`. 이 저장소의 첫 파일 내려받기 사례다
-- [ ] T037 [US1] `frontend/src/pages/TestList.tsx` 의 목록 조작 띠(「번호 정리」가 있는 줄)에 「엑셀로 내보내기」를 더한다. **`btn primary` 를 쓰지 않는다** — 이 화면의 잉크 채움은 「테스트 만들기」 하나뿐이라는 규칙이 파일 주석에 있다
-- [ ] T038 [US1] 내보내기 실패와 경고를 사용자에게 알린다 — 기존 알림 체계(`NoticeStack`)를 쓰고 새 알림 방식을 만들지 않는다 (FR-013)
+- [X] T032 [US1] `backend/src/itb/portability/workbook.py` 에 쓰기 쪽을 구현한다 — `write_workbook(sheets) -> bytes`. `openpyxl` 과 닿는 유일한 지점이며 `BytesIO` 로 만든다 ([research.md](research.md) R9)
+- [X] T033 [US1] `backend/src/itb/portability/exporter.py` — `Project` + `Test[]` + 최근 실행 결과 → 시트·행. 절차/기대 결과 조립(번호 매김·자름 표시), 결과 칸 다섯 표기 매핑, 경고 수집 ([research.md](research.md) R5 · [data-model.md](data-model.md) §6)
+- [X] T034 [US1] `backend/src/itb/api/routes/project.py` 에 `GET /api/project/export` 와 `GET /api/project/export/warnings` 를 더한다. `Content-Disposition` 은 ASCII 대체 이름과 RFC 5987 이름을 **둘 다** 싣는다. 읽을 수 없는 정의가 있어도 성공하고 경고에 잡는다
+- [X] T035 [US1] `frontend/src/api/client.ts` 에 `excel` 네임스페이스를 더한다 — `exportProject()` 는 `send()` 로 헤더를 붙여 요청하고 `blob()` 으로 받는다. `<a href>` 로 끝내지 않는다 (`X-ITB-Project-Root` 가드가 빠진다) ([research.md](research.md) R10)
+- [X] T036 [US1] `frontend/src/api/client.ts` 에 blob 저장 도우미를 더한다 — `createObjectURL` → 보이지 않는 `<a download>` 클릭 → `revokeObjectURL`. 이 저장소의 첫 파일 내려받기 사례다
+- [X] T037 [US1] `frontend/src/pages/TestList.tsx` 의 목록 조작 띠(「번호 정리」가 있는 줄)에 「엑셀로 내보내기」를 더한다. **`btn primary` 를 쓰지 않는다** — 이 화면의 잉크 채움은 「테스트 만들기」 하나뿐이라는 규칙이 파일 주석에 있다
+- [X] T038 [US1] 내보내기 실패와 경고를 사용자에게 알린다 — 기존 알림 체계(`NoticeStack`)를 쓰고 새 알림 방식을 만들지 않는다 (FR-013)
 
 **Checkpoint**: US1 만으로 "설계·결과를 팀 형식으로 꺼낸다"가 성립한다. 여기까지가 MVP다.
 
