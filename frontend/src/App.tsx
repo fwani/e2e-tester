@@ -598,8 +598,29 @@ export function App() {
           onRecord={(startUrl) => {
             if (!lockCompose()) return;
             void sessions
-              .create({ mode: "record", start_url: startUrl })
-              .then((session) => setScreen({ name: "runner", session }))
+              .create({
+                mode: "record",
+                start_url: startUrl,
+                /*
+                  초안에서 손으로 녹화하는 것도 온전한 방법이다 (수렴 2회차).
+                  여기서 빠뜨리면 화면은 「저장하면 이 초안은 사라집니다」라고 해 놓고
+                  초안을 남긴다 — 안내가 거짓이 된다.
+                */
+                draft_id: screen.draft?.draft_id ?? null,
+              })
+              .then((session) =>
+                setScreen({
+                  name: "runner",
+                  session,
+                  draft: screen.draft
+                    ? {
+                        draft_id: screen.draft.draft_id,
+                        name: screen.draft.name,
+                        group_prefix: screen.draft.group_prefix,
+                      }
+                    : null,
+                }),
+              )
               .catch((exc: unknown) => {
                 unlockCompose();
                 setError(describeError(exc));

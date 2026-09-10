@@ -190,3 +190,40 @@ class DraftLifecycleTests:
         listing = project_client.get("/api/tests").json()
         assert [t["id"] for t in listing["tests"]] == [saved["id"]]
         assert listing["draft_count"] == 0
+
+
+class RecordModeTests:
+    """초안에서 **손으로 녹화**하는 것도 온전한 방법이다 (수렴 2회차).
+
+    화면은 초안에서 시작할 때 「직접 녹화」와 「AI」 두 갈래를 나란히 보여 주면서
+    「저장하면 이 초안은 사라집니다」라고 안내한다. 녹화 쪽이 초안과 이어지지 않으면
+    **그 안내가 거짓**이 된다 — 저장해도 초안이 남고 희망 번호도 받지 못한다.
+    """
+
+    def test_record_모드가_초안을_거절하지_않는다(self, project_client: TestClient) -> None:
+        made = seed_draft(project_client)
+        resp = project_client.post(
+            "/api/sessions",
+            json={
+                "mode": "record",
+                "start_url": "https://example.internal/login",
+                "draft_id": made[0]["draft_id"],
+            },
+        )
+        # 이 URL 은 닿지 않으므로 브라우저 단계에서 실패한다 — 그것은 환경 문제다.
+        # 확인하려는 것은 **초안 때문에 거절되지 않는다**는 것이므로 코드를 본다.
+        code = resp.json()["error"]["code"] if resp.status_code >= 400 else None
+        assert code != "DEFINITION_INVALID", resp.text
+
+    def test_replay_모드는_초안을_거절한다(self, project_client: TestClient) -> None:
+        # 재실행은 이미 저장된 테스트를 돌리는 것이므로 초안과 상관이 없다.
+        # 테스트가 실제로 있어야 초안 검사에 닿는다 — 없으면 404 가 먼저 난다.
+        made = seed_draft(project_client)
+        repo_of(project_client).write_test(make_test("USER-003", "이미 있는 것"))
+
+        resp = project_client.post(
+            "/api/sessions",
+            json={"mode": "replay", "test_id": "USER-003", "draft_id": made[0]["draft_id"]},
+        )
+        assert resp.status_code == 400, resp.text
+        assert resp.json()["error"]["code"] == "DEFINITION_INVALID"

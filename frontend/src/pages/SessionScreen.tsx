@@ -1759,7 +1759,12 @@ export function SessionScreen({
    * 적혀 있는데 저장할 때 다시 치라고 하면, 사용자는 같은 것을 두 번 쓰게 되고 두 이름이
    * 어긋날 자리가 생긴다. 사용자가 고칠 수 있으므로 **값이 아니라 기본값**이다.
    */
-  const effectiveSaveName = nameOverride ?? view.test_name ?? draft?.name ?? "";
+  /*
+    초안의 출처는 **응답이 먼저다** (수렴 2회차). prop 은 화면 기억이라 새로 고치면
+    사라지고, 응답은 세션이 살아 있는 동안 계속 온다. 둘 다 없을 때만 빈 값이다.
+  */
+  const origin = view.draft ?? draft;
+  const effectiveSaveName = nameOverride ?? view.test_name ?? origin?.name ?? "";
 
   /**
    * 저장할 그룹 (013 FR-443 · converge T062).
@@ -1783,10 +1788,10 @@ export function SessionScreen({
   const draftGroupApplied = useRef(false);
   useEffect(() => {
     if (draftGroupApplied.current) return;
-    if (draft === null || view.test_id !== null) return;
+    if (!origin || view.test_id !== null) return;
     draftGroupApplied.current = true;
-    setSaveGroup(draft.group_prefix === "TC" ? null : draft.group_prefix);
-  }, [draft, view.test_id]);
+    setSaveGroup(origin.group_prefix === "TC" ? null : origin.group_prefix);
+  }, [origin, view.test_id]);
   const [groupOptions, setGroupOptions] = useState<{ prefix: string; name: string }[]>([]);
 
   useEffect(() => {

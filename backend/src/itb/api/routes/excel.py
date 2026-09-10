@@ -239,17 +239,32 @@ class SheetPlanView(BaseModel):
     """머리글을 뺀 실제 행 수. 필수 컬럼이 없어도 「여기 몇 건이 있다」를 보인다."""
 
 
-class CapacityView(BaseModel):
-    """만들 수 있는가 (FR-036a·b).
+class GroupCapacityView(BaseModel):
+    """그룹 하나의 여유 (FR-039d)."""
 
-    파일을 **읽는** 상한과 프로젝트가 **수용하는** 양은 다른 것이다. 이 값이 없으면
-    초안을 만들다가 번호가 바닥나 반쯤 만들어진 상태로 끝난다.
+    model_config = ConfigDict(extra="forbid")
+    prefix: str
+    needed: int
+    available: int
+    ok: bool
+
+
+class CapacityView(BaseModel):
+    """만들 수 있는가 (FR-036a·b · FR-039d).
+
+    파일을 **읽는** 상한과 수용하는 양은 다른 것이다. 이 값이 없으면 초안을 만들다가
+    번호가 바닥나 반쯤 만들어진 상태로 끝난다.
+
+    **그룹마다 싣는다.** 번호를 그룹마다 세므로 「프로젝트에 남은 번호」라는 총량은
+    없다 — 총량으로 비교하면 넘치지 않는데 넘친다고 말하게 된다 (수렴 2회차).
+    `needed`·`available` 은 화면의 옛 계약을 위해 남기되, 판단은 `groups` 로 한다.
     """
 
     model_config = ConfigDict(extra="forbid")
     needed: int
     available: int
     ok: bool
+    groups: list[GroupCapacityView] = Field(default_factory=list)
 
 
 class ImportPlanView(BaseModel):
@@ -346,18 +361,26 @@ class CreateProjectImportResult(ImportResultView):
 
 def _plan_view(state: AppState, plan: ImportPlan, repo: ProjectRepository | None) -> ImportPlanView:
     """계획을 화면이 읽을 형태로 만든다. **아무것도 만들지 않는다.**"""
-    # 미리보기는 **가장 빠듯한 그룹**을 보여 준다 — 전체 합으로는 어느 그룹이 넘치는지
-    # 알 수 없고, 넘치지 않는데 넘친다고 말하게 된다.
-    needed = plan.draft_count
-    available = MAX_TEST_NUMBER
+    # 그룹마다 필요한 수와 남은 수를 함께 싣는다 (FR-039d).
+    per_group: dict[str, int] = {}
     for sheet in plan.sheets:
         if sheet.included and sheet.usable and sheet.prefix is not None:
-            left = (
-                MAX_TEST_NUMBER - len(repo.used_numbers(sheet.prefix))
-                if repo
-                else MAX_TEST_NUMBER
+            per_group[sheet.prefix] = per_group.get(sheet.prefix, 0) + len(sheet.rows)
+
+    groups: list[GroupCapacityView] = []
+    for prefix in sorted(per_group):
+        left = MAX_TEST_NUMBER - (len(repo.used_numbers(prefix)) if repo else 0)
+        groups.append(
+            GroupCapacityView(
+                prefix=prefix,
+                needed=per_group[prefix],
+                available=left,
+                ok=per_group[prefix] <= left,
             )
-            available = min(available, left)
+        )
+
+    needed = plan.draft_count
+    available = min((g.available for g in groups), default=MAX_TEST_NUMBER)
 
     sheets: list[SheetPlanView] = []
     renumbered_all: list[RenumberedView] = []
@@ -400,7 +423,12 @@ def _plan_view(state: AppState, plan: ImportPlan, repo: ProjectRepository | None
             SkippedRowView(sheet_name=s.sheet_name, row=s.row, reason=s.reason.value)
             for s in plan.skipped
         ],
-        capacity=CapacityView(needed=needed, available=available, ok=needed <= available),
+        capacity=CapacityView(
+            needed=needed,
+            available=available,
+            ok=all(g.ok for g in groups),
+            groups=groups,
+        ),
         warnings=plan.warnings,
     )
 

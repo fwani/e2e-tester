@@ -62,7 +62,12 @@ const PLAN: ImportPlanView = {
     },
   ],
   skipped: [],
-  capacity: { needed: 1, available: 900, ok: true },
+  capacity: {
+    needed: 1,
+    available: 900,
+    ok: true,
+    groups: [{ prefix: "USER", needed: 1, available: 900, ok: true }],
+  },
   warnings: [],
 };
 

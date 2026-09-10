@@ -58,11 +58,6 @@ class ImportPlanStore:
             del self._plans[oldest.plan.plan_id]
         return plan
 
-    def get(self, plan_id: str) -> ImportPlan | None:
-        """계획 하나. 만료됐으면 ``None`` 이며, 그때 함께 치운다."""
-        entry = self.entry(plan_id)
-        return entry.plan if entry else None
-
     def entry(self, plan_id: str) -> StoredPlan | None:
         """계획과 재료. 다시 세울 때 쓴다."""
         self._sweep()

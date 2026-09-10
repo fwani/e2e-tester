@@ -128,6 +128,16 @@ class SessionWork:
 
     저장된 테스트에서 세션을 열 때 채워지고, 저장할 때 갱신된다.
     """
+    draft_name: str | None = None
+    """출발한 초안의 제목 (014 FR-040).
+
+    저장 이름의 기본값으로 화면에 되돌려 주기 위해 들고 있는다. **저장이 끝나면 초안
+    파일이 사라지므로**, 그때 읽으려 해도 없다 — 출발할 때 받아 두는 것이 유일한 방법이다.
+    """
+
+    draft_group: str | None = None
+    """출발한 초안의 소속 그룹 접두어 (014 FR-040a)."""
+
     draft_id: str | None = None
     """이 세션이 어느 초안에서 출발했는가 (014 US3 · FR-030·FR-032·FR-033).
 
@@ -446,8 +456,13 @@ class CreateSessionRequest(BaseModel):
     draft_id: str | None = Field(default=None, pattern=DRAFT_ID_PATTERN)
     """초안에서 시작한다 (014 FR-030·FR-031).
 
-    `mode == "ai"` 일 때만 쓴다. `ai_instruction` 을 함께 주면 **그것이 쓰인다**
-    (사용자가 고친 것). 없으면 서버가 초안에서 짓는다.
+    `record` 와 `ai` 둘 다에서 쓸 수 있다 — 초안은 **무엇을 할지**의 기록이고, 그것을
+    손으로 녹화해 채우는 것도 온전한 방법이다. 화면이 두 갈래를 나란히 보여 주면서
+    한쪽만 초안과 이어지면, 「저장하면 이 초안은 사라집니다」라는 안내가 거짓이 된다
+    (수렴 2회차).
+
+    지시문은 `ai` 에서만 쓰인다. `ai_instruction` 을 함께 주면 **그것이 쓰이고**
+    (사용자가 고친 것), 없으면 서버가 초안에서 짓는다.
     """
 
     pacing: RunPacing | None = None
@@ -507,6 +522,15 @@ class StepProgress(BaseModel):
     duration_ms: int = Field(default=0, ge=0)
 
 
+class DraftOriginView(BaseModel):
+    """세션이 출발한 초안. 저장 이름·그룹의 기본값이 된다 (FR-040·FR-040a)."""
+
+    model_config = ConfigDict(extra="forbid")
+    draft_id: str
+    name: str
+    group_prefix: str
+
+
 class SessionView(BaseModel):
     """WebSocket 재연결 시 전체 상태 동기화에 쓴다 (contracts/websocket.md)."""
 
@@ -525,6 +549,16 @@ class SessionView(BaseModel):
     """저장된 테스트의 이름 (011 FR-362). 아직 저장된 적 없으면 `None`.
 
     **선택 필드다** — 없이 온 응답도 그대로 읽힌다.
+    """
+    draft: DraftOriginView | None = None
+    """이 세션이 어느 초안에서 출발했는가 (014 · 수렴 2회차).
+
+    **화면 기억에만 두면 잃는다.** 초안 정보가 `App` 상태에만 있어서, 살아 있는 세션으로
+    돌아오거나 브라우저를 새로 고치면 저장 이름·그룹의 기본값이 사라졌다 — 사용자는
+    설계서에 이미 적힌 것을 다시 쳐야 했다 (FR-040b 위반).
+
+    `SessionWork` 는 처음부터 `draft_id` 를 들고 있었으므로, 여기 실어 보내면 화면이
+    세션 조회로 다시 받을 수 있다. `control_surface` 가 같은 이유로 이 응답에 실린다.
     """
     current_step_index: int
     steps: list[Step]
@@ -696,6 +730,7 @@ def view_of(w: SessionWork) -> SessionView:
     from itb.execution.state_machine import allowed_commands
 
     return SessionView(
+        draft=_draft_origin(w),
         session_id=w.session.session_id,
         state=w.session.state,
         state_label=state_label(w.session.state),
@@ -787,10 +822,11 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     draft: Draft | None = None
     instruction = body.ai_instruction
     if body.draft_id is not None:
-        if body.mode != "ai":
+        if body.mode == "replay":
+            # 재실행은 이미 저장된 테스트를 돌리는 것이므로 초안과 상관이 없다.
             raise bad_request(
                 ErrorCode.DEFINITION_INVALID,
-                "초안에서 시작하는 것은 ai 모드에서만 됩니다.",
+                "초안에서 시작하는 것은 새로 만들 때만 됩니다.",
             )
         try:
             draft = repo.drafts.read(body.draft_id)
@@ -798,7 +834,7 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
             raise not_found(ErrorCode.DRAFT_NOT_FOUND, str(exc)) from exc
         # 사용자가 고친 지시문이 있으면 그것이 이긴다 (FR-031). 화면이 미리 채워 보여
         # 주고 고칠 수 있게 한 것이 뜻을 가지려면, 고친 값이 실제로 쓰여야 한다.
-        if instruction is None or not instruction.strip():
+        if body.mode == "ai" and (instruction is None or not instruction.strip()):
             instruction = compose_instruction(draft)
 
     if body.mode == "ai":
@@ -893,6 +929,8 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         ai_instruction=instruction,
         saved_test_id=body.test_id,
         draft_id=draft.draft_id if draft is not None else None,
+        draft_name=draft.name if draft is not None else None,
+        draft_group=draft.group_prefix if draft is not None else None,
     )
     if existing_test is not None:
         # 011 FR-362 — 이름을 함께 들린다. 이것이 없으면 화면이 저장할 때 이름을 다시 묻는다.
@@ -2014,6 +2052,22 @@ async def save(session_id: str, body: SaveRequest, state: State) -> SavedTestVie
     w.saved_at = datetime.now(UTC)
     w.saved_snapshot = list(w.steps)
     return view
+
+
+def _draft_origin(w: SessionWork) -> DraftOriginView | None:
+    """세션이 출발한 초안을 응답에 실을 형태로 (수렴 2회차).
+
+    **세션이 만들어질 때 받아 둔 값을 쓴다.** 여기서 저장소를 읽지 않는 이유는 둘이다 —
+    `view_of` 는 상태가 바뀔 때마다 불리므로 디스크를 건드릴 자리가 아니고, 저장이 끝나면
+    초안 파일이 사라지므로 읽으려 해도 없다. 화면이 필요한 것은 「출발할 때 무엇이었나」다.
+    """
+    if w.draft_id is None or w.draft_name is None:
+        return None
+    return DraftOriginView(
+        draft_id=w.draft_id,
+        name=w.draft_name,
+        group_prefix=w.draft_group or RESERVED_PREFIX,
+    )
 
 
 def _draft_of(repo: ProjectRepository, w: SessionWork) -> Draft | None:

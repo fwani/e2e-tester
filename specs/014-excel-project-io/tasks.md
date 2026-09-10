@@ -365,3 +365,19 @@ US2 를 기다리지 않고 시작할 수 있다.
 - [X] T124 `frontend/src/App.tsx` — 초안을 실행 화면까지 나른다 (그룹 포함)
 - [X] T125 기존 검증 갱신 — 013 의 「번호는 전체에서 고유」를 못박던 5건을 새 규칙으로 다시 쓴다 (`test_repository`·`test_test_moves`·`test_project_guard_and_renumber_api`·`test_import_planning`·`test_import_capacity`)
 - [X] T126 `frontend/tests/DraftToRecording.test.tsx` — 초안이 실행 화면까지 나르는지, 이름·그룹 기본값이 붙는지
+
+---
+
+## Phase 12: Convergence (2회차)
+
+- [X] T127 **CRITICAL** `backend/src/itb/api/routes/tests.py` — 번호 정리가 `next_test_number` 에 **프로젝트 전체 수**를 쓰고 있었다. 그룹 둘이 600개씩이면 1201 이 써지고, `le=999` 검증에 걸려 **다음에 그 파일을 읽는 순간 프로젝트가 열리지 않는다** (실측 재현). 읽지도 않는 값이므로 쓰기를 없앴다
+- [X] T128 **HIGH** `backend/src/itb/api/app.py` — `ProjectError` 처리기를 더했다. 「그 그룹이 999개를 넘었다」가 `INTERNAL_ERROR`(broken)로 떨어져, 사용자가 방금 녹화한 것을 잃은 채 「예상하지 못한 오류」만 봤다 per FR-039d
+- [X] T129 **HIGH** `backend/src/itb/storage/test_moves.py` — 대상 그룹이 가득 찬 경우를 「만들 수 없는 식별자」가 아니라 **가득 찼다고** 말한다
+- [X] T130 **HIGH** 미리보기 수용량을 **그룹마다** 싣고 화면이 그룹별로 비교한다. 전체 합으로 비교하면 그룹 둘이 600건씩인 파일에서 넘치지도 않았는데 확정이 막혔다 per FR-039d
+- [X] T131 **HIGH** `frontend/src/pages/ImportPreview.tsx` — 사용자가 컬럼을 짝지었거나 머리글 행을 바꾼 시트는 서버의 `row_count`(0)가 아니라 `total_rows` 로 센다. 「0건을 만듭니다」라고 해 놓고 40건을 만들고 있었다
+- [X] T132 MEDIUM 미리보기의 그룹 수가 시트 선택을 반영한다 per FR-020b
+- [X] T133 MEDIUM `frontend/src/pages/ProjectSetup.tsx` — 새 프로젝트 경로도 완료 알림을 보인다 per FR-018a
+- [X] T134 MEDIUM `SessionView.draft` — 초안 출처를 **응답에 실어** 새로 고침·세션 복귀에도 남게 한다 per FR-040b. 화면 기억에만 두어 잃고 있었다
+- [X] T135 MEDIUM 초안에서 **손으로 녹화**하는 길을 연다. 화면은 두 갈래를 나란히 보여 주면서 「저장하면 이 초안은 사라집니다」라고 안내했는데, 녹화 쪽이 초안과 이어지지 않아 그 안내가 거짓이었다
+- [X] T136 LOW 013 의 「번호는 프로젝트 전체에서 고유」를 주장하던 docstring·주석 6곳을 사실에 맞게 고쳤다 (`test_case.py`·`tests.py`·`importer.py`·`data-model.md`)
+- [X] T137 LOW 죽은 코드 정리 — `plan_store.get`(부르는 곳 없음), `SkipReason.EMPTY` 의 도달 조건을 주석으로 명시

@@ -61,6 +61,7 @@ from itb.secrets.keys import (
     KeyStoreError,
     default_key_dir,
 )
+from itb.storage.repository import ProjectError
 from itb.storage.session_files import sweep_orphans
 
 # 처리되지 않은 오류는 응답에 스택을 싣지 않는다. 진단은 서버 로그가 맡는다 (003 EC-005).
@@ -269,6 +270,25 @@ def create_app() -> FastAPI:
             detail={"kind": type(exc).__name__},
         )
         return JSONResponse(status_code=500, content=ErrorResponse(error=body).model_dump())
+
+    @app.exception_handler(ProjectError)
+    async def _project_blocked(_request: Request, exc: ProjectError) -> JSONResponse:
+        """프로젝트 규칙에 걸렸다 (014 수렴 2회차).
+
+        「그 그룹의 테스트가 999개를 넘었다」 같은 것이다. **제품이 깨진 것이 아니라
+        사용자가 고칠 수 있는 상태**인데, 처리기가 없어 `INTERNAL_ERROR`(broken)로
+        떨어지고 있었다 — 그러면 사용자는 방금 녹화한 것을 잃은 채 "예상하지 못한
+        오류" 만 본다. `OSError` 를 blocked 로 둔 것과 같은 판단이다.
+
+        메시지에는 어느 그룹이 가득 찼는지가 들어 있다 (FR-039d).
+        """
+        logger.info("프로젝트 규칙에 막힘: %s", exc)
+        body = ErrorBody(
+            code=ErrorCode.DEFINITION_INVALID,
+            message=str(exc),
+            next_action="그룹을 나누거나 쓰지 않는 테스트를 정리한 뒤 다시 시도하세요.",
+        )
+        return JSONResponse(status_code=400, content=ErrorResponse(error=body).model_dump())
 
     @app.exception_handler(Exception)
     async def _unhandled(_request: Request, exc: Exception) -> JSONResponse:

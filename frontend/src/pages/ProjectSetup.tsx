@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrandMark, HeaderBar } from "../components/design/Chrome";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
-import { ImportFilePicker, ImportPreview } from "./ImportPreview";
+import { ImportDoneNotice, ImportFilePicker, ImportPreview } from "./ImportPreview";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import {
@@ -25,6 +25,7 @@ import {
   type DirectoryEntry,
   type CreateProjectImportResult,
   type ImportPlanView,
+  type ImportResultView,
   type ProjectListItem,
   type ProjectSummary,
   type ProjectView,
@@ -37,7 +38,7 @@ type Mode =
   | { kind: "browse" }
   /** 만들어진 위치를 알린 뒤 들어간다 (DR-006) — 사용자가 위치를 정하지 않았으므로
    *  어디에 생겼는지 모른 채 넘어가면 다음에 그것을 찾을 수 없다. */
-  | { kind: "created"; project: ProjectView }
+  | { kind: "created"; project: ProjectView; imported?: ImportResultView | null }
   /**
    * 엑셀에서 새 프로젝트를 만들며 가져온다 (014 FR-014a·b).
    *
@@ -265,13 +266,28 @@ export function ProjectSetup({
             }
             onDone={(result) => {
               const made = result as CreateProjectImportResult;
-              setMode({ kind: "created", project: made.project });
+              /*
+                **결과를 버리지 않는다** (FR-018a · 수렴 2회차). 열린 프로젝트 경로는
+                완료 알림을 보여 주는데 이쪽만 버리고 있었다 — 건너뛴 행·무시한 시트·
+                바뀐 번호를 사용자가 확인할 길이 없다.
+              */
+              setMode({ kind: "created", project: made.project, imported: made });
             }}
           />
         )}
 
         {mode.kind === "created" && (
-          <CreatedNotice project={mode.project} onContinue={() => onOpened(mode.project)} />
+          <>
+            {mode.imported && (
+              <ImportDoneNotice
+                result={mode.imported}
+                onDismiss={() =>
+                  setMode({ kind: "created", project: mode.project, imported: null })
+                }
+              />
+            )}
+            <CreatedNotice project={mode.project} onContinue={() => onOpened(mode.project)} />
+          </>
         )}
 
         {mode.kind === "browse" && (

@@ -631,6 +631,13 @@ export interface SessionView {
    */
   test_name?: string | null;
   /**
+   * 이 세션이 출발한 초안 (014 · 수렴 2회차).
+   *
+   * **응답에 실려 오므로 새로 고쳐도 남는다.** 화면 기억에만 두면 살아 있는 세션으로
+   * 돌아오거나 새로 고칠 때 저장 이름·그룹의 기본값을 잃는다.
+   */
+  draft?: { draft_id: string; name: string; group_prefix: string } | null;
+  /**
    * 저장한 뒤 **더해진** Step 의 id (011 FR-379).
    *
    * `has_unsaved_changes` 는 「무언가 달라졌는가」 한 값이고, 이것은 **어느 행이** 아직
@@ -1186,7 +1193,13 @@ export interface ImportPlanView {
   group_count: number;
   sheets: SheetPlanView[];
   skipped: SkippedRow[];
-  capacity: { needed: number; available: number; ok: boolean };
+  capacity: {
+    needed: number;
+    available: number;
+    ok: boolean;
+    /** 그룹마다의 여유 (FR-039d). 번호를 그룹마다 세므로 총량 비교는 뜻이 없다. */
+    groups: { prefix: string; needed: number; available: number; ok: boolean }[];
+  };
   warnings: string[];
 }
 

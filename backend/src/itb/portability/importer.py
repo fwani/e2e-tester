@@ -66,7 +66,12 @@ class SkipReason(StrEnum):
     """필수 컬럼을 찾지 못했다 (FR-017). 시트 전체가 대상이다."""
 
     EMPTY = "empty"
-    """완전히 빈 행 (FR-019)."""
+    """완전히 빈 행 (FR-019).
+
+    **실제 경로에서는 여기까지 오지 않는다** — :func:`itb.portability.workbook.read_sheets`
+    가 읽는 단계에서 이미 걸러낸다 (T087). 남겨 두는 이유는 :func:`plan_sheet` 이 행의
+    출처를 모르기 때문이다: 읽기를 거치지 않은 행이 들어와도 판정이 성립해야 한다.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -495,7 +500,7 @@ def _number_of(test_id: str) -> int | None:
 
 
 def _next_free(prefix: str, used: set[int]) -> str:
-    """비어 있는 번호 하나. 번호는 접두어를 넘어 프로젝트 전체에서 고유하다 (013 R3)."""
+    """그 그룹에서 비어 있는 번호 하나. 번호는 **그룹마다** 센다 (014 3차 요청)."""
     from itb.domain.test_case import MAX_TEST_NUMBER
 
     number = 1

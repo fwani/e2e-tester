@@ -73,7 +73,12 @@ const plan = (over: Partial<ImportPlanView> = {}): ImportPlanView => ({
   group_count: 1,
   sheets: [sheet()],
   skipped: [],
-  capacity: { needed: 2, available: 900, ok: true },
+  capacity: {
+    needed: 2,
+    available: 900,
+    ok: true,
+    groups: [{ prefix: "USER", needed: 2, available: 900, ok: true }],
+  },
   warnings: [],
   ...over,
 });
@@ -294,7 +299,12 @@ describe("수용량", () => {
       plan({
         draft_count: 50,
         sheets: [sheet({ row_count: 50, total_rows: 50 })],
-        capacity: { needed: 50, available: 10, ok: false },
+        capacity: {
+          needed: 50,
+          available: 10,
+          ok: false,
+          groups: [{ prefix: "USER", needed: 50, available: 10, ok: false }],
+        },
       }),
     );
     const button = screen.getByRole("button", { name: "가져오기" }) as HTMLButtonElement;
@@ -307,7 +317,12 @@ describe("수용량", () => {
       plan({
         draft_count: 50,
         sheets: [sheet({ row_count: 50, total_rows: 50 })],
-        capacity: { needed: 50, available: 10, ok: false },
+        capacity: {
+          needed: 50,
+          available: 10,
+          ok: false,
+          groups: [{ prefix: "USER", needed: 50, available: 10, ok: false }],
+        },
       }),
     );
     expect(screen.getByText(/남은 번호는 10개입니다/)).toBeTruthy();

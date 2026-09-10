@@ -157,11 +157,22 @@ def target_id(test_id: str, to_prefix: str, *, taken: set[int] | None = None) ->
     `taken` 은 대상 그룹이 이미 쓰는 번호들이다. 없으면 번호를 그대로 쓴다 — 호출자가
     충돌을 따로 막는 경우다.
     """
+    from itb.domain.test_case import MAX_TEST_NUMBER
+
     number = int(test_id.split("-", 1)[1])
     if taken and number in taken:
         candidate = 1
         while candidate in taken:
             candidate += 1
+        if candidate > MAX_TEST_NUMBER:
+            # **가득 찼다고 말한다.** 그냥 1000 을 돌려주면 `rename_test_id` 가
+            # 「만들 수 없는 식별자」로 거절하고, 사용자는 무엇이 문제인지 알 수 없다
+            # (수렴 2회차).
+            msg = (
+                f"「{to_prefix}」 그룹이 가득 찼습니다 ({MAX_TEST_NUMBER}개). "
+                "그룹을 나누거나 쓰지 않는 테스트를 정리하세요."
+            )
+            raise MoveError(msg)
         number = candidate
     return f"{to_prefix}-{number:03d}"
 

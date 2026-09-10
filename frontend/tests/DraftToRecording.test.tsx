@@ -287,13 +287,22 @@ describe("저장 준비", () => {
       (m) => m.default as string,
     );
     // 서버가 준 이름 → 초안 제목 순서다. 이미 저장된 테스트의 이름이 먼저다.
-    expect(source).toContain("nameOverride ?? view.test_name ?? draft?.name");
+    expect(source).toContain("nameOverride ?? view.test_name ?? origin?.name");
   });
 
   it("저장 그룹이 초안의 그룹으로 채워진다", async () => {
     const source = await import("../src/pages/SessionScreen.tsx?raw").then(
       (m) => m.default as string,
     );
-    expect(source).toContain("draft.group_prefix === \"TC\" ? null : draft.group_prefix");
+    expect(source).toContain('origin.group_prefix === "TC" ? null : origin.group_prefix');
+  });
+
+  it("초안 출처는 응답이 먼저다 — 새로 고쳐도 남는다", async () => {
+    // prop 은 화면 기억이라 살아 있는 세션으로 돌아오거나 새로 고치면 사라진다.
+    // 응답(`view.draft`)은 세션이 살아 있는 동안 계속 온다 (수렴 2회차).
+    const source = await import("../src/pages/SessionScreen.tsx?raw").then(
+      (m) => m.default as string,
+    );
+    expect(source).toContain("const origin = view.draft ?? draft;");
   });
 });

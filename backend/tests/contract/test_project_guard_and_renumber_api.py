@@ -246,3 +246,38 @@ def test_renumber_refuses_when_a_definition_is_unreadable(client: TestClient) ->
     assert resp.status_code == 400, resp.text
     assert resp.json()["error"]["code"] == "DEFINITION_INVALID"
     assert _ids(client) == ["TC-001", "TC-005"]
+
+
+def test_renumber_leaves_the_project_openable_with_many_groups(client: TestClient) -> None:
+    """번호 정리가 프로젝트 파일을 못 읽게 만들지 않는다 (014 수렴 2회차).
+
+    번호를 그룹마다 세게 되면서 그룹 둘이 각각 600개를 가질 수 있게 됐다. 정리 뒤
+    `next_test_number` 에 전체 수(1201)를 쓰면 `le=999` 검증에 걸려, **다음에 그 파일을
+    읽는 순간 프로젝트가 열리지 않는다.** 쓰기는 조용히 성공하므로 그때는 드러나지 않는다.
+
+    600개를 만드는 대신 상한을 넘길 수 있는 최소 구성으로 같은 성질을 본다 — 정리 뒤에도
+    프로젝트를 다시 읽을 수 있어야 한다.
+    """
+    root = _create(client, "많은 그룹")
+    client.post("/api/groups", json={"prefix": "USER", "name": "사용자"})
+    client.post("/api/groups", json={"prefix": "DATA", "name": "데이터"})
+    _write(root, "USER-005", "가")
+    _write(root, "DATA-009", "나")
+    _write(root, "TC-003", "다")
+
+    assert client.post("/api/tests:renumber").status_code == 200
+
+    # 다시 읽을 수 있어야 한다 — 여기서 500 이 나면 파일이 깨진 것이다.
+    assert client.get("/api/project").status_code == 200
+    assert client.get("/api/tests").status_code == 200
+    assert sorted(_ids(client)) == ["DATA-001", "TC-001", "USER-001"]
+
+
+def test_renumber_does_not_touch_the_legacy_counter(client: TestClient) -> None:
+    """읽지도 않는 값을 쓰지 않는다 (014 수렴 2회차)."""
+    root = _create(client, "카운터")
+    _write(root, "TC-004", "하나")
+
+    before = _repo(root).read_project().next_test_number
+    assert client.post("/api/tests:renumber").status_code == 200
+    assert _repo(root).read_project().next_test_number == before

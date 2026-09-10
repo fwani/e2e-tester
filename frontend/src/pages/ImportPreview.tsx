@@ -126,11 +126,50 @@ export function ImportPreview({
     **서버의 draft_count 와 같은 규칙으로 센다** (SC-005) — 켜져 있고, 컬럼이 갖춰졌고,
     접두어가 정해진 시트의 행만. 규칙이 어긋나면 미리보기가 예고한 수와 결과가 달라진다.
   */
-  const willCreate = live
-    .filter((s) => !s.needs_prefix || (prefixes[s.sheet_name] ?? "").trim() !== "")
-    .reduce((sum, s) => sum + s.row_count, 0);
+  /**
+   * 이 시트가 만들 초안 수.
+   *
+   * **서버가 못 읽은 시트는 `row_count` 가 0이다** — 필수 컬럼이 없으면 행을 만들지
+   * 않기 때문이다. 사용자가 화면에서 짝지으면 그 시트는 살아나지만 `row_count` 는
+   * 여전히 0이라, 그대로 쓰면 「0건을 만듭니다」라고 해 놓고 40건을 만든다 (수렴 2회차).
+   * 그때는 `total_rows`(머리글을 뺀 실제 행 수)가 옳다.
+   */
+  const willMake = (sheet: SheetPlanView) =>
+    sheet.missing_required.length > 0 || headerRowOf(sheet) !== sheet.header_row
+      ? sheet.total_rows
+      : sheet.row_count;
 
-  const overCapacity = willCreate > plan.capacity.available;
+  const counted = live.filter(
+    (s) => !s.needs_prefix || (prefixes[s.sheet_name] ?? "").trim() !== "",
+  );
+  const willCreate = counted.reduce((sum, s) => sum + willMake(s), 0);
+
+  /**
+   * 만들어질 그룹 수. **선택을 반영한다** (FR-020b).
+   *
+   * 서버의 `group_count` 는 미리보기 시점의 값이라, 사용자가 시트를 끄면 어긋난다 —
+   * 「그룹 3개」라고 해 놓고 1개를 만들게 된다 (수렴 2회차).
+   */
+  const liveGroups = new Set(
+    counted
+      .map((s) => s.prefix ?? (prefixes[s.sheet_name] ?? "").trim().toUpperCase())
+      .filter((p) => p && p !== "TC"),
+  ).size;
+
+  /*
+    수용량은 **그룹마다** 본다 (FR-039d). 번호를 그룹마다 세므로 「프로젝트에 남은
+    번호」라는 총량은 없다 — 총량으로 비교하면 그룹 둘이 600건씩인 파일에서 넘치지도
+    않았는데 확정을 막는다 (수렴 2회차).
+  */
+  const byGroup = new Map<string, number>();
+  for (const s of counted) {
+    const prefix = s.prefix ?? (prefixes[s.sheet_name] ?? "").trim().toUpperCase();
+    if (prefix) byGroup.set(prefix, (byGroup.get(prefix) ?? 0) + willMake(s));
+  }
+  const roomOf = (prefix: string) =>
+    plan.capacity.groups.find((g) => g.prefix === prefix)?.available ?? plan.capacity.available;
+  const tooFull = [...byGroup.entries()].filter(([prefix, n]) => n > roomOf(prefix));
+  const overCapacity = tooFull.length > 0;
 
   const confirm = () => {
     setError(null);
@@ -163,7 +202,7 @@ export function ImportPreview({
         {/* ── 무엇이 만들어지는가 ─────────────────────────────────────── */}
         <div data-import-summary className="tint-run" style={{ padding: "12px 14px" }}>
           <div className="strong-sm">
-            그룹 {plan.group_count}개, 테스트 초안 {willCreate}건을 만듭니다.
+            그룹 {liveGroups}개, 테스트 초안 {willCreate}건을 만듭니다.
           </div>
           <div className="why" style={{ marginTop: 4 }}>
             초안은 아직 테스트가 아닙니다. 하나씩 골라 AI 녹화로 완성하면 테스트가 됩니다.
