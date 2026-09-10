@@ -35,6 +35,7 @@ import {
   type TrashProjectResponse,
 } from "../api/client";
 
+import { Chip } from "../ui/Chip";
 type Mode =
   | { kind: "list" }
   | { kind: "create" }
@@ -548,8 +549,8 @@ function ProjectRow({
             ) : (
               <span className="font-sans text-[13.5px] font-bold leading-none">{item.name}</span>
             )}
-            {item.origin === "external" && <span className="chip">외부 위치</span>}
-            {!item.accessible && <span className="chip fail">열 수 없음</span>}
+            {item.origin === "external" && <Chip>외부 위치</Chip>}
+            {!item.accessible && <Chip tone="fail">열 수 없음</Chip>}
           </div>
           {nameProblem !== null && (
             <div className="font-sans text-[13px] leading-[1.4] text-fail mt-s1" role="alert">
@@ -973,7 +974,7 @@ function FolderPicker({
             >
               📁 {e.name}
             </button>
-            {e.is_project && <span className="chip">프로젝트</span>}
+            {e.is_project && <Chip>프로젝트</Chip>}
             {e.is_project && (
               <Button disabled={busy} onClick={() => onPick(e.path)}>
                 열기

@@ -14,6 +14,7 @@ import { chipClass } from "../theme/tone";
 import type { Author } from "../types/generated/step";
 import type { Outcome } from "../types/generated/run-result";
 
+import { Chip } from "../ui/Chip";
 /**
  * 실행 결말 배지 (005 T039 · FR-141).
  *
@@ -47,8 +48,8 @@ export function AuthoringBadge({ mode }: { mode: "record" | "ai" }) {
 
 export function AuthorBadge({ author }: { author: Author }) {
   // FR-075 — Step 별 작성 주체. 표시만 다르고 실행은 동일하다.
-  if (author === "ai") return <span className="chip ai">AI</span>;
-  return <span className="chip">HUMAN</span>;
+  if (author === "ai") return <Chip tone="ai">AI</Chip>;
+  return <Chip>HUMAN</Chip>;
 }
 
 export function StepTypeBadge({ type }: { type: string }) {

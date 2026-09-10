@@ -73,6 +73,7 @@ import { chipClass, rowClass } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
 import { Button } from "../ui/Button";
+import { Chip } from "../ui/Chip";
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
 const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
@@ -1465,12 +1466,12 @@ function OutcomeChip({ outcome, running = false }: { outcome: Outcome | null; ru
       L3-1 로 남기고 어휘 계약과 함께 판정한다 (T070).
     */
     return (
-      <span className="chip run">
+      <Chip tone="run">
         <svg width="10" height="10" viewBox="0 0 16 16">
           <circle cx="8" cy="8" r="5" fill="currentColor" />
         </svg>
         RUNNING
-      </span>
+      </Chip>
     );
   }
   if (outcome === null) {
@@ -1493,8 +1494,8 @@ function OutcomeChip({ outcome, running = false }: { outcome: Outcome | null; ru
 
 function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
   // FR-002a — 테스트를 시작한 방식으로 고정한다. AI 로 시작해 사람이 이어받아도 AI 다.
-  if (mode === "ai") return <span className="chip ai">AI</span>;
-  return <span className="chip">RECORD</span>;
+  if (mode === "ai") return <Chip tone="ai">AI</Chip>;
+  return <Chip>RECORD</Chip>;
 }
 // ─── 확정 디자인이 정의하지 않은 상태 (DC-009) ────────────────────────────
 /**

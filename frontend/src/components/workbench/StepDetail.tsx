@@ -40,6 +40,7 @@ import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
 
 import { Button } from "../../ui/Button";
+import { Chip } from "../../ui/Chip";
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
   return /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(value);
@@ -210,7 +211,7 @@ export function StepDetail({
             <div className="font-mono text-[12px] leading-none text-ink-3">{stepNumber(detail.index)}</div>
             {step !== null && (
               <>
-                <span className="chip">{step.type.toUpperCase()}</span>
+                <Chip>{step.type.toUpperCase()}</Chip>
                 <span className={`${step.author === "ai" ? "chip ai" : "chip"} py-s2 px-s3`}>
                   {step.author === "ai" ? "AI" : "RECORD"}
                 </span>

@@ -23,6 +23,7 @@ import { DESTROY_CONFIRM, secrets, type KeyStatus } from "../api/client";
 
 import { Button } from "../ui/Button";
 
+import { Chip } from "../ui/Chip";
 const PASSPHRASE_ENV = "ITB_KEY_PASSPHRASE";
 
 export interface KeyManagementProps {
@@ -187,7 +188,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           <span className={`${`chip ${hasKeys ? "pass" : "warn"}`} m-0`}>
             {hasKeys ? "준비됨" : "없음"}
           </span>
-          {protectedKey && <span className="chip">암호구 보호</span>}
+          {protectedKey && <Chip>암호구 보호</Chip>}
           {/* 보호 여부와 **지금 열려 있는지**는 다른 정보다. 둘 다 보여야 한다. */}
           {protectedKey && (
             <span className={`${`chip ${unlocked ? "pass" : "warn"}`} m-0`}>

@@ -20,6 +20,7 @@ import { secrets, type SecretsResponse } from "../api/client";
 
 import { Button } from "../ui/Button";
 
+import { Chip } from "../ui/Chip";
 export interface SecretValuesProps {
   /** 테스트 정의가 참조하는 민감 변수 이름들. 아직 값이 없는 것을 보여 주기 위한 것이다. */
   requiredNames?: string[];
@@ -128,7 +129,7 @@ export function SecretValues({
       >
         <div className="flex items-center gap-s2">
           <strong>보관된 변수</strong>
-          <span className="chip">{data?.names.length ?? 0}</span>
+          <Chip>{data?.names.length ?? 0}</Chip>
         </div>
 
         {(data?.names.length ?? 0) === 0 ? (
@@ -140,7 +141,7 @@ export function SecretValues({
             {data?.names.map((entry) => (
               <li key={entry.name} className="flex items-center gap-s2">
                 <span className="font-mono">{entry.name}</span>
-                <span className="chip pass">보관됨</span>
+                <Chip tone="pass">보관됨</Chip>
                 <span className="flex-1" />
                 <button
                   className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
