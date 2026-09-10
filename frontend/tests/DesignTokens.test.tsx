@@ -183,7 +183,8 @@ describe("밀도 — 이 개편이 실제로 사는 곳", () => {
 describe("DC-011 — 기준 폭을 유지한 채 스크롤한다", () => {
   it("Artboard 가 가로 스크롤 컨테이너다", () => {
     // 디자인은 고정 폭이다. 좁은 창에서 임의로 재배치하지 않고 스크롤한다.
-    expect(chrome).toMatch(/overflowX:\s*"auto"/);
+    // 015 — 배치가 클래스로 바뀌었다. 두 표기를 모두 받는다.
+    expect(chrome).toMatch(/overflowX:\s*"auto"|\boverflow-x-auto\b/);
   });
 
   it("고정 폭 화면이 맨몸으로 놓이지 않는다", () => {

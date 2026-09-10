@@ -1267,7 +1267,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
             **줄지 않는다.** 안의 버튼 넷은 `white-space: nowrap` 이라 좁아지면 줄어드는
             대신 잘린다 — 국면 띠에서 줄어드는 몫은 이유 문구가 받는다 (`ActionButton`).
           */
-          style={{ display: "inline-flex", flexDirection: "column", gap: 4, flex: "0 0 auto" }}
+          className="inline-flex flex-col gap-s1 flex-none"
         >
           <PacingControl
             value={view.pacing}
@@ -1337,8 +1337,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     view.saved_at != null ? (
       <div
         role="status"
-        className="tint-pass"
-        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px" }}
+        className="bg-pass-t border border-pass rounded-base flex items-center gap-[10px] py-s2 px-s3"
       >
         <svg className="pass-ink" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
           <path d="M3 8.5l3.5 3.5L13 4.5" />
@@ -2946,7 +2945,7 @@ function Modal({ label, children }: { label: string; children: ReactNode }) {
         zIndex: 30,
       }}
     >
-      <div className="modal" style={{ width: 520, padding: 24 }}>
+      <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
         {children}
       </div>
     </div>
@@ -2958,7 +2957,7 @@ function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
     <Modal label="실행 화면 닫기 확인">
       <div className="title">실행 화면을 닫습니다</div>
       <p className="note">결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+      <div className="flex justify-end gap-[10px] mt-[18px]">
         <button className="secondary" onClick={onCancel}>
           돌아가기
         </button>
@@ -3014,7 +3013,7 @@ function RerunConfirm({
         사라집니다.
       </p>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+      <div className="flex justify-end gap-[10px] mt-[18px]">
         <button className="secondary" onClick={onCancel}>
           돌아가기
         </button>
@@ -3067,7 +3066,7 @@ function LeaveConfirm({
           />
         </>
       )}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+      <div className="flex justify-end gap-[10px] mt-[18px]">
         <button className="secondary" onClick={onCancel}>
           돌아가기
         </button>

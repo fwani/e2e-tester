@@ -232,7 +232,7 @@ export function ComposeView({
           fromDraft !== null ? (
             <div className="tint-run" data-from-draft={fromDraft.draft_id} style={{ padding: "8px 10px" }}>
               <span className="strong-sm">초안 「{fromDraft.name}」에서 시작합니다.</span>
-              <span className="why" style={{ marginLeft: 6 }}>
+              <span className="font-sans text-[11px] leading-[1.4] text-ink-3 ml-[6px]">
                 지시문을 고쳐도 됩니다. 저장하면 이 초안은 사라집니다.
               </span>
             </div>

@@ -30,7 +30,7 @@ import type { ReactNode } from "react";
  */
 export function BrandMark() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+    <div className="flex items-center gap-[9px]">
       <div className="brand">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
           <rect x="2" y="2" width="12" height="12" rx="1.5" />
@@ -104,7 +104,7 @@ export function Artboard({
   children: ReactNode;
 }) {
   return (
-    <div style={{ overflowX: "auto", minHeight: "100vh" }}>
+    <div className="overflow-x-auto min-h-[100vh]">
       <div
         style={{
           ...(grow ? { minWidth: `${width}px`, width: "100%" } : { width: `${width}px` }),
@@ -124,7 +124,7 @@ export function Artboard({
 /** 통합 작업 화면의 경로 표시 — 「테스트 / TC-001」. */
 export function Breadcrumb({ testId }: { testId: string }) {
   return (
-    <div className="row muted" style={{ gap: "8px" }}>
+    <div className="flex items-center text-ink-2 gap-s2">
       <span className="lbl">테스트</span>
       <span className="pill mono">{testId}</span>
     </div>

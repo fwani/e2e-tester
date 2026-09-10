@@ -61,17 +61,16 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
 
   return (
     <div
-      className="pane"
-      style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
+      className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[10px]"
     >
       <strong className="strong-sm">검증 Step 추가</strong>
 
-      <fieldset className="bare" style={{ padding: 0, margin: 0, display: "grid", gap: 6 }}>
-        <legend className="lbl" style={{ padding: 0 }}>
+      <fieldset className="border-0 p-0 m-0 grid gap-[6px]">
+        <legend className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 p-0">
           조건
         </legend>
         {KINDS.map((k) => (
-          <label key={k.kind} className="row" style={{ gap: 8, alignItems: "flex-start" }}>
+          <label key={k.kind} className="flex items-center gap-s2 items-start">
             <input
               type="radio"
               name="assertion-kind"
@@ -121,8 +120,8 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
       </div>
 
       {(kind === "text" || kind === "url") && (
-        <div className="row" style={{ gap: 12 }}>
-          <label className="row" style={{ gap: 6 }}>
+        <div className="flex items-center gap-s2 gap-s3">
+          <label className="flex items-center gap-s2 gap-[6px]">
             <input
               type="radio"
               name="assertion-match"
@@ -131,7 +130,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
             />
             일치
           </label>
-          <label className="row" style={{ gap: 6 }}>
+          <label className="flex items-center gap-s2 gap-[6px]">
             <input
               type="radio"
               name="assertion-match"
@@ -153,7 +152,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
         />
       </div>
 
-      <div className="row" style={{ gap: 8 }}>
+      <div className="flex items-center gap-s2">
         <button disabled={busy || !ready} onClick={submit}>
           추가
         </button>

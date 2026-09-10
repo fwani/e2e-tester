@@ -31,7 +31,7 @@ export interface ModeBadge {
 /** 주소 칸 왼쪽의 점 셋. 실제 브라우저를 뜻하는 관용 표기이며 조작이 아니다. */
 function WindowDots() {
   return (
-    <div style={{ display: "flex", gap: 4 }} aria-hidden>
+    <div className="flex gap-s1" aria-hidden>
       {[0, 1, 2].map((i) => (
         <span key={i} className="dot" />
       ))}
@@ -50,8 +50,7 @@ export function BrowserFrame({
 }) {
   return (
     <div
-      className="pane"
-      style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
+      className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col overflow-hidden"
     >
       <div
         className="pane-hd"
@@ -75,7 +74,7 @@ export function BrowserFrame({
         (010 FR-338·FR-339)라고 적고 있었다 — 의도는 처음부터 세로였고, 이 한 줄이
         그것과 어긋나 있었다.
       */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <div className="flex-1 min-h-0 flex flex-col">
         {children}
       </div>
     </div>

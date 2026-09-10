@@ -158,7 +158,7 @@ export function ResultView({
   */
   if (result === null) {
     return (
-      <main style={{ padding: 32 }}>
+      <main className="p-s6">
         {error !== null ? (
           <ErrorNotice error={error} />
         ) : (
@@ -578,7 +578,7 @@ function artifactBody({
       <img
         src={artifact.src}
         alt={`${stepLabel(failedIndex)} 실패 시점`}
-        style={{ width: "100%", height: "auto", display: "block" }}
+        className="w-full h-auto block"
         // 깨진 이미지 아이콘을 남기지 않는다 — 무엇이 없는지 말한다.
         onError={onImageError}
       />
@@ -587,8 +587,7 @@ function artifactBody({
   return (
     <pre
       data-artifact-text
-      className="log"
-      style={{ margin: 0 }}
+      className="font-mono text-[12px] leading-[1.6] whitespace-pre-wrap m-0"
     >
       {artifact.text === "" || artifact.text === undefined
         ? emptyArtifactMessage(tab)

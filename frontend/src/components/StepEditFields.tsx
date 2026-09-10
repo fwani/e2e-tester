@@ -95,7 +95,7 @@ export function StepEditFields({
             />
           </label>
           {valueIsSecret && (
-            <p className="why" style={{ margin: "4px 0 0 100px" }}>
+            <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1 mr-0 mb-0 ml-[100px]">
               {SENSITIVE_VALUE_NOTICE}
             </p>
           )}
@@ -138,7 +138,7 @@ export function StepEditFields({
         <span className="field-label">
           대기 시간
         </span>
-        <span className="row" style={{ gap: 6 }}>
+        <span className="flex items-center gap-s2 gap-[6px]">
           <input
             aria-label="Step 대기 시간 (ms)"
             type="number"
@@ -146,7 +146,7 @@ export function StepEditFields({
             max={60000}
             value={step.timeout_ms}
             disabled={!editable}
-            style={{ width: 110 }}
+            className="w-[110px]"
             onChange={(e) => {
               const next = Number(e.target.value);
               if (Number.isFinite(next) && next >= 1 && next <= 60000) {
@@ -170,7 +170,7 @@ export function StepEditFields({
           min={0}
           value={step.tab}
           disabled={!editable}
-          style={{ width: 110 }}
+          className="w-[110px]"
           onChange={(e) => {
             const next = Number(e.target.value);
             if (Number.isInteger(next) && next >= 0) onChange({ tab: next });

@@ -49,7 +49,7 @@ export function PacingControl({
   manipulationPhase = false,
 }: PacingControlProps) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div className="flex items-center gap-s2">
       <span className="lbl">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
       <div
         role="group"
@@ -78,8 +78,7 @@ export function PacingControl({
       {!preferenceSaved && (
         <span
           role="status"
-          className="why warn-ink"
-          style={{ maxWidth: "180px" }}
+          className="font-sans text-[11px] leading-[1.4] text-ink-3 text-warn max-w-[180px]"
         >
           설정을 저장하지 못해 다음 실행에는 유지되지 않습니다.
         </span>

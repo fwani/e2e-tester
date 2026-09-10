@@ -124,8 +124,8 @@ export function LocatorPriorityTable({
   const usable = rows.filter((r) => r.status === "verified").length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div className="row" style={{ gap: 8 }}>
+    <div className="flex flex-col gap-[6px]">
+      <div className="flex items-center gap-s2">
         <strong className="lbl">{title}</strong>
         <span className={`chip ${usable >= 2 ? "pass" : "warn"}`}>
           사용 가능 후보 {usable}
@@ -139,7 +139,7 @@ export function LocatorPriorityTable({
       </div>
 
       {repicking && (
-        <p className="why" style={{ margin: 0 }}>
+        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
           실제 브라우저 창에서 대상 요소를 클릭하세요. 그 클릭은 Step 으로 기록되지
           않습니다.
         </p>
@@ -153,10 +153,10 @@ export function LocatorPriorityTable({
       <table className="table pane">
         <thead>
           <tr>
-            <th style={{ width: 20 }} />
-            <th style={{ width: 118 }} />
+            <th className="w-[20px]" />
+            <th className="w-[118px]" />
             <th />
-            <th style={{ width: 118 }} />
+            <th className="w-[118px]" />
           </tr>
         </thead>
         <tbody>
@@ -170,14 +170,14 @@ export function LocatorPriorityTable({
                 key={row.kind}
                 className={inUse ? "in-use" : last ? "last-resort" : undefined}
               >
-                <td className="num" style={{ padding: "0 0 0 14px" }}>
+                <td className="font-mono text-[12px] leading-none text-ink-3 pt-0 pr-0 pb-0 pl-[14px]">
                   {i + 1}
                 </td>
                 <td className={missing ? "dim" : "strong-sm"}>{row.label}</td>
                 <td className={`mono${missing ? " dim" : ""}`} style={{ wordBreak: "break-all" }}>
                   {row.value ?? "수집되지 않음"}
                 </td>
-                <td style={{ padding: "0 14px 0 0", textAlign: "right" }}>
+                <td className="pt-0 pr-[14px] pb-0 pl-0 text-right">
                   {!missing && <span className={`chip ${tone(state)}`}>{state}</span>}
                 </td>
               </tr>

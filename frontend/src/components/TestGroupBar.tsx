@@ -38,7 +38,7 @@ export function TestGroupBar({
   const realGroups = groups.filter((g) => g.prefix !== "TC");
   if (realGroups.length === 0 && !adding) {
     return (
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+      <div className="flex justify-end mb-s2">
         <button className="navlink" onClick={() => setAdding(true)} disabled={busy}>
           + 그룹
         </button>
@@ -53,7 +53,7 @@ export function TestGroupBar({
       data-test-group-bar
       role="group"
       aria-label="그룹으로 거르기"
-      style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}
+      className="flex items-center gap-s2 mb-s2 flex-wrap"
     >
       <button
         className={active === null ? "chip sel" : "chip"}
@@ -126,7 +126,7 @@ export function TestGroupBar({
             if (e.key === "Escape") setEditing(null);
           }}
           onBlur={() => setEditing(null)}
-          style={{ margin: 0, width: 180 }}
+          className="m-0 w-[180px]"
         />
       )}
       <div className="spacer" />
@@ -186,7 +186,7 @@ function NewGroupForm({
   const ready = name.trim() !== "" && prefixOk;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+    <div className="flex items-center gap-[6px] flex-wrap">
       <input
         aria-label="그룹 이름"
         placeholder="사용자관리 테스트"
@@ -194,7 +194,7 @@ function NewGroupForm({
         autoFocus
         disabled={busy}
         onChange={(e) => setName(e.target.value)}
-        style={{ margin: 0, width: 180 }}
+        className="m-0 w-[180px]"
       />
       <input
         aria-label="그룹 접두어"
@@ -202,7 +202,7 @@ function NewGroupForm({
         value={prefix}
         disabled={busy}
         onChange={(e) => setPrefix(e.target.value)}
-        style={{ margin: 0, width: 90 }}
+        className="m-0 w-[90px]"
       />
       <span className="why">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
       {prefix.trim() !== "" && !prefixOk && (
@@ -251,8 +251,7 @@ function ConfirmDisband({
     <span
       data-group-disband-confirm
       role="status"
-      className="tint-warn line"
-      style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 8px" }}
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] inline-flex items-center gap-s2 py-s1 px-s2"
     >
       <span className="strong-sm">
         「{group.name ?? group.prefix}」을(를) 없앨까요? 테스트 {group.count}개가 그룹 없음으로
