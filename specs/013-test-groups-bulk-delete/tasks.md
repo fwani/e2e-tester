@@ -32,8 +32,8 @@ Web app 구조. 백엔드 `backend/src/itb/`, 프런트엔드 `frontend/src/`.
 **Purpose**: 새 의존성·새 패키지가 없으므로 초기화 작업이 없다. **012 이전이 초록인지**만
 고정한다 — 이 기능은 기존 자산 호환이 핵심이라 기준선이 없으면 무엇이 깨졌는지 못 가린다.
 
-- [ ] T001 기준선 검증을 돌려 기록한다 — `cd backend && uv run ruff check src/ tests/ && uv run lint-imports && uv run python -m itb.schema.export --check && uv run pytest -m "not browser" -q`, `cd frontend && npx tsc --noEmit && npx vitest run`. **미리 알려진 것**: `pytest` 에 pytest-asyncio 설정 오류 15건이 012 이전부터 있다. 개수가 늘면 013 이 깬 것이다
-- [ ] T002 **013 이전 상태로 프로젝트 하나를 만들어 둔다** — 테스트 2~3개를 저장하고 한 번 실행해 결과를 남긴다. [quickstart.md](quickstart.md) §2 이야기 1(기존 자산이 그대로다 · SC-629)의 재료이며, 나중에 만들면 이미 새 코드로 만든 것이라 검증이 성립하지 않는다
+- [X] T001 기준선 검증을 돌려 기록한다 — `cd backend && uv run ruff check src/ tests/ && uv run lint-imports && uv run python -m itb.schema.export --check && uv run pytest -m "not browser" -q`, `cd frontend && npx tsc --noEmit && npx vitest run`. **미리 알려진 것**: `pytest` 에 pytest-asyncio 설정 오류 15건이 012 이전부터 있다. 개수가 늘면 013 이 깬 것이다
+- [X] T002 **013 이전 상태로 프로젝트 하나를 만들어 둔다** — 테스트 2~3개를 저장하고 한 번 실행해 결과를 남긴다. [quickstart.md](quickstart.md) §2 이야기 1(기존 자산이 그대로다 · SC-629)의 재료이며, 나중에 만들면 이미 새 코드로 만든 것이라 검증이 성립하지 않는다
 
 ---
 
@@ -46,24 +46,24 @@ Web app 구조. 백엔드 `backend/src/itb/`, 프런트엔드 `frontend/src/`.
 
 ### 식별자 형식 (research R1)
 
-- [ ] T003 `backend/src/itb/domain/test_case.py` 의 `TEST_ID_PATTERN` 을 `^[A-Z][A-Z0-9]{0,7}-\d{3}$` 로 넓힌다 — **대문자 ASCII 만.** 식별자가 파일·디렉터리 이름이 되고 macOS 기본 파일 시스템은 대소문자를 구별하지 않아, 두 대소문자를 허용하면 한 자리를 두 식별자가 다툰다. `TC-001` 이 이 패턴을 만족하는지 확인한다
-- [ ] T004 `backend/src/itb/domain/test_case.py` 에 `GROUP_PREFIX_PATTERN = ^[A-Z][A-Z0-9]{0,7}$` 과 `RESERVED_PREFIX = "TC"` 를 더한다 ([data-model.md](data-model.md) §2)
-- [ ] T005 `backend/src/itb/storage/repository.py` 의 `TEST_ID_RE` 를 T003 과 **같은 패턴 하나에서** 오게 한다 — 두 벌로 두면 한쪽이 갈리고, 갈린 자리가 「저장은 되는데 못 읽는」 상태가 된다. `run_dir`·`find_test_path` 의 검증은 **없애지 않는다** (헌법 §보안)
-- [ ] T006 `backend/src/itb/storage/repository.py` 의 `list_test_paths()` 가 `glob("TC-*.yaml")` 이 아니라 **모든 접두어**를 찾게 한다 — [research.md](research.md) R1 이 「가장 조용한 함정」으로 표시한 곳이다. 넓히지 않으면 새 접두어 테스트가 저장은 되는데 목록에 아예 안 나온다. 테스트 파일이 아닌 `.yaml` 을 집지 않도록 이름을 식별자 정규식으로 거른다
-- [ ] T007 `backend/src/itb/storage/repository.py` 의 `allocate_test_id()` 가 **접두어를 무시하고 번호만** 세게 한다 ([research.md](research.md) R3) — `USER-003` 이 있으면 `003` 은 쓰이지 않는다. 번호가 프로젝트 전체에서 고유해야 그룹 이동이 번호를 다시 뽑지 않는다. 카운터와 파일을 함께 보는 기존 방식은 유지한다. 접두어 인자를 받아 `<접두어>-<번호>` 를 돌려준다
-- [ ] T008 [P] `backend/tests/unit/test_repository.py` 를 개정한다 — 새 접두어 테스트가 `list_test_paths` 에 잡히는지, `allocate_test_id` 가 접두어를 넘어 번호를 건너뛰는지, `run_dir`·`find_test_path` 가 잘못된 식별자를 여전히 거절하는지
-- [ ] T009 [P] `backend/tests/unit/test_domain_invariants.py` 를 개정한다 — `TC-001` 과 `USER-001` 이 통과하고, 소문자·경로 구분자·9자 접두어·상위 이동이 거절되는지 (허용 목록 방식임을 검사로 고정)
-- [ ] T010 **기존 자산 호환을 여기서 한 번 확인한다** — T002 에서 만든 프로젝트를 열어 목록·조회·실행·결과가 전부 되는지 본다 (SC-629). Phase 2 를 벗어난 뒤에 깨진 것을 발견하면 원인이 어디인지 넓어진다
+- [X] T003 `backend/src/itb/domain/test_case.py` 의 `TEST_ID_PATTERN` 을 `^[A-Z][A-Z0-9]{0,7}-\d{3}$` 로 넓힌다 — **대문자 ASCII 만.** 식별자가 파일·디렉터리 이름이 되고 macOS 기본 파일 시스템은 대소문자를 구별하지 않아, 두 대소문자를 허용하면 한 자리를 두 식별자가 다툰다. `TC-001` 이 이 패턴을 만족하는지 확인한다
+- [X] T004 `backend/src/itb/domain/test_case.py` 에 `GROUP_PREFIX_PATTERN = ^[A-Z][A-Z0-9]{0,7}$` 과 `RESERVED_PREFIX = "TC"` 를 더한다 ([data-model.md](data-model.md) §2)
+- [X] T005 `backend/src/itb/storage/repository.py` 의 `TEST_ID_RE` 를 T003 과 **같은 패턴 하나에서** 오게 한다 — 두 벌로 두면 한쪽이 갈리고, 갈린 자리가 「저장은 되는데 못 읽는」 상태가 된다. `run_dir`·`find_test_path` 의 검증은 **없애지 않는다** (헌법 §보안)
+- [X] T006 `backend/src/itb/storage/repository.py` 의 `list_test_paths()` 가 `glob("TC-*.yaml")` 이 아니라 **모든 접두어**를 찾게 한다 — [research.md](research.md) R1 이 「가장 조용한 함정」으로 표시한 곳이다. 넓히지 않으면 새 접두어 테스트가 저장은 되는데 목록에 아예 안 나온다. 테스트 파일이 아닌 `.yaml` 을 집지 않도록 이름을 식별자 정규식으로 거른다
+- [X] T007 `backend/src/itb/storage/repository.py` 의 `allocate_test_id()` 가 **접두어를 무시하고 번호만** 세게 한다 ([research.md](research.md) R3) — `USER-003` 이 있으면 `003` 은 쓰이지 않는다. 번호가 프로젝트 전체에서 고유해야 그룹 이동이 번호를 다시 뽑지 않는다. 카운터와 파일을 함께 보는 기존 방식은 유지한다. 접두어 인자를 받아 `<접두어>-<번호>` 를 돌려준다
+- [X] T008 [P] `backend/tests/unit/test_repository.py` 를 개정한다 — 새 접두어 테스트가 `list_test_paths` 에 잡히는지, `allocate_test_id` 가 접두어를 넘어 번호를 건너뛰는지, `run_dir`·`find_test_path` 가 잘못된 식별자를 여전히 거절하는지
+- [X] T009 [P] `backend/tests/unit/test_domain_invariants.py` 를 개정한다 — `TC-001` 과 `USER-001` 이 통과하고, 소문자·경로 구분자·9자 접두어·상위 이동이 거절되는지 (허용 목록 방식임을 검사로 고정)
+- [X] T010 **기존 자산 호환을 여기서 한 번 확인한다** — T002 에서 만든 프로젝트를 열어 목록·조회·실행·결과가 전부 되는지 본다 (SC-629). Phase 2 를 벗어난 뒤에 깨진 것을 발견하면 원인이 어디인지 넓어진다
 
 ### 오류 계약
 
-- [ ] T011 [P] `backend/src/itb/domain/error.py` 에 `ErrorCode` 7개를 더한다 — `TEST_IN_USE`·`TEST_DELETE_FAILED`·`TEST_DELETE_PARTIAL`·`TEST_MOVE_FAILED`·`GROUP_NOT_FOUND`·`GROUP_ALREADY_EXISTS`·`GROUP_PREFIX_RESERVED`. **전부 `BLOCKED` 다** — 이 저장소에서 `BROKEN` 은 `INTERNAL_ERROR` 하나뿐이고 `tests/abnormal/test_error_contract.py` 가 그것을 센다 (012 에서 같은 실수를 했다). `CATEGORY`·`NEXT_ACTION` **양쪽**에 넣는다 ([contracts/api-contract.md](contracts/api-contract.md) §6)
-- [ ] T012 `cd backend && uv run python -m itb.schema.export && cd ../frontend && npm run gen:types` 로 생성물을 갱신하고 커밋 대상에 넣는다. **백엔드가 먼저다** — 012 에서 순서를 틀려 한 번 헛돌았다. T011·T017 뒤에 한 번에 한다
+- [X] T011 [P] `backend/src/itb/domain/error.py` 에 `ErrorCode` 7개를 더한다 — `TEST_IN_USE`·`TEST_DELETE_FAILED`·`TEST_DELETE_PARTIAL`·`TEST_MOVE_FAILED`·`GROUP_NOT_FOUND`·`GROUP_ALREADY_EXISTS`·`GROUP_PREFIX_RESERVED`. **전부 `BLOCKED` 다** — 이 저장소에서 `BROKEN` 은 `INTERNAL_ERROR` 하나뿐이고 `tests/abnormal/test_error_contract.py` 가 그것을 센다 (012 에서 같은 실수를 했다). `CATEGORY`·`NEXT_ACTION` **양쪽**에 넣는다 ([contracts/api-contract.md](contracts/api-contract.md) §6)
+- [X] T012 `cd backend && uv run python -m itb.schema.export && cd ../frontend && npm run gen:types` 로 생성물을 갱신하고 커밋 대상에 넣는다. **백엔드가 먼저다** — 012 에서 순서를 틀려 한 번 헛돌았다. T011·T017 뒤에 한 번에 한다
 
 ### 공통 순서 규약 (research R4·R5)
 
-- [ ] T013 `backend/src/itb/storage/test_moves.py` 를 만든다 — **전부 검증 → 하나씩 실행 → 실패 시 되돌림** 세 걸음을 한 곳에 둔다. 삭제와 그룹 이동이 **같은 규약을 공유하므로** 라우트에 두면 두 벌이 되고 한쪽만 고치면 다른 쪽에서 되돌림이 빠진다 ([plan.md](plan.md) Structure Decision). 되돌리기까지 실패한 경우를 **삼키지 않고** 호출자에게 구별해 알린다
-- [ ] T014 [P] `backend/tests/unit/test_test_moves.py` 를 만든다 — 검증에서 걸리면 아무것도 건드리지 않는지, 중간 실패 시 이미 옮긴 것이 되돌려지는지, 되돌리기 실패가 다른 결과로 구별되는지
+- [X] T013 `backend/src/itb/storage/test_moves.py` 를 만든다 — **전부 검증 → 하나씩 실행 → 실패 시 되돌림** 세 걸음을 한 곳에 둔다. 삭제와 그룹 이동이 **같은 규약을 공유하므로** 라우트에 두면 두 벌이 되고 한쪽만 고치면 다른 쪽에서 되돌림이 빠진다 ([plan.md](plan.md) Structure Decision). 되돌리기까지 실패한 경우를 **삼키지 않고** 호출자에게 구별해 알린다
+- [X] T014 [P] `backend/tests/unit/test_test_moves.py` 를 만든다 — 검증에서 걸리면 아무것도 건드리지 않는지, 중간 실패 시 이미 옮긴 것이 되돌려지는지, 되돌리기 실패가 다른 결과로 구별되는지
 
 **Checkpoint**: Foundation 완료. 기존 자산이 그대로 돌고, US1·US2 를 병렬로 진행할 수 있다.
 
@@ -114,7 +114,7 @@ Web app 구조. 백엔드 `backend/src/itb/`, 프런트엔드 `frontend/src/`.
 
 ### 백엔드 — 모델과 그룹 라우트
 
-- [ ] T031 [P] [US2] `backend/src/itb/domain/test_case.py` 에 `TestGroup{prefix, name}` 과 `Project.groups: list[TestGroup] = []` 를 더한다 — **기본값이 빈 목록이어야 기존 프로젝트 파일이 그대로 읽힌다** ([data-model.md](data-model.md) §2). T004 의 패턴을 쓴다
+- [X] T031 [P] [US2] `backend/src/itb/domain/test_case.py` 에 `TestGroup{prefix, name}` 과 `Project.groups: list[TestGroup] = []` 를 더한다 — **기본값이 빈 목록이어야 기존 프로젝트 파일이 그대로 읽힌다** ([data-model.md](data-model.md) §2). T004 의 패턴을 쓴다
 - [ ] T032 [US2] `backend/src/itb/api/routes/groups.py` 를 만든다 — `GET`·`POST`·`PATCH /{prefix}`·`DELETE /{prefix}` ([contracts/api-contract.md](contracts/api-contract.md) §5). `tests.py` 에 넣지 않는 이유는 [plan.md](plan.md) Structure Decision 에 있다: 그룹은 테스트가 아니라 **프로젝트 설정**이다. `app.py` 에 라우터를 등록한다. T031 에 의존
 - [ ] T033 [US2] T032 의 검증을 붙인다 — 접두어 형식(422), `TC` 예약(409 `GROUP_PREFIX_RESERVED`), 접두어·이름 중복(409 `GROUP_ALREADY_EXISTS`), 없는 그룹(404). `GET /api/groups` 는 **테스트가 없는 그룹도 싣는다** — 그룹을 고르는 자리에서는 비어 있는 그룹도 골라야 한다
 - [ ] T034 [P] [US2] `backend/tests/contract/test_test_groups_api.py` 를 만든다 — 만들기·이름 변경·조회, `TC` 거절, 중복 거절, 빈 그룹도 `GET /api/groups` 에 실리는지
