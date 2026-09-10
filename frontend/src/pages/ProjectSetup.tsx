@@ -15,12 +15,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrandMark, HeaderBar } from "../components/design/Chrome";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import { ImportFilePicker } from "./ImportPreview";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import {
   fs,
+  imports,
   project,
   type DirectoryEntry,
+  type ImportPlanView,
   type ProjectListItem,
   type ProjectSummary,
   type ProjectView,
@@ -33,7 +36,15 @@ type Mode =
   | { kind: "browse" }
   /** 만들어진 위치를 알린 뒤 들어간다 (DR-006) — 사용자가 위치를 정하지 않았으므로
    *  어디에 생겼는지 모른 채 넘어가면 다음에 그것을 찾을 수 없다. */
-  | { kind: "created"; project: ProjectView };
+  | { kind: "created"; project: ProjectView }
+  /**
+   * 엑셀에서 새 프로젝트를 만들며 가져온다 (014 FR-014a·b).
+   *
+   * 파일에는 프로젝트 이름·시작 URL·저장 위치가 없으므로 그것을 받아야 한다 (FR-014b).
+   * **만들기 양식을 새로 만들지 않고 `CreateForm` 을 그대로 쓴다** — 받는 것이 같으므로
+   * 두 벌로 두면 한쪽만 고쳐지는 날이 온다.
+   */
+  | { kind: "import"; plan: ImportPlanView };
 
 /** 구획 라벨 — 정본의 `.lbl` 이다. 이름만 확정 디자인의 관용어를 쓴다. */
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -165,6 +176,9 @@ export function ProjectSetup({
             onStaleList={reload}
             onCreate={() => setMode({ kind: "create" })}
             onBrowse={() => setMode({ kind: "browse" })}
+            /* 014 — 파일을 읽었을 뿐이다. 프로젝트는 양식을 채운 뒤에 만들어진다 */
+            onImportPlan={(plan) => setMode({ kind: "import", plan })}
+            onError={setError}
           />
         )}
 
@@ -181,6 +195,45 @@ export function ProjectSetup({
                 .catch((exc: unknown) =>
                   setError(describeError(exc)),
                 )
+                .finally(() => setBusy(false));
+            }}
+          />
+        )}
+
+        {/*
+          엑셀에서 새 프로젝트 (014 FR-014a·b·c).
+
+          만들기 양식을 그대로 쓴다 — 받는 것(이름·시작 URL·testId 속성)이 같다. 다른
+          것은 파일 이름을 이름의 기본값으로 제안하는 것과, 무엇이 함께 만들어지는지
+          알리는 것뿐이다.
+        */}
+        {mode.kind === "import" && (
+          <CreateForm
+            busy={busy}
+            defaultName={mode.plan.file_name.replace(/\.[^.]+$/, "")}
+            importNote={
+              <div
+                className="tint-run"
+                data-import-note
+                style={{ padding: "10px 12px", marginTop: 10 }}
+              >
+                <div className="strong-sm">
+                  {mode.plan.file_name} 에서 그룹 {mode.plan.group_count}개, 테스트 초안{" "}
+                  {mode.plan.draft_count}건을 함께 만듭니다.
+                </div>
+                <div className="why" style={{ marginTop: 4 }}>
+                  초안은 아직 테스트가 아닙니다. 만든 뒤 하나씩 녹화하면 테스트가 됩니다.
+                </div>
+              </div>
+            }
+            onCancel={() => setMode({ kind: "list" })}
+            onSubmit={(body) => {
+              setBusy(true);
+              setError(null);
+              void imports
+                .createProject({ plan_id: mode.plan.plan_id, ...body })
+                .then((result) => setMode({ kind: "created", project: result.project }))
+                .catch((exc: unknown) => setError(describeError(exc)))
                 .finally(() => setBusy(false));
             }}
           />
@@ -214,6 +267,8 @@ function ProjectList({
   onStaleList,
   onCreate,
   onBrowse,
+  onImportPlan,
+  onError,
 }: {
   projects: ProjectListItem[] | null;
   busy: boolean;
@@ -225,6 +280,14 @@ function ProjectList({
   onStaleList: () => void;
   onCreate: () => void;
   onBrowse: () => void;
+  /**
+   * 엑셀 파일에서 새 프로젝트를 만든다 (014 FR-014a).
+   *
+   * **이 자리에 있어야 한다.** 프로젝트가 아직 없는 사용자가 이미 쓰던 설계서를 들고
+   * 오는 경우이고, 열린 프로젝트 안의 진입점만 두면 먼저 빈 프로젝트를 만들어야 한다.
+   */
+  onImportPlan: (plan: ImportPlanView) => void;
+  onError: (error: ErrorInfo) => void;
 }) {
   if (projects === null) {
     // 확정 디자인이 로딩 상태를 정의하지 않는다 — undefined-states.md 에 기록했다.
@@ -240,6 +303,13 @@ function ProjectList({
         <button className="btn" onClick={onBrowse} disabled={busy}>
           기존 프로젝트 열기
         </button>
+        {/* 세 번째 길 — 이미 쓰던 설계서에서 시작한다 (014 US2). */}
+        <ImportFilePicker
+          label="엑셀에서 새 프로젝트"
+          disabled={busy}
+          onPlan={onImportPlan}
+          onError={onError}
+        />
       </div>
 
       {projects.length === 0 ? (
@@ -648,12 +718,23 @@ function CreateForm({
   busy,
   onCancel,
   onSubmit,
+  defaultName = "",
+  importNote,
 }: {
   busy: boolean;
   onCancel: () => void;
   onSubmit: (body: { name: string; default_start_url: string; test_id_attribute: string }) => void;
+  /**
+   * 이름 칸의 기본값 (014 FR-014b).
+   *
+   * 엑셀에서 만들 때 파일 이름을 제안한다. **고칠 수 있어야 한다** — 파일 이름이 늘
+   * 좋은 프로젝트 이름은 아니다. 그래서 값이 아니라 초기값이다.
+   */
+  defaultName?: string;
+  /** 가져오기로 무엇이 함께 만들어지는지 알린다. */
+  importNote?: React.ReactNode;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(defaultName);
   const [startUrl, setStartUrl] = useState("");
   const [testIdAttr, setTestIdAttr] = useState("data-testid");
 
@@ -668,6 +749,8 @@ function CreateForm({
   return (
     <div className="pane" style={{ padding: 24 }}>
       <Eyebrow>NEW PROJECT</Eyebrow>
+
+      {importNote}
 
       <p className="note" style={{ marginTop: 10 }}>
         저장 위치는 도구가 정합니다. 만들고 나면 어디에 만들어졌는지 알려 드립니다. 테스트

@@ -109,11 +109,18 @@ describe("구현 개수 (T027 · SC-001)", () => {
    * 를 지나야 하고, `Workbench` 하나만 `Artboard` 를 부른다.
    *
    * `TestList`·`ProjectSetup`·`KeyManagement`·`SecretValues` 는 한 테스트의 국면이
-   * 아니므로 예외다 (FR-217a).
+   * 아니므로 예외다 (FR-217a). `ImportPreview`(014)도 같다 — 프로젝트 단위 조작이며
+   * 다루는 대상이 테스트 하나가 아니라 **파일 하나**다.
    */
   it("국면 어댑터가 스스로 껍데기를 만들지 않는다 (SC-011 · FR-259)", () => {
     /** 한 테스트를 다루지 않는 화면 — 통합 대상이 아니다 (FR-217a) */
-    const NOT_A_PHASE = ["TestList", "ProjectSetup", "KeyManagement", "SecretValues"];
+    const NOT_A_PHASE = [
+      "TestList",
+      "ProjectSetup",
+      "KeyManagement",
+      "SecretValues",
+      "ImportPreview",
+    ];
 
     const offenders = Object.entries(SOURCES)
       .filter(([path]) => /\/src\/pages\//.test(path))

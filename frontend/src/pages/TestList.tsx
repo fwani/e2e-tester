@@ -38,6 +38,7 @@ import { createPortal } from "react-dom";
 import {
   ai,
   ApiError,
+  drafts as draftsApi,
   excel,
   groups as groupsApi,
   saveBlob,
@@ -47,9 +48,13 @@ import {
   type TestListRow,
   type TestGroup,
   type TestListResponse,
+  type DraftRow,
+  type ImportPlanView,
   type TrashedTest,
 } from "../api/client";
 import { TestGroupBar } from "../components/TestGroupBar";
+import { DraftSection } from "./DraftList";
+import { ImportFilePicker } from "./ImportPreview";
 import {
   TestBulkConfirm,
   TestSelectionBar,
@@ -127,6 +132,15 @@ export interface TestListProps {
    * 서버에는 Step 과 브라우저가 그대로 있는데 화면이 그것을 말하지 않으면 사용자는
    * 새 녹화를 시작하고, 앞의 기록은 영영 못 찾는다.
    */
+  /**
+   * 엑셀에서 가져오기 미리보기를 연다 (014 US2). 없으면 그 길을 그리지 않는다.
+   *
+   * 이 화면이 미리보기를 직접 그리지 않는 이유는 시트가 200개까지 올 수 있어
+   * 목록 안에 담기지 않기 때문이다.
+   */
+  onImportPlan?: (plan: ImportPlanView) => void;
+  /** 초안에서 AI 작성 세션을 시작한다 (014 US3). */
+  onRecordDraft?: (draft: DraftRow) => void;
   activeSessions?: SessionView[];
   onResumeSession?: (session: SessionView) => void;
   onDiscardSession?: (sessionId: string) => void;
@@ -149,6 +163,8 @@ export function TestList({
   onOpenSecrets,
   onOpenKeys,
   onOpenProjects,
+  onImportPlan,
+  onRecordDraft,
   activeSessions = [],
   onRefreshSessions,
   onResumeSession,
@@ -161,6 +177,8 @@ export function TestList({
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState<{ filename: string; warnings: number } | null>(null);
+  const [draftRows, setDraftRows] = useState<DraftRow[]>([]);
+  const [draftProblems, setDraftProblems] = useState<string[]>([]);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -283,6 +301,23 @@ export function TestList({
       .finally(() => setBusy(false));
   };
 
+  /**
+   * 초안 목록 (014 US3).
+   *
+   * 실패해도 삼킨다 — 그룹과 같은 판단이다. 초안을 못 불러와도 테스트 목록은 그려야
+   * 한다. 첫 화면이 막히면 아무것도 못 한다.
+   */
+  const reloadDrafts = async () => {
+    try {
+      const body = await draftsApi.list();
+      setDraftRows(body.drafts ?? []);
+      setDraftProblems(body.problems ?? []);
+    } catch {
+      setDraftRows([]);
+      setDraftProblems([]);
+    }
+  };
+
   const reloadGroups = async () => {
     try {
       // `?? []` 가 없으면 응답이 어긋났을 때 **목록 화면 전체가 깨진다.** 그룹은
@@ -297,6 +332,7 @@ export function TestList({
   useEffect(() => {
     void reload(query, groupFilter);
     void reloadGroups();
+    void reloadDrafts();
     // 검색어·그룹이 바뀔 때마다 다시 조회한다. 로컬 도구이므로 디바운스 없이도 충분하다.
   }, [query, groupFilter]);
 
@@ -682,6 +718,16 @@ export function TestList({
               >
                 {exporting ? "내보내는 중…" : "엑셀로 내보내기"}
               </button>
+
+              {/* 엑셀에서 가져오기 (014 US2). 내보내기 옆에 두어 두 방향이 한자리에 있다. */}
+              {onImportPlan !== undefined && (
+                <ImportFilePicker
+                  label="엑셀에서 가져오기"
+                  disabled={busy}
+                  onPlan={onImportPlan}
+                  onError={setError}
+                />
+              )}
             </>
           )}
         </div>
@@ -807,7 +853,12 @@ export function TestList({
 
         {/* ─── 목록 ──────────────────────────────────────────────────────── */}
         {isEmptyProject ? (
-          <EmptyProject onCreate={onCreate} onOpenKeys={onOpenKeys} />
+          <EmptyProject
+            onCreate={onCreate}
+            onOpenKeys={onOpenKeys}
+            onImportPlan={onImportPlan}
+            onError={setError}
+          />
         ) : (
           <div className="pane" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div
@@ -969,6 +1020,27 @@ export function TestList({
               <span className="why">MVP 미지원</span>
             </div>
           </div>
+        )}
+
+        {/*
+          녹화하지 않은 초안 (014 US3 · FR-027).
+
+          **테스트 목록의 행으로 섞지 않는다.** 초안은 실행할 수 없고 결말이 없어, 같은
+          표에 두면 사용자가 행마다 무엇을 할 수 있는지 매번 확인해야 한다.
+
+          첫 사용자 화면(`isEmptyProject`)에서도 그린다 — 엑셀에서 가져오기만 한 프로젝트는
+          테스트가 0개이고 초안만 있다. 그때 이 영역을 감추면 사용자가 방금 들여온 것이
+          어디로 갔는지 알 수 없다.
+        */}
+        {onRecordDraft !== undefined && (
+          <DraftSection
+            drafts={draftRows}
+            problems={draftProblems}
+            busy={busy}
+            onRecord={onRecordDraft}
+            onChanged={() => void reloadDrafts()}
+            onError={setError}
+          />
         )}
       </div>
     </Artboard>
@@ -1406,7 +1478,24 @@ function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
  * 확인 전에는 「키 필요」도 「사용 가능」도 말하지 않는다 — 아직 모르는 것을 단정하면
  * 고정 문구와 같은 결함이 된다.
  */
-function EmptyProject({ onCreate, onOpenKeys }: { onCreate: () => void; onOpenKeys?: () => void }) {
+function EmptyProject({
+  onCreate,
+  onOpenKeys,
+  onImportPlan,
+  onError,
+}: {
+  onCreate: () => void;
+  onOpenKeys?: () => void;
+  /**
+   * 엑셀에서 가져오기 (014 US2).
+   *
+   * **이 화면에 있어야 한다.** 테스트가 0개인 프로젝트는 설계서를 들여오기에 가장
+   * 좋은 상태이고, 목록 조작 띠는 이 화면에서 그려지지 않는다 — 거기에만 두면 가장
+   * 필요한 순간에 길이 없다.
+   */
+  onImportPlan?: (plan: ImportPlanView) => void;
+  onError?: (error: ErrorInfo) => void;
+}) {
   const [aiReady, setAiReady] = useState<AiAvailability | null>(null);
 
   useEffect(() => {
@@ -1526,6 +1615,22 @@ function EmptyProject({ onCreate, onOpenKeys }: { onCreate: () => void; onOpenKe
             )}
           </div>
         </div>
+
+        {/* 세 번째 갈래 — 이미 쓰던 설계서가 있는 사용자 (014 US2). */}
+        {onImportPlan !== undefined && (
+          <div className="pane" style={{ padding: "14px", width: "100%", textAlign: "left" }}>
+            <div className="subtitle">이미 쓰던 설계서가 있나요?</div>
+            <div className="why" style={{ margin: "6px 0 10px" }}>
+              엑셀 파일을 넣으면 그룹과 테스트 초안을 만듭니다. 초안은 하나씩 녹화하면
+              테스트가 됩니다.
+            </div>
+            <ImportFilePicker
+              label="엑셀에서 가져오기"
+              onPlan={onImportPlan}
+              onError={(err) => onError?.(err)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

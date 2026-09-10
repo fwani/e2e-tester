@@ -1129,3 +1129,140 @@ export const excel = {
   /** 내보내면 무엇이 바뀌는지 미리 본다. 파일을 만들지 않는다. */
   warnings: () => get<ExportWarningsView>("/api/export/warnings"),
 };
+
+/* ─── 가져오기와 초안 (014) ──────────────────────────────────────────────── */
+
+export interface RenumberedRow {
+  row: number;
+  from: string;
+  to: string;
+}
+
+export interface SkippedRow {
+  sheet_name: string;
+  row: number;
+  reason: "no_title" | "no_columns" | "empty";
+}
+
+export interface SheetPlanView {
+  sheet_name: string;
+  prefix: string | null;
+  prefix_source: "from_rows" | "user_supplied" | "ungrouped" | null;
+  needs_prefix: boolean;
+  group_name: string | null;
+  existing_group_name: string | null;
+  name_differs: boolean;
+  row_count: number;
+  renumbered: RenumberedRow[];
+}
+
+export interface ImportPlanView {
+  plan_id: string;
+  file_name: string;
+  expires_at: string;
+  draft_count: number;
+  group_count: number;
+  sheets: SheetPlanView[];
+  skipped: SkippedRow[];
+  capacity: { needed: number; available: number; ok: boolean };
+  warnings: string[];
+}
+
+export interface GroupRef {
+  prefix: string;
+  name: string;
+}
+
+export interface DraftRef {
+  draft_id: string;
+  name: string;
+  group_prefix: string;
+  desired_test_id: string | null;
+}
+
+export interface ImportResultView {
+  created_groups: GroupRef[];
+  reused_groups: GroupRef[];
+  drafts: DraftRef[];
+  skipped: SkippedRow[];
+  skipped_sheets: { sheet_name: string; reason: string }[];
+  renumbered: RenumberedRow[];
+}
+
+export interface CreateProjectImportResult extends ImportResultView {
+  project: ProjectView;
+}
+
+export interface DraftSourceView {
+  file_name: string;
+  sheet_name: string;
+  row: number;
+}
+
+export interface DraftRow {
+  draft_id: string;
+  name: string;
+  description: string | null;
+  actor: string | null;
+  group_prefix: string;
+  desired_test_id: string | null;
+  desired_id_available: boolean;
+  source: DraftSourceView;
+  created_at: string;
+}
+
+export interface DraftDetail extends DraftRow {
+  procedure: string | null;
+  expectation: string | null;
+  suggested_instruction: string;
+}
+
+export interface DraftListResponse {
+  drafts: DraftRow[];
+  count: number;
+  problems: string[];
+}
+
+/**
+ * 파일을 multipart 로 올린다.
+ *
+ * **`X-ITB-Project-Root` 를 손으로 붙인다.** `send()` 는 `Content-Type: application/json`
+ * 을 붙이는데 multipart 요청에 그 헤더가 붙으면 경계 문자열이 사라져 서버가 본문을 읽지
+ * 못한다. 그래서 `send()` 를 쓸 수 없지만, 그렇다고 프로젝트 대조 가드를 빼면 화면이
+ * 보여 주는 프로젝트와 다른 프로젝트로 가져오게 된다.
+ */
+async function postFile<T>(path: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append("file", file);
+  const guard: Record<string, string> =
+    expectedProjectRoot !== null ? { [PROJECT_ROOT_HEADER]: encodeRoot(expectedProjectRoot) } : {};
+  // Content-Type 은 브라우저가 경계 문자열과 함께 정하게 둔다.
+  const resp = await fetch(path, { method: "POST", body: form, headers: guard });
+  const text = await resp.text();
+  if (!resp.ok) throw apiErrorFromBody(resp.status, text);
+  return JSON.parse(text) as T;
+}
+
+export const imports = {
+  /** 파일을 해석해 계획을 만든다. 프로젝트에는 아무것도 만들지 않는다. */
+  preview: (file: File) => postFile<ImportPlanView>("/api/import/preview", file),
+
+  /** 열린 프로젝트로 가져온다. 전부 아니면 전무다. */
+  commit: (planId: string, prefixes: Record<string, string> = {}) =>
+    post<ImportResultView>("/api/import/commit", { plan_id: planId, prefixes }),
+
+  /** 파일에서 새 프로젝트를 만들며 가져온다. */
+  createProject: (body: {
+    plan_id: string;
+    name: string;
+    default_start_url: string;
+    test_id_attribute?: string;
+    prefixes?: Record<string, string>;
+  }) => post<CreateProjectImportResult>("/api/import/create-project", body),
+};
+
+export const drafts = {
+  list: () => get<DraftListResponse>("/api/drafts"),
+  get: (id: string) => get<DraftDetail>(`/api/drafts/${encodeURIComponent(id)}`),
+  remove: (id: string) => del<void>(`/api/drafts/${encodeURIComponent(id)}`),
+};

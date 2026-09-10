@@ -7,14 +7,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { initialLocation, useScreenUrl } from "./hooks/useScreenUrl";
 
 import {
+  drafts as draftsApi,
   project,
   sessions,
   setExpectedProjectRoot,
+  type DraftRow,
+  type ImportPlanView,
   type ProjectView,
   type SessionView,
 } from "./api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
 import { ComposeView } from "./pages/ComposeView";
+import { ImportPreview } from "./pages/ImportPreview";
 import { KeyManagement } from "./pages/KeyManagement";
 import { ProjectSetup } from "./pages/ProjectSetup";
 import { ResultView } from "./pages/ResultView";
@@ -34,7 +38,24 @@ type Screen =
    * 지시문을 쓰는 일이 같은 화면 안에서 일어나므로 중간 상태가 없다 — 그것이
    * SC-011(껍데기가 바뀌는 횟수 0)의 뜻이다.
    */
-  | { name: "compose" }
+  | {
+      name: "compose";
+      /**
+       * 초안에서 출발한 경우 (014 US3 · FR-030·FR-031).
+       *
+       * **새 화면을 만들지 않는다.** 기존 「테스트 만들기 → AI」와 같은 화면·같은 경로로
+       * 들어가고, 지시문 칸만 미리 채워진다 — 원칙 I 이 막으려는 두 번째 작성 경로를
+       * 만들지 않기 위해서다.
+       */
+      draft?: { draft_id: string; name: string; instruction: string } | null;
+    }
+  /**
+   * 가져오기 미리보기 (014 US2 · FR-015·FR-016).
+   *
+   * **확정 전에는 아무것도 만들어지지 않은 상태다.** 이 화면에서 취소하면 프로젝트는
+   * 파일을 고르기 전과 같다.
+   */
+  | { name: "import-preview"; plan: ImportPlanView; forNewProject: boolean }
   | {
       name: "runner";
       session: SessionView;
@@ -448,6 +469,33 @@ export function App() {
           onRun={(testId) => startRun(testId)}
           pendingRunId={pendingRun}
           onOpenProjects={() => setScreen({ name: "setup" })}
+          /* 014 US2 — 파일을 읽었을 뿐이고 아직 아무것도 만들어지지 않았다 */
+          onImportPlan={(plan) =>
+            setScreen({ name: "import-preview", plan, forNewProject: false })
+          }
+          /*
+            014 US3 — 초안에서 녹화를 시작한다.
+
+            **기존 AI 작성 경로로 들어간다.** 지시문은 서버가 지은 것을 받아 미리 채우고
+            (FR-031), 사용자가 고칠 수 있다. 초안을 읽는 데 실패하면 그 사실을 알리고
+            화면을 바꾸지 않는다 — 빈 지시문으로 들어가면 사용자는 초안이 비어 있는 줄 안다.
+          */
+          onRecordDraft={(draft: DraftRow) => {
+            void draftsApi
+              .get(draft.draft_id)
+              .then((detail) => {
+                unlockCompose();
+                setScreen({
+                  name: "compose",
+                  draft: {
+                    draft_id: detail.draft_id,
+                    name: detail.name,
+                    instruction: detail.suggested_instruction,
+                  },
+                });
+              })
+              .catch((exc: unknown) => setError(describeError(exc)));
+          }}
           onRefreshSessions={refreshActive}
           onOpenResult={(testId) => setScreen({ name: "result", testId })}
           onOpenDefinition={(testId) => setScreen({ name: "definition", testId })}
@@ -503,6 +551,13 @@ export function App() {
         <ComposeView
           project={opened}
           onCancel={() => setScreen({ name: "list" })}
+          /* 014 FR-031 — 초안에서 출발했으면 지시문을 미리 채운다 */
+          initialInstruction={screen.draft?.instruction ?? null}
+          fromDraft={
+            screen.draft
+              ? { draft_id: screen.draft.draft_id, name: screen.draft.name }
+              : null
+          }
           /*
             **세션 생성 경로를 새로 만들지 않는다** (FR-248 · 005 U-01·U-06).
             아래 두 호출은 1회차에 `CreateTest`·`AiCompose` 가 부르던 것과 같다 —
@@ -537,6 +592,20 @@ export function App() {
                 setError(describeError(exc));
               });
           }}
+        />
+      )}
+
+      {/*
+        가져오기 미리보기 (014 US2).
+
+        **취소는 목록으로 되돌아가는 것뿐이다** — 계획은 서버 메모리에만 있고 프로젝트에는
+        아무것도 만들어지지 않았으므로 치울 것이 없다 (FR-016).
+      */}
+      {screen.name === "import-preview" && (
+        <ImportPreview
+          plan={screen.plan}
+          onCancel={() => setScreen({ name: "list" })}
+          onDone={() => setScreen({ name: "list" })}
         />
       )}
 

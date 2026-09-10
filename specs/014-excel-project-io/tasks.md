@@ -127,32 +127,32 @@ Recorder·Runner·Generator 는 건드리지 않으므로 그쪽 단위 테스�
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T039 [P] [US2] `backend/tests/unit/test_import_defenses.py` — 3겹 방어: 바이트 상한, 압축 해제 총량·압축비(zip 폭탄), 시트·행 구조 상한. 각각 해석을 **시작하기 전에** 거절하는지 ([research.md](research.md) R3)
-- [ ] T040 [P] [US2] `backend/tests/unit/test_import_planning.py` — 접두어 읽어내기, 읽어낼 수 없는 시트의 `needs_prefix`, 한 시트 안 접두어 혼재, 파일 내 TC ID 중복 재번호, 건너뛸 행 3종(`no_title`·`no_columns`·`empty`), 기존 그룹 이름 유지 판정 (FR-022~FR-024a)
-- [ ] T041 [P] [US2] `backend/tests/contract/test_excel_import_api.py` — `POST /api/import/preview`·`/commit`·`/create-project` 의 요청·응답 형태와 오류 코드 전부 ([contracts/rest-api.md](contracts/rest-api.md) §2·§3)
-- [ ] T042 [P] [US2] `backend/tests/integration/test_import_atomicity.py` — 확정 도중 실패 시 그룹도 초안도 하나도 남지 않는지(`IMPORT_FAILED`), 되돌림까지 실패하면 `IMPORT_PARTIAL` 과 `stranded` 가 나오는지 (FR-025)
-- [ ] T043 [P] [US2] `backend/tests/integration/test_import_capacity.py` — 남은 번호보다 많이 만들려 할 때 **아무것도 만들기 전에** 거절하고 필요한 수·남은 수를 알리는지 (FR-036b · SC-010)
-- [ ] T044 [P] [US2] `backend/tests/integration/test_import_new_project.py` — 새 프로젝트를 만들며 가져오기 성공 흐름과, 도중 실패 시 만들다 만 프로젝트가 남지 않는지 (FR-014a~c)
-- [ ] T045 [P] [US2] `backend/tests/e2e/test_us8_excel_import.py` — 시트 3개(그룹 없음·접두어 있음·접두어 없음)짜리 파일로 미리보기 → 취소 → 다시 → 접두어 입력 → 확정까지 한 흐름
-- [ ] T046 [P] [US2] `frontend/tests/ImportPreview.test.tsx` — 미리보기가 그룹 수·초안 수·건너뛸 행·번호 변경·이름 차이를 보이는지, 접두어 입력 칸이 `needs_prefix` 시트에만 나오는지, 취소가 아무것도 만들지 않는지
-- [ ] T047 [P] [US2] `frontend/tests/abnormal/excel-blockers.test.tsx` — 파일 거절·계획 만료·수용량 초과 각각에 대해 사유와 다음 행동이 화면에 나오는지
+- [X] T039 [P] [US2] `backend/tests/unit/test_import_defenses.py` — 3겹 방어: 바이트 상한, 압축 해제 총량·압축비(zip 폭탄), 시트·행 구조 상한. 각각 해석을 **시작하기 전에** 거절하는지 ([research.md](research.md) R3)
+- [X] T040 [P] [US2] `backend/tests/unit/test_import_planning.py` — 접두어 읽어내기, 읽어낼 수 없는 시트의 `needs_prefix`, 한 시트 안 접두어 혼재, 파일 내 TC ID 중복 재번호, 건너뛸 행 3종(`no_title`·`no_columns`·`empty`), 기존 그룹 이름 유지 판정 (FR-022~FR-024a)
+- [X] T041 [P] [US2] `backend/tests/contract/test_excel_import_api.py` — `POST /api/import/preview`·`/commit`·`/create-project` 의 요청·응답 형태와 오류 코드 전부 ([contracts/rest-api.md](contracts/rest-api.md) §2·§3)
+- [X] T042 [P] [US2] `backend/tests/integration/test_import_atomicity.py` — 확정 도중 실패 시 그룹도 초안도 하나도 남지 않는지(`IMPORT_FAILED`), 되돌림까지 실패하면 `IMPORT_PARTIAL` 과 `stranded` 가 나오는지 (FR-025)
+- [X] T043 [P] [US2] `backend/tests/integration/test_import_capacity.py` — 남은 번호보다 많이 만들려 할 때 **아무것도 만들기 전에** 거절하고 필요한 수·남은 수를 알리는지 (FR-036b · SC-010)
+- [X] T044 [P] [US2] `backend/tests/integration/test_import_new_project.py` — 새 프로젝트를 만들며 가져오기 성공 흐름과, 도중 실패 시 만들다 만 프로젝트가 남지 않는지 (FR-014a~c)
+- [X] T045 [P] [US2] `backend/tests/e2e/test_us8_excel_import.py` — 시트 3개(그룹 없음·접두어 있음·접두어 없음)짜리 파일로 미리보기 → 취소 → 다시 → 접두어 입력 → 확정까지 한 흐름
+- [X] T046 [P] [US2] `frontend/tests/ImportPreview.test.tsx` — 미리보기가 그룹 수·초안 수·건너뛸 행·번호 변경·이름 차이를 보이는지, 접두어 입력 칸이 `needs_prefix` 시트에만 나오는지, 취소가 아무것도 만들지 않는지
+- [X] T047 [P] [US2] `frontend/tests/abnormal/excel-blockers.test.tsx` — 파일 거절·계획 만료·수용량 초과 각각에 대해 사유와 다음 행동이 화면에 나오는지
 
 ### Implementation for User Story 2
 
-- [ ] T048 [US2] `backend/src/itb/portability/workbook.py` 에 읽기 쪽을 구현한다 — `read_workbook(data) -> ParsedWorkbook`. `zipfile.ZipFile.infolist()` 로 **열기 전에** 압축 해제 총량을 검사하고, `read_only=True` 로 흘려 읽으며 구조 상한에서 즉시 중단한다. openpyxl 타입을 밖으로 흘리지 않는다
-- [ ] T049 [US2] `backend/src/itb/portability/importer.py` — `ParsedWorkbook` + 열린 프로젝트 상태 → `ImportPlan`. `SheetPlan`·`RowPlan`·`SkippedRow` 를 채우고, 접두어 판정·중복 재번호·기존 그룹 대조를 한다 ([data-model.md](data-model.md) §5)
-- [ ] T050 [US2] `backend/src/itb/api/state.py` 에 가져오기 계획 보관소를 더한다 — 30분 수명, 최대 8개, 넘으면 오래된 것부터 버린다. 디스크에 쓰지 않는다 ([research.md](research.md) R8)
-- [ ] T051 [US2] `backend/src/itb/api/routes/excel.py` 를 새로 만들고 `POST /api/import/preview` 를 구현한다. 업로드는 상한+1 바이트만 읽어 판정하는 기존 수법을 쓴다 (`session_files.py:66`)
-- [ ] T052 [US2] `backend/src/itb/api/routes/excel.py` 에 `POST /api/import/commit` 을 구현한다. 순서가 계약이다 — 수용량 검사 → 그룹 쓰기 → `test_moves.run_all` 로 초안 쓰기 → 실패 시 역순 되돌림 ([data-model.md](data-model.md) §8)
-- [ ] T053 [US2] `backend/src/itb/api/routes/excel.py` 에 `POST /api/import/create-project` 를 구현한다. 실패 시 만든 프로젝트를 휴지통으로 옮기고 레지스트리에서 지운다 (FR-014c)
-- [ ] T054 [US2] `backend/src/itb/api/routes/drafts.py` 를 새로 만든다 — `GET /api/drafts`, `GET /api/drafts/{id}`, `DELETE /api/drafts/{id}` ([contracts/rest-api.md](contracts/rest-api.md) §4)
-- [ ] T055 [US2] `backend/src/itb/api/app.py` 의 `ROUTERS` 에 `excel` 과 `drafts` 라우터를 등록한다
-- [ ] T056 [US2] `backend/src/itb/api/routes/tests.py` 의 `TestListResponse` 에 `draft_count` 를 더한다. 초안을 `tests` 에 섞지 않는다 (FR-027)
-- [ ] T057 [US2] `frontend/src/api/client.ts` 에 `imports`·`drafts` 네임스페이스를 더한다. 업로드는 `FormData` + `fetch` 이되 **`X-ITB-Project-Root` 를 손으로 붙인다** — 기존 `sessions.uploadFile` 을 그대로 베끼면 가드가 빠진다 ([research.md](research.md) R10)
-- [ ] T058 [P] [US2] `frontend/src/pages/ImportPreview.tsx` 를 새로 만든다 — 요약, 시트별 행(접두어 입력 칸 포함), 건너뛸 행 목록, 번호 변경 목록, 이름 차이 알림, 취소·확정
-- [ ] T059 [US2] `frontend/src/pages/TestList.tsx` 에 「엑셀에서 가져오기」 진입점과 초안 영역을 더한다. 초안은 테스트와 시각적으로 구분되어야 한다 (FR-027)
-- [ ] T060 [US2] `frontend/src/pages/ProjectSetup.tsx` 의 버튼 줄에 「엑셀에서 새 프로젝트」를 세 번째로 더하고, 이름·시작 URL·저장 위치를 받는 흐름을 잇는다. 프로젝트 이름은 파일 이름을 기본값으로 제안한다 (FR-014b)
-- [ ] T061 [US2] `frontend/src/App.tsx` 의 `Screen` 유니온에 미리보기 화면을 더하고 전환을 잇는다
+- [X] T048 [US2] `backend/src/itb/portability/workbook.py` 에 읽기 쪽을 구현한다 — `read_workbook(data) -> ParsedWorkbook`. `zipfile.ZipFile.infolist()` 로 **열기 전에** 압축 해제 총량을 검사하고, `read_only=True` 로 흘려 읽으며 구조 상한에서 즉시 중단한다. openpyxl 타입을 밖으로 흘리지 않는다
+- [X] T049 [US2] `backend/src/itb/portability/importer.py` — `ParsedWorkbook` + 열린 프로젝트 상태 → `ImportPlan`. `SheetPlan`·`RowPlan`·`SkippedRow` 를 채우고, 접두어 판정·중복 재번호·기존 그룹 대조를 한다 ([data-model.md](data-model.md) §5)
+- [X] T050 [US2] `backend/src/itb/api/state.py` 에 가져오기 계획 보관소를 더한다 — 30분 수명, 최대 8개, 넘으면 오래된 것부터 버린다. 디스크에 쓰지 않는다 ([research.md](research.md) R8)
+- [X] T051 [US2] `backend/src/itb/api/routes/excel.py` 를 새로 만들고 `POST /api/import/preview` 를 구현한다. 업로드는 상한+1 바이트만 읽어 판정하는 기존 수법을 쓴다 (`session_files.py:66`)
+- [X] T052 [US2] `backend/src/itb/api/routes/excel.py` 에 `POST /api/import/commit` 을 구현한다. 순서가 계약이다 — 수용량 검사 → 그룹 쓰기 → `test_moves.run_all` 로 초안 쓰기 → 실패 시 역순 되돌림 ([data-model.md](data-model.md) §8)
+- [X] T053 [US2] `backend/src/itb/api/routes/excel.py` 에 `POST /api/import/create-project` 를 구현한다. 실패 시 만든 프로젝트를 휴지통으로 옮기고 레지스트리에서 지운다 (FR-014c)
+- [X] T054 [US2] `backend/src/itb/api/routes/drafts.py` 를 새로 만든다 — `GET /api/drafts`, `GET /api/drafts/{id}`, `DELETE /api/drafts/{id}` ([contracts/rest-api.md](contracts/rest-api.md) §4)
+- [X] T055 [US2] `backend/src/itb/api/app.py` 의 `ROUTERS` 에 `excel` 과 `drafts` 라우터를 등록한다
+- [X] T056 [US2] `backend/src/itb/api/routes/tests.py` 의 `TestListResponse` 에 `draft_count` 를 더한다. 초안을 `tests` 에 섞지 않는다 (FR-027)
+- [X] T057 [US2] `frontend/src/api/client.ts` 에 `imports`·`drafts` 네임스페이스를 더한다. 업로드는 `FormData` + `fetch` 이되 **`X-ITB-Project-Root` 를 손으로 붙인다** — 기존 `sessions.uploadFile` 을 그대로 베끼면 가드가 빠진다 ([research.md](research.md) R10)
+- [X] T058 [P] [US2] `frontend/src/pages/ImportPreview.tsx` 를 새로 만든다 — 요약, 시트별 행(접두어 입력 칸 포함), 건너뛸 행 목록, 번호 변경 목록, 이름 차이 알림, 취소·확정
+- [X] T059 [US2] `frontend/src/pages/TestList.tsx` 에 「엑셀에서 가져오기」 진입점과 초안 영역을 더한다. 초안은 테스트와 시각적으로 구분되어야 한다 (FR-027)
+- [X] T060 [US2] `frontend/src/pages/ProjectSetup.tsx` 의 버튼 줄에 「엑셀에서 새 프로젝트」를 세 번째로 더하고, 이름·시작 URL·저장 위치를 받는 흐름을 잇는다. 프로젝트 이름은 파일 이름을 기본값으로 제안한다 (FR-014b)
+- [X] T061 [US2] `frontend/src/App.tsx` 의 `Screen` 유니온에 미리보기 화면을 더하고 전환을 잇는다
 
 **Checkpoint**: US1 과 US2 가 각각 독립적으로 동작한다. 설계서를 손 입력 없이 옮길 수 있다.
 
@@ -170,7 +170,7 @@ Recorder·Runner·Generator 는 건드리지 않으므로 그쪽 단위 테스�
 - [ ] T063 [P] [US3] `backend/tests/integration/test_draft_to_test.py` — 희망 번호가 비어 있을 때 그 번호를 받는지, 이미 쓰였을 때 다른 번호를 받고 **그 사실이 응답에 실리는지**, 저장 성공 시 초안이 사라지고 버렸을 때 남는지 (FR-032·FR-033)
 - [ ] T064 [P] [US3] `backend/tests/integration/test_draft_no_number_reservation.py` — 초안이 있는 상태에서 새 테스트를 만들거나 「번호 정리」를 돌려도 충돌하지 않는지. 초안은 번호를 예약하지 않는다 ([quickstart.md](quickstart.md) §3 회귀 3·4)
 - [ ] T065 [P] [US3] `backend/tests/e2e/test_us9_draft_recording.py` — 초안에서 세션을 열어 지시문이 채워져 있고, 녹화·저장까지 가서 테스트가 되고, 다시 내보내면 `테스트항목`·`수행자` 가 살아 있는 한 흐름 (**왕복이 이어지는지**)
-- [ ] T066 [P] [US3] `frontend/tests/DraftList.test.tsx` — 초안 목록이 남은 수를 보이고 녹화 시작·삭제가 되는지
+- [X] T066 [P] [US3] `frontend/tests/DraftList.test.tsx` — 초안 목록이 남은 수를 보이고 녹화 시작·삭제가 되는지
 - [ ] T067 [P] [US3] `frontend/tests/DraftToRecording.test.tsx` — 초안에서 시작한 작성 화면의 지시문 칸이 채워져 있고 고칠 수 있는지, 희망 번호를 못 받았을 때 알림이 뜨는지
 
 ### Implementation for User Story 3
@@ -179,8 +179,8 @@ Recorder·Runner·Generator 는 건드리지 않으므로 그쪽 단위 테스�
 - [ ] T069 [US3] `backend/src/itb/api/routes/sessions.py` 의 `SessionWork` 가 `draft_id` 를 저장까지 들고 가게 한다
 - [ ] T070 [US3] `backend/src/itb/api/routes/sessions.py` 의 저장 경로를 고친다 — 초안의 희망 번호를 부여하려 시도하고, 실패하면 `allocate_test_id` 로 받고 `desired_id_taken` 을 응답에 싣는다. 저장이 성공하면 초안 파일을 지운다 (FR-032·FR-033)
 - [ ] T071 [US3] 저장 시 초안의 `description`·`actor` 를 `Test` 에 옮긴다. 이것이 없으면 다시 내보낼 때 두 칸이 빈다 — 왕복이 끊긴다 ([research.md](research.md) R11)
-- [ ] T072 [P] [US3] `frontend/src/pages/DraftList.tsx` 를 새로 만든다 — 초안 목록, 남은 수, 출처(파일·시트·행), 희망 번호와 그 가용 여부, 녹화 시작·삭제
-- [ ] T073 [US3] `frontend/src/pages/ComposeView.tsx` 가 초안에서 온 경우 지시문을 미리 채우고 고칠 수 있게 한다 (FR-031)
+- [X] T072 [P] [US3] `frontend/src/pages/DraftList.tsx` 를 새로 만든다 — 초안 목록, 남은 수, 출처(파일·시트·행), 희망 번호와 그 가용 여부, 녹화 시작·삭제
+- [X] T073 [US3] `frontend/src/pages/ComposeView.tsx` 가 초안에서 온 경우 지시문을 미리 채우고 고칠 수 있게 한다 (FR-031)
 - [ ] T074 [US3] 희망 번호를 주지 못했을 때 사용자에게 알린다 — 조용히 다른 번호를 주면 안 된다 (FR-032)
 
 **Checkpoint**: 세 P1 이야기가 모두 동작한다. 스프레드시트에서 실제 테스트 자산까지 이어진다.
