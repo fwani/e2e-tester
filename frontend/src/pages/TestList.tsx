@@ -894,6 +894,28 @@ export function TestList({
           />
         )}
 
+        {/*
+          ─── 초안이 있고 테스트가 0개일 때 ─────────────────────────────────
+
+          **초안이 첫 사용자 안내보다 위에 온다.**
+
+          첫 사용자 안내(`EmptyProject`)는 `flex:1` 로 화면을 가득 채운다. 초안 구획이
+          그 아래에 있으면, 설계서에서 스무 건을 들여온 사용자가 보는 것은 「아직
+          테스트가 없습니다」와 시작하는 세 갈래뿐이고 **자기가 방금 들여온 스무 건은
+          스크롤 밖에 있다.** 그것은 FR-035(「몇 건 남았다」를 크게 보인다)가 막으려던
+          것이며, 이 구획을 첫 화면에서도 그리기로 한 이유 자체를 무력화한다.
+        */}
+        {isEmptyProject && onRecordDraft !== undefined && draftRows.length > 0 && (
+          <DraftSection
+            drafts={draftRows}
+            problems={draftProblems}
+            busy={busy}
+            onRecord={onRecordDraft}
+            onChanged={() => void reloadDrafts()}
+            onError={setError}
+          />
+        )}
+
         {/* ─── 목록 ──────────────────────────────────────────────────────── */}
         {isEmptyProject ? (
           <EmptyProject
@@ -901,6 +923,7 @@ export function TestList({
             onOpenKeys={onOpenKeys}
             onImportPlan={onImportPlan}
             onError={setError}
+            draftCount={draftRows.length}
           />
         ) : (
           <div className="pane" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -1075,7 +1098,9 @@ export function TestList({
           테스트가 0개이고 초안만 있다. 그때 이 영역을 감추면 사용자가 방금 들여온 것이
           어디로 갔는지 알 수 없다.
         */}
-        {onRecordDraft !== undefined && (
+        {/* 위에서 이미 그렸으면 다시 그리지 않는다 — 같은 구획이 두 번 나오면 사용자는
+            둘이 다른 것인지 확인하느라 멈춘다. */}
+        {onRecordDraft !== undefined && !(isEmptyProject && draftRows.length > 0) && (
           <DraftSection
             drafts={draftRows}
             problems={draftProblems}
@@ -1526,9 +1551,19 @@ function EmptyProject({
   onOpenKeys,
   onImportPlan,
   onError,
+  draftCount = 0,
 }: {
   onCreate: () => void;
   onOpenKeys?: () => void;
+  /**
+   * 녹화하지 않은 초안 수.
+   *
+   * **0 이 아니면 이 화면의 문구가 거짓말이 된다.** 「아직 테스트가 없습니다 · 브라우저를
+   * 직접 조작하거나 할 일을 말로 적으면 됩니다」는 맨 처음 온 사용자를 위한 문장이고,
+   * 설계서에서 스무 건을 들여온 사용자에게는 다음에 할 일이 이미 정해져 있다 — 초안
+   * 하나를 녹화하는 것이다. 그 사용자에게는 문구가 위의 초안 구획을 가리켜야 한다.
+   */
+  draftCount?: number;
   /**
    * 엑셀에서 가져오기 (014 US2).
    *
@@ -1582,11 +1617,25 @@ function EmptyProject({
         </svg>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <div className="title">아직 테스트가 없습니다</div>
+          <h2 className="title" style={{ margin: 0 }}>
+            아직 테스트가 없습니다
+          </h2>
           <div className="note">
-            브라우저를 직접 조작하거나, 할 일을 말로 적으면 됩니다.
-            <br />
-            어느 쪽으로 만들어도 같은 Step 모델로 저장되고, 다시 돌릴 때는 Playwright 가 실행합니다.
+            {draftCount > 0 ? (
+              <span data-empty-with-drafts>
+                위의 초안 {draftCount}건을 녹화하면 테스트가 됩니다.
+                <br />
+                초안과 무관하게 새로 만들 수도 있습니다 — 어느 쪽으로 만들어도 같은 Step
+                모델로 저장됩니다.
+              </span>
+            ) : (
+              <>
+                브라우저를 직접 조작하거나, 할 일을 말로 적으면 됩니다.
+                <br />
+                어느 쪽으로 만들어도 같은 Step 모델로 저장되고, 다시 돌릴 때는 Playwright 가
+                실행합니다.
+              </>
+            )}
           </div>
         </div>
 
@@ -1659,8 +1708,29 @@ function EmptyProject({
           </div>
         </div>
 
-        {/* 세 번째 갈래 — 이미 쓰던 설계서가 있는 사용자 (014 US2). */}
-        {onImportPlan !== undefined && (
+        {/*
+          세 번째 갈래 — 이미 쓰던 설계서가 있는 사용자 (014 US2).
+
+          **이미 들여온 사용자에게는 접는다.** 초안이 있다는 것은 이 갈래를 이미 지났다는
+          뜻이고, 그때 같은 권유를 크게 펴 두면 다음에 할 일(초안 녹화)과 경쟁한다.
+          길을 없애지는 않는다 — 파일을 더 넣는 일은 있다 (`<details>`).
+        */}
+        {onImportPlan !== undefined && draftCount > 0 && (
+          <details className="pane" style={{ padding: "14px", width: "100%", textAlign: "left" }}>
+            <summary className="subtitle" style={{ cursor: "pointer" }}>
+              엑셀 파일을 더 넣기
+            </summary>
+            <div className="why" style={{ margin: "6px 0 10px" }}>
+              가져온 초안에 더해집니다. 같은 그룹 접두어면 같은 그룹으로 들어갑니다.
+            </div>
+            <ImportFilePicker
+              label="엑셀에서 가져오기"
+              onPlan={onImportPlan}
+              onError={(err) => onError?.(err)}
+            />
+          </details>
+        )}
+        {onImportPlan !== undefined && draftCount === 0 && (
           <div className="pane" style={{ padding: "14px", width: "100%", textAlign: "left" }}>
             <div className="subtitle">이미 쓰던 설계서가 있나요?</div>
             <div className="why" style={{ margin: "6px 0 10px" }}>

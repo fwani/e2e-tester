@@ -2127,13 +2127,21 @@ export function SessionScreen({
     return () => clearTimeout(timer);
   }, [live]);
 
-  const act = async (fn: () => Promise<SessionView>) => {
+  /**
+   * 세션 요청 공통 처리.
+   *
+   * `onFail` 은 **낙관적으로 지운 것을 되돌리는 자리**다. 요청을 걸기 전에 화면에서
+   * 무언가를 지웠다면, 요청이 실패했을 때 그것이 돌아오지 않으면 사용자는 사유만 읽고
+   * 나갈 길을 잃는다 (AI 막힘 선택지가 정확히 그랬다).
+   */
+  const act = async (fn: () => Promise<SessionView>, onFail?: () => void) => {
     setBusy(true);
     setError(null);
     try {
       setView(await fn());
     } catch (exc) {
       setError(describeError(exc));
+      onFail?.();
     } finally {
       setBusy(false);
     }
@@ -2865,8 +2873,20 @@ export function SessionScreen({
           지우지 않으면 AI 가 다시 도는 동안에도 「막혔습니다」가 화면에 남는다.
         */
         onChooseBlocked={(choice, answer) => {
+          /*
+            **실패하면 막힘이 돌아온다.**
+
+            지우는 것은 낙관이다 — AI 가 다시 도는 동안 「막혔습니다」를 남기지 않으려는
+            것이고, 요청이 성공한다는 전제가 깔려 있다. 실패하면 그 전제가 깨진다:
+            사유만 남고 선택지 셋(직접 조작·다시·답하기)이 사라져, 사용자는 무엇이
+            잘못됐는지 읽고도 이어 갈 수단이 없었다.
+          */
+          const previous = aiBlocked;
           setAiBlocked(null);
-          void act(() => sessions.aiChoice(sessionId, choice as AiChoice, answer));
+          void act(
+            () => sessions.aiChoice(sessionId, choice as AiChoice, answer),
+            () => setAiBlocked(previous),
+          );
         }}
         onPacingChange={changePacing}
         onReconnect={() => subscription.current?.reconnect()}

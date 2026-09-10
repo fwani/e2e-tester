@@ -1125,7 +1125,13 @@ export function saveBlob(blob: Blob, filename: string): void {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  /*
+    **바로 회수하지 않는다.** `click()` 이 돌아온 시점에 내려받기가 시작됐다는 보장이
+    없고, 그 전에 URL 을 회수하면 브라우저가 조용히 아무것도 저장하지 않는다 —
+    사용자에게는 「내려받았습니다」라고 말해 놓고 파일이 없는 상태가 된다.
+    다음 태스크로 미루면 내려받기가 URL 을 잡은 뒤에 회수된다.
+  */
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export const excel = {

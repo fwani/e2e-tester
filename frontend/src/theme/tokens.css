@@ -680,3 +680,77 @@ input.ai, textarea.ai { border-color: var(--ai); }
   pointer-events: none;
   caret-color: transparent;
 }
+
+/* ─── 파일 선택 ──────────────────────────────────────────────────────────
+   `<label class="btn">` + 숨긴 `<input type=file>` 짝의 형태.
+
+   **`display:none` 으로 감추면 Tab 순서에서 사라진다.** 라벨은 원래 초점을 받지
+   않으므로 그 조합은 키보드로 도달할 수 없는 조작이 된다 — 「엑셀에서 가져오기」·
+   「엑셀에서 새 프로젝트」가 그 상태였다. 이 도구는 키보드로 도는 도구다(위
+   `:focus-visible` 주석). 그래서 칸을 **보이지 않게** 두되 초점은 남긴다. */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 초점이 안쪽 칸에 있으므로 링은 라벨이 그린다. `:focus-visible` 과 같은 링이다. */
+.btn.file { position: relative; cursor: pointer; }
+.btn.file:focus-within { outline: 2px solid var(--run); outline-offset: 2px; }
+
+/* 쓸 수 없는 라벨 조작. `<label>` 은 `:disabled` 를 받지 못하므로 형태를 따로 둔다 —
+   `button:disabled` 와 같은 점선이고, 감추지 않고 자리를 지킨다 (006 ui-contract §2). */
+.btn.disabled {
+  background: transparent;
+  border: 1px dashed var(--hair-2);
+  color: var(--ink-3);
+  box-shadow: none;
+  font-weight: 500;
+  cursor: not-allowed;
+}
+.btn.disabled:focus-within { outline: 2px solid var(--hair-2); outline-offset: 2px; }
+
+/* ─── 표 ────────────────────────────────────────────────────────────────
+   가져오기 미리보기·초안 목록의 표 머리. 확정 디자인의 `.thead` 와 같은 형태이며,
+   `<th>` 가 클래스 없이도 그렇게 보여야 한다 (기본 요소 구획과 같은 이유). */
+.grid-head th {
+  text-align: left;
+  font: 600 11px/1 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: var(--sunken);
+  border-bottom: 1px solid var(--hair-2);
+}
+
+/* ─── 답 칸 ──────────────────────────────────────────────────────────────
+   AI 가 막혔을 때 사람이 한 문장을 적어 돌려주는 자리. **질문은 라벨이 아니다** —
+   `.lbl` 은 11px 대문자 모노이고 한 문장을 읽는 형태가 아니다. 질문은 본문
+   (`.line`)으로 읽고, 라벨은 짧은 이름표로 남는다. */
+.answer-q { font: 400 13px/1.4 var(--font-sans); color: var(--ink); }
+
+/* 힌트가 조건부로 나타나면 그 줄만큼 아래가 밀린다. 자리를 고정한다. */
+.hint-line { min-height: 16px; }
+
+/* ─── 확정 띠 ────────────────────────────────────────────────────────────
+   목록 아래에 붙는 확정·취소 자리. **화면 아래에 붙어 따라온다.**
+
+   가져오기 미리보기는 시트 200개를 받을 수 있고, 그러면 확정 버튼이 스크롤 수천
+   픽셀 아래로 밀린다 — 사용자는 시트 하나를 고치고 확정하려면 목록 끝까지 내려가야
+   했다. 띠가 따라오면 어디서든 확정하거나 되돌릴 수 있다.
+
+   바탕과 위쪽 실선은 아래 내용이 글자 뒤로 비쳐 읽히지 않게 하는 것이다. */
+.commit-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--panel);
+  border-top: 1px solid var(--hair-2);
+}

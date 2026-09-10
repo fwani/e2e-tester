@@ -28,7 +28,7 @@
  * 컴포넌트가 `isAiSession` 조건 뒤에 숨어, 실패가 상태에 담겨도 화면에 도달하지 못했다.
  * 사용자에게는 "아무 일도 일어나지 않음" 으로 보였다. 접힘·탭·겹침 뒤에 두지 않는다.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ErrorNotice } from "../ErrorNotice";
 import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../lib/wording";
@@ -557,21 +557,66 @@ function BlockedAnswer({
   onSubmit: (text: string) => void;
 }) {
   const [text, setText] = useState("");
+  const box = useRef<HTMLTextAreaElement | null>(null);
   const ready = text.trim() !== "";
+
+  /*
+    **막힘이 뜨면 초점이 이 칸에 온다.**
+
+    막힘은 세션이 멈춘 상태이고, 이 칸이 그 상태에서 하려는 일의 첫 자리다 (위 주석).
+    초점을 옮기지 않으면 키보드로 도는 사용자는 화면 어딘가에 새로 생긴 칸을 Tab 으로
+    찾아야 한다 — 세션이 멈춰 있으므로 초점을 빼앗을 다른 일이 없다.
+
+    막힘이 갱신될 때마다 다시 옮기지 않는다(의존성 없음) — 쓰던 중에 초점이 되돌아가면
+    커서 위치가 날아간다.
+  */
+  useEffect(() => {
+    box.current?.focus();
+  }, []);
+
+  const send = () => {
+    if (busy || !ready) return;
+    onSubmit(text.trim());
+    setText("");
+  };
+
   return (
     <div
       data-blocked-answer
       style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}
     >
+      {/*
+        **질문은 라벨이 아니다.** `.lbl` 은 11px 대문자 모노이고 한 문장을 읽는 형태가
+        아니다 — AI 의 질문이 그 형태로 그려지면 사용자는 자기가 무엇을 답해야 하는지
+        읽기 어렵다. 이름표는 짧게 두고 질문은 본문으로 읽는다.
+      */}
       <label className="lbl" htmlFor="blocked-answer">
-        {question !== null ? `AI 의 질문 — ${question}` : "AI 에게 알려 주기"}
+        {question !== null ? "AI 의 질문" : "AI 에게 알려 주기"}
       </label>
+      {question !== null && (
+        <p className="answer-q" style={{ margin: 0 }} data-blocked-question>
+          {question}
+        </p>
+      )}
       <textarea
         id="blocked-answer"
-        rows={2}
+        ref={box}
+        rows={3}
         value={text}
         disabled={busy}
         onChange={(e) => setText(e.target.value)}
+        /*
+          `Enter` 는 줄바꿈이다 — 여러 줄로 설명하는 것이 정상이므로 전송으로 쓰면
+          문단을 나누다 실수로 보낸다 (위 주석). 그래도 **손을 마우스로 옮기지 않고
+          보낼 길**은 있어야 하므로 `Cmd`/`Ctrl` + `Enter` 를 받는다. 아래 힌트가 그
+          사실을 말한다 — 화면이 말하지 않는 단축키는 없는 것과 같다.
+        */
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            send();
+          }
+        }}
         placeholder={
           question !== null
             ? "여기에 답을 적으면 AI 가 그 자리에서 이어서 진행합니다."
@@ -584,18 +629,19 @@ function BlockedAnswer({
           className="btn sm primary"
           data-blocked-answer-send
           disabled={busy || !ready}
-          onClick={() => {
-            onSubmit(text.trim());
-            setText("");
-          }}
+          onClick={send}
         >
           답하고 계속
         </button>
-        {!ready && (
-          <span className="why">
-            답을 적으면 AI 가 같은 대화에 이어서 진행합니다. 이미 만든 Step 은 그대로입니다.
-          </span>
-        )}
+        {/*
+          힌트를 조건부로 그리면 첫 글자를 치는 순간 그 줄이 사라지고 아래가 위로
+          튄다. 자리를 고정하고 문구만 바꾼다 (`.hint-line`).
+        */}
+        <span className="why hint-line">
+          {ready
+            ? "Cmd/Ctrl + Enter 로도 보냅니다. 이미 만든 Step 은 그대로입니다."
+            : "답을 적으면 AI 가 같은 대화에 이어서 진행합니다. 이미 만든 Step 은 그대로입니다."}
+        </span>
       </div>
     </div>
   );
