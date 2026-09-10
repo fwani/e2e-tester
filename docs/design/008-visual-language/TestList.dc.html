@@ -146,10 +146,12 @@
     </div>
 
     <div class="pane" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;">
-      <div style="flex:0 0 34px;display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;padding:0 14px 0 17px;background:var(--sunken);border-bottom:1px solid var(--hair-2);">
+      <div style="flex:0 0 34px;display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;padding:0 14px 0 17px;background:var(--sunken);border-bottom:1px solid var(--hair-2);">
+        <div><input type="checkbox" aria-label="보이는 테스트 전부 선택"></div>
         <div class="lbl">마지막 결과</div><div class="lbl">ID</div><div class="lbl">이름</div><div class="lbl" style="text-align:right;">STEP</div><div class="lbl">작성</div><div class="lbl">마지막 실행</div><div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--fail);">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--fail);">
+        <div><input type="checkbox"></div>
         <div><span class="chip fail"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#C8371D" stroke-width="2.4"><path d="M4 4l8 8M12 4l-8 8"></path></svg>실패</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-001</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">로그인 후 대시보드</div>
@@ -158,7 +160,8 @@
         <div class="mono" style="font-size:11.5px;color:var(--ink-3);">5분 전 · 6/13</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+        <div><input type="checkbox"></div>
         <div><span class="chip pass"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2.4"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg>통과</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-002</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">로그인만</div>
@@ -167,7 +170,8 @@
         <div class="mono" style="font-size:11.5px;color:var(--ink-3);">12분 전 · 4/4</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--run);background:var(--run-t);">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--run);background:var(--run-t);">
+        <div><input type="checkbox"></div>
         <div><span class="chip run"><svg width="10" height="10" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#0B6BCB"></circle></svg>실행 중</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-004</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">주문 취소 흐름</div>
@@ -176,7 +180,8 @@
         <div class="mono" style="font-size:11.5px;color:var(--ink-3);">지금 · 9/14</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+        <div><input type="checkbox"></div>
         <div><span class="chip pass"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2.4"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg>통과</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-005</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">상품 검색 필터</div>
@@ -185,7 +190,8 @@
         <div class="mono" style="font-size:11.5px;color:var(--ink-3);">1시간 전 · 9/9</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--fail);">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--fail);">
+        <div><input type="checkbox"></div>
         <div><span class="chip fail"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#C8371D" stroke-width="2.4"><path d="M4 4l8 8M12 4l-8 8"></path></svg>실패</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-006</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">결제 수단 변경</div>
@@ -194,7 +200,8 @@
         <div class="mono" style="font-size:11.5px;color:var(--ink-3);">3시간 전 · 11/17</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid transparent;">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid transparent;">
+        <div><input type="checkbox"></div>
         <div><span class="chip" style="border-style:dashed;color:var(--ink-3);background:transparent;">미실행</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-007</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">회원 탈퇴</div>
@@ -203,7 +210,8 @@
         <div class="mono" style="font-size:11.5px;color:var(--ink-3);">—</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+        <div><input type="checkbox"></div>
         <div><span class="chip pass"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2.4"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg>통과</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-008</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">장바구니 담기</div>
@@ -212,7 +220,8 @@
         <div class="mono" style="font-size:11.5px;color:var(--ink-3);">어제 · 6/6</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid transparent;">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid transparent;">
+        <div><input type="checkbox"></div>
         <div><span class="chip" style="border-style:dashed;color:var(--ink-3);background:transparent;">미실행</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-009</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">쿠폰 적용</div>
@@ -221,7 +230,8 @@
         <div class="mono" style="font-size:11.5px;color:var(--ink-3);">—</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid var(--pass);">
+        <div><input type="checkbox"></div>
         <div><span class="chip pass"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#1A7F45" stroke-width="2.4"><path d="M3 8.4l3.2 3.2L13 4.8"></path></svg>통과</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-010</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">배송지 추가</div>
@@ -230,7 +240,8 @@
         <div class="mono" style="font-size:11.5px;color:var(--ink-3);">2일 전 · 7/7</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;"><div class="btn sm">실행</div><div class="btn sm" style="padding:0 7px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="var(--ink-2)"><circle cx="6" cy="2" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="6" cy="10" r="1.1"></circle></svg></div></div>
       </div>
-      <div style="display:grid;grid-template-columns:96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid transparent;">
+      <div style="display:grid;grid-template-columns:28px 96px 82px 1fr 64px 92px 150px 168px;gap:12px;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--hair);border-left:3px solid transparent;">
+        <div><input type="checkbox"></div>
         <div><span class="chip" style="border-style:dashed;color:var(--ink-3);background:transparent;">미실행</span></div>
         <div class="mono" style="font-size:12px;color:var(--ink-2);">TC-011</div>
         <div style="font:500 13px/1 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">알림 설정 저장</div>

@@ -248,12 +248,33 @@ export interface TestListResponse {
 /** 산출물 종류. `trace` 는 서버가 `501` 을 돌려준다 (spec 디자인 차이 1). */
 export type ArtifactKind = "screenshot" | "trace" | "console" | "network";
 
+/** 휴지통으로 간 테스트 하나 (013 · contracts/api-contract.md §2). */
+export interface TrashedTest {
+  id: string;
+  name: string;
+  /** 옮겨진 자리. **이 값이 되돌리는 방법 전부다** (FR-437a). */
+  trashed_to: string;
+}
+
 export const tests = {
   list: (q?: string) =>
     get<TestListResponse>(`/api/tests${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   get: (id: string) => get<Test>(`/api/tests/${id}`),
   rename: (id: string, name: string) => patch<Test>(`/api/tests/${id}`, { name }),
-  remove: (id: string) => del<void>(`/api/tests/${id}`),
+  /**
+   * 테스트 하나를 **휴지통으로 옮긴다** (013 FR-437). 파괴하지 않는다.
+   *
+   * 204 가 아니라 옮겨진 자리를 돌려준다 — 그 값이 되돌리는 방법 전부다.
+   */
+  remove: (id: string) => del<TrashedTest>(`/api/tests/${id}`),
+  /**
+   * 여러 개를 한 번에 (013 FR-432). **전부 되거나 전부 안 되거나.**
+   *
+   * `DELETE` 에 본문을 싣지 않는 이유는 011 이 정했다 — 프록시가 벗기고, 쿼리는 URL
+   * 길이와 접근 로그 문제가 있다.
+   */
+  deleteMany: (ids: string[]) =>
+    post<{ deleted: TrashedTest[] }>("/api/tests:delete", { test_ids: ids }),
   /** 최근 실행 결과. 테스트당 1건만 보관된다 (FR-050~FR-054). */
   result: (id: string) => get<RunResultView>(`/api/tests/${id}/result`),
   /**

@@ -43,7 +43,13 @@ import {
   type SessionView,
   type TestListRow,
   type TestListResponse,
+  type TrashedTest,
 } from "../api/client";
+import {
+  TestBulkConfirm,
+  TestSelectionBar,
+  TrashedTestsNotice,
+} from "../components/TestBulkConfirm";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
@@ -53,7 +59,11 @@ import { chipClass, rowClass } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
-const GRID = "96px 82px 1fr 64px 92px 150px 168px";
+const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
+/** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
+
+    **행 누름(열기)과 갈라 둔다.** 두 동작을 한 자리에 두면 열려던 사용자가 삭제 대상을
+    고른다 — 011 이 Step 목록에서 정한 규칙이다. */
 
 function relativeTime(iso: string | null): string {
   if (iso === null) return "—";
@@ -146,6 +156,16 @@ export function TestList({
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * 삭제·이동 대상으로 고른 것 (013 · data-model §5).
+   *
+   * **화면에만 있고 저장하지 않는다.** 새로 고치면 비어 있는 것이 맞다 — 잃어도 막히지
+   * 않는 정보만 화면에 둔다.
+   */
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmingBulk, setConfirmingBulk] = useState(false);
+  /** 방금 옮긴 것들. **자동으로 사라지지 않는다** (FR-437b · UC-013-05). */
+  const [trashed, setTrashed] = useState<TrashedTest[] | null>(null);
 
   const reload = async (q: string) => {
     try {
@@ -212,7 +232,50 @@ export function TestList({
     });
   }, [all, filter, recentFirst]);
 
+  /**
+   * **보이는 것만 고를 수 있다** (013 FR-429 · UC-013-03 · SC-625).
+   *
+   * 검색어나 걸러 보기가 바뀌어 어떤 행이 화면에서 사라지면 그 행은 선택에서도 빠진다.
+   * 보이지 않는 것이 선택에 남으면 사용자는 **무엇을 지웠는지 볼 수 없는 삭제**를 하게 된다.
+   *
+   * 선택 자체를 지우지 않고 **읽을 때 거른다** — 검색어를 되돌리면 고른 것이 돌아오는
+   * 편이 사용자의 기대에 맞고, 대상이 되는 것은 언제나 이 값이라 안전하다.
+   */
+  const effectiveSelection = useMemo(
+    () => rows.filter((r) => selected.has(r.id)).map((r) => r.id),
+    [rows, selected],
+  );
+  const selectedNames = useMemo(
+    () => rows.filter((r) => selected.has(r.id)).map((r) => r.name),
+    [rows, selected],
+  );
+  const allVisibleSelected =
+    rows.length > 0 && rows.every((r) => selected.has(r.id));
+
   const totalSteps = useMemo(() => all.reduce((s, t) => s + t.step_count, 0), [all]);
+
+  /** 고른 것들을 휴지통으로 (013 FR-432). 확인을 거친 뒤에만 부른다. */
+  const runBulkDelete = () => {
+    const ids = effectiveSelection;
+    if (ids.length === 0) return;
+    setBusy(true);
+    setError(null);
+    void tests
+      .deleteMany(ids)
+      .then((res) => {
+        setTrashed(res.deleted);
+        setSelected(new Set());
+        setConfirmingBulk(false);
+        return reload(query);
+      })
+      .catch((exc: unknown) => {
+        // **선택을 비우지 않는다** (UC-013-07). 다시 고르게 만들면 실행을 멈추고
+        // 돌아온 뜻이 없어진다.
+        setError(describeError(exc));
+        setConfirmingBulk(false);
+      })
+      .finally(() => setBusy(false));
+  };
   const lastRun = useMemo(() => {
     const times = all.map((t) => t.last_run_at).filter((t): t is string => t !== null);
     if (times.length === 0) return null;
@@ -401,6 +464,32 @@ export function TestList({
           )}
         </div>
 
+        {/* ─── 선택·확인·완료 (013 UC-013-02·04·05) ─────────────────────── */}
+        {!isEmptyProject && trashed !== null && (
+          <TrashedTestsNotice trashed={trashed} onDismiss={() => setTrashed(null)} />
+        )}
+        {!isEmptyProject && confirmingBulk && (
+          <TestBulkConfirm
+            names={selectedNames}
+            busy={busy}
+            onConfirm={runBulkDelete}
+            onCancel={() => setConfirmingBulk(false)}
+          />
+        )}
+        {/* 고른 것이 0개면 띠 자체를 그리지 않는다 — 쓰지 않는 사용자에게 자리를
+            뺏지 않는다 (SC-627). */}
+        {!isEmptyProject && !confirmingBulk && effectiveSelection.length > 0 && (
+          <TestSelectionBar
+            selectedCount={effectiveSelection.length}
+            visibleCount={rows.length}
+            allVisibleSelected={allVisibleSelected}
+            busy={busy}
+            onSelectAllVisible={() => setSelected(new Set(rows.map((r) => r.id)))}
+            onClear={() => setSelected(new Set())}
+            onDelete={() => setConfirmingBulk(true)}
+          />
+        )}
+
         {/* ─── 목록 ──────────────────────────────────────────────────────── */}
         {isEmptyProject ? (
           <EmptyProject onCreate={onCreate} onOpenKeys={onOpenKeys} />
@@ -417,6 +506,19 @@ export function TestList({
                 padding: "0 14px 0 17px",
               }}
             >
+              <div>
+                <input
+                  type="checkbox"
+                  aria-label="보이는 테스트 전부 선택"
+                  checked={allVisibleSelected}
+                  disabled={busy || rows.length === 0}
+                  onChange={() =>
+                    setSelected(
+                      allVisibleSelected ? new Set() : new Set(rows.map((r) => r.id)),
+                    )
+                  }
+                />
+              </div>
               <div className="lbl">마지막 결과</div>
               <div className="lbl">ID</div>
               <div className="lbl">이름</div>
@@ -450,6 +552,15 @@ export function TestList({
                   key={row.id}
                   row={row}
                   busy={busy}
+                  selected={selected.has(row.id)}
+                  onToggleSelected={() =>
+                    setSelected((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(row.id)) next.delete(row.id);
+                      else next.add(row.id);
+                      return next;
+                    })
+                  }
                   renaming={renaming?.id === row.id ? renaming.name : null}
                   confirming={confirmingDelete === row.id}
                   menuOpen={menuFor === row.id}
@@ -468,7 +579,14 @@ export function TestList({
                   }}
                   onDeleteCancel={() => setConfirmingDelete(null)}
                   onDeleteConfirm={() =>
-                    void act(() => tests.remove(row.id)).then(() => setConfirmingDelete(null))
+                    // **한 개와 여러 개의 결과가 같아야 한다** (SC-632). 완료 표시도
+                    // 같은 것을 쓴다 — 한쪽만 옮겨진 자리를 알려 주면 사용자는 개수에
+                    // 따라 되돌릴 수 있는지가 달라진다고 읽는다.
+                    void act(() => tests.remove(row.id))
+                      .then((res) => {
+                        setConfirmingDelete(null);
+                        if (res !== undefined) setTrashed([res]);
+                      })
                   }
                   onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}
                   /*
@@ -542,6 +660,8 @@ const MENU_Z = 40;
 function Row({
   row,
   busy,
+  selected,
+  onToggleSelected,
   renaming,
   confirming,
   menuOpen,
@@ -562,6 +682,9 @@ function Row({
 }: {
   row: TestListRow;
   busy: boolean;
+  /** 삭제·이동 대상으로 골랐는가 (013 FR-426). */
+  selected: boolean;
+  onToggleSelected: () => void;
   renaming: string | null;
   confirming: boolean;
   menuOpen: boolean;
@@ -692,6 +815,25 @@ function Row({
         ...(renaming !== null || confirming ? { height: "auto", minHeight: "44px", paddingTop: 8, paddingBottom: 8 } : {}),
       }}
     >
+      {/*
+        체크 칸은 **행 누름과 갈라 둔다** (013 FR-426 · UC-013-01). 행을 누르는 것은
+        열기이고 체크는 삭제·이동 대상 고르기다. 한 자리에 두면 열려던 사용자가 삭제
+        대상을 고른다 — 011 이 Step 목록에서 정한 규칙이다.
+
+        `stopPropagation` 이 그 분리를 실제로 만든다: 체크 칸을 눌렀을 때 행의 열기가
+        함께 일어나면 갈라 둔 뜻이 없다.
+      */}
+      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center" }}>
+        <input
+          type="checkbox"
+          aria-label={`${row.name} 선택`}
+          data-test-select={row.id}
+          checked={selected}
+          disabled={busy}
+          onChange={onToggleSelected}
+        />
+      </div>
+
       <div>
         {/*
           005 FR-169 (재점검 N-02) — 표식은 세션의 **상태**를 본다.

@@ -91,15 +91,15 @@ Web app 구조. 백엔드 `backend/src/itb/`, 프런트엔드 `frontend/src/`.
 
 ### 프런트엔드
 
-- [ ] T022 [P] [US1] `frontend/src/api/client.ts` 에 `tests.deleteMany(ids)` 를 더하고 `tests.remove` 의 반환 타입을 바꾼다(204 → 본문 있음). 기존 호출부를 함께 고친다
-- [ ] T023 [P] [US1] `frontend/src/lib/wording.ts` 에 테스트용 복수 삭제 문구를 더한다 — 개수와 **이름**을 함께 말한다. `deleteManyConfirm(indices)` 는 **쓰지 않는다**: 그것은 Step 번호의 범위를 말하는데 테스트는 순서 없는 집합이라 「범위」가 성립하지 않는다 ([research.md](research.md) R7). 「지울 테스트를 먼저 고르세요」를 기존 `NO_DELETE_SELECTION` 옆에 나란히 둔다
-- [ ] T024 [US1] `frontend/src/pages/TestList.tsx` 의 행에 **체크 칸**을 더한다 — 행 누름(열기)과 **갈라 둔다** (UC-013-01). 011 이 Step 목록에서 정한 규칙이다
-- [ ] T025 [US1] `frontend/src/pages/TestList.tsx` 에 **선택 띠**를 더한다 — 고른 것이 0개면 **그리지 않는다** (UC-013-02 · SC-627). 「N개 선택됨」, 「보이는 것 전부 선택」/「선택 해제」, 「선택한 항목 삭제」
-- [ ] T026 [US1] **걸러 보기가 바뀌면 선택도 따라가게** 한다 (FR-429 · UC-013-03) — 화면에서 사라진 행은 선택에서 빠지고 개수 표시가 즉시 반영한다. 「전체 선택」의 대상도 **보이는 것**뿐이다 (FR-428 · SC-625)
-- [ ] T027 [P] [US1] `frontend/src/components/TestBulkConfirm.tsx` 를 만든다 — 목록 바로 아래 확인 띠. 개수와 이름, 「휴지통으로 옮깁니다 · 되돌릴 수 있습니다」, 「지우기」/「돌아가기」(포커스는 돌아가기) (UC-013-04). `BulkDeleteConfirm` 을 재사용하지 않는 근거는 research R7 에 있다
-- [ ] T028 [US1] 완료 표시를 더한다 — 옮겨진 자리들을 `mono` 로 남기고 되돌리는 방법 한 줄. **자동으로 사라지지 않는다** (UC-013-05). 여러 개면 접었다 펼 수 있게 하되 **기본은 펼친 상태**다 — 접어 두면 되돌리는 방법을 못 본 채 닫는다
-- [ ] T029 [US1] 거절·실패 사유를 표시한다 (UC-013-07) — 409 는 사유와 다음 행동, 500 `TEST_DELETE_FAILED` 는 **「전부 원래 자리에 있습니다」**, `TEST_DELETE_PARTIAL` 은 어느 것이 어디 있는지. **거절 뒤 선택을 비우지 않는다**. 기존 `ErrorNotice` 를 쓴다
-- [ ] T030 [P] [US1] `frontend/tests/TestListSelection.test.tsx` 를 만든다 — 0개면 띠가 없는지, 확인 전 요청 0건인지, 걸러 보기가 선택을 줄이는지(SC-625), 「전체 선택」이 보이는 것만 고르는지, 409 뒤 선택이 남는지, 500 문구에 「원래 자리」가 있는지
+- [X] T022 [P] [US1] `frontend/src/api/client.ts` 에 `tests.deleteMany(ids)` 를 더하고 `tests.remove` 의 반환 타입을 바꾼다(204 → 본문 있음). 기존 호출부를 함께 고친다
+- [X] T023 [P] [US1] `frontend/src/lib/wording.ts` 에 테스트용 복수 삭제 문구를 더한다 — 개수와 **이름**을 함께 말한다. `deleteManyConfirm(indices)` 는 **쓰지 않는다**: 그것은 Step 번호의 범위를 말하는데 테스트는 순서 없는 집합이라 「범위」가 성립하지 않는다 ([research.md](research.md) R7). 「지울 테스트를 먼저 고르세요」를 기존 `NO_DELETE_SELECTION` 옆에 나란히 둔다
+- [X] T024 [US1] `frontend/src/pages/TestList.tsx` 의 행에 **체크 칸**을 더한다 — 행 누름(열기)과 **갈라 둔다** (UC-013-01). 011 이 Step 목록에서 정한 규칙이다
+- [X] T025 [US1] `frontend/src/pages/TestList.tsx` 에 **선택 띠**를 더한다 — 고른 것이 0개면 **그리지 않는다** (UC-013-02 · SC-627). 「N개 선택됨」, 「보이는 것 전부 선택」/「선택 해제」, 「선택한 항목 삭제」
+- [X] T026 [US1] **걸러 보기가 바뀌면 선택도 따라가게** 한다 (FR-429 · UC-013-03) — 화면에서 사라진 행은 선택에서 빠지고 개수 표시가 즉시 반영한다. 「전체 선택」의 대상도 **보이는 것**뿐이다 (FR-428 · SC-625)
+- [X] T027 [P] [US1] `frontend/src/components/TestBulkConfirm.tsx` 를 만든다 — 목록 바로 아래 확인 띠. 개수와 이름, 「휴지통으로 옮깁니다 · 되돌릴 수 있습니다」, 「지우기」/「돌아가기」(포커스는 돌아가기) (UC-013-04). `BulkDeleteConfirm` 을 재사용하지 않는 근거는 research R7 에 있다
+- [X] T028 [US1] 완료 표시를 더한다 — 옮겨진 자리들을 `mono` 로 남기고 되돌리는 방법 한 줄. **자동으로 사라지지 않는다** (UC-013-05). 여러 개면 접었다 펼 수 있게 하되 **기본은 펼친 상태**다 — 접어 두면 되돌리는 방법을 못 본 채 닫는다
+- [X] T029 [US1] 거절·실패 사유를 표시한다 (UC-013-07) — 409 는 사유와 다음 행동, 500 `TEST_DELETE_FAILED` 는 **「전부 원래 자리에 있습니다」**, `TEST_DELETE_PARTIAL` 은 어느 것이 어디 있는지. **거절 뒤 선택을 비우지 않는다**. 기존 `ErrorNotice` 를 쓴다
+- [X] T030 [P] [US1] `frontend/tests/TestListSelection.test.tsx` 를 만든다 — 0개면 띠가 없는지, 확인 전 요청 0건인지, 걸러 보기가 선택을 줄이는지(SC-625), 「전체 선택」이 보이는 것만 고르는지, 409 뒤 선택이 남는지, 500 문구에 「원래 자리」가 있는지
 
 **Checkpoint**: US1 단독 배포 가능. 그룹 없이도 가치가 있다.
 
