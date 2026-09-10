@@ -304,8 +304,8 @@ export function StepList({
         표시하면 자리가 200개가 되고, "한 조작에 한 자리" 를 셀 수 없다 (FR-235).
       */
       data-action="step.select"
-      className="steps"
-      style={{ flex: `0 0 ${STEP_PANEL_WIDTH}px` }}
+      // `basis-steps` 는 `--w-steps`(460px) — `STEP_PANEL_WIDTH` 와 같은 값이다.
+      className="flex-none basis-steps border-l border-hair-2 bg-panel flex flex-col"
     >
       <StepPanelHeader authoring={authoring} count={steps.length}>
         {/*

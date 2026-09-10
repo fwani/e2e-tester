@@ -173,14 +173,8 @@ export function StepDetail({
       */
       role="dialog"
       aria-label="Step 상세"
-      className="overlay-pane"
-      style={{
-        // 우측 640px 고정 — 모든 국면에서 같다 (FR-230).
-        width: "640px",
-        display: "flex",
-        flexDirection: "column",
-        overflowY: "auto",
-      }}
+      // `w-detail` 은 `--w-detail`(640px) — 우측 고정 폭이며 모든 국면에서 같다 (FR-230).
+      className="bg-panel border-l border-hair-2 shadow-e2 w-detail flex flex-col overflow-y-auto"
     >
       <div
         className="bg-sunken border-b border-hair-2 text-ink-2 flex-[0_0_44px] flex items-center gap-s3 py-0 px-s4"

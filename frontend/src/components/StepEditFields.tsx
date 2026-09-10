@@ -44,13 +44,8 @@ export interface StepEditFieldsProps {
   }) => void;
 }
 
-const rowStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "92px 1fr",
-  gap: 8,
-  alignItems: "center",
-  marginTop: 8,
-};
+/** 한 줄의 배치 — 라벨 92px + 입력칸. 015 가 인라인에서 클래스로 옮겼다. */
+const ROW_CLASS = "grid grid-cols-[92px_1fr] gap-s2 items-center mt-s2";
 
 export function StepEditFields({
   step,
@@ -66,7 +61,7 @@ export function StepEditFields({
 
   return (
     <div>
-      <label style={rowStyle}>
+      <label className={ROW_CLASS}>
         <span className="field-label">
           표시 이름
         </span>
@@ -81,7 +76,7 @@ export function StepEditFields({
 
       {value !== null && (
         <>
-          <label style={rowStyle}>
+          <label className={ROW_CLASS}>
             <span className="field-label">
               입력값
             </span>
@@ -103,7 +98,7 @@ export function StepEditFields({
       )}
 
       {isNavigate(step) && (
-        <label style={rowStyle}>
+        <label className={ROW_CLASS}>
           <span className="field-label">
             주소
           </span>
@@ -119,7 +114,7 @@ export function StepEditFields({
       )}
 
       {step.type === "assertion" && (
-        <label style={rowStyle}>
+        <label className={ROW_CLASS}>
           <span className="field-label">
             기대값
           </span>
@@ -134,7 +129,7 @@ export function StepEditFields({
         </label>
       )}
 
-      <label style={rowStyle}>
+      <label className={ROW_CLASS}>
         <span className="field-label">
           대기 시간
         </span>
@@ -160,7 +155,7 @@ export function StepEditFields({
         </span>
       </label>
 
-      <label style={rowStyle}>
+      <label className={ROW_CLASS}>
         <span className="field-label">
           대상 탭
         </span>

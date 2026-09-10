@@ -148,7 +148,7 @@ className="btn sm quiet"                (이미 겪었다)
 **각 부품 작업의 완료 조건** (정정): 부품 구현 + `data-*` 로 의도 노출 + 대응표 「구현」 +
 테스트 전량 통과. **사용처 교체와 정의 삭제는 화면별 작업(T029~T051)에서 한다.**
 
-- [ ] T019 [P] [US2] 상태·색조 군을 `frontend/src/ui/tone.ts` + 관련 부품으로 해체한다 — `.pass` `.fail` `.warn` `.run` `.ai` `.paused` `.pass-ink` `.fail-ink` `.warn-ink` `.run-ink` `.ai-ink` `.tint-pass` `.tint-fail` `.tint-warn` `.tint-run` `.tint-ai` `.in-use` `.off` `.on`. 기존 `theme/tone.ts` 와 합류시킨다. **새 색을 만들지 않는다** (FR-003 · 008 규율)
+- [X] T019 [P] [US2] 상태·색조 군을 `frontend/src/ui/tone.ts` + 관련 부품으로 해체한다 — `.pass` `.fail` `.warn` `.run` `.ai` `.paused` `.pass-ink` `.fail-ink` `.warn-ink` `.run-ink` `.ai-ink` `.tint-pass` `.tint-fail` `.tint-warn` `.tint-run` `.tint-ai` `.in-use` `.off` `.on`. 기존 `theme/tone.ts` 와 합류시킨다. **새 색을 만들지 않는다** (FR-003 · 008 규율)
 - [X] T020 [P] [US2] 칩·배지 군을 `frontend/src/ui/Chip.tsx`·`Badge.tsx` 로 해체한다 — `.chip` `.pill` `.dot` `.band` `.num` `.sel` `.last-resort`. `Badges.test.tsx`·`OutcomeVocabulary.test.tsx` 가 검증 대상
 - [X] T021 [P] [US2] 알림·토스트 군을 `frontend/src/ui/Notice.tsx`·`Toast.tsx` 로 해체한다 — `.notice` `.notice-body` `.toast` `.toast-body` `.toast-layer` `.why` `.hint-line`. **`tokens.css` 주석이 기록한 두 사고(특이도로 모든 토스트가 흰색이 된 일, 기준 크기가 `height` 를 이겨 두 줄이 잘린 일)가 재발하지 않는지 확인한다.** `NoticesAreToasts.test.tsx`·`ToastPlacement.test.tsx` 가 검증 대상
 - [X] T022 [P] [US2] 모달·층 군을 `frontend/src/ui/Modal.tsx`·`Overlay.tsx` 로 해체한다 — `.modal` `.modal-scrim` `.scrim` `.overlay-pane` `.float`. 승강(z-index) 관계가 보존되어야 한다
@@ -156,7 +156,7 @@ className="btn sm quiet"                (이미 겪었다)
 - [X] T024 [P] [US2] 폼·필드 군을 `frontend/src/ui/Field.tsx`·`FileInput.tsx` 로 해체한다 — `.field` `.field-label` `.lbl` `.file` `.file-input` `.ime-capture` `.answer-q` `.commit-bar`. **`.ime-capture` 의 한글 입력 처리가 보존되어야 한다** (FR-010)
 - [X] T025 [P] [US2] 표·격자 군을 `frontend/src/ui/Table.tsx`·`Grid.tsx` 로 해체한다 — `.table` `.thead` `.tfoot` `.trow` `.row` `.grid-head` `.key-cell` `.tabs`. `LocatorPriorityTable.test.tsx` 가 검증 대상
 - [X] T026 [P] [US2] Step 행 군을 `frontend/src/ui/` 또는 기존 `components/workbench/` 로 해체한다 — `.steps` `.steps-hd` `.steps-ft` `.srow` `.srow-check` `.srow-name` `.srow-ops` `.phase` `.phase-name` `.phase-progress`. **행 높이 52px 고정이 유지되어야 한다** (009 FR-304). `StepRowLayout`·`DesignStepRow`·`StepRowStates`·`StepListPerformance` 가 검증 대상
-- [ ] T027 [P] [US2] 타이포·수식 군을 유틸리티로 해체한다 — `.mono` `.muted` `.dim` `.quiet` `.meta` `.note` `.log` `.code-block` `.addr` `.loc` `.line` `.name` `.left` `.sunken` `.strong-sm` `.sm` `.d` `.m` `.n` `.t` `.danger-edge` `.op` `.pick` `.segmented` `.textlink` `.navlink`. 부품이 아니라 수식이므로 컴포넌트를 만들지 않고 유틸리티 조합으로 옮긴다.
+- [X] T027 [P] [US2] 타이포·수식 군을 유틸리티로 해체한다 — `.mono` `.muted` `.dim` `.quiet` `.meta` `.note` `.log` `.code-block` `.addr` `.loc` `.line` `.name` `.left` `.sunken` `.strong-sm` `.sm` `.d` `.m` `.n` `.t` `.danger-edge` `.op` `.pick` `.segmented` `.textlink` `.navlink`. 부품이 아니라 수식이므로 컴포넌트를 만들지 않고 유틸리티 조합으로 옮긴다.
       **`.disabled`·`.bare` 는 T015(Button), `.float` 은 T022(모달·층) 관할이므로 여기서 다루지 않는다** — 병렬 실행 시 같은 정의를 두 곳에서 지우는 것을 막는다
 - [ ] T028 [US2] 4-A 완료를 확인한다 — `tokens.css` 에 의미 클래스 0개, 대응표 「완료」 109/109, 가드 G-C 0건, 테스트 전량 통과, L2 대조 불일치 0.
       **아울러 두 가지를 판정한다** (analyze 가 찾은 공백): (1) **SC-010** — 같은 종류의 부품이 화면마다 다른 모습을 갖지 않는가. `ui/` 밖에서 버튼·칩·알림 모양을 조립하는 곳이 있으면 위반이다. (2) **SC-006** — 어떤 요소의 스타일을 고칠 때 찾아야 할 곳이 부품 파일 하나와 정본 하나뿐인가. 세 번째 장소가 생겼으면 그것이 무엇인지 적는다
@@ -173,27 +173,27 @@ className="btn sm quiet"                (이미 겪었다)
 
 - [X] T029 [US2] `frontend/src/lib/layout.ts` 의 배치 표 출력을 클래스 문자열로 바꾼다 — `Record<Phase, …>` 표 자체와 「부모가 내려준다」 구조는 **그대로 둔다**. 새로 더하는 것은 `Record<VerticalSplit, string>` 전수 대응뿐이다 (research R3 · LC-2). 이것이 4-B 전체의 기반이므로 먼저 한다
 - [X] T030 [US2] `frontend/src/components/workbench/Workbench.tsx` (4곳) 전환 + `WorkbenchShell.test.tsx`(단언 12개)·`WorkbenchHeight.test.tsx` 판정 방법 전환. **국면별 세로 배분이 전과 같은지가 S-12 재발 여부다**
-- [ ] T031 [P] [US2] `frontend/src/pages/TestList.tsx` (55곳) 전환 + `TestListFilters`·`TestListActions`·`TestListSelection`·`RowMenuVisible` 판정 방법 전환. **최대 화면이므로 커밋을 쪼갠다** (RK-5)
-- [ ] T032 [P] [US2] `frontend/src/pages/ProjectSetup.tsx` (55곳) 전환 + `ProjectSetup.test.tsx`·`ProjectRowActions.test.tsx`. 커밋을 쪼갠다
-- [ ] T033 [P] [US2] `frontend/src/pages/ImportPreview.tsx` (41곳) 전환 + `ImportPreview.test.tsx`·`ImportExportAccess.test.tsx`
-- [ ] T034 [P] [US2] `frontend/src/components/workbench/WorkArea.tsx` (30곳) 전환 + `PromptDoesNotShrinkMirror.test.tsx`·`ResultAttemptsVisible.test.tsx`
-- [ ] T035 [P] [US2] `frontend/src/pages/KeyManagement.tsx` (28곳) 전환 + `KeyManagement.test.tsx`
-- [ ] T036 [P] [US2] `frontend/src/components/workbench/StepDetail.tsx` (24곳) 전환 + `DetailPlacement.test.tsx`(단언 6개)·`DetailBlocksMirrorInput.test.tsx`(단언 6개). **상세 층이 목록을 덮지 않는 자리·폭 640px 이 계약이다**
-- [ ] T037 [P] [US2] `frontend/src/pages/DraftList.tsx` (17곳) 전환 + `DraftList.test.tsx`·`DraftsFirstOnEmpty.test.tsx`
-- [ ] T038 [P] [US2] **`button.ghost` 1곳 포함** (T070). `frontend/src/pages/EditView.tsx` (15곳) · `frontend/src/components/TestBulkConfirm.tsx` (15곳) 전환 + `EditEntryPoints`·`DeleteSelection`·`TestBulkConfirm` 관련 테스트
-- [ ] T039 [P] [US2] `frontend/src/pages/SecretValues.tsx` (13곳) · `frontend/src/components/InlineSecretInput.tsx` (7곳) 전환 + `InlineSecret.test.tsx`·`SensitiveAcrossPhases.test.tsx`. **마스킹 표현이 보존되어야 한다** (헌법 보안 요건)
-- [ ] T040 [P] [US2] `frontend/src/components/workbench/PhaseBar.tsx` (13곳) 전환 + `PhaseBarWidth.test.tsx`(단언 11개)·`PhaseContext.test.tsx`. 줄임표·`min-width:0` 처리가 계약이다
-- [ ] T041 [P] [US2] `frontend/src/components/workbench/ActionPalette.tsx` (13곳) · `ActionButton.tsx` (5곳) 전환 + `CapabilityUI.test.tsx`
-- [ ] T042 [P] [US2] `frontend/src/components/workbench/InsertStepForm.tsx` (12곳) 전환 + `StepInsert.test.tsx`·`InsertViaBrowser.test.tsx`
-- [ ] T043 [P] [US2] `frontend/src/components/workbench/TargetPane.tsx` (11곳) 전환 + `TargetPane.test.tsx`. **이 파일 주석이 「1회차에 `pane.style.flex` 를 넣었고 그것이 크기까지 고정했다」는 실패를 기록하고 있다 — 읽고 같은 함정을 피한다**
-- [ ] T044 [P] [US2] `frontend/src/components/MirrorView.tsx` (11곳) 전환 + `MirrorView.test.tsx`·`MirrorInput.test.ts`. **미러 스케일이 런타임 계산값이면 예외 등록 대상이다** (LC-3)
-- [ ] T045 [P] [US2] `frontend/src/components/workbench/StepList.tsx` (10곳) · `StepRowOps.tsx` (1곳) 전환 + `StepRowLayout`·`StepRowActions`·`StepNumberConsistency`
-- [ ] T046 [P] [US2] **`button.secondary` 1곳·`.bare` 1곳 포함** (T070). `frontend/src/components/LocatorPriorityTable.tsx` (9곳) · `AssertionForm.tsx` (9곳) 전환 + `LocatorPriorityTable.test.tsx`
-- [ ] T047 [P] [US2] **`button.secondary` 4곳 포함** (T070). `frontend/src/pages/SessionScreen.tsx` (7곳) · `frontend/src/components/TestGroupBar.tsx` (7곳) · `SessionLostBanner.tsx` (6곳) 전환 + `TestGroups.test.tsx`·`ActiveSessions.test.tsx`
-- [ ] T048 [P] [US2] 워크벤치 잔여 소형 전환 — `NoticeStack.tsx`(4) · `BulkDeleteConfirm.tsx`(1) + `NoticesAreToasts.test.tsx`
-- [ ] T049 [P] [US2] 디자인 껍데기 전환 — `frontend/src/components/design/Chrome.tsx`(4) · `BrowserFrame.tsx`(4) + `WindowFallback.test.tsx`
-- [ ] T050 [P] [US2] 잔여 소형 전환 — `StepEditFields.tsx`(4) · `ResultView.tsx`(3) · `StartingIndicator.tsx`(3) · `PacingControl.tsx`(3) · `ErrorNotice.tsx`(3) · `ComposeView.tsx`(2) · `LiveConnectionBanner.tsx`(2) · `BrowserPromptPanel.tsx`(1) · `App.tsx`(1) + 관련 테스트
-- [ ] T051 [US2] 남은 인라인을 전부 `frontend/src/theme/exceptions.ts` 에 등록한다 — 각 항목에 `file`·`pattern`·`axis`·`reason`. **자격은 런타임 계산값뿐이다** (LC-3). `reason` 이 비면 등록이 아니다. 자격 없는 것은 등록하지 말고 전환한다
+- [X] T031 [P] [US2] `frontend/src/pages/TestList.tsx` (55곳) 전환 + `TestListFilters`·`TestListActions`·`TestListSelection`·`RowMenuVisible` 판정 방법 전환. **최대 화면이므로 커밋을 쪼갠다** (RK-5)
+- [X] T032 [P] [US2] `frontend/src/pages/ProjectSetup.tsx` (55곳) 전환 + `ProjectSetup.test.tsx`·`ProjectRowActions.test.tsx`. 커밋을 쪼갠다
+- [X] T033 [P] [US2] `frontend/src/pages/ImportPreview.tsx` (41곳) 전환 + `ImportPreview.test.tsx`·`ImportExportAccess.test.tsx`
+- [X] T034 [P] [US2] `frontend/src/components/workbench/WorkArea.tsx` (30곳) 전환 + `PromptDoesNotShrinkMirror.test.tsx`·`ResultAttemptsVisible.test.tsx`
+- [X] T035 [P] [US2] `frontend/src/pages/KeyManagement.tsx` (28곳) 전환 + `KeyManagement.test.tsx`
+- [X] T036 [P] [US2] `frontend/src/components/workbench/StepDetail.tsx` (24곳) 전환 + `DetailPlacement.test.tsx`(단언 6개)·`DetailBlocksMirrorInput.test.tsx`(단언 6개). **상세 층이 목록을 덮지 않는 자리·폭 640px 이 계약이다**
+- [X] T037 [P] [US2] `frontend/src/pages/DraftList.tsx` (17곳) 전환 + `DraftList.test.tsx`·`DraftsFirstOnEmpty.test.tsx`
+- [X] T038 [P] [US2] **`button.ghost` 1곳 포함** (T070). `frontend/src/pages/EditView.tsx` (15곳) · `frontend/src/components/TestBulkConfirm.tsx` (15곳) 전환 + `EditEntryPoints`·`DeleteSelection`·`TestBulkConfirm` 관련 테스트
+- [X] T039 [P] [US2] `frontend/src/pages/SecretValues.tsx` (13곳) · `frontend/src/components/InlineSecretInput.tsx` (7곳) 전환 + `InlineSecret.test.tsx`·`SensitiveAcrossPhases.test.tsx`. **마스킹 표현이 보존되어야 한다** (헌법 보안 요건)
+- [X] T040 [P] [US2] `frontend/src/components/workbench/PhaseBar.tsx` (13곳) 전환 + `PhaseBarWidth.test.tsx`(단언 11개)·`PhaseContext.test.tsx`. 줄임표·`min-width:0` 처리가 계약이다
+- [X] T041 [P] [US2] `frontend/src/components/workbench/ActionPalette.tsx` (13곳) · `ActionButton.tsx` (5곳) 전환 + `CapabilityUI.test.tsx`
+- [X] T042 [P] [US2] `frontend/src/components/workbench/InsertStepForm.tsx` (12곳) 전환 + `StepInsert.test.tsx`·`InsertViaBrowser.test.tsx`
+- [X] T043 [P] [US2] `frontend/src/components/workbench/TargetPane.tsx` (11곳) 전환 + `TargetPane.test.tsx`. **이 파일 주석이 「1회차에 `pane.style.flex` 를 넣었고 그것이 크기까지 고정했다」는 실패를 기록하고 있다 — 읽고 같은 함정을 피한다**
+- [X] T044 [P] [US2] `frontend/src/components/MirrorView.tsx` (11곳) 전환 + `MirrorView.test.tsx`·`MirrorInput.test.ts`. **미러 스케일이 런타임 계산값이면 예외 등록 대상이다** (LC-3)
+- [X] T045 [P] [US2] `frontend/src/components/workbench/StepList.tsx` (10곳) · `StepRowOps.tsx` (1곳) 전환 + `StepRowLayout`·`StepRowActions`·`StepNumberConsistency`
+- [X] T046 [P] [US2] **`button.secondary` 1곳·`.bare` 1곳 포함** (T070). `frontend/src/components/LocatorPriorityTable.tsx` (9곳) · `AssertionForm.tsx` (9곳) 전환 + `LocatorPriorityTable.test.tsx`
+- [X] T047 [P] [US2] **`button.secondary` 4곳 포함** (T070). `frontend/src/pages/SessionScreen.tsx` (7곳) · `frontend/src/components/TestGroupBar.tsx` (7곳) · `SessionLostBanner.tsx` (6곳) 전환 + `TestGroups.test.tsx`·`ActiveSessions.test.tsx`
+- [X] T048 [P] [US2] 워크벤치 잔여 소형 전환 — `NoticeStack.tsx`(4) · `BulkDeleteConfirm.tsx`(1) + `NoticesAreToasts.test.tsx`
+- [X] T049 [P] [US2] 디자인 껍데기 전환 — `frontend/src/components/design/Chrome.tsx`(4) · `BrowserFrame.tsx`(4) + `WindowFallback.test.tsx`
+- [X] T050 [P] [US2] 잔여 소형 전환 — `StepEditFields.tsx`(4) · `ResultView.tsx`(3) · `StartingIndicator.tsx`(3) · `PacingControl.tsx`(3) · `ErrorNotice.tsx`(3) · `ComposeView.tsx`(2) · `LiveConnectionBanner.tsx`(2) · `BrowserPromptPanel.tsx`(1) · `App.tsx`(1) + 관련 테스트
+- [X] T051 [US2] 남은 인라인을 전부 `frontend/src/theme/exceptions.ts` 에 등록한다 — 각 항목에 `file`·`pattern`·`axis`·`reason`. **자격은 런타임 계산값뿐이다** (LC-3). `reason` 이 비면 등록이 아니다. 자격 없는 것은 등록하지 말고 전환한다
 
 **Checkpoint**: 인라인 잔량 = 등록된 예외뿐. 의미 클래스 0개. 테스트 전량 통과.
 

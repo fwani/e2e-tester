@@ -36,14 +36,6 @@ import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
 import type { SlotSize } from "../../lib/layout";
 
 import { Button } from "../../ui/Button";
-/**
- * 국면 안내 띠 **자체**의 높이. `RunnerPaused`·`Takeover` 의 `flex: 0 0 42px`.
- *
- * **자리의 최소 높이와 다른 값이다.** 자리의 크기는 `size` 인자로 오고 (FR-256), 이것은
- * 그 안에 놓이는 띠 하나의 높이다. 1회차에는 둘이 같은 `MIN_HEIGHT` 상수였고, 그래서
- * 자리의 크기를 고치려면 띠의 높이도 함께 움직였다.
- */
-const GUIDE_BAND_HEIGHT = 32;
 
 export interface WorkAreaProps {
   work: WorkAreaView;
@@ -217,14 +209,7 @@ export function WorkArea({
         <>
           <div
             role="status"
-            className={`${work.recording ? "tint-fail" : "tint-warn"} strong-sm`}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              minHeight: GUIDE_BAND_HEIGHT,
-              padding: "0 12px",
-            }}
+            className={`${work.recording ? "bg-fail-t border border-fail-line rounded-base" : "bg-warn-t border border-warn-line rounded-base"} font-sans text-[13px] font-semibold leading-none flex items-center gap-[10px] min-h-notice px-s3`}
           >
             {work.recording
               ? "사람이 조작하는 중입니다 — 지금 하는 조작이 Step 으로 기록됩니다."
@@ -300,8 +285,7 @@ export function WorkArea({
       {work.kind === "edit_fields" && (
         <>
           <div
-            className="strong-sm"
-            style={{ display: "flex", alignItems: "center", gap: 12, minHeight: GUIDE_BAND_HEIGHT }}
+            className="font-sans text-[13px] font-semibold leading-none flex items-center gap-s3 min-h-notice"
           >
             <span data-pending-edits>
               {work.pendingCount === 0

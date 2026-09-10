@@ -53,6 +53,8 @@ import type { Notice } from "./model";
 
 import { Button } from "../../ui/Button";
 
+
+import { Toast, type NoticeTone } from "../../ui/Notice";
 /**
  * 알림의 뜻 → 정본의 옅은 바탕 (`States.dc.html`).
  *
@@ -60,10 +62,11 @@ import { Button } from "../../ui/Button";
  * 없는 색**이었다. v2 의 알림은 옅은 바탕 + 같은 계열 경계이고 글자는 본문 잉크다 —
  * 문장을 색으로 소리치지 않는다. 무엇인지는 문장이 말한다.
  */
-const TONE: Record<Notice["tone"], string> = {
-  error: "tint-fail",
-  warn: "tint-warn",
-  info: "",
+/** 알림 뜻 → `ui/Notice` 의 바탕. 015 가 `.tint-*` 를 부품으로 옮기며 갈아끼웠다. */
+const TONE: Record<Notice["tone"], NoticeTone> = {
+  error: "fail",
+  warn: "warn",
+  info: "default",
 };
 
 export interface NoticeStackProps {
@@ -172,23 +175,17 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
       className="flex flex-col gap-s2"
     >
       {shown.map((n) => (
-        <div
+        <Toast
           key={n.id}
           role={n.role}
           data-notice={n.id}
           /*
-            `float` — 이 묶음은 문서 흐름이 아니라 좌측 영역 위에 떠 있다 (2026-09-09 ·
-            `Workbench` 의 알림 층). 형태는 정본이 갖는다 (`tokens.css` 의 `.notice.float`).
+            이 묶음은 문서 흐름이 아니라 좌측 영역 위에 떠 있다 (2026-09-09 ·
+            `Workbench` 의 알림 층). 그래서 흐름 안의 `Notice` 가 아니라 `Toast` 다 —
+            높이를 못 박지 않고 최소 높이만 지키므로 여러 줄 알림이 잘리지 않는다.
           */
-          className={`notice float ${TONE[n.tone]}`.trimEnd()}
-          style={{
-            flex: "0 0 auto",
-            height: "auto",
-            minHeight: "var(--h-notice)",
-            alignItems: "flex-start",
-            padding: "8px 16px",
-            gap: 12,
-          }}
+          tone={TONE[n.tone]}
+          layout="gap-s3"
         >
           <div className="flex-1 min-w-0">
             <div className="strong-sm">{n.message}</div>
@@ -232,7 +229,7 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
             }} >
             닫기
           </Button>
-        </div>
+        </Toast>
       ))}
     </div>
   );

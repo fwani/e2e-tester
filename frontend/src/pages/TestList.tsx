@@ -916,15 +916,13 @@ export function TestList({
           <div className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col overflow-hidden">
             <div
               data-test-head
-              className="thead"
-              style={{
-                flex: "0 0 34px",
-                display: "grid",
-                gridTemplateColumns: GRID,
-                gap: "12px",
-                alignItems: "center",
-                padding: "0 14px 0 17px",
-              }}
+              className="bg-sunken border-b border-hair-2 flex-[0_0_34px] grid gap-s3 items-center pt-0 pr-[14px] pb-0 pl-[17px]"
+              /*
+                격자 열만 인라인으로 남는다 — 표 머리와 행이 **같은 상수**를 써야 하고
+                (FR-273 · V-08), 그 값을 두 곳에 적으면 어긋난다. 열 정의가 한 상수에서
+                오는 것이 이 자리의 계약이므로 Tailwind 임의값으로 복제하지 않는다.
+              */
+              style={{ gridTemplateColumns: GRID }}
             >
               <div>
                 <input
@@ -1595,15 +1593,7 @@ function EmptyProject({
           </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "12px",
-            width: "100%",
-            textAlign: "left",
-          }}
-        >
+        <div className="grid grid-cols-[1fr_1fr] gap-s3 w-full text-left">
           <div className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[9px]">
             <div className="row">
               <svg width="14" height="14" viewBox="0 0 16 16" className="fail-ink">

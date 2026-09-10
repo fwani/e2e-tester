@@ -443,13 +443,7 @@ export function MirrorView({
                 클릭이 이 컴포넌트에 닿지 않고, 사용자는 왜 안 되는지 들을 자리가 없다.
                 전달하지 않는 것과 이유를 말하지 않는 것은 다르다.
               */
-              style={{
-                maxWidth: "100%",
-                maxHeight: "100%",
-                pointerEvents: "auto",
-                userSelect: "none",
-                cursor: controllable ? "default" : "not-allowed",
-              }}
+              className={`max-w-full max-h-full pointer-events-auto select-none ${controllable ? "cursor-default" : "cursor-not-allowed"}`}
               draggable={false}
               onPointerDown={onPointerDown}
               onPointerUp={onPointerUp}

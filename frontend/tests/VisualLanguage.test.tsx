@@ -30,6 +30,7 @@
 import { describe, expect, it } from "vitest";
 
 import { VISUAL_LANGUAGE_EXCEPTIONS, isRegistered } from "../src/theme/exceptions";
+import { scan as rawScan } from "../scripts/count-violations.mjs";
 
 import { generatedClasses } from "./helpers/tailwind";
 import tokens from "../src/theme/tokens.css?raw";
@@ -63,17 +64,6 @@ const SOURCES = import.meta.glob("../src/**/*.tsx", {
 /** G-1 — 표기를 바꿔 빠져나갈 수 없게 잡는다. */
 const COLOR = /#[0-9A-Fa-f]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/g;
 
-/** G-2 — `contracts/visual-language.md` §2 C-7 의 목록. 배치 속성은 여기 없다. */
-const VISUAL_PROPS = [
-  "background", "backgroundColor", "backgroundImage",
-  "border", "borderTop", "borderRight", "borderBottom", "borderLeft",
-  "borderColor", "borderRadius", "borderStyle", "borderWidth",
-  "boxShadow", "color",
-  "font", "fontFamily", "fontSize", "fontWeight", "fontStyle",
-  "letterSpacing", "lineHeight", "textDecoration", "textTransform",
-  "opacity", "outline",
-];
-const VISUAL_PROP = new RegExp(`(?<![A-Za-z])(${VISUAL_PROPS.join("|")})\\s*:`, "g");
 
 /** 주석은 세지 않는다 — 근거를 적은 것이지 화면에 나가는 값이 아니다. */
 function stripComments(text: string): string {
@@ -133,21 +123,25 @@ const CANON_CLASSES = new Set(
   ),
 );
 
-/** 원문 하나를 판정한다. 실제 파일과 **인위적인 원문**이 같은 함수를 지난다. */
+/**
+ * 원문 하나를 판정한다. 실제 파일과 **인위적인 원문**이 같은 함수를 지난다.
+ *
+ * ## 세는 일은 계수기가 한다 (015 T052)
+ *
+ * 이 파일이 자체 정규식으로 훑던 것을 `scripts/count-violations.mjs` 의 `scan()` 에
+ * 넘겼다. 015 가 G-2 에 배치 속성을 더하면서 두 곳이 갈렸고, 그 결과 오탐이 쏟아졌다 —
+ * `visibility: "keep"` 은 capability 모델의 필드이지 CSS 가 아닌데 G-2 로 잡혔다.
+ *
+ * 계수기는 인라인 `style={{…}}` **안**만 본다. 그 범위 판정이 여기 없었기 때문에
+ * 생긴 차이이고, 규칙을 두 곳에 두면 그것 자체가 이 기능이 고치려는 결함이라는 말이
+ * 규칙의 *적용 범위*에도 그대로 맞았다.
+ *
+ * 예외 거르기(`allowed`)는 여기 남는다 — 계수기는 원시 계수를 내고 판정은 검사가 한다.
+ */
 function scanText(file: string, raw: string): Finding[] {
-  const found: Finding[] = [];
-  stripComments(raw)
-    .split("\n")
-    .forEach((line, i) => {
-      for (const m of line.matchAll(COLOR)) {
-        if (!allowed(file, "G-1", m[0])) found.push({ file, line: i + 1, axis: "G-1", value: m[0] });
-      }
-      for (const m of line.matchAll(VISUAL_PROP)) {
-        const prop = m[1] as string;
-        if (!allowed(file, "G-2", prop)) found.push({ file, line: i + 1, axis: "G-2", value: prop });
-      }
-    });
-  return found;
+  return (rawScan(raw) as { line: number; axis: string; value: string }[])
+    .filter((f) => (f.axis === "G-1" || f.axis === "G-2") && !allowed(file, f.axis as Finding["axis"], f.value))
+    .map((f) => ({ file, line: f.line, axis: f.axis as Finding["axis"], value: f.value }));
 }
 
 function scan(): Finding[] {
@@ -397,7 +391,10 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
         const text = stripComments(CORPUS[f] as string);
         if (e.axis === "color") return [...text.matchAll(COLOR)].some((m) => re.test(m[0]));
         if (e.axis === "inline-style")
-          return [...text.matchAll(VISUAL_PROP)].some((m) => re.test(m[1] as string));
+          // 계수기가 세고 여기는 매칭만 본다 — 규칙이 한 곳에 있어야 갈리지 않는다.
+          return (rawScan(text) as { axis: string; value: string }[])
+            .filter((x) => x.axis === "G-2")
+            .some((x) => re.test(x.value));
         if (e.axis === "token")
           return [...text.matchAll(/rgba?\([^)]*\)|#[0-9A-Fa-f]{3,8}\b|\b\d+(?:\.\d+)?px\b/g)].some(
             (m) => re.test(m[0]),

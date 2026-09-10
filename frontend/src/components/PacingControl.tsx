@@ -68,7 +68,7 @@ export function PacingControl({
               onClick={() => {
                 if (!active) onChange(pacing);
               }}
-              style={{ padding: "0 12px", cursor: busy || disabled ? "default" : "pointer" }}
+              className={`px-s3 ${busy || disabled ? "cursor-default" : "cursor-pointer"}`}
             >
               {PACING_LABEL[pacing]}
             </button>

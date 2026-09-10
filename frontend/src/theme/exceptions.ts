@@ -66,6 +66,43 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
       "덮는 확인 판이다 — 덮는 면적이 클수록 짙게 한다.",
     requirement: "DC-009 · FR-266",
   },
+  {
+    file: "frontend/src/pages/TestList.tsx",
+    pattern:
+      "^(gridTemplateColumns|position|top|left|zIndex|visibility|display|flexDirection|gap|padding|width|minWidth|height|minHeight|paddingTop|paddingBottom)$",
+    axis: "inline-style",
+    reason:
+      "세 자리가 **렌더 시점에야 값이 정해진다.** (1) 행 메뉴는 누른 행의 화면 좌표에 " +
+      "맞춰 뜬다 — `menuPos` 는 `getBoundingClientRect()` 로 잰 값이고, 자리를 재기 " +
+      "전에는 그리지 않는다(그리면 왼쪽 위에서 제자리로 튄다). (2) 표 머리와 행의 " +
+      "격자 열은 **같은 상수**를 써야 하고(FR-273 · V-08) 두 곳에 적으면 어긋난다 — " +
+      "값을 복제하지 않으려고 상수 참조를 남긴다. (3) 행은 이름 변경·삭제 확인이 " +
+      "**안에서 펼쳐질 때만** 높이를 늘린다 — 펼침 여부는 렌더 시점의 상태다.",
+    requirement: "015 FR-005 · FR-273 · 013 UC-013-01",
+  },
+  {
+    file: "frontend/src/components/workbench/ActionPalette.tsx",
+    pattern: "^(minHeight|height)$",
+    axis: "inline-style",
+    reason:
+      "공통 입력 속성(`common.style`)을 펼친 위에 높이만 덧쓴다. 여러 줄 입력은 48px, " +
+      "한 줄은 40px 이며 나머지 속성은 `common` 이 정한다. 펼침(`...common.style`)을 " +
+      "클래스로 바꾸려면 `common` 을 쓰는 모든 자리를 함께 옮겨야 하고, 그것은 이 " +
+      "기능의 범위를 넘는 구조 변경이다.",
+    requirement: "015 FR-005",
+  },
+  {
+    file: "frontend/src/components/design/Chrome.tsx",
+    pattern: "^(width|minWidth|height|minHeight|display|flexDirection)$",
+    axis: "inline-style",
+    reason:
+      "아트보드 껍데기의 크기는 **호출부가 정한다** — 화면마다 기준 폭이 다르고 " +
+      "(1000·1440), 늘어나는지(`grow`)·화면 높이를 채우는지(`fill`)도 호출부의 " +
+      "판단이다. `width={1440} grow` 처럼 값이 props 로 들어오므로 Tailwind 가 " +
+      "스캔할 수 있는 정적 클래스로 만들 수 없다. 값을 지어내는 것이 아니라 받아서 " +
+      "쓰는 자리라 FR-003 과도 어긋나지 않는다.",
+    requirement: "015 FR-005 · 007 FR-218a",
+  },
 ];
 
 /** `reason` 이 비어 있으면 등록이 아니다 (EX-1). 가드와 이 모듈 양쪽이 쓴다. */

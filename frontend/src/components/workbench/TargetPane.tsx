@@ -161,7 +161,7 @@ export function TargetPane({
                   aria-pressed={active}
                   title={usable ? undefined : EMPTY_MESSAGE.not_supported}
                   onClick={usable ? () => onSelectArtifact?.(t.kind) : undefined}
-                  style={{ padding: "0 16px", cursor: usable ? "pointer" : "not-allowed" }}
+                  className={`px-s4 ${usable ? "cursor-pointer" : "cursor-not-allowed"}`}
                 >
                   {t.label}
                 </button>
