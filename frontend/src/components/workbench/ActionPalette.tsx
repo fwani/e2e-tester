@@ -205,7 +205,7 @@ export function ActionPalette({
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="flex flex-col gap-s3">
       <div className="lbl">지금 할 수 있는 것</div>
 
       {/*
@@ -222,9 +222,9 @@ export function ActionPalette({
         쓸 수 없으면 입력칸을 잠그고 이유는 버튼이 말한다 (FR-234).
       */}
       {AUTHORING_ROW.some(shown) || shown("step.addNaturalLanguage") ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="flex flex-col gap-s2">
           {shown("step.addNaturalLanguage") && (
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div className="flex gap-[10px] items-start">
               <input
                 aria-label="자연어로 Step 추가"
                 value={nl.value}
@@ -240,13 +240,13 @@ export function ActionPalette({
               })}
             </div>
           )}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
+          <div className="flex flex-wrap gap-[10px] items-start">
             {AUTHORING_ROW.filter(shown).map((action) => button(action, () => onRun(action)))}
           </div>
         </div>
       ) : null}
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
+      <div className="flex flex-wrap gap-[10px] items-start">
         {PALETTE_ACTIONS.filter(shown).map((action) => button(action, () => onRun(action)))}
       </div>
 
@@ -265,8 +265,7 @@ export function ActionPalette({
       */}
       {shown("test.setStartUrl") && (
         <div
-          className="rule-top"
-          style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 12 }}
+          className="border-t border-hair flex flex-col gap-s2 pt-s3"
         >
           {shown("test.setStartUrl") && (
             <Field
@@ -379,9 +378,9 @@ function Field({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span className="field-label" style={{ width: 76 }}>
+    <div className="flex flex-col gap-s1">
+      <div className="flex items-center gap-s2">
+        <span className="font-sans text-[12px] leading-none text-ink-3 w-[76px]">
           {label}
         </span>
         {multiline ? (
@@ -394,8 +393,7 @@ function Field({
         <span
           id={reasonId}
           data-disabled-reason={action}
-          className="why"
-          style={{ paddingLeft: 84 }}
+          className="font-sans text-[11px] leading-[1.4] text-ink-3 pl-[84px]"
         >
           {capability.reason}
           {capability.remedy !== null && (

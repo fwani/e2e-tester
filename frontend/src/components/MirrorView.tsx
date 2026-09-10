@@ -313,7 +313,7 @@ export function MirrorView({
       잘린다. 잘리는 것과 줄어드는 것은 사용자에게 다르게 보이고, 잘리면 대상 화면의
       오른쪽이 조용히 사라진다.
     */
-    <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, flex: 1 }}>
+    <div className="flex flex-col min-h-0 min-w-0 flex-1">
       {/*
         FR-325~FR-327 — 한글 조합을 대상 브라우저로 옮긴다. 아무것도 그리지 않는다.
         조합의 주인은 미러 영역 자체이고, 이 컴포넌트는 그 영역의 조합 사건을 채널로
@@ -328,7 +328,7 @@ export function MirrorView({
       <PhaseNotice phase={phase} tabIndex={tabIndex} surface={surface} />
 
       {degradedReason !== null && (
-        <div className="row sunken" style={{ gap: 8, padding: "6px 14px" }}>
+        <div className="flex items-center bg-sunken-2 gap-s2 py-[6px] px-[14px]">
           <span className="chip warn mono">1 FPS</span>
           <span className="muted">{degradedReason}</span>
           {/*
@@ -358,7 +358,7 @@ export function MirrorView({
         style={{ flex: 1, display: "grid", placeItems: "center", overflow: "hidden", minHeight: 0 }}
       >
         {stoppedReason !== null ? (
-          <p className="muted" style={{ textAlign: "center", padding: 24 }}>
+          <p className="text-ink-2 text-center p-s5">
             {stoppedReason}
           </p>
         ) : frame !== null ? (
@@ -483,16 +483,16 @@ export function MirrorView({
             data-action="mirror.control"
             data-controllable="false"
             aria-disabled="true"
-            style={{ padding: 24 }}
+            className="p-s5"
           >
-            <p className="muted" style={{ textAlign: "center" }}>
+            <p className="text-ink-2 text-center">
               {mirrorEmptyMessage(phase, surface)}
             </p>
           </div>
         )}
       </div>
 
-      <div className="row" style={{ gap: 8, padding: "6px 14px" }}>
+      <div className="flex items-center gap-s2 py-[6px] px-[14px]">
         {/*
           FR-234·SC-516 — **조작을 받지 않는 모든 상태에서 이유가 같은 자리에 있다.**
 
@@ -546,7 +546,7 @@ function UseWindowAction({
   if (capability.kind === "disabled" && capability.visibility === "hide") return null;
   const disabled = capability.kind === "disabled";
   return (
-    <span className="row" style={{ gap: 6 }}>
+    <span className="flex items-center gap-s2 gap-[6px]">
       <Button
         type="button"
         data-action="mirror.useWindow"

@@ -363,7 +363,7 @@ export function StepList({
             ? "step.toggleDeleteTarget"
             : undefined
         }
-        style={{ flex: "1", minHeight: "0", overflowY: "auto" }}
+        className="flex-1 min-h-0 overflow-y-auto"
       >
         {/*
           007 T071 (FR-243) — **지목한 Step 이 더 이상 없다.**
@@ -373,13 +373,13 @@ export function StepList({
           자기가 보던 것이 그것이라고 믿고, 빈 화면을 주면 목록을 잃는다.
         */}
         {focusedStepId !== null && !steps.some((s) => s.id === focusedStepId) && (
-          <div role="status" data-focus-missing className="tint-warn line" style={{ padding: "12px 14px" }}>
+          <div role="status" data-focus-missing className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] py-s3 px-[14px]">
             보고 있던 Step 이 이 목록에 없습니다. 그 사이에 지워졌거나 순서가 바뀌었을 수
             있습니다.
           </div>
         )}
         {steps.length === 0 && (
-          <div className="why" style={{ padding: "18px" }}>
+          <div className="font-sans text-[11px] leading-[1.4] text-ink-3 p-[18px]">
             {emptyNotice ?? "아직 Step 이 없습니다."}
           </div>
         )}

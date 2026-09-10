@@ -74,10 +74,10 @@ export function InsertStepForm({
   const ready = spec !== null;
 
   return (
-    <div className="pane" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="bg-panel border border-hair rounded-base p-s3 flex flex-col gap-[10px]">
+      <div className="flex items-center gap-s2">
         <strong className="lbl">{atLabel} 앞에 추가</strong>
-        <div className="spacer" style={{ flex: 1 }} />
+        <div className="flex-1" />
         <Button size="sm" onClick={onCancel} aria-label="추가 닫기">
           닫기
         </Button>
@@ -90,7 +90,7 @@ export function InsertStepForm({
       )}
 
       {/* 종류 — 넣을 수 있는 넷 */}
-      <div role="radiogroup" aria-label="넣을 Step 종류" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      <div role="radiogroup" aria-label="넣을 Step 종류" className="flex flex-wrap gap-[6px]">
         {KINDS.map((k) => (
           <Button
             key={k}
@@ -108,7 +108,7 @@ export function InsertStepForm({
 
       {/* 종류마다 필요한 값만 그린다 */}
       {(kind === "navigate" || kind === "assert_url") && (
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <label className="flex flex-col gap-s1">
           <span className="lbl">주소</span>
           <input
             aria-label="주소"
@@ -123,7 +123,7 @@ export function InsertStepForm({
       )}
 
       {kind === "assert_text" && (
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <label className="flex flex-col gap-s1">
           <span className="lbl">기대 텍스트</span>
           <input
             aria-label="기대 텍스트"
@@ -137,7 +137,7 @@ export function InsertStepForm({
       )}
 
       {kind === "close_tab" && (
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <label className="flex flex-col gap-s1">
           <span className="lbl">탭 번호</span>
           <input
             aria-label="탭 번호"
@@ -153,7 +153,7 @@ export function InsertStepForm({
       )}
 
       {(kind === "assert_url" || kind === "assert_text") && (
-        <div role="radiogroup" aria-label="일치 방식" style={{ display: "flex", gap: 6 }}>
+        <div role="radiogroup" aria-label="일치 방식" className="flex gap-[6px]">
           {(["equals", "contains"] as MatchMode[]).map((m) => (
             <Button
               key={m}
@@ -177,7 +177,7 @@ export function InsertStepForm({
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+      <div className="flex justify-end gap-s2">
         <Button
           variant="primary"
           disabled={busy || !usable || !ready}
@@ -195,8 +195,8 @@ export function InsertStepForm({
       </div>
 
       {/* ─── 요소를 지목해야 하는 종류 — 감추지 않는다 (FR-287) ──────────────── */}
-      <div className="rule-top" style={{ paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      <div className="border-t border-hair pt-[10px] flex flex-col gap-[6px]">
+        <div className="flex flex-wrap gap-[6px]">
           {BROWSER_ONLY.map((k) => (
             <Button
               key={k}

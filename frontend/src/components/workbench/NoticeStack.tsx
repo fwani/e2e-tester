@@ -169,7 +169,7 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
       data-workbench-notices
       onMouseEnter={() => setHeld(true)}
       onMouseLeave={() => setHeld(false)}
-      style={{ display: "flex", flexDirection: "column", gap: 8 }}
+      className="flex flex-col gap-s2"
     >
       {shown.map((n) => (
         <div
@@ -190,14 +190,14 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
             gap: 12,
           }}
         >
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="flex-1 min-w-0">
             <div className="strong-sm">{n.message}</div>
             {/*
               `nextAction` 이 별도 줄인 이유는 003 EC-004 다 — 문장에 뭉개면 "대상 앱에
               연결할 수 없습니다" 뒤에 와야 하는 "떠 있는지 확인하세요" 가 사라진다.
             */}
             {n.nextAction !== null && (
-              <div className="why" style={{ marginTop: 4 }}>
+              <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
                 {n.nextAction}
               </div>
             )}

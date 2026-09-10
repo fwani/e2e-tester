@@ -115,7 +115,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
           aria-label="저장할 그룹"
           value={group.value ?? ""}
           onChange={(e) => group.onChange(e.target.value === "" ? null : e.target.value)}
-          style={{ margin: 0, flex: "0 0 auto", maxWidth: 160 }}
+          className="m-0 flex-none max-w-[160px]"
         >
           <option value="">그룹 없음</option>
           {group.options.map((g) => (
@@ -127,7 +127,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
       )}
 
       {bar.progressLabel !== null && (
-        <div className="phase-progress" style={{ flex: "0 0 auto" }}>
+        <div className="font-sans text-[12px] leading-none text-ink-3 flex-none">
           {bar.progressLabel}
         </div>
       )}
@@ -143,14 +143,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
       {bar.runSummary !== null && (
         <div
           data-run-summary
-          className="line"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
+          className="font-sans text-[13px] leading-[1.4] flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis"
           title={typeof bar.runSummary === "string" ? bar.runSummary : undefined}
         >
           {bar.runSummary}
@@ -168,7 +161,8 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
 
         011 이 여기에 저장·되돌리기를 더했다. 같은 위험이 커지므로 규칙은 그대로 유지한다.
       */}
-      <div className="row" style={{ flex: "0 1 auto", minWidth: 0 }}>
+      {/* 조작 묶음 — 검사가 이 자리를 찾는 표식이다 (015: `.row` 셀렉터를 대체). */}
+      <div data-phase-actions className="flex items-center gap-s2 flex-initial min-w-0">
         {actions}
       </div>
     </div>
@@ -214,7 +208,7 @@ function PhaseTestName({
   return (
     <div
       data-phase-test-name
-      style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 420, minWidth: 0 }}
+      className="flex items-center gap-s2 max-w-[420px] min-w-0"
     >
       <input
         data-action="test.rename"
@@ -246,20 +240,12 @@ function PhaseTestName({
         <span
           id={reasonId}
           data-disabled-reason="test.rename"
-          className="why"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            flex: "0 1 auto",
-            minWidth: 0,
-            maxWidth: 260,
-          }}
+          className="font-sans text-[11px] leading-[1.4] text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
         >
           <span
             data-disabled-reason-text
             title={rename.capability.kind === "disabled" ? rename.capability.reason : undefined}
-            style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
           >
             {rename.capability.kind === "disabled" ? rename.capability.reason : ""}
           </span>

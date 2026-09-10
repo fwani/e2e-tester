@@ -25,6 +25,16 @@
  * `aria-describedby` 로 버튼에 남아야 하고 (ui-contract §7), 해소 수단은 말줄임에
  * 잘려서는 안 된다 (§4-1 의 3번) — 빠져나갈 길이 잘리면 이유를 읽고도 할 수 있는 일이
  * 없다.
+
+ * ## 2026-09-11 (015) — 판정 방법을 바꿨다. 검증 대상은 그대로다
+ *
+ * 배치가 인라인에서 유틸리티로 옮겨져 `element.style.*` 이 빈 문자열이 됐다.
+ * `tests/helpers/style.ts` 가 두 표기를 같은 뜻으로 환산해 읽는다 — 이 검사가 묻는
+ * 것(「버튼이 줄어들지 않는가」·「이유 문구가 말줄임하는가」)은 그대로다.
+ *
+ * `.row` 셀렉터로 조작 묶음을 찾던 자리는 `data-phase-actions` 표식으로 바꿨다.
+ * 클래스가 해체되면 이름으로 찾을 수 없고, **자리를 찾는 일에 모양을 쓰는 것**이
+ * 애초에 약한 결합이었다.
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -33,12 +43,11 @@ import { ActionButton } from "../src/components/workbench/ActionButton";
 import { PhaseBar } from "../src/components/workbench/PhaseBar";
 import { renderSession } from "./helpers/session";
 
+import { canShrink, hasMaxWidth, minWidthIsZero, truncates } from "./helpers/style";
+
 afterEach(cleanup);
 
 const bar = (el: Element | null) => el as HTMLElement;
-
-/** jsdom 은 `minWidth: 0` 을 `"0"` 으로, 다른 값은 단위와 함께 돌려준다. */
-const isZeroWidth = (value: string) => value === "0" || value === "0px";
 
 /** 실행 중 + 요청 대기 — 보고된 화면의 조건이다. 여러 조작이 한꺼번에 잠긴다. */
 function renderRunningWithPendingRequest() {
@@ -65,18 +74,17 @@ describe("국면 띠가 한 줄에 담긴다", () => {
     const summary = bar(document.querySelector("[data-run-summary]"));
     expect(summary).not.toBeNull();
     // 폭 0 까지 줄어드는 칸이 줄 바꿈까지 하면 글자가 한 줄에 하나씩 쌓인다.
-    expect(summary.style.whiteSpace).toBe("nowrap");
-    expect(summary.style.textOverflow).toBe("ellipsis");
-    expect(summary.style.overflow).toBe("hidden");
+    expect(truncates(summary), "결말 요약이 말줄임하지 않는다 — 글자가 한 줄에 하나씩 쌓인다").toBe(true);
   });
 
   it("조작 묶음은 줄어들 수 있다 — `0 0 auto` 가 띠를 밀어냈다", () => {
     renderRunningWithPendingRequest();
     const phase = bar(document.querySelector("[data-workbench-phase-bar]"));
-    const group = bar(phase.querySelector(":scope > .row"));
+    // 015 — `.row` 가 유틸리티로 해체돼 셀렉터로 찾을 수 없다. 자리 표식을 붙였다.
+    const group = bar(phase.querySelector(":scope > [data-phase-actions]"));
     expect(group).not.toBeNull();
-    expect(group.style.flex).toBe("0 1 auto");
-    expect(isZeroWidth(group.style.minWidth)).toBe(true);
+    expect(canShrink(group), "조작 묶음이 줄어들지 못한다 — 띠가 밀려난다").toBe(true);
+    expect(minWidthIsZero(group), "최소 폭이 0 이 아니면 내용 폭 밑으로 줄지 못한다").toBe(true);
   });
 
   it("버튼은 줄지 않는다 — 줄어드는 몫은 이유 문구가 받는다", () => {
@@ -85,7 +93,7 @@ describe("국면 띠가 한 줄에 담긴다", () => {
     const buttons = phase.querySelectorAll<HTMLElement>("button[data-action]");
     expect(buttons.length).toBeGreaterThan(0);
     for (const button of buttons) {
-      expect(button.style.flex, `${button.dataset.action} 이 줄어든다`).toBe("0 0 auto");
+      expect(canShrink(button), `${button.dataset.action} 이 줄어든다`).toBe(false);
     }
   });
 
@@ -96,13 +104,12 @@ describe("국면 띠가 한 줄에 담긴다", () => {
     expect(reasons.length, "실행 중인데 잠긴 조작이 하나도 없다 — 조건이 재현되지 않았다")
       .toBeGreaterThan(0);
     for (const reason of reasons) {
-      expect(isZeroWidth(reason.style.minWidth), `${reason.dataset.disabledReason}`).toBe(true);
-      expect(reason.style.maxWidth, `${reason.dataset.disabledReason}`).not.toBe("");
+      expect(minWidthIsZero(reason), `${reason.dataset.disabledReason}`).toBe(true);
+      expect(hasMaxWidth(reason), `${reason.dataset.disabledReason} 의 폭이 묶이지 않았다`).toBe(true);
       const text = reason.querySelector<HTMLElement>("[data-disabled-reason-text]");
       // `run.pacing` 은 자체 이유 자리를 갖는다 (버튼이 아니라 속도 선택기다).
       if (text === null) continue;
-      expect(text.style.textOverflow).toBe("ellipsis");
-      expect(text.style.whiteSpace).toBe("nowrap");
+      expect(truncates(text), "이유 문구가 말줄임하지 않는다").toBe(true);
     }
   });
 });

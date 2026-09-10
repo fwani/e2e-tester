@@ -134,14 +134,13 @@ export function TargetPane({
               {target.tabs ?? <Unavailable action="tab.select" capabilities={capabilities} />}
             </div>
           )}
-          <div style={{ flex: 1, minHeight: 0, display: "flex" }}>{target.mirror}</div>
+          <div className="flex-1 min-h-0 flex">{target.mirror}</div>
         </>
       )}
 
       {target.kind === "artifacts" && (
         <div
-          className="pane"
-          style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
+          className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col"
         >
           {/*
             산출물 종류를 고르는 조작은 **이 영역 안에** 있다 (FR-246). 지원되지 않는
@@ -181,8 +180,7 @@ export function TargetPane({
           {target.available.length < ARTIFACT_TABS.length && (
             <div
               data-disabled-reason="artifact.select"
-              className="why rule-bottom"
-              style={{ padding: "6px 16px" }}
+              className="font-sans text-[11px] leading-[1.4] text-ink-3 border-b border-hair py-[6px] px-s4"
             >
               {ARTIFACT_TABS.filter((t) => !target.available.includes(t.kind))
                 .map((t) => t.label)
@@ -190,7 +188,7 @@ export function TargetPane({
               는 이 실행에 남지 않았습니다 (MVP 미지원).
             </div>
           )}
-          <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "16px" }}>
+          <div className="flex-1 min-h-0 overflow-auto p-s4">
             {target.body}
           </div>
         </div>
@@ -202,20 +200,11 @@ export function TargetPane({
             008 — **가로 한 줄이다.** v1 은 제목 · 설명 · 버튼을 세로로 쌓아 166px 를
             썼고, 그 자리가 118px 로 정해지면서 내용이 잘렸다. 담는 것은 그대로다.
           */
-          className="pane"
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 16,
-            padding: "0 14px",
-          }}
+          className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-row items-center gap-s4 py-0 px-[14px]"
         >
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
             <div className="strong-sm">브라우저가 열려 있지 않습니다</div>
-            <p className="why" style={{ margin: 0 }}>
+            <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
               값·순서·삭제는 브라우저 없이 고칠 수 있습니다. 요소를 다시 집거나 직접
               조작으로 Step 을 더하려면 브라우저가 필요합니다.
             </p>
@@ -244,17 +233,7 @@ export function TargetPane({
         <div
           data-target-empty={target.reason}
           role="status"
-          className="pane note"
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "24px",
-            whiteSpace: "pre-wrap",
-            textAlign: "center",
-          }}
+          className="bg-panel border border-hair rounded-base font-sans text-[13.5px] leading-[1.7] text-ink-2 flex-1 min-h-0 flex items-center justify-center p-s5 whitespace-pre-wrap text-center"
         >
           {EMPTY_MESSAGE[target.reason]}
         </div>
