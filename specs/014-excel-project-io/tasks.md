@@ -33,11 +33,11 @@ Recorder·Runner·Generator 는 건드리지 않으므로 그쪽 단위 테스�
 
 **Purpose**: 의존성과 경계 계약을 먼저 세운다. 계약을 나중에 넣으면 이미 어긴 코드를 고치게 된다.
 
-- [ ] T001 `openpyxl` 을 런타임 의존성에 추가한다 — `backend/pyproject.toml` 의 `dependencies` 에 `"openpyxl>=3.1"` 을 넣고 `uv sync` 로 잠금 파일을 갱신한다 ([research.md](research.md) R1)
-- [ ] T002 `.importlinter` 의 `execution-no-llm` 계약 `source_modules` 에 `itb.portability` 를 추가한다. **T003 보다 먼저 한다** — 계약을 먼저 세워야 이후 코드가 처음부터 그 안에서 자란다 ([research.md](research.md) R2)
-- [ ] T003 [P] `backend/src/itb/portability/__init__.py` 를 만들어 패키지를 연다. 모듈 머리말에 "남의 파일 형식을 다루는 곳이며, 우리 자산 형식은 `itb.storage` 가 맡는다"를 적는다
-- [ ] T004 [P] `backend/src/itb/portability/limits.py` — 이 기능 고유 상한을 정의한다: `MAX_UPLOAD_BYTES = 100 * 1024 * 1024`, `MAX_UNCOMPRESSED_BYTES = 500 * 1024 * 1024`, `MAX_COMPRESSION_RATIO = 100`, `MAX_SHEETS = 200`, `MAX_DATA_ROWS = 5000`, `MAX_CELL_CHARS = 32767`. 제품 공통 상한(999 등)은 **여기서 정의하지 않는다** ([contracts/rest-api.md](contracts/rest-api.md) §6)
-- [ ] T005 `uv run lint-imports` 와 `uv run pytest` 를 돌려 T001~T004 가 기존 것을 깨지 않았는지 확인한다
+- [X] T001 `openpyxl` 을 런타임 의존성에 추가한다 — `backend/pyproject.toml` 의 `dependencies` 에 `"openpyxl>=3.1"` 을 넣고 `uv sync` 로 잠금 파일을 갱신한다 ([research.md](research.md) R1)
+- [X] T002 `backend/.importlinter` 의 `execution-no-llm` 계약 `source_modules` 에 `itb.portability` 를 추가한다. **T003 보다 먼저 한다** — 계약을 먼저 세워야 이후 코드가 처음부터 그 안에서 자란다 ([research.md](research.md) R2)
+- [X] T003 [P] `backend/src/itb/portability/__init__.py` 를 만들어 패키지를 연다. 모듈 머리말에 "남의 파일 형식을 다루는 곳이며, 우리 자산 형식은 `itb.storage` 가 맡는다"를 적는다
+- [X] T004 [P] `backend/src/itb/portability/limits.py` — 이 기능 고유 상한을 정의한다: `MAX_UPLOAD_BYTES = 100 * 1024 * 1024`, `MAX_UNCOMPRESSED_BYTES = 500 * 1024 * 1024`, `MAX_COMPRESSION_RATIO = 100`, `MAX_SHEETS = 200`, `MAX_DATA_ROWS = 5000`, `MAX_CELL_CHARS = 32767`. 제품 공통 상한(999 등)은 **여기서 정의하지 않는다** ([contracts/rest-api.md](contracts/rest-api.md) §6)
+- [X] T005 `uv run lint-imports` 와 `uv run pytest` 를 돌려 T001~T004 가 기존 것을 깨지 않았는지 확인한다
 
 **Checkpoint**: 의존성과 경계가 서 있다. 이제 도메인을 건드릴 수 있다.
 

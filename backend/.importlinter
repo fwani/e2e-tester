@@ -17,6 +17,7 @@ source_modules =
     itb.generator
     itb.mirror
     itb.recording
+    itb.portability
 forbidden_modules =
     itb.llm
     itb.authoring
@@ -38,6 +39,7 @@ forbidden_modules =
     itb.secrets
     itb.storage
     itb.generator
+    itb.portability
     itb.authoring
     itb.llm
     itb.api

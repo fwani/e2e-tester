@@ -187,7 +187,7 @@ frontend/
     ├── DraftList.test.tsx · DraftToRecording.test.tsx
     └── abnormal/excel-blockers.test.tsx
 
-.importlinter                            # [수정] execution-no-llm 에 itb.portability 추가
+backend/.importlinter                    # [수정] execution-no-llm 에 itb.portability 추가
 ```
 
 **Structure Decision**: 기존 backend/frontend 2분할을 그대로 따른다. 새 최상위 패키지
