@@ -375,3 +375,76 @@ def test_missing_file_raises_definition_error(tmp_path: pathlib.Path) -> None:
 
     with pytest.raises(DefinitionError, match="파일이 없습니다"):
         load_model(tmp_path / "nope.yaml", Project)
+
+
+# ─── 013 식별자 형식 확장 (FR-444 · research R1·R3) ─────────────────────────
+
+
+def test_a_grouped_test_shows_up_in_the_listing(repo: ProjectRepository) -> None:
+    """**013 에서 가장 조용한 함정이었다** (research R1).
+
+    `list_test_paths()` 가 `glob("TC-*.yaml")` 이면 새 접두어 테스트는 **저장은 되는데
+    목록에 아예 안 나온다.** 쓰기도 읽기도 성공하므로 어디가 잘못됐는지 보이지 않는다.
+    """
+    repo.write_test(make_test("USER-001", "로그인"))
+    repo.write_test(make_test("TC-002", "옛 테스트"))
+
+    ids = [t.id for t in repo.list_tests()[0]]
+
+    assert set(ids) == {"USER-001", "TC-002"}
+
+
+def test_the_listing_ignores_yaml_that_is_not_a_test(repo: ProjectRepository) -> None:
+    """`tests/` 에 사용자가 다른 `.yaml` 을 두었을 때 그것을 테스트로 읽지 않는다."""
+    repo.write_test(make_test("USER-001", "로그인"))
+    (repo.paths.tests_dir / "메모.yaml").write_text("아무 내용", encoding="utf-8")
+    (repo.paths.tests_dir / "TC-002.yaml").write_text("이름 조각이 없다", encoding="utf-8")
+
+    tests, problems = repo.list_tests()
+
+    assert [t.id for t in tests] == ["USER-001"]
+    assert problems == []
+
+
+def test_numbers_are_unique_across_prefixes(repo: ProjectRepository) -> None:
+    """**번호는 접두어를 넘어 고유하다** (research R3).
+
+    그래야 그룹을 옮길 때 번호를 다시 뽑지 않는다 — `USER-003` → `DATA-003` 이 언제나
+    빈자리다. FR-444c(식별자 고유)를 규칙이 아니라 구조로 만족시킨다.
+    """
+    repo.write_test(make_test("USER-001", "로그인"))
+    repo.write_test(make_test("DATA-002", "적재"))
+
+    assert repo.allocate_test_id() == "TC-003"
+    assert repo.allocate_test_id("USER") == "USER-004"
+
+
+def test_allocate_skips_numbers_taken_by_another_prefix(repo: ProjectRepository) -> None:
+    """카운터만 믿지 않는 기존 성질이 접두어를 넘어서도 유지된다."""
+    project = repo.read_project()
+    project.next_test_number = 1
+    repo.write_project(project)
+    repo.write_test(make_test("USER-001", "로그인"))
+
+    assert repo.allocate_test_id("DATA") == "DATA-002"
+
+
+@pytest.mark.parametrize(
+    "bad", ["tc-001", "TC-1", "TC-0001", "../TC-001", "TC/001", "ABCDEFGHI-001", "-001"]
+)
+def test_paths_still_reject_malformed_identifiers(repo: ProjectRepository, bad: str) -> None:
+    """넓혔지만 **없애지 않았다** (헌법 §보안).
+
+    식별자는 파일 이름과 디렉터리 이름이 된다. 검증을 빼면 경로 구분자와 상위 이동이
+    그대로 경로가 된다.
+    """
+    with pytest.raises(ProjectError):
+        repo.paths.run_dir(bad)
+    with pytest.raises(ProjectError):
+        repo.find_test_path(bad)
+
+
+def test_lowercase_is_refused_so_two_ids_cannot_share_one_slot(repo: ProjectRepository) -> None:
+    """대소문자를 섞어 허용하면 macOS 기본 파일 시스템에서 한 자리를 둘이 다툰다 (research R1)."""
+    with pytest.raises(ProjectError):
+        repo.paths.run_dir("user-001")

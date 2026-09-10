@@ -17,7 +17,40 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from itb.domain.step import Step
 
 DSL_VERSION = 1
-TEST_ID_PATTERN = r"^TC-\d{3}$"
+
+GROUP_PREFIX_PATTERN = r"^[A-Z][A-Z0-9]{0,7}$"
+"""그룹의 식별자 접두어 (013 FR-444d·FR-444e).
+
+**대문자 ASCII 만 허용한다.** 접두어는 테스트 식별자에 들어가고, 식별자는 **파일 이름과
+디렉터리 이름이 된다** (`tests/USER-001-로그인.yaml`, `.runs/USER-001/`). macOS 의 기본 파일
+시스템은 대소문자를 구별하지 않으므로 `user` 와 `USER` 를 둘 다 허용하면 **한 자리를 두
+접두어가 다투는** 경로가 생긴다.
+
+**거절 목록이 아니라 허용 목록이다.** 경로 구분자·상위 이동(`..`)·제어 문자가 애초에 이
+패턴을 통과할 수 없다 (헌법 §보안 — 모든 외부 입력은 경계에서 검증).
+
+8자 상한은 목록에서 이름을 밀어내지 않을 길이다.
+"""
+
+RESERVED_PREFIX = "TC"
+"""그룹 없음이 쓰는 접두어 (013 FR-445a).
+
+기존 테스트가 전부 `TC-###` 이고 013 은 그것을 **건드리지 않는다** (FR-445). 사용자가 새
+그룹의 접두어로 `TC` 를 쓰면 기존 테스트와 식별자가 섞여, 그룹에 넣은 적 없는 테스트가
+그 그룹에 나타난다.
+"""
+
+TEST_ID_PATTERN = r"^[A-Z][A-Z0-9]{0,7}-\d{3}$"
+"""테스트 식별자 = `<그룹 접두어>-<번호>` (013 FR-444).
+
+`TC-001` 이 이 패턴을 만족한다 — **기존 자산이 그대로 통과한다** (SC-629). 접두어 규칙은
+:data:`GROUP_PREFIX_PATTERN` 과 같고, 번호는 세 자리다 (`Project.next_test_number` 가 이미
+`le=999`).
+
+**접두어가 곧 소속이다.** 별도의 그룹 필드를 두지 않는다 — 둘을 다 저장하면 어긋날 수 있고,
+어긋났을 때 어느 쪽이 맞는지 정할 근거가 없다 (013 data-model §3).
+"""
+
 VARIABLE_NAME_PATTERN = r"^[A-Z][A-Z0-9_]*$"
 URL_PATTERN = r"^https?://"
 MAX_TABS_DEFAULT = 10
@@ -185,6 +218,25 @@ class Variable(BaseModel):
         return self
 
 
+class TestGroup(BaseModel):
+    """한 프로젝트 안에서 테스트를 묶는 것 (013 FR-438·FR-444d).
+
+    **보이는 이름과 식별자 접두어를 따로 갖는다.** 이름은 사람이 읽는 것이고
+    (「사용자관리 테스트」), 접두어는 식별자에 들어가는 짧은 값이다 (`USER`). 이름에서
+    접두어를 자동으로 뽑지 않는 이유는 이름이 한글일 수 있기 때문이다 — 그대로 쓰면
+    식별자가 `사용자관리-001` 로 길어지고, 로마자로 바꾸면 사용자가 예측하지 못하는 값이
+    나온다 (013 clarify).
+
+    **소속을 테스트에 저장하지 않는다.** 식별자의 접두어가 곧 소속이다 — 둘을 다 저장하면
+    어긋날 수 있고, 어긋났을 때 어느 쪽이 맞는지 정할 근거가 없다 (013 data-model §3).
+    """
+
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
+
+    prefix: str = Field(pattern=GROUP_PREFIX_PATTERN)
+    name: str = Field(min_length=1, max_length=100)
+
+
 class Project(BaseModel):
     """테스트를 담는 최상위 단위. 프로젝트 하나 = 디렉터리 하나."""
 
@@ -197,7 +249,40 @@ class Project(BaseModel):
     """대상 앱이 쓰는 testId 속성명. `data-test`, `data-cy` 등을 쓰는 앱이 흔하다."""
 
     next_test_number: int = Field(default=1, ge=1, le=999)
+    """다음 테스트 번호. **접두어와 무관하게 프로젝트 전체에서 하나다** (013 research R3).
+
+    그래야 그룹을 옮길 때 번호를 다시 뽑지 않는다 — `USER-003` → `DATA-003` 이 언제나
+    빈자리다.
+    """
+
     max_tabs: int = Field(default=MAX_TABS_DEFAULT, ge=1, le=50)
+
+    groups: list[TestGroup] = Field(default_factory=list)
+    """테스트 그룹 (013 FR-438).
+
+    **기본값이 빈 목록이어야 기존 프로젝트 파일이 그대로 읽힌다** (SC-629). 013 이전에
+    만든 `itb-project.yaml` 에는 이 키가 없다.
+
+    프로젝트 파일에 두는 이유는 두 가지다 (013 research R2). 첫째, **테스트에서 유도할 수
+    없다** — 접두어는 식별자에서 읽히지만 사람이 읽는 이름은 어디에도 없다. 둘째,
+    **테스트가 하나도 없는 그룹**이 존재해야 한다: 사용자는 그룹을 먼저 만들고 그 안에
+    테스트를 만든다.
+    """
+
+    @model_validator(mode="after")
+    def _check_groups(self) -> Self:
+        prefixes = [g.prefix for g in self.groups]
+        if len(prefixes) != len(set(prefixes)):
+            msg = "그룹 접두어가 중복됐다"
+            raise ValueError(msg)
+        names = [g.name for g in self.groups]
+        if len(names) != len(set(names)):
+            msg = "그룹 이름이 중복됐다"
+            raise ValueError(msg)
+        if RESERVED_PREFIX in prefixes:
+            msg = f"{RESERVED_PREFIX} 는 그룹 없는 테스트가 쓰는 접두어다"
+            raise ValueError(msg)
+        return self
 
 
 class Test(BaseModel):

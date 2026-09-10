@@ -34,7 +34,14 @@ from itb.api.ws.control_channel import (
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.run_result import RunScope, StepOutcome, scope_of
 from itb.domain.step import Author, NavigateStep, Step
-from itb.domain.test_case import AuthoringMode, Test, Variable, derive_variables
+from itb.domain.test_case import (
+    GROUP_PREFIX_PATTERN,
+    RESERVED_PREFIX,
+    AuthoringMode,
+    Test,
+    Variable,
+    derive_variables,
+)
 from itb.execution.artifacts import ArtifactCollector
 from itb.execution.runner import ReplayEngine, RunnerTask
 from itb.execution.session import (
@@ -581,6 +588,16 @@ class SaveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=200)
+    group: str | None = Field(default=None, pattern=GROUP_PREFIX_PATTERN)
+    """어느 그룹에 저장할 것인가 (013 FR-443).
+
+    **생략하면 그룹 없음이고 식별자는 지금과 같은 `TC-###` 이다** (FR-445b · SC-627) —
+    그룹을 쓰지 않는 사용자에게 이 기능이 비용을 지우지 않는다.
+
+    이미 저장된 테스트를 다시 저장할 때는 **무시된다.** 그룹을 바꾸는 것은 식별자와
+    산출물을 옮기는 일이고, `POST /api/tests:move` 가 그것을 원자성 규약과 함께 한다 —
+    저장에 자산 이동을 숨기지 않는다.
+    """
 
 
 class ResumeRequest(BaseModel):
@@ -1788,6 +1805,18 @@ async def discard(session_id: str, state: State) -> None:
     _WORK.pop(session_id, None)
 
 
+def _require_known_group(repo: ProjectRepository, prefix: str | None) -> None:
+    """모르는 그룹에 저장하지 않는다 (013 FR-443).
+
+    막지 않으면 `groups` 에 없는 접두어의 테스트가 생기고, 목록에서 「정의가 없는 그룹」
+    으로 뜬다 — 사용자가 만든 적 없는 그룹이다.
+    """
+    if prefix is None:
+        return
+    if prefix not in {g.prefix for g in repo.read_project().groups}:
+        raise not_found(ErrorCode.GROUP_NOT_FOUND, f"그런 그룹이 없습니다: {prefix}")
+
+
 @router.post("/{session_id}/save")
 async def save(session_id: str, body: SaveRequest, state: State) -> Test:
     """FR-028·FR-029 — 이름을 지정해 테스트로 저장한다. Step 0개면 거절한다."""
@@ -1800,7 +1829,11 @@ async def save(session_id: str, body: SaveRequest, state: State) -> Test:
             "Step 이 없어 저장할 수 없습니다. 먼저 동작을 기록하세요.",
         )
 
-    test_id = w.saved_test_id or repo.allocate_test_id()
+    if w.saved_test_id is not None:
+        test_id = w.saved_test_id
+    else:
+        _require_known_group(repo, body.group)
+        test_id = repo.allocate_test_id(body.group or RESERVED_PREFIX)
     variables = _variables_for(w)
     test = Test(
         id=test_id,

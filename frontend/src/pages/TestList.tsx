@@ -35,7 +35,24 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { tests, type SessionView, type TestListRow, type TestListResponse } from "../api/client";
+import {
+  ai,
+  ApiError,
+  groups as groupsApi,
+  tests,
+  type AiAvailability,
+  type SessionView,
+  type TestListRow,
+  type TestGroup,
+  type TestListResponse,
+  type TrashedTest,
+} from "../api/client";
+import { TestGroupBar } from "../components/TestGroupBar";
+import {
+  TestBulkConfirm,
+  TestSelectionBar,
+  TrashedTestsNotice,
+} from "../components/TestBulkConfirm";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
@@ -45,7 +62,11 @@ import { chipClass, rowClass } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
-const GRID = "96px 82px 1fr 64px 92px 150px 168px";
+const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
+/** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
+
+    **행 누름(열기)과 갈라 둔다.** 두 동작을 한 자리에 두면 열려던 사용자가 삭제 대상을
+    고른다 — 011 이 Step 목록에서 정한 규칙이다. */
 
 function relativeTime(iso: string | null): string {
   if (iso === null) return "—";
@@ -138,10 +159,35 @@ export function TestList({
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * 삭제·이동 대상으로 고른 것 (013 · data-model §5).
+   *
+   * **화면에만 있고 저장하지 않는다.** 새로 고치면 비어 있는 것이 맞다 — 잃어도 막히지
+   * 않는 정보만 화면에 둔다.
+   */
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmingBulk, setConfirmingBulk] = useState(false);
+  /** 방금 옮긴 것들. **자동으로 사라지지 않는다** (FR-437b · UC-013-05). */
+  const [trashed, setTrashed] = useState<TrashedTest[] | null>(null);
+  /** 고른 그룹의 접두어. `null` 이면 전체 (013 FR-441). */
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  /**
+   * **정의된 그룹 전부** — 테스트가 0개인 것도 포함한다 (013 converge T061).
+   *
+   * 목록 응답(`data.groups`)은 테스트가 **있는** 그룹만 싣는다 (FR-450 — 소제목이
+   * 목록을 어지럽히지 않아야 한다). 그것을 띠의 근거로 쓰면 **테스트를 전부 옮긴 그룹이
+   * 띠에서 사라져 고를 수도, 이름을 고칠 수도, 없앨 수도 없다.**
+   *
+   * 두 응답의 규칙을 합치지 않는다 — 어지럽히지 않는 것은 **소제목** 이야기이고, 띠는
+   * **고르는 자리**라 비어 있어도 있어야 한다 (contracts/api-contract.md §5).
+   */
+  const [definedGroups, setDefinedGroups] = useState<TestGroup[]>([]);
 
-  const reload = async (q: string) => {
+  const reload = async (q: string, group: string | null = groupFilter) => {
     try {
-      setData(await tests.list(q.trim() || undefined));
+      // 그룹은 **서버에서** 거른다 (013 FR-441). 화면에서 거르면 그룹 개수와 목록이
+      // 갈릴 수 있다 — 개수는 걸러 보기 전 값이어야 하기 때문이다.
+      setData(await tests.list(q.trim() || undefined, group ?? undefined));
       setError(null);
     } catch (exc) {
       setError(describeError(exc));
@@ -153,7 +199,7 @@ export function TestList({
     setError(null);
     try {
       await fn();
-      await reload(query);
+      await Promise.all([reload(query), reloadGroups()]);
     } catch (exc) {
       setError(describeError(exc));
     } finally {
@@ -161,10 +207,22 @@ export function TestList({
     }
   };
 
+  const reloadGroups = async () => {
+    try {
+      // `?? []` 가 없으면 응답이 어긋났을 때 **목록 화면 전체가 깨진다.** 그룹은
+      // 선택 사항인데 그것 때문에 아무것도 못 하게 되어서는 안 된다.
+      setDefinedGroups((await groupsApi.list()).groups ?? []);
+    } catch {
+      // 그룹을 못 불러와도 목록은 그려야 한다 — 첫 화면이 막히면 아무것도 못 한다.
+      setDefinedGroups([]);
+    }
+  };
+
   useEffect(() => {
-    void reload(query);
-    // 검색어가 바뀔 때마다 다시 조회한다. 로컬 도구이므로 디바운스 없이도 충분하다.
-  }, [query]);
+    void reload(query, groupFilter);
+    void reloadGroups();
+    // 검색어·그룹이 바뀔 때마다 다시 조회한다. 로컬 도구이므로 디바운스 없이도 충분하다.
+  }, [query, groupFilter]);
 
   const all = useMemo(() => data?.tests ?? [], [data]);
 
@@ -204,15 +262,116 @@ export function TestList({
     });
   }, [all, filter, recentFirst]);
 
+  /**
+   * **보이는 것만 고를 수 있다** (013 FR-429 · UC-013-03 · SC-625).
+   *
+   * 검색어나 걸러 보기가 바뀌어 어떤 행이 화면에서 사라지면 그 행은 선택에서도 빠진다.
+   * 보이지 않는 것이 선택에 남으면 사용자는 **무엇을 지웠는지 볼 수 없는 삭제**를 하게 된다.
+   *
+   * 선택 자체를 지우지 않고 **읽을 때 거른다** — 검색어를 되돌리면 고른 것이 돌아오는
+   * 편이 사용자의 기대에 맞고, 대상이 되는 것은 언제나 이 값이라 안전하다.
+   */
+  const effectiveSelection = useMemo(
+    () => rows.filter((r) => selected.has(r.id)).map((r) => r.id),
+    [rows, selected],
+  );
+  const selectedNames = useMemo(
+    () => rows.filter((r) => selected.has(r.id)).map((r) => r.name),
+    [rows, selected],
+  );
+  const allVisibleSelected =
+    rows.length > 0 && rows.every((r) => selected.has(r.id));
+
+  /**
+   * 목록을 **그룹별로 묶는다** (013 FR-440 · UC-013-06).
+   *
+   * 한 그룹만 골라 본 상태에서는 묶지 않는다 — 소제목이 하나뿐이면 자리만 차지한다.
+   * 그룹이 아예 없는 프로젝트에서도 묶지 않는다: **이 기능 이전과 같은 모습이어야
+   * 한다** (SC-627).
+   *
+   * 「그룹 없음」은 **마지막에 온다.** 이름이 있는 묶음을 먼저 보여주는 것이 목록을
+   * 훑는 순서에 맞는다.
+   */
+  const grouped = useMemo(() => {
+    const definedGroups = (data?.groups ?? []).filter((g) => g.prefix !== "TC");
+    if (definedGroups.length === 0 || groupFilter !== null) return null;
+
+    const byPrefix = new Map<string, TestListRow[]>();
+    for (const r of rows) {
+      const bucket = byPrefix.get(r.group_prefix);
+      if (bucket) bucket.push(r);
+      else byPrefix.set(r.group_prefix, [r]);
+    }
+    const nameOf = new Map((data?.groups ?? []).map((g) => [g.prefix, g.name]));
+    const sections = [...byPrefix.entries()]
+      .map(([prefix, items]) => ({
+        prefix,
+        // 정의가 없는 접두어는 이름을 지어내지 않는다 — 접두어가 곧 이름이다.
+        label: nameOf.get(prefix) ?? (prefix === "TC" ? "그룹 없음" : prefix),
+        items,
+      }))
+      .sort((a, b) => {
+        if (a.prefix === "TC") return 1;
+        if (b.prefix === "TC") return -1;
+        return a.label.localeCompare(b.label, "ko");
+      });
+    return sections;
+  }, [rows, data, groupFilter]);
+
+  const mergedGroups = useMemo(() => {
+    const fromList = data?.groups ?? [];
+    const seen = new Set(fromList.map((g) => g.prefix));
+    const empties = definedGroups
+      .filter((g) => !seen.has(g.prefix))
+      .map((g) => ({ prefix: g.prefix, name: g.name, count: 0 }));
+    return [...fromList, ...empties].sort((a, b) => {
+      // 「그룹 없음」은 마지막에 온다 — 이름이 있는 묶음을 먼저 보여준다.
+      if (a.prefix === "TC") return 1;
+      if (b.prefix === "TC") return -1;
+      return (a.name ?? a.prefix).localeCompare(b.name ?? b.prefix, "ko");
+    });
+  }, [data, definedGroups]);
+
   const totalSteps = useMemo(() => all.reduce((s, t) => s + t.step_count, 0), [all]);
+
+  /** 고른 것들을 휴지통으로 (013 FR-432). 확인을 거친 뒤에만 부른다. */
+  const runBulkDelete = () => {
+    const ids = effectiveSelection;
+    if (ids.length === 0) return;
+    setBusy(true);
+    setError(null);
+    void tests
+      .deleteMany(ids)
+      .then((res) => {
+        setTrashed(res.deleted);
+        setSelected(new Set());
+        setConfirmingBulk(false);
+        return reload(query);
+      })
+      .catch((exc: unknown) => {
+        // **선택을 비우지 않는다** (UC-013-07). 다시 고르게 만들면 실행을 멈추고
+        // 돌아온 뜻이 없어진다.
+        setError(describeError(exc));
+        setConfirmingBulk(false);
+      })
+      .finally(() => setBusy(false));
+  };
   const lastRun = useMemo(() => {
     const times = all.map((t) => t.last_run_at).filter((t): t is string => t !== null);
     if (times.length === 0) return null;
     return times.reduce((a, b) => (new Date(a).getTime() > new Date(b).getTime() ? a : b));
   }, [all]);
 
-  /** 테스트가 하나도 없는 첫 사용자 화면 — `EmptyList.dc.html` 이 기준이다. */
-  const isEmptyProject = data !== null && all.length === 0 && query.trim() === "";
+  /**
+   * 테스트가 하나도 없는 첫 사용자 화면 — `EmptyList.dc.html` 이 기준이다.
+   *
+   * **걸러 본 결과가 0건인 것은 「빈 프로젝트」가 아니다.** 검색어는 처음부터 그렇게
+   * 다뤘고(`query.trim() === ""`), 013 이 더한 그룹 걸러 보기에도 같은 이유가 그대로
+   * 적용된다 — 그것을 빠뜨리면 **테스트가 0개인 그룹을 고르는 순간 화면이 첫 사용자
+   * 안내로 바뀌고 그룹 띠까지 사라져**, 사용자가 돌아올 길을 잃는다 (converge T061).
+   */
+  const isEmptyProject =
+    data !== null && all.length === 0 && query.trim() === "" && groupFilter === null;
 
   const liveOf = (testId: string) => activeSessions.find((s) => s.test_id === testId) ?? null;
   /**
@@ -393,6 +552,89 @@ export function TestList({
           )}
         </div>
 
+        {/* ─── 그룹 띠 (013 UC-013-06) ──────────────────────────────────── */}
+        {!isEmptyProject && (
+          <TestGroupBar
+            /*
+              **정의된 그룹 ∪ 실제로 테스트가 있는 접두어.** 앞쪽이 빈 그룹을 살리고,
+              뒤쪽이 「그룹 없음」과 정의가 없는 접두어를 살린다. 어느 한쪽만으로는
+              띠에서 사라지는 것이 생긴다.
+            */
+            groups={mergedGroups}
+            active={groupFilter}
+            busy={busy}
+            onPick={(prefix) => {
+              // 걸러 보기가 바뀌면 보이지 않게 된 것은 선택에서도 빠진다 (FR-429).
+              // 선택은 `effectiveSelection` 이 읽을 때 거르므로 여기서 비우지 않는다.
+              setGroupFilter(prefix);
+            }}
+            onCreate={(prefix, name) =>
+              void act(() => groupsApi.create(prefix, name))
+            }
+            onRename={(prefix, name) => void act(() => groupsApi.rename(prefix, name))}
+            onRemove={(prefix) =>
+              void act(() => groupsApi.remove(prefix)).then(() => {
+                // 없어진 그룹을 계속 보고 있으면 빈 목록이 그려진다.
+                if (groupFilter === prefix) setGroupFilter(null);
+              })
+            }
+          />
+        )}
+
+        {/* ─── 선택·확인·완료 (013 UC-013-02·04·05) ─────────────────────── */}
+        {!isEmptyProject && trashed !== null && (
+          <TrashedTestsNotice trashed={trashed} onDismiss={() => setTrashed(null)} />
+        )}
+        {!isEmptyProject && confirmingBulk && (
+          <TestBulkConfirm
+            names={selectedNames}
+            busy={busy}
+            onConfirm={runBulkDelete}
+            onCancel={() => setConfirmingBulk(false)}
+          />
+        )}
+        {/* 고른 것이 0개면 띠 자체를 그리지 않는다 — 쓰지 않는 사용자에게 자리를
+            뺏지 않는다 (SC-627). */}
+        {!isEmptyProject && !confirmingBulk && effectiveSelection.length > 0 && (
+          <TestSelectionBar
+            selectedCount={effectiveSelection.length}
+            visibleCount={rows.length}
+            allVisibleSelected={allVisibleSelected}
+            busy={busy}
+            onSelectAllVisible={() => setSelected(new Set(rows.map((r) => r.id)))}
+            onClear={() => setSelected(new Set())}
+            onDelete={() => setConfirmingBulk(true)}
+            extra={
+              // 그룹이 하나도 없으면 옮길 곳이 없다 — 그리지 않는다 (SC-627).
+              (data?.groups ?? []).some((g) => g.prefix !== "TC") ? (
+                <select
+                  aria-label="그룹으로 옮기기"
+                  disabled={busy}
+                  value=""
+                  onChange={(e) => {
+                    const to = e.target.value;
+                    if (to === "") return;
+                    void act(() => tests.move(effectiveSelection, to)).then(() =>
+                      setSelected(new Set()),
+                    );
+                  }}
+                  style={{ margin: 0 }}
+                >
+                  <option value="">그룹으로 옮기기…</option>
+                  {(data?.groups ?? [])
+                    .filter((g) => g.name !== null)
+                    .map((g) => (
+                      <option key={g.prefix} value={g.prefix}>
+                        {g.name}
+                      </option>
+                    ))}
+                  <option value="TC">그룹에서 빼기</option>
+                </select>
+              ) : undefined
+            }
+          />
+        )}
+
         {/* ─── 목록 ──────────────────────────────────────────────────────── */}
         {isEmptyProject ? (
           <EmptyProject onCreate={onCreate} onOpenKeys={onOpenKeys} />
@@ -409,6 +651,19 @@ export function TestList({
                 padding: "0 14px 0 17px",
               }}
             >
+              <div>
+                <input
+                  type="checkbox"
+                  aria-label="보이는 테스트 전부 선택"
+                  checked={allVisibleSelected}
+                  disabled={busy || rows.length === 0}
+                  onChange={() =>
+                    setSelected(
+                      allVisibleSelected ? new Set() : new Set(rows.map((r) => r.id)),
+                    )
+                  }
+                />
+              </div>
               <div className="lbl">마지막 결과</div>
               <div className="lbl">ID</div>
               <div className="lbl">이름</div>
@@ -437,49 +692,84 @@ export function TestList({
                 </div>
               )}
 
-              {rows.map((row) => (
-                <Row
-                  key={row.id}
-                  row={row}
-                  busy={busy}
-                  renaming={renaming?.id === row.id ? renaming.name : null}
-                  confirming={confirmingDelete === row.id}
-                  menuOpen={menuFor === row.id}
-                  onRenameChange={(name) => setRenaming({ id: row.id, name })}
-                  onRenameStart={() => {
-                    setMenuFor(null);
-                    setRenaming({ id: row.id, name: row.name });
-                  }}
-                  onRenameCancel={() => setRenaming(null)}
-                  onRenameSubmit={(name) =>
-                    void act(() => tests.rename(row.id, name)).then(() => setRenaming(null))
-                  }
-                  onDeleteStart={() => {
-                    setMenuFor(null);
-                    setConfirmingDelete(row.id);
-                  }}
-                  onDeleteCancel={() => setConfirmingDelete(null)}
-                  onDeleteConfirm={() =>
-                    void act(() => tests.remove(row.id)).then(() => setConfirmingDelete(null))
-                  }
-                  onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}
-                  /*
-                    **여는 것과 닫는 것을 나눈다.** 메뉴는 목록 밖(`document.body`)에
-                    떠 있으므로 목록이 스크롤하면 행에서 떨어진다 — 그때 닫아야 한다.
-                    그 자리에서 `onToggleMenu` 를 쓰면 한 프레임에 두 번 온 사건이
-                    닫았다 다시 여는 일이 생긴다.
-                  */
-                  onCloseMenu={() => setMenuFor(null)}
-                  onRun={() => onRun(row.id)}
-                  runPending={pendingRunId === row.id}
-                  /*
-                    005 FR-168 (U-16) — 지금 돌고 있다는 사실이 **행에도** 보인다.
-                    상단 배너만 "실행 중" 을 알리고 행의 표식은 이전 실행의 실패였다.
-                  */
-                  liveSession={liveOf(row.id)}
-                  onOpenResult={() => onOpenResult(row.id)}
-                  onOpenDefinition={onOpenDefinition ? () => onOpenDefinition(row.id) : undefined}
-                />
+              {/*
+                그룹이 있으면 소제목으로 묶고, 없으면 지금까지처럼 평평하게 그린다
+                (013 FR-440 · SC-627). **행을 그리는 코드는 하나다** — 두 벌로 두면
+                묶은 쪽에만 새 조작이 붙는 일이 생긴다.
+              */}
+              {(grouped ?? [{ prefix: "", label: "", items: rows }]).map((section) => (
+                <div key={section.prefix || "__flat__"}>
+                  {grouped !== null && (
+                    <div
+                      className="lbl"
+                      data-group-heading={section.prefix}
+                      style={{ padding: "10px 17px 4px" }}
+                    >
+                      {section.label} {section.items.length}
+                    </div>
+                  )}
+                  {section.items.map((row) => (
+
+                    <Row
+                      key={row.id}
+                      row={row}
+                      busy={busy}
+                      selected={selected.has(row.id)}
+                      onToggleSelected={() =>
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(row.id)) next.delete(row.id);
+                          else next.add(row.id);
+                          return next;
+                        })
+                      }
+                      renaming={renaming?.id === row.id ? renaming.name : null}
+                      confirming={confirmingDelete === row.id}
+                      menuOpen={menuFor === row.id}
+                      onRenameChange={(name) => setRenaming({ id: row.id, name })}
+                      onRenameStart={() => {
+                        setMenuFor(null);
+                        setRenaming({ id: row.id, name: row.name });
+                      }}
+                      onRenameCancel={() => setRenaming(null)}
+                      onRenameSubmit={(name) =>
+                        void act(() => tests.rename(row.id, name)).then(() => setRenaming(null))
+                      }
+                      onDeleteStart={() => {
+                        setMenuFor(null);
+                        setConfirmingDelete(row.id);
+                      }}
+                      onDeleteCancel={() => setConfirmingDelete(null)}
+                      onDeleteConfirm={() =>
+                        // **한 개와 여러 개의 결과가 같아야 한다** (SC-632). 완료 표시도
+                        // 같은 것을 쓴다 — 한쪽만 옮겨진 자리를 알려 주면 사용자는 개수에
+                        // 따라 되돌릴 수 있는지가 달라진다고 읽는다.
+                        void act(() => tests.remove(row.id))
+                          .then((res) => {
+                            setConfirmingDelete(null);
+                            if (res !== undefined) setTrashed([res]);
+                          })
+                      }
+                      onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}
+                      /*
+                        **여는 것과 닫는 것을 나눈다.** 메뉴는 목록 밖(`document.body`)에
+                        떠 있으므로 목록이 스크롤하면 행에서 떨어진다 — 그때 닫아야 한다.
+                        그 자리에서 `onToggleMenu` 를 쓰면 한 프레임에 두 번 온 사건이
+                        닫았다 다시 여는 일이 생긴다.
+                      */
+                      onCloseMenu={() => setMenuFor(null)}
+                      onRun={() => onRun(row.id)}
+                      runPending={pendingRunId === row.id}
+                      /*
+                        005 FR-168 (U-16) — 지금 돌고 있다는 사실이 **행에도** 보인다.
+                        상단 배너만 "실행 중" 을 알리고 행의 표식은 이전 실행의 실패였다.
+                      */
+                      liveSession={liveOf(row.id)}
+                      onOpenResult={() => onOpenResult(row.id)}
+                      onOpenDefinition={onOpenDefinition ? () => onOpenDefinition(row.id) : undefined}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
 
@@ -534,6 +824,8 @@ const MENU_Z = 40;
 function Row({
   row,
   busy,
+  selected,
+  onToggleSelected,
   renaming,
   confirming,
   menuOpen,
@@ -554,6 +846,9 @@ function Row({
 }: {
   row: TestListRow;
   busy: boolean;
+  /** 삭제·이동 대상으로 골랐는가 (013 FR-426). */
+  selected: boolean;
+  onToggleSelected: () => void;
   renaming: string | null;
   confirming: boolean;
   menuOpen: boolean;
@@ -684,6 +979,25 @@ function Row({
         ...(renaming !== null || confirming ? { height: "auto", minHeight: "44px", paddingTop: 8, paddingBottom: 8 } : {}),
       }}
     >
+      {/*
+        체크 칸은 **행 누름과 갈라 둔다** (013 FR-426 · UC-013-01). 행을 누르는 것은
+        열기이고 체크는 삭제·이동 대상 고르기다. 한 자리에 두면 열려던 사용자가 삭제
+        대상을 고른다 — 011 이 Step 목록에서 정한 규칙이다.
+
+        `stopPropagation` 이 그 분리를 실제로 만든다: 체크 칸을 눌렀을 때 행의 열기가
+        함께 일어나면 갈라 둔 뜻이 없다.
+      */}
+      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center" }}>
+        <input
+          type="checkbox"
+          aria-label={`${row.name} 선택`}
+          data-test-select={row.id}
+          checked={selected}
+          disabled={busy}
+          onChange={onToggleSelected}
+        />
+      </div>
+
       <div>
         {/*
           005 FR-169 (재점검 N-02) — 표식은 세션의 **상태**를 본다.
@@ -909,9 +1223,34 @@ function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
  *
  * 008 이 처음 정의한 화면이다. 이전에는 목록 표 안에 한 줄짜리 안내를 뒀는데, **첫
  * 사용자가 실제로 보는 화면**이 그것이었다. 여기서 두 갈래(녹화·AI)를 나란히 보여주고
- * 각각 무엇이 필요한지 말한다 — AI 는 키가 있어야 하므로 비활성이고 이유를 붙인다.
+ * 각각 무엇이 필요한지 말한다.
+ *
+ * ## AI 쪽 상태는 **확인해서** 말한다 (001 DR-021)
+ *
+ * 008 판은 「키 필요」 표식과 「언어모델 키 등록하기」 버튼을 **고정 문구로** 뒀다.
+ * 그래서 자격 증명이 이미 있는 환경(`/api/ai/availability` 가 `available: true`)에서도
+ * 화면은 키가 없다고 말하고, 이 화면에서 AI 로 시작하는 길이 아예 없었다 — 첫 사용자가
+ * 보는 화면이 사실과 반대되는 상태다. `ComposeView` 는 처음부터 이 점검을 했으므로
+ * 같은 사실을 두 화면이 다르게 말하고 있었다.
+ *
+ * 확인 전에는 「키 필요」도 「사용 가능」도 말하지 않는다 — 아직 모르는 것을 단정하면
+ * 고정 문구와 같은 결함이 된다.
  */
 function EmptyProject({ onCreate, onOpenKeys }: { onCreate: () => void; onOpenKeys?: () => void }) {
+  const [aiReady, setAiReady] = useState<AiAvailability | null>(null);
+
+  useEffect(() => {
+    void ai
+      .availability()
+      .then(setAiReady)
+      .catch((exc: unknown) =>
+        setAiReady({
+          available: false,
+          reason: exc instanceof ApiError ? exc.message : String(exc),
+        }),
+      );
+  }, []);
+
   return (
     <div
       className="pane"
@@ -977,15 +1316,44 @@ function EmptyProject({ onCreate, onOpenKeys }: { onCreate: () => void; onOpenKe
                 <path d="M8 2v3M8 11v3M2 8h3M11 8h3M4.2 4.2l2 2M9.8 9.8l2 2M11.8 4.2l-2 2M6.2 9.8l-2 2" />
               </svg>
               <div className="subtitle ai-ink">AI 로 만들기</div>
-              <span className="chip warn" style={{ marginLeft: "auto" }}>
-                키 필요
-              </span>
+              {/* 확인이 끝난 뒤에만 표식을 붙인다 (DR-021) */}
+              {aiReady !== null && (
+                <span
+                  className={aiReady.available ? "chip ai" : "chip warn"}
+                  data-ai-ready={aiReady.available ? "yes" : "no"}
+                  style={{ marginLeft: "auto" }}
+                >
+                  {aiReady.available ? "사용 가능" : "키 필요"}
+                </span>
+              )}
             </div>
             <div className="why">할 일을 말로 적으면 AI 가 브라우저에서 해봅니다.</div>
-            {/* 쓸 수 없는 조작을 감추지 않는다 (006 ui-contract §2). 여기서 키 등록으로 간다. */}
-            <button className="btn off" onClick={onOpenKeys} disabled={onOpenKeys === undefined} style={{ justifyContent: "center" }}>
-              언어모델 키 등록하기
-            </button>
+            {/*
+              쓸 수 없는 조작을 감추지 않는다 (006 ui-contract §2). 쓸 수 있으면
+              **막지도 않는다** — 키가 있는데 키 등록으로 보내면 갈 곳이 없다.
+            */}
+            {aiReady?.available === true ? (
+              <button className="btn primary" onClick={onCreate} style={{ justifyContent: "center" }}>
+                AI 로 시작하기
+              </button>
+            ) : (
+              <>
+                {/* 왜 못 쓰는지 백엔드가 준 문구를 그대로 보여준다 (DR-016) */}
+                {aiReady !== null && aiReady.reason !== null && (
+                  <div className="why" style={{ whiteSpace: "pre-wrap" }}>
+                    {aiReady.reason}
+                  </div>
+                )}
+                <button
+                  className="btn off"
+                  onClick={onOpenKeys}
+                  disabled={aiReady === null || onOpenKeys === undefined}
+                  style={{ justifyContent: "center" }}
+                >
+                  {aiReady === null ? "확인 중…" : "언어모델 키 등록하기"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

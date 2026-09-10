@@ -33,7 +33,7 @@ import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
 import { flexOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
-import { PhaseBar, type PhaseNameEdit } from "./PhaseBar";
+import { PhaseBar, type PhaseGroupPick, type PhaseNameEdit } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
 import { StepList, STEP_PANEL_WIDTH } from "./StepList";
 import { TargetPane } from "./TargetPane";
@@ -57,6 +57,8 @@ export interface WorkbenchProps {
    * 준다. 주지 않으면 이름은 읽기 전용 표시로 남는다.
    */
   phaseName?: PhaseNameEdit;
+  /** 저장할 그룹 (013 FR-443). 국면 어댑터가 만든다 */
+  phaseGroup?: PhaseGroupPick;
   /**
    * 알림 자리에 함께 오는 것 (실시간 통로 끊김 배너 등).
    *
@@ -127,6 +129,7 @@ export function Workbench({
   model,
   phaseActions,
   phaseName,
+  phaseGroup,
   noticesExtra,
   headerActions,
   rowActions,
@@ -242,6 +245,7 @@ export function Workbench({
         bar={model.phaseBar}
         testName={model.testName}
         rename={phaseName}
+        group={phaseGroup}
         actions={phaseActions}
       />
 

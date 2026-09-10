@@ -910,6 +910,34 @@ export const NO_STEPS_AFTER = "마지막 Step 입니다";
 /** 고른 것이 없다 (FR-385). 체크를 해야 한다는 사실을 그 자리에서 말한다 */
 export const NO_DELETE_SELECTION = "지울 Step 을 먼저 고르세요";
 
+/* ─── 013 테스트 복수 삭제 (contracts/ui-contract.md UC-013-04) ──────────── */
+
+/**
+ * 무엇을 몇 개 지우는가 (013 FR-430).
+ *
+ * **`deleteManyConfirm(indices)` 를 쓰지 않는다.** 그쪽은 Step **번호의 범위**를 말하는데
+ * (「Step 3 ~ Step 7 · 5개」), 테스트는 **순서 없는 집합**이라 「범위」가 성립하지 않는다.
+ * 억지로 한 부품에 넣으려면 가짜 인덱스를 만들어야 하고, 그러면 한쪽을 고칠 때 다른 쪽이
+ * 깨진다 (013 research R7).
+ *
+ * 테스트를 가리키는 것은 번호가 아니라 **이름**이다. 그래서 이름을 쓴다. 다만 30개를 고른
+ * 확인 문구에 이름 30개를 늘어놓으면 읽히지 않으므로 앞의 둘만 보이고 나머지는 센다 —
+ * **개수와 무엇인지를 둘 다 말한다**는 요구는 그대로 지킨다.
+ */
+export function deleteTestsConfirm(names: string[]): string {
+  if (names.length === 0) return "지울 테스트가 없습니다";
+  if (names.length === 1) return `「${names[0]}」을(를) 지웁니다`;
+  if (names.length === 2) return `「${names[0]}」 · 「${names[1]}」 2개를 지웁니다`;
+  return `「${names[0]}」 · 「${names[1]}」 외 ${names.length - 2}개, 모두 ${names.length}개를 지웁니다`;
+}
+
+/** 되돌릴 수 있다는 사실 (013 FR-437b). **`BULK_DELETE_IRREVERSIBLE` 의 반대다.** */
+export const TESTS_DELETE_REVERTIBLE = "휴지통으로 옮깁니다 · 되돌릴 수 있습니다";
+
+/** 되돌리는 방법 (013 FR-437b · UC-013-05) */
+export const TESTS_RESTORE_HINT =
+  "되돌리려면 각 폴더의 .yaml 을 프로젝트의 tests/ 로 옮기세요.";
+
 /* ─── 011 Step 별 스크린샷 (계약 §6 · FR-391·FR-393·FR-396b) ─────────────── */
 
 /**

@@ -67,8 +67,58 @@ class ErrorCode(StrEnum):
     다르다.
     """
 
+    # 테스트 그룹 (013)
+    GROUP_NOT_FOUND = "GROUP_NOT_FOUND"
+    GROUP_ALREADY_EXISTS = "GROUP_ALREADY_EXISTS"
+    """접두어나 이름이 겹친다 (013 FR-442).
+
+    둘 다 프로젝트 안에서 고유해야 한다 — 이름이 겹치면 사용자가 어느 쪽에 넣었는지 알 수
+    없고, 접두어가 겹치면 식별자가 어느 그룹인지 가리키지 못한다.
+    """
+    GROUP_PREFIX_RESERVED = "GROUP_PREFIX_RESERVED"
+    """`TC` 는 그룹 없음이 쓴다 (013 FR-445a).
+
+    기존 테스트가 전부 `TC-###` 이므로, 새 그룹이 `TC` 를 쓰면 그룹에 넣은 적 없는 테스트가
+    그 그룹에 나타난다.
+    """
+
     # 테스트
     TEST_NOT_FOUND = "TEST_NOT_FOUND"
+    TEST_IN_USE = "TEST_IN_USE"
+    """실행 중인 세션이 있어 지우거나 옮길 수 없다 (013 FR-433).
+
+    `SESSION_ALREADY_ACTIVE` 와 갈라 두는 이유는 **사용자가 할 일이 다르기 때문**이다.
+    그쪽은 "이 테스트가 이미 실행 중" 이라 기다리거나 그 실행을 보면 되고, 이것은
+    "브라우저를 먼저 중지해야 정리할 수 있다" 다.
+    """
+    TEST_DELETE_FAILED = "TEST_DELETE_FAILED"
+    """휴지통으로 옮기지 못했고 **되돌렸다** (013 FR-432).
+
+    이 오류를 받은 사용자의 테스트는 **전부 원래 자리에 있다.** 요청 전과 같다는 뜻이며,
+    그 사실이 안내에 반드시 들어가야 한다 — 실패 후 사용자가 가장 먼저 하는 질문이
+    "내 테스트는 어떻게 됐나" 다.
+    """
+    TEST_DELETE_PARTIAL = "TEST_DELETE_PARTIAL"
+    """옮기다 실패했고 **되돌리지도 못했다** (013 contracts/api-contract.md §3).
+
+    `TEST_DELETE_FAILED` 와 **반드시 갈라야 한다.** 그쪽은 아무것도 하지 않은 것과 같지만
+    이쪽은 일부가 휴지통에 남아 있다 — 사용자가 확인할 자리가 있다는 뜻이고, 할 일이 다르다.
+
+    파일 시스템에는 여러 경로에 걸친 원자적 연산이 없다. 여기서 보장하는 것은 **모든 자산이
+    휴지통 아니면 원래 자리에 있다** 이며, 파괴는 어느 경로에서도 일어나지 않는다. 그 사실을
+    조용히 통과시키지 않으려고 코드를 가른다.
+    """
+    TEST_MOVE_FAILED = "TEST_MOVE_FAILED"
+    """그룹 이동에 실패했고 되돌렸다 (013 FR-444b)."""
+    TEST_MOVE_PARTIAL = "TEST_MOVE_PARTIAL"
+    """그룹 이동에 실패했고 **되돌리지도 못했다** (013 converge T059).
+
+    `TEST_DELETE_PARTIAL` 을 재사용하면 안 된다. 그쪽의 안내는 「일부가 **휴지통에**
+    남아 있습니다」인데, 이동 실패에서 남은 것은 휴지통이 아니라 **새 그룹 자리**에 있다 —
+    문구를 재사용하면 사용자를 없는 곳으로 보낸다.
+
+    두 경우 모두 파괴는 일어나지 않았고, 다른 것은 **어디를 봐야 하는가**다.
+    """
     STEP_LIST_EMPTY = "STEP_LIST_EMPTY"
     DEFINITION_INVALID = "DEFINITION_INVALID"
     DEFINITION_STALE = "DEFINITION_STALE"
@@ -186,8 +236,18 @@ CATEGORY: dict[ErrorCode, Category] = {
     # 실패는 제품이 붙잡아 사유를 말한 정상 거부다. 사용자가 할 일도 있다 — 권한과
     # 남은 공간. `STORAGE_WRITE_FAILED` 가 같은 이유로 `blocked` 다.
     ErrorCode.PROJECT_DELETE_FAILED: Category.BLOCKED,
+    # 테스트 그룹 (013) — 전부 정상 거부다. `BROKEN` 은 처리되지 않은 오류 하나뿐이다.
+    ErrorCode.GROUP_NOT_FOUND: Category.BLOCKED,
+    ErrorCode.GROUP_ALREADY_EXISTS: Category.BLOCKED,
+    ErrorCode.GROUP_PREFIX_RESERVED: Category.BLOCKED,
     # 테스트 — 사용자가 내용을 고치면 된다
     ErrorCode.TEST_NOT_FOUND: Category.BLOCKED,
+    # 013 — 제품이 붙잡아 사유를 말한 거부다. 사용자가 할 일이 있다.
+    ErrorCode.TEST_IN_USE: Category.BLOCKED,
+    ErrorCode.TEST_DELETE_FAILED: Category.BLOCKED,
+    ErrorCode.TEST_DELETE_PARTIAL: Category.BLOCKED,
+    ErrorCode.TEST_MOVE_FAILED: Category.BLOCKED,
+    ErrorCode.TEST_MOVE_PARTIAL: Category.BLOCKED,
     ErrorCode.STEP_LIST_EMPTY: Category.BLOCKED,
     ErrorCode.DEFINITION_INVALID: Category.BLOCKED,
     # 006 — 사용자가 두 선택(다시 읽기·덮어쓰기) 중 하나를 고르면 된다.
@@ -251,6 +311,24 @@ NEXT_ACTION: dict[ErrorCode, str] = {
         "프로젝트는 그대로 남아 있습니다. 저장 위치의 권한과 남은 공간을 확인하세요."
     ),
     ErrorCode.TEST_NOT_FOUND: "목록을 새로 고친 뒤 다시 고르세요. 이미 지워졌을 수 있습니다.",
+    ErrorCode.TEST_IN_USE: "실행 중인 브라우저를 먼저 중지한 뒤 다시 시도하세요.",
+    ErrorCode.TEST_DELETE_FAILED: (
+        "테스트는 전부 원래 자리에 있습니다. 저장 위치의 권한과 남은 공간을 확인하세요."
+    ),
+    ErrorCode.TEST_DELETE_PARTIAL: (
+        "일부가 휴지통에 남아 있습니다. 지워진 것은 없습니다. "
+        "아래 자리를 확인한 뒤 목록을 새로 고치세요."
+    ),
+    ErrorCode.TEST_MOVE_FAILED: (
+        "테스트는 전부 원래 그룹에 있습니다. 저장 위치의 권한과 남은 공간을 확인하세요."
+    ),
+    ErrorCode.TEST_MOVE_PARTIAL: (
+        "일부가 새 그룹으로 옮겨졌습니다. 지워진 것은 없습니다. "
+        "목록을 새로 고쳐 어느 것이 어디 있는지 확인하세요."
+    ),
+    ErrorCode.GROUP_NOT_FOUND: "목록을 새로 고친 뒤 다시 고르세요. 이미 없어졌을 수 있습니다.",
+    ErrorCode.GROUP_ALREADY_EXISTS: "다른 이름이나 접두어를 쓰세요.",
+    ErrorCode.GROUP_PREFIX_RESERVED: "TC 는 그룹 없는 테스트가 씁니다. 다른 접두어를 쓰세요.",
     ErrorCode.STEP_LIST_EMPTY: "브라우저에서 동작을 기록하거나 Step을 추가한 뒤 다시 저장하세요.",
     ErrorCode.DEFINITION_INVALID: "표시된 항목을 규격에 맞게 고친 뒤 다시 시도하세요.",
     ErrorCode.DEFINITION_STALE: (

@@ -237,10 +237,52 @@ export interface TestListRow {
   outcome: "pass" | "fail" | null;
   last_run_at: string | null;
   failure_summary: FailureSummary | null;
+  /**
+   * 이 테스트가 속한 그룹의 접두어 (013 FR-438). 그룹 없음은 `TC`.
+   *
+   * **식별자에서 유도한 값이다.** 저장된 필드가 아니다 (013 data-model §3).
+   */
+  group_prefix: string;
 }
+
+/** 목록 위 그룹 띠가 그릴 것 (013 FR-440). */
+export interface GroupSummary {
+  prefix: string;
+  /** 사람이 읽는 이름. 그룹 없음(`TC`)과 **정의가 없는 접두어**는 `null` 이다. */
+  name: string | null;
+  /** **걸러 보기 전** 개수다 — 걸러 본 뒤에도 다른 그룹으로 갈 수 있어야 한다. */
+  count: number;
+}
+
+/** 그룹 하나 (013 · contracts/api-contract.md §5). */
+export interface TestGroup {
+  prefix: string;
+  name: string;
+  count: number;
+}
+
+export const groups = {
+  list: () => get<{ groups: TestGroup[] }>("/api/groups"),
+  /**
+   * 그룹 만들기 (013 FR-444d). **이름과 접두어를 따로 받는다** — 한글 이름을 유지하면서
+   * 식별자는 짧게 둔다.
+   */
+  create: (prefix: string, name: string) =>
+    post<TestGroup>("/api/groups", { prefix, name }),
+  /** 이름만 바꾼다. **접두어는 바꾸지 않는다** — 그것은 자산을 옮기는 일이다. */
+  rename: (prefix: string, name: string) =>
+    patch<TestGroup>(`/api/groups/${prefix}`, { name }),
+  /**
+   * 그룹을 없앤다. **그 안의 테스트는 지우지 않는다** (013 FR-451) — 전부 `TC-###` 로
+   * 돌아간다. 묶음을 푸는 것과 자산을 지우는 것은 다른 조작이다.
+   */
+  remove: (prefix: string) => del<{ ungrouped: string[] }>(`/api/groups/${prefix}`),
+};
 
 export interface TestListResponse {
   counts: { total: number; pass: number; fail: number };
+  /** 테스트가 **있는** 그룹만 (FR-450). 고르는 자리는 `groups.list()` 를 쓴다. */
+  groups: GroupSummary[];
   tests: TestListRow[];
   problems: string[];
 }
@@ -248,12 +290,48 @@ export interface TestListResponse {
 /** 산출물 종류. `trace` 는 서버가 `501` 을 돌려준다 (spec 디자인 차이 1). */
 export type ArtifactKind = "screenshot" | "trace" | "console" | "network";
 
+/** 휴지통으로 간 테스트 하나 (013 · contracts/api-contract.md §2). */
+export interface TrashedTest {
+  id: string;
+  name: string;
+  /** 옮겨진 자리. **이 값이 되돌리는 방법 전부다** (FR-437a). */
+  trashed_to: string;
+}
+
 export const tests = {
-  list: (q?: string) =>
-    get<TestListResponse>(`/api/tests${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  /** 목록. `q`(이름·식별자)와 `group`(접두어)이 **함께** 걸린다 (013 FR-441). */
+  list: (q?: string, group?: string) => {
+    const query = new URLSearchParams();
+    if (q) query.set("q", q);
+    if (group) query.set("group", group);
+    const suffix = query.toString();
+    return get<TestListResponse>(`/api/tests${suffix ? `?${suffix}` : ""}`);
+  },
   get: (id: string) => get<Test>(`/api/tests/${id}`),
   rename: (id: string, name: string) => patch<Test>(`/api/tests/${id}`, { name }),
-  remove: (id: string) => del<void>(`/api/tests/${id}`),
+  /**
+   * 테스트 하나를 **휴지통으로 옮긴다** (013 FR-437). 파괴하지 않는다.
+   *
+   * 204 가 아니라 옮겨진 자리를 돌려준다 — 그 값이 되돌리는 방법 전부다.
+   */
+  remove: (id: string) => del<TrashedTest>(`/api/tests/${id}`),
+  /**
+   * 여러 개를 한 번에 (013 FR-432). **전부 되거나 전부 안 되거나.**
+   *
+   * `DELETE` 에 본문을 싣지 않는 이유는 011 이 정했다 — 프록시가 벗기고, 쿼리는 URL
+   * 길이와 접근 로그 문제가 있다.
+   */
+  deleteMany: (ids: string[]) =>
+    post<{ deleted: TrashedTest[] }>("/api/tests:delete", { test_ids: ids }),
+  /**
+   * 그룹을 바꾼다 (013 FR-446·FR-448). **표시가 아니라 자산이 움직인다** — 정의 파일과
+   * 실행 산출물이 새 식별자 자리로 간다. 번호는 그대로이고 접두어만 바뀐다.
+   */
+  move: (ids: string[], toPrefix: string) =>
+    post<{ moved: { from_id: string; to_id: string; name: string }[] }>("/api/tests:move", {
+      test_ids: ids,
+      to_prefix: toPrefix,
+    }),
   /** 최근 실행 결과. 테스트당 1건만 보관된다 (FR-050~FR-054). */
   result: (id: string) => get<RunResultView>(`/api/tests/${id}/result`),
   /**
@@ -691,7 +769,12 @@ export const sessions = {
   stop: (id: string) => post<SessionView>(`/api/sessions/${id}/stop`),
   /** 검토 중인 초안을 버린다. **여기서 비로소 세션이 파괴된다** (DR-014). */
   discard: (id: string) => post<void>(`/api/sessions/${id}/discard`),
-  save: (id: string, name: string) => post<Test>(`/api/sessions/${id}/save`, { name }),
+  /**
+   * 테스트로 저장한다. `group` 은 **아직 저장되지 않은 세션에만** 뜻이 있다 (013 FR-443) —
+   * 이미 저장된 테스트의 그룹을 바꾸는 것은 `tests.move` 가 원자성 규약과 함께 한다.
+   */
+  save: (id: string, name: string, group?: string | null) =>
+    post<Test>(`/api/sessions/${id}/save`, group ? { name, group } : { name }),
   tabs: (id: string) => get<TabsResponse>(`/api/sessions/${id}/tabs`),
   setMirrorTab: (id: string, tabIndex: number) =>
     post<TabsResponse>(`/api/sessions/${id}/mirror-tab`, { tab_index: tabIndex }),

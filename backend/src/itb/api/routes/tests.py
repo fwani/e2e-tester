@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import pathlib
 from datetime import UTC, datetime
 from typing import Annotated, Literal, Self
@@ -18,6 +19,7 @@ from itb.api.errors import (
     not_found,
     not_implemented,
 )
+from itb.api.routes.groups import prefix_of
 from itb.api.state import AppState, get_state
 from itb.domain.manual_step import (
     CloseTabSpec,
@@ -28,6 +30,8 @@ from itb.domain.manual_step import (
 from itb.domain.run_result import Outcome, RunResult, RunScope
 from itb.domain.step import Step
 from itb.domain.test_case import (
+    GROUP_PREFIX_PATTERN,
+    RESERVED_PREFIX,
     AuthoringMode,
     Test,
     Variable,
@@ -46,7 +50,12 @@ from itb.execution.step_edits import (
     reorder_steps,
     update_step,
 )
-from itb.storage.repository import ProjectError, ResultUnreadableError
+from itb.storage import test_moves, trash
+from itb.storage.repository import (
+    ProjectError,
+    ProjectRepository,
+    ResultUnreadableError,
+)
 from itb.storage.yaml_io import DefinitionError
 
 router = APIRouter(prefix="/api/tests", tags=["tests"])
@@ -73,6 +82,29 @@ class TestListRow(BaseModel):
     outcome: Outcome | None = None
     last_run_at: str | None = None
     failure_summary: FailureSummary | None = None
+    group_prefix: str = RESERVED_PREFIX
+    """이 테스트가 속한 그룹의 접두어 (013 FR-438).
+
+    **식별자에서 유도한다. 저장된 필드가 아니다** (013 data-model §3) — 소속을 별도
+    필드로도 저장하면 접두어와 어긋날 수 있고, 어긋났을 때 어느 쪽이 맞는지 정할 근거가
+    없다. 그룹 없는 테스트는 `TC` 다.
+    """
+
+
+class GroupSummary(BaseModel):
+    """목록 위 그룹 띠가 그릴 것 (013 FR-440)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prefix: str
+    name: str | None
+    """사람이 읽는 이름. 그룹 없음(`TC`)과 **정의가 없는 접두어**는 `null` 이다."""
+
+    count: int
+    """**걸러 보기를 적용하기 전** 개수다 (013 contracts §1).
+
+    걸러 본 뒤에도 다른 그룹의 개수를 알아야 그리로 갈 수 있다.
+    """
 
 
 class TestCounts(BaseModel):
@@ -87,6 +119,10 @@ class TestListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     counts: TestCounts
+    groups: list[GroupSummary] = Field(default_factory=list)
+    """테스트가 **있는** 그룹만 (013 FR-450). 비어 있는 그룹은 목록을 어지럽히지 않는다 —
+    그룹을 고르는 자리(`GET /api/groups`)는 전부 싣는다."""
+
     tests: list[TestListRow]
     problems: list[str] = Field(default_factory=list)
     """읽을 수 없는 정의 파일의 사유. 깨진 파일 하나가 목록을 막지 않는다."""
@@ -98,13 +134,74 @@ class RenameRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
 
 
+class DeleteTestsRequest(BaseModel):
+    """복수 삭제 (013 FR-426·FR-432 · contracts/api-contract.md §3).
+
+    **`DELETE` 에 본문을 싣지 않는다.** 프록시·클라이언트에 따라 벗겨지고, 쿼리에 실으면
+    목록이 길 때 URL 길이에 걸리며 삭제 대상이 접근 로그에 남는다. `POST …:delete` 는
+    011 이 Step 복수 삭제에서 정한 형태이고 이 저장소가 이미 쓴다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    test_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(min_length=1)
+
+
+class MoveTestsRequest(BaseModel):
+    """복수 그룹 이동 (013 FR-448 · contracts/api-contract.md §4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    test_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(min_length=1)
+    to_prefix: str = Field(pattern=GROUP_PREFIX_PATTERN)
+    """`TC` 를 주면 **그룹에서 뺀다.**"""
+
+
+class MovedTestView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    from_id: str
+    to_id: str
+    name: str
+
+
+class MoveTestsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    moved: list[MovedTestView]
+
+
+class TrashedTestView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    trashed_to: str | None
+    """옮겨진 자리. **이 값이 되돌리는 방법 전부다** (FR-437a).
+
+    `None` 이면 요청 시점에 이미 없어서 옮길 것이 없었다 (FR-436).
+    """
+
+
+class DeleteTestsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    deleted: list[TrashedTestView]
+
+
 @router.get("")
 async def list_tests(
     state: State,
     q: Annotated[str | None, Query(max_length=200)] = None,
+    group: Annotated[str | None, Query(max_length=8)] = None,
 ) -> TestListResponse:
+    """목록. `q`(이름·식별자)와 `group`(접두어)이 **함께** 걸린다 (013 FR-441).
+
+    `group=TC` 는 그룹 없음만, 생략하면 전부다.
+    """
     repo = state.require_repository()
     tests, problems = repo.list_tests()
+    defined = {g.prefix: g.name for g in repo.read_project().groups}
 
     rows: list[TestListRow] = []
     passed = failed = 0
@@ -138,15 +235,30 @@ async def list_tests(
                 outcome=outcome,
                 last_run_at=result.finished_at.isoformat() if result else None,
                 failure_summary=summary,
+                group_prefix=prefix_of(t.id),
             )
         )
 
+    # **걸러 보기 전에 센다** (013 contracts §1). 걸러 본 상태에서도 다른 그룹의 개수를
+    # 보고 그리로 갈 수 있어야 한다.
+    counts_by_group: dict[str, int] = {}
+    for r in rows:
+        counts_by_group[r.group_prefix] = counts_by_group.get(r.group_prefix, 0) + 1
+
+    if group:
+        rows = [r for r in rows if r.group_prefix == group]
     if q:
         needle = q.strip().lower()
         rows = [r for r in rows if needle in r.name.lower() or needle in r.id.lower()]
 
     return TestListResponse(
         counts=TestCounts(total=len(tests), passed=passed, failed=failed),
+        groups=[
+            # 그룹 정의가 없는 접두어도 싣는다 — 사용자가 그룹을 지웠거나 파일을 손으로
+            # 옮긴 경우다. 목록을 막지 않고 접두어를 이름 삼아 보여준다 (data-model §3).
+            GroupSummary(prefix=prefix, name=defined.get(prefix), count=n)
+            for prefix, n in sorted(counts_by_group.items())
+        ],
         tests=rows,
         problems=problems,
     )
@@ -175,15 +287,183 @@ async def rename_test(test_id: str, body: RenameRequest, state: State) -> Test:
     return updated
 
 
-@router.delete("/{test_id}", status_code=204)
-async def delete_test(test_id: str, state: State) -> None:
+@router.delete("/{test_id}")
+async def delete_test(test_id: str, state: State) -> TrashedTestView:
+    """테스트 하나를 **휴지통으로 옮긴다** (013 FR-437 · contracts/api-contract.md §2).
+
+    **204 를 버린 것이 이 계약의 핵심 변경이다.** 옮겨진 위치를 돌려주지 않으면 사용자는
+    되돌릴 수 없고, 그러면 「파괴하지 않는다」는 결정이 사용자에게는 삭제와 구별되지 않는다.
+
+    **복수 삭제와 뜻이 같아야 한다** (SC-632). 같은 이름의 조작이 개수에 따라 결과가
+    달라지면 사용자는 「삭제」 하나를 두 가지로 배워야 한다.
+    """
     repo = state.require_repository()
+    _require_not_running(state, test_id)
+    if not _exists(repo, test_id):
+        # **이미 없는 것을 실패로 보고하지 않는다** (013 FR-436). 사용자가 원한 결과가
+        # 이미 이루어져 있다 — 012 FR-420 이 프로젝트 삭제에서 정한 것과 같은 규칙이다.
+        return TrashedTestView(id=test_id, name=test_id, trashed_to=None)
+
     try:
-        removed = repo.delete_test(test_id)
+        trashed = trash.move_test_to_trash(repo, test_id)
+    except OSError as exc:
+        raise ApiError(500, ErrorCode.TEST_DELETE_FAILED, str(exc)) from exc
+
+    return TrashedTestView(
+        id=test_id, name=_name_of(repo, test_id, trashed), trashed_to=str(trashed.entry)
+    )
+
+
+@router.post(":delete")
+async def delete_tests(body: DeleteTestsRequest, state: State) -> DeleteTestsResponse:
+    """여러 테스트를 한 번에 휴지통으로 옮긴다 (013 FR-432 · api-contract §3).
+
+    **전부 되거나 전부 안 되거나.** 순서 규약은 `storage/test_moves.py` 가 갖는다 —
+    삭제와 그룹 이동이 그것을 공유하므로, 여기에 두면 두 벌이 되고 한쪽만 고치면 다른
+    쪽에서 되돌림이 빠진다.
+
+    실패를 **두 코드로 가른다**: `TEST_DELETE_FAILED` 는 되돌렸으므로 요청 전과 같고,
+    `TEST_DELETE_PARTIAL` 은 되돌리지 못해 일부가 휴지통에 남아 있다. 사용자가 할 일이
+    다르다 — 앞은 다시 시도하면 되고 뒤는 자리를 확인해야 한다.
+    """
+    repo = state.require_repository()
+    if len(set(body.test_ids)) != len(body.test_ids):
+        raise bad_request(ErrorCode.DEFINITION_INVALID, "같은 테스트가 두 번 들어 있습니다.")
+
+    names = {tid: _name_of(repo, tid, None) for tid in body.test_ids}
+
+    def validate(test_id: str) -> None:
+        _require_not_running(state, test_id)
+
+    # **이미 없는 것은 건너뛴다** (013 FR-436). 「고른 뒤 목록이 밖에서 바뀌었다」가
+    # 실제 상황이고, 그때 나머지까지 막으면 사용자는 원인을 알 수 없다.
+    #
+    # FR-432(전부 되거나 전부 안 되거나)와 어긋나지 않는다 — 없는 것은 **지울 필요가
+    # 없는 것**이지 실패가 아니다.
+    targets = [tid for tid in body.test_ids if _exists(repo, tid)]
+
+    try:
+        moved = test_moves.run_all(
+            targets,
+            validate=validate,
+            do=lambda tid: trash.move_test_to_trash(repo, tid),
+            undo=lambda _tid, trashed: trash.restore_test(repo, trashed),
+        )
+    except test_moves.PartialFailureError as exc:
+        raise ApiError(
+            500,
+            ErrorCode.TEST_DELETE_PARTIAL,
+            exc.reason,
+            {"stranded": [{"test": s.target, "where": s.where} for s in exc.stranded]},
+        ) from exc
+    except test_moves.AllOrNothingError as exc:
+        raise ApiError(500, ErrorCode.TEST_DELETE_FAILED, exc.reason) from exc
+
+    return DeleteTestsResponse(
+        deleted=[
+            TrashedTestView(id=t.test_id, name=names[t.test_id], trashed_to=str(t.entry))
+            for t in moved
+        ]
+    )
+
+
+@router.post(":move")
+async def move_tests(body: MoveTestsRequest, state: State) -> MoveTestsResponse:
+    """여러 테스트의 그룹을 바꾼다 (013 FR-446·FR-448 · api-contract §4).
+
+    **이것은 표시를 고치는 조작이 아니라 자산을 옮기는 조작이다** — 정의 파일 이름과
+    실행 산출물 디렉터리가 함께 움직인다. 그래서 삭제와 **같은 원자성 규약**을 쓴다.
+
+    번호는 그대로다. 접두어만 바뀐다 (`USER-003` → `DATA-003`).
+    """
+    repo = state.require_repository()
+    if len(set(body.test_ids)) != len(body.test_ids):
+        raise bad_request(ErrorCode.DEFINITION_INVALID, "같은 테스트가 두 번 들어 있습니다.")
+    _require_known_group(repo, body.to_prefix)
+
+    def validate(test_id: str) -> None:
+        _require_not_running(state, test_id)
+
+    targets = [tid for tid in body.test_ids if _exists(repo, tid)]
+
+    try:
+        moved = test_moves.run_all(
+            targets,
+            validate=validate,
+            do=lambda tid: test_moves.move_test_to_group(repo, tid, body.to_prefix),
+            undo=lambda _tid, m: test_moves.move_test_back(repo, m),
+        )
+    except test_moves.PartialFailureError as exc:
+        # **이동 전용 코드다** (013 converge T059). `TEST_DELETE_PARTIAL` 의 안내는
+        # 「휴지통에 남아 있습니다」인데 이동 실패에서는 휴지통이 아니라 **새 그룹
+        # 자리**에 있다 — 그 문구를 재사용하면 사용자를 없는 곳으로 보낸다.
+        raise ApiError(
+            500,
+            ErrorCode.TEST_MOVE_PARTIAL,
+            exc.reason,
+            {"stranded": [{"test": s.target, "where": s.where} for s in exc.stranded]},
+        ) from exc
+    except test_moves.AllOrNothingError as exc:
+        raise ApiError(500, ErrorCode.TEST_MOVE_FAILED, exc.reason) from exc
+
+    return MoveTestsResponse(
+        moved=[
+            MovedTestView(from_id=m.from_id, to_id=m.to_id, name=m.name) for m in moved
+        ]
+    )
+
+
+# ─── 013 공용 도우미 ────────────────────────────────────────────────────────
+
+
+def _require_known_group(repo: ProjectRepository, prefix: str) -> None:
+    """모르는 그룹으로 옮기지 않는다 (013 FR-446).
+
+    `TC` 는 「그룹 없음」이므로 언제나 갈 수 있다 — 정의가 필요 없다.
+    """
+    if prefix == RESERVED_PREFIX:
+        return
+    if prefix not in {g.prefix for g in repo.read_project().groups}:
+        raise not_found(ErrorCode.GROUP_NOT_FOUND, f"그런 그룹이 없습니다: {prefix}")
+
+
+def _exists(repo: ProjectRepository, test_id: str) -> bool:
+    """그 테스트가 지금 있는가 (013 FR-436).
+
+    **없는 것을 오류로 만들지 않는다.** 고른 뒤 목록이 밖에서 바뀌는 일이 실제로 있고,
+    그때 사용자가 원한 결과(「이 테스트가 목록에서 사라진다」)는 이미 이루어져 있다.
+
+    식별자 형식이 틀린 것은 다르다 — 그것은 있을 수 없는 요청이므로 거절한다.
+    """
+    try:
+        return repo.find_test_path(test_id) is not None
     except ProjectError as exc:
-        raise bad_request(ErrorCode.TEST_NOT_FOUND, str(exc)) from exc
-    if not removed:
-        raise not_found(ErrorCode.TEST_NOT_FOUND, f"테스트를 찾을 수 없습니다: {test_id}")
+        raise not_found(ErrorCode.TEST_NOT_FOUND, str(exc)) from exc
+
+
+def _require_not_running(state: AppState, test_id: str) -> None:
+    """살아 있는 세션이 있으면 거절한다 (013 FR-433).
+
+    **거절은 요청을 받지 않은 것과 같아야 한다** — 브라우저를 닫지 않는다 (헌법 원칙 III).
+    판정은 이미 있는 `active_session_for_test` 를 쓴다. 새 목록을 만들면 상태가 늘 때
+    한쪽이 빠진다.
+    """
+    if state.sessions.active_session_for_test(test_id) is not None:
+        raise ApiError(
+            409,
+            ErrorCode.TEST_IN_USE,
+            f"실행 중인 브라우저가 있어 「{test_id}」을(를) 정리할 수 없습니다.",
+        )
+
+
+def _name_of(repo: ProjectRepository, test_id: str, trashed: object) -> str:
+    """표시 이름. **읽지 못해도 실패하지 않는다.**
+
+    이름 하나를 못 읽는다고 삭제를 막으면 깨진 테스트일수록 지울 수 없어진다.
+    """
+    with contextlib.suppress(Exception):
+        return repo.read_test(test_id).name
+    return test_id
 
 
 class RunResultView(RunResult):

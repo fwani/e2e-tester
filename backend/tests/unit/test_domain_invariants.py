@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
@@ -382,3 +384,58 @@ def test_new_step_types_carry_the_shared_fields(step_type: str) -> None:
     # `author` 가 구조를 바꾸지 않는다 (FR-014)
     ai = STEP_ADAPTER.validate_python({**payload, "author": "ai"})
     assert step.model_dump(exclude={"author"}) == ai.model_dump(exclude={"author"})
+
+
+# ─── 013 식별자·접두어 (FR-444·FR-444e · research R1) ───────────────────────
+
+
+@pytest.mark.parametrize("good", ["TC-001", "USER-003", "A-999", "ABCDEFGH-000", "A1-001"])
+def test_widened_identifier_accepts_groups_and_legacy(good: str) -> None:
+    """`TC-001` 이 그대로 통과해야 한다 — **기존 자산 호환의 근거다** (SC-629)."""
+    from itb.domain.test_case import TEST_ID_PATTERN
+
+    assert re.match(TEST_ID_PATTERN, good), good
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "tc-001",  # 소문자 — macOS 에서 한 자리를 둘이 다툰다
+        "TC-1",
+        "TC-0001",
+        "US ER-001",
+        "../TC-001",  # 상위 이동
+        "TC/001",  # 경로 구분자
+        "ABCDEFGHI-001",  # 9자 접두어
+        "-001",
+        "1AB-001",  # 숫자로 시작
+        "TC-001\n",
+    ],
+)
+def test_widened_identifier_is_an_allowlist_not_a_denylist(bad: str) -> None:
+    """**거절 목록이 아니라 허용 목록이다** (헌법 §보안).
+
+    식별자는 파일 이름과 디렉터리 이름이 된다. 경로 구분자·상위 이동·제어 문자가 애초에
+    패턴을 통과할 수 없어야, 「무엇을 막을지」를 빠짐없이 세는 일이 필요 없어진다.
+    """
+    from itb.domain.test_case import TEST_ID_PATTERN
+
+    assert not re.fullmatch(TEST_ID_PATTERN, bad), bad
+
+
+def test_group_prefix_follows_the_same_rule_as_the_identifier() -> None:
+    """접두어가 식별자에 들어가므로 규칙이 갈리면 안 된다."""
+    from itb.domain.test_case import GROUP_PREFIX_PATTERN, TEST_ID_PATTERN
+
+    assert re.match(GROUP_PREFIX_PATTERN, "USER")
+    assert not re.match(GROUP_PREFIX_PATTERN, "user")
+    # 접두어가 통과하면 그것으로 만든 식별자도 통과한다.
+    assert re.match(TEST_ID_PATTERN, "USER-001")
+
+
+def test_the_ungrouped_prefix_is_reserved() -> None:
+    """`TC` 는 그룹 없음이 쓴다 (FR-445a)."""
+    from itb.domain.test_case import GROUP_PREFIX_PATTERN, RESERVED_PREFIX
+
+    assert RESERVED_PREFIX == "TC"
+    assert re.match(GROUP_PREFIX_PATTERN, RESERVED_PREFIX), "예약어도 형식은 만족해야 한다"

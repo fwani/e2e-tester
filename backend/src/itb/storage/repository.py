@@ -24,7 +24,7 @@ import shutil
 from dataclasses import dataclass
 
 from itb.domain.run_result import RunResult, RunScope
-from itb.domain.test_case import Project, Test
+from itb.domain.test_case import RESERVED_PREFIX, TEST_ID_PATTERN, Project, Test
 from itb.storage import atomic
 from itb.storage.yaml_io import DefinitionError, dump_model, load_model
 
@@ -34,7 +34,19 @@ RUNS_DIR = ".runs"
 SECRETS_FILE = "secrets.local.yaml"
 GITIGNORE_FILE = ".gitignore"
 
-TEST_ID_RE = re.compile(r"^TC-\d{3}$")
+_TEST_FILE_RE = re.compile(r"^(?P<id>[A-Z][A-Z0-9]{0,7}-(?P<number>\d{3}))-.*\.yaml$")
+"""정의 파일 이름 = `<식별자>-<이름 slug>.yaml`.
+
+`list_test_paths` 와 `allocate_test_id` 가 **같은 것을 본다.** 파일 이름에서 식별자를 읽는
+방법이 두 곳에서 갈리면, 목록에는 보이는데 번호는 비어 있다고 판단하는 상태가 생긴다.
+"""
+
+TEST_ID_RE = re.compile(TEST_ID_PATTERN)
+"""식별자 검증. **패턴은 도메인이 정본이다** (013 T005).
+
+여기에 정규식을 다시 적으면 두 벌이 되고, 갈린 순간 「저장은 되는데 못 읽는」 상태가 된다 —
+`Test.id` 는 도메인 패턴으로 검증되고 파일을 찾는 것은 이쪽이기 때문이다.
+"""
 _SLUG_STRIP = re.compile(r"[^0-9A-Za-z가-힣]+")
 
 GITIGNORE_BODY = """\
@@ -207,9 +219,20 @@ class ProjectRepository:
         return matches[0] if matches else None
 
     def list_test_paths(self) -> list[pathlib.Path]:
+        """`tests/` 안의 테스트 정의 파일들 (013 T006).
+
+        **`TC-*` 로 훑지 않는다.** 그룹이 생기면서 식별자 접두어가 여러 가지가 됐고,
+        `TC-*` 만 보면 새 접두어 테스트가 **저장은 되는데 목록에 아예 안 나온다** —
+        013 research R1 이 「가장 조용한 함정」으로 표시한 곳이다.
+
+        대신 `*.yaml` 을 훑고 **파일 이름이 `<식별자>-<이름>` 형태인 것만** 남긴다.
+        `tests/` 에 사용자가 다른 `.yaml` 을 두었을 때 그것을 테스트로 읽지 않는다.
+        """
         if not self.paths.tests_dir.exists():
             return []
-        return sorted(self.paths.tests_dir.glob("TC-*.yaml"))
+        return sorted(
+            p for p in self.paths.tests_dir.glob("*.yaml") if _TEST_FILE_RE.match(p.name)
+        )
 
     def list_tests(self) -> tuple[list[Test], list[str]]:
         """읽을 수 있는 테스트 목록과, 읽을 수 없는 파일의 사유 목록.
@@ -276,27 +299,31 @@ class ProjectRepository:
 
     # ─── 테스트 ID 부여 ───────────────────────────────────────────────────
 
-    def allocate_test_id(self) -> str:
+    def allocate_test_id(self, prefix: str = RESERVED_PREFIX) -> str:
         """다음 테스트 ID 를 부여하고 카운터를 저장한다.
 
         카운터와 실제 파일을 함께 본다 — 카운터만 믿으면 파일을 손으로 옮긴 뒤 충돌한다.
+
+        **번호는 접두어를 넘어 고유하다** (013 research R3). `USER-003` 이 있으면 `003` 은
+        어느 접두어로도 쓰이지 않는다. 그래야 **그룹을 옮길 때 번호를 다시 뽑지 않는다** —
+        `USER-003` → `DATA-003` 이 언제나 빈자리다. FR-444c(식별자 고유)를 규칙으로 지키는
+        대신 **구조로** 만족시킨다.
         """
         project = self.read_project()
         used = {
-            m.group(0)
+            int(m.group("number"))
             for p in self.list_test_paths()
-            if (m := re.match(r"TC-\d{3}", p.name)) is not None
+            if (m := _TEST_FILE_RE.match(p.name)) is not None
         }
         number = project.next_test_number
-        while f"TC-{number:03d}" in used:
+        while number in used:
             number += 1
         if number > 999:
             msg = "테스트 ID 가 999 를 넘었습니다. 프로젝트를 나누세요."
             raise ProjectError(msg)
-        test_id = f"TC-{number:03d}"
         project.next_test_number = number + 1
         self.write_project(project)
-        return test_id
+        return f"{prefix}-{number:03d}"
 
     # ─── 실행 결과 (테스트당 최근 1건) ────────────────────────────────────
 

@@ -27,6 +27,7 @@ import { describeError, fromEvent, localError } from "../components/ErrorNotice"
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import {
+  groups as groupsApi,
   sessions,
   type AddAssertionBody,
   type AiChoice,
@@ -255,6 +256,10 @@ export interface SessionWorkbenchProps {
   }) => void;
   onRepick?: (slot: RepickSlot) => void;
   onSaveNameChange?: (name: string) => void;
+  /** 저장할 그룹 (013 FR-443). 아직 저장되지 않은 세션에만 뜻이 있다 */
+  saveGroup?: string | null;
+  onSaveGroupChange?: (prefix: string | null) => void;
+  groupOptions?: { prefix: string; name: string }[];
   onSave?: () => void;
   onShowList?: () => void;
   onPause?: () => void;
@@ -366,6 +371,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     onSaveStep,
     onRepick,
     onSaveNameChange,
+    saveGroup = null,
+    onSaveGroupChange,
+    groupOptions = [],
     onSave,
     onShowList,
     onPause,
@@ -1428,6 +1436,15 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           hasUnsavedChanges: view.has_unsaved_changes,
         }),
       }}
+      /*
+        013 FR-443 — 저장할 그룹. **이미 저장된 테스트에는 주지 않는다**: 그룹 변경은
+        자산을 옮기는 일이고 목록 화면의 「그룹으로 옮기기」가 그것을 한다.
+      */
+      phaseGroup={
+        testId === null && onSaveGroupChange !== undefined
+          ? { options: groupOptions, value: saveGroup, onChange: onSaveGroupChange }
+          : undefined
+      }
       headerActions={headerActions}
       /*
         009 FR-298 — 행 조작. **결과 국면은 이 화면이 아니다**(`ResultView` 가 그린다)
@@ -1709,6 +1726,30 @@ export function SessionScreen({
   const [nameOverride, setNameOverride] = useState<string | null>(null);
   /** 저장 요청과 표시에 함께 쓰이는 이름. 두 칸에 넣게 하지 않는다 */
   const effectiveSaveName = nameOverride ?? view.test_name ?? "";
+
+  /**
+   * 저장할 그룹 (013 FR-443 · converge T062).
+   *
+   * **이름과 같은 자리에 산다** — 둘이 함께 「이 테스트가 무엇으로 저장되는가」를 정하고,
+   * 그룹은 식별자에 들어가므로(`USER-001`) 저장 시점에 정해져야 한다.
+   *
+   * **아직 저장되지 않은 세션에만 쓴다.** 이미 저장된 테스트의 그룹을 바꾸는 것은 파일과
+   * 실행 산출물을 옮기는 일이고, `tests.move` 가 원자성 규약과 함께 그것을 한다 — 저장에
+   * 자산 이동을 숨기지 않는다.
+   */
+  const [saveGroup, setSaveGroup] = useState<string | null>(null);
+  const [groupOptions, setGroupOptions] = useState<{ prefix: string; name: string }[]>([]);
+
+  useEffect(() => {
+    void groupsApi
+      .list()
+      .then((r) =>
+        setGroupOptions((r.groups ?? []).map((g) => ({ prefix: g.prefix, name: g.name }))),
+      )
+      // 그룹을 못 불러와도 저장은 되어야 한다 — 그룹은 선택 사항이다.
+      .catch(() => setGroupOptions([]));
+  }, []);
+
 
   /**
    * 삭제 대상으로 고른 Step (011 FR-380·FR-380b · UC-011-16).
@@ -2065,7 +2106,7 @@ export function SessionScreen({
   const save = () => {
     setBusy(true);
     void sessions
-      .save(sessionId, effectiveSaveName.trim())
+      .save(sessionId, effectiveSaveName.trim(), view.test_id === null ? saveGroup : null)
       .then(() => {
         // 005 FR-158 (U-09) — 성공 시 이전 오류 배너를 걷어낸다.
         setError(null);
@@ -2493,7 +2534,7 @@ export function SessionScreen({
   const saveThenRerun = (fromStepIndex?: number) => {
     setBusy(true);
     void sessions
-      .save(sessionId, effectiveSaveName.trim())
+      .save(sessionId, effectiveSaveName.trim(), view.test_id === null ? saveGroup : null)
       .then(() => {
         setError(null);
         setNotice(null);
@@ -2547,7 +2588,7 @@ export function SessionScreen({
   const saveAndLeave = () => {
     setBusy(true);
     void sessions
-      .save(sessionId, effectiveSaveName.trim())
+      .save(sessionId, effectiveSaveName.trim(), view.test_id === null ? saveGroup : null)
       .then(() => {
         setConfirmingLeave(false);
         onFinished();
@@ -2626,6 +2667,9 @@ export function SessionScreen({
             });
         }}
         onSaveNameChange={setNameOverride}
+        saveGroup={saveGroup}
+        onSaveGroupChange={setSaveGroup}
+        groupOptions={groupOptions}
         onSave={save}
         onShowList={onFinished}
         onPause={() => {
