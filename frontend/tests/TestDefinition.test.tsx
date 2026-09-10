@@ -326,8 +326,14 @@ describe("브라우저가 필요한 편집 (US3 · FR-202·FR-203)", () => {
     ).toBeTruthy();
     // 「가는 길」 버튼은 **대상 앱 영역**에 하나 있다 (T079 · FR-244).
     act(() => action("browser.openAt").click());
-    // 세션이 끝난 뒤 이 Step 으로 돌아오기 위해 id 도 함께 넘긴다 (FR-204).
-    expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1, "step-02");
+    /*
+      세션이 끝난 뒤 이 Step 으로 돌아오기 위해 id 도 함께 넘긴다 (FR-204).
+
+      **2026-09-10 (011) — 인자가 넷이 됐다.** 마지막은 「도착하면 수행할 지시문」이며,
+      이 조작(`browser.openAt`)은 지시문 없이 연다 — 도착하면 기록이 켜진다 (009 FR-291).
+      「지시문으로 더하기」만 그 자리에 문장을 싣는다 (`AuthoringParity` 가 그것을 잰다).
+    */
+    expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1, "step-02", null);
   });
 
   it("저장하지 않은 변경이 있으면 먼저 저장한 뒤 세션을 연다 (FR-203)", async () => {
@@ -344,7 +350,7 @@ describe("브라우저가 필요한 편집 (US3 · FR-202·FR-203)", () => {
 
     act(() => screen.getByText("저장하고 열기").click());
     await waitFor(() =>
-      expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1, "step-02"),
+      expect(onOpenBrowserAt).toHaveBeenCalledWith("TC-001", 1, "step-02", null),
     );
     // 저장이 먼저 나갔다 — 두 경로가 같은 Step 을 다르게 들고 있지 않다.
     expect(calls.some((c) => c.method === "PUT")).toBe(true);

@@ -62,6 +62,7 @@ import { TabStrip } from "../components/TabStrip";
 import { BrowserFrame } from "../components/design/BrowserFrame";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
+import { BulkDeleteConfirm } from "../components/workbench/BulkDeleteConfirm";
 import { InsertStepForm } from "../components/workbench/InsertStepForm";
 import { ConfirmDelete, StepRowOps } from "../components/workbench/StepRowOps";
 import { Workbench } from "../components/workbench/Workbench";
@@ -97,7 +98,7 @@ import {
   runFromStepLabel,
   runSummary,
   sessionSaveLabel,
-  sessionTitle,
+  sessionSaveState,
   skipFailureNotice,
   stepLabel,
   stopLabel,
@@ -105,6 +106,8 @@ import {
   type OutcomeTone,
   SAVE_NEEDS_NAME,
   EDIT_NEEDS_SAVE,
+  NO_DELETE_SELECTION,
+  NO_STEPS_AFTER,
   RUN_NEEDS_SAVE,
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
@@ -266,6 +269,16 @@ export interface SessionWorkbenchProps {
   onNaturalLanguage?: (instruction: string) => void;
   onDeleteStep?: (stepId: string) => void;
   /**
+   * 여러 Step 을 **한 번에** 지운다 (011 FR-382·FR-388).
+   *
+   * `onDeleteStep` 을 반복 호출하지 않는다 — 중간에 끊기면 부분 적용이 남는다.
+   */
+  onDeleteSteps?: (stepIds: string[]) => void;
+  /** 삭제 대상으로 고른 Step id 들. 소유는 `SessionScreen` 이다 */
+  deleteSelection?: string[];
+  onToggleDeleteTarget?: (stepId: string) => void;
+  onToggleAllDeleteTargets?: () => void;
+  /**
    * 009 FR-298·FR-301 — **행에서** 순서를 바꾼다.
    *
    * 이전에는 `onToggleReorder` 로 별도 패널을 열고 그 안에서 옮긴 뒤 「적용」을 눌렀다.
@@ -309,6 +322,13 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   const [insertOpen, setInsertOpen] = useState(false);
   /** 지우기 확인을 기다리는 Step (009 FR-302). **행 안에서** 묻는다. */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /**
+   * 복수 삭제 확인을 기다리는 Step id 들 (011 FR-384 · UC-011-18).
+   *
+   * **개수와 범위를 문장으로 보여 준 뒤에 지운다.** 여러 개를 한 번에 지우는 조작은
+   * 되돌리기가 비싸고, 「11개」만으로는 어느 11개인지 알 수 없다.
+   */
+  const [pendingBulk, setPendingBulk] = useState<string[] | null>(null);
   /** 자연어 Step 입력. 팔레트가 아니라 어댑터가 갖는다 — 보내는 것은 어댑터다. */
   const [nl, setNl] = useState("");
   const {
@@ -358,6 +378,10 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     onInsertManual,
     onNaturalLanguage,
     onDeleteStep,
+    onDeleteSteps,
+    deleteSelection = [],
+    onToggleDeleteTarget,
+    onToggleAllDeleteTargets,
     onApplyReorder,
     onRunFromHere,
     onRerunAll,
@@ -373,6 +397,36 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   const phase = phaseOfSession(view);
   const testId = view.test_id;
   const title = testId ?? "새 테스트";
+
+  /**
+   * 이 테스트에 **이름이 이미 있는가** (011 UC-011-4 · FR-362).
+   *
+   * **`view.saved_at` 이 아니다.** 그 값은 「이 **세션에서** 저장했는가」이고, 저장된
+   * 테스트를 열어 만든 세션은 첫 저장 전까지 `null` 이다. 그래서 이름이 멀쩡히 있는데도
+   * 라벨이 「저장」이 되고 빈 이름칸을 채워야 저장이 열렸다 — 사용자 보고 2번이 그것이다.
+   *
+   * 물어야 할 것은 「이 **테스트에** 이름이 있는가」이고, 그것은 `test_id` 다.
+   */
+  const hasName = testId !== null;
+
+  /**
+   * 국면 띠에 그릴 이름 (011 UC-011-2).
+   *
+   * 세션에서 테스트 이름은 **저장 이름을 겸한다** — 세션이 저장될 때 그 이름으로 파일이
+   * 생긴다. 그래서 표시하는 값과 저장에 실리는 값이 하나여야 한다.
+   *
+   * **이 컴포넌트는 되돌림 규칙을 갖지 않는다.** `saveName` 을 그대로 그린다 — 서버가 준
+   * 이름을 기본값으로 쓰는 판단은 상태를 소유한 `SessionScreen` 이 한다.
+   *
+   * 처음에는 여기서 「비었으면 서버 이름을 쓴다」로 메웠다. 그러면 **이름을 지울 수
+   * 없다** — 사용자가 칸을 비우는 순간 서버 값이 되돌려 놓고, 저장이 잠기지 않아
+   * FR-366(이름 없는 저장 거절)을 검사할 수도 없다. 되돌림을 표시 쪽에 두면 그 규칙이
+   * 사용자 입력과 싸운다.
+   */
+  const displayName = saveName;
+  /** 저장 요청에 실릴 이름. 표시와 같은 값이다 (두 칸에 넣게 하지 않는다) */
+  const effectiveSaveName = displayName;
+
   const isDone = TERMINAL_STATES.has(view.state);
   const review = SAVEABLE_WITHOUT_BROWSER.has(view.state);
   const manipulating = MANIPULATION_STATES.has(view.state);
@@ -380,6 +434,15 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   const liveBrowser = hasLiveBrowser(view) && lost === null;
   /** 멈추기 전에 실행이 끝났다 (005 FR-146). 실행 결말과 세션 상태는 다른 축이다. */
   const finishedWhilePausing = view.state === "paused" && summary !== null;
+
+  /**
+   * 저장한 뒤 더해진 Step (011 FR-379). 행의 「미저장」 표식이 이것을 본다.
+   *
+   * 009 가 편집 국면에 만든 표식과 **같은 뜻·같은 자리**다. 세션에서는 판정 근거가
+   * 서버에 있어(`saved_snapshot`) 그때 붙이지 못했다 — 011 이 `unsaved_step_ids` 로
+   * 그것을 실었다.
+   */
+  const unsavedIds = new Set(view.unsaved_step_ids ?? []);
 
   const steps: WorkbenchStep[] = view.steps.map((step, index) => ({
     id: step.id,
@@ -389,6 +452,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     outcome: outcomeOf(step, index),
     durationMs: durationOf(step) ?? null,
     isPausedHere: !review && phase === "paused" && index === view.current_step_index,
+    isUnsaved: unsavedIds.has(step.id),
   }));
 
   const failedStepIndex = (() => {
@@ -466,6 +530,16 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     });
   })();
   const selectedIndex = steps.findIndex((s) => s.id === focusedStepId);
+  /**
+   * 「이 뒤 전부」의 대상 (011 FR-383).
+   *
+   * **화면이 계산한다 — 서버 개념이 아니다.** 서버에 범위를 넣으면 「그 사이 목록이
+   * 바뀌면 무엇을 지우는가」가 서버와 화면 양쪽에 생긴다 (research R5).
+   *
+   * 지목이 없으면 빈 배열이고, 그때 조작은 `narrowByPick` 이 이미 잠근다.
+   */
+  const afterTargets =
+    selectedIndex >= 0 ? steps.slice(selectedIndex + 1).map((s) => s.id) : [];
 
   /**
    * 자리를 한 칸 옮긴다 (009 FR-299).
@@ -742,12 +816,17 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         view.saved_at == null
           ? `기록된 Step ${view.steps.length}개가 아직 저장되지 않았습니다.`
           : `저장한 뒤 바뀐 것이 있습니다. 기록된 Step ${view.steps.length}개.`,
-      nextAction:
-        saveName.trim() === ""
-          ? "Step 목록 아래에서 테스트 이름을 정하고 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다."
-          : "Step 목록 아래의 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다.",
       /*
-        **버튼을 달지 않는다.** 저장의 자리는 조작 팔레트 하나이고(FR-235), 여기 버튼을
+        011 — **자리 안내가 화면 위쪽을 가리킨다.** 저장과 이름의 집이 Step 패널 바닥에서
+        국면 띠로 옮겨졌으므로(007 계약 §2-7), 「Step 목록 아래에서」는 이제 틀린 안내다.
+        문구가 자리를 말하는 이상 자리가 바뀔 때 함께 바뀌어야 한다.
+      */
+      nextAction:
+        effectiveSaveName.trim() === ""
+          ? "화면 위 국면 띠에서 테스트 이름을 정하고 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다."
+          : "화면 위 국면 띠의 「저장」을 누르세요. 저장하지 않으면 나가거나 다시 실행할 때 사라집니다.",
+      /*
+        **버튼을 달지 않는다.** 저장의 자리는 국면 띠 하나이고(FR-235), 여기 버튼을
         또 두면 같은 라벨이 두 자리에 생긴다 — 바로 위 「run-failure」 알림이 같은 이유로
         결과 버튼을 달지 않았고, 이 파일이 그 결정을 이미 기록해 두었다. 검사가 그것을
         즉시 잡았다(`RunnerReview`: 「저장」 버튼이 둘). 알림은 자리를 **가리키기만** 한다.
@@ -935,6 +1014,17 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       case "step.delete":
         if (focusedStepId !== null) onDeleteStep?.(focusedStepId);
         break;
+      /*
+        011 — 복수 삭제. **확인은 팔레트가 아니라 이 화면이 세운다** (아래 `pendingBulk`).
+        겹침 대화상자를 쓰지 않는 것은 009 FR-302 와 같은 근거다: 대상이 화면에서
+        사라지면 무엇을 지우려던 것인지 다시 확인해야 한다.
+      */
+      case "step.deleteSelected":
+        if (deleteSelection.length > 0) setPendingBulk(deleteSelection);
+        break;
+      case "step.deleteAfter":
+        if (afterTargets.length > 0) setPendingBulk(afterTargets);
+        break;
       case "step.update":
         if (focusedStepId !== null) onOpenDetail?.(focusedStepId);
         break;
@@ -976,6 +1066,24 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
    * 표는 **국면**을 말한다. "지목한 Step 이 없다" 는 국면이 아니므로 표에 담을 수 없고,
    * 담지 않으면 무엇에 걸지 모르는 조작이 활성으로 남아 눌러도 아무 일이 없다.
    */
+  /**
+   * 011 — 고른 것이 없으면 「고른 것 지우기」는 뜻이 없다 (FR-385 · UC-011-19).
+   *
+   * 「이 뒤 전부」가 **마지막 Step 에서** 잠기는 것도 여기서 본다. 둘 다 국면이 아니라
+   * 화면이 아는 사실이라 표에 담을 수 없다.
+   */
+  const narrowByDeleteSelection = (id: ActionId, base: CapabilityState): CapabilityState => {
+    if (base.kind !== "enabled") return base;
+    if (id === "step.deleteSelected" && deleteSelection.length === 0) {
+      return { kind: "disabled", reason: NO_DELETE_SELECTION, remedy: null, visibility: "keep" };
+    }
+    if (id === "step.deleteAfter" && selectedIndex >= 0 && afterTargets.length === 0) {
+      // 해소 방법을 달지 않는다 — 끝단이라는 사실은 사용자가 고칠 것이 아니다 (009 AT_BOTTOM).
+      return { kind: "disabled", reason: NO_STEPS_AFTER, remedy: null, visibility: "keep" };
+    }
+    return base;
+  };
+
   const narrowByPick = (id: ActionId, base: CapabilityState): CapabilityState =>
     // `run.from` 은 여기서 제외한다 — 지목이 없어도 실패한 자리·멈춘 자리를 쓸 수 있고,
     // 그 판단은 `runFromIndex` 가 한다.
@@ -1096,6 +1204,37 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     </>
   );
 
+  /**
+   * 저장할 수 있는가 (005 FR-156).
+   *
+   * 표는 국면을 말하고(Step 이 있는가·실행 중인가), 이름과 변경 유무는 화면이 안다.
+   * 라벨은 바뀌지 않는다 — 「변경 저장」이 상황마다 다른 말이 되면 배운 것이 흔들린다.
+   */
+  const hasChangesToSave = view.saved_at == null || view.has_unsaved_changes;
+  const saveCapability: CapabilityState =
+    capabilities.save.kind !== "enabled"
+      ? capabilities.save
+      : effectiveSaveName.trim() === ""
+        ? /*
+             **저장 자리는 절대 사라지지 않는다** (`keep`).
+
+             사용자가 보고한 「녹화하고 저장하는 부분이 명확하지 않다」의 절반이 이것이다.
+             이름을 아직 안 썼다는 것은 사용자가 이 화면에서 곧바로 해소할 수 있는
+             전제이고, 그때 저장 버튼이 사라지면 저장하는 방법을 배울 자리가 없어진다.
+
+             011 — 이름이 **이미 있는** 테스트는 이 가지에 들어오지 않는다.
+             `effectiveSaveName` 이 서버가 준 이름으로 채워져 있기 때문이다. 사용자가
+             그것을 지우면 다시 들어온다 (FR-366 — 이름 없는 테스트로 만들지 않는다).
+           */
+          /*
+             해소 방법은 **달지 않는다.** 이름칸은 국면 띠의 바로 왼쪽에 있고, 그것은
+             누를 버튼이 아니라 채울 칸이다 — 링크로 만들면 눌러도 아무 일이 없다.
+           */
+          { kind: "disabled", reason: SAVE_NEEDS_NAME, remedy: null, visibility: "keep" }
+        : !hasChangesToSave
+          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null, visibility: "keep" }
+          : { kind: "enabled" };
+
   /*
     **국면 띠의 조작 순서는 고정이다** (FR-235·FR-236). 국면마다 목록을 다르게 만들지
     않는다 — 「해당 없음」인 조작은 `ActionButton` 이 스스로 그리지 않으므로, 하나의
@@ -1157,35 +1296,28 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         // 005 FR-147 (U-08) — 끝난 실행의 「닫기」에서는 강조를 뺀다.
         emphasis: isDone || review ? "quiet" : false,
       })}
+      {/*
+        ─── 저장 (011 · 007 계약 §2-7) ──────────────────────────────────────
+
+        **실행 조작 뒤, 띠의 오른쪽 끝이다.** 순서를 고정하는 이유는 위 주석과 같다 —
+        국면마다 자리가 바뀌면 근육 기억이 서지 않는다.
+
+        011 이전 이 조작의 집은 Step 패널 바닥의 조작 팔레트였다. 저장하려면 Step 목록을
+        다 지나 내려와야 했고, 못 찾고 나가면 기록이 사라졌다 (사용자 보고 1).
+      */}
+      {isShown(saveCapability) && (
+        <ActionButton
+          action="save"
+          capability={saveCapability}
+          label={sessionSaveLabel(hasName)}
+          compact
+          emphasis
+          onRun={() => runAction("save")}
+          onRemedy={onRemedy}
+        />
+      )}
     </>
   );
-
-  /**
-   * 저장할 수 있는가 (005 FR-156).
-   *
-   * 표는 국면을 말하고(Step 이 있는가·실행 중인가), 이름과 변경 유무는 화면이 안다.
-   * 라벨은 바뀌지 않는다 — 「변경 저장」이 상황마다 다른 말이 되면 배운 것이 흔들린다.
-   */
-  const hasChangesToSave = view.saved_at == null || view.has_unsaved_changes;
-  const saveCapability: CapabilityState =
-    capabilities.save.kind !== "enabled"
-      ? capabilities.save
-      : saveName.trim() === ""
-        ? /*
-             **저장 자리는 절대 사라지지 않는다** (`keep`).
-
-             사용자가 보고한 「녹화하고 저장하는 부분이 명확하지 않다」의 절반이 이것이다.
-             이름을 아직 안 썼다는 것은 사용자가 이 화면에서 곧바로 해소할 수 있는
-             전제이고, 그때 저장 버튼이 사라지면 저장하는 방법을 배울 자리가 없어진다.
-           */
-          /*
-             해소 방법은 **달지 않는다.** 이름칸은 같은 화면의 바로 위 줄에 있고, 그것은
-             누를 버튼이 아니라 채울 칸이다 — 링크로 만들면 눌러도 아무 일이 없다.
-           */
-          { kind: "disabled", reason: SAVE_NEEDS_NAME, remedy: null, visibility: "keep" }
-        : !hasChangesToSave
-          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null, visibility: "keep" }
-          : { kind: "enabled" };
 
   /*
     005 FR-154·FR-158 (U-09) — **저장 성공을 화면을 옮기지 않고 알 수 있다.**
@@ -1201,7 +1333,15 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         <svg className="pass-ink" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
           <path d="M3 8.5l3.5 3.5L13 4.5" />
         </svg>
-        <span className="strong-sm">{editSavedNotice(title)}</span>
+        {/*
+          011 converge — **이름을 말한다** (FR-367).
+
+          `title` 은 `testId ?? "새 테스트"` 라 「저장했습니다 · TC-001」로 **id** 가
+          나왔다. 011 이 `SessionView.test_name` 을 실었으므로 이제 사용자가 정한 이름을
+          쓸 수 있다 — 확인줄이 id 를 말하면 사용자는 방금 저장한 것이 무엇인지 그 문장
+          에서 알 수 없다.
+        */}
+        <span className="strong-sm">{editSavedNotice(displayName || title)}</span>
         <div className="spacer" />
         {onShowList && (
           <button className="btn sm" onClick={onShowList} disabled={busy}>
@@ -1215,12 +1355,16 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     phase,
     testId,
     // 005 FR-134·FR-155 — 저장된 것은 「초안」이 아니다. 판정 규칙은 사전이 소유한다.
-    testName: sessionTitle({
-      title,
-      persisted: testId !== null,
-      savedAt: view.saved_at ?? null,
-      hasUnsavedChanges: view.has_unsaved_changes,
-    }),
+    /*
+      011 UC-011-2 — **이름만** 넣는다. 저장 상태는 이름 옆의 칩이 갖는다 (`phaseName.status`).
+
+      이전에는 `sessionTitle` 이 둘을 한 문장으로 붙였다 — 「TC-001 · 저장됨」. 이름 자리가
+      입력칸이 된 뒤로 그 문장을 넣으면 「· 저장됨」까지 저장 이름이 된다.
+
+      **이름이 「TC-001」에서 실제 이름으로 바뀌었다.** 세션이 그 값을 몰라 id 를 그리고
+      있었고(`title = testId ?? "새 테스트"`), 011 이 `SessionView.test_name` 을 실었다.
+    */
+    testName: displayName,
     phaseBar: {
       // 걷기 W-1 이 잡은 것 — 끝난 실행에서 「실행 중」이라고 말하면 그 옆의 결말
       // 요약과 한 화면이 두 가지를 주장한다 (005 U-20).
@@ -1242,6 +1386,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     work,
     steps,
     focusedStepId,
+    deleteSelection,
     detail:
       detailOpen && selectedIndex >= 0
         ? {
@@ -1268,6 +1413,21 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     <Workbench
       model={model}
       phaseActions={phaseActions}
+      /*
+        011 UC-011-2 — 이름을 국면 띠 그 자리에서 고친다. 세션에서 이 값은 **저장 이름을
+        겸한다**: 세션이 저장될 때 그 이름으로 파일이 생긴다. 조작을 둘로 나누면 같은
+        값을 두 칸에 넣게 된다.
+      */
+      phaseName={{
+        capability: capabilities["test.rename"],
+        onChange: (v) => onSaveNameChange?.(v),
+        onRemedy,
+        status: sessionSaveState({
+          persisted: testId !== null,
+          savedAt: view.saved_at ?? null,
+          hasUnsavedChanges: view.has_unsaved_changes,
+        }),
+      }}
       headerActions={headerActions}
       /*
         009 FR-298 — 행 조작. **결과 국면은 이 화면이 아니다**(`ResultView` 가 그린다)
@@ -1294,6 +1454,24 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           />
         )
       }
+      /*
+        011 — 삭제 대상 고르기 (UC-011-14·15).
+
+        **언제나 넘긴다.** 그릴지 말지는 `StepList` 가 **권한표**를 보고 정한다 — prop 이
+        있는지로 정하면 표 밖에 판정이 하나 더 생기고, 그것이 007 이 없앤 형태다
+        (`capabilities.ts` 머리말 — 각 국면 열이 그 국면 화면의 전부).
+
+        결과 국면처럼 삭제 대상 선택이 없는 곳에서는 표가 접으라고 하므로 칸이 그려지지
+        않는다. 콜백이 없어도 안전하다 — 그때는 조작 자체가 비활성이다.
+      */
+      deleteTargets={{
+        selected: deleteSelection,
+        capability: capabilities["step.toggleDeleteTarget"],
+        allCapability: capabilities["step.selectAllDeleteTargets"],
+        onToggle: (stepId) => onToggleDeleteTarget?.(stepId),
+        onToggleAll: () => onToggleAllDeleteTargets?.(),
+        onRemedy,
+      }}
       noticesExtra={
         offline ? <LiveConnectionBanner onReconnect={() => onReconnect?.()} /> : null
       }
@@ -1301,11 +1479,31 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         phase === "running" ? "아직 기록된 Step 이 없습니다." : "기록된 Step 이 없습니다."
       }
       stepFooter={
+        <>
+        {/*
+          011 UC-011-18 — 복수 삭제 확인. **겹침 대화상자를 쓰지 않는다** (009 FR-302 와
+          같은 근거) — 대상이 화면에서 사라지면 무엇을 지우려던 것인지 다시 확인해야 한다.
+          목록 바로 아래이므로 지울 것을 보면서 답한다.
+        */}
+        {pendingBulk !== null && (
+          <BulkDeleteConfirm
+            targets={pendingBulk}
+            /* 011 FR-386 — 세션은 요청이 즉시 서버에 적용된다 — 되돌릴 수 없다 */
+            revertible={false}
+            steps={steps}
+            busy={busy}
+            onConfirm={() => {
+              onDeleteSteps?.(pendingBulk);
+              setPendingBulk(null);
+            }}
+            onCancel={() => setPendingBulk(null)}
+          />
+        )}
         <ActionPalette
           capabilities={capabilities}
           onRun={runAction}
           onRemedy={onRemedy}
-          narrow={narrowByPick}
+          narrow={(id, base) => narrowByDeleteSelection(id, narrowByPick(id, base))}
           labels={{
             "run.fromHere":
               selectedIndex >= 0 ? `${stepLabel(selectedIndex)} 부터 이어 실행` : undefined,
@@ -1320,21 +1518,14 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
               setNl("");
             },
           }}
-          /*
-            세션에서 테스트 이름은 **저장 이름을 겸한다** — 세션이 저장될 때 그 이름으로
-            파일이 생긴다. 조작을 둘로 나누면 같은 값을 두 칸에 넣게 된다.
-          */
-          name={saveName}
-          onNameChange={(v) => onSaveNameChange?.(v)}
           startUrl={view.steps[0]?.type === "navigate" ? view.steps[0].url : ""}
           onStartUrlChange={() => undefined}
           instruction={aiInstruction}
-          saveLabel={sessionSaveLabel(view.saved_at != null)}
-          saveCapability={saveCapability}
           saveNotice={savedNotice}
           stepCount={steps.length}
           emptyHint="Step 이 없으면 저장할 수 없습니다."
         />
+        </>
       }
       onSelectStep={onSelectStep}
       onCloseDetail={() => onCloseDetail?.()}
@@ -1379,6 +1570,15 @@ const STEP_SCOPED = new Set<ActionId>([
   "step.moveDown",
   "run.fromHere",
   "run.from",
+  /*
+    011 — 「이 뒤 전부 지우기」는 **어디 뒤인지**를 알아야 뜻이 있다. 지목이 없으면
+    대상이 정해지지 않는다.
+
+    `step.deleteSelected` 는 여기 없다 — 그것의 전제는 지목이 아니라 **체크한 것이
+    있는가**이며, 아래 `narrowByDeleteSelection` 이 따로 좁힌다. 둘을 같은 사유로
+    묶으면 「먼저 Step 을 고르세요」가 체크를 뜻하는지 지목을 뜻하는지 갈리지 않는다.
+  */
+  "step.deleteAfter",
 ]);
 
 /*
@@ -1410,6 +1610,17 @@ export interface SessionScreenProps {
    * (research R5). 잃어도 막히지 않는 정보만 화면에 둔다.
    */
   recordOnArrival?: boolean;
+  /**
+   * 도착하면 이 지시문을 수행한다 (011 FR-374a·FR-375 · UC-011-23).
+   *
+   * `recordOnArrival` 과 **대칭이다.** 편집 국면에서 「지시문으로 더하기」를 누르면
+   * 브라우저가 열리고 그 자리에서 지시문이 돈다 — 녹화가 도착하면 기록을 켜는 것과
+   * 같은 흐름이다. 그 대칭이 없어서 두 길이 대등하게 보이지 않았다 (사용자 보고 3).
+   *
+   * **서버 상태에 저장하지 않는다** (009 research R5 와 같은 규칙). 새로 고치면 지시문은
+   * 수행되지 않은 채로 오고, 그때 팔레트의 같은 조작을 그대로 쓸 수 있다.
+   */
+  instructionOnArrival?: string | null;
   onFinished: () => void;
   onShowResult?: (testId: string, stepId?: string | null) => void;
   /**
@@ -1428,6 +1639,7 @@ export function SessionScreen({
   initial,
   aiInstruction = null,
   recordOnArrival = false,
+  instructionOnArrival = null,
   onFinished,
   onShowResult,
   onEditStep,
@@ -1484,7 +1696,49 @@ export function SessionScreen({
   const [runningIndex, setRunningIndex] = useState<number | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [failure, setFailure] = useState<{ index: number; message: string } | null>(null);
-  const [saveName, setSaveName] = useState("");
+  /**
+   * 사용자가 친 이름. **`null` 은 「아직 손대지 않았다」다** (011 FR-362).
+   *
+   * 빈 문자열과 갈라야 한다. 011 이전에는 이 상태가 `""` 로 시작했고, 그래서 「아직
+   * 안 썼다」와 「지웠다」가 같은 값이었다 — 저장된 테스트를 연 세션은 이름이 멀쩡히
+   * 있는데도 사용자가 처음부터 다시 쳐야 했고(사용자 보고 2), 반대로 「비었으면 서버
+   * 이름을 쓴다」로 메우면 이름을 **지울 수 없게** 된다.
+   *
+   * `null` 이면 서버가 준 이름을 쓰고, 문자열이면 — 빈 문자열이라도 — 그것이 이긴다.
+   */
+  const [nameOverride, setNameOverride] = useState<string | null>(null);
+  /** 저장 요청과 표시에 함께 쓰이는 이름. 두 칸에 넣게 하지 않는다 */
+  const effectiveSaveName = nameOverride ?? view.test_name ?? "";
+
+  /**
+   * 삭제 대상으로 고른 Step (011 FR-380·FR-380b · UC-011-16).
+   *
+   * **인덱스가 아니라 id 다.** 인덱스로 가지면 순서 변경 뒤에 다른 Step 이 지워진다 —
+   * 고른 것은 「세 번째 행」이 아니라 「그 Step」이다.
+   *
+   * **저장되지 않는다.** 화면 안에서만 사는 일시 상태이며 서버로 가지 않는다
+   * (data-model §6).
+   */
+  const [deleteSelection, setDeleteSelection] = useState<string[]>([]);
+  /*
+    목록이 바뀌면 **사라진 id 만** 뺀다 (data-model §4-1).
+
+    비우지 않는 이유: 녹화가 Step 을 더하는 동안에도 고른 것은 그대로여야 한다. 순서가
+    바뀌어도 남는 것이 FR-380b 이며, id 로 갖는 것이 그것을 공짜로 만든다.
+
+    `join` 으로 비교하는 이유는 `view.steps` 가 매 응답마다 새 배열이라서다 — 참조로 비교하면
+    내용이 같아도 매번 돈다.
+  */
+  const stepIdsKey = view.steps.map((s) => s.id).join(",");
+  useEffect(() => {
+    const alive = new Set(stepIdsKey === "" ? [] : stepIdsKey.split(","));
+    setDeleteSelection((prev) => {
+      const next = prev.filter((id) => alive.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [stepIdsKey]);
+  /** 이 테스트에 이름이 이미 있는가. 확인 대화상자가 이름을 묻는지를 정한다 (UC-011-5) */
+  const testHasName = (view.test_id ?? null) !== null;
   const [busy, setBusy] = useState(false);
   const sessionId = initial.session_id;
   const [progress, setProgress] = useState<Record<string, StepProgress>>({});
@@ -1811,7 +2065,7 @@ export function SessionScreen({
   const save = () => {
     setBusy(true);
     void sessions
-      .save(sessionId, saveName.trim())
+      .save(sessionId, effectiveSaveName.trim())
       .then(() => {
         // 005 FR-158 (U-09) — 성공 시 이전 오류 배너를 걷어낸다.
         setError(null);
@@ -1852,6 +2106,36 @@ export function SessionScreen({
     // `act` 는 위에서 선언됐다. 의존성에 넣으면 매 렌더마다 새 함수라 효과가 다시 돈다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordOnArrival, view.state, view.pause_before_index, sessionId]);
+
+  /*
+    011 FR-374a — 목표 자리에 **도착하면** 지시문을 수행한다.
+
+    위 효과와 **같은 조건 셋**이다 (출발 의도가 있다 · 일시정지에 닿았다 · 목표가 비었다).
+    같게 두는 이유는 대등성 그 자체다 — 조건이 다르면 한쪽만 되는 상황이 생기고, 그것이
+    사용자가 「녹화처럼 되지 않는다」로 겪는 것이다.
+
+    한 번만 수행한다. 두 번 돌면 같은 Step 이 두 벌 들어간다.
+  */
+  const armedInstruction = useRef(false);
+  useEffect(() => {
+    const instruction = (instructionOnArrival ?? "").trim();
+    if (instruction === "" || armedInstruction.current) return;
+    if (view.state !== "paused") return;
+    if ((view.pause_before_index ?? null) !== null) return;
+    armedInstruction.current = true;
+    setBusy(true);
+    setNotice(null);
+    void sessions
+      .aiStep(sessionId, instruction)
+      .then((resp) => {
+        setNotice(localError(resp.message, "표시된 내용을 확인한 뒤 이어서 진행하세요."));
+        return resync();
+      })
+      .catch((exc: unknown) => setNotice(describeError(exc)))
+      .finally(() => setBusy(false));
+    // `resync` 는 매 렌더마다 새 함수다 — 넣으면 효과가 다시 돈다 (위 효과와 같은 이유).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instructionOnArrival, view.state, view.pause_before_index, sessionId]);
   /** 005 FR-142~FR-146 — 일시정지 **전이 중**인가 (U-04). */
   const isPausing =
     (pauseRequested || view.pause_settled === false) && !TERMINAL_STATES.has(view.state);
@@ -2209,7 +2493,7 @@ export function SessionScreen({
   const saveThenRerun = (fromStepIndex?: number) => {
     setBusy(true);
     void sessions
-      .save(sessionId, saveName.trim())
+      .save(sessionId, effectiveSaveName.trim())
       .then(() => {
         setError(null);
         setNotice(null);
@@ -2263,7 +2547,7 @@ export function SessionScreen({
   const saveAndLeave = () => {
     setBusy(true);
     void sessions
-      .save(sessionId, saveName.trim())
+      .save(sessionId, effectiveSaveName.trim())
       .then(() => {
         setConfirmingLeave(false);
         onFinished();
@@ -2304,12 +2588,18 @@ export function SessionScreen({
         offline={showOffline}
         mirror={mirror}
         tabs={tabStrip}
-        currentUrl={tabs?.tabs[mirrorTab]?.url ?? ""}
+        /*
+          `tabs` 만 지키고 `tabs.tabs` 를 지키지 않으면, 탭 응답이 기대한 형이 아닐 때
+          화면이 통째로 죽는다 — 이 저장소가 두 번 겪은 형태다 (baseline.md 의 미처리 오류
+          3건 중 「`run-from` 이 `{ok: true}` 로 떨어졌다」). 011 의 검사가 그것을 다시
+          드러냈으므로 여기서 닫는다.
+        */
+        currentUrl={tabs?.tabs?.[mirrorTab]?.url ?? ""}
         mirroredTab={mirrorTab}
         focusedStepId={selectedStepId}
         detailOpen={inspecting}
         repickWaiting={repickWaiting}
-        saveName={saveName}
+        saveName={effectiveSaveName}
         onSelectStep={(stepId) => setSelectedStepId(stepId)}
         onOpenDetail={(stepId) => {
           setSelectedStepId(stepId);
@@ -2335,7 +2625,7 @@ export function SessionScreen({
               setNotice(describeError(exc));
             });
         }}
-        onSaveNameChange={setSaveName}
+        onSaveNameChange={setNameOverride}
         onSave={save}
         onShowList={onFinished}
         onPause={() => {
@@ -2381,6 +2671,33 @@ export function SessionScreen({
             .finally(() => setBusy(false));
         }}
         onDeleteStep={(stepId) => void edit(() => sessions.deleteStep(sessionId, stepId))}
+        /*
+          011 FR-382·FR-388 — **한 번의 요청으로 지운다.** `deleteStep` 을 반복하면
+          중간에 끊길 때 부분 적용이 남는다.
+
+          지운 뒤 선택을 비운다 (data-model §4-1) — 지워진 id 가 남아 있으면 다음 삭제가
+          없는 것을 지우려 한다.
+        */
+        onDeleteSteps={(stepIds) => {
+          void edit(() => sessions.deleteSteps(sessionId, stepIds)).then(() =>
+            setDeleteSelection([]),
+          );
+        }}
+        deleteSelection={deleteSelection}
+        onToggleDeleteTarget={(stepId) =>
+          setDeleteSelection((prev) =>
+            prev.includes(stepId) ? prev.filter((id) => id !== stepId) : [...prev, stepId],
+          )
+        }
+        /*
+          전부 고르기 / 전부 풀기 (FR-380c). **지금 목록을 기준으로 판정한다** — 고른 것이
+          목록 전체와 같으면 풀고, 아니면 전부 고른다.
+        */
+        onToggleAllDeleteTargets={() =>
+          setDeleteSelection((prev) =>
+            prev.length === view.steps.length ? [] : view.steps.map((s) => s.id),
+          )
+        }
         onApplyReorder={(order) => void edit(() => sessions.reorderSteps(sessionId, order))}
         onRunFromHere={(stepIndex) => void act(() => sessions.runFrom(sessionId, stepIndex))}
         onRerunAll={() => rerun()}
@@ -2411,9 +2728,11 @@ export function SessionScreen({
       {confirmingLeave && (
         <LeaveConfirm
           stepCount={view.steps.length}
-          saveName={saveName}
+          /* 011 UC-011-5 — 이름이 이미 있으면 묻지 않는다 */
+          askName={!testHasName}
+          saveName={effectiveSaveName}
           busy={busy}
-          onSaveNameChange={setSaveName}
+          onSaveNameChange={setNameOverride}
           onSave={saveAndLeave}
           onDiscard={leaveConfirmed}
           onCancel={() => setConfirmingLeave(false)}
@@ -2426,9 +2745,8 @@ export function SessionScreen({
         <RerunConfirm
           stepCount={view.steps.length}
           fromStepIndex={confirmingRerun.fromStepIndex}
-          saveName={saveName}
+          saveName={effectiveSaveName}
           busy={busy}
-          onSaveNameChange={setSaveName}
           onSaveAndRun={() => saveThenRerun(confirmingRerun.fromStepIndex ?? undefined)}
           onDiscardAndRun={() => runRerun(confirmingRerun.fromStepIndex ?? undefined)}
           onCancel={() => setConfirmingRerun(null)}
@@ -2490,7 +2808,6 @@ function RerunConfirm({
   fromStepIndex,
   saveName,
   busy,
-  onSaveNameChange,
   onSaveAndRun,
   onDiscardAndRun,
   onCancel,
@@ -2498,9 +2815,18 @@ function RerunConfirm({
   stepCount: number;
   /** `null` 이면 처음부터. 값이 있으면 그 자리부터 */
   fromStepIndex: number | null;
+  /**
+   * 저장에 실릴 이름. **묻지 않는다** (011 UC-011-5 · FR-364).
+   *
+   * 이 확인은 **저장된 테스트에서만 열린다** — `rerun()` 이 `testId === null` 이면 먼저
+   * 돌아간다. 즉 여기 닿았다는 것은 이름이 이미 있다는 뜻이다.
+   *
+   * 011 이전에는 그런데도 이름칸을 그렸다. 사용자는 「이름을 바꾸려는 것이 아닌데 왜
+   * 묻는가」를 판단해야 했고, 잘못 채우면 이름이 바뀌었다 (사용자 보고 2). 011 이
+   * 조건부로 만들자 그 가지가 **한 번도 참이 되지 않는다**는 것이 드러나 아예 걷었다.
+   */
   saveName: string;
   busy: boolean;
-  onSaveNameChange: (v: string) => void;
   onSaveAndRun: () => void;
   onDiscardAndRun: () => void;
   onCancel: () => void;
@@ -2514,14 +2840,7 @@ function RerunConfirm({
         세션을 버리고 <strong>저장된 정의</strong>를 재생하므로, 저장하지 않은 기록은
         사라집니다.
       </p>
-      <label htmlFor="rerun-save-name">테스트 이름</label>
-      <input
-        id="rerun-save-name"
-        value={saveName}
-        autoFocus
-        onChange={(e) => onSaveNameChange(e.target.value)}
-        placeholder="프로젝트 생성"
-      />
+
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
         <button className="secondary" onClick={onCancel}>
           돌아가기
@@ -2539,6 +2858,7 @@ function RerunConfirm({
 
 function LeaveConfirm({
   stepCount,
+  askName,
   saveName,
   busy,
   onSaveNameChange,
@@ -2547,6 +2867,8 @@ function LeaveConfirm({
   onCancel,
 }: {
   stepCount: number;
+  /** 이름을 물어야 하는가 (011 UC-011-5 · FR-364). 이름이 있으면 거짓 */
+  askName: boolean;
   saveName: string;
   busy: boolean;
   onSaveNameChange: (v: string) => void;
@@ -2560,14 +2882,18 @@ function LeaveConfirm({
       <p className="note">
         기록된 Step {stepCount}개가 있습니다. 저장하지 않고 나가면 사라집니다.
       </p>
-      <label htmlFor="leave-save-name">테스트 이름</label>
-      <input
-        id="leave-save-name"
-        value={saveName}
-        autoFocus
-        onChange={(e) => onSaveNameChange(e.target.value)}
-        placeholder="프로젝트 생성"
-      />
+      {askName && (
+        <>
+          <label htmlFor="leave-save-name">테스트 이름</label>
+          <input
+            id="leave-save-name"
+            value={saveName}
+            autoFocus
+            onChange={(e) => onSaveNameChange(e.target.value)}
+            placeholder="프로젝트 생성"
+          />
+        </>
+      )}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
         <button className="secondary" onClick={onCancel}>
           돌아가기

@@ -121,16 +121,40 @@ a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
 .srow{display:grid;grid-template-columns:26px 1fr 58px 20px auto;gap:10px;align-items:center;
       height:52px;padding:6px 12px 6px 9px;border-bottom:1px solid var(--hair);
       border-left:3px solid transparent;}
+/* 011 — 삭제 대상 체크 칸이 있으면 칸이 다섯 + 조작이다 (UC-011-12).
+   **행 높이는 그대로다** (52px). 칸이 늘어도 높이가 바뀌면 목록에 보이는 행 수가 줄고,
+   그것은 009 가 「행 높이는 국면과 무관하게 고정」으로 정한 성질을 깬다 (FR-304). */
+.srow:has(> [data-cell="check"]){grid-template-columns:22px 26px 1fr 58px 20px auto;}
+.srow-check{display:flex;align-items:center;justify-content:center;}
+/* 체크 상자 — 결말 아이콘(체크 ✓·X·점)과 **형태가 갈린다.** 이것만 사각형이다.
+   입력칸 기본 스타일(높이 32px·폭 100%)을 받지 않게 크기를 명시한다. */
+.srow-check input[type="checkbox"]{width:14px;height:14px;min-height:0;margin:0;padding:0;
+      accent-color:var(--ink);cursor:pointer;}
+.srow-check input[type="checkbox"]:disabled{cursor:default;opacity:.4;}
 .srow .n{font:500 12px/1 var(--font-mono);color:var(--ink-3);text-align:right;}
 .srow .t{min-width:0;display:flex;flex-direction:column;gap:3px;}
 .srow .t b{font:600 13px/1.25 var(--font-sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .srow .m{display:flex;align-items:center;gap:6px;min-width:0;}
 .srow .loc{font:400 11px/1 var(--font-mono);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .srow .d{font:400 11px/1 var(--font-mono);color:var(--ink-3);text-align:right;}
+/* ── 행의 네 상태는 **서로 다른 채널**을 갖는다 (011 UC-011-11) ──────────────
+   011 이전에는 결말·일시정지·지목이 `border-left-color` 와 `background` 둘을 다퉜고,
+   `StepRow` 의 삼항이 셋을 줄 세워 언제나 하나만 남았다 — 통과한 Step 을 고르면 결말이
+   사라지고, 일시정지 행은 골라도 선택이 보이지 않았다 (사용자 보고 7).
+
+     결말      왼쪽 3px 테두리 + 오른쪽 결말 칸의 형태 아이콘
+     일시정지  바탕
+     지목      안쪽 링 (`box-shadow: inset`)
+     삭제 대상 칸 0 의 체크 칸 (`.srow-check`)
+
+   **새 색을 만들지 않았다.** 넷 다 기존 토큰을 쓴다 — 008 의 규율이다. */
 .srow.pass{border-left-color:var(--pass);}
 .srow.fail{border-left-color:var(--fail);background:var(--fail-t);}
 .srow.run{border-left-color:var(--run);background:var(--run-t);}
-.srow.sel{background:var(--sunken-2);border-left-color:var(--ink);}
+/* 지목 — **안쪽 링.** 위 셋의 채널을 건드리지 않는다. 2px 인 이유는 1px 이 행 경계선
+   (`--hair`)과 구별되지 않기 때문이고, 잉크를 쓰는 이유는 지목이 상태가 아니라 「지금
+   보고 있는 곳」이어서다 — 색 계열(통과·실패·경고)에 섞이면 없는 결말을 말하게 된다. */
+.srow.sel{box-shadow:inset 0 0 0 2px var(--ink);}
 /* 칸 5 — 행 조작. 위로·아래로·이 앞에 추가·지우기 (009 계약 §3-2).
    항상 보인다. hover 로 드러내면 없는 조작이 된다. */
 .srow-ops{display:flex;align-items:center;gap:4px;}
@@ -427,6 +451,28 @@ code { font-family: var(--font-mono); font-size: 12px; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 국면 띠 안에서 **그 자리 그대로** 고치는 이름 (011 UC-011-2).
+
+   새 자리를 만들지 않는다 — 표시하던 요소가 곧 입력칸이다. 011 이전에는 이름이 화면에
+   두 번 있었다(국면 띠의 표시 + 팔레트의 입력칸). 같은 값에 자리가 둘이면 어느 쪽을
+   고쳐야 하는지가 사용자의 판단이 된다.
+
+   그래서 평소에는 **표시처럼 보인다** — 테두리도 바탕도 없다. 손을 올리거나 초점이
+   가면 고칠 수 있다는 것을 드러낸다. 잉크는 `.phase-name` 과 같은 700 17px 다. */
+input.phase-name {
+  width: auto;
+  min-height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+}
+input.phase-name:hover:not(:disabled) { border-color: var(--hair-2); }
+input.phase-name:focus { border-color: var(--hair-2); background: var(--panel); outline: none; }
+/* 잠긴 이름은 기본 입력칸의 점선을 쓰지 않는다 — 띠 안에서 점선 상자는 무겁고,
+   왜 잠겼는지는 옆의 사유 문구가 말한다 (FR-234). */
+input.phase-name:disabled { border-color: transparent; color: var(--ink-2); }
+
 /* 국면 띠의 진행 표시 (`font:400 12px/1 · ink-3`). */
 .phase-progress { font: 400 12px/1 var(--font-sans); color: var(--ink-3); }
 
@@ -465,7 +511,11 @@ code { font-family: var(--font-mono); font-size: 12px; }
   text-overflow: ellipsis;
 }
 /* 일시정지가 걸린 행. 확정 디자인 `Paused.dc.html` 이 그 행에 주의 계열을 쓴다. */
-.srow.paused { border-left-color: var(--warn); background: var(--warn-t); }
+/* 일시정지 — **바탕만.** 011 이전에는 왼쪽 테두리도 가져가 결말을 덮었다. 결말과
+   일시정지는 동시에 성립할 수 있는 사실이므로(실패한 Step 에서 멈출 수 있다) 채널을
+   나눈다. 바탕이 실패·실행 중의 바탕과 겹치면 이 규칙이 뒤에 있어 이긴다 — 지금 어디에
+   멈춰 있는지가 더 급한 사실이다. */
+.srow.paused { background: var(--warn-t); }
 /* Step 패널의 바닥 — 그 국면의 Step 조작이 모이는 유일한 자리 (007 FR-235). */
 .steps-ft { border-top: 1px solid var(--hair-2); background: var(--sunken-2); }
 

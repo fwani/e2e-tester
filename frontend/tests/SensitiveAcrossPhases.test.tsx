@@ -73,6 +73,8 @@ function stub(kind: "result" | "definition") {
                   element_wait_ms: 0,
                   tab: 0,
                   tab_wait_ms: 0,
+                  screenshot: null,
+                  screenshot_note: null,
                   error_code: null,
                   error_message: null,
                   locator_attempts: [],

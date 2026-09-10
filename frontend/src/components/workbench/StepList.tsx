@@ -32,9 +32,24 @@
  */
 import type { ReactNode } from "react";
 
-import { displayOutcomeLabel, stepNumber } from "../../lib/wording";
+import type { ActionId } from "../../lib/actions";
+import { isShown, type CapabilityState } from "../../lib/capabilities";
+import { ACTION_LABEL, deleteSelectionCount, displayOutcomeLabel, stepNumber } from "../../lib/wording";
+import { ActionButton } from "./ActionButton";
 import type { Step, TargetLocator } from "../../types/generated/step";
 import type { StepOutcome, WorkbenchStep } from "./model";
+
+/**
+ * Step 패널의 고정 폭 (FR-218a). Step 패널을 가진 확정 디자인 3종이 공유한다.
+ *
+ * **011 이 상수로 뽑았고, 집은 이 파일이다** — 패널을 그리는 곳이 그 폭을 소유한다.
+ * `Workbench` 에 두면 `StepList` 가 `Workbench` 를 다시 가져와 순환 참조가 된다.
+ *
+ * 뽑은 이유: 그 전에는 이 파일의 인라인 `flex` 와 알림 층의 `calc(100% - 492px)` 두 곳에
+ * 숫자로 박혀 있었고, 011 이 Step 상세를 목록 왼쪽에 붙이면서 **세 번째 자리**가
+ * 필요해졌다 (상세 층의 `right`). 셋이 갈리면 상세가 목록을 덮거나 사이가 벌어진다.
+ */
+export const STEP_PANEL_WIDTH = 460;
 
 /**
  * 행 왼쪽 3px 결말 표식 — 결말 → 정본의 `.srow` 변형 (008「계기판」).
@@ -257,6 +272,23 @@ export interface StepListProps {
    * 자리이며, 조작이 국면마다 다른 곳에 있던 것을 여기 하나로 모은다.
    */
   footer?: ReactNode;
+
+  /**
+   * 삭제 대상 고르기 (011 FR-380 · UC-011-14·15).
+   *
+   * **주지 않으면 체크 칸을 그리지 않는다.** 읽기 전용 국면(결과)에는 삭제 대상 선택이
+   * 없고, 그때 칸을 그리면 고를 수 있는 것처럼 보인다 — 근거 있는 부재다 (007 §4-2).
+   */
+  deleteTargets?: {
+    /** 지금 고른 Step id 들 */
+    selected: string[];
+    capability: CapabilityState;
+    /** 전부 고르기·전부 풀기 */
+    allCapability: CapabilityState;
+    onToggle: (stepId: string) => void;
+    onToggleAll: () => void;
+    onRemedy: (action: ActionId) => void;
+  };
 }
 
 /**
@@ -271,7 +303,10 @@ export function StepList({
   headerExtra,
   emptyNotice,
   footer,
+  deleteTargets,
 }: StepListProps) {
+  const chosen = new Set(deleteTargets?.selected ?? []);
+  const allChosen = steps.length > 0 && steps.every((s) => chosen.has(s.id));
   return (
     <div
       data-workbench-step-panel
@@ -281,13 +316,55 @@ export function StepList({
       */
       data-action="step.select"
       className="steps"
-      style={{ flex: "0 0 460px" }}
+      style={{ flex: `0 0 ${STEP_PANEL_WIDTH}px` }}
     >
       <StepPanelHeader authoring={authoring} count={steps.length}>
+        {/*
+          011 UC-011-17 — 고른 개수와 「전부 고르기」. **자리는 패널 머리다.**
+
+          목록 안에 두면 스크롤에 따라 사라지고, 팔레트에 두면 고른 것과 멀어진다.
+          머리는 목록과 함께 늘 보이는 유일한 자리다.
+        */}
+        {deleteTargets !== undefined && isShown(deleteTargets.allCapability) && (
+          <>
+            <span className="why" data-delete-selection-count>
+              {deleteSelectionCount(chosen.size)}
+            </span>
+            <ActionButton
+              action="step.selectAllDeleteTargets"
+              capability={deleteTargets.allCapability}
+              label={allChosen ? "전부 풀기" : undefined}
+              compact
+              onRun={deleteTargets.onToggleAll}
+              onRemedy={deleteTargets.onRemedy}
+            />
+          </>
+        )}
         {headerExtra}
       </StepPanelHeader>
 
-      <div style={{ flex: "1", minHeight: "0", overflowY: "auto" }}>
+      <div
+        /*
+          011 — 체크 칸의 **자리 선언**은 여기 한 번이다 (UC-011-15 · 007 계약 §2-7).
+
+          `step.select` 가 패널에 한 번 선언된 것과 같은 규율이다: 행마다 `data-action` 을
+          달면 자리가 200개가 되고 「한 조작에 한 자리」를 셀 수 없다 (FR-235). 행의 체크는
+          `data-row-action` 으로 표시한다.
+
+          패널 뿌리가 아니라 목록 본문인 이유: 한 요소는 `data-action` 을 하나만 가질 수
+          있고 뿌리는 이미 `step.select` 를 갖는다. 본문은 행들이 사는 자리이므로 「체크가
+          여기 있다」는 선언에 맞다.
+
+          표가 그 국면에서 접으라고 하면 선언도 하지 않는다 — 결과 국면에는 삭제 대상
+          선택이 없다 (UC-011-14).
+        */
+        data-action={
+          deleteTargets !== undefined && isShown(deleteTargets.capability)
+            ? "step.toggleDeleteTarget"
+            : undefined
+        }
+        style={{ flex: "1", minHeight: "0", overflowY: "auto" }}
+      >
         {/*
           007 T071 (FR-243) — **지목한 Step 이 더 이상 없다.**
 
@@ -313,6 +390,15 @@ export function StepList({
             selected={s.id === focusedStepId}
             onSelect={() => onSelect(s.id)}
             actions={rowActions?.(s)}
+            deleteTarget={
+              deleteTargets === undefined || !isShown(deleteTargets.capability)
+                ? undefined
+                : {
+                    chosen: chosen.has(s.id),
+                    capability: deleteTargets.capability,
+                    onToggle: () => deleteTargets.onToggle(s.id),
+                  }
+            }
           />
         ))}
       </div>
@@ -331,6 +417,21 @@ export function StepList({
 }
 
 /**
+ * 행에 붙는 클래스 — **상태마다 하나씩 더한다** (011 UC-011-11).
+ *
+ * 배타 삼항이 아니라 누적이라는 것이 요점이다. 넷 중 셋이 여기서 나오고(결말·일시정지·
+ * 지목), 삭제 대상은 칸 0 의 체크 칸이 스스로 말한다.
+ */
+function rowClassName(step: WorkbenchStep, selected: boolean): string {
+  const classes = ["srow"];
+  const outcome = OUTCOME_MARK[step.outcome];
+  if (outcome !== "") classes.push(outcome);
+  if (step.isPausedHere) classes.push("paused");
+  if (selected) classes.push("sel");
+  return classes.join(" ");
+}
+
+/**
  * Step 행 하나 — **유일한 구현**.
  *
  * 행 전체가 누를 수 있는 요소다. `button` 역할을 갖는 이유는 접근성이자 기존 테스트의
@@ -341,11 +442,18 @@ function StepRow({
   selected,
   onSelect,
   actions,
+  deleteTarget,
 }: {
   step: WorkbenchStep;
   selected: boolean;
   onSelect: () => void;
   actions?: ReactNode;
+  /** 칸 0 의 체크 칸 (011). 없으면 그 칸을 그리지 않는다 (UC-011-14) */
+  deleteTarget?: {
+    chosen: boolean;
+    capability: CapabilityState;
+    onToggle: () => void;
+  };
 }) {
   const dsl = step.step;
   const value = dsl ? stepValue(dsl) : null;
@@ -357,16 +465,60 @@ function StepRow({
          왼쪽 테두리를 갖게 됐으므로, 인라인 스타일을 훑어서는 구분할 수 없다. */
       data-paused-here={step.isPausedHere ? "" : undefined}
       /*
-        v1 은 `15px 18px` + 15px 이름 + 6px 간격이라 행이 125px 였고, 900px 창에서 5행밖에
-        보이지 않았다. 실무 테스트는 20~50 Step 이다. 칸은 그대로 넷이고 정보도 그대로다 —
-        여백과 글자 크기만 내렸다 (5행 → 13행). 그 값은 이제 정본의 `.srow` 가 갖는다.
-
-        결말은 왼쪽 3px 표식으로도 말한다. 색만으로 구분하지 않기 위해서다 — 오른쪽 칸 4 의
-        형태 표식과 짝을 이룬다 (005 FR-141·FR-151). 일시정지가 걸린 행은 결말보다 그
-        사실이 이긴다.
+        011 UC-011-11 — **지목을 속성으로도 말한다.** 색만으로 구분하지 않는다는 규칙이
+        결말(005 FR-141·FR-151)에만 걸려 있었고 지목에는 없었다. 키보드·스크린리더
+        사용자에게 「지금 보고 있는 행」이 전달되지 않았다.
       */
-      className={`srow ${step.isPausedHere ? "paused" : selected ? "sel" : OUTCOME_MARK[step.outcome]}`.trimEnd()}
+      aria-current={selected ? "true" : undefined}
+      /*
+        v1 은 `15px 18px` + 15px 이름 + 6px 간격이라 행이 125px 였고, 900px 창에서 5행밖에
+        보이지 않았다. 실무 테스트는 20~50 Step 이다. 정보도 그대로다 — 여백과 글자 크기만
+        내렸다 (5행 → 13행). 그 값은 이제 정본의 `.srow` 가 갖는다.
+
+        ## 2026-09-10 (011) — **배타 삼항을 없앴다**
+
+        이전 판:
+
+            className={`srow ${isPausedHere ? "paused" : selected ? "sel" : OUTCOME_MARK[…]}`}
+
+        삼항이 셋을 줄 세우므로 **언제나 하나만 남았다.** 통과한 Step 을 고르면 `sel` 이
+        `pass` 를 밀어내 결말이 사라지고, 일시정지 행은 `paused` 가 이겨 골라도 선택이
+        보이지 않았다 (사용자 보고 7 「선택한 스텝을 명확하게 표시한다」).
+
+        이제 셋이 함께 붙고, 정본의 CSS 가 **서로 다른 채널**을 준다 — 결말은 왼쪽 3px
+        테두리, 일시정지는 바탕, 지목은 안쪽 링. 클래스가 겹쳐도 표시가 겹치지 않는다.
+      */
+      className={rowClassName(step, selected)}
     >
+      {/*
+        칸 0 — 삭제 대상 체크 (011 FR-380 · UC-011-13·15).
+
+        **행 본문과 다른 누름 대상이다.** 행을 누르는 것은 지목(상세 열기)이고 이것은
+        삭제 대상 선택이다. 같은 누름에 두 뜻을 주면 사용자는 상세를 보려다 삭제 대상을
+        만든다.
+
+        **형태가 결말 아이콘과 갈린다** (UC-011-13). 결말의 통과는 이미 체크(✓)이고,
+        008 에 「빈 사각형이 체크박스로 읽혔다」는 기록이 있다 — 이번엔 진짜 체크 칸이
+        생기므로 반대 방향의 혼동이 생긴다. 그래서 이 칸은 사각형 상자이고 결말 칸은
+        형태 아이콘이다.
+      */}
+      {deleteTarget !== undefined && (
+        <div data-cell="check" className="srow-check">
+          <input
+            type="checkbox"
+            data-row-action="step.toggleDeleteTarget"
+            aria-label={`${step.label} ${ACTION_LABEL["step.toggleDeleteTarget"]}`}
+            checked={deleteTarget.chosen}
+            disabled={deleteTarget.capability.kind !== "enabled"}
+            onClick={(e) => {
+              // 행 전체가 지목 대상이므로 체크가 지목까지 일으키지 않게 막는다.
+              e.stopPropagation();
+            }}
+            onChange={deleteTarget.onToggle}
+          />
+        </div>
+      )}
+
       {/* 칸 1 — 번호. **모든 국면에서 보인다** (FR-224 · S-08) */}
       <div data-cell="number" className="n">
         {stepNumber(step.index)}

@@ -14,20 +14,61 @@
  * 얹었다. v2 는 색을 상태에만 쓰되 **채우지 않는다**: 옅은 바탕 + 같은 계열 테두리 +
  * 같은 계열 글자다 (`.chip` 과 그 변형). 색이 화면을 지배하지 않으면서 상태는 그대로
  * 읽힌다. 띠 자체도 `#F2F4F7` 바탕 + 잉크 테두리에서 정본의 `.phase` 로 옮겼다.
+ *
+ * ## 2026-09-10 (011) — 이 띠가 저장의 집이 됐다
+ *
+ * 사용자 보고: 「테스트를 저장하는 버튼과 이름을 지정하는게 오른쪽 아래에 존재하는데,
+ * ux 적으로 매우 불편함」. 저장은 작성 흐름의 종착점인데 그 자리가 우측 460px 패널
+ * 바닥 — Step 목록을 다 지난 곳 — 이었다. 저장을 못 찾아 나가면 기록이 사라진다.
+ *
+ * 이 띠로 온 이유는 둘이다. 여기는 이미 **주요 조작**(`run.*`)이 사는 자리이고,
+ * **테스트 이름을 표시하는** 자리이기도 하다. 두 번째가 특히 중요하다 — 이름이 보이는
+ * 곳에서 바로 고치면 같은 값에 입력칸이 둘 생기지 않는다 (UC-011-2). 011 이전에는 이름이
+ * 화면에 두 번 있었다: 여기의 표시와 팔레트의 입력칸.
+ *
+ * 그래서 이 파일이 더한 것은 **`rename`** 하나다. 저장 버튼 자체는 `actions` 로 들어온다 —
+ * 국면 어댑터가 만들고 이 컴포넌트는 자리만 준다. 표시와 소유를 나눈 007 의 배치를
+ * 그대로 따른다.
  */
 import type { ReactNode } from "react";
 
+import type { ActionId } from "../../lib/actions";
+import type { CapabilityState } from "../../lib/capabilities";
+import { ACTION_LABEL } from "../../lib/wording";
 import { chipClassForTone } from "../../theme/tone";
 import type { PhaseBar as PhaseBarModel } from "./model";
+
+/**
+ * 이름을 그 자리에서 고치는 데 필요한 것 (011 · `test.rename`).
+ *
+ * **주지 않으면 표시만 한다.** 이름을 고칠 수 없는 자리(만들기 국면처럼 아직 대상이
+ * 없는 곳)에서 입력칸을 그리지 않기 위한 것이 아니라 — 그런 곳도 자리는 남긴다
+ * (FR-234) — 이 컴포넌트를 쓰는 다른 맥락이 생겼을 때 표시 전용으로 쓸 수 있게 하는
+ * 여지다.
+ */
+export interface PhaseNameEdit {
+  capability: CapabilityState;
+  onChange: (value: string) => void;
+  onRemedy: (action: ActionId) => void;
+  /**
+   * 이름 **옆에** 오는 저장 상태 (011 · 「초안」·「저장됨」·「저장하지 않은 변경 있음」).
+   *
+   * **이름 안에 넣지 않는다.** 011 이전에는 한 문장이었다 — 「TC-001 · 저장됨」. 이름
+   * 자리가 입력칸이 되면 그 문장이 그대로 저장 이름이 된다.
+   */
+  status?: ReactNode;
+}
 
 export interface PhaseBarProps {
   bar: PhaseBarModel;
   testName: string;
+  /** 이름을 그 자리에서 고친다 (011 UC-011-2). 없으면 읽기 전용 표시 */
+  rename?: PhaseNameEdit;
   /** 그 국면의 주요 조작. 오른쪽에 온다 */
   actions: ReactNode;
 }
 
-export function PhaseBar({ bar, testName, actions }: PhaseBarProps) {
+export function PhaseBar({ bar, testName, rename, actions }: PhaseBarProps) {
   return (
     <div data-workbench-phase-bar className="phase" style={{ flex: "0 0 48px" }}>
       {/*
@@ -43,9 +84,7 @@ export function PhaseBar({ bar, testName, actions }: PhaseBarProps) {
         {bar.phaseLabel}
       </div>
 
-      <div className="phase-name" style={{ maxWidth: 300 }} title={testName}>
-        {testName}
-      </div>
+      <PhaseTestName testName={testName} rename={rename} />
 
       {bar.progressLabel !== null && (
         <div className="phase-progress" style={{ flex: "0 0 auto" }}>
@@ -86,10 +125,117 @@ export function PhaseBar({ bar, testName, actions }: PhaseBarProps) {
         `0 0 auto` 였을 때, 여러 조작이 동시에 잠겨 이유 문구가 나란히 붙으면 이 묶음이
         제 내용 폭을 끝까지 요구했고 띠가 창 밖으로 밀려났다. 줄어드는 몫은 이유 문구가
         받는다 — 버튼과 해소 수단은 `ActionButton` 이 `0 0 auto` 로 지킨다.
+
+        011 이 여기에 저장·되돌리기를 더했다. 같은 위험이 커지므로 규칙은 그대로 유지한다.
       */}
       <div className="row" style={{ flex: "0 1 auto", minWidth: 0 }}>
         {actions}
       </div>
+    </div>
+  );
+}
+
+/**
+ * 테스트 이름 — **표시와 편집이 같은 자리다** (011 UC-011-2).
+ *
+ * `data-phase-test-name` 은 검사가 「이름을 보여주는 자리와 고치는 자리가 하나인가」를
+ * 셀 수 있게 하는 표식이다. 좌표나 CSS 가 아니라 영역으로 재면 배치가 바뀌어도 같은
+ * 질문이 성립한다.
+ */
+function PhaseTestName({
+  testName,
+  rename,
+}: {
+  testName: string;
+  rename?: PhaseNameEdit;
+}) {
+  /*
+    `not_applicable` 이면 고칠 수 없는 것이 아니라 **그 국면에 그 조작이 없는** 것이다.
+    이름 자체는 여전히 보여야 하므로 읽기 전용 표시로 떨어진다 — 자리를 없애면 「이
+    화면에는 원래 이름이 없는 것」과 구별되지 않는다.
+  */
+  if (rename === undefined || rename.capability.kind === "not_applicable") {
+    return (
+      <div
+        data-phase-test-name
+        className="phase-name"
+        style={{ maxWidth: 300, minWidth: 0 }}
+        title={testName}
+      >
+        {testName}
+      </div>
+    );
+  }
+
+  const disabled = rename.capability.kind === "disabled";
+  const remedy = rename.capability.kind === "disabled" ? rename.capability.remedy : null;
+  const reasonId = "reason-test.rename";
+
+  return (
+    <div
+      data-phase-test-name
+      style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 420, minWidth: 0 }}
+    >
+      <input
+        data-action="test.rename"
+        aria-label={ACTION_LABEL["test.rename"]}
+        className="phase-name"
+        value={testName}
+        disabled={disabled}
+        maxLength={200}
+        placeholder={ACTION_LABEL["test.rename"]}
+        aria-describedby={disabled ? reasonId : undefined}
+        title={testName}
+        style={{ flex: "0 1 auto", minWidth: 0, maxWidth: 300 }}
+        onChange={(e) => rename.onChange(e.target.value)}
+      />
+      {rename.status !== undefined && rename.status !== null && (
+        <span data-phase-save-state className="chip" style={{ flex: "0 0 auto" }}>
+          {rename.status}
+        </span>
+      )}
+      {/*
+        잠긴 이유 — **`ActionButton` 과 같은 구조를 쓴다** (`flex: 0 1 auto` · `minWidth: 0`
+        · `maxWidth: 260` · 안쪽 텍스트만 말줄임).
+
+        띠에서 줄어드는 몫은 이유 문구가 받는다 (`PhaseBarWidth` 검사). 폭 상한이 없으면
+        긴 사유가 제 내용 폭을 요구해 조작이 화면 밖으로 밀려난다 — 실제로 그 화면이
+        보고됐다. 해소 수단은 `0 0 auto` 로 지켜, 말줄임에 잘리지 않는다 (계약 §4-1 의 3번).
+      */}
+      {disabled && (
+        <span
+          id={reasonId}
+          data-disabled-reason="test.rename"
+          className="why"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            flex: "0 1 auto",
+            minWidth: 0,
+            maxWidth: 260,
+          }}
+        >
+          <span
+            data-disabled-reason-text
+            title={rename.capability.kind === "disabled" ? rename.capability.reason : undefined}
+            style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {rename.capability.kind === "disabled" ? rename.capability.reason : ""}
+          </span>
+          {remedy !== null && (
+            <button
+              type="button"
+              data-remedy-for="test.rename"
+              className="textlink"
+              style={{ flex: "0 0 auto" }}
+              onClick={() => rename.onRemedy(remedy.action)}
+            >
+              {ACTION_LABEL[remedy.action]}
+            </button>
+          )}
+        </span>
+      )}
     </div>
   );
 }

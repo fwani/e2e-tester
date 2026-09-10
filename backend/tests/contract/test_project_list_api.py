@@ -228,3 +228,29 @@ def test_project_made_before_002_still_opens(client: TestClient, home: pathlib.P
     definition = client.get("/api/tests/TC-001")
     assert definition.status_code == 200, definition.text
     assert definition.json()["steps"][0]["type"] == "navigate"
+
+
+# ─── 012 회귀 — 삭제한 프로젝트는 돌아오지 않는다 ──────────────────────────
+
+
+def test_a_trashed_project_does_not_reappear_in_the_listing(client: TestClient) -> None:
+    """FR-421 — 휴지통은 `projects/` 의 **형제**라 스캔 대상이 아니다.
+
+    이 검사가 지키는 것은 「목록에서 치우기」와의 **차이**다. 그쪽은 관리 위치의
+    프로젝트를 없애지 못한다 — 스캔에 다시 걸려 돌아온다. 삭제는 그 문제를 실제로
+    해결해야 하고, 휴지통을 `projects/` 안에 두면 그 성질이 조용히 사라진다.
+    """
+    root = _create(client, "지울 것")
+
+    client.post("/api/project/trash", json={"root": root})
+
+    assert client.get("/api/project/list").json()["projects"] == []
+
+
+def test_forgetting_a_managed_project_still_brings_it_back(client: TestClient) -> None:
+    """DR-009 는 그대로다 (012 FR-422). **삭제가 「목록에서 치우기」를 바꾸지 않는다.**"""
+    root = _create(client, "치우기만 할 것")
+
+    client.request("DELETE", "/api/project/registry", json={"root": root})
+
+    assert [p["root"] for p in client.get("/api/project/list").json()["projects"]] == [root]

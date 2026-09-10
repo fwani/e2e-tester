@@ -45,12 +45,14 @@ describe("조작 목록 (T008)", () => {
    * 2회차에 `record.start` 가 들어와 34개가 됐다 (FR-258b · UC-401).
    * 009 가 `step.insertManual`·`step.moveDown` 을 더해 36개가 됐다 (FR-305 · 계약 §1).
    * 010 이 `mirror.control`·`mirror.useWindow` 를 더해 38개가 됐다 (FR-316 · 계약 §1).
+   * 011 이 복수 삭제 넷을 더해 42개가 됐다 (FR-380~FR-385 · 011 계약 §1).
    *
    * **미러 조작을 표에 넣는 것이 010 의 설계 결정이다** (research R9). 표 밖에 두면
-   * 「각 국면 열이 그 국면 화면의 전부」라는 이 표의 성질이 깨진다.
+   * 「각 국면 열이 그 국면 화면의 전부」라는 이 표의 성질이 깨진다. 011 의 복수 삭제도
+   * 같은 이유로 표 안에 있다 — 대상 개수(0개인가)만 화면이 좁힌다.
    */
-  it("38개다 — 010 계약 §1 의 합계와 같아야 한다", () => {
-    expect(ACTION_IDS).toHaveLength(38);
+  it("42개다 — 011 계약 §1 의 합계와 같아야 한다", () => {
+    expect(ACTION_IDS).toHaveLength(42);
   });
 
   it("중복이 없다", () => {
@@ -59,13 +61,13 @@ describe("조작 목록 (T008)", () => {
 });
 
 describe("권한표 커버리지 (T012)", () => {
-  it("여덟 국면 × 38 조작 전부에 답이 있다", () => {
+  it("열 국면 × 42 조작 전부에 답이 있다", () => {
     for (const phase of PHASES) {
       const map = capabilitiesFor(phase);
       for (const action of ACTION_IDS) {
         expect(map[action], `${phase} × ${action} 이 비어 있다`).toBeDefined();
       }
-      expect(Object.keys(map)).toHaveLength(38);
+      expect(Object.keys(map)).toHaveLength(42);
     }
   });
 
@@ -241,16 +243,52 @@ describe("표의 모양 — 국면별 성질 (§3)", () => {
     }
   });
 
-  it("편집 국면의 브라우저 요구 조작은 「브라우저 열기」로 안내한다 (006 FR-200·FR-202)", () => {
-    for (const action of [
-      "step.repick",
-      "step.recordStart",
-      "step.addNaturalLanguage",
-      "step.addAssertion",
-    ] as ActionId[]) {
+  /**
+   * **011 이 이 검사에서 둘을 뺐다** (FR-374a · 011 계약 UC-011-23).
+   *
+   * `step.recordStart`·`step.addNaturalLanguage` 는 이제 브라우저가 닫혀 있다는 이유로
+   * 잠기지 않는다 — 누르면 화면이 브라우저를 열고 이어서 수행한다. 사용자 보고 3번의
+   * 실체가 이 두 셀이었다: 조작은 이미 있었고 해소 방법도 맞았지만, 사용자가 두 걸음을
+   * 걸어야 해서 녹화와 지시문이 대등하게 보이지 않았다.
+   *
+   * 남은 둘은 규칙이 그대로다. **`step.repick`·`step.addAssertion` 은 사용자가 살아 있는
+   * 화면에서 요소를 지목해야 하므로**(헌법 원칙 IV) 브라우저를 열어 주는 것으로 끝나지
+   * 않는다 — 자동으로 열어도 그다음에 할 일이 남는다.
+   */
+  it("편집 국면의 요소 지목 조작은 「브라우저 열기」로 안내한다 (006 FR-200·FR-202)", () => {
+    for (const action of ["step.repick", "step.addAssertion"] as ActionId[]) {
       const state = capabilityOf("editing", action, ALL_TRUE);
       expect(state.kind, action).toBe("disabled");
       if (state.kind === "disabled") expect(state.remedy?.action).toBe("browser.openAt");
+    }
+  });
+
+  /**
+   * 011 UC-011-23 — 녹화와 지시문은 브라우저 없이도 눌릴 수 있어야 한다.
+   *
+   * `enabled` 를 단언하는 것만으로는 부족하다. 잠기는 **이유가 무엇이면 안 되는지**를
+   * 함께 고정한다 — 다음 사람이 `NEEDS_BROWSER` 를 되살리면 이 검사가 잡는다.
+   */
+  it("편집 국면의 녹화·지시문은 브라우저를 요구하지 않는다 (011 FR-374a)", () => {
+    for (const action of ["step.recordStart", "step.addNaturalLanguage"] as ActionId[]) {
+      const state = capabilityOf("editing", action, ALL_TRUE);
+      expect(state.kind, action).toBe("enabled");
+    }
+  });
+
+  /**
+   * 011 — 두 조작의 전제는 `browser.openAt` 과 **같아야 한다.**
+   *
+   * 세션을 만드는 조작이 됐으므로, 다른 세션이 그 테스트를 잡고 있으면 잠겨야 한다.
+   * 그렇지 않으면 009 T063 이 고친 결함(활성으로 그렸다가 눌리면 서버가 409 로 거절)이
+   * 이 두 셀에서 되살아난다.
+   */
+  it("편집 국면의 녹화·지시문은 세션 충돌에서 「브라우저 열기」와 같이 잠긴다 (011)", () => {
+    const blocked = { ...ALL_TRUE, definitionEditable: false };
+    const open = capabilityOf("editing", "browser.openAt", blocked);
+    for (const action of ["step.recordStart", "step.addNaturalLanguage"] as ActionId[]) {
+      const state = capabilityOf("editing", action, blocked);
+      expect(state.kind, action).toBe(open.kind);
     }
   });
 

@@ -123,6 +123,27 @@ export interface ProjectListResponse {
   warning: string | null;
 }
 
+/** 삭제 확인 단계가 보여줄 것 (012 FR-411). */
+export interface ProjectSummary {
+  root: string;
+  name: string;
+  test_count: number;
+  origin: "managed" | "external";
+}
+
+/** 휴지통으로 옮긴 결과 (012 · contracts/api-contract.md §2). */
+export interface TrashProjectResponse {
+  root: string;
+  name: string;
+  /**
+   * 옮겨진 자리. **이 값이 되돌리는 방법 전부다** (FR-410·FR-425).
+   * `null` 이면 요청 시점에 이미 없어서 목록에서 빼기만 했다 (FR-420).
+   */
+  trashed_to: string | null;
+  /** 이 삭제로 열린 프로젝트가 닫혔는가 (FR-416). */
+  was_open: boolean;
+}
+
 export const project = {
   current: () => get<ProjectView>("/api/project"),
   /** 첫 화면 목록. 관리 위치 스캔 ∪ 레지스트리를 최근 연 순으로 준다. */
@@ -137,6 +158,27 @@ export const project = {
   open: (path: string) => post<ProjectView>("/api/project/open", { path }),
   /** 목록에서만 치운다. **디스크의 프로젝트는 지우지 않는다** (DR-009). */
   forget: (root: string) => del<void>("/api/project/registry", { root }),
+  /**
+   * 삭제 확인 단계가 보여줄 것 (012 FR-411). **목록 응답에 싣지 않는다** — 목록을
+   * 그리려고 프로젝트 N개를 열어 테스트를 세면 첫 화면이 느려진다.
+   */
+  summary: (root: string) =>
+    get<ProjectSummary>(`/api/project/summary?root=${encodeURIComponent(root)}`),
+  /**
+   * 표시 이름만 바꾼다 (012 FR-399·FR-400). 디렉터리 경로는 바뀌지 않는다.
+   *
+   * 응답이 **갱신된 목록 항목 하나**다. 화면은 이것을 그 줄과 바꿔 끼운다 — 목록
+   * 전체를 다시 불러오면 편집 중이던 다른 줄의 상태가 날아간다.
+   */
+  renameProject: (root: string, name: string) =>
+    patch<ProjectListItem>("/api/project/name", { root, name }),
+  /**
+   * 프로젝트를 **휴지통으로 옮긴다** (012 FR-409). 파일을 파괴하지 않는다.
+   *
+   * `forget` 과 헷갈리면 안 되므로 **`delete` 라는 이름을 쓰지 않는다.** 어느 쪽이
+   * 자산을 옮기는 쪽인지 읽는 사람이 헷갈리는 순간, 화면이 잘못된 쪽을 부른다.
+   */
+  trash: (root: string) => post<TrashProjectResponse>("/api/project/trash", { root }),
 };
 
 // ─── 디렉터리 탐색 (DR-005) ─────────────────────────────────────────────────
@@ -220,6 +262,18 @@ export const tests = {
    * 이미지와 경로 문자열만 남았다 (UX U-03).
    */
   artifactUrl: (id: string, kind: ArtifactKind) => `/api/tests/${id}/result/artifacts/${kind}`,
+  /**
+   * 그 Step 이 끝난 시점의 화면 (011 FR-390 · api-contract §3).
+   *
+   * **`artifactUrl` 과 갈라 둔다.** 그쪽은 실행 전체에 하나씩인 산출물이고 `kind` 별
+   * media type 표가 그 전제 위에 있다. Step 별은 인덱스를 갖는 다른 성질이라 `kind` 에
+   * 넣으면 인덱스를 실을 자리가 없다.
+   *
+   * **인덱스는 0-기반이다** — 저장·API·이벤트와 같다. 화면에 보이는 번호로 바꾸는 것은
+   * `stepNumber()` 한 곳뿐이며 여기서 하지 않는다 (FR-138).
+   */
+  stepScreenshotUrl: (id: string, index: number) =>
+    `/api/tests/${id}/result/steps/${index}/screenshot`,
   /** 로그 산출물 본문. 실패는 계약 형태 오류로 온다. */
   artifactText: async (id: string, kind: ArtifactKind): Promise<string> => {
     const resp = await fetch(`/api/tests/${id}/result/artifacts/${kind}`);
@@ -412,6 +466,22 @@ export interface SessionView {
   state: SessionState;
   state_label: string;
   test_id: string | null;
+  /**
+   * 저장된 테스트의 이름 (011 FR-362). 아직 저장된 적 없으면 `null`.
+   *
+   * **`test_id` 와 갈라서 갖는다.** 화면은 「이름이 이미 있는가」로 저장 라벨과 이름
+   * 요구를 정하는데(UC-011-4), id 만 알면 그 이름을 보여 줄 수도 다시 저장할 때 실을
+   * 수도 없다 — 011 이전에 국면 띠가 이름 자리에 「TC-001」을 그리고 있었다.
+   */
+  test_name?: string | null;
+  /**
+   * 저장한 뒤 **더해진** Step 의 id (011 FR-379).
+   *
+   * `has_unsaved_changes` 는 「무언가 달라졌는가」 한 값이고, 이것은 **어느 행이** 아직
+   * 파일에 없는지다. 세션에서는 서버만 그것을 안다 — 저장 시점의 목록을 들고 있는 곳이
+   * 거기다.
+   */
+  unsaved_step_ids?: string[];
   current_step_index: number;
   steps: Step[];
   tabs_open: number;
@@ -667,6 +737,17 @@ export const sessions = {
   },
   deleteStep: (id: string, stepId: string) =>
     del<StepsResponse>(`/api/sessions/${id}/steps/${stepId}`),
+  /**
+   * 여러 Step 을 **한 번에** 지운다 (011 FR-382·FR-388 · api-contract §1).
+   *
+   * `deleteStep` 을 반복하지 않는다 — 중간에 끊기면 부분 적용이 남는다. 서버가 검증 →
+   * 새 목록 구성 → 교체 순으로 처리하므로 「셋 중 둘만 지워진 채 오류」가 되지 않는다.
+   *
+   * **단건은 그대로 남는다.** 한 개를 지우는 행 조작이 그것을 쓰고, 배치로 대체하면
+   * 한 개 삭제가 더 비싸진다.
+   */
+  deleteSteps: (id: string, stepIds: string[]) =>
+    post<StepsResponse>(`/api/sessions/${id}/steps:delete`, { step_ids: stepIds }),
   reorderSteps: (id: string, order: string[]) =>
     post<StepsResponse>(`/api/sessions/${id}/steps:reorder`, { order }),
   /** Step 삽입. `at` 을 생략하면 일시정지 위치다 (FR-035). */

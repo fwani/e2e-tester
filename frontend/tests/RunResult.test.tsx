@@ -47,6 +47,8 @@ function failedResult(): RunResultData {
         ...step(4, "저장", "fail", 5000),
         error_message: '"저장" 버튼을 찾을 수 없습니다.',
         // 004 — 예산을 다 쓰고 못 찾은 실패다. 분류와 실제 대기 시간이 함께 남는다.
+        screenshot: null,
+        screenshot_note: null,
         error_code: "ELEMENT_NOT_READY",
         element_wait_ms: 5000,
         locator_attempts: [
@@ -74,6 +76,8 @@ function step(
     tab: 0,
     tab_wait_ms: 0,
     element_wait_ms: 0,
+    screenshot: null,
+    screenshot_note: null,
     error_code: null,
     resolved_candidate: outcome === "pass" ? "test_id" : null,
     locator_attempts: [],

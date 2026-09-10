@@ -36,7 +36,6 @@ Step 예산을 통째로 쓰고 실패한다). ② 막힌 Step 마다 예산을 
 from __future__ import annotations
 
 import time
-from typing import Any
 
 import pytest
 from playwright.async_api import Error as PlaywrightError

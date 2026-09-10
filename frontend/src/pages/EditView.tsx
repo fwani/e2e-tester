@@ -32,6 +32,7 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 import { StepEditFields } from "../components/StepEditFields";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
+import { BulkDeleteConfirm } from "../components/workbench/BulkDeleteConfirm";
 import { InsertStepForm } from "../components/workbench/InsertStepForm";
 import { ConfirmDelete, StepRowOps } from "../components/workbench/StepRowOps";
 import { Workbench } from "../components/workbench/Workbench";
@@ -39,14 +40,19 @@ import type { Notice, WorkbenchModel, WorkbenchStep } from "../components/workbe
 import type { ActionId } from "../lib/actions";
 import {
   capabilitiesFor,
+  isShown,
   type CapabilityFacts,
   type CapabilityState,
 } from "../lib/capabilities";
 import {
+  DISABLED_REASON,
   EDIT_BLOCKED_BY_RUN,
+  NO_DELETE_SELECTION,
+  NO_STEPS_AFTER,
   OPEN_RUNNING_SESSION,
   PHASE_LABEL,
   SAVE_BEFORE_OPEN_BROWSER,
+  SAVE_NEEDS_NAME,
   SAVE_THEN_OPEN_BROWSER,
   lockedFieldNotice,
   manualStepLabel,
@@ -72,7 +78,18 @@ export interface EditViewProps {
    * 위해서다 (FR-204). 인덱스가 아니라 id 로 넘긴다 — 세션에서 Step 을 지우거나 순서를
    * 바꿨으면 인덱스는 다른 Step 을 가리킨다.
    */
-  onOpenBrowserAt?: (testId: string, stepIndex: number, stepId: string | null) => void;
+  onOpenBrowserAt?: (
+    testId: string,
+    stepIndex: number,
+    stepId: string | null,
+    /**
+     * 도착하면 수행할 지시문 (011 FR-374a · UC-011-23).
+     *
+     * 없으면 도착해서 **기록**을 켠다 (009 FR-291 그대로). 있으면 그 지시문을 수행한다 —
+     * 두 길이 같은 조작 하나로 갈린다.
+     */
+    instruction?: string | null,
+  ) => void;
   /** 실행 중이라는 안내가 가리킨 세션으로 이동한다 (005 FR-126). */
   onOpenSession?: (sessionId: string) => void;
   /** 결과 국면으로 이동 (FR-239 의 왕복). */
@@ -226,6 +243,15 @@ export function EditView({
 }: EditViewProps) {
   const [view, setView] = useState<DefinitionView | null>(null);
   const [ops, setOps] = useState<EditOp[]>([]);
+  /**
+   * 삭제 대상으로 고른 Step (011 FR-380 · UC-011-16).
+   *
+   * **id 로 갖는다** — 인덱스로 가지면 순서 변경 뒤 다른 Step 이 지워진다. 편집 국면은
+   * 순서 변경이 잦은 곳이라 이 성질이 특히 중요하다.
+   */
+  const [deleteSelection, setDeleteSelection] = useState<string[]>([]);
+  /** 복수 삭제 확인 대기 (FR-384). 목록 아래에서 개수·범위를 보인 뒤 지운다 */
+  const [pendingBulk, setPendingBulk] = useState<string[] | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [selected, setSelected] = useState<string | null>(focusStepId);
   const [detailOpen, setDetailOpen] = useState(focusStepId !== null);
@@ -252,6 +278,18 @@ export function EditView({
    * 같은 방식이며 그 선례를 따른다.
    */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /**
+   * 지시문으로 Step 을 더할 때 실어 보낼 문장 (011 FR-374).
+   *
+   * 팔레트의 자연어 입력칸이 이 값을 갖는다. 편집 국면에는 세션이 없으므로 여기서 바로
+   * 보낼 수 없고, 브라우저가 열려 목표 자리에 **도착한 뒤에** 수행된다
+   * (`App` 의 `instructionOnArrival`).
+   *
+   * **훅은 조기 반환 위에 모아 둔다.** 이 파일은 정의를 읽기 전에 `return` 하는 가지가
+   * 여럿이라, 아래에 두면 렌더마다 훅 순서가 달라져 화면이 통째로 죽는다 — 실제로
+   * 011 구현 중에 그 상태를 만들었고 `CapabilityUI` 가 즉시 잡았다.
+   */
+  const [nl, setNl] = useState("");
 
   const load = useCallback(() => {
     void definition
@@ -309,6 +347,24 @@ export function EditView({
   const apply = (op: EditOp) => {
     setSavedName(null);
     setOps((prev) => mergeOps(prev, op));
+  };
+
+  /**
+   * 여러 Step 을 **한 묶음으로** 지운다 (011 FR-382·FR-388).
+   *
+   * **라우트를 더하지 않는다.** 저장 요청이 이미 편집 연산 목록을 받으므로 `delete` 를
+   * 여러 개 실으면 그대로 원자적 복수 삭제다 (research R5 · api-contract §2). 서버가
+   * 하나라도 못 찾으면 파일을 쓰지 않는다.
+   *
+   * **id 로 보낸다.** 인덱스로 보내면 앞의 삭제가 뒤의 인덱스를 밀어 다른 Step 이
+   * 지워진다 — 연산이 id 를 받는 것이 그 함정을 구조적으로 막는다.
+   */
+  const applyBulkDelete = (stepIds: string[]) => {
+    setSavedName(null);
+    setOps((prev) =>
+      stepIds.reduce<EditOp[]>((acc, id) => mergeOps(acc, { op: "delete", step_id: id }), prev),
+    );
+    setDeleteSelection([]);
   };
 
   const revert = (index: number) => setOps((prev) => prev.filter((_, i) => i !== index));
@@ -454,9 +510,9 @@ export function EditView({
     apply({ op: "reorder", order: order as string[] });
   };
 
-  const openBrowserHere = () => {
+  const openBrowserHere = (instruction: string | null = null) => {
     if (current === null || currentIndex < 0 || onOpenBrowserAt === undefined) return;
-    onOpenBrowserAt(testId, currentIndex, current.id);
+    onOpenBrowserAt(testId, currentIndex, current.id, instruction);
   };
 
   /**
@@ -464,9 +520,9 @@ export function EditView({
    *
    * 두 경로가 같은 Step 을 다르게 들고 있는 상태를 만들지 않는다.
    */
-  const openBrowser = () => {
+  const openBrowser = (instruction: string | null = null) => {
     if (pending === 0) {
-      openBrowserHere();
+      openBrowserHere(instruction);
       return;
     }
     setSaving(true);
@@ -476,8 +532,14 @@ export function EditView({
         setView(v);
         setOps([]);
         setSavedName(v.test.name);
-        openBrowserHere();
+        openBrowserHere(instruction);
       })
+      /*
+        011 FR-374c (UC-011-25) — **열기가 실패하면 시작하지 않는다.**
+
+        저장이 실패하면 세션을 열지 않으므로 지시문도 돌지 않는다. 진행 표시를 켰다가
+        끄는 경로가 없다 — 시작한 것처럼 보이면 사용자는 무엇이 남았는지 알 수 없다.
+      */
       .catch((exc: unknown) => setError(describeError(exc)))
       .finally(() => setSaving(false));
   };
@@ -502,6 +564,27 @@ export function EditView({
       case "browser.openAt":
         openBrowser();
         break;
+      /*
+        011 FR-374a·FR-374b (UC-011-23·24) — **두 길이 대등해졌다.**
+
+        이전에는 둘 다 `off("NEEDS_BROWSER", "browser.openAt")` 으로 잠겨 있었다. 조작은
+        있었고 해소 방법도 맞았지만 사용자가 **두 걸음**을 걸어야 했고, 그래서 녹화와
+        지시문이 대등하게 보이지 않았다 (사용자 보고 3).
+
+        이제 누르면 화면이 그 걸음을 대신 걷는다. 저장하지 않은 변경이 있으면 기존
+        「저장하고 열기」가 그대로 걸린다 — 새 확인을 만들지 않는다 (`openBrowser`).
+
+        **둘 다 바꾼다.** 하나만 자동으로 열면 대등성이 다시 깨진다.
+      */
+      case "step.recordStart":
+        openBrowser();
+        break;
+      case "step.addNaturalLanguage":
+        if (nl.trim() !== "") {
+          openBrowser(nl.trim());
+          setNl("");
+        }
+        break;
       case "session.open":
         if (loaded.blocking_session_id) onOpenSession?.(loaded.blocking_session_id);
         break;
@@ -517,6 +600,12 @@ export function EditView({
       case "step.delete":
         if (current !== null) apply({ op: "delete", step_id: current.id });
         break;
+      case "step.deleteSelected":
+        if (deleteSelection.length > 0) setPendingBulk(deleteSelection);
+        break;
+      case "step.deleteAfter":
+        if (afterTargets.length > 0) setPendingBulk(afterTargets);
+        break;
       case "step.moveUp":
         if (currentIndex >= 0) move(currentIndex, -1);
         break;
@@ -528,13 +617,33 @@ export function EditView({
     }
   }
 
+  /**
+   * 「이 뒤 전부」의 대상 (011 FR-383). **화면이 계산한다** — 서버 개념이 아니다.
+   */
+  const afterTargets =
+    currentIndex >= 0 ? dslSteps.slice(currentIndex + 1).map((s) => s.id) : [];
+
   /** 지목한 Step 이 있어야 뜻이 있는 조작. 표는 국면을, 이것은 화면이 아는 사실을 본다. */
   const STEP_SCOPED: ActionId[] = [
     "step.moveUp",
     "step.moveDown",
     "step.delete",
     "browser.openAt",
+    /* 011 — 「어디 뒤인지」를 알아야 뜻이 있다. `deleteSelected` 는 아래에서 따로 좁힌다 */
+    "step.deleteAfter",
   ];
+
+  /** 011 — 고른 것이 없거나 뒤에 아무것도 없으면 잠근다 (FR-385 · UC-011-19). */
+  const narrowByDeleteSelection = (id: ActionId, base: CapabilityState): CapabilityState => {
+    if (base.kind !== "enabled") return base;
+    if (id === "step.deleteSelected" && deleteSelection.length === 0) {
+      return { kind: "disabled", reason: NO_DELETE_SELECTION, remedy: null, visibility: "keep" };
+    }
+    if (id === "step.deleteAfter" && currentIndex >= 0 && afterTargets.length === 0) {
+      return { kind: "disabled", reason: NO_STEPS_AFTER, remedy: null, visibility: "keep" };
+    }
+    return base;
+  };
   const narrowByPick = (id: ActionId, base: CapabilityState) =>
     STEP_SCOPED.includes(id) && currentIndex < 0 && base.kind === "enabled"
       ? ({
@@ -562,6 +671,27 @@ export function EditView({
     저장에 성공한 뒤에만 실행 버튼이 나타나, 사용자는 그것이 저장의 결과인지 원래
     있던 것인지 알 수 없었다.
   */
+  /**
+   * 저장할 수 있는가 (011 · 006 FR-195).
+   *
+   * 편집 국면은 세션과 규칙이 다르다 — **이름을 묻는 일이 원래 없다.** 저장된 정의를
+   * 고치는 화면이므로 이름은 이미 있고, 라벨은 「변경 저장 (N건)」이다. 011 이 이 화면에
+   * 고치는 것은 자리뿐이다 (팔레트 바닥 → 국면 띠).
+   *
+   * 화면이 좁히는 사실 둘: 바꾼 것이 없다, 이름을 비웠다. 뒤는 011 이 더한다 —
+   * 이름 자리가 입력칸이 되면서 비울 수 있게 됐고, 이름 없는 테스트를 만들 수는 없다
+   * (FR-366).
+   */
+  const nameEmpty = test.name.trim() === "";
+  const saveCapability: CapabilityState =
+    capabilities.save.kind !== "enabled"
+      ? capabilities.save
+      : nameEmpty
+        ? { kind: "disabled", reason: SAVE_NEEDS_NAME, remedy: null, visibility: "keep" }
+        : pending === 0
+          ? { kind: "disabled", reason: DISABLED_REASON.C9, remedy: null, visibility: "keep" }
+          : { kind: "enabled" };
+
   const phaseActions = (
     <>
       <ActionButton
@@ -577,6 +707,35 @@ export function EditView({
         onRun={() => runAction("run.from")}
         onRemedy={runAction}
       />
+      {/*
+        ─── 저장·되돌리기 (011 · 007 계약 §2-7) ──────────────────────────────
+
+        011 이전 이 둘의 집은 Step 패널 바닥의 조작 팔레트였다. 편집 화면에서 Step 을
+        고친 뒤 저장하려면 목록을 다 지나 내려와야 했다 (사용자 보고 1).
+
+        **순서는 실행 조작 뒤로 고정한다.** 세션 화면의 국면 띠와 같은 순서다 — 국면마다
+        자리가 바뀌면 근육 기억이 서지 않는다 (FR-235).
+      */}
+      {isShown(saveCapability) && (
+        <ActionButton
+          action="save"
+          capability={saveCapability}
+          label={saveEditsLabel(pending, saving)}
+          compact
+          emphasis
+          onRun={() => runAction("save")}
+          onRemedy={runAction}
+        />
+      )}
+      {isShown(capabilities["edits.revert"]) && (
+        <ActionButton
+          action="edits.revert"
+          capability={capabilities["edits.revert"]}
+          compact
+          onRun={() => runAction("edits.revert")}
+          onRemedy={runAction}
+        />
+      )}
     </>
   );
 
@@ -713,6 +872,7 @@ export function EditView({
     },
     steps,
     focusedStepId: selected,
+    deleteSelection,
     detail:
       detailOpen && current !== null
         ? {
@@ -742,6 +902,30 @@ export function EditView({
       <Workbench
         model={model}
         phaseActions={phaseActions}
+        /*
+          011 UC-011-2 — 이름을 국면 띠 그 자리에서 고친다. 입력할 때마다 `set_name` 연산이
+          쌓이므로 저장하지 않은 변경 건수가 실시간으로 는다 (006 FR-188~FR-190).
+        */
+        phaseName={{
+          capability: capabilities["test.rename"],
+          onChange: (v) => apply({ op: "set_name", name: v }),
+          onRemedy: runAction,
+        }}
+        /* 011 — 삭제 대상 고르기 (UC-011-14·15) */
+        deleteTargets={{
+          selected: deleteSelection,
+          capability: capabilities["step.toggleDeleteTarget"],
+          allCapability: capabilities["step.selectAllDeleteTargets"],
+          onToggle: (stepId) =>
+            setDeleteSelection((prev) =>
+              prev.includes(stepId) ? prev.filter((id) => id !== stepId) : [...prev, stepId],
+            ),
+          onToggleAll: () =>
+            setDeleteSelection((prev) =>
+              prev.length === dslSteps.length ? [] : dslSteps.map((s) => s.id),
+            ),
+          onRemedy: runAction,
+        }}
         headerActions={headerActions}
         /*
           009 FR-298 — 행 조작. `rowActions` 자리는 007 이 열어 두었고 넘기는 화면이
@@ -770,17 +954,43 @@ export function EditView({
         }
         stepEmptyNotice="이 테스트에는 Step 이 없습니다."
         stepFooter={
+          <>
+          {/* 011 UC-011-18 — 복수 삭제 확인. 세션 화면과 **같은 구현**을 쓴다 */}
+          {pendingBulk !== null && (
+            <BulkDeleteConfirm
+              targets={pendingBulk}
+            /* 011 FR-386 — 편집은 연산을 쌓았다가 저장할 때 보낸다 — `edits.revert` 로 되돌아간다 */
+            revertible={true}
+              steps={steps}
+              busy={saving}
+              onConfirm={() => {
+                applyBulkDelete(pendingBulk);
+                setPendingBulk(null);
+              }}
+              onCancel={() => setPendingBulk(null)}
+            />
+          )}
           <ActionPalette
             capabilities={capabilities}
             onRun={runAction}
             onRemedy={runAction}
-            narrow={narrowByPick}
+            narrow={(id, base) => narrowByDeleteSelection(id, narrowByPick(id, base))}
             /*
               이 국면에서 자리가 다른 둘 — 브라우저 열기는 대상 앱 영역(T079), 충돌
               중의 덮어쓰기는 「다시 읽기」와 짝을 이루는 보조 영역(FR-209)이 갖는다.
             */
             hidden={stale !== null ? ["browser.openAt", "save.overwriteStale"] : ["browser.openAt"]}
-            nl={{ value: "", onChange: () => undefined, onSubmit: () => undefined }}
+            /*
+              011 — 편집 국면에서도 지시문으로 Step 을 더한다 (FR-374).
+
+              이전에는 빈 값·무동작이었다. 조작이 `NEEDS_BROWSER` 로 잠겨 있었으므로
+              입력칸도 잠겼고, 사용자에게는 「여기서는 안 되는 것」으로 보였다.
+            */
+            nl={{
+              value: nl,
+              onChange: setNl,
+              onSubmit: () => runAction("step.addNaturalLanguage"),
+            }}
             insert={{
               open: insertOpen,
               form: (
@@ -798,15 +1008,13 @@ export function EditView({
                 />
               ),
             }}
-            name={test.name}
-            onNameChange={(v) => apply({ op: "set_name", name: v })}
             startUrl={test.start_url}
             onStartUrlChange={(v) => apply({ op: "set_start_url", url: v })}
             instruction={test.ai_instruction ?? null}
-            saveLabel={saveEditsLabel(pending, saving)}
             stepCount={dslSteps.length}
             emptyHint="이 테스트에는 Step 이 없습니다."
           />
+          </>
         }
         onSelectStep={(stepId) => {
           setSelected(stepId);
@@ -865,7 +1073,12 @@ export function EditView({
           if (current === null) return;
           apply({ op: "update", step_id: current.id, ...patch });
         }}
-        onOpenBrowser={openBrowser}
+        /*
+          **감싸서 넘긴다.** `openBrowser` 를 그대로 주면 React 가 클릭 이벤트를 첫 인자로
+          넘기고, 011 이 그 자리를 지시문으로 쓰기 시작했으므로 이벤트 객체가 지시문이
+          된다 — 실제로 그 상태를 만들었고 `EditEntryPoints` 가 잡았다.
+        */
+        onOpenBrowser={() => openBrowser()}
         onReloadDefinition={load}
         onOverwriteStale={() => runAction("save.overwriteStale")}
         onAction={runAction}

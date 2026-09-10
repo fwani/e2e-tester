@@ -10,17 +10,34 @@
  * 그래서 순서와 구성을 이 파일이 갖는다. 국면은 **무엇을 할 수 있는지**만 권한표로
  * 넘기고, 무엇을 그릴지는 정하지 않는다.
  *
- * ## 조작의 집 (ui-contract §4-1 의 배치 규칙)
+ * ## 조작의 집
  *
- *   국면 띠      run.* (실행·일시정지·계속·중지·속도)
+ * **정본은 007 계약 §2-7 이다.** 011 이 그 표를 계약으로 올렸다 — 그 전까지 규칙은 이
+ * 주석에만 있었고, 주석은 자기 근거를 계약에 없는 절(§4-1 「비활성의 의무」)로 적고
+ * 있었다. 코드 주석이 유일한 근거이면 그것을 옮기는 변경이 계약 개정으로 보이지 않는다.
+ *
+ *   국면 띠      run.* (실행·일시정지·계속·중지·속도) · save · edits.revert · test.rename
  *   헤더          session.open · result.show · nav.editStep · nav.back
- *   대상 앱 영역  browser.openAt · artifact.select · tab.select
- *   Step 행       step.select
+ *   대상 앱 영역  browser.openAt · artifact.select · tab.select · mirror.*
+ *   Step 행       step.select · step.toggleDeleteTarget
+ *   Step 패널 머리 step.selectAllDeleteTargets
  *   Step 상세     step.update · step.markSensitive · step.repick
- *   **이 팔레트** 나머지 전부 — Step 작성·순서·삭제, 테스트 속성, 저장
+ *   **이 팔레트** 나머지 전부 — Step 작성·순서·삭제 · test.setStartUrl · ai.compose
  *
  * 「해당 없음」인 조작은 `ActionButton` 이 스스로 그리지 않는다. 그래서 국면이 달라도
  * 코드가 같고, 화면에는 그 국면의 조작만 남는다.
+ *
+ * ## 2026-09-10 (011) — 저장과 이름이 이 파일을 떠났다
+ *
+ * 사용자 보고: 「테스트를 저장하는 버튼과 이름을 지정하는게 오른쪽 아래에 존재하는데,
+ * ux 적으로 매우 불편함」. 이 팔레트는 우측 460px Step 패널의 **바닥**이다 — 저장하려면
+ * Step 목록을 다 지나 내려와야 했고, 못 찾고 나가면 기록이 사라졌다.
+ *
+ * `save`·`edits.revert`·`test.rename` 은 국면 띠로 갔다 (`PhaseBar.tsx`).
+ *
+ * **`test.setStartUrl`·`ai.compose` 는 남았다.** 국면 띠에 표시되지 않는 값이므로
+ * 「보이는 곳에서 고친다」 논리가 성립하지 않고, 48px 한 줄은 긴 URL 도 여러 줄 지시문도
+ * 담을 수 없다 (research R1).
  */
 import type { ReactNode } from "react";
 
@@ -37,18 +54,42 @@ import { ActionButton } from "./ActionButton";
  * 집이고, 두 곳에 두면 같은 라벨이 두 자리에 생긴다 (FR-235).
  */
 export const PALETTE_ACTIONS: ActionId[] = [
-  "step.recordStart",
-  "step.recordStop",
+  /*
+    `step.recordStart`·`step.recordStop`·`step.addNaturalLanguage` 는 여기 없다 — 011 이
+    셋을 **Step 을 더하는 묶음**으로 모았다 (`AUTHORING_ROW` · FR-374).
+
+    이전에는 자연어 입력칸이 버튼 줄 **위**에 따로 있고 녹화 시작은 버튼 줄 **안**에
+    섞여 있었다. 같은 일을 하는 두 길이 다른 무게로 놓이면 사용자는 한쪽을 「주된 방법」
+    으로 읽는다 — 그것이 사용자 보고 3번의 절반이다.
+  */
   "step.addAssertion",
   "step.insertManual",
   "step.moveUp",
   "step.moveDown",
   "step.delete",
+  /*
+    011 복수 삭제 (FR-382·FR-383). **`step.delete` 바로 뒤다** — 셋이 같은 종류의 일이므로
+    묶여 있어야 하고, 순서가 「하나 → 고른 것 → 이 뒤 전부」로 범위가 넓어지는 차례여야
+    사용자가 무엇을 누르는지 헷갈리지 않는다.
+
+    행마다의 체크(`step.toggleDeleteTarget`)와 전부 고르기는 여기 없다 — 그것들의 집은
+    Step 행과 패널 머리다 (007 계약 §2-7).
+  */
+  "step.deleteSelected",
+  "step.deleteAfter",
   "run.fromHere",
   "browser.openAt",
   "ai.start",
   "save.overwriteStale",
 ];
+
+/**
+ * Step 을 더하는 두 길이 나란히 서는 줄 (011 FR-374).
+ *
+ * 자연어 입력칸 바로 아래다. `PALETTE_ACTIONS` 에서 뽑아낸 이유는 자리이지 성격이
+ * 아니다 — 같은 묶음에 있어야 대등하게 읽힌다.
+ */
+const AUTHORING_ROW: ActionId[] = ["step.recordStart", "step.recordStop"];
 
 export interface ActionPaletteProps {
   capabilities: CapabilityMap;
@@ -82,9 +123,11 @@ export interface ActionPaletteProps {
     form: ReactNode;
   };
 
-  /** 테스트 이름 (`test.rename`). 세션에서는 저장 이름을 겸한다 */
-  name: string;
-  onNameChange: (v: string) => void;
+  /*
+    **테스트 이름은 이 팔레트가 받지 않는다** (011). 국면 띠가 표시와 편집을 함께 갖고,
+    화면은 `Workbench` 의 `phaseName` 으로 그것을 넘긴다 (UC-011-2). 여기 다시 받으면
+    같은 값에 자리가 둘이 된다.
+  */
   /** 시작 주소 (`test.setStartUrl`) */
   startUrl: string;
   onStartUrlChange: (v: string) => void;
@@ -92,11 +135,16 @@ export interface ActionPaletteProps {
   instruction: string | null;
   onInstructionChange?: (v: string) => void;
 
-  /** 저장 버튼의 라벨. 세션과 편집이 규칙이 다르다 (005 FR-156 · 006 FR-195) */
-  saveLabel: string;
-  /** 표가 허락해도 화면이 아는 사실로 더 좁힐 때 (이름이 비었다 · 바꾼 것이 없다) */
-  saveCapability?: CapabilityState;
-  /** 저장 성공 확인줄 등, 저장 블록 아래에 붙는 것 */
+  /*
+    **저장 버튼도 이 팔레트가 받지 않는다** (011). 라벨과 좁힌 권한은 국면 띠의 저장
+    조작이 갖는다 — 화면이 `phaseActions` 로 만들어 넘긴다 (007 계약 §2-7).
+  */
+  /**
+   * 저장 성공 확인줄 (005 FR-154·FR-158).
+   *
+   * **조작이 아니라 결과 보고이므로 여기 남는다.** 무엇이 저장됐는지는 Step 목록을
+   * 보면서 확인하는 사실이고, 국면 띠 48px 한 줄은 그 문장을 담을 수 없다.
+   */
   saveNotice?: ReactNode;
 
   stepCount: number;
@@ -120,14 +168,10 @@ export function ActionPalette({
   labels = {},
   narrow,
   nl,
-  name,
-  onNameChange,
   startUrl,
   onStartUrlChange,
   instruction,
   onInstructionChange,
-  saveLabel,
-  saveCapability,
   saveNotice,
   stepCount,
   emptyHint,
@@ -164,24 +208,43 @@ export function ActionPalette({
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="lbl">지금 할 수 있는 것</div>
 
-      {/* 자연어로 Step 추가 (FR-078). 쓸 수 없으면 입력칸을 잠그고 이유는 버튼이 말한다. */}
-      {shown("step.addNaturalLanguage") && (
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <input
-            aria-label="자연어로 Step 추가"
-            value={nl.value}
-            disabled={!usable("step.addNaturalLanguage")}
-            onChange={(e) => nl.onChange(e.target.value)}
-            placeholder="생성된 프로젝트가 목록에 있는지 확인해."
-            className="ai"
-            style={{ flex: "1", minWidth: 0 }}
-          />
-          {button("step.addNaturalLanguage", () => {
-            if (nl.value.trim() === "") return;
-            nl.onSubmit();
-          })}
+      {/*
+        ─── Step 을 더하는 두 길 (011 FR-374 · UC-011-23) ──────────────────────
+
+        **같은 묶음, 같은 무게다.** 지시문은 입력칸 + 버튼이고 녹화는 버튼 하나라 모양이
+        다를 수밖에 없지만, 자리가 붙어 있고 버튼이 같은 `compact` 형이면 둘 중 하나가
+        「주된 방법」으로 읽히지 않는다.
+
+        011 이전에는 입력칸이 버튼 줄 **위**에 따로 있고 녹화 시작은 버튼 줄 **안**에
+        다른 조작들과 섞여 있었다. 사용자 보고: 「스텝을 새로 녹화하는것처럼, ai
+        지시문으로도 스텝을 추가할 수 있어야한다」.
+
+        쓸 수 없으면 입력칸을 잠그고 이유는 버튼이 말한다 (FR-234).
+      */}
+      {AUTHORING_ROW.some(shown) || shown("step.addNaturalLanguage") ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {shown("step.addNaturalLanguage") && (
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <input
+                aria-label="자연어로 Step 추가"
+                value={nl.value}
+                disabled={!usable("step.addNaturalLanguage")}
+                onChange={(e) => nl.onChange(e.target.value)}
+                placeholder="생성된 프로젝트가 목록에 있는지 확인해."
+                className="ai"
+                style={{ flex: "1", minWidth: 0 }}
+              />
+              {button("step.addNaturalLanguage", () => {
+                if (nl.value.trim() === "") return;
+                nl.onSubmit();
+              })}
+            </div>
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
+            {AUTHORING_ROW.filter(shown).map((action) => button(action, () => onRun(action)))}
+          </div>
         </div>
-      )}
+      ) : null}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
         {PALETTE_ACTIONS.filter(shown).map((action) => button(action, () => onRun(action)))}
@@ -193,23 +256,18 @@ export function ActionPalette({
       */}
       {insert?.open === true && insert.form}
 
-      {/* ─── 테스트 속성 (FR-247 — 통합으로 사라지는 조작이 없다) ────────────── */}
-      {(shown("test.rename") || shown("test.setStartUrl")) && (
+      {/*
+        ─── 테스트 속성 (FR-247 — 통합으로 사라지는 조작이 없다) ─────────────────
+
+        **`test.rename` 은 011 에서 빠졌다.** 이름은 국면 띠가 이미 표시하고 있었고,
+        여기에도 입력칸이 있어 같은 값에 자리가 둘이었다. 011 이 표시와 편집을 국면 띠
+        하나로 합쳤다 (UC-011-2).
+      */}
+      {shown("test.setStartUrl") && (
         <div
           className="rule-top"
           style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 12 }}
         >
-          {shown("test.rename") && (
-            <Field
-              action="test.rename"
-              label="테스트 이름"
-              capability={capabilityOf("test.rename")}
-              value={name}
-              onChange={onNameChange}
-              maxLength={200}
-              onRemedy={onRemedy}
-            />
-          )}
           {shown("test.setStartUrl") && (
             <Field
               action="test.setStartUrl"
@@ -242,36 +300,20 @@ export function ActionPalette({
         />
       )}
 
-      {/* ─── 저장 (005 FR-155·FR-156 · 006 FR-195) ────────────────────────── */}
-      {shown("save") && (
-        <div
-          className="rule-top"
-          style={{
-            display: "flex",
-            gap: 10,
-            paddingTop: 12,
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-          }}
-        >
-          <ActionButton
-            action="save"
-            capability={saveCapability ?? capabilityOf("save")}
-            label={saveLabel}
-            compact
-            emphasis
-            onRemedy={onRemedy}
-            onRun={() => onRun("save")}
-          />
-          {shown("edits.revert") && button("edits.revert", () => onRun("edits.revert"))}
-          {/*
-            `save.overwriteStale` 은 여기 없다. 그것은 **두 선택 중 하나**이고(FR-209),
-            다른 하나(「바뀐 내용으로 다시 읽기」)와 나란히 있어야 무엇을 버리는지 고를
-            수 있다. 그 짝의 집은 국면 보조 영역의 충돌 블록이다.
-          */}
-        </div>
-      )}
+      {/*
+        ─── 저장은 여기 없다 (011) ────────────────────────────────────────────
 
+        `save`·`edits.revert` 의 집은 **국면 띠**다 (007 계약 §2-7 · 011 UC-011-1).
+        여기 다시 그리면 같은 조작이 두 자리를 갖고, `CapabilityUI` 의 「한 조작에 한
+        자리」와 `LabelUniqueness` 가 함께 잡는다.
+
+        `save.overwriteStale` 도 여기 없다. 그것은 **두 선택 중 하나**이고(FR-209), 다른
+        하나(「바뀐 내용으로 다시 읽기」)와 나란히 있어야 무엇을 버리는지 고를 수 있다.
+        그 짝의 집은 국면 보조 영역의 충돌 블록이다.
+
+        저장 확인줄(`saveNotice`)은 **남는다.** 그것은 조작이 아니라 결과 보고이고, 자리는
+        Step 목록 곁이 맞다 — 무엇이 저장됐는지는 목록을 보면서 확인하는 사실이다.
+      */}
       {saveNotice}
 
       {stepCount === 0 && emptyHint !== undefined && (

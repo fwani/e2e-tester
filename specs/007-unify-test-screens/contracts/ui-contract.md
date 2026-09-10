@@ -240,6 +240,44 @@
 같은 일이 다른 이름으로 여러 곳에 있었다 — Step 지목이 `onSelectStep`(3곳) ·
 `onEditStep`(2곳) · 내부 상태(1곳)로 셋이었다.
 
+**이후 개정** — 010 이 미러 조작 둘(`mirror.control`·`mirror.useWindow`)을 더해 36,
+011 이 복수 삭제 넷을 더해 **42** 가 됐다. 011 이 더한 넷은
+[011 계약 §1](../../011-authoring-ux-repair/contracts/ui-contract.md) 이 갖는다.
+
+### 2-7. 조작의 집 — 배치 규칙 (FR-235)
+
+FR-235 는 「같은 조작은 어느 국면에서나 같은 자리에 같은 라벨로」를 요구한다. 그 **자리**를
+정하는 것이 이 표다.
+
+> **2026-09-10 (011) — 이 표를 계약으로 올렸다.** 그 전까지 이 규칙은
+> `frontend/src/components/workbench/ActionPalette.tsx` 의 머리말 주석에만 있었고, 그
+> 주석은 자기 근거를 「ui-contract §4-1」로 적었는데 §4-1 은 「비활성의 의무」다 — 계약에
+> 없는 절을 가리키고 있었다. 코드 주석이 유일한 근거이면 그것을 옮기는 변경(011 이 저장을
+> 국면 띠로 옮긴 일)이 계약 개정으로 보이지 않는다.
+
+| 자리 | 사는 조작 |
+|---|---|
+| ② 국면 띠 | `run.*` (실행·일시정지·계속·중지·속도) · **`save` · `edits.revert` · `test.rename`** (011) |
+| ① 헤더 | `session.open` · `result.show` · `nav.editStep` · `nav.back` |
+| ③-a 대상 앱 영역 | `browser.openAt` · `artifact.select` · `tab.select` · `mirror.control` · `mirror.useWindow` |
+| Step 행 | `step.select` · **`step.toggleDeleteTarget`** (011) |
+| Step 패널 머리 | **`step.selectAllDeleteTargets`** (011) |
+| Step 상세 | `step.update` · `step.markSensitive` · `step.repick` |
+| 조작 팔레트 | 나머지 전부 — Step 작성(`step.recordStart`·`recordStop`·`addNaturalLanguage`·`addAssertion`·`insertManual`) · 순서(`step.moveUp`·`moveDown`) · 삭제(`step.delete`·**`deleteSelected`**·**`deleteAfter`**) · 테스트 속성(`test.setStartUrl`·`ai.compose`) · `ai.start` · `save.overwriteStale` |
+
+**011 이 옮긴 세 조작** (`save`·`edits.revert`·`test.rename`): 팔레트 → 국면 띠.
+
+근거는 실사용 보고다 — 「테스트를 저장하는 버튼과 이름을 지정하는게 오른쪽 아래에 존재하는데,
+ux 적으로 매우 불편함」. 저장은 작성 흐름의 종착점인데 그 자리가 우측 460px 패널 바닥, 즉
+Step 목록을 다 지난 곳에 있었다. 저장을 못 찾아 나가면 기록이 사라진다.
+
+국면 띠로 간 이유는 그것이 이미 **주요 조작**이 사는 자리이고, **테스트 이름을 표시하는**
+자리이기도 하기 때문이다. 이름이 보이는 곳에서 바로 고치면 같은 값에 입력칸이 둘 생기지
+않는다 (011 UC-011-2).
+
+`test.setStartUrl`·`ai.compose` 는 팔레트에 **남았다**. 국면 띠에 표시되지 않는 값이므로
+「보이는 곳에서 고친다」 논리가 성립하지 않고, 48px 한 줄은 긴 URL 을 담을 수 없다.
+
 ---
 
 ## 3. 권한표

@@ -51,6 +51,8 @@ function failedResult(): RunResultData {
       tab: 0,
       tab_wait_ms: 0,
       element_wait_ms: 0,
+      screenshot: null,
+      screenshot_note: null,
       error_code: i === 5 ? ("ELEMENT_NOT_READY" as const) : null,
       resolved_candidate: null,
       locator_attempts: [],

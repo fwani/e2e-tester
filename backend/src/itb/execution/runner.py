@@ -33,7 +33,11 @@ from itb.domain.run_result import (
 )
 from itb.domain.step import Step
 from itb.domain.test_case import Test
-from itb.execution.artifacts import ArtifactCollector, ArtifactPaths
+from itb.execution.artifacts import (
+    ArtifactCollector,
+    ArtifactPaths,
+    clear_step_screenshots,
+)
 from itb.execution.session import BrowserSession
 from itb.execution.state_machine import Command, InvalidTransitionError, SessionState
 from itb.execution.step_executor import StepExecutor, StepFailure
@@ -410,6 +414,20 @@ class ReplayEngine:
     """중지 시점의 Step (005 FR-131)."""
 
     def __post_init__(self) -> None:
+        """결과 뼈대를 만들고 **이전 실행의 Step 화면을 버린다** (011 FR-396a).
+
+        보관 정책이 여기 한 줄로 끝난다 (clarify 결정 3 — 테스트당 최근 실행 1회분).
+        `.runs/<테스트ID>/` 가 이미 테스트당 하나이므로 실행 시작에 비우면 누적되지 않는다.
+
+        **엔진이 만들어질 때가 실행의 시작이다.** `run_step` 에서 첫 번째만 골라 비우려면
+        「첫 번째인가」를 따로 들고 있어야 하고, 이어서 실행(`start_index > 0`)에서는 그
+        판정이 틀린다 — 그때 비우면 이미 통과한 Step 의 화면이 사라진다.
+
+        비우기 실패는 실행을 막지 않는다 (FR-396c).
+        """
+        note = clear_step_screenshots(self.run_dir)
+        if note is not None:
+            self.collector.startup_notes.append(note)
         self.results = [
             StepResult(
                 step_id=step.id,
@@ -564,6 +582,7 @@ class ReplayEngine:
                 element_wait_ms=exc.element_wait_ms,
                 error=error_body(exc.code, result.error_message),
             )
+            await self._capture_step_screenshot(result, index, step.tab)
             await session.emit(
                 "step_finished",
                 step_id=step.id,
@@ -583,6 +602,7 @@ class ReplayEngine:
         result.resolved_candidate = record.resolved_candidate
         result.candidate_disagreement = record.disagreement
 
+        await self._capture_step_screenshot(result, index, step.tab)
         await session.emit(
             "step_finished",
             step_id=step.id,
@@ -612,6 +632,9 @@ class ReplayEngine:
             scrubber,
             failure_page=self._failure_page() if not passed else None,
         )
+
+        # 011 FR-394 — 실패한 Step 의 화면은 실패 시점 산출물과 **같은 파일**이다.
+        self._share_failure_screenshot(artifacts)
 
         result = self._build(passed, session_lost, artifacts)
         try:
@@ -686,6 +709,61 @@ class ReplayEngine:
             ),
             session_lost=session_lost,
         )
+
+    def _share_failure_screenshot(self, artifacts: ArtifactPaths) -> None:
+        """실패한 Step 의 화면을 `failure.png` 로 **가리키게** 한다 (011 FR-394).
+
+        같은 화면이 두 벌 남지 않게 하는 것이 요점이다. 실패 시점 스크린샷은 이미
+        `finalize()` 가 찍고 있었고, 011 이 Step 별 화면을 더하면서 실패한 Step 만 두 번
+        찍힐 수 있게 됐다.
+
+        **경로만 맞춘다.** Step 촬영이 성공했으면 그 파일이 이미 있으므로 굳이 바꾸지
+        않는다 — 여기서 채우는 것은 Step 촬영이 실패했는데 실패 시점 촬영은 성공한
+        경우다 (실행이 끝난 뒤에 찍으므로 화면이 더 안정적일 수 있다).
+        """
+        if artifacts.failure_screenshot is None or self.failed_index is None:
+            return
+        if self.failed_index >= len(self.results):  # pragma: no cover - 방어
+            return
+        failed = self.results[self.failed_index]
+        if failed.screenshot is None:
+            failed.screenshot = artifacts.failure_screenshot
+            failed.screenshot_note = None
+
+    async def _capture_step_screenshot(
+        self, result: StepResult, index: int, tab: int
+    ) -> None:
+        """이 Step 이 끝난 시점의 화면을 남긴다 (011 FR-389·FR-395).
+
+        ## 왜 여기인가
+
+        **`duration_ms` 를 확정한 **뒤**에 부른다.** 촬영은 수백 ms 가 걸릴 수 있고, 그것이
+        Step 실행 시간에 들어가면 시간 초과 판정이 바뀐다 (FR-395 · SC-611). 호출 순서가
+        그 성질을 지키는 전부이므로 두 호출 지점 모두 `result.duration_ms = …` 아래에 있다.
+
+        ## 실패해도 실행을 멈추지 않는다 (FR-398)
+
+        산출물은 결말의 입력이 아니다. 화면이 이미 닫혔거나 디스크가 읽기 전용이어도 결말은
+        그대로여야 한다 — 그래서 사유만 결과에 남기고 예외를 밖으로 내지 않는다.
+        """
+        handle = self.session.find_tab(tab)
+        page = handle.page if handle is not None and not handle.closed else None
+        if page is None:
+            open_tabs = self.session.open_tabs()
+            page = open_tabs[-1].page if open_tabs else None
+        if page is None:
+            result.screenshot_note = "이 Step 이 끝난 시점에 열려 있는 화면이 없었습니다."
+            return
+
+        try:
+            path, note = await self.collector.write_step_screenshot(
+                self.run_dir, self.project_root, self._scrubber(), page, index
+            )
+        except Exception as exc:  # noqa: BLE001 - 산출물이 실행을 멈추지 않는다 (FR-398)
+            result.screenshot_note = f"이 Step 의 화면을 남기지 못했습니다: {type(exc).__name__}"
+            return
+        result.screenshot = path
+        result.screenshot_note = note
 
     def _failure_page(self) -> Page | None:
         """실패 시점 스크린샷을 찍을 화면 (FR-052).

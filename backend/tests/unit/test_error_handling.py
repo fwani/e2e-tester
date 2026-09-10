@@ -340,3 +340,37 @@ def test_element_codes_carry_a_next_action() -> None:
     ):
         body = error_body(code, "요소를 찾을 수 없습니다.")
         assert body["next_action"], f"{code} 에 다음 행동 안내가 없다"
+
+
+# ─── 012 — 새 코드가 두 대응표에 빠지지 않게 한다 ───────────────────────────
+
+
+def test_every_error_code_has_category_and_next_action() -> None:
+    """모든 `ErrorCode` 가 `CATEGORY`·`NEXT_ACTION` 양쪽에 있어야 한다 (012 T010).
+
+    **이 구멍은 코드가 늘 때마다 다시 열린다.** 대응표는 `error_payload()` 가 참조하며,
+    빠진 코드로 오류를 만들면 `KeyError` 로 **오류 응답 자체가 깨진다** — 사용자는 무슨
+    일이 났는지도 알 수 없다. 코드를 더한 사람이 표 두 개를 함께 고쳤는지 세는 것이
+    개별 코드마다 단언을 쓰는 것보다 확실하다.
+    """
+    from itb.domain.error import CATEGORY, NEXT_ACTION
+    from itb.domain.error import ErrorCode as DomainErrorCode
+
+    missing_category = [c for c in DomainErrorCode if c not in CATEGORY]
+    missing_action = [c for c in DomainErrorCode if not NEXT_ACTION.get(c)]
+
+    assert not missing_category, f"CATEGORY 에 없는 코드: {missing_category}"
+    assert not missing_action, f"NEXT_ACTION 에 없거나 빈 코드: {missing_action}"
+
+
+def test_project_delete_failed_says_the_project_is_still_there() -> None:
+    """012 FR-414 — 옮기기 실패 후 사용자가 가장 먼저 묻는 것에 답한다.
+
+    "내 테스트는 어떻게 됐나". 계약상 답이 확정되어 있다 — 레지스트리를 건드리기 전에
+    실패하므로 프로젝트는 원래 자리에 있다. 그 사실이 안내에 없으면 사용자는 자산을
+    잃었다고 읽는다.
+    """
+    from itb.domain.error import NEXT_ACTION
+    from itb.domain.error import ErrorCode as DomainErrorCode
+
+    assert "그대로" in NEXT_ACTION[DomainErrorCode.PROJECT_DELETE_FAILED]

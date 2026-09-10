@@ -81,6 +81,7 @@ export function workbenchModel(
     work: null,
     steps: workbenchSteps(),
     focusedStepId: null,
+    deleteSelection: [],
     detail: null,
     capabilities: capabilitiesFor(phase, ALL_FACTS),
     notices: [],

@@ -6,18 +6,21 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import pathlib
 
 import pytest
 
 from itb.storage.paths import (
     PathOutsideHomeError,
+    allocate_trash_path,
     allocate_workspace_path,
     config_dir,
     data_dir,
     registry_file,
     resolve_within_home,
     slugify,
+    trash_dir,
     workspace_dir,
 )
 
@@ -160,3 +163,54 @@ def test_allocate_avoids_collision_instead_of_failing(tmp_path: pathlib.Path) ->
     (tmp_path / "proj-2").mkdir()
 
     assert allocate_workspace_path("proj", root=tmp_path) == tmp_path / "proj-3"
+
+
+# ─── 휴지통 (012 FR-409·FR-415·FR-421) ──────────────────────────────────────
+
+
+def test_trash_dir_follows_xdg_and_is_a_sibling_of_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """휴지통은 ``projects/`` 의 **형제**여야 한다 (012 FR-421).
+
+    스캔 대상은 ``workspace_dir()`` 뿐이므로, 휴지통이 그 **아래**에 있으면 스캔 제외
+    규칙을 새로 만들어야 하고 그것을 빠뜨린 경로에서 지운 프로젝트가 목록에 돌아온다.
+    """
+    monkeypatch.setenv("XDG_DATA_HOME", "/dat")
+
+    assert trash_dir() == pathlib.Path("/dat/itb/trash")
+    assert workspace_dir() not in trash_dir().parents
+    assert trash_dir() != workspace_dir()
+    assert trash_dir().parent == workspace_dir().parent
+
+
+def test_trash_path_carries_the_time_and_the_directory_name(tmp_path: pathlib.Path) -> None:
+    """자리 이름만으로 "언제 지운 어느 프로젝트" 가 읽혀야 한다 (012 research R3)."""
+    when = dt.datetime(2026, 9, 10, 7, 15, 30, tzinfo=dt.UTC)
+
+    allocated = allocate_trash_path(tmp_path / "결제-회귀", when=when, base=tmp_path / "trash")
+
+    assert allocated.name == "20260910-071530-결제-회귀"
+    assert allocated.parent == tmp_path / "trash"
+
+
+def test_trash_path_never_reuses_an_occupied_slot(tmp_path: pathlib.Path) -> None:
+    """같은 초에 두 번 지워도 덮어쓰지 않는다 (012 FR-415 · SC-619).
+
+    시각 접두사만으로는 부족하다 — 연타나 자동화로 같은 초에 두 번 지우는 일이 실제로
+    가능하고, 그때 덮어쓰면 먼저 지운 사람의 테스트 정의가 사라진다.
+    """
+    base = tmp_path / "trash"
+    when = dt.datetime(2026, 9, 10, 7, 15, 30, tzinfo=dt.UTC)
+    root = tmp_path / "같은이름"
+
+    first = allocate_trash_path(root, when=when, base=base)
+    first.mkdir(parents=True)
+    second = allocate_trash_path(root, when=when, base=base)
+
+    assert second != first
+    assert second.name == f"{first.name}-2"
+
+    second.mkdir(parents=True)
+    third = allocate_trash_path(root, when=when, base=base)
+    assert third.name == f"{first.name}-3"

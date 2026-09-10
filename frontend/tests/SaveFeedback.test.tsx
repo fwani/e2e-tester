@@ -58,12 +58,17 @@ function steps(n: number): Step[] {
  * 세션을 대상으로 삼아야 한다.
  */
 function pausedProps(overrides: Record<string, unknown> = {}) {
-  const { savedAt, ...rest } = overrides as { savedAt?: string | null };
+  const { savedAt, testName: _testName, ...rest } = overrides as {
+    savedAt?: string | null;
+    testName?: string;
+  };
   return sessionProps({
     view: sessionView({
       state: "paused",
       // 저장하면 정의 파일이 생긴다 — 그때부터 「초안」이 아니다 (005 재점검 U-03-a).
       test_id: savedAt ? "TC-001" : null,
+      /* 011 — 파일이 생기면 이름도 생긴다. 이름과 저장 상태가 갈렸다 (UC-011-2) */
+      test_name: savedAt ? ((overrides.testName as string | undefined) ?? "TC-001") : null,
       steps: steps(6),
       current_step_index: 2,
       saved_at: savedAt ?? null,
@@ -71,7 +76,12 @@ function pausedProps(overrides: Record<string, unknown> = {}) {
     }),
     outcomeOf: () => "pass",
     durationOf: () => 90,
-    saveName: "TC-001",
+    /*
+      011 — `saveName` 은 국면 띠가 그리는 이름이자 저장에 실리는 값이다. 바깥
+      `SessionScreen` 이 `test_name` 을 기본값으로 채우므로, 여기서도 둘을 같게 둔다 —
+      다르게 두면 대역이 제품과 다른 상태를 만든다.
+    */
+    saveName: (overrides.testName as string | undefined) ?? "TC-001",
     ...(rest as Record<string, unknown>),
   });
 }
@@ -91,15 +101,42 @@ describe("저장 성공 표시 (FR-154·FR-155·FR-156 · U-09)", () => {
     expect(screen.getByText("저장했습니다 · TC-001")).toBeTruthy();
   });
 
+  /**
+   * 011 FR-367 — **확인줄은 id 가 아니라 이름을 말한다.**
+   *
+   * 011 이전에는 `title = testId ?? "새 테스트"` 를 써서 「저장했습니다 · TC-001」이었다.
+   * 사용자가 정한 이름이 따로 있는데 확인줄이 id 를 말하면, 방금 저장한 것이 무엇인지
+   * 그 문장에서 알 수 없다. 011 이 `SessionView.test_name` 을 실었으므로 이름을 쓴다.
+   */
+  it("확인줄이 사용자가 정한 이름을 말한다 (011 FR-367)", () => {
+    render(
+      <SessionWorkbench
+        {...pausedProps({ savedAt: "2026-09-07T05:00:00Z", testName: "로그인 흐름" })}
+      />,
+    );
+    expect(screen.getByText("저장했습니다 · 로그인 흐름")).toBeTruthy();
+    expect(screen.queryByText("저장했습니다 · TC-001"), "id 를 말하고 있다").toBeNull();
+  });
+
+  /*
+    011 — **재는 자리가 둘로 갈렸다.** 이름은 국면 띠의 입력칸이 갖고 저장 상태는 그 옆의
+    칩(`data-phase-save-state`)이 갖는다. 한 문장이었던 「TC-001 · 저장됨」을 입력칸에
+    넣으면 「· 저장됨」까지 저장 이름이 된다 (UC-011-2).
+
+    요구는 그대로다 — 저장한 뒤에는 「초안」이 보이지 않아야 하고, 저장하지 않은 세션은
+    「초안」이어야 한다.
+  */
+  const saveState = () => (document.querySelector("[data-phase-save-state]")?.textContent ?? "").trim();
+
   it("저장 성공 후 제목에 「초안」이 없다 (FR-155)", () => {
     render(<SessionWorkbench {...pausedProps({ savedAt: "2026-09-07T05:00:00Z" })} />);
     expect(screen.queryByText(/초안/)).toBeNull();
-    expect(screen.getByText("TC-001 · 저장됨")).toBeTruthy();
+    expect(saveState()).toBe("저장됨");
   });
 
   it("저장하지 않은 세션의 제목은 「초안」이다", () => {
     render(<SessionWorkbench {...pausedProps({ savedAt: null })} />);
-    expect(screen.getByText("새 테스트 초안")).toBeTruthy();
+    expect(saveState()).toBe("초안");
   });
 
   it("저장 후 버튼이 「변경 저장」이고 바뀐 것이 없으면 비활성이다 (FR-156)", () => {

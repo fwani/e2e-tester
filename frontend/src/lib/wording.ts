@@ -377,10 +377,28 @@ export function sessionTitle(input: {
   /** 저장하지 않은 편집이 남아 있는가. */
   hasUnsavedChanges: boolean;
 }): string {
+  const state = sessionSaveState(input);
+  return state === "초안" ? `${input.title} 초안` : `${input.title} · ${state}`;
+}
+
+/**
+ * 세션의 **저장 상태만** (011 · UC-011-2 에서 갈라졌다).
+ *
+ * `sessionTitle` 은 이름과 상태를 한 문장으로 붙였다 — 「TC-001 · 저장됨」. 011 이
+ * 국면 띠의 이름 자리를 **입력칸**으로 만들면서 그 문장을 넣을 수 없게 됐다: 사용자가
+ * 이름을 고치는 칸에 「· 저장됨」이 들어 있으면 그것까지 저장 이름이 된다.
+ *
+ * 그래서 상태를 갈라 낸다. **판정은 한 곳에 남는다** — `sessionTitle` 이 이 함수를
+ * 부르므로 두 벌이 되지 않는다. 문구를 고치면 둘이 함께 바뀐다.
+ */
+export function sessionSaveState(input: {
+  persisted: boolean;
+  savedAt: string | null;
+  hasUnsavedChanges: boolean;
+}): "초안" | "저장됨" | "저장하지 않은 변경 있음" {
   const saved = input.persisted || input.savedAt !== null;
-  if (!saved) return `${input.title} 초안`;
-  if (input.hasUnsavedChanges) return `${input.title} · 저장하지 않은 변경 있음`;
-  return `${input.title} · 저장됨`;
+  if (!saved) return "초안";
+  return input.hasUnsavedChanges ? "저장하지 않은 변경 있음" : "저장됨";
 }
 
 /**
@@ -745,6 +763,15 @@ export const ACTION_LABEL: Record<ActionId, string> = {
   "step.markSensitive": "민감 값으로 지정",
   "step.repick": "요소 다시 집기",
   "step.delete": "Step 삭제",
+  /*
+    011 복수 삭제 (계약 §5). **`step.delete` 와 라벨이 갈린다** — 「Step 삭제」는 이 행
+    하나이고, 아래 둘은 여러 개다. 라벨이 비슷하면 사용자는 어느 것이 무엇을 지우는지
+    누르기 전에 알 수 없다.
+  */
+  "step.toggleDeleteTarget": "지울 대상으로 고르기",
+  "step.selectAllDeleteTargets": "전부 고르기",
+  "step.deleteSelected": "고른 것 지우기",
+  "step.deleteAfter": "이 뒤 전부 지우기",
   /**
    * 009 — `step.reorder`「순서 변경」을 개칭했다.
    *
@@ -834,6 +861,98 @@ export const BROWSER_ONLY_KIND_LABEL: Record<string, string> = {
 
 export const BROWSER_ONLY_KIND_REASON =
   "요소는 살아 있는 화면에서만 지목할 수 있습니다";
+
+/* ─── 011 복수 삭제 (계약 §5 · FR-381·FR-384·FR-385) ─────────────────────── */
+
+/**
+ * 고른 개수 (FR-381 · UC-011-17). 0개일 때도 문장을 낸다 — 자리를 비우면 「고를 수 있는
+ * 것인지」가 화면에서 사라진다.
+ */
+export function deleteSelectionCount(count: number): string {
+  return count === 0 ? "고른 것 없음" : `${count}개 고름`;
+}
+
+/**
+ * 복수 삭제 확인 (FR-384 · UC-011-18). **개수와 범위를 둘 다 담는다.**
+ *
+ * 개수만 있으면 "11개" 가 어느 11개인지 알 수 없고, 범위만 있으면 그 사이에서 고르지
+ * 않은 것이 몇 개인지 알 수 없다. 「이 뒤 전부」는 연속 구간이므로 둘이 일치하지만,
+ * 체크로 고른 것은 띄어져 있을 수 있어 **둘이 다른 사실**이다.
+ *
+ * 겹침 대화상자를 쓰지 않는다 — 자리는 행 조작의 확인과 같은 규율을 따른다 (009 FR-302).
+ */
+export function deleteManyConfirm(indices: number[]): string {
+  if (indices.length === 0) return "지울 것이 없습니다";
+  const sorted = [...indices].sort((a, b) => a - b);
+  const first = sorted[0]!;
+  const last = sorted[sorted.length - 1]!;
+  if (sorted.length === 1) return `${stepLabel(first)} 를 지웁니다`;
+  const span = `${stepLabel(first)} ~ ${stepLabel(last)}`;
+  // 연속 구간이면 범위가 곧 개수다 — 같은 사실을 두 번 적지 않는다.
+  const contiguous = last - first + 1 === sorted.length;
+  return contiguous
+    ? `${span} · ${sorted.length}개를 지웁니다`
+    : `${span} 사이에서 고른 ${sorted.length}개를 지웁니다`;
+}
+
+/**
+ * 되돌릴 수 없는 복수 삭제 (011 FR-386).
+ *
+ * **세션에서만 붙는다.** 편집은 연산을 쌓았다가 저장할 때 보내므로 「변경 전부
+ * 되돌리기」로 되돌아가고, 세션은 요청이 즉시 서버에 적용된다. 같은 확인 문구를 쓰면서
+ * 이 사실을 말하지 않으면 사용자는 되돌릴 수 있다고 믿고 누른다.
+ */
+export const BULK_DELETE_IRREVERSIBLE = "되돌릴 수 없습니다";
+
+/** 「이 뒤 전부」의 대상이 없다 (FR-385 · UC-011-19). **해소 방법을 달지 않는다** */
+export const NO_STEPS_AFTER = "마지막 Step 입니다";
+
+/** 고른 것이 없다 (FR-385). 체크를 해야 한다는 사실을 그 자리에서 말한다 */
+export const NO_DELETE_SELECTION = "지울 Step 을 먼저 고르세요";
+
+/* ─── 011 Step 별 스크린샷 (계약 §6 · FR-391·FR-393·FR-396b) ─────────────── */
+
+/**
+ * 스크린샷이 없는 사유 (UC-011-21).
+ *
+ * 「없습니다」 하나로 뭉개면 사용자는 제품이 못 찍은 것인지 자기가 못 볼 이유가 있는
+ * 것인지 알 수 없다. 특히 민감 값 보호는 **실패가 아니므로**, 실패로 읽히면 사용자가
+ * 없는 결함을 찾는다.
+ *
+ * ## 왜 둘뿐인가
+ *
+ * UC-011-21 은 상황을 넷으로 적었지만 **화면이 고르는 것은 둘뿐이다.** 나머지 둘은 다른
+ * 방식으로 답한다 — 그 편이 문구보다 정확하다.
+ *
+ * | 상황 | 누가 답하는가 |
+ * |---|---|
+ * | 민감 값이 있어 남기지 않음 | **서버**가 `screenshot_note` 로 구체적인 문장을 준다 |
+ * | 실행 대상이 아니었음 | **판 자체를 그리지 않는다** — 「없다」가 아니라 「해당 없다」다 |
+ * | 촬영 실패 | `capture_failed` — 서버가 사유를 남기지 않았을 때의 바닥 |
+ * | 이후 실행으로 대체 | `superseded` — 결과에는 경로가 있는데 파일이 사라졌다 |
+ *
+ * 화면이 고르지 않는 것을 사전에 남겨 두면, 다음 사람이 「이 분기는 언제 도는가」를
+ * 코드에서 찾다가 못 찾는다.
+ */
+export type MissingShotReason = "capture_failed" | "superseded";
+
+export const MISSING_SHOT_REASON: Record<MissingShotReason, string> = {
+  capture_failed: "이 Step 의 화면을 남기지 못했습니다",
+  superseded: "이후 실행으로 대체되어 이 실행의 화면은 남아 있지 않습니다",
+};
+
+/**
+ * 서버가 준 사유가 있으면 그것을, 없으면 분류 문구를 쓴다.
+ *
+ * 서버 사유(`screenshot_note`)가 더 구체적이다 — 어떤 오류였는지를 담는다. 분류 문구는
+ * 서버가 아무 말도 남기지 않은 경우의 바닥이다.
+ */
+export function missingShotText(
+  note: string | null,
+  reason: MissingShotReason,
+): string {
+  return note !== null && note.trim() !== "" ? note : MISSING_SHOT_REASON[reason];
+}
 
 /**
  * 저장의 전제 — 이름이 비었다 (005 FR-156).

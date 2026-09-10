@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from itb.domain.step import Step
@@ -251,6 +252,75 @@ def delete_step(
     new_steps = [*steps[:index], *steps[index + 1 :]]
     new_index = current_step_index - 1 if index < current_step_index else current_step_index
     return EditResult(new_steps, max(0, new_index), warnings, at_index=index)
+
+
+class DuplicateStepIdsError(Exception):
+    """같은 Step 을 두 번 지우라고 요청했다 (011 FR-388).
+
+    조용히 무시하지 않는 이유: 요청이 그 자체로 앞뒤가 맞지 않으므로 화면이 무엇을
+    보냈는지 되짚어야 한다. 중복을 걸러 진행하면 「3개 지웠습니다」라고 답한 뒤 실제로는
+    2개가 지워진다.
+    """
+
+    def __init__(self, duplicated: list[str]) -> None:
+        self.duplicated = duplicated
+        super().__init__(f"같은 Step 이 여러 번 지정됐습니다: {', '.join(duplicated)}")
+
+
+def delete_steps(
+    steps: list[Step], current_step_index: int, step_ids: Sequence[str]
+) -> EditResult:
+    """여러 Step 을 **한 번에** 삭제한다 (011 FR-382·FR-388).
+
+    ## 왜 `delete_step` 을 여러 번 부르지 않는가
+
+    부분 적용이 생긴다. 세 개 중 두 번째가 없는 id 면 첫 번째는 이미 지워진 상태이고,
+    그때 요청을 거절해도 목록은 되돌아가지 않는다. 사용자에게는 「지우지 못했습니다」라는
+    답과 하나가 사라진 목록이 함께 남는다.
+
+    그래서 **검증 → 새 목록 구성 → 반환** 순이다. 검증에서 걸리면 아무것도 만들지 않으므로
+    호출자가 반영할 것도 없다 (`EditResult` 는 원본을 바꾸지 않는다).
+
+    ## 실행 위치
+
+    지운 것 중 실행 위치 **앞**에 있던 개수만큼 위치를 당긴다. `delete_step` 이 하나에
+    대해 하는 일과 같고, 여러 개일 때 그것을 반복하면 같은 값이 나온다.
+
+    ## 경고
+
+    이미 실행된 Step 을 지우면 경고를 세운다 (FR-040a). **개수만큼 반복하지 않는다** —
+    같은 문장이 세 번 쌓이면 알림이 그것으로 덮인다. `reorder_steps` 가 자리 하나를
+    지목하지 않는 것과 같은 판단이다 (009 FR-311).
+    """
+    if not step_ids:
+        # 대상이 없으면 아무것도 하지 않는다. 빈 요청은 라우터가 먼저 거절한다.
+        return EditResult(list(steps), current_step_index, [], at_index=0)
+
+    seen: set[str] = set()
+    duplicated: list[str] = []
+    for step_id in step_ids:
+        if step_id in seen:
+            duplicated.append(step_id)
+        seen.add(step_id)
+    if duplicated:
+        raise DuplicateStepIdsError(sorted(set(duplicated)))
+
+    # **전부 찾은 뒤에 지운다.** 하나라도 없으면 `StepNotFoundError` 가 여기서 나가고
+    # 목록은 손대지 않은 상태로 남는다.
+    indices = sorted(find_index(steps, step_id) for step_id in step_ids)
+
+    removed_before = sum(1 for i in indices if i < current_step_index)
+    executed_removed = removed_before > 0
+
+    doomed = set(indices)
+    new_steps = [s for i, s in enumerate(steps) if i not in doomed]
+    warnings = [already_executed_region_warning()] if executed_removed else []
+    return EditResult(
+        new_steps,
+        max(0, current_step_index - removed_before),
+        warnings,
+        at_index=indices[0],
+    )
 
 
 def reorder_steps(

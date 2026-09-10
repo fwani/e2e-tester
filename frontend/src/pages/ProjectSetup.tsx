@@ -22,7 +22,9 @@ import {
   project,
   type DirectoryEntry,
   type ProjectListItem,
+  type ProjectSummary,
   type ProjectView,
+  type TrashProjectResponse,
 } from "../api/client";
 
 type Mode =
@@ -41,6 +43,8 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 export function ProjectSetup({
   onOpened,
   onCancel,
+  onProjectClosed,
+  onProjectRenamed,
 }: {
   onOpened: (p: ProjectView) => void;
   /**
@@ -53,8 +57,29 @@ export function ProjectSetup({
    * 있을 때만 그린다. 첫 화면의 모습은 그대로다.
    */
   onCancel?: () => void;
+  /**
+   * 열려 있던 프로젝트가 삭제로 닫혔다 (012 FR-416).
+   *
+   * 화면이 스스로 처리할 수 없다 — 열린 프로젝트는 `App` 이 들고 있고, 그것을 비우지
+   * 않으면 사용자는 사라진 프로젝트를 가리키는 「돌아가기」를 계속 본다.
+   */
+  onProjectClosed?: () => void;
+  /**
+   * 열려 있는 프로젝트의 이름이 바뀌었다 (012 FR-405 · converge T049).
+   *
+   * **서버는 이미 맞다** — `GET /api/project` 는 파일을 다시 읽는다. 낡은 것은 `App` 이
+   * 들고 있는 `ProjectView` 사본이고, 그 값이 목록 화면의 프로젝트 표시로 간다. 올리지
+   * 않으면 사용자는 고친 이름이 되돌아간 것을 본다.
+   */
+  onProjectRenamed?: (root: string, name: string) => void;
 }) {
   const [mode, setMode] = useState<Mode>({ kind: "list" });
+  /**
+   * 방금 옮긴 결과 (012 FR-410·FR-425 · UC-012-04).
+   *
+   * **자동으로 사라지지 않는다.** 사라지면 되돌리는 방법이 함께 사라진다.
+   */
+  const [trashed, setTrashed] = useState<TrashProjectResponse | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[] | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
@@ -110,6 +135,10 @@ export function ProjectSetup({
         {warning !== null && <Notice tone="warn">{warning}</Notice>}
         {error !== null && <ErrorNotice error={error} />}
 
+        {mode.kind === "list" && trashed !== null && (
+          <TrashedNotice result={trashed} onDismiss={() => setTrashed(null)} />
+        )}
+
         {mode.kind === "list" && (
           <ProjectList
             projects={projects}
@@ -118,6 +147,22 @@ export function ProjectSetup({
             onForget={(root) => {
               void project.forget(root).then(reload).catch(() => reload());
             }}
+            onRenamed={(updated) => {
+              onProjectRenamed?.(updated.root, updated.name);
+              // 그 줄만 갈아 끼운다. 목록 전체를 다시 부르면 편집 중이던 다른 줄의
+              // 상태가 날아간다 (UC-012-02).
+              setProjects((rows) =>
+                rows === null
+                  ? rows
+                  : rows.map((r) => (r.root === updated.root ? updated : r)),
+              );
+            }}
+            onTrashed={(result) => {
+              setTrashed(result);
+              if (result.was_open) onProjectClosed?.();
+              reload();
+            }}
+            onStaleList={reload}
             onCreate={() => setMode({ kind: "create" })}
             onBrowse={() => setMode({ kind: "browse" })}
           />
@@ -164,6 +209,9 @@ function ProjectList({
   busy,
   onOpen,
   onForget,
+  onRenamed,
+  onTrashed,
+  onStaleList,
   onCreate,
   onBrowse,
 }: {
@@ -171,6 +219,10 @@ function ProjectList({
   busy: boolean;
   onOpen: (root: string) => void;
   onForget: (root: string) => void;
+  onRenamed: (updated: ProjectListItem) => void;
+  onTrashed: (result: TrashProjectResponse) => void;
+  /** 목록이 낡았다 — 서버가 모르는 프로젝트라고 답했다 (UC-012-06). */
+  onStaleList: () => void;
   onCreate: () => void;
   onBrowse: () => void;
 }) {
@@ -211,6 +263,9 @@ function ProjectList({
               busy={busy}
               onOpen={() => onOpen(p.root)}
               onForget={() => onForget(p.root)}
+              onRenamed={onRenamed}
+              onTrashed={onTrashed}
+              onStaleList={onStaleList}
             />
           ))}
         </div>
@@ -219,61 +274,370 @@ function ProjectList({
   );
 }
 
+/**
+ * 줄이 어떤 상태에 있는가 (012 UC-012-02·UC-012-03).
+ *
+ * 이름 편집과 삭제 확인이 **같은 자리를 쓴다.** 둘 다 그 줄 안에서 일어나므로 동시에
+ * 열릴 수 없고, 하나의 상태로 다루는 것이 두 개의 불리언을 두는 것보다 정확하다 —
+ * 두 불리언은 「둘 다 참」이라는 있을 수 없는 상태를 표현할 수 있다.
+ */
+type RowMode =
+  | { kind: "idle" }
+  | { kind: "editing"; draft: string }
+  | { kind: "confirming"; summary: ProjectSummary | null };
+
+/**
+ * 줄 하나. **조작 집합은 줄의 상태가 정한다** (012 UC-012-01 · data-model §3).
+ *
+ * | `accessible` | 열기 | 이름 변경 | 삭제 | 목록에서 치우기 |
+ * |---|---|---|---|---|
+ * | `true`  | O | O | O | O |
+ * | `false` | X | X | **O** | O |
+ *
+ * **삭제는 어느 줄에서나 있다** (FR-418 · SC-622 · 사용자 지적 2026-09-10). 최초 판은
+ * 「옮길 대상이 없다」는 이유로 접근 불가 줄에서 삭제를 뺐는데, 그것이 **없앨 방법이 없는
+ * 줄**을 만들었다 — 목록이 스캔 ∪ 레지스트리이므로 파일은 있는데 읽지 못하는 프로젝트는
+ * 「목록에서 치우기」로 빼도 스캔에 다시 걸려 돌아온다.
+ *
+ * 서버는 처음부터 이 요청을 받을 수 있었다: 옮길 폴더가 있으면 옮기고, 없으면
+ * `trashed_to: null` 로 목록에서 빼는 것으로 끝낸다 (FR-420).
+ *
+ * 이름 변경만 접근 가능 여부를 탄다 — 그쪽은 프로젝트 파일을 **읽고 써야** 한다.
+ */
 function ProjectRow({
   item,
   first,
   busy,
   onOpen,
   onForget,
+  onRenamed,
+  onTrashed,
+  onStaleList,
 }: {
   item: ProjectListItem;
   first: boolean;
   busy: boolean;
   onOpen: () => void;
   onForget: () => void;
+  onRenamed: (updated: ProjectListItem) => void;
+  onTrashed: (result: TrashProjectResponse) => void;
+  onStaleList: () => void;
 }) {
+  const [mode, setMode] = useState<RowMode>({ kind: "idle" });
+  const [rowError, setRowError] = useState<ErrorInfo | null>(null);
+  /**
+   * 이름 입력이 지금 왜 안 되는가. **서버 오류와 갈라 둔다** — 이쪽은 요청을 보내기
+   * 전에 화면이 스스로 아는 것이고, 사용자가 그 자리에서 고칠 수 있다 (UC-012-02).
+   */
+  const [nameProblem, setNameProblem] = useState<string | null>(null);
+  /** 이 줄의 요청이 도는 중인가. 연타로 같은 프로젝트에 두 요청이 겹치지 않게 한다. */
+  const [pending, setPending] = useState(false);
+
+  const locked = busy || pending;
+
+  const fail = (exc: unknown) => {
+    const info = describeError(exc);
+    setRowError(info);
+    // 목록이 낡았다 — 서버가 모르는 프로젝트라고 답했으면 화면의 목록이 틀린 것이다.
+    if (info.code === "INVALID_PATH" || info.code === "PROJECT_NOT_FOUND") onStaleList();
+  };
+
+  const commitRename = (raw: string) => {
+    const name = raw.trim();
+    // 빈 이름은 요청하기 전에 막는다 (FR-403). 서버도 막지만 사용자는 왜 안 되는지
+    // 화면에서 바로 알아야 한다 — 「만들기」가 무엇이 빠졌는지 미리 말하는 것과 같다.
+    if (name === "") {
+      setNameProblem("프로젝트 이름은 비워 둘 수 없습니다.");
+      return;
+    }
+    if (name === item.name) {
+      setMode({ kind: "idle" });
+      setRowError(null);
+      setNameProblem(null);
+      return;
+    }
+    setPending(true);
+    setRowError(null);
+    setNameProblem(null);
+    void project
+      .renameProject(item.root, name)
+      .then((updated) => {
+        onRenamed(updated);
+        setMode({ kind: "idle" });
+      })
+      .catch(fail)
+      .finally(() => setPending(false));
+  };
+
+  const openConfirm = () => {
+    setRowError(null);
+    setNameProblem(null);
+    setMode({ kind: "confirming", summary: null });
+    // 열 수 없는 줄은 셀 수 없다. 물어봐야 0 이 오므로 아예 묻지 않는다.
+    if (!item.accessible) return;
+    // 여기서 처음 센다. 목록 조회에 싣지 않는 이유는 목록을 그리려고 프로젝트 N개를
+    // 열게 되기 때문이다 (UC-012-03).
+    void project
+      .summary(item.root)
+      .then((summary) =>
+        setMode((m) => (m.kind === "confirming" ? { kind: "confirming", summary } : m)),
+      )
+      .catch(() => {
+        /* 수를 못 세도 확인은 계속된다. 이름과 경로로 판단할 수 있다. */
+      });
+  };
+
+  const confirmTrash = () => {
+    setPending(true);
+    setRowError(null);
+    void project
+      .trash(item.root)
+      .then((result) => {
+        setMode({ kind: "idle" });
+        onTrashed(result);
+      })
+      .catch(fail)
+      .finally(() => setPending(false));
+  };
+
   return (
     <div
       className={`${first ? "" : "rule-top "}${item.accessible ? "" : "dim"}`.trim() || undefined}
-      style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px" }}
+      style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px" }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="subtitle">{item.name}</span>
-          {item.origin === "external" && <span className="chip">외부 위치</span>}
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {mode.kind === "editing" ? (
+              <input
+                aria-label="프로젝트 이름"
+                value={mode.draft}
+                autoFocus
+                disabled={pending}
+                onChange={(e) => setMode({ kind: "editing", draft: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRename(mode.draft);
+                  if (e.key === "Escape") {
+                    // 원래 이름으로 되돌리고 **요청하지 않는다**.
+                    setMode({ kind: "idle" });
+                    setRowError(null);
+                    setNameProblem(null);
+                  }
+                }}
+                onBlur={() => {
+                  if (!pending) commitRename(mode.draft);
+                }}
+                style={{ margin: 0, maxWidth: 320 }}
+              />
+            ) : (
+              <span className="subtitle">{item.name}</span>
+            )}
+            {item.origin === "external" && <span className="chip">외부 위치</span>}
+            {!item.accessible && <span className="chip fail">열 수 없음</span>}
+          </div>
+          {nameProblem !== null && (
+            <div className="line fail-ink" style={{ marginTop: 4 }} role="alert">
+              {nameProblem}
+            </div>
+          )}
+          <div
+            className="why mono"
+            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            title={item.root}
+          >
+            {item.root}
+          </div>
+          {!item.accessible && item.unavailable_reason !== null && (
+            <div className="line fail-ink" style={{ marginTop: 4 }}>
+              {item.unavailable_reason}
+            </div>
+          )}
           {!item.accessible && (
-            <span className="chip fail">열 수 없음</span>
+            // 왜 이 줄에 이름 변경이 없는지 말한다 (FR-406). 조작을 그냥 빼면 사용자는
+            // 자기가 잘못 본 줄 안다. **삭제는 있다** — 없애는 길까지 막으면 이 줄은
+            // 목록에서 사라지지 않는다 (FR-418 · SC-622).
+            <div className="why" style={{ marginTop: 4 }}>
+              열 수 없는 상태여서 이름을 바꿀 수 없습니다. 삭제하거나 목록에서 치울 수 있습니다.
+            </div>
           )}
         </div>
-        <div
-          className="why mono"
-          style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-          title={item.root}
-        >
-          {item.root}
-        </div>
-        {!item.accessible && item.unavailable_reason !== null && (
-          <div className="line fail-ink" style={{ marginTop: 4 }}>
-            {item.unavailable_reason}
+
+        {mode.kind !== "confirming" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {mode.kind === "idle" && (
+              <>
+                {item.accessible && (
+                  <>
+                    <button className="btn" onClick={onOpen} disabled={locked}>
+                      열기
+                    </button>
+                    <button
+                      className="navlink"
+                      onClick={() => setMode({ kind: "editing", draft: item.name })}
+                      disabled={locked}
+                    >
+                      이름 바꾸기
+                    </button>
+                  </>
+                )}
+                {/* 삭제는 열 수 없는 줄에도 있다 (FR-418 · SC-622). */}
+                <button
+                  className="navlink"
+                  onClick={openConfirm}
+                  disabled={locked}
+                  title={
+                    item.accessible
+                      ? "프로젝트 폴더를 휴지통으로 옮깁니다. 파일은 지워지지 않고 되돌릴 수 있습니다."
+                      : "폴더가 남아 있으면 휴지통으로 옮기고, 이미 없으면 목록에서만 뺍니다."
+                  }
+                >
+                  삭제
+                </button>
+              </>
+            )}
+            <button
+              className="navlink"
+              onClick={onForget}
+              disabled={locked}
+              // 삭제와 결과가 다르다. 두 설명 모두 디스크의 파일이 어떻게 되는지
+              // 말한다 (FR-423 · UC-012-07).
+              title="목록에서만 치웁니다. 디스크의 파일은 지우지 않습니다."
+            >
+              목록에서 치우기
+            </button>
           </div>
         )}
       </div>
 
-      {item.accessible ? (
-        <button className="btn" onClick={onOpen} disabled={busy}>
-          열기
-        </button>
-      ) : (
-        <button
-          className="navlink"
-          onClick={onForget}
-          disabled={busy}
-          // 목록 정리와 자산 삭제는 다른 조작이다 (DR-009). 오해할 여지를 없앤다.
-          title="목록에서만 치웁니다. 디스크의 파일은 지우지 않습니다."
-        >
-          목록에서 치우기
-        </button>
+      {mode.kind === "confirming" && (
+        <ConfirmTrash
+          item={item}
+          summary={mode.summary}
+          pending={pending}
+          onCancel={() => setMode({ kind: "idle" })}
+          onConfirm={confirmTrash}
+        />
       )}
+
+      {rowError !== null && <ErrorNotice error={rowError} />}
+    </div>
+  );
+}
+
+/**
+ * 삭제 확인 (012 FR-411·FR-412·FR-424·FR-425 · UC-012-03).
+ *
+ * **모달이 아니라 그 줄 안이다.** 프로젝트가 여러 개일 때 모달의 "정말 삭제할까요?" 는
+ * 대상을 다시 확인시키지 못한다 — 사용자는 자기가 어느 줄을 눌렀는지 기억에 의존해야
+ * 한다. 줄 안에서 물으면 이름과 경로가 눈앞에 그대로 있다.
+ */
+function ConfirmTrash({
+  item,
+  summary,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  item: ProjectListItem;
+  summary: ProjectSummary | null;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="tint-warn" style={{ padding: "12px 14px" }} role="group" aria-label="삭제 확인">
+      <div className="subtitle">「{item.name}」을(를) 휴지통으로 옮길까요?</div>
+      <div className="why mono" style={{ marginTop: 4 }}>
+        {item.root}
+      </div>
+      {summary !== null && (
+        <div className="line" style={{ marginTop: 6 }}>
+          저장된 테스트 {summary.test_count}개가 함께 옮겨집니다.
+        </div>
+      )}
+      {item.origin === "external" && (
+        // 도구가 만든 자리가 아니다. 사용자가 다른 용도로 쓰고 있을 수 있으므로
+        // 그 사실을 알고 결정하게 한다 (FR-424).
+        <div className="line" style={{ marginTop: 6 }}>
+          이 폴더는 도구 바깥에서 만들어진 위치입니다.
+        </div>
+      )}
+      {!item.accessible && (
+        // 무슨 일이 일어날지 미리 말한다 (UC-012-03). 열 수 없는 줄에서는 옮길 것이
+        // 없을 수 있고, 그때 결과는 「목록에서 뺐다」다 — 놀라게 하지 않는다.
+        <div className="line" style={{ marginTop: 6 }}>
+          지금 열 수 없는 상태입니다. 폴더가 남아 있으면 휴지통으로 옮기고, 이미 없으면
+          목록에서만 뺍니다.
+        </div>
+      )}
+      <div className="note" style={{ marginTop: 6 }}>
+        지우지 않고 휴지통으로 옮깁니다. 옮긴 위치를 알려 드리므로 되돌릴 수 있습니다.
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        {/* 취소가 기본이다 — 포커스를 여기에 둔다. */}
+        <button className="btn" onClick={onCancel} disabled={pending} autoFocus>
+          취소
+        </button>
+        <button className="btn" onClick={onConfirm} disabled={pending}>
+          휴지통으로 옮기기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 무엇을 어디로 옮겼는지 (012 FR-410·FR-425 · UC-012-04).
+ *
+ * **자동으로 사라지지 않는다.** 사라지면 되돌리는 방법이 함께 사라진다. 경로는 `mono`
+ * 로, 잘리지 않게 표시한다 — 이 값이 되돌리는 방법 전부다.
+ */
+function TrashedNotice({
+  result,
+  onDismiss,
+}: {
+  result: TrashProjectResponse;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="tint-warn" style={{ padding: "12px 16px", marginBottom: 18 }} role="status">
+      {result.trashed_to === null ? (
+        <>
+          <div className="subtitle">「{result.name}」을(를) 목록에서 뺐습니다.</div>
+          <div className="note" style={{ marginTop: 4 }}>
+            폴더가 이미 없어서 옮길 것이 없었습니다.
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="subtitle">「{result.name}」을(를) 휴지통으로 옮겼습니다.</div>
+          {/*
+            **출발지와 도착지를 둘 다 남긴다** (SC-616 · converge T050). 되돌리기는 두
+            경로가 있어야 성립하는데, 도착지만 보여 주면 "원래 자리" 를 사용자가 알아야
+            한다. 관리 위치라면 짐작할 수 있지만 외부 위치 프로젝트는 사용자가 직접 고른
+            경로여서 추측이 불가능하다.
+          */}
+          <div className="lbl" style={{ marginTop: 8 }}>
+            옮긴 곳
+          </div>
+          <div className="why mono" style={{ marginTop: 2, wordBreak: "break-all" }}>
+            {result.trashed_to}
+          </div>
+          <div className="lbl" style={{ marginTop: 8 }}>
+            원래 자리
+          </div>
+          <div className="why mono" style={{ marginTop: 2, wordBreak: "break-all" }}>
+            {result.root}
+          </div>
+          <div className="note" style={{ marginTop: 8 }}>
+            되돌리려면 「옮긴 곳」의 폴더를 「원래 자리」로 옮기세요. 도구는 휴지통을 자동으로
+            비우지 않습니다.
+          </div>
+        </>
+      )}
+      <button className="navlink" onClick={onDismiss} style={{ marginTop: 8 }}>
+        확인했습니다
+      </button>
     </div>
   );
 }

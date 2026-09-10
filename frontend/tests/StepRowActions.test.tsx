@@ -230,11 +230,28 @@ describe("키보드 경로 (SC-507 · FR-303)", () => {
     await renderEdit();
 
     const ops = [...document.querySelectorAll("[data-step-row] [data-row-action]")];
-    // 6행 × 4조작
-    expect(ops).toHaveLength(24);
+    /*
+      **2026-09-10 (011) — 행마다 조작이 다섯이 됐다.**
+
+      칸 0 에 삭제 대상 체크가 붙었다 (UC-011-12). 6행 × 5조작 = 30 이다.
+
+      **버튼 단언을 조작별로 갈랐다.** 체크는 `input[type=checkbox]` 다 — 누르면 즉시
+      일어나는 행 조작 넷과 달리 **상태를 켜고 끄는** 것이라, 눌린 상태를 접근성 트리에
+      전달하는 요소여야 한다. 버튼으로 만들면 `aria-pressed` 를 손으로 붙여야 하고 그것을
+      빠뜨리면 체크 여부가 키보드 사용자에게 전달되지 않는다.
+
+      **이름 규칙은 그대로다** — 다섯 다 「〈Step 이름〉 〈조작〉」 형태여야 한다 (FR-303).
+    */
+    expect(ops).toHaveLength(30);
     for (const op of ops) {
       expect(op.getAttribute("aria-label"), "이름 없는 조작이 있다").toBeTruthy();
-      expect(op.tagName).toBe("BUTTON");
+      const action = op.getAttribute("data-row-action");
+      if (action === "step.toggleDeleteTarget") {
+        expect(op.tagName).toBe("INPUT");
+        expect((op as HTMLInputElement).type).toBe("checkbox");
+      } else {
+        expect(op.tagName).toBe("BUTTON");
+      }
     }
 
     // 첫 행의 이름 형태 — 「〈이름〉 위로 옮기기」

@@ -107,8 +107,23 @@ class SessionWork:
     authoring_mode: AuthoringMode = AuthoringMode.RECORD
     ai_instruction: str | None = None
     saved_test_id: str | None = None
+    saved_test_name: str | None = None
+    """이 세션이 묶인 저장된 테스트의 **이름** (011 FR-362).
+
+    **`saved_test_id` 만으로는 부족하다.** 화면은 「이름이 이미 있는가」로 저장 라벨과
+    이름 요구를 정하는데(011 UC-011-4), id 만 알면 그 이름을 사용자에게 보여 줄 수도
+    다시 저장할 때 실을 수도 없다 — 실제로 국면 띠가 이름 자리에 「TC-001」을 그리고
+    있었고, 저장하려면 사용자가 이름을 처음부터 다시 쳐야 했다.
+
+    저장된 테스트에서 세션을 열 때 채워지고, 저장할 때 갱신된다.
+    """
     saved_at: datetime | None = None
-    """마지막 저장 시각 (005 FR-154). 화면이 저장 성공을 스스로 알 수 있게 한다."""
+    """마지막 저장 시각 (005 FR-154). 화면이 저장 성공을 스스로 알 수 있게 한다.
+
+    **`saved_test_name` 과 다른 사실이다.** 이것은 「이 **세션에서** 저장했는가」이고
+    그것은 「이 **테스트에** 이름이 있는가」다. 011 이전에는 저장 라벨이 이 값을 보고
+    있었고, 그래서 저장된 테스트를 연 세션이 첫 저장 전까지 이름을 다시 물었다.
+    """
 
     prompts: BrowserPrompts | None = None
     """브라우저 요구 가로채기 (010 FR-338·FR-339).
@@ -183,6 +198,22 @@ class SessionWork:
         return [s.id for s in self.steps] != [s.id for s in self.saved_snapshot] or any(
             a != b for a, b in zip(self.steps, self.saved_snapshot, strict=False)
         )
+
+    @property
+    def unsaved_step_ids(self) -> list[str]:
+        """저장한 뒤에 **더해진** Step 의 id (011 FR-379).
+
+        `has_unsaved_changes` 는 「무언가 달라졌는가」라는 한 값이고, 화면은 **어느 행이**
+        아직 파일에 없는지를 행마다 표시해야 한다 (009 FR-310 이 편집 국면에 만든 그
+        표식). 세션에서는 그 판정을 서버만 할 수 있다 — 저장 시점의 목록을 들고 있는
+        것이 여기다.
+
+        **고쳐진 Step 은 세지 않는다.** 이 표식의 뜻은 「파일에 없다」이고, 고친 것은
+        파일에 있되 내용이 다른 것이라 다른 사실이다. 그것은 `has_unsaved_changes` 와
+        국면 띠의 저장 상태 칩이 말한다.
+        """
+        saved = {s.id for s in self.saved_snapshot}
+        return [s.id for s in self.steps if s.id not in saved]
 
     @property
     def current_step_index(self) -> int:
@@ -428,6 +459,16 @@ class SessionView(BaseModel):
     state: SessionState
     state_label: str
     test_id: str | None
+    unsaved_step_ids: list[str] = Field(default_factory=list)
+    """저장한 뒤 더해진 Step 의 id (011 FR-379).
+
+    **선택 필드다** — 없이 온 응답도 그대로 읽힌다.
+    """
+    test_name: str | None = None
+    """저장된 테스트의 이름 (011 FR-362). 아직 저장된 적 없으면 `None`.
+
+    **선택 필드다** — 없이 온 응답도 그대로 읽힌다.
+    """
     current_step_index: int
     steps: list[Step]
     tabs_open: int
@@ -592,6 +633,8 @@ def view_of(w: SessionWork) -> SessionView:
         state=w.session.state,
         state_label=state_label(w.session.state),
         test_id=w.saved_test_id or w.session.test_id,
+        test_name=w.saved_test_name,
+        unsaved_step_ids=w.unsaved_step_ids,
         current_step_index=w.current_step_index,
         steps=w.steps,
         tabs_open=len(w.session.open_tabs()),
@@ -766,6 +809,8 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         saved_test_id=body.test_id,
     )
     if existing_test is not None:
+        # 011 FR-362 — 이름을 함께 들린다. 이것이 없으면 화면이 저장할 때 이름을 다시 묻는다.
+        work.saved_test_name = existing_test.name
         work.steps = list(existing_test.steps)
         work.recorder.seed_step_seq(len(existing_test.steps))
         work.saved_snapshot = list(existing_test.steps)
@@ -1768,6 +1813,8 @@ async def save(session_id: str, body: SaveRequest, state: State) -> Test:
     )
     repo.write_test(test)
     w.saved_test_id = test_id
+    # 011 — 방금 정해진 이름이 이후 저장의 기본값이 된다. 다시 묻지 않기 위한 값이다.
+    w.saved_test_name = test.name
     # 005 FR-154 — 저장 시각을 세션에 남긴다. 화면이 응답 하나에만 의존하지 않고
     # 저장 여부를 스스로 알 수 있어야, 다시 그려도 미저장으로 되돌아가지 않는다 (U-09).
     w.saved_at = datetime.now(UTC)

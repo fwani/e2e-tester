@@ -136,6 +136,8 @@ export function ComposeView({
     */
     steps: [],
     focusedStepId: null,
+    /* 만들기 국면에는 Step 이 없다. 자리는 두고 비운다 (011 FR-380) */
+    deleteSelection: [],
     detail: null,
     capabilities,
     notices: [],
@@ -173,6 +175,26 @@ export function ComposeView({
         emphasis={mode === "ai"}
         onRun={start}
       />
+      {/*
+        011 — 저장의 자리는 국면 띠다 (007 계약 §2-7). 만들기 국면에서는 **저장할 것이
+        아직 없다** (`off("NOTHING_TO_SAVE_YET", "record.start")`).
+
+        **그래도 자리는 남긴다** (FR-234·FR-260). 감추면 사용자는 이 화면에 저장이 원래
+        없는 것으로 읽고, 녹화를 시작한 뒤 저장이 어디서 나타날지 배울 자리가 없어진다 —
+        표가 `–` 로 두지 않은 조작은 화면에 있어야 한다는 규칙 그대로다.
+
+        누를 수 없으므로 `onRun` 은 불리지 않는다. 해소 방법(「녹화 시작」)은
+        `ActionButton` 이 권한표에서 읽어 붙인다.
+      */}
+      <ActionButton
+        action="save"
+        capability={capabilities.save}
+        compact
+        onRun={start}
+        onRemedy={(action) => {
+          if (action === "record.start") start();
+        }}
+      />
       <ActionButton action="nav.back" capability={capabilities["nav.back"]} onRun={onCancel} />
     </>
   );
@@ -186,6 +208,31 @@ export function ComposeView({
       <Workbench
         model={model}
         phaseActions={phaseActions}
+        /*
+          011 UC-011-2 — 이름 자리. **만들기 국면에서는 잠겨 있다** — 이름은 저장 시점에
+          정하고(FR-258a), 저장할 것이 아직 없다. 권한표가 `off("NAME_ON_SAVE")` 로
+          그 사실을 말하고, 자리는 남는다.
+        */
+        phaseName={{
+          capability: capabilities["test.rename"],
+          onChange: () => undefined,
+          onRemedy: () => undefined,
+        }}
+        /*
+          011 — 삭제 대상 고르기의 **자리**. 만들기 국면에는 Step 이 0개라 고를 것이 없고,
+          권한표가 그 사실을 「아직 시작하지 않았습니다」로 말한다.
+
+          그래도 넘기는 이유는 FR-260 이다 — 자리를 감추면 목록이 0개일 때 조작이 어디에
+          쌓이는지 보여 줄 수 없다 (S-15). 그릴지 말지는 `StepList` 가 표를 보고 정한다.
+        */
+        deleteTargets={{
+          selected: [],
+          capability: capabilities["step.toggleDeleteTarget"],
+          allCapability: capabilities["step.selectAllDeleteTargets"],
+          onToggle: () => undefined,
+          onToggleAll: () => undefined,
+          onRemedy: () => undefined,
+        }}
         stepEmptyNotice="아직 Step 이 없습니다. 시작하면 조작 하나가 행 하나로 여기 쌓입니다."
         /*
           Step 패널 바닥의 조작 블록 — **여덟 국면에서 같은 자리다** (FR-235).
@@ -215,12 +262,9 @@ export function ComposeView({
             }}
             hidden={["test.setStartUrl", "ai.compose", "ai.start"]}
             nl={{ value: "", onChange: () => undefined, onSubmit: () => undefined }}
-            name=""
-            onNameChange={() => undefined}
             startUrl={startUrl}
             onStartUrlChange={setStartUrl}
             instruction={instruction}
-            saveLabel="저장"
             stepCount={0}
             emptyHint="시작하면 Step 이 여기 쌓입니다."
           />

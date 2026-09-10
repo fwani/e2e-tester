@@ -29,7 +29,12 @@ import type { RepickSlot } from "../../api/client";
 import { InlineSecretInput, referenceName } from "../InlineSecretInput";
 import { LocatorPriorityTable } from "../LocatorPriorityTable";
 import { isShown, type CapabilityMap } from "../../lib/capabilities";
-import { SENSITIVE_NO_VALUE, stepNumber, uploadFileNote } from "../../lib/wording";
+import {
+  MISSING_SHOT_REASON,
+  SENSITIVE_NO_VALUE,
+  stepNumber,
+  uploadFileNote,
+} from "../../lib/wording";
 import type { Step } from "../../types/generated/step";
 import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
@@ -62,6 +67,15 @@ function dslPreview(step: Step): string {
 export interface StepDetailProps {
   detail: StepDetailModel;
   capabilities: CapabilityMap;
+  /**
+   * 그 Step 이 끝난 시점의 화면 (011 UC-011-20·21).
+   *
+   * **주지 않으면 그 판을 그리지 않는다.** 결과 국면에만 있는 것이고, 다른 국면에서 빈
+   * 판을 그리면 「여기도 화면이 남는다」로 읽힌다.
+   *
+   * `url` 이 `null` 이면 없다는 뜻이고 `note` 가 그 사유다 — 둘 중 하나는 반드시 있다.
+   */
+  shot?: { url: string | null; note: string };
   /**
    * 이 컴포넌트가 **자기 편집 입력을 갖는가** (008).
    *
@@ -104,6 +118,7 @@ export interface StepDetailProps {
 export function StepDetail({
   detail,
   capabilities,
+  shot,
   ownFields = true,
   busy = false,
   onSave,
@@ -113,6 +128,17 @@ export function StepDetail({
   extraFields,
 }: StepDetailProps) {
   const step = detail.step;
+  /**
+   * 그 화면 파일이 실제로는 없었다 (011 FR-396b).
+   *
+   * 결과 파일에 경로가 있어도 파일은 사라졌을 수 있다 — 보관이 테스트당 최근 1회분이므로,
+   * 지난 실행의 결과를 열면 그 화면은 이미 이번 실행이 지웠다.
+   *
+   * **지목이 바뀌면 되돌린다.** 한 Step 에서 깨졌다고 다음 Step 까지 없는 것으로 두면,
+   * 있는 화면을 보여 주지 못한다.
+   */
+  const [shotBroken, setShotBroken] = useState(false);
+  useEffect(() => setShotBroken(false), [shot?.url]);
   const [label, setLabel] = useState(step?.label ?? "");
   const [value, setValue] = useState(step && hasValue(step) ? step.value : "");
   const [fileName, setFileName] = useState(step && hasFileName(step) ? step.file_name : "");
@@ -177,6 +203,13 @@ export function StepDetail({
         <div className="lbl">STEP 상세</div>
         <div className="spacer" />
         <button
+          /*
+            011 UC-011-10 — 닫는 조작은 **상세 안에** 있고 모든 국면에서 같은 자리다.
+            표식을 두는 이유: 011 이 상세를 대상 앱 위로 옮겼으므로, 닫을 방법이 판 안에
+            있다는 것이 검사로 세져야 한다. 겹침이 미러를 덮은 채 닫을 수 없으면 사용자는
+            조작 위치를 잃는다.
+          */
+          data-detail-close
           aria-label="닫기"
           className="btn sm quiet"
           onClick={onClose}
@@ -356,6 +389,54 @@ export function StepDetail({
             </div>
             )}
           </>
+        )}
+
+        {/*
+          011 UC-011-20·21 — **그 Step 이 끝난 시점의 화면.**
+
+          자리는 여기다. 새 영역을 만들지 않는다 — 사용자가 「몇 번째에서 무엇이 화면에
+          있었는가」를 묻는 곳이 Step 상세이고, 그것을 위해 결과 국면에서 이 판을 연다.
+
+          **시도한 locator 표 위에 온다.** 화면은 「무엇이 보였나」이고 표는 「왜 못 찾았나」
+          라 순서가 그 차례다. 그리고 다른 표시를 밀어내지 않는다 (UC-011-22) — 판 자체가
+          세로로 스크롤하므로 아래가 잘리지 않는다.
+
+          **없으면 사유를 말한다.** 빈 채로 두면 사용자는 제품이 못 찍은 것인지 자기가 못
+          볼 이유가 있는 것인지 알 수 없다.
+        */}
+        {shot !== undefined && (
+          <div className="pane" data-step-shot>
+            <div className="pane-hd lbl band" style={{ padding: "0 12px" }}>
+              이 STEP 이 끝난 화면
+            </div>
+            {shot.url !== null && !shotBroken ? (
+              <img
+                data-step-shot-image
+                src={shot.url}
+                alt={`${stepNumber(detail.index)} 이 끝난 시점의 화면`}
+                style={{ display: "block", width: "100%", height: "auto" }}
+                /*
+                  011 FR-396b — **파일이 사라졌을 수 있다.**
+
+                  결과 파일에는 경로가 있는데 그 실행의 화면은 이후 실행이 지웠다
+                  (보관은 테스트당 최근 1회분이다). 그대로 두면 깨진 이미지 아이콘이
+                  뜨고, 그것은 제품이 고장난 것으로 읽힌다 — UX U-03 이 정확히 그
+                  형태였다.
+
+                  깨지면 사유로 바꾼다. 「없다」를 말할 수 있으면 깨진 그림을 보이지 않는다.
+                */
+                onError={() => setShotBroken(true)}
+              />
+            ) : (
+              <div
+                data-step-shot-missing
+                className="why"
+                style={{ padding: "12px" }}
+              >
+                {shotBroken ? MISSING_SHOT_REASON.superseded : shot.note}
+              </div>
+            )}
+          </div>
         )}
 
         {/*

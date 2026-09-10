@@ -59,6 +59,9 @@ function resultWith(outcome: Outcome): RunResultData {
       tab: 0,
       tab_wait_ms: 0,
       element_wait_ms: 0,
+      /* 011 — 서버가 항상 싣는 두 필드. 없음은 `null` 이다 */
+      screenshot: null,
+      screenshot_note: null,
       error_code: null,
       resolved_candidate: null,
       locator_attempts: [],
