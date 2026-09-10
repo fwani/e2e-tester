@@ -1,0 +1,145 @@
+/**
+ * 초안 목록 (014 US3 · FR-027·FR-029·FR-035).
+ *
+ * **초안은 테스트가 아니다.** 그래서 테스트 목록의 행으로 섞지 않고 이 영역에 따로 둔다 —
+ * 실행할 수 없고, 결말이 없고, 할 수 있는 일이 「녹화 시작」과 「삭제」 둘뿐이다. 같은 표에
+ * 두면 사용자가 행마다 무엇을 할 수 있는지 매번 확인해야 한다.
+ *
+ * 「몇 건 남았다」를 크게 보이는 것이 이 화면의 일이다 (FR-035). 설계서에서 스무 건을
+ * 들여온 사용자에게 필요한 것은 목록이 아니라 **다음에 무엇을 할지**다.
+ */
+import { useState } from "react";
+
+import type { DraftRow } from "../api/client";
+import { drafts as draftsApi } from "../api/client";
+import { describeError } from "../components/ErrorNotice";
+import type { ErrorInfo } from "../components/ErrorNotice";
+
+export function DraftSection({
+  drafts,
+  problems,
+  busy,
+  onRecord,
+  onChanged,
+  onError,
+}: {
+  drafts: DraftRow[];
+  problems: string[];
+  busy: boolean;
+  /** 초안에서 AI 작성 세션을 시작한다 — 기존 「테스트 만들기 → AI」와 같은 경로다. */
+  onRecord: (draft: DraftRow) => void;
+  onChanged: () => void;
+  onError: (error: ErrorInfo) => void;
+}) {
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  if (drafts.length === 0 && problems.length === 0) return null;
+
+  const remove = (id: string) => {
+    setConfirming(null);
+    void draftsApi
+      .remove(id)
+      .then(onChanged)
+      .catch((exc: unknown) => onError(describeError(exc)));
+  };
+
+  return (
+    <section data-draft-section style={{ marginTop: 20 }}>
+      <div className="row" style={{ gap: 8, alignItems: "baseline", marginBottom: 8 }}>
+        <span className="strong-sm">녹화하지 않은 초안</span>
+        <span className="num" data-draft-count>
+          {drafts.length}
+        </span>
+        <span className="why">
+          엑셀에서 들여온 항목입니다. 하나씩 녹화하면 테스트가 됩니다.
+        </span>
+      </div>
+
+      {problems.length > 0 && (
+        <div className="tint-warn" style={{ padding: "8px 10px", marginBottom: 8 }}>
+          {problems.map((p) => (
+            <div key={p} className="why">
+              {p}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: "left", padding: "6px 8px", width: 110 }}>희망 번호</th>
+            <th style={{ textAlign: "left", padding: "6px 8px" }}>대상기능</th>
+            <th style={{ textAlign: "left", padding: "6px 8px", width: 110 }}>수행자</th>
+            <th style={{ textAlign: "left", padding: "6px 8px" }}>출처</th>
+            <th style={{ textAlign: "right", padding: "6px 8px", width: 190 }} />
+          </tr>
+        </thead>
+        <tbody>
+          {drafts.map((draft) => (
+            <tr key={draft.draft_id} data-draft-row={draft.draft_id}>
+              <td style={{ padding: "6px 8px" }}>
+                <span className="mono">{draft.desired_test_id ?? "—"}</span>
+                {draft.desired_test_id !== null && !draft.desired_id_available && (
+                  /*
+                    희망 번호가 이미 쓰이고 있다. **막지 않는다** — 저장할 때 다른 번호를
+                    받는다는 예고일 뿐이다 (FR-032). 초안은 번호를 예약하지 않는다.
+                  */
+                  <div className="why" data-id-taken={draft.draft_id}>
+                    이 번호는 이미 쓰입니다. 저장할 때 다른 번호를 받습니다.
+                  </div>
+                )}
+              </td>
+              <td style={{ padding: "6px 8px" }}>
+                <div>{draft.name}</div>
+                {draft.description !== null && <div className="why">{draft.description}</div>}
+              </td>
+              <td style={{ padding: "6px 8px" }}>{draft.actor ?? "—"}</td>
+              <td style={{ padding: "6px 8px" }}>
+                <span className="why">
+                  {draft.source.file_name} · {draft.source.sheet_name} {draft.source.row}행
+                </span>
+              </td>
+              <td style={{ padding: "6px 8px", textAlign: "right" }}>
+                {confirming === draft.draft_id ? (
+                  <span className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
+                    <span className="why">지울까요?</span>
+                    <button
+                      className="btn sm"
+                      data-action="draft.delete-confirm"
+                      onClick={() => remove(draft.draft_id)}
+                    >
+                      지우기
+                    </button>
+                    <button className="btn sm" onClick={() => setConfirming(null)}>
+                      그대로
+                    </button>
+                  </span>
+                ) : (
+                  <span className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
+                    <button
+                      className="btn sm"
+                      data-action="draft.record"
+                      disabled={busy}
+                      onClick={() => onRecord(draft)}
+                    >
+                      녹화 시작
+                    </button>
+                    <button
+                      className="btn sm"
+                      data-action="draft.delete"
+                      disabled={busy}
+                      onClick={() => setConfirming(draft.draft_id)}
+                    >
+                      지우기
+                    </button>
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}

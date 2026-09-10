@@ -38,16 +38,24 @@ import { createPortal } from "react-dom";
 import {
   ai,
   ApiError,
+  drafts as draftsApi,
+  excel,
   groups as groupsApi,
+  saveBlob,
   tests,
   type AiAvailability,
   type SessionView,
   type TestListRow,
   type TestGroup,
   type TestListResponse,
+  type DraftRow,
+  type ExportWarningsView,
+  type ImportPlanView,
   type TrashedTest,
 } from "../api/client";
 import { TestGroupBar } from "../components/TestGroupBar";
+import { DraftSection } from "./DraftList";
+import { ImportFilePicker } from "./ImportPreview";
 import {
   TestBulkConfirm,
   TestSelectionBar,
@@ -125,6 +133,15 @@ export interface TestListProps {
    * 서버에는 Step 과 브라우저가 그대로 있는데 화면이 그것을 말하지 않으면 사용자는
    * 새 녹화를 시작하고, 앞의 기록은 영영 못 찾는다.
    */
+  /**
+   * 엑셀에서 가져오기 미리보기를 연다 (014 US2). 없으면 그 길을 그리지 않는다.
+   *
+   * 이 화면이 미리보기를 직접 그리지 않는 이유는 시트가 200개까지 올 수 있어
+   * 목록 안에 담기지 않기 때문이다.
+   */
+  onImportPlan?: (plan: ImportPlanView) => void;
+  /** 초안에서 AI 작성 세션을 시작한다 (014 US3). */
+  onRecordDraft?: (draft: DraftRow) => void;
   activeSessions?: SessionView[];
   onResumeSession?: (session: SessionView) => void;
   onDiscardSession?: (sessionId: string) => void;
@@ -147,6 +164,8 @@ export function TestList({
   onOpenSecrets,
   onOpenKeys,
   onOpenProjects,
+  onImportPlan,
+  onRecordDraft,
   activeSessions = [],
   onRefreshSessions,
   onResumeSession,
@@ -157,6 +176,14 @@ export function TestList({
   const [filter, setFilter] = useState<OutcomeFilter>("all");
   const [recentFirst, setRecentFirst] = useState(true);
   const [error, setError] = useState<ErrorInfo | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState<{
+    filename: string;
+    warnings: number;
+    detail: ExportWarningsView | null;
+  } | null>(null);
+  const [draftRows, setDraftRows] = useState<DraftRow[]>([]);
+  const [draftProblems, setDraftProblems] = useState<string[]>([]);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -279,6 +306,23 @@ export function TestList({
       .finally(() => setBusy(false));
   };
 
+  /**
+   * 초안 목록 (014 US3).
+   *
+   * 실패해도 삼킨다 — 그룹과 같은 판단이다. 초안을 못 불러와도 테스트 목록은 그려야
+   * 한다. 첫 화면이 막히면 아무것도 못 한다.
+   */
+  const reloadDrafts = async () => {
+    try {
+      const body = await draftsApi.list();
+      setDraftRows(body.drafts ?? []);
+      setDraftProblems(body.problems ?? []);
+    } catch {
+      setDraftRows([]);
+      setDraftProblems([]);
+    }
+  };
+
   const reloadGroups = async () => {
     try {
       // `?? []` 가 없으면 응답이 어긋났을 때 **목록 화면 전체가 깨진다.** 그룹은
@@ -293,6 +337,7 @@ export function TestList({
   useEffect(() => {
     void reload(query, groupFilter);
     void reloadGroups();
+    void reloadDrafts();
     // 검색어·그룹이 바뀔 때마다 다시 조회한다. 로컬 도구이므로 디바운스 없이도 충분하다.
   }, [query, groupFilter]);
 
@@ -645,6 +690,56 @@ export function TestList({
               >
                 번호 정리
               </button>
+
+              {/*
+                엑셀로 내보내기 (014 US1 · FR-001).
+
+                자리가 「번호 정리」 옆인 이유는 둘 다 **프로젝트 전체에 대한 조작**이기
+                때문이다. 걸러 보기와 무관하게 전부 나간다.
+
+                `btn primary` 를 쓰지 않는다 — 이 화면의 잉크 채움은 「테스트 만들기」
+                하나뿐이다 (이 파일 헤더바 주석).
+
+                「Playwright 로 내보내기」(릴리스 게이트 RG-1)와 **다른 것**이다.
+                그쪽은 아직 없고, 이름이 섞이지 않게 「엑셀로」를 앞에 둔다.
+              */}
+              <button
+                className="btn sm"
+                data-action="tests.export-excel"
+                disabled={busy || exporting}
+                onClick={() => {
+                  setError(null);
+                  setExported(null);
+                  setExporting(true);
+                  void excel
+                    .exportProject()
+                    .then(async ({ blob, filename, warnings }) => {
+                      saveBlob(blob, filename);
+                      /*
+                        경고가 있으면 **무엇이 바뀌었는지** 함께 읽는다 (FR-008a).
+                        건수만으로는 사용자가 파일에서 자기 그룹을 찾지 못한다 —
+                        상세 엔드포인트는 있는데 아무도 부르지 않아 죽은 코드였다
+                        (수렴 T090).
+                      */
+                      const detail = warnings > 0 ? await excel.warnings().catch(() => null) : null;
+                      setExported({ filename, warnings, detail });
+                    })
+                    .catch((exc: unknown) => setError(describeError(exc)))
+                    .finally(() => setExporting(false));
+                }}
+              >
+                {exporting ? "내보내는 중…" : "엑셀로 내보내기"}
+              </button>
+
+              {/* 엑셀에서 가져오기 (014 US2). 내보내기 옆에 두어 두 방향이 한자리에 있다. */}
+              {onImportPlan !== undefined && (
+                <ImportFilePicker
+                  label="엑셀에서 가져오기"
+                  disabled={busy}
+                  onPlan={onImportPlan}
+                  onError={setError}
+                />
+              )}
             </>
           )}
         </div>
@@ -692,6 +787,62 @@ export function TestList({
         )}
         {!isEmptyProject && renumbered !== null && (
           <RenumberedNotice result={renumbered} onDismiss={() => setRenumbered(null)} />
+        )}
+        {/*
+          내보내기 결과 (014 FR-008·FR-010·FR-013).
+
+          **경고가 있으면 그 사실을 말한다.** 시트 이름이 바뀌었거나 긴 칸이 잘렸는데
+          조용히 성공하면, 사용자는 자기가 쓴 그룹 이름을 파일에서 찾지 못하고 그 이유를
+          알 길이 없다.
+        */}
+        {exported !== null && (
+          <div
+            data-export-notice
+            role="status"
+            className={exported.warnings > 0 ? "tint-warn" : "tint-run"}
+            style={{ padding: "10px 12px", marginBottom: 10 }}
+          >
+            <div className="strong-sm">{exported.filename} 을 내려받았습니다.</div>
+            {exported.warnings > 0 && (
+              <div className="why" style={{ marginTop: 4 }}>
+                시트 이름이 바뀌었거나 긴 칸이 잘린 곳이 {exported.warnings}건 있습니다.
+              </div>
+            )}
+            {/*
+              `?? []` 가 각 배열마다 필요하다. `detail?.` 는 detail 이 없는 경우만 막고,
+              응답이 오되 모양이 어긋난 경우는 못 막는다 — 그러면 목록 화면 전체가
+              깨진다. 그룹 조회가 같은 이유로 `?? []` 를 쓴다.
+            */}
+            {(exported.detail?.sheet_renames ?? []).length > 0 && (
+              <div style={{ marginTop: 6 }} data-export-renames>
+                {(exported.detail?.sheet_renames ?? []).map((r) => (
+                  <div key={r.group_name} className="why">
+                    그룹 「{r.group_name}」은 「{r.sheet_name}」 시트가 됐습니다.
+                  </div>
+                ))}
+              </div>
+            )}
+            {(exported.detail?.truncations ?? []).length > 0 && (
+              <details style={{ marginTop: 6 }} data-export-truncations>
+                <summary className="why" style={{ cursor: "pointer" }}>
+                  잘린 칸 {(exported.detail?.truncations ?? []).length}건
+                </summary>
+                {(exported.detail?.truncations ?? []).map((t) => (
+                  <div key={`${t.test_id}-${t.column}`} className="why mono">
+                    {t.test_id} · {t.column} — {t.dropped_lines}줄 생략
+                  </div>
+                ))}
+              </details>
+            )}
+            {(exported.detail?.unreadable ?? []).length > 0 && (
+              <div className="why" style={{ marginTop: 6 }} data-export-unreadable>
+                읽지 못해 빠진 정의 {(exported.detail?.unreadable ?? []).length}건이 있습니다.
+              </div>
+            )}
+            <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setExported(null)}>
+              확인
+            </button>
+          </div>
         )}
         {!isEmptyProject && confirmingBulk && (
           <TestBulkConfirm
@@ -745,7 +896,12 @@ export function TestList({
 
         {/* ─── 목록 ──────────────────────────────────────────────────────── */}
         {isEmptyProject ? (
-          <EmptyProject onCreate={onCreate} onOpenKeys={onOpenKeys} />
+          <EmptyProject
+            onCreate={onCreate}
+            onOpenKeys={onOpenKeys}
+            onImportPlan={onImportPlan}
+            onError={setError}
+          />
         ) : (
           <div className="pane" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div
@@ -907,6 +1063,27 @@ export function TestList({
               <span className="why">MVP 미지원</span>
             </div>
           </div>
+        )}
+
+        {/*
+          녹화하지 않은 초안 (014 US3 · FR-027).
+
+          **테스트 목록의 행으로 섞지 않는다.** 초안은 실행할 수 없고 결말이 없어, 같은
+          표에 두면 사용자가 행마다 무엇을 할 수 있는지 매번 확인해야 한다.
+
+          첫 사용자 화면(`isEmptyProject`)에서도 그린다 — 엑셀에서 가져오기만 한 프로젝트는
+          테스트가 0개이고 초안만 있다. 그때 이 영역을 감추면 사용자가 방금 들여온 것이
+          어디로 갔는지 알 수 없다.
+        */}
+        {onRecordDraft !== undefined && (
+          <DraftSection
+            drafts={draftRows}
+            problems={draftProblems}
+            busy={busy}
+            onRecord={onRecordDraft}
+            onChanged={() => void reloadDrafts()}
+            onError={setError}
+          />
         )}
       </div>
     </Artboard>
@@ -1344,7 +1521,24 @@ function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
  * 확인 전에는 「키 필요」도 「사용 가능」도 말하지 않는다 — 아직 모르는 것을 단정하면
  * 고정 문구와 같은 결함이 된다.
  */
-function EmptyProject({ onCreate, onOpenKeys }: { onCreate: () => void; onOpenKeys?: () => void }) {
+function EmptyProject({
+  onCreate,
+  onOpenKeys,
+  onImportPlan,
+  onError,
+}: {
+  onCreate: () => void;
+  onOpenKeys?: () => void;
+  /**
+   * 엑셀에서 가져오기 (014 US2).
+   *
+   * **이 화면에 있어야 한다.** 테스트가 0개인 프로젝트는 설계서를 들여오기에 가장
+   * 좋은 상태이고, 목록 조작 띠는 이 화면에서 그려지지 않는다 — 거기에만 두면 가장
+   * 필요한 순간에 길이 없다.
+   */
+  onImportPlan?: (plan: ImportPlanView) => void;
+  onError?: (error: ErrorInfo) => void;
+}) {
   const [aiReady, setAiReady] = useState<AiAvailability | null>(null);
 
   useEffect(() => {
@@ -1464,6 +1658,22 @@ function EmptyProject({ onCreate, onOpenKeys }: { onCreate: () => void; onOpenKe
             )}
           </div>
         </div>
+
+        {/* 세 번째 갈래 — 이미 쓰던 설계서가 있는 사용자 (014 US2). */}
+        {onImportPlan !== undefined && (
+          <div className="pane" style={{ padding: "14px", width: "100%", textAlign: "left" }}>
+            <div className="subtitle">이미 쓰던 설계서가 있나요?</div>
+            <div className="why" style={{ margin: "6px 0 10px" }}>
+              엑셀 파일을 넣으면 그룹과 테스트 초안을 만듭니다. 초안은 하나씩 녹화하면
+              테스트가 됩니다.
+            </div>
+            <ImportFilePicker
+              label="엑셀에서 가져오기"
+              onPlan={onImportPlan}
+              onError={(err) => onError?.(err)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

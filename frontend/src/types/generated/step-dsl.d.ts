@@ -5,6 +5,7 @@
  * 재생성: cd backend && uv run python -m itb.schema.export && cd ../frontend && npm run gen:types
  */
 
+export type Actor = string | null;
 export type AiInstruction = string | null;
 /**
  * 작성 방식. **테스트를 시작한 방식**으로 결정하며 이후 바뀌지 않는다 (FR-002a).
@@ -12,6 +13,7 @@ export type AiInstruction = string | null;
 export type AuthoringMode = "record" | "ai";
 export type BrowserKind = "chromium";
 export type CreatedAt = string;
+export type Description = string | null;
 export type DslVersion = number;
 export type Id = string;
 export type Name = string;
@@ -115,10 +117,12 @@ export type Variables = Variable[];
  * 하나의 테스트 시나리오. `tests/` 아래 YAML 파일 하나에 대응한다.
  */
 export interface Test {
+  actor: Actor;
   ai_instruction: AiInstruction;
   authoring_mode: AuthoringMode;
   browser: BrowserKind;
   created_at: CreatedAt;
+  description: Description;
   dsl_version: DslVersion;
   id: Id;
   name: Name;

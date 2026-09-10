@@ -33,10 +33,15 @@ from typing import Any
 
 from itb.authoring.compiler import StepCompiler
 from itb.authoring.tools import MAX_TOOL_CALLS, BrowserToolbox, build_tools
+from itb.domain.test_case import MAX_INSTRUCTION_CHARS
 from itb.llm.client import LlmConfig, LlmUnavailableError, RefusalError, check_stop_reason
 
-MAX_INSTRUCTION_LENGTH = 8000
-"""자연어 지시문 길이 상한 (FR-085). 경계에서 검증한다."""
+MAX_INSTRUCTION_LENGTH = MAX_INSTRUCTION_CHARS
+"""자연어 지시문 길이 상한 (FR-085). 경계에서 검증한다.
+
+값의 출처는 :data:`itb.domain.test_case.MAX_INSTRUCTION_CHARS` 하나다 — `Test.ai_instruction`
+의 저장 상한과 어긋나면, 통과한 지시문이 저장에서 거절되는 자리가 생긴다.
+"""
 
 SYSTEM_PROMPT = """\
 당신은 웹 브라우저를 조작해 E2E 테스트를 만드는 도구입니다.

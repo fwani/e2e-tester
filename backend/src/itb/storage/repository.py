@@ -5,6 +5,7 @@
     <프로젝트 디렉터리>/
     ├── itb-project.yaml          # 커밋 대상
     ├── tests/TC-001-*.yaml       # 커밋 대상 — 사용자 자산
+    ├── drafts/D-0001-*.yaml      # 커밋 대상 — 아직 녹화되지 않은 초안 (014)
     ├── secrets.local.yaml        # .gitignore 대상
     ├── .runs/<테스트ID>/          # .gitignore 대상, 최근 1건만
     └── .gitignore                # 생성 시 자동 작성
@@ -24,8 +25,15 @@ import shutil
 from dataclasses import dataclass
 
 from itb.domain.run_result import RunResult, RunScope
-from itb.domain.test_case import RESERVED_PREFIX, TEST_ID_PATTERN, Project, Test
+from itb.domain.test_case import (
+    MAX_TEST_NUMBER,
+    RESERVED_PREFIX,
+    TEST_ID_PATTERN,
+    Project,
+    Test,
+)
 from itb.storage import atomic
+from itb.storage.drafts import DRAFTS_DIR, DraftStore
 from itb.storage.yaml_io import DefinitionError, dump_model, load_model
 
 PROJECT_FILE = "itb-project.yaml"
@@ -122,6 +130,15 @@ class ProjectPaths:
         return self.root / RUNS_DIR
 
     @property
+    def drafts_dir(self) -> pathlib.Path:
+        """아직 녹화되지 않은 초안들 (014).
+
+        `tests/` 와 나뉜 이유는 :mod:`itb.storage.drafts` 머리말에 있다 — 초안과 테스트를
+        가르는 벽이 정규식이 아니라 파일시스템이어야 한다.
+        """
+        return self.root / DRAFTS_DIR
+
+    @property
     def secrets_file(self) -> pathlib.Path:
         return self.root / SECRETS_FILE
 
@@ -151,6 +168,8 @@ class ProjectRepository:
 
     def __init__(self, root: pathlib.Path) -> None:
         self.paths = ProjectPaths(validate_project_path(root))
+        self.drafts = DraftStore(self.paths.root)
+        """초안 저장소 (014). 테스트와 다른 생명주기를 가지므로 따로 둔다."""
 
     # ─── 생성·열기 (FR-001) ─────────────────────────────────────────────────
 
@@ -299,30 +318,44 @@ class ProjectRepository:
 
     # ─── 테스트 ID 부여 ───────────────────────────────────────────────────
 
-    def allocate_test_id(self, prefix: str = RESERVED_PREFIX) -> str:
-        """다음 테스트 ID 를 부여하고 카운터를 저장한다.
+    def used_numbers(self, prefix: str) -> set[int]:
+        """그 그룹이 쓰고 있는 번호들 (014 3차 요청).
 
-        카운터와 실제 파일을 함께 본다 — 카운터만 믿으면 파일을 손으로 옮긴 뒤 충돌한다.
-
-        **번호는 접두어를 넘어 고유하다** (013 research R3). `USER-003` 이 있으면 `003` 은
-        어느 접두어로도 쓰이지 않는다. 그래야 **그룹을 옮길 때 번호를 다시 뽑지 않는다** —
-        `USER-003` → `DATA-003` 이 언제나 빈자리다. FR-444c(식별자 고유)를 규칙으로 지키는
-        대신 **구조로** 만족시킨다.
+        **파일 이름에서 읽는다.** 카운터만 믿으면 파일을 손으로 옮긴 뒤 충돌한다.
         """
-        project = self.read_project()
-        used = {
+        return {
             int(m.group("number"))
             for p in self.list_test_paths()
             if (m := _TEST_FILE_RE.match(p.name)) is not None
+            and m.group("id").split("-", 1)[0] == prefix
         }
-        number = project.next_test_number
+
+    def allocate_test_id(self, prefix: str = RESERVED_PREFIX) -> str:
+        """다음 테스트 ID 를 부여한다.
+
+        **번호는 그룹마다 따로 센다** (014 3차 요청). `USER-001` 과 `DATA-001` 이 함께
+        있을 수 있고, 각 그룹이 1부터 999까지 쓴다.
+
+        013 은 반대로 정했었다 — 번호를 프로젝트 전체에서 고유하게 두면 그룹을 옮길 때
+        `USER-003` → `DATA-003` 이 **언제나** 빈자리라 번호를 다시 뽑을 필요가 없기
+        때문이다. 그 이점을 여기서 잃는 대신, 사용자가 그룹마다 1번부터 세는 설계서 관행을
+        얻는다. 옮길 때 자리가 차 있을 수 있다는 것은
+        :func:`itb.storage.test_moves.target_id` 가 빈 번호를 뽑아 감당한다.
+
+        **카운터(`next_test_number`)는 더 이상 쓰지 않는다.** 그것은 프로젝트 하나에
+        번호가 하나뿐일 때의 개념이라 그룹마다 세는 지금과 맞지 않는다. 필드는 옛 파일을
+        읽기 위해 남겨 두되 판단에 쓰지 않는다.
+        """
+        used = self.used_numbers(prefix)
+        number = 1
         while number in used:
             number += 1
-        if number > 999:
-            msg = "테스트 ID 가 999 를 넘었습니다. 프로젝트를 나누세요."
+        if number > MAX_TEST_NUMBER:
+            msg = (
+                f"「{prefix}」 그룹의 테스트가 {MAX_TEST_NUMBER}개를 넘었습니다. "
+                "그룹을 나누세요."
+            )
             raise ProjectError(msg)
-        project.next_test_number = number + 1
-        self.write_project(project)
         return f"{prefix}-{number:03d}"
 
     # ─── 실행 결과 (테스트당 최근 1건) ────────────────────────────────────

@@ -1620,6 +1620,13 @@ export interface SessionScreenProps {
   initial: SessionView;
   aiInstruction?: string | null;
   /**
+   * 초안에서 출발한 세션 (014 3차 요청).
+   *
+   * 저장 이름과 그룹의 기본값이 된다 — 설계서에 이미 적혀 있는 것을 저장할 때 다시
+   * 치게 하지 않는다. **저장을 누르면 바로 저장된다.**
+   */
+  draft?: { draft_id: string; name: string; group_prefix: string } | null;
+  /**
    * 목표 자리에 도착하면 직접 조작 기록을 켠다 (009 FR-291·FR-295).
    *
    * 「이 앞에 추가」로 출발한 세션에만 참이다. **이 값은 화면 상태이며 서버에 없다** —
@@ -1666,6 +1673,7 @@ export interface SessionScreenProps {
 export function SessionScreen({
   initial,
   aiInstruction = null,
+  draft = null,
   recordOnArrival = false,
   instructionOnArrival = null,
   onFinished,
@@ -1744,8 +1752,19 @@ export function SessionScreen({
    * `null` 이면 서버가 준 이름을 쓰고, 문자열이면 — 빈 문자열이라도 — 그것이 이긴다.
    */
   const [nameOverride, setNameOverride] = useState<string | null>(null);
-  /** 저장 요청과 표시에 함께 쓰이는 이름. 두 칸에 넣게 하지 않는다 */
-  const effectiveSaveName = nameOverride ?? view.test_name ?? "";
+  /**
+   * 저장 요청과 표시에 함께 쓰이는 이름. 두 칸에 넣게 하지 않는다.
+   *
+   * **초안에서 온 세션은 초안의 제목이 기본값이다** (014 3차 요청). 설계서에 이미 이름이
+   * 적혀 있는데 저장할 때 다시 치라고 하면, 사용자는 같은 것을 두 번 쓰게 되고 두 이름이
+   * 어긋날 자리가 생긴다. 사용자가 고칠 수 있으므로 **값이 아니라 기본값**이다.
+   */
+  /*
+    초안의 출처는 **응답이 먼저다** (수렴 2회차). prop 은 화면 기억이라 새로 고치면
+    사라지고, 응답은 세션이 살아 있는 동안 계속 온다. 둘 다 없을 때만 빈 값이다.
+  */
+  const origin = view.draft ?? draft;
+  const effectiveSaveName = nameOverride ?? view.test_name ?? origin?.name ?? "";
 
   /**
    * 저장할 그룹 (013 FR-443 · converge T062).
@@ -1758,6 +1777,21 @@ export function SessionScreen({
    * 자산 이동을 숨기지 않는다.
    */
   const [saveGroup, setSaveGroup] = useState<string | null>(null);
+
+  /*
+    초안의 그룹을 저장 그룹의 기본값으로 삼는다 (014 3차 요청).
+
+    초안은 어느 시트에서 왔는지가 곧 소속이므로, 저장할 때 그룹을 다시 고르게 하면
+    사용자는 이미 정해진 것을 또 정하게 된다. 한 번만 맞춘다 — 이후에는 사용자가 고른
+    값이 이긴다.
+  */
+  const draftGroupApplied = useRef(false);
+  useEffect(() => {
+    if (draftGroupApplied.current) return;
+    if (!origin || view.test_id !== null) return;
+    draftGroupApplied.current = true;
+    setSaveGroup(origin.group_prefix === "TC" ? null : origin.group_prefix);
+  }, [origin, view.test_id]);
   const [groupOptions, setGroupOptions] = useState<{ prefix: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -2129,10 +2163,23 @@ export function SessionScreen({
     setBusy(true);
     void sessions
       .save(sessionId, effectiveSaveName.trim(), view.test_id === null ? saveGroup : null)
-      .then(() => {
+      .then((saved) => {
         // 005 FR-158 (U-09) — 성공 시 이전 오류 배너를 걷어낸다.
         setError(null);
-        setNotice(null);
+        /*
+          014 FR-032 — 초안의 희망 번호를 주지 못했으면 **그 사실을 말한다.**
+          사용자의 설계서에는 원래 번호가 적혀 있다. 조용히 다른 번호를 주면
+          제품과 설계서가 어긋난 것을 나중에 발견하게 된다.
+        */
+        const taken = saved.desired_id_taken;
+        setNotice(
+          taken
+            ? localError(
+                `${taken.wanted} 은 이미 쓰이고 있어 ${taken.assigned} 로 저장했습니다.`,
+                "설계서의 번호를 맞추려면 「번호 정리」를 쓰거나 설계서를 고치세요.",
+              )
+            : null,
+        );
         return resync();
       })
       .catch((exc: unknown) => setError(describeError(exc)))

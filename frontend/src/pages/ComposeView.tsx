@@ -48,6 +48,15 @@ export interface ComposeViewProps {
    */
   onStartAi: (startUrl: string, instruction: string) => void;
   busy?: boolean;
+  /**
+   * 초안에서 출발했을 때 지시문 칸을 미리 채운다 (014 FR-031).
+   *
+   * **사용자가 고칠 수 있어야 한다** — 서버가 지은 문장이 늘 맞지는 않고, 고칠 수
+   * 없으면 사용자는 초안을 지우고 처음부터 쓰게 된다. 그래서 값이 아니라 **초기값**이다.
+   */
+  initialInstruction?: string | null;
+  /** 초안에서 출발했음을 화면에 알린다. 어느 초안인지 보여 줄 때 쓴다. */
+  fromDraft?: { draft_id: string; name: string } | null;
 }
 
 export function ComposeView({
@@ -56,10 +65,16 @@ export function ComposeView({
   onRecord,
   onStartAi,
   busy = false,
+  initialInstruction = null,
+  fromDraft = null,
 }: ComposeViewProps) {
   const [startUrl, setStartUrl] = useState(project?.default_start_url ?? "");
-  const [mode, setMode] = useState<ComposeMode | null>(null);
-  const [instruction, setInstruction] = useState("");
+  /*
+    초안에서 출발했으면 AI 갈래를 미리 골라 둔다 (014 FR-031). 초안은 「말로 적은 할 일」
+    이므로 갈래를 다시 묻는 것은 사용자가 이미 한 선택을 되묻는 일이다.
+  */
+  const [mode, setMode] = useState<ComposeMode | null>(fromDraft !== null ? "ai" : null);
+  const [instruction, setInstruction] = useState(initialInstruction ?? "");
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [aiReady, setAiReady] = useState<{ available: boolean; reason: string | null } | null>(
     null,
@@ -208,6 +223,20 @@ export function ComposeView({
       <Workbench
         model={model}
         phaseActions={phaseActions}
+        /*
+          초안에서 출발했음을 말한다 (014 FR-031). 지시문 칸이 이미 채워져 있는 이유를
+          화면이 설명하지 않으면, 사용자는 자기가 쓰지 않은 글이 왜 있는지 모른다.
+        */
+        noticesExtra={
+          fromDraft !== null ? (
+            <div className="tint-run" data-from-draft={fromDraft.draft_id} style={{ padding: "8px 10px" }}>
+              <span className="strong-sm">초안 「{fromDraft.name}」에서 시작합니다.</span>
+              <span className="why" style={{ marginLeft: 6 }}>
+                지시문을 고쳐도 됩니다. 저장하면 이 초안은 사라집니다.
+              </span>
+            </div>
+          ) : undefined
+        }
         /*
           011 UC-011-2 — 이름 자리. **만들기 국면에서는 잠겨 있다** — 이름은 저장 시점에
           정하고(FR-258a), 저장할 것이 아직 없다. 권한표가 `off("NAME_ON_SAVE")` 로

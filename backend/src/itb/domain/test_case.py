@@ -44,11 +44,33 @@ TEST_ID_PATTERN = r"^[A-Z][A-Z0-9]{0,7}-\d{3}$"
 """테스트 식별자 = `<그룹 접두어>-<번호>` (013 FR-444).
 
 `TC-001` 이 이 패턴을 만족한다 — **기존 자산이 그대로 통과한다** (SC-629). 접두어 규칙은
-:data:`GROUP_PREFIX_PATTERN` 과 같고, 번호는 세 자리다 (`Project.next_test_number` 가 이미
-`le=999`).
+:data:`GROUP_PREFIX_PATTERN` 과 같고, 번호는 세 자리다 — 상한은
+:data:`MAX_TEST_NUMBER` 하나에서 온다.
 
 **접두어가 곧 소속이다.** 별도의 그룹 필드를 두지 않는다 — 둘을 다 저장하면 어긋날 수 있고,
 어긋났을 때 어느 쪽이 맞는지 정할 근거가 없다 (013 data-model §3).
+"""
+
+MAX_INSTRUCTION_CHARS = 8000
+"""자연어 지시문 길이 상한 (FR-085).
+
+`Test.ai_instruction` 과 :func:`itb.authoring.agent.validate_instruction` 과 초안의 지시문
+조립이 **같은 값을 봐야 한다**. 세 곳에 8000 을 베껴 두면 하나만 바뀌는 날이 온다.
+"""
+
+MAX_TEST_NUMBER = 999
+"""**그룹 하나**가 담을 수 있는 테스트 수의 상한 (014 FR-036c·FR-039).
+
+식별자의 번호가 세 자리이므로 이것이 곧 그룹의 수용량이다. 그룹이 열이면 프로젝트는
+9,990개까지 담는다.
+
+**번호는 그룹마다 따로 센다** (014 3차 요청). `USER-001` 과 `DATA-001` 이 함께 있을 수
+있다. 013 은 반대로 정했었다 — 전체에서 고유하면 그룹을 옮길 때 자리가 언제나 비기
+때문이다. 그 이점을 내주고 그룹마다 1번부터 세는 설계서 관행을 얻었으며, 이동 시의
+충돌은 :func:`itb.storage.test_moves.target_id` 가 빈 번호를 뽑아 감당한다.
+
+**이 값을 다른 곳에 베끼지 않는다.** 예전에는 `storage/repository.py` 와
+`api/routes/tests.py` 두 곳에 999 가 매직 넘버로 박혀 있었다.
 """
 
 VARIABLE_NAME_PATTERN = r"^[A-Z][A-Z0-9_]*$"
@@ -248,11 +270,16 @@ class Project(BaseModel):
     test_id_attribute: str = Field(default="data-testid", min_length=1, max_length=100)
     """대상 앱이 쓰는 testId 속성명. `data-test`, `data-cy` 등을 쓰는 앱이 흔하다."""
 
-    next_test_number: int = Field(default=1, ge=1, le=999)
-    """다음 테스트 번호. **접두어와 무관하게 프로젝트 전체에서 하나다** (013 research R3).
+    next_test_number: int = Field(default=1, ge=1, le=MAX_TEST_NUMBER)
+    """**더 이상 쓰이지 않는다** (014 3차 요청).
 
-    그래야 그룹을 옮길 때 번호를 다시 뽑지 않는다 — `USER-003` → `DATA-003` 이 언제나
-    빈자리다.
+    번호를 그룹마다 세게 되면서(`repository.allocate_test_id`) 「프로젝트에 다음 번호가
+    하나」라는 개념이 성립하지 않는다. 판단은 전부 디스크의 파일 이름에서 나온다.
+
+    **필드는 옛 프로젝트 파일을 읽기 위해 남긴다.** 지우면 014 이전에 만든
+    `itb-project.yaml` 이 `extra="forbid"` 에 걸려 열리지 않는다. 아무도 읽지 않으므로
+    쓰지도 않는다 — 쓰면 상한(999)을 넘긴 값이 파일에 남아 다음번에 못 읽게 된다
+    (수렴 2회차에 실제로 그랬다).
     """
 
     max_tabs: int = Field(default=MAX_TABS_DEFAULT, ge=1, le=50)
@@ -293,6 +320,24 @@ class Test(BaseModel):
     dsl_version: int = DSL_VERSION
     id: str = Field(pattern=TEST_ID_PATTERN)
     name: str = Field(min_length=1, max_length=200)
+
+    description: str | None = Field(default=None, max_length=2000)
+    """무엇을 확인하는 테스트인지 사람이 읽는 설명 (014 FR-003).
+
+    **기본값이 None 이어야 기존 테스트 파일이 그대로 읽힌다.** 014 이전에 저장된
+    `tests/*.yaml` 에는 이 키가 없다. 같은 이유로 `dsl_version` 을 올리지 않는다 —
+    올리면 :meth:`_check_refs` 가 기존 파일을 전부 거절한다.
+    """
+
+    actor: str | None = Field(default=None, max_length=100)
+    """이 테스트를 수행하는 역할 이름 (014 FR-026a·FR-026b).
+
+    **자유 텍스트이며 자격 증명이 아니다.** 「관리자」·「일반 사용자 A」 같은 말이 들어온다.
+    제품은 이 값으로 로그인을 시도하지 않고, 계정과 연결하지도 않는다 — 자격 증명은
+    지금처럼 민감 변수(`SECRET_*`)가 맡는다. 값이 아이디처럼 보여도 자격 증명으로
+    취급하지 않는다.
+    """
+
     authoring_mode: AuthoringMode
     start_url: str = Field(pattern=URL_PATTERN, max_length=2000)
     browser: BrowserKind = BrowserKind.CHROMIUM
@@ -300,7 +345,7 @@ class Test(BaseModel):
     steps: list[Step] = Field(min_length=1)
     """**1개 이상** — Step 이 없는 테스트는 저장할 수 없다 (FR-029)."""
 
-    ai_instruction: str | None = Field(default=None, max_length=8000)
+    ai_instruction: str | None = Field(default=None, max_length=MAX_INSTRUCTION_CHARS)
     """자연어 지시문 원문. **실행 대상이 아니다** (FR-063). 작성 의도의 기록일 뿐이다."""
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

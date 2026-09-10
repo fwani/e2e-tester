@@ -222,7 +222,10 @@ def test_list_tests_is_sorted_by_id(repo: ProjectRepository) -> None:
 
 
 def test_allocate_test_id_increments(repo: ProjectRepository) -> None:
+    # 부여만으로는 늘지 않는다 — **파일이 생겨야** 그 번호가 쓰인 것이다 (014 3차 요청).
+    # 카운터를 없앤 뒤로 판단의 근거는 디스크에 있는 파일뿐이다.
     assert repo.allocate_test_id() == "TC-001"
+    repo.write_test(make_test("TC-001"))
     assert repo.allocate_test_id() == "TC-002"
 
 
@@ -232,9 +235,14 @@ def test_allocate_test_id_skips_ids_taken_by_files(repo: ProjectRepository) -> N
     assert repo.allocate_test_id() == "TC-002"
 
 
-def test_allocate_test_id_respects_existing_counter(tmp_path: pathlib.Path) -> None:
+def test_allocate_test_id_ignores_the_legacy_counter(tmp_path: pathlib.Path) -> None:
+    """`next_test_number` 는 더 이상 판단에 쓰이지 않는다 (014 3차 요청).
+
+    그것은 프로젝트 하나에 번호가 하나뿐일 때의 개념이라, 그룹마다 세는 지금과 맞지
+    않는다. 필드는 **옛 파일을 읽기 위해** 남아 있을 뿐이다.
+    """
     repo = ProjectRepository.create(tmp_path / "p", make_project(next_test_number=42))
-    assert repo.allocate_test_id() == "TC-042"
+    assert repo.allocate_test_id() == "TC-001"
 
 
 # ─── 실행 결과 (최근 1건) ───────────────────────────────────────────────────
@@ -406,27 +414,35 @@ def test_the_listing_ignores_yaml_that_is_not_a_test(repo: ProjectRepository) ->
     assert problems == []
 
 
-def test_numbers_are_unique_across_prefixes(repo: ProjectRepository) -> None:
-    """**번호는 접두어를 넘어 고유하다** (research R3).
+def test_numbers_are_counted_per_group(repo: ProjectRepository) -> None:
+    """**번호는 그룹마다 따로 센다** (014 3차 요청).
 
-    그래야 그룹을 옮길 때 번호를 다시 뽑지 않는다 — `USER-003` → `DATA-003` 이 언제나
-    빈자리다. FR-444c(식별자 고유)를 규칙이 아니라 구조로 만족시킨다.
+    013 은 반대로 정했었다 — 전체에서 고유하면 그룹을 옮길 때 자리가 언제나 비어 있기
+    때문이다. 그 이점을 내주는 대신, 그룹마다 1번부터 세는 설계서 관행을 얻는다.
+    옮길 때의 충돌은 `test_moves.target_id` 가 빈 번호를 뽑아 감당한다.
     """
     repo.write_test(make_test("USER-001", "로그인"))
     repo.write_test(make_test("DATA-002", "적재"))
 
-    assert repo.allocate_test_id() == "TC-003"
-    assert repo.allocate_test_id("USER") == "USER-004"
+    # 그룹 없음은 아직 아무 번호도 쓰지 않았다.
+    assert repo.allocate_test_id() == "TC-001"
+    # USER 는 001 만 썼다.
+    assert repo.allocate_test_id("USER") == "USER-002"
+    # DATA 는 002 를 썼으므로 001 이 빈다.
+    assert repo.allocate_test_id("DATA") == "DATA-001"
 
 
-def test_allocate_skips_numbers_taken_by_another_prefix(repo: ProjectRepository) -> None:
-    """카운터만 믿지 않는 기존 성질이 접두어를 넘어서도 유지된다."""
-    project = repo.read_project()
-    project.next_test_number = 1
-    repo.write_project(project)
+def test_same_number_can_live_in_two_groups(repo: ProjectRepository) -> None:
     repo.write_test(make_test("USER-001", "로그인"))
+    repo.write_test(make_test("DATA-001", "적재"))
+    ids = {t.id for t in repo.list_tests()[0]}
+    assert ids == {"USER-001", "DATA-001"}
 
-    assert repo.allocate_test_id("DATA") == "DATA-002"
+
+def test_another_prefix_does_not_take_a_number(repo: ProjectRepository) -> None:
+    """다른 그룹이 쓴 번호는 이 그룹의 자리를 막지 않는다 (014 3차 요청)."""
+    repo.write_test(make_test("USER-001", "로그인"))
+    assert repo.allocate_test_id("DATA") == "DATA-001"
 
 
 @pytest.mark.parametrize(

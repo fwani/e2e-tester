@@ -31,6 +31,7 @@ from itb.domain.run_result import Outcome, RunResult, RunScope
 from itb.domain.step import Step
 from itb.domain.test_case import (
     GROUP_PREFIX_PATTERN,
+    MAX_TEST_NUMBER,
     RESERVED_PREFIX,
     AuthoringMode,
     Test,
@@ -124,6 +125,14 @@ class TestListResponse(BaseModel):
     그룹을 고르는 자리(`GET /api/groups`)는 전부 싣는다."""
 
     tests: list[TestListRow]
+    draft_count: int = 0
+    """녹화되지 않은 초안 수 (014 FR-035).
+
+    **초안 자체는 `tests` 에 섞지 않는다** (FR-027). 초안은 실행할 수 없으므로 목록의
+    행과 같은 것을 할 수 없고, 같은 배열에 두면 화면이 매번 갈라 봐야 한다. 수만 여기서
+    알려 주고 목록은 `GET /api/drafts` 가 준다.
+    """
+
     problems: list[str] = Field(default_factory=list)
     """읽을 수 없는 정의 파일의 사유. 깨진 파일 하나가 목록을 막지 않는다."""
 
@@ -276,6 +285,7 @@ async def list_tests(
             for prefix, n in sorted(counts_by_group.items())
         ],
         tests=rows,
+        draft_count=repo.drafts.count(),
         problems=problems,
     )
 
@@ -442,15 +452,17 @@ async def renumber_tests(state: State) -> RenumberTestsResponse:
       한다). `USER-005` 는 `USER-003` 이 되지 `TC-003` 이 되지 않는다.
     - **상대 순서는 그대로다.** 지금 번호가 작은 것이 계속 작다. 순서를 바꾸는 조작이라면
       사용자는 어느 테스트가 어디로 갔는지 목록에서 찾아야 한다.
-    - **번호는 프로젝트 전체에서 고유하다** (013 research R3). 접두어를 넘어 `1..N` 을
-      한 벌로 나눠 준다 — 그룹마다 1부터 매기면 그 불변식이 깨지고, 그룹 이동
-      (`USER-003` → `DATA-003`)이 빈자리를 보장하지 못하게 된다.
+    - **그룹마다 1번부터 매긴다** (014 3차 요청 · FR-039a). 013 은 접두어를 넘어 `1..N`
+      을 한 벌로 나눠 줬지만, 번호를 그룹마다 세게 되면서 정리도 그룹 단위여야 한다 —
+      전체에 이어 붙이면 `USER` 가 1~5, `DATA` 가 6~9 가 되어 사용자가 「그룹마다
+      1번부터」로 정한 뜻과 어긋난다.
 
     ## 왜 충돌하지 않는가
 
-    지금 번호가 작은 순서로 `1..N` 을 주므로 **새 번호는 언제나 옛 번호 이하**다. i번째를
-    처리하는 시점에 `1..i-1` 은 이미 새 번호가 됐고 나머지는 전부 옛 번호(= `i` 초과)를
-    쓰고 있으므로 `i` 는 반드시 비어 있다. 임시 이름을 거치는 두 걸음이 필요 없다.
+    **그룹 안에서** 지금 번호가 작은 순서로 `1..N` 을 주므로 새 번호는 언제나 옛 번호
+    이하다. i번째를 처리하는 시점에 `1..i-1` 은 이미 새 번호가 됐고 나머지는 전부 옛
+    번호(= `i` 초과)를 쓰고 있으므로 `i` 는 반드시 비어 있다. 그룹이 다르면 애초에 자리를
+    다투지 않는다. 임시 이름을 거치는 두 걸음이 필요 없다.
 
     삭제·그룹 이동과 **같은 원자성 규약**을 쓴다 (`storage/test_moves.py`).
     """
@@ -461,8 +473,8 @@ async def renumber_tests(state: State) -> RenumberTestsResponse:
     #
     # `list_tests` 는 깨진 파일을 건너뛴다 — 목록 화면에서는 옳은 판단이지만(하나가
     # 전체를 막지 않는다) 여기서는 그것이 **번호를 겹치게 만든다.** 건너뛴 파일이 쓰던
-    # 번호는 빈자리로 보이고, 그 자리에 다른 테스트가 들어가면 프로젝트 안에 같은 번호가
-    # 둘이 된다 (013 research R3 의 불변식이 깨진다).
+    # 번호는 빈자리로 보이고, 그 자리에 다른 테스트가 들어가면 **같은 그룹 안에** 같은
+    # 번호가 둘이 된다.
     #
     # 되돌림이 그것을 막아 주기는 한다 (`find_test_path` 가 걸려 전부 되돌린다). 그래도
     # 먼저 거절하는 이유는 사용자가 받는 문장이 다르기 때문이다 — 「옮기다 실패했다」가
@@ -475,20 +487,32 @@ async def renumber_tests(state: State) -> RenumberTestsResponse:
             problems=problems,
         )
 
-    # 지금 번호가 작은 순서. `list_tests` 는 식별자 문자열로 정렬하므로 접두어가 먼저
-    # 온다 — 그 순서로 번호를 주면 새 번호가 옛 번호보다 커지는 자리가 생기고, 위 문단의
-    # 「충돌하지 않는 이유」가 무너진다.
-    ordered = sorted(tests, key=lambda t: int(t.id.split("-", 1)[1]))
-    if len(ordered) > 999:
+    # **그룹마다 따로 1번부터 매긴다** (014 3차 요청).
+    #
+    # 번호를 그룹마다 세게 됐으므로 정리도 그룹 단위여야 한다 — 프로젝트 전체에 이어
+    # 붙이면 `USER` 가 1~5, `DATA` 가 6~9 가 되어 사용자가 「그룹마다 1번부터」로 정한
+    # 뜻과 어긋난다.
+    #
+    # 그룹 안에서는 **지금 번호가 작은 순서**를 지킨다. 그래야 새 번호가 언제나 옛 번호
+    # 이하가 되어, 옮기는 도중에 서로의 자리를 뺏지 않는다.
+    by_prefix: dict[str, list[Test]] = {}
+    for t in tests:
+        by_prefix.setdefault(t.id.split("-", 1)[0], []).append(t)
+
+    over = [p for p, group in by_prefix.items() if len(group) > MAX_TEST_NUMBER]
+    if over:
         raise bad_request(
             ErrorCode.DEFINITION_INVALID,
-            "테스트가 999개를 넘어 번호를 다시 붙일 수 없습니다. 프로젝트를 나누세요.",
+            f"「{over[0]}」 그룹의 테스트가 {MAX_TEST_NUMBER}개를 넘어 번호를 다시 "
+            "붙일 수 없습니다. 그룹을 나누세요.",
         )
 
-    plan = [
-        (t.id, f"{t.id.split('-', 1)[0]}-{number:03d}")
-        for number, t in enumerate(ordered, start=1)
-    ]
+    plan: list[tuple[str, str]] = []
+    for prefix in sorted(by_prefix):
+        ordered = sorted(by_prefix[prefix], key=lambda t: int(t.id.split("-", 1)[1]))
+        plan.extend(
+            (t.id, f"{prefix}-{number:03d}") for number, t in enumerate(ordered, start=1)
+        )
     targets = [(old, new) for old, new in plan if old != new]
     unchanged = len(plan) - len(targets)
 
@@ -514,14 +538,18 @@ async def renumber_tests(state: State) -> RenumberTestsResponse:
     except test_moves.AllOrNothingError as exc:
         raise ApiError(500, ErrorCode.TEST_MOVE_FAILED, exc.reason) from exc
 
-    # 다음에 만들 테스트가 정리된 번호 **뒤에서** 시작한다. 갱신하지 않으면 방금 비운
-    # 자리를 카운터가 건너뛴 채로 남아, 사용자는 정리한 직후에 다시 빈자리를 본다.
+    # **카운터를 건드리지 않는다** (014 3차 요청 · 수렴 2회차).
     #
-    # `allocate_test_id` 가 실제 파일도 함께 보므로 이 값이 낮아도 충돌하지는 않는다.
-    # 그래도 맞춰 두는 이유는 「정리했다」가 다음 번호에도 보여야 하기 때문이다.
-    project = repo.read_project()
-    project.next_test_number = len(plan) + 1
-    repo.write_project(project)
+    # 번호를 그룹마다 세게 되면서 `next_test_number` 는 아무도 읽지 않는 값이 됐다
+    # (`allocate_test_id` 가 그 사실을 적어 두고 있다). 그런데 여기서는 여전히
+    # `len(plan) + 1` 을 쓰고 있었고, 그것은 **프로젝트 전체의 테스트 수**다.
+    #
+    # 그룹 둘이 600개씩인 프로젝트(FR-039 아래 적법하다)에서 번호를 정리하면 1201 이
+    # 써진다. `Project.next_test_number` 는 `le=MAX_TEST_NUMBER`(999)이고 pydantic 에
+    # `validate_assignment` 가 없어 **쓰기는 조용히 성공한 뒤**, 다음번에 그 파일을 읽는
+    # 순간 검증에서 터진다 — 프로젝트가 열리지 않는다. 실측으로 재현했다.
+    #
+    # 읽지도 않는 값 때문에 사용자의 프로젝트를 못 열게 만들 이유가 없다.
 
     return RenumberTestsResponse(
         renumbered=[

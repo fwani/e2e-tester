@@ -174,8 +174,12 @@ def test_renumber_closes_gaps(client: TestClient) -> None:
     assert _ids(client) == ["TC-001", "TC-002", "TC-003", "TC-004"]
 
 
-def test_renumber_keeps_group_prefix_and_order(client: TestClient) -> None:
-    """접두어는 그대로다. 번호만 프로젝트 전체에서 `1..N` 한 벌로 다시 나뉜다."""
+def test_renumber_numbers_each_group_from_one(client: TestClient) -> None:
+    """접두어는 그대로고, **그룹마다 1번부터** 다시 매긴다 (014 3차 요청).
+
+    프로젝트 전체에 이어 붙이면 `USER` 가 2~3 에서 시작해, 사용자가 「그룹마다 1번부터」로
+    정한 뜻과 어긋난다.
+    """
     root = _create(client, "그룹")
     client.post("/api/groups", json={"prefix": "USER", "name": "사용자"})
     _write(root, "TC-002", "묶이지 않은 것")
@@ -184,7 +188,22 @@ def test_renumber_keeps_group_prefix_and_order(client: TestClient) -> None:
 
     assert client.post("/api/tests:renumber").status_code == 200
 
-    assert sorted(_ids(client)) == ["TC-001", "USER-002", "USER-003"]
+    assert sorted(_ids(client)) == ["TC-001", "USER-001", "USER-002"]
+
+
+def test_renumber_keeps_order_within_a_group(client: TestClient) -> None:
+    """그룹 안에서는 지금 번호가 작은 순서를 지킨다."""
+    root = _create(client, "순서")
+    client.post("/api/groups", json={"prefix": "USER", "name": "사용자"})
+    _write(root, "USER-009", "나중 것")
+    _write(root, "USER-002", "먼저 것")
+
+    assert client.post("/api/tests:renumber").status_code == 200
+
+    listing = client.get("/api/tests").json()["tests"]
+    by_id = {t["id"]: t["name"] for t in listing}
+    assert by_id["USER-001"] == "먼저 것"
+    assert by_id["USER-002"] == "나중 것"
 
 
 def test_renumber_moves_run_artifacts_with_the_test(client: TestClient) -> None:
@@ -227,3 +246,38 @@ def test_renumber_refuses_when_a_definition_is_unreadable(client: TestClient) ->
     assert resp.status_code == 400, resp.text
     assert resp.json()["error"]["code"] == "DEFINITION_INVALID"
     assert _ids(client) == ["TC-001", "TC-005"]
+
+
+def test_renumber_leaves_the_project_openable_with_many_groups(client: TestClient) -> None:
+    """번호 정리가 프로젝트 파일을 못 읽게 만들지 않는다 (014 수렴 2회차).
+
+    번호를 그룹마다 세게 되면서 그룹 둘이 각각 600개를 가질 수 있게 됐다. 정리 뒤
+    `next_test_number` 에 전체 수(1201)를 쓰면 `le=999` 검증에 걸려, **다음에 그 파일을
+    읽는 순간 프로젝트가 열리지 않는다.** 쓰기는 조용히 성공하므로 그때는 드러나지 않는다.
+
+    600개를 만드는 대신 상한을 넘길 수 있는 최소 구성으로 같은 성질을 본다 — 정리 뒤에도
+    프로젝트를 다시 읽을 수 있어야 한다.
+    """
+    root = _create(client, "많은 그룹")
+    client.post("/api/groups", json={"prefix": "USER", "name": "사용자"})
+    client.post("/api/groups", json={"prefix": "DATA", "name": "데이터"})
+    _write(root, "USER-005", "가")
+    _write(root, "DATA-009", "나")
+    _write(root, "TC-003", "다")
+
+    assert client.post("/api/tests:renumber").status_code == 200
+
+    # 다시 읽을 수 있어야 한다 — 여기서 500 이 나면 파일이 깨진 것이다.
+    assert client.get("/api/project").status_code == 200
+    assert client.get("/api/tests").status_code == 200
+    assert sorted(_ids(client)) == ["DATA-001", "TC-001", "USER-001"]
+
+
+def test_renumber_does_not_touch_the_legacy_counter(client: TestClient) -> None:
+    """읽지도 않는 값을 쓰지 않는다 (014 수렴 2회차)."""
+    root = _create(client, "카운터")
+    _write(root, "TC-004", "하나")
+
+    before = _repo(root).read_project().next_test_number
+    assert client.post("/api/tests:renumber").status_code == 200
+    assert _repo(root).read_project().next_test_number == before

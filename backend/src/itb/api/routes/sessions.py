@@ -31,12 +31,14 @@ from itb.api.ws.control_channel import (
     state_message,
     validate,
 )
+from itb.domain.draft import DRAFT_ID_PATTERN, Draft, compose_instruction
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.run_result import RunScope, StepOutcome, scope_of
 from itb.domain.step import Author, NavigateStep, Step
 from itb.domain.test_case import (
     GROUP_PREFIX_PATTERN,
     RESERVED_PREFIX,
+    TEST_ID_PATTERN,
     AuthoringMode,
     Test,
     Variable,
@@ -70,7 +72,9 @@ from itb.secrets.keys import load_private_or_reason, load_public_or_none
 from itb.secrets.resolver import VariableResolver
 from itb.secrets.store import SecretStore
 from itb.storage import preferences
+from itb.storage.drafts import DraftNotFoundError
 from itb.storage.repository import ProjectError, ProjectRepository
+from itb.storage.yaml_io import DefinitionError
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -124,6 +128,27 @@ class SessionWork:
 
     저장된 테스트에서 세션을 열 때 채워지고, 저장할 때 갱신된다.
     """
+    draft_name: str | None = None
+    """출발한 초안의 제목 (014 FR-040).
+
+    저장 이름의 기본값으로 화면에 되돌려 주기 위해 들고 있는다. **저장이 끝나면 초안
+    파일이 사라지므로**, 그때 읽으려 해도 없다 — 출발할 때 받아 두는 것이 유일한 방법이다.
+    """
+
+    draft_group: str | None = None
+    """출발한 초안의 소속 그룹 접두어 (014 FR-040a)."""
+
+    draft_id: str | None = None
+    """이 세션이 어느 초안에서 출발했는가 (014 US3 · FR-030·FR-032·FR-033).
+
+    저장까지 들고 간다. 저장이 성공하면 (a) 초안의 희망 번호를 부여하려 시도하고
+    (b) 초안의 설명·수행자를 테스트로 옮기고 (c) 초안 파일을 지운다.
+
+    **새 세션 모드를 만들지 않았다.** 초안 녹화는 기존 AI 작성 경로에 지시문을 미리
+    채워 진입하는 것뿐이다 — 상태 기계에 갈래를 늘리면 원칙 III 이 지키려는 것이
+    복잡해지고, 원칙 I 이 막으려는 두 번째 작성 경로에 한 발 들여놓게 된다.
+    """
+
     saved_at: datetime | None = None
     """마지막 저장 시각 (005 FR-154). 화면이 저장 성공을 스스로 알 수 있게 한다.
 
@@ -415,9 +440,30 @@ class CreateSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: Literal["record", "replay", "ai"]
-    test_id: str | None = Field(default=None, pattern=r"^TC-\d{3}$")
+    test_id: str | None = Field(default=None, pattern=TEST_ID_PATTERN)
+    """재실행·편집 대상 테스트.
+
+    **패턴을 여기서 다시 쓰지 않는다** (014). 013 이 그룹 접두어를 도입했는데 이 자리는
+    `^TC-\d{3}$` 로 남아 있었고, 그래서 그룹에 든 테스트(`USER-001`)를 재실행하거나
+    편집하려는 요청이 **요청 검증에서 422 로 거절됐다**. 저장은 되는데 돌릴 수 없는
+    테스트가 만들어지고 있었다.
+
+    식별자 형식의 출처는 :data:`itb.domain.test_case.TEST_ID_PATTERN` 하나다.
+    """
     start_url: str | None = Field(default=None, pattern=r"^https?://", max_length=2000)
     ai_instruction: str | None = Field(default=None, max_length=8000)
+
+    draft_id: str | None = Field(default=None, pattern=DRAFT_ID_PATTERN)
+    """초안에서 시작한다 (014 FR-030·FR-031).
+
+    `record` 와 `ai` 둘 다에서 쓸 수 있다 — 초안은 **무엇을 할지**의 기록이고, 그것을
+    손으로 녹화해 채우는 것도 온전한 방법이다. 화면이 두 갈래를 나란히 보여 주면서
+    한쪽만 초안과 이어지면, 「저장하면 이 초안은 사라집니다」라는 안내가 거짓이 된다
+    (수렴 2회차).
+
+    지시문은 `ai` 에서만 쓰인다. `ai_instruction` 을 함께 주면 **그것이 쓰이고**
+    (사용자가 고친 것), 없으면 서버가 초안에서 짓는다.
+    """
 
     pacing: RunPacing | None = None
     """실행 속도 (004 FR-102). 없으면 저장된 취향, 그것도 없으면 기본값.
@@ -434,6 +480,25 @@ class CreateSessionRequest(BaseModel):
     통과하는 테스트에서는 잡을 창이 사실상 없었다 (006 E-06).
 
     생략하면 지금과 완전히 같다 — 기존 클라이언트에 영향이 없다.
+    """
+
+
+class SavedTestView(Test):
+    """저장 응답 — 저장된 테스트에 **이번 저장에서만 참인 사실 둘**을 덧붙인다 (014).
+
+    `Test` 를 상속하는 이유는 기존 소비자를 깨지 않기 위해서다. 화면과 계약 검증이
+    읽던 필드가 그대로 있고, 두 필드는 더해질 뿐이다. 저장 형식에는 들어가지 않는다 —
+    `repo.write_test` 는 `Test` 로 직렬화하므로 파일에는 이 둘이 남지 않는다.
+    """
+
+    from_draft: str | None = None
+    """어느 초안에서 왔는가. 초안에서 출발한 세션에만 있다."""
+
+    desired_id_taken: dict[str, str] | None = None
+    """희망 번호를 주지 못했을 때만 실린다 — ``{"wanted": ..., "assigned": ...}``.
+
+    **조용히 다른 번호를 주지 않는다** (FR-032). 사용자의 설계서에는 원래 번호가 적혀
+    있고, 그것이 제품과 어긋났다는 사실을 지금 말하지 않으면 나중에 발견하게 된다.
     """
 
 
@@ -457,6 +522,15 @@ class StepProgress(BaseModel):
     duration_ms: int = Field(default=0, ge=0)
 
 
+class DraftOriginView(BaseModel):
+    """세션이 출발한 초안. 저장 이름·그룹의 기본값이 된다 (FR-040·FR-040a)."""
+
+    model_config = ConfigDict(extra="forbid")
+    draft_id: str
+    name: str
+    group_prefix: str
+
+
 class SessionView(BaseModel):
     """WebSocket 재연결 시 전체 상태 동기화에 쓴다 (contracts/websocket.md)."""
 
@@ -475,6 +549,16 @@ class SessionView(BaseModel):
     """저장된 테스트의 이름 (011 FR-362). 아직 저장된 적 없으면 `None`.
 
     **선택 필드다** — 없이 온 응답도 그대로 읽힌다.
+    """
+    draft: DraftOriginView | None = None
+    """이 세션이 어느 초안에서 출발했는가 (014 · 수렴 2회차).
+
+    **화면 기억에만 두면 잃는다.** 초안 정보가 `App` 상태에만 있어서, 살아 있는 세션으로
+    돌아오거나 브라우저를 새로 고치면 저장 이름·그룹의 기본값이 사라졌다 — 사용자는
+    설계서에 이미 적힌 것을 다시 쳐야 했다 (FR-040b 위반).
+
+    `SessionWork` 는 처음부터 `draft_id` 를 들고 있었으므로, 여기 실어 보내면 화면이
+    세션 조회로 다시 받을 수 있다. `control_surface` 가 같은 이유로 이 응답에 실린다.
     """
     current_step_index: int
     steps: list[Step]
@@ -646,6 +730,7 @@ def view_of(w: SessionWork) -> SessionView:
     from itb.execution.state_machine import allowed_commands
 
     return SessionView(
+        draft=_draft_origin(w),
         session_id=w.session.session_id,
         state=w.session.state,
         state_label=state_label(w.session.state),
@@ -733,12 +818,31 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         except ProjectError as exc:
             raise not_found(ErrorCode.TEST_NOT_FOUND, str(exc)) from exc
 
+    # 014 FR-030 — 초안에서 시작한다. **기존 AI 작성 경로 그대로다.**
+    draft: Draft | None = None
+    instruction = body.ai_instruction
+    if body.draft_id is not None:
+        if body.mode == "replay":
+            # 재실행은 이미 저장된 테스트를 돌리는 것이므로 초안과 상관이 없다.
+            raise bad_request(
+                ErrorCode.DEFINITION_INVALID,
+                "초안에서 시작하는 것은 새로 만들 때만 됩니다.",
+            )
+        try:
+            draft = repo.drafts.read(body.draft_id)
+        except DraftNotFoundError as exc:
+            raise not_found(ErrorCode.DRAFT_NOT_FOUND, str(exc)) from exc
+        # 사용자가 고친 지시문이 있으면 그것이 이긴다 (FR-031). 화면이 미리 채워 보여
+        # 주고 고칠 수 있게 한 것이 뜻을 가지려면, 고친 값이 실제로 쓰여야 한다.
+        if body.mode == "ai" and (instruction is None or not instruction.strip()):
+            instruction = compose_instruction(draft)
+
     if body.mode == "ai":
         # FR-085 — 경계에서 검증한다. 길이·공백 규칙은 작성 계층이 갖는다.
         from itb.authoring.agent import validate_instruction
 
         try:
-            validate_instruction(body.ai_instruction)
+            validate_instruction(instruction)
         except ValueError as exc:
             raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
 
@@ -822,8 +926,11 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         store=store,
         start_url=start_url,
         authoring_mode=AuthoringMode.AI if body.mode == "ai" else AuthoringMode.RECORD,
-        ai_instruction=body.ai_instruction,
+        ai_instruction=instruction,
         saved_test_id=body.test_id,
+        draft_id=draft.draft_id if draft is not None else None,
+        draft_name=draft.name if draft is not None else None,
+        draft_group=draft.group_prefix if draft is not None else None,
     )
     if existing_test is not None:
         # 011 FR-362 — 이름을 함께 들린다. 이것이 없으면 화면이 저장할 때 이름을 다시 묻는다.
@@ -1872,8 +1979,12 @@ def _require_known_group(repo: ProjectRepository, prefix: str | None) -> None:
 
 
 @router.post("/{session_id}/save")
-async def save(session_id: str, body: SaveRequest, state: State) -> Test:
-    """FR-028·FR-029 — 이름을 지정해 테스트로 저장한다. Step 0개면 거절한다."""
+async def save(session_id: str, body: SaveRequest, state: State) -> SavedTestView:
+    """FR-028·FR-029 — 이름을 지정해 테스트로 저장한다. Step 0개면 거절한다.
+
+    초안에서 출발한 세션이면 여기서 셋을 더 한다 (014 FR-032·FR-033):
+    희망 번호 부여 시도 · 설명·수행자 옮기기 · 초안 삭제.
+    """
     w = work_of(session_id)
     repo = state.require_repository()
 
@@ -1883,22 +1994,56 @@ async def save(session_id: str, body: SaveRequest, state: State) -> Test:
             "Step 이 없어 저장할 수 없습니다. 먼저 동작을 기록하세요.",
         )
 
+    draft = _draft_of(repo, w)
+    wanted: str | None = None
+
     if w.saved_test_id is not None:
         test_id = w.saved_test_id
+    elif draft is not None:
+        # 014 FR-032 — 초안의 희망 번호를 **그대로 주려 시도한다.**
+        wanted = draft.desired_test_id
+        test_id = _allocate_for_draft(repo, draft)
     else:
         _require_known_group(repo, body.group)
         test_id = repo.allocate_test_id(body.group or RESERVED_PREFIX)
+
     variables = _variables_for(w)
     test = Test(
         id=test_id,
         name=body.name,
+        # 014 FR-071 — 초안의 설명·수행자를 테스트로 옮긴다. 이것이 없으면 다시
+        # 내보낼 때 두 칸이 비어 **왕복이 끊긴다**.
+        description=draft.description if draft is not None else None,
+        actor=draft.actor if draft is not None else None,
         authoring_mode=w.authoring_mode,
         start_url=w.start_url,
         variables=variables,
         steps=w.steps,
         ai_instruction=w.ai_instruction,
     )
+
+    # **디스크에는 `Test` 를 쓴다.** 아래 두 필드는 이번 저장에서만 참인 사실이라
+    # 파일에 남으면 다음에 읽을 때 거짓이 되고, `Test` 가 `extra="forbid"` 이므로
+    # 애초에 읽히지도 않는다 (이 검증이 그것을 잡았다).
     repo.write_test(test)
+
+    view = SavedTestView(
+        **test.model_dump(),
+        from_draft=draft.draft_id if draft is not None else None,
+        desired_id_taken=(
+            {"wanted": wanted, "assigned": test_id}
+            if wanted is not None and wanted != test_id
+            else None
+        ),
+    )
+
+    if draft is not None:
+        # FR-033 — 저장이 성공하면 초안은 사라진다. **저장 뒤에 지운다** — 먼저 지우면
+        # 저장이 실패했을 때 초안도 테스트도 없는 상태가 된다.
+        with contextlib.suppress(DraftNotFoundError, OSError):
+            repo.drafts.delete(draft.draft_id)
+        w.draft_id = None
+
     w.saved_test_id = test_id
     # 011 — 방금 정해진 이름이 이후 저장의 기본값이 된다. 다시 묻지 않기 위한 값이다.
     w.saved_test_name = test.name
@@ -1906,7 +2051,48 @@ async def save(session_id: str, body: SaveRequest, state: State) -> Test:
     # 저장 여부를 스스로 알 수 있어야, 다시 그려도 미저장으로 되돌아가지 않는다 (U-09).
     w.saved_at = datetime.now(UTC)
     w.saved_snapshot = list(w.steps)
-    return test
+    return view
+
+
+def _draft_origin(w: SessionWork) -> DraftOriginView | None:
+    """세션이 출발한 초안을 응답에 실을 형태로 (수렴 2회차).
+
+    **세션이 만들어질 때 받아 둔 값을 쓴다.** 여기서 저장소를 읽지 않는 이유는 둘이다 —
+    `view_of` 는 상태가 바뀔 때마다 불리므로 디스크를 건드릴 자리가 아니고, 저장이 끝나면
+    초안 파일이 사라지므로 읽으려 해도 없다. 화면이 필요한 것은 「출발할 때 무엇이었나」다.
+    """
+    if w.draft_id is None or w.draft_name is None:
+        return None
+    return DraftOriginView(
+        draft_id=w.draft_id,
+        name=w.draft_name,
+        group_prefix=w.draft_group or RESERVED_PREFIX,
+    )
+
+
+def _draft_of(repo: ProjectRepository, w: SessionWork) -> Draft | None:
+    """이 세션이 출발한 초안. 없거나 이미 사라졌으면 ``None``.
+
+    사라진 것을 오류로 만들지 않는다 — 다른 창에서 지웠을 수 있고, 그때 저장을 막으면
+    사용자는 방금 녹화한 것을 잃는다.
+    """
+    if w.draft_id is None:
+        return None
+    try:
+        return repo.drafts.read(w.draft_id)
+    except (DraftNotFoundError, DefinitionError):
+        return None
+
+
+def _allocate_for_draft(repo: ProjectRepository, draft: Draft) -> str:
+    """초안의 희망 번호를 주되, 이미 쓰였으면 빈 번호를 준다 (FR-032).
+
+    **조용히 다른 번호를 주지 않는다** — 부른 쪽이 둘을 비교해 사용자에게 알린다.
+    """
+    wanted = draft.desired_test_id
+    if wanted is not None and repo.find_test_path(wanted) is None:
+        return wanted
+    return repo.allocate_test_id(draft.group_prefix)
 
 
 def _variables_for(w: SessionWork) -> list[dict[str, object]]:

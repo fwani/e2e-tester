@@ -12,6 +12,16 @@ dependencies = [
     "pyyaml>=6.0",
     "pynacl>=1.5",
     "anthropic>=0.40",
+    # 스프레드시트 읽기·쓰기 겸용. 순수 Python 이라 빌드 도구가 필요 없다 (014 research R1).
+    "openpyxl>=3.1",
+    # FastAPI 가 multipart 본문(UploadFile)을 읽는 데 필요하다. 예전에는 claude-code
+    # extra 가 우연히 끌고 와서 동작했고, extra 없이 설치하면 업로드 경로가 통째로
+    # 500 을 냈다. 선택 의존성이 채워 주던 필수 의존성이므로 여기 명시한다.
+    "python-multipart>=0.0.9",
+    # openpyxl 이 XML 폭탄(billion laughs·quadratic blowup)을 막는 데 쓴다.
+    # **설치돼 있을 때만** 쓰이므로(openpyxl.xml 의 defusedxml_available), 선언하지
+    # 않으면 조용히 표준 파서로 떨어져 방어가 사라진다 (014 research R1).
+    "defusedxml>=0.7.1",
 ]
 
 [project.optional-dependencies]

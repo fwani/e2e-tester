@@ -82,6 +82,13 @@ export type ErrorCode =
   | "PROMPT_NOT_FOUND"
   | "UPLOAD_REJECTED"
   | "UPLOAD_NOT_FOUND"
+  | "EXPORT_FAILED"
+  | "IMPORT_FILE_REJECTED"
+  | "IMPORT_PLAN_NOT_FOUND"
+  | "IMPORT_CAPACITY_EXCEEDED"
+  | "IMPORT_FAILED"
+  | "IMPORT_PARTIAL"
+  | "DRAFT_NOT_FOUND"
   | "NOT_SUPPORTED"
   | "INTERNAL_ERROR";
 export type ErrorMessage = string | null;

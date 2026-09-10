@@ -631,6 +631,13 @@ export interface SessionView {
    */
   test_name?: string | null;
   /**
+   * 이 세션이 출발한 초안 (014 · 수렴 2회차).
+   *
+   * **응답에 실려 오므로 새로 고쳐도 남는다.** 화면 기억에만 두면 살아 있는 세션으로
+   * 돌아오거나 새로 고칠 때 저장 이름·그룹의 기본값을 잃는다.
+   */
+  draft?: { draft_id: string; name: string; group_prefix: string } | null;
+  /**
    * 저장한 뒤 **더해진** Step 의 id (011 FR-379).
    *
    * `has_unsaved_changes` 는 「무언가 달라졌는가」 한 값이고, 이것은 **어느 행이** 아직
@@ -815,6 +822,14 @@ export const sessions = {
      * 빠르게 통과하는 테스트에서는 잡을 창이 사실상 없었다 (006 E-06).
      */
     pause_before_index?: number;
+    /**
+     * 초안에서 시작한다 (014 FR-030·FR-032·FR-033). `mode: "ai"` 에서만 쓴다.
+     *
+     * **이것이 빠지면 서버는 이 세션이 초안에서 왔다는 것을 모른다.** 지시문만 미리
+     * 채워 보내면 화면은 그럴듯하지만, 저장할 때 희망 번호도 받지 못하고 설명·수행자도
+     * 옮겨지지 않으며 초안도 사라지지 않는다 — 실제로 그런 상태였다 (수렴 T085).
+     */
+    draft_id?: string | null;
   }) => post<SessionView>("/api/sessions", body),
   get: (id: string) => get<SessionView>(`/api/sessions/${id}`),
   /**
@@ -857,7 +872,7 @@ export const sessions = {
    * 이미 저장된 테스트의 그룹을 바꾸는 것은 `tests.move` 가 원자성 규약과 함께 한다.
    */
   save: (id: string, name: string, group?: string | null) =>
-    post<Test>(`/api/sessions/${id}/save`, group ? { name, group } : { name }),
+    post<SavedTestView>(`/api/sessions/${id}/save`, group ? { name, group } : { name }),
   tabs: (id: string) => get<TabsResponse>(`/api/sessions/${id}/tabs`),
   setMirrorTab: (id: string, tabIndex: number) =>
     post<TabsResponse>(`/api/sessions/${id}/mirror-tab`, { tab_index: tabIndex }),
@@ -1049,3 +1064,282 @@ export const health = () =>
   get<{ status: string; bind: string; project_open: boolean; active_sessions: number }>(
     "/api/health",
   );
+
+/* ─── 엑셀 통로 (014) ────────────────────────────────────────────────────── */
+
+export interface SheetRenameView {
+  group_name: string;
+  sheet_name: string;
+  reason: string;
+}
+
+export interface TruncationView {
+  test_id: string;
+  column: string;
+  kept_lines: number;
+  dropped_lines: number;
+}
+
+export interface ExportWarningsView {
+  sheet_renames: SheetRenameView[];
+  truncations: TruncationView[];
+  unreadable: string[];
+  test_count: number;
+  sheet_count: number;
+}
+
+/**
+ * `Content-Disposition` 에서 파일 이름을 읽는다.
+ *
+ * 서버는 ASCII 대체 이름(`filename=`)과 RFC 5987 이름(`filename*=UTF-8''…`)을 **둘 다**
+ * 싣는다 (014 research R9). 한글 이름을 살리려면 후자를 먼저 본다 — 전자는 한글이
+ * 떨어져 나간 나머지다.
+ */
+export function filenameFromDisposition(header: string | null, fallback: string): string {
+  if (!header) return fallback;
+  const extended = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (extended) {
+    try {
+      return decodeURIComponent(extended[1] ?? "") || fallback;
+    } catch {
+      /* 인코딩이 깨졌으면 아래 ASCII 이름으로 떨어진다 */
+    }
+  }
+  const plain = /filename="([^"]*)"/i.exec(header);
+  return plain?.[1] || fallback;
+}
+
+/**
+ * 받은 바이트를 사용자의 다운로드로 넘긴다.
+ *
+ * 이 저장소의 **첫 파일 내려받기**다. `<a href="/api/export">` 로 끝내지 않는 이유는,
+ * 그러면 `X-ITB-Project-Root` 헤더가 붙지 않아 서버의 프로젝트 대조를 지나칠 수 없기
+ * 때문이다 — 화면이 보여 주는 프로젝트와 서버가 연 프로젝트가 다를 때 조용히 남의 것을
+ * 받게 된다.
+ */
+export function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export const excel = {
+  /** 프로젝트를 워크북으로 내려받는다. 파일 이름은 서버가 정한다. */
+  exportProject: async (): Promise<{ blob: Blob; filename: string; warnings: number }> => {
+    const resp = await send("/api/export");
+    if (!resp.ok) throw apiErrorFromBody(resp.status, await resp.text());
+    const filename = filenameFromDisposition(
+      resp.headers.get("Content-Disposition"),
+      "itb-export.xlsx",
+    );
+    const warnings = Number(resp.headers.get("X-ITB-Export-Warnings") ?? 0);
+    return { blob: await resp.blob(), filename, warnings };
+  },
+
+  /** 내보내면 무엇이 바뀌는지 미리 본다. 파일을 만들지 않는다. */
+  warnings: () => get<ExportWarningsView>("/api/export/warnings"),
+};
+
+/* ─── 가져오기와 초안 (014) ──────────────────────────────────────────────── */
+
+export interface RenumberedRow {
+  row: number;
+  from: string;
+  to: string;
+}
+
+export interface SkippedRow {
+  sheet_name: string;
+  row: number;
+  reason: "no_title" | "no_columns" | "empty";
+}
+
+export interface SheetPlanView {
+  sheet_name: string;
+  prefix: string | null;
+  prefix_source: "from_rows" | "user_supplied" | "ungrouped" | null;
+  needs_prefix: boolean;
+  group_name: string | null;
+  existing_group_name: string | null;
+  name_differs: boolean;
+  row_count: number;
+  renumbered: RenumberedRow[];
+  /** 이 시트의 실제 머리글. 사용자가 컬럼을 짝지을 후보다 (FR-020f). */
+  headers: string[];
+  /** 지금 정해진 컬럼 → 열 번호. 선택기의 기본값이 된다. */
+  column_index: Record<string, number>;
+  /** 찾지 못한 필수 컬럼. 비어 있지 않으면 짝지어야 쓸 수 있다 (FR-020g). */
+  missing_required: string[];
+  /** 이 시트를 가져오는가 (FR-020a). */
+  included: boolean;
+  /** 머리글을 뺀 실제 행 수. 짝짓기 전에도 「몇 건이 기다린다」를 보인다. */
+  total_rows: number;
+  /** 머리글로 쓰는 엑셀 행 번호 (FR-020i). 사용자가 고칠 수 있다. */
+  header_row: number | null;
+  /** 앞부분 몇 줄 — 사용자가 **어느 행이 머리글인지 눈으로 보고** 고른다 (FR-020j). */
+  sample: { row: number; cells: string[] }[];
+}
+
+export interface ImportPlanView {
+  plan_id: string;
+  file_name: string;
+  expires_at: string;
+  draft_count: number;
+  group_count: number;
+  sheets: SheetPlanView[];
+  skipped: SkippedRow[];
+  capacity: {
+    needed: number;
+    available: number;
+    ok: boolean;
+    /** 그룹마다의 여유 (FR-039d). 번호를 그룹마다 세므로 총량 비교는 뜻이 없다. */
+    groups: { prefix: string; needed: number; available: number; ok: boolean }[];
+  };
+  warnings: string[];
+}
+
+export interface GroupRef {
+  prefix: string;
+  name: string;
+}
+
+export interface DraftRef {
+  draft_id: string;
+  name: string;
+  group_prefix: string;
+  desired_test_id: string | null;
+}
+
+export interface ImportResultView {
+  created_groups: GroupRef[];
+  reused_groups: GroupRef[];
+  drafts: DraftRef[];
+  skipped: SkippedRow[];
+  /** 제품이 **읽지 못해** 건너뛴 시트. */
+  skipped_sheets: { sheet_name: string; reason: string }[];
+  /** 사용자가 **일부러 뺀** 시트 (FR-020c). 위와 뭉치면 둘을 구별할 수 없다. */
+  ignored_sheets: string[];
+  renumbered: RenumberedRow[];
+}
+
+export interface CreateProjectImportResult extends ImportResultView {
+  project: ProjectView;
+}
+
+export interface DraftSourceView {
+  file_name: string;
+  sheet_name: string;
+  row: number;
+}
+
+export interface DraftRow {
+  draft_id: string;
+  name: string;
+  description: string | null;
+  actor: string | null;
+  group_prefix: string;
+  desired_test_id: string | null;
+  desired_id_available: boolean;
+  source: DraftSourceView;
+  created_at: string;
+}
+
+export interface DraftDetail extends DraftRow {
+  procedure: string | null;
+  expectation: string | null;
+  suggested_instruction: string;
+}
+
+export interface DraftListResponse {
+  drafts: DraftRow[];
+  count: number;
+  problems: string[];
+}
+
+/**
+ * 파일을 multipart 로 올린다.
+ *
+ * **`X-ITB-Project-Root` 를 손으로 붙인다.** `send()` 는 `Content-Type: application/json`
+ * 을 붙이는데 multipart 요청에 그 헤더가 붙으면 경계 문자열이 사라져 서버가 본문을 읽지
+ * 못한다. 그래서 `send()` 를 쓸 수 없지만, 그렇다고 프로젝트 대조 가드를 빼면 화면이
+ * 보여 주는 프로젝트와 다른 프로젝트로 가져오게 된다.
+ */
+async function postFile<T>(path: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append("file", file);
+  const guard: Record<string, string> =
+    expectedProjectRoot !== null ? { [PROJECT_ROOT_HEADER]: encodeRoot(expectedProjectRoot) } : {};
+  // Content-Type 은 브라우저가 경계 문자열과 함께 정하게 둔다.
+  const resp = await fetch(path, { method: "POST", body: form, headers: guard });
+  const text = await resp.text();
+  if (!resp.ok) throw apiErrorFromBody(resp.status, text);
+  return JSON.parse(text) as T;
+}
+
+/**
+ * 확정할 때 사용자가 정한 것들.
+ *
+ * 셋 다 미리보기에서 온다 — 접두어(FR-022a), 가져올 시트(FR-020a), 컬럼 짝짓기(FR-020e).
+ * 서버는 이 셋을 받아 **계획을 다시 세운다**: 어느 열이 어느 컬럼인지가 바뀌면 행이
+ * 다르게 읽히므로, 값 하나를 갈아 끼우는 것으로는 안 된다.
+ */
+export interface ImportDecisions {
+  prefixes?: Record<string, string>;
+  sheets?: Record<string, boolean>;
+  columns?: Record<string, Record<string, number>>;
+  /**
+   * 시트별 머리글 행의 엑셀 행 번호 (FR-020i).
+   *
+   * 설계서는 위에 제목·작성일·범례를 두는 일이 흔하다. 첫 행을 머리글로 못박으면 그런
+   * 파일은 필수 컬럼을 영영 찾지 못한다.
+   */
+  header_rows?: Record<string, number>;
+}
+
+export const imports = {
+  /** 파일을 해석해 계획을 만든다. 프로젝트에는 아무것도 만들지 않는다. */
+  preview: (file: File) => postFile<ImportPlanView>("/api/import/preview", file),
+
+  /** 열린 프로젝트로 가져온다. 전부 아니면 전무다. */
+  commit: (planId: string, decisions: ImportDecisions = {}) =>
+    post<ImportResultView>("/api/import/commit", { plan_id: planId, ...decisions }),
+
+  /** 파일에서 새 프로젝트를 만들며 가져온다. */
+  createProject: (
+    body: {
+      plan_id: string;
+      name: string;
+      default_start_url: string;
+      test_id_attribute?: string;
+    } & ImportDecisions,
+  ) => post<CreateProjectImportResult>("/api/import/create-project", body),
+};
+
+export const drafts = {
+  list: () => get<DraftListResponse>("/api/drafts"),
+  get: (id: string) => get<DraftDetail>(`/api/drafts/${encodeURIComponent(id)}`),
+  remove: (id: string) => del<void>(`/api/drafts/${encodeURIComponent(id)}`),
+};
+
+/**
+ * 저장 응답 (014).
+ *
+ * 저장된 테스트에 **이번 저장에서만 참인 사실 둘**이 얹혀 온다. 저장 형식에는 들어가지
+ * 않는다 — 서버가 디스크에는 `Test` 를 쓴다.
+ */
+export interface SavedTestView extends Test {
+  /** 어느 초안에서 왔는가. 초안에서 출발한 세션에만 있다. */
+  from_draft?: string | null;
+  /**
+   * 희망 번호를 주지 못했을 때만 실린다 (FR-032).
+   *
+   * **조용히 다른 번호를 주지 않는다.** 사용자의 설계서에는 원래 번호가 적혀 있고,
+   * 어긋났다는 사실을 지금 말하지 않으면 나중에 발견하게 된다.
+   */
+  desired_id_taken?: { wanted: string; assigned: string } | null;
+}

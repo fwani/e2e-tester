@@ -143,15 +143,38 @@ class MovedTest:
     name: str
 
 
-def target_id(test_id: str, to_prefix: str) -> str:
-    """접두어만 바꾼다. **번호는 그대로다** (013 research R3).
+def target_id(test_id: str, to_prefix: str, *, taken: set[int] | None = None) -> str:
+    """옮겨 갈 식별자. **번호는 되도록 지킨다** (014 3차 요청).
 
-    번호가 프로젝트 전체에서 고유하므로 `USER-003` → `DATA-003` 은 언제나 빈자리다.
-    그룹마다 번호를 매겼다면 여기서 새 번호를 뽑아야 하고 그 자리가 차 있을 수 있다 —
-    FR-444c(식별자 고유)를 규칙이 아니라 **구조로** 만족시킨다.
+    번호를 그룹마다 세게 되면서(`repository.allocate_test_id`) 옮겨 갈 자리가 차 있을 수
+    있다. 013 은 번호를 프로젝트 전체에서 고유하게 두어 그 상황 자체를 없앴었지만, 이제는
+    감당해야 한다.
+
+    **되도록 지킨다**는 것이 규칙이다 — 사용자의 문서·CI 가 그 번호를 가리키고 있으므로,
+    자리가 비어 있는데도 새 번호를 주면 이유 없이 자산의 이름을 바꾸는 일이 된다. 차 있을
+    때만 그 그룹의 빈 번호를 뽑는다.
+
+    `taken` 은 대상 그룹이 이미 쓰는 번호들이다. 없으면 번호를 그대로 쓴다 — 호출자가
+    충돌을 따로 막는 경우다.
     """
-    number = test_id.split("-", 1)[1]
-    return f"{to_prefix}-{number}"
+    from itb.domain.test_case import MAX_TEST_NUMBER
+
+    number = int(test_id.split("-", 1)[1])
+    if taken and number in taken:
+        candidate = 1
+        while candidate in taken:
+            candidate += 1
+        if candidate > MAX_TEST_NUMBER:
+            # **가득 찼다고 말한다.** 그냥 1000 을 돌려주면 `rename_test_id` 가
+            # 「만들 수 없는 식별자」로 거절하고, 사용자는 무엇이 문제인지 알 수 없다
+            # (수렴 2회차).
+            msg = (
+                f"「{to_prefix}」 그룹이 가득 찼습니다 ({MAX_TEST_NUMBER}개). "
+                "그룹을 나누거나 쓰지 않는 테스트를 정리하세요."
+            )
+            raise MoveError(msg)
+        number = candidate
+    return f"{to_prefix}-{number:03d}"
 
 
 def move_test_to_group(repo: ProjectRepository, test_id: str, to_prefix: str) -> MovedTest:
@@ -160,8 +183,13 @@ def move_test_to_group(repo: ProjectRepository, test_id: str, to_prefix: str) ->
     접두어만 갈아 끼우고 :func:`rename_test_id` 에 맡긴다 — 그룹 이동과 번호 재정렬은
     **같은 일**(식별자를 바꾸고 정의·산출물을 따라 옮긴다)이고, 두 벌로 두면 한쪽에만
     되돌림이 들어간다.
+
+    번호가 그룹마다 세어지므로 옮겨 갈 자리가 차 있을 수 있다 — 그때만 새 번호를 뽑는다
+    (014 3차 요청).
     """
-    return rename_test_id(repo, test_id, target_id(test_id, to_prefix))
+    return rename_test_id(
+        repo, test_id, target_id(test_id, to_prefix, taken=repo.used_numbers(to_prefix))
+    )
 
 
 def rename_test_id(repo: ProjectRepository, test_id: str, new_id: str) -> MovedTest:

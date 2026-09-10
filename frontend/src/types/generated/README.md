@@ -14,6 +14,7 @@ cd ../frontend && npm run gen:types
 
 ## 파일
 
+- `draft.d.ts`
 - `error-response.d.ts`
 - `manual-step.d.ts`
 - `project.d.ts`
