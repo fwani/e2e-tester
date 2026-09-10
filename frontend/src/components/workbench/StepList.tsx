@@ -38,7 +38,6 @@ import { ACTION_LABEL, deleteSelectionCount, displayOutcomeLabel, stepNumber } f
 import { ActionButton } from "./ActionButton";
 import type { Step, TargetLocator } from "../../types/generated/step";
 import type { StepOutcome, WorkbenchStep } from "./model";
-
 /**
  * Step 패널의 고정 폭 (FR-218a). Step 패널을 가진 확정 디자인 3종이 공유한다.
  *
@@ -50,7 +49,6 @@ import type { StepOutcome, WorkbenchStep } from "./model";
  * 필요해졌다 (상세 층의 `right`). 셋이 갈리면 상세가 목록을 덮거나 사이가 벌어진다.
  */
 export const STEP_PANEL_WIDTH = 460;
-
 /**
  * 행 왼쪽 3px 결말 표식 — 결말 → 정본의 `.srow` 변형 (008「계기판」).
  *
@@ -72,7 +70,6 @@ const OUTCOME_MARK: Record<StepOutcome, string> = {
   not_run: "",
   recorded: "",
 };
-
 /** Step 패널의 머리 — 정본 `.steps-hd`. 옅은 우물 + 라벨 + 작성 표식 + 개수. */
 export function StepPanelHeader({
   authoring,
@@ -88,14 +85,13 @@ export function StepPanelHeader({
       <div className="lbl">TEST STEPS</div>
       <div className="spacer" />
       {children}
-      <span className={authoring === "ai" ? "chip ai" : "chip"}>
+      <span className={`${authoring === "ai" ? "chip ai" : "chip"} flex-none`}>
         작성 {authoring === "ai" ? "AI" : "RECORD"}
       </span>
       <div className="num">{count}</div>
     </div>
   );
 }
-
 /**
  * 결말 표식. **일곱 값 전부 텍스트 라벨을 갖는다** (005 FR-141·FR-151).
  *
@@ -104,7 +100,6 @@ export function StepPanelHeader({
  */
 export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   const label = displayOutcomeLabel(outcome);
-
   /*
     008「계기판」 — **형태로 말한다** (Language.dc.html §04).
 
@@ -198,7 +193,6 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
       </div>
     );
   }
-
   /*
     `pending` — 아직 돌리지 않았다. **아무것도 그리지 않는다.** 칸은 남긴다
     (FR-223 — 다른 칸을 그 자리로 당기지 않는다). 편집 국면의 목록 전체가 이 상태이고,
@@ -206,7 +200,6 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   */
   return <div aria-label={label} data-outcome={outcome} style={box} />;
 }
-
 
 /**
  * 요소를 어떻게 찾는지 한 줄로. 확정 디자인의 `role=menuitem`·`testId=…` 형태.
@@ -237,7 +230,6 @@ function describeTarget(t: TargetLocator): string {
   if (t.css?.status === "verified") return `css=${t.css.value}`;
   return "식별 후보 없음";
 }
-
 /** 입력값. 민감 값은 `{{변수명}}` 참조로만 저장되므로 그대로 보여도 안전하다 (FR-083). */
 function stepValue(step: Step): string | null {
   if (step.type === "fill" || step.type === "select") return step.value;
@@ -272,7 +264,6 @@ export interface StepListProps {
    * 자리이며, 조작이 국면마다 다른 곳에 있던 것을 여기 하나로 모은다.
    */
   footer?: ReactNode;
-
   /**
    * 삭제 대상 고르기 (011 FR-380 · UC-011-14·15).
    *
@@ -290,7 +281,6 @@ export interface StepListProps {
     onRemedy: (action: ActionId) => void;
   };
 }
-
 /**
  * 우측 460px 패널. `Main.dc.html`·`RunnerPaused.dc.html`·`Takeover.dc.html` 공통.
  */
@@ -414,7 +404,6 @@ export function StepList({
     </div>
   );
 }
-
 /**
  * 행에 붙는 클래스 — **상태마다 하나씩 더한다** (011 UC-011-11).
  *
@@ -429,7 +418,6 @@ function rowClassName(step: WorkbenchStep, selected: boolean): string {
   if (selected) classes.push("sel");
   return classes.join(" ");
 }
-
 /**
  * Step 행 하나 — **유일한 구현**.
  *
@@ -544,7 +532,6 @@ function StepRow({
               <span
                 data-cell="type"
                 className={dsl.author === "ai" ? "chip ai" : "chip"}
-                style={{ flex: "0 0 auto" }}
               >
                 {dsl.type.toUpperCase()}
               </span>

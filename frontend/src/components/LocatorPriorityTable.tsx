@@ -21,7 +21,6 @@ interface Row {
   value: string | null;
   status: Status | null;
 }
-
 /** FR-018 의 우선순위. 이 순서가 화면 표기의 근거다. */
 const PRIORITY = ["test_id", "role", "label", "text", "stable_attr", "css"] as const;
 
@@ -63,7 +62,6 @@ function rowsOf(t: TargetLocator): Row[] {
     status: raw[kind].status,
   }));
 }
-
 /**
  * 표시 상태를 파생한다 (FR-019a).
  *
@@ -127,7 +125,7 @@ export function LocatorPriorityTable({
     <div className="flex flex-col gap-[6px]">
       <div className="flex items-center gap-s2">
         <strong className="lbl">{title}</strong>
-        <span className={`chip ${usable >= 2 ? "pass" : "warn"}`}>
+        <span className={`${`chip ${usable >= 2 ? "pass" : "warn"}`} break-all`}>
           사용 가능 후보 {usable}
         </span>
         <span className="spacer" />
@@ -174,7 +172,7 @@ export function LocatorPriorityTable({
                   {i + 1}
                 </td>
                 <td className={missing ? "dim" : "strong-sm"}>{row.label}</td>
-                <td className={`mono${missing ? " dim" : ""}`} style={{ wordBreak: "break-all" }}>
+                <td className={`mono${missing ? " dim" : ""}`} >
                   {row.value ?? "수집되지 않음"}
                 </td>
                 <td className="pt-0 pr-[14px] pb-0 pl-0 text-right">

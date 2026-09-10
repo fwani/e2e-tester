@@ -45,7 +45,6 @@ import {
 } from "./mirror/useMirrorInput";
 
 import { Button } from "../ui/Button";
-
 /**
  * 미리보기의 국면 (005 재점검 U-04-b).
  *
@@ -67,9 +66,7 @@ export interface MirrorViewProps {
   degradedReason?: string | null;
   /** 현재 표시 중인 탭. 여러 탭일 때 무엇을 보고 있는지 알려 준다 (FR-030f). */
   tabIndex?: number;
-
   /* ─── 010 미러 조작 ─────────────────────────────────────────────────── */
-
   /**
    * 「미러에서 조작하기」의 권한표 판정 (FR-316).
    *
@@ -141,7 +138,6 @@ export function MirrorView({
   const imeRef = useRef<HTMLTextAreaElement | null>(null);
   /** 미러가 지금 키 입력을 받는가 (FR-320). 화면이 그 사실을 말해야 한다 */
   const [focused, setFocused] = useState(false);
-
   /**
    * 미러가 초점을 가져간다 (FR-320). **조합 요소로 준다** — 그래야 IME 가 붙는다.
    *
@@ -152,7 +148,6 @@ export function MirrorView({
     if (imeRef.current !== null) imeRef.current.focus({ preventScroll: true });
     else surfaceEl?.focus({ preventScroll: true });
   };
-
   /**
    * 조합 요소를 비운다. 확정된 글자는 **대상 브라우저**에 들어갔고 여기 남을 이유가 없다.
    *
@@ -162,7 +157,6 @@ export function MirrorView({
   const clearIme = () => {
     if (imeRef.current !== null) imeRef.current.value = "";
   };
-
   /**
    * 조작을 받는가. **표가 정한다** (FR-316).
    *
@@ -170,7 +164,6 @@ export function MirrorView({
    * 이므로 역시 받지 않는다.
    */
   const controllable = control?.kind === "enabled" && surface === "mirror" && frame !== null;
-
   /** 왜 지금 조작할 수 없는가. 표가 이유를 갖고 있으면 그것을 쓴다 (SC-516). */
   const blockedReason =
     control === undefined
@@ -187,7 +180,6 @@ export function MirrorView({
     if (event === null || onInput === undefined) return;
     onInput(event);
   };
-
   /** `ImeBridge` 에 넘길 통로. 참조가 매번 바뀌면 브리지가 매번 다시 붙는다. */
   const emitStable = useCallback(
     (event: InputEvent) => onInput?.(event),
@@ -195,7 +187,6 @@ export function MirrorView({
   );
 
   const context = { imageRef, frame: geometry, tab: tabIndex ?? 0 };
-
   /**
    * 조작을 받지 않는 상태에서의 클릭. **조용히 버리지 않는다** (SC-516 · FR-315).
    *
@@ -232,7 +223,6 @@ export function MirrorView({
     releaseCapture(event);
     emit(pointerEventOf("pointer.up", nativeOf(event), context));
   };
-
   /**
    * 브라우저가 포인터를 거둬 갔다 (010 T089 · FR-318).
    *
@@ -281,7 +271,6 @@ export function MirrorView({
       ),
     );
   };
-
   /**
    * 키 입력 (FR-320 · T042).
    *
@@ -385,7 +374,7 @@ export function MirrorView({
             data-key-target={controllable && focused ? "mirror" : "product"}
             aria-disabled={controllable ? undefined : "true"}
             tabIndex={controllable ? 0 : -1}
-            className={controllable ? "tint-run" : undefined}
+            className={`${controllable ? "bg-run-t border border-run rounded-base" : undefined} gap-s2 py-[10px] px-[14px]`}
             onKeyDown={(event) => onKey(event, "key.down")}
             onKeyUp={(event) => onKey(event, "key.up")}
             /*
@@ -518,7 +507,6 @@ export function MirrorView({
     </div>
   );
 }
-
 /**
  * 「실제 창에서 조작하기」 (FR-349·FR-353 · US5).
  *
@@ -564,7 +552,6 @@ function UseWindowAction({
     </span>
   );
 }
-
 /** 국면별 안내. 어디서 조작해야 하는지를 매번 분명히 한다 (FR-023b · FR-350). */
 function PhaseNotice({
   phase,
@@ -585,7 +572,6 @@ function PhaseNotice({
   return (
     <div
       className={`row${phase === "manipulation" ? " tint-warn" : ""}`}
-      style={{ gap: 8, padding: "10px 14px" }}
     >
       {asBadge ? (
         <span className="chip mono">{notice.title}</span>
@@ -614,6 +600,5 @@ function nativeOf(event: PointerEvent<HTMLImageElement>) {
     shiftKey: event.shiftKey,
   };
 }
-
 /** 버튼 이름 변환을 재수출한다 — 검증이 같은 규칙을 쓴다. */
 export { buttonNameOf };

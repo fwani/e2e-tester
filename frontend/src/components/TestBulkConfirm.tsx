@@ -6,7 +6,6 @@ import {
 import type { TrashedTest } from "../api/client";
 
 import { Button } from "../ui/Button";
-
 /**
  * 테스트 복수 삭제 확인 — **목록 바로 아래에서** 묻는다 (013 FR-430 · UC-013-04).
  *
@@ -59,7 +58,6 @@ export function TestBulkConfirm({
     </div>
   );
 }
-
 /**
  * 무엇을 어디로 옮겼는지 (013 FR-437a·FR-437b · UC-013-05).
  *
@@ -110,7 +108,6 @@ export function TrashedTestsNotice({
     </div>
   );
 }
-
 /**
  * 고른 것들에 대한 조작 띠 (013 FR-427·FR-428 · UC-013-02).
  *
@@ -167,7 +164,6 @@ export function TestSelectionBar({
     </div>
   );
 }
-
 /**
  * 번호 정리 확인 (2026-09-10 사용자 보고 2번).
  *
@@ -219,7 +215,6 @@ export function RenumberConfirm({
     </div>
   );
 }
-
 /**
  * 번호 정리 결과 (2026-09-10 사용자 보고 2번).
  *
@@ -239,8 +234,7 @@ export function RenumberedNotice({
     <div
       data-renumbered-notice
       role="status"
-      className={changed === 0 ? "tint-warn" : "tint-run"}
-      style={{ padding: "10px 12px", marginBottom: 10 }}
+      className={`${changed === 0 ? "bg-warn-t border border-warn-line rounded-base" : "bg-run-t border border-run rounded-base"} py-[10px] px-s3 mb-[10px]`}
     >
       <div className="strong-sm">
         {changed === 0

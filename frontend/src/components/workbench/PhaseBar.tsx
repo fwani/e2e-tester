@@ -37,7 +37,6 @@ import type { CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
 import { chipClassForTone } from "../../theme/tone";
 import type { PhaseBar as PhaseBarModel } from "./model";
-
 /**
  * 이름을 그 자리에서 고치는 데 필요한 것 (011 · `test.rename`).
  *
@@ -58,7 +57,6 @@ export interface PhaseNameEdit {
    */
   status?: ReactNode;
 }
-
 /**
  * 저장할 그룹 (013 FR-443 · converge T062).
  *
@@ -97,8 +95,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
       */}
       <div
         data-phase-pill
-        className={chipClassForTone(bar.phaseTone)}
-        style={{ height: "22px", flex: "0 0 auto" }}
+        className={`${chipClassForTone(bar.phaseTone)} h-[22px] flex-none`}
       >
         {bar.phaseLabel}
       </div>
@@ -168,7 +165,6 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
     </div>
   );
 }
-
 /**
  * 테스트 이름 — **표시와 편집이 같은 자리다** (011 UC-011-2).
  *

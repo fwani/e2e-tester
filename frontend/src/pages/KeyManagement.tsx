@@ -49,7 +49,6 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
   }, []);
 
   useEffect(load, [load]);
-
   /** 조작 하나를 감싼다 — 성공/실패 표시와 busy 처리가 세 버튼에서 같다. */
   const run = <T,>(action: () => Promise<T>, onDone: (result: T) => void) => {
     setBusy(true);
@@ -94,7 +93,6 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         );
       },
     );
-
   /**
    * 잠금 해제. **여기가 이 화면의 핵심 조작이다** (FR-089e-3).
    *
@@ -186,13 +184,13 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       >
         <div className="flex items-center gap-s2">
           <strong>키 상태</strong>
-          <span className={`chip ${hasKeys ? "pass" : "warn"}`}>
+          <span className={`${`chip ${hasKeys ? "pass" : "warn"}`} m-0`}>
             {hasKeys ? "준비됨" : "없음"}
           </span>
           {protectedKey && <span className="chip">암호구 보호</span>}
           {/* 보호 여부와 **지금 열려 있는지**는 다른 정보다. 둘 다 보여야 한다. */}
           {protectedKey && (
-            <span className={`chip ${unlocked ? "pass" : "warn"}`}>
+            <span className={`${`chip ${unlocked ? "pass" : "warn"}`} m-0`}>
               {unlocked ? "열림" : "잠김"}
             </span>
           )}
@@ -318,7 +316,6 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           <p
             id="passphrase-rule"
             className={`why ${tooShort ? "fail-ink" : ""}`.trimEnd()}
-            style={{ margin: 0 }}
           >
             {tooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${passphrase.length}자입니다.`
@@ -380,7 +377,6 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           <p
             id="regen-passphrase-rule"
             className={`why ${newTooShort ? "fail-ink" : ""}`.trimEnd()}
-            style={{ margin: 0 }}
           >
             {newTooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${newPassphrase.length}자입니다.`

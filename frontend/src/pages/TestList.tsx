@@ -73,7 +73,6 @@ import { chipClass, rowClass } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
 import { Button } from "../ui/Button";
-
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
 const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
@@ -92,10 +91,8 @@ function relativeTime(iso: string | null): string {
   if (hours < 24) return `${hours}시간 전`;
   return `${Math.round(hours / 24)}일 전`;
 }
-
 /** 결말 필터. 확정 디자인이 그리는 넷이며 그 이상 늘리지 않는다 (FR-272). */
 type OutcomeFilter = "all" | "pass" | "fail" | "none";
-
 /** 개수 옆의 잉크. 확정 디자인은 통과·실패 개수에만 상태 색을 쓴다. */
 const FILTER_INK: Record<OutcomeFilter, string> = {
   all: "",
@@ -236,7 +233,6 @@ export function TestList({
       setError(describeError(exc));
     }
   };
-
   /**
    * 조작 하나를 걸고 목록을 다시 읽는다.
    *
@@ -259,7 +255,6 @@ export function TestList({
       setBusy(false);
     }
   };
-
   /**
    * 삭제 결과를 화면에 세운다 — **옮긴 것과 이미 없던 것을 갈라서** (2026-09-10).
    *
@@ -286,7 +281,6 @@ export function TestList({
           ),
     );
   };
-
   /**
    * 번호를 `001` 부터 다시 붙인다 (2026-09-10 사용자 보고 2번).
    *
@@ -308,7 +302,6 @@ export function TestList({
       .catch((exc: unknown) => setError(describeError(exc)))
       .finally(() => setBusy(false));
   };
-
   /**
    * 초안 목록 (014 US3).
    *
@@ -345,7 +338,6 @@ export function TestList({
   }, [query, groupFilter]);
 
   const all = useMemo(() => data?.tests ?? [], [data]);
-
   /**
    * 결말별 개수. **거르기 전 전체**를 센다 — 필터가 자기 개수를 0으로 만들면 돌아올 길이
    * 사라진다.
@@ -359,7 +351,6 @@ export function TestList({
     }),
     [all],
   );
-
   /**
    * 화면 안에서 거르고 정렬한다 (research R7).
    *
@@ -381,7 +372,6 @@ export function TestList({
       return bt - at;
     });
   }, [all, filter, recentFirst]);
-
   /**
    * **보이는 것만 고를 수 있다** (013 FR-429 · UC-013-03 · SC-625).
    *
@@ -401,7 +391,6 @@ export function TestList({
   );
   const allVisibleSelected =
     rows.length > 0 && rows.every((r) => selected.has(r.id));
-
   /**
    * 목록을 **그룹별로 묶는다** (013 FR-440 · UC-013-06).
    *
@@ -453,7 +442,6 @@ export function TestList({
   }, [data, definedGroups]);
 
   const totalSteps = useMemo(() => all.reduce((s, t) => s + t.step_count, 0), [all]);
-
   /** 고른 것들을 휴지통으로 (013 FR-432). 확인을 거친 뒤에만 부른다. */
   const runBulkDelete = () => {
     const ids = effectiveSelection;
@@ -484,7 +472,6 @@ export function TestList({
     if (times.length === 0) return null;
     return times.reduce((a, b) => (new Date(a).getTime() > new Date(b).getTime() ? a : b));
   }, [all]);
-
   /**
    * 테스트가 하나도 없는 첫 사용자 화면 — `EmptyList.dc.html` 이 기준이다.
    *
@@ -628,7 +615,7 @@ export function TestList({
 
         {/* ─── 조작 줄 — 검색 · 결말 필터 · 정렬 ─────────────────────────── */}
         <div className="flex items-center gap-s2 gap-[10px]">
-          <div className={`field${isEmptyProject ? " off" : ""}`} style={{ flex: 1, maxWidth: "520px" }}>
+          <div className={`${`field${isEmptyProject ? " off" : ""}`} flex-1 max-w-[520px]`} >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7">
               <circle cx="7" cy="7" r="4.6" />
               <path d="M10.6 10.6L14 14" />
@@ -1112,7 +1099,6 @@ export function TestList({
     </Artboard>
   );
 }
-
 /** 떠 있는 행 메뉴의 치수. 여는 자리를 계산할 때 쓴다. */
 const MENU_MIN_WIDTH = 160;
 /** 단추와 메뉴 사이. 붙여 놓으면 어느 쪽을 눌렀는지 눈으로 갈리지 않는다. */
@@ -1126,7 +1112,6 @@ const MENU_EDGE = 8;
  * 겹침이 문제였던 적은 없고, 문제는 잘림이었다 (`Row` 의 `menuPos` 주석).
  */
 const MENU_Z = 40;
-
 // ─── 행 ─────────────────────────────────────────────────────────────────────
 
 function Row({
@@ -1469,9 +1454,7 @@ function Row({
     </div>
   );
 }
-
 // ─── 상태 표식 ──────────────────────────────────────────────────────────────
-
 /**
  * 목록 행의 결말 표식 (005 FR-141).
  *
@@ -1521,9 +1504,7 @@ function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
   if (mode === "ai") return <span className="chip ai">AI</span>;
   return <span className="chip">RECORD</span>;
 }
-
 // ─── 확정 디자인이 정의하지 않은 상태 (DC-009) ────────────────────────────
-
 /**
  * 테스트가 하나도 없는 프로젝트 — `EmptyList.dc.html`.
  *
@@ -1728,7 +1709,6 @@ function EmptyProject({
     </div>
   );
 }
-
 /**
  * 진행 중 세션 안내 (UX U-05).
  *

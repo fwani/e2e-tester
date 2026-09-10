@@ -40,7 +40,6 @@ import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
 
 import { Button } from "../../ui/Button";
-
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
   return /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(value);
@@ -49,7 +48,6 @@ function isReference(value: string): boolean {
 function hasValue(step: Step): step is Extract<Step, { value: string }> {
   return step.type === "fill" || step.type === "select";
 }
-
 /**
  * 파일 이름을 갖는 Step 인가 (2026-09-09 · `upload`).
  *
@@ -60,7 +58,6 @@ function hasValue(step: Step): step is Extract<Step, { value: string }> {
 function hasFileName(step: Step): step is Extract<Step, { file_name: string }> {
   return step.type === "upload";
 }
-
 /** 저장된 정의 그대로의 미리보기 (FR-016). 파일 내용과 일치해야 한다. */
 function dslPreview(step: Step): string {
   return JSON.stringify(step, null, 2);
@@ -148,7 +145,6 @@ export function StepDetail({
   const [sensitive, setSensitive] = useState(false);
   const [showDsl, setShowDsl] = useState(false);
   const [secretOpen, setSecretOpen] = useState(false);
-
   // 다른 Step 을 고르면 입력값을 그 Step 기준으로 다시 잡는다.
   useEffect(() => {
     setLabel(step?.label ?? "");
@@ -228,7 +224,7 @@ export function StepDetail({
             {step !== null && (
               <>
                 <span className="chip">{step.type.toUpperCase()}</span>
-                <span className={step.author === "ai" ? "chip ai" : "chip"}>
+                <span className={`${step.author === "ai" ? "chip ai" : "chip"} py-s2 px-s3`}>
                   {step.author === "ai" ? "AI" : "RECORD"}
                 </span>
               </>
@@ -450,7 +446,6 @@ export function StepDetail({
               <div
                 key={`${a.candidate}-${i}`}
                 className={`row rule-top why mono${a.matched ? "" : " muted"}`}
-                style={{ padding: "8px 12px" }}
               >
                 <span className="font-bold w-[84px]">
                   {a.candidate}

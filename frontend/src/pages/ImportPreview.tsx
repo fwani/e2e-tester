@@ -30,7 +30,6 @@ import { Toast } from "../components/Toast";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { Button } from "../ui/Button";
-
 /** 컬럼 7개. 순서는 서버의 `ORDER` 와 같다 — 화면이 다른 순서를 쓰면 사용자가 헷갈린다. */
 const ALL_COLUMNS = [
   "TC ID",
@@ -41,7 +40,6 @@ const ALL_COLUMNS = [
   "기대 결과",
   "결과",
 ] as const;
-
 /** 이 둘이 없으면 초안을 만들 수 없다 (FR-017). 서버의 `REQUIRED` 와 같아야 한다. */
 const REQUIRED_COLUMNS = ["TC ID", "대상기능"] as const;
 
@@ -85,7 +83,6 @@ export function ImportPreview({
   const isOn = (sheet: SheetPlanView) => included[sheet.sheet_name] ?? sheet.included;
   const headerRowOf = (sheet: SheetPlanView) =>
     headerRows[sheet.sheet_name] ?? sheet.header_row ?? sheet.sample[0]?.row ?? 1;
-
   /**
    * 이 시트의 열 이름들.
    *
@@ -98,7 +95,6 @@ export function ImportPreview({
     if (!picked) return sheet.headers;
     return picked.cells.map((c, i) => c || `(${i + 1}번째 열)`);
   };
-
   /**
    * 이 시트의 컬럼 짝짓기 — 사용자가 고친 것이 있으면 그것, 없으면 서버가 찾은 것.
    *
@@ -110,7 +106,6 @@ export function ImportPreview({
     const moved = headerRowOf(sheet) !== sheet.header_row;
     return { ...(moved ? {} : sheet.column_index), ...(columns[sheet.sheet_name] ?? {}) };
   };
-
   /** 지금 짝짓기로 이 시트가 쓸 수 있는가 (FR-020g). */
   const usable = (sheet: SheetPlanView) => {
     const map = columnsOf(sheet);
@@ -123,7 +118,6 @@ export function ImportPreview({
   const needMapping = plan.sheets.filter((s) => isOn(s) && !usable(s));
   const nothingChosen = plan.sheets.every((s) => !isOn(s));
   const onCount = plan.sheets.filter((s) => isOn(s)).length;
-
   /*
     확정하면 늘어날 초안 수.
 
@@ -147,7 +141,6 @@ export function ImportPreview({
     (s) => !s.needs_prefix || (prefixes[s.sheet_name] ?? "").trim() !== "",
   );
   const willCreate = counted.reduce((sum, s) => sum + willMake(s), 0);
-
   /**
    * 만들어질 그룹 수. **선택을 반영한다** (FR-020b).
    *
@@ -159,7 +152,6 @@ export function ImportPreview({
       .map((s) => s.prefix ?? (prefixes[s.sheet_name] ?? "").trim().toUpperCase())
       .filter((p) => p && p !== "TC"),
   ).size;
-
   /*
     수용량은 **그룹마다** 본다 (FR-039d). 번호를 그룹마다 세므로 「프로젝트에 남은
     번호」라는 총량은 없다 — 총량으로 비교하면 그룹 둘이 600건씩인 파일에서 넘치지도
@@ -298,7 +290,7 @@ export function ImportPreview({
                 <tr
                   key={sheet.sheet_name}
                   data-sheet-row={sheet.sheet_name}
-                  className={isOn(sheet) ? undefined : "dim"}
+                  className={`${isOn(sheet) ? undefined : "text-ink-3"} py-[2px] px-[6px] max-w-[140px] overflow-hidden text-ellipsis whitespace-nowrap`}
                 >
                   <td className="py-[6px] px-s2">
                     {/*
@@ -418,13 +410,6 @@ export function ImportPreview({
                                     className={
                                       headerRowOf(sheet) === sampleRow.row ? "strong-sm" : "why"
                                     }
-                                    style={{
-                                      padding: "2px 6px",
-                                      maxWidth: 140,
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      whiteSpace: "nowrap",
-                                    }}
                                   >
                                     {cell}
                                   </td>
@@ -569,7 +554,6 @@ export function ImportPreview({
     </Artboard>
   );
 }
-
 /**
  * 파일을 골라 미리보기를 여는 버튼.
  *
@@ -643,7 +627,6 @@ export function ImportFilePicker({
     </label>
   );
 }
-
 /**
  * 가져오기 완료 알림 (014 FR-018a · 수렴 T088).
  *

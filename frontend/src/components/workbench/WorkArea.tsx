@@ -36,7 +36,6 @@ import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
 import type { SlotSize } from "../../lib/layout";
 
 import { Button } from "../../ui/Button";
-
 /**
  * 국면 안내 띠 **자체**의 높이. `RunnerPaused`·`Takeover` 의 `flex: 0 0 42px`.
  *
@@ -84,7 +83,7 @@ export function WorkArea({
     <div
       data-workbench-work={work.kind}
       data-slot-size={sizeKind}
-      className={`border-t border-hair-2 bg-sunken-2 ${sizeClass} py-s3 px-s4 flex flex-col gap-s3`}
+      className={`${`border-t border-hair-2 bg-sunken-2 ${sizeClass} py-s3 px-s4 flex flex-col gap-s3`} flex-1 min-w-0 text-left h-auto py-s4 px-[18px] flex flex-col gap-s2 cursor-pointer`}
     >
       {/*
         만들기 국면 — 시작 조건 (2회차 · FR-258).
@@ -367,7 +366,6 @@ export function WorkArea({
     </div>
   );
 }
-
 /**
  * 만드는 방법 카드 (2회차 · FR-258 · 승인 대상 B7).
  *
@@ -399,17 +397,6 @@ function ModeCard({
       aria-pressed={selected}
       onClick={() => onPick(mode)}
       className={`pane pick${selected ? " on" : ""}${ai ? " tint-ai" : ""}`}
-      style={{
-        flex: 1,
-        minWidth: 0,
-        textAlign: "left",
-        height: "auto",
-        padding: "16px 18px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        cursor: "pointer",
-      }}
     >
       <span className="subtitle">{title}</span>
       <span className="note">{summary}</span>
@@ -432,7 +419,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </div>
   );
 }
-
 /**
  * 실패와 차단은 **조건 없이** 그린다 (FR-218f · FR-253 · 001 research R2).
  *
@@ -522,7 +508,6 @@ function AlwaysVisibleFailure({
     </div>
   );
 }
-
 /**
  * 막힘 선택지의 표시 문구.
  *
@@ -539,7 +524,6 @@ const AI_CHOICE_LABEL: Record<string, string> = {
   skip: "이 동작 건너뛰기",
   abort: "AI 작성 끝내기",
 };
-
 /**
  * AI 에게 답을 써서 돌려주는 칸 (2026-09-10 사용자 결정).
  *
@@ -561,7 +545,6 @@ function BlockedAnswer({
   const [text, setText] = useState("");
   const box = useRef<HTMLTextAreaElement | null>(null);
   const ready = text.trim() !== "";
-
   /*
     **막힘이 뜨면 초점이 이 칸에 온다.**
 

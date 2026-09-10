@@ -62,7 +62,6 @@ type Mode =
       plan: ImportPlanView;
       form: { name: string; default_start_url: string; test_id_attribute: string };
     };
-
 /** 구획 라벨 — 정본의 `.lbl` 이다. 이름만 확정 디자인의 관용어를 쓴다. */
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <div className="lbl">{children}</div>;
@@ -306,7 +305,6 @@ export function ProjectSetup({
     </div>
   );
 }
-
 // ─── 목록 (DR-002·DR-003·DR-004·DR-009) ─────────────────────────────────────
 
 function ProjectList({
@@ -394,7 +392,6 @@ function ProjectList({
     </>
   );
 }
-
 /**
  * 줄이 어떤 상태에 있는가 (012 UC-012-02·UC-012-03).
  *
@@ -406,7 +403,6 @@ type RowMode =
   | { kind: "idle" }
   | { kind: "editing"; draft: string }
   | { kind: "confirming"; summary: ProjectSummary | null };
-
 /**
  * 줄 하나. **조작 집합은 줄의 상태가 정한다** (012 UC-012-01 · data-model §3).
  *
@@ -524,7 +520,6 @@ function ProjectRow({
   return (
     <div
       className={`${first ? "" : "rule-top "}${item.accessible ? "" : "dim"}`.trim() || undefined}
-      style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px" }}
     >
       <div className="flex items-center gap-[14px]">
         <div className="flex-1 min-w-0">
@@ -647,7 +642,6 @@ function ProjectRow({
     </div>
   );
 }
-
 /**
  * 삭제 확인 (012 FR-411·FR-412·FR-424·FR-425 · UC-012-03).
  *
@@ -709,7 +703,6 @@ function ConfirmTrash({
     </div>
   );
 }
-
 /**
  * 무엇을 어디로 옮겼는지 (012 FR-410·FR-425 · UC-012-04).
  *
@@ -765,7 +758,6 @@ function TrashedNotice({
     </div>
   );
 }
-
 // ─── 새로 만들기 (DR-001·DR-006) ────────────────────────────────────────────
 
 function CreateForm({
@@ -842,8 +834,7 @@ function CreateForm({
       */}
       <p
         id="create-blockers"
-        className={`why ${ready ? "" : "fail-ink"}`.trimEnd()}
-        style={{ margin: "16px 0 0" }}
+        className={`${`why ${ready ? "" : "text-fail"}`.trimEnd()} flex flex-col gap-[10px] py-[14px] px-s4`}
       >
         {ready
           ? "만들 준비가 되었습니다."
@@ -871,7 +862,6 @@ function CreateForm({
     </div>
   );
 }
-
 // ─── 만들어진 위치 알림 (DR-006) ────────────────────────────────────────────
 
 function CreatedNotice({
@@ -908,7 +898,6 @@ function CreatedNotice({
     </div>
   );
 }
-
 // ─── 폴더 선택기 (DR-005) ───────────────────────────────────────────────────
 //
 // 브라우저는 임의 절대 경로를 줄 수 없다. 서버가 홈 하위 디렉터리를 그려 준다.
@@ -1014,18 +1003,13 @@ function FolderPicker({
     </div>
   );
 }
-
 // ─── 알림 ───────────────────────────────────────────────────────────────────
 
 function Notice({ tone, children }: { tone: "warn" | "fail"; children: React.ReactNode }) {
   return (
     <div
-      className={tone === "fail" ? "tint-fail" : "tint-warn"}
-      style={{
-        padding: "12px 16px",
-        marginBottom: 18,
-        whiteSpace: "pre-wrap",
-      }}
+      className={`${tone === "fail" ? "bg-fail-t border border-fail-line rounded-base" : "bg-warn-t border border-warn-line rounded-base"} mt-s4 mx-0 mb-0`}
+      
       role={tone === "fail" ? "alert" : "status"}
     >
       {children}
