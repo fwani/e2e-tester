@@ -61,11 +61,11 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 **⚠️ 이 순서는 뒤집을 수 없다.** 가드 없이 전환하면 무엇이 언제 깨졌는지 알 수 없고,
 전환이 끝난 뒤 가드를 만들면 이미 들어온 위반을 기준선으로 삼게 된다.
 
-- [ ] T008 [P] [contracts/class-migration.md](contracts/class-migration.md) 의 표를 채운다 — 의미 클래스 109개 각각에 대해 이름·`.tsx` 사용처 수·행선지(미정)·상태(미착수). 사용처가 0인 클래스는 「삭제 — 쓰이지 않음」으로 표시한다. **이 표가 SC-009 의 판정 대상이다**
-- [ ] T009 [P] 가드 G-A1 을 `frontend/tests/TailwindThemeLiteral.test.ts` 에 만든다 — `theme/tailwind.css` 의 모든 `--*:` 선언 오른쪽이 `var(…)` 인지 검사한다. 리터럴이 하나라도 있으면 실패 (FR-016 · C-1)
-- [ ] T010 가드 G-B 를 `frontend/tests/ClassExistence.test.ts` 에 만든다 — `.tsx` 가 쓰는 Tailwind 클래스가 빌드 산출 CSS 에 실재하는지 확인한다. **오타를 일부러 넣어 실패하는 것을 확인한다.** 이 가드가 없으면 `toHaveClass` 는 거짓말을 할 수 있다 ([contracts/layout-contract-v2.md](contracts/layout-contract-v2.md) LC-4 ③) (T003 의존)
-- [ ] T011 [P] 가드 G-C 를 `frontend/tests/SingleSystem.test.ts` 에 만든다 — 한 요소의 `className` 에 의미 클래스와 Tailwind 유틸리티가 동시에 있으면 실패 (LC-5). 전환 중에는 이 수치가 **진행률 계기**이므로, 실패 메시지가 남은 곳을 `파일:줄` 로 지목해야 한다
-- [ ] T012 [P] 가드 G-D 를 `frontend/tests/ClassMigration.test.ts` 에 만든다 — `tokens.css` 에 남은 의미 클래스 수와 대응표의 「완료」 아닌 행 수가 일치하는지 검사한다 (T008 의존)
+- [X] T008 [P] [contracts/class-migration.md](contracts/class-migration.md) 의 표를 채운다 — 의미 클래스 109개 각각에 대해 이름·`.tsx` 사용처 수·행선지(미정)·상태(미착수). 사용처가 0인 클래스는 「삭제 — 쓰이지 않음」으로 표시한다. **이 표가 SC-009 의 판정 대상이다**
+- [X] T009 [P] 가드 G-A1 을 `frontend/tests/TailwindThemeLiteral.test.ts` 에 만든다 — `theme/tailwind.css` 의 모든 `--*:` 선언 오른쪽이 `var(…)` 인지 검사한다. 리터럴이 하나라도 있으면 실패 (FR-016 · C-1)
+- [X] T010 가드 G-B 를 `frontend/tests/ClassExistence.test.ts` 에 만든다 — `.tsx` 가 쓰는 Tailwind 클래스가 빌드 산출 CSS 에 실재하는지 확인한다. **오타를 일부러 넣어 실패하는 것을 확인한다.** 이 가드가 없으면 `toHaveClass` 는 거짓말을 할 수 있다 ([contracts/layout-contract-v2.md](contracts/layout-contract-v2.md) LC-4 ③) (T003 의존)
+- [X] T011 [P] 가드 G-C 를 `frontend/tests/SingleSystem.test.ts` 에 만든다 — 한 요소의 `className` 에 의미 클래스와 Tailwind 유틸리티가 동시에 있으면 실패 (LC-5). 전환 중에는 이 수치가 **진행률 계기**이므로, 실패 메시지가 남은 곳을 `파일:줄` 로 지목해야 한다
+- [X] T012 [P] 가드 G-D 를 `frontend/tests/ClassMigration.test.ts` 에 만든다 — `tokens.css` 에 남은 의미 클래스 수와 대응표의 「완료」 아닌 행 수가 일치하는지 검사한다 (T008 의존)
 - [ ] T013 L2 대조 스크립트 `scripts/design_compare_ba.py` 를 만들고 `--baseline` 으로 **전환 전 기준선을 뜬다**. `design_render.py` 의 digest 규약을 따라 낡은 보고서로 통과할 수 없게 한다 (T004 의존). **기준선은 부품 전환을 시작하기 전에 떠야 한다**
 - [ ] T014a **L1 대조의 측정 대상을 부품으로 옮긴다** — `scripts/design_render.py` 의 `FORMS`
       가 `["btn", "chip pass", …]` 처럼 **클래스 이름**으로 형태를 지정하고 있어, 의미 클래스를
@@ -74,7 +74,7 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
       **부품 렌더 결과**로 바꾼다. 질문("우리 부품이 확정 디자인과 같은 것을 그리는가")은 그대로다
 - [ ] T014b `frontend/tests/CanonMatchesDesign.test.ts` 를 T014a 의 새 보고서 형식에 맞춘다.
       digest 로 낡은 보고서를 거르는 성질을 유지한다 — **이 성질이 없으면 재지 않고도 통과한다**
-- [ ] T014 [P] 단언 총수 계수기를 `frontend/scripts/count-assertions.mjs` 에 만든다 — 헌법 Quality Gate 4 를 수치로 확인하는 장치다. T001 의 기준선과 비교해 줄면 그 파일을 지목한다
+- [X] T014 [P] 단언 총수 계수기를 `frontend/scripts/count-assertions.mjs` 에 만든다 — 헌법 Quality Gate 4 를 수치로 확인하는 장치다. T001 의 기준선과 비교해 줄면 그 파일을 지목한다
 
 **Checkpoint**: 가드 4종이 살아 있고, 각각 일부러 어겨서 실제로 잡는 것을 확인했다.
 
