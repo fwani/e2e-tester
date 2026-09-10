@@ -151,19 +151,19 @@ Web app 구조. 백엔드 `backend/src/itb/`, 프런트엔드 `frontend/src/`.
 - [X] T047 [US3] `backend/src/itb/api/routes/tests.py` 에 `POST /api/tests:move` 를 더한다 — 요청 `{test_ids, to_prefix}`, 응답 `{moved: [{from_id, to_id, name}]}`. `to_prefix` 가 `TC` 면 그룹에서 뺀다. 여러 개도 T013 의 3단계 규약을 쓴다. T045 에 의존
 - [X] T048 [US3] `DELETE /api/groups/{prefix}` 가 **그 그룹의 테스트를 `TC-###` 로 되돌리게** 한다 (FR-451) — 지우지 않는다. 응답에 `ungrouped` 를 담는다. **§4 의 이동을 그 그룹 전부에 적용하는 것이며 같은 원자성 규약을 따른다.** T045 에 의존
 - [X] T049 [P] [US3] `backend/tests/contract/test_test_groups_api.py` 에 이동·해체 검사를 더한다 — 번호 유지, 결과 따라옴, 그룹 삭제가 테스트를 지우지 않음(FR-451), 실행 중이면 하나도 안 옮겨짐
-- [ ] T050 [US3] `frontend/src/pages/TestList.tsx` 의 선택 띠에 「그룹으로 옮기기」를 더한다 (FR-448) — 그룹이 하나도 없으면 그리지 않는다. 이미 있는 선택을 그대로 쓴다
-- [ ] T051 [US3] 그룹 칩에 이름 변경(제자리 편집, 확인 없음)과 없애기를 더한다 (UC-013-08). **없애기에만 확인이 있다** — 그것만이 자산을 움직인다(그 안 테스트들의 파일 이름과 산출물 디렉터리가 바뀐다). 확인 문구가 「테스트 N개가 그룹 없음으로 돌아가고 식별자가 `TC-###` 로 바뀝니다 · **지워지지 않습니다**」를 말한다
-- [ ] T052 [P] [US3] `frontend/tests/TestGroups.test.tsx` 에 US3 검사를 더한다 — 이름 변경에 확인이 없고 없애기에는 있는지, 없애기 확인에 「지워지지 않습니다」가 있는지, 복수 이동이 선택을 쓰는지
+- [X] T050 [US3] `frontend/src/pages/TestList.tsx` 의 선택 띠에 「그룹으로 옮기기」를 더한다 (FR-448) — 그룹이 하나도 없으면 그리지 않는다. 이미 있는 선택을 그대로 쓴다
+- [X] T051 [US3] 그룹 칩에 이름 변경(제자리 편집, 확인 없음)과 없애기를 더한다 (UC-013-08). **없애기에만 확인이 있다** — 그것만이 자산을 움직인다(그 안 테스트들의 파일 이름과 산출물 디렉터리가 바뀐다). 확인 문구가 「테스트 N개가 그룹 없음으로 돌아가고 식별자가 `TC-###` 로 바뀝니다 · **지워지지 않습니다**」를 말한다
+- [X] T052 [P] [US3] `frontend/tests/TestGroups.test.tsx` 에 US3 검사를 더한다 — 이름 변경에 확인이 없고 없애기에는 있는지, 없애기 확인에 「지워지지 않습니다」가 있는지, 복수 이동이 선택을 쓰는지
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T053 [P] `backend/tests/contract/test_dsl_roundtrip.py` 를 개정한다 — `Project` 에 `groups` 가 생겼다. **기존 프로젝트 파일(`groups` 없음)이 그대로 읽히는지**를 함께 센다
-- [ ] T054 [P] `README.md` 의 「저장 위치」에 테스트 휴지통 자리와 **되돌리는 방법**을 적는다 — 도구 안에 복구 화면이 없으므로 문서가 유일한 안내다. 012 가 프로젝트 휴지통을 적은 자리 옆에 나란히 둔다
-- [ ] T055 [P] `README.md` 또는 `docs/DEVELOPMENT.md` 에 **그룹과 식별자 접두어**를 적는다 — `TC` 가 예약이라는 것과, 그룹을 옮기면 식별자가 바뀐다는 것
-- [ ] T056 전체 검증을 돌린다 — T001 의 기준선과 비교해 **013 이 깬 것이 없는지** 확인한다. 특히 `schema.export --check` 와 pytest 오류 15건이 그대로인지
-- [ ] T057 손 검증을 돌린다 — [quickstart.md](quickstart.md) §2 의 일곱 이야기와 §3 의 회귀 7건. **이야기 1(기존 자산이 그대로다)을 가장 먼저** 한다. `XDG_DATA_HOME`·`XDG_CONFIG_HOME` 을 임시 디렉터리로 지정해 실제 자산을 건드리지 않는다
+- [X] T053 [P] `backend/tests/contract/test_dsl_roundtrip.py` 를 개정한다 — `Project` 에 `groups` 가 생겼다. **기존 프로젝트 파일(`groups` 없음)이 그대로 읽히는지**를 함께 센다
+- [X] T054 [P] `README.md` 의 「저장 위치」에 테스트 휴지통 자리와 **되돌리는 방법**을 적는다 — 도구 안에 복구 화면이 없으므로 문서가 유일한 안내다. 012 가 프로젝트 휴지통을 적은 자리 옆에 나란히 둔다
+- [X] T055 [P] `README.md` 또는 `docs/DEVELOPMENT.md` 에 **그룹과 식별자 접두어**를 적는다 — `TC` 가 예약이라는 것과, 그룹을 옮기면 식별자가 바뀐다는 것
+- [X] T056 전체 검증을 돌린다 — T001 의 기준선과 비교해 **013 이 깬 것이 없는지** 확인한다. 특히 `schema.export --check` 와 pytest 오류 15건이 그대로인지
+- [ ] T057 손 검증을 돌린다 (**사람이 판정한다** · [docs/PENDING-HUMAN-VERIFICATION.md](../../docs/PENDING-HUMAN-VERIFICATION.md) §13-3 에 등록했다) — [quickstart.md](quickstart.md) §2 의 일곱 이야기와 §3 의 회귀 7건. **이야기 1(기존 자산이 그대로다)을 가장 먼저** 한다. `XDG_DATA_HOME`·`XDG_CONFIG_HOME` 을 임시 디렉터리로 지정해 실제 자산을 건드리지 않는다
 
 ---
 

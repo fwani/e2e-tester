@@ -17,14 +17,20 @@ export function TestGroupBar({
   busy,
   onPick,
   onCreate,
+  onRename,
+  onRemove,
 }: {
   groups: GroupSummary[];
   active: string | null;
   busy: boolean;
   onPick: (prefix: string | null) => void;
   onCreate: (prefix: string, name: string) => void;
+  onRename: (prefix: string, name: string) => void;
+  onRemove: (prefix: string) => void;
 }) {
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<{ prefix: string; name: string } | null>(null);
+  const [removing, setRemoving] = useState<GroupSummary | null>(null);
 
   // 그룹이 하나도 없고 만드는 중도 아니면 자리를 차지하지 않는다.
   const realGroups = groups.filter((g) => g.prefix !== "TC");
@@ -69,7 +75,70 @@ export function TestGroupBar({
           {g.name ?? (g.prefix === "TC" ? "그룹 없음" : g.prefix)} {g.count}
         </button>
       ))}
+      {/*
+        그룹 조작은 **그 그룹을 고른 상태에서만** 나온다. 칩마다 조작을 달면 띠가
+        빽빽해지고, 사용자가 어느 그룹을 건드리는지도 흐려진다. 정의가 없는 접두어와
+        「그룹 없음」에는 고칠 대상이 없으므로 그리지 않는다.
+      */}
+      {active !== null &&
+        active !== "TC" &&
+        editing === null &&
+        removing === null &&
+        groups.some((g) => g.prefix === active && g.name !== null) && (
+          <>
+            <button
+              className="navlink"
+              disabled={busy}
+              onClick={() =>
+                setEditing({
+                  prefix: active,
+                  name: groups.find((g) => g.prefix === active)?.name ?? "",
+                })
+              }
+            >
+              이름 바꾸기
+            </button>
+            <button
+              className="navlink"
+              disabled={busy}
+              onClick={() =>
+                setRemoving(groups.find((g) => g.prefix === active) ?? null)
+              }
+            >
+              그룹 없애기
+            </button>
+          </>
+        )}
+      {editing !== null && (
+        <input
+          aria-label="그룹 이름 바꾸기"
+          value={editing.name}
+          autoFocus
+          disabled={busy}
+          onChange={(e) => setEditing({ prefix: editing.prefix, name: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && editing.name.trim() !== "") {
+              onRename(editing.prefix, editing.name.trim());
+              setEditing(null);
+            }
+            if (e.key === "Escape") setEditing(null);
+          }}
+          onBlur={() => setEditing(null)}
+          style={{ margin: 0, width: 180 }}
+        />
+      )}
       <div className="spacer" />
+      {removing !== null && (
+        <ConfirmDisband
+          group={removing}
+          busy={busy}
+          onCancel={() => setRemoving(null)}
+          onConfirm={() => {
+            onRemove(removing.prefix);
+            setRemoving(null);
+          }}
+        />
+      )}
       {adding ? (
         <NewGroupForm
           busy={busy}
@@ -152,5 +221,48 @@ function NewGroupForm({
         취소
       </button>
     </div>
+  );
+}
+
+
+/**
+ * 그룹 해체 확인 (013 FR-451 · UC-013-08).
+ *
+ * **이름 변경에는 확인이 없고 여기에만 있다.** 그것만이 자산을 움직이기 때문이다 —
+ * 그 안의 테스트들의 파일 이름과 산출물 디렉터리가 바뀐다. 이름 변경은 프로젝트 파일
+ * 한 줄이라 되돌리면 그만이다.
+ *
+ * 문구가 **「지워지지 않습니다」를 반드시 말한다.** 「없애기」라는 말을 듣고 사용자가
+ * 가장 먼저 걱정하는 것이 그것이다.
+ */
+function ConfirmDisband({
+  group,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  group: GroupSummary;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <span
+      data-group-disband-confirm
+      role="status"
+      className="tint-warn line"
+      style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 8px" }}
+    >
+      <span className="strong-sm">
+        「{group.name ?? group.prefix}」을(를) 없앨까요? 테스트 {group.count}개가 그룹 없음으로
+        돌아가고 식별자가 TC-### 로 바뀝니다 · 지워지지 않습니다
+      </span>
+      <button className="btn sm" onClick={onCancel} disabled={busy} autoFocus>
+        돌아가기
+      </button>
+      <button className="btn sm danger" onClick={onConfirm} disabled={busy}>
+        없애기
+      </button>
+    </span>
   );
 }

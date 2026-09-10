@@ -272,6 +272,11 @@ export const groups = {
   /** 이름만 바꾼다. **접두어는 바꾸지 않는다** — 그것은 자산을 옮기는 일이다. */
   rename: (prefix: string, name: string) =>
     patch<TestGroup>(`/api/groups/${prefix}`, { name }),
+  /**
+   * 그룹을 없앤다. **그 안의 테스트는 지우지 않는다** (013 FR-451) — 전부 `TC-###` 로
+   * 돌아간다. 묶음을 푸는 것과 자산을 지우는 것은 다른 조작이다.
+   */
+  remove: (prefix: string) => del<{ ungrouped: string[] }>(`/api/groups/${prefix}`),
 };
 
 export interface TestListResponse {
@@ -318,6 +323,15 @@ export const tests = {
    */
   deleteMany: (ids: string[]) =>
     post<{ deleted: TrashedTest[] }>("/api/tests:delete", { test_ids: ids }),
+  /**
+   * 그룹을 바꾼다 (013 FR-446·FR-448). **표시가 아니라 자산이 움직인다** — 정의 파일과
+   * 실행 산출물이 새 식별자 자리로 간다. 번호는 그대로이고 접두어만 바뀐다.
+   */
+  move: (ids: string[], toPrefix: string) =>
+    post<{ moved: { from_id: string; to_id: string; name: string }[] }>("/api/tests:move", {
+      test_ids: ids,
+      to_prefix: toPrefix,
+    }),
   /** 최근 실행 결과. 테스트당 1건만 보관된다 (FR-050~FR-054). */
   result: (id: string) => get<RunResultView>(`/api/tests/${id}/result`),
   /**

@@ -520,6 +520,13 @@ export function TestList({
             onCreate={(prefix, name) =>
               void act(() => groupsApi.create(prefix, name))
             }
+            onRename={(prefix, name) => void act(() => groupsApi.rename(prefix, name))}
+            onRemove={(prefix) =>
+              void act(() => groupsApi.remove(prefix)).then(() => {
+                // 없어진 그룹을 계속 보고 있으면 빈 목록이 그려진다.
+                if (groupFilter === prefix) setGroupFilter(null);
+              })
+            }
           />
         )}
 
@@ -546,6 +553,34 @@ export function TestList({
             onSelectAllVisible={() => setSelected(new Set(rows.map((r) => r.id)))}
             onClear={() => setSelected(new Set())}
             onDelete={() => setConfirmingBulk(true)}
+            extra={
+              // 그룹이 하나도 없으면 옮길 곳이 없다 — 그리지 않는다 (SC-627).
+              (data?.groups ?? []).some((g) => g.prefix !== "TC") ? (
+                <select
+                  aria-label="그룹으로 옮기기"
+                  disabled={busy}
+                  value=""
+                  onChange={(e) => {
+                    const to = e.target.value;
+                    if (to === "") return;
+                    void act(() => tests.move(effectiveSelection, to)).then(() =>
+                      setSelected(new Set()),
+                    );
+                  }}
+                  style={{ margin: 0 }}
+                >
+                  <option value="">그룹으로 옮기기…</option>
+                  {(data?.groups ?? [])
+                    .filter((g) => g.name !== null)
+                    .map((g) => (
+                      <option key={g.prefix} value={g.prefix}>
+                        {g.name}
+                      </option>
+                    ))}
+                  <option value="TC">그룹에서 빼기</option>
+                </select>
+              ) : undefined
+            }
           />
         )}
 

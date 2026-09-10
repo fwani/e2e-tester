@@ -249,3 +249,115 @@ describe("그룹 만들기", () => {
     });
   });
 });
+
+// ─── UC-013-08 · 그룹 정리 (US3) ──────────────────────────────────────────
+
+describe("그룹 정리", () => {
+  const pickUser = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(
+      within(bar() as HTMLElement).getByRole("button", { name: /사용자관리 테스트/ }),
+    );
+  };
+
+  it("조작은 그 그룹을 고른 상태에서만 나온다", async () => {
+    stub(GROUPED_ROWS, GROUPS);
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("로그인");
+    const user = userEvent.setup();
+
+    // 칩마다 조작을 달면 띠가 빽빽해지고 어느 그룹을 건드리는지 흐려진다.
+    expect(screen.queryByRole("button", { name: "그룹 없애기" })).toBeNull();
+
+    await pickUser(user);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "그룹 없애기" })).toBeTruthy(),
+    );
+    expect(screen.getByRole("button", { name: "이름 바꾸기" })).toBeTruthy();
+  });
+
+  it("이름 변경에는 확인이 없다 — 되돌리면 그만이다", async () => {
+    const calls = stub(GROUPED_ROWS, GROUPS);
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("로그인");
+    const user = userEvent.setup();
+
+    await pickUser(user);
+    await user.click(await screen.findByRole("button", { name: "이름 바꾸기" }));
+    const input = screen.getByLabelText("그룹 이름 바꾸기");
+    await user.clear(input);
+    await user.type(input, "새 이름{Enter}");
+
+    await waitFor(() => {
+      const patch = calls.find((c) => c.method === "PATCH");
+      expect(patch?.body).toEqual({ name: "새 이름" });
+    });
+  });
+
+  it("없애기에는 확인이 있고 **「지워지지 않습니다」를 말한다** (FR-451)", async () => {
+    const calls = stub(GROUPED_ROWS, GROUPS);
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("로그인");
+    const user = userEvent.setup();
+
+    await pickUser(user);
+    await user.click(await screen.findByRole("button", { name: "그룹 없애기" }));
+
+    // 「없애기」라는 말을 듣고 사용자가 가장 먼저 걱정하는 것이 그것이다.
+    const box = await waitFor(
+      () => document.querySelector("[data-group-disband-confirm]") as HTMLElement,
+    );
+    expect(box.textContent).toContain("지워지지 않습니다");
+    expect(box.textContent).toContain("TC-###");
+    expect(calls.filter((c) => c.method === "DELETE")).toHaveLength(0);
+  });
+
+  it("확인 전에는 없애지 않는다", async () => {
+    const calls = stub(GROUPED_ROWS, GROUPS);
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("로그인");
+    const user = userEvent.setup();
+
+    await pickUser(user);
+    await user.click(await screen.findByRole("button", { name: "그룹 없애기" }));
+    await waitFor(() =>
+      expect(document.querySelector("[data-group-disband-confirm]")).not.toBeNull(),
+    );
+    await user.click(screen.getByRole("button", { name: "돌아가기" }));
+
+    await waitFor(() =>
+      expect(document.querySelector("[data-group-disband-confirm]")).toBeNull(),
+    );
+    expect(calls.filter((c) => c.method === "DELETE")).toHaveLength(0);
+  });
+
+  it("복수 이동이 이미 있는 선택을 쓴다 (FR-448)", async () => {
+    const calls = stub(GROUPED_ROWS, GROUPS);
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("로그인");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByLabelText("그룹 없는 것 선택"));
+    const select = await screen.findByLabelText("그룹으로 옮기기");
+    await user.selectOptions(select, "USER");
+
+    await waitFor(() => {
+      const move = calls.find((c) => c.url.includes("/api/tests:move"));
+      expect(move?.body).toEqual({ test_ids: ["TC-003"], to_prefix: "USER" });
+    });
+  });
+
+  it("그룹이 없으면 「그룹으로 옮기기」를 그리지 않는다 (SC-627)", async () => {
+    stub([row({ id: "TC-001", name: "로그인" })], []);
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("로그인");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByLabelText("로그인 선택"));
+
+    await waitFor(() =>
+      expect(document.querySelector("[data-test-selection-bar]")).not.toBeNull(),
+    );
+    expect(screen.queryByLabelText("그룹으로 옮기기")).toBeNull();
+  });
+});

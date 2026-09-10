@@ -385,3 +385,75 @@ def test_pacing_never_reaches_the_stored_definition(tmp_path: pathlib.Path) -> N
         body = yaml.safe_dump(loaded.model_dump(mode="json"), allow_unicode=True)
         for pacing in RunPacing:
             assert f"pacing: {pacing.value}" not in body
+
+
+# ─── 013 — 기존 프로젝트 파일이 그대로 읽힌다 (SC-629) ─────────────────────
+
+
+def test_a_project_file_without_groups_still_loads(tmp_path: pathlib.Path) -> None:
+    """013 이전에 만든 `itb-project.yaml` 에는 `groups` 키가 없다.
+
+    **기본값이 빈 목록이어야 그대로 읽힌다.** 업그레이드만으로 사용자의 버전 관리에
+    변경이 들어가서는 안 된다 — 도구가 기존 자산을 먼저 움직이지 않는다 (FR-445).
+    """
+    from itb.domain.test_case import Project
+    from itb.storage.yaml_io import load_model
+
+    old_file = tmp_path / "itb-project.yaml"
+    old_file.write_text(
+        "name: 레거시 프로젝트\n"
+        "default_start_url: http://127.0.0.1:4300/login.html\n"
+        "browser: chromium\n"
+        "test_id_attribute: data-testid\n"
+        "next_test_number: 4\n"
+        "max_tabs: 10\n",
+        encoding="utf-8",
+    )
+
+    project = load_model(old_file, Project)
+
+    assert project.groups == []
+    assert project.name == "레거시 프로젝트"
+
+
+def test_a_reserved_prefix_cannot_be_a_group(tmp_path: pathlib.Path) -> None:
+    """FR-445a — `TC` 를 그룹으로 두면 기존 테스트가 그 그룹에 나타난다.
+
+    도메인 모델에서 막는다. 라우트만 막으면 파일을 손으로 고친 프로젝트에서 새어 나간다.
+    """
+    from itb.domain.test_case import Project
+    from itb.storage.yaml_io import DefinitionError, load_model
+
+    bad = tmp_path / "itb-project.yaml"
+    bad.write_text(
+        "name: p\n"
+        "default_start_url: http://127.0.0.1:4300/login.html\n"
+        "groups:\n"
+        "  - prefix: TC\n"
+        "    name: 가로채기\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError):
+        load_model(bad, Project)
+
+
+def test_duplicate_group_prefixes_are_rejected(tmp_path: pathlib.Path) -> None:
+    """FR-442 — 접두어가 겹치면 식별자가 어느 그룹인지 가리키지 못한다."""
+    from itb.domain.test_case import Project
+    from itb.storage.yaml_io import DefinitionError, load_model
+
+    bad = tmp_path / "itb-project.yaml"
+    bad.write_text(
+        "name: p\n"
+        "default_start_url: http://127.0.0.1:4300/login.html\n"
+        "groups:\n"
+        "  - prefix: USER\n"
+        "    name: 하나\n"
+        "  - prefix: USER\n"
+        "    name: 둘\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError):
+        load_model(bad, Project)
