@@ -142,7 +142,7 @@ export function ProjectSetup({
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div className="min-h-[100vh] flex flex-col">
       {/* 제품의 **첫 화면**이다. 껍데기는 다른 화면과 같아야 한다 (FR-217). */}
       <HeaderBar>
         <BrandMark />
@@ -155,7 +155,7 @@ export function ProjectSetup({
       </HeaderBar>
 
       <main style={{ flex: 1, padding: "24px 32px 32px", maxWidth: 960, width: "100%", margin: "0 auto" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+        <div className="flex flex-col gap-s2 mb-[20px]">
           <Eyebrow>PROJECT</Eyebrow>
           <div className="title">프로젝트</div>
         </div>
@@ -242,7 +242,7 @@ export function ProjectSetup({
                   {mode.plan.file_name} 에서 그룹 {mode.plan.group_count}개, 테스트 초안{" "}
                   {mode.plan.draft_count}건을 함께 만듭니다.
                 </div>
-                <div className="why" style={{ marginTop: 4 }}>
+                <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
                   초안은 아직 테스트가 아닙니다. 만든 뒤 하나씩 녹화하면 테스트가 됩니다.
                 </div>
               </div>
@@ -350,7 +350,7 @@ function ProjectList({
 
   return (
     <>
-      <div style={{ display: "flex", gap: 12, marginBottom: 22 }}>
+      <div className="flex gap-s3 mb-[22px]">
         <Button variant="primary" onClick={onCreate} disabled={busy}>
           + 새 프로젝트 만들기
         </Button>
@@ -368,8 +368,7 @@ function ProjectList({
 
       {projects.length === 0 ? (
         <div
-          className="pane"
-          style={{ padding: 28, display: "flex", flexDirection: "column", gap: 8 }}
+          className="bg-panel border border-hair rounded-base p-[28px] flex flex-col gap-s2"
         >
           <div className="subtitle">아직 프로젝트가 없습니다</div>
           <div className="note">
@@ -529,9 +528,9 @@ function ProjectRow({
       className={`${first ? "" : "rule-top "}${item.accessible ? "" : "dim"}`.trim() || undefined}
       style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px" }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="flex items-center gap-[14px]">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-s2">
             {mode.kind === "editing" ? (
               <input
                 aria-label="프로젝트 이름"
@@ -551,7 +550,7 @@ function ProjectRow({
                 onBlur={() => {
                   if (!pending) commitRename(mode.draft);
                 }}
-                style={{ margin: 0, maxWidth: 320 }}
+                className="m-0 max-w-[320px]"
               />
             ) : (
               <span className="subtitle">{item.name}</span>
@@ -560,19 +559,18 @@ function ProjectRow({
             {!item.accessible && <span className="chip fail">열 수 없음</span>}
           </div>
           {nameProblem !== null && (
-            <div className="line fail-ink" style={{ marginTop: 4 }} role="alert">
+            <div className="font-sans text-[13px] leading-[1.4] text-fail mt-s1" role="alert">
               {nameProblem}
             </div>
           )}
           <div
-            className="why mono"
-            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono overflow-hidden text-ellipsis whitespace-nowrap"
             title={item.root}
           >
             {item.root}
           </div>
           {!item.accessible && item.unavailable_reason !== null && (
-            <div className="line fail-ink" style={{ marginTop: 4 }}>
+            <div className="font-sans text-[13px] leading-[1.4] text-fail mt-s1">
               {item.unavailable_reason}
             </div>
           )}
@@ -580,14 +578,14 @@ function ProjectRow({
             // 왜 이 줄에 이름 변경이 없는지 말한다 (FR-406). 조작을 그냥 빼면 사용자는
             // 자기가 잘못 본 줄 안다. **삭제는 있다** — 없애는 길까지 막으면 이 줄은
             // 목록에서 사라지지 않는다 (FR-418 · SC-622).
-            <div className="why" style={{ marginTop: 4 }}>
+            <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
               열 수 없는 상태여서 이름을 바꿀 수 없습니다. 삭제하거나 목록에서 치울 수 있습니다.
             </div>
           )}
         </div>
 
         {mode.kind !== "confirming" && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="flex items-center gap-[10px]">
             {mode.kind === "idle" && (
               <>
                 {item.accessible && (
@@ -673,35 +671,35 @@ function ConfirmTrash({
   onConfirm: () => void;
 }) {
   return (
-    <div className="tint-warn" style={{ padding: "12px 14px" }} role="group" aria-label="삭제 확인">
+    <div className="bg-warn-t border border-warn-line rounded-base py-s3 px-[14px]" role="group" aria-label="삭제 확인">
       <div className="subtitle">「{item.name}」을(를) 휴지통으로 옮길까요?</div>
-      <div className="why mono" style={{ marginTop: 4 }}>
+      <div className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-s1">
         {item.root}
       </div>
       {summary !== null && (
-        <div className="line" style={{ marginTop: 6 }}>
+        <div className="font-sans text-[13px] leading-[1.4] mt-[6px]">
           저장된 테스트 {summary.test_count}개가 함께 옮겨집니다.
         </div>
       )}
       {item.origin === "external" && (
         // 도구가 만든 자리가 아니다. 사용자가 다른 용도로 쓰고 있을 수 있으므로
         // 그 사실을 알고 결정하게 한다 (FR-424).
-        <div className="line" style={{ marginTop: 6 }}>
+        <div className="font-sans text-[13px] leading-[1.4] mt-[6px]">
           이 폴더는 도구 바깥에서 만들어진 위치입니다.
         </div>
       )}
       {!item.accessible && (
         // 무슨 일이 일어날지 미리 말한다 (UC-012-03). 열 수 없는 줄에서는 옮길 것이
         // 없을 수 있고, 그때 결과는 「목록에서 뺐다」다 — 놀라게 하지 않는다.
-        <div className="line" style={{ marginTop: 6 }}>
+        <div className="font-sans text-[13px] leading-[1.4] mt-[6px]">
           지금 열 수 없는 상태입니다. 폴더가 남아 있으면 휴지통으로 옮기고, 이미 없으면
           목록에서만 뺍니다.
         </div>
       )}
-      <div className="note" style={{ marginTop: 6 }}>
+      <div className="font-sans text-[13.5px] leading-[1.7] text-ink-2 mt-[6px]">
         지우지 않고 휴지통으로 옮깁니다. 옮긴 위치를 알려 드리므로 되돌릴 수 있습니다.
       </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+      <div className="flex gap-[10px] mt-[10px]">
         {/* 취소가 기본이다 — 포커스를 여기에 둔다. */}
         <Button onClick={onCancel} disabled={pending} autoFocus>
           취소
@@ -728,11 +726,11 @@ function TrashedNotice({
   onDismiss: () => void;
 }) {
   return (
-    <div className="tint-warn" style={{ padding: "12px 16px", marginBottom: 18 }} role="status">
+    <div className="bg-warn-t border border-warn-line rounded-base py-s3 px-s4 mb-[18px]" role="status">
       {result.trashed_to === null ? (
         <>
           <div className="subtitle">「{result.name}」을(를) 목록에서 뺐습니다.</div>
-          <div className="note" style={{ marginTop: 4 }}>
+          <div className="font-sans text-[13.5px] leading-[1.7] text-ink-2 mt-s1">
             폴더가 이미 없어서 옮길 것이 없었습니다.
           </div>
         </>
@@ -745,19 +743,19 @@ function TrashedNotice({
             한다. 관리 위치라면 짐작할 수 있지만 외부 위치 프로젝트는 사용자가 직접 고른
             경로여서 추측이 불가능하다.
           */}
-          <div className="lbl" style={{ marginTop: 8 }}>
+          <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 mt-s2">
             옮긴 곳
           </div>
-          <div className="why mono" style={{ marginTop: 2, wordBreak: "break-all" }}>
+          <div className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[2px] break-all">
             {result.trashed_to}
           </div>
-          <div className="lbl" style={{ marginTop: 8 }}>
+          <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 mt-s2">
             원래 자리
           </div>
-          <div className="why mono" style={{ marginTop: 2, wordBreak: "break-all" }}>
+          <div className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[2px] break-all">
             {result.root}
           </div>
-          <div className="note" style={{ marginTop: 8 }}>
+          <div className="font-sans text-[13.5px] leading-[1.7] text-ink-2 mt-s2">
             되돌리려면 「옮긴 곳」의 폴더를 「원래 자리」로 옮기세요. 도구는 휴지통을 자동으로
             비우지 않습니다.
           </div>
@@ -805,12 +803,12 @@ function CreateForm({
   ];
 
   return (
-    <div className="pane" style={{ padding: 24 }}>
+    <div className="bg-panel border border-hair rounded-base p-s5">
       <Eyebrow>NEW PROJECT</Eyebrow>
 
       {importNote}
 
-      <p className="note" style={{ marginTop: 10 }}>
+      <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2 mt-[10px]">
         저장 위치는 도구가 정합니다. 만들고 나면 어디에 만들어졌는지 알려 드립니다. 테스트
         정의는 그 안의 <code>tests/</code> 에 평문 YAML 로 저장되어 그대로 버전 관리에 넣을 수
         있습니다.
@@ -827,14 +825,14 @@ function CreateForm({
         placeholder="https://example.internal/login"
       />
       {startUrl.trim() !== "" && !urlLooksValid && (
-        <p className="line fail-ink" style={{ marginTop: 6 }}>
+        <p className="font-sans text-[13px] leading-[1.4] text-fail mt-[6px]">
           http:// 또는 https:// 로 시작해야 합니다.
         </p>
       )}
 
       <label htmlFor="attr">testId 속성명</label>
       <input id="attr" value={testIdAttr} onChange={(e) => setTestIdAttr(e.target.value)} />
-      <p className="why" style={{ marginTop: 6 }}>
+      <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px]">
         대상 앱이 쓰는 속성명입니다. <code>data-test</code>, <code>data-cy</code> 를 쓰는 앱도
         흔합니다. 요소를 찾는 최우선 기준이 됩니다.
       </p>
@@ -854,7 +852,7 @@ function CreateForm({
           : `아직 만들 수 없습니다 — ${missing.join(", ")}을 채우세요.`}
       </p>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
+      <div className="flex justify-end gap-s3 mt-[20px]">
         <Button onClick={onCancel} disabled={busy}>
           취소
         </Button>
@@ -886,27 +884,27 @@ function CreatedNotice({
   onContinue: () => void;
 }) {
   return (
-    <div className="pane" style={{ padding: 24 }}>
+    <div className="bg-panel border border-hair rounded-base p-s5">
       <Eyebrow>PROJECT CREATED</Eyebrow>
 
-      <div className="title" style={{ marginTop: 10 }}>
+      <div className="font-sans text-[20px] font-bold leading-[1.3] mt-[10px]">
         {p.name}
       </div>
 
-      <p className="note" style={{ marginTop: 12 }}>
+      <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2 mt-s3">
         아래 위치에 만들었습니다. 다음에 도구를 열면 이 프로젝트가 목록에 바로 나타납니다.
       </p>
 
-      <div className="log sunken" style={{ padding: "10px 12px", marginTop: 10, wordBreak: "break-all" }}>
+      <div className="font-mono text-[12px] leading-[1.6] whitespace-pre-wrap bg-sunken-2 py-[10px] px-s3 mt-[10px] break-all">
         {p.root}
       </div>
 
-      <p className="why" style={{ marginTop: 10 }}>
+      <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[10px]">
         테스트 정의는 이 폴더의 <code>tests/</code> 에 평문 YAML 로 저장됩니다. 비밀 값과 실행
         산출물은 <code>.gitignore</code> 로 제외됩니다.
       </p>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+      <div className="flex justify-end mt-[20px]">
         <button onClick={onContinue}>시작하기 →</button>
       </div>
     </div>
@@ -948,9 +946,9 @@ function FolderPicker({
 
   return (
     <div className="pane">
-      <div className="rule-bottom" style={{ padding: "16px 18px" }}>
+      <div className="border-b border-hair py-s4 px-[18px]">
         <Eyebrow>OPEN EXISTING</Eyebrow>
-        <div className="log muted" style={{ marginTop: 8, wordBreak: "break-all" }}>
+        <div className="font-mono text-[12px] leading-[1.6] whitespace-pre-wrap text-ink-2 mt-s2 break-all">
           {here ?? "…"}
         </div>
       </div>
@@ -961,7 +959,7 @@ function FolderPicker({
         </Toast>
       )}
 
-      <div style={{ maxHeight: 360, overflowY: "auto" }}>
+      <div className="max-h-[360px] overflow-y-auto">
         {parent !== null && (
           <button
             className="navlink"
@@ -972,10 +970,10 @@ function FolderPicker({
           </button>
         )}
 
-        {entries === null && <p className="why" style={{ padding: "16px 20px" }}>불러오는 중…</p>}
+        {entries === null && <p className="font-sans text-[11px] leading-[1.4] text-ink-3 py-s4 px-[20px]">불러오는 중…</p>}
 
         {entries !== null && entries.length === 0 && (
-          <p className="why" style={{ padding: "16px 20px" }}>
+          <p className="font-sans text-[11px] leading-[1.4] text-ink-3 py-s4 px-[20px]">
             이 폴더에는 하위 폴더가 없습니다.
           </p>
         )}
@@ -983,8 +981,7 @@ function FolderPicker({
         {entries?.map((e) => (
           <div
             key={e.path}
-            className="rule-top"
-            style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px" }}
+            className="border-t border-hair flex items-center gap-s3 py-[10px] px-[18px]"
           >
             <button
               className="navlink"
@@ -1004,19 +1001,12 @@ function FolderPicker({
       </div>
 
       <div
-        className="rule-top"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          padding: "16px 18px",
-        }}
+        className="border-t border-hair flex justify-between items-center gap-s3 py-s4 px-[18px]"
       >
         <span className="why">
           「프로젝트」 표시가 붙은 폴더만 열 수 있습니다.
         </span>
-        <div style={{ display: "flex", gap: 12 }}>
+        <div className="flex gap-s3">
           <Button onClick={onCancel} disabled={busy}>
             취소
           </Button>

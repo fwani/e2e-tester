@@ -213,7 +213,11 @@ describe("확정 자리", () => {
   it("화면 아래에 붙어 따라온다 — 시트가 많아도 확정과 취소에 손이 닿는다", () => {
     render(<ImportPreview plan={plan()} onCancel={() => {}} onDone={() => {}} />);
     const bar = screen.getByRole("button", { name: "가져오기" }).parentElement as HTMLElement;
-    expect(bar.className).toContain("commit-bar");
+    // 015 — `.commit-bar` 가 유틸리티로 해체됐다. **묻는 것은 그대로다**: 확정 자리가
+    // 화면 아래에 붙어 따라오는가. 시트가 많아 목록이 길어져도 확정과 취소가 화면
+    // 밖으로 밀려나면 안 된다 — `sticky bottom-0` 이 그 몫이다.
+    expect(bar.className, "확정 자리가 화면 아래에 붙지 않는다").toContain("sticky");
+    expect(bar.className, "확정 자리가 바닥에 붙지 않는다").toContain("bottom-0");
   });
 });
 

@@ -575,7 +575,7 @@ export function TestList({
             사용자는 돌고 있는 줄 모르고 새 실행을 시작한다 — 005 FR-168 이 막으려던
             바로 그것이다.
           */}
-          <div className="row" style={{ gap: 8, alignItems: "center" }}>
+          <div className="flex gap-s2 items-center">
             <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
               <circle cx="8" cy="8" r="4.5" fill="currentColor" />
             </svg>
@@ -587,7 +587,7 @@ export function TestList({
           {onResumeSession && (
             <Button
               size="sm"
-              style={{ marginTop: 8 }}
+              layout="mt-s2"
               onClick={() => onResumeSession(openSession)} >
               실행 화면 보기
             </Button>
@@ -596,14 +596,7 @@ export function TestList({
       )}
 
       <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-          padding: "14px 16px",
-        }}
+        className="flex-1 min-h-0 flex flex-col gap-s3 py-[14px] px-s4"
       >
         {activeSessions.length > 0 && (
           <ActiveSessionsBanner
@@ -621,7 +614,7 @@ export function TestList({
         )}
 
         {data !== null && data.problems.length > 0 && (
-          <div className="tint-warn" style={{ padding: "8px 14px" }} role="status">
+          <div className="bg-warn-t border border-warn-line rounded-base py-s2 px-[14px]" role="status">
             <strong>읽지 못한 정의 파일이 있습니다.</strong>
             <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
               {data.problems.map((p) => (
@@ -634,7 +627,7 @@ export function TestList({
         )}
 
         {/* ─── 조작 줄 — 검색 · 결말 필터 · 정렬 ─────────────────────────── */}
-        <div className="row" style={{ gap: "10px" }}>
+        <div className="flex items-center gap-s2 gap-[10px]">
           <div className={`field${isEmptyProject ? " off" : ""}`} style={{ flex: 1, maxWidth: "520px" }}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7">
               <circle cx="7" cy="7" r="4.6" />
@@ -658,7 +651,7 @@ export function TestList({
                 거르지 못했다. 개수는 **거르기 전 전체**를 세므로 필터가 자기 자신을
                 0으로 만들어 돌아올 길을 없애지 않는다.
               */}
-              <div className="row" style={{ gap: "6px" }} role="group" aria-label="결말로 거르기">
+              <div className="flex items-center gap-s2 gap-[6px]" role="group" aria-label="결말로 거르기">
                 {(["all", "pass", "fail", "none"] as const).map((key) => (
                   <Button
                     key={key}
@@ -814,7 +807,7 @@ export function TestList({
           >
             <div className="strong-sm">{exported.filename} 을 내려받았습니다.</div>
             {exported.warnings > 0 && (
-              <div className="why" style={{ marginTop: 4 }}>
+              <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
                 시트 이름이 바뀌었거나 긴 칸이 잘린 곳이 {exported.warnings}건 있습니다.
               </div>
             )}
@@ -824,7 +817,7 @@ export function TestList({
               깨진다. 그룹 조회가 같은 이유로 `?? []` 를 쓴다.
             */}
             {(exported.detail?.sheet_renames ?? []).length > 0 && (
-              <div style={{ marginTop: 6 }} data-export-renames>
+              <div className="mt-[6px]" data-export-renames>
                 {(exported.detail?.sheet_renames ?? []).map((r) => (
                   <div key={r.group_name} className="why">
                     그룹 「{r.group_name}」은 「{r.sheet_name}」 시트가 됐습니다.
@@ -833,8 +826,8 @@ export function TestList({
               </div>
             )}
             {(exported.detail?.truncations ?? []).length > 0 && (
-              <details style={{ marginTop: 6 }} data-export-truncations>
-                <summary className="why" style={{ cursor: "pointer" }}>
+              <details className="mt-[6px]" data-export-truncations>
+                <summary className="font-sans text-[11px] leading-[1.4] text-ink-3 cursor-pointer">
                   잘린 칸 {(exported.detail?.truncations ?? []).length}건
                 </summary>
                 {(exported.detail?.truncations ?? []).map((t) => (
@@ -845,7 +838,7 @@ export function TestList({
               </details>
             )}
             {(exported.detail?.unreadable ?? []).length > 0 && (
-              <div className="why" style={{ marginTop: 6 }} data-export-unreadable>
+              <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px]" data-export-unreadable>
                 읽지 못해 빠진 정의 {(exported.detail?.unreadable ?? []).length}건이 있습니다.
               </div>
             )}
@@ -884,7 +877,7 @@ export function TestList({
                       setSelected(new Set()),
                     );
                   }}
-                  style={{ margin: 0 }}
+                  className="m-0"
                 >
                   <option value="">그룹으로 옮기기…</option>
                   {(data?.groups ?? [])
@@ -933,7 +926,7 @@ export function TestList({
             draftCount={draftRows.length}
           />
         ) : (
-          <div className="pane" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col overflow-hidden">
             <div
               className="thead"
               style={{
@@ -961,7 +954,7 @@ export function TestList({
               <div className="lbl">마지막 결과</div>
               <div className="lbl">ID</div>
               <div className="lbl">이름</div>
-              <div className="lbl" style={{ textAlign: "right" }}>
+              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 text-right">
                 STEP
               </div>
               <div className="lbl">작성</div>
@@ -969,17 +962,17 @@ export function TestList({
               <div />
             </div>
 
-            <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+            <div className="flex-1 min-h-0 overflow-y-auto">
               {/* 확정 디자인은 행이 있는 상태만 그린다. 아래 둘은 undefined-states.md 에
                   기록했고 정본의 형태만으로 그린다 (DC-009). */}
               {data === null && (
-                <div className="why" style={{ padding: "24px 17px" }}>
+                <div className="font-sans text-[11px] leading-[1.4] text-ink-3 py-s5 px-[17px]">
                   불러오는 중…
                 </div>
               )}
 
               {data !== null && rows.length === 0 && (
-                <div className="muted" style={{ padding: "24px 17px" }}>
+                <div className="text-ink-2 py-s5 px-[17px]">
                   {query.trim() !== ""
                     ? `"${query}" 에 해당하는 테스트가 없습니다.`
                     : `${FILTER_LABEL[filter]}인 테스트가 없습니다.`}
@@ -1304,7 +1297,7 @@ function Row({
         `stopPropagation` 이 그 분리를 실제로 만든다: 체크 칸을 눌렀을 때 행의 열기가
         함께 일어나면 갈라 둔 뜻이 없다.
       */}
-      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center" }}>
+      <div onClick={(e) => e.stopPropagation()} className="flex items-center">
         <input
           type="checkbox"
           aria-label={`${row.name} 선택`}
@@ -1328,9 +1321,9 @@ function Row({
 
       <div className="num">{row.id}</div>
 
-      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: "3px" }}>
+      <div className="min-w-0 flex flex-col gap-[3px]">
         {renaming !== null ? (
-          <div className="row" style={{ paddingRight: 12 }}>
+          <div className="flex items-center gap-s2 pr-s3">
             <input
               aria-label="새 이름"
               value={renaming}
@@ -1353,13 +1346,13 @@ function Row({
 
         {/* FR-005 — 실패한 테스트는 실패 Step 번호와 메시지 요약을 인라인으로 보여준다. */}
         {row.failure_summary !== null && (
-          <div className="meta fail-ink" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div className="font-mono text-[11.5px] leading-none text-ink-3 text-fail whitespace-nowrap overflow-hidden text-ellipsis">
             {stepLabel(row.failure_summary.step_index)} · {row.failure_summary.message}
           </div>
         )}
 
         {confirming && (
-          <div className="row" style={{ paddingTop: 4 }}>
+          <div className="flex items-center gap-s2 pt-s1">
             <span className="num fail-ink">
               「{row.name}」을 지웁니다. 되돌릴 수 없습니다.
             </span>
@@ -1373,7 +1366,7 @@ function Row({
         )}
       </div>
 
-      <div className="num" style={{ textAlign: "right" }}>
+      <div className="font-mono text-[12px] leading-none text-ink-3 text-right">
         {row.step_count}
       </div>
 
@@ -1391,7 +1384,7 @@ function Row({
 
         008 — 셋 다 중립 형태다. 이 화면의 잉크 채움은 헤더의 「테스트 만들기」뿐이다.
       */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", position: "relative" }}>
+      <div className="flex justify-end gap-[6px] relative">
         {/*
           008 — 「실행 화면 보기」는 **화면에 하나뿐이다.**
 
@@ -1426,7 +1419,7 @@ function Row({
           size="sm"
           aria-label={`${row.name} 추가 동작`}
           onClick={onToggleMenu}
-          style={{ padding: "0 7px" }} >
+          layout="py-0 px-[7px]" >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
             <circle cx="6" cy="2" r="1.1" />
             <circle cx="6" cy="6" r="1.1" />
@@ -1595,25 +1588,10 @@ function EmptyProject({
 
   return (
     <div
-      className="pane"
-      style={{
-        flex: 1,
-        minHeight: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px",
-      }}
+      className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex items-center justify-center p-s6"
     >
       <div
-        style={{
-          maxWidth: "720px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "22px",
-          textAlign: "center",
-        }}
+        className="max-w-[720px] flex flex-col items-center gap-[22px] text-center"
       >
         <svg width="52" height="52" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.6" className="dim">
           <rect x="4" y="7" width="32" height="7" rx="1.5" />
@@ -1621,8 +1599,8 @@ function EmptyProject({
           <rect x="4" y="27" width="32" height="7" rx="1.5" strokeDasharray="3.4 3" />
         </svg>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <h2 className="title" style={{ margin: 0 }}>
+        <div className="flex flex-col gap-s2">
+          <h2 className="font-sans text-[20px] font-bold leading-[1.3] m-0">
             아직 테스트가 없습니다
           </h2>
           <div className="note">
@@ -1653,7 +1631,7 @@ function EmptyProject({
             textAlign: "left",
           }}
         >
-          <div className="pane" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "9px" }}>
+          <div className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[9px]">
             <div className="row">
               <svg width="14" height="14" viewBox="0 0 16 16" className="fail-ink">
                 <circle cx="8" cy="8" r="5" fill="currentColor" />
@@ -1661,12 +1639,12 @@ function EmptyProject({
               <div className="subtitle">직접 녹화</div>
             </div>
             <div className="why">브라우저를 직접 조작해서 만듭니다. 키가 필요 없습니다.</div>
-            <Button variant="primary" onClick={onCreate} style={{ justifyContent: "center" }}>
+            <Button variant="primary" onClick={onCreate} layout="justify-center">
               녹화로 시작하기
             </Button>
           </div>
 
-          <div className="pane" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "9px" }}>
+          <div className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[9px]">
             <div className="row">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="ai-ink">
                 <path d="M8 2v3M8 11v3M2 8h3M11 8h3M4.2 4.2l2 2M9.8 9.8l2 2M11.8 4.2l-2 2M6.2 9.8l-2 2" />
@@ -1689,14 +1667,14 @@ function EmptyProject({
               **막지도 않는다** — 키가 있는데 키 등록으로 보내면 갈 곳이 없다.
             */}
             {aiReady?.available === true ? (
-              <Button variant="primary" onClick={onCreate} style={{ justifyContent: "center" }}>
+              <Button variant="primary" onClick={onCreate} layout="justify-center">
                 AI 로 시작하기
               </Button>
             ) : (
               <>
                 {/* 왜 못 쓰는지 백엔드가 준 문구를 그대로 보여준다 (DR-016) */}
                 {aiReady !== null && aiReady.reason !== null && (
-                  <div className="why" style={{ whiteSpace: "pre-wrap" }}>
+                  <div className="font-sans text-[11px] leading-[1.4] text-ink-3 whitespace-pre-wrap">
                     {aiReady.reason}
                   </div>
                 )}
@@ -1704,7 +1682,7 @@ function EmptyProject({
                   variant="off"
                   onClick={onOpenKeys}
                   disabled={aiReady === null || onOpenKeys === undefined}
-                  style={{ justifyContent: "center" }} >
+                  layout="justify-center" >
                   {aiReady === null ? "확인 중…" : "언어모델 키 등록하기"}
                 </Button>
               </>
@@ -1720,8 +1698,8 @@ function EmptyProject({
           길을 없애지는 않는다 — 파일을 더 넣는 일은 있다 (`<details>`).
         */}
         {onImportPlan !== undefined && draftCount > 0 && (
-          <details className="pane" style={{ padding: "14px", width: "100%", textAlign: "left" }}>
-            <summary className="subtitle" style={{ cursor: "pointer" }}>
+          <details className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">
+            <summary className="font-sans text-[13.5px] font-bold leading-none cursor-pointer">
               엑셀 파일을 더 넣기
             </summary>
             <div className="why" style={{ margin: "6px 0 10px" }}>
@@ -1735,7 +1713,7 @@ function EmptyProject({
           </details>
         )}
         {onImportPlan !== undefined && draftCount === 0 && (
-          <div className="pane" style={{ padding: "14px", width: "100%", textAlign: "left" }}>
+          <div className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">
             <div className="subtitle">이미 쓰던 설계서가 있나요?</div>
             <div className="why" style={{ margin: "6px 0 10px" }}>
               엑셀 파일을 넣으면 그룹과 테스트 초안을 만듭니다. 초안은 하나씩 녹화하면
@@ -1777,8 +1755,7 @@ function ActiveSessionsBanner({
     <div
       role="status"
       data-active-sessions
-      className="tint-warn"
-      style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: "10px" }}
+      className="bg-warn-t border border-warn-line rounded-base py-s3 px-[14px] flex flex-col gap-[10px]"
     >
       <div className="row">
         <strong className="strong-sm">진행 중인 세션이 있습니다</strong>
@@ -1827,10 +1804,9 @@ function ActiveSessionsBanner({
           <div
             key={s.session_id}
             data-session-id={s.session_id}
-            className="row"
-            style={{ gap: "12px", flexWrap: "wrap" }}
+            className="flex items-center gap-s2 gap-s3 flex-wrap"
           >
-            <span className="line" style={{ flex: 1 }}>{label}</span>
+            <span className="font-sans text-[13px] leading-[1.4] flex-1">{label}</span>
             {asking ? (
               <>
                 <span className={saved ? "muted" : "fail-ink"}>

@@ -200,7 +200,7 @@ export function ImportPreview({
         <span className="why mono">{plan.file_name}</span>
       </HeaderBar>
 
-      <div style={{ padding: "20px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="py-[20px] px-[28px] flex flex-col gap-s4">
         {error !== null && (
           <Toast tone="error" onDismiss={() => setError(null)}>
             <ErrorNotice error={error} />
@@ -208,11 +208,11 @@ export function ImportPreview({
         )}
 
         {/* ── 무엇이 만들어지는가 ─────────────────────────────────────── */}
-        <div data-import-summary className="tint-run" style={{ padding: "12px 14px" }}>
+        <div data-import-summary className="bg-run-t border border-run rounded-base py-s3 px-[14px]">
           <div className="strong-sm">
             그룹 {liveGroups}개, 테스트 초안 {willCreate}건을 만듭니다.
           </div>
-          <div className="why" style={{ marginTop: 4 }}>
+          <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
             초안은 아직 테스트가 아닙니다. 하나씩 골라 AI 녹화로 완성하면 테스트가 됩니다.
           </div>
           {/*
@@ -222,13 +222,13 @@ export function ImportPreview({
             **그룹마다** 말한다.
           */}
           {overCapacity && (
-            <div className="why fail-ink" style={{ marginTop: 6 }} data-capacity-warning>
+            <div className="font-sans text-[11px] leading-[1.4] text-ink-3 text-fail mt-[6px]" data-capacity-warning>
               {tooFull.map(([prefix, n]) => (
                 <div key={prefix}>
                   그룹 「{prefix}」에 {n}건을 넣으려 하지만 남은 번호는 {roomOf(prefix)}개입니다.
                 </div>
               ))}
-              <div style={{ marginTop: 4 }}>
+              <div className="mt-s1">
                 그 그룹의 시트를 끄거나, 프로젝트를 나누세요.
               </div>
             </div>
@@ -236,7 +236,7 @@ export function ImportPreview({
         </div>
 
         {plan.warnings.length > 0 && (
-          <div data-import-warnings className="tint-warn" style={{ padding: "12px 14px" }}>
+          <div data-import-warnings className="bg-warn-t border border-warn-line rounded-base py-s3 px-[14px]">
             {plan.warnings.map((w) => (
               <div key={w} className="why">
                 {w}
@@ -247,8 +247,8 @@ export function ImportPreview({
 
         {/* ── 시트별 ──────────────────────────────────────────────────── */}
         <div>
-          <div className="row" style={{ marginBottom: 8, gap: 10 }}>
-            <h2 className="strong-sm" style={{ margin: 0 }}>
+          <div className="flex items-center gap-s2 mb-s2 gap-[10px]">
+            <h2 className="font-sans text-[13px] font-semibold leading-none m-0">
               시트 {plan.sheets.length}개
             </h2>
             <span className="why" data-sheet-on-count>
@@ -286,11 +286,11 @@ export function ImportPreview({
             */}
             <thead className="grid-head">
               <tr>
-                <th scope="col" style={{ padding: "6px 8px", width: 44 }}>가져오기</th>
-                <th scope="col" style={{ padding: "6px 8px" }}>시트</th>
-                <th scope="col" style={{ padding: "6px 8px", width: 160 }}>그룹 접두어</th>
-                <th scope="col" style={{ padding: "6px 8px", width: 80 }}>행</th>
-                <th scope="col" style={{ padding: "6px 8px" }}>메모</th>
+                <th scope="col" className="py-[6px] px-s2 w-[44px]">가져오기</th>
+                <th scope="col" className="py-[6px] px-s2">시트</th>
+                <th scope="col" className="py-[6px] px-s2 w-[160px]">그룹 접두어</th>
+                <th scope="col" className="py-[6px] px-s2 w-[80px]">행</th>
+                <th scope="col" className="py-[6px] px-s2">메모</th>
               </tr>
             </thead>
             <tbody>
@@ -300,7 +300,7 @@ export function ImportPreview({
                   data-sheet-row={sheet.sheet_name}
                   className={isOn(sheet) ? undefined : "dim"}
                 >
-                  <td style={{ padding: "6px 8px" }}>
+                  <td className="py-[6px] px-s2">
                     {/*
                       가져올 시트를 고른다 (FR-020a). **기본은 켜짐**이다 — 사용자가 파일을
                       넣은 뜻은 「가져오겠다」이고, 빼는 것이 예외다.
@@ -321,8 +321,8 @@ export function ImportPreview({
                       }
                     />
                   </td>
-                  <td style={{ padding: "6px 8px" }}>{sheet.sheet_name}</td>
-                  <td style={{ padding: "6px 8px" }}>
+                  <td className="py-[6px] px-s2">{sheet.sheet_name}</td>
+                  <td className="py-[6px] px-s2">
                     {!isOn(sheet) ? (
                       <span className="why">가져오지 않음</span>
                     ) : !usable(sheet) ? (
@@ -345,16 +345,16 @@ export function ImportPreview({
                             [sheet.sheet_name]: e.target.value.toUpperCase(),
                           }))
                         }
-                        style={{ width: "100%" }}
+                        className="w-full"
                       />
                     ) : (
                       <span className="mono">{sheet.prefix}</span>
                     )}
                   </td>
-                  <td style={{ padding: "6px 8px", textAlign: "right" }}>
+                  <td className="py-[6px] px-s2 text-right">
                     {usable(sheet) ? sheet.row_count : sheet.total_rows}
                   </td>
-                  <td style={{ padding: "6px 8px" }}>
+                  <td className="py-[6px] px-s2">
                     {/*
                       필수 컬럼을 못 찾은 시트 (FR-020g).
 
@@ -365,7 +365,7 @@ export function ImportPreview({
                     */}
                     {isOn(sheet) && !usable(sheet) && (
                       <div data-needs-mapping={sheet.sheet_name}>
-                        <div className="why" style={{ marginBottom: 4 }}>
+                        <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mb-s1">
                           찾지 못한 컬럼: {sheet.missing_required.join(", ")} · 이 시트에{" "}
                           {sheet.total_rows}건이 기다립니다.
                         </div>
@@ -383,7 +383,7 @@ export function ImportPreview({
                     */}
                     {isOn(sheet) && sheet.sample.length > 0 && (
                       <details data-header-row-picker={sheet.sheet_name} open={!usable(sheet)}>
-                        <summary className="why" style={{ cursor: "pointer" }}>
+                        <summary className="font-sans text-[11px] leading-[1.4] text-ink-3 cursor-pointer">
                           머리글 행: {headerRowOf(sheet)}행
                         </summary>
                         {/*
@@ -394,8 +394,8 @@ export function ImportPreview({
                           <tbody>
                             {sheet.sample.map((sampleRow) => (
                               <tr key={sampleRow.row}>
-                                <td style={{ padding: "2px 6px" }}>
-                                  <label className="row" style={{ gap: 4 }}>
+                                <td className="py-[2px] px-[6px]">
+                                  <label className="flex items-center gap-s2 gap-s1">
                                     <input
                                       type="radio"
                                       name={`header-row-${sheet.sheet_name}`}
@@ -437,17 +437,16 @@ export function ImportPreview({
                     )}
                     {isOn(sheet) && (
                       <details data-column-mapping={sheet.sheet_name} open={!usable(sheet)}>
-                        <summary className="why" style={{ cursor: "pointer" }}>
+                        <summary className="font-sans text-[11px] leading-[1.4] text-ink-3 cursor-pointer">
                           열 짝짓기
                         </summary>
-                        <div style={{ marginTop: 6, display: "grid", gap: 4 }}>
+                        <div className="mt-[6px] grid gap-s1">
                           {ALL_COLUMNS.map((column) => (
                             <label
                               key={column}
-                              className="row"
-                              style={{ gap: 6, alignItems: "center" }}
+                              className="flex gap-s2 gap-[6px] items-center"
                             >
-                              <span className="why" style={{ minWidth: 76 }}>
+                              <span className="font-sans text-[11px] leading-[1.4] text-ink-3 min-w-[76px]">
                                 {column}
                                 {REQUIRED_COLUMNS.includes(
                                   column as (typeof REQUIRED_COLUMNS)[number],
@@ -466,7 +465,7 @@ export function ImportPreview({
                                     },
                                   }))
                                 }
-                                style={{ margin: 0 }}
+                                className="m-0"
                               >
                                 <option value="-1">쓰지 않음</option>
                                 {headersOf(sheet).map((label, pos) => (
@@ -488,7 +487,7 @@ export function ImportPreview({
                     )}
                     {sheet.renumbered.length > 0 && (
                       <details data-renumbered={sheet.sheet_name}>
-                        <summary className="why" style={{ cursor: "pointer" }}>
+                        <summary className="font-sans text-[11px] leading-[1.4] text-ink-3 cursor-pointer">
                           번호가 바뀐 행 {sheet.renumbered.length}건
                         </summary>
                         {sheet.renumbered.map((r) => (
@@ -513,10 +512,10 @@ export function ImportPreview({
         */}
         {plan.skipped.length > 0 && (
           <details data-skipped-rows open={plan.skipped.length <= 20}>
-            <summary className="strong-sm" style={{ cursor: "pointer" }}>
+            <summary className="font-sans text-[13px] font-semibold leading-none cursor-pointer">
               건너뛸 행 {plan.skipped.length}건
             </summary>
-            <div style={{ marginTop: 6 }}>
+            <div className="mt-[6px]">
               {plan.skipped.map((s) => (
                 <div key={`${s.sheet_name}-${s.row}`} className="why">
                   {s.sheet_name} {s.row}행 — {SKIP_REASON[s.reason]}
@@ -534,8 +533,7 @@ export function ImportPreview({
           끝까지 내려가야 했다. 되돌릴 길(취소)이 멀어지는 것도 같은 문제다.
         */}
         <div
-          className="commit-bar row"
-          style={{ gap: 8, marginTop: 8, padding: "10px 0", flexWrap: "wrap" }}
+          className="sticky bottom-0 z-10 bg-panel border-t border-hair-2 flex items-center gap-s2 mt-s2 py-[10px] px-0 flex-wrap"
         >
           <Button
             variant="primary"
@@ -674,13 +672,13 @@ export function ImportDoneNotice({
       </div>
 
       {result.ignored_sheets.length > 0 && (
-        <div className="why" style={{ marginTop: 4 }} data-ignored-sheets>
+        <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1" data-ignored-sheets>
           가져오지 않기로 한 시트: {result.ignored_sheets.join(", ")}
         </div>
       )}
 
       {result.skipped_sheets.length > 0 && (
-        <div className="why" style={{ marginTop: 4 }} data-skipped-sheets>
+        <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1" data-skipped-sheets>
           읽지 못해 건너뛴 시트:{" "}
           {result.skipped_sheets
             .map((s) => `${s.sheet_name}(${SHEET_SKIP_REASON[s.reason] ?? s.reason})`)
@@ -689,8 +687,8 @@ export function ImportDoneNotice({
       )}
 
       {result.renumbered.length > 0 && (
-        <details style={{ marginTop: 6 }} data-done-renumbered>
-          <summary className="why" style={{ cursor: "pointer" }}>
+        <details className="mt-[6px]" data-done-renumbered>
+          <summary className="font-sans text-[11px] leading-[1.4] text-ink-3 cursor-pointer">
             번호가 바뀐 행 {result.renumbered.length}건
           </summary>
           {result.renumbered.map((r) => (
@@ -702,8 +700,8 @@ export function ImportDoneNotice({
       )}
 
       {result.skipped.length > 0 && (
-        <details style={{ marginTop: 6 }} data-done-skipped>
-          <summary className="why" style={{ cursor: "pointer" }}>
+        <details className="mt-[6px]" data-done-skipped>
+          <summary className="font-sans text-[11px] leading-[1.4] text-ink-3 cursor-pointer">
             건너뛴 행 {result.skipped.length}건
           </summary>
           {result.skipped.map((s) => (
