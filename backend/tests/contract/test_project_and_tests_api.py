@@ -273,8 +273,29 @@ def test_get_rename_delete_roundtrip(opened: TestClient, tmp_path: pathlib.Path)
     assert opened.get("/api/tests/TC-001").status_code == 404
 
 
-def test_delete_unknown_test(opened: TestClient) -> None:
+def test_deleting_a_test_that_is_already_gone_is_not_a_failure(opened: TestClient) -> None:
+    """013 FR-436 — **이미 없는 것을 실패로 보고하지 않는다.**
+
+    이전에는 404 였다. 사용자가 원한 결과(그 테스트가 목록에서 사라진다)는 이미
+    이루어져 있고, 012 가 프로젝트 삭제에서 같은 규칙을 정했다 (FR-420).
+
+    옮길 것이 없었다는 사실은 `trashed_to: null` 이 말한다 — 되돌릴 자리가 없다는 뜻이다.
+    """
     resp = opened.delete("/api/tests/TC-404")
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["trashed_to"] is None
+
+
+def test_a_malformed_test_id_is_still_refused(opened: TestClient) -> None:
+    """형식이 틀린 것은 「이미 없는 것」과 다르다 — 있을 수 없는 요청이므로 거절한다.
+
+    소문자를 쓴다. 식별자가 파일 이름이 되므로 대문자만 허용하는데(013 research R1),
+    그 검증이 삭제 경로에서도 살아 있는지 본다. 경로 구분자(`../`)는 **더 이른 곳**에서
+    잡힌다 — 라우트에 닿기 전에 `INVALID_PATH` 로 거절되고, 그것이 옳다.
+    """
+    resp = opened.delete("/api/tests/tc-001")
+
     assert resp.status_code == 404
     assert resp.json()["error"]["code"] == "TEST_NOT_FOUND"
 

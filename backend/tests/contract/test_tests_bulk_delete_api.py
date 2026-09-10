@@ -129,15 +129,34 @@ def test_the_run_artifacts_go_too(opened: TestClient) -> None:
 # ─── 거절·실패 ──────────────────────────────────────────────────────────────
 
 
-def test_an_unknown_id_stops_everything(opened: TestClient) -> None:
-    """FR-432 — **먼저 전부 검증한다.** 하나가 없으면 아무것도 건드리지 않는다."""
+def test_an_already_missing_id_is_skipped_not_refused(opened: TestClient) -> None:
+    """FR-436 — **이미 없는 것을 실패로 보고하지 않는다.**
+
+    「고른 뒤 목록이 밖에서 바뀌었다」가 실제 상황이다. 그때 나머지까지 막으면 사용자는
+    원인을 알 수 없고, 원한 결과(그 테스트가 목록에서 사라진다)는 이미 이루어져 있다 —
+    012 FR-420 이 프로젝트 삭제에서 정한 것과 같은 규칙이다.
+
+    FR-432(전부 되거나 전부 안 되거나)와 어긋나지 않는다: 없는 것은 **지울 필요가 없는
+    것**이지 실패가 아니다.
+    """
     _write(opened, "TC-001", "있는 것")
 
     resp = opened.post("/api/tests:delete", json={"test_ids": ["TC-001", "TC-404"]})
 
+    assert resp.status_code == 200, resp.text
+    # 응답에는 **실제로 옮긴 것만** 실린다.
+    assert [d["id"] for d in resp.json()["deleted"]] == ["TC-001"]
+    assert _ids(opened) == []
+
+
+def test_a_malformed_id_is_still_refused(opened: TestClient) -> None:
+    """형식이 틀린 것은 다르다 — 있을 수 없는 요청이므로 거절한다."""
+    _write(opened, "TC-001", "있는 것")
+
+    resp = opened.post("/api/tests:delete", json={"test_ids": ["TC-001", "../TC-002"]})
+
     assert resp.status_code == 404
-    assert resp.json()["error"]["code"] == "TEST_NOT_FOUND"
-    assert _ids(opened) == ["TC-001"], "검증에서 걸렸는데 무언가 지워졌다"
+    assert _ids(opened) == ["TC-001"], "형식 오류인데 무언가 지워졌다"
 
 
 def test_duplicate_ids_are_refused(opened: TestClient) -> None:

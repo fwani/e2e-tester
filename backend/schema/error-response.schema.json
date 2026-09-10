@@ -59,6 +59,7 @@
         "TEST_DELETE_FAILED",
         "TEST_DELETE_PARTIAL",
         "TEST_MOVE_FAILED",
+        "TEST_MOVE_PARTIAL",
         "STEP_LIST_EMPTY",
         "DEFINITION_INVALID",
         "DEFINITION_STALE",

@@ -176,8 +176,11 @@ class TrashedTestView(BaseModel):
 
     id: str
     name: str
-    trashed_to: str
-    """옮겨진 자리. **이 값이 되돌리는 방법 전부다** (FR-437a)."""
+    trashed_to: str | None
+    """옮겨진 자리. **이 값이 되돌리는 방법 전부다** (FR-437a).
+
+    `None` 이면 요청 시점에 이미 없어서 옮길 것이 없었다 (FR-436).
+    """
 
 
 class DeleteTestsResponse(BaseModel):
@@ -295,8 +298,11 @@ async def delete_test(test_id: str, state: State) -> TrashedTestView:
     달라지면 사용자는 「삭제」 하나를 두 가지로 배워야 한다.
     """
     repo = state.require_repository()
-    _require_test_exists(repo, test_id)
     _require_not_running(state, test_id)
+    if not _exists(repo, test_id):
+        # **이미 없는 것을 실패로 보고하지 않는다** (013 FR-436). 사용자가 원한 결과가
+        # 이미 이루어져 있다 — 012 FR-420 이 프로젝트 삭제에서 정한 것과 같은 규칙이다.
+        return TrashedTestView(id=test_id, name=test_id, trashed_to=None)
 
     try:
         trashed = trash.move_test_to_trash(repo, test_id)
@@ -327,12 +333,18 @@ async def delete_tests(body: DeleteTestsRequest, state: State) -> DeleteTestsRes
     names = {tid: _name_of(repo, tid, None) for tid in body.test_ids}
 
     def validate(test_id: str) -> None:
-        _require_test_exists(repo, test_id)
         _require_not_running(state, test_id)
+
+    # **이미 없는 것은 건너뛴다** (013 FR-436). 「고른 뒤 목록이 밖에서 바뀌었다」가
+    # 실제 상황이고, 그때 나머지까지 막으면 사용자는 원인을 알 수 없다.
+    #
+    # FR-432(전부 되거나 전부 안 되거나)와 어긋나지 않는다 — 없는 것은 **지울 필요가
+    # 없는 것**이지 실패가 아니다.
+    targets = [tid for tid in body.test_ids if _exists(repo, tid)]
 
     try:
         moved = test_moves.run_all(
-            body.test_ids,
+            targets,
             validate=validate,
             do=lambda tid: trash.move_test_to_trash(repo, tid),
             undo=lambda _tid, trashed: trash.restore_test(repo, trashed),
@@ -370,20 +382,24 @@ async def move_tests(body: MoveTestsRequest, state: State) -> MoveTestsResponse:
     _require_known_group(repo, body.to_prefix)
 
     def validate(test_id: str) -> None:
-        _require_test_exists(repo, test_id)
         _require_not_running(state, test_id)
+
+    targets = [tid for tid in body.test_ids if _exists(repo, tid)]
 
     try:
         moved = test_moves.run_all(
-            body.test_ids,
+            targets,
             validate=validate,
             do=lambda tid: test_moves.move_test_to_group(repo, tid, body.to_prefix),
             undo=lambda _tid, m: test_moves.move_test_back(repo, m),
         )
     except test_moves.PartialFailureError as exc:
+        # **이동 전용 코드다** (013 converge T059). `TEST_DELETE_PARTIAL` 의 안내는
+        # 「휴지통에 남아 있습니다」인데 이동 실패에서는 휴지통이 아니라 **새 그룹
+        # 자리**에 있다 — 그 문구를 재사용하면 사용자를 없는 곳으로 보낸다.
         raise ApiError(
             500,
-            ErrorCode.TEST_DELETE_PARTIAL,
+            ErrorCode.TEST_MOVE_PARTIAL,
             exc.reason,
             {"stranded": [{"test": s.target, "where": s.where} for s in exc.stranded]},
         ) from exc
@@ -411,13 +427,18 @@ def _require_known_group(repo: ProjectRepository, prefix: str) -> None:
         raise not_found(ErrorCode.GROUP_NOT_FOUND, f"그런 그룹이 없습니다: {prefix}")
 
 
-def _require_test_exists(repo: ProjectRepository, test_id: str) -> None:
+def _exists(repo: ProjectRepository, test_id: str) -> bool:
+    """그 테스트가 지금 있는가 (013 FR-436).
+
+    **없는 것을 오류로 만들지 않는다.** 고른 뒤 목록이 밖에서 바뀌는 일이 실제로 있고,
+    그때 사용자가 원한 결과(「이 테스트가 목록에서 사라진다」)는 이미 이루어져 있다.
+
+    식별자 형식이 틀린 것은 다르다 — 그것은 있을 수 없는 요청이므로 거절한다.
+    """
     try:
-        found = repo.find_test_path(test_id)
+        return repo.find_test_path(test_id) is not None
     except ProjectError as exc:
         raise not_found(ErrorCode.TEST_NOT_FOUND, str(exc)) from exc
-    if found is None:
-        raise not_found(ErrorCode.TEST_NOT_FOUND, f"테스트를 찾을 수 없습니다: {test_id}")
 
 
 def _require_not_running(state: AppState, test_id: str) -> None:

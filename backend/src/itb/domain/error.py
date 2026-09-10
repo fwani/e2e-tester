@@ -110,6 +110,15 @@ class ErrorCode(StrEnum):
     """
     TEST_MOVE_FAILED = "TEST_MOVE_FAILED"
     """그룹 이동에 실패했고 되돌렸다 (013 FR-444b)."""
+    TEST_MOVE_PARTIAL = "TEST_MOVE_PARTIAL"
+    """그룹 이동에 실패했고 **되돌리지도 못했다** (013 converge T059).
+
+    `TEST_DELETE_PARTIAL` 을 재사용하면 안 된다. 그쪽의 안내는 「일부가 **휴지통에**
+    남아 있습니다」인데, 이동 실패에서 남은 것은 휴지통이 아니라 **새 그룹 자리**에 있다 —
+    문구를 재사용하면 사용자를 없는 곳으로 보낸다.
+
+    두 경우 모두 파괴는 일어나지 않았고, 다른 것은 **어디를 봐야 하는가**다.
+    """
     STEP_LIST_EMPTY = "STEP_LIST_EMPTY"
     DEFINITION_INVALID = "DEFINITION_INVALID"
     DEFINITION_STALE = "DEFINITION_STALE"
@@ -238,6 +247,7 @@ CATEGORY: dict[ErrorCode, Category] = {
     ErrorCode.TEST_DELETE_FAILED: Category.BLOCKED,
     ErrorCode.TEST_DELETE_PARTIAL: Category.BLOCKED,
     ErrorCode.TEST_MOVE_FAILED: Category.BLOCKED,
+    ErrorCode.TEST_MOVE_PARTIAL: Category.BLOCKED,
     ErrorCode.STEP_LIST_EMPTY: Category.BLOCKED,
     ErrorCode.DEFINITION_INVALID: Category.BLOCKED,
     # 006 — 사용자가 두 선택(다시 읽기·덮어쓰기) 중 하나를 고르면 된다.
@@ -311,6 +321,10 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ),
     ErrorCode.TEST_MOVE_FAILED: (
         "테스트는 전부 원래 그룹에 있습니다. 저장 위치의 권한과 남은 공간을 확인하세요."
+    ),
+    ErrorCode.TEST_MOVE_PARTIAL: (
+        "일부가 새 그룹으로 옮겨졌습니다. 지워진 것은 없습니다. "
+        "목록을 새로 고쳐 어느 것이 어디 있는지 확인하세요."
     ),
     ErrorCode.GROUP_NOT_FOUND: "목록을 새로 고친 뒤 다시 고르세요. 이미 없어졌을 수 있습니다.",
     ErrorCode.GROUP_ALREADY_EXISTS: "다른 이름이나 접두어를 쓰세요.",

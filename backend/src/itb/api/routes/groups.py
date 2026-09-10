@@ -197,7 +197,8 @@ async def delete_group(prefix: str, state: State) -> UngroupedResponse:
     except test_moves.PartialFailureError as exc:
         raise ApiError(
             500,
-            ErrorCode.TEST_DELETE_PARTIAL,
+            # 해체는 이동이다 — 휴지통 문구를 재사용하지 않는다 (013 converge T059).
+            ErrorCode.TEST_MOVE_PARTIAL,
             exc.reason,
             {"stranded": [{"test": s.target, "where": s.where} for s in exc.stranded]},
         ) from exc
