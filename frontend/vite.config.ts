@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -6,7 +7,9 @@ import { defineConfig } from "vite";
 const apiPort = Number(process.env.ITB_API_PORT ?? 4320);
 
 export default defineConfig({
-  plugins: [react()],
+  // Tailwind v4 는 PostCSS 체인 없이 Vite 플러그인으로 붙는다 (015 research R1).
+  // 이 저장소에 없던 postcss 설정을 새로 들이지 않기 위한 선택이다.
+  plugins: [tailwindcss(), react()],
   server: {
     // 단독 로컬 도구 — 로컬 인터페이스에만 바인딩한다 (FR-088a).
     host: "127.0.0.1",

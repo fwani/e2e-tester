@@ -42,13 +42,13 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 
 **⚠️ T002 가 실패하면 research R2 를 다시 정해야 한다.** 그 전에는 T005 이후로 갈 수 없다.
 
-- [ ] T001 [P] 전환 전 기준선 수치를 `specs/015-tailwind-css-migration/baseline.md` 에 기록한다 — 단언 총수(`grep -rc 'expect(' frontend/tests`), 인라인 455곳의 파일별 분포, `npm run build` 후 CSS 크기, `count-violations.mjs` 출력, 테스트 통과 수. **이 수치가 없으면 "줄지 않았다"를 나중에 증명할 수 없다**
-- [ ] T002 스파이크 S1 — `frontend/src/theme/tailwind.css` 초안으로 `@theme inline { --color-pass: var(--pass) }` 가 동작하는지 확인한다. 확인 항목: 기본 유틸리티(`bg-pass`), **불투명도 수식(`bg-pass/50`)**, 임의값과의 조합. 결과를 [research.md](research.md) 미해결 표에 기록한다. 실패 시 R2 대안(정본 파이프라인 확장)으로 전환하고 그 사실을 적는다
-- [ ] T003 [P] 스파이크 S2 — 빌드 산출 CSS 에서 클래스 실재를 확인하는 방법을 정한다 (Vite 빌드 결과 파싱 vs 테스트 내 Tailwind 실행). 판단 기준은 **테스트 실행 시간**과 **오타를 실제로 잡는가**. 결과를 research.md 에 기록
-- [ ] T004 [P] 스파이크 S3 — L2 대조(전환 전↔후)의 구현 방법을 정한다. `scripts/design_render.py` 의 chromium 사용 방식을 재사용하며, 전환 전 상태를 `git worktree` 로 꺼낼지 정적 기준선 JSON 으로 뜰지 결정한다. 빌드 시간이 실용성을 좌우하므로 실측한다. 결과를 research.md 에 기록
-- [ ] T005 Tailwind v4 를 설치하고 `frontend/vite.config.ts` 에 `@tailwindcss/vite` 플러그인을 추가한다 — `npm i -D tailwindcss@4 @tailwindcss/vite`. 버전을 고정해 `package-lock.json` 에 남긴다 (T002 의존)
-- [ ] T006 `frontend/src/theme/tailwind.css` 를 만든다 — `@import "tailwindcss"` · `@import "./tokens.css"` · `@theme inline` 으로 정본 토큰 전량에 Tailwind 이름을 붙인다. 이름 규약은 [contracts/tailwind-theme.md](contracts/tailwind-theme.md) C-3. **오른쪽은 전부 `var(정본토큰)` 이며 리터럴 값이 하나도 없어야 한다** (C-1)
-- [ ] T007 진입점에서 `theme/tailwind.css` 를 불러오도록 바꾼다 (`frontend/src/main.tsx` 또는 현재 `tokens.css` 를 불러오는 곳). **이 시점에 화면이 하나도 바뀌지 않아야 한다** — 아직 유틸리티를 쓰는 곳이 없다. `npm test -- --run` 전량 통과 확인
+- [X] T001 [P] 전환 전 기준선 수치를 `specs/015-tailwind-css-migration/baseline.md` 에 기록한다 — 단언 총수(`grep -rc 'expect(' frontend/tests`), 인라인 455곳의 파일별 분포, `npm run build` 후 CSS 크기, `count-violations.mjs` 출력, 테스트 통과 수. **이 수치가 없으면 "줄지 않았다"를 나중에 증명할 수 없다**
+- [X] T002 스파이크 S1 — `frontend/src/theme/tailwind.css` 초안으로 `@theme inline { --color-pass: var(--pass) }` 가 동작하는지 확인한다. 확인 항목: 기본 유틸리티(`bg-pass`), **불투명도 수식(`bg-pass/50`)**, 임의값과의 조합. 결과를 [research.md](research.md) 미해결 표에 기록한다. 실패 시 R2 대안(정본 파이프라인 확장)으로 전환하고 그 사실을 적는다
+- [X] T003 [P] 스파이크 S2 — 빌드 산출 CSS 에서 클래스 실재를 확인하는 방법을 정한다 (Vite 빌드 결과 파싱 vs 테스트 내 Tailwind 실행). 판단 기준은 **테스트 실행 시간**과 **오타를 실제로 잡는가**. 결과를 research.md 에 기록
+- [X] T004 [P] 스파이크 S3 — L2 대조(전환 전↔후)의 구현 방법을 정한다. `scripts/design_render.py` 의 chromium 사용 방식을 재사용하며, 전환 전 상태를 `git worktree` 로 꺼낼지 정적 기준선 JSON 으로 뜰지 결정한다. 빌드 시간이 실용성을 좌우하므로 실측한다. 결과를 research.md 에 기록
+- [X] T005 Tailwind v4 를 설치하고 `frontend/vite.config.ts` 에 `@tailwindcss/vite` 플러그인을 추가한다 — `npm i -D tailwindcss@4 @tailwindcss/vite`. 버전을 고정해 `package-lock.json` 에 남긴다 (T002 의존)
+- [X] T006 `frontend/src/theme/tailwind.css` 를 만든다 — `@import "tailwindcss"` · `@import "./tokens.css"` · `@theme inline` 으로 정본 토큰 전량에 Tailwind 이름을 붙인다. 이름 규약은 [contracts/tailwind-theme.md](contracts/tailwind-theme.md) C-3. **오른쪽은 전부 `var(정본토큰)` 이며 리터럴 값이 하나도 없어야 한다** (C-1)
+- [X] T007 진입점에서 `theme/tailwind.css` 를 불러오도록 바꾼다 (`frontend/src/main.tsx` 또는 현재 `tokens.css` 를 불러오는 곳). **이 시점에 화면이 하나도 바뀌지 않아야 한다** — 아직 유틸리티를 쓰는 곳이 없다. `npm test -- --run` 전량 통과 확인
 
 **Checkpoint**: Tailwind 가 설치됐고 정본을 참조하며, 기존 화면은 그대로다.
 
@@ -67,6 +67,13 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 - [ ] T011 [P] 가드 G-C 를 `frontend/tests/SingleSystem.test.ts` 에 만든다 — 한 요소의 `className` 에 의미 클래스와 Tailwind 유틸리티가 동시에 있으면 실패 (LC-5). 전환 중에는 이 수치가 **진행률 계기**이므로, 실패 메시지가 남은 곳을 `파일:줄` 로 지목해야 한다
 - [ ] T012 [P] 가드 G-D 를 `frontend/tests/ClassMigration.test.ts` 에 만든다 — `tokens.css` 에 남은 의미 클래스 수와 대응표의 「완료」 아닌 행 수가 일치하는지 검사한다 (T008 의존)
 - [ ] T013 L2 대조 스크립트 `scripts/design_compare_ba.py` 를 만들고 `--baseline` 으로 **전환 전 기준선을 뜬다**. `design_render.py` 의 digest 규약을 따라 낡은 보고서로 통과할 수 없게 한다 (T004 의존). **기준선은 부품 전환을 시작하기 전에 떠야 한다**
+- [ ] T014a **L1 대조의 측정 대상을 부품으로 옮긴다** — `scripts/design_render.py` 의 `FORMS`
+      가 `["btn", "chip pass", …]` 처럼 **클래스 이름**으로 형태를 지정하고 있어, 의미 클래스를
+      해체하면 정본 쪽에서 그 이름이 사라져 대조가 통째로 무너진다 (research R5 · FR-002).
+      **확정 디자인 쪽은 손대지 않는다** — 그것이 기준이다. 관측 쪽만 `tokens.css` + 클래스에서
+      **부품 렌더 결과**로 바꾼다. 질문("우리 부품이 확정 디자인과 같은 것을 그리는가")은 그대로다
+- [ ] T014b `frontend/tests/CanonMatchesDesign.test.ts` 를 T014a 의 새 보고서 형식에 맞춘다.
+      digest 로 낡은 보고서를 거르는 성질을 유지한다 — **이 성질이 없으면 재지 않고도 통과한다**
 - [ ] T014 [P] 단언 총수 계수기를 `frontend/scripts/count-assertions.mjs` 에 만든다 — 헌법 Quality Gate 4 를 수치로 확인하는 장치다. T001 의 기준선과 비교해 줄면 그 파일을 지목한다
 
 **Checkpoint**: 가드 4종이 살아 있고, 각각 일부러 어겨서 실제로 잡는 것을 확인했다.

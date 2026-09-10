@@ -1,0 +1,134 @@
+/**
+ * Tailwind 테마 — 정본 토큰에 **이름만 다시 붙인다.** 015 T006.
+ *
+ * ## 이 파일에는 값이 없다
+ *
+ * 오른쪽은 전부 `var(정본토큰)` 이다. 값이 없으므로 정본과 어긋날 수가 없다 —
+ * 규칙으로 금지하는 대신 **구조로 불가능하게** 만든 것이다 (FR-001 ·
+ * `specs/015-tailwind-css-migration/contracts/tailwind-theme.md` C-1).
+ *
+ * 리터럴 값이 하나라도 들어오면 `tests/TailwindThemeLiteral.test.ts` 가 막는다.
+ *
+ * ## 왜 tokens.css 안에 쓰지 않는가
+ *
+ * `tokens.css` 의 앞 구획은 `scripts/extract_canon.py` 의 출력이다. 거기에 Tailwind
+ * 지시문을 넣으면 다음 추출에서 지워진다. 그래서 정본을 `@import` 로 끌어와 참조만
+ * 한다. **정본 파일은 이 기능 내내 손대지 않는다** (FR-002 · C-2).
+ *
+ * ## `@theme inline` 인 이유
+ *
+ * `inline` 이 없으면 Tailwind 가 `--color-pass` 를 `:root` 에 한 겹 더 내보내고
+ * 유틸리티가 그것을 가리킨다. 그러면 정본 → Tailwind 변수 → 유틸리티의 이중 참조가
+ * 되어, 값이 어긋났을 때 어느 쪽을 보는지가 흐려진다. `inline` 은 유틸리티가 정본
+ * 변수를 **직접** 가리키게 한다.
+ *
+ * T002 스파이크에서 확인했다 — 산출 CSS 에 `--color-pass` 가 나타나지 않고,
+ * `#1A7F45` 는 정본 정의 한 곳에만 있다. 복제 0.
+ *
+ * ## 색 네임스페이스를 비우는 이유
+ *
+ * `--color-*: initial` 이 Tailwind 기본 팔레트(`bg-red-500` 따위)를 지운다. 남는 것은
+ * 아래에 등록한 정본 색뿐이다. 008 이 「새 색을 만들지 않는다」를 규율로 지켰는데,
+ * 여기서는 **쓸 수 없게** 만든다 (FR-003). 팔레트 밖 색을 세는 가드보다 이쪽이 강하다.
+ *
+ * ## preflight 를 쓰지 않는 이유
+ *
+ * `tokens.css` 는 **이미 자기 리셋을 갖고 있다** — `*{box-sizing:border-box}`,
+ * `body{margin:0;…}`, 그리고 `button`·`input,select,textarea` 의 요소 기본 스타일까지.
+ * 그 값들은 확정 디자인에서 추출된 정본이다.
+ *
+ * Tailwind preflight 를 얹으면 **정본이 아닌 곳에서 온 리셋 값이 화면에 영향을 준다.**
+ * `h1~h6` 의 크기·굵기 상속, `ul/ol` 마커 제거, `img{display:block}`, `button` 의
+ * 배경 제거 같은 것들이다. tokens.css 가 나중에 `@import` 되므로 겹치는 선언은 이기지만,
+ * **preflight 만 지정하고 정본이 지정하지 않는 속성은 그대로 남는다.** 그것이 FR-008
+ * (시각 동일성)을 조용히 깨뜨린다.
+ *
+ * 실측으로도 보였다 — preflight 를 넣은 채 빌드하니 CSS 가 15.04 kB 에서 21.30 kB 로
+ * 늘었다. 그 6.26 kB 가 전부 「우리가 정하지 않은 값」이다.
+ *
+ * 리셋이 필요해지면 정본에 넣는다. 그것이 이 저장소의 규율이다.
+ *
+ * 간격(`--spacing-*`)은 비우지 않았다. 배치 계약이 아직 서는 중이라(T029) 어떤 치수가
+ * 실제로 필요한지 모르고, 지금 조이면 전환이 임의값(`p-[7px]`)으로 도피한다 — 그것이
+ * 더 나쁘다. T051(예외 등록) 시점에 실제 사용을 보고 다시 판단한다.
+ */
+
+/* preflight 를 빼고 테마·유틸리티만 들인다. 이유는 위 「preflight 를 쓰지 않는 이유」. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@import "./tokens.css";
+
+@theme inline {
+  /* ── 색 ─────────────────────────────────────────────────────────────
+     기본 팔레트를 지우고 정본만 남긴다. */
+  --color-*: initial;
+
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-sunken: var(--sunken);
+  --color-sunken-2: var(--sunken-2);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+
+  --color-hair: var(--hair);
+  --color-hair-2: var(--hair-2);
+
+  --color-pass: var(--pass);
+  --color-pass-t: var(--pass-t);
+  --color-fail: var(--fail);
+  --color-fail-t: var(--fail-t);
+  --color-warn: var(--warn);
+  --color-warn-t: var(--warn-t);
+  --color-run: var(--run);
+  --color-run-t: var(--run-t);
+  --color-ai: var(--ai);
+  --color-ai-t: var(--ai-t);
+
+  --color-warn-line: var(--warn-line);
+  --color-fail-line: var(--fail-line);
+
+  /* `transparent`·`currentColor` 는 색이 아니라 키워드다. 기본 팔레트를 지우면
+     함께 사라지므로 되살린다 — 정본이 정할 성질의 것이 아니다. */
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-inherit: inherit;
+
+  /* ── 모서리 ───────────────────────────────────────────────────────── */
+  --radius-base: var(--radius);
+  --radius-chip: var(--radius-chip);
+  --radius-lg: var(--radius-lg);
+
+  /* ── 승강 ─────────────────────────────────────────────────────────── */
+  --shadow-e1: var(--e-1);
+  --shadow-e2: var(--e-2);
+
+  /* ── 글꼴 ─────────────────────────────────────────────────────────── */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* ── 간격 ─────────────────────────────────────────────────────────── */
+  --spacing-s1: var(--s-1);
+  --spacing-s2: var(--s-2);
+  --spacing-s3: var(--s-3);
+  --spacing-s4: var(--s-4);
+  --spacing-s5: var(--s-5);
+  --spacing-s6: var(--s-6);
+  --spacing-gap: var(--gap);
+  --spacing-mark: var(--mark);
+
+  /* ── 치수 — 배치 계약이 쓰는 값 (007/015 layout-contract-v2) ─────────
+     화면 파일이 지어낼 수 없는 값들이다. `lib/layout.ts` 와 여기가 출처다. */
+  --spacing-header: var(--h-header);
+  --spacing-phase: var(--h-phase);
+  --spacing-notice: var(--h-notice);
+  --spacing-control: var(--h-control);
+  --spacing-control-sm: var(--h-control-sm);
+  --spacing-step: var(--h-step);
+  --spacing-steps: var(--w-steps);
+  --spacing-detail: var(--w-detail);
+  --spacing-min: var(--w-min);
+}
