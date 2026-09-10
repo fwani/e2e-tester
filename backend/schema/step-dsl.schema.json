@@ -941,6 +941,19 @@
   "additionalProperties": false,
   "description": "하나의 테스트 시나리오. `tests/` 아래 YAML 파일 하나에 대응한다.",
   "properties": {
+    "actor": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor"
+    },
     "ai_instruction": {
       "anyOf": [
         {
@@ -965,6 +978,19 @@
       "format": "date-time",
       "title": "Created At",
       "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
     },
     "dsl_version": {
       "default": 1,
@@ -1055,6 +1081,8 @@
     "dsl_version",
     "id",
     "name",
+    "description",
+    "actor",
     "authoring_mode",
     "start_url",
     "browser",

@@ -44,11 +44,31 @@ TEST_ID_PATTERN = r"^[A-Z][A-Z0-9]{0,7}-\d{3}$"
 """테스트 식별자 = `<그룹 접두어>-<번호>` (013 FR-444).
 
 `TC-001` 이 이 패턴을 만족한다 — **기존 자산이 그대로 통과한다** (SC-629). 접두어 규칙은
-:data:`GROUP_PREFIX_PATTERN` 과 같고, 번호는 세 자리다 (`Project.next_test_number` 가 이미
-`le=999`).
+:data:`GROUP_PREFIX_PATTERN` 과 같고, 번호는 세 자리다 — 상한은
+:data:`MAX_TEST_NUMBER` 하나에서 온다.
 
 **접두어가 곧 소속이다.** 별도의 그룹 필드를 두지 않는다 — 둘을 다 저장하면 어긋날 수 있고,
 어긋났을 때 어느 쪽이 맞는지 정할 근거가 없다 (013 data-model §3).
+"""
+
+MAX_INSTRUCTION_CHARS = 8000
+"""자연어 지시문 길이 상한 (FR-085).
+
+`Test.ai_instruction` 과 :func:`itb.authoring.agent.validate_instruction` 과 초안의 지시문
+조립이 **같은 값을 봐야 한다**. 세 곳에 8000 을 베껴 두면 하나만 바뀌는 날이 온다.
+"""
+
+MAX_TEST_NUMBER = 999
+"""프로젝트 하나가 담을 수 있는 테스트 수의 상한 (014 FR-036c).
+
+식별자의 번호가 세 자리이므로 이것이 곧 프로젝트의 수용량이다. 번호는 접두어를 넘어
+**프로젝트 전체에서 고유하다** (013 research R3) — `USER-003` 이 있으면 `003` 은 어느
+접두어로도 쓰이지 않는다.
+
+**이 값을 다른 곳에 베끼지 않는다.** 예전에는 `storage/repository.py` 와
+`api/routes/tests.py` 두 곳에 999 가 매직 넘버로 박혀 있었다. 상한을 참조해야 하는
+세 번째 자리(엑셀 가져오기의 수용량 검사)가 생기면서, 값을 맞추는 대신 출처를 하나로
+모았다.
 """
 
 VARIABLE_NAME_PATTERN = r"^[A-Z][A-Z0-9_]*$"
@@ -248,7 +268,7 @@ class Project(BaseModel):
     test_id_attribute: str = Field(default="data-testid", min_length=1, max_length=100)
     """대상 앱이 쓰는 testId 속성명. `data-test`, `data-cy` 등을 쓰는 앱이 흔하다."""
 
-    next_test_number: int = Field(default=1, ge=1, le=999)
+    next_test_number: int = Field(default=1, ge=1, le=MAX_TEST_NUMBER)
     """다음 테스트 번호. **접두어와 무관하게 프로젝트 전체에서 하나다** (013 research R3).
 
     그래야 그룹을 옮길 때 번호를 다시 뽑지 않는다 — `USER-003` → `DATA-003` 이 언제나
@@ -293,6 +313,24 @@ class Test(BaseModel):
     dsl_version: int = DSL_VERSION
     id: str = Field(pattern=TEST_ID_PATTERN)
     name: str = Field(min_length=1, max_length=200)
+
+    description: str | None = Field(default=None, max_length=2000)
+    """무엇을 확인하는 테스트인지 사람이 읽는 설명 (014 FR-003).
+
+    **기본값이 None 이어야 기존 테스트 파일이 그대로 읽힌다.** 014 이전에 저장된
+    `tests/*.yaml` 에는 이 키가 없다. 같은 이유로 `dsl_version` 을 올리지 않는다 —
+    올리면 :meth:`_check_refs` 가 기존 파일을 전부 거절한다.
+    """
+
+    actor: str | None = Field(default=None, max_length=100)
+    """이 테스트를 수행하는 역할 이름 (014 FR-026a·FR-026b).
+
+    **자유 텍스트이며 자격 증명이 아니다.** 「관리자」·「일반 사용자 A」 같은 말이 들어온다.
+    제품은 이 값으로 로그인을 시도하지 않고, 계정과 연결하지도 않는다 — 자격 증명은
+    지금처럼 민감 변수(`SECRET_*`)가 맡는다. 값이 아이디처럼 보여도 자격 증명으로
+    취급하지 않는다.
+    """
+
     authoring_mode: AuthoringMode
     start_url: str = Field(pattern=URL_PATTERN, max_length=2000)
     browser: BrowserKind = BrowserKind.CHROMIUM
@@ -300,7 +338,7 @@ class Test(BaseModel):
     steps: list[Step] = Field(min_length=1)
     """**1개 이상** — Step 이 없는 테스트는 저장할 수 없다 (FR-029)."""
 
-    ai_instruction: str | None = Field(default=None, max_length=8000)
+    ai_instruction: str | None = Field(default=None, max_length=MAX_INSTRUCTION_CHARS)
     """자연어 지시문 원문. **실행 대상이 아니다** (FR-063). 작성 의도의 기록일 뿐이다."""
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -51,39 +51,39 @@ Recorder·Runner·Generator 는 건드리지 않으므로 그쪽 단위 테스�
 
 ### 도메인
 
-- [ ] T006 `backend/src/itb/domain/test_case.py` 에 `MAX_TEST_NUMBER = 999` 를 정의하고 `Project.next_test_number` 의 `le=999` 를 `le=MAX_TEST_NUMBER` 로 바꾼다 ([data-model.md](data-model.md) §4)
-- [ ] T007 흩어진 999 를 T006 의 상수로 모은다 — `backend/src/itb/storage/repository.py:323` 과 `backend/src/itb/api/routes/tests.py:482` 두 곳. FR-036c 가 요구하는 것은 "값이 같다"가 아니라 "출처가 하나다"이다
-- [ ] T008 `backend/src/itb/domain/test_case.py` 의 `Test` 에 `description: str | None`(max_length=2000)과 `actor: str | None`(max_length=100)을 더한다. 기본값 `None`, 필드 위치는 `name` 뒤. **`dsl_version` 은 올리지 않는다** — 올리면 `_check_refs` 가 기존 파일을 전부 거절한다 ([research.md](research.md) R11)
-- [ ] T009 [P] `backend/src/itb/domain/draft.py` 를 새로 만든다 — `DRAFT_ID_PATTERN`, `MAX_DRAFT_NUMBER`, `DraftSource`, `Draft`. **`steps` 필드를 두지 않는다** (원칙 I). 검증 규칙 4개를 모두 넣는다 ([data-model.md](data-model.md) §2)
-- [ ] T010 [P] `backend/src/itb/domain/draft.py` 에 지시문 조립 순수 함수 `compose_instruction(draft) -> str` 을 더한다. 빈 항목은 줄째로 뺀다. 결과가 `MAX_INSTRUCTION_LENGTH`(8000)를 넘지 않음을 필드 상한의 합으로 보장한다 ([research.md](research.md) R12)
-- [ ] T011 `backend/src/itb/domain/error.py` 에 오류 코드 7개를 더하고 `CATEGORY`·`NEXT_ACTION` **두 표를 함께** 채운다 — 빠지면 `tests/abnormal/test_error_contract.py` 가 실패한다 ([data-model.md](data-model.md) §7)
+- [X] T006 `backend/src/itb/domain/test_case.py` 에 `MAX_TEST_NUMBER = 999` 를 정의하고 `Project.next_test_number` 의 `le=999` 를 `le=MAX_TEST_NUMBER` 로 바꾼다 ([data-model.md](data-model.md) §4)
+- [X] T007 흩어진 999 를 T006 의 상수로 모은다 — `backend/src/itb/storage/repository.py:323` 과 `backend/src/itb/api/routes/tests.py:482` 두 곳. FR-036c 가 요구하는 것은 "값이 같다"가 아니라 "출처가 하나다"이다
+- [X] T008 `backend/src/itb/domain/test_case.py` 의 `Test` 에 `description: str | None`(max_length=2000)과 `actor: str | None`(max_length=100)을 더한다. 기본값 `None`, 필드 위치는 `name` 뒤. **`dsl_version` 은 올리지 않는다** — 올리면 `_check_refs` 가 기존 파일을 전부 거절한다 ([research.md](research.md) R11)
+- [X] T009 [P] `backend/src/itb/domain/draft.py` 를 새로 만든다 — `DRAFT_ID_PATTERN`, `MAX_DRAFT_NUMBER`, `DraftSource`, `Draft`. **`steps` 필드를 두지 않는다** (원칙 I). 검증 규칙 4개를 모두 넣는다 ([data-model.md](data-model.md) §2)
+- [X] T010 [P] `backend/src/itb/domain/draft.py` 에 지시문 조립 순수 함수 `compose_instruction(draft) -> str` 을 더한다. 빈 항목은 줄째로 뺀다. 결과가 `MAX_INSTRUCTION_LENGTH`(8000)를 넘지 않음을 필드 상한의 합으로 보장한다 ([research.md](research.md) R12)
+- [X] T011 `backend/src/itb/domain/error.py` 에 오류 코드 7개를 더하고 `CATEGORY`·`NEXT_ACTION` **두 표를 함께** 채운다 — 빠지면 `tests/abnormal/test_error_contract.py` 가 실패한다 ([data-model.md](data-model.md) §7)
 
 ### 스키마 재생성 (건너뛰면 CI 가 막는다)
 
-- [ ] T012 `backend/src/itb/schema/export.py` 의 `MODELS` 에 `"draft": TypeAdapter(Draft)` 를 더한다
-- [ ] T013 `cd backend && uv run python -m itb.schema.export` 를 돌려 `backend/schema/` 를 재생성하고 커밋한다 — `step-dsl`, `error-response`, 신규 `draft` 세 개가 바뀐다
-- [ ] T014 `cd frontend && npm run gen:types` 를 돌려 `frontend/src/types/generated/` 를 재생성하고 커밋한다
-- [ ] T015 `cd backend && uv run python -m itb.schema.export --check` 로 드리프트가 없음을 확인한다
+- [X] T012 `backend/src/itb/schema/export.py` 의 `MODELS` 에 `"draft": TypeAdapter(Draft)` 를 더한다
+- [X] T013 `cd backend && uv run python -m itb.schema.export` 를 돌려 `backend/schema/` 를 재생성하고 커밋한다 — `step-dsl`, `error-response`, 신규 `draft` 세 개가 바뀐다
+- [X] T014 `cd frontend && npm run gen:types` 를 돌려 `frontend/src/types/generated/` 를 재생성하고 커밋한다
+- [X] T015 `cd backend && uv run python -m itb.schema.export --check` 로 드리프트가 없음을 확인한다
 
 ### 저장
 
-- [ ] T016 [P] `backend/src/itb/storage/drafts.py` 를 새로 만든다 — `drafts/` 경로 해석, `list_drafts()`, `read_draft(id)`, `write_draft(draft)`, `delete_draft(id)`, `allocate_draft_id()`. 파일명은 `<draft_id>-<slug>.yaml`, 기존 `yaml_io` 를 그대로 쓴다 ([data-model.md](data-model.md) §2)
-- [ ] T017 `backend/src/itb/storage/repository.py` 에 `drafts_dir` 경로와 초안 접근자를 잇는다. `list_test_paths()` 가 `drafts/` 를 훑지 않음을 확인한다 (디렉터리가 다르므로 구조적으로 보장되지만 테스트로 못박는다)
+- [X] T016 [P] `backend/src/itb/storage/drafts.py` 를 새로 만든다 — `drafts/` 경로 해석, `list_drafts()`, `read_draft(id)`, `write_draft(draft)`, `delete_draft(id)`, `allocate_draft_id()`. 파일명은 `<draft_id>-<slug>.yaml`, 기존 `yaml_io` 를 그대로 쓴다 ([data-model.md](data-model.md) §2)
+- [X] T017 `backend/src/itb/storage/repository.py` 에 `drafts_dir` 경로와 초안 접근자를 잇는다. `list_test_paths()` 가 `drafts/` 를 훑지 않음을 확인한다 (디렉터리가 다르므로 구조적으로 보장되지만 테스트로 못박는다)
 
 ### 공유 규약
 
-- [ ] T018 [P] `backend/src/itb/portability/columns.py` — 7개 컬럼의 이름·순서·머리글 대조 규칙. 내보내기와 가져오기가 **같은 정의**를 쓴다. 머리글 대조는 앞뒤 공백 제거 + 대소문자 무시, 필수 컬럼은 `TC ID`·`대상기능` ([data-model.md](data-model.md) §6)
-- [ ] T019 [P] `backend/src/itb/portability/sheet_name.py` — 그룹 이름 → 시트 이름 변환 순수 함수 6단계와, 그룹 없음 시트 이름 상수 `그룹 없음` ([research.md](research.md) R6)
-- [ ] T020 [P] `backend/src/itb/portability/workbook.py` 에 수식 주입 방어 `escape_cell(value)` 를 둔다 — `= + - @`, 탭, 캐리지리턴으로 시작하면 앞에 `'` 를 붙인다 ([research.md](research.md) R13)
+- [X] T018 [P] `backend/src/itb/portability/columns.py` — 7개 컬럼의 이름·순서·머리글 대조 규칙. 내보내기와 가져오기가 **같은 정의**를 쓴다. 머리글 대조는 앞뒤 공백 제거 + 대소문자 무시, 필수 컬럼은 `TC ID`·`대상기능` ([data-model.md](data-model.md) §6)
+- [X] T019 [P] `backend/src/itb/portability/sheet_name.py` — 그룹 이름 → 시트 이름 변환 순수 함수 6단계와, 그룹 없음 시트 이름 상수 `그룹 없음` ([research.md](research.md) R6)
+- [X] T020 [P] `backend/src/itb/portability/workbook.py` 에 수식 주입 방어 `escape_cell(value)` 를 둔다 — `= + - @`, 탭, 캐리지리턴으로 시작하면 앞에 `'` 를 붙인다 ([research.md](research.md) R13)
 
 ### 기반 테스트
 
-- [ ] T021 [P] `backend/tests/unit/test_sheet_name.py` — 금지문자, 31자 초과, 빈 이름, `History` 예약어, 충돌 시 `~2` 접미, 충돌 접미가 31자를 넘지 않음
-- [ ] T022 [P] `backend/tests/unit/test_excel_columns.py` — 머리글 대조(공백·대소문자), 필수 컬럼 누락 판정, 컬럼 순서 고정
-- [ ] T023 [P] `backend/tests/unit/test_formula_escape.py` — `=1+1`·`+A1`·`-1`·`@SUM` 이 텍스트로 고정되는지, 정상 문자열은 건드리지 않는지
-- [ ] T024 [P] `backend/tests/unit/test_draft_model.py` — `Draft` 검증 규칙 4개, `compose_instruction` 의 빈 항목 생략과 길이 상한
-- [ ] T025 [P] `backend/tests/integration/test_legacy_project_reads.py` — **`description`·`actor` 가 없는 기존 테스트 YAML 이 그대로 읽히는지.** T008 이 하위호환을 깼는지 잡는 유일한 검사다 ([quickstart.md](quickstart.md) §3 회귀 1)
-- [ ] T026 `cd backend && uv run pytest && uv run lint-imports && uv run ruff check src/ tests/` 로 Phase 2 전체를 확인한다
+- [X] T021 [P] `backend/tests/unit/test_sheet_name.py` — 금지문자, 31자 초과, 빈 이름, `History` 예약어, 충돌 시 `~2` 접미, 충돌 접미가 31자를 넘지 않음
+- [X] T022 [P] `backend/tests/unit/test_excel_columns.py` — 머리글 대조(공백·대소문자), 필수 컬럼 누락 판정, 컬럼 순서 고정
+- [X] T023 [P] `backend/tests/unit/test_formula_escape.py` — `=1+1`·`+A1`·`-1`·`@SUM` 이 텍스트로 고정되는지, 정상 문자열은 건드리지 않는지
+- [X] T024 [P] `backend/tests/unit/test_draft_model.py` — `Draft` 검증 규칙 4개, `compose_instruction` 의 빈 항목 생략과 길이 상한
+- [X] T025 [P] `backend/tests/integration/test_legacy_project_reads.py` — **`description`·`actor` 가 없는 기존 테스트 YAML 이 그대로 읽히는지.** T008 이 하위호환을 깼는지 잡는 유일한 검사다 ([quickstart.md](quickstart.md) §3 회귀 1)
+- [X] T026 `cd backend && uv run pytest && uv run lint-imports && uv run ruff check src/ tests/` 로 Phase 2 전체를 확인한다
 
 **Checkpoint**: 바닥이 섰다. US1·US2 를 병렬로 시작할 수 있다.
 

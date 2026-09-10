@@ -17,6 +17,7 @@ import sys
 
 from pydantic import TypeAdapter
 
+from itb.domain.draft import Draft
 from itb.domain.error import ErrorResponse
 from itb.domain.manual_step import ManualStepSpec
 from itb.domain.run_result import RunResult
@@ -35,6 +36,9 @@ MODELS: dict[str, TypeAdapter] = {
     "error-response": TypeAdapter(ErrorResponse),
     # 손으로 넣을 수 있는 Step 종류. 화면이 이 목록을 상수로 복제하지 않게 한다 (009 FR-286).
     "manual-step": TypeAdapter(ManualStepSpec),
+    # 아직 녹화되지 않은 테스트의 의도 (014). Test 와 **다른 모양**이어야 하며, 그 사실이
+    # 스키마에도 드러난다 — steps 필드가 없다.
+    "draft": TypeAdapter(Draft),
 }
 
 

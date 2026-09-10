@@ -5,6 +5,7 @@
     <프로젝트 디렉터리>/
     ├── itb-project.yaml          # 커밋 대상
     ├── tests/TC-001-*.yaml       # 커밋 대상 — 사용자 자산
+    ├── drafts/D-0001-*.yaml      # 커밋 대상 — 아직 녹화되지 않은 초안 (014)
     ├── secrets.local.yaml        # .gitignore 대상
     ├── .runs/<테스트ID>/          # .gitignore 대상, 최근 1건만
     └── .gitignore                # 생성 시 자동 작성
@@ -24,8 +25,15 @@ import shutil
 from dataclasses import dataclass
 
 from itb.domain.run_result import RunResult, RunScope
-from itb.domain.test_case import RESERVED_PREFIX, TEST_ID_PATTERN, Project, Test
+from itb.domain.test_case import (
+    MAX_TEST_NUMBER,
+    RESERVED_PREFIX,
+    TEST_ID_PATTERN,
+    Project,
+    Test,
+)
 from itb.storage import atomic
+from itb.storage.drafts import DRAFTS_DIR, DraftStore
 from itb.storage.yaml_io import DefinitionError, dump_model, load_model
 
 PROJECT_FILE = "itb-project.yaml"
@@ -122,6 +130,15 @@ class ProjectPaths:
         return self.root / RUNS_DIR
 
     @property
+    def drafts_dir(self) -> pathlib.Path:
+        """아직 녹화되지 않은 초안들 (014).
+
+        `tests/` 와 나뉜 이유는 :mod:`itb.storage.drafts` 머리말에 있다 — 초안과 테스트를
+        가르는 벽이 정규식이 아니라 파일시스템이어야 한다.
+        """
+        return self.root / DRAFTS_DIR
+
+    @property
     def secrets_file(self) -> pathlib.Path:
         return self.root / SECRETS_FILE
 
@@ -151,6 +168,8 @@ class ProjectRepository:
 
     def __init__(self, root: pathlib.Path) -> None:
         self.paths = ProjectPaths(validate_project_path(root))
+        self.drafts = DraftStore(self.paths.root)
+        """초안 저장소 (014). 테스트와 다른 생명주기를 가지므로 따로 둔다."""
 
     # ─── 생성·열기 (FR-001) ─────────────────────────────────────────────────
 
@@ -318,8 +337,8 @@ class ProjectRepository:
         number = project.next_test_number
         while number in used:
             number += 1
-        if number > 999:
-            msg = "테스트 ID 가 999 를 넘었습니다. 프로젝트를 나누세요."
+        if number > MAX_TEST_NUMBER:
+            msg = f"테스트 ID 가 {MAX_TEST_NUMBER} 를 넘었습니다. 프로젝트를 나누세요."
             raise ProjectError(msg)
         project.next_test_number = number + 1
         self.write_project(project)

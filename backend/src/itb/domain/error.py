@@ -220,6 +220,57 @@ class ErrorCode(StrEnum):
     조회 자체가 실패한다.
     """
 
+    # 엑셀 통로 (014) — 내보내기·가져오기·초안
+    EXPORT_FAILED = "EXPORT_FAILED"
+    """워크북을 만들지 못했다 (014 FR-013).
+
+    **반쯤 만들어진 파일을 사용자에게 주지 않는다.** 워크북은 메모리에서 완성된 뒤에야
+    응답 본문이 되므로, 실패는 언제나 "파일이 없다"이지 "파일이 이상하다"가 아니다.
+    """
+
+    IMPORT_FILE_REJECTED = "IMPORT_FILE_REJECTED"
+    """가져올 파일을 해석하기 전에 거절했다 (014 FR-036).
+
+    상한 초과(크기·압축 해제 총량·시트 수·행 수), 스프레드시트가 아님, 손상.
+    ``detail.kind`` 가 어느 쪽인지 말한다. **해석을 시작한 뒤가 아니라 그 전에** 거절한다 —
+    막는 시점이 늦으면 막지 않은 것과 같다.
+    """
+
+    IMPORT_PLAN_NOT_FOUND = "IMPORT_PLAN_NOT_FOUND"
+    """미리보기가 만든 계획이 만료됐거나 없다 (014 FR-015).
+
+    계획은 서버 메모리에 30분만 있다. 디스크에 쓰지 않는 이유는, 확정 전에는 아무것도
+    만들지 않아야 하는데(FR-016) 디스크에 쓰면 그 자체가 만든 것이 되기 때문이다.
+    """
+
+    IMPORT_CAPACITY_EXCEEDED = "IMPORT_CAPACITY_EXCEEDED"
+    """만들려는 초안 수가 프로젝트에 남은 번호보다 많다 (014 FR-036b).
+
+    파일을 **읽는** 상한과 프로젝트가 **수용하는** 양은 다른 것이다. 이 검사가 없으면
+    초안을 만들다가 번호가 바닥나 반쯤 만들어진 상태로 끝난다.
+    """
+
+    IMPORT_FAILED = "IMPORT_FAILED"
+    """가져오기가 도중에 실패했고 **이미 한 것을 전부 되돌렸다** (014 FR-025).
+
+    프로젝트는 요청 전과 같다. 호출자는 이것을 「아무 일도 일어나지 않았다」로 다뤄야 한다.
+    :class:`itb.storage.test_moves.AllOrNothingError` 와 같은 판단이다.
+    """
+
+    IMPORT_PARTIAL = "IMPORT_PARTIAL"
+    """가져오기가 실패했고 **되돌리지도 못했다** (014 FR-025).
+
+    ``detail.stranded`` 가 무엇이 어디 있는지 말한다. :data:`IMPORT_FAILED` 와 뭉치면
+    사용자는 「다시 시도하면 되는가」에 답할 수 없다 — `TEST_MOVE_FAILED` 와
+    `TEST_MOVE_PARTIAL` 을 나눈 것과 같은 이유다.
+    """
+
+    DRAFT_NOT_FOUND = "DRAFT_NOT_FOUND"
+    """지정한 초안이 없다 (014 FR-029·FR-030).
+
+    초안은 저장되는 순간 사라지므로(FR-033), 오래된 화면이 남은 식별자를 보내면 여기로 온다.
+    """
+
     # 미지원
     NOT_SUPPORTED = "NOT_SUPPORTED"
 
@@ -305,6 +356,16 @@ CATEGORY: dict[ErrorCode, Category] = {
     ErrorCode.PROMPT_NOT_FOUND: Category.BLOCKED,
     ErrorCode.UPLOAD_REJECTED: Category.BLOCKED,
     ErrorCode.UPLOAD_NOT_FOUND: Category.BLOCKED,
+    # 014 엑셀 통로 — 전부 blocked. 파일이나 선택을 고쳐 다시 할 수 있다.
+    # IMPORT_PARTIAL 도 blocked 다: 자산은 새 자리 아니면 원래 자리에 있고, 어디 있는지
+    # detail.stranded 가 말한다. 사용자가 손으로 정리할 수 있으므로 broken 이 아니다.
+    ErrorCode.EXPORT_FAILED: Category.BLOCKED,
+    ErrorCode.IMPORT_FILE_REJECTED: Category.BLOCKED,
+    ErrorCode.IMPORT_PLAN_NOT_FOUND: Category.BLOCKED,
+    ErrorCode.IMPORT_CAPACITY_EXCEEDED: Category.BLOCKED,
+    ErrorCode.IMPORT_FAILED: Category.BLOCKED,
+    ErrorCode.IMPORT_PARTIAL: Category.BLOCKED,
+    ErrorCode.DRAFT_NOT_FOUND: Category.BLOCKED,
     # 미지원 — 다른 방법을 쓰면 된다
     ErrorCode.NOT_SUPPORTED: Category.BLOCKED,
     # 내부 — 사용자가 할 수 있는 일이 없다
@@ -396,6 +457,20 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ErrorCode.PROMPT_NOT_FOUND: "그 요구는 이미 끝났습니다. 다음 요구를 기다리세요.",
     ErrorCode.UPLOAD_REJECTED: "더 작은 파일을 고르거나, 올린 파일을 정리한 뒤 다시 시도하세요.",
     ErrorCode.UPLOAD_NOT_FOUND: "파일을 다시 올린 뒤 지정하세요.",
+    # 014 — 각각이 **지금 할 수 있는 하나**를 가리킨다.
+    ErrorCode.EXPORT_FAILED: (
+        "잠시 뒤 다시 시도하세요. 계속 실패하면 읽을 수 없는 테스트 정의가 있는지 확인하세요."
+    ),
+    ErrorCode.IMPORT_FILE_REJECTED: (
+        "더 작은 파일을 고르거나, 스프레드시트 형식(.xlsx)인지 확인한 뒤 다시 시도하세요."
+    ),
+    ErrorCode.IMPORT_PLAN_NOT_FOUND: "미리보기가 만료됐습니다. 파일을 다시 고르세요.",
+    ErrorCode.IMPORT_CAPACITY_EXCEEDED: (
+        "프로젝트를 나누거나, 가져올 행을 줄인 뒤 다시 시도하세요."
+    ),
+    ErrorCode.IMPORT_FAILED: "아무것도 만들어지지 않았습니다. 원인을 고친 뒤 다시 시도하세요.",
+    ErrorCode.IMPORT_PARTIAL: "표시된 항목이 어디 있는지 확인한 뒤 손으로 정리하세요.",
+    ErrorCode.DRAFT_NOT_FOUND: "목록을 새로 고친 뒤 다시 시도하세요.",
     ErrorCode.NOT_SUPPORTED: "지원되는 다른 방법을 쓰세요.",
     ErrorCode.INTERNAL_ERROR: (
         "작업 내용은 그대로 있습니다. 화면을 새로 고쳐 이어서 진행하고, "

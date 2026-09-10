@@ -1,0 +1,143 @@
+{
+  "$defs": {
+    "DraftSource": {
+      "additionalProperties": false,
+      "description": "이 초안이 어느 파일의 어느 시트 몇 행에서 왔는가.\n\n사용자가 원본 설계서를 되짚을 수 있어야 한다. 초안이 스무 건 쌓였을 때 \"이건 어디서\n온 거지\"에 답하지 못하면 목록은 정체 모를 할 일 더미가 된다.",
+      "properties": {
+        "file_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "File Name",
+          "type": "string"
+        },
+        "row": {
+          "minimum": 2,
+          "title": "Row",
+          "type": "integer"
+        },
+        "sheet_name": {
+          "maxLength": 31,
+          "minLength": 1,
+          "title": "Sheet Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file_name",
+        "sheet_name",
+        "row"
+      ],
+      "title": "DraftSource",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "스프레드시트 행 하나에서 온, 아직 스텝이 없는 테스트의 의도.\n\n``drafts/<draft_id>-<slug>.yaml`` 파일 하나에 대응한다. `tests/` 와 디렉터리를 나눈 것은\n벽을 정규식이 아니라 파일시스템이 되게 하려는 것이다 (014 research R7).",
+  "properties": {
+    "actor": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "desired_test_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Z][A-Z0-9]{0,7}-\\d{3}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Desired Test Id"
+    },
+    "draft_id": {
+      "pattern": "^D-\\d{4}$",
+      "title": "Draft Id",
+      "type": "string"
+    },
+    "expectation": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expectation"
+    },
+    "group_prefix": {
+      "default": "TC",
+      "pattern": "^[A-Z][A-Z0-9]{0,7}$",
+      "title": "Group Prefix",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "procedure": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Procedure"
+    },
+    "source": {
+      "$ref": "#/$defs/DraftSource"
+    }
+  },
+  "required": [
+    "draft_id",
+    "name",
+    "description",
+    "actor",
+    "procedure",
+    "expectation",
+    "desired_test_id",
+    "group_prefix",
+    "source",
+    "created_at"
+  ],
+  "title": "Draft",
+  "type": "object"
+}

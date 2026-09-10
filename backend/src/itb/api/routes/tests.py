@@ -31,6 +31,7 @@ from itb.domain.run_result import Outcome, RunResult, RunScope
 from itb.domain.step import Step
 from itb.domain.test_case import (
     GROUP_PREFIX_PATTERN,
+    MAX_TEST_NUMBER,
     RESERVED_PREFIX,
     AuthoringMode,
     Test,
@@ -479,10 +480,11 @@ async def renumber_tests(state: State) -> RenumberTestsResponse:
     # 온다 — 그 순서로 번호를 주면 새 번호가 옛 번호보다 커지는 자리가 생기고, 위 문단의
     # 「충돌하지 않는 이유」가 무너진다.
     ordered = sorted(tests, key=lambda t: int(t.id.split("-", 1)[1]))
-    if len(ordered) > 999:
+    if len(ordered) > MAX_TEST_NUMBER:
         raise bad_request(
             ErrorCode.DEFINITION_INVALID,
-            "테스트가 999개를 넘어 번호를 다시 붙일 수 없습니다. 프로젝트를 나누세요.",
+            f"테스트가 {MAX_TEST_NUMBER}개를 넘어 번호를 다시 붙일 수 없습니다. "
+            "프로젝트를 나누세요.",
         )
 
     plan = [
