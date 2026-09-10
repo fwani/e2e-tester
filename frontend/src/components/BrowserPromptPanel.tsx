@@ -66,8 +66,11 @@ export function BrowserPromptPanel({
 
   return (
     <div
-      className={isUnsupported ? "row tint-warn" : "row tint-run"}
-      style={{ gap: 8, padding: "10px 14px", flexWrap: "wrap" }}
+      className={
+        // `.row` + `.tint-warn|tint-run` (contracts/utility-map.md)
+        "flex items-center gap-s2 flex-wrap py-[10px] px-[14px] rounded-base border " +
+        (isUnsupported ? "bg-warn-t border-warn-line" : "bg-run-t border-run")
+      }
       role={prompt.blocking ? "alertdialog" : "status"}
       data-browser-prompt={prompt.kind}
     >

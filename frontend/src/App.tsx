@@ -398,7 +398,7 @@ export function App() {
   const startReplay = startRun;
 
   if (screen.name === "loading") {
-    return <main style={{ padding: 32 }} className="muted">불러오는 중…</main>;
+    return <main className="p-s6 text-ink-2">불러오는 중…</main>;
   }
 
   if (screen.name === "setup" || opened === null) {

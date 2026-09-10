@@ -9,6 +9,8 @@
  */
 import { useEffect, useState } from "react";
 
+import { Chip } from "../ui/Chip";
+
 /** 브라우저가 이 시간 안에 뜨지 않으면 무언가 잘못된 것이다 (research R8 목표는 2초). */
 const SLOW_THRESHOLD_MS = 5000;
 
@@ -33,21 +35,14 @@ export function StartingIndicator({
   return (
     <div
       role="status"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        padding: 32,
-      }}
+      className="flex flex-col items-center justify-center gap-s2 p-s6"
     >
-      <span className="chip">STARTING</span>
-      <p className="line muted" style={{ margin: 0 }}>
+      <Chip>STARTING</Chip>
+      <p className="m-0 font-sans text-[13px] leading-[1.4] text-ink-2">
         {message}
       </p>
       {slow && (
-        <p className="why" style={{ margin: 0, textAlign: "center" }}>
+        <p className="m-0 text-center font-sans text-[11px] leading-[1.4] text-ink-3">
           평소보다 오래 걸리고 있습니다. 브라우저가 설치되어 있는지, 다른 창이 자원을 쓰고
           있지 않은지 확인하세요.
         </p>

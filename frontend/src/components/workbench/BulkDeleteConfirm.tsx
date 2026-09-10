@@ -44,14 +44,11 @@ export function BulkDeleteConfirm({
     <div
       data-bulk-delete-confirm
       role="status"
-      className="tint-warn line"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        marginBottom: 10,
-      }}
+      className={
+        // `.tint-warn` + `.line` (contracts/utility-map.md)
+        "bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] " +
+        "flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
+      }
     >
       <span className="strong-sm">{deleteManyConfirm(indices)}</span>
       {!revertible && (

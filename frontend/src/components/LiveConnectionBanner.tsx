@@ -23,10 +23,9 @@ export function LiveConnectionBanner({ onReconnect }: LiveConnectionBannerProps)
   return (
     <div
       role="status"
-      className="tint-warn"
-      style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 12 }}
+      className="bg-warn-t border border-warn-line rounded-base py-[10px] px-s4 flex items-center gap-s3"
     >
-      <span style={{ flex: 1 }}>
+      <span className="flex-1">
         <strong>실시간 연결이 끊겼습니다.</strong> 조작한 내용은 서버에 계속 기록되고
         있습니다 — 화면만 멈춰 있습니다. 자동으로 다시 연결하는 중입니다.
       </span>

@@ -133,7 +133,7 @@ export function ConfirmDelete({
 }) {
   return (
     <>
-      <span className="why" role="status" style={{ whiteSpace: "nowrap" }}>
+      <span className="font-sans text-[11px] leading-[1.4] text-ink-3 whitespace-nowrap" role="status">
         지울까요?
       </span>
       <button
