@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -24,22 +24,25 @@
 
 ## Feature Readiness
 
-- [ ] All functional requirements have clear acceptance criteria
+- [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
 
 ## Notes
 
-**미해결 3건은 의도적으로 남겼다.** 이번 실행이 `specify → clarify → plan → …` 이므로
-`/speckit-clarify` 가 닫는다. 세 건 모두 **추측하면 안 되는 종류**다:
+**1회차(specify)**: 미해결 3건을 의도적으로 남겼다. 셋 다 추측하면 안 되는 종류였다.
 
-| 표시 | 무엇이 갈리는가 | 왜 기본값을 못 정하는가 |
+**2회차(clarify · 2026-09-10)**: 질문 4건으로 전부 닫았다. 체크리스트 14/16 → **16/16**.
+
+| 질문 | 결정 | 무엇이 갈렸나 |
 |---|---|---|
-| FR-437 | 삭제를 되돌릴 수 있게 할 것인가 | 012 는 프로젝트 삭제를 휴지통으로 바꿨는데 테스트 삭제는 영구 파괴다. 한쪽에 맞추면 다른 쪽이 어긋난다 |
-| FR-444 | 그룹과 테스트 ID 의 관계 | 사용자가 「ID prefix」를 명시적으로 요청했다. 그런데 ID 는 실행 산출물 디렉터리·결과 파일과 묶여 있어, 그룹을 바꿀 때 ID 가 바뀌면 그것들도 옮겨야 한다. 셋 다 합리적이고 작업량이 크게 다르다 |
-| FR-445 | 기존 `TC-###` 테스트를 어떻게 다루는가 | 테스트 정의는 사용자가 버전 관리에 넣는 자산이다. 도구가 말없이 파일명을 바꾸면 사용자의 diff 가 통째로 흔들린다 |
+| 그룹과 식별자의 관계 | **그룹이 곧 식별자** (`<접두어>-<번호>`, 그룹을 바꾸면 식별자도 바뀐다) | 그룹 이동이 **표시를 고치는 조작이 아니라 자산을 옮기는 조작**이 됐다. FR-444a·444b·444c 와 SC-628a 가 여기서 나왔다 |
+| 접두어를 정하는 방법 | **이름과 접두어를 따로 받는다** (「사용자관리 테스트」 + `USER`) | 한글 이름을 유지하면서 식별자를 짧게 둔다. 자동 생성은 한글에서 예측 불가능한 값이 나온다 |
+| 기존 `TC-###` 테스트 | **그대로 둔다.** `TC` 는 그룹 없음 접두어로 예약 | 업그레이드만으로는 사용자의 git diff 가 0줄이다. FR-445a·445b 가 여기서 나왔다 |
+| 삭제 되돌림 | **휴지통으로 — 복수·단건 모두** | 012 의 휴지통을 잇는다. 「삭제」가 개수에 따라 뜻이 달라지지 않는다 (SC-632) |
 
-나머지 항목은 1회차 검증에서 전부 통과했다. 「구현 세부가 새지 않는가」는 두 번 확인했다 —
-사용자 입력이 파일 경로·정규식·엔드포인트를 담고 있어 그대로 옮기기 쉬웠다. 요구사항에는
-「테스트 식별자」, 「실행 산출물」 같은 역할 명칭만 남겼다.
+**추측으로 닫지 않고 명시한 것 하나**: 번호를 프로젝트 전체에서 고유하게 둔다는 결정은
+질문하지 않고 Assumptions 에 근거와 함께 적었다 — 그룹마다 번호를 새로 매기면 옮길 때마다
+자리가 차 있을 수 있고, 전체 고유 번호는 그 충돌을 **구조로** 없앤다 (FR-444c 를 규칙이 아니라
+설계로 만족시킨다).
