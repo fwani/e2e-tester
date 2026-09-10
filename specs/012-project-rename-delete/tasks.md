@@ -212,3 +212,9 @@ T003 (paths.py) ∥ T006 (registry.py) ∥ T008 (domain/error.py)
 4. **휴지통을 `projects/` 안에 두지 않는다** — 스캔 제외 규칙이 새로 필요해지고, 빠뜨린
    경로에서 삭제한 프로젝트가 목록에 돌아온다 (T003).
 5. **확인 전에 요청을 보내지 않는다** (T033 · SC-617).
+
+---
+
+## Phase 7: Convergence (1회차)
+
+- [ ] T049 이름 변경이 **열린 프로젝트**를 대상으로 했을 때 `App` 의 `opened` 를 갱신한다 per FR-405 · SC-615 (partial) — `frontend/src/App.tsx:387` 이 `opened.name` 을 `TestList` 의 프로젝트 표시로 넘긴다. 목록 화면에서 열린 프로젝트의 이름을 고치고 「돌아가기」로 돌아가면 **옛 이름**이 보인다. 서버는 이미 맞다(`GET /api/project` 가 파일을 다시 읽는다) — 낡은 것은 화면이 들고 있는 사본이다. `ProjectSetup` 이 이름 변경 결과를 위로 올리고(`onProjectRenamed`), `App` 이 대상이 `opened.root` 와 같을 때만 `opened` 의 `name` 을 갈아 끼운다. `frontend/tests/ProjectRowActions.test.tsx` 에 검사를 더한다
