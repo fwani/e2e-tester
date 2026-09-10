@@ -39,14 +39,14 @@ FR-009(상호작용 상태 보존)와 SC-008(초점 표시 0건 유실)이 이�
 | S-03 | `button:disabled` | 점선 테두리·투명 배경·`--ink-3`·그림자 없음·`font-weight:500`·`cursor:not-allowed` | ✅ `ui/Button` BASE `disabled:*` |
 | S-04 | `button.ghost:hover` | `background: var(--sunken)` | ✅ `ui/Button` VARIANT.ghost `hover:bg-sunken` |
 | S-05 | `button.danger:hover` | `background: var(--fail-t)` | ✅ `ui/Button` VARIANT.danger `hover:bg-fail-t` |
-| S-06 | `input::placeholder`, `textarea::placeholder` | `color: var(--ink-3)` | ⬜ 폼 부품 (T024) |
-| S-07 | `input:disabled`, `select:disabled`, `textarea:disabled` | 투명 배경·점선 테두리·`--ink-3` | ⬜ 폼 부품 (T024) |
+| S-06 | `input::placeholder`, `textarea::placeholder` | `color: var(--ink-3)` | ✅ `ui/Field` Field `[&_input]:placeholder:text-ink-3` |
+| S-07 | `input:disabled`, `select:disabled`, `textarea:disabled` | 투명 배경·점선 테두리·`--ink-3` | ✅ `ui/Field` Field `[&_input]` disabled 계열 |
 | S-08 | `input.phase-name:hover:not(:disabled)` | `border-color: var(--hair-2)` | ⬜ 국면 이름 입력 (T026) |
 | S-09 | `input.phase-name:focus` | `border-color: var(--hair-2)`·`background: var(--panel)`·`outline: none` | ⬜ 국면 이름 입력 (T026) |
 | S-10 | `input.phase-name:disabled` | `border-color: transparent`·`color: var(--ink-2)` | ⬜ 국면 이름 입력 (T026) |
-| S-11 | `.tabs > button:disabled` | `border-style: solid`·`color: var(--ink-3)` | ⬜ 탭 부품 (T025) |
+| S-11 | `.tabs > button:disabled` | `border-style: solid`·`color: var(--ink-3)` | ✅ `ui/Table` Tabs `[&>button:disabled]` |
 | S-12 | `.segmented > button:disabled` | 투명 배경·`border-style: solid`·`--ink-3` | ⬜ 분절 조작 (T027) |
-| S-13 | `.srow-check input[type="checkbox"]:disabled` | `cursor: default`·`opacity: .4` | ⬜ Step 행 (T026) |
+| S-13 | `.srow-check input[type="checkbox"]:disabled` | `cursor: default`·`opacity: .4` | ✅ `ui/StepRow` StepCheck `[&_input:disabled]` |
 
 ### 클래스 규칙 (레이어 안에서도 특이도로 이길 수 있으나, 함께 옮긴다)
 
@@ -54,10 +54,10 @@ FR-009(상호작용 상태 보존)와 SC-008(초점 표시 0건 유실)이 이�
 |---|---|---|---|
 | S-14 | `:focus-visible` | `outline: 2px solid var(--run)`·`outline-offset: 2px` | ⬜ **전역** — T068 가드가 지킨다 |
 | S-15 | `.navlink:hover` | `background: var(--sunken)` | ⬜ 수식 군 (T027) |
-| S-16 | `.btn.file:focus-within` | `outline: 2px solid var(--run)`·`outline-offset: 2px` | ⬜ 파일 선택 (T024) |
-| S-17 | `.btn.disabled:focus-within` | `outline: 2px solid var(--hair-2)`·`outline-offset: 2px` | ⬜ 파일 선택 (T024) |
+| S-16 | `.btn.file:focus-within` | `outline: 2px solid var(--run)`·`outline-offset: 2px` | ✅ `ui/Field` FileButton `focus-within:outline-run` |
+| S-17 | `.btn.disabled:focus-within` | `outline: 2px solid var(--hair-2)`·`outline-offset: 2px` | ✅ `ui/Field` FileButton off `focus-within:outline-hair-2` |
 
-**진행**: 이관 5 / 17.
+**진행**: 이관 11 / 17. 남은 것은 S-08~S-10(국면 이름 입력)·S-12(분절)·S-14(전역 초점 링, T068 가드가 지킴)·S-15(`.navlink`).
 
 ## S-14 는 특별하다 — 지우는 것이 회귀다
 

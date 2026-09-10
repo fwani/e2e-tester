@@ -44,18 +44,18 @@ tokens.css 에 남은 의미 클래스 수  ==  이 표의 「완료」 아닌 �
 
 | 클래스 | 사용처 | 담당 | 행선지 | 상태 |
 |---|---|---|---|---|
-| `.why` | 133 | T021 | ui/Notice · ui/Toast | 미착수 |
+| `.why` | 133 | T021 | ui/Notice · ui/Toast | 구현 |
 | `.btn` | 1 | T024 | `ui/Button` — 남은 1곳은 `.btn.file`(파일 선택 label)이며 폼 부품 관할 | 교체 |
 | `.sm` | 1 | T027 | `ui/Button` size=sm 로 흡수 · 남은 사용은 다른 부품의 작은 변종 | 교체 |
-| `.row` | 54 | T025 | ui/Table · ui/Grid | 미착수 |
+| `.row` | 54 | T025 | ui/Table · ui/Grid | 구현 |
 | `.mono` | 45 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.chip` | 38 | T020 | ui/Chip · ui/Badge | 구현 |
 | `.line` | 35 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.lbl` | 31 | T024 | ui/Field · ui/FileInput | 미착수 |
-| `.pane` | 29 | T023 | ui/Pane · ui/Header | 미착수 |
+| `.lbl` | 31 | T024 | ui/Field · ui/FileInput | 구현 |
+| `.pane` | 29 | T023 | ui/Pane · ui/Header | 구현 |
 | `.strong-sm` | 28 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.fail-ink` | 27 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.spacer` | 27 | T023 | ui/Pane · ui/Header | 미착수 |
+| `.spacer` | 27 | T023 | ui/Pane · ui/Header | 구현 |
 | `.tint-warn` | 27 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.navlink` | 26 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.muted` | 22 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
@@ -63,19 +63,19 @@ tokens.css 에 남은 의미 클래스 수  ==  이 표의 「완료」 아닌 �
 | `.ai` | 13 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.danger` | 5 | T027 | `ui/Button` variant=danger 로 흡수 · 남은 사용은 `.op danger`(행 조작) | 교체 |
 | `.note` | 13 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.subtitle` | 12 | T023 | ui/Pane · ui/Header | 미착수 |
+| `.subtitle` | 12 | T023 | ui/Pane · ui/Header | 구현 |
 | `.num` | 9 | T020 | ui/Chip · ui/Badge | 미착수 |
-| `.title` | 9 | T023 | ui/Pane · ui/Header | 미착수 |
+| `.title` | 9 | T023 | ui/Pane · ui/Header | 구현 |
 | `.dim` | 8 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.field-label` | 7 | T024 | ui/Field · ui/FileInput | 미착수 |
+| `.field-label` | 7 | T024 | ui/Field · ui/FileInput | 구현 |
 | `.secondary` | 7 | T015 | `ui/Button` variant=default — 정본 주석이 「기본형이 곧 보조 조작」이라 적었다 | 구현 |
 | `.warn` | 7 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.rule-top` | 6 | T023 | ui/Pane · ui/Header | 미착수 |
+| `.rule-top` | 6 | T023 | ui/Pane · ui/Header | 구현 |
 | `.sunken` | 6 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.tint-fail` | 6 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.tint-run` | 6 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.off` | 1 | T019 | `ui/Button` variant=off 로 흡수 · 남은 사용은 상태 수식 | 교체 |
-| `.pane-hd` | 4 | T023 | ui/Pane · ui/Header | 미착수 |
+| `.pane-hd` | 4 | T023 | ui/Pane · ui/Header | 구현 |
 | `.pass` | 4 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.pass-ink` | 4 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.quiet` | 0 | T015 | `ui/Button` variant=quiet | 완료 |
@@ -83,75 +83,75 @@ tokens.css 에 남은 의미 클래스 수  ==  이 표의 「완료」 아닌 �
 | `.log` | 3 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.op` | 3 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.pill` | 3 | T020 | ui/Chip · ui/Badge | 미착수 |
-| `.rule-bottom` | 3 | T023 | ui/Pane · ui/Header | 미착수 |
+| `.rule-bottom` | 3 | T023 | ui/Pane · ui/Header | 구현 |
 | `.sel` | 3 | T020 | ui/Chip · ui/Badge | 미착수 |
 | `.textlink` | 3 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.band` | 2 | T020 | ui/Chip · ui/Badge | 미착수 |
 | `.fail` | 2 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.float` | 2 | T022 | ui/Modal · ui/Overlay | 미착수 |
-| `.grid-head` | 2 | T025 | ui/Table · ui/Grid | 미착수 |
-| `.key-cell` | 2 | T025 | ui/Table · ui/Grid | 미착수 |
+| `.float` | 2 | T022 | ui/Modal · ui/Overlay | 구현 |
+| `.grid-head` | 2 | T025 | ui/Table · ui/Grid | 구현 |
+| `.key-cell` | 2 | T025 | ui/Table · ui/Grid | 구현 |
 | `.loc` | 2 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.m` | 2 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.meta` | 2 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.modal` | 2 | T022 | ui/Modal · ui/Overlay | 미착수 |
-| `.modal-scrim` | 2 | T022 | ui/Modal · ui/Overlay | 미착수 |
+| `.modal` | 2 | T022 | ui/Modal · ui/Overlay | 구현 |
+| `.modal-scrim` | 2 | T022 | ui/Modal · ui/Overlay | 구현 |
 | `.n` | 2 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.notice` | 2 | T021 | ui/Notice · ui/Toast | 미착수 |
-| `.phase` | 2 | T026 | workbench 부품 | 미착수 |
-| `.phase-name` | 2 | T026 | workbench 부품 | 미착수 |
-| `.steps-ft` | 2 | T026 | workbench 부품 | 미착수 |
+| `.notice` | 2 | T021 | ui/Notice · ui/Toast | 구현 |
+| `.phase` | 2 | T026 | workbench 부품 | 구현 |
+| `.phase-name` | 2 | T026 | workbench 부품 | 구현 |
+| `.steps-ft` | 2 | T026 | workbench 부품 | 구현 |
 | `.warn-ink` | 2 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.addr` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.answer-q` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
+| `.answer-q` | 1 | T024 | ui/Field · ui/FileInput | 구현 |
 | `.bare` | 1 | T027 | 테두리 제거 수식 — 버튼 전용이 아니다. 유틸리티 조합 | 미착수 |
-| `.brand` | 1 | T023 | ui/Pane · ui/Header | 미착수 |
-| `.brand-name` | 1 | T023 | ui/Pane · ui/Header | 미착수 |
+| `.brand` | 1 | T023 | ui/Pane · ui/Header | 구현 |
+| `.brand-name` | 1 | T023 | ui/Pane · ui/Header | 구현 |
 | `.code-block` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.commit-bar` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
+| `.commit-bar` | 1 | T024 | ui/Field · ui/FileInput | 구현 |
 | `.d` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.danger-edge` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.divider` | 1 | T023 | ui/Pane · ui/Header | 미착수 |
+| `.divider` | 1 | T023 | ui/Pane · ui/Header | 구현 |
 | `.dot` | 1 | T020 | ui/Chip · ui/Badge | 미착수 |
-| `.field` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
-| `.file` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
-| `.file-input` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
+| `.field` | 1 | T024 | ui/Field · ui/FileInput | 구현 |
+| `.file` | 1 | T024 | ui/Field · ui/FileInput | 구현 |
+| `.file-input` | 1 | T024 | ui/Field · ui/FileInput | 구현 |
 | `.ghost` | 1 | T015 | `ui/Button` variant=ghost | 구현 |
-| `.hdr` | 1 | T023 | ui/Pane · ui/Header | 미착수 |
-| `.hint-line` | 1 | T021 | ui/Notice · ui/Toast | 미착수 |
-| `.ime-capture` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
+| `.hdr` | 1 | T023 | ui/Pane · ui/Header | 구현 |
+| `.hint-line` | 1 | T021 | ui/Notice · ui/Toast | 구현 |
+| `.ime-capture` | 1 | T024 | ui/Field · ui/FileInput | 구현 |
 | `.in-use` | 1 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.last-resort` | 1 | T020 | ui/Chip · ui/Badge | 미착수 |
 | `.name` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.notice-body` | 1 | T021 | ui/Notice · ui/Toast | 미착수 |
+| `.notice-body` | 1 | T021 | ui/Notice · ui/Toast | 구현 |
 | `.on` | 1 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.overlay-pane` | 1 | T022 | ui/Modal · ui/Overlay | 미착수 |
+| `.overlay-pane` | 1 | T022 | ui/Modal · ui/Overlay | 구현 |
 | `.paused` | 1 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.phase-progress` | 1 | T026 | workbench 부품 | 미착수 |
+| `.phase-progress` | 1 | T026 | workbench 부품 | 구현 |
 | `.pick` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.run` | 1 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.run-ink` | 1 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.scrim` | 1 | T022 | ui/Modal · ui/Overlay | 미착수 |
+| `.scrim` | 1 | T022 | ui/Modal · ui/Overlay | 구현 |
 | `.segmented` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.srow` | 1 | T026 | workbench 부품 | 미착수 |
-| `.srow-check` | 1 | T026 | workbench 부품 | 미착수 |
-| `.srow-name` | 1 | T026 | workbench 부품 | 미착수 |
-| `.srow-ops` | 1 | T026 | workbench 부품 | 미착수 |
-| `.steps` | 1 | T026 | workbench 부품 | 미착수 |
-| `.steps-hd` | 1 | T026 | workbench 부품 | 미착수 |
+| `.srow` | 1 | T026 | workbench 부품 | 구현 |
+| `.srow-check` | 1 | T026 | workbench 부품 | 구현 |
+| `.srow-name` | 1 | T026 | workbench 부품 | 구현 |
+| `.srow-ops` | 1 | T026 | workbench 부품 | 구현 |
+| `.steps` | 1 | T026 | workbench 부품 | 구현 |
+| `.steps-hd` | 1 | T026 | workbench 부품 | 구현 |
 | `.t` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.table` | 1 | T025 | ui/Table · ui/Grid | 미착수 |
-| `.tabs` | 1 | T025 | ui/Table · ui/Grid | 미착수 |
-| `.tfoot` | 1 | T025 | ui/Table · ui/Grid | 미착수 |
-| `.thead` | 1 | T025 | ui/Table · ui/Grid | 미착수 |
+| `.table` | 1 | T025 | ui/Table · ui/Grid | 구현 |
+| `.tabs` | 1 | T025 | ui/Table · ui/Grid | 구현 |
+| `.tfoot` | 1 | T025 | ui/Table · ui/Grid | 구현 |
+| `.thead` | 1 | T025 | ui/Table · ui/Grid | 구현 |
 | `.tint-pass` | 1 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.toast` | 1 | T021 | ui/Notice · ui/Toast | 미착수 |
-| `.toast-body` | 1 | T021 | ui/Notice · ui/Toast | 미착수 |
-| `.toast-layer` | 1 | T021 | ui/Notice · ui/Toast | 미착수 |
-| `.body` | 0 | T023 | ui/Pane · ui/Header · **사용 0 — 삭제 후보** | 미착수 |
+| `.toast` | 1 | T021 | ui/Notice · ui/Toast | 구현 |
+| `.toast-body` | 1 | T021 | ui/Notice · ui/Toast | 구현 |
+| `.toast-layer` | 1 | T021 | ui/Notice · ui/Toast | 구현 |
+| `.body` | 0 | T023 | ui/Pane · ui/Header · **사용 0 — 삭제 후보** | 구현 |
 | `.disabled` | 0 | T024 | `ui/Button` 은 `:disabled` 로 처리 · `.btn.disabled` 는 파일 선택 label 관할 | 교체 |
 | `.left` | 0 | T027 | 유틸리티 조합 (부품 아님) · **사용 0 — 삭제 후보** | 미착수 |
 | `.tint-ai` | 0 | T019 | ui/tone.ts + 상태 유틸 · **사용 0 — 삭제 후보** | 미착수 |
-| `.trow` | 0 | T025 | ui/Table · ui/Grid · **사용 0 — 삭제 후보** | 미착수 |
+| `.trow` | 0 | T025 | ui/Table · ui/Grid · **사용 0 — 삭제 후보** | 구현 |
 
 **미배정 0개**: 없음

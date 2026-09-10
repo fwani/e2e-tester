@@ -30,6 +30,8 @@
 import { describe, expect, it } from "vitest";
 
 import { VISUAL_LANGUAGE_EXCEPTIONS, isRegistered } from "../src/theme/exceptions";
+
+import { generatedClasses } from "./helpers/tailwind";
 import tokens from "../src/theme/tokens.css?raw";
 import uiContract from "../../specs/007-unify-test-screens/contracts/ui-contract.md?raw";
 
@@ -84,6 +86,14 @@ function stripComments(text: string): string {
 function repoPath(globKey: string): string {
   return globKey.replace(/^\.\.\//, "frontend/");
 }
+
+/**
+ * Tailwind 가 실제로 만들어 내는 클래스. 015 T053.
+ *
+ * 이름 규칙을 형태로 추측하지 않는다 — 어간 목록으로 갈랐다가 정본 `.grid-head` 를
+ * `grid-*` 유틸리티로 잘못 본 전례가 있다.
+ */
+const TAILWIND_CLASSES = generatedClasses();
 
 interface Finding {
   file: string;
@@ -217,6 +227,20 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
       **한계 — 문자열 리터럴만 본다.** `` className={`chip ${variant}`} `` 의 `${…}` 는
       클래스 이름이 아니라 식이므로 통째로 버린다. 그 계산된 변형은 `theme/tone.ts` 의
       `as const` 표가 좁히고, 아래 「정본이 형태 27종을 전부 선언한다」가 받친다.
+
+      ## 2026-09-10 (015 T053) — 판정 기준을 넓혔다. 검증 대상은 그대로다
+
+      015 가 Tailwind 를 들이면서 **형태의 출처가 둘이 됐다** — 정본과 Tailwind 산출물.
+      「정본에 있는가」만 물으면 `bg-panel`·`flex-none` 같은 정상 유틸리티가 전부 위반이
+      된다. 그것은 이 검사가 막으려던 것이 아니다.
+
+      이 검사가 묻는 것은 처음부터 **「그 자리가 아무 형태도 받지 못하는가」**였다
+      (008 에서 `.badge`→`.chip` 통일 후 6개 파일이 존재하지 않는 클래스를 가리켰고
+      675건이 전부 통과했다). 그 질문은 그대로 두고, 답이 될 수 있는 곳을 하나 늘린다.
+
+      Tailwind 쪽 판정은 **산출물을 실제로 조회한다** — 이름 규칙을 추측하지 않는다
+      (`tests/helpers/tailwind.ts`). 같은 것을 가드 G-B 가 더 촘촘히 보므로, 여기는
+      008 이 세운 축(G-1·G-2·G-3·G-6)의 일관성을 지키는 자리로 남는다.
     */
     const CLASS_ATTR = /className=(?:"([^"]*)"|\{`([^`]*)`\})/g;
     const orphans: string[] = [];
@@ -226,7 +250,7 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
         const literal = m[1] ?? (m[2] as string).replace(/\$\{[^}]*\}/g, " ");
         for (const name of literal.split(/\s+/)) {
           if (!/^[a-z][a-z0-9-]*$/.test(name)) continue;
-          if (CANON_CLASSES.has(name) || allowed(file, "G-3", name)) continue;
+          if (CANON_CLASSES.has(name) || TAILWIND_CLASSES.has(name) || allowed(file, "G-3", name)) continue;
           orphans.push(`${file} — .${name}`);
         }
       }

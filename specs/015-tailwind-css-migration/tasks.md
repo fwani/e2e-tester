@@ -150,12 +150,12 @@ className="btn sm quiet"                (이미 겪었다)
 
 - [ ] T019 [P] [US2] 상태·색조 군을 `frontend/src/ui/tone.ts` + 관련 부품으로 해체한다 — `.pass` `.fail` `.warn` `.run` `.ai` `.paused` `.pass-ink` `.fail-ink` `.warn-ink` `.run-ink` `.ai-ink` `.tint-pass` `.tint-fail` `.tint-warn` `.tint-run` `.tint-ai` `.in-use` `.off` `.on`. 기존 `theme/tone.ts` 와 합류시킨다. **새 색을 만들지 않는다** (FR-003 · 008 규율)
 - [X] T020 [P] [US2] 칩·배지 군을 `frontend/src/ui/Chip.tsx`·`Badge.tsx` 로 해체한다 — `.chip` `.pill` `.dot` `.band` `.num` `.sel` `.last-resort`. `Badges.test.tsx`·`OutcomeVocabulary.test.tsx` 가 검증 대상
-- [ ] T021 [P] [US2] 알림·토스트 군을 `frontend/src/ui/Notice.tsx`·`Toast.tsx` 로 해체한다 — `.notice` `.notice-body` `.toast` `.toast-body` `.toast-layer` `.why` `.hint-line`. **`tokens.css` 주석이 기록한 두 사고(특이도로 모든 토스트가 흰색이 된 일, 기준 크기가 `height` 를 이겨 두 줄이 잘린 일)가 재발하지 않는지 확인한다.** `NoticesAreToasts.test.tsx`·`ToastPlacement.test.tsx` 가 검증 대상
-- [ ] T022 [P] [US2] 모달·층 군을 `frontend/src/ui/Modal.tsx`·`Overlay.tsx` 로 해체한다 — `.modal` `.modal-scrim` `.scrim` `.overlay-pane` `.float`. 승강(z-index) 관계가 보존되어야 한다
-- [ ] T023 [P] [US2] 판·머리 군을 `frontend/src/ui/Pane.tsx`·`Header.tsx` 로 해체한다 — `.pane` `.pane-hd` `.hdr` `.body` `.title` `.subtitle` `.brand` `.brand-name` `.divider` `.spacer` `.rule-top` `.rule-bottom`
-- [ ] T024 [P] [US2] 폼·필드 군을 `frontend/src/ui/Field.tsx`·`FileInput.tsx` 로 해체한다 — `.field` `.field-label` `.lbl` `.file` `.file-input` `.ime-capture` `.answer-q` `.commit-bar`. **`.ime-capture` 의 한글 입력 처리가 보존되어야 한다** (FR-010)
-- [ ] T025 [P] [US2] 표·격자 군을 `frontend/src/ui/Table.tsx`·`Grid.tsx` 로 해체한다 — `.table` `.thead` `.tfoot` `.trow` `.row` `.grid-head` `.key-cell` `.tabs`. `LocatorPriorityTable.test.tsx` 가 검증 대상
-- [ ] T026 [P] [US2] Step 행 군을 `frontend/src/ui/` 또는 기존 `components/workbench/` 로 해체한다 — `.steps` `.steps-hd` `.steps-ft` `.srow` `.srow-check` `.srow-name` `.srow-ops` `.phase` `.phase-name` `.phase-progress`. **행 높이 52px 고정이 유지되어야 한다** (009 FR-304). `StepRowLayout`·`DesignStepRow`·`StepRowStates`·`StepListPerformance` 가 검증 대상
+- [X] T021 [P] [US2] 알림·토스트 군을 `frontend/src/ui/Notice.tsx`·`Toast.tsx` 로 해체한다 — `.notice` `.notice-body` `.toast` `.toast-body` `.toast-layer` `.why` `.hint-line`. **`tokens.css` 주석이 기록한 두 사고(특이도로 모든 토스트가 흰색이 된 일, 기준 크기가 `height` 를 이겨 두 줄이 잘린 일)가 재발하지 않는지 확인한다.** `NoticesAreToasts.test.tsx`·`ToastPlacement.test.tsx` 가 검증 대상
+- [X] T022 [P] [US2] 모달·층 군을 `frontend/src/ui/Modal.tsx`·`Overlay.tsx` 로 해체한다 — `.modal` `.modal-scrim` `.scrim` `.overlay-pane` `.float`. 승강(z-index) 관계가 보존되어야 한다
+- [X] T023 [P] [US2] 판·머리 군을 `frontend/src/ui/Pane.tsx`·`Header.tsx` 로 해체한다 — `.pane` `.pane-hd` `.hdr` `.body` `.title` `.subtitle` `.brand` `.brand-name` `.divider` `.spacer` `.rule-top` `.rule-bottom`
+- [X] T024 [P] [US2] 폼·필드 군을 `frontend/src/ui/Field.tsx`·`FileInput.tsx` 로 해체한다 — `.field` `.field-label` `.lbl` `.file` `.file-input` `.ime-capture` `.answer-q` `.commit-bar`. **`.ime-capture` 의 한글 입력 처리가 보존되어야 한다** (FR-010)
+- [X] T025 [P] [US2] 표·격자 군을 `frontend/src/ui/Table.tsx`·`Grid.tsx` 로 해체한다 — `.table` `.thead` `.tfoot` `.trow` `.row` `.grid-head` `.key-cell` `.tabs`. `LocatorPriorityTable.test.tsx` 가 검증 대상
+- [X] T026 [P] [US2] Step 행 군을 `frontend/src/ui/` 또는 기존 `components/workbench/` 로 해체한다 — `.steps` `.steps-hd` `.steps-ft` `.srow` `.srow-check` `.srow-name` `.srow-ops` `.phase` `.phase-name` `.phase-progress`. **행 높이 52px 고정이 유지되어야 한다** (009 FR-304). `StepRowLayout`·`DesignStepRow`·`StepRowStates`·`StepListPerformance` 가 검증 대상
 - [ ] T027 [P] [US2] 타이포·수식 군을 유틸리티로 해체한다 — `.mono` `.muted` `.dim` `.quiet` `.meta` `.note` `.log` `.code-block` `.addr` `.loc` `.line` `.name` `.left` `.sunken` `.strong-sm` `.sm` `.d` `.m` `.n` `.t` `.danger-edge` `.op` `.pick` `.segmented` `.textlink` `.navlink`. 부품이 아니라 수식이므로 컴포넌트를 만들지 않고 유틸리티 조합으로 옮긴다.
       **`.disabled`·`.bare` 는 T015(Button), `.float` 은 T022(모달·층) 관할이므로 여기서 다루지 않는다** — 병렬 실행 시 같은 정의를 두 곳에서 지우는 것을 막는다
 - [ ] T028 [US2] 4-A 완료를 확인한다 — `tokens.css` 에 의미 클래스 0개, 대응표 「완료」 109/109, 가드 G-C 0건, 테스트 전량 통과, L2 대조 불일치 0.
@@ -206,8 +206,8 @@ className="btn sm quiet"                (이미 겪었다)
 
 **Independent Test**: 화면 코드에 색 리터럴을 일부러 넣으면 테스트가 실패한다.
 
-- [ ] T052 [P] [US3] `frontend/scripts/count-violations.mjs` 를 새 체계에 맞게 갱신한다 — G-1(색 리터럴)은 유지하고, G-2(시각 속성 인라인)의 근거였던 「허용 목록」이 폐지됐으므로 판정을 LC-3(런타임 계산값만)으로 바꾼다. **규칙의 정의처가 이 파일이라는 성질을 유지한다** — 테스트가 여기서 함수를 가져다 쓴다
-- [ ] T053 [P] [US3] `frontend/tests/VisualLanguage.test.tsx` 의 판정 방법을 전환한다. 이 테스트는 「화면 코드가 `className` 으로 정본을 소비하는가」를 봤는데, 의미 클래스가 사라져 전제가 없어졌다. **같은 목적(정본 이탈 없음)을 새 체계에서 확인하도록 고친다 — 삭제하지 않는다** (US3 시나리오 4). 무엇을 왜 바꿨는지 파일 머리주석에 적는다
+- [X] T052 [P] [US3] `frontend/scripts/count-violations.mjs` 를 새 체계에 맞게 갱신한다 — G-1(색 리터럴)은 유지하고, G-2(시각 속성 인라인)의 근거였던 「허용 목록」이 폐지됐으므로 판정을 LC-3(런타임 계산값만)으로 바꾼다. **규칙의 정의처가 이 파일이라는 성질을 유지한다** — 테스트가 여기서 함수를 가져다 쓴다
+- [X] T053 [P] [US3] `frontend/tests/VisualLanguage.test.tsx` 의 판정 방법을 전환한다. 이 테스트는 「화면 코드가 `className` 으로 정본을 소비하는가」를 봤는데, 의미 클래스가 사라져 전제가 없어졌다. **같은 목적(정본 이탈 없음)을 새 체계에서 확인하도록 고친다 — 삭제하지 않는다** (US3 시나리오 4). 무엇을 왜 바꿨는지 파일 머리주석에 적는다
 - [ ] T054 [P] [US3] `frontend/tests/DesignTokens.test.tsx` 를 확인·갱신한다 — 정본 자체는 바뀌지 않았으므로 통과해야 한다. 통과하지 않으면 정본을 건드린 것이다 (C-2 위반)
 - [ ] T055 [P] [US3] `frontend/src/theme/exceptions.ts` 의 죽은 예외를 정리한다 — 등록됐으나 쓰이지 않는 항목을 가드가 보고하면 삭제한다 (008 C-14)
 - [ ] T056 [US3] SC-011 을 실증한다 — `Phase` 에 국면을 임시로 추가하고 `npm run typecheck` 가 **실패하는지** 확인한다. 통과하면 FR-020a 가 깨진 것이다. 확인 후 되돌리고 결과를 기록 ([quickstart.md](quickstart.md) §1-7)

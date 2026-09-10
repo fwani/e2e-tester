@@ -54,10 +54,16 @@ grep -rc 'style={{' frontend/src --include='*.tsx' | grep -v ':0$'
 ### 1-3. 값 리터럴 (SC-004, 가드 G-A)
 
 ```bash
-node frontend/scripts/count-violations.mjs
+cd frontend && npm test -- --run VisualLanguage    # 판정
+node frontend/scripts/count-violations.mjs         # 고칠 곳 보기 (원시 계수)
 ```
 
-**기대**: 합계 0. 전환 전에도 0 이었으므로 **0 을 유지**하는 것이 목표다.
+**기대**: 테스트 통과.
+
+> **두 수치가 다를 수 있다.** 계수기는 예외 등록부를 보지 않는 **원시 계수**이고,
+> 판정은 테스트가 한다 — 규칙으로 세고 `theme/exceptions.ts` 로 거른 뒤 단언한다.
+> 계수기 합계가 0 이 아니어도 그것이 곧 위반은 아니다. 등록된 정당한 이탈이 몇 개인지
+> 보려면 계수기를, 「위반이 있는가」를 물으려면 테스트를 쓴다.
 
 가드가 살아 있는지 확인한다 — 일부러 어긴 뒤 되돌린다.
 
