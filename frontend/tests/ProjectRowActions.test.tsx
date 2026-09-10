@@ -155,6 +155,25 @@ describe("이름 인라인 편집 (US1)", () => {
     expect(patch?.body).toEqual({ root: managed.root, name: "결제 회귀" });
   });
 
+  it("열린 프로젝트를 고치면 그 사실을 위로 올린다 (FR-405 · converge T049)", async () => {
+    // 서버는 이미 맞다 — `GET /api/project` 가 파일을 다시 읽는다. 낡은 것은 `App` 이
+    // 들고 있는 사본이고, 그 값이 목록 화면의 프로젝트 표시로 간다. 올리지 않으면
+    // 사용자는 고친 이름이 되돌아간 것을 본다.
+    stub({
+      "/api/project/list": listing([managed]),
+      "/api/project/name": { body: { ...managed, name: "결제 회귀" } },
+    });
+    const renamed = vi.fn();
+    render(<ProjectSetup onOpened={() => {}} onProjectRenamed={renamed} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "이름 바꾸기" }));
+    const input = screen.getByLabelText("프로젝트 이름");
+    fireEvent.change(input, { target: { value: "결제 회귀" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() => expect(renamed).toHaveBeenCalledWith(managed.root, "결제 회귀"));
+  });
+
   it("빈 이름은 요청을 만들지 않고 그 자리에서 사유를 말한다 (FR-403)", async () => {
     const calls = stub({ "/api/project/list": listing([managed]) });
     render(<ProjectSetup onOpened={() => {}} />);

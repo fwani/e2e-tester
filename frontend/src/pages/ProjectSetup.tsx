@@ -44,6 +44,7 @@ export function ProjectSetup({
   onOpened,
   onCancel,
   onProjectClosed,
+  onProjectRenamed,
 }: {
   onOpened: (p: ProjectView) => void;
   /**
@@ -63,6 +64,14 @@ export function ProjectSetup({
    * 않으면 사용자는 사라진 프로젝트를 가리키는 「돌아가기」를 계속 본다.
    */
   onProjectClosed?: () => void;
+  /**
+   * 열려 있는 프로젝트의 이름이 바뀌었다 (012 FR-405 · converge T049).
+   *
+   * **서버는 이미 맞다** — `GET /api/project` 는 파일을 다시 읽는다. 낡은 것은 `App` 이
+   * 들고 있는 `ProjectView` 사본이고, 그 값이 목록 화면의 프로젝트 표시로 간다. 올리지
+   * 않으면 사용자는 고친 이름이 되돌아간 것을 본다.
+   */
+  onProjectRenamed?: (root: string, name: string) => void;
 }) {
   const [mode, setMode] = useState<Mode>({ kind: "list" });
   /**
@@ -139,6 +148,7 @@ export function ProjectSetup({
               void project.forget(root).then(reload).catch(() => reload());
             }}
             onRenamed={(updated) => {
+              onProjectRenamed?.(updated.root, updated.name);
               // 그 줄만 갈아 끼운다. 목록 전체를 다시 부르면 편집 중이던 다른 줄의
               // 상태가 날아간다 (UC-012-02).
               setProjects((rows) =>

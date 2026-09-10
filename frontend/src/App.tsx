@@ -358,6 +358,15 @@ export function App() {
           프로젝트를 가리키는 「돌아가기」를 계속 보고, 그것을 누르면 없는 것을 그린다.
         */
         onProjectClosed={() => setOpened(null)}
+        /*
+          목록에서 고친 이름이 다른 화면에도 나타나야 한다 (012 FR-405).
+
+          **경로가 같을 때만 갈아 끼운다.** 목록의 어느 줄에서나 이름을 고칠 수 있으므로,
+          지금 열려 있는 것과 다른 프로젝트를 고쳤는데 열린 것의 이름을 바꾸면 안 된다.
+        */
+        onProjectRenamed={(root, name) =>
+          setOpened((p) => (p !== null && p.root === root ? { ...p, name } : p))
+        }
       />
     );
   }
