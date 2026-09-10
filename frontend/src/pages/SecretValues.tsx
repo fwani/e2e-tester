@@ -76,8 +76,8 @@ export function SecretValues({
 
   return (
     <main style={{ maxWidth: 720, margin: "32px auto", padding: "0 16px" }}>
-      <div className="row" style={{ gap: 8, marginBottom: 16 }}>
-        <h1 className="title" style={{ margin: 0 }}>비밀 값</h1>
+      <div className="flex items-center gap-s2 mb-s4">
+        <h1 className="font-sans text-[20px] font-bold leading-[1.3] m-0">비밀 값</h1>
         <span className="spacer" />
         {onManageKeys && (
           <Button onClick={onManageKeys}>
@@ -94,8 +94,7 @@ export function SecretValues({
       {mismatched && (
         <p
           role="alert"
-          className="tint-fail fail-ink"
-          style={{ padding: "8px 10px" }}
+          className="bg-fail-t border border-fail-line rounded-base text-fail py-s2 px-[10px]"
         >
           공개키가 교체되었습니다. 기존 암호문은 새 키로 읽을 수 없으므로 **모든 값을 다시
           입력**해야 합니다.
@@ -111,8 +110,7 @@ export function SecretValues({
       {notice !== null && (
         <p
           role="status"
-          className="tint-warn"
-          style={{ padding: "8px 10px" }}
+          className="bg-warn-t border border-warn-line rounded-base py-s2 px-[10px]"
         >
           {notice}
         </p>
@@ -126,22 +124,21 @@ export function SecretValues({
       )}
 
       <section
-        className="pane"
-        style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8 }}
+        className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-s2"
       >
-        <div className="row" style={{ gap: 8 }}>
+        <div className="flex items-center gap-s2">
           <strong>보관된 변수</strong>
           <span className="chip">{data?.names.length ?? 0}</span>
         </div>
 
         {(data?.names.length ?? 0) === 0 ? (
-          <p className="why" style={{ margin: 0 }}>
+          <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
             보관된 값이 없습니다.
           </p>
         ) : (
-          <ul className="line" style={{ margin: 0, paddingLeft: 18 }}>
+          <ul className="font-sans text-[13px] leading-[1.4] m-0 pl-[18px]">
             {data?.names.map((entry) => (
-              <li key={entry.name} className="row" style={{ gap: 8 }}>
+              <li key={entry.name} className="flex items-center gap-s2">
                 <span className="mono">{entry.name}</span>
                 <span className="chip pass">보관됨</span>
                 <span className="spacer" />
@@ -166,19 +163,13 @@ export function SecretValues({
           </ul>
         )}
 
-        <p className="why" style={{ margin: 0 }}>
+        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
           값은 어떤 화면에도 표시되지 않습니다. 서버에 값을 돌려주는 경로가 없습니다.
         </p>
       </section>
 
       <section
-        className="pane sunken"
-          style={{ padding: 14,
-          marginTop: 16,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
+        className="bg-panel border border-hair rounded-base bg-sunken-2 p-[14px] mt-s4 flex flex-col gap-s2"
       >
         <strong>값 입력·재입력</strong>
         <label htmlFor="secret-name">변수 이름</label>
@@ -197,7 +188,7 @@ export function SecretValues({
           onChange={(e) => setValue(e.target.value)}
           autoComplete="off"
         />
-        <p className="why" style={{ margin: 0 }}>
+        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
           입력한 값은 공개키로 즉시 봉인되어 저장됩니다. 비밀키는 필요하지 않습니다.
           같은 이름으로 다시 넣으면 이전 값을 대체합니다.
         </p>

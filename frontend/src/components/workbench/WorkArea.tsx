@@ -108,7 +108,7 @@ export function WorkArea({
           </Section>
 
           <Section title="만드는 방법">
-            <div style={{ display: "flex", gap: 14 }}>
+            <div className="flex gap-[14px]">
               <ModeCard
                 mode="record"
                 title="직접 녹화"
@@ -136,8 +136,7 @@ export function WorkArea({
           {work.mode === "ai" && work.aiReady !== null && !work.aiReady.available && (
             <div
               role="status"
-              className="tint-warn line"
-              style={{ padding: "10px 12px", whiteSpace: "pre-wrap" }}
+              className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] py-[10px] px-s3 whitespace-pre-wrap"
             >
               {work.aiReady.reason ?? "AI 를 사용할 수 없습니다."}
             </div>
@@ -173,7 +172,7 @@ export function WorkArea({
               </span>
             )}
             {/* 001 FR-064 — 지시문은 기록이며 저장 대상이 아니다. 그 사실을 미리 말한다 */}
-            <p className="why" style={{ margin: 0 }}>
+            <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
               지시문은 테스트로 저장되지 않습니다. 만들어진 Step 만 저장됩니다.
             </p>
           </Section>
@@ -202,11 +201,11 @@ export function WorkArea({
 
           <Section title="진행">
             {work.messages.length === 0 ? (
-              <p className="why mono" style={{ margin: 0 }}>
+              <p className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono m-0">
                 아직 기록이 없습니다.
               </p>
             ) : (
-              <ol className="mono why" style={{ margin: 0, paddingLeft: 18 }}>
+              <ol className="font-mono font-sans text-[11px] leading-[1.4] text-ink-3 m-0 pl-[18px]">
                 {work.messages.map((m, i) => (
                   <li key={`${i}-${m}`}>{m}</li>
                 ))}
@@ -248,7 +247,7 @@ export function WorkArea({
       {work.kind === "failure_detail" && (
         <>
           <Section title={`실패 — ${work.step.label}`}>
-            <p className="line fail-ink" style={{ margin: 0 }}>
+            <p className="font-sans text-[13px] leading-[1.4] text-fail m-0">
               {work.step.error_message ?? "실패 이유가 기록되지 않았습니다."}
             </p>
           </Section>
@@ -261,7 +260,7 @@ export function WorkArea({
           */}
           {work.step.locator_attempts.length > 0 && (
             <Section title="시도한 LOCATOR (우선순위 순)">
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="flex flex-col gap-[6px]">
                 {work.step.locator_attempts.map((a) => (
                   <div
                     key={`${a.candidate}-${a.expression}`}
@@ -270,7 +269,7 @@ export function WorkArea({
                     <span className={a.matched ? "pass-ink" : "fail-ink"}>
                       {a.matched ? "✓" : "×"}
                     </span>
-                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <span className="flex-1 min-w-0 overflow-hidden text-ellipsis">
                       {a.expression}
                     </span>
                   </div>
@@ -279,7 +278,7 @@ export function WorkArea({
                   004 FR-121 — **실제로 기다린 시간**이다. 예전에는 후보별 대기 중
                   최댓값을 "timeout" 이라 불렀는데, 그것은 설정값도 실측값도 아니었다.
                 */}
-                <div className="why mono" style={{ paddingLeft: 20 }}>
+                <div className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono pl-[20px]">
                   {`요소를 ${work.step.element_wait_ms} ms 기다렸습니다`}
                 </div>
               </div>
@@ -292,8 +291,7 @@ export function WorkArea({
           {work.diagnosis !== null && (
             <div
               role="note"
-              className="tint-warn line"
-              style={{ padding: "12px 14px" }}
+              className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] py-s3 px-[14px]"
             >
               {work.diagnosis}
             </div>
@@ -321,7 +319,7 @@ export function WorkArea({
 
           {/* FR-216 — 저장을 막지 않는 것들. 경고로만 알린다. */}
           {work.warnings.length > 0 && (
-            <ul className="warn-ink line" style={{ margin: 0, paddingLeft: 18 }}>
+            <ul className="text-warn font-sans text-[13px] leading-[1.4] m-0 pl-[18px]">
               {work.warnings.map((w) => (
                 <li key={w}>{w}</li>
               ))}
@@ -334,8 +332,7 @@ export function WorkArea({
           {work.stale !== null && (
             <div
               role="alert"
-              className="tint-warn"
-              style={{ padding: 14 }}
+              className="bg-warn-t border border-warn-line rounded-base p-[14px]"
             >
               <strong className="strong-sm">
                 ⚠ 이 테스트의 정의 파일이 편집을 시작한 뒤에 바뀌었습니다.
@@ -344,7 +341,7 @@ export function WorkArea({
                 파일 밖에서 고친 내용이 있습니다. 어떻게 할지 고르세요.
               </p>
               {/* 무엇을 버리는지 라벨에 적는다 (006 FR-209 · ui-contract §7). */}
-              <div className="row" style={{ gap: 8 }}>
+              <div className="flex items-center gap-s2">
                 <Button size="sm" onClick={onReload}>
                   {staleReloadLabel(work.pendingCount)}
                 </Button>
@@ -416,7 +413,7 @@ function ModeCard({
     >
       <span className="subtitle">{title}</span>
       <span className="note">{summary}</span>
-      <span style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+      <span className="flex flex-col gap-[5px]">
         {bullets.map((b) => (
           <span key={b} className="why mono">
             {b}
@@ -429,7 +426,7 @@ function ModeCard({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div className="flex flex-col gap-[6px]">
       <div className="lbl">{title}</div>
       {children}
     </div>
@@ -472,13 +469,12 @@ function AlwaysVisibleFailure({
     ) : null;
   if (error === null && blocked === null) return placeholder;
   return (
-    <div data-always-visible-failure style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div data-always-visible-failure className="flex flex-col gap-[10px]">
       {error !== null && <ErrorNotice error={error} />}
       {blocked !== null && (
         <div
           role="alert"
-          className="tint-fail"
-          style={{ padding: "12px 14px" }}
+          className="bg-fail-t border border-fail-line rounded-base py-s3 px-[14px]"
         >
           <strong className="strong-sm fail-ink">AI 가 막혔습니다</strong>
           {blocked.attempted !== null && (
@@ -589,7 +585,7 @@ function BlockedAnswer({
   return (
     <div
       data-blocked-answer
-      style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}
+      className="flex flex-col gap-[6px] mb-[10px]"
     >
       {/*
         **질문은 라벨이 아니다.** `.lbl` 은 11px 대문자 모노이고 한 문장을 읽는 형태가
@@ -600,7 +596,7 @@ function BlockedAnswer({
         {question !== null ? "AI 의 질문" : "AI 에게 알려 주기"}
       </label>
       {question !== null && (
-        <p className="answer-q" style={{ margin: 0 }} data-blocked-question>
+        <p className="font-sans text-[13px] leading-[1.4] text-ink m-0" data-blocked-question>
           {question}
         </p>
       )}
@@ -628,9 +624,9 @@ function BlockedAnswer({
             ? "여기에 답을 적으면 AI 가 그 자리에서 이어서 진행합니다."
             : "무엇을 하면 되는지 알려 주면 AI 가 이어서 진행합니다. 예) 저장 버튼은 오른쪽 위 「등록」입니다."
         }
-        style={{ minHeight: "auto" }}
+        className="min-h-auto"
       />
-      <div className="row" style={{ gap: 8 }}>
+      <div className="flex items-center gap-s2">
         <Button
           size="sm" variant="primary"
           data-blocked-answer-send

@@ -214,16 +214,16 @@ export function StepDetail({
           aria-label="닫기"
           size="sm" variant="quiet"
           onClick={onClose}
-          style={{ padding: "0 7px" }} >
+          layout="py-0 px-[7px]" >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M4 4l8 8M12 4l-8 8" />
           </svg>
         </Button>
       </div>
 
-      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <div className="p-s4 flex flex-col gap-s4">
+        <div className="flex flex-col gap-[10px]">
+          <div className="flex items-center gap-[10px]">
             <div className="num">{stepNumber(detail.index)}</div>
             {step !== null && (
               <>
@@ -247,8 +247,7 @@ export function StepDetail({
         {detail.failure !== null && (
           <div
             role="note"
-            className="tint-fail line fail-ink"
-            style={{ padding: "12px 14px" }}
+            className="bg-fail-t border border-fail-line rounded-base font-sans text-[13px] leading-[1.4] text-fail py-s3 px-[14px]"
           >
             {detail.failure.message ?? "실패 이유가 기록되지 않았습니다."}
           </div>
@@ -311,7 +310,7 @@ export function StepDetail({
                     )}
                   </>
                 ) : (
-                  <label className="row" style={{ gap: 6, marginTop: 6 }}>
+                  <label className="flex items-center gap-s2 gap-[6px] mt-[6px]">
                     <input
                       type="checkbox"
                       data-action="step.markSensitive"
@@ -335,7 +334,7 @@ export function StepDetail({
                 )}
 
                 {secretOpen && (
-                  <div style={{ marginTop: 8 }}>
+                  <div className="mt-s2">
                     <InlineSecretInput
                       currentName={alreadyReference ? referenceName(value) : null}
                       busy={busy}
@@ -414,7 +413,7 @@ export function StepDetail({
                 data-step-shot-image
                 src={shot.url}
                 alt={`${stepNumber(detail.index)} 이 끝난 시점의 화면`}
-                style={{ display: "block", width: "100%", height: "auto" }}
+                className="block w-full h-auto"
                 /*
                   011 FR-396b — **파일이 사라졌을 수 있다.**
 
@@ -430,8 +429,7 @@ export function StepDetail({
             ) : (
               <div
                 data-step-shot-missing
-                className="why"
-                style={{ padding: "12px" }}
+                className="font-sans text-[11px] leading-[1.4] text-ink-3 p-s3"
               >
                 {shotBroken ? MISSING_SHOT_REASON.superseded : shot.note}
               </div>
@@ -454,15 +452,15 @@ export function StepDetail({
                 className={`row rule-top why mono${a.matched ? "" : " muted"}`}
                 style={{ padding: "8px 12px" }}
               >
-                <span className="key-cell" style={{ width: 84 }}>
+                <span className="font-bold w-[84px]">
                   {a.candidate}
                 </span>
-                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                <span className="flex-1 min-w-0 overflow-hidden text-ellipsis">
                   {a.expression}
                 </span>
-                <span style={{ width: 54, textAlign: "right" }}>{a.match_count}개</span>
-                <span style={{ width: 62, textAlign: "right" }}>{a.waited_ms} ms</span>
-                <span className="key-cell" style={{ width: 44, textAlign: "right" }}>
+                <span className="w-[54px] text-right">{a.match_count}개</span>
+                <span className="w-[62px] text-right">{a.waited_ms} ms</span>
+                <span className="font-bold w-[44px] text-right">
                   {a.matched ? "맞음" : "아님"}
                 </span>
               </div>
@@ -517,7 +515,7 @@ export function StepDetail({
           조작은 **감추지 않는다.** 쓸 수 없으면 비활성으로 남고 이유와 해소 방법이
           붙는다 (FR-234). 「해당 없음」인 국면에서만 `ActionButton` 이 `null` 을 낸다.
         */}
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <div className="flex gap-[10px] flex-wrap">
           <ActionButton
             action="step.update"
             capability={capabilities["step.update"]}

@@ -412,7 +412,7 @@ export function EditView({
 
   if (view === null || test === null) {
     return (
-      <main style={{ padding: 32 }} className="muted">
+      <main className="p-s6 text-ink-2">
         불러오는 중…
       </main>
     );
@@ -1031,7 +1031,7 @@ export function EditView({
           current !== null ? (
             <>
               {/* Step 종류는 편집 대상이 아니다 — 지우고 새로 넣는 일이다 (006 FR-191). */}
-              <p className="why" style={{ margin: 0 }}>
+              <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
                 {lockedFieldNotice(
                   lockedReason("steps[].type") ?? "delete_and_insert_instead",
                 )}
@@ -1048,19 +1048,19 @@ export function EditView({
                 왜 못 고치는지 알 수 없다.
               */}
               {"target" in current && (
-                <p className="why" style={{ margin: 0 }}>
+                <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
                   {lockedFieldNotice(lockedReason("steps[].target") ?? "live_browser_required")}
                 </p>
               )}
               {current.type === "drag" && (
-                <p className="why" style={{ margin: 0 }}>
+                <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
                   {lockedFieldNotice(
                     lockedReason("steps[].drop_target") ?? "live_browser_required",
                   )}
                 </p>
               )}
               {current.type === "assertion" && current.assertion.target && (
-                <p className="why" style={{ margin: 0 }}>
+                <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
                   {lockedFieldNotice(
                     lockedReason("steps[].assertion.target") ?? "live_browser_required",
                   )}
@@ -1100,9 +1100,9 @@ export function EditView({
             zIndex: 30,
           }}
         >
-          <div className="modal" style={{ width: 520, padding: 24 }}>
+          <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
             <strong className="subtitle">{unsavedLeaveWarning(pending)}</strong>
-            <div className="row" style={{ gap: 8, marginTop: 12 }}>
+            <div className="flex items-center gap-s2 mt-s3">
               <button
                 onClick={() => {
                   const next = leaving;
@@ -1169,16 +1169,7 @@ function EditFields({
     return (
       <div
         data-edit-fields-empty
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          textAlign: "center",
-        }}
+        className="flex-1 min-h-0 flex flex-col items-center justify-center gap-[10px] text-center"
       >
         <svg className="dim" width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.6">
           <rect x="3" y="5" width="26" height="6" rx="1.5" />
@@ -1186,7 +1177,7 @@ function EditFields({
           <rect x="3" y="21" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
         </svg>
         <div className="strong-sm">고칠 Step 을 고르세요</div>
-        <div className="why" style={{ maxWidth: 420 }}>
+        <div className="font-sans text-[11px] leading-[1.4] text-ink-3 max-w-[420px]">
           오른쪽 목록에서 Step 을 누르면 상세가 열립니다. 값 · 순서 · 삭제는 브라우저 없이
           고칠 수 있고, 고친 것은 여기에 「저장하지 않은 변경」으로 쌓입니다.
         </div>
@@ -1195,10 +1186,10 @@ function EditFields({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div className="flex flex-col gap-[10px]">
       {/* FR-212 — 어떤 변수가 민감인지 밝히고, 값은 화면에 오지 않는다고 말한다. */}
       {sensitiveNames.length > 0 && (
-        <p className="why" style={{ margin: 0 }}>
+        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
           민감 변수 <span className="mono">{sensitiveNames.join(", ")}</span> (값은 표시되지
           않습니다)
         </p>
@@ -1210,7 +1201,7 @@ function EditFields({
           <strong className="lbl">저장하지 않은 변경</strong>
           <ul className="why" style={{ margin: "6px 0 0", paddingLeft: 18 }}>
             {ops.map((op, i) => (
-              <li key={`${op.op}-${i}`} className="row" style={{ gap: 6 }}>
+              <li key={`${op.op}-${i}`} className="flex items-center gap-s2 gap-[6px]">
                 <span className="mono spacer">{describeOp(op, steps)}</span>
                 <button className="navlink" onClick={() => onRevert(i)}>
                   되돌리기

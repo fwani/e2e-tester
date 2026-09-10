@@ -61,7 +61,11 @@ describe("질문을 읽을 수 있는가", () => {
     const q = document.querySelector("[data-blocked-question]") as HTMLElement;
     expect(q).not.toBeNull();
     expect(q.textContent).toBe("어느 프로젝트로 로그인합니까?");
-    expect(q.className).toContain("answer-q");
+    // 015 — `.answer-q` 가 유틸리티로 해체됐다. **묻는 것은 그대로다**: 질문이
+    // 이름표(`.lbl`, 11px 대문자 모노)가 아니라 본문 형태인가. 라벨 형태로 한 문장을
+    // 읽게 하면 읽히지 않는다는 것이 정본의 판단이다.
+    expect(q.className, "질문이 이름표 형태다 — 한 문장을 읽는 형태가 아니다").not.toContain("uppercase");
+    expect(q.className, "질문이 본문 크기가 아니다").toContain("text-[13px]");
     // 이름표에 문장을 담지 않는다 — `.lbl` 은 짧은 이름만 갖는다.
     const label = document.querySelector('label[for="blocked-answer"]') as HTMLElement;
     expect(label.textContent).toBe("AI 의 질문");

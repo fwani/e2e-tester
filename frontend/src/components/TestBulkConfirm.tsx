@@ -38,14 +38,7 @@ export function TestBulkConfirm({
     <div
       data-test-bulk-confirm
       role="status"
-      className="tint-warn line"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        marginBottom: 10,
-      }}
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
       <span className="strong-sm">{deleteTestsConfirm(names)}</span>
       {/* 012 가 프로젝트 삭제에서 정한 것과 같다 — 되돌릴 수 있다는 사실을 확인 시점에
@@ -84,8 +77,7 @@ export function TrashedTestsNotice({
     <div
       data-trashed-notice
       role="status"
-      className="tint-warn"
-      style={{ padding: "10px 12px", marginBottom: 10 }}
+      className="bg-warn-t border border-warn-line rounded-base py-[10px] px-s3 mb-[10px]"
     >
       <div className="strong-sm">
         {trashed.length === 1
@@ -96,21 +88,20 @@ export function TrashedTestsNotice({
         기본은 **펼친 상태**다 (UC-013-05). 접어 두면 사용자가 되돌리는 방법을 못 본 채
         알림을 닫는다. 여러 개일 때 길어지므로 접을 수 있게만 해 둔다.
       */}
-      <details open style={{ marginTop: 6 }}>
-        <summary className="why" style={{ cursor: "pointer" }}>
+      <details open className="mt-[6px]">
+        <summary className="font-sans text-[11px] leading-[1.4] text-ink-3 cursor-pointer">
           옮긴 자리 {trashed.length}곳
         </summary>
         {trashed.map((t) => (
           <div
             key={t.id}
-            className="why mono"
-            style={{ marginTop: 2, wordBreak: "break-all" }}
+            className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[2px] break-all"
           >
             {t.trashed_to}
           </div>
         ))}
       </details>
-      <div className="why" style={{ marginTop: 6 }}>
+      <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px]">
         {TESTS_RESTORE_HINT}
       </div>
       <button className="navlink" onClick={onDismiss} style={{ marginTop: 6 }}>
@@ -149,14 +140,7 @@ export function TestSelectionBar({
   return (
     <div
       data-test-selection-bar
-      className="tint-warn line"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        marginBottom: 10,
-      }}
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
       <span className="strong-sm">{selectedCount}개 선택됨</span>
       {/*
@@ -211,14 +195,7 @@ export function RenumberConfirm({
     <div
       data-renumber-confirm
       role="status"
-      className="tint-warn line"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        marginBottom: 10,
-      }}
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
       <span className="strong-sm">
         테스트 {total}개의 번호를 001부터 다시 붙일까요?
@@ -271,19 +248,19 @@ export function RenumberedNotice({
           : `${changed}개의 번호를 바꿨습니다. ${result.unchanged}개는 제자리였습니다.`}
       </div>
       {changed > 0 && (
-        <details open style={{ marginTop: 6 }}>
-          <summary className="why" style={{ cursor: "pointer" }}>
+        <details open className="mt-[6px]">
+          <summary className="font-sans text-[11px] leading-[1.4] text-ink-3 cursor-pointer">
             바뀐 식별자 {changed}건
           </summary>
           {result.renumbered.map((m) => (
-            <div key={m.from_id} className="why mono" style={{ marginTop: 2 }}>
+            <div key={m.from_id} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[2px]">
               {m.from_id} → {m.to_id} · {m.name}
             </div>
           ))}
         </details>
       )}
       {changed > 0 && (
-        <div className="why" style={{ marginTop: 6 }}>
+        <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px]">
           정의 파일과 실행 산출물이 함께 옮겨졌습니다. 저장소에 옛 식별자를 적어 둔 곳이
           있으면 함께 고치세요.
         </div>

@@ -189,8 +189,17 @@ describe("표시 컴포넌트가 자기 크기를 갖지 않는다 (S-12 재발 
       expect(source, `${file} 에 maxHeight 하드코딩이 남았다 — fill 을 무력화한다`).not.toContain(
         'maxHeight: "45%"',
       );
-      // 유틸리티로 같은 일을 하는 것도 막는다 — 표기만 바꿔 빠져나갈 수 없어야 한다.
-      expect(source, `${file} 에 flex-1 하드코딩이 남았다`).not.toMatch(/className=[^\n]*\bflex-1\b/);
+      /*
+        유틸리티로 같은 일을 하는 것도 막는다 — 표기만 바꿔 빠져나갈 수 없어야 한다.
+
+        **뿌리 요소만 본다.** 파일 전체에서 `flex-1` 을 찾으면 자식 요소가 자기 안에서
+        쓰는 것까지 걸린다 (1회차에 WorkArea 에서 났다). 이 검사가 묻는 것은
+        「**뿌리**가 자기 크기를 스스로 정하지 않는가」다.
+      */
+      const rootTag = source.slice(source.indexOf(marker) - 400, source.indexOf(marker) + 400);
+      expect(rootTag, `${file} 뿌리에 flex-1 하드코딩이 남았다`).not.toMatch(
+        /className=\{?`?[^`"\n]*\bflex-1\b/,
+      );
       expect(source, `${file} 에 max-h-[45%] 하드코딩이 남았다`).not.toContain("max-h-[45%]");
     });
   }
