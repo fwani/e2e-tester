@@ -169,6 +169,7 @@ def _record_truncations(tests: list[Test], report: ExportReport) -> None:
     셀 값만 알고 그것이 어느 테스트의 것인지 모른다.
     """
     from itb.portability.limits import MAX_CELL_CHARS
+    from itb.portability.workbook import TRUNCATION_MARK
 
     for test in tests:
         procedure, expectation = split_steps(test)
@@ -179,10 +180,14 @@ def _record_truncations(tests: list[Test], report: ExportReport) -> None:
             text = numbered(labels)
             if len(text) <= MAX_CELL_CHARS:
                 continue
+            # **예산을 `clamp_cell` 과 같게 잡는다** (수렴 T095). 다르면 사용자에게
+            # 보고하는 「몇 줄이 빠졌는가」가 실제로 빠진 줄 수와 어긋난다.
+            lines = text.splitlines()
+            budget = MAX_CELL_CHARS - len(TRUNCATION_MARK.format(n=len(lines)))
             kept = 0
             used = 0
-            for line in text.splitlines():
-                if used + len(line) + 1 > MAX_CELL_CHARS - 40:
+            for line in lines:
+                if used + len(line) + 1 > budget:
                     break
                 kept += 1
                 used += len(line) + 1

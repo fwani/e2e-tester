@@ -32,6 +32,8 @@ TIMING_MODULES = frozenset(
     {
         # 녹화 반영 지연·Step 실행 오버헤드·세션 준비 시간 (SC-003·SC-004·SC-016)
         "tests/integration/test_performance.py",
+        # 내보내기 성능 (014 SC-002 · T094)
+        "tests/integration/test_export_performance.py",
         # 중지·속도 변경이 **얼마나 빨리** 반영되는가 (INTERRUPT_LIMIT_S)
         "tests/integration/test_pacing_interrupt.py",
         # 늦게 나타나는 요소를 기다리는 시간과 즉시 있는 요소의 비용

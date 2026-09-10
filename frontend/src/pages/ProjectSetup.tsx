@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrandMark, HeaderBar } from "../components/design/Chrome";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
-import { ImportFilePicker } from "./ImportPreview";
+import { ImportFilePicker, ImportPreview } from "./ImportPreview";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import {
@@ -23,6 +23,7 @@ import {
   imports,
   project,
   type DirectoryEntry,
+  type CreateProjectImportResult,
   type ImportPlanView,
   type ProjectListItem,
   type ProjectSummary,
@@ -44,7 +45,19 @@ type Mode =
    * **만들기 양식을 새로 만들지 않고 `CreateForm` 을 그대로 쓴다** — 받는 것이 같으므로
    * 두 벌로 두면 한쪽만 고쳐지는 날이 온다.
    */
-  | { kind: "import"; plan: ImportPlanView };
+  | { kind: "import"; plan: ImportPlanView }
+  /**
+   * 이름·시작 URL 을 받은 뒤 미리보기로 간다 (014 FR-014a·FR-015).
+   *
+   * **미리보기를 건너뛰지 않는다.** 예전에는 요약 배너만 보여 주고 바로 만들었고,
+   * 그래서 접두어를 물어야 하는 시트와 열을 짝지어야 하는 시트가 **묻지도 않고 조용히
+   * 건너뛰어졌다** (수렴 T089).
+   */
+  | {
+      kind: "import-preview";
+      plan: ImportPlanView;
+      form: { name: string; default_start_url: string; test_id_attribute: string };
+    };
 
 /** 구획 라벨 — 정본의 `.lbl` 이다. 이름만 확정 디자인의 관용어를 쓴다. */
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -227,14 +240,32 @@ export function ProjectSetup({
               </div>
             }
             onCancel={() => setMode({ kind: "list" })}
-            onSubmit={(body) => {
-              setBusy(true);
-              setError(null);
-              void imports
-                .createProject({ plan_id: mode.plan.plan_id, ...body })
-                .then((result) => setMode({ kind: "created", project: result.project }))
-                .catch((exc: unknown) => setError(describeError(exc)))
-                .finally(() => setBusy(false));
+            /*
+              양식을 받은 뒤 **미리보기로 간다.** 프로젝트는 미리보기에서 확정할 때
+              만들어진다 — 여기서 만들어 두면 사용자가 미리보기에서 취소했을 때
+              빈 프로젝트가 남는다.
+            */
+            onSubmit={(body) =>
+              setMode({ kind: "import-preview", plan: mode.plan, form: body })
+            }
+          />
+        )}
+
+        {mode.kind === "import-preview" && (
+          <ImportPreview
+            plan={mode.plan}
+            confirmLabel="프로젝트 만들고 가져오기"
+            onCancel={() => setMode({ kind: "import", plan: mode.plan })}
+            commit={(decisions) =>
+              imports.createProject({
+                plan_id: mode.plan.plan_id,
+                ...mode.form,
+                ...decisions,
+              })
+            }
+            onDone={(result) => {
+              const made = result as CreateProjectImportResult;
+              setMode({ kind: "created", project: made.project });
             }}
           />
         )}

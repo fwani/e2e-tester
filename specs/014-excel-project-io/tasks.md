@@ -290,3 +290,78 @@ T058 (ImportPreview.tsx)
 Phase 2 가 끝나면 US1 과 US2 를 나눠 가질 수 있다. 둘은 `columns.py`(T018)만 공유하고
 그 밖에는 서로 다른 파일을 만진다. US3 는 US2 의 산출물을 쓰지만, 초안 YAML 을 손으로 놓으면
 US2 를 기다리지 않고 시작할 수 있다.
+
+---
+
+## Phase 8: Convergence
+
+수렴 점검이 찾은 잔여 작업. **가장 위 셋이 실제 제품 경로를 막고 있다.**
+
+- [X] T085 **CRITICAL** `frontend/src/App.tsx` 의 `onStartAi` 가 세션 생성 본문에 `draft_id` 를 싣게 하고, `frontend/src/api/client.ts` 의 `sessions.create` 타입에 그 필드를 더한다 — 지금은 지시문만 미리 채우고 `draft_id` 를 보내지 않아 **FR-032·FR-033·FR-026 이 실제 화면에서 도달 불가능하다** (missing)
+- [X] T086 **CRITICAL** `frontend/tests/DraftToRecording.test.tsx` 에 「초안에서 시작한 세션 생성 요청 본문에 `draft_id` 가 실린다」를 더한다 — T085 의 결함을 두 테스트 층이 서로 덮고 있었다. 백엔드 e2e 는 `SessionWork` 를 직접 조립해 지나갔고, 프론트는 요청 본문을 보지 않았다 (missing)
+- [X] T087 **HIGH** `backend/src/itb/portability/workbook.py` 의 `read_sheets` 가 전부-빈 행을 `total_rows` 에 세지도 `rows` 에 담지도 않게 한다 per FR-019 — 구글 시트가 내보낸 파일은 시트마다 기본 1,000행이라 6장이면 상한(5,000)에 걸려 **정상 파일이 통째로 거절된다** (contradicts)
+- [X] T088 [P] **HIGH** `frontend/src/App.tsx` 가 `ImportResultView` 를 버리지 않고 완료 알림으로 보인다 per FR-018a — 건너뛴 행·무시한 시트·바뀐 번호가 확정하는 순간 사라진다 (missing)
+- [X] T089 **HIGH** 새 프로젝트 경로도 `ImportPreview` 를 거치게 한다 per FR-014a·FR-015 — 지금은 요약 배너만 보이고 접두어·컬럼을 물을 자리가 없어 그 시트가 조용히 건너뛰어진다 (partial)
+- [X] T090 [P] MEDIUM `frontend/src/pages/TestList.tsx` 의 내보내기 알림이 `GET /api/export/warnings` 를 불러 **어느 그룹이 어느 시트가 됐는지** 보인다 per FR-008a — 지금은 건수 한 줄뿐이고 상세 엔드포인트의 클라이언트 래퍼가 죽은 코드다 (partial)
+- [X] T091 MEDIUM `backend/src/itb/api/routes/excel.py` 의 `repo.drafts.allocate_id` 를 `run_all` 검증 단계 안으로 옮긴다 per FR-025·FR-038 — 지금은 바깥에서 불려, 초안 9,999개를 넘으면 이미 쓴 그룹이 되돌려지지 않고 처리되지 않은 500 이 된다 (partial)
+- [X] T092 [P] MEDIUM `backend/src/itb/portability/workbook.py` 의 `write_workbook` 이 openpyxl 예외를 `WorkbookError` 로 감싼다 per FR-013 — 스텝 라벨에 제어문자가 있으면 `IllegalCharacterError` 가 포괄 핸들러로 떨어져 원인도 다음 행동도 없는 500 이 된다 (partial)
+- [X] T093 [P] MEDIUM `backend/src/itb/portability/workbook.py` 의 `escape_cell` 이 엑셀이 거부하는 제어문자를 제거한다 per FR-009·FR-013 (partial)
+- [X] T094 [P] LOW `backend/tests/integration/test_export_performance.py` — 테스트 100건·그룹 10개 내보내기가 10초 안에 끝나는지 per SC-002 (missing)
+- [X] T095 [P] LOW `backend/src/itb/portability/exporter.py` 의 `_record_truncations` 예산을 `workbook.clamp_cell` 과 같게 맞춘다 — 지금은 `-40` 과 `-len(mark)` 로 달라 보고되는 `kept/dropped_lines` 가 실제 절단과 어긋난다 (partial)
+
+---
+
+## Phase 9: 시트 고르기와 컬럼 짝짓기 (2차 요청)
+
+사용자가 구현 중에 요청한 두 가지. 미리보기가 「보고 확인하는 화면」에서 **「보고 정하는 화면」**이 된다.
+
+### Tests ⚠️
+
+- [X] T096 [P] `backend/tests/unit/test_import_selection.py` — 시트 포함/무시 판정, 무시한 시트가 초안 수·수용량에서 빠지는지, 무시와 「접두어 없어 건너뜀」이 구별되는지 per FR-020a~d
+- [X] T097 [P] `backend/tests/unit/test_column_mapping.py` — 사용자가 준 열 짝짓기가 자동 판정을 이기는지, 같은 열을 두 컬럼에 겹쳐 쓰면 거절되는지, 필수 컬럼을 못 찾은 시트가 짝짓기로 살아나는지 per FR-020e~h
+- [X] T098 [P] `backend/tests/contract/test_excel_import_api.py` 에 시트 선택·컬럼 짝짓기 요청 필드와 응답의 `headers` 목록을 더한다
+- [X] T099 [P] `frontend/tests/ImportPreview.test.tsx` 에 시트 체크박스와 컬럼 선택기를 더한다 — 전부 무시하면 확정이 막히는지 포함
+
+### Implementation
+
+- [X] T100 `backend/src/itb/portability/columns.py` 의 `map_headers` 가 사용자 지정 짝짓기(`overrides`)를 받아 자동 판정보다 우선하게 한다 per FR-020e
+- [X] T101 `backend/src/itb/portability/importer.py` 의 `SheetPlan` 에 `headers`(그 시트의 실제 머리글 목록)와 `included` 를 더하고, `build_plan` 이 `selections`·`column_overrides` 를 받게 한다 per FR-020a·f
+- [X] T102 `backend/src/itb/portability/importer.py` — 필수 컬럼을 못 찾은 시트를 **버리지 않고** 계획에 남겨 짝지을 기회를 준다 per FR-020g. 지금은 `plan_sheet` 이 `None` 을 돌려 시트가 사라진다
+- [X] T103 `backend/src/itb/api/routes/excel.py` 의 `CommitRequest` 에 `sheets`(포함 여부)와 `columns`(시트별 열 짝짓기)를 더하고, 확정 전에 겹친 짝짓기를 거절한다 per FR-020a·h
+- [X] T104 `backend/src/itb/api/routes/excel.py` 의 미리보기 응답에 시트별 `headers`·`included`·`missing_required` 를 싣는다 per FR-020f
+- [X] T105 `backend/src/itb/api/routes/excel.py` 의 결과 응답이 무시한 시트와 건너뛴 시트를 **구별해** 싣는다 per FR-020c
+- [X] T106 `frontend/src/pages/ImportPreview.tsx` 에 시트별 「가져오기」 체크 칸을 더한다. 기본은 켜짐이고, 전부 끄면 확정을 막는다 per FR-020a·d
+- [X] T107 `frontend/src/pages/ImportPreview.tsx` 에 시트별 컬럼 짝짓기 UI 를 더한다 — 7개 컬럼마다 그 시트의 실제 머리글 중에서 고른다. 자동으로 찾은 것이 기본값이다 per FR-020e·f·g
+- [X] T108 `frontend/src/api/client.ts` 의 `imports.commit`·`createProject` 가 시트 선택과 컬럼 짝짓기를 싣는다
+- [X] T109 전체 검증을 다시 돌린다 — `lint-imports` · `ruff` · `pytest` · `schema.export --check` · `tsc` · `vitest`
+
+---
+
+## Phase 10: 표의 위치와 병합 셀 (3차 요청)
+
+- [X] T110 `backend/src/itb/portability/importer.py` — 머리글 행을 스스로 찾고(`detect_header_row`) 사용자가 고칠 수 있게 한다 per FR-020i. 머리글 위쪽 행은 데이터로 다루지 않는다
+- [X] T111 `backend/src/itb/portability/workbook.py` — `ParsedSheet.rows` 가 머리글 행을 **포함**하게 바꾼다. 첫 행을 머리글로 못박으면 제목·범례가 위에 붙은 설계서를 다룰 수 없다
+- [X] T112 `backend/src/itb/api/routes/excel.py` — 미리보기가 시트별 `header_row` 와 `sample`(앞부분 원본 행)을 싣고, 확정이 `header_rows` 를 받는다 per FR-020i·j
+- [X] T113 `frontend/src/pages/ImportPreview.tsx` — 앞부분 행을 그대로 보여 주고 라디오로 머리글 행을 고르게 한다. 행을 바꾸면 열 이름과 짝짓기가 따라 바뀐다 per FR-020j
+- [X] T114 `backend/src/itb/portability/workbook.py` — 병합 구간을 시트 XML 에서 **조각내어 읽고**(`merged_ranges`) 모든 칸에 대표 값을 채운다 per FR-020k. `read_only` 는 병합 정보를 주지 않으므로 XML 을 직접 훑되, 파싱하지 않아 실체 확장 공격에 노출되지 않는다
+- [X] T115 `backend/src/itb/portability/workbook.py` — 병합 채우기를 빈 행 판정보다 **앞에** 둔다 per FR-020l
+- [X] T116 `backend/tests/unit/test_import_defenses.py`·`test_column_mapping.py` — 머리글 행 고르기와 병합 채우기 검증
+- [X] T117 `frontend/tests/ImportPreview.test.tsx` — 머리글 행 라디오와 열 선택기 검증
+
+---
+
+## Phase 11: 그룹별 번호와 초안 저장 (3차 요청)
+
+**013 의 결정을 뒤집는 변경이 들어 있다.** 013 은 번호를 프로젝트 전체에서 고유하게 두어
+그룹 이동 시 자리가 언제나 비도록 만들었다 (research R3). 사용자가 그룹마다 1번부터 세는
+설계서 관행을 요구했으므로 그 이점을 내주고, 이동 시의 충돌은 빈 번호를 뽑아 감당한다.
+
+- [X] T118 `backend/src/itb/storage/repository.py` — `allocate_test_id` 가 **그 그룹의** 번호만 보게 한다 per FR-039. `used_numbers(prefix)` 를 더하고, 더 이상 맞지 않는 `next_test_number` 카운터를 판단에서 뺀다 (필드는 옛 파일을 읽기 위해 남긴다)
+- [X] T119 `backend/src/itb/storage/test_moves.py` — `target_id` 가 자리가 차 있을 때만 빈 번호를 뽑는다 per FR-039b·c. 비어 있으면 번호를 지킨다 — 사용자의 문서·CI 가 그 번호를 가리킨다
+- [X] T120 `backend/src/itb/api/routes/tests.py` — 번호 정리를 **그룹마다 1번부터** 다시 매긴다 per FR-039a
+- [X] T121 `backend/src/itb/portability/importer.py` — 중복 판정을 그룹 안에서만 한다 per FR-039. 한 통에 넣고 세면 있지도 않은 충돌을 만들어 낸다
+- [X] T122 `backend/src/itb/api/routes/excel.py` — 수용량을 그룹마다 보고, 넘칠 때 어느 그룹인지 알린다 per FR-039d
+- [X] T123 `frontend/src/pages/SessionScreen.tsx` — 초안에서 온 세션의 저장 이름·그룹 기본값 per FR-040·FR-040a·FR-040b
+- [X] T124 `frontend/src/App.tsx` — 초안을 실행 화면까지 나른다 (그룹 포함)
+- [X] T125 기존 검증 갱신 — 013 의 「번호는 전체에서 고유」를 못박던 5건을 새 규칙으로 다시 쓴다 (`test_repository`·`test_test_moves`·`test_project_guard_and_renumber_api`·`test_import_planning`·`test_import_capacity`)
+- [X] T126 `frontend/tests/DraftToRecording.test.tsx` — 초안이 실행 화면까지 나르는지, 이름·그룹 기본값이 붙는지

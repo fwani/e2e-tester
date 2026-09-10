@@ -815,6 +815,14 @@ export const sessions = {
      * 빠르게 통과하는 테스트에서는 잡을 창이 사실상 없었다 (006 E-06).
      */
     pause_before_index?: number;
+    /**
+     * 초안에서 시작한다 (014 FR-030·FR-032·FR-033). `mode: "ai"` 에서만 쓴다.
+     *
+     * **이것이 빠지면 서버는 이 세션이 초안에서 왔다는 것을 모른다.** 지시문만 미리
+     * 채워 보내면 화면은 그럴듯하지만, 저장할 때 희망 번호도 받지 못하고 설명·수행자도
+     * 옮겨지지 않으며 초안도 사라지지 않는다 — 실제로 그런 상태였다 (수렴 T085).
+     */
+    draft_id?: string | null;
   }) => post<SessionView>("/api/sessions", body),
   get: (id: string) => get<SessionView>(`/api/sessions/${id}`),
   /**
@@ -1154,6 +1162,20 @@ export interface SheetPlanView {
   name_differs: boolean;
   row_count: number;
   renumbered: RenumberedRow[];
+  /** 이 시트의 실제 머리글. 사용자가 컬럼을 짝지을 후보다 (FR-020f). */
+  headers: string[];
+  /** 지금 정해진 컬럼 → 열 번호. 선택기의 기본값이 된다. */
+  column_index: Record<string, number>;
+  /** 찾지 못한 필수 컬럼. 비어 있지 않으면 짝지어야 쓸 수 있다 (FR-020g). */
+  missing_required: string[];
+  /** 이 시트를 가져오는가 (FR-020a). */
+  included: boolean;
+  /** 머리글을 뺀 실제 행 수. 짝짓기 전에도 「몇 건이 기다린다」를 보인다. */
+  total_rows: number;
+  /** 머리글로 쓰는 엑셀 행 번호 (FR-020i). 사용자가 고칠 수 있다. */
+  header_row: number | null;
+  /** 앞부분 몇 줄 — 사용자가 **어느 행이 머리글인지 눈으로 보고** 고른다 (FR-020j). */
+  sample: { row: number; cells: string[] }[];
 }
 
 export interface ImportPlanView {
@@ -1185,7 +1207,10 @@ export interface ImportResultView {
   reused_groups: GroupRef[];
   drafts: DraftRef[];
   skipped: SkippedRow[];
+  /** 제품이 **읽지 못해** 건너뛴 시트. */
   skipped_sheets: { sheet_name: string; reason: string }[];
+  /** 사용자가 **일부러 뺀** 시트 (FR-020c). 위와 뭉치면 둘을 구별할 수 없다. */
+  ignored_sheets: string[];
   renumbered: RenumberedRow[];
 }
 
@@ -1243,22 +1268,43 @@ async function postFile<T>(path: string, file: File): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+/**
+ * 확정할 때 사용자가 정한 것들.
+ *
+ * 셋 다 미리보기에서 온다 — 접두어(FR-022a), 가져올 시트(FR-020a), 컬럼 짝짓기(FR-020e).
+ * 서버는 이 셋을 받아 **계획을 다시 세운다**: 어느 열이 어느 컬럼인지가 바뀌면 행이
+ * 다르게 읽히므로, 값 하나를 갈아 끼우는 것으로는 안 된다.
+ */
+export interface ImportDecisions {
+  prefixes?: Record<string, string>;
+  sheets?: Record<string, boolean>;
+  columns?: Record<string, Record<string, number>>;
+  /**
+   * 시트별 머리글 행의 엑셀 행 번호 (FR-020i).
+   *
+   * 설계서는 위에 제목·작성일·범례를 두는 일이 흔하다. 첫 행을 머리글로 못박으면 그런
+   * 파일은 필수 컬럼을 영영 찾지 못한다.
+   */
+  header_rows?: Record<string, number>;
+}
+
 export const imports = {
   /** 파일을 해석해 계획을 만든다. 프로젝트에는 아무것도 만들지 않는다. */
   preview: (file: File) => postFile<ImportPlanView>("/api/import/preview", file),
 
   /** 열린 프로젝트로 가져온다. 전부 아니면 전무다. */
-  commit: (planId: string, prefixes: Record<string, string> = {}) =>
-    post<ImportResultView>("/api/import/commit", { plan_id: planId, prefixes }),
+  commit: (planId: string, decisions: ImportDecisions = {}) =>
+    post<ImportResultView>("/api/import/commit", { plan_id: planId, ...decisions }),
 
   /** 파일에서 새 프로젝트를 만들며 가져온다. */
-  createProject: (body: {
-    plan_id: string;
-    name: string;
-    default_start_url: string;
-    test_id_attribute?: string;
-    prefixes?: Record<string, string>;
-  }) => post<CreateProjectImportResult>("/api/import/create-project", body),
+  createProject: (
+    body: {
+      plan_id: string;
+      name: string;
+      default_start_url: string;
+      test_id_attribute?: string;
+    } & ImportDecisions,
+  ) => post<CreateProjectImportResult>("/api/import/create-project", body),
 };
 
 export const drafts = {

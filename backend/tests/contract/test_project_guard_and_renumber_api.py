@@ -174,8 +174,12 @@ def test_renumber_closes_gaps(client: TestClient) -> None:
     assert _ids(client) == ["TC-001", "TC-002", "TC-003", "TC-004"]
 
 
-def test_renumber_keeps_group_prefix_and_order(client: TestClient) -> None:
-    """접두어는 그대로다. 번호만 프로젝트 전체에서 `1..N` 한 벌로 다시 나뉜다."""
+def test_renumber_numbers_each_group_from_one(client: TestClient) -> None:
+    """접두어는 그대로고, **그룹마다 1번부터** 다시 매긴다 (014 3차 요청).
+
+    프로젝트 전체에 이어 붙이면 `USER` 가 2~3 에서 시작해, 사용자가 「그룹마다 1번부터」로
+    정한 뜻과 어긋난다.
+    """
     root = _create(client, "그룹")
     client.post("/api/groups", json={"prefix": "USER", "name": "사용자"})
     _write(root, "TC-002", "묶이지 않은 것")
@@ -184,7 +188,22 @@ def test_renumber_keeps_group_prefix_and_order(client: TestClient) -> None:
 
     assert client.post("/api/tests:renumber").status_code == 200
 
-    assert sorted(_ids(client)) == ["TC-001", "USER-002", "USER-003"]
+    assert sorted(_ids(client)) == ["TC-001", "USER-001", "USER-002"]
+
+
+def test_renumber_keeps_order_within_a_group(client: TestClient) -> None:
+    """그룹 안에서는 지금 번호가 작은 순서를 지킨다."""
+    root = _create(client, "순서")
+    client.post("/api/groups", json={"prefix": "USER", "name": "사용자"})
+    _write(root, "USER-009", "나중 것")
+    _write(root, "USER-002", "먼저 것")
+
+    assert client.post("/api/tests:renumber").status_code == 200
+
+    listing = client.get("/api/tests").json()["tests"]
+    by_id = {t["id"]: t["name"] for t in listing}
+    assert by_id["USER-001"] == "먼저 것"
+    assert by_id["USER-002"] == "나중 것"
 
 
 def test_renumber_moves_run_artifacts_with_the_test(client: TestClient) -> None:

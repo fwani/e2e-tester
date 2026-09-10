@@ -485,21 +485,32 @@ async def renumber_tests(state: State) -> RenumberTestsResponse:
             problems=problems,
         )
 
-    # 지금 번호가 작은 순서. `list_tests` 는 식별자 문자열로 정렬하므로 접두어가 먼저
-    # 온다 — 그 순서로 번호를 주면 새 번호가 옛 번호보다 커지는 자리가 생기고, 위 문단의
-    # 「충돌하지 않는 이유」가 무너진다.
-    ordered = sorted(tests, key=lambda t: int(t.id.split("-", 1)[1]))
-    if len(ordered) > MAX_TEST_NUMBER:
+    # **그룹마다 따로 1번부터 매긴다** (014 3차 요청).
+    #
+    # 번호를 그룹마다 세게 됐으므로 정리도 그룹 단위여야 한다 — 프로젝트 전체에 이어
+    # 붙이면 `USER` 가 1~5, `DATA` 가 6~9 가 되어 사용자가 「그룹마다 1번부터」로 정한
+    # 뜻과 어긋난다.
+    #
+    # 그룹 안에서는 **지금 번호가 작은 순서**를 지킨다. 그래야 새 번호가 언제나 옛 번호
+    # 이하가 되어, 옮기는 도중에 서로의 자리를 뺏지 않는다.
+    by_prefix: dict[str, list[Test]] = {}
+    for t in tests:
+        by_prefix.setdefault(t.id.split("-", 1)[0], []).append(t)
+
+    over = [p for p, group in by_prefix.items() if len(group) > MAX_TEST_NUMBER]
+    if over:
         raise bad_request(
             ErrorCode.DEFINITION_INVALID,
-            f"테스트가 {MAX_TEST_NUMBER}개를 넘어 번호를 다시 붙일 수 없습니다. "
-            "프로젝트를 나누세요.",
+            f"「{over[0]}」 그룹의 테스트가 {MAX_TEST_NUMBER}개를 넘어 번호를 다시 "
+            "붙일 수 없습니다. 그룹을 나누세요.",
         )
 
-    plan = [
-        (t.id, f"{t.id.split('-', 1)[0]}-{number:03d}")
-        for number, t in enumerate(ordered, start=1)
-    ]
+    plan: list[tuple[str, str]] = []
+    for prefix in sorted(by_prefix):
+        ordered = sorted(by_prefix[prefix], key=lambda t: int(t.id.split("-", 1)[1]))
+        plan.extend(
+            (t.id, f"{prefix}-{number:03d}") for number, t in enumerate(ordered, start=1)
+        )
     targets = [(old, new) for old, new in plan if old != new]
     unchanged = len(plan) - len(targets)
 

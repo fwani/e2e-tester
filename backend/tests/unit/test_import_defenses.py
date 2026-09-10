@@ -61,18 +61,21 @@ class StructureGateTests:
     def test_정상_파일을_읽는다(self) -> None:
         parsed = read_sheets(build_xlsx({"회원": [["TC-001", "로그인"]]}))
         assert [s.name for s in parsed.sheets] == ["회원"]
-        assert parsed.sheets[0].header[:2] == HEADER_ROW[:2]
+        # 머리글 행도 rows 에 담긴다 — 어느 행이 머리글인지는 **사용자가 고른다**
+        # (FR-020i). 여기서 떼어 내면 제목·범례가 위에 붙은 설계서를 다룰 수 없다.
+        assert parsed.sheets[0].rows[0][1][:2] == HEADER_ROW[:2]
         assert parsed.total_rows == 1
 
     def test_머리글_행은_데이터로_세지_않는다(self) -> None:
+        # 상한은 **데이터 행**에 대한 것이다.
         parsed = read_sheets(build_xlsx({"회원": []}))
         assert parsed.total_rows == 0
-        assert parsed.sheets[0].rows == []
+        assert [n for n, _c in parsed.sheets[0].rows] == [1]
 
     def test_행_번호를_함께_들고_온다(self) -> None:
         # 건너뛴 행을 사용자에게 **어디인지** 말하려면 필요하다 (FR-018).
         parsed = read_sheets(build_xlsx({"회원": [["TC-001", "가"], ["TC-002", "나"]]}))
-        assert [r for r, _cells in parsed.sheets[0].rows] == [2, 3]
+        assert [r for r, _cells in parsed.sheets[0].rows] == [1, 2, 3]
 
     def test_시트가_상한을_넘으면_거절한다(self) -> None:
         sheets = {f"s{i}": [] for i in range(MAX_SHEETS + 1)}
@@ -155,3 +158,128 @@ def _repack_with(original: bytes, sheet_xml: str) -> bytes:
                 payload = sheet_xml.encode("utf-8")
             dst.writestr(info.filename, payload)
     return out.getvalue()
+
+
+class BlankRowTests:
+    """빈 행은 세지도 담지도 않는다 (014 T087 · FR-019).
+
+    스프레드시트 도구는 값이 없는 행까지 사용 범위로 선언한다. 그것을 세면 **정상적인
+    파일이 상한에 걸려 거절된다** — 구글 시트가 내보낸 파일은 시트마다 기본 1,000행이다.
+    """
+
+    def test_사용_범위에_딸린_빈_행을_세지_않는다(self) -> None:
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        wb.remove(wb.active)
+        ws = wb.create_sheet("회원")
+        ws.append(HEADER_ROW)
+        ws.append(["USER-001", "로그인"])
+        ws.cell(row=1000, column=1).value = None  # 구글 시트가 만드는 모양
+        buffer = io.BytesIO()
+        wb.save(buffer)
+
+        parsed = read_sheets(buffer.getvalue())
+        assert parsed.total_rows == 1
+        assert len(parsed.sheets[0].rows) == 2  # 머리글 + 데이터 1
+
+    def test_빈_행이_많은_시트_여섯_장을_받는다(self) -> None:
+        # 이 검증이 없으면 구글 시트 파일이 통째로 거절된다.
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        wb.remove(wb.active)
+        for i in range(6):
+            ws = wb.create_sheet(f"시트{i}")
+            ws.append(HEADER_ROW)
+            ws.append([f"TC-{i + 1:03d}", "가"])
+            ws.cell(row=1000, column=1).value = None
+        buffer = io.BytesIO()
+        wb.save(buffer)
+
+        parsed = read_sheets(buffer.getvalue())
+        assert parsed.total_rows == 6
+
+    def test_가운데_빈_행도_담지_않는다(self) -> None:
+        # 담으면 미리보기의 「건너뛸 행」이 빈 행으로 뒤덮여 진짜 신호가 묻힌다.
+        parsed = read_sheets(
+            build_xlsx({"회원": [["USER-001", "가"], [None, None], ["USER-002", "나"]]})
+        )
+        assert [r for r, _cells in parsed.sheets[0].rows] == [1, 2, 4]
+
+    def test_공백만_있는_칸도_빈_행으로_본다(self) -> None:
+        parsed = read_sheets(build_xlsx({"회원": [["USER-001", "가"], ["   ", "  "]]}))
+        assert parsed.total_rows == 1
+
+
+class MergedCellTests:
+    """병합된 칸은 모든 칸이 같은 값으로 읽힌다 (2차 요청).
+
+    엑셀은 병합 구간의 왼쪽 위 칸에만 값을 두고 나머지는 비운다. 사용자가 화면에서 보는
+    것은 「모든 칸에 그 값이 있다」이므로, 우리도 그렇게 읽어야 **사용자의 눈과 제품의
+    판단이 어긋나지 않는다.**
+
+    이것이 없으면 「대상기능」이 여러 행에 걸쳐 병합된 설계서에서 둘째 행부터 제목이 빈
+    행으로 보여 통째로 건너뛰어진다 — 설계서에서 아주 흔한 모양이다.
+    """
+
+    def merged(self, **kw: object) -> bytes:
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        wb.remove(wb.active)
+        ws = wb.create_sheet("회원")
+        ws.append(["TC ID", "대상기능", "테스트항목"])
+        ws.append(["USER-001", "로그인", "정상 경로"])
+        ws.append(["USER-002", None, "실패 경로"])
+        ws.merge_cells(**kw)  # type: ignore[arg-type]
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        return buffer.getvalue()
+
+    def test_병합_구간을_찾아낸다(self) -> None:
+        from itb.portability.workbook import merged_ranges
+
+        data = self.merged(start_row=2, start_column=2, end_row=3, end_column=2)
+        assert merged_ranges(data) == {"회원": [(2, 2, 3, 2)]}
+
+    def test_아래_행에_같은_값이_채워진다(self) -> None:
+        data = self.merged(start_row=2, start_column=2, end_row=3, end_column=2)
+        rows = dict(read_sheets(data).sheets[0].rows)
+        assert rows[2][1] == "로그인"
+        assert rows[3][1] == "로그인"
+
+    def test_병합되지_않은_칸은_그대로다(self) -> None:
+        data = self.merged(start_row=2, start_column=2, end_row=3, end_column=2)
+        rows = dict(read_sheets(data).sheets[0].rows)
+        assert rows[3][2] == "실패 경로"
+
+    def test_가로_병합도_채워진다(self) -> None:
+        data = self.merged(start_row=1, start_column=2, end_row=1, end_column=3)
+        rows = dict(read_sheets(data).sheets[0].rows)
+        assert rows[1][1] == "대상기능"
+        assert rows[1][2] == "대상기능"
+
+    def test_병합이_없으면_아무것도_바꾸지_않는다(self) -> None:
+        parsed = read_sheets(build_xlsx({"회원": [["USER-001", "가"], ["USER-002", None]]}))
+        rows = dict(parsed.sheets[0].rows)
+        assert rows[3][1] is None
+
+    def test_병합된_행이_빈_행으로_버려지지_않는다(self) -> None:
+        # 채우기가 빈 행 판정보다 **앞이어야** 한다.
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        wb.remove(wb.active)
+        ws = wb.create_sheet("회원")
+        ws.append(["TC ID", "대상기능"])
+        ws.append(["USER-001", "로그인"])
+        ws.append([None, None])
+        ws.merge_cells(start_row=2, start_column=1, end_row=3, end_column=2)
+        buffer = io.BytesIO()
+        wb.save(buffer)
+
+        rows = dict(read_sheets(buffer.getvalue()).sheets[0].rows)
+        assert 3 in rows, "병합으로 값이 있어야 할 행이 빈 행으로 버려졌다"
+        # 블록 전체가 **대표 칸의 값**을 갖는다. 엑셀도 병합할 때 나머지 값을 버린다.
+        assert rows[3] == ["USER-001", "USER-001"]

@@ -52,6 +52,16 @@ const sheet = (over: Partial<SheetPlanView> = {}): SheetPlanView => ({
   name_differs: false,
   row_count: 2,
   renumbered: [],
+  headers: ["TC ID", "대상기능"],
+  column_index: { "TC ID": 0, 대상기능: 1 },
+  missing_required: [],
+  included: true,
+  total_rows: 2,
+  header_row: 1,
+  sample: [
+    { row: 1, cells: ["TC ID", "대상기능"] },
+    { row: 2, cells: ["USER-001", "로그인"] },
+  ],
   ...over,
 });
 
@@ -201,7 +211,15 @@ describe("접두어를 물어야 하는 시트", () => {
       plan({
         draft_count: 0,
         group_count: 0,
-        sheets: [sheet({ sheet_name: "데이터관리", prefix: null, needs_prefix: true, row_count: 6 })],
+        sheets: [
+          sheet({
+            sheet_name: "데이터관리",
+            prefix: null,
+            needs_prefix: true,
+            row_count: 6,
+            total_rows: 6,
+          }),
+        ],
       }),
     );
     expect(screen.getByText(/초안 0건을 만듭니다/)).toBeTruthy();
@@ -272,14 +290,26 @@ describe("무엇이 빠지는가", () => {
 describe("수용량", () => {
   it("남은 번호보다 많으면 확정을 막는다", () => {
     stub();
-    mount(plan({ draft_count: 50, capacity: { needed: 50, available: 10, ok: false } }));
+    mount(
+      plan({
+        draft_count: 50,
+        sheets: [sheet({ row_count: 50, total_rows: 50 })],
+        capacity: { needed: 50, available: 10, ok: false },
+      }),
+    );
     const button = screen.getByRole("button", { name: "가져오기" }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
 
   it("남은 수를 말한다", () => {
     stub();
-    mount(plan({ draft_count: 50, capacity: { needed: 50, available: 10, ok: false } }));
+    mount(
+      plan({
+        draft_count: 50,
+        sheets: [sheet({ row_count: 50, total_rows: 50 })],
+        capacity: { needed: 50, available: 10, ok: false },
+      }),
+    );
     expect(screen.getByText(/남은 번호는 10개입니다/)).toBeTruthy();
   });
 
@@ -321,5 +351,186 @@ describe("실패", () => {
     mount(plan(), () => {}, onDone);
     fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
     await waitFor(() => expect(onDone).toHaveBeenCalled());
+  });
+});
+
+/**
+ * 시트 고르기 (014 FR-020a~d · 2차 요청).
+ *
+ * **「일부러 뺀 것」과 「제품이 못 읽은 것」은 다른 사실이다.** 예전에는 접두어를 비우는
+ * 것이 곧 건너뛰기였는데, 그것은 실수로 비운 것과 뜻을 가지고 뺀 것을 구별하지 못한다.
+ */
+describe("시트 고르기", () => {
+  const two = () =>
+    plan({
+      draft_count: 3,
+      group_count: 2,
+      sheets: [
+        sheet({ row_count: 2, total_rows: 2 }),
+        sheet({ sheet_name: "데이터", prefix: "DATA", row_count: 1, total_rows: 1 }),
+      ],
+    });
+
+  it("기본은 전부 켜져 있다", () => {
+    stub();
+    mount(two());
+    const boxes = screen.getAllByRole("checkbox") as HTMLInputElement[];
+    expect(boxes.every((b) => b.checked)).toBe(true);
+  });
+
+  it("끄면 만들 초안 수가 준다", () => {
+    stub();
+    mount(two());
+    expect(screen.getByText(/초안 3건을 만듭니다/)).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("데이터 가져오기"));
+    expect(screen.getByText(/초안 2건을 만듭니다/)).toBeTruthy();
+  });
+
+  it("끈 시트를 가져오지 않음으로 표시한다", () => {
+    stub();
+    mount(two());
+    fireEvent.click(screen.getByLabelText("데이터 가져오기"));
+    expect(screen.getByText("가져오지 않음")).toBeTruthy();
+  });
+
+  it("선택이 확정 요청에 실린다", async () => {
+    const calls = stub();
+    mount(two());
+    fireEvent.click(screen.getByLabelText("데이터 가져오기"));
+    fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+    await waitFor(() => {
+      const commit = calls.find((c) => c.url === "/api/import/commit");
+      expect((commit?.body as { sheets: Record<string, boolean> }).sheets).toEqual({
+        데이터: false,
+      });
+    });
+  });
+
+  it("전부 끄면 확정을 막고 이유를 말한다", () => {
+    stub();
+    mount(two());
+    fireEvent.click(screen.getByLabelText("회원 가져오기"));
+    fireEvent.click(screen.getByLabelText("데이터 가져오기"));
+    const button = screen.getByRole("button", { name: "가져오기" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(screen.getByText(/시트를 하나도 고르지 않았습니다/)).toBeTruthy();
+  });
+
+  it("다시 켜면 풀린다", () => {
+    stub();
+    mount(two());
+    fireEvent.click(screen.getByLabelText("회원 가져오기"));
+    fireEvent.click(screen.getByLabelText("데이터 가져오기"));
+    fireEvent.click(screen.getByLabelText("회원 가져오기"));
+    expect((screen.getByRole("button", { name: "가져오기" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+});
+
+/**
+ * 컬럼 짝짓기 (FR-020e~h) 와 머리글 행 고르기 (FR-020i·j).
+ *
+ * 별칭 목록은 우리가 아는 표기만 담고 있다. 사용자가 화면에서 보고 있는 열을 우리가 못
+ * 알아보는 경우는 반드시 생기고, 그때 시트를 통째로 버리면 그 열이 눈앞에 있는데도 쓸 수
+ * 없다.
+ */
+describe("컬럼 짝짓기", () => {
+  const unmapped = () =>
+    plan({
+      draft_count: 0,
+      group_count: 0,
+      sheets: [
+        sheet({
+          sheet_name: "메모",
+          prefix: null,
+          needs_prefix: false,
+          headers: ["비고", "담당"],
+          column_index: {},
+          missing_required: ["TC ID", "대상기능"],
+          row_count: 0,
+          total_rows: 3,
+          header_row: 1,
+          sample: [
+            { row: 1, cells: ["비고", "담당"] },
+            { row: 2, cells: ["USER-001", "로그인"] },
+          ],
+        }),
+      ],
+    });
+
+  it("못 찾은 컬럼과 기다리는 행 수를 말한다", () => {
+    stub();
+    mount(unmapped());
+    expect(screen.getByText(/찾지 못한 컬럼: TC ID, 대상기능/)).toBeTruthy();
+    expect(screen.getByText(/3건이 기다립니다/)).toBeTruthy();
+  });
+
+  it("시트의 실제 머리글이 선택지가 된다", () => {
+    stub();
+    mount(unmapped());
+    const select = screen.getByLabelText("메모 의 TC ID 열") as HTMLSelectElement;
+    const options = Array.from(select.options).map((o) => o.text);
+    expect(options).toEqual(["쓰지 않음", "비고", "담당"]);
+  });
+
+  it("짝지으면 확정이 열린다", () => {
+    stub();
+    mount(unmapped());
+    expect(screen.getByText(/열을 짝지어야 하는 시트 1개/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("메모 의 TC ID 열"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("메모 의 대상기능 열"), { target: { value: "1" } });
+    expect(screen.queryByText(/열을 짝지어야 하는 시트/)).toBeNull();
+  });
+
+  it("짝짓기가 확정 요청에 실린다", async () => {
+    const calls = stub();
+    mount(unmapped());
+    fireEvent.change(screen.getByLabelText("메모 의 TC ID 열"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("메모 의 대상기능 열"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+    await waitFor(() => {
+      const commit = calls.find((c) => c.url === "/api/import/commit");
+      expect((commit?.body as { columns: Record<string, Record<string, number>> }).columns).toEqual(
+        { 메모: { "TC ID": 0, 대상기능: 1 } },
+      );
+    });
+  });
+
+  it("머리글 행을 눈으로 보고 고른다", () => {
+    // 행 번호만 묻는 것보다 앞부분을 그대로 보여 주는 편이 틀릴 여지가 적다.
+    stub();
+    const { container } = render(
+      <ImportPreview plan={unmapped()} onCancel={() => {}} onDone={() => {}} />,
+    );
+    expect(container.querySelector('[data-header-row-picker="메모"]')).toBeTruthy();
+    expect(screen.getByLabelText("메모 의 2행을 머리글로")).toBeTruthy();
+  });
+
+  it("머리글 행을 바꾸면 열 이름이 따라 바뀐다", () => {
+    stub();
+    mount(unmapped());
+    fireEvent.click(screen.getByLabelText("메모 의 2행을 머리글로"));
+    const select = screen.getByLabelText("메모 의 TC ID 열") as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.text)).toEqual([
+      "쓰지 않음",
+      "USER-001",
+      "로그인",
+    ]);
+  });
+
+  it("바꾼 머리글 행이 확정 요청에 실린다", async () => {
+    const calls = stub();
+    mount(unmapped());
+    fireEvent.click(screen.getByLabelText("메모 의 2행을 머리글로"));
+    fireEvent.change(screen.getByLabelText("메모 의 TC ID 열"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("메모 의 대상기능 열"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+    await waitFor(() => {
+      const commit = calls.find((c) => c.url === "/api/import/commit");
+      expect((commit?.body as { header_rows: Record<string, number> }).header_rows).toEqual({
+        메모: 2,
+      });
+    });
   });
 });

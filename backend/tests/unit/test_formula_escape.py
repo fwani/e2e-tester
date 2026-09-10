@@ -71,3 +71,29 @@ class ClampTests:
     def test_실패시키지_않는다(self) -> None:
         # 한 줄이 통째로 한도를 넘어도 예외가 아니다.
         assert len(clamp_cell("가" * (MAX_CELL_CHARS * 2))) <= MAX_CELL_CHARS
+
+
+class ControlCharacterTests:
+    """엑셀이 담을 수 없는 제어문자를 지운다 (014 T093 · FR-013).
+
+    녹화된 라벨에는 페이지에서 읽어 온 글자가 섞일 수 있다. 그중 제어문자가 있으면
+    openpyxl 이 `IllegalCharacterError` 를 내고, 그러면 **테스트 하나 때문에 프로젝트
+    전체를 내보내지 못한다.**
+    """
+
+    def test_제어문자를_지운다(self) -> None:
+        assert escape_cell("로그인\x00버튼") == "로그인버튼"
+
+    def test_줄바꿈은_남긴다(self) -> None:
+        # 「수행 절차」는 여러 줄이다.
+        assert escape_cell("1. 연다\n2. 누른다") == "1. 연다\n2. 누른다"
+
+    def test_탭도_남긴다(self) -> None:
+        assert escape_cell("가\t나") == "가\t나"
+
+    def test_제어문자를_지운_뒤_수식_판정을_한다(self) -> None:
+        # 지우고 나서 `=` 로 시작하면 그때도 고정해야 한다.
+        assert escape_cell("\x01=1+1") == "'=1+1"
+
+    def test_제어문자만_있으면_빈_칸이_된다(self) -> None:
+        assert escape_cell("\x00\x01") == ""

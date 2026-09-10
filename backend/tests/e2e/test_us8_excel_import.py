@@ -62,9 +62,11 @@ def test_설계서를_손_입력_없이_옮긴다(project_client: TestClient) ->
     assert renumbered[0]["to"] != "USER-010"
 
     # 건너뛸 행을 시트 이름·행 번호와 함께 알린다.
+    #
+    # **완전히 빈 행은 여기 오지 않는다** (T087). 스프레드시트 도구가 딸려 보내는 빈 행을
+    # 보고하면 목록이 그것으로 뒤덮여, 사용자가 정말 봐야 하는 「제목이 빈 행」이 묻힌다.
     reasons = {(s["sheet_name"], s["row"]): s["reason"] for s in plan["skipped"]}
-    assert reasons[("회원", 5)] == "no_title"
-    assert reasons[("회원", 6)] == "empty"
+    assert reasons == {("회원", 5): "no_title"}
 
     # 접두어를 모르는 시트는 아직 초안 수에 들지 않지만, 몇 건이 기다리는지는 보인다.
     # 그룹없음 2 + 회원 3. 중복된 행도 **살아남는다** — 새 번호를 받을 뿐이다 (FR-023a).

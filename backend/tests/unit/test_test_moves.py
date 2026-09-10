@@ -238,16 +238,53 @@ def test_the_steps_are_untouched(tmp_path: pathlib.Path) -> None:
     assert after.id == "USER-001"
 
 
-def test_a_taken_identifier_is_refused(tmp_path: pathlib.Path) -> None:
-    """FR-444c — 같은 프로젝트 안에서 식별자는 고유해야 한다."""
-    from itb.storage.test_moves import MoveError, move_test_to_group
+def test_a_taken_number_gets_a_new_one(tmp_path: pathlib.Path) -> None:
+    """번호가 차 있으면 **새 번호를 뽑아 옮긴다** (014 3차 요청).
+
+    013 은 번호를 프로젝트 전체에서 고유하게 두어 이 상황 자체를 없앴었다. 그룹마다
+    번호를 세게 되면서 자리가 차 있는 일이 흔해졌고, 그때 거절하면 **그룹 이동이 평범한
+    경우에 실패한다.**
+
+    FR-444c(식별자 고유)는 여전히 지켜진다 — 거절이 아니라 **부여**로 지킨다.
+    """
+    from itb.storage.test_moves import move_test_to_group
+
+    repo = _repo(tmp_path)
+    _add(repo, "TC-001", "옮길 것")
+    _add(repo, "USER-001", "이미 있는 것")
+
+    moved = move_test_to_group(repo, "TC-001", "USER")
+
+    assert moved.to_id == "USER-002"
+    assert repo.find_test_path("TC-001") is None
+    assert repo.find_test_path("USER-001") is not None
+    assert repo.find_test_path("USER-002") is not None
+
+
+def test_a_free_number_is_kept_on_move(tmp_path: pathlib.Path) -> None:
+    """자리가 비어 있으면 **번호를 그대로 지킨다**.
+
+    사용자의 문서·CI 가 그 번호를 가리키고 있다. 비어 있는데도 새 번호를 주면 이유 없이
+    자산의 이름을 바꾸는 일이 된다.
+    """
+    from itb.storage.test_moves import move_test_to_group
+
+    repo = _repo(tmp_path)
+    _add(repo, "TC-003", "옮길 것")
+
+    assert move_test_to_group(repo, "TC-003", "USER").to_id == "USER-003"
+
+
+def test_rename_still_refuses_a_taken_identifier(tmp_path: pathlib.Path) -> None:
+    """낮은 층의 가드는 그대로다 — 이미 쓰는 식별자로는 이름을 바꿀 수 없다."""
+    from itb.storage.test_moves import MoveError, rename_test_id
 
     repo = _repo(tmp_path)
     _add(repo, "TC-001", "옛 것")
     _add(repo, "USER-001", "이미 있는 것")
 
     with pytest.raises(MoveError, match="이미 쓰는"):
-        move_test_to_group(repo, "TC-001", "USER")
+        rename_test_id(repo, "TC-001", "USER-001")
 
     assert repo.find_test_path("TC-001") is not None
 

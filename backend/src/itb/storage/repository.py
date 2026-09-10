@@ -318,30 +318,44 @@ class ProjectRepository:
 
     # ─── 테스트 ID 부여 ───────────────────────────────────────────────────
 
-    def allocate_test_id(self, prefix: str = RESERVED_PREFIX) -> str:
-        """다음 테스트 ID 를 부여하고 카운터를 저장한다.
+    def used_numbers(self, prefix: str) -> set[int]:
+        """그 그룹이 쓰고 있는 번호들 (014 3차 요청).
 
-        카운터와 실제 파일을 함께 본다 — 카운터만 믿으면 파일을 손으로 옮긴 뒤 충돌한다.
-
-        **번호는 접두어를 넘어 고유하다** (013 research R3). `USER-003` 이 있으면 `003` 은
-        어느 접두어로도 쓰이지 않는다. 그래야 **그룹을 옮길 때 번호를 다시 뽑지 않는다** —
-        `USER-003` → `DATA-003` 이 언제나 빈자리다. FR-444c(식별자 고유)를 규칙으로 지키는
-        대신 **구조로** 만족시킨다.
+        **파일 이름에서 읽는다.** 카운터만 믿으면 파일을 손으로 옮긴 뒤 충돌한다.
         """
-        project = self.read_project()
-        used = {
+        return {
             int(m.group("number"))
             for p in self.list_test_paths()
             if (m := _TEST_FILE_RE.match(p.name)) is not None
+            and m.group("id").split("-", 1)[0] == prefix
         }
-        number = project.next_test_number
+
+    def allocate_test_id(self, prefix: str = RESERVED_PREFIX) -> str:
+        """다음 테스트 ID 를 부여한다.
+
+        **번호는 그룹마다 따로 센다** (014 3차 요청). `USER-001` 과 `DATA-001` 이 함께
+        있을 수 있고, 각 그룹이 1부터 999까지 쓴다.
+
+        013 은 반대로 정했었다 — 번호를 프로젝트 전체에서 고유하게 두면 그룹을 옮길 때
+        `USER-003` → `DATA-003` 이 **언제나** 빈자리라 번호를 다시 뽑을 필요가 없기
+        때문이다. 그 이점을 여기서 잃는 대신, 사용자가 그룹마다 1번부터 세는 설계서 관행을
+        얻는다. 옮길 때 자리가 차 있을 수 있다는 것은
+        :func:`itb.storage.test_moves.target_id` 가 빈 번호를 뽑아 감당한다.
+
+        **카운터(`next_test_number`)는 더 이상 쓰지 않는다.** 그것은 프로젝트 하나에
+        번호가 하나뿐일 때의 개념이라 그룹마다 세는 지금과 맞지 않는다. 필드는 옛 파일을
+        읽기 위해 남겨 두되 판단에 쓰지 않는다.
+        """
+        used = self.used_numbers(prefix)
+        number = 1
         while number in used:
             number += 1
         if number > MAX_TEST_NUMBER:
-            msg = f"테스트 ID 가 {MAX_TEST_NUMBER} 를 넘었습니다. 프로젝트를 나누세요."
+            msg = (
+                f"「{prefix}」 그룹의 테스트가 {MAX_TEST_NUMBER}개를 넘었습니다. "
+                "그룹을 나누세요."
+            )
             raise ProjectError(msg)
-        project.next_test_number = number + 1
-        self.write_project(project)
         return f"{prefix}-{number:03d}"
 
     # ─── 실행 결과 (테스트당 최근 1건) ────────────────────────────────────

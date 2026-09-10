@@ -45,6 +45,7 @@ function stub(options: {
   disposition?: string;
   warnings?: string | null;
   exportBody?: unknown;
+  warningDetail?: unknown;
 }) {
   const calls: Call[] = [];
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -54,6 +55,16 @@ function stub(options: {
       method: init?.method ?? "GET",
       headers: (init?.headers ?? {}) as Record<string, string>,
     });
+
+    if (url === "/api/export/warnings") {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: () => Promise.resolve(JSON.stringify(options.warningDetail ?? {})),
+        clone: () => ({ text: () => Promise.resolve("") }),
+      } as unknown as Response);
+    }
 
     if (url.startsWith("/api/export")) {
       const status = options.exportStatus ?? 200;
@@ -209,5 +220,68 @@ describe("파일 이름 읽기", () => {
     expect(filenameFromDisposition("attachment; filename*=UTF-8''%E0%A4%A", "f.xlsx")).toBe(
       "f.xlsx",
     );
+  });
+});
+
+describe("경고 상세", () => {
+  it("어느 그룹이 어느 시트가 됐는지 말한다", async () => {
+    // 건수만으로는 사용자가 파일에서 자기 그룹을 찾지 못한다 (FR-008a).
+    stub({
+      disposition: 'attachment; filename="a.xlsx"',
+      warnings: "1",
+      warningDetail: {
+        sheet_renames: [
+          { group_name: "사용자/권한", sheet_name: "사용자_권한", reason: "forbidden_char" },
+        ],
+        truncations: [],
+        unreadable: [],
+        test_count: 1,
+        sheet_count: 2,
+      },
+    });
+    mount();
+    await clickExport();
+    expect(
+      await screen.findByText(/그룹 「사용자\/권한」은 「사용자_권한」 시트가 됐습니다/),
+    ).toBeTruthy();
+  });
+
+  it("잘린 칸을 테스트와 함께 말한다", async () => {
+    stub({
+      disposition: 'attachment; filename="a.xlsx"',
+      warnings: "1",
+      warningDetail: {
+        sheet_renames: [],
+        truncations: [
+          { test_id: "TC-042", column: "수행 절차", kept_lines: 210, dropped_lines: 14 },
+        ],
+        unreadable: [],
+        test_count: 1,
+        sheet_count: 1,
+      },
+    });
+    mount();
+    await clickExport();
+    expect(await screen.findByText(/TC-042 · 수행 절차 — 14줄 생략/)).toBeTruthy();
+  });
+
+  it("모양이 어긋난 응답이 와도 화면이 깨지지 않는다", async () => {
+    // `detail?.` 만으로는 부족하다 — 응답이 오되 배열이 없는 경우를 막아야 한다.
+    stub({
+      disposition: 'attachment; filename="a.xlsx"',
+      warnings: "2",
+      warningDetail: {},
+    });
+    mount();
+    await clickExport();
+    expect(await screen.findByText(/내려받았습니다/)).toBeTruthy();
+  });
+
+  it("경고가 없으면 상세를 부르지 않는다", async () => {
+    const calls = stub({ disposition: 'attachment; filename="a.xlsx"' });
+    mount();
+    await clickExport();
+    await screen.findByText(/내려받았습니다/);
+    expect(calls.map((c) => c.url)).not.toContain("/api/export/warnings");
   });
 });

@@ -23,10 +23,10 @@ from itb.domain.test_case import MAX_TEST_NUMBER, RESERVED_PREFIX, Project, Test
 from itb.portability import exporter
 from itb.portability.importer import (
     ImportPlan,
-    PrefixSource,
     RowPlan,
     SheetPlan,
     build_plan,
+    validate_columns,
     validate_prefix,
 )
 from itb.portability.limits import MAX_UPLOAD_BYTES, XLSX_MEDIA_TYPE
@@ -39,6 +39,7 @@ from itb.portability.workbook import (
     write_workbook,
 )
 from itb.storage import registry, trash
+from itb.storage.drafts import DraftError
 from itb.storage.paths import allocate_workspace_path
 from itb.storage.repository import ProjectError, ProjectRepository, slugify
 from itb.storage.session_files import sanitize_display_name
@@ -196,6 +197,14 @@ class SkippedRowView(BaseModel):
     reason: str
 
 
+class SampleRowView(BaseModel):
+    """미리보기가 보여 주는 원본 행 하나. 사용자가 표의 시작을 짚는 근거다."""
+
+    model_config = ConfigDict(extra="forbid")
+    row: int
+    cells: list[str]
+
+
 class SheetPlanView(BaseModel):
     model_config = ConfigDict(extra="forbid")
     sheet_name: str
@@ -207,6 +216,27 @@ class SheetPlanView(BaseModel):
     name_differs: bool
     row_count: int
     renumbered: list[RenumberedView] = Field(default_factory=list)
+
+    headers: list[str] = Field(default_factory=list)
+    """이 시트의 실제 머리글 목록 (FR-020f). 사용자가 짝지을 후보다."""
+
+    column_index: dict[str, int] = Field(default_factory=dict)
+    """지금 정해진 컬럼 → 열 번호. 화면의 선택기 기본값이 된다."""
+
+    missing_required: list[str] = Field(default_factory=list)
+    """찾지 못한 필수 컬럼. 비어 있지 않으면 짝지어야 쓸 수 있다 (FR-020g)."""
+
+    included: bool = True
+    """이 시트를 가져오는가 (FR-020a)."""
+
+    header_row: int | None = None
+    """머리글로 쓰는 엑셀 행 번호 (FR-020i). 사용자가 고칠 수 있다."""
+
+    sample: list[SampleRowView] = Field(default_factory=list)
+    """앞부분 몇 줄 (FR-020j) — 사용자가 **어느 행이 머리글인지 눈으로 보고** 고른다."""
+
+    total_rows: int = 0
+    """머리글을 뺀 실제 행 수. 필수 컬럼이 없어도 「여기 몇 건이 있다」를 보인다."""
 
 
 class CapacityView(BaseModel):
@@ -244,6 +274,27 @@ class CommitRequest(BaseModel):
     시트를 빼거나 빈 문자열을 주면 **그 시트를 건너뛴다** (FR-022b).
     """
 
+    sheets: dict[str, bool] = Field(default_factory=dict)
+    """시트마다 가져올지 여부 (FR-020a). 빠진 시트는 **가져온다** — 기본이 포함이다.
+
+    「일부러 뺀 것」과 「접두어를 못 정해 건너뛴 것」은 다른 사실이므로 결과에서도
+    구별해 보고한다 (FR-020c).
+    """
+
+    columns: dict[str, dict[str, int]] = Field(default_factory=dict)
+    """시트별 컬럼 짝짓기 — ``{시트: {컬럼 이름: 열 번호}}`` (FR-020e).
+
+    자동 판정을 이긴다. 열 번호가 음수면 「쓰지 않음」이다.
+    """
+
+    header_rows: dict[str, int] = Field(default_factory=dict)
+    """시트별 머리글 행의 엑셀 행 번호 (FR-020i).
+
+    설계서는 위에 제목·작성일·범례를 두는 일이 흔하다. 첫 행을 머리글로 못박으면 그런
+    파일은 필수 컬럼을 영영 찾지 못한다 — **표가 어디서 시작하는지** 사용자가 짚을 수
+    있어야 한다.
+    """
+
 
 class CreateProjectImportRequest(CommitRequest):
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
@@ -278,6 +329,14 @@ class ImportResultView(BaseModel):
     drafts: list[DraftRef] = Field(default_factory=list)
     skipped: list[SkippedRowView] = Field(default_factory=list)
     skipped_sheets: list[SkippedSheetView] = Field(default_factory=list)
+    """제품이 **읽지 못해** 건너뛴 시트 — 접두어 미정·필수 컬럼 없음."""
+
+    ignored_sheets: list[str] = Field(default_factory=list)
+    """사용자가 **일부러 뺀** 시트 (FR-020c).
+
+    건너뛴 것과 뭉치면 "내가 뺀 것"과 "제품이 못 읽은 것"을 구별할 수 없다.
+    """
+
     renumbered: list[RenumberedView] = Field(default_factory=list)
 
 
@@ -287,9 +346,18 @@ class CreateProjectImportResult(ImportResultView):
 
 def _plan_view(state: AppState, plan: ImportPlan, repo: ProjectRepository | None) -> ImportPlanView:
     """계획을 화면이 읽을 형태로 만든다. **아무것도 만들지 않는다.**"""
-    used = _used_ids(repo)
-    available = MAX_TEST_NUMBER - len(used)
+    # 미리보기는 **가장 빠듯한 그룹**을 보여 준다 — 전체 합으로는 어느 그룹이 넘치는지
+    # 알 수 없고, 넘치지 않는데 넘친다고 말하게 된다.
     needed = plan.draft_count
+    available = MAX_TEST_NUMBER
+    for sheet in plan.sheets:
+        if sheet.included and sheet.usable and sheet.prefix is not None:
+            left = (
+                MAX_TEST_NUMBER - len(repo.used_numbers(sheet.prefix))
+                if repo
+                else MAX_TEST_NUMBER
+            )
+            available = min(available, left)
 
     sheets: list[SheetPlanView] = []
     renumbered_all: list[RenumberedView] = []
@@ -311,6 +379,13 @@ def _plan_view(state: AppState, plan: ImportPlan, repo: ProjectRepository | None
                 name_differs=sheet.name_differs,
                 row_count=len(sheet.rows),
                 renumbered=renumbered,
+                headers=sheet.headers,
+                column_index=sheet.column_index,
+                missing_required=sheet.missing_required,
+                included=sheet.included,
+                header_row=sheet.header_row,
+                sample=[SampleRowView(row=n, cells=c) for n, c in sheet.sample],
+                total_rows=sheet.total_rows,
             )
         )
 
@@ -319,7 +394,7 @@ def _plan_view(state: AppState, plan: ImportPlan, repo: ProjectRepository | None
         file_name=plan.file_name,
         expires_at=state.import_plans.expires_at(plan),
         draft_count=needed,
-        group_count=sum(1 for s in plan.sheets if _makes_group(s)),
+        group_count=sum(1 for s in plan.sheets if s.included and _makes_group(s)),
         sheets=sheets,
         skipped=[
             SkippedRowView(sheet_name=s.sheet_name, row=s.row, reason=s.reason.value)
@@ -331,8 +406,8 @@ def _plan_view(state: AppState, plan: ImportPlan, repo: ProjectRepository | None
 
 
 def _makes_group(sheet: SheetPlan) -> bool:
-    """이 시트가 그룹을 뜻하는가. 그룹 없음과 접두어 미정은 아니다."""
-    return sheet.prefix is not None and sheet.prefix != RESERVED_PREFIX
+    """이 시트가 그룹을 뜻하는가. 그룹 없음·접두어 미정·못 읽은 시트는 아니다."""
+    return sheet.usable and sheet.prefix is not None and sheet.prefix != RESERVED_PREFIX
 
 
 def _used_ids(repo: ProjectRepository | None) -> set[str]:
@@ -362,7 +437,7 @@ async def preview_import(
         project=project,
         taken_ids=_used_ids(repo),
     )
-    state.import_plans.put(plan)
+    state.import_plans.put(plan, parsed)
     return _plan_view(state, plan, repo)
 
 
@@ -411,40 +486,74 @@ class _Materialized:
     reused_groups: list[GroupRef] = field(default_factory=list)
     drafts: list[DraftRef] = field(default_factory=list)
     skipped_sheets: list[SkippedSheetView] = field(default_factory=list)
+    ignored_sheets: list[str] = field(default_factory=list)
     renumbered: list[RenumberedView] = field(default_factory=list)
 
 
-def _resolve_plan(state: AppState, plan_id: str) -> ImportPlan:
-    plan = state.import_plans.get(plan_id)
-    if plan is None:
+def _replan(
+    state: AppState,
+    body: CommitRequest,
+    repo: ProjectRepository | None,
+) -> ImportPlan:
+    """사용자의 결정을 반영해 계획을 **다시 세운다** (FR-020a·e · FR-022a·c).
+
+    자리에서 갈아 끼우지 않는 이유는 컬럼 짝짓기 때문이다 — 어느 열이 어느 컬럼인지가
+    바뀌면 **행이 다르게 읽힌다.** 접두어만 있을 때는 값 하나를 바꾸면 됐지만, 이제는
+    해석을 처음부터 다시 해야 한다. 그래서 보관소가 해석 결과를 함께 들고 있다.
+
+    검사는 **아무것도 만들기 전에** 전부 끝낸다. 만들다가 거절하면 되돌릴 것이 생긴다.
+    """
+    entry = state.import_plans.entry(body.plan_id)
+    if entry is None:
         raise bad_request(
             ErrorCode.IMPORT_PLAN_NOT_FOUND,
             "미리보기가 만료됐거나 없습니다.",
         )
-    return plan
 
-
-def _apply_prefixes(plan: ImportPlan, prefixes: dict[str, str]) -> None:
-    """사용자가 준 접두어를 계획에 반영한다 (FR-022a·c).
-
-    형식에 맞지 않으면 **확정 전에** 거절한다. 만들다가 거절하면 되돌릴 것이 생긴다.
-    """
-    for sheet in plan.sheets:
-        if not sheet.needs_prefix:
-            continue
-        given = (prefixes.get(sheet.sheet_name) or "").strip()
-        if not given:
+    for sheet_name, given in body.prefixes.items():
+        text = (given or "").strip()
+        if not text:
             continue  # 비워두면 건너뛴다 (FR-022b)
-        problem = validate_prefix(given)
+        problem = validate_prefix(text)
         if problem is not None:
             code = (
                 ErrorCode.GROUP_PREFIX_RESERVED
-                if given.upper() == RESERVED_PREFIX
+                if text.upper() == RESERVED_PREFIX
                 else ErrorCode.DEFINITION_INVALID
             )
-            raise bad_request(code, problem, sheet_name=sheet.sheet_name)
-        sheet.prefix = given.upper()
-        sheet.prefix_source = PrefixSource.USER_SUPPLIED
+            raise bad_request(code, problem, sheet_name=sheet_name)
+
+    project = repo.read_project() if repo else None
+    plan = build_plan(
+        entry.parsed,
+        entry.plan.file_name,
+        project=project,
+        taken_ids=_used_ids(repo),
+        prefixes=body.prefixes,
+        selections=body.sheets,
+        column_overrides=body.columns,
+        header_rows=body.header_rows,
+    )
+    # 다시 세운 계획이 옛 식별자를 이어받아야 `drop` 이 맞는 것을 치운다.
+    plan.plan_id = entry.plan.plan_id
+    plan.created_at = entry.plan.created_at
+    state.import_plans.put(plan, entry.parsed)
+
+    # **머리글을 고른 뒤에** 컬럼 짝짓기를 검사한다 — 머리글 행이 바뀌면 열 이름도
+    # 바뀌므로, 옛 머리글 기준으로 검사하면 맞는 지정을 거절하게 된다.
+    headers_by_sheet = {s.sheet_name: s.headers for s in plan.sheets}
+    for sheet_name, mapping in body.columns.items():
+        problem = validate_columns(mapping, headers_by_sheet.get(sheet_name, []))
+        if problem is not None:
+            raise bad_request(ErrorCode.DEFINITION_INVALID, problem, sheet_name=sheet_name)
+
+    if not any(s.included for s in plan.sheets):
+        raise bad_request(
+            ErrorCode.DEFINITION_INVALID,
+            "가져올 시트를 하나도 고르지 않았습니다.",
+            next_action="가져올 시트를 하나 이상 고른 뒤 다시 시도하세요.",
+        )
+    return plan
 
 
 def _check_capacity(plan: ImportPlan, repo: ProjectRepository) -> None:
@@ -452,16 +561,24 @@ def _check_capacity(plan: ImportPlan, repo: ProjectRepository) -> None:
 
     이 검사가 없으면 초안을 만들다가 번호가 바닥나 반쯤 만들어진 상태로 끝난다.
     """
-    used = _used_ids(repo)
-    needed = sum(len(s.rows) for s in plan.sheets if s.prefix is not None)
-    available = MAX_TEST_NUMBER - len(used)
-    if needed > available:
-        raise bad_request(
-            ErrorCode.IMPORT_CAPACITY_EXCEEDED,
-            f"만들려는 초안이 {needed}건인데 이 프로젝트에 남은 번호는 {available}개입니다.",
-            needed=needed,
-            available=available,
-        )
+    # **수용량도 그룹마다 본다** (014 3차 요청). 번호를 그룹마다 세므로 「프로젝트에 남은
+    # 번호」라는 것은 더 이상 없다 — 어느 그룹이 넘치는지를 말해야 사용자가 고칠 수 있다.
+    per_group: dict[str, int] = {}
+    for sheet in plan.sheets:
+        if sheet.included and sheet.usable and sheet.prefix is not None:
+            per_group[sheet.prefix] = per_group.get(sheet.prefix, 0) + len(sheet.rows)
+
+    for prefix, needed in sorted(per_group.items()):
+        available = MAX_TEST_NUMBER - len(repo.used_numbers(prefix))
+        if needed > available:
+            raise bad_request(
+                ErrorCode.IMPORT_CAPACITY_EXCEEDED,
+                f"「{prefix}」 그룹에 만들려는 초안이 {needed}건인데 "
+                f"남은 번호는 {available}개입니다.",
+                needed=needed,
+                available=available,
+                group=prefix,
+            )
 
 
 def _materialize(plan: ImportPlan, repo: ProjectRepository) -> _Materialized:
@@ -484,6 +601,15 @@ def _materialize(plan: ImportPlan, repo: ProjectRepository) -> _Materialized:
 
     new_groups: list[TestGroup] = []
     for sheet in plan.sheets:
+        if not sheet.included:
+            # 사용자가 **일부러 뺀** 시트. 못 읽은 것과 구별해 보고한다 (FR-020c).
+            made.ignored_sheets.append(sheet.sheet_name)
+            continue
+        if not sheet.usable:
+            made.skipped_sheets.append(
+                SkippedSheetView(sheet_name=sheet.sheet_name, reason="no_columns")
+            )
+            continue
         if sheet.prefix is None:
             made.skipped_sheets.append(
                 SkippedSheetView(sheet_name=sheet.sheet_name, reason="no_prefix")
@@ -506,14 +632,28 @@ def _materialize(plan: ImportPlan, repo: ProjectRepository) -> _Materialized:
         project.groups = [*project.groups, *new_groups]
         repo.write_project(project)
 
+    def rollback_groups() -> None:
+        if not new_groups:
+            return
+        current = repo.read_project()
+        current.groups = before_groups
+        repo.write_project(current)
+
     # ── 초안 (전부 아니면 전무) ──────────────────────────────────────────
     targets: list[tuple[SheetPlan, RowPlan, str]] = []
     reserved: set[str] = set()
     for sheet in plan.sheets:
-        if sheet.prefix is None:
+        if not (sheet.included and sheet.usable) or sheet.prefix is None:
             continue
         for row in sheet.rows:
-            draft_id = repo.drafts.allocate_id(taken=reserved)
+            # **식별자 확보를 여기서 한다** — `run_all` 의 검증 단계에 해당한다.
+            # 이 단계에서 실패하면 아무것도 만들지 않았으므로 그룹 쓰기만 되돌리면 된다
+            # (수렴 T091).
+            try:
+                draft_id = repo.drafts.allocate_id(taken=reserved)
+            except DraftError as exc:
+                rollback_groups()
+                raise bad_request(ErrorCode.IMPORT_FAILED, str(exc)) from exc
             reserved.add(draft_id)
             targets.append((sheet, row, draft_id))
 
@@ -537,13 +677,6 @@ def _materialize(plan: ImportPlan, repo: ProjectRepository) -> _Materialized:
 
     def undo_one(target: tuple[SheetPlan, RowPlan, str], _made: Draft) -> None:
         repo.drafts.delete(target[2])
-
-    def rollback_groups() -> None:
-        if not new_groups:
-            return
-        current = repo.read_project()
-        current.groups = before_groups
-        repo.write_project(current)
 
     try:
         written = run_all(targets, validate=lambda _t: None, do=write_one, undo=undo_one)
@@ -605,6 +738,7 @@ def _result_view(plan: ImportPlan, made: _Materialized) -> ImportResultView:
             for s in plan.skipped
         ],
         skipped_sheets=made.skipped_sheets,
+        ignored_sheets=made.ignored_sheets,
         renumbered=made.renumbered,
     )
 
@@ -613,9 +747,7 @@ def _result_view(plan: ImportPlan, made: _Materialized) -> ImportResultView:
 async def commit_import(body: CommitRequest, state: State) -> ImportResultView:
     """열린 프로젝트로 가져온다. 전부 아니면 전무다 (FR-025)."""
     repo = _repo(state)
-    plan = _resolve_plan(state, body.plan_id)
-
-    _apply_prefixes(plan, body.prefixes)
+    plan = _replan(state, body, repo)
     _check_capacity(plan, repo)
 
     made = _materialize(plan, repo)
@@ -633,8 +765,8 @@ async def create_project_from_import(
     휴지통으로 옮기고 레지스트리에서 지운다 — 지우지 않고 휴지통으로 보내는 것은 013 이
     삭제를 휴지통 이동으로 정한 결정을 그대로 쓰는 것이다.
     """
-    plan = _resolve_plan(state, body.plan_id)
-    _apply_prefixes(plan, body.prefixes)
+    # 프로젝트를 만들기 **전에** 계획을 확정한다 — 만든 뒤 거절하면 되돌릴 것이 생긴다.
+    plan = _replan(state, body, None)
 
     project = Project(
         name=body.name,

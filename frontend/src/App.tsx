@@ -13,12 +13,13 @@ import {
   setExpectedProjectRoot,
   type DraftRow,
   type ImportPlanView,
+  type ImportResultView,
   type ProjectView,
   type SessionView,
 } from "./api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
 import { ComposeView } from "./pages/ComposeView";
-import { ImportPreview } from "./pages/ImportPreview";
+import { ImportDoneNotice, ImportPreview } from "./pages/ImportPreview";
 import { KeyManagement } from "./pages/KeyManagement";
 import { ProjectSetup } from "./pages/ProjectSetup";
 import { ResultView } from "./pages/ResultView";
@@ -47,7 +48,12 @@ type Screen =
        * 들어가고, 지시문 칸만 미리 채워진다 — 원칙 I 이 막으려는 두 번째 작성 경로를
        * 만들지 않기 위해서다.
        */
-      draft?: { draft_id: string; name: string; instruction: string } | null;
+      draft?: {
+        draft_id: string;
+        name: string;
+        group_prefix: string;
+        instruction: string;
+      } | null;
     }
   /**
    * 가져오기 미리보기 (014 US2 · FR-015·FR-016).
@@ -60,6 +66,8 @@ type Screen =
       name: "runner";
       session: SessionView;
       aiInstruction?: string | null;
+      /** 초안에서 출발한 세션 (014 3차 요청). 저장 이름·그룹의 기본값이 된다. */
+      draft?: { draft_id: string; name: string; group_prefix: string } | null;
       /**
        * 이 세션이 끝나면 돌아갈 편집 화면 (006 FR-204 · converge T094).
        *
@@ -110,6 +118,13 @@ export function App() {
   // 문자열이 아니라 ErrorInfo 를 담는다 — 문자열로 받으면 next_action 이 여기서 죽는다
   // (003 EC-004). "대상 앱에 연결할 수 없습니다" 뒤에 "떠 있는지 확인하세요" 가 따라와야 한다.
   const [error, setError] = useState<ErrorInfo | null>(null);
+  /**
+   * 방금 끝난 가져오기의 결과 (014 FR-018a).
+   *
+   * 목록 화면 위에 한 번 보이고 사용자가 닫는다. 화면을 넘어 나르는 이유는, 결과가
+   * 만들어지는 곳(미리보기)과 사용자가 그것을 확인할 곳(목록)이 다르기 때문이다.
+   */
+  const [importDone, setImportDone] = useState<ImportResultView | null>(null);
   /**
    * 실행 요청이 진행 중인 테스트 ID (005 FR-127·FR-129).
    *
@@ -458,6 +473,12 @@ export function App() {
       )}
 
       {screen.name === "list" && (
+        <>
+        {importDone !== null && (
+          <div style={{ padding: "12px 28px 0" }}>
+            <ImportDoneNotice result={importDone} onDismiss={() => setImportDone(null)} />
+          </div>
+        )}
         <TestList
           projectName={opened.name}
           onCreate={() => {
@@ -490,6 +511,7 @@ export function App() {
                   draft: {
                     draft_id: detail.draft_id,
                     name: detail.name,
+                    group_prefix: detail.group_prefix,
                     instruction: detail.suggested_instruction,
                   },
                 });
@@ -510,6 +532,7 @@ export function App() {
               .finally(refreshActive)
           }
         />
+        </>
       )}
 
       {/*
@@ -585,8 +608,35 @@ export function App() {
           onStartAi={(startUrl, aiInstruction) => {
             if (!lockCompose()) return;
             void sessions
-              .create({ mode: "ai", start_url: startUrl, ai_instruction: aiInstruction })
-              .then((session) => setScreen({ name: "runner", session, aiInstruction }))
+              .create({
+                mode: "ai",
+                start_url: startUrl,
+                ai_instruction: aiInstruction,
+                /*
+                  014 FR-030 — **초안에서 왔다는 사실을 서버에 알린다.**
+
+                  지시문만 미리 채우고 이것을 빠뜨리면 화면은 그럴듯하게 동작하지만,
+                  저장할 때 희망 번호를 받지 못하고(FR-032) 설명·수행자가 옮겨지지 않으며
+                  (FR-026) 초안도 사라지지 않는다(FR-033). 실제로 그런 상태였다 — 백엔드
+                  e2e 가 SessionWork 를 직접 조립해 이 구멍을 지나갔기 때문이다 (T085).
+                */
+                draft_id: screen.draft?.draft_id ?? null,
+              })
+              .then((session) =>
+                setScreen({
+                  name: "runner",
+                  session,
+                  aiInstruction,
+                  // 저장 이름·그룹의 기본값이 된다 (3차 요청).
+                  draft: screen.draft
+                    ? {
+                        draft_id: screen.draft.draft_id,
+                        name: screen.draft.name,
+                        group_prefix: screen.draft.group_prefix,
+                      }
+                    : null,
+                }),
+              )
               .catch((exc: unknown) => {
                 unlockCompose();
                 setError(describeError(exc));
@@ -605,7 +655,14 @@ export function App() {
         <ImportPreview
           plan={screen.plan}
           onCancel={() => setScreen({ name: "list" })}
-          onDone={() => setScreen({ name: "list" })}
+          /*
+            014 FR-018a — **결과를 버리지 않는다.** 미리보기에서만 보이면 확정하는 순간
+            사라지고, 무엇이 빠졌는지 다시 확인할 길이 없다 (수렴 T088).
+          */
+          onDone={(result) => {
+            setImportDone(result);
+            setScreen({ name: "list" });
+          }}
         />
       )}
 
@@ -613,6 +670,7 @@ export function App() {
         <SessionScreen
           initial={screen.session}
           aiInstruction={screen.aiInstruction ?? null}
+          draft={screen.draft ?? null}
           /* 009 FR-291 — 목표 자리에 도착하면 기록을 켠다 */
           recordOnArrival={screen.recordOnArrival ?? false}
           /* 011 FR-374a — 목표 자리에 도착하면 지시문을 수행한다 */

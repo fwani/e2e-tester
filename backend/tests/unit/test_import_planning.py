@@ -113,12 +113,36 @@ class PrefixTests:
 
 
 class ColumnTests:
-    def test_필수_컬럼이_없으면_시트를_건너뛴다(self) -> None:
+    def test_필수_컬럼이_없어도_시트를_버리지_않는다(self) -> None:
+        # 예전에는 계획에서 통째로 사라져, 사용자가 화면에서 그 열을 보고 있는데도
+        # 짝지을 자리가 없었다 (FR-020g).
         parsed = read_sheets(build_xlsx({"메모": [["아무거나"]]}, header=["비고", "담당"]))
         plan = build_plan(parsed, "f.xlsx", project=None)
-        assert plan.sheets == []
+        assert len(plan.sheets) == 1
+        assert not plan.sheets[0].usable
+        assert plan.sheets[0].missing_required == ["TC ID", "대상기능"]
         assert [s.reason for s in plan.skipped] == [SkipReason.NO_COLUMNS]
-        assert any("필수 컬럼" in w for w in plan.warnings)
+
+    def test_짝지을_수_있게_실제_머리글을_싣는다(self) -> None:
+        parsed = read_sheets(build_xlsx({"메모": [["아무거나"]]}, header=["비고", "담당"]))
+        plan = build_plan(parsed, "f.xlsx", project=None)
+        assert plan.sheets[0].headers == ["비고", "담당"]
+        assert plan.needs_columns == ["메모"]
+
+    def test_짝지어_주면_살아난다(self) -> None:
+        parsed = read_sheets(
+            build_xlsx({"메모": [["USER-001", "로그인"]]}, header=["비고", "담당"])
+        )
+        plan = build_plan(
+            parsed,
+            "f.xlsx",
+            project=None,
+            column_overrides={"메모": {"TC ID": 0, "대상기능": 1}},
+        )
+        sheet = plan.sheets[0]
+        assert sheet.usable
+        assert sheet.prefix == "USER"
+        assert [r.name for r in sheet.rows] == ["로그인"]
 
     def test_열_순서가_달라도_읽는다(self) -> None:
         parsed = read_sheets(
@@ -158,9 +182,18 @@ class SkipTests:
         skipped = plan.skipped[0]
         assert (skipped.sheet_name, skipped.row) == ("회원", 3)
 
-    def test_완전히_빈_행은_비어_있음으로_건너뛴다(self) -> None:
+    def test_완전히_빈_행은_건너뛴_목록에도_오르지_않는다(self) -> None:
+        # T087 이후 빈 행은 **읽는 단계에서** 빠진다. 건너뛴 행으로 보고하면 구글 시트
+        # 파일의 미리보기가 수백 건의 「빈 행」으로 뒤덮여, 사용자가 정말 봐야 하는
+        # 「제목이 빈 행」이 묻힌다 (SC-006).
         plan = plan_of({"회원": [row("USER-001", "가"), row()]}, project=None)
-        assert [s.reason for s in plan.skipped] == [SkipReason.EMPTY]
+        assert plan.skipped == []
+        assert len(plan.sheets[0].rows) == 1
+
+    def test_제목이_빈_행은_여전히_보고된다(self) -> None:
+        # 빈 행을 조용히 버리는 것과, 값이 있는데 제목이 없어 못 쓰는 것은 다른 사실이다.
+        plan = plan_of({"회원": [row("USER-001", None)]}, project=None)
+        assert [s.reason for s in plan.skipped] == [SkipReason.NO_TITLE]
 
     def test_건너뛴_행이_다른_행을_막지_않는다(self) -> None:
         plan = plan_of(
@@ -199,15 +232,22 @@ class DuplicateTests:
         )
         assert plan.sheets[0].rows[0].desired_test_id != "USER-001"
 
-    def test_시트를_넘어서도_번호가_겹치지_않는다(self) -> None:
-        # 번호는 접두어를 넘어 프로젝트 전체에서 고유하다 (013 R3).
+    def test_다른_그룹은_같은_번호를_쓸_수_있다(self) -> None:
+        # 번호는 **그룹마다** 센다 (014 3차 요청). 한 통에 넣고 세면 있지도 않은 충돌을
+        # 만들어 내고, 사용자가 설계서에 적은 번호가 이유 없이 바뀐다.
         plan = plan_of(
             {"회원": [row("USER-001", "가")], "데이터": [row("DATA-001", "나")]},
             project=None,
         )
         ids = [r.desired_test_id for s in plan.sheets for r in s.rows]
-        numbers = [i.split("-", 1)[1] for i in ids if i]
-        assert len(set(numbers)) == 2
+        assert ids == ["USER-001", "DATA-001"]
+
+    def test_같은_그룹_안에서는_여전히_겹치지_않는다(self) -> None:
+        plan = plan_of(
+            {"회원": [row("USER-001", "가"), row("USER-001", "나")]}, project=None
+        )
+        ids = [r.desired_test_id for r in plan.sheets[0].rows]
+        assert len(set(ids)) == 2
 
 
 class ExistingGroupTests:

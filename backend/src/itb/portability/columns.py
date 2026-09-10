@@ -96,11 +96,33 @@ class HeaderMap:
         return row[pos]
 
 
-def map_headers(header_row: list[object]) -> HeaderMap:
+def header_labels(header_row: list[object]) -> list[str]:
+    """머리글 행을 사람이 고를 수 있는 목록으로 만든다 (FR-020f).
+
+    사용자가 컬럼을 짝지으려면 **그 시트에 어떤 열이 있는지** 봐야 한다. 빈 칸은 자리를
+    지키되 이름이 없으므로 ``"(N번째 열)"`` 로 부른다 — 위치를 잃으면 짝지을 수 없다.
+    """
+    labels: list[str] = []
+    for pos, cell in enumerate(header_row):
+        text = "" if cell is None else str(cell).strip()
+        labels.append(text or f"({pos + 1}번째 열)")
+    return labels
+
+
+def map_headers(
+    header_row: list[object],
+    *,
+    overrides: dict[Column, int] | None = None,
+) -> HeaderMap:
     """머리글 행을 읽어 컬럼 위치를 정한다.
 
     **먼저 나온 것이 이긴다.** 같은 컬럼으로 해석되는 머리글이 둘이면 왼쪽을 쓴다 — 어느
     쪽인지 정하지 않으면 파일마다 결과가 달라진다.
+
+    `overrides` 는 사용자가 미리보기에서 직접 짝지은 것이며 **자동 판정을 이긴다**
+    (FR-020e). 별칭 목록은 우리가 아는 표기만 담고 있어서, 사용자가 화면에서 보고 있는
+    열을 우리가 못 알아보는 경우가 반드시 생긴다. 그때 시트를 통째로 버리는 대신
+    사람이 짝지을 수 있어야 한다.
     """
     index: dict[Column, int] = {}
     for pos, cell in enumerate(header_row):
@@ -113,7 +135,31 @@ def map_headers(header_row: list[object]) -> HeaderMap:
             if key == normalize_header(column.value) or key in ALIASES[column]:
                 index[column] = pos
                 break
+
+    if overrides:
+        # 사용자가 정한 것이 이긴다. 같은 열을 두 컬럼에 겹쳐 주는 것은 호출자가
+        # 확정 전에 거절한다 (FR-020h) — 여기서는 정해진 것을 그대로 반영한다.
+        for column, pos in overrides.items():
+            if pos < 0:
+                index.pop(column, None)  # 「쓰지 않음」
+                continue
+            index[column] = pos
+
     return HeaderMap(
         index=index,
         missing_required=frozenset(c for c in REQUIRED if c not in index),
     )
+
+
+def conflicting_overrides(overrides: dict[Column, int]) -> list[int]:
+    """두 컬럼이 같은 열을 가리키는 경우의 열 번호들 (FR-020h).
+
+    겹치면 한 열의 값이 두 자리에 들어가고, 사용자는 자기가 무엇을 지정했는지 화면에서
+    확인할 수 없다. 확정 전에 거절한다.
+    """
+    seen: dict[int, int] = {}
+    for pos in overrides.values():
+        if pos < 0:
+            continue
+        seen[pos] = seen.get(pos, 0) + 1
+    return sorted(pos for pos, n in seen.items() if n > 1)

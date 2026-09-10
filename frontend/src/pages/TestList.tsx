@@ -49,6 +49,7 @@ import {
   type TestGroup,
   type TestListResponse,
   type DraftRow,
+  type ExportWarningsView,
   type ImportPlanView,
   type TrashedTest,
 } from "../api/client";
@@ -176,7 +177,11 @@ export function TestList({
   const [recentFirst, setRecentFirst] = useState(true);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [exported, setExported] = useState<{ filename: string; warnings: number } | null>(null);
+  const [exported, setExported] = useState<{
+    filename: string;
+    warnings: number;
+    detail: ExportWarningsView | null;
+  } | null>(null);
   const [draftRows, setDraftRows] = useState<DraftRow[]>([]);
   const [draftProblems, setDraftProblems] = useState<string[]>([]);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
@@ -708,9 +713,16 @@ export function TestList({
                   setExporting(true);
                   void excel
                     .exportProject()
-                    .then(({ blob, filename, warnings }) => {
+                    .then(async ({ blob, filename, warnings }) => {
                       saveBlob(blob, filename);
-                      setExported({ filename, warnings });
+                      /*
+                        경고가 있으면 **무엇이 바뀌었는지** 함께 읽는다 (FR-008a).
+                        건수만으로는 사용자가 파일에서 자기 그룹을 찾지 못한다 —
+                        상세 엔드포인트는 있는데 아무도 부르지 않아 죽은 코드였다
+                        (수렴 T090).
+                      */
+                      const detail = warnings > 0 ? await excel.warnings().catch(() => null) : null;
+                      setExported({ filename, warnings, detail });
                     })
                     .catch((exc: unknown) => setError(describeError(exc)))
                     .finally(() => setExporting(false));
@@ -794,6 +806,37 @@ export function TestList({
             {exported.warnings > 0 && (
               <div className="why" style={{ marginTop: 4 }}>
                 시트 이름이 바뀌었거나 긴 칸이 잘린 곳이 {exported.warnings}건 있습니다.
+              </div>
+            )}
+            {/*
+              `?? []` 가 각 배열마다 필요하다. `detail?.` 는 detail 이 없는 경우만 막고,
+              응답이 오되 모양이 어긋난 경우는 못 막는다 — 그러면 목록 화면 전체가
+              깨진다. 그룹 조회가 같은 이유로 `?? []` 를 쓴다.
+            */}
+            {(exported.detail?.sheet_renames ?? []).length > 0 && (
+              <div style={{ marginTop: 6 }} data-export-renames>
+                {(exported.detail?.sheet_renames ?? []).map((r) => (
+                  <div key={r.group_name} className="why">
+                    그룹 「{r.group_name}」은 「{r.sheet_name}」 시트가 됐습니다.
+                  </div>
+                ))}
+              </div>
+            )}
+            {(exported.detail?.truncations ?? []).length > 0 && (
+              <details style={{ marginTop: 6 }} data-export-truncations>
+                <summary className="why" style={{ cursor: "pointer" }}>
+                  잘린 칸 {(exported.detail?.truncations ?? []).length}건
+                </summary>
+                {(exported.detail?.truncations ?? []).map((t) => (
+                  <div key={`${t.test_id}-${t.column}`} className="why mono">
+                    {t.test_id} · {t.column} — {t.dropped_lines}줄 생략
+                  </div>
+                ))}
+              </details>
+            )}
+            {(exported.detail?.unreadable ?? []).length > 0 && (
+              <div className="why" style={{ marginTop: 6 }} data-export-unreadable>
+                읽지 못해 빠진 정의 {(exported.detail?.unreadable ?? []).length}건이 있습니다.
               </div>
             )}
             <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setExported(null)}>
