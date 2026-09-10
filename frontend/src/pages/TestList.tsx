@@ -258,6 +258,42 @@ export function TestList({
   const allVisibleSelected =
     rows.length > 0 && rows.every((r) => selected.has(r.id));
 
+  /**
+   * 목록을 **그룹별로 묶는다** (013 FR-440 · UC-013-06).
+   *
+   * 한 그룹만 골라 본 상태에서는 묶지 않는다 — 소제목이 하나뿐이면 자리만 차지한다.
+   * 그룹이 아예 없는 프로젝트에서도 묶지 않는다: **이 기능 이전과 같은 모습이어야
+   * 한다** (SC-627).
+   *
+   * 「그룹 없음」은 **마지막에 온다.** 이름이 있는 묶음을 먼저 보여주는 것이 목록을
+   * 훑는 순서에 맞는다.
+   */
+  const grouped = useMemo(() => {
+    const definedGroups = (data?.groups ?? []).filter((g) => g.prefix !== "TC");
+    if (definedGroups.length === 0 || groupFilter !== null) return null;
+
+    const byPrefix = new Map<string, TestListRow[]>();
+    for (const r of rows) {
+      const bucket = byPrefix.get(r.group_prefix);
+      if (bucket) bucket.push(r);
+      else byPrefix.set(r.group_prefix, [r]);
+    }
+    const nameOf = new Map((data?.groups ?? []).map((g) => [g.prefix, g.name]));
+    const sections = [...byPrefix.entries()]
+      .map(([prefix, items]) => ({
+        prefix,
+        // 정의가 없는 접두어는 이름을 지어내지 않는다 — 접두어가 곧 이름이다.
+        label: nameOf.get(prefix) ?? (prefix === "TC" ? "그룹 없음" : prefix),
+        items,
+      }))
+      .sort((a, b) => {
+        if (a.prefix === "TC") return 1;
+        if (b.prefix === "TC") return -1;
+        return a.label.localeCompare(b.label, "ko");
+      });
+    return sections;
+  }, [rows, data, groupFilter]);
+
   const totalSteps = useMemo(() => all.reduce((s, t) => s + t.step_count, 0), [all]);
 
   /** 고른 것들을 휴지통으로 (013 FR-432). 확인을 거친 뒤에만 부른다. */
@@ -570,65 +606,84 @@ export function TestList({
                 </div>
               )}
 
-              {rows.map((row) => (
-                <Row
-                  key={row.id}
-                  row={row}
-                  busy={busy}
-                  selected={selected.has(row.id)}
-                  onToggleSelected={() =>
-                    setSelected((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(row.id)) next.delete(row.id);
-                      else next.add(row.id);
-                      return next;
-                    })
-                  }
-                  renaming={renaming?.id === row.id ? renaming.name : null}
-                  confirming={confirmingDelete === row.id}
-                  menuOpen={menuFor === row.id}
-                  onRenameChange={(name) => setRenaming({ id: row.id, name })}
-                  onRenameStart={() => {
-                    setMenuFor(null);
-                    setRenaming({ id: row.id, name: row.name });
-                  }}
-                  onRenameCancel={() => setRenaming(null)}
-                  onRenameSubmit={(name) =>
-                    void act(() => tests.rename(row.id, name)).then(() => setRenaming(null))
-                  }
-                  onDeleteStart={() => {
-                    setMenuFor(null);
-                    setConfirmingDelete(row.id);
-                  }}
-                  onDeleteCancel={() => setConfirmingDelete(null)}
-                  onDeleteConfirm={() =>
-                    // **한 개와 여러 개의 결과가 같아야 한다** (SC-632). 완료 표시도
-                    // 같은 것을 쓴다 — 한쪽만 옮겨진 자리를 알려 주면 사용자는 개수에
-                    // 따라 되돌릴 수 있는지가 달라진다고 읽는다.
-                    void act(() => tests.remove(row.id))
-                      .then((res) => {
-                        setConfirmingDelete(null);
-                        if (res !== undefined) setTrashed([res]);
-                      })
-                  }
-                  onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}
-                  /*
-                    **여는 것과 닫는 것을 나눈다.** 메뉴는 목록 밖(`document.body`)에
-                    떠 있으므로 목록이 스크롤하면 행에서 떨어진다 — 그때 닫아야 한다.
-                    그 자리에서 `onToggleMenu` 를 쓰면 한 프레임에 두 번 온 사건이
-                    닫았다 다시 여는 일이 생긴다.
-                  */
-                  onCloseMenu={() => setMenuFor(null)}
-                  onRun={() => onRun(row.id)}
-                  runPending={pendingRunId === row.id}
-                  /*
-                    005 FR-168 (U-16) — 지금 돌고 있다는 사실이 **행에도** 보인다.
-                    상단 배너만 "실행 중" 을 알리고 행의 표식은 이전 실행의 실패였다.
-                  */
-                  liveSession={liveOf(row.id)}
-                  onOpenResult={() => onOpenResult(row.id)}
-                  onOpenDefinition={onOpenDefinition ? () => onOpenDefinition(row.id) : undefined}
-                />
+              {/*
+                그룹이 있으면 소제목으로 묶고, 없으면 지금까지처럼 평평하게 그린다
+                (013 FR-440 · SC-627). **행을 그리는 코드는 하나다** — 두 벌로 두면
+                묶은 쪽에만 새 조작이 붙는 일이 생긴다.
+              */}
+              {(grouped ?? [{ prefix: "", label: "", items: rows }]).map((section) => (
+                <div key={section.prefix || "__flat__"}>
+                  {grouped !== null && (
+                    <div
+                      className="lbl"
+                      data-group-heading={section.prefix}
+                      style={{ padding: "10px 17px 4px" }}
+                    >
+                      {section.label} {section.items.length}
+                    </div>
+                  )}
+                  {section.items.map((row) => (
+
+                    <Row
+                      key={row.id}
+                      row={row}
+                      busy={busy}
+                      selected={selected.has(row.id)}
+                      onToggleSelected={() =>
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(row.id)) next.delete(row.id);
+                          else next.add(row.id);
+                          return next;
+                        })
+                      }
+                      renaming={renaming?.id === row.id ? renaming.name : null}
+                      confirming={confirmingDelete === row.id}
+                      menuOpen={menuFor === row.id}
+                      onRenameChange={(name) => setRenaming({ id: row.id, name })}
+                      onRenameStart={() => {
+                        setMenuFor(null);
+                        setRenaming({ id: row.id, name: row.name });
+                      }}
+                      onRenameCancel={() => setRenaming(null)}
+                      onRenameSubmit={(name) =>
+                        void act(() => tests.rename(row.id, name)).then(() => setRenaming(null))
+                      }
+                      onDeleteStart={() => {
+                        setMenuFor(null);
+                        setConfirmingDelete(row.id);
+                      }}
+                      onDeleteCancel={() => setConfirmingDelete(null)}
+                      onDeleteConfirm={() =>
+                        // **한 개와 여러 개의 결과가 같아야 한다** (SC-632). 완료 표시도
+                        // 같은 것을 쓴다 — 한쪽만 옮겨진 자리를 알려 주면 사용자는 개수에
+                        // 따라 되돌릴 수 있는지가 달라진다고 읽는다.
+                        void act(() => tests.remove(row.id))
+                          .then((res) => {
+                            setConfirmingDelete(null);
+                            if (res !== undefined) setTrashed([res]);
+                          })
+                      }
+                      onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}
+                      /*
+                        **여는 것과 닫는 것을 나눈다.** 메뉴는 목록 밖(`document.body`)에
+                        떠 있으므로 목록이 스크롤하면 행에서 떨어진다 — 그때 닫아야 한다.
+                        그 자리에서 `onToggleMenu` 를 쓰면 한 프레임에 두 번 온 사건이
+                        닫았다 다시 여는 일이 생긴다.
+                      */
+                      onCloseMenu={() => setMenuFor(null)}
+                      onRun={() => onRun(row.id)}
+                      runPending={pendingRunId === row.id}
+                      /*
+                        005 FR-168 (U-16) — 지금 돌고 있다는 사실이 **행에도** 보인다.
+                        상단 배너만 "실행 중" 을 알리고 행의 표식은 이전 실행의 실패였다.
+                      */
+                      liveSession={liveOf(row.id)}
+                      onOpenResult={() => onOpenResult(row.id)}
+                      onOpenDefinition={onOpenDefinition ? () => onOpenDefinition(row.id) : undefined}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
 

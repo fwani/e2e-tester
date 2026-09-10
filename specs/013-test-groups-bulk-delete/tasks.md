@@ -129,11 +129,11 @@ Web app 구조. 백엔드 `backend/src/itb/`, 프런트엔드 `frontend/src/`.
 
 ### 프런트엔드
 
-- [ ] T040 [P] [US2] `frontend/src/api/client.ts` 에 `groups.{list,create,rename,remove}` 와 `tests.list` 의 `group` 질의를 더한다
-- [ ] T041 [US2] `frontend/src/pages/TestList.tsx` 에 **그룹 띠**를 더한다 — 「전체」 + 그룹 칩(이름 + 개수). **그룹이 하나도 없으면 그리지 않는다** (UC-013-06 · SC-627)
-- [ ] T042 [US2] 목록을 **그룹별 소제목**으로 묶는다 (FR-440). 「그룹 없음」은 마지막에 오고, 그룹 없는 테스트가 없으면 그리지 않는다
-- [ ] T043 [US2] 그룹 만들기를 더한다 (UC-013-08) — 이름과 접두어 **두 칸**. 접두어 칸이 왜 필요한지 한 줄로 말한다: 「테스트 식별자에 들어갑니다 (예: `USER-001`)」
-- [ ] T044 [P] [US2] `frontend/tests/TestGroups.test.tsx` 를 만든다 — 그룹 0개면 띠가 없는지(SC-627), 묶여 보이는지, 칩이 걸러 보는지, 검색과 함께 걸리는지, 그룹 없는 테스트가 남는지
+- [X] T040 [P] [US2] `frontend/src/api/client.ts` 에 `groups.{list,create,rename,remove}` 와 `tests.list` 의 `group` 질의를 더한다
+- [X] T041 [US2] `frontend/src/pages/TestList.tsx` 에 **그룹 띠**를 더한다 — 「전체」 + 그룹 칩(이름 + 개수). **그룹이 하나도 없으면 그리지 않는다** (UC-013-06 · SC-627)
+- [X] T042 [US2] 목록을 **그룹별 소제목**으로 묶는다 (FR-440). 「그룹 없음」은 마지막에 오고, 그룹 없는 테스트가 없으면 그리지 않는다
+- [X] T043 [US2] 그룹 만들기를 더한다 (UC-013-08) — 이름과 접두어 **두 칸**. 접두어 칸이 왜 필요한지 한 줄로 말한다: 「테스트 식별자에 들어갑니다 (예: `USER-001`)」
+- [X] T044 [P] [US2] `frontend/tests/TestGroups.test.tsx` 를 만든다 — 그룹 0개면 띠가 없는지(SC-627), 묶여 보이는지, 칩이 걸러 보는지, 검색과 함께 걸리는지, 그룹 없는 테스트가 남는지
 
 **Checkpoint**: US1 + US2 로 명세의 P1 이 모두 선다.
 
