@@ -223,13 +223,13 @@ className="btn sm quiet"                (이미 겪었다)
 - [ ] T061 [P] `frontend/src/theme/tokens.css` 머리주석 중 「화면 코드는 `className` 으로 소비하며 값을 다시 적지 않는다」가 사실과 달라졌으므로 갱신을 요청하는 항목을 만든다. **이 파일은 `extract_canon.py` 의 출력이므로 직접 고치지 않는다** — 주석 생성 부분을 스크립트에서 고치거나, 파생 구획에 주석을 남긴다 (C-2)
 - [ ] T062 [P] `specs/015-tailwind-css-migration/contracts/class-migration.md` 를 최종 상태로 확정한다 — 109행 전부 「완료」, 미상 0건 (SC-009)
 - [ ] T063 L2 대조를 실행한다 — `scripts/design_compare_ba.py --compare`. 불일치가 있으면 각각 의도된 것인지 판단한다. **의도되지 않은 불일치가 하나라도 있으면 전환이 끝난 것이 아니다** (SC-001)
-- [ ] T064 배포 산출물 크기를 기준선과 비교한다 — `npm run build` 후 CSS 크기가 T001 기록(15.04 kB)보다 늘지 않았는지 (SC-007).
+- [X] T064 배포 산출물 크기를 기준선과 비교한다 — `npm run build` 후 CSS 크기가 T001 기록(15.04 kB)보다 늘지 않았는지 (SC-007).
       **미달일 때 할 일** (T071 이 정의): (1) 산출 CSS 에서 무엇이 늘었는지 **지목한다** —
       남은 의미 클래스인지, 유틸리티인지, 레이어 폴리필인지. (2) 남은 의미 클래스 때문이면
       그것은 전환이 안 끝난 것이므로 **크기 문제가 아니라 진행 문제**로 보고한다.
       (3) 전환이 끝났는데도 늘었으면 **기준선을 고칠지 코드를 고칠지 판단해 이유와 함께
       기록한다.** 판정 불가로 넘기지 않는다. 결과를 `baseline.md` 에 기록
-- [ ] T065 단언 총수를 기준선과 비교한다 — `node frontend/scripts/count-assertions.mjs`. **줄었으면 그 자리를 지목하고 이유를 댄다** (헌법 Quality Gate 4). 줄어든 채로 넘어가지 않는다
+- [X] T065 단언 총수를 기준선과 비교한다 — `node frontend/scripts/count-assertions.mjs`. **줄었으면 그 자리를 지목하고 이유를 댄다** (헌법 Quality Gate 4). 줄어든 채로 넘어가지 않는다
 - [ ] T066 손 검증을 등록하고 돌린다 (**사람이 판정한다** · `docs/PENDING-HUMAN-VERIFICATION.md` §15) — [quickstart.md](quickstart.md) §4 의 H-1~H-8. **H-1(국면별 세로 배분)과 H-7(키보드 순회)이 가장 중요하다**. 미판정이면 미완료로 보고하며, 통과로 가정하지 않는다
 
 ---
