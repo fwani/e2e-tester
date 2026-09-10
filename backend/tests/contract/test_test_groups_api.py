@@ -244,3 +244,130 @@ def test_rows_carry_the_group_prefix(opened: TestClient) -> None:
     rows = {t["id"]: t["group_prefix"] for t in opened.get("/api/tests").json()["tests"]}
 
     assert rows == {"USER-001": "USER", "TC-002": "TC"}
+
+
+# ─── 그룹 이동·해체 (FR-446~FR-451 · api-contract §4) ──────────────────────
+
+
+def test_moving_keeps_the_number_and_swaps_the_prefix(opened: TestClient) -> None:
+    """**번호는 그대로다** (research R3). 새 자리가 언제나 비어 있는 근거다."""
+    _mk(opened, "USER", "사용자관리 테스트")
+    _write(opened, "TC-003", "로그인")
+
+    resp = opened.post("/api/tests:move", json={"test_ids": ["TC-003"], "to_prefix": "USER"})
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["moved"] == [
+        {"from_id": "TC-003", "to_id": "USER-003", "name": "로그인"}
+    ]
+    assert [t["id"] for t in opened.get("/api/tests").json()["tests"]] == ["USER-003"]
+
+
+def test_the_result_follows_the_move(opened: TestClient) -> None:
+    """SC-628 — 옮긴 뒤에도 결과가 그대로다."""
+    _mk(opened, "USER", "사용자관리 테스트")
+    _write(opened, "TC-001", "로그인")
+    runs = _repo(opened).paths.run_dir("TC-001")
+    runs.mkdir(parents=True, exist_ok=True)
+    (runs / "result.json").write_text('{"x": 1}', encoding="utf-8")
+
+    opened.post("/api/tests:move", json={"test_ids": ["TC-001"], "to_prefix": "USER"})
+
+    assert not runs.exists()
+    assert (_repo(opened).paths.run_dir("USER-001") / "result.json").exists()
+
+
+def test_moving_to_TC_takes_it_out_of_the_group(opened: TestClient) -> None:
+    _mk(opened, "USER", "사용자관리 테스트")
+    _write(opened, "USER-001", "로그인")
+
+    resp = opened.post("/api/tests:move", json={"test_ids": ["USER-001"], "to_prefix": "TC"})
+
+    assert resp.json()["moved"][0]["to_id"] == "TC-001"
+
+
+def test_an_unknown_group_stops_everything(opened: TestClient) -> None:
+    _write(opened, "TC-001", "로그인")
+
+    resp = opened.post("/api/tests:move", json={"test_ids": ["TC-001"], "to_prefix": "NOPE"})
+
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "GROUP_NOT_FOUND"
+    assert [t["id"] for t in opened.get("/api/tests").json()["tests"]] == ["TC-001"]
+
+
+def test_a_running_test_blocks_the_whole_move(
+    opened: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FR-432 와 같은 규약 — 하나가 막히면 하나도 옮기지 않는다."""
+    _mk(opened, "USER", "사용자관리 테스트")
+    _write(opened, "TC-001", "실행 중")
+    _write(opened, "TC-002", "멀쩡한 것")
+
+    monkeypatch.setattr(
+        type(opened.app.state.itb.sessions),
+        "active_session_for_test",
+        lambda _self, test_id: "sess-1" if test_id == "TC-001" else None,
+    )
+
+    resp = opened.post(
+        "/api/tests:move", json={"test_ids": ["TC-002", "TC-001"], "to_prefix": "USER"}
+    )
+
+    assert resp.status_code == 409
+    assert sorted(t["id"] for t in opened.get("/api/tests").json()["tests"]) == [
+        "TC-001",
+        "TC-002",
+    ]
+
+
+def test_deleting_a_group_does_not_delete_its_tests(opened: TestClient) -> None:
+    """FR-451 — **묶음을 푸는 것과 자산을 지우는 것은 다른 조작이다.**
+
+    012 가 「목록에서 치우기」와 「삭제」를 가른 것과 같은 규칙이다.
+    """
+    _mk(opened, "USER", "사용자관리 테스트")
+    _write(opened, "USER-001", "로그인")
+    _write(opened, "USER-002", "회원가입")
+
+    resp = opened.delete("/api/groups/USER")
+
+    assert resp.status_code == 200, resp.text
+    assert sorted(resp.json()["ungrouped"]) == ["TC-001", "TC-002"]
+    # 테스트는 하나도 지워지지 않았다.
+    assert sorted(t["id"] for t in opened.get("/api/tests").json()["tests"]) == [
+        "TC-001",
+        "TC-002",
+    ]
+    assert opened.get("/api/groups").json()["groups"] == []
+
+
+def test_deleting_an_empty_group_is_fine(opened: TestClient) -> None:
+    _mk(opened, "USER", "사용자관리 테스트")
+
+    resp = opened.delete("/api/groups/USER")
+
+    assert resp.status_code == 200
+    assert resp.json()["ungrouped"] == []
+
+
+def test_the_group_survives_when_a_member_cannot_move(
+    opened: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """**테스트가 전부 옮겨진 뒤에만 그룹을 뺀다.**
+
+    반대로 하면 옮기다 실패했을 때 「정의가 없는 접두어」의 테스트가 남는다.
+    """
+    _mk(opened, "USER", "사용자관리 테스트")
+    _write(opened, "USER-001", "실행 중")
+
+    monkeypatch.setattr(
+        type(opened.app.state.itb.sessions),
+        "active_session_for_test",
+        lambda _self, _test_id: "sess-1",
+    )
+
+    resp = opened.delete("/api/groups/USER")
+
+    assert resp.status_code == 409
+    assert [g["prefix"] for g in opened.get("/api/groups").json()["groups"]] == ["USER"]

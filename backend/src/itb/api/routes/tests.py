@@ -30,6 +30,7 @@ from itb.domain.manual_step import (
 from itb.domain.run_result import Outcome, RunResult, RunScope
 from itb.domain.step import Step
 from itb.domain.test_case import (
+    GROUP_PREFIX_PATTERN,
     RESERVED_PREFIX,
     AuthoringMode,
     Test,
@@ -144,6 +145,30 @@ class DeleteTestsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     test_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(min_length=1)
+
+
+class MoveTestsRequest(BaseModel):
+    """복수 그룹 이동 (013 FR-448 · contracts/api-contract.md §4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    test_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(min_length=1)
+    to_prefix: str = Field(pattern=GROUP_PREFIX_PATTERN)
+    """`TC` 를 주면 **그룹에서 뺀다.**"""
+
+
+class MovedTestView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    from_id: str
+    to_id: str
+    name: str
+
+
+class MoveTestsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    moved: list[MovedTestView]
 
 
 class TrashedTestView(BaseModel):
@@ -330,7 +355,60 @@ async def delete_tests(body: DeleteTestsRequest, state: State) -> DeleteTestsRes
     )
 
 
+@router.post(":move")
+async def move_tests(body: MoveTestsRequest, state: State) -> MoveTestsResponse:
+    """여러 테스트의 그룹을 바꾼다 (013 FR-446·FR-448 · api-contract §4).
+
+    **이것은 표시를 고치는 조작이 아니라 자산을 옮기는 조작이다** — 정의 파일 이름과
+    실행 산출물 디렉터리가 함께 움직인다. 그래서 삭제와 **같은 원자성 규약**을 쓴다.
+
+    번호는 그대로다. 접두어만 바뀐다 (`USER-003` → `DATA-003`).
+    """
+    repo = state.require_repository()
+    if len(set(body.test_ids)) != len(body.test_ids):
+        raise bad_request(ErrorCode.DEFINITION_INVALID, "같은 테스트가 두 번 들어 있습니다.")
+    _require_known_group(repo, body.to_prefix)
+
+    def validate(test_id: str) -> None:
+        _require_test_exists(repo, test_id)
+        _require_not_running(state, test_id)
+
+    try:
+        moved = test_moves.run_all(
+            body.test_ids,
+            validate=validate,
+            do=lambda tid: test_moves.move_test_to_group(repo, tid, body.to_prefix),
+            undo=lambda _tid, m: test_moves.move_test_back(repo, m),
+        )
+    except test_moves.PartialFailureError as exc:
+        raise ApiError(
+            500,
+            ErrorCode.TEST_DELETE_PARTIAL,
+            exc.reason,
+            {"stranded": [{"test": s.target, "where": s.where} for s in exc.stranded]},
+        ) from exc
+    except test_moves.AllOrNothingError as exc:
+        raise ApiError(500, ErrorCode.TEST_MOVE_FAILED, exc.reason) from exc
+
+    return MoveTestsResponse(
+        moved=[
+            MovedTestView(from_id=m.from_id, to_id=m.to_id, name=m.name) for m in moved
+        ]
+    )
+
+
 # ─── 013 공용 도우미 ────────────────────────────────────────────────────────
+
+
+def _require_known_group(repo: ProjectRepository, prefix: str) -> None:
+    """모르는 그룹으로 옮기지 않는다 (013 FR-446).
+
+    `TC` 는 「그룹 없음」이므로 언제나 갈 수 있다 — 정의가 필요 없다.
+    """
+    if prefix == RESERVED_PREFIX:
+        return
+    if prefix not in {g.prefix for g in repo.read_project().groups}:
+        raise not_found(ErrorCode.GROUP_NOT_FOUND, f"그런 그룹이 없습니다: {prefix}")
 
 
 def _require_test_exists(repo: ProjectRepository, test_id: str) -> None:

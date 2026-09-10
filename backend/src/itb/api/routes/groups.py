@@ -22,6 +22,7 @@ from itb.domain.test_case import (
     RESERVED_PREFIX,
     TestGroup,
 )
+from itb.storage import test_moves
 from itb.storage.repository import ProjectRepository
 
 router = APIRouter(prefix="/api/groups", tags=["groups"])
@@ -153,6 +154,63 @@ async def rename_group(prefix: str, body: RenameGroupRequest, state: State) -> G
     return GroupView(
         prefix=prefix, name=body.name, count=counts_by_prefix(repo).get(prefix, 0)
     )
+
+
+@router.delete("/{prefix}")
+async def delete_group(prefix: str, state: State) -> UngroupedResponse:
+    """그룹을 없앤다. **그 안의 테스트는 지우지 않는다** (013 FR-451).
+
+    묶음을 푸는 것과 자산을 지우는 것은 다른 조작이다 — 012 가 「목록에서 치우기」와
+    「삭제」를 가른 것과 같은 규칙이다. 그 그룹의 테스트는 전부 `TC-###` 로 돌아간다.
+
+    **§4 의 이동을 그 그룹 전부에 적용하는 것이며 같은 원자성 규약을 따른다** — 하나라도
+    옮기지 못하면 아무것도 옮기지 않는다. 그러지 않으면 「그룹은 없어졌는데 절반은 아직
+    그 접두어」인 상태가 남는다.
+
+    실행 중인 테스트가 있으면 거절한다. 그룹 해체는 자산을 옮기는 일이기 때문이다.
+    """
+    repo = state.require_repository()
+    project = repo.read_project()
+    _require_group(project.groups, prefix)
+
+    members = [
+        path.name.split("-", 2)[0] + "-" + path.name.split("-", 2)[1]
+        for path in repo.list_test_paths()
+        if prefix_of(path.name) == prefix
+    ]
+
+    def validate(test_id: str) -> None:
+        if state.sessions.active_session_for_test(test_id) is not None:
+            raise ApiError(
+                409,
+                ErrorCode.TEST_IN_USE,
+                f"실행 중인 브라우저가 있어 「{test_id}」을(를) 옮길 수 없습니다.",
+            )
+
+    try:
+        moved = test_moves.run_all(
+            members,
+            validate=validate,
+            do=lambda tid: test_moves.move_test_to_group(repo, tid, RESERVED_PREFIX),
+            undo=lambda _tid, m: test_moves.move_test_back(repo, m),
+        )
+    except test_moves.PartialFailureError as exc:
+        raise ApiError(
+            500,
+            ErrorCode.TEST_DELETE_PARTIAL,
+            exc.reason,
+            {"stranded": [{"test": s.target, "where": s.where} for s in exc.stranded]},
+        ) from exc
+    except test_moves.AllOrNothingError as exc:
+        raise ApiError(500, ErrorCode.TEST_MOVE_FAILED, exc.reason) from exc
+
+    # 테스트가 전부 옮겨진 뒤에만 그룹을 뺀다. 반대로 하면 옮기다 실패했을 때
+    # 「정의가 없는 접두어」의 테스트가 남는다.
+    project = repo.read_project()
+    project.groups = [g for g in project.groups if g.prefix != prefix]
+    repo.write_project(project)
+
+    return UngroupedResponse(ungrouped=[m.to_id for m in moved])
 
 
 def _require_group(groups: list[TestGroup], prefix: str) -> TestGroup:

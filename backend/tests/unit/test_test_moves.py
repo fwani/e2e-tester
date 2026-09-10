@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
 from itb.storage.test_moves import (
@@ -149,3 +151,150 @@ def test_success_returns_what_each_step_produced() -> None:
         do=lambda t: f"휴지통/{t}",
         undo=lambda _t, _r: None,
     ) == ["휴지통/a", "휴지통/b"]
+
+
+# ─── 그룹 이동 (013 FR-444a·FR-444b · research R5) ─────────────────────────
+
+
+def _repo(tmp_path: pathlib.Path):  # noqa: ANN202
+    from itb.domain.test_case import Project
+    from itb.storage.repository import ProjectRepository
+
+    return ProjectRepository.create(
+        tmp_path / "프로젝트",
+        Project(name="프로젝트", default_start_url="https://x.test/"),
+    )
+
+
+def _add(repo, test_id: str, name: str) -> None:  # noqa: ANN001
+    from itb.domain.step import NavigateStep
+    from itb.domain.test_case import AuthoringMode, Test
+
+    repo.write_test(
+        Test(
+            id=test_id,
+            name=name,
+            authoring_mode=AuthoringMode.RECORD,
+            start_url="https://x.test/",
+            steps=[NavigateStep(id="step-01", label="열기", url="https://x.test/")],
+        )
+    )
+
+
+def _add_result(repo, test_id: str):  # noqa: ANN001, ANN202
+    runs = repo.paths.run_dir(test_id)
+    runs.mkdir(parents=True, exist_ok=True)
+    (runs / "result.json").write_text('{"결과": true}', encoding="utf-8")
+    return runs
+
+
+def test_the_number_survives_the_move(tmp_path: pathlib.Path) -> None:
+    """**접두어만 바뀐다** (013 research R3).
+
+    번호가 프로젝트 전체에서 고유하므로 새 자리가 언제나 비어 있다 — FR-444c 를 규칙이
+    아니라 구조로 만족시킨다.
+    """
+    from itb.storage.test_moves import move_test_to_group
+
+    repo = _repo(tmp_path)
+    _add(repo, "TC-003", "로그인")
+
+    moved = move_test_to_group(repo, "TC-003", "USER")
+
+    assert moved.to_id == "USER-003"
+    assert repo.find_test_path("USER-003") is not None
+    assert repo.find_test_path("TC-003") is None
+
+
+def test_the_result_follows_the_test(tmp_path: pathlib.Path) -> None:
+    """SC-628 — 옮긴 뒤에도 결과가 그대로여야 한다."""
+    from itb.storage.test_moves import move_test_to_group
+
+    repo = _repo(tmp_path)
+    _add(repo, "TC-001", "로그인")
+    old_runs = _add_result(repo, "TC-001")
+
+    move_test_to_group(repo, "TC-001", "USER")
+
+    assert not old_runs.exists()
+    assert (repo.paths.run_dir("USER-001") / "result.json").read_text(
+        encoding="utf-8"
+    ) == '{"결과": true}'
+
+
+def test_the_steps_are_untouched(tmp_path: pathlib.Path) -> None:
+    """그룹을 바꾸는 것이 테스트 내용을 건드리지 않는다 (FR-447)."""
+    from itb.storage.test_moves import move_test_to_group
+
+    repo = _repo(tmp_path)
+    _add(repo, "TC-001", "로그인")
+    before = repo.read_test("TC-001")
+
+    move_test_to_group(repo, "TC-001", "USER")
+    after = repo.read_test("USER-001")
+
+    assert after.name == before.name
+    assert [s.id for s in after.steps] == [s.id for s in before.steps]
+    assert after.id == "USER-001"
+
+
+def test_a_taken_identifier_is_refused(tmp_path: pathlib.Path) -> None:
+    """FR-444c — 같은 프로젝트 안에서 식별자는 고유해야 한다."""
+    from itb.storage.test_moves import MoveError, move_test_to_group
+
+    repo = _repo(tmp_path)
+    _add(repo, "TC-001", "옛 것")
+    _add(repo, "USER-001", "이미 있는 것")
+
+    with pytest.raises(MoveError, match="이미 쓰는"):
+        move_test_to_group(repo, "TC-001", "USER")
+
+    assert repo.find_test_path("TC-001") is not None
+
+
+def test_a_failed_definition_write_puts_the_artifacts_back(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SC-628a — **정의와 결과가 갈라진 상태를 만들지 않는다.**
+
+    산출물을 먼저 옮기는 순서가 이 되돌림을 가능하게 한다 (013 research R5).
+    """
+    from itb.storage import test_moves as mod
+    from itb.storage.test_moves import MoveError, move_test_to_group
+
+    repo = _repo(tmp_path)
+    _add(repo, "TC-001", "로그인")
+    old_runs = _add_result(repo, "TC-001")
+
+    def boom(_self, _test):  # noqa: ANN001, ANN202
+        msg = "쓸 수 없습니다"
+        raise OSError(13, msg)
+
+    monkeypatch.setattr(type(repo), "write_test", boom)
+
+    with pytest.raises(MoveError):
+        move_test_to_group(repo, "TC-001", "USER")
+
+    monkeypatch.undo()
+    assert repo.find_test_path("TC-001") is not None, "정의가 원래 자리에 없다"
+    assert (old_runs / "result.json").exists(), "산출물이 되돌려지지 않았다"
+    assert not repo.paths.run_dir("USER-001").exists(), "새 자리에 흔적이 남았다"
+    assert mod is not None
+
+
+def test_moving_back_restores_the_original_identifier(
+    tmp_path: pathlib.Path,
+) -> None:
+    """복수 이동의 되돌림이 이것에 기댄다 (`run_all` 의 3번 걸음)."""
+    from itb.storage.test_moves import move_test_back, move_test_to_group
+
+    repo = _repo(tmp_path)
+    _add(repo, "TC-001", "로그인")
+    _add_result(repo, "TC-001")
+
+    moved = move_test_to_group(repo, "TC-001", "USER")
+    move_test_back(repo, moved)
+
+    assert repo.find_test_path("TC-001") is not None
+    assert repo.find_test_path("USER-001") is None
+    assert (repo.paths.run_dir("TC-001") / "result.json").exists()

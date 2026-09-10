@@ -146,11 +146,11 @@ Web app 구조. 백엔드 `backend/src/itb/`, 프런트엔드 `frontend/src/`.
 **Independent Test**: 결과가 있는 테스트를 다른 그룹으로 옮기고 결과가 그대로인지, 그룹을
 없애도 테스트가 남는지 확인한다 ([quickstart.md](quickstart.md) §2 이야기 6·7).
 
-- [ ] T045 [US3] `backend/src/itb/storage/test_moves.py` 에 `move_test_to_group(repo, test_id, to_prefix)` 를 더한다 — **순서가 계약이다** ([contracts/api-contract.md](contracts/api-contract.md) §4): 검증 → `.runs/<옛ID>` → `.runs/<새ID>` → 새 정의 쓰기 → 옛 정의 지우기 → 실패 시 되돌림. **산출물이 먼저인 이유**: 반대로 하면 「테스트는 새 자리, 결과는 옛 자리」가 되어 사용자에게는 결과가 사라진 것으로 보인다. 이 순서의 실패는 목록에 나타나지 않는 흔적만 남긴다. **번호는 그대로다** — 접두어만 바뀐다. T013 에 의존
-- [ ] T046 [P] [US3] `backend/tests/unit/test_test_moves.py` 에 그룹 이동 검사를 더한다 — 번호가 유지되는지, 산출물이 따라오는지(SC-628), 정의 쓰기 실패 시 산출물이 되돌려지는지(SC-628a), 새 식별자가 이미 있으면 거절하는지(FR-444c)
-- [ ] T047 [US3] `backend/src/itb/api/routes/tests.py` 에 `POST /api/tests:move` 를 더한다 — 요청 `{test_ids, to_prefix}`, 응답 `{moved: [{from_id, to_id, name}]}`. `to_prefix` 가 `TC` 면 그룹에서 뺀다. 여러 개도 T013 의 3단계 규약을 쓴다. T045 에 의존
-- [ ] T048 [US3] `DELETE /api/groups/{prefix}` 가 **그 그룹의 테스트를 `TC-###` 로 되돌리게** 한다 (FR-451) — 지우지 않는다. 응답에 `ungrouped` 를 담는다. **§4 의 이동을 그 그룹 전부에 적용하는 것이며 같은 원자성 규약을 따른다.** T045 에 의존
-- [ ] T049 [P] [US3] `backend/tests/contract/test_test_groups_api.py` 에 이동·해체 검사를 더한다 — 번호 유지, 결과 따라옴, 그룹 삭제가 테스트를 지우지 않음(FR-451), 실행 중이면 하나도 안 옮겨짐
+- [X] T045 [US3] `backend/src/itb/storage/test_moves.py` 에 `move_test_to_group(repo, test_id, to_prefix)` 를 더한다 — **순서가 계약이다** ([contracts/api-contract.md](contracts/api-contract.md) §4): 검증 → `.runs/<옛ID>` → `.runs/<새ID>` → 새 정의 쓰기 → 옛 정의 지우기 → 실패 시 되돌림. **산출물이 먼저인 이유**: 반대로 하면 「테스트는 새 자리, 결과는 옛 자리」가 되어 사용자에게는 결과가 사라진 것으로 보인다. 이 순서의 실패는 목록에 나타나지 않는 흔적만 남긴다. **번호는 그대로다** — 접두어만 바뀐다. T013 에 의존
+- [X] T046 [P] [US3] `backend/tests/unit/test_test_moves.py` 에 그룹 이동 검사를 더한다 — 번호가 유지되는지, 산출물이 따라오는지(SC-628), 정의 쓰기 실패 시 산출물이 되돌려지는지(SC-628a), 새 식별자가 이미 있으면 거절하는지(FR-444c)
+- [X] T047 [US3] `backend/src/itb/api/routes/tests.py` 에 `POST /api/tests:move` 를 더한다 — 요청 `{test_ids, to_prefix}`, 응답 `{moved: [{from_id, to_id, name}]}`. `to_prefix` 가 `TC` 면 그룹에서 뺀다. 여러 개도 T013 의 3단계 규약을 쓴다. T045 에 의존
+- [X] T048 [US3] `DELETE /api/groups/{prefix}` 가 **그 그룹의 테스트를 `TC-###` 로 되돌리게** 한다 (FR-451) — 지우지 않는다. 응답에 `ungrouped` 를 담는다. **§4 의 이동을 그 그룹 전부에 적용하는 것이며 같은 원자성 규약을 따른다.** T045 에 의존
+- [X] T049 [P] [US3] `backend/tests/contract/test_test_groups_api.py` 에 이동·해체 검사를 더한다 — 번호 유지, 결과 따라옴, 그룹 삭제가 테스트를 지우지 않음(FR-451), 실행 중이면 하나도 안 옮겨짐
 - [ ] T050 [US3] `frontend/src/pages/TestList.tsx` 의 선택 띠에 「그룹으로 옮기기」를 더한다 (FR-448) — 그룹이 하나도 없으면 그리지 않는다. 이미 있는 선택을 그대로 쓴다
 - [ ] T051 [US3] 그룹 칩에 이름 변경(제자리 편집, 확인 없음)과 없애기를 더한다 (UC-013-08). **없애기에만 확인이 있다** — 그것만이 자산을 움직인다(그 안 테스트들의 파일 이름과 산출물 디렉터리가 바뀐다). 확인 문구가 「테스트 N개가 그룹 없음으로 돌아가고 식별자가 `TC-###` 로 바뀝니다 · **지워지지 않습니다**」를 말한다
 - [ ] T052 [P] [US3] `frontend/tests/TestGroups.test.tsx` 에 US3 검사를 더한다 — 이름 변경에 확인이 없고 없애기에는 있는지, 없애기 확인에 「지워지지 않습니다」가 있는지, 복수 이동이 선택을 쓰는지

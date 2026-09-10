@@ -27,8 +27,17 @@
 
 from __future__ import annotations
 
+import contextlib
+import pathlib
+import shutil
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+from itb.storage.repository import TEST_ID_RE
+
+if TYPE_CHECKING:  # pragma: no cover — 순환 임포트를 피한다
+    from itb.storage.repository import ProjectRepository
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,3 +125,91 @@ def _rollback[T, R](applied: list[_Applied], undo: Callable[[T, R], None]) -> li
         except Exception:  # noqa: BLE001, PERF203 — 되돌리기 실패도 결과의 일부다
             stranded.append(Stranded(target=str(item.target), where=str(item.result)))
     return stranded
+
+
+# ─── 그룹 이동 (013 FR-444a·FR-444b) ───────────────────────────────────────
+
+
+class MoveError(OSError):
+    """테스트를 다른 그룹으로 옮기지 못했다. 원래 자리 그대로다."""
+
+
+@dataclass(frozen=True, slots=True)
+class MovedTest:
+    """옮겨진 테스트 하나."""
+
+    from_id: str
+    to_id: str
+    name: str
+
+
+def target_id(test_id: str, to_prefix: str) -> str:
+    """접두어만 바꾼다. **번호는 그대로다** (013 research R3).
+
+    번호가 프로젝트 전체에서 고유하므로 `USER-003` → `DATA-003` 은 언제나 빈자리다.
+    그룹마다 번호를 매겼다면 여기서 새 번호를 뽑아야 하고 그 자리가 차 있을 수 있다 —
+    FR-444c(식별자 고유)를 규칙이 아니라 **구조로** 만족시킨다.
+    """
+    number = test_id.split("-", 1)[1]
+    return f"{to_prefix}-{number}"
+
+
+def move_test_to_group(repo: ProjectRepository, test_id: str, to_prefix: str) -> MovedTest:
+    """테스트 하나의 그룹을 바꾼다 (013 contracts/api-contract.md §4).
+
+    **순서가 계약이다.**
+
+    1. `.runs/<옛ID>/` → `.runs/<새ID>/` (있을 때만)
+    2. 새 정의 파일 쓰기 (원자적, 내용의 ``id`` 도 새 값)
+    3. 옛 정의 파일 지우기
+    4. 2·3 이 실패하면 1을 되돌리고 새로 쓴 파일이 있으면 치운다
+
+    **산출물이 먼저인 이유**: 반대로 하면 「테스트는 새 자리, 결과는 옛 자리」가 되어
+    사용자에게는 **결과가 사라진 것**으로 보인다. 이 순서의 실패는 새 식별자 자리에
+    산출물만 남기고, 그것은 목록에 나타나지 않는다 — 목록은 정의 파일에서 나온다.
+    **눈에 보이지 않는 흔적이 눈에 보이는 손실보다 낫다** (013 research R5).
+
+    **알려진 창**: 2와 3 사이에 정의 파일이 두 자리에 있다. 이 도구는 로컬 단독 실행이고
+    그 사이에 목록을 읽는 다른 요청이 사실상 없다. 그래도 없는 것처럼 적지 않는다.
+    """
+    new_id = target_id(test_id, to_prefix)
+    if not TEST_ID_RE.match(new_id):
+        msg = f"만들 수 없는 식별자입니다: {new_id}"
+        raise MoveError(msg)
+    if repo.find_test_path(new_id) is not None:
+        msg = f"이미 쓰는 식별자입니다: {new_id}"
+        raise MoveError(msg)
+
+    old_path = repo.find_test_path(test_id)
+    if old_path is None:
+        msg = f"테스트 정의를 찾을 수 없습니다: {test_id}"
+        raise MoveError(msg)
+
+    test = repo.read_test(test_id)
+    old_runs = repo.paths.run_dir(test_id)
+    new_runs = repo.paths.run_dir(new_id)
+    runs_moved = False
+    new_path: pathlib.Path | None = None
+
+    try:
+        if old_runs.is_dir():
+            new_runs.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(old_runs), str(new_runs))
+            runs_moved = True
+        new_path = repo.write_test(test.model_copy(update={"id": new_id}))
+        old_path.unlink()
+    except OSError as exc:
+        with contextlib.suppress(OSError):
+            if new_path is not None and new_path.exists() and new_path != old_path:
+                new_path.unlink()
+            if runs_moved and new_runs.is_dir():
+                shutil.move(str(new_runs), str(old_runs))
+        msg = f"그룹을 옮기지 못했습니다: {exc.strerror or exc}"
+        raise MoveError(msg) from exc
+
+    return MovedTest(from_id=test_id, to_id=new_id, name=test.name)
+
+
+def move_test_back(repo: ProjectRepository, moved: MovedTest) -> None:
+    """되돌린다 — 복수 이동이 도중에 실패했을 때 쓴다 (`run_all` 의 3번 걸음)."""
+    move_test_to_group(repo, moved.to_id, moved.from_id.split("-", 1)[0])
