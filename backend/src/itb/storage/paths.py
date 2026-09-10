@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import os
 import pathlib
 import re
@@ -46,6 +47,20 @@ def data_dir() -> pathlib.Path:
 def workspace_dir() -> pathlib.Path:
     """관리 프로젝트가 모여 있는 곳. 첫 화면 목록의 스캔 대상이다 (DR-002)."""
     return data_dir() / "projects"
+
+
+def trash_dir() -> pathlib.Path:
+    """삭제된 프로젝트가 옮겨져 있는 곳 (012 FR-409·FR-421).
+
+    **``workspace_dir()`` 의 형제다.** 목록 스캔 대상은 ``data_dir()/projects`` 뿐이므로
+    이 자리에 있는 한 삭제한 프로젝트가 목록에 다시 나타날 수 없다. ``projects/.trash/``
+    안에 두면 스캔·목록·경로 검증 세 곳이 각자 제외 규칙을 지켜야 하고, 한 곳이 빠지면
+    지운 프로젝트가 목록에 돌아온다 (012 research R3).
+
+    도구는 이곳을 **읽지도 비우지도 않는다.** 정리는 사용자가 한다 — 사용자 자산을
+    도구가 예고 없이 파괴하는 경로를 만들지 않는다 (헌법 원칙 V).
+    """
+    return data_dir() / "trash"
 
 
 def registry_file() -> pathlib.Path:
@@ -152,5 +167,34 @@ def allocate_workspace_path(name: str, root: pathlib.Path | None = None) -> path
     suffix = 2
     while candidate.exists():
         candidate = base / f"{slug}-{suffix}"
+        suffix += 1
+    return candidate
+
+
+def allocate_trash_path(
+    root: pathlib.Path, *, when: dt.datetime | None = None, base: pathlib.Path | None = None
+) -> pathlib.Path:
+    """휴지통에서 아직 쓰이지 않은 자리를 고른다 (012 FR-415).
+
+        <trash_dir>/<YYYYMMDD-HHMMSS>-<원래 디렉터리 이름>
+
+    **시각 접두사가 충돌 회피와 기록을 동시에 한다.** 사용자가 휴지통을 열었을 때 언제
+    지운 어느 프로젝트인지가 디렉터리 이름만으로 읽힌다. 그래도 같은 초에 두 번 지우는
+    일이 가능하므로 ``-2``·``-3`` 을 붙여 피한다 — ``allocate_workspace_path`` 와 같은
+    규칙이다. **덮어쓰지 않는 것이 요점이다**: 먼저 지운 사람의 테스트 정의가 나중 삭제에
+    사라지면 이 기능이 지키려던 것이 무너진다.
+
+    표시 이름이 아니라 **원래 디렉터리 이름**을 쓴다. 표시 이름에는 경로 구분자가 들어갈
+    수 있고, 그것을 파일명에 넣으면 경로가 갈라진다. 디렉터리 이름은 이미 :func:`slugify`
+    를 지난 값이다.
+    """
+    stamp = (when or dt.datetime.now(dt.UTC)).strftime("%Y%m%d-%H%M%S")
+    parent = (base or trash_dir()).expanduser()
+    label = f"{stamp}-{root.name}" if root.name else stamp
+
+    candidate = parent / label
+    suffix = 2
+    while candidate.exists():
+        candidate = parent / f"{label}-{suffix}"
         suffix += 1
     return candidate

@@ -90,7 +90,7 @@
 | 코드 | HTTP | Category | 뜻 | `next_action` |
 |---|---|---|---|---|
 | `PROJECT_IN_USE` | 409 | `BLOCKED` | 실행 중인 세션이 있어 삭제할 수 없다 | 「실행 중인 브라우저를 먼저 중지한 뒤 다시 삭제하세요.」 |
-| `PROJECT_DELETE_FAILED` | 500 | `BROKEN` | 휴지통으로 옮기지 못했다. **프로젝트는 원래 자리에 그대로 있다** | 「프로젝트는 그대로 남아 있습니다. 저장 위치의 권한과 남은 공간을 확인하세요.」 |
+| `PROJECT_DELETE_FAILED` | 500 | `BLOCKED` | 휴지통으로 옮기지 못했다. **프로젝트는 원래 자리에 그대로 있다** | 「프로젝트는 그대로 남아 있습니다. 저장 위치의 권한과 남은 공간을 확인하세요.」 |
 
 기존 코드를 재사용하는 경우:
 
@@ -104,6 +104,11 @@
 
 **필수**: 새 코드는 `CATEGORY` 와 `NEXT_ACTION` 대응표에 **둘 다** 들어가야 한다. 빠지면
 `error_payload()` 가 `KeyError` 로 죽어 오류 응답 자체가 깨진다 (research R9).
+
+**둘 다 `BLOCKED` 인 이유**: 이 저장소에서 `BROKEN` 은 **처리되지 않은 오류** 하나뿐이다
+(`INTERNAL_ERROR`). `tests/abnormal/test_error_contract.py` 가 그 불변식을 세고 있고, 그것이
+분류를 쓸모 있게 유지하는 규칙이다 — 제품이 붙잡아 사유를 말한 실패는 정상 거부이며
+사용자가 할 일이 있다(권한·남은 공간). `STORAGE_WRITE_FAILED` 가 같은 이유로 `BLOCKED` 다.
 
 ---
 

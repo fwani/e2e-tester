@@ -175,6 +175,52 @@ def remember(
     _save(kept, file)
 
 
+def rename(root: pathlib.Path, name: str, path: pathlib.Path | None = None) -> bool:
+    """항목의 표시 이름만 바꾼다 (012 FR-401).
+
+    **``remember()`` 를 쓰면 안 된다.** 그쪽은 항목을 지우고 다시 넣으면서
+    ``last_opened_at`` 을 지금으로 갱신하는데, 목록은 그 값의 역순으로 정렬한다 —
+    이름만 고쳤을 뿐인데 프로젝트가 맨 위로 올라오고 "최근 연 순" 이라는 목록의 약속이
+    깨진다. 이름을 고치는 것은 여는 행위가 아니다 (012 research R2).
+
+    항목이 없으면 아무것도 하지 않고 ``False``. **정상이다** — 관리 위치에 있지만
+    레지스트리에는 없는 프로젝트가 있고, 그쪽의 표시 이름은 조회 때 프로젝트 파일에서
+    읽는다 (:func:`list_projects` 의 ``_name_from_disk``).
+
+    레지스트리를 갱신하는 이유는 그 프로젝트가 나중에 **접근 불가가 됐을 때**다. 그때
+    목록은 저장된 ``name`` 으로 떨어지고, 갱신하지 않았으면 사용자는 고치기 전의 옛
+    이름을 본다 (012 research R1).
+
+    형식을 읽지 못한 경우에는 쓰지 않는다 — ``remember()`` 와 같은 규칙이다.
+    """
+    file = path or registry_file()
+    entries, warning = load(file)
+    if warning is not None and file.exists():
+        return False
+
+    resolved = str(pathlib.Path(root).expanduser().resolve())
+    changed = False
+    updated: list[ProjectEntry] = []
+    for entry in entries:
+        if entry.root == resolved and entry.name != name:
+            updated.append(
+                ProjectEntry(
+                    root=entry.root,
+                    name=name,
+                    last_opened_at=entry.last_opened_at,  # 정렬을 흔들지 않는다
+                    origin=entry.origin,
+                )
+            )
+            changed = True
+        else:
+            updated.append(entry)
+
+    if not changed:
+        return False
+    _save(updated, file)
+    return True
+
+
 def forget(root: pathlib.Path, path: pathlib.Path | None = None) -> bool:
     """목록에서 항목을 지운다 (DR-009).
 
@@ -254,3 +300,45 @@ def list_projects(
 
     resolved.sort(key=lambda e: e.last_opened_at, reverse=True)
     return resolved, warning
+
+
+# ─── 경로 경계 ──────────────────────────────────────────────────────────────
+
+
+def known_project_root(raw: str | pathlib.Path) -> pathlib.Path | None:
+    """**도구가 아는 프로젝트**의 경로면 해석해 돌려주고, 아니면 ``None`` (012 FR-419).
+
+    아는 것은 둘이다.
+
+    - 관리 위치(:func:`workspace_dir`) 아래 — 도구가 직접 만든 것
+    - 레지스트리에 있는 것 — 사용자가 이미 한 번 연 것
+
+    이 판정이 필요한 이유는 **이름 변경과 삭제가 경로를 받기 때문이다.** 목록의 어느
+    줄에나 걸 수 있어야 하므로 열린 프로젝트만 대상으로 삼을 수 없고, 그렇다고 임의
+    경로를 받아 디렉터리를 옮기는 엔드포인트를 열 수는 없다 (헌법 §보안).
+
+    같은 판정이 ``api/routes/project.py`` 의 「홈 밖이어도 도구가 아는 위치면 연다」에
+    이미 있었다. 두 벌로 두면 한쪽이 갈리고, 갈린 자리가 경계를 무르게 한다.
+    """
+    resolved = _resolved_or_none(pathlib.Path(raw))
+    if resolved is None:
+        return None
+
+    workspace = workspace_dir().expanduser()
+    workspace_resolved = _resolved_or_none(workspace) or workspace
+    if resolved == workspace_resolved or workspace_resolved in resolved.parents:
+        return resolved
+
+    stored, _warning = load()
+    for entry in stored:
+        if _resolved_or_none(pathlib.Path(entry.root)) == resolved:
+            return resolved
+    return None
+
+
+def _resolved_or_none(path: pathlib.Path) -> pathlib.Path | None:
+    """해석할 수 없는 경로는 「모르는 경로」다 (순환 심볼릭 링크 등)."""
+    try:
+        return path.expanduser().resolve()
+    except (OSError, RuntimeError):
+        return None

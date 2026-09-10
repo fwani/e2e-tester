@@ -203,13 +203,18 @@ name = _name_from_disk(pathlib.Path(entry.root), entry.name) if ok else entry.na
 | 코드 | 상태 | Category | 쓰이는 곳 |
 |---|---|---|---|
 | `PROJECT_IN_USE` | 409 | `BLOCKED` | 실행 중 세션이 있는 프로젝트 삭제 (FR-417) |
-| `PROJECT_DELETE_FAILED` | 500 | `BROKEN` | 휴지통으로 옮기지 못함 (FR-414) |
+| `PROJECT_DELETE_FAILED` | 500 | `BLOCKED` | 휴지통으로 옮기지 못함 (FR-414) |
 
 **필수 후속**: `CATEGORY` 와 `NEXT_ACTION` 대응표에 **둘 다** 넣는다. 두 표는
 `error_payload()` 가 참조하며, 빠지면 `KeyError` 로 오류 응답 자체가 깨진다. 그리고
 `itb.schema.export` 가 `error-response` 스키마를 내보내므로
 `frontend/src/types/generated/error-response.d.ts` 를 **다시 생성**해야 한다 (헌법
 Cross-language schema duty · `export.check()` 가 어긋남을 잡는다).
+
+**분류는 둘 다 `BLOCKED`** — 구현 중 확인한 것이다. 이 저장소는 `BROKEN` 을 **처리되지
+않은 오류** 하나(`INTERNAL_ERROR`)로만 쓰고 `tests/abnormal/test_error_contract.py` 가 그
+불변식을 센다. 제품이 붙잡아 사유를 말한 실패는 정상 거부이고 사용자가 할 일이 있다.
+처음에 `PROJECT_DELETE_FAILED` 를 `BROKEN` 으로 두었다가 그 검사에 걸렸고, 검사가 옳다.
 
 **Rationale**: 기존 코드로 대신할 수 없다. `SESSION_ALREADY_ACTIVE` 는 "이 테스트가 이미
 실행 중" 이라는 다른 뜻이고, `STORAGE_WRITE_FAILED` 는 쓰기 실패이지 이동 실패가 아니다 —

@@ -48,6 +48,24 @@ class ErrorCode(StrEnum):
     PROJECT_ALREADY_EXISTS = "PROJECT_ALREADY_EXISTS"
     PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND"
     INVALID_PATH = "INVALID_PATH"
+    PROJECT_IN_USE = "PROJECT_IN_USE"
+    """실행 중인 세션이 있어 프로젝트를 삭제할 수 없다 (012 FR-417).
+
+    ``SESSION_ALREADY_ACTIVE`` 와 갈라 두는 이유는 **사용자가 할 일이 다르기 때문**이다.
+    그쪽은 "이 테스트가 이미 실행 중" 이라 기다리거나 그 실행을 보면 되고, 이것은
+    "브라우저를 먼저 중지해야 지울 수 있다" 다.
+    """
+    PROJECT_DELETE_FAILED = "PROJECT_DELETE_FAILED"
+    """프로젝트를 휴지통으로 옮기지 못했다 (012 FR-414).
+
+    **이 오류를 받은 사용자의 프로젝트는 원래 자리에 그대로 있다.** 이동이 실패하면
+    레지스트리를 건드리지 않기 때문이다. 그 사실이 메시지에 반드시 들어가야 한다 —
+    실패 후 사용자가 가장 먼저 하는 질문이 "내 테스트는 어떻게 됐나" 다.
+
+    ``STORAGE_WRITE_FAILED`` 로 대신할 수 없다. 그쪽은 파일을 쓰다 실패한 것이고
+    이것은 디렉터리를 옮기다 실패한 것이라, 사용자가 확인할 것(권한 · 남은 공간 · 볼륨)이
+    다르다.
+    """
 
     # 테스트
     TEST_NOT_FOUND = "TEST_NOT_FOUND"
@@ -162,6 +180,12 @@ CATEGORY: dict[ErrorCode, Category] = {
     ErrorCode.PROJECT_ALREADY_EXISTS: Category.BLOCKED,
     ErrorCode.PROJECT_NOT_FOUND: Category.BLOCKED,
     ErrorCode.INVALID_PATH: Category.BLOCKED,
+    ErrorCode.PROJECT_IN_USE: Category.BLOCKED,
+    # `broken` 이 아니다. 이 저장소에서 `broken` 은 **처리되지 않은 오류** 하나뿐이고
+    # (`INTERNAL_ERROR`, tests/abnormal/test_error_contract.py 가 세고 있다), 옮기기
+    # 실패는 제품이 붙잡아 사유를 말한 정상 거부다. 사용자가 할 일도 있다 — 권한과
+    # 남은 공간. `STORAGE_WRITE_FAILED` 가 같은 이유로 `blocked` 다.
+    ErrorCode.PROJECT_DELETE_FAILED: Category.BLOCKED,
     # 테스트 — 사용자가 내용을 고치면 된다
     ErrorCode.TEST_NOT_FOUND: Category.BLOCKED,
     ErrorCode.STEP_LIST_EMPTY: Category.BLOCKED,
@@ -222,6 +246,10 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ErrorCode.PROJECT_ALREADY_EXISTS: "다른 이름을 쓰거나 기존 프로젝트를 여세요.",
     ErrorCode.PROJECT_NOT_FOUND: "경로를 확인하거나 목록에서 다른 프로젝트를 고르세요.",
     ErrorCode.INVALID_PATH: "프로젝트 폴더 안의 경로를 지정하세요.",
+    ErrorCode.PROJECT_IN_USE: "실행 중인 브라우저를 먼저 중지한 뒤 다시 삭제하세요.",
+    ErrorCode.PROJECT_DELETE_FAILED: (
+        "프로젝트는 그대로 남아 있습니다. 저장 위치의 권한과 남은 공간을 확인하세요."
+    ),
     ErrorCode.TEST_NOT_FOUND: "목록을 새로 고친 뒤 다시 고르세요. 이미 지워졌을 수 있습니다.",
     ErrorCode.STEP_LIST_EMPTY: "브라우저에서 동작을 기록하거나 Step을 추가한 뒤 다시 저장하세요.",
     ErrorCode.DEFINITION_INVALID: "표시된 항목을 규격에 맞게 고친 뒤 다시 시도하세요.",

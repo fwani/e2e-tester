@@ -31,8 +31,8 @@ Web app 구조다. 백엔드는 `backend/src/itb/`, 프런트엔드는 `frontend
 
 **Purpose**: 시작 전 기준선을 고정한다. 새 의존성·새 패키지를 만들지 않으므로 초기화 작업이 없다.
 
-- [ ] T001 기준선 검증을 돌려 **012 이전이 초록인지** 기록한다 — `cd backend && uv run ruff check src/ tests/ && uv run lint-imports && uv run python -m itb.schema.export --check && uv run pytest -m "not browser" -q`, `cd frontend && npx tsc --noEmit && npx vitest run`. 여기서 이미 실패하는 항목이 있으면 012 가 깬 것과 구분할 수 없다
-- [ ] T002 [P] `backend/src/itb/storage/paths.py`·`registry.py`·`api/routes/project.py` 와 `frontend/src/pages/ProjectSetup.tsx` 를 읽고, [research.md](research.md) R1·R2·R6 의 세 발견이 지금 코드에서 실제로 그러한지 확인한다 — 다르면 설계를 먼저 고친다
+- [X] T001 기준선 검증을 돌려 **012 이전이 초록인지** 기록한다 — `cd backend && uv run ruff check src/ tests/ && uv run lint-imports && uv run python -m itb.schema.export --check && uv run pytest -m "not browser" -q`, `cd frontend && npx tsc --noEmit && npx vitest run`. 여기서 이미 실패하는 항목이 있으면 012 가 깬 것과 구분할 수 없다
+- [X] T002 [P] `backend/src/itb/storage/paths.py`·`registry.py`·`api/routes/project.py` 와 `frontend/src/pages/ProjectSetup.tsx` 를 읽고, [research.md](research.md) R1·R2·R6 의 세 발견이 지금 코드에서 실제로 그러한지 확인한다 — 다르면 설계를 먼저 고친다
 
 ---
 
@@ -42,14 +42,14 @@ Web app 구조다. 백엔드는 `backend/src/itb/`, 프런트엔드는 `frontend
 
 **⚠️ 반드시 먼저 끝나야 한다**
 
-- [ ] T003 [P] `backend/src/itb/storage/paths.py` 에 `trash_dir()` 을 더한다 — `data_dir() / "trash"`. `XDG_DATA_HOME` 을 존중하는 기존 규약을 그대로 따르고, **`workspace_dir()` 의 형제**여야 한다 ([data-model.md](data-model.md) §2 · FR-421)
-- [ ] T004 `backend/src/itb/storage/paths.py` 에 `allocate_trash_path(root, when=None)` 을 더한다 — `<trash_dir>/<YYYYMMDD-HHMMSS>-<root.name>`, 겹치면 `-2`·`-3`. **`allocate_workspace_path` 와 같은 회피 규칙**을 쓴다 (FR-415). T003 에 의존
-- [ ] T005 [P] `backend/tests/unit/test_paths.py` 를 개정한다 — `trash_dir()` 이 `XDG_DATA_HOME` 을 따르는지, `workspace_dir()` 의 **하위가 아닌지**(FR-421), `allocate_trash_path` 가 같은 초에 두 번 불려도 서로 다른 경로를 주는지 (FR-415)
-- [ ] T006 [P] `backend/src/itb/storage/registry.py` 에 `known_project_root(raw) -> pathlib.Path | None` 을 더한다 — 관리 위치 아래이거나 레지스트리에 있는 경로만 돌려준다. `api/routes/project.py` 의 `_known_root_outside_home()` 논리를 여기로 끌어올린 것이다 (FR-419 · [research.md](research.md) R7)
-- [ ] T007 `backend/src/itb/api/routes/project.py` 의 `_known_root_outside_home()` 이 T006 의 함수를 쓰도록 고친다 — 두 벌이 남으면 한쪽이 갈린다. `open_project` 의 기존 동작은 바뀌지 않아야 한다. T006 에 의존
-- [ ] T008 [P] `backend/src/itb/domain/error.py` 에 `ErrorCode.PROJECT_IN_USE`·`PROJECT_DELETE_FAILED` 를 더하고 **`CATEGORY` 와 `NEXT_ACTION` 대응표 양쪽에 넣는다** — 빠지면 `error_payload()` 가 `KeyError` 로 죽어 오류 응답 자체가 깨진다 ([data-model.md](data-model.md) §4 · [research.md](research.md) R9)
-- [ ] T009 `cd frontend && npm run gen:types` 로 `frontend/src/types/generated/error-response.d.ts` 를 다시 만들고 커밋 대상에 넣는다 — 헌법 Cross-language schema duty. `uv run python -m itb.schema.export --check` 가 통과해야 한다. T008 에 의존
-- [ ] T010 [P] `backend/tests/unit/test_domain_invariants.py` 에 **모든 `ErrorCode` 가 `CATEGORY`·`NEXT_ACTION` 양쪽에 있는지** 세는 검사가 있는지 확인하고, 없으면 더한다 — 이 구멍은 코드가 늘 때마다 다시 열린다
+- [X] T003 [P] `backend/src/itb/storage/paths.py` 에 `trash_dir()` 을 더한다 — `data_dir() / "trash"`. `XDG_DATA_HOME` 을 존중하는 기존 규약을 그대로 따르고, **`workspace_dir()` 의 형제**여야 한다 ([data-model.md](data-model.md) §2 · FR-421)
+- [X] T004 `backend/src/itb/storage/paths.py` 에 `allocate_trash_path(root, when=None)` 을 더한다 — `<trash_dir>/<YYYYMMDD-HHMMSS>-<root.name>`, 겹치면 `-2`·`-3`. **`allocate_workspace_path` 와 같은 회피 규칙**을 쓴다 (FR-415). T003 에 의존
+- [X] T005 [P] `backend/tests/unit/test_paths.py` 를 개정한다 — `trash_dir()` 이 `XDG_DATA_HOME` 을 따르는지, `workspace_dir()` 의 **하위가 아닌지**(FR-421), `allocate_trash_path` 가 같은 초에 두 번 불려도 서로 다른 경로를 주는지 (FR-415)
+- [X] T006 [P] `backend/src/itb/storage/registry.py` 에 `known_project_root(raw) -> pathlib.Path | None` 을 더한다 — 관리 위치 아래이거나 레지스트리에 있는 경로만 돌려준다. `api/routes/project.py` 의 `_known_root_outside_home()` 논리를 여기로 끌어올린 것이다 (FR-419 · [research.md](research.md) R7)
+- [X] T007 `backend/src/itb/api/routes/project.py` 의 `_known_root_outside_home()` 이 T006 의 함수를 쓰도록 고친다 — 두 벌이 남으면 한쪽이 갈린다. `open_project` 의 기존 동작은 바뀌지 않아야 한다. T006 에 의존
+- [X] T008 [P] `backend/src/itb/domain/error.py` 에 `ErrorCode.PROJECT_IN_USE`·`PROJECT_DELETE_FAILED` 를 더하고 **`CATEGORY` 와 `NEXT_ACTION` 대응표 양쪽에 넣는다** — 빠지면 `error_payload()` 가 `KeyError` 로 죽어 오류 응답 자체가 깨진다 ([data-model.md](data-model.md) §4 · [research.md](research.md) R9)
+- [X] T009 `cd frontend && npm run gen:types` 로 `frontend/src/types/generated/error-response.d.ts` 를 다시 만들고 커밋 대상에 넣는다 — 헌법 Cross-language schema duty. `uv run python -m itb.schema.export --check` 가 통과해야 한다. T008 에 의존
+- [X] T010 [P] `backend/tests/unit/test_domain_invariants.py` 에 **모든 `ErrorCode` 가 `CATEGORY`·`NEXT_ACTION` 양쪽에 있는지** 세는 검사가 있는지 확인하고, 없으면 더한다 — 이 구멍은 코드가 늘 때마다 다시 열린다
 
 **Checkpoint**: Foundation 완료. US1 과 US2 를 병렬로 진행할 수 있다.
 
@@ -64,12 +64,12 @@ Web app 구조다. 백엔드는 `backend/src/itb/`, 프런트엔드는 `frontend
 
 ### 백엔드
 
-- [ ] T011 [P] [US1] `backend/src/itb/storage/registry.py` 에 `rename(root, name, path=None) -> bool` 을 더한다 — 기존 항목의 `name` 만 바꾸고 **`last_opened_at`·`origin` 은 그대로 둔다** ([research.md](research.md) R2). 항목이 없으면 `False`. 형식을 읽지 못했으면 쓰지 않는다 (`remember()` 와 같은 규칙)
-- [ ] T012 [P] [US1] `backend/tests/unit/test_registry.py` 를 개정한다 — `rename()` 이 `last_opened_at` 을 **바꾸지 않는지**, 없는 항목에 `False` 를 주는지, 알 수 없는 형식의 파일을 덮어쓰지 않는지
-- [ ] T013 [US1] `backend/src/itb/api/routes/project.py` 에 `PATCH /api/project/name` 을 더한다 — 요청 `{root, name}`, 응답은 갱신된 `ProjectListItem`. `name` 은 `strip_whitespace=True, min_length=1, max_length=100` (생성과 동일). 순서: `known_project_root` → `read_project` → 이름이 같으면 쓰지 않고 반환(FR-407) → `write_project` → `registry.rename` ([contracts/api-contract.md](contracts/api-contract.md) §1). T006·T011 에 의존
-- [ ] T014 [US1] T013 의 오류 대응을 붙인다 — 모르는 경로 `INVALID_PATH`(400), 프로젝트 없음 `PROJECT_NOT_FOUND`(404), 깨진 정의 `DEFINITION_INVALID`(400), 쓰기 실패 `STORAGE_WRITE_FAILED`(500). **`write_project` 가 실패하면 `registry.rename` 을 부르지 않는다** (FR-402)
-- [ ] T015 [P] [US1] `backend/tests/contract/test_project_rename_api.py` 를 만든다 — 성공 응답 형태, **`last_opened_at` 불변**, 빈 이름·공백뿐인 이름 422, 모르는 경로 400, 같은 이름 재요청 시 파일 mtime 불변(FR-407), 열린 프로젝트 이름 변경 후 `GET /api/project` 가 새 이름을 주는지(FR-405)
-- [ ] T016 [P] [US1] `backend/tests/contract/test_project_rename_api.py` 에 **파일 쓰기 실패 시 레지스트리가 그대로인지** 검사를 더한다 (FR-402) — 프로젝트 파일을 읽기 전용으로 만들어 확인
+- [X] T011 [P] [US1] `backend/src/itb/storage/registry.py` 에 `rename(root, name, path=None) -> bool` 을 더한다 — 기존 항목의 `name` 만 바꾸고 **`last_opened_at`·`origin` 은 그대로 둔다** ([research.md](research.md) R2). 항목이 없으면 `False`. 형식을 읽지 못했으면 쓰지 않는다 (`remember()` 와 같은 규칙)
+- [X] T012 [P] [US1] `backend/tests/unit/test_registry.py` 를 개정한다 — `rename()` 이 `last_opened_at` 을 **바꾸지 않는지**, 없는 항목에 `False` 를 주는지, 알 수 없는 형식의 파일을 덮어쓰지 않는지
+- [X] T013 [US1] `backend/src/itb/api/routes/project.py` 에 `PATCH /api/project/name` 을 더한다 — 요청 `{root, name}`, 응답은 갱신된 `ProjectListItem`. `name` 은 `strip_whitespace=True, min_length=1, max_length=100` (생성과 동일). 순서: `known_project_root` → `read_project` → 이름이 같으면 쓰지 않고 반환(FR-407) → `write_project` → `registry.rename` ([contracts/api-contract.md](contracts/api-contract.md) §1). T006·T011 에 의존
+- [X] T014 [US1] T013 의 오류 대응을 붙인다 — 모르는 경로 `INVALID_PATH`(400), 프로젝트 없음 `PROJECT_NOT_FOUND`(404), 깨진 정의 `DEFINITION_INVALID`(400), 쓰기 실패 `STORAGE_WRITE_FAILED`(500). **`write_project` 가 실패하면 `registry.rename` 을 부르지 않는다** (FR-402)
+- [X] T015 [P] [US1] `backend/tests/contract/test_project_rename_api.py` 를 만든다 — 성공 응답 형태, **`last_opened_at` 불변**, 빈 이름·공백뿐인 이름 422, 모르는 경로 400, 같은 이름 재요청 시 파일 mtime 불변(FR-407), 열린 프로젝트 이름 변경 후 `GET /api/project` 가 새 이름을 주는지(FR-405)
+- [X] T016 [P] [US1] `backend/tests/contract/test_project_rename_api.py` 에 **파일 쓰기 실패 시 레지스트리가 그대로인지** 검사를 더한다 (FR-402) — 프로젝트 파일을 읽기 전용으로 만들어 확인
 
 ### 프런트엔드
 
@@ -93,17 +93,17 @@ Web app 구조다. 백엔드는 `backend/src/itb/`, 프런트엔드는 `frontend
 
 ### 백엔드 — 이동
 
-- [ ] T022 [P] [US2] `backend/src/itb/storage/trash.py` 를 만든다 — `move_to_trash(root) -> pathlib.Path | None`. `shutil.move` 로 옮기고(다른 볼륨 대응 · [research.md](research.md) R4), 목적지 부모를 먼저 만들고, **실패하면 목적지의 부분 결과를 치운 뒤 원래 예외를 그대로 올린다**. 대상이 이미 없으면 `None` (FR-420). `ProjectRepository` 에 넣지 않는 이유는 [plan.md](plan.md) Structure Decision 에 있다. T004 에 의존
-- [ ] T023 [P] [US2] `backend/tests/unit/test_trash.py` 를 만든다 — 디렉터리 통째 이동(내용 동일), 같은 이름 두 번 삭제 시 **덮어쓰지 않음**(FR-415·SC-619), 대상이 없으면 `None`(FR-420), 이동 실패 시 **원본이 그대로 남는지**(FR-414), 실패 후 목적지에 부분 결과가 남지 않는지
-- [ ] T024 [P] [US2] `backend/tests/unit/test_trash.py` 에 **휴지통이 목록 스캔에 걸리지 않는지** 검사를 더한다 — 삭제 후 `registry.list_projects()` 에 그 항목이 없어야 한다 (FR-421 · SC 회귀)
+- [X] T022 [P] [US2] `backend/src/itb/storage/trash.py` 를 만든다 — `move_to_trash(root) -> pathlib.Path | None`. `shutil.move` 로 옮기고(다른 볼륨 대응 · [research.md](research.md) R4), 목적지 부모를 먼저 만들고, **실패하면 목적지의 부분 결과를 치운 뒤 원래 예외를 그대로 올린다**. 대상이 이미 없으면 `None` (FR-420). `ProjectRepository` 에 넣지 않는 이유는 [plan.md](plan.md) Structure Decision 에 있다. T004 에 의존
+- [X] T023 [P] [US2] `backend/tests/unit/test_trash.py` 를 만든다 — 디렉터리 통째 이동(내용 동일), 같은 이름 두 번 삭제 시 **덮어쓰지 않음**(FR-415·SC-619), 대상이 없으면 `None`(FR-420), 이동 실패 시 **원본이 그대로 남는지**(FR-414), 실패 후 목적지에 부분 결과가 남지 않는지
+- [X] T024 [P] [US2] `backend/tests/unit/test_trash.py` 에 **휴지통이 목록 스캔에 걸리지 않는지** 검사를 더한다 — 삭제 후 `registry.list_projects()` 에 그 항목이 없어야 한다 (FR-421 · SC 회귀)
 
 ### 백엔드 — 라우트
 
-- [ ] T025 [US2] `backend/src/itb/api/routes/project.py` 에 `POST /api/project/trash` 를 더한다 — 요청 `{root}`, 응답 `{root, name, trashed_to, was_open}` 200. 순서: `known_project_root` → 세션 검사 → `move_to_trash` → `registry.forget` → 열려 있었으면 `state.repository = None` ([contracts/api-contract.md](contracts/api-contract.md) §2). T006·T022 에 의존
-- [ ] T026 [US2] T025 의 세션 검사를 붙인다 — 대상이 **현재 열린 프로젝트이면서** `state.sessions.all_sessions()` 중 `state_machine.is_active(...)` 인 것이 있으면 409 `PROJECT_IN_USE`. 새 상태 목록을 만들지 않고 기존 `ACTIVE_STATES` 판정을 쓴다 (FR-417 · [research.md](research.md) R6)
-- [ ] T027 [US2] T025 의 실패 대응을 붙인다 — 이동 실패는 500 `PROJECT_DELETE_FAILED`, **그 경로에서 `registry.forget` 을 부르지 않는다** (FR-414). 메시지에 내부 스택·경로를 넣지 않는다
-- [ ] T028 [P] [US2] `backend/tests/contract/test_project_trash_api.py` 를 만든다 — 성공 응답에 `trashed_to` 가 있고 그 자리에 자산이 온전한지(FR-410·SC-616), 목록에서 사라지는지(FR-413), 이미 없는 디렉터리는 `trashed_to: null` 로 성공하는지(FR-420), 모르는 경로 400(FR-419)
-- [ ] T029 [P] [US2] `backend/tests/contract/test_project_trash_api.py` 에 거절·실패 검사를 더한다 — 살아 있는 세션이 있으면 409 이고 **세션이 그대로 살아 있는지**(FR-417·SC-621), 이동 실패 시 500 이고 **목록에 그대로 남아 있는지**(FR-414·SC-618), 열린 프로젝트를 지우면 `was_open: true` 이고 `GET /api/project` 가 `PROJECT_NOT_OPEN` 을 주는지(FR-416)
+- [X] T025 [US2] `backend/src/itb/api/routes/project.py` 에 `POST /api/project/trash` 를 더한다 — 요청 `{root}`, 응답 `{root, name, trashed_to, was_open}` 200. 순서: `known_project_root` → 세션 검사 → `move_to_trash` → `registry.forget` → 열려 있었으면 `state.repository = None` ([contracts/api-contract.md](contracts/api-contract.md) §2). T006·T022 에 의존
+- [X] T026 [US2] T025 의 세션 검사를 붙인다 — 대상이 **현재 열린 프로젝트이면서** `state.sessions.all_sessions()` 중 `state_machine.is_active(...)` 인 것이 있으면 409 `PROJECT_IN_USE`. 새 상태 목록을 만들지 않고 기존 `ACTIVE_STATES` 판정을 쓴다 (FR-417 · [research.md](research.md) R6)
+- [X] T027 [US2] T025 의 실패 대응을 붙인다 — 이동 실패는 500 `PROJECT_DELETE_FAILED`, **그 경로에서 `registry.forget` 을 부르지 않는다** (FR-414). 메시지에 내부 스택·경로를 넣지 않는다
+- [X] T028 [P] [US2] `backend/tests/contract/test_project_trash_api.py` 를 만든다 — 성공 응답에 `trashed_to` 가 있고 그 자리에 자산이 온전한지(FR-410·SC-616), 목록에서 사라지는지(FR-413), 이미 없는 디렉터리는 `trashed_to: null` 로 성공하는지(FR-420), 모르는 경로 400(FR-419)
+- [X] T029 [P] [US2] `backend/tests/contract/test_project_trash_api.py` 에 거절·실패 검사를 더한다 — 살아 있는 세션이 있으면 409 이고 **세션이 그대로 살아 있는지**(FR-417·SC-621), 이동 실패 시 500 이고 **목록에 그대로 남아 있는지**(FR-414·SC-618), 열린 프로젝트를 지우면 `was_open: true` 이고 `GET /api/project` 가 `PROJECT_NOT_OPEN` 을 주는지(FR-416)
 
 ### 백엔드 — 확인 단계에 쓸 테스트 수
 

@@ -228,3 +228,93 @@ def test_default_paths_are_used_when_omitted(
 def test_entry_equality_ignores_nothing_surprising() -> None:
     a = ProjectEntry(root="/x", name="n", last_opened_at="t", origin="managed")
     assert a.stored()["origin"] == "managed"
+
+
+# ─── 이름 변경 (012 FR-401 · research R2) ──────────────────────────────────
+
+
+def test_rename_changes_the_name_only(reg: pathlib.Path, tmp_path: pathlib.Path) -> None:
+    """`last_opened_at` 이 그대로여야 한다 (012 research R2).
+
+    목록은 그 값의 역순으로 정렬한다. `remember()` 로 이름을 고치면 항목이 맨 위로
+    올라오고, 사용자는 이름만 고쳤는데 "최근 연 순" 이라는 목록의 약속이 깨진 것을 본다.
+    이름을 고치는 것은 여는 행위가 아니다.
+    """
+    root = make_project(tmp_path / "p")
+    remember(root, "옛 이름", "managed", reg)
+    before = load(reg)[0][0]
+
+    assert registry.rename(root, "새 이름", reg) is True
+
+    after = load(reg)[0][0]
+    assert after.name == "새 이름"
+    assert after.last_opened_at == before.last_opened_at
+    assert after.origin == before.origin
+    assert after.root == before.root
+
+
+def test_rename_reports_when_there_is_no_entry(reg: pathlib.Path, tmp_path: pathlib.Path) -> None:
+    """레지스트리에 없는 항목이면 `False`. **정상이다** (012 research R1).
+
+    관리 위치에 있지만 레지스트리에는 없는 프로젝트가 있고, 그쪽 표시 이름은 조회 때
+    프로젝트 파일에서 읽으므로 표시에는 문제가 없다.
+    """
+    root = make_project(tmp_path / "p")
+
+    assert registry.rename(root, "새 이름", reg) is False
+
+
+def test_rename_is_a_noop_when_the_name_is_unchanged(
+    reg: pathlib.Path, tmp_path: pathlib.Path
+) -> None:
+    root = make_project(tmp_path / "p")
+    remember(root, "같은 이름", "managed", reg)
+
+    assert registry.rename(root, "같은 이름", reg) is False
+
+
+def test_rename_does_not_overwrite_an_unknown_format(
+    reg: pathlib.Path, tmp_path: pathlib.Path
+) -> None:
+    """알 수 없는 형식을 우리 형식으로 덮으면 사용자의 기록이 사라진다 (`remember` 와 동일)."""
+    root = make_project(tmp_path / "p")
+    reg.write_text(json.dumps({"version": 999, "projects": []}), encoding="utf-8")
+
+    assert registry.rename(root, "새 이름", reg) is False
+    assert json.loads(reg.read_text(encoding="utf-8"))["version"] == 999
+
+
+# ─── 경로 경계 (012 FR-419 · research R7) ──────────────────────────────────
+
+
+def test_known_project_root_accepts_the_managed_location(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    root = make_project(tmp_path / "data" / "itb" / "projects" / "p")
+
+    assert registry.known_project_root(root) == root.resolve()
+
+
+def test_known_project_root_accepts_a_remembered_outside_path(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """사용자가 이미 한 번 연 외부 경로는 도구가 아는 것이다."""
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    outside = make_project(tmp_path / "elsewhere" / "p")
+    remember(outside, "외부", "external")
+
+    assert registry.known_project_root(outside) == outside.resolve()
+
+
+def test_known_project_root_rejects_anything_else(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """임의 경로를 받아 디렉터리를 옮기는 조작이 되어서는 안 된다 (헌법 §보안)."""
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+
+    assert registry.known_project_root(tmp_path / "남의-폴더") is None
+    assert registry.known_project_root("/etc") is None
