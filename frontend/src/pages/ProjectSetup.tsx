@@ -585,11 +585,27 @@ function TrashedNotice({
       ) : (
         <>
           <div className="subtitle">「{result.name}」을(를) 휴지통으로 옮겼습니다.</div>
-          <div className="why mono" style={{ marginTop: 4, wordBreak: "break-all" }}>
+          {/*
+            **출발지와 도착지를 둘 다 남긴다** (SC-616 · converge T050). 되돌리기는 두
+            경로가 있어야 성립하는데, 도착지만 보여 주면 "원래 자리" 를 사용자가 알아야
+            한다. 관리 위치라면 짐작할 수 있지만 외부 위치 프로젝트는 사용자가 직접 고른
+            경로여서 추측이 불가능하다.
+          */}
+          <div className="lbl" style={{ marginTop: 8 }}>
+            옮긴 곳
+          </div>
+          <div className="why mono" style={{ marginTop: 2, wordBreak: "break-all" }}>
             {result.trashed_to}
           </div>
-          <div className="note" style={{ marginTop: 4 }}>
-            되돌리려면 이 폴더를 원래 자리로 옮기세요. 도구는 휴지통을 자동으로 비우지 않습니다.
+          <div className="lbl" style={{ marginTop: 8 }}>
+            원래 자리
+          </div>
+          <div className="why mono" style={{ marginTop: 2, wordBreak: "break-all" }}>
+            {result.root}
+          </div>
+          <div className="note" style={{ marginTop: 8 }}>
+            되돌리려면 「옮긴 곳」의 폴더를 「원래 자리」로 옮기세요. 도구는 휴지통을 자동으로
+            비우지 않습니다.
           </div>
         </>
       )}

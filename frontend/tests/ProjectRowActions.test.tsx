@@ -10,7 +10,7 @@
  * 2. **되돌릴 수 없는 쪽을 조용히 하지 않는다.** 확인 전에는 요청이 나가지 않고,
  *    끝난 뒤에는 되돌리는 방법이 화면에 남는다.
  */
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ProjectListItem } from "../src/api/client";
@@ -273,8 +273,13 @@ describe("삭제 = 휴지통 이동 (US2)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
     fireEvent.click(await screen.findByRole("button", { name: "휴지통으로 옮기기" }));
 
-    await screen.findByText(destination);
-    await screen.findByText(/되돌리려면 이 폴더를 원래 자리로 옮기세요/);
+    // **출발지와 도착지를 둘 다 보여야 한다** (SC-616 · converge T050). 되돌리기는 두
+    // 경로가 있어야 성립하고, 외부 위치 프로젝트의 원래 자리는 추측할 수 없다.
+    // 목록의 줄도 경로를 그리므로 **알림 안에서** 센다.
+    const notice = await screen.findByRole("status");
+    within(notice).getByText(destination);
+    within(notice).getByText(managed.root);
+    within(notice).getByText(/되돌리려면 「옮긴 곳」의 폴더를 「원래 자리」로 옮기세요/);
   });
 
   it("이미 없던 프로젝트는 「목록에서 뺐습니다」로 말한다 (FR-420)", async () => {
