@@ -5,6 +5,8 @@ import {
 } from "../lib/wording";
 import type { TrashedTest } from "../api/client";
 
+import { Button } from "../ui/Button";
+
 /**
  * 테스트 복수 삭제 확인 — **목록 바로 아래에서** 묻는다 (013 FR-430 · UC-013-04).
  *
@@ -51,17 +53,16 @@ export function TestBulkConfirm({
       <span className="why">{TESTS_DELETE_REVERTIBLE}</span>
       <div className="spacer" />
       {/* 돌아가기가 기본이다 — 포커스를 여기에 둔다. */}
-      <button className="btn sm" onClick={onCancel} disabled={busy} autoFocus>
+      <Button size="sm" onClick={onCancel} disabled={busy} autoFocus>
         돌아가기
-      </button>
-      <button
+      </Button>
+      <Button
         data-test-bulk-confirm-run
-        className="btn sm danger"
+        size="sm" variant="danger"
         onClick={onConfirm}
-        disabled={busy}
-      >
+        disabled={busy} >
         지우기
-      </button>
+      </Button>
     </div>
   );
 }
@@ -176,9 +177,9 @@ export function TestSelectionBar({
         그려지기 때문이다** (UC-013-02 · SC-627). 0개일 때의 안내를 여기에 두면 닿을 수
         없는 가지가 된다.
       */}
-      <button data-test-bulk-delete className="btn sm danger" onClick={onDelete} disabled={busy}>
+      <Button data-test-bulk-delete size="sm" variant="danger" onClick={onDelete} disabled={busy}>
         선택한 항목 삭제
-      </button>
+      </Button>
     </div>
   );
 }
@@ -228,17 +229,16 @@ export function RenumberConfirm({
       </span>
       <div className="spacer" />
       {/* 돌아가기가 기본이다 — 포커스를 여기에 둔다. */}
-      <button className="btn sm" onClick={onCancel} disabled={busy} autoFocus>
+      <Button size="sm" onClick={onCancel} disabled={busy} autoFocus>
         돌아가기
-      </button>
-      <button
+      </Button>
+      <Button
         data-renumber-confirm-run
-        className="btn sm danger"
+        size="sm" variant="danger"
         onClick={onConfirm}
-        disabled={busy}
-      >
+        disabled={busy} >
         번호 정리
-      </button>
+      </Button>
     </div>
   );
 }

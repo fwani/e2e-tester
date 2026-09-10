@@ -19,6 +19,8 @@ import { Toast } from "../components/Toast";
 import { ImportDoneNotice, ImportFilePicker, ImportPreview } from "./ImportPreview";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
+import { Button } from "../ui/Button";
+
 import {
   fs,
   imports,
@@ -349,12 +351,12 @@ function ProjectList({
   return (
     <>
       <div style={{ display: "flex", gap: 12, marginBottom: 22 }}>
-        <button className="btn primary" onClick={onCreate} disabled={busy}>
+        <Button variant="primary" onClick={onCreate} disabled={busy}>
           + 새 프로젝트 만들기
-        </button>
-        <button className="btn" onClick={onBrowse} disabled={busy}>
+        </Button>
+        <Button onClick={onBrowse} disabled={busy}>
           기존 프로젝트 열기
-        </button>
+        </Button>
         {/* 세 번째 길 — 이미 쓰던 설계서에서 시작한다 (014 US2). */}
         <ImportFilePicker
           label="엑셀에서 새 프로젝트"
@@ -590,9 +592,9 @@ function ProjectRow({
               <>
                 {item.accessible && (
                   <>
-                    <button className="btn" onClick={onOpen} disabled={locked}>
+                    <Button onClick={onOpen} disabled={locked}>
                       열기
-                    </button>
+                    </Button>
                     <button
                       className="navlink"
                       onClick={() => setMode({ kind: "editing", draft: item.name })}
@@ -701,12 +703,12 @@ function ConfirmTrash({
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
         {/* 취소가 기본이다 — 포커스를 여기에 둔다. */}
-        <button className="btn" onClick={onCancel} disabled={pending} autoFocus>
+        <Button onClick={onCancel} disabled={pending} autoFocus>
           취소
-        </button>
-        <button className="btn" onClick={onConfirm} disabled={pending}>
+        </Button>
+        <Button onClick={onConfirm} disabled={pending}>
           휴지통으로 옮기기
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -853,9 +855,9 @@ function CreateForm({
       </p>
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-        <button className="btn" onClick={onCancel} disabled={busy}>
+        <Button onClick={onCancel} disabled={busy}>
           취소
-        </button>
+        </Button>
         <button
           aria-describedby="create-blockers"
           disabled={busy || !ready}
@@ -993,9 +995,9 @@ function FolderPicker({
             </button>
             {e.is_project && <span className="chip">프로젝트</span>}
             {e.is_project && (
-              <button className="btn" disabled={busy} onClick={() => onPick(e.path)}>
+              <Button disabled={busy} onClick={() => onPick(e.path)}>
                 열기
-              </button>
+              </Button>
             )}
           </div>
         ))}
@@ -1015,13 +1017,13 @@ function FolderPicker({
           「프로젝트」 표시가 붙은 폴더만 열 수 있습니다.
         </span>
         <div style={{ display: "flex", gap: 12 }}>
-          <button className="btn" onClick={onCancel} disabled={busy}>
+          <Button onClick={onCancel} disabled={busy}>
             취소
-          </button>
+          </Button>
           {here !== null && (
-            <button className="btn primary" disabled={busy} onClick={() => onPick(here)}>
+            <Button variant="primary" disabled={busy} onClick={() => onPick(here)}>
               이 폴더 열기
-            </button>
+            </Button>
           )}
         </div>
       </div>

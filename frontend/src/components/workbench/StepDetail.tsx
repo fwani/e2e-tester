@@ -39,6 +39,8 @@ import type { Step } from "../../types/generated/step";
 import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
 
+import { Button } from "../../ui/Button";
+
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
   return /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(value);
@@ -202,8 +204,7 @@ export function StepDetail({
         */}
         <div className="lbl">STEP 상세</div>
         <div className="spacer" />
-        <button
-          /*
+        <Button /*
             011 UC-011-10 — 닫는 조작은 **상세 안에** 있고 모든 국면에서 같은 자리다.
             표식을 두는 이유: 011 이 상세를 대상 앱 위로 옮겼으므로, 닫을 방법이 판 안에
             있다는 것이 검사로 세져야 한다. 겹침이 미러를 덮은 채 닫을 수 없으면 사용자는
@@ -211,14 +212,13 @@ export function StepDetail({
           */
           data-detail-close
           aria-label="닫기"
-          className="btn sm quiet"
+          size="sm" variant="quiet"
           onClick={onClose}
-          style={{ padding: "0 7px" }}
-        >
+          style={{ padding: "0 7px" }} >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M4 4l8 8M12 4l-8 8" />
           </svg>
-        </button>
+        </Button>
       </div>
 
       <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>

@@ -11,6 +11,8 @@
  */
 import type { TargetLocator } from "../types/generated/step";
 
+import { Button } from "../ui/Button";
+
 type Status = "verified" | "ambiguous" | "unverified" | "not_collected";
 
 interface Row {
@@ -130,9 +132,9 @@ export function LocatorPriorityTable({
         </span>
         <span className="spacer" />
         {onRepick && (
-          <button className="btn sm" disabled={busy || repicking} onClick={onRepick}>
+          <Button size="sm" disabled={busy || repicking} onClick={onRepick}>
             {repicking ? "브라우저에서 클릭 대기 중…" : "다시 집기"}
-          </button>
+          </Button>
         )}
       </div>
 

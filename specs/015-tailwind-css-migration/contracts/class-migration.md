@@ -12,12 +12,13 @@ SC-009 「미상 0건」. 109개를 머릿속으로 추적할 수 없고, 전환
 
 | 클래스 | 사용처 | 행선지 | 상태 |
 |---|---|---|---|
-| `.btn` | (n) | `ui/Button` | 미착수 |
+| `.btn` | 1 | T024 | `ui/Button` — 남은 1곳은 `.btn.file`(파일 선택 label)이며 폼 부품 관할 | 교체 | 클래스가 사는 곳 | 「완료」 조건 |
+|---|---|
+| **정본 구획** (1~203줄, 자동 추출) | **화면 코드의 사용 0.** 정의는 남는다 — 확정 디자인의 기록이자 L1 대조의 기준이다 |
+| **파생 구획** (204줄~, 손으로 쓴 것) | **정의 삭제.** 화면이 쓰지 않으면 남길 이유가 없다 |
 
-- **사용처**: `.tsx` 에서 이 클래스를 쓰는 곳의 수. 착수 전에 센다
-- **행선지**: 부품 컴포넌트 이름, 또는 유틸리티 조합, 또는 「삭제 — 쓰이지 않음」
-- **상태**: `미착수` → `구현` → `교체` → `완료`. 「완료」는 `tokens.css` 에서 정의가
-  삭제된 뒤에만 붙인다
+사용자가 고른 「전면 해체」는 이 정정으로 약해지지 않는다 — **화면 코드에서 의미 클래스가
+사라지는 것은 같다.** 바뀐 것은 tokens.css 의 정본 구획을 무엇으로 보느냐다.
 
 ## 기계가 세는 것 (가드 G-D)
 
@@ -44,8 +45,8 @@ tokens.css 에 남은 의미 클래스 수  ==  이 표의 「완료」 아닌 �
 | 클래스 | 사용처 | 담당 | 행선지 | 상태 |
 |---|---|---|---|---|
 | `.why` | 133 | T021 | ui/Notice · ui/Toast | 미착수 |
-| `.btn` | 82 | T015 | ui/Button | 미착수 |
-| `.sm` | 57 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
+| `.btn` | 1 | T024 | `ui/Button` — 남은 1곳은 `.btn.file`(파일 선택 label)이며 폼 부품 관할 | 교체 |
+| `.sm` | 1 | T027 | `ui/Button` size=sm 로 흡수 · 남은 사용은 다른 부품의 작은 변종 | 교체 |
 | `.row` | 54 | T025 | ui/Table · ui/Grid | 미착수 |
 | `.mono` | 45 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.chip` | 38 | T020 | ui/Chip · ui/Badge | 미착수 |
@@ -58,26 +59,26 @@ tokens.css 에 남은 의미 클래스 수  ==  이 표의 「완료」 아닌 �
 | `.tint-warn` | 27 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.navlink` | 26 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.muted` | 22 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
-| `.primary` | 18 | T015 | ui/Button | 미착수 |
+| `.primary` | 0 | T015 | `ui/Button` variant=primary | 완료 |
 | `.ai` | 13 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.danger` | 13 | T015 | ui/Button | 미착수 |
+| `.danger` | 5 | T027 | `ui/Button` variant=danger 로 흡수 · 남은 사용은 `.op danger`(행 조작) | 교체 |
 | `.note` | 13 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.subtitle` | 12 | T023 | ui/Pane · ui/Header | 미착수 |
 | `.num` | 9 | T020 | ui/Chip · ui/Badge | 미착수 |
 | `.title` | 9 | T023 | ui/Pane · ui/Header | 미착수 |
 | `.dim` | 8 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.field-label` | 7 | T024 | ui/Field · ui/FileInput | 미착수 |
-| `.secondary` | 7 | T015 | ui/Button | 미착수 |
+| `.secondary` | 7 | T015 | `ui/Button` variant=default — 정본 주석이 「기본형이 곧 보조 조작」이라 적었다 | 구현 |
 | `.warn` | 7 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.rule-top` | 6 | T023 | ui/Pane · ui/Header | 미착수 |
 | `.sunken` | 6 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.tint-fail` | 6 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.tint-run` | 6 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.off` | 5 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
+| `.off` | 1 | T019 | `ui/Button` variant=off 로 흡수 · 남은 사용은 상태 수식 | 교체 |
 | `.pane-hd` | 4 | T023 | ui/Pane · ui/Header | 미착수 |
 | `.pass` | 4 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.pass-ink` | 4 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
-| `.quiet` | 4 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
+| `.quiet` | 0 | T015 | `ui/Button` variant=quiet | 완료 |
 | `.ai-ink` | 3 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.log` | 3 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.op` | 3 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
@@ -103,7 +104,7 @@ tokens.css 에 남은 의미 클래스 수  ==  이 표의 「완료」 아닌 �
 | `.warn-ink` | 2 | T019 | ui/tone.ts + 상태 유틸 | 미착수 |
 | `.addr` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
 | `.answer-q` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
-| `.bare` | 1 | T015 | ui/Button | 미착수 |
+| `.bare` | 1 | T027 | 테두리 제거 수식 — 버튼 전용이 아니다. 유틸리티 조합 | 미착수 |
 | `.brand` | 1 | T023 | ui/Pane · ui/Header | 미착수 |
 | `.brand-name` | 1 | T023 | ui/Pane · ui/Header | 미착수 |
 | `.code-block` | 1 | T027 | 유틸리티 조합 (부품 아님) | 미착수 |
@@ -115,7 +116,7 @@ tokens.css 에 남은 의미 클래스 수  ==  이 표의 「완료」 아닌 �
 | `.field` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
 | `.file` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
 | `.file-input` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
-| `.ghost` | 1 | T015 | ui/Button | 미착수 |
+| `.ghost` | 1 | T015 | `ui/Button` variant=ghost | 구현 |
 | `.hdr` | 1 | T023 | ui/Pane · ui/Header | 미착수 |
 | `.hint-line` | 1 | T021 | ui/Notice · ui/Toast | 미착수 |
 | `.ime-capture` | 1 | T024 | ui/Field · ui/FileInput | 미착수 |
@@ -148,7 +149,7 @@ tokens.css 에 남은 의미 클래스 수  ==  이 표의 「완료」 아닌 �
 | `.toast-body` | 1 | T021 | ui/Notice · ui/Toast | 미착수 |
 | `.toast-layer` | 1 | T021 | ui/Notice · ui/Toast | 미착수 |
 | `.body` | 0 | T023 | ui/Pane · ui/Header · **사용 0 — 삭제 후보** | 미착수 |
-| `.disabled` | 0 | T015 | ui/Button · **사용 0 — 삭제 후보** | 미착수 |
+| `.disabled` | 0 | T024 | `ui/Button` 은 `:disabled` 로 처리 · `.btn.disabled` 는 파일 선택 label 관할 | 교체 |
 | `.left` | 0 | T027 | 유틸리티 조합 (부품 아님) · **사용 0 — 삭제 후보** | 미착수 |
 | `.tint-ai` | 0 | T019 | ui/tone.ts + 상태 유틸 · **사용 0 — 삭제 후보** | 미착수 |
 | `.trow` | 0 | T025 | ui/Table · ui/Grid · **사용 0 — 삭제 후보** | 미착수 |

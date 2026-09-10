@@ -267,8 +267,6 @@ button:hover { background: var(--sunken-2); }
 button:active { box-shadow: none; }
 
 /* 주 동작 — 색이 아니라 채움으로 말한다. 한 화면에 하나다 (FR-269 · C-10). */
-button.primary { background: var(--ink); border-color: var(--ink); color: var(--panel); }
-button.primary:hover { background: var(--ink-2); }
 
 /* 이전 판의 이름. 지금은 기본형이 곧 보조 조작이다. */
 button.secondary { background: var(--panel); color: var(--ink); }
@@ -528,7 +526,6 @@ input.phase-name:disabled { border-color: transparent; color: var(--ink-2); }
 
 /* 강조를 뺀 조작 (005 FR-147 · U-08). 끝난 실행의 「닫기」처럼 되돌리기 어려운 것이
    화면에서 가장 눈에 띄는 컨트롤이 되지 않게 한다. 형태는 기본형이고 무게만 낮춘다. */
-.btn.quiet { color: var(--ink-2); box-shadow: none; }
 
 /* Step 행 안의 이름. 확정 디자인은 `.srow .t b` 로 그리지만 제품에서는 **누를 수 있는
    요소**여야 한다(행 지목 · 접근성). 형태는 같고 상자만 없앤다. */

@@ -15,6 +15,8 @@ import { drafts as draftsApi } from "../api/client";
 import { describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
+import { Button } from "../ui/Button";
+
 export function DraftSection({
   drafts,
   problems,
@@ -126,43 +128,39 @@ export function DraftSection({
                       확인 버튼에 초점을 옮긴다. 누른 버튼이 사라지면서 초점이 문서
                       처음으로 튀어, 키보드 사용자는 확인 자리를 다시 찾아야 했다.
                     */}
-                    <button
-                      className="btn sm danger"
+                    <Button
+                      size="sm" variant="danger"
                       data-action="draft.delete-confirm"
                       aria-describedby={`draft-name-${draft.draft_id}`}
                       ref={(el) => el?.focus()}
-                      onClick={() => remove(draft.draft_id)}
-                    >
+                      onClick={() => remove(draft.draft_id)} >
                       지우기
-                    </button>
-                    <button
-                      className="btn sm"
+                    </Button>
+                    <Button
+                      size="sm"
                       aria-describedby={`draft-name-${draft.draft_id}`}
-                      onClick={() => setConfirming(null)}
-                    >
+                      onClick={() => setConfirming(null)} >
                       그대로
-                    </button>
+                    </Button>
                   </span>
                 ) : (
                   <span className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
-                    <button
-                      className="btn sm"
+                    <Button
+                      size="sm"
                       data-action="draft.record"
                       aria-describedby={`draft-name-${draft.draft_id}`}
                       disabled={busy}
-                      onClick={() => onRecord(draft)}
-                    >
+                      onClick={() => onRecord(draft)} >
                       녹화 시작
-                    </button>
-                    <button
-                      className="btn sm"
+                    </Button>
+                    <Button
+                      size="sm"
                       data-action="draft.delete"
                       aria-describedby={`draft-name-${draft.draft_id}`}
                       disabled={busy}
-                      onClick={() => setConfirming(draft.draft_id)}
-                    >
+                      onClick={() => setConfirming(draft.draft_id)} >
                       지우기
-                    </button>
+                    </Button>
                   </span>
                 )}
               </td>

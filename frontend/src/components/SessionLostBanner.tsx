@@ -9,6 +9,8 @@
  * 것" 처럼 읽힌다.
  */
 
+import { Button } from "../ui/Button";
+
 export interface SessionLostBannerProps {
   reason: string;
   /** 보존된 Step 수. 0이면 저장할 것이 없다. */
@@ -39,9 +41,9 @@ export function SessionLostBanner({
         <strong className="strong-sm fail-ink">브라우저 세션이 유실됐습니다</strong>
         <span className="spacer" />
         {onClose && (
-          <button className="btn sm quiet" onClick={onClose}>
+          <Button size="sm" variant="quiet" onClick={onClose}>
             닫기
-          </button>
+          </Button>
         )}
       </div>
 

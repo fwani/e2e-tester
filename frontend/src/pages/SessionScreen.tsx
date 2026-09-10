@@ -114,6 +114,8 @@ import {
 import type { Step } from "../types/generated/step";
 import type { Outcome, StepOutcome as RunStepOutcome } from "../types/generated/run-result";
 
+import { Button } from "../ui/Button";
+
 export type { AiBlockedState } from "../components/workbench/model";
 
 /**
@@ -1352,9 +1354,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         <span className="strong-sm">{editSavedNotice(displayName || title)}</span>
         <div className="spacer" />
         {onShowList && (
-          <button className="btn sm" onClick={onShowList} disabled={busy}>
+          <Button size="sm" onClick={onShowList} disabled={busy}>
             목록에서 보기
-          </button>
+          </Button>
         )}
       </div>
     ) : null;

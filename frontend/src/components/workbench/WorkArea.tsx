@@ -35,6 +35,8 @@ import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../
 import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
 import type { SlotSize, SlotStyle } from "../../lib/layout";
 
+import { Button } from "../../ui/Button";
+
 /**
  * 국면 안내 띠 **자체**의 높이. `RunnerPaused`·`Takeover` 의 `flex: 0 0 42px`.
  *
@@ -339,12 +341,12 @@ export function WorkArea({
               </p>
               {/* 무엇을 버리는지 라벨에 적는다 (006 FR-209 · ui-contract §7). */}
               <div className="row" style={{ gap: 8 }}>
-                <button className="btn sm" onClick={onReload}>
+                <Button size="sm" onClick={onReload}>
                   {staleReloadLabel(work.pendingCount)}
-                </button>
-                <button className="btn sm primary" data-action="save.overwriteStale" onClick={onOverwriteStale}>
+                </Button>
+                <Button size="sm" variant="primary" data-action="save.overwriteStale" onClick={onOverwriteStale}>
                   {STALE_OVERWRITE_LABEL}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -510,9 +512,9 @@ function AlwaysVisibleFailure({
               // 것인지 확인하느라 멈춘다 (FR-235).
               .filter((c) => c !== "answer")
               .map((c) => (
-                <button key={c} className="btn sm" disabled={busy} onClick={() => onChoose?.(c)}>
+                <Button key={c} size="sm" disabled={busy} onClick={() => onChoose?.(c)}>
                   {AI_CHOICE_LABEL[c] ?? c}
-                </button>
+                </Button>
               ))}
           </div>
         </div>
@@ -625,14 +627,13 @@ function BlockedAnswer({
         style={{ minHeight: "auto" }}
       />
       <div className="row" style={{ gap: 8 }}>
-        <button
-          className="btn sm primary"
+        <Button
+          size="sm" variant="primary"
           data-blocked-answer-send
           disabled={busy || !ready}
-          onClick={send}
-        >
+          onClick={send} >
           답하고 계속
-        </button>
+        </Button>
         {/*
           힌트를 조건부로 그리면 첫 글자를 치는 순간 그 줄이 사라지고 아래가 위로
           튄다. 자리를 고정하고 문구만 바꾼다 (`.hint-line`).

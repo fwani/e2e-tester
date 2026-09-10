@@ -44,7 +44,13 @@ export function generatedClasses(): Set<string> {
   }
 }
 
-/** 정본(`tokens.css`)이 정의하는 의미 클래스. 전환이 끝나면 비어야 한다. */
+/**
+ * 정본(`tokens.css`)이 정의하는 의미 클래스 전부.
+ *
+ * **전환이 끝나도 비지 않는다.** 정본 구획(자동 추출)의 클래스는 확정 디자인의 기록이자
+ * L1 대조의 기준이므로 남는다 — 사라지는 것은 *화면 코드의 사용*이다
+ * (contracts/class-migration.md 「완료」의 정의).
+ */
 export function canonClasses(): Set<string> {
   const css = readFileSync(join(ROOT, "src/theme/tokens.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   const out = new Set<string>();
@@ -92,6 +98,25 @@ export function classNameGroups(): { names: string[]; file: string; line: number
     for (const m of txt.matchAll(/className=\{\s*`([^]*?)`/g)) {
       add(stripHoles(m[1] as string).replace(/`/g, " "), m.index ?? 0);
     }
+  }
+  return out;
+}
+
+/**
+ * 손으로 쓴 파생 구획(정본 구획 뒤)에서 정의된 클래스.
+ *
+ * 정본 구획은 `scripts/extract_canon.py` 의 출력이라 손댈 수 없다. 파생 구획은 다르다 —
+ * 화면이 쓰지 않으면 남길 이유가 없으므로 **여기 것은 삭제가 「완료」다.**
+ */
+export function derivedClasses(): Set<string> {
+  const raw = readFileSync(join(ROOT, "src/theme/tokens.css"), "utf8");
+  const marker = raw.indexOf("정본에서 파생된 것");
+  const css = (marker < 0 ? raw : raw.slice(marker)).replace(/\/\*[\s\S]*?\*\//g, "");
+  const out = new Set<string>();
+  for (const m of css.matchAll(/([^{}]+)\{/g)) {
+    const sel = m[1] as string;
+    if (sel.trim().startsWith("@")) continue;
+    for (const c of sel.matchAll(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g)) out.add(c[1] as string);
   }
   return out;
 }

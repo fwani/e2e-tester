@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import type { GroupSummary } from "../api/client";
 
+import { Button } from "../ui/Button";
+
 /**
  * 목록 위 그룹 띠 (013 FR-440·FR-441 · UC-013-06).
  *
@@ -210,13 +212,12 @@ function NewGroupForm({
             : "영문 대문자·숫자 1~8자, 첫 글자는 영문입니다."}
         </span>
       )}
-      <button
-        className="btn sm"
+      <Button
+        size="sm"
         disabled={busy || !ready}
-        onClick={() => onSubmit(cleanPrefix, name.trim())}
-      >
+        onClick={() => onSubmit(cleanPrefix, name.trim())} >
         만들기
-      </button>
+      </Button>
       <button className="navlink" onClick={onCancel} disabled={busy}>
         취소
       </button>
@@ -257,12 +258,12 @@ function ConfirmDisband({
         「{group.name ?? group.prefix}」을(를) 없앨까요? 테스트 {group.count}개가 그룹 없음으로
         돌아가고 식별자가 TC-### 로 바뀝니다 · 지워지지 않습니다
       </span>
-      <button className="btn sm" onClick={onCancel} disabled={busy} autoFocus>
+      <Button size="sm" onClick={onCancel} disabled={busy} autoFocus>
         돌아가기
-      </button>
-      <button className="btn sm danger" onClick={onConfirm} disabled={busy}>
+      </Button>
+      <Button size="sm" variant="danger" onClick={onConfirm} disabled={busy}>
         없애기
-      </button>
+      </Button>
     </span>
   );
 }

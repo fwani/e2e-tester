@@ -44,6 +44,8 @@ import {
   wheelEventOf,
 } from "./mirror/useMirrorInput";
 
+import { Button } from "../ui/Button";
+
 /**
  * 미리보기의 국면 (005 재점검 U-04-b).
  *
@@ -545,15 +547,15 @@ function UseWindowAction({
   const disabled = capability.kind === "disabled";
   return (
     <span className="row" style={{ gap: 6 }}>
-      <button
+      <Button
         type="button"
         data-action="mirror.useWindow"
-        className={`btn ${compact ? "sm" : ""}`.trimEnd()}
+        size={compact ? "sm" : "md"}
         disabled={disabled}
         onClick={disabled ? undefined : onUseWindow}
       >
         실제 창에서 조작하기
-      </button>
+      </Button>
       {disabled && (
         <span className="why" data-disabled-reason="mirror.useWindow">
           {capability.reason}

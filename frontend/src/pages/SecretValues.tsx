@@ -18,6 +18,8 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { secrets, type SecretsResponse } from "../api/client";
 
+import { Button } from "../ui/Button";
+
 export interface SecretValuesProps {
   /** 테스트 정의가 참조하는 민감 변수 이름들. 아직 값이 없는 것을 보여 주기 위한 것이다. */
   requiredNames?: string[];
@@ -78,14 +80,14 @@ export function SecretValues({
         <h1 className="title" style={{ margin: 0 }}>비밀 값</h1>
         <span className="spacer" />
         {onManageKeys && (
-          <button className="btn" onClick={onManageKeys}>
+          <Button onClick={onManageKeys}>
             키 관리
-          </button>
+          </Button>
         )}
         {onClose && (
-          <button className="btn" onClick={onClose}>
+          <Button onClick={onClose}>
             닫기
-          </button>
+          </Button>
         )}
       </div>
 

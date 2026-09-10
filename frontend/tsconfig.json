@@ -15,7 +15,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["vitest/globals", "vite/client"]
+    // 가드(G-B·G-C)가 Tailwind 를 실제로 돌려 산출물을 확인하므로 node 내장 모듈이
+    // 필요하다. 타입 전용 패키지이며 런타임에는 아무것도 더하지 않는다 (015 T010).
+    "types": ["vitest/globals", "vite/client", "node"]
   },
   "include": ["src", "tests"]
 }

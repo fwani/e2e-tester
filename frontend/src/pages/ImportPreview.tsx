@@ -29,6 +29,8 @@ import { ErrorNotice, describeError } from "../components/ErrorNotice";
 import { Toast } from "../components/Toast";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
+import { Button } from "../ui/Button";
+
 /** 컬럼 7개. 순서는 서버의 `ORDER` 와 같다 — 화면이 다른 순서를 쓰면 사용자가 헷갈린다. */
 const ALL_COLUMNS = [
   "TC ID",
@@ -258,26 +260,24 @@ export function ImportPreview({
               행마다 체크 상자만 두면 「이 시트 하나만 가져오기」에 199번의 클릭이 든다 —
               가장 흔한 두 뜻(전부·하나만)이 가장 비싼 조작이었다.
             */}
-            <button
-              className="btn sm"
+            <Button
+              size="sm"
               data-action="import.all-on"
               disabled={busy || onCount === plan.sheets.length}
               onClick={() =>
                 setIncluded(Object.fromEntries(plan.sheets.map((s) => [s.sheet_name, true])))
-              }
-            >
+              } >
               전체 켜기
-            </button>
-            <button
-              className="btn sm"
+            </Button>
+            <Button
+              size="sm"
               data-action="import.all-off"
               disabled={busy || onCount === 0}
               onClick={() =>
                 setIncluded(Object.fromEntries(plan.sheets.map((s) => [s.sheet_name, false])))
-              }
-            >
+              } >
               전체 끄기
-            </button>
+            </Button>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             {/*
@@ -537,18 +537,17 @@ export function ImportPreview({
           className="commit-bar row"
           style={{ gap: 8, marginTop: 8, padding: "10px 0", flexWrap: "wrap" }}
         >
-          <button
-            className="btn primary"
+          <Button
+            variant="primary"
             data-action="import.confirm"
             aria-busy={busy}
             disabled={busy || overCapacity || nothingChosen}
-            onClick={confirm}
-          >
+            onClick={confirm} >
             {busy ? "가져오는 중…" : confirmLabel}
-          </button>
-          <button className="btn" data-action="import.cancel" disabled={busy} onClick={onCancel}>
+          </Button>
+          <Button data-action="import.cancel" disabled={busy} onClick={onCancel}>
             취소
-          </button>
+          </Button>
           {/* 전부 끄면 만들 것이 없다 (FR-020d). 막고, 왜 막혔는지 말한다. */}
           {nothingChosen && (
             <span className="why fail-ink" data-nothing-chosen>

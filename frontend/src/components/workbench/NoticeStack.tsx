@@ -51,6 +51,8 @@ import type { ActionId } from "../../lib/actions";
 import { ACTION_LABEL } from "../../lib/wording";
 import type { Notice } from "./model";
 
+import { Button } from "../../ui/Button";
+
 /**
  * 알림의 뜻 → 정본의 옅은 바탕 (`States.dc.html`).
  *
@@ -201,13 +203,12 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
             )}
           </div>
           {n.action !== null && (
-            <button
-              className="btn sm"
+            <Button
+              size="sm"
               data-notice-action={n.action.actionId}
-              onClick={() => onAct?.(n.action!.actionId)}
-            >
+              onClick={() => onAct?.(n.action!.actionId)} >
               {n.action.label || ACTION_LABEL[n.action.actionId]}
-            </button>
+            </Button>
           )}
           {/*
             **닫기는 모든 알림에 있다** (2026-09-09).
@@ -222,16 +223,15 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
             전에도 지울 수 있는가)기보다, 지우는 순간 **바깥 상태까지 비울 대상**인지를
             구별한다. 그 판정은 `onDismiss` 를 받는 화면이 이미 갖고 있다.
           */}
-          <button
-            className="btn sm quiet"
+          <Button
+            size="sm" variant="quiet"
             aria-label="알림 닫기"
             onClick={() => {
               setHidden((prev) => new Set(prev).add(fingerprint(n)));
               onDismiss?.(n.id);
-            }}
-          >
+            }} >
             닫기
-          </button>
+          </Button>
         </div>
       ))}
     </div>

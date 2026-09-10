@@ -33,6 +33,8 @@ import {
 } from "../../lib/wording";
 import type { CapabilityState } from "../../lib/capabilities";
 
+import { Button } from "../../ui/Button";
+
 /** 넣을 수 있는 종류의 순서. 자주 쓰는 것부터다. */
 const KINDS: InsertableKind[] = ["navigate", "assert_url", "assert_text", "close_tab"];
 
@@ -76,9 +78,9 @@ export function InsertStepForm({
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <strong className="lbl">{atLabel} 앞에 추가</strong>
         <div className="spacer" style={{ flex: 1 }} />
-        <button className="btn sm" onClick={onCancel} aria-label="추가 닫기">
+        <Button size="sm" onClick={onCancel} aria-label="추가 닫기">
           닫기
-        </button>
+        </Button>
       </div>
 
       {!usable && capability.kind === "disabled" && (
@@ -90,16 +92,17 @@ export function InsertStepForm({
       {/* 종류 — 넣을 수 있는 넷 */}
       <div role="radiogroup" aria-label="넣을 Step 종류" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {KINDS.map((k) => (
-          <button
+          <Button
             key={k}
             role="radio"
             aria-checked={kind === k}
             disabled={!usable}
-            className={kind === k ? "btn sm primary" : "btn sm"}
+            size="sm"
+            variant={kind === k ? "primary" : "default"}
             onClick={() => setKind(k)}
           >
             {INSERTABLE_KIND_LABEL[k]}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -152,16 +155,17 @@ export function InsertStepForm({
       {(kind === "assert_url" || kind === "assert_text") && (
         <div role="radiogroup" aria-label="일치 방식" style={{ display: "flex", gap: 6 }}>
           {(["equals", "contains"] as MatchMode[]).map((m) => (
-            <button
+            <Button
               key={m}
               role="radio"
               aria-checked={match === m}
               disabled={!usable}
-              className={match === m ? "btn sm primary" : "btn sm"}
+              size="sm"
+              variant={match === m ? "primary" : "default"}
               onClick={() => setMatch(m)}
             >
               {m === "equals" ? "정확히 일치" : "포함"}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -174,11 +178,10 @@ export function InsertStepForm({
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-        <button
-          className="btn primary"
+        <Button
+          variant="primary"
           disabled={busy || !usable || !ready}
-          onClick={() => {
-            /*
+          onClick={() => { /*
               **표시 이름을 여기서 붙여 보낸다** (research R6 의 화면 쪽 결정).
 
               서버에도 같은 규칙이 있지만 그것은 `label` 없이 온 요청을 위한 것이다. 화면이
@@ -186,38 +189,35 @@ export function InsertStepForm({
               쓴 그 문자열을 그대로 보낸다 — 각자 만들면 저장 순간 이름이 바뀐 것으로 보인다.
             */
             if (spec !== null) onSubmit({ ...spec, label: manualStepLabel(spec) });
-          }}
-        >
+          }} >
           넣기
-        </button>
+        </Button>
       </div>
 
       {/* ─── 요소를 지목해야 하는 종류 — 감추지 않는다 (FR-287) ──────────────── */}
       <div className="rule-top" style={{ paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {BROWSER_ONLY.map((k) => (
-            <button
+            <Button
               key={k}
-              className="btn sm off"
+              size="sm" variant="off"
               disabled
               aria-disabled="true"
-              title={BROWSER_ONLY_KIND_REASON}
-            >
+              title={BROWSER_ONLY_KIND_REASON} >
               {BROWSER_ONLY_KIND_LABEL[k]}
-            </button>
+            </Button>
           ))}
         </div>
         <div className="why" role="status">
           {BROWSER_ONLY_KIND_REASON}
         </div>
         {/* 갈 길을 같은 자리에 둔다 — 없는 방법을 가리키지 않는다 (006 E-03) */}
-        <button
-          className="btn sm"
+        <Button
+          size="sm"
           disabled={browserCapability.kind !== "enabled"}
-          onClick={onOpenBrowser}
-        >
+          onClick={onOpenBrowser} >
           브라우저 열어 이 자리에서 멈추기
-        </button>
+        </Button>
         {browserCapability.kind === "disabled" && (
           <div className="why">{browserCapability.reason}</div>
         )}

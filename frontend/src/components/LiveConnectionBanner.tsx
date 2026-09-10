@@ -12,6 +12,8 @@
  * 사용자는 지금까지 한 조작이 날아간 줄 알고 처음부터 다시 한다.
  */
 
+import { Button } from "../ui/Button";
+
 export interface LiveConnectionBannerProps {
   /** 즉시 재연결. 자동 재시도를 기다리지 않는다. */
   onReconnect?: () => void;
@@ -29,9 +31,9 @@ export function LiveConnectionBanner({ onReconnect }: LiveConnectionBannerProps)
         있습니다 — 화면만 멈춰 있습니다. 자동으로 다시 연결하는 중입니다.
       </span>
       {onReconnect && (
-        <button className="btn sm" onClick={onReconnect}>
+        <Button size="sm" onClick={onReconnect}>
           지금 다시 연결
-        </button>
+        </Button>
       )}
     </div>
   );

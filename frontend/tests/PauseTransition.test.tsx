@@ -16,6 +16,18 @@
  * **007 이행 1·2** — `RunnerPaused`·`Runner` 대신 `SessionWorkbench` 를 그린다. 한 가지가
  * 달라졌다: 전이 중 편집 조작을 **감추던 것을 비활성 + 이유로 바꿨다** (FR-234·FR-238).
  * 막는다는 사실은 같고, 사용자가 "왜 없지" 대신 "언제 되는지" 를 읽게 된다.
+
+ * ## 2026-09-10 (015 T016) — 판정 방법을 바꿨다. 검증 대상은 그대로다
+ *
+ * `.btn.quiet` 이 `ui/Button` 의 `variant="quiet"` 로 해체되어 클래스 이름이 사라졌다.
+ * `className` 에 `"quiet"` 를 찾던 단언이 성립하지 않는다.
+ *
+ * 유틸리티 조합(`text-ink-2 shadow-none`)을 대신 읽지 않았다. 그러면 구현 세부에 묶여
+ * 색 하나만 바꿔도 깨지고, **「이 조작에 강조가 없는가」라는 질문 자체가 사라진다.**
+ * `Button` 이 내보내는 `data-variant` 를 읽는다 — 의도를 그대로 묻는다.
+ *
+ * 클래스가 실제로 CSS 를 만드는지는 가드 G-B(`ClassExistence.test.ts`)가 따로 본다.
+ * 단언 하나가 셋으로 나뉜 것이며, 지운 것이 아니다 (layout-contract-v2.md LC-4·LC-6).
  */
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -216,7 +228,7 @@ describe("종료 후 컨트롤 (FR-147 · U-08)", () => {
     // 008 — 강조 여부는 인라인 그림자가 아니라 **형태 이름**이 말한다. 시각 언어가
     // 정본으로 옮겨졌으므로 인라인에는 아무것도 남지 않는다 (research R3 · C-7).
     // 단언 대상은 그대로다: 이 조작에 강조가 없는가.
-    expect(close.className).toContain("quiet");
+    expect(close.dataset.variant, "끝난 실행의 「닫기」에 강조가 있다").toBe("quiet");
     expect(close.className).not.toContain("primary");
   });
 

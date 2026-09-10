@@ -27,6 +27,8 @@
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+import { Button } from "../ui/Button";
+
 /** 알림의 뜻 → 정본의 옅은 바탕. `NoticeStack` 의 `TONE` 과 같은 값이다. */
 export type ToastTone = "error" | "warn" | "info" | "plain";
 
@@ -95,9 +97,9 @@ export function Toast({ tone = "plain", onDismiss, mark, role, children }: Toast
     >
       <div className="toast-body">{children}</div>
       {onDismiss !== undefined && (
-        <button className="btn sm quiet" aria-label="알림 닫기" onClick={onDismiss}>
+        <Button size="sm" variant="quiet" aria-label="알림 닫기" onClick={onDismiss}>
           닫기
-        </button>
+        </Button>
       )}
     </div>,
     toastLayer(),

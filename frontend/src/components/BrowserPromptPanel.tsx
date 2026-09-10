@@ -22,6 +22,8 @@ import { useState } from "react";
 import type { BrowserPromptKind } from "../lib/wording";
 import { promptTitle, promptDetail, PROMPT_ACTIONS } from "../lib/wording";
 
+import { Button } from "../ui/Button";
+
 export interface BrowserPromptState {
   promptId: string;
   kind: BrowserPromptKind;
@@ -100,26 +102,24 @@ export function BrowserPromptPanel({
       <span className="spacer" />
 
       {isFile && (
-        <button
+        <Button
           type="button"
-          className="btn primary"
+          variant="primary"
           data-prompt-accept
           disabled={files.length === 0}
-          onClick={() => onAnswer({ accept: true, files })}
-        >
+          onClick={() => onAnswer({ accept: true, files })} >
           {PROMPT_ACTIONS.attach}
-        </button>
+        </Button>
       )}
 
       {isDialog && (
-        <button
+        <Button
           type="button"
-          className="btn primary"
+          variant="primary"
           data-prompt-accept
-          onClick={() => onAnswer({ accept: true, text })}
-        >
+          onClick={() => onAnswer({ accept: true, text })} >
           {PROMPT_ACTIONS.accept}
-        </button>
+        </Button>
       )}
 
       {/*
@@ -127,14 +127,13 @@ export function BrowserPromptPanel({
         기다리고, 그것이 조용한 실패가 된다 (FR-339).
       */}
       {(isDialog || isFile) && (
-        <button
+        <Button
           type="button"
-          className="btn"
+          
           data-prompt-dismiss
-          onClick={() => onAnswer({ accept: false })}
-        >
+          onClick={() => onAnswer({ accept: false })}>
           {PROMPT_ACTIONS.dismiss}
-        </button>
+        </Button>
       )}
 
       {/*
@@ -142,9 +141,9 @@ export function BrowserPromptPanel({
         자리에서 바로 전환할 수 있어야 한다. `unsupported` 에서는 이것이 유일한 수단이다.
       */}
       {isUnsupported && canUseWindow && (
-        <button type="button" className="btn primary" data-prompt-use-window onClick={onUseWindow}>
+        <Button type="button" variant="primary" data-prompt-use-window onClick={onUseWindow}>
           {PROMPT_ACTIONS.useWindow}
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -48,6 +48,21 @@
  *
  * 리셋이 필요해지면 정본에 넣는다. 그것이 이 저장소의 규율이다.
  *
+ * ## 정본을 `layer(base)` 로 들이는 이유
+ *
+ * `tokens.css` 는 `button{…}`·`input,select,textarea{…}` 같은 **요소 선택자 규칙**을
+ * 갖고 있다. 레이어에 속하지 않은 규칙은 CSS 레이어 규칙상 **어떤 레이어보다도 이긴다** —
+ * 즉 `@layer utilities` 의 `bg-ink`·`h-control-sm` 이 `button{}` 에 진다.
+ *
+ * 그러면 부품에 유틸리티를 붙여도 적용되지 않는다. `<button className="bg-ink">` 가
+ * 여전히 `var(--panel)` 배경으로 그려진다. 015 가 하려는 일이 통째로 막힌다.
+ *
+ * `layer(base)` 로 들이면 정본이 base 레이어에 놓이고 utilities 가 이긴다.
+ * **정본 파일은 한 글자도 고치지 않는다** — 들이는 방식만 바꾼 것이다 (C-2 유지).
+ *
+ * 대가: 아직 해체되지 않은 의미 클래스도 base 로 내려가 유틸리티에 진다. 그래서
+ * LC-5(한 요소는 한 체계만)가 규칙이 아니라 **필수**가 된다. 가드 G-C 가 감시한다.
+ *
  * 간격(`--spacing-*`)은 비우지 않았다. 배치 계약이 아직 서는 중이라(T029) 어떤 치수가
  * 실제로 필요한지 모르고, 지금 조이면 전환이 임의값(`p-[7px]`)으로 도피한다 — 그것이
  * 더 나쁘다. T051(예외 등록) 시점에 실제 사용을 보고 다시 판단한다.
@@ -58,7 +73,7 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
-@import "./tokens.css";
+@import "./tokens.css" layer(base);
 
 @theme inline {
   /* ── 색 ─────────────────────────────────────────────────────────────

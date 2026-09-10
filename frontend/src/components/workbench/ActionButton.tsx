@@ -44,6 +44,8 @@ import type { ActionId } from "../../lib/actions";
 import type { CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
 
+
+import { Button, type ButtonVariant } from "../../ui/Button";
 export interface ActionButtonProps {
   action: ActionId;
   capability: CapabilityState;
@@ -89,7 +91,9 @@ export function ActionButton({
   const disabled = capability.kind === "disabled";
   const text = label ?? ACTION_LABEL[action];
 
-  const variant = disabled
+  // 정본 `.btn` 수식자 이름을 그대로 쓰던 자리다. 이제 `ui/Button` 의 variant 를 고른다 —
+  // 수식 없음은 `""` 가 아니라 `"default"` 다 (015 T016).
+  const variant: ButtonVariant = disabled
     ? "off"
     : emphasis === true
       ? "primary"
@@ -97,16 +101,17 @@ export function ActionButton({
         ? "danger"
         : emphasis === "quiet"
           ? "quiet"
-          : "";
+          : "default";
 
   const button = (
-    <button
+    <Button
       type="button"
       data-action={action}
       disabled={disabled}
       aria-describedby={disabled ? reasonId : undefined}
       onClick={disabled ? undefined : onRun}
-      className={`btn ${compact ? "sm " : ""}${variant}`.trimEnd()}
+      size={compact ? "sm" : "md"}
+      variant={variant}
       /*
         **버튼은 줄지 않는다.** 국면 띠는 한 줄이고, 줄 폭이 모자랄 때 눌러야 할 것이
         먼저 찌그러지면 안 된다 — 줄어드는 것은 이유 문구 쪽이다 (아래).
@@ -115,7 +120,7 @@ export function ActionButton({
     >
       {icon}
       {text}
-    </button>
+    </Button>
   );
 
   if (!disabled) return button;

@@ -7,6 +7,8 @@
  */
 import type { TabView } from "../api/client";
 
+import { Button } from "../ui/Button";
+
 export interface TabStripProps {
   tabs: TabView[];
   mirroredTabIndex: number;
@@ -24,9 +26,10 @@ export function TabStrip({ tabs, mirroredTabIndex, maxTabs, onSelect }: TabStrip
       style={{ gap: 4, padding: "6px 8px", overflowX: "auto" }}
     >
       {open.map((tab) => (
-        <button
+        <Button
           key={tab.tab_index}
-          className={`btn sm${tab.tab_index === mirroredTabIndex ? " primary" : ""}`}
+          size="sm"
+          variant={tab.tab_index === mirroredTabIndex ? "primary" : "default"}
           aria-current={tab.tab_index === mirroredTabIndex ? "true" : undefined}
           onClick={() => onSelect(tab.tab_index)}
           style={{ whiteSpace: "nowrap", maxWidth: 220, overflow: "hidden" }}
@@ -34,7 +37,7 @@ export function TabStrip({ tabs, mirroredTabIndex, maxTabs, onSelect }: TabStrip
         >
           <span className="mono">탭 {tab.tab_index}</span>
           {tab.title ? ` · ${tab.title}` : ""}
-        </button>
+        </Button>
       ))}
       <span className="spacer" />
       <span className="dim mono">

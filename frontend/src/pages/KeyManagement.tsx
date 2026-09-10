@@ -21,6 +21,8 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { DESTROY_CONFIRM, secrets, type KeyStatus } from "../api/client";
 
+import { Button } from "../ui/Button";
+
 const PASSPHRASE_ENV = "ITB_KEY_PASSPHRASE";
 
 export interface KeyManagementProps {
@@ -149,9 +151,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         <h1 className="title" style={{ margin: 0 }}>키 관리</h1>
         <span className="spacer" />
         {onClose && (
-          <button className="btn" onClick={onClose}>
+          <Button onClick={onClose}>
             닫기
-          </button>
+          </Button>
         )}
       </div>
 
@@ -296,9 +298,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           <div className="row" style={{ gap: 8, alignItems: "center" }}>
             <strong>비밀키가 열려 있습니다</strong>
             <span className="spacer" />
-            <button className="btn" disabled={busy} onClick={lock}>
+            <Button disabled={busy} onClick={lock}>
               다시 잠그기
-            </button>
+            </Button>
           </div>
           <p className="line" style={{ margin: "8px 0 0" }}>
             암호구로 보호된 키이며, 이 백엔드 프로세스가 암호구를 들고 있습니다. 민감
@@ -426,9 +428,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
             <button disabled={busy || !confirmed || newTooShort} onClick={regenerate}>
               키 교체
             </button>
-            <button className="btn" disabled={busy || !confirmed} onClick={destroy}>
+            <Button disabled={busy || !confirmed} onClick={destroy}>
               키 삭제
-            </button>
+            </Button>
           </div>
           <p className="why" style={{ margin: 0 }}>
             <b>교체</b>는 지우고 새 키를 바로 만듭니다. <b>삭제</b>는 지우기만 합니다 — 키가

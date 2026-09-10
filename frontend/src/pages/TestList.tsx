@@ -72,6 +72,8 @@ import { EDIT_ENTRY_LABEL, outcomeChip, outcomeLabel, stepLabel } from "../lib/w
 import { chipClass, rowClass } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
+import { Button } from "../ui/Button";
+
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
 const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
@@ -549,12 +551,12 @@ export function TestList({
           「결과 보기」·「실행 화면 보기」가 전부 잉크로 채워져 있어서 무엇이 주 동작인지
           화면이 말하지 못했다. 채움은 여기 하나이고 나머지는 중립이다.
         */}
-        <button className="btn primary" onClick={onCreate}>
+        <Button variant="primary" onClick={onCreate}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9">
             <path d="M7 2.4v9.2M2.4 7h9.2" />
           </svg>
           테스트 만들기
-        </button>
+        </Button>
       </HeaderBar>
 
       {/*
@@ -583,13 +585,12 @@ export function TestList({
             </span>
           </div>
           {onResumeSession && (
-            <button
-              className="btn sm"
+            <Button
+              size="sm"
               style={{ marginTop: 8 }}
-              onClick={() => onResumeSession(openSession)}
-            >
+              onClick={() => onResumeSession(openSession)} >
               실행 화면 보기
-            </button>
+            </Button>
           )}
         </Toast>
       )}
@@ -659,27 +660,27 @@ export function TestList({
               */}
               <div className="row" style={{ gap: "6px" }} role="group" aria-label="결말로 거르기">
                 {(["all", "pass", "fail", "none"] as const).map((key) => (
-                  <button
+                  <Button
                     key={key}
-                    className={`btn sm${filter === key ? " primary" : ""}`}
+                    size="sm"
+                    variant={filter === key ? "primary" : "default"}
                     aria-pressed={filter === key}
                     onClick={() => setFilter(key)}
                   >
                     {FILTER_LABEL[key]}
                     <span className={`num ${FILTER_INK[key]}`}>{counts[key]}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
 
               <div className="spacer" />
 
-              <button
-                className="btn sm"
+              <Button
+                size="sm"
                 aria-pressed={recentFirst}
-                onClick={() => setRecentFirst((v) => !v)}
-              >
+                onClick={() => setRecentFirst((v) => !v)} >
                 {recentFirst ? "최근 실행 순" : "저장된 순"}
-              </button>
+              </Button>
 
               {/*
                 번호 정리 (2026-09-10 사용자 보고 2번 — 「번호를 일괄적으로 맞추거나
@@ -691,17 +692,16 @@ export function TestList({
                 **걸러 보기와 무관하다.** 프로젝트 전체의 번호를 다시 붙이므로, 지금
                 보이는 것만 대상으로 오해되지 않게 확인 단계가 그 사실을 말한다.
               */}
-              <button
-                className="btn sm"
+              <Button
+                size="sm"
                 data-action="tests.renumber"
                 disabled={busy || counts.all === 0}
                 onClick={() => {
                   setRenumbered(null);
                   setConfirmingRenumber(true);
-                }}
-              >
+                }} >
                 번호 정리
-              </button>
+              </Button>
 
               {/*
                 엑셀로 내보내기 (014 US1 · FR-001).
@@ -715,8 +715,8 @@ export function TestList({
                 「Playwright 로 내보내기」(릴리스 게이트 RG-1)와 **다른 것**이다.
                 그쪽은 아직 없고, 이름이 섞이지 않게 「엑셀로」를 앞에 둔다.
               */}
-              <button
-                className="btn sm"
+              <Button
+                size="sm"
                 data-action="tests.export-excel"
                 disabled={busy || exporting}
                 onClick={() => {
@@ -726,8 +726,7 @@ export function TestList({
                   void excel
                     .exportProject()
                     .then(async ({ blob, filename, warnings }) => {
-                      saveBlob(blob, filename);
-                      /*
+                      saveBlob(blob, filename); /*
                         경고가 있으면 **무엇이 바뀌었는지** 함께 읽는다 (FR-008a).
                         건수만으로는 사용자가 파일에서 자기 그룹을 찾지 못한다 —
                         상세 엔드포인트는 있는데 아무도 부르지 않아 죽은 코드였다
@@ -738,10 +737,9 @@ export function TestList({
                     })
                     .catch((exc: unknown) => setError(describeError(exc)))
                     .finally(() => setExporting(false));
-                }}
-              >
+                }} >
                 {exporting ? "내보내는 중…" : "엑셀로 내보내기"}
-              </button>
+              </Button>
 
               {/* 엑셀에서 가져오기 (014 US2). 내보내기 옆에 두어 두 방향이 한자리에 있다. */}
               {onImportPlan !== undefined && (
@@ -1089,9 +1087,9 @@ export function TestList({
                 헌법 V — 내보내기는 출시 전까지 갖춰야 하는 약속이고 MVP 에는 없다.
                 **감추지 않고 비활성으로 두고 이유를 붙인다** (006 ui-contract §2).
               */}
-              <button className="btn sm off" disabled>
+              <Button size="sm" variant="off" disabled>
                 Playwright 로 내보내기
-              </button>
+              </Button>
               <span className="why">MVP 미지원</span>
             </div>
           </div>
@@ -1339,16 +1337,15 @@ function Row({
               autoFocus
               onChange={(e) => onRenameChange(e.target.value)}
             />
-            <button
-              className="btn sm primary"
+            <Button
+              size="sm" variant="primary"
               disabled={busy || renaming.trim() === ""}
-              onClick={() => onRenameSubmit(renaming.trim())}
-            >
+              onClick={() => onRenameSubmit(renaming.trim())} >
               저장
-            </button>
-            <button className="btn sm" onClick={onRenameCancel}>
+            </Button>
+            <Button size="sm" onClick={onRenameCancel}>
               취소
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="name">{row.name}</div>
@@ -1366,12 +1363,12 @@ function Row({
             <span className="num fail-ink">
               「{row.name}」을 지웁니다. 되돌릴 수 없습니다.
             </span>
-            <button className="btn sm danger" disabled={busy} onClick={onDeleteConfirm}>
+            <Button size="sm" variant="danger" disabled={busy} onClick={onDeleteConfirm}>
               삭제
-            </button>
-            <button className="btn sm" onClick={onDeleteCancel}>
+            </Button>
+            <Button size="sm" onClick={onDeleteCancel}>
               취소
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -1409,11 +1406,11 @@ function Row({
           방금 남은 결과에 도달할 길이 없었다 (U-13 의 재발).
         */}
         {hasResult && !live && (
-          <button className="btn sm" onClick={onOpenResult}>
+          <Button size="sm" onClick={onOpenResult}>
             결과 보기
-          </button>
+          </Button>
         )}
-        <button className={`btn sm${runPending ? " off" : ""}`} onClick={onRun} disabled={runPending}>
+        <Button size="sm" variant={runPending ? "off" : "default"} onClick={onRun} disabled={runPending}>
           {!runPending && (
             <svg width="11" height="11" viewBox="0 0 16 16">
               <path d="M4 2l10 6-10 6z" fill="currentColor" />
@@ -1422,21 +1419,20 @@ function Row({
           {/* 005 FR-129 — 클릭 직후 0.3초 안에 화면이 변한다. 이전에는 0.8~1.2초간
               완전히 그대로여서 사용자가 다시 눌렀다 (U-11 → U-06). */}
           {runPending ? "준비 중…" : "실행"}
-        </button>
+        </Button>
 
-        <button
+        <Button
           ref={menuAnchor}
-          className="btn sm"
+          size="sm"
           aria-label={`${row.name} 추가 동작`}
           onClick={onToggleMenu}
-          style={{ padding: "0 7px" }}
-        >
+          style={{ padding: "0 7px" }} >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
             <circle cx="6" cy="2" r="1.1" />
             <circle cx="6" cy="6" r="1.1" />
             <circle cx="6" cy="10" r="1.1" />
           </svg>
-        </button>
+        </Button>
 
         {menuOpen &&
           createPortal(
@@ -1665,9 +1661,9 @@ function EmptyProject({
               <div className="subtitle">직접 녹화</div>
             </div>
             <div className="why">브라우저를 직접 조작해서 만듭니다. 키가 필요 없습니다.</div>
-            <button className="btn primary" onClick={onCreate} style={{ justifyContent: "center" }}>
+            <Button variant="primary" onClick={onCreate} style={{ justifyContent: "center" }}>
               녹화로 시작하기
-            </button>
+            </Button>
           </div>
 
           <div className="pane" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "9px" }}>
@@ -1693,9 +1689,9 @@ function EmptyProject({
               **막지도 않는다** — 키가 있는데 키 등록으로 보내면 갈 곳이 없다.
             */}
             {aiReady?.available === true ? (
-              <button className="btn primary" onClick={onCreate} style={{ justifyContent: "center" }}>
+              <Button variant="primary" onClick={onCreate} style={{ justifyContent: "center" }}>
                 AI 로 시작하기
-              </button>
+              </Button>
             ) : (
               <>
                 {/* 왜 못 쓰는지 백엔드가 준 문구를 그대로 보여준다 (DR-016) */}
@@ -1704,14 +1700,13 @@ function EmptyProject({
                     {aiReady.reason}
                   </div>
                 )}
-                <button
-                  className="btn off"
+                <Button
+                  variant="off"
                   onClick={onOpenKeys}
                   disabled={aiReady === null || onOpenKeys === undefined}
-                  style={{ justifyContent: "center" }}
-                >
+                  style={{ justifyContent: "center" }} >
                   {aiReady === null ? "확인 중…" : "언어모델 키 등록하기"}
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -1796,9 +1791,9 @@ function ActiveSessionsBanner({
           함께 둔다 — 주기 갱신이 실패하는 환경에서도 사용자가 막히지 않아야 한다.
         */}
         {onRefresh && (
-          <button className="btn sm" onClick={onRefresh} aria-label="세션 상태 새로 고침">
+          <Button size="sm" onClick={onRefresh} aria-label="세션 상태 새로 고침">
             새로 고침
-          </button>
+          </Button>
         )}
       </div>
       {sessions.map((s) => {
@@ -1843,28 +1838,29 @@ function ActiveSessionsBanner({
                     ? `${s.test_id ?? "테스트"} 로 저장돼 있습니다. 이 작업 창만 닫습니다.`
                     : `Step ${s.steps.length}개가 사라집니다. 정말 버릴까요?`}
                 </span>
-                <button
-                  className={`btn sm${saved ? "" : " danger"}`}
+                <Button
+                  size="sm"
+                  variant={saved ? "default" : "danger"}
                   onClick={() => onDiscard?.(s.session_id)}
                 >
                   {saved ? "닫기" : "버리기"}
-                </button>
-                <button className="btn sm" onClick={() => setConfirming(null)}>
+                </Button>
+                <Button size="sm" onClick={() => setConfirming(null)}>
                   취소
-                </button>
+                </Button>
               </>
             ) : (
               <>
                 {onResume && (
-                  <button className="btn sm primary" onClick={() => onResume(s)}>
+                  <Button size="sm" variant="primary" onClick={() => onResume(s)}>
                     이어서 보기
-                  </button>
+                  </Button>
                 )}
                 {onDiscard && (
-                  <button className="btn sm" onClick={() => setConfirming(s.session_id)}>
+                  <Button size="sm" onClick={() => setConfirming(s.session_id)}>
                     {/* 저장된 세션에는 파괴적으로 읽히는 이름을 쓰지 않는다 (FR-159). */}
                     {saved ? "닫기" : "중지하고 버리기"}
-                  </button>
+                  </Button>
                 )}
               </>
             )}

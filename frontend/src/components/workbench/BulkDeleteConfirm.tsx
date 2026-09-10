@@ -1,6 +1,8 @@
 import { BULK_DELETE_IRREVERSIBLE, deleteManyConfirm } from "../../lib/wording";
 import type { WorkbenchStep } from "./model";
 
+import { Button } from "../../ui/Button";
+
 /**
  * 복수 삭제 확인 — **목록 바로 아래에서** 묻는다 (011 FR-384 · UC-011-18).
  *
@@ -58,17 +60,16 @@ export function BulkDeleteConfirm({
         </span>
       )}
       <div className="spacer" />
-      <button className="btn sm" onClick={onCancel} disabled={busy}>
+      <Button size="sm" onClick={onCancel} disabled={busy}>
         돌아가기
-      </button>
-      <button
+      </Button>
+      <Button
         data-bulk-delete-confirm-run
-        className="btn sm danger"
+        size="sm" variant="danger"
         onClick={onConfirm}
-        disabled={busy}
-      >
+        disabled={busy} >
         지우기
-      </button>
+      </Button>
     </div>
   );
 }
