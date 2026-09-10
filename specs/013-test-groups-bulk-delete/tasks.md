@@ -115,17 +115,17 @@ Web app 구조. 백엔드 `backend/src/itb/`, 프런트엔드 `frontend/src/`.
 ### 백엔드 — 모델과 그룹 라우트
 
 - [X] T031 [P] [US2] `backend/src/itb/domain/test_case.py` 에 `TestGroup{prefix, name}` 과 `Project.groups: list[TestGroup] = []` 를 더한다 — **기본값이 빈 목록이어야 기존 프로젝트 파일이 그대로 읽힌다** ([data-model.md](data-model.md) §2). T004 의 패턴을 쓴다
-- [ ] T032 [US2] `backend/src/itb/api/routes/groups.py` 를 만든다 — `GET`·`POST`·`PATCH /{prefix}`·`DELETE /{prefix}` ([contracts/api-contract.md](contracts/api-contract.md) §5). `tests.py` 에 넣지 않는 이유는 [plan.md](plan.md) Structure Decision 에 있다: 그룹은 테스트가 아니라 **프로젝트 설정**이다. `app.py` 에 라우터를 등록한다. T031 에 의존
-- [ ] T033 [US2] T032 의 검증을 붙인다 — 접두어 형식(422), `TC` 예약(409 `GROUP_PREFIX_RESERVED`), 접두어·이름 중복(409 `GROUP_ALREADY_EXISTS`), 없는 그룹(404). `GET /api/groups` 는 **테스트가 없는 그룹도 싣는다** — 그룹을 고르는 자리에서는 비어 있는 그룹도 골라야 한다
-- [ ] T034 [P] [US2] `backend/tests/contract/test_test_groups_api.py` 를 만든다 — 만들기·이름 변경·조회, `TC` 거절, 중복 거절, 빈 그룹도 `GET /api/groups` 에 실리는지
+- [X] T032 [US2] `backend/src/itb/api/routes/groups.py` 를 만든다 — `GET`·`POST`·`PATCH /{prefix}`·`DELETE /{prefix}` ([contracts/api-contract.md](contracts/api-contract.md) §5). `tests.py` 에 넣지 않는 이유는 [plan.md](plan.md) Structure Decision 에 있다: 그룹은 테스트가 아니라 **프로젝트 설정**이다. `app.py` 에 라우터를 등록한다. T031 에 의존
+- [X] T033 [US2] T032 의 검증을 붙인다 — 접두어 형식(422), `TC` 예약(409 `GROUP_PREFIX_RESERVED`), 접두어·이름 중복(409 `GROUP_ALREADY_EXISTS`), 없는 그룹(404). `GET /api/groups` 는 **테스트가 없는 그룹도 싣는다** — 그룹을 고르는 자리에서는 비어 있는 그룹도 골라야 한다
+- [X] T034 [P] [US2] `backend/tests/contract/test_test_groups_api.py` 를 만든다 — 만들기·이름 변경·조회, `TC` 거절, 중복 거절, 빈 그룹도 `GET /api/groups` 에 실리는지
 
 ### 백엔드 — 목록
 
-- [ ] T035 [US2] `backend/src/itb/api/routes/tests.py` 의 `GET /api/tests` 에 `group` 질의와 `groups` 응답 필드를 더한다 ([contracts/api-contract.md](contracts/api-contract.md) §1). `q` 와 **함께** 적용된다(FR-441). `groups[].count` 는 **걸러 보기 전** 개수다 — 걸러 본 상태에서도 다른 그룹으로 갈 수 있어야 한다. 테스트가 없는 그룹은 **싣지 않는다**(FR-450). **기존 필드는 하나도 바꾸지 않는다**
-- [ ] T036 [US2] 응답 행에 `group_prefix` 를 더한다 — **식별자에서 유도한다.** 저장된 필드가 아니다 ([data-model.md](data-model.md) §3): 소속을 별도 필드로도 저장하면 접두어와 어긋날 수 있고 어느 쪽이 맞는지 정할 근거가 없다
-- [ ] T037 [US2] **그룹 정의가 없는 접두어**를 목록이 막지 않게 한다 — 접두어를 이름 삼아 보여주고 정의가 없다는 사실을 함께 싣는다 (data-model §3). 「목록을 그리는 일이 파일 하나 때문에 통째로 실패하면 안 된다」는 기존 규칙과 같다
-- [ ] T038 [US2] 테스트를 새로 만들 때 그룹을 지정할 수 있게 한다 (FR-443) — 지정하지 않으면 `TC-###` 다 (FR-445b · SC-627). `allocate_test_id` 에 접두어를 넘긴다. T007 에 의존
-- [ ] T039 [P] [US2] `backend/tests/contract/test_project_and_tests_api.py` 를 개정한다 — 목록 응답에 `groups` 가 늘었고, `group` 질의가 `q` 와 함께 걸리는지, 기존 필드가 그대로인지
+- [X] T035 [US2] `backend/src/itb/api/routes/tests.py` 의 `GET /api/tests` 에 `group` 질의와 `groups` 응답 필드를 더한다 ([contracts/api-contract.md](contracts/api-contract.md) §1). `q` 와 **함께** 적용된다(FR-441). `groups[].count` 는 **걸러 보기 전** 개수다 — 걸러 본 상태에서도 다른 그룹으로 갈 수 있어야 한다. 테스트가 없는 그룹은 **싣지 않는다**(FR-450). **기존 필드는 하나도 바꾸지 않는다**
+- [X] T036 [US2] 응답 행에 `group_prefix` 를 더한다 — **식별자에서 유도한다.** 저장된 필드가 아니다 ([data-model.md](data-model.md) §3): 소속을 별도 필드로도 저장하면 접두어와 어긋날 수 있고 어느 쪽이 맞는지 정할 근거가 없다
+- [X] T037 [US2] **그룹 정의가 없는 접두어**를 목록이 막지 않게 한다 — 접두어를 이름 삼아 보여주고 정의가 없다는 사실을 함께 싣는다 (data-model §3). 「목록을 그리는 일이 파일 하나 때문에 통째로 실패하면 안 된다」는 기존 규칙과 같다
+- [X] T038 [US2] 테스트를 새로 만들 때 그룹을 지정할 수 있게 한다 (FR-443) — 지정하지 않으면 `TC-###` 다 (FR-445b · SC-627). `allocate_test_id` 에 접두어를 넘긴다. T007 에 의존
+- [X] T039 [P] [US2] `backend/tests/contract/test_project_and_tests_api.py` 를 개정한다 — 목록 응답에 `groups` 가 늘었고, `group` 질의가 `q` 와 함께 걸리는지, 기존 필드가 그대로인지
 
 ### 프런트엔드
 

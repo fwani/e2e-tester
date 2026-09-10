@@ -19,6 +19,7 @@ from itb.api.errors import (
     not_found,
     not_implemented,
 )
+from itb.api.routes.groups import prefix_of
 from itb.api.state import AppState, get_state
 from itb.domain.manual_step import (
     CloseTabSpec,
@@ -29,6 +30,7 @@ from itb.domain.manual_step import (
 from itb.domain.run_result import Outcome, RunResult, RunScope
 from itb.domain.step import Step
 from itb.domain.test_case import (
+    RESERVED_PREFIX,
     AuthoringMode,
     Test,
     Variable,
@@ -79,6 +81,29 @@ class TestListRow(BaseModel):
     outcome: Outcome | None = None
     last_run_at: str | None = None
     failure_summary: FailureSummary | None = None
+    group_prefix: str = RESERVED_PREFIX
+    """이 테스트가 속한 그룹의 접두어 (013 FR-438).
+
+    **식별자에서 유도한다. 저장된 필드가 아니다** (013 data-model §3) — 소속을 별도
+    필드로도 저장하면 접두어와 어긋날 수 있고, 어긋났을 때 어느 쪽이 맞는지 정할 근거가
+    없다. 그룹 없는 테스트는 `TC` 다.
+    """
+
+
+class GroupSummary(BaseModel):
+    """목록 위 그룹 띠가 그릴 것 (013 FR-440)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prefix: str
+    name: str | None
+    """사람이 읽는 이름. 그룹 없음(`TC`)과 **정의가 없는 접두어**는 `null` 이다."""
+
+    count: int
+    """**걸러 보기를 적용하기 전** 개수다 (013 contracts §1).
+
+    걸러 본 뒤에도 다른 그룹의 개수를 알아야 그리로 갈 수 있다.
+    """
 
 
 class TestCounts(BaseModel):
@@ -93,6 +118,10 @@ class TestListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     counts: TestCounts
+    groups: list[GroupSummary] = Field(default_factory=list)
+    """테스트가 **있는** 그룹만 (013 FR-450). 비어 있는 그룹은 목록을 어지럽히지 않는다 —
+    그룹을 고르는 자리(`GET /api/groups`)는 전부 싣는다."""
+
     tests: list[TestListRow]
     problems: list[str] = Field(default_factory=list)
     """읽을 수 없는 정의 파일의 사유. 깨진 파일 하나가 목록을 막지 않는다."""
@@ -136,9 +165,15 @@ class DeleteTestsResponse(BaseModel):
 async def list_tests(
     state: State,
     q: Annotated[str | None, Query(max_length=200)] = None,
+    group: Annotated[str | None, Query(max_length=8)] = None,
 ) -> TestListResponse:
+    """목록. `q`(이름·식별자)와 `group`(접두어)이 **함께** 걸린다 (013 FR-441).
+
+    `group=TC` 는 그룹 없음만, 생략하면 전부다.
+    """
     repo = state.require_repository()
     tests, problems = repo.list_tests()
+    defined = {g.prefix: g.name for g in repo.read_project().groups}
 
     rows: list[TestListRow] = []
     passed = failed = 0
@@ -172,15 +207,30 @@ async def list_tests(
                 outcome=outcome,
                 last_run_at=result.finished_at.isoformat() if result else None,
                 failure_summary=summary,
+                group_prefix=prefix_of(t.id),
             )
         )
 
+    # **걸러 보기 전에 센다** (013 contracts §1). 걸러 본 상태에서도 다른 그룹의 개수를
+    # 보고 그리로 갈 수 있어야 한다.
+    counts_by_group: dict[str, int] = {}
+    for r in rows:
+        counts_by_group[r.group_prefix] = counts_by_group.get(r.group_prefix, 0) + 1
+
+    if group:
+        rows = [r for r in rows if r.group_prefix == group]
     if q:
         needle = q.strip().lower()
         rows = [r for r in rows if needle in r.name.lower() or needle in r.id.lower()]
 
     return TestListResponse(
         counts=TestCounts(total=len(tests), passed=passed, failed=failed),
+        groups=[
+            # 그룹 정의가 없는 접두어도 싣는다 — 사용자가 그룹을 지웠거나 파일을 손으로
+            # 옮긴 경우다. 목록을 막지 않고 접두어를 이름 삼아 보여준다 (data-model §3).
+            GroupSummary(prefix=prefix, name=defined.get(prefix), count=n)
+            for prefix, n in sorted(counts_by_group.items())
+        ],
         tests=rows,
         problems=problems,
     )
