@@ -17,7 +17,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { canonClasses, classNameGroups, generatedClasses } from "./helpers/tailwind";
+import { canonClasses, classNameGroups, generatedClasses, utilityOnlyClasses } from "./helpers/tailwind";
 
 describe("G-C — 한 요소는 한 체계만 쓴다", () => {
   const canon = canonClasses();
@@ -52,7 +52,10 @@ describe("G-C — 한 요소는 한 체계만 쓴다", () => {
   it("정본 클래스명과 Tailwind 유틸리티명이 충돌하지 않는다 (계약 C-7)", () => {
     // 같은 이름이 두 가지를 뜻하면 어느 쪽이 적용되는지 읽는 사람이 알 수 없다.
     // 착수 시점 실측은 `.table` 1개. 해체하면서 부품 이름을 다르게 준다.
-    const clash = Array.from(canon).filter((c) => generated.has(c)).sort();
+    // **정본을 뺀** 산출물로 묻는다. `generatedClasses()` 는 실제 테마를 쓰므로 정본까지
+    // 포함하며, 그것으로 충돌을 물으면 정본 클래스 전부가 충돌로 나온다 (1회차에 겪었다).
+    const utilityOnly = utilityOnlyClasses();
+    const clash = Array.from(canon).filter((c) => utilityOnly.has(c)).sort();
     expect(
       clash,
       "정본 클래스 이름이 Tailwind 유틸리티와 겹친다 (C-7).\n" +
