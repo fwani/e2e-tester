@@ -219,9 +219,9 @@ className="btn sm quiet"                (이미 겪었다)
 
 ## Phase 6: 계약 문서와 최종 판정
 
-- [ ] T060 [P] `specs/008-visual-language/contracts/visual-language.md` §2 「허용되는 인라인 `style`」이 폐지되고 [contracts/layout-contract-v2.md](contracts/layout-contract-v2.md) 로 대체됐음을 원문에 표시한다. **지우지 말고 「015 가 개정함」을 적는다** — 왜 그 목록이 있었는지가 기록으로 남아야 한다
-- [ ] T061 [P] `frontend/src/theme/tokens.css` 머리주석 중 「화면 코드는 `className` 으로 소비하며 값을 다시 적지 않는다」가 사실과 달라졌으므로 갱신을 요청하는 항목을 만든다. **이 파일은 `extract_canon.py` 의 출력이므로 직접 고치지 않는다** — 주석 생성 부분을 스크립트에서 고치거나, 파생 구획에 주석을 남긴다 (C-2)
-- [ ] T062 [P] `specs/015-tailwind-css-migration/contracts/class-migration.md` 를 최종 상태로 확정한다 — 109행 전부 「완료」, 미상 0건 (SC-009)
+- [X] T060 [P] `specs/008-visual-language/contracts/visual-language.md` §2 「허용되는 인라인 `style`」이 폐지되고 [contracts/layout-contract-v2.md](contracts/layout-contract-v2.md) 로 대체됐음을 원문에 표시한다. **지우지 말고 「015 가 개정함」을 적는다** — 왜 그 목록이 있었는지가 기록으로 남아야 한다
+- [X] T061 [P] `frontend/src/theme/tokens.css` 머리주석 중 「화면 코드는 `className` 으로 소비하며 값을 다시 적지 않는다」가 사실과 달라졌으므로 갱신을 요청하는 항목을 만든다. **이 파일은 `extract_canon.py` 의 출력이므로 직접 고치지 않는다** — 주석 생성 부분을 스크립트에서 고치거나, 파생 구획에 주석을 남긴다 (C-2)
+- [X] T062 [P] `specs/015-tailwind-css-migration/contracts/class-migration.md` 를 최종 상태로 확정한다 — 109행 전부 「완료」, 미상 0건 (SC-009)
 - [ ] T063 L2 대조를 실행한다 — `scripts/design_compare_ba.py --compare`. 불일치가 있으면 각각 의도된 것인지 판단한다. **의도되지 않은 불일치가 하나라도 있으면 전환이 끝난 것이 아니다** (SC-001)
 - [X] T064 배포 산출물 크기를 기준선과 비교한다 — `npm run build` 후 CSS 크기가 T001 기록(15.04 kB)보다 늘지 않았는지 (SC-007).
       **미달일 때 할 일** (T071 이 정의): (1) 산출 CSS 에서 무엇이 늘었는지 **지목한다** —
