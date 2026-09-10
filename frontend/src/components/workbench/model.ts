@@ -94,6 +94,13 @@ export type TargetView =
 export interface AiBlockedState {
   attempted: string | null;
   reason: string;
+  /**
+   * AI 가 사람에게 물은 것 (2026-09-10 사용자 결정). 없으면 `null`.
+   *
+   * **`reason` 과 갈라 둔다.** 사유는 「왜 못 했는가」이고 질문은 「무엇을 알려 주면
+   * 되는가」다. 화면이 답 칸을 여는 근거는 뒤쪽이다.
+   */
+  question: string | null;
   choices: string[];
 }
 

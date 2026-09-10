@@ -171,6 +171,22 @@ class MoveTestsResponse(BaseModel):
     moved: list[MovedTestView]
 
 
+class RenumberTestsResponse(BaseModel):
+    """번호 재정렬 결과 (2026-09-10 사용자 보고 2번).
+
+    **바뀌지 않은 것도 센다.** 「아무 일도 안 일어난 것처럼 보인다」와 「이미 정리되어
+    있었다」는 사용자에게 완전히 다른 사실이고, 목록만 돌려주면 둘이 구별되지 않는다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    renumbered: list[MovedTestView]
+    """실제로 식별자가 바뀐 것들. 이미 제자리였던 테스트는 들어 있지 않다."""
+
+    unchanged: int
+    """이미 제자리였던 테스트 수."""
+
+
 class TrashedTestView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -410,6 +426,108 @@ async def move_tests(body: MoveTestsRequest, state: State) -> MoveTestsResponse:
         moved=[
             MovedTestView(from_id=m.from_id, to_id=m.to_id, name=m.name) for m in moved
         ]
+    )
+
+
+@router.post(":renumber")
+async def renumber_tests(state: State) -> RenumberTestsResponse:
+    """테스트 번호의 빈자리를 없애 `001`부터 다시 붙인다 (2026-09-10 사용자 보고 2번).
+
+    번호는 만들 때 순서대로 늘어나지만 **지우면 빈자리가 남는다** — `001·002·005·009`.
+    사용자가 원한 것은 그 상태를 `001·002·003·004` 로 맞추는 한 번의 조작이다.
+
+    ## 무엇을 지키는가
+
+    - **접두어는 그대로다.** 그룹 소속은 이 조작의 관심사가 아니다 (`:move` 가 그 일을
+      한다). `USER-005` 는 `USER-003` 이 되지 `TC-003` 이 되지 않는다.
+    - **상대 순서는 그대로다.** 지금 번호가 작은 것이 계속 작다. 순서를 바꾸는 조작이라면
+      사용자는 어느 테스트가 어디로 갔는지 목록에서 찾아야 한다.
+    - **번호는 프로젝트 전체에서 고유하다** (013 research R3). 접두어를 넘어 `1..N` 을
+      한 벌로 나눠 준다 — 그룹마다 1부터 매기면 그 불변식이 깨지고, 그룹 이동
+      (`USER-003` → `DATA-003`)이 빈자리를 보장하지 못하게 된다.
+
+    ## 왜 충돌하지 않는가
+
+    지금 번호가 작은 순서로 `1..N` 을 주므로 **새 번호는 언제나 옛 번호 이하**다. i번째를
+    처리하는 시점에 `1..i-1` 은 이미 새 번호가 됐고 나머지는 전부 옛 번호(= `i` 초과)를
+    쓰고 있으므로 `i` 는 반드시 비어 있다. 임시 이름을 거치는 두 걸음이 필요 없다.
+
+    삭제·그룹 이동과 **같은 원자성 규약**을 쓴다 (`storage/test_moves.py`).
+    """
+    repo = state.require_repository()
+    tests, problems = repo.list_tests()
+
+    # **읽을 수 없는 정의가 있으면 하지 않는다.**
+    #
+    # `list_tests` 는 깨진 파일을 건너뛴다 — 목록 화면에서는 옳은 판단이지만(하나가
+    # 전체를 막지 않는다) 여기서는 그것이 **번호를 겹치게 만든다.** 건너뛴 파일이 쓰던
+    # 번호는 빈자리로 보이고, 그 자리에 다른 테스트가 들어가면 프로젝트 안에 같은 번호가
+    # 둘이 된다 (013 research R3 의 불변식이 깨진다).
+    #
+    # 되돌림이 그것을 막아 주기는 한다 (`find_test_path` 가 걸려 전부 되돌린다). 그래도
+    # 먼저 거절하는 이유는 사용자가 받는 문장이 다르기 때문이다 — 「옮기다 실패했다」가
+    # 아니라 「이 파일을 먼저 고치세요」다.
+    if problems:
+        raise bad_request(
+            ErrorCode.DEFINITION_INVALID,
+            "읽을 수 없는 테스트 정의가 있어 번호를 다시 붙이지 않았습니다. "
+            "그 파일을 먼저 고치거나 지우세요.",
+            problems=problems,
+        )
+
+    # 지금 번호가 작은 순서. `list_tests` 는 식별자 문자열로 정렬하므로 접두어가 먼저
+    # 온다 — 그 순서로 번호를 주면 새 번호가 옛 번호보다 커지는 자리가 생기고, 위 문단의
+    # 「충돌하지 않는 이유」가 무너진다.
+    ordered = sorted(tests, key=lambda t: int(t.id.split("-", 1)[1]))
+    if len(ordered) > 999:
+        raise bad_request(
+            ErrorCode.DEFINITION_INVALID,
+            "테스트가 999개를 넘어 번호를 다시 붙일 수 없습니다. 프로젝트를 나누세요.",
+        )
+
+    plan = [
+        (t.id, f"{t.id.split('-', 1)[0]}-{number:03d}")
+        for number, t in enumerate(ordered, start=1)
+    ]
+    targets = [(old, new) for old, new in plan if old != new]
+    unchanged = len(plan) - len(targets)
+
+    def validate(pair: tuple[str, str]) -> None:
+        # **전부 먼저 본다.** 하나라도 실행 중이면 아무것도 건드리지 않는다 — 절반만
+        # 정리된 번호는 사용자가 손으로 되돌려야 하는 상태다.
+        _require_not_running(state, pair[0])
+
+    try:
+        moved = test_moves.run_all(
+            targets,
+            validate=validate,
+            do=lambda pair: test_moves.rename_test_id(repo, pair[0], pair[1]),
+            undo=lambda _pair, m: test_moves.move_test_back(repo, m),
+        )
+    except test_moves.PartialFailureError as exc:
+        raise ApiError(
+            500,
+            ErrorCode.TEST_MOVE_PARTIAL,
+            exc.reason,
+            {"stranded": [{"test": st.target, "where": st.where} for st in exc.stranded]},
+        ) from exc
+    except test_moves.AllOrNothingError as exc:
+        raise ApiError(500, ErrorCode.TEST_MOVE_FAILED, exc.reason) from exc
+
+    # 다음에 만들 테스트가 정리된 번호 **뒤에서** 시작한다. 갱신하지 않으면 방금 비운
+    # 자리를 카운터가 건너뛴 채로 남아, 사용자는 정리한 직후에 다시 빈자리를 본다.
+    #
+    # `allocate_test_id` 가 실제 파일도 함께 보므로 이 값이 낮아도 충돌하지는 않는다.
+    # 그래도 맞춰 두는 이유는 「정리했다」가 다음 번호에도 보여야 하기 때문이다.
+    project = repo.read_project()
+    project.next_test_number = len(plan) + 1
+    repo.write_project(project)
+
+    return RenumberTestsResponse(
+        renumbered=[
+            MovedTestView(from_id=m.from_id, to_id=m.to_id, name=m.name) for m in moved
+        ],
+        unchanged=unchanged,
     )
 
 

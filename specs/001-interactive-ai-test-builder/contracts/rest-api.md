@@ -133,6 +133,7 @@
 | 메서드 | 경로 | 본문 | 요구사항 |
 |--------|------|------|----------|
 | `POST` | `/api/sessions/{sid}/ai-choice` | `{ "choice": "takeover" }` 직접 수행 | FR-071 |
+| `POST` | `/api/sessions/{sid}/ai-choice` | `{ "choice": "answer", "answer": "…" }` 답하고 AI 에게 돌려주기 (2026-09-10) | — |
 | | | `{ "choice": "retry" }` AI에게 다시 | FR-072 |
 | | | `{ "choice": "skip" }` 건너뛰기 | FR-073 |
 | | | `{ "choice": "abort" }` 종료 | FR-074 |

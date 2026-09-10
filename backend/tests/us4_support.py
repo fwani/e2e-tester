@@ -98,9 +98,16 @@ def click_missing() -> Action:
     return action
 
 
-def report_blocked(reason: str = "삭제 메뉴를 찾을 수 없습니다.") -> Action:
+def report_blocked(
+    reason: str = "삭제 메뉴를 찾을 수 없습니다.", question: str | None = None
+) -> Action:
+    """수행 불가 선언. `question` 을 주면 **사람에게 물으며** 막힌다 (2026-09-10)."""
+
     def action(_state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        return ("report_blocked", {"reason": reason})
+        args: dict[str, Any] = {"reason": reason}
+        if question is not None:
+            args["question"] = question
+        return ("report_blocked", args)
 
     return action
 

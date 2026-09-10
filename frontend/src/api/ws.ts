@@ -157,6 +157,13 @@ export type SessionEvent =
   | (SessionEventBase & {
       type: "ai_blocked";
       attempted: string | null;
+      /**
+       * AI 가 사람에게 물을 한 문장 (2026-09-10 사용자 결정).
+       *
+       * 없을 수 있다 — 막혔지만 물을 것이 특정되지 않은 경우다. 그때도 사람이 먼저
+       * 말할 수 있으므로 답 칸은 열린다 (질문이 답변의 전제는 아니다).
+       */
+      question?: string | null;
       reason: string;
       choices: string[];
     })

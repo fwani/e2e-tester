@@ -55,6 +55,20 @@ class ErrorCode(StrEnum):
     그쪽은 "이 테스트가 이미 실행 중" 이라 기다리거나 그 실행을 보면 되고, 이것은
     "브라우저를 먼저 중지해야 지울 수 있다" 다.
     """
+    PROJECT_MISMATCH = "PROJECT_MISMATCH"
+    """화면이 믿는 프로젝트와 서버가 연 프로젝트가 다르다 (2026-09-10 사용자 보고 1번).
+
+    서버는 **열린 프로젝트 하나**를 앱 수명에 들고 있고 (`AppState.repository`), 화면은
+    자기가 어느 프로젝트를 보고 있는지 따로 기억한다. 둘이 갈라지는 경로가 실제로 있다 —
+    프로젝트를 새로 만들면 서버가 즉시 그리로 옮겨 가는데, 화면에서 「계속」 대신
+    「돌아가기」를 누르면 화면은 이전 프로젝트에 남는다. 그 상태에서 만든 테스트는
+    **화면이 보여 주는 프로젝트가 아니라 서버가 연 프로젝트에 저장된다.**
+
+    갈라짐을 조용히 두지 않는다. 요청이 `X-ITB-Project-Root` 로 「내가 믿는 프로젝트」를
+    말하면, 다르면 **아무 일도 하기 전에** 이 오류로 거절한다. 화면은 이것을 받고 자기가
+    믿는 프로젝트를 다시 열어 그 요청을 이어서 보낸다.
+    """
+
     PROJECT_DELETE_FAILED = "PROJECT_DELETE_FAILED"
     """프로젝트를 휴지통으로 옮기지 못했다 (012 FR-414).
 
@@ -231,6 +245,7 @@ CATEGORY: dict[ErrorCode, Category] = {
     ErrorCode.PROJECT_NOT_FOUND: Category.BLOCKED,
     ErrorCode.INVALID_PATH: Category.BLOCKED,
     ErrorCode.PROJECT_IN_USE: Category.BLOCKED,
+    ErrorCode.PROJECT_MISMATCH: Category.BLOCKED,
     # `broken` 이 아니다. 이 저장소에서 `broken` 은 **처리되지 않은 오류** 하나뿐이고
     # (`INTERNAL_ERROR`, tests/abnormal/test_error_contract.py 가 세고 있다), 옮기기
     # 실패는 제품이 붙잡아 사유를 말한 정상 거부다. 사용자가 할 일도 있다 — 권한과
@@ -307,6 +322,9 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ErrorCode.PROJECT_NOT_FOUND: "경로를 확인하거나 목록에서 다른 프로젝트를 고르세요.",
     ErrorCode.INVALID_PATH: "프로젝트 폴더 안의 경로를 지정하세요.",
     ErrorCode.PROJECT_IN_USE: "실행 중인 브라우저를 먼저 중지한 뒤 다시 삭제하세요.",
+    ErrorCode.PROJECT_MISMATCH: (
+        "보고 있던 프로젝트를 다시 연 뒤 같은 조작을 하세요. 화면을 새로 고쳐도 됩니다."
+    ),
     ErrorCode.PROJECT_DELETE_FAILED: (
         "프로젝트는 그대로 남아 있습니다. 저장 위치의 권한과 남은 공간을 확인하세요."
     ),

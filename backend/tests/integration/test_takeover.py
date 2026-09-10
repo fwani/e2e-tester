@@ -9,6 +9,7 @@
 2. "직접 수행" 으로 이어받아 조작한 것이 `author=human` Step 으로 기록된다 (FR-071·FR-075)
 3. AI Step 과 HUMAN Step 이 **같은 형태로 한 목록에** 있다 (원칙 I)
 4. "계속하기" 로 AI 가 남은 지시를 이어서 맡는다 (FR-076)
+5. **답만 주고 이어 간다** — 사람이 브라우저를 잡지 않고 한 문장으로 푼다 (2026-09-10)
 """
 
 from __future__ import annotations
@@ -46,7 +47,7 @@ LOGIN_THEN_BLOCKED = [
 def _block(client: TestClient, fixture_app: str, events: list[tuple[str, dict]]) -> str:
     sid = start_ai_session(client, fixture_app, "TEST 프로젝트를 삭제해")
     blocked = wait_for_event(events, "ai_blocked")
-    assert blocked["choices"] == ["takeover", "retry", "skip", "abort"]
+    assert blocked["choices"] == ["takeover", "answer", "retry", "skip", "abort"]
     return sid
 
 
@@ -142,6 +143,123 @@ def test_resume_hands_the_work_back_to_ai(
         session = keyed_client.app.state.itb.sessions.require(sid)
         assert session.open_tabs()
         assert "projects.html" in current_url(keyed_client, sid)
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+ASK_THEN_BLOCKED = [
+    observe(0),
+    report_blocked(
+        "어느 프로젝트를 삭제할지 정할 수 없습니다.",
+        question="목록에 프로젝트가 셋 있습니다. 어느 것을 삭제할까요?",
+    ),
+]
+"""AI 가 **모르는 것** 때문에 막힌 대본 (2026-09-10 사용자 결정).
+
+`LOGIN_THEN_BLOCKED` 와 성질이 다르다 — 그쪽은 「요소를 못 찾았다」라 사람이 화면을
+잡아야 풀리고, 이쪽은 **한 문장이면 풀린다.** 답변 경로가 존재하는 이유가 이 구분이다.
+"""
+
+
+def test_blocked_can_carry_a_question_for_the_human(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """2026-09-10 — AI 가 **물으며** 막힐 수 있다. 질문은 사유와 갈라서 실린다."""
+    install_driver(monkeypatch, ASK_THEN_BLOCKED)
+    sid = start_ai_session(keyed_client, fixture_app, "프로젝트를 삭제해")
+    try:
+        blocked = wait_for_event(event_log, "ai_blocked")
+        assert blocked["question"] == "목록에 프로젝트가 셋 있습니다. 어느 것을 삭제할까요?"
+        assert blocked["reason"] == "어느 프로젝트를 삭제할지 정할 수 없습니다."
+        assert "answer" in blocked["choices"]
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+def test_answer_hands_the_work_back_without_touching_the_browser(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """2026-09-10 — 답 한 문장으로 AI 가 **그 자리에서** 이어 간다.
+
+    「대화를 통해서 답변을 하거나 인터뷰로 답변을 하고, 그러면 다시 AI 가 테스트 스텝을
+    생성하거나 수정하는 것이다」.
+
+    확인하는 것은 셋이다 — 상태가 `ai_running` 으로 돌아가고, AI 가 이어서 돌아 끝나고,
+    **브라우저를 다시 띄우지 않는다** (사람 인수와 같은 성질 · 헌법 원칙 III).
+    """
+    install_driver(monkeypatch, ASK_THEN_BLOCKED)
+    sid = start_ai_session(keyed_client, fixture_app, "프로젝트를 삭제해")
+    try:
+        wait_for_event(event_log, "ai_blocked")
+        url_before = current_url(keyed_client, sid)
+
+        # 답을 받은 뒤 AI 가 할 일을 새 대본으로 바꿔 둔다.
+        install_driver(monkeypatch, [observe(0)])
+        event_log.clear()
+
+        answered = keyed_client.post(
+            f"/api/sessions/{sid}/ai-choice",
+            json={"choice": "answer", "answer": "TEST 프로젝트를 삭제하세요."},
+        )
+        assert answered.status_code == 200, answered.text
+        assert answered.json()["state"] == "ai_running"
+
+        wait_for_event(event_log, "ai_finished")
+        assert current_url(keyed_client, sid) == url_before
+        assert keyed_client.app.state.itb.sessions.require(sid).open_tabs()
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+def test_empty_answer_is_refused(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """빈 답을 받아 AI 를 다시 돌리면 「답했는데 아무 일도 안 일어난다」가 된다."""
+    install_driver(monkeypatch, ASK_THEN_BLOCKED)
+    sid = start_ai_session(keyed_client, fixture_app, "프로젝트를 삭제해")
+    try:
+        wait_for_event(event_log, "ai_blocked")
+
+        resp = keyed_client.post(
+            f"/api/sessions/{sid}/ai-choice", json={"choice": "answer", "answer": "   "}
+        )
+
+        assert resp.status_code == 400, resp.text
+        assert resp.json()["error"]["code"] == "DEFINITION_INVALID"
+        # 거절은 요청을 받지 않은 것과 같아야 한다 — 막힌 채 그대로다.
+        assert keyed_client.get(f"/api/sessions/{sid}").json()["state"] == "ai_blocked"
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+def test_answer_on_another_choice_is_refused(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """실어 보내 놓고 무시하면 사용자는 자기 문장이 AI 에게 갔다고 믿는다."""
+    install_driver(monkeypatch, ASK_THEN_BLOCKED)
+    sid = start_ai_session(keyed_client, fixture_app, "프로젝트를 삭제해")
+    try:
+        wait_for_event(event_log, "ai_blocked")
+
+        resp = keyed_client.post(
+            f"/api/sessions/{sid}/ai-choice",
+            json={"choice": "retry", "answer": "이건 무시될 문장이다"},
+        )
+
+        assert resp.status_code == 400, resp.text
+        assert keyed_client.get(f"/api/sessions/{sid}").json()["state"] == "ai_blocked"
     finally:
         stop_quietly(keyed_client, sid)
 

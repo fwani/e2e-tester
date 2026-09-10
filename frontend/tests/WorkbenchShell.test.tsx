@@ -225,6 +225,7 @@ describe("AI 실패는 국면·세션 상태와 무관하게 보인다 (FR-218f 
   const blocked = {
     attempted: "click role=button \"저장\"",
     reason: "저장 버튼을 찾지 못했습니다",
+    question: null,
     choices: ["사람이 이어받기", "다시 시도"],
   };
 

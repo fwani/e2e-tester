@@ -46,11 +46,77 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(path, {
+/**
+ * 화면이 믿는 프로젝트의 경로 (2026-09-10 사용자 보고 1번).
+ *
+ * 서버는 열린 프로젝트를 **하나만** 들고 있고, 화면은 자기가 어느 프로젝트를 보고 있는지
+ * 따로 기억한다. 둘은 갈라질 수 있다 — 프로젝트를 새로 만들면 서버가 즉시 그리로 옮겨
+ * 가는데, 화면에서 「계속」 대신 「돌아가기」를 누르면 화면은 이전 프로젝트에 남는다.
+ * 그 상태에서 만든 테스트는 **화면이 보여 주는 프로젝트가 아닌 곳에 저장된다.**
+ *
+ * 그래서 모든 요청이 「내가 믿는 프로젝트」를 함께 말한다. 서버는 다르면 아무 일도 하기
+ * 전에 `PROJECT_MISMATCH` 로 거절하고, 여기서 그 프로젝트를 다시 연 뒤 **같은 요청을 한
+ * 번** 다시 보낸다. 거절된 요청은 실행되지 않았으므로 다시 보내는 것이 안전하다.
+ */
+let expectedProjectRoot: string | null = null;
+
+export function setExpectedProjectRoot(root: string | null): void {
+  expectedProjectRoot = root;
+}
+
+const PROJECT_ROOT_HEADER = "X-ITB-Project-Root";
+
+/**
+ * 헤더에 실을 수 있게 경로를 **퍼센트 인코딩**한다.
+ *
+ * HTTP 헤더 값은 ISO-8859-1 이다. 프로젝트 이름이 한글이면 디렉터리 이름도 한글이고
+ * (`storage/paths.py` 의 `slugify` 가 한글을 남긴다 — 사용자가 파일 탐색기에서 자기
+ * 프로젝트를 알아볼 수 있어야 하기 때문이다), 그 경로를 그대로 헤더에 넣으면 브라우저가
+ * `fetch` 자체를 거절한다:
+ *
+ *     Failed to read the 'headers' property from 'RequestInit':
+ *     String contains non ISO-8859-1 code point.
+ *
+ * **요청이 나가지도 않는다.** 한글 이름 프로젝트에서는 화면의 모든 조작이 그 자리에서
+ * 멈추는 것이고, 실측으로 확인했다 (이상 조작 UI 검증이 잡았다).
+ *
+ * 서버는 `urllib.parse.unquote` 로 되돌린다 (`api/app.py`).
+ */
+const encodeRoot = (root: string) => encodeURIComponent(root);
+
+/** 프로젝트를 바꾸는 조작 자체는 대조 대상이 아니다 — 막으면 프로젝트를 옮길 수 없다. */
+const isProjectPath = (path: string) => path.startsWith("/api/project");
+
+async function send(path: string, init?: RequestInit): Promise<Response> {
+  const guard: Record<string, string> =
+    expectedProjectRoot !== null && !isProjectPath(path)
+      ? { [PROJECT_ROOT_HEADER]: encodeRoot(expectedProjectRoot) }
+      : {};
+  return await fetch(path, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: { "Content-Type": "application/json", ...guard, ...(init?.headers ?? {}) },
   });
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  let resp = await send(path, init);
+
+  /*
+    서버가 다른 프로젝트를 열고 있다. **조용히 맞춘다.** 사용자에게 물을 것이 없다 —
+    화면이 보여 주던 프로젝트가 사용자가 뜻한 프로젝트이고, 서버가 거기로 돌아가면 된다.
+    한 번만 다시 보낸다: 다시 어긋나면 그것은 다른 문제이고 오류로 보이는 편이 낫다.
+  */
+  if (resp.status === 409 && expectedProjectRoot !== null && !isProjectPath(path)) {
+    const peeked = await resp.clone().text();
+    if (apiErrorFromBody(409, peeked).code === "PROJECT_MISMATCH") {
+      const reopened = await fetch("/api/project/open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: expectedProjectRoot }),
+      });
+      if (reopened.ok) resp = await send(path, init);
+    }
+  }
 
   if (resp.status === 204) return undefined as T;
 
@@ -332,6 +398,18 @@ export const tests = {
       test_ids: ids,
       to_prefix: toPrefix,
     }),
+  /**
+   * 번호의 빈자리를 없애 `001` 부터 다시 붙인다 (2026-09-10 사용자 보고 2번).
+   *
+   * **접두어와 상대 순서는 그대로다.** `USER-005` 는 `USER-003` 이 되지 `TC-003` 이
+   * 되지 않는다. `move` 와 같은 성질의 조작이다 — 정의 파일과 실행 산출물이 새 식별자
+   * 자리로 함께 간다.
+   */
+  renumber: () =>
+    post<{
+      renumbered: { from_id: string; to_id: string; name: string }[];
+      unchanged: number;
+    }>("/api/tests:renumber"),
   /** 최근 실행 결과. 테스트당 1건만 보관된다 (FR-050~FR-054). */
   result: (id: string) => get<RunResultView>(`/api/tests/${id}/result`),
   /**
@@ -675,8 +753,13 @@ export interface AddAssertionBody {
   tab?: number | null;
 }
 
-/** AI 실패 시 4선택지 (FR-071~FR-074). */
-export type AiChoice = "takeover" | "retry" | "skip" | "abort";
+/**
+ * AI 실패 시 선택지 (FR-071~FR-074 + `answer`).
+ *
+ * 2026-09-10 에 `answer` 가 더해져 다섯이 됐다 — 「대화를 통해서 답변을 하거나 인터뷰로
+ * 답변을 하고, 그러면 다시 AI 가 테스트 스텝을 생성하거나 수정한다」 (사용자 결정).
+ */
+export type AiChoice = "takeover" | "answer" | "retry" | "skip" | "abort";
 
 export interface AiStepResponse {
   created: boolean;
@@ -865,9 +948,17 @@ export const sessions = {
    * "다시 집기" (FR-020). `selector` 를 생략하면 브라우저에서 클릭할 때까지 대기한다 —
    * 그 클릭은 Step 으로 기록되지 않는다.
    */
-  /** AI 실패 시 선택 (FR-071~FR-074). `AI_BLOCKED` 에서만 받는다. */
-  aiChoice: (id: string, choice: AiChoice) =>
-    post<SessionView>(`/api/sessions/${id}/ai-choice`, { choice }),
+  /**
+   * AI 실패 시 선택 (FR-071~FR-074 + `answer`). `AI_BLOCKED` 에서만 받는다.
+   *
+   * `answer` 는 `choice="answer"` 에서만 실린다 — 다른 선택지에 실어 보내면 서버가
+   * 거절한다. 조용히 버리면 사용자는 자기가 쓴 문장이 AI 에게 갔다고 믿는다.
+   */
+  aiChoice: (id: string, choice: AiChoice, answer?: string) =>
+    post<SessionView>(`/api/sessions/${id}/ai-choice`, {
+      choice,
+      ...(choice === "answer" ? { answer } : {}),
+    }),
   /**
    * 일시정지 중 자연어로 Step 하나 추가 (FR-078).
    *

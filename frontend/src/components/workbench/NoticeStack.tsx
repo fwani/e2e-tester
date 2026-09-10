@@ -35,6 +35,15 @@
  *
  * 마우스를 올린 동안에는 세지 않는다. 읽는 중에 사라지는 것이 토스트의 유일한 실패
  * 방식이다.
+ *
+ * ## 2026-09-10 — 자리는 오른쪽 위, 오류는 닫을 때까지 (사용자 결정)
+ *
+ * 자리는 뷰포트 오른쪽 위로 고정됐다 (`tokens.css` 의 `.toast-layer`). 국면마다 다른
+ * 데서 뜨던 것이 한 자리로 모였다.
+ *
+ * **오류는 스스로 사라지지 않는다.** 위의 「전부 스스로 사라진다」는 그 뒤로 경고·안내
+ * 에만 해당한다 — 근거를 다른 데서 볼 수 있다는 2026-09-09 의 논거가 오류의 「다음
+ * 행동」에는 성립하지 않았다. 자세한 것은 `LINGER_MS`.
  */
 import { useEffect, useRef, useState } from "react";
 
@@ -62,16 +71,27 @@ export interface NoticeStackProps {
 }
 
 /**
- * 머무는 시간. **뜻이 무거울수록 길다** — 읽는 데 걸리는 시간이 다르다.
+ * 머무는 시간. `null` 이면 **사용자가 닫을 때까지 남는다.**
  *
- * 값의 근거는 문장 길이다. 오류 알림은 사유 + 다음 행동 두 줄이고(003 EC-004), 안내는
- * 대개 한 줄이다. 밀리초를 정확히 맞추는 일이 아니라 **짧아서 놓치는 일이 없게** 하는
- * 것이 목적이다.
+ * ## 2026-09-10 — 오류는 스스로 사라지지 않는다 (사용자 결정)
+ *
+ * 「warning 은 일정 시간 뜨고 사라지면 될 것 같고, 에러의 경우 warning 보다 길게라던지
+ * 닫기 전까지라던지 정리가 필요하다」.
+ *
+ * 12초로는 부족하다는 것이 요구의 실체다. 오류 알림은 사유 + 다음 행동 두 줄이고
+ * (003 EC-004), 그 「다음 행동」은 **읽고 나서 하는 것**이다 — 읽는 동안이 아니라
+ * 수행하는 동안에도 화면에 있어야 한다. 자리를 비켜 준 뒤 사용자가 「뭐라고 했더라」로
+ * 돌아오면, 근거를 남기려던 005 FR-154 가 되살아난 것과 같은 상태가 된다.
+ *
+ * 경고·안내는 반대다. 지나간 사실을 알릴 뿐이고 근거는 결과 화면의 기록에 남는다
+ * (2026-09-09 결정). 짧게 뜨고 비켜 준다.
+ *
+ * 마우스를 올린 동안에는 세지 않는 규칙은 그대로다.
  */
-const LINGER_MS: Record<Notice["tone"], number> = {
-  error: 12000,
-  warn: 9000,
-  info: 6000,
+const LINGER_MS: Record<Notice["tone"], number | null> = {
+  error: null,
+  warn: 7000,
+  info: 5000,
 };
 
 /**
@@ -103,6 +123,9 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
     for (const n of shown) {
       const key = fingerprint(n);
       if (timers.current.has(key)) continue;
+      const linger = LINGER_MS[n.tone];
+      // 닫기 전까지 남는 알림에는 타이머를 걸지 않는다 (오류).
+      if (linger === null) continue;
       timers.current.set(
         key,
         setTimeout(() => {
@@ -114,7 +137,7 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
             바깥 상태는 지난 알림을 계속 들고 있게 된다.
           */
           onDismiss?.(n.id);
-        }, LINGER_MS[n.tone]),
+        }, linger),
       );
     }
     // 목록에서 빠진 알림의 타이머는 걷는다.
@@ -190,7 +213,8 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
             **닫기는 모든 알림에 있다** (2026-09-09).
 
             이전에는 `dismissible` 인 것만 가졌다. 그 구별의 근거는 「지우면 근거가
-            사라지는 알림이 있다」였는데, 이제 전부 스스로 사라지므로 그 구별은 남아 있어도
+            사라지는 알림이 있다」였는데, 경고·안내는 스스로 사라지고 오류는 이 버튼이
+            유일한 퇴장이므로 (2026-09-10) 그 구별은 남아 있어도
             사용자에게는 「어떤 것은 손으로 지울 수 있고 어떤 것은 못 지운다」로만 보인다.
             먼저 읽고 치우는 길을 막을 이유가 없다.
 

@@ -108,7 +108,7 @@ Step 안의 `author` 필드는 배지 표시용이다 (FR-014, FR-075).
 | `type` | 페이로드 | 화면 대응 | 요구사항 |
 |--------|----------|-----------|----------|
 | `ai_progress` | `{ message }` | AI가 무엇을 하는 중인지 | FR-060 |
-| `ai_blocked` | `{ attempted, reason, choices: ["takeover","retry","skip","abort"] }` | 실패 카드 + 4선택지 | FR-069, FR-070 |
+| `ai_blocked` | `{ attempted, reason, question, choices: ["takeover","answer","retry","skip","abort"] }` | 실패 카드 + 선택지 | FR-069, FR-070 |
 | `ai_finished` | `{ step_count }` | "테스트로 저장" 활성화 | FR-063 |
 | `ai_error` | `{ reason }` | 언어모델 호출 실패. Step은 보존됨 | FR-067 |
 

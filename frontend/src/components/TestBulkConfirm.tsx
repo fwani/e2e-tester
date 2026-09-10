@@ -182,3 +182,115 @@ export function TestSelectionBar({
     </div>
   );
 }
+
+/**
+ * 번호 정리 확인 (2026-09-10 사용자 보고 2번).
+ *
+ * **삭제와 같은 무게로 묻는다.** 식별자는 사용자가 git 에 커밋해 보관하는 자산의
+ * 이름이고 (헌법 원칙 V), 이 조작은 그것을 여러 개 한꺼번에 바꾼다. 되돌리는 조작은
+ * 없다 — 다시 정리해도 옛 번호로 돌아가지 않는다. 그 사실을 확인 시점에 말한다.
+ *
+ * **걸러 보기와 무관하다는 것을 여기서 말한다.** 조작이 목록 조작 줄에 있으므로 「지금
+ * 보이는 것만」으로 읽힐 수 있는데, 실제 대상은 프로젝트 전체다.
+ *
+ * 관용어는 복수 삭제와 같다 — 겹침 대화상자를 쓰지 않고 목록 바로 위에서 묻는다.
+ */
+export function RenumberConfirm({
+  total,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  total: number;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      data-renumber-confirm
+      role="status"
+      className="tint-warn line"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "8px 12px",
+        marginBottom: 10,
+      }}
+    >
+      <span className="strong-sm">
+        테스트 {total}개의 번호를 001부터 다시 붙일까요?
+      </span>
+      <span className="why">
+        그룹 접두어와 순서는 그대로입니다. 지금 보이는 것만이 아니라 프로젝트 전체가
+        대상이며, 되돌리는 조작은 없습니다.
+      </span>
+      <div className="spacer" />
+      {/* 돌아가기가 기본이다 — 포커스를 여기에 둔다. */}
+      <button className="btn sm" onClick={onCancel} disabled={busy} autoFocus>
+        돌아가기
+      </button>
+      <button
+        data-renumber-confirm-run
+        className="btn sm danger"
+        onClick={onConfirm}
+        disabled={busy}
+      >
+        번호 정리
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 번호 정리 결과 (2026-09-10 사용자 보고 2번).
+ *
+ * **자동으로 사라지지 않는다.** 어느 식별자가 어디로 갔는지는 사용자가 자기 저장소·
+ * 문서·CI 설정에서 찾아 고쳐야 하는 정보다 — 토스트로 흘려 보내면 그 일을 할 수 없다
+ * (`TrashedTestsNotice` 가 옮긴 자리를 남기는 것과 같은 이유다).
+ */
+export function RenumberedNotice({
+  result,
+  onDismiss,
+}: {
+  result: { renumbered: { from_id: string; to_id: string; name: string }[]; unchanged: number };
+  onDismiss: () => void;
+}) {
+  const changed = result.renumbered.length;
+  return (
+    <div
+      data-renumbered-notice
+      role="status"
+      className={changed === 0 ? "tint-warn" : "tint-run"}
+      style={{ padding: "10px 12px", marginBottom: 10 }}
+    >
+      <div className="strong-sm">
+        {changed === 0
+          ? `번호는 이미 정리되어 있었습니다 (${result.unchanged}개).`
+          : `${changed}개의 번호를 바꿨습니다. ${result.unchanged}개는 제자리였습니다.`}
+      </div>
+      {changed > 0 && (
+        <details open style={{ marginTop: 6 }}>
+          <summary className="why" style={{ cursor: "pointer" }}>
+            바뀐 식별자 {changed}건
+          </summary>
+          {result.renumbered.map((m) => (
+            <div key={m.from_id} className="why mono" style={{ marginTop: 2 }}>
+              {m.from_id} → {m.to_id} · {m.name}
+            </div>
+          ))}
+        </details>
+      )}
+      {changed > 0 && (
+        <div className="why" style={{ marginTop: 6 }}>
+          정의 파일과 실행 산출물이 함께 옮겨졌습니다. 저장소에 옛 식별자를 적어 둔 곳이
+          있으면 함께 고치세요.
+        </div>
+      )}
+      <button className="navlink" onClick={onDismiss} style={{ marginTop: 6 }}>
+        확인했습니다
+      </button>
+    </div>
+  );
+}

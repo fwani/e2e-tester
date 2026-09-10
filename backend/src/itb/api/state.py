@@ -28,6 +28,14 @@ BIND_HOST = "127.0.0.1"
 
 BIND_PORT = 4320
 
+PROJECT_ROOT_HEADER = "X-ITB-Project-Root"
+"""화면이 「내가 보고 있는 프로젝트」를 말하는 헤더 (2026-09-10 사용자 보고 1번).
+
+**선택적이다.** 없으면 서버는 지금까지처럼 열린 프로젝트로 처리한다 — 계약 테스트와
+`curl` 이 그대로 동작해야 한다. 있으면 `app.py` 의 미들웨어가 열린 프로젝트와 대조하고,
+다르면 `PROJECT_MISMATCH` 로 **아무 일도 하기 전에** 거절한다.
+"""
+
 
 @dataclass(slots=True)
 class AppState:

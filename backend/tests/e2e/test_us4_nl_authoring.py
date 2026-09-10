@@ -140,7 +140,7 @@ def test_quickstart_section6_step8_impossible_instruction_stops_within_limits(
     sid = start_ai_session(keyed_client, fixture_app, "우주선을 발사해")
     try:
         blocked = wait_for_event(event_log, "ai_blocked")
-        assert blocked["choices"] == ["takeover", "retry", "skip", "abort"]
+        assert blocked["choices"] == ["takeover", "answer", "retry", "skip", "abort"]
         assert "우주선" in (blocked["reason"] or "")
 
         view = keyed_client.get(f"/api/sessions/{sid}").json()

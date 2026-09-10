@@ -10,7 +10,7 @@
  * 일곱 국면 중 세션으로 만들 수 있는 다섯을 전부 돌며 같은 사실을 확인한다 —
  * "이 국면에서는 안 보인다" 는 예외가 하나라도 생기면 그것이 그 결함이다.
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { ErrorInfo } from "../src/components/ErrorNotice";
@@ -32,7 +32,20 @@ const aiError: ErrorInfo = {
 const blocked = {
   attempted: 'click role=button "저장"',
   reason: "AI 가 더 진행하지 못했습니다.",
-  choices: ["takeover", "retry"],
+  question: null,
+  choices: ["takeover", "answer", "retry"],
+};
+
+/**
+ * 선택지의 표시 문구 (2026-09-10).
+ *
+ * 이전에는 서버가 준 값(`takeover`)이 그대로 버튼 글자였고 이 검사도 그 값으로 찾았다.
+ * **검사가 영어 식별자를 화면 문구로 굳히고 있었던 것이다** — 사전이 생겼으므로 검사도
+ * 사전을 지난다.
+ */
+const CHOICE_LABEL: Record<string, string> = {
+  takeover: "직접 조작해 이어가기",
+  retry: "AI 에게 다시",
 };
 
 /**
@@ -106,11 +119,63 @@ describe("AI 차단 선택지 (FR-069·FR-070 · FR-218f)", () => {
       );
       expect(document.querySelector("[data-always-visible-failure]")).not.toBeNull();
       expect(screen.getByText("AI 가 더 진행하지 못했습니다.")).toBeTruthy();
-      for (const choice of blocked.choices) {
-        expect(screen.getByRole("button", { name: choice })).toBeTruthy();
+      for (const [choice, label] of Object.entries(CHOICE_LABEL)) {
+        expect(blocked.choices).toContain(choice);
+        expect(screen.getByRole("button", { name: label })).toBeTruthy();
       }
+      /*
+        2026-09-10 — `answer` 는 **버튼이 아니라 답 칸**이다. 같은 조작을 두 자리에 두면
+        사용자는 둘이 다른 것인지 확인하느라 멈춘다 (FR-235).
+      */
+      expect(document.querySelector("[data-blocked-answer]")).not.toBeNull();
+      expect(screen.queryByRole("button", { name: "answer" })).toBeNull();
     },
   );
+});
+
+describe("AI 에게 답해서 이어 가기 (2026-09-10 사용자 결정)", () => {
+  it("질문이 있으면 답 칸이 그 질문을 걸고 열린다", () => {
+    render(
+      <SessionWorkbench
+        {...sessionProps({
+          view: sessionView({ state: "ai_blocked", authoring_mode: "ai" }),
+          aiBlocked: { ...blocked, question: "어느 프로젝트를 삭제할까요?" },
+        })}
+      />,
+    );
+    expect(screen.getByText(/어느 프로젝트를 삭제할까요\?/)).toBeTruthy();
+  });
+
+  it("답을 적어야 보낼 수 있다 — 빈 답은 AI 를 헛돌게 한다", () => {
+    render(
+      <SessionWorkbench
+        {...sessionProps({
+          view: sessionView({ state: "ai_blocked", authoring_mode: "ai" }),
+          aiBlocked: blocked,
+        })}
+      />,
+    );
+    const send = document.querySelector("[data-blocked-answer-send]") as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+  });
+
+  it("적은 답이 `answer` 선택과 함께 나간다", async () => {
+    const chosen: [string, string | undefined][] = [];
+    render(
+      <SessionWorkbench
+        {...sessionProps({
+          view: sessionView({ state: "ai_blocked", authoring_mode: "ai" }),
+          aiBlocked: blocked,
+          onChooseBlocked: (choice: string, answer?: string) => chosen.push([choice, answer]),
+        })}
+      />,
+    );
+    const box = document.querySelector("#blocked-answer") as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "TEST 프로젝트입니다." } });
+    fireEvent.click(document.querySelector("[data-blocked-answer-send]")!);
+
+    expect(chosen).toEqual([["answer", "TEST 프로젝트입니다."]]);
+  });
 });
 
 describe("작성 국면의 Step 결말 (T045 · FR-225 · S-08·S-09)", () => {

@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+import urllib.parse
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -43,7 +44,13 @@ from itb.api.routes import (
     tabs,
     tests,
 )
-from itb.api.state import BIND_HOST, BIND_PORT, AppState, get_state
+from itb.api.state import (
+    BIND_HOST,
+    BIND_PORT,
+    PROJECT_ROOT_HEADER,
+    AppState,
+    get_state,
+)
 from itb.api.ws.session_events import EventBroker
 from itb.execution.session import SessionManager
 from itb.secrets.keys import (
@@ -149,6 +156,50 @@ def create_app() -> FastAPI:
         summary="브라우저 기반 E2E 테스트 자동화 도구 (단독 로컬 도구)",
         lifespan=lifespan,
     )
+
+    @app.middleware("http")
+    async def _project_guard(request: Request, call_next):  # type: ignore[no-untyped-def]
+        """화면이 믿는 프로젝트와 서버가 연 프로젝트가 다르면 **아무 일도 하기 전에** 거절한다.
+
+        2026-09-10 사용자 보고 1번 — 「a 프로젝트에서 새 테스트를 만들었는데 b 프로젝트의
+        목록에 들어갔다」.
+
+        원인은 시작 URL 이 아니다. 서버는 열린 프로젝트를 **하나만** 들고 있고
+        (`AppState.repository`), `POST /api/project/create` 는 만드는 즉시 그리로 옮겨
+        간다. 화면에서 「계속」 대신 「돌아가기」를 누르면 화면은 이전 프로젝트에 남고
+        서버는 새 프로젝트에 가 있다 — 그 뒤의 저장은 전부 새 프로젝트로 간다.
+
+        그래서 **요청이 자기가 믿는 프로젝트를 말하게 한다.** 헤더가 없으면 아무것도 하지
+        않는다 (기존 클라이언트·계약 테스트·curl 이 그대로 동작한다). 있고 다르면 409 다.
+
+        `/api/project` 는 제외한다 — 프로젝트를 바꾸는 조작 자체가 거기 있으므로, 헤더로
+        막으면 화면이 프로젝트를 옮길 수 없다.
+        """
+        # **퍼센트 인코딩을 되돌린다.** HTTP 헤더 값은 ISO-8859-1 이고 프로젝트 경로에는
+        # 한글이 들어간다 (`storage/paths.py` 의 `slugify` 가 한글을 남긴다). 인코딩하지
+        # 않으면 브라우저가 `fetch` 자체를 거절해 **요청이 나가지도 않는다.**
+        #
+        # 인코딩하지 않은 값도 그대로 통과한다 — `%` 가 없으면 `unquote` 는 항등이다.
+        # `curl` 로 손수 부를 때 헤더를 인코딩하게 만들 이유가 없다.
+        raw_expected = request.headers.get(PROJECT_ROOT_HEADER)
+        expected = urllib.parse.unquote(raw_expected) if raw_expected else None
+        if expected and not request.url.path.startswith("/api/project"):
+            state = getattr(request.app.state, "itb", None)
+            repo = getattr(state, "repository", None) if state is not None else None
+            actual = str(repo.paths.root) if repo is not None else None
+            if actual is not None and actual != expected:
+                body = ErrorBody(
+                    code=ErrorCode.PROJECT_MISMATCH,
+                    message=(
+                        "화면이 보고 있는 프로젝트와 서버가 연 프로젝트가 다릅니다. "
+                        "요청을 처리하지 않았습니다."
+                    ),
+                    detail={"expected_root": expected, "open_root": actual},
+                )
+                return JSONResponse(
+                    status_code=409, content=ErrorResponse(error=body).model_dump()
+                )
+        return await call_next(request)
 
     @app.exception_handler(ApiError)
     async def _api_error(_request: Request, exc: ApiError) -> JSONResponse:

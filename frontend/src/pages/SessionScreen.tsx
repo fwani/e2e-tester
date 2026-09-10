@@ -304,7 +304,7 @@ export interface SessionWorkbenchProps {
    * 재생한 세션이기 때문이다 (아래 `editStep` 의 주석).
    */
   onEditStep?: (stepId: string | null, stepIndex: number) => void;
-  onChooseBlocked?: (choice: string) => void;
+  onChooseBlocked?: (choice: string, answer?: string) => void;
   onPacingChange?: (next: RunPacing) => void;
   onReconnect?: () => void;
   onDismissNotice?: (id: string) => void;
@@ -1641,6 +1641,17 @@ export interface SessionScreenProps {
   onFinished: () => void;
   onShowResult?: (testId: string, stepId?: string | null) => void;
   /**
+   * 실행이 끝나면 **스스로** 결과 국면으로 넘어간다 (2026-09-10 사용자 결정).
+   *
+   * 「실행이 완료되면 결과화면으로 자동 이전되면 좋겠다. 결과 상세보기나, 실행 후 결과를
+   * 보는 것이나 사실은 같은 건데 버튼을 눌러 가는 게 UX 적으로 불편하다」.
+   *
+   * **`false` 인 경우가 있다.** 편집 화면에서 「Step nn 에서 멈추기」로 출발한 세션은
+   * 돌아갈 곳이 편집 화면이다 (006 FR-204) — 거기서 결과로 튀면 사용자는 자기가 출발한
+   * 화면을 잃는다. 판단 근거(`returnToEdit`)는 `App` 이 갖고 있으므로 `App` 이 정한다.
+   */
+  autoShowResult?: boolean;
+  /**
    * 편집 화면으로 간다 (2026-09-09 사용자 보고).
    *
    * **세션을 먼저 버린다** — 그 일은 `SessionScreen` 이 한다 (아래 `editStep`). 편집
@@ -1659,6 +1670,7 @@ export function SessionScreen({
   instructionOnArrival = null,
   onFinished,
   onShowResult,
+  autoShowResult = true,
   onEditStep,
   onRerun,
 }: SessionScreenProps) {
@@ -1712,6 +1724,14 @@ export function SessionScreen({
   const [lost, setLost] = useState<string | null>(null);
   const [runningIndex, setRunningIndex] = useState<number | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  /**
+   * 이번 실행이 멈춘 Step 의 위치 (2026-09-10 사용자 결정 — 「편집도 마찬가지 개념」).
+   *
+   * 결과 국면으로 자동으로 넘어갈 때 **지목을 함께 들고 간다.** 실패한 실행에서
+   * 사용자가 다음에 하는 일은 그 Step 을 고치는 것이고, 결과 화면 맨 위에 떨어뜨리면
+   * 그 자리를 다시 찾아야 한다 (007 FR-239 가 국면을 넘어 지목을 유지한 것과 같은 이유).
+   */
+  const [failedIndex, setFailedIndex] = useState<number | null>(null);
   const [failure, setFailure] = useState<{ index: number; message: string } | null>(null);
   /**
    * 사용자가 친 이름. **`null` 은 「아직 손대지 않았다」다** (011 FR-362).
@@ -1973,6 +1993,7 @@ export function SessionScreen({
                 stoppedStepIndex: event.stopped_step_index ?? null,
               }),
             );
+            setFailedIndex(event.failed_step_index ?? null);
             void resync();
             break;
           case "run_error":
@@ -2009,6 +2030,7 @@ export function SessionScreen({
             setAiBlocked({
               attempted: event.attempted ?? null,
               reason: event.reason ?? "AI 가 더 진행하지 못했습니다.",
+              question: event.question ?? null,
               choices: (event.choices ?? []) as AiChoice[],
             });
             void resync();
@@ -2177,6 +2199,40 @@ export function SessionScreen({
     // `resync` 는 매 렌더마다 새 함수다 — 넣으면 효과가 다시 돈다 (위 효과와 같은 이유).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instructionOnArrival, view.state, view.pause_before_index, sessionId]);
+  /*
+    2026-09-10 사용자 결정 — **실행이 끝나면 결과 국면으로 스스로 넘어간다.**
+
+    「결과 상세보기나, 실행 후 결과를 보는 것이나 사실은 같은 건데 버튼을 눌러 가는 게
+    UX 적으로 불편하다」. 실제로 같다 — 두 자리가 그리는 것은 같은 `RunResult` 하나다.
+
+    ## 조건
+
+    - **`completed`·`failed` 만이다.** `stopped`·`lost` 는 「실행이 완료된 것」이 아니다.
+      사용자가 중지한 자리·유실된 자리에서 화면을 뺏으면, 그 순간 화면에 있던 것(멈춘
+      지점·유실 사유)을 잃는다.
+    - **저장된 테스트여야 한다.** `test_id` 가 없는 초안은 결과 화면이 읽을 대상이 없다.
+    - **한 번만 넘어간다.** 뒤로가기로 돌아왔을 때 다시 튕겨 나가면 실행 화면에 머물 수
+      없다.
+
+    결과 파일은 이미 디스크에 있다 — 러너가 결과를 쓴 **뒤에만** 종료 상태로 옮긴다
+    (`execution/runner.py` 의 `_settle`). 그래서 도착한 결과 화면이 빈손일 수 없다.
+
+    **세션을 버리지 않는다.** 브라우저는 실패보다 오래 살아야 하고 (헌법 원칙 III),
+    목록의 세션 배너가 돌아갈 길을 갖고 있다 — 「결과 보기」 버튼이 하던 것과 정확히
+    같은 일을 자동으로 할 뿐, 세션 수명을 바꾸지는 않는다.
+  */
+  const jumpedToResult = useRef(false);
+  useEffect(() => {
+    if (!autoShowResult || jumpedToResult.current) return;
+    if (view.state !== "completed" && view.state !== "failed") return;
+    if (testId === null || onShowResult === undefined) return;
+    jumpedToResult.current = true;
+    // 실패한 Step 을 지목해 넘긴다 — 고치러 갈 자리를 결과 화면이 이미 펼쳐 놓는다.
+    onShowResult(testId, failedIndex === null ? null : (view.steps[failedIndex]?.id ?? null));
+    // `onShowResult` 는 매 렌더 새 함수일 수 있다 — 넣으면 효과가 다시 돈다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoShowResult, view.state, testId]);
+
   /** 005 FR-142~FR-146 — 일시정지 **전이 중**인가 (U-04). */
   const isPausing =
     (pauseRequested || view.pause_settled === false) && !TERMINAL_STATES.has(view.state);
@@ -2757,9 +2813,13 @@ export function SessionScreen({
             : undefined
         }
         onEditStep={editStep}
-        onChooseBlocked={(choice) => {
+        /*
+          2026-09-10 — 답변을 함께 나른다. **막힘 표시를 먼저 지운다**는 규칙은 그대로다:
+          지우지 않으면 AI 가 다시 도는 동안에도 「막혔습니다」가 화면에 남는다.
+        */
+        onChooseBlocked={(choice, answer) => {
           setAiBlocked(null);
-          void act(() => sessions.aiChoice(sessionId, choice as AiChoice));
+          void act(() => sessions.aiChoice(sessionId, choice as AiChoice, answer));
         }}
         onPacingChange={changePacing}
         onReconnect={() => subscription.current?.reconnect()}
