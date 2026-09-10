@@ -209,3 +209,71 @@ export function flexOf(size: SlotSize): SlotStyle {
 export function splitFor(phase: Phase): VerticalSplit {
   return VERTICAL_SPLIT[phase];
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   배분 → 클래스 (015 T029)
+   ════════════════════════════════════════════════════════════════════════════
+
+   ## 무엇이 바뀌고 무엇이 남는가
+
+   015 가 배치를 인라인 `style` 에서 클래스로 옮긴다. **바뀌는 것은 표현뿐이다.**
+
+   - `VERTICAL_SPLIT`·`PRIMARY_SLOT` 표 → 그대로. `Record<Phase, …>` 가 국면 누락을
+     컴파일 시점에 막는 성질이 유지된다 (015 FR-020a).
+   - `Workbench` 가 한 번 조회해 자식에 내려주는 구조 → 그대로. `TargetPane`·`WorkArea`
+     는 여전히 자기 크기를 모른다 (FR-020b · S-12 재발 방지).
+   - `flexOf` 가 내던 스타일 객체 → `flexClassOf` 가 내는 클래스 문자열.
+
+   ## `fixed` 를 표로 두는 이유
+
+   Tailwind 는 소스를 **텍스트로 스캔**한다. `flex-[0_0_${px}px]` 처럼 조립한 이름은
+   찾지 못하고 CSS 를 만들지 않는다 — 화면이 조용히 무스타일이 된다 (가드 G-B).
+
+   `fixed` 로 쓰이는 값은 둘뿐이므로(88·424) 전수 표로 적어 둔다. 값이 늘면 여기에
+   한 줄을 더해야 하고, 빠뜨리면 `flexClassOf` 가 **즉시 던진다** — 조용히 넘어가지
+   않는 것이 이 설계의 요점이다. */
+
+/** `fixed` 배분에 쓰이는 높이. 새 값이 필요하면 여기와 아래 표에 함께 더한다. */
+export type FixedSlotPx = typeof TARGET_SLOT_MIN_PX | typeof RESULT_WORK_PX;
+
+/**
+ * 정해진 높이 → 클래스. **완성된 문자열로 적는다** (조립하지 않는다).
+ *
+ * `Record<FixedSlotPx, string>` 이므로 `FixedSlotPx` 에 값을 더하면 여기도 컴파일
+ * 시점에 요구된다 — 표가 국면을 요구하는 것과 같은 규율이다.
+ */
+const FIXED_CLASS: Record<FixedSlotPx, string> = {
+  [TARGET_SLOT_MIN_PX]: "flex-[0_0_88px] min-h-[88px] overflow-y-auto",
+  [RESULT_WORK_PX]: "flex-[0_0_424px] min-h-[424px] overflow-y-auto",
+};
+
+/** 배분 종류 → 클래스. `Record<SlotSize["kind"], …>` 가 종류 누락을 막는다. */
+const KIND_CLASS: Record<Exclude<SlotSize["kind"], "fixed">, string> = {
+  // `flex-1` 은 `flex:1 1 0%` 라 기존 `1 1 0px` 와 계산이 같다 (0% 와 0px 둘 다 0).
+  fill: "flex-1 min-h-0 overflow-y-auto",
+  // 내용이 정하는 높이이므로 상한이 필요하다 — 없으면 검증 추가 폼이 미러를 밀어낸다.
+  content: "flex-none min-h-notice max-h-[45%] overflow-y-auto",
+};
+
+/**
+ * 배분을 클래스로. **`Workbench` 만 부른다.**
+ *
+ * 최소·최대 높이가 여기 있는 이유는 `flexOf` 와 같다 — 표시 컴포넌트가 32px·45% 를
+ * 알 필요가 없다. 1회차에 `PhaseAside` 가 그 둘을 자기 파일에 하드코딩했고,
+ * `max-height:45%` 는 `fill` 자리를 무력화한다. 상한은 `content` 에만 붙는다.
+ */
+export function flexClassOf(size: SlotSize): string {
+  if (size.kind === "fixed") {
+    const cls = (FIXED_CLASS as Record<number, string | undefined>)[size.px];
+    if (cls === undefined) {
+      // 조용히 빈 문자열을 내면 그 자리가 배분 없이 그려진다 — 화면은 「좀 이상한데」
+      // 정도로만 보이고 원인을 되짚을 수 없다. 여기서 멈추는 편이 낫다.
+      throw new Error(
+        `fixed ${size.px}px 에 대응하는 클래스가 없다. ` +
+          "lib/layout.ts 의 FixedSlotPx 와 FIXED_CLASS 에 함께 더한다 (015 T029).",
+      );
+    }
+    return cls;
+  }
+  return KIND_CLASS[size.kind];
+}

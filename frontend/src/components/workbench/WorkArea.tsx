@@ -33,7 +33,7 @@ import { useEffect, useRef, useState } from "react";
 import { ErrorNotice } from "../ErrorNotice";
 import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../lib/wording";
 import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
-import type { SlotSize, SlotStyle } from "../../lib/layout";
+import type { SlotSize } from "../../lib/layout";
 
 import { Button } from "../../ui/Button";
 
@@ -54,7 +54,12 @@ export interface WorkAreaProps {
    * 이미 CSS `flex`·`minHeight` 로 환산된 값이다 — 이 파일은 `SlotSize` 의 뜻(42px 최소,
    * 424px 고정 등)을 알 필요가 없다.
    */
-  size: SlotStyle;
+  /**
+   * 이 자리의 배분 — **클래스로 온다** (015 T029).
+   *
+   * 이미 CSS 로 환산되어 있다. 이 파일은 424px 고정이 어디서 왔는지 알 필요가 없다.
+   */
+  sizeClass: string;
   /** 어느 국면의 것인지. 검사와 대조 기록이 읽는 표식일 뿐 분기에 쓰지 않는다 */
   sizeKind: SlotSize["kind"];
   /** AI 선택지 조작의 상태. 고를 것이 없어도 자리와 이유는 남는다 (FR-234) */
@@ -67,7 +72,7 @@ export interface WorkAreaProps {
 
 export function WorkArea({
   work,
-  size,
+  sizeClass,
   sizeKind,
   chooseBlocked,
   onChooseBlocked,
@@ -79,8 +84,7 @@ export function WorkArea({
     <div
       data-workbench-work={work.kind}
       data-slot-size={sizeKind}
-      className="steps-ft"
-      style={{ ...size, padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}
+      className={`border-t border-hair-2 bg-sunken-2 ${sizeClass} py-s3 px-s4 flex flex-col gap-s3`}
     >
       {/*
         만들기 국면 — 시작 조건 (2회차 · FR-258).

@@ -26,7 +26,7 @@
  */
 import type { ArtifactKind } from "../../api/client";
 import { isShown, type CapabilityMap } from "../../lib/capabilities";
-import type { SlotSize, SlotStyle } from "../../lib/layout";
+import type { SlotSize } from "../../lib/layout";
 import { ACTION_LABEL, openBrowserAtStepLabel } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 import type { EmptyReason, TargetView } from "./model";
@@ -62,7 +62,12 @@ export interface TargetPaneProps {
    *
    * 이미 CSS 값으로 환산되어 있다 — 이 파일은 118px 이 어디서 왔는지 알 필요가 없다.
    */
-  size: SlotStyle;
+  /**
+   * 이 자리의 배분 — **클래스로 온다** (015 T029).
+   *
+   * 이미 CSS 로 환산되어 있다. 이 파일은 88px 이 어디서 왔는지 알 필요가 없다.
+   */
+  sizeClass: string;
   /** 어느 배분인지. 검사와 대조 기록이 읽는 표식일 뿐 분기에 쓰지 않는다 */
   sizeKind: SlotSize["kind"];
   capabilities: CapabilityMap;
@@ -99,7 +104,7 @@ function Unavailable({
 
 export function TargetPane({
   target,
-  size,
+  sizeClass,
   sizeKind,
   capabilities,
   onSelectArtifact,
@@ -110,14 +115,7 @@ export function TargetPane({
     <div
       data-workbench-target
       data-slot-size={sizeKind}
-      style={{
-        ...size,
-        minWidth: "0",
-        padding: "20px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "14px",
-      }}
+      className={`${sizeClass} min-w-0 p-s5 flex flex-col gap-[14px]`}
     >
       {target.kind === "mirror" && (
         <>

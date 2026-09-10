@@ -171,7 +171,7 @@ className="btn sm quiet"                (이미 겪었다)
 이 저장소의 기존 관행이며, 적지 않으면 다음 사람이 그 테스트가 원래 무엇을 보던 것인지
 알 수 없다 — 그때 테스트는 지워지기 쉬워진다. 각 4-B 작업의 완료 조건에 포함된다.
 
-- [ ] T029 [US2] `frontend/src/lib/layout.ts` 의 배치 표 출력을 클래스 문자열로 바꾼다 — `Record<Phase, …>` 표 자체와 「부모가 내려준다」 구조는 **그대로 둔다**. 새로 더하는 것은 `Record<VerticalSplit, string>` 전수 대응뿐이다 (research R3 · LC-2). 이것이 4-B 전체의 기반이므로 먼저 한다
+- [X] T029 [US2] `frontend/src/lib/layout.ts` 의 배치 표 출력을 클래스 문자열로 바꾼다 — `Record<Phase, …>` 표 자체와 「부모가 내려준다」 구조는 **그대로 둔다**. 새로 더하는 것은 `Record<VerticalSplit, string>` 전수 대응뿐이다 (research R3 · LC-2). 이것이 4-B 전체의 기반이므로 먼저 한다
 - [ ] T030 [US2] `frontend/src/components/workbench/Workbench.tsx` (4곳) 전환 + `WorkbenchShell.test.tsx`(단언 12개)·`WorkbenchHeight.test.tsx` 판정 방법 전환. **국면별 세로 배분이 전과 같은지가 S-12 재발 여부다**
 - [ ] T031 [P] [US2] `frontend/src/pages/TestList.tsx` (55곳) 전환 + `TestListFilters`·`TestListActions`·`TestListSelection`·`RowMenuVisible` 판정 방법 전환. **최대 화면이므로 커밋을 쪼갠다** (RK-5)
 - [ ] T032 [P] [US2] `frontend/src/pages/ProjectSetup.tsx` (55곳) 전환 + `ProjectSetup.test.tsx`·`ProjectRowActions.test.tsx`. 커밋을 쪼갠다

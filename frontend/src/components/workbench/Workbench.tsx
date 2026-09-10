@@ -31,7 +31,7 @@ import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard, BrandMark, Breadcrumb, HeaderBar, HeaderDivider } from "../design/Chrome";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
-import { flexOf, splitFor } from "../../lib/layout";
+import { flexClassOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
 import { PhaseBar, type PhaseGroupPick, type PhaseNameEdit } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
@@ -161,8 +161,8 @@ export function Workbench({
    * 1회차에 두 파일이 각자 하드코딩한 것과 같은 상태다 (spec S-12).
    */
   const split = splitFor(model.phase);
-  const targetStyle = flexOf(split.targetSlot);
-  const workStyle = flexOf(split.workArea);
+  const targetClass = flexClassOf(split.targetSlot);
+  const workClass = flexClassOf(split.workArea);
 
   /*
     Step 상세 — **구현도 하나, 자리도 하나다** (FR-229·FR-230).
@@ -310,7 +310,7 @@ export function Workbench({
         >
           <TargetPane
             target={model.target}
-            size={targetStyle}
+            sizeClass={targetClass}
             sizeKind={split.targetSlot.kind}
             capabilities={capabilities}
             onSelectArtifact={onSelectArtifact}
@@ -325,7 +325,7 @@ export function Workbench({
           {model.work !== null && (
             <WorkArea
               work={model.work}
-              size={workStyle}
+              sizeClass={workClass}
               sizeKind={split.workArea.kind}
               chooseBlocked={capabilities["ai.chooseBlocked"]}
               onChooseBlocked={onChooseBlocked}

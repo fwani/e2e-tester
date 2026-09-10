@@ -129,8 +129,11 @@ describe("결과 국면 ③-b 가 스크롤 없이 담을 자리를 갖는다 (S
     const view = await showResult();
     const work = el("[data-workbench-work]")!;
     expect(work.dataset.slotSize).toBe("fixed");
-    expect(work.style.flex).toBe(`0 0 ${RESULT_WORK_PX}px`);
-    expect(work.style.maxHeight).toBe("");
+    // 015 T029 — 배분이 클래스로 바뀌었다. 묻는 것은 그대로다: 결과 국면의 작업
+    // 영역이 424px 로 고정되고 **상한이 붙지 않는가**. 상한(`max-h-[45%]`)이 붙으면
+    // 실패 사유와 LOCATOR 4행이 스크롤 뒤로 숨는다 (FR-262).
+    expect(work.className).toContain(`flex-[0_0_${RESULT_WORK_PX}px]`);
+    expect(work.className, "고정 높이에 상한이 붙었다 — 내용이 잘린다").not.toContain("max-h-");
     view.unmount();
   });
 });
