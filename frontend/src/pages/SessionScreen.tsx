@@ -1288,7 +1288,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           {capabilities["run.pacing"].kind === "disabled" && (
             <span
               data-disabled-reason="run.pacing"
-              className="why"
+              className="font-sans text-[11px] leading-[1.4] text-ink-3"
             >
               {capabilities["run.pacing"].reason}
             </span>
@@ -1339,7 +1339,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         role="status"
         className="bg-pass-t border border-pass rounded-base flex items-center gap-[10px] py-s2 px-s3"
       >
-        <svg className="pass-ink" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
+        <svg className="text-pass" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
           <path d="M3 8.5l3.5 3.5L13 4.5" />
         </svg>
         {/*
@@ -1350,8 +1350,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           쓸 수 있다 — 확인줄이 id 를 말하면 사용자는 방금 저장한 것이 무엇인지 그 문장
           에서 알 수 없다.
         */}
-        <span className="strong-sm">{editSavedNotice(displayName || title)}</span>
-        <div className="spacer" />
+        <span className="font-sans text-[13px] font-semibold leading-none">{editSavedNotice(displayName || title)}</span>
+        <div className="flex-1" />
         {onShowList && (
           <Button size="sm" onClick={onShowList} disabled={busy}>
             목록에서 보기
@@ -2947,8 +2947,8 @@ function Modal({ label, children }: { label: string; children: ReactNode }) {
 function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
   return (
     <Modal label="실행 화면 닫기 확인">
-      <div className="title">실행 화면을 닫습니다</div>
-      <p className="note">결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
+      <div className="font-sans text-[20px] font-bold leading-[1.3]">실행 화면을 닫습니다</div>
+      <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2">결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
       <div className="flex justify-end gap-[10px] mt-[18px]">
         <button className="secondary" onClick={onCancel}>
           돌아가기
@@ -2998,8 +2998,8 @@ function RerunConfirm({
   const scope = fromStepIndex === null ? "처음부터" : `${stepLabel(fromStepIndex)}부터`;
   return (
     <Modal label="저장하지 않고 다시 실행 확인">
-      <div className="title">저장하지 않은 기록이 있습니다</div>
-      <p className="note">
+      <div className="font-sans text-[20px] font-bold leading-[1.3]">저장하지 않은 기록이 있습니다</div>
+      <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2">
         기록된 Step {stepCount}개 중 저장하지 않은 변경이 있습니다. {scope} 실행하면 지금
         세션을 버리고 <strong>저장된 정의</strong>를 재생하므로, 저장하지 않은 기록은
         사라집니다.
@@ -3042,8 +3042,8 @@ function LeaveConfirm({
 }) {
   return (
     <Modal label="저장하지 않고 나가기 확인">
-      <div className="title">저장하지 않은 기록이 있습니다</div>
-      <p className="note">
+      <div className="font-sans text-[20px] font-bold leading-[1.3]">저장하지 않은 기록이 있습니다</div>
+      <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2">
         기록된 Step {stepCount}개가 있습니다. 저장하지 않고 나가면 사라집니다.
       </p>
       {askName && (

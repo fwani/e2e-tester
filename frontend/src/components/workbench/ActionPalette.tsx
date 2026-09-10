@@ -200,7 +200,7 @@ export function ActionPalette({
 
   return (
     <div className="flex flex-col gap-s3">
-      <div className="lbl">지금 할 수 있는 것</div>
+      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">지금 할 수 있는 것</div>
 
       {/*
         ─── Step 을 더하는 두 길 (011 FR-374 · UC-011-23) ──────────────────────
@@ -309,7 +309,7 @@ export function ActionPalette({
       {saveNotice}
 
       {stepCount === 0 && emptyHint !== undefined && (
-        <div className="why">{emptyHint}</div>
+        <div className="font-sans text-[11px] leading-[1.4] text-ink-3">{emptyHint}</div>
       )}
     </div>
   );
@@ -394,7 +394,7 @@ function Field({
               <button
                 type="button"
                 data-remedy-for={action}
-                className="textlink"
+                className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-semibold"
                 onClick={() => onRemedy(capability.remedy!.action)}
               >
                 {ACTION_LABEL[capability.remedy.action]}

@@ -64,7 +64,7 @@ type Mode =
     };
 /** 구획 라벨 — 정본의 `.lbl` 이다. 이름만 확정 디자인의 관용어를 쓴다. */
 function Eyebrow({ children }: { children: React.ReactNode }) {
-  return <div className="lbl">{children}</div>;
+  return <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{children}</div>;
 }
 
 export function ProjectSetup({
@@ -145,9 +145,9 @@ export function ProjectSetup({
       {/* 제품의 **첫 화면**이다. 껍데기는 다른 화면과 같아야 한다 (FR-217). */}
       <HeaderBar>
         <BrandMark />
-        <div className="spacer" />
+        <div className="flex-1" />
         {onCancel !== undefined && (
-          <button className="navlink" onClick={onCancel}>
+          <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onCancel}>
             돌아가기
           </button>
         )}
@@ -156,7 +156,7 @@ export function ProjectSetup({
       <main className="flex-1 pt-s5 px-s6 pb-s6 max-w-[960px] w-full my-0 mx-auto">
         <div className="flex flex-col gap-s2 mb-[20px]">
           <Eyebrow>PROJECT</Eyebrow>
-          <div className="title">프로젝트</div>
+          <div className="font-sans text-[20px] font-bold leading-[1.3]">프로젝트</div>
         </div>
 
         {warning !== null && <Notice tone="warn">{warning}</Notice>}
@@ -341,7 +341,7 @@ function ProjectList({
 }) {
   if (projects === null) {
     // 확정 디자인이 로딩 상태를 정의하지 않는다 — undefined-states.md 에 기록했다.
-    return <p className="why">프로젝트를 찾는 중…</p>;
+    return <p className="font-sans text-[11px] leading-[1.4] text-ink-3">프로젝트를 찾는 중…</p>;
   }
 
   return (
@@ -366,14 +366,14 @@ function ProjectList({
         <div
           className="bg-panel border border-hair rounded-base p-[28px] flex flex-col gap-s2"
         >
-          <div className="subtitle">아직 프로젝트가 없습니다</div>
-          <div className="note">
+          <div className="font-sans text-[13.5px] font-bold leading-none">아직 프로젝트가 없습니다</div>
+          <div className="font-sans text-[13.5px] leading-[1.7] text-ink-2">
             새 프로젝트를 만들면 이 도구가 관리하는 위치에 저장되고, 다음에 열 때 여기 목록에
             바로 나타납니다. 다른 곳에 있는 프로젝트는 「기존 프로젝트 열기」로 찾아 여세요.
           </div>
         </div>
       ) : (
-        <div className="pane">
+        <div className="bg-panel border border-hair rounded-base">
           {projects.map((p, i) => (
             <ProjectRow
               key={p.root}
@@ -546,7 +546,7 @@ function ProjectRow({
                 className="m-0 max-w-[320px]"
               />
             ) : (
-              <span className="subtitle">{item.name}</span>
+              <span className="font-sans text-[13.5px] font-bold leading-none">{item.name}</span>
             )}
             {item.origin === "external" && <span className="chip">외부 위치</span>}
             {!item.accessible && <span className="chip fail">열 수 없음</span>}
@@ -587,7 +587,7 @@ function ProjectRow({
                       열기
                     </Button>
                     <button
-                      className="navlink"
+                      className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
                       onClick={() => setMode({ kind: "editing", draft: item.name })}
                       disabled={locked}
                     >
@@ -597,7 +597,7 @@ function ProjectRow({
                 )}
                 {/* 삭제는 열 수 없는 줄에도 있다 (FR-418 · SC-622). */}
                 <button
-                  className="navlink"
+                  className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
                   onClick={openConfirm}
                   disabled={locked}
                   title={
@@ -611,7 +611,7 @@ function ProjectRow({
               </>
             )}
             <button
-              className="navlink"
+              className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
               onClick={onForget}
               disabled={locked}
               // 삭제와 결과가 다르다. 두 설명 모두 디스크의 파일이 어떻게 되는지
@@ -664,7 +664,7 @@ function ConfirmTrash({
 }) {
   return (
     <div className="bg-warn-t border border-warn-line rounded-base py-s3 px-[14px]" role="group" aria-label="삭제 확인">
-      <div className="subtitle">「{item.name}」을(를) 휴지통으로 옮길까요?</div>
+      <div className="font-sans text-[13.5px] font-bold leading-none">「{item.name}」을(를) 휴지통으로 옮길까요?</div>
       <div className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-s1">
         {item.root}
       </div>
@@ -720,14 +720,14 @@ function TrashedNotice({
     <div className="bg-warn-t border border-warn-line rounded-base py-s3 px-s4 mb-[18px]" role="status">
       {result.trashed_to === null ? (
         <>
-          <div className="subtitle">「{result.name}」을(를) 목록에서 뺐습니다.</div>
+          <div className="font-sans text-[13.5px] font-bold leading-none">「{result.name}」을(를) 목록에서 뺐습니다.</div>
           <div className="font-sans text-[13.5px] leading-[1.7] text-ink-2 mt-s1">
             폴더가 이미 없어서 옮길 것이 없었습니다.
           </div>
         </>
       ) : (
         <>
-          <div className="subtitle">「{result.name}」을(를) 휴지통으로 옮겼습니다.</div>
+          <div className="font-sans text-[13.5px] font-bold leading-none">「{result.name}」을(를) 휴지통으로 옮겼습니다.</div>
           {/*
             **출발지와 도착지를 둘 다 남긴다** (SC-616 · converge T050). 되돌리기는 두
             경로가 있어야 성립하는데, 도착지만 보여 주면 "원래 자리" 를 사용자가 알아야
@@ -932,7 +932,7 @@ function FolderPicker({
   useEffect(() => go(), [go]);
 
   return (
-    <div className="pane">
+    <div className="bg-panel border border-hair rounded-base">
       <div className="border-b border-hair py-s4 px-[18px]">
         <Eyebrow>OPEN EXISTING</Eyebrow>
         <div className="font-mono text-[12px] leading-[1.6] whitespace-pre-wrap text-ink-2 mt-s2 break-all">
@@ -986,7 +986,7 @@ function FolderPicker({
       <div
         className="border-t border-hair flex justify-between items-center gap-s3 py-s4 px-[18px]"
       >
-        <span className="why">
+        <span className="font-sans text-[11px] leading-[1.4] text-ink-3">
           「프로젝트」 표시가 붙은 폴더만 열 수 있습니다.
         </span>
         <div className="flex gap-s3">

@@ -95,7 +95,7 @@ export function Toast({ tone = "plain", onDismiss, mark, role, children }: Toast
       role={speak}
       {...(mark === undefined ? {} : { [mark]: "" })}
     >
-      <div className="toast-body">{children}</div>
+      <div className="flex-1 min-w-0">{children}</div>
       {onDismiss !== undefined && (
         <Button size="sm" variant="quiet" aria-label="알림 닫기" onClick={onDismiss}>
           닫기

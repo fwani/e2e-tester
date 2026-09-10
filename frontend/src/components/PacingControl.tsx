@@ -50,7 +50,7 @@ export function PacingControl({
 }: PacingControlProps) {
   return (
     <div className="flex items-center gap-s2">
-      <span className="lbl">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
+      <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
       <div
         role="group"
         aria-label="실행 속도"

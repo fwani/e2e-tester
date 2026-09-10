@@ -94,7 +94,7 @@ export function WorkArea({
               value={work.startUrl}
               onChange={(e) => work.onStartUrlChange(e.target.value)}
               placeholder="https://[대상 앱 URL]/login"
-              className="mono"
+              className="font-mono"
             />
           </Section>
 
@@ -156,7 +156,7 @@ export function WorkArea({
             {work.composeReason !== null && (
               <span
                 data-disabled-reason="ai.compose"
-                className="why"
+                className="font-sans text-[11px] leading-[1.4] text-ink-3"
               >
                 {work.composeReason}
               </span>
@@ -247,7 +247,7 @@ export function WorkArea({
                 {work.step.locator_attempts.map((a) => (
                   <div
                     key={`${a.candidate}-${a.expression}`}
-                    className="row mono why"
+                    className="flex items-center gap-s2 font-mono font-sans text-[11px] leading-[1.4] text-ink-3"
                   >
                     <span className={a.matched ? "pass-ink" : "fail-ink"}>
                       {a.matched ? "✓" : "×"}
@@ -293,7 +293,7 @@ export function WorkArea({
                 : `저장할 변경 ${work.pendingCount}건`}
             </span>
             {work.savedName !== null && (
-              <span role="status" className="strong-sm pass-ink">
+              <span role="status" className="font-sans text-[13px] font-semibold leading-none text-pass">
                 ✓ {editSavedNotice(work.savedName)}
               </span>
             )}
@@ -316,7 +316,7 @@ export function WorkArea({
               role="alert"
               className="bg-warn-t border border-warn-line rounded-base p-[14px]"
             >
-              <strong className="strong-sm">
+              <strong className="font-sans text-[13px] font-semibold leading-none">
                 ⚠ 이 테스트의 정의 파일이 편집을 시작한 뒤에 바뀌었습니다.
               </strong>
               <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-[10px]">
@@ -379,13 +379,13 @@ function ModeCard({
       data-compose-mode={mode}
       aria-pressed={selected}
       onClick={() => onPick(mode)}
-      className={`pane pick${selected ? " on" : ""}${ai ? " tint-ai" : ""}`}
+      className={`bg-panel border border-hair rounded-base text-left text-ink${selected ? " on" : ""}${ai ? " tint-ai" : ""}`}
     >
-      <span className="subtitle">{title}</span>
-      <span className="note">{summary}</span>
+      <span className="font-sans text-[13.5px] font-bold leading-none">{title}</span>
+      <span className="font-sans text-[13.5px] leading-[1.7] text-ink-2">{summary}</span>
       <span className="flex flex-col gap-[5px]">
         {bullets.map((b) => (
-          <span key={b} className="why mono">
+          <span key={b} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">
             {b}
           </span>
         ))}
@@ -397,7 +397,7 @@ function ModeCard({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-[6px]">
-      <div className="lbl">{title}</div>
+      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{title}</div>
       {children}
     </div>
   );
@@ -431,7 +431,7 @@ function AlwaysVisibleFailure({
       <span
         data-action="ai.chooseBlocked"
         data-disabled-reason="ai.chooseBlocked"
-        className="why"
+        className="font-sans text-[11px] leading-[1.4] text-ink-3"
       >
         {choose.reason}
       </span>
@@ -445,7 +445,7 @@ function AlwaysVisibleFailure({
           role="alert"
           className="bg-fail-t border border-fail-line rounded-base py-s3 px-[14px]"
         >
-          <strong className="strong-sm fail-ink">AI 가 막혔습니다</strong>
+          <strong className="font-sans text-[13px] font-semibold leading-none text-fail">AI 가 막혔습니다</strong>
           {blocked.attempted !== null && (
             <p className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[6px] mx-0 mb-0">
               시도: {blocked.attempted}
@@ -558,7 +558,7 @@ function BlockedAnswer({
         아니다 — AI 의 질문이 그 형태로 그려지면 사용자는 자기가 무엇을 답해야 하는지
         읽기 어렵다. 이름표는 짧게 두고 질문은 본문으로 읽는다.
       */}
-      <label className="lbl" htmlFor="blocked-answer">
+      <label className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3" htmlFor="blocked-answer">
         {question !== null ? "AI 의 질문" : "AI 에게 알려 주기"}
       </label>
       {question !== null && (
@@ -604,7 +604,7 @@ function BlockedAnswer({
           힌트를 조건부로 그리면 첫 글자를 치는 순간 그 줄이 사라지고 아래가 위로
           튄다. 자리를 고정하고 문구만 바꾼다 (`.hint-line`).
         */}
-        <span className="why hint-line">
+        <span data-hint-line className="font-sans text-[11px] leading-[1.4] text-ink-3 min-h-[16px]">
           {ready
             ? "Cmd/Ctrl + Enter 로도 보냅니다. 이미 만든 Step 은 그대로입니다."
             : "답을 적으면 AI 가 같은 대화에 이어서 진행합니다. 이미 만든 Step 은 그대로입니다."}

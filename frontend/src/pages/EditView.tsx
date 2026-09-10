@@ -1093,7 +1093,7 @@ export function EditView({
           className="fixed inset-0 flex items-center justify-center z-[30] bg-scrim-strong"
         >
           <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
-            <strong className="subtitle">{unsavedLeaveWarning(pending)}</strong>
+            <strong className="font-sans text-[13.5px] font-bold leading-none">{unsavedLeaveWarning(pending)}</strong>
             <div className="flex items-center gap-s2 mt-s3">
               <button
                 onClick={() => {
@@ -1163,12 +1163,12 @@ function EditFields({
         data-edit-fields-empty
         className="flex-1 min-h-0 flex flex-col items-center justify-center gap-[10px] text-center"
       >
-        <svg className="dim" width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <svg className="text-ink-3" width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.6">
           <rect x="3" y="5" width="26" height="6" rx="1.5" />
           <rect x="3" y="13" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
           <rect x="3" y="21" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
         </svg>
-        <div className="strong-sm">고칠 Step 을 고르세요</div>
+        <div className="font-sans text-[13px] font-semibold leading-none">고칠 Step 을 고르세요</div>
         <div className="font-sans text-[11px] leading-[1.4] text-ink-3 max-w-[420px]">
           오른쪽 목록에서 Step 을 누르면 상세가 열립니다. 값 · 순서 · 삭제는 브라우저 없이
           고칠 수 있고, 고친 것은 여기에 「저장하지 않은 변경」으로 쌓입니다.
@@ -1182,7 +1182,7 @@ function EditFields({
       {/* FR-212 — 어떤 변수가 민감인지 밝히고, 값은 화면에 오지 않는다고 말한다. */}
       {sensitiveNames.length > 0 && (
         <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
-          민감 변수 <span className="mono">{sensitiveNames.join(", ")}</span> (값은 표시되지
+          민감 변수 <span className="font-mono">{sensitiveNames.join(", ")}</span> (값은 표시되지
           않습니다)
         </p>
       )}
@@ -1190,12 +1190,12 @@ function EditFields({
       {/* 개별 되돌리기 (006 FR-190). 되돌리기는 연산을 목록에서 빼는 것이다. */}
       {ops.length > 0 && (
         <div>
-          <strong className="lbl">저장하지 않은 변경</strong>
+          <strong className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">저장하지 않은 변경</strong>
           <ul className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-0 pl-[18px]">
             {ops.map((op, i) => (
               <li key={`${op.op}-${i}`} className="flex items-center gap-s2 gap-[6px]">
-                <span className="mono spacer">{describeOp(op, steps)}</span>
-                <button className="navlink" onClick={() => onRevert(i)}>
+                <span className="font-mono flex-1">{describeOp(op, steps)}</span>
+                <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={() => onRevert(i)}>
                   되돌리기
                 </button>
               </li>

@@ -81,14 +81,14 @@ export function StepPanelHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="steps-hd">
-      <div className="lbl">TEST STEPS</div>
-      <div className="spacer" />
+    <div className="flex-none h-[36px] flex items-center gap-s2 px-s3 bg-sunken border-b border-hair-2">
+      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">TEST STEPS</div>
+      <div className="flex-1" />
       {children}
       <span className={`${authoring === "ai" ? "chip ai" : "chip"} flex-none`}>
         작성 {authoring === "ai" ? "AI" : "RECORD"}
       </span>
-      <div className="num">{count}</div>
+      <div className="font-mono text-[12px] leading-none text-ink-3">{count}</div>
     </div>
   );
 }
@@ -122,7 +122,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   if (outcome === "pass") {
     return (
       <div aria-label={label} data-outcome="pass" style={box}>
-        <svg className="pass-ink" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
+        <svg className="text-pass" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
           <path d="M3 8.4l3.2 3.2L13 4.8" />
         </svg>
       </div>
@@ -132,7 +132,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   if (outcome === "fail") {
     return (
       <div aria-label={label} data-outcome="fail" style={box}>
-        <svg className="fail-ink" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
+        <svg className="text-fail" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
           <path d="M4 4l8 8M12 4l-8 8" />
         </svg>
       </div>
@@ -142,7 +142,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   if (outcome === "running") {
     return (
       <div aria-label={label} data-outcome="running" style={box}>
-        <svg className="run-ink" width="16" height="16" viewBox="0 0 16 16">
+        <svg className="text-run" width="16" height="16" viewBox="0 0 16 16">
           <circle cx="8" cy="8" r="4.5" fill="currentColor" />
         </svg>
       </div>
@@ -157,7 +157,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
         data-outcome="skipped"
         style={box}
       >
-        <svg className="dim" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="text-ink-3" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M4 4l4 4-4 4M9 4l4 4-4 4" />
         </svg>
       </div>
@@ -172,7 +172,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
         data-outcome="not_run"
         style={box}
       >
-        <svg className="dim" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="2.6 2.4">
+        <svg className="text-ink-3" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="2.6 2.4">
           <circle cx="8" cy="8" r="5" />
         </svg>
       </div>
@@ -187,7 +187,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
         data-outcome="recorded"
         style={box}
       >
-        <svg className="fail-ink" width="16" height="16" viewBox="0 0 16 16">
+        <svg className="text-fail" width="16" height="16" viewBox="0 0 16 16">
           <circle cx="8" cy="8" r="3.4" fill="currentColor" />
         </svg>
       </div>
@@ -316,7 +316,7 @@ export function StepList({
         */}
         {deleteTargets !== undefined && isShown(deleteTargets.allCapability) && (
           <>
-            <span className="why" data-delete-selection-count>
+            <span className="font-sans text-[11px] leading-[1.4] text-ink-3" data-delete-selection-count>
               {deleteSelectionCount(chosen.size)}
             </span>
             <ActionButton
@@ -489,7 +489,7 @@ function StepRow({
         형태 아이콘이다.
       */}
       {deleteTarget !== undefined && (
-        <div data-cell="check" className="srow-check">
+        <div data-cell="check" className="flex items-center justify-center">
           <input
             type="checkbox"
             data-row-action="step.toggleDeleteTarget"
@@ -506,12 +506,12 @@ function StepRow({
       )}
 
       {/* 칸 1 — 번호. **모든 국면에서 보인다** (FR-224 · S-08) */}
-      <div data-cell="number" className="n">
+      <div data-cell="number" className="font-mono text-[12px] font-medium leading-none text-ink-3 text-right">
         {stepNumber(step.index)}
       </div>
 
       {/* 칸 2 — 이름과 부속 정보 */}
-      <div className="t">
+      <div className="min-w-0 flex flex-col gap-[3px]">
         <button
           type="button"
           className="srow-name"
@@ -552,7 +552,7 @@ function StepRow({
                 </span>
               )}
 
-              <div data-cell="locator" className="loc">
+              <div data-cell="locator" className="font-mono text-[11px] leading-none text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
                 {locatorSummary(dsl)}
               </div>
 
@@ -568,7 +568,7 @@ function StepRow({
       </div>
 
       {/* 칸 3 — 소요 시간. 없으면 자리를 비운다 (FR-223) */}
-      <div data-cell="duration" className="d">
+      <div data-cell="duration" className="font-mono text-[11px] leading-none text-ink-3 text-right">
         {step.durationMs !== null ? `${step.durationMs} ms` : ""}
       </div>
 
@@ -589,7 +589,7 @@ function StepRow({
         반복하면 결말을 읽는 화면이 쓸 수 없는 조작으로 덮인다.
       */}
       {actions !== undefined && actions !== null && (
-        <div data-cell="ops" className="srow-ops">
+        <div data-cell="ops" className="flex items-center gap-s1">
           {actions}
         </div>
       )}

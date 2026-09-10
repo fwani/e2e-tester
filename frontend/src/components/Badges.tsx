@@ -62,11 +62,11 @@ export function StepTypeBadge({ type }: { type: string }) {
     hover: "HOVER",
     drag: "DRAG",
   };
-  return <span className="chip mono">{label[type] ?? type.toUpperCase()}</span>;
+  return <span className="inline-flex items-center gap-[5px] h-[19px] px-[6px] border border-hair-2 rounded-chip font-mono text-[10px] font-semibold leading-none tracking-[.06em] text-ink-2 bg-sunken-2">{label[type] ?? type.toUpperCase()}</span>;
 }
 
 export function TabBadge({ tab }: { tab: number }) {
   // FR-030a — 탭 참조. 최초 탭(0)은 표시하지 않아 화면을 어지럽히지 않는다.
   if (tab === 0) return null;
-  return <span className="chip warn mono">탭 {tab}</span>;
+  return <span className="inline-flex items-center gap-[5px] h-[19px] px-[6px] border rounded-chip font-mono text-[10px] font-semibold leading-none tracking-[.06em] border-warn text-warn bg-warn-t">탭 {tab}</span>;
 }

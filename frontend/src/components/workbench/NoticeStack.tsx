@@ -188,7 +188,7 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
           layout="gap-s3"
         >
           <div className="flex-1 min-w-0">
-            <div className="strong-sm">{n.message}</div>
+            <div className="font-sans text-[13px] font-semibold leading-none">{n.message}</div>
             {/*
               `nextAction` 이 별도 줄인 이유는 003 EC-004 다 — 문장에 뭉개면 "대상 앱에
               연결할 수 없습니다" 뒤에 와야 하는 "떠 있는지 확인하세요" 가 사라진다.

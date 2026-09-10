@@ -92,7 +92,7 @@ function Unavailable({
   return (
     <span
       data-disabled-reason={action}
-      className="why"
+      className="font-sans text-[11px] leading-[1.4] text-ink-3"
     >
       {state.reason}
     </span>
@@ -199,7 +199,7 @@ export function TargetPane({
           className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-row items-center gap-s4 py-0 px-[14px]"
         >
           <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
-            <div className="strong-sm">브라우저가 열려 있지 않습니다</div>
+            <div className="font-sans text-[13px] font-semibold leading-none">브라우저가 열려 있지 않습니다</div>
             <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
               값·순서·삭제는 브라우저 없이 고칠 수 있습니다. 요소를 다시 집거나 직접
               조작으로 Step 을 더하려면 브라우저가 필요합니다.

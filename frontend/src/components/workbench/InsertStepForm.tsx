@@ -76,7 +76,7 @@ export function InsertStepForm({
   return (
     <div className="bg-panel border border-hair rounded-base p-s3 flex flex-col gap-[10px]">
       <div className="flex items-center gap-s2">
-        <strong className="lbl">{atLabel} 앞에 추가</strong>
+        <strong className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{atLabel} 앞에 추가</strong>
         <div className="flex-1" />
         <Button size="sm" onClick={onCancel} aria-label="추가 닫기">
           닫기
@@ -84,7 +84,7 @@ export function InsertStepForm({
       </div>
 
       {!usable && capability.kind === "disabled" && (
-        <div className="why" role="status">
+        <div className="font-sans text-[11px] leading-[1.4] text-ink-3" role="status">
           {capability.reason}
         </div>
       )}
@@ -109,10 +109,10 @@ export function InsertStepForm({
       {/* 종류마다 필요한 값만 그린다 */}
       {(kind === "navigate" || kind === "assert_url") && (
         <label className="flex flex-col gap-s1">
-          <span className="lbl">주소</span>
+          <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">주소</span>
           <input
             aria-label="주소"
-            className="mono"
+            className="font-mono"
             value={url}
             disabled={!usable}
             maxLength={2000}
@@ -124,7 +124,7 @@ export function InsertStepForm({
 
       {kind === "assert_text" && (
         <label className="flex flex-col gap-s1">
-          <span className="lbl">기대 텍스트</span>
+          <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">기대 텍스트</span>
           <input
             aria-label="기대 텍스트"
             value={text}
@@ -138,7 +138,7 @@ export function InsertStepForm({
 
       {kind === "close_tab" && (
         <label className="flex flex-col gap-s1">
-          <span className="lbl">탭 번호</span>
+          <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">탭 번호</span>
           <input
             aria-label="탭 번호" className="font-mono w-[96px]"
             type="number"
@@ -170,7 +170,7 @@ export function InsertStepForm({
 
       {/* 무엇이 들어가는지 미리 보여준다 — 목록에 어떤 이름으로 뜰지가 여기서 정해진다 */}
       {ready && (
-        <div className="why" aria-label="넣을 Step 미리보기">
+        <div className="font-sans text-[11px] leading-[1.4] text-ink-3" aria-label="넣을 Step 미리보기">
           {manualStepLabel(spec)}
         </div>
       )}
@@ -206,7 +206,7 @@ export function InsertStepForm({
             </Button>
           ))}
         </div>
-        <div className="why" role="status">
+        <div className="font-sans text-[11px] leading-[1.4] text-ink-3" role="status">
           {BROWSER_ONLY_KIND_REASON}
         </div>
         {/* 갈 길을 같은 자리에 둔다 — 없는 방법을 가리키지 않는다 (006 E-03) */}
@@ -217,7 +217,7 @@ export function InsertStepForm({
           브라우저 열어 이 자리에서 멈추기
         </Button>
         {browserCapability.kind === "disabled" && (
-          <div className="why">{browserCapability.reason}</div>
+          <div className="font-sans text-[11px] leading-[1.4] text-ink-3">{browserCapability.reason}</div>
         )}
       </div>
     </div>

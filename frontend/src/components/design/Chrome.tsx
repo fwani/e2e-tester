@@ -37,19 +37,19 @@ export function BrandMark() {
           <path d="M5 8.2l2 2 4-4.4" />
         </svg>
       </div>
-      <div className="brand-name">ITB</div>
+      <div className="font-sans text-[15px] font-bold leading-none tracking-[-0.01em]">ITB</div>
     </div>
   );
 }
 
 /** 헤더 안에서 블록을 가르는 세로 막대. 18장 전부에서 동일하다. */
 export function HeaderDivider() {
-  return <div className="divider" />;
+  return <div className="w-px h-[20px] bg-hair-2 flex-none" />;
 }
 
 /** 헤더 층. 높이 56 — `ui-contract.md` §1-2 의 값이다. */
 export function HeaderBar({ children }: { children: ReactNode }) {
-  return <div className="hdr">{children}</div>;
+  return <div className="flex-none h-header flex items-center gap-[14px] px-s4 bg-panel border-b border-hair">{children}</div>;
 }
 
 /**
@@ -125,8 +125,8 @@ export function Artboard({
 export function Breadcrumb({ testId }: { testId: string }) {
   return (
     <div className="flex items-center text-ink-2 gap-s2">
-      <span className="lbl">테스트</span>
-      <span className="pill mono">{testId}</span>
+      <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">테스트</span>
+      <span className="h-control-sm inline-flex items-center gap-[7px] px-[9px] border border-hair-2 rounded-base bg-panel text-ink font-mono text-[12px] font-semibold leading-none shadow-none">{testId}</span>
     </div>
   );
 }

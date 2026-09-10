@@ -124,11 +124,11 @@ export function LocatorPriorityTable({
   return (
     <div className="flex flex-col gap-[6px]">
       <div className="flex items-center gap-s2">
-        <strong className="lbl">{title}</strong>
+        <strong className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{title}</strong>
         <span className={`${`chip ${usable >= 2 ? "pass" : "warn"}`} break-all`}>
           사용 가능 후보 {usable}
         </span>
-        <span className="spacer" />
+        <span className="flex-1" />
         {onRepick && (
           <Button size="sm" disabled={busy || repicking} onClick={onRepick}>
             {repicking ? "브라우저에서 클릭 대기 중…" : "다시 집기"}
@@ -148,7 +148,7 @@ export function LocatorPriorityTable({
         바탕으로 구분하는 규칙은 그대로다 — **순서 자체가 정보**이므로(원칙 IV) 어느
         줄이 쓰이는지 표에서 바로 읽혀야 한다.
       */}
-      <table className="table pane">
+      <table className="w-full border-collapse bg-panel border border-hair rounded-base [&_td]:px-s3 [&_td]:h-[40px] [&_td]:font-sans [&_td]:text-[12px] [&_td]:leading-none [&_tr+tr_td]:border-t [&_tr+tr_td]:border-hair">
         <thead>
           <tr>
             <th className="w-[20px]" />
@@ -172,7 +172,7 @@ export function LocatorPriorityTable({
                   {i + 1}
                 </td>
                 <td className={missing ? "dim" : "strong-sm"}>{row.label}</td>
-                <td className={`mono${missing ? " dim" : ""}`} >
+                <td className={`font-mono${missing ? " dim" : ""}`} >
                   {row.value ?? "수집되지 않음"}
                 </td>
                 <td className="pt-0 pr-[14px] pb-0 pl-0 text-right">

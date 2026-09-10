@@ -45,6 +45,7 @@ import {
 } from "./mirror/useMirrorInput";
 
 import { Button } from "../ui/Button";
+import { Chip } from "../ui/Chip";
 /**
  * 미리보기의 국면 (005 재점검 U-04-b).
  *
@@ -318,15 +319,15 @@ export function MirrorView({
 
       {degradedReason !== null && (
         <div className="flex items-center bg-sunken-2 gap-s2 py-[6px] px-[14px]">
-          <span className="chip warn mono">1 FPS</span>
-          <span className="muted">{degradedReason}</span>
+          <Chip tone="warn">1 FPS</Chip>
+          <span className="text-ink-2">{degradedReason}</span>
           {/*
             FR-345 — **왜 그것이 조작에 문제인지**를 말한다. 강등 사유(`degradedReason`)는
             서버가 보낸 「무엇이 일어났는가」이고, 이 문장은 「그것이 지금 조작에 어떤
             뜻인가」다. 둘은 다른 사실이며, 뒤엣것이 없으면 사용자는 1 FPS 라는 말을 읽고도
             자기 클릭이 왜 빗나갔는지 알 수 없다.
           */}
-          {controllable && <span className="why">{MIRROR_DEGRADED_WARNING}</span>}
+          {controllable && <span className="font-sans text-[11px] leading-[1.4] text-ink-3">{MIRROR_DEGRADED_WARNING}</span>}
           {/*
             FR-345·FR-353a — 강등 상태에서 **조작은 막지 않되** 정확하지 않을 수 있다는
             사실과 전환 수단을 **같은 자리에** 둔다. 사실만 말하고 수단을 다른 곳에 두면
@@ -477,12 +478,12 @@ export function MirrorView({
           `blockedReason` 이 그 네 경우를 한 문장으로 모은다.
         */}
         {!controllable && (
-          <span className="why" data-disabled-reason="mirror.control">
+          <span className="font-sans text-[11px] leading-[1.4] text-ink-3" data-disabled-reason="mirror.control">
             {blockedReason}
           </span>
         )}
         {controllable && (
-          <span className="muted">
+          <span className="text-ink-2">
             {focused ? MIRROR_KEYS_GO_TO_TARGET : MIRROR_FOCUS_HINT}
           </span>
         )}
@@ -531,7 +532,7 @@ function UseWindowAction({
         실제 창에서 조작하기
       </Button>
       {disabled && (
-        <span className="why" data-disabled-reason="mirror.useWindow">
+        <span className="font-sans text-[11px] leading-[1.4] text-ink-3" data-disabled-reason="mirror.useWindow">
           {capability.reason}
         </span>
       )}
@@ -560,14 +561,14 @@ function PhaseNotice({
       className={`${`row${phase === "manipulation" ? " bg-warn-t border border-warn-line rounded-base" : ""}`} relative grid place-items-center max-w-full max-h-full`}
     >
       {asBadge ? (
-        <span className="chip mono">{notice.title}</span>
+        <Chip>{notice.title}</Chip>
       ) : (
         <strong>
           {notice.title}
           {tabSuffix}
         </strong>
       )}
-      <span className="muted">
+      <span className="text-ink-2">
         {notice.detail}
         {asBadge ? `${tabSuffix}.` : ""}
       </span>

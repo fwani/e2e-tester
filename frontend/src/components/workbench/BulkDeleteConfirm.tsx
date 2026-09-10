@@ -50,13 +50,13 @@ export function BulkDeleteConfirm({
         "flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
       }
     >
-      <span className="strong-sm">{deleteManyConfirm(indices)}</span>
+      <span className="font-sans text-[13px] font-semibold leading-none">{deleteManyConfirm(indices)}</span>
       {!revertible && (
-        <span data-bulk-delete-irreversible className="why">
+        <span data-bulk-delete-irreversible className="font-sans text-[11px] leading-[1.4] text-ink-3">
           {BULK_DELETE_IRREVERSIBLE}
         </span>
       )}
-      <div className="spacer" />
+      <div className="flex-1" />
       <Button size="sm" onClick={onCancel} disabled={busy}>
         돌아가기
       </Button>

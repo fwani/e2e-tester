@@ -78,7 +78,7 @@ export function SecretValues({
     <main className="max-w-[720px] my-s6 mx-auto py-0 px-s4">
       <div className="flex items-center gap-s2 mb-s4">
         <h1 className="font-sans text-[20px] font-bold leading-[1.3] m-0">비밀 값</h1>
-        <span className="spacer" />
+        <span className="flex-1" />
         {onManageKeys && (
           <Button onClick={onManageKeys}>
             키 관리
@@ -117,8 +117,8 @@ export function SecretValues({
       )}
 
       {missing.length > 0 && (
-        <p className="line muted">
-          아직 값이 없는 변수: <span className="mono">{missing.join(", ")}</span>. 값이
+        <p className="font-sans text-[13px] leading-[1.4] text-ink-2">
+          아직 값이 없는 변수: <span className="font-mono">{missing.join(", ")}</span>. 값이
           없으면 해당 Step 이 사유와 함께 실패합니다.
         </p>
       )}
@@ -139,11 +139,11 @@ export function SecretValues({
           <ul className="font-sans text-[13px] leading-[1.4] m-0 pl-[18px]">
             {data?.names.map((entry) => (
               <li key={entry.name} className="flex items-center gap-s2">
-                <span className="mono">{entry.name}</span>
+                <span className="font-mono">{entry.name}</span>
                 <span className="chip pass">보관됨</span>
-                <span className="spacer" />
+                <span className="flex-1" />
                 <button
-                  className="navlink"
+                  className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
                   disabled={busy}
                   onClick={() => {
                     setBusy(true);
@@ -178,7 +178,7 @@ export function SecretValues({
           value={name}
           onChange={(e) => setName(e.target.value.toUpperCase())}
           placeholder="LOGIN_PASSWORD"
-          className="mono"
+          className="font-mono"
         />
         <label htmlFor="secret-value">값</label>
         <input

@@ -498,8 +498,8 @@ export function TestList({
       <HeaderBar>
         <BrandMark />
         <HeaderDivider />
-        <div className="row">
-          <span className="lbl">프로젝트</span>
+        <div className="flex items-center gap-s2">
+          <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">프로젝트</span>
           <span className="pill">{projectName}</span>
           {/*
             **프로젝트 목록으로 가는 길** (사용자 보고 · 2026-09-09 — 「프로젝트 목록으로
@@ -515,20 +515,20 @@ export function TestList({
             (DC-010).
           */}
           {onOpenProjects && (
-            <button className="navlink" onClick={onOpenProjects}>
+            <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onOpenProjects}>
               바꾸기
             </button>
           )}
         </div>
-        <div className="spacer" />
+        <div className="flex-1" />
         {/* 확정 디자인에 없는 화면들의 진입점. 눈에 띄지 않게 둔다 (DC-010). */}
         {onOpenSecrets && (
-          <button className="navlink" onClick={onOpenSecrets}>
+          <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onOpenSecrets}>
             비밀 값
           </button>
         )}
         {onOpenKeys && (
-          <button className="navlink" onClick={onOpenKeys}>
+          <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onOpenKeys}>
             키 관리
           </button>
         )}
@@ -605,7 +605,7 @@ export function TestList({
             <strong>읽지 못한 정의 파일이 있습니다.</strong>
             <ul className="mt-[6px] mx-0 mb-0 pl-[18px]">
               {data.problems.map((p) => (
-                <li key={p} className="num">
+                <li key={p} className="font-mono text-[12px] leading-none text-ink-3">
                   {p}
                 </li>
               ))}
@@ -653,7 +653,7 @@ export function TestList({
                 ))}
               </div>
 
-              <div className="spacer" />
+              <div className="flex-1" />
 
               <Button
                 size="sm"
@@ -792,7 +792,7 @@ export function TestList({
             tone={exported.warnings > 0 ? "warn" : "info"}
             onDismiss={() => setExported(null)}
           >
-            <div className="strong-sm">{exported.filename} 을 내려받았습니다.</div>
+            <div className="font-sans text-[13px] font-semibold leading-none">{exported.filename} 을 내려받았습니다.</div>
             {exported.warnings > 0 && (
               <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
                 시트 이름이 바뀌었거나 긴 칸이 잘린 곳이 {exported.warnings}건 있습니다.
@@ -806,7 +806,7 @@ export function TestList({
             {(exported.detail?.sheet_renames ?? []).length > 0 && (
               <div className="mt-[6px]" data-export-renames>
                 {(exported.detail?.sheet_renames ?? []).map((r) => (
-                  <div key={r.group_name} className="why">
+                  <div key={r.group_name} className="font-sans text-[11px] leading-[1.4] text-ink-3">
                     그룹 「{r.group_name}」은 「{r.sheet_name}」 시트가 됐습니다.
                   </div>
                 ))}
@@ -818,7 +818,7 @@ export function TestList({
                   잘린 칸 {(exported.detail?.truncations ?? []).length}건
                 </summary>
                 {(exported.detail?.truncations ?? []).map((t) => (
-                  <div key={`${t.test_id}-${t.column}`} className="why mono">
+                  <div key={`${t.test_id}-${t.column}`} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">
                     {t.test_id} · {t.column} — {t.dropped_lines}줄 생략
                   </div>
                 ))}
@@ -937,14 +937,14 @@ export function TestList({
                   }
                 />
               </div>
-              <div className="lbl">마지막 결과</div>
-              <div className="lbl">ID</div>
-              <div className="lbl">이름</div>
+              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">마지막 결과</div>
+              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">ID</div>
+              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">이름</div>
               <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 text-right">
                 STEP
               </div>
-              <div className="lbl">작성</div>
-              <div className="lbl">마지막 실행</div>
+              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">작성</div>
+              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">마지막 실행</div>
               <div />
             </div>
 
@@ -1048,11 +1048,11 @@ export function TestList({
             <div
               className="bg-sunken-2 border-t border-hair flex-[0_0_40px] flex items-center gap-[14px] py-0 px-[14px]"
             >
-              <span className="why">
+              <span className="font-sans text-[11px] leading-[1.4] text-ink-3">
                 테스트 {counts.all}개 · Step {totalSteps}개 · 마지막 전체 실행{" "}
                 {lastRun === null ? "없음" : relativeTime(lastRun)}
               </span>
-              <div className="spacer" />
+              <div className="flex-1" />
               {/*
                 헌법 V — 내보내기는 출시 전까지 갖춰야 하는 약속이고 MVP 에는 없다.
                 **감추지 않고 비활성으로 두고 이유를 붙인다** (006 ui-contract §2).
@@ -1060,7 +1060,7 @@ export function TestList({
               <Button size="sm" variant="off" disabled>
                 Playwright 로 내보내기
               </Button>
-              <span className="why">MVP 미지원</span>
+              <span className="font-sans text-[11px] leading-[1.4] text-ink-3">MVP 미지원</span>
             </div>
           </div>
         )}
@@ -1294,7 +1294,7 @@ function Row({
         <OutcomeChip outcome={row.outcome} running={live} />
       </div>
 
-      <div className="num">{row.id}</div>
+      <div className="font-mono text-[12px] leading-none text-ink-3">{row.id}</div>
 
       <div className="min-w-0 flex flex-col gap-[3px]">
         {renaming !== null ? (
@@ -1316,7 +1316,7 @@ function Row({
             </Button>
           </div>
         ) : (
-          <div className="name">{row.name}</div>
+          <div className="font-sans text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis">{row.name}</div>
         )}
 
         {/* FR-005 — 실패한 테스트는 실패 Step 번호와 메시지 요약을 인라인으로 보여준다. */}
@@ -1328,7 +1328,7 @@ function Row({
 
         {confirming && (
           <div className="flex items-center gap-s2 pt-s1">
-            <span className="num fail-ink">
+            <span className="font-mono text-[12px] leading-none text-ink-3 text-fail">
               「{row.name}」을 지웁니다. 되돌릴 수 없습니다.
             </span>
             <Button size="sm" variant="danger" disabled={busy} onClick={onDeleteConfirm}>
@@ -1349,7 +1349,7 @@ function Row({
         <AuthoringChip mode={row.authoring_mode} />
       </div>
 
-      <div className="meta">{live ? "실행 중" : relativeTime(row.last_run_at)}</div>
+      <div className="font-mono text-[11.5px] leading-none text-ink-3">{live ? "실행 중" : relativeTime(row.last_run_at)}</div>
 
       {/*
         005 FR-130 — 「실행」은 **항상** 두고, 결과가 있으면 「결과 보기」도 함께 둔다
@@ -1406,7 +1406,7 @@ function Row({
           createPortal(
             <div
               ref={menuBox}
-              className="pane"
+              className="bg-panel border border-hair rounded-base"
               data-row-menu={row.id}
               style={{
                 position: "fixed",
@@ -1564,7 +1564,7 @@ function EmptyProject({
       <div
         className="max-w-[720px] flex flex-col items-center gap-[22px] text-center"
       >
-        <svg width="52" height="52" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.6" className="dim">
+        <svg width="52" height="52" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-ink-3">
           <rect x="4" y="7" width="32" height="7" rx="1.5" />
           <rect x="4" y="17" width="32" height="7" rx="1.5" strokeDasharray="3.4 3" />
           <rect x="4" y="27" width="32" height="7" rx="1.5" strokeDasharray="3.4 3" />
@@ -1574,7 +1574,7 @@ function EmptyProject({
           <h2 className="font-sans text-[20px] font-bold leading-[1.3] m-0">
             아직 테스트가 없습니다
           </h2>
-          <div className="note">
+          <div className="font-sans text-[13.5px] leading-[1.7] text-ink-2">
             {draftCount > 0 ? (
               <span data-empty-with-drafts>
                 위의 초안 {draftCount}건을 녹화하면 테스트가 됩니다.
@@ -1595,24 +1595,24 @@ function EmptyProject({
 
         <div className="grid grid-cols-[1fr_1fr] gap-s3 w-full text-left">
           <div className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[9px]">
-            <div className="row">
-              <svg width="14" height="14" viewBox="0 0 16 16" className="fail-ink">
+            <div className="flex items-center gap-s2">
+              <svg width="14" height="14" viewBox="0 0 16 16" className="text-fail">
                 <circle cx="8" cy="8" r="5" fill="currentColor" />
               </svg>
-              <div className="subtitle">직접 녹화</div>
+              <div className="font-sans text-[13.5px] font-bold leading-none">직접 녹화</div>
             </div>
-            <div className="why">브라우저를 직접 조작해서 만듭니다. 키가 필요 없습니다.</div>
+            <div className="font-sans text-[11px] leading-[1.4] text-ink-3">브라우저를 직접 조작해서 만듭니다. 키가 필요 없습니다.</div>
             <Button variant="primary" onClick={onCreate} layout="justify-center">
               녹화로 시작하기
             </Button>
           </div>
 
           <div className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[9px]">
-            <div className="row">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="ai-ink">
+            <div className="flex items-center gap-s2">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-ai">
                 <path d="M8 2v3M8 11v3M2 8h3M11 8h3M4.2 4.2l2 2M9.8 9.8l2 2M11.8 4.2l-2 2M6.2 9.8l-2 2" />
               </svg>
-              <div className="subtitle ai-ink">AI 로 만들기</div>
+              <div className="font-sans text-[13.5px] font-bold leading-none text-ai">AI 로 만들기</div>
               {/* 확인이 끝난 뒤에만 표식을 붙인다 (DR-021) */}
               {aiReady !== null && (
                 <span
@@ -1623,7 +1623,7 @@ function EmptyProject({
                 </span>
               )}
             </div>
-            <div className="why">할 일을 말로 적으면 AI 가 브라우저에서 해봅니다.</div>
+            <div className="font-sans text-[11px] leading-[1.4] text-ink-3">할 일을 말로 적으면 AI 가 브라우저에서 해봅니다.</div>
             {/*
               쓸 수 없는 조작을 감추지 않는다 (006 ui-contract §2). 쓸 수 있으면
               **막지도 않는다** — 키가 있는데 키 등록으로 보내면 갈 곳이 없다.
@@ -1676,7 +1676,7 @@ function EmptyProject({
         )}
         {onImportPlan !== undefined && draftCount === 0 && (
           <div className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">
-            <div className="subtitle">이미 쓰던 설계서가 있나요?</div>
+            <div className="font-sans text-[13.5px] font-bold leading-none">이미 쓰던 설계서가 있나요?</div>
             <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-[10px]">
               엑셀 파일을 넣으면 그룹과 테스트 초안을 만듭니다. 초안은 하나씩 녹화하면
               테스트가 됩니다.
@@ -1718,9 +1718,9 @@ function ActiveSessionsBanner({
       data-active-sessions
       className="bg-warn-t border border-warn-line rounded-base py-s3 px-[14px] flex flex-col gap-[10px]"
     >
-      <div className="row">
-        <strong className="strong-sm">진행 중인 세션이 있습니다</strong>
-        <div className="spacer" />
+      <div className="flex items-center gap-s2">
+        <strong className="font-sans text-[13px] font-semibold leading-none">진행 중인 세션이 있습니다</strong>
+        <div className="flex-1" />
         {/*
           005 FR-169 (U-17) — 배너가 실제 상태를 따라간다.
 

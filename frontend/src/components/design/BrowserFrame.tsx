@@ -31,7 +31,7 @@ function WindowDots() {
   return (
     <div className="flex gap-s1" aria-hidden>
       {[0, 1, 2].map((i) => (
-        <span key={i} className="dot" />
+        <span key={i} className="w-[8px] h-[8px] rounded-full bg-hair-2" />
       ))}
     </div>
   );
@@ -55,7 +55,7 @@ export function BrowserFrame({
         className="bg-sunken border-b border-hair-2 text-ink-2 flex-[0_0_30px] flex items-center gap-s2 py-0 px-[10px]"
       >
         <WindowDots />
-        <div className="addr">{url}</div>
+        <div className="flex-1 h-[19px] flex items-center px-s2 bg-panel">{url}</div>
         <span className={`chip ${badge.tone}`.trimEnd()}>{badge.label}</span>
       </div>
       {/*

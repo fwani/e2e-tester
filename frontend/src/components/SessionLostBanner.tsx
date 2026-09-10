@@ -37,8 +37,8 @@ export function SessionLostBanner({
       className="bg-fail-t border border-fail-line rounded-base p-[14px] flex flex-col gap-[10px]"
     >
       <div className="flex items-center gap-s2">
-        <strong className="strong-sm fail-ink">브라우저 세션이 유실됐습니다</strong>
-        <span className="spacer" />
+        <strong className="font-sans text-[13px] font-semibold leading-none text-fail">브라우저 세션이 유실됐습니다</strong>
+        <span className="flex-1" />
         {onClose && (
           <Button size="sm" variant="quiet" onClick={onClose}>
             닫기

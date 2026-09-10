@@ -187,9 +187,9 @@ export function ImportPreview({
       <HeaderBar>
         <BrandMark />
         <HeaderDivider />
-        <span className="subtitle">엑셀에서 가져오기</span>
-        <div className="spacer" />
-        <span className="why mono">{plan.file_name}</span>
+        <span className="font-sans text-[13.5px] font-bold leading-none">엑셀에서 가져오기</span>
+        <div className="flex-1" />
+        <span className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">{plan.file_name}</span>
       </HeaderBar>
 
       <div className="py-[20px] px-[28px] flex flex-col gap-s4">
@@ -201,7 +201,7 @@ export function ImportPreview({
 
         {/* ── 무엇이 만들어지는가 ─────────────────────────────────────── */}
         <div data-import-summary className="bg-run-t border border-run rounded-base py-s3 px-[14px]">
-          <div className="strong-sm">
+          <div className="font-sans text-[13px] font-semibold leading-none">
             그룹 {liveGroups}개, 테스트 초안 {willCreate}건을 만듭니다.
           </div>
           <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
@@ -230,7 +230,7 @@ export function ImportPreview({
         {plan.warnings.length > 0 && (
           <div data-import-warnings className="bg-warn-t border border-warn-line rounded-base py-s3 px-[14px]">
             {plan.warnings.map((w) => (
-              <div key={w} className="why">
+              <div key={w} className="font-sans text-[11px] leading-[1.4] text-ink-3">
                 {w}
               </div>
             ))}
@@ -243,10 +243,10 @@ export function ImportPreview({
             <h2 className="font-sans text-[13px] font-semibold leading-none m-0">
               시트 {plan.sheets.length}개
             </h2>
-            <span className="why" data-sheet-on-count>
+            <span className="font-sans text-[11px] leading-[1.4] text-ink-3" data-sheet-on-count>
               {onCount}개 켜짐
             </span>
-            <div className="spacer" />
+            <div className="flex-1" />
             {/*
               **한 번에 켜고 끈다.** 이 화면은 시트 200개를 받을 수 있다(이 파일 머리말).
               행마다 체크 상자만 두면 「이 시트 하나만 가져오기」에 199번의 클릭이 든다 —
@@ -276,7 +276,7 @@ export function ImportPreview({
               `scope` 를 붙인다 — 없으면 화면 낭독기가 칸을 읽을 때 어느 열인지 말할 수
               없고, 「가져오기 / USER / 40」 같은 값만 흐른다.
             */}
-            <thead className="grid-head">
+            <thead data-grid-head className="bg-sunken border-b border-hair-2">
               <tr>
                 <th scope="col" className="py-[6px] px-s2 w-[44px]">가져오기</th>
                 <th scope="col" className="py-[6px] px-s2">시트</th>
@@ -316,9 +316,9 @@ export function ImportPreview({
                   <td className="py-[6px] px-s2">{sheet.sheet_name}</td>
                   <td className="py-[6px] px-s2">
                     {!isOn(sheet) ? (
-                      <span className="why">가져오지 않음</span>
+                      <span className="font-sans text-[11px] leading-[1.4] text-ink-3">가져오지 않음</span>
                     ) : !usable(sheet) ? (
-                      <span className="why">아래에서 열을 짝지어 주세요</span>
+                      <span className="font-sans text-[11px] leading-[1.4] text-ink-3">아래에서 열을 짝지어 주세요</span>
                     ) : sheet.needs_prefix ? (
                       /*
                         접두어를 읽어내지 못한 시트 (FR-022a). **시스템이 만들어내지
@@ -340,7 +340,7 @@ export function ImportPreview({
                         className="w-full"
                       />
                     ) : (
-                      <span className="mono">{sheet.prefix}</span>
+                      <span className="font-mono">{sheet.prefix}</span>
                     )}
                   </td>
                   <td className="py-[6px] px-s2 text-right">
@@ -401,7 +401,7 @@ export function ImportPreview({
                                         }))
                                       }
                                     />
-                                    <span className="why mono">{sampleRow.row}</span>
+                                    <span className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">{sampleRow.row}</span>
                                   </label>
                                 </td>
                                 {sampleRow.cells.slice(0, 8).map((cell, i) => (
@@ -465,7 +465,7 @@ export function ImportPreview({
                       </details>
                     )}
                     {sheet.name_differs && (
-                      <div className="why" data-name-differs={sheet.sheet_name}>
+                      <div className="font-sans text-[11px] leading-[1.4] text-ink-3" data-name-differs={sheet.sheet_name}>
                         이미 있는 그룹 「{sheet.existing_group_name}」을 씁니다. 그룹 이름은
                         바꾸지 않습니다.
                       </div>
@@ -476,7 +476,7 @@ export function ImportPreview({
                           번호가 바뀐 행 {sheet.renumbered.length}건
                         </summary>
                         {sheet.renumbered.map((r) => (
-                          <div key={`${r.row}-${r.from}`} className="why mono">
+                          <div key={`${r.row}-${r.from}`} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">
                             {r.row}행: {r.from} → {r.to}
                           </div>
                         ))}
@@ -502,7 +502,7 @@ export function ImportPreview({
             </summary>
             <div className="mt-[6px]">
               {plan.skipped.map((s) => (
-                <div key={`${s.sheet_name}-${s.row}`} className="why">
+                <div key={`${s.sheet_name}-${s.row}`} className="font-sans text-[11px] leading-[1.4] text-ink-3">
                   {s.sheet_name} {s.row}행 — {SKIP_REASON[s.reason]}
                 </div>
               ))}
@@ -533,18 +533,18 @@ export function ImportPreview({
           </Button>
           {/* 전부 끄면 만들 것이 없다 (FR-020d). 막고, 왜 막혔는지 말한다. */}
           {nothingChosen && (
-            <span className="why fail-ink" data-nothing-chosen>
+            <span className="font-sans text-[11px] leading-[1.4] text-ink-3 text-fail" data-nothing-chosen>
               가져올 시트를 하나도 고르지 않았습니다.
             </span>
           )}
           {!nothingChosen && needMapping.length > 0 && (
-            <span className="why" data-needs-mapping-count>
+            <span className="font-sans text-[11px] leading-[1.4] text-ink-3" data-needs-mapping-count>
               열을 짝지어야 하는 시트 {needMapping.length}개가 있습니다. 그대로 두면
               건너뜁니다.
             </span>
           )}
           {!nothingChosen && asking.length > 0 && (
-            <span className="why">
+            <span className="font-sans text-[11px] leading-[1.4] text-ink-3">
               접두어를 물어야 하는 시트 {asking.length}개 중 {answered}개 답했습니다. 비워 둔
               시트는 건너뜁니다.
             </span>
@@ -650,7 +650,7 @@ export function ImportDoneNotice({
 
   return (
     <Toast mark="data-import-done" tone={noise > 0 ? "warn" : "info"} onDismiss={onDismiss}>
-      <div className="strong-sm">
+      <div className="font-sans text-[13px] font-semibold leading-none">
         그룹 {groups}개, 테스트 초안 {drafts}건을 만들었습니다.
       </div>
 
@@ -675,7 +675,7 @@ export function ImportDoneNotice({
             번호가 바뀐 행 {result.renumbered.length}건
           </summary>
           {result.renumbered.map((r) => (
-            <div key={`${r.row}-${r.from}`} className="why mono">
+            <div key={`${r.row}-${r.from}`} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">
               {r.row}행: {r.from} → {r.to}
             </div>
           ))}
@@ -688,7 +688,7 @@ export function ImportDoneNotice({
             건너뛴 행 {result.skipped.length}건
           </summary>
           {result.skipped.map((s) => (
-            <div key={`${s.sheet_name}-${s.row}`} className="why">
+            <div key={`${s.sheet_name}-${s.row}`} className="font-sans text-[11px] leading-[1.4] text-ink-3">
               {s.sheet_name} {s.row}행 — {SKIP_REASON[s.reason]}
             </div>
           ))}

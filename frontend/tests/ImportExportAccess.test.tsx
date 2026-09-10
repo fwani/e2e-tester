@@ -224,7 +224,7 @@ describe("확정 자리", () => {
 describe("표 머리", () => {
   it("`scope` 를 붙인다 — 없으면 낭독기가 어느 열인지 말할 수 없다", () => {
     render(<ImportPreview plan={plan()} onCancel={() => {}} onDone={() => {}} />);
-    const heads = [...document.querySelectorAll("thead.grid-head th")];
+    const heads = [...document.querySelectorAll("thead[data-grid-head] th")];
     expect(heads.length).toBeGreaterThan(0);
     expect(heads.every((h) => h.getAttribute("scope") === "col")).toBe(true);
   });

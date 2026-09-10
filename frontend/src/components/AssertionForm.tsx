@@ -63,7 +63,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
     <div
       className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[10px]"
     >
-      <strong className="strong-sm">검증 Step 추가</strong>
+      <strong className="font-sans text-[13px] font-semibold leading-none">검증 Step 추가</strong>
 
       <fieldset className="border-0 p-0 m-0 grid gap-[6px]">
         <legend className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 p-0">
@@ -81,7 +81,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
             <span>
               {k.label}
               <br />
-              <span className="why">
+              <span className="font-sans text-[11px] leading-[1.4] text-ink-3">
                 {k.hint}
               </span>
             </span>

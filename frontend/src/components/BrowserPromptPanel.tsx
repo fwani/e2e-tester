@@ -79,8 +79,8 @@ export function BrowserPromptPanel({
         대상 페이지에서 온 값이다. React 가 텍스트 노드로 이스케이프한다 —
         `dangerouslySetInnerHTML` 을 쓰지 않는 것이 그 보증이다 (contracts §4).
       */}
-      {prompt.message !== "" && <span className="muted">{prompt.message}</span>}
-      {prompt.message === "" && <span className="muted">{promptDetail(prompt.kind)}</span>}
+      {prompt.message !== "" && <span className="text-ink-2">{prompt.message}</span>}
+      {prompt.message === "" && <span className="text-ink-2">{promptDetail(prompt.kind)}</span>}
 
       {prompt.kind === "dialog.prompt" && (
         <input
@@ -102,7 +102,7 @@ export function BrowserPromptPanel({
         />
       )}
 
-      <span className="spacer" />
+      <span className="flex-1" />
 
       {isFile && (
         <Button

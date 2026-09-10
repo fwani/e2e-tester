@@ -123,10 +123,10 @@ describe("보내는 길", () => {
 describe("자리가 흔들리지 않는가", () => {
   it("힌트 줄은 글자를 쳐도 사라지지 않는다", () => {
     mount();
-    const before = document.querySelectorAll("[data-blocked-answer] .hint-line").length;
+    const before = document.querySelectorAll("[data-blocked-answer] [data-hint-line]").length;
     expect(before).toBe(1);
     fireEvent.change(box(), { target: { value: "한 글자" } });
-    expect(document.querySelectorAll("[data-blocked-answer] .hint-line").length).toBe(1);
+    expect(document.querySelectorAll("[data-blocked-answer] [data-hint-line]").length).toBe(1);
   });
 
   it("여러 줄을 적을 자리를 준다", () => {

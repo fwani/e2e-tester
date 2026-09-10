@@ -237,10 +237,10 @@ export function Workbench({
         ) : (
           <Row layout="text-ink-3">
             <Lbl>테스트</Lbl>
-            <span className="pill mono">초안</span>
+            <span className="h-control-sm inline-flex items-center gap-[7px] px-[9px] border border-hair-2 rounded-base bg-panel text-ink font-mono text-[12px] font-semibold leading-none shadow-none">초안</span>
           </Row>
         )}
-        <div className="spacer" />
+        <div className="flex-1" />
         {headerActions}
       </HeaderBar>
 
@@ -291,7 +291,7 @@ export function Workbench({
 
           형태는 정본이 갖는다 (`tokens.css` 의 `.toast-layer`).
         */}
-        <div data-workbench-notice-layer className="toast-layer">
+        <div data-workbench-notice-layer className="fixed right-s4 z-[60] top-[calc(var(--h-header)+8px)] w-[min(420px,calc(100vw-32px))] max-h-[calc(100vh-var(--h-header)-24px)] overflow-y-auto flex flex-col gap-s2 pointer-events-none [&>*]:pointer-events-auto">
           {noticesExtra}
           <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
         </div>

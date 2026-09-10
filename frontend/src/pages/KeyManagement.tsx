@@ -147,7 +147,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
     <main className="max-w-[720px] my-s6 mx-auto py-0 px-s4">
       <div className="flex items-center gap-s2 mb-s4">
         <h1 className="font-sans text-[20px] font-bold leading-[1.3] m-0">키 관리</h1>
-        <span className="spacer" />
+        <span className="flex-1" />
         {onClose && (
           <Button onClick={onClose}>
             닫기
@@ -197,11 +197,11 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         </div>
 
         <dl className="m-0 grid grid-cols-[auto_1fr] gap-[6px]">
-          <dt className="muted">비밀키</dt>
+          <dt className="text-ink-2">비밀키</dt>
           <dd className="m-0">{status?.private_key_present ? "있음" : "없음"}</dd>
-          <dt className="muted">공개키</dt>
+          <dt className="text-ink-2">공개키</dt>
           <dd className="m-0">{status?.public_key_present ? "있음" : "없음"}</dd>
-          <dt className="muted">공개키 지문</dt>
+          <dt className="text-ink-2">공개키 지문</dt>
           <dd className="font-mono m-0 break-all">
             {status?.public_key_fingerprint ?? "—"}
           </dd>
@@ -209,7 +209,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
 
         <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
           키는 프로젝트 밖(
-          <span className="mono">{status?.key_dir ?? "…"}</span>
+          <span className="font-mono">{status?.key_dir ?? "…"}</span>
           )에 있습니다. 이 장비의 모든 ITB 프로젝트가 이 키 하나를 씁니다. 테스트 정의에는
           민감 값이 들어가지 않으며, 암호문은 각 프로젝트의 비밀 파일에만 있습니다.
         </p>
@@ -267,7 +267,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           </div>
           <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
             사람이 없는 실행(CI 등)에서는 백엔드 프로세스에 환경 변수{" "}
-            <span className="mono">{PASSPHRASE_ENV}</span> 로 공급할 수도 있습니다. 암호구
+            <span className="font-mono">{PASSPHRASE_ENV}</span> 로 공급할 수도 있습니다. 암호구
             자체를 없애려면 아래에서 키를 교체하세요 — 교체하면 보관된 민감 값은 다시
             입력해야 합니다.
           </p>
@@ -282,7 +282,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         >
           <div className="flex gap-s2 items-center">
             <strong>비밀키가 열려 있습니다</strong>
-            <span className="spacer" />
+            <span className="flex-1" />
             <Button disabled={busy} onClick={lock}>
               다시 잠그기
             </Button>
@@ -344,7 +344,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         <section
           className="bg-panel border border-hair rounded-base border-fail p-[14px] mt-s4 flex flex-col gap-[10px]"
         >
-          <strong className="fail-ink">키 교체·삭제</strong>
+          <strong className="text-fail">키 교체·삭제</strong>
           <p className="font-sans text-[13px] leading-[1.4] m-0">
             <b>되돌릴 수 없습니다.</b> 키는 장비에 하나이므로 <b>이 장비의 모든 ITB 프로젝트</b>
             에서 지금 키로 봉인된 민감 값이 전부 못 읽게 됩니다. 열려 있는 프로젝트의 암호문은
@@ -384,11 +384,11 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           </p>
 
           <label htmlFor="destroy-confirm">
-            확인 문구 — <span className="mono">{DESTROY_CONFIRM}</span> 를 그대로 입력하세요
+            확인 문구 — <span className="font-mono">{DESTROY_CONFIRM}</span> 를 그대로 입력하세요
           </label>
           <input
             id="destroy-confirm"
-            className="mono"
+            className="font-mono"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             placeholder={DESTROY_CONFIRM}

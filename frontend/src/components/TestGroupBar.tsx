@@ -39,7 +39,7 @@ export function TestGroupBar({
   if (realGroups.length === 0 && !adding) {
     return (
       <div className="flex justify-end mb-s2">
-        <button className="navlink" onClick={() => setAdding(true)} disabled={busy}>
+        <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={() => setAdding(true)} disabled={busy}>
           + 그룹
         </button>
       </div>
@@ -89,7 +89,7 @@ export function TestGroupBar({
         groups.some((g) => g.prefix === active && g.name !== null) && (
           <>
             <button
-              className="navlink"
+              className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
               disabled={busy}
               onClick={() =>
                 setEditing({
@@ -101,7 +101,7 @@ export function TestGroupBar({
               이름 바꾸기
             </button>
             <button
-              className="navlink"
+              className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
               disabled={busy}
               onClick={() =>
                 setRemoving(groups.find((g) => g.prefix === active) ?? null)
@@ -129,7 +129,7 @@ export function TestGroupBar({
           className="m-0 w-[180px]"
         />
       )}
-      <div className="spacer" />
+      <div className="flex-1" />
       {removing !== null && (
         <ConfirmDisband
           group={removing}
@@ -151,7 +151,7 @@ export function TestGroupBar({
           }}
         />
       ) : (
-        <button className="navlink" onClick={() => setAdding(true)} disabled={busy}>
+        <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={() => setAdding(true)} disabled={busy}>
           + 그룹
         </button>
       )}
@@ -204,9 +204,9 @@ function NewGroupForm({
         onChange={(e) => setPrefix(e.target.value)}
         className="m-0 w-[90px]"
       />
-      <span className="why">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
+      <span className="font-sans text-[11px] leading-[1.4] text-ink-3">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
       {prefix.trim() !== "" && !prefixOk && (
-        <span className="line fail-ink">
+        <span className="font-sans text-[13px] leading-[1.4] text-fail">
           {cleanPrefix === "TC"
             ? "TC 는 그룹 없는 테스트가 씁니다."
             : "영문 대문자·숫자 1~8자, 첫 글자는 영문입니다."}
@@ -218,7 +218,7 @@ function NewGroupForm({
         onClick={() => onSubmit(cleanPrefix, name.trim())} >
         만들기
       </Button>
-      <button className="navlink" onClick={onCancel} disabled={busy}>
+      <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onCancel} disabled={busy}>
         취소
       </button>
     </div>
@@ -253,7 +253,7 @@ function ConfirmDisband({
       role="status"
       className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] inline-flex items-center gap-s2 py-s1 px-s2"
     >
-      <span className="strong-sm">
+      <span className="font-sans text-[13px] font-semibold leading-none">
         「{group.name ?? group.prefix}」을(를) 없앨까요? 테스트 {group.count}개가 그룹 없음으로
         돌아가고 식별자가 TC-### 로 바뀝니다 · 지워지지 않습니다
       </span>

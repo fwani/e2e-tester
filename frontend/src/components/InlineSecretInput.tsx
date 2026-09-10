@@ -95,7 +95,7 @@ export function InlineSecretInput({
     <div
       className="bg-panel border border-hair rounded-base p-s3 flex flex-col gap-s2"
     >
-      <div className="lbl">비밀 값</div>
+      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">비밀 값</div>
 
       {hasKey === false && (
         <div

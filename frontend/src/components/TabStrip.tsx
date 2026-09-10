@@ -39,12 +39,12 @@ export function TabStrip({ tabs, mirroredTabIndex, maxTabs, onSelect }: TabStrip
           layout="max-w-[220px] overflow-hidden"
           title={tab.url}
         >
-          <span className="mono">탭 {tab.tab_index}</span>
+          <span className="font-mono">탭 {tab.tab_index}</span>
           {tab.title ? ` · ${tab.title}` : ""}
         </Button>
       ))}
-      <span className="spacer" />
-      <span className="dim mono">
+      <span className="flex-1" />
+      <span className="text-ink-3 font-mono">
         {open.length} / {maxTabs}
       </span>
     </div>

@@ -147,7 +147,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
         </div>
       )}
 
-      {bar.runSummary === null && <div className="spacer" />}
+      {bar.runSummary === null && <div className="flex-1" />}
 
       {/*
         조작 묶음. **줄어들 수 있어야 한다** (`0 1 auto` · `minWidth: 0`).

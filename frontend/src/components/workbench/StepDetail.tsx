@@ -185,8 +185,8 @@ export function StepDetail({
           (WorkbenchShell.test.tsx — 「배치는 껍데기만 바꾼다」). 번호와 종류는 바로
           아래 줄이 이미 말한다.
         */}
-        <div className="lbl">STEP 상세</div>
-        <div className="spacer" />
+        <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">STEP 상세</div>
+        <div className="flex-1" />
         <Button /*
             011 UC-011-10 — 닫는 조작은 **상세 안에** 있고 모든 국면에서 같은 자리다.
             표식을 두는 이유: 011 이 상세를 대상 앱 위로 옮겼으므로, 닫을 방법이 판 안에
@@ -207,7 +207,7 @@ export function StepDetail({
       <div className="p-s4 flex flex-col gap-s4">
         <div className="flex flex-col gap-[10px]">
           <div className="flex items-center gap-[10px]">
-            <div className="num">{stepNumber(detail.index)}</div>
+            <div className="font-mono text-[12px] leading-none text-ink-3">{stepNumber(detail.index)}</div>
             {step !== null && (
               <>
                 <span className="chip">{step.type.toUpperCase()}</span>
@@ -218,7 +218,7 @@ export function StepDetail({
             )}
           </div>
           {/* 640px 안에서 혼자 서므로 크게 둔다 */}
-          <div className="title">
+          <div className="font-sans text-[20px] font-bold leading-[1.3]">
             {step?.label ?? "이 결과 이후 정의에서 사라진 Step"}
           </div>
         </div>
@@ -246,14 +246,14 @@ export function StepDetail({
             id="reason-step-sensitive"
             data-action="step.markSensitive"
             data-disabled-reason="step.markSensitive"
-            className="why"
+            className="font-sans text-[11px] leading-[1.4] text-ink-3"
           >
             {SENSITIVE_NO_VALUE}
           </span>
         )}
 
         {step === null ? (
-          <p className="note">
+          <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2">
             이 실행에는 있었지만 지금 정의에는 없는 Step 입니다. 결말과 소요 시간은 그때의
             기록이고, 동작 종류·대상 요약·값은 보여줄 수 없습니다.
           </p>
@@ -287,7 +287,7 @@ export function StepDetail({
                       않습니다.
                     </p>
                     {canMarkSensitive && (
-                      <button className="navlink" onClick={() => setSecretOpen((v) => !v)}>
+                      <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={() => setSecretOpen((v) => !v)}>
                         {secretOpen ? "▾" : "▸"} 비밀 값 다시 넣기
                       </button>
                     )}
@@ -387,7 +387,7 @@ export function StepDetail({
           볼 이유가 있는 것인지 알 수 없다.
         */}
         {shot !== undefined && (
-          <div className="pane" data-step-shot>
+          <div className="bg-panel border border-hair rounded-base" data-step-shot>
             <div className="bg-sunken border-b border-hair-2 text-ink-2 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 h-[36px] flex items-center py-0 px-s3">
               이 STEP 이 끝난 화면
             </div>
@@ -425,14 +425,14 @@ export function StepDetail({
           정의는 "무엇으로 찾을 계획인가" 이고 이것은 "무엇을 시도했고 몇 개가 맞았나" 다.
         */}
         {detail.attempts !== null && detail.attempts.length > 0 && (
-          <div className="pane">
+          <div className="bg-panel border border-hair rounded-base">
             <div className="bg-sunken border-b border-hair-2 text-ink-2 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 h-[36px] flex items-center py-0 px-s3">
               시도한 LOCATOR (우선순위 순)
             </div>
             {detail.attempts.map((a, i) => (
               <div
                 key={`${a.candidate}-${i}`}
-                className={`row rule-top why mono${a.matched ? "" : " muted"}`}
+                className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] text-ink-3 font-mono${a.matched ? "" : " muted"}`}
               >
                 <span className="font-bold w-[84px]">
                   {a.candidate}
@@ -482,7 +482,7 @@ export function StepDetail({
 
         {step !== null && (
           <div>
-            <button className="navlink" onClick={() => setShowDsl((v) => !v)}>
+            <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={() => setShowDsl((v) => !v)}>
               {showDsl ? "▾" : "▸"} 테스트 DSL 미리보기
             </button>
             {showDsl && (
@@ -521,7 +521,7 @@ export function StepDetail({
             onRemedy={onRemedy}
             onRun={() => onRepick("target")}
             icon={
-              <svg className="fail-ink" width="15" height="15" viewBox="0 0 20 20">
+              <svg className="text-fail" width="15" height="15" viewBox="0 0 20 20">
                 <circle cx="10" cy="10" r="5" fill="currentColor" />
               </svg>
             }
