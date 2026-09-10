@@ -183,14 +183,7 @@ export function StepDetail({
       }}
     >
       <div
-        className="pane-hd"
-        style={{
-          flex: "0 0 44px",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "0 16px",
-        }}
+        className="bg-sunken border-b border-hair-2 text-ink-2 flex-[0_0_44px] flex items-center gap-s3 py-0 px-s4"
       >
         {/*
           머리 띠 문구는 두 배치에서 같다. 「STEP nn 편집」처럼 배치마다 다르게 쓰면

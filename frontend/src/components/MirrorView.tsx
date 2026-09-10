@@ -343,8 +343,7 @@ export function MirrorView({
       )}
 
       <div
-        className="sunken"
-        style={{ flex: 1, display: "grid", placeItems: "center", overflow: "hidden", minHeight: 0 }}
+        className="bg-sunken-2 flex-1 grid place-items-center overflow-hidden min-h-0"
       >
         {stoppedReason !== null ? (
           <p className="text-ink-2 text-center p-s5">
@@ -393,13 +392,6 @@ export function MirrorView({
               const next = event.relatedTarget as Node | null;
               if (next !== null && event.currentTarget.contains(next)) return;
               setFocused(false);
-            }}
-            style={{
-              position: "relative",
-              display: "grid",
-              placeItems: "center",
-              maxWidth: "100%",
-              maxHeight: "100%",
             }}
           >
             {/*
@@ -571,7 +563,7 @@ function PhaseNotice({
 
   return (
     <div
-      className={`row${phase === "manipulation" ? " tint-warn" : ""}`}
+      className={`${`row${phase === "manipulation" ? " bg-warn-t border border-warn-line rounded-base" : ""}`} relative grid place-items-center max-w-full max-h-full`}
     >
       {asBadge ? (
         <span className="chip mono">{notice.title}</span>

@@ -648,7 +648,7 @@ export function TestList({
                     onClick={() => setFilter(key)}
                   >
                     {FILTER_LABEL[key]}
-                    <span className={`num ${FILTER_INK[key]}`}>{counts[key]}</span>
+                    <span className={`${`num ${FILTER_INK[key]}`} ml-auto`}>{counts[key]}</span>
                   </Button>
                 ))}
               </div>
@@ -915,6 +915,7 @@ export function TestList({
         ) : (
           <div className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col overflow-hidden">
             <div
+              data-test-head
               className="thead"
               style={{
                 flex: "0 0 34px",
@@ -1047,14 +1048,7 @@ export function TestList({
 
             {/* 바닥 띠 — 프로젝트 전체의 규모와 마지막 실행. */}
             <div
-              className="tfoot"
-              style={{
-                flex: "0 0 40px",
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-                padding: "0 14px",
-              }}
+              className="bg-sunken-2 border-t border-hair flex-[0_0_40px] flex items-center gap-[14px] py-0 px-[14px]"
             >
               <span className="why">
                 테스트 {counts.all}개 · Step {totalSteps}개 · 마지막 전체 실행{" "}
@@ -1634,7 +1628,6 @@ function EmptyProject({
                 <span
                   className={aiReady.available ? "chip ai" : "chip warn"}
                   data-ai-ready={aiReady.available ? "yes" : "no"}
-                  style={{ marginLeft: "auto" }}
                 >
                   {aiReady.available ? "사용 가능" : "키 필요"}
                 </span>

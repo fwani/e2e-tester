@@ -26,7 +26,8 @@ describe("브라우저 요구는 미러 위에 쌓인다 — 옆에 서지 않�
       본문 컨테이너를 찾는 법: 머리 띠(`.pane-hd`)의 **다음 형제**다. 클래스나 순번으로
       찾으면 껍데기가 바뀔 때 검사가 조용히 다른 것을 재게 된다.
     */
-    const head = document.querySelector(".pane-hd");
+    // 015 — `.pane-hd` 가 유틸리티로 해체돼 셀렉터로 찾을 수 없다. 자리 표식을 붙였다.
+    const head = document.querySelector("[data-frame-head]");
     expect(head, "브라우저 껍데기의 머리 띠가 없다").not.toBeNull();
     const next = head!.nextElementSibling as HTMLElement | null;
     expect(next, "머리 띠 다음에 본문 컨테이너가 없다").not.toBeNull();

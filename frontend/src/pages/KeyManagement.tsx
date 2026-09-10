@@ -196,7 +196,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           )}
         </div>
 
-        <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: 6 }}>
+        <dl className="m-0 grid grid-cols-[auto_1fr] gap-[6px]">
           <dt className="muted">비밀키</dt>
           <dd className="m-0">{status?.private_key_present ? "있음" : "없음"}</dd>
           <dt className="muted">공개키</dt>

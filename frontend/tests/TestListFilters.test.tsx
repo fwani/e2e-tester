@@ -157,15 +157,20 @@ describe("표 머리와 행이 같은 격자를 쓴다 (FR-273 · V-08)", () => 
   it("렌더한 표 머리와 모든 행의 gridTemplateColumns 가 한 값이다", async () => {
     await renderList();
 
-    const head = document.querySelector<HTMLElement>(".thead");
+    // 015 — `.thead` 가 유틸리티로 해체됐다. 자리 표식으로 찾는다.
+    const head = document.querySelector<HTMLElement>("[data-test-head]");
     const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-test-row]"));
     expect(head, "표 머리를 찾지 못했다 — 선택자가 낡았다면 이 검사는 아무것도 세지 않는다").not.toBeNull();
     expect(rows.length, "행이 없으면 대조가 성립하지 않는다").toBeGreaterThan(0);
 
-    const shapes = new Set([
-      head!.style.gridTemplateColumns,
-      ...rows.map((r) => r.style.gridTemplateColumns),
-    ]);
+    // 015 — 격자가 인라인에서 `grid-cols-[…]` 유틸리티로 옮겨졌다. **묻는 것은
+    // 그대로다**: 표 머리와 모든 행이 **한 격자**를 쓰는가. 갈리면 열이 어긋난다.
+    const gridOf = (el: HTMLElement): string => {
+      if (el.style.gridTemplateColumns !== "") return el.style.gridTemplateColumns;
+      const m = /\bgrid-cols-\[([^\]]+)\]/.exec(el.className);
+      return m === null ? "" : (m[1] as string).replace(/_/g, " ");
+    };
+    const shapes = new Set([gridOf(head!), ...rows.map(gridOf)]);
     expect(
       [...shapes],
       `표 머리와 행의 격자가 갈렸다: ${[...shapes].join(" | ")}`,

@@ -15,7 +15,6 @@
  * 시각 언어가 아니다. 정본에 들이지 않는다 (FR-266).
  */
 import type { ReactNode } from "react";
-
 /**
  * 지금 이 미러가 무엇인지 (읽기 전용 · 녹화 중 · 일시정지 …).
  *
@@ -27,7 +26,6 @@ export interface ModeBadge {
   /** 정본의 `.chip` 변형. 빈 값이면 중립이다. */
   tone: "" | "pass" | "fail" | "warn" | "run" | "ai";
 }
-
 /** 주소 칸 왼쪽의 점 셋. 실제 브라우저를 뜻하는 관용 표기이며 조작이 아니다. */
 function WindowDots() {
   return (
@@ -53,8 +51,8 @@ export function BrowserFrame({
       className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col overflow-hidden"
     >
       <div
-        className="pane-hd"
-        style={{ flex: "0 0 30px", display: "flex", alignItems: "center", gap: 8, padding: "0 10px" }}
+        data-frame-head
+        className="bg-sunken border-b border-hair-2 text-ink-2 flex-[0_0_30px] flex items-center gap-s2 py-0 px-[10px]"
       >
         <WindowDots />
         <div className="addr">{url}</div>
