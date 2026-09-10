@@ -56,6 +56,27 @@ preflight 를 얹으면 **정본이 아닌 곳에서 온 리셋 값이 화면에
 
 리셋이 필요해지면 정본에 넣는다.
 
+## C-8 — 정본은 `layer(base)` 로 들인다
+
+```css
+@import "./tokens.css" layer(base);   /* ✅ */
+@import "./tokens.css";               /* ❌ 유틸리티가 전부 진다 */
+```
+
+**레이어에 속하지 않은 규칙은 CSS 레이어 규칙상 어떤 레이어보다도 이긴다.** 정본에는
+`button{…}`·`input,select,textarea{…}` 같은 요소 선택자 규칙이 있으므로, 레이어 밖에
+두면 `@layer utilities` 의 `bg-ink`·`h-control-sm` 이 그것들에 **진다.**
+
+그러면 부품에 유틸리티를 붙여도 적용되지 않는다. `<button className="bg-ink">` 가
+여전히 `var(--panel)` 배경으로 그려진다. **015 가 하려는 일이 통째로 막힌다.**
+
+정본 파일은 한 글자도 고치지 않는다 — 들이는 방식만 바꾼 것이다 (C-2 유지).
+
+**대가**: 요소 규칙의 상태 스타일(`button:hover` 등)도 base 로 내려가 유틸리티에 진다.
+그것을 부품으로 옮기는 것이 [state-styles.md](state-styles.md) 의 목록이고, 아직 해체되지
+않은 의미 클래스도 함께 내려가므로 LC-5(한 요소는 한 체계만)가 규칙이 아니라 **필수**가
+된다. 가드 G-C 가 감시한다.
+
 ## C-7 — 이름 충돌
 
 Tailwind 유틸리티와 이름이 같은 의미 클래스가 있으면 같은 이름이 두 가지를 뜻하게 된다.
@@ -76,3 +97,4 @@ Tailwind 유틸리티와 이름이 같은 의미 클래스가 있으면 같은 �
 | G-A3 | `tokens.css` 무변경 | 이 기능의 커밋에서 정본 구획이 바뀜 |
 | G-A4 | preflight 미포함 | 산출 CSS 에 preflight 흔적 |
 | G-C2 | 이름 충돌 | 정본 클래스명 == Tailwind 유틸리티명 |
+| G-A5 | 정본이 `layer(base)` 로 들어옴 | `@import "./tokens.css"` 에 `layer(base)` 가 없음 |

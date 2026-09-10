@@ -180,7 +180,7 @@ className="btn sm quiet"                (이미 겪었다)
 - [ ] T035 [P] [US2] `frontend/src/pages/KeyManagement.tsx` (28곳) 전환 + `KeyManagement.test.tsx`
 - [ ] T036 [P] [US2] `frontend/src/components/workbench/StepDetail.tsx` (24곳) 전환 + `DetailPlacement.test.tsx`(단언 6개)·`DetailBlocksMirrorInput.test.tsx`(단언 6개). **상세 층이 목록을 덮지 않는 자리·폭 640px 이 계약이다**
 - [ ] T037 [P] [US2] `frontend/src/pages/DraftList.tsx` (17곳) 전환 + `DraftList.test.tsx`·`DraftsFirstOnEmpty.test.tsx`
-- [ ] T038 [P] [US2] `frontend/src/pages/EditView.tsx` (15곳) · `frontend/src/components/TestBulkConfirm.tsx` (15곳) 전환 + `EditEntryPoints`·`DeleteSelection`·`TestBulkConfirm` 관련 테스트
+- [ ] T038 [P] [US2] **`button.ghost` 1곳 포함** (T070). `frontend/src/pages/EditView.tsx` (15곳) · `frontend/src/components/TestBulkConfirm.tsx` (15곳) 전환 + `EditEntryPoints`·`DeleteSelection`·`TestBulkConfirm` 관련 테스트
 - [ ] T039 [P] [US2] `frontend/src/pages/SecretValues.tsx` (13곳) · `frontend/src/components/InlineSecretInput.tsx` (7곳) 전환 + `InlineSecret.test.tsx`·`SensitiveAcrossPhases.test.tsx`. **마스킹 표현이 보존되어야 한다** (헌법 보안 요건)
 - [ ] T040 [P] [US2] `frontend/src/components/workbench/PhaseBar.tsx` (13곳) 전환 + `PhaseBarWidth.test.tsx`(단언 11개)·`PhaseContext.test.tsx`. 줄임표·`min-width:0` 처리가 계약이다
 - [ ] T041 [P] [US2] `frontend/src/components/workbench/ActionPalette.tsx` (13곳) · `ActionButton.tsx` (5곳) 전환 + `CapabilityUI.test.tsx`
@@ -188,8 +188,8 @@ className="btn sm quiet"                (이미 겪었다)
 - [ ] T043 [P] [US2] `frontend/src/components/workbench/TargetPane.tsx` (11곳) 전환 + `TargetPane.test.tsx`. **이 파일 주석이 「1회차에 `pane.style.flex` 를 넣었고 그것이 크기까지 고정했다」는 실패를 기록하고 있다 — 읽고 같은 함정을 피한다**
 - [ ] T044 [P] [US2] `frontend/src/components/MirrorView.tsx` (11곳) 전환 + `MirrorView.test.tsx`·`MirrorInput.test.ts`. **미러 스케일이 런타임 계산값이면 예외 등록 대상이다** (LC-3)
 - [ ] T045 [P] [US2] `frontend/src/components/workbench/StepList.tsx` (10곳) · `StepRowOps.tsx` (1곳) 전환 + `StepRowLayout`·`StepRowActions`·`StepNumberConsistency`
-- [ ] T046 [P] [US2] `frontend/src/components/LocatorPriorityTable.tsx` (9곳) · `AssertionForm.tsx` (9곳) 전환 + `LocatorPriorityTable.test.tsx`
-- [ ] T047 [P] [US2] `frontend/src/pages/SessionScreen.tsx` (7곳) · `frontend/src/components/TestGroupBar.tsx` (7곳) · `SessionLostBanner.tsx` (6곳) 전환 + `TestGroups.test.tsx`·`ActiveSessions.test.tsx`
+- [ ] T046 [P] [US2] **`button.secondary` 1곳·`.bare` 1곳 포함** (T070). `frontend/src/components/LocatorPriorityTable.tsx` (9곳) · `AssertionForm.tsx` (9곳) 전환 + `LocatorPriorityTable.test.tsx`
+- [ ] T047 [P] [US2] **`button.secondary` 4곳 포함** (T070). `frontend/src/pages/SessionScreen.tsx` (7곳) · `frontend/src/components/TestGroupBar.tsx` (7곳) · `SessionLostBanner.tsx` (6곳) 전환 + `TestGroups.test.tsx`·`ActiveSessions.test.tsx`
 - [ ] T048 [P] [US2] 워크벤치 잔여 소형 전환 — `NoticeStack.tsx`(4) · `BulkDeleteConfirm.tsx`(1) + `NoticesAreToasts.test.tsx`
 - [ ] T049 [P] [US2] 디자인 껍데기 전환 — `frontend/src/components/design/Chrome.tsx`(4) · `BrowserFrame.tsx`(4) + `WindowFallback.test.tsx`
 - [ ] T050 [P] [US2] 잔여 소형 전환 — `StepEditFields.tsx`(4) · `ResultView.tsx`(3) · `StartingIndicator.tsx`(3) · `PacingControl.tsx`(3) · `ErrorNotice.tsx`(3) · `ComposeView.tsx`(2) · `LiveConnectionBanner.tsx`(2) · `BrowserPromptPanel.tsx`(1) · `App.tsx`(1) + 관련 테스트
@@ -223,7 +223,12 @@ className="btn sm quiet"                (이미 겪었다)
 - [ ] T061 [P] `frontend/src/theme/tokens.css` 머리주석 중 「화면 코드는 `className` 으로 소비하며 값을 다시 적지 않는다」가 사실과 달라졌으므로 갱신을 요청하는 항목을 만든다. **이 파일은 `extract_canon.py` 의 출력이므로 직접 고치지 않는다** — 주석 생성 부분을 스크립트에서 고치거나, 파생 구획에 주석을 남긴다 (C-2)
 - [ ] T062 [P] `specs/015-tailwind-css-migration/contracts/class-migration.md` 를 최종 상태로 확정한다 — 109행 전부 「완료」, 미상 0건 (SC-009)
 - [ ] T063 L2 대조를 실행한다 — `scripts/design_compare_ba.py --compare`. 불일치가 있으면 각각 의도된 것인지 판단한다. **의도되지 않은 불일치가 하나라도 있으면 전환이 끝난 것이 아니다** (SC-001)
-- [ ] T064 배포 산출물 크기를 기준선과 비교한다 — `npm run build` 후 CSS 크기가 T001 기록보다 늘지 않았는지 (SC-007). 늘었으면 원인을 찾는다. 비교 결과를 `specs/015-tailwind-css-migration/baseline.md` 에 기록
+- [ ] T064 배포 산출물 크기를 기준선과 비교한다 — `npm run build` 후 CSS 크기가 T001 기록(15.04 kB)보다 늘지 않았는지 (SC-007).
+      **미달일 때 할 일** (T071 이 정의): (1) 산출 CSS 에서 무엇이 늘었는지 **지목한다** —
+      남은 의미 클래스인지, 유틸리티인지, 레이어 폴리필인지. (2) 남은 의미 클래스 때문이면
+      그것은 전환이 안 끝난 것이므로 **크기 문제가 아니라 진행 문제**로 보고한다.
+      (3) 전환이 끝났는데도 늘었으면 **기준선을 고칠지 코드를 고칠지 판단해 이유와 함께
+      기록한다.** 판정 불가로 넘기지 않는다. 결과를 `baseline.md` 에 기록
 - [ ] T065 단언 총수를 기준선과 비교한다 — `node frontend/scripts/count-assertions.mjs`. **줄었으면 그 자리를 지목하고 이유를 댄다** (헌법 Quality Gate 4). 줄어든 채로 넘어가지 않는다
 - [ ] T066 손 검증을 등록하고 돌린다 (**사람이 판정한다** · `docs/PENDING-HUMAN-VERIFICATION.md` §15) — [quickstart.md](quickstart.md) §4 의 H-1~H-8. **H-1(국면별 세로 배분)과 H-7(키보드 순회)이 가장 중요하다**. 미판정이면 미완료로 보고하며, 통과로 가정하지 않는다
 
@@ -316,7 +321,7 @@ Task: "모달·층 군을 ui/Modal.tsx 로 해체 (T022)"
 
 - [X] T067 요소 선택자 규칙의 **상태 스타일을 전수 조사해 각 부품으로 이관한다** per FR-009 (contradicts) — **HIGH.** `tokens.css` 를 `layer(base)` 로 내린 결과, 요소 규칙이 유틸리티에 진다. 실측 9곳: `button:hover`·`button:active`·`button:disabled`·`input:disabled`·`input.phase-name:hover/:focus/:disabled`·`.tabs > button:disabled`·`.segmented > button:disabled`. **`ui/Button` 에서 실제로 hover 가 사라졌고 손으로 고쳤다** — 화면은 멀쩡해 보이고 테스트도 통과해서, 마우스를 올려야만 보였다. 남은 부품마다 반복될 구조적 함정이므로 목록을 만들어 놓고 부품을 만든다
 - [X] T068 **초점 링 보존을 가드로 세운다** per SC-008 (missing) — **HIGH.** 전역 `:focus-visible { outline: 2px solid var(--run) }` 도 base 레이어에 있다. 부품이나 화면에 `outline-none` 계열이 하나라도 들어가면 초점 링이 사라지고, 그것이 SC-008 이 0건을 요구하는 회귀다. **키보드 사용자에게만 보이므로 눈으로는 잡히지 않는다.** `frontend/tests/FocusRing.test.tsx` 로 `outline-none`·`focus:outline-none` 사용을 막고, 정당한 예외는 `theme/exceptions.ts` 에 이유와 함께 등록하게 한다
-- [ ] T069 `layer(base)` 결정을 계약으로 승격한다 per plan: 핵심 결정 (partial) — 지금은 `src/ui/Button.tsx` 주석에만 있다. [contracts/tailwind-theme.md](contracts/tailwind-theme.md) C-6 옆에 조항으로 적고, **정본을 레이어 밖으로 되돌리면 유틸리티가 전부 진다**는 사실과 그 근거(요소 규칙이 레이어 밖에서 모든 레이어를 이긴다)를 남긴다. 가드로도 확인한다 — `tailwind.css` 의 정본 `@import` 에 `layer(base)` 가 있는가
-- [ ] T070 `button.secondary`·`button.ghost`·`button.danger` 의 사용처 8곳 전환과 정의 삭제를 화면별 작업에 넣는다 per FR-006 (missing) — `ui/Button` 에 variant 는 만들었으나(T015) 교체가 어느 작업에도 없다. `.secondary` 7곳·`.ghost` 1곳이며, 해당 화면 작업(T031~T050)의 설명에 명시한다
-- [ ] T071 SC-007 미달 시의 대응을 정의한다 per SC-007 (partial) — 현재 CSS 는 21.10 kB 로 기준선 15.04 kB 를 넘는다. T064 는 **판정만** 하고 미달일 때 무엇을 할지가 없다. 공존이 끝나면 순감할 것으로 보지만 그것은 예상이다. 미달이 남으면 (1) 원인을 산출물에서 지목하고 (2) 기준선을 고칠지 코드를 고칠지 판단해 기록한다. **판정 불가로 넘기지 않는다**
-- [ ] T072 [P] [quickstart.md](quickstart.md) §2-2 의 검사를 고친다 per quickstart §2-2 (contradicts) — `grep -nE '…(?!var\()'` 는 PCRE lookahead 라 macOS 기본 grep 에서 동작하지 않는다. 절차가 조용히 0건을 내 통과처럼 보인다. 이미 같은 것을 검사하는 가드가 있으므로(`TailwindThemeLiteral.test.ts`) 그것을 부르도록 바꾼다
+- [X] T069 `layer(base)` 결정을 계약으로 승격한다 per plan: 핵심 결정 (partial) — 지금은 `src/ui/Button.tsx` 주석에만 있다. [contracts/tailwind-theme.md](contracts/tailwind-theme.md) C-6 옆에 조항으로 적고, **정본을 레이어 밖으로 되돌리면 유틸리티가 전부 진다**는 사실과 그 근거(요소 규칙이 레이어 밖에서 모든 레이어를 이긴다)를 남긴다. 가드로도 확인한다 — `tailwind.css` 의 정본 `@import` 에 `layer(base)` 가 있는가
+- [X] T070 `button.secondary`·`button.ghost`·`button.danger` 의 사용처 8곳 전환과 정의 삭제를 화면별 작업에 넣는다 per FR-006 (missing) — `ui/Button` 에 variant 는 만들었으나(T015) 교체가 어느 작업에도 없다. `.secondary` 7곳·`.ghost` 1곳이며, 해당 화면 작업(T031~T050)의 설명에 명시한다
+- [X] T071 SC-007 미달 시의 대응을 정의한다 per SC-007 (partial) — 현재 CSS 는 21.10 kB 로 기준선 15.04 kB 를 넘는다. T064 는 **판정만** 하고 미달일 때 무엇을 할지가 없다. 공존이 끝나면 순감할 것으로 보지만 그것은 예상이다. 미달이 남으면 (1) 원인을 산출물에서 지목하고 (2) 기준선을 고칠지 코드를 고칠지 판단해 기록한다. **판정 불가로 넘기지 않는다**
+- [X] T072 [P] [quickstart.md](quickstart.md) §2-2 의 검사를 고친다 per quickstart §2-2 (contradicts) — `grep -nE '…(?!var\()'` 는 PCRE lookahead 라 macOS 기본 grep 에서 동작하지 않는다. 절차가 조용히 0건을 내 통과처럼 보인다. 이미 같은 것을 검사하는 가드가 있으므로(`TailwindThemeLiteral.test.ts`) 그것을 부르도록 바꾼다

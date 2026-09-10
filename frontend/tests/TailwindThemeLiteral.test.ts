@@ -82,6 +82,22 @@ describe("G-A1 — Tailwind 테마에는 값이 없다", () => {
     ).toEqual([]);
   });
 
+  it("정본을 `layer(base)` 로 들인다 (계약 C-8)", () => {
+    // 레이어 밖의 규칙은 어떤 레이어보다도 이긴다. 정본에는 `button{…}` 같은 요소
+    // 선택자 규칙이 있으므로, 레이어 밖에 두면 @layer utilities 가 거기에 **진다** —
+    // 부품에 bg-ink 를 붙여도 var(--panel) 로 그려지고, 015 가 통째로 막힌다.
+    //
+    // 이 한 줄이 빠지면 화면은 「그냥 예전 그대로」로 보인다. 무엇이 잘못됐는지
+    // 알려 주는 것이 아무것도 없으므로 검사로 못 박는다.
+    const m = /@import\s+"\.\/tokens\.css"([^;]*);/.exec(css);
+    expect(m, "tailwind.css 가 정본을 @import 하지 않는다").not.toBeNull();
+    expect(
+      (m?.[1] ?? "").includes("layer(base)"),
+      "정본을 layer(base) 로 들이지 않았다. 유틸리티가 요소 규칙에 져서\n" +
+        "부품에 클래스를 붙여도 적용되지 않는다 (계약 C-8).",
+    ).toBe(true);
+  });
+
   it("참조하는 정본 토큰이 실제로 `tokens.css` 에 있다", () => {
     const tokens = tokensCss;
     const defined = new Set(Array.from(tokens.matchAll(/(--[a-zA-Z0-9_-]+)\s*:/g), (m) => m[1]));

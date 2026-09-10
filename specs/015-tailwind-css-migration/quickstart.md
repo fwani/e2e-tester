@@ -135,13 +135,18 @@ git diff <전환 시작 커밋> -- frontend/src/theme/tokens.css
 
 **기대**: 차이 없음. 정본은 이 기능에서 손대지 않는다.
 
-### 2-2. Tailwind 테마에 값이 없음 (계약 C-1, 가드 G-A1)
+### 2-2. Tailwind 테마에 값이 없음 (계약 C-1·C-8, 가드 G-A1·G-A5)
 
 ```bash
-grep -nE '^\s*--[a-z-]+:\s*(?!var\()' frontend/src/theme/tailwind.css
+cd frontend && npm test -- --run TailwindThemeLiteral
 ```
 
-**기대**: 출력 없음. 모든 오른쪽이 `var(정본토큰)` 이다.
+**기대**: 통과. 네 가지를 본다 — `@theme` 선언을 실제로 읽었는가, 오른쪽이 전부
+`var(정본토큰)` 인가, 정본을 `layer(base)` 로 들였는가, 참조하는 토큰이 실재하는가.
+
+> **왜 `grep` 이 아닌가**: 1회차 절차는 `grep -nE '…(?!var\()'` 였다. 그것은 PCRE
+> lookahead 라 **macOS 기본 grep 에서 동작하지 않는다** — 오류 없이 0건을 내고, 절차는
+> 통과한 것처럼 보인다. 검사할 수 없는 절차는 지켜지지 않는 규칙과 같다.
 
 ### 2-3. L1 대조가 여전히 통과 (기존 장치)
 
