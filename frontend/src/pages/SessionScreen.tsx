@@ -2129,10 +2129,23 @@ export function SessionScreen({
     setBusy(true);
     void sessions
       .save(sessionId, effectiveSaveName.trim(), view.test_id === null ? saveGroup : null)
-      .then(() => {
+      .then((saved) => {
         // 005 FR-158 (U-09) — 성공 시 이전 오류 배너를 걷어낸다.
         setError(null);
-        setNotice(null);
+        /*
+          014 FR-032 — 초안의 희망 번호를 주지 못했으면 **그 사실을 말한다.**
+          사용자의 설계서에는 원래 번호가 적혀 있다. 조용히 다른 번호를 주면
+          제품과 설계서가 어긋난 것을 나중에 발견하게 된다.
+        */
+        const taken = saved.desired_id_taken;
+        setNotice(
+          taken
+            ? localError(
+                `${taken.wanted} 은 이미 쓰이고 있어 ${taken.assigned} 로 저장했습니다.`,
+                "설계서의 번호를 맞추려면 「번호 정리」를 쓰거나 설계서를 고치세요.",
+              )
+            : null,
+        );
         return resync();
       })
       .catch((exc: unknown) => setError(describeError(exc)))

@@ -857,7 +857,7 @@ export const sessions = {
    * 이미 저장된 테스트의 그룹을 바꾸는 것은 `tests.move` 가 원자성 규약과 함께 한다.
    */
   save: (id: string, name: string, group?: string | null) =>
-    post<Test>(`/api/sessions/${id}/save`, group ? { name, group } : { name }),
+    post<SavedTestView>(`/api/sessions/${id}/save`, group ? { name, group } : { name }),
   tabs: (id: string) => get<TabsResponse>(`/api/sessions/${id}/tabs`),
   setMirrorTab: (id: string, tabIndex: number) =>
     post<TabsResponse>(`/api/sessions/${id}/mirror-tab`, { tab_index: tabIndex }),
@@ -1266,3 +1266,21 @@ export const drafts = {
   get: (id: string) => get<DraftDetail>(`/api/drafts/${encodeURIComponent(id)}`),
   remove: (id: string) => del<void>(`/api/drafts/${encodeURIComponent(id)}`),
 };
+
+/**
+ * 저장 응답 (014).
+ *
+ * 저장된 테스트에 **이번 저장에서만 참인 사실 둘**이 얹혀 온다. 저장 형식에는 들어가지
+ * 않는다 — 서버가 디스크에는 `Test` 를 쓴다.
+ */
+export interface SavedTestView extends Test {
+  /** 어느 초안에서 왔는가. 초안에서 출발한 세션에만 있다. */
+  from_draft?: string | null;
+  /**
+   * 희망 번호를 주지 못했을 때만 실린다 (FR-032).
+   *
+   * **조용히 다른 번호를 주지 않는다.** 사용자의 설계서에는 원래 번호가 적혀 있고,
+   * 어긋났다는 사실을 지금 말하지 않으면 나중에 발견하게 된다.
+   */
+  desired_id_taken?: { wanted: string; assigned: string } | null;
+}

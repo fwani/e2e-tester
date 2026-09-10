@@ -166,22 +166,22 @@ Recorder·Runner·Generator 는 건드리지 않으므로 그쪽 단위 테스�
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T062 [P] [US3] `backend/tests/contract/test_drafts_api.py` — 초안 목록·조회·삭제, `suggested_instruction` 이 실리는지, `desired_id_available` 판정, 404 `DRAFT_NOT_FOUND`
-- [ ] T063 [P] [US3] `backend/tests/integration/test_draft_to_test.py` — 희망 번호가 비어 있을 때 그 번호를 받는지, 이미 쓰였을 때 다른 번호를 받고 **그 사실이 응답에 실리는지**, 저장 성공 시 초안이 사라지고 버렸을 때 남는지 (FR-032·FR-033)
-- [ ] T064 [P] [US3] `backend/tests/integration/test_draft_no_number_reservation.py` — 초안이 있는 상태에서 새 테스트를 만들거나 「번호 정리」를 돌려도 충돌하지 않는지. 초안은 번호를 예약하지 않는다 ([quickstart.md](quickstart.md) §3 회귀 3·4)
-- [ ] T065 [P] [US3] `backend/tests/e2e/test_us9_draft_recording.py` — 초안에서 세션을 열어 지시문이 채워져 있고, 녹화·저장까지 가서 테스트가 되고, 다시 내보내면 `테스트항목`·`수행자` 가 살아 있는 한 흐름 (**왕복이 이어지는지**)
+- [X] T062 [P] [US3] `backend/tests/contract/test_drafts_api.py` — 초안 목록·조회·삭제, `suggested_instruction` 이 실리는지, `desired_id_available` 판정, 404 `DRAFT_NOT_FOUND`
+- [X] T063 [P] [US3] `backend/tests/integration/test_draft_to_test.py` — 희망 번호가 비어 있을 때 그 번호를 받는지, 이미 쓰였을 때 다른 번호를 받고 **그 사실이 응답에 실리는지**, 저장 성공 시 초안이 사라지고 버렸을 때 남는지 (FR-032·FR-033)
+- [X] T064 [P] [US3] `backend/tests/integration/test_draft_no_number_reservation.py` — 초안이 있는 상태에서 새 테스트를 만들거나 「번호 정리」를 돌려도 충돌하지 않는지. 초안은 번호를 예약하지 않는다 ([quickstart.md](quickstart.md) §3 회귀 3·4)
+- [X] T065 [P] [US3] `backend/tests/e2e/test_us9_draft_recording.py` — 초안에서 세션을 열어 지시문이 채워져 있고, 녹화·저장까지 가서 테스트가 되고, 다시 내보내면 `테스트항목`·`수행자` 가 살아 있는 한 흐름 (**왕복이 이어지는지**)
 - [X] T066 [P] [US3] `frontend/tests/DraftList.test.tsx` — 초안 목록이 남은 수를 보이고 녹화 시작·삭제가 되는지
-- [ ] T067 [P] [US3] `frontend/tests/DraftToRecording.test.tsx` — 초안에서 시작한 작성 화면의 지시문 칸이 채워져 있고 고칠 수 있는지, 희망 번호를 못 받았을 때 알림이 뜨는지
+- [X] T067 [P] [US3] `frontend/tests/DraftToRecording.test.tsx` — 초안에서 시작한 작성 화면의 지시문 칸이 채워져 있고 고칠 수 있는지, 희망 번호를 못 받았을 때 알림이 뜨는지
 
 ### Implementation for User Story 3
 
-- [ ] T068 [US3] `backend/src/itb/api/routes/sessions.py` 의 `CreateSessionRequest` 에 `draft_id` 를 더한다. `mode == "ai"` 일 때만 허용하고, `ai_instruction` 이 함께 오면 그것을 쓴다. **새 상태나 전이를 만들지 않는다** ([contracts/rest-api.md](contracts/rest-api.md) §5)
-- [ ] T069 [US3] `backend/src/itb/api/routes/sessions.py` 의 `SessionWork` 가 `draft_id` 를 저장까지 들고 가게 한다
-- [ ] T070 [US3] `backend/src/itb/api/routes/sessions.py` 의 저장 경로를 고친다 — 초안의 희망 번호를 부여하려 시도하고, 실패하면 `allocate_test_id` 로 받고 `desired_id_taken` 을 응답에 싣는다. 저장이 성공하면 초안 파일을 지운다 (FR-032·FR-033)
-- [ ] T071 [US3] 저장 시 초안의 `description`·`actor` 를 `Test` 에 옮긴다. 이것이 없으면 다시 내보낼 때 두 칸이 빈다 — 왕복이 끊긴다 ([research.md](research.md) R11)
+- [X] T068 [US3] `backend/src/itb/api/routes/sessions.py` 의 `CreateSessionRequest` 에 `draft_id` 를 더한다. `mode == "ai"` 일 때만 허용하고, `ai_instruction` 이 함께 오면 그것을 쓴다. **새 상태나 전이를 만들지 않는다** ([contracts/rest-api.md](contracts/rest-api.md) §5)
+- [X] T069 [US3] `backend/src/itb/api/routes/sessions.py` 의 `SessionWork` 가 `draft_id` 를 저장까지 들고 가게 한다
+- [X] T070 [US3] `backend/src/itb/api/routes/sessions.py` 의 저장 경로를 고친다 — 초안의 희망 번호를 부여하려 시도하고, 실패하면 `allocate_test_id` 로 받고 `desired_id_taken` 을 응답에 싣는다. 저장이 성공하면 초안 파일을 지운다 (FR-032·FR-033)
+- [X] T071 [US3] 저장 시 초안의 `description`·`actor` 를 `Test` 에 옮긴다. 이것이 없으면 다시 내보낼 때 두 칸이 빈다 — 왕복이 끊긴다 ([research.md](research.md) R11)
 - [X] T072 [P] [US3] `frontend/src/pages/DraftList.tsx` 를 새로 만든다 — 초안 목록, 남은 수, 출처(파일·시트·행), 희망 번호와 그 가용 여부, 녹화 시작·삭제
 - [X] T073 [US3] `frontend/src/pages/ComposeView.tsx` 가 초안에서 온 경우 지시문을 미리 채우고 고칠 수 있게 한다 (FR-031)
-- [ ] T074 [US3] 희망 번호를 주지 못했을 때 사용자에게 알린다 — 조용히 다른 번호를 주면 안 된다 (FR-032)
+- [X] T074 [US3] 희망 번호를 주지 못했을 때 사용자에게 알린다 — 조용히 다른 번호를 주면 안 된다 (FR-032)
 
 **Checkpoint**: 세 P1 이야기가 모두 동작한다. 스프레드시트에서 실제 테스트 자산까지 이어진다.
 
