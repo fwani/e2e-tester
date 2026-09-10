@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import pathlib
+import shutil
 
 import pytest
 
@@ -155,3 +156,133 @@ def test_a_trashed_project_does_not_come_back_in_the_listing(store: pathlib.Path
 
     entries, _warning = registry.list_projects()
     assert entries == []
+
+
+# ─── 013 테스트 하나를 휴지통으로 (FR-437 · research R6) ───────────────────
+
+
+def make_repo(store: pathlib.Path) -> ProjectRepository:  # noqa: F821
+    from itb.domain.test_case import Project
+    from itb.storage.repository import ProjectRepository
+
+    return ProjectRepository.create(
+        workspace(store) / "프로젝트",
+        Project(name="프로젝트", default_start_url="https://x.test/"),
+    )
+
+
+def add_test(repo: ProjectRepository, test_id: str, name: str) -> None:  # noqa: F821
+    from itb.domain.step import NavigateStep
+    from itb.domain.test_case import AuthoringMode, Test
+
+    repo.write_test(
+        Test(
+            id=test_id,
+            name=name,
+            authoring_mode=AuthoringMode.RECORD,
+            start_url="https://x.test/",
+            steps=[NavigateStep(id="step-01", label="열기", url="https://x.test/")],
+        )
+    )
+
+
+def add_result(repo: ProjectRepository, test_id: str) -> pathlib.Path:  # noqa: F821
+    runs = repo.paths.run_dir(test_id)
+    runs.mkdir(parents=True, exist_ok=True)
+    (runs / "result.json").write_text('{"결과": true}', encoding="utf-8")
+    return runs
+
+
+def test_a_trashed_test_keeps_its_original_file_name(store: pathlib.Path) -> None:
+    """**되돌리기가 한 걸음이 되는 근거다** (013 research R6).
+
+    이름을 바꿔 두면 되돌리려는 사람이 원래 이름을 알아내야 한다.
+    """
+    from itb.storage.trash import move_test_to_trash
+
+    repo = make_repo(store)
+    add_test(repo, "USER-001", "로그인")
+    original = repo.find_test_path("USER-001")
+    assert original is not None
+
+    trashed = move_test_to_trash(repo, "USER-001")
+
+    assert trashed.definition.name == original.name
+    assert trashed.definition.exists()
+    assert not original.exists()
+
+
+def test_the_run_artifacts_go_with_it(store: pathlib.Path) -> None:
+    """FR-437 — 정의와 산출물이 한 자리에 묶여야 되돌릴 수 있다."""
+    from itb.storage.trash import TRASHED_DEFINITION_DIR, move_test_to_trash
+
+    repo = make_repo(store)
+    add_test(repo, "USER-001", "로그인")
+    runs = add_result(repo, "USER-001")
+
+    trashed = move_test_to_trash(repo, "USER-001")
+
+    assert not runs.exists()
+    assert (trashed.entry / TRASHED_DEFINITION_DIR / "result.json").exists()
+
+
+def test_deleting_the_same_test_twice_keeps_both(store: pathlib.Path) -> None:
+    """FR-437c — 여러 개를 한 번에 옮겨도 서로 덮어쓰지 않는다."""
+    from itb.storage.trash import move_test_to_trash
+
+    repo = make_repo(store)
+    add_test(repo, "USER-001", "로그인")
+    first = move_test_to_trash(repo, "USER-001")
+    add_test(repo, "USER-001", "로그인")
+
+    second = move_test_to_trash(repo, "USER-001")
+
+    assert first.entry != second.entry
+    assert first.definition.exists()
+    assert second.definition.exists()
+
+
+def test_restore_puts_everything_back(store: pathlib.Path) -> None:
+    """복수 삭제의 되돌림이 이것에 기댄다 (test_moves 의 3번 걸음)."""
+    from itb.storage.trash import move_test_to_trash, restore_test
+
+    repo = make_repo(store)
+    add_test(repo, "USER-001", "로그인")
+    runs = add_result(repo, "USER-001")
+    before = sorted(p.name for p in repo.paths.tests_dir.iterdir())
+
+    trashed = move_test_to_trash(repo, "USER-001")
+    restore_test(repo, trashed)
+
+    assert sorted(p.name for p in repo.paths.tests_dir.iterdir()) == before
+    assert (runs / "result.json").read_text(encoding="utf-8") == '{"결과": true}'
+    assert not trashed.entry.exists(), "빈 항목 디렉터리가 남았다"
+
+
+def test_a_failed_move_leaves_the_test_where_it_was(
+    store: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FR-432 의 전제 — 실패하면 원래 자리다. 그래야 되돌림이 성립한다."""
+    from itb.storage.trash import TrashError, move_test_to_trash
+
+    repo = make_repo(store)
+    add_test(repo, "USER-001", "로그인")
+    add_result(repo, "USER-001")
+
+    calls = {"n": 0}
+    real_move = shutil.move
+
+    def fail_on_definition(src: str, dst: str) -> object:
+        calls["n"] += 1
+        if calls["n"] == 2:  # 산출물은 성공, 정의에서 실패
+            msg = "권한이 없습니다"
+            raise OSError(13, msg)
+        return real_move(src, dst)
+
+    monkeypatch.setattr("itb.storage.trash.shutil.move", fail_on_definition)
+
+    with pytest.raises(TrashError):
+        move_test_to_trash(repo, "USER-001")
+
+    assert repo.find_test_path("USER-001") is not None
+    assert (repo.paths.run_dir("USER-001") / "result.json").exists(), "산출물이 되돌려지지 않았다"

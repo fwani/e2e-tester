@@ -78,16 +78,16 @@ Web app 구조. 백엔드 `backend/src/itb/`, 프런트엔드 `frontend/src/`.
 
 ### 백엔드 — 휴지통
 
-- [ ] T015 [P] [US1] `backend/src/itb/storage/trash.py` 에 `move_test_to_trash(repo, test_id)` 를 더한다 — `<trash_dir>/<시각>-<ID>-<이름>/` 안에 정의 `.yaml` 을 **원래 파일명 그대로** 두고 산출물을 `runs/` 로 옮긴다 ([data-model.md](data-model.md) §4). 원래 파일명을 유지하는 것이 요점이다: 되돌리기가 「이 `.yaml` 을 `tests/` 로 옮긴다」 한 걸음이 된다. 자리 잡기는 기존 `allocate_trash_path` 를 쓴다
-- [ ] T016 [P] [US1] `backend/src/itb/storage/trash.py` 에 `restore_test(entry, repo)` 를 더한다 — **되돌림에 필요하다** (T013 의 3번 걸음). 사용자용 복구 조작이 아니라 실패 롤백용이다
-- [ ] T017 [P] [US1] `backend/tests/unit/test_trash.py` 를 개정한다 — 테스트 항목이 정의와 산출물을 함께 담는지, 원래 파일명이 유지되는지, 같은 테스트를 두 번 지워도 덮어쓰지 않는지(FR-437c), `restore_test` 가 원래 자리로 정확히 되돌리는지
+- [X] T015 [P] [US1] `backend/src/itb/storage/trash.py` 에 `move_test_to_trash(repo, test_id)` 를 더한다 — `<trash_dir>/<시각>-<ID>-<이름>/` 안에 정의 `.yaml` 을 **원래 파일명 그대로** 두고 산출물을 `runs/` 로 옮긴다 ([data-model.md](data-model.md) §4). 원래 파일명을 유지하는 것이 요점이다: 되돌리기가 「이 `.yaml` 을 `tests/` 로 옮긴다」 한 걸음이 된다. 자리 잡기는 기존 `allocate_trash_path` 를 쓴다
+- [X] T016 [P] [US1] `backend/src/itb/storage/trash.py` 에 `restore_test(entry, repo)` 를 더한다 — **되돌림에 필요하다** (T013 의 3번 걸음). 사용자용 복구 조작이 아니라 실패 롤백용이다
+- [X] T017 [P] [US1] `backend/tests/unit/test_trash.py` 를 개정한다 — 테스트 항목이 정의와 산출물을 함께 담는지, 원래 파일명이 유지되는지, 같은 테스트를 두 번 지워도 덮어쓰지 않는지(FR-437c), `restore_test` 가 원래 자리로 정확히 되돌리는지
 
 ### 백엔드 — 라우트
 
-- [ ] T018 [US1] `backend/src/itb/api/routes/tests.py` 의 `DELETE /{test_id}` 를 **휴지통 이동**으로 바꾸고 응답을 204 → 200 `{id, name, trashed_to}` 로 한다 ([contracts/api-contract.md](contracts/api-contract.md) §2). **204 를 버리는 것이 이 계약의 핵심 변경이다** — 옮겨진 위치를 돌려주지 않으면 되돌릴 수 없고, 그러면 「파괴하지 않는다」가 사용자에게는 삭제와 구별되지 않는다. 실행 중이면 409 `TEST_IN_USE`. T015 에 의존
-- [ ] T019 [US1] `backend/src/itb/api/routes/tests.py` 에 `POST /api/tests:delete` 를 더한다 — 요청 `{test_ids}`, 응답 `{deleted: [{id, name, trashed_to}]}`. T013 의 규약을 쓴다. 실패는 `TEST_DELETE_FAILED`(되돌렸다) 와 `TEST_DELETE_PARTIAL`(되돌리지도 못했다)로 **구별해서** 답한다 (api-contract §3). T013·T015 에 의존
-- [ ] T020 [P] [US1] `backend/tests/contract/test_tests_bulk_delete_api.py` 를 만든다 — 셋을 지우면 셋만 사라지는지, `trashed_to` 자리에 정의가 온전한지(SC-631), 한 줄 삭제와 복수 삭제의 **결과가 같은지**(SC-632), 이미 없는 식별자가 섞였을 때(FR-436)
-- [ ] T021 [P] [US1] `backend/tests/contract/test_tests_bulk_delete_api.py` 에 실패 경로를 더한다 — 하나가 실행 중이면 **하나도 지워지지 않고** 409 이며 **세션이 살아 있는지**(FR-432·FR-433·SC-624·SC-630), 옮기다 실패하면 전부 원래 자리인지, 되돌리기 실패가 `TEST_DELETE_PARTIAL` 로 구별되는지
+- [X] T018 [US1] `backend/src/itb/api/routes/tests.py` 의 `DELETE /{test_id}` 를 **휴지통 이동**으로 바꾸고 응답을 204 → 200 `{id, name, trashed_to}` 로 한다 ([contracts/api-contract.md](contracts/api-contract.md) §2). **204 를 버리는 것이 이 계약의 핵심 변경이다** — 옮겨진 위치를 돌려주지 않으면 되돌릴 수 없고, 그러면 「파괴하지 않는다」가 사용자에게는 삭제와 구별되지 않는다. 실행 중이면 409 `TEST_IN_USE`. T015 에 의존
+- [X] T019 [US1] `backend/src/itb/api/routes/tests.py` 에 `POST /api/tests:delete` 를 더한다 — 요청 `{test_ids}`, 응답 `{deleted: [{id, name, trashed_to}]}`. T013 의 규약을 쓴다. 실패는 `TEST_DELETE_FAILED`(되돌렸다) 와 `TEST_DELETE_PARTIAL`(되돌리지도 못했다)로 **구별해서** 답한다 (api-contract §3). T013·T015 에 의존
+- [X] T020 [P] [US1] `backend/tests/contract/test_tests_bulk_delete_api.py` 를 만든다 — 셋을 지우면 셋만 사라지는지, `trashed_to` 자리에 정의가 온전한지(SC-631), 한 줄 삭제와 복수 삭제의 **결과가 같은지**(SC-632), 이미 없는 식별자가 섞였을 때(FR-436)
+- [X] T021 [P] [US1] `backend/tests/contract/test_tests_bulk_delete_api.py` 에 실패 경로를 더한다 — 하나가 실행 중이면 **하나도 지워지지 않고** 409 이며 **세션이 살아 있는지**(FR-432·FR-433·SC-624·SC-630), 옮기다 실패하면 전부 원래 자리인지, 되돌리기 실패가 `TEST_DELETE_PARTIAL` 로 구별되는지
 
 ### 프런트엔드
 

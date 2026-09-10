@@ -263,7 +263,13 @@ def test_get_rename_delete_roundtrip(opened: TestClient, tmp_path: pathlib.Path)
     assert renamed.status_code == 200
     assert renamed.json()["name"] == "새 이름"
 
-    assert opened.delete("/api/tests/TC-001").status_code == 204
+    # 013 FR-437 — 삭제는 **휴지통으로 옮긴다.** 204 를 버리고 옮겨진 자리를 돌려주는
+    # 것이 그 결정의 표현이다: 위치를 모르면 되돌릴 수 없고, 그러면 「파괴하지 않는다」가
+    # 사용자에게는 삭제와 구별되지 않는다.
+    removed = opened.delete("/api/tests/TC-001")
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["trashed_to"]
+    assert pathlib.Path(removed.json()["trashed_to"]).is_dir()
     assert opened.get("/api/tests/TC-001").status_code == 404
 
 

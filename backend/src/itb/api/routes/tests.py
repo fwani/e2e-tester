@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import pathlib
 from datetime import UTC, datetime
 from typing import Annotated, Literal, Self
@@ -46,7 +47,12 @@ from itb.execution.step_edits import (
     reorder_steps,
     update_step,
 )
-from itb.storage.repository import ProjectError, ResultUnreadableError
+from itb.storage import test_moves, trash
+from itb.storage.repository import (
+    ProjectError,
+    ProjectRepository,
+    ResultUnreadableError,
+)
 from itb.storage.yaml_io import DefinitionError
 
 router = APIRouter(prefix="/api/tests", tags=["tests"])
@@ -96,6 +102,34 @@ class RenameRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=200)
+
+
+class DeleteTestsRequest(BaseModel):
+    """복수 삭제 (013 FR-426·FR-432 · contracts/api-contract.md §3).
+
+    **`DELETE` 에 본문을 싣지 않는다.** 프록시·클라이언트에 따라 벗겨지고, 쿼리에 실으면
+    목록이 길 때 URL 길이에 걸리며 삭제 대상이 접근 로그에 남는다. `POST …:delete` 는
+    011 이 Step 복수 삭제에서 정한 형태이고 이 저장소가 이미 쓴다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    test_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(min_length=1)
+
+
+class TrashedTestView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    trashed_to: str
+    """옮겨진 자리. **이 값이 되돌리는 방법 전부다** (FR-437a)."""
+
+
+class DeleteTestsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    deleted: list[TrashedTestView]
 
 
 @router.get("")
@@ -175,15 +209,112 @@ async def rename_test(test_id: str, body: RenameRequest, state: State) -> Test:
     return updated
 
 
-@router.delete("/{test_id}", status_code=204)
-async def delete_test(test_id: str, state: State) -> None:
+@router.delete("/{test_id}")
+async def delete_test(test_id: str, state: State) -> TrashedTestView:
+    """테스트 하나를 **휴지통으로 옮긴다** (013 FR-437 · contracts/api-contract.md §2).
+
+    **204 를 버린 것이 이 계약의 핵심 변경이다.** 옮겨진 위치를 돌려주지 않으면 사용자는
+    되돌릴 수 없고, 그러면 「파괴하지 않는다」는 결정이 사용자에게는 삭제와 구별되지 않는다.
+
+    **복수 삭제와 뜻이 같아야 한다** (SC-632). 같은 이름의 조작이 개수에 따라 결과가
+    달라지면 사용자는 「삭제」 하나를 두 가지로 배워야 한다.
+    """
     repo = state.require_repository()
+    _require_test_exists(repo, test_id)
+    _require_not_running(state, test_id)
+
     try:
-        removed = repo.delete_test(test_id)
+        trashed = trash.move_test_to_trash(repo, test_id)
+    except OSError as exc:
+        raise ApiError(500, ErrorCode.TEST_DELETE_FAILED, str(exc)) from exc
+
+    return TrashedTestView(
+        id=test_id, name=_name_of(repo, test_id, trashed), trashed_to=str(trashed.entry)
+    )
+
+
+@router.post(":delete")
+async def delete_tests(body: DeleteTestsRequest, state: State) -> DeleteTestsResponse:
+    """여러 테스트를 한 번에 휴지통으로 옮긴다 (013 FR-432 · api-contract §3).
+
+    **전부 되거나 전부 안 되거나.** 순서 규약은 `storage/test_moves.py` 가 갖는다 —
+    삭제와 그룹 이동이 그것을 공유하므로, 여기에 두면 두 벌이 되고 한쪽만 고치면 다른
+    쪽에서 되돌림이 빠진다.
+
+    실패를 **두 코드로 가른다**: `TEST_DELETE_FAILED` 는 되돌렸으므로 요청 전과 같고,
+    `TEST_DELETE_PARTIAL` 은 되돌리지 못해 일부가 휴지통에 남아 있다. 사용자가 할 일이
+    다르다 — 앞은 다시 시도하면 되고 뒤는 자리를 확인해야 한다.
+    """
+    repo = state.require_repository()
+    if len(set(body.test_ids)) != len(body.test_ids):
+        raise bad_request(ErrorCode.DEFINITION_INVALID, "같은 테스트가 두 번 들어 있습니다.")
+
+    names = {tid: _name_of(repo, tid, None) for tid in body.test_ids}
+
+    def validate(test_id: str) -> None:
+        _require_test_exists(repo, test_id)
+        _require_not_running(state, test_id)
+
+    try:
+        moved = test_moves.run_all(
+            body.test_ids,
+            validate=validate,
+            do=lambda tid: trash.move_test_to_trash(repo, tid),
+            undo=lambda _tid, trashed: trash.restore_test(repo, trashed),
+        )
+    except test_moves.PartialFailureError as exc:
+        raise ApiError(
+            500,
+            ErrorCode.TEST_DELETE_PARTIAL,
+            exc.reason,
+            {"stranded": [{"test": s.target, "where": s.where} for s in exc.stranded]},
+        ) from exc
+    except test_moves.AllOrNothingError as exc:
+        raise ApiError(500, ErrorCode.TEST_DELETE_FAILED, exc.reason) from exc
+
+    return DeleteTestsResponse(
+        deleted=[
+            TrashedTestView(id=t.test_id, name=names[t.test_id], trashed_to=str(t.entry))
+            for t in moved
+        ]
+    )
+
+
+# ─── 013 공용 도우미 ────────────────────────────────────────────────────────
+
+
+def _require_test_exists(repo: ProjectRepository, test_id: str) -> None:
+    try:
+        found = repo.find_test_path(test_id)
     except ProjectError as exc:
-        raise bad_request(ErrorCode.TEST_NOT_FOUND, str(exc)) from exc
-    if not removed:
+        raise not_found(ErrorCode.TEST_NOT_FOUND, str(exc)) from exc
+    if found is None:
         raise not_found(ErrorCode.TEST_NOT_FOUND, f"테스트를 찾을 수 없습니다: {test_id}")
+
+
+def _require_not_running(state: AppState, test_id: str) -> None:
+    """살아 있는 세션이 있으면 거절한다 (013 FR-433).
+
+    **거절은 요청을 받지 않은 것과 같아야 한다** — 브라우저를 닫지 않는다 (헌법 원칙 III).
+    판정은 이미 있는 `active_session_for_test` 를 쓴다. 새 목록을 만들면 상태가 늘 때
+    한쪽이 빠진다.
+    """
+    if state.sessions.active_session_for_test(test_id) is not None:
+        raise ApiError(
+            409,
+            ErrorCode.TEST_IN_USE,
+            f"실행 중인 브라우저가 있어 「{test_id}」을(를) 정리할 수 없습니다.",
+        )
+
+
+def _name_of(repo: ProjectRepository, test_id: str, trashed: object) -> str:
+    """표시 이름. **읽지 못해도 실패하지 않는다.**
+
+    이름 하나를 못 읽는다고 삭제를 막으면 깨진 테스트일수록 지울 수 없어진다.
+    """
+    with contextlib.suppress(Exception):
+        return repo.read_test(test_id).name
+    return test_id
 
 
 class RunResultView(RunResult):
