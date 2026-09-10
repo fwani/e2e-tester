@@ -181,3 +181,30 @@ def test_a_failed_move_keeps_the_project_in_the_listing(
     assert "그대로" in resp.json()["error"]["next_action"]
     assert pathlib.Path(root).exists()
     assert root in _roots(client)
+
+
+# ─── 확인 단계가 쓸 요약 (FR-411) ──────────────────────────────────────────
+
+
+def test_summary_counts_what_will_disappear(client: TestClient) -> None:
+    root = _create(client, "지울 것")
+
+    resp = client.get("/api/project/summary", params={"root": root})
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {
+        "root": root,
+        "name": "지울 것",
+        "test_count": 1,
+        "origin": "managed",
+    }
+
+
+def test_summary_refuses_unknown_paths(client: TestClient, tmp_path: pathlib.Path) -> None:
+    stranger = tmp_path / "남의-폴더"
+    stranger.mkdir()
+
+    resp = client.get("/api/project/summary", params={"root": str(stranger)})
+
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PATH"

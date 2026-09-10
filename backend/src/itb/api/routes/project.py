@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import pathlib
 from typing import Annotated
 
@@ -94,6 +95,22 @@ class TrashProjectResponse(BaseModel):
     """이 삭제로 열린 프로젝트가 닫혔는가. 화면이 다음 행동을 정하는 근거다 (FR-416)."""
 
 
+class ProjectSummary(BaseModel):
+    """삭제 확인 단계가 보여줄 것 (012 FR-411).
+
+    **목록 응답에 싣지 않고 여기서 따로 준다.** 목록을 그리려고 프로젝트 N개를 열어
+    테스트를 세는 것은 `registry._probe` 가 피하려던 바로 그 비용이다 (plan.md
+    Performance Goals). 확인 단계에 들어가는 순간 그 프로젝트 하나만 센다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    root: str
+    name: str
+    test_count: int
+    origin: str
+
+
 class ProjectListItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -172,6 +189,25 @@ async def list_all() -> ProjectListResponse:
             for e in entries
         ],
         warning=warning,
+    )
+
+
+@router.get("/summary")
+async def summary(root: str) -> ProjectSummary:
+    """삭제하기 전에 무엇이 사라지는지 센다 (012 FR-411).
+
+    **읽지 못해도 실패하지 않는다.** 깨진 프로젝트일수록 지울 수 없어지면 곤란하다 —
+    셀 수 없으면 0 으로 보고하고, 사용자는 이름과 경로로 판단한다.
+    """
+    resolved = _known_root(root)
+    count = 0
+    with contextlib.suppress(Exception):
+        count = len(ProjectRepository.open(resolved).list_test_paths())
+    return ProjectSummary(
+        root=str(resolved),
+        name=_display_name(resolved),
+        test_count=count,
+        origin=_origin_of(resolved),
     )
 
 

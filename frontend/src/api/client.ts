@@ -123,6 +123,27 @@ export interface ProjectListResponse {
   warning: string | null;
 }
 
+/** 삭제 확인 단계가 보여줄 것 (012 FR-411). */
+export interface ProjectSummary {
+  root: string;
+  name: string;
+  test_count: number;
+  origin: "managed" | "external";
+}
+
+/** 휴지통으로 옮긴 결과 (012 · contracts/api-contract.md §2). */
+export interface TrashProjectResponse {
+  root: string;
+  name: string;
+  /**
+   * 옮겨진 자리. **이 값이 되돌리는 방법 전부다** (FR-410·FR-425).
+   * `null` 이면 요청 시점에 이미 없어서 목록에서 빼기만 했다 (FR-420).
+   */
+  trashed_to: string | null;
+  /** 이 삭제로 열린 프로젝트가 닫혔는가 (FR-416). */
+  was_open: boolean;
+}
+
 export const project = {
   current: () => get<ProjectView>("/api/project"),
   /** 첫 화면 목록. 관리 위치 스캔 ∪ 레지스트리를 최근 연 순으로 준다. */
@@ -137,6 +158,27 @@ export const project = {
   open: (path: string) => post<ProjectView>("/api/project/open", { path }),
   /** 목록에서만 치운다. **디스크의 프로젝트는 지우지 않는다** (DR-009). */
   forget: (root: string) => del<void>("/api/project/registry", { root }),
+  /**
+   * 삭제 확인 단계가 보여줄 것 (012 FR-411). **목록 응답에 싣지 않는다** — 목록을
+   * 그리려고 프로젝트 N개를 열어 테스트를 세면 첫 화면이 느려진다.
+   */
+  summary: (root: string) =>
+    get<ProjectSummary>(`/api/project/summary?root=${encodeURIComponent(root)}`),
+  /**
+   * 표시 이름만 바꾼다 (012 FR-399·FR-400). 디렉터리 경로는 바뀌지 않는다.
+   *
+   * 응답이 **갱신된 목록 항목 하나**다. 화면은 이것을 그 줄과 바꿔 끼운다 — 목록
+   * 전체를 다시 불러오면 편집 중이던 다른 줄의 상태가 날아간다.
+   */
+  renameProject: (root: string, name: string) =>
+    patch<ProjectListItem>("/api/project/name", { root, name }),
+  /**
+   * 프로젝트를 **휴지통으로 옮긴다** (012 FR-409). 파일을 파괴하지 않는다.
+   *
+   * `forget` 과 헷갈리면 안 되므로 **`delete` 라는 이름을 쓰지 않는다.** 어느 쪽이
+   * 자산을 옮기는 쪽인지 읽는 사람이 헷갈리는 순간, 화면이 잘못된 쪽을 부른다.
+   */
+  trash: (root: string) => post<TrashProjectResponse>("/api/project/trash", { root }),
 };
 
 // ─── 디렉터리 탐색 (DR-005) ─────────────────────────────────────────────────

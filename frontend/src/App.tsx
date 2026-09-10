@@ -353,6 +353,11 @@ export function App() {
           곳이 없으므로 그 길도 없다 — `opened === null` 이 그 조건이다.
         */
         onCancel={opened !== null ? () => setScreen({ name: "list" }) : undefined}
+        /*
+          삭제로 열린 프로젝트가 닫혔다 (012 FR-416). 비우지 않으면 사용자는 사라진
+          프로젝트를 가리키는 「돌아가기」를 계속 보고, 그것을 누르면 없는 것을 그린다.
+        */
+        onProjectClosed={() => setOpened(null)}
       />
     );
   }

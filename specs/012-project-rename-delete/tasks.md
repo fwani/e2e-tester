@@ -73,11 +73,11 @@ Web app 구조다. 백엔드는 `backend/src/itb/`, 프런트엔드는 `frontend
 
 ### 프런트엔드
 
-- [ ] T017 [P] [US1] `frontend/src/api/client.ts` 에 `project.renameProject(root, name): Promise<ProjectListItem>` 을 더한다 — `PATCH /api/project/name`. 기존 `project.forget` 의 이름과 동작은 건드리지 않는다 ([contracts/api-contract.md](contracts/api-contract.md) §4)
-- [ ] T018 [US1] `frontend/src/pages/ProjectSetup.tsx` 의 `ProjectRow` 에 인라인 이름 편집을 더한다 — 평상/편집/확정/취소/거절 다섯 상태, `Enter` 확정 · `Esc` 취소 · 포커스 이탈 확정, 요청 중 입력 잠금, 빈 이름은 요청 전에 막는다 ([contracts/ui-contract.md](contracts/ui-contract.md) UC-012-02). 관용어는 `frontend/src/components/workbench/PhaseBar.tsx` 의 테스트 이름 편집을 따른다
-- [ ] T019 [US1] T018 의 성공 처리를 **그 줄만 갈아 끼우게** 한다 — 목록 전체를 다시 불러오면 편집 중이던 다른 줄의 상태가 날아간다 (UC-012-02)
-- [ ] T020 [US1] `accessible === false` 인 줄에는 이름 편집을 제공하지 않고 **왜 지금 할 수 없는지** 한 줄을 표시한다 (FR-406 · [data-model.md](data-model.md) §3)
-- [ ] T021 [P] [US1] `frontend/tests/ProjectSetup.test.tsx` 에 US1 검사를 더한다 — 확인 창 없이 두 조작으로 끝나는지(SC-614), 빈 이름이 요청을 만들지 않는지, `Esc` 가 원래 이름으로 되돌리는지, 접근 불가 줄에 편집이 없는지
+- [X] T017 [P] [US1] `frontend/src/api/client.ts` 에 `project.renameProject(root, name): Promise<ProjectListItem>` 을 더한다 — `PATCH /api/project/name`. 기존 `project.forget` 의 이름과 동작은 건드리지 않는다 ([contracts/api-contract.md](contracts/api-contract.md) §4)
+- [X] T018 [US1] `frontend/src/pages/ProjectSetup.tsx` 의 `ProjectRow` 에 인라인 이름 편집을 더한다 — 평상/편집/확정/취소/거절 다섯 상태, `Enter` 확정 · `Esc` 취소 · 포커스 이탈 확정, 요청 중 입력 잠금, 빈 이름은 요청 전에 막는다 ([contracts/ui-contract.md](contracts/ui-contract.md) UC-012-02). 관용어는 `frontend/src/components/workbench/PhaseBar.tsx` 의 테스트 이름 편집을 따른다
+- [X] T019 [US1] T018 의 성공 처리를 **그 줄만 갈아 끼우게** 한다 — 목록 전체를 다시 불러오면 편집 중이던 다른 줄의 상태가 날아간다 (UC-012-02)
+- [X] T020 [US1] `accessible === false` 인 줄에는 이름 편집을 제공하지 않고 **왜 지금 할 수 없는지** 한 줄을 표시한다 (FR-406 · [data-model.md](data-model.md) §3)
+- [X] T021 [P] [US1] `frontend/tests/ProjectSetup.test.tsx` 에 US1 검사를 더한다 — 확인 창 없이 두 조작으로 끝나는지(SC-614), 빈 이름이 요청을 만들지 않는지, `Esc` 가 원래 이름으로 되돌리는지, 접근 불가 줄에 편집이 없는지
 
 **Checkpoint**: US1 단독으로 배포 가능. 삭제 없이도 사용자에게 가치가 있다.
 
@@ -107,17 +107,17 @@ Web app 구조다. 백엔드는 `backend/src/itb/`, 프런트엔드는 `frontend
 
 ### 백엔드 — 확인 단계에 쓸 테스트 수
 
-- [ ] T030 [P] [US2] 확인 단계가 보여줄 **저장된 테스트 수**를 얻는 길을 정한다 — 목록 응답에 싣지 않는다 ([plan.md](plan.md) Performance Goals). 기존 `GET /api/tests` 는 열린 프로젝트만 대상이므로 쓸 수 없다. `POST /api/project/trash` 와 같은 파일에 **조회 전용** 경로를 두거나(예: `GET /api/project/summary?root=...`), 확인 단계에서 수를 생략하고 경로·이름만 보이게 한다 — 어느 쪽이든 [contracts/ui-contract.md](contracts/ui-contract.md) UC-012-03 을 그에 맞게 고친다
+- [X] T030 [P] [US2] 확인 단계가 보여줄 **저장된 테스트 수**를 얻는 길을 정한다 — 목록 응답에 싣지 않는다 ([plan.md](plan.md) Performance Goals). 기존 `GET /api/tests` 는 열린 프로젝트만 대상이므로 쓸 수 없다. `POST /api/project/trash` 와 같은 파일에 **조회 전용** 경로를 두거나(예: `GET /api/project/summary?root=...`), 확인 단계에서 수를 생략하고 경로·이름만 보이게 한다 — 어느 쪽이든 [contracts/ui-contract.md](contracts/ui-contract.md) UC-012-03 을 그에 맞게 고친다
 
 ### 프런트엔드
 
-- [ ] T031 [P] [US2] `frontend/src/api/client.ts` 에 `project.trash(root)` 와 응답 타입 `TrashProjectResponse` 를 더한다. **`delete` 라는 이름을 쓰지 않는다** — 어느 쪽이 `forget` 인지 헷갈리는 순간 화면이 잘못된 쪽을 부른다 (api-contract §4)
-- [ ] T032 [US2] `frontend/src/pages/ProjectSetup.tsx` 의 `ProjectRow` 에 **줄 안 확인 상태**를 더한다 — 모달을 새로 만들지 않는다. 이름·경로·(T030 의 결정에 따라) 테스트 수·「휴지통으로 옮깁니다 · 되돌릴 수 있습니다」·「휴지통으로 옮기기」/「취소」, 포커스는 취소에 (UC-012-03)
-- [ ] T033 [US2] **확인 전에는 어떤 요청도 보내지 않는다** (FR-412 · SC-617). 취소하면 줄이 평상 상태로 돌아가고 목록이 그대로다
-- [ ] T034 [US2] 완료 표시를 더한다 — 목록 위에 옮겨진 위치를 `mono` 로 잘리지 않게 표시하고, 되돌리는 방법 한 줄을 붙인다. **자동으로 사라지지 않는다** (FR-410·FR-425 · UC-012-04). `trashed_to` 가 `null` 이면 「목록에서 뺐습니다」로 문구가 바뀐다
-- [ ] T035 [US2] `was_open === true` 면 열린 프로젝트 상태를 비운다 — `frontend/src/App.tsx` 의 `opened` 를 `null` 로 만들고 사용자는 선택 화면에 남는다. 「돌아가기」가 사라진다 (FR-416 · UC-012-05). `App.tsx` 와 `ProjectSetup.tsx` 사이의 콜백이 필요하다
-- [ ] T036 [US2] 거절·실패 사유를 그 줄에 표시한다 — 기존 `ErrorNotice` 를 쓴다. `PROJECT_DELETE_FAILED` 문구에 **「프로젝트는 그대로 있습니다」가 반드시 들어간다** (UC-012-06). 400/404 는 목록을 다시 불러온다
-- [ ] T037 [P] [US2] `frontend/tests/ProjectSetup.test.tsx` 에 US2 검사를 더한다 — 확인 전 요청 0건(SC-617), 취소가 아무것도 바꾸지 않음, 완료 표시에 `trashed_to` 가 그대로 나오는지, 409 사유가 그 줄에 붙는지, 500 문구에 「그대로 있습니다」가 있는지
+- [X] T031 [P] [US2] `frontend/src/api/client.ts` 에 `project.trash(root)` 와 응답 타입 `TrashProjectResponse` 를 더한다. **`delete` 라는 이름을 쓰지 않는다** — 어느 쪽이 `forget` 인지 헷갈리는 순간 화면이 잘못된 쪽을 부른다 (api-contract §4)
+- [X] T032 [US2] `frontend/src/pages/ProjectSetup.tsx` 의 `ProjectRow` 에 **줄 안 확인 상태**를 더한다 — 모달을 새로 만들지 않는다. 이름·경로·(T030 의 결정에 따라) 테스트 수·「휴지통으로 옮깁니다 · 되돌릴 수 있습니다」·「휴지통으로 옮기기」/「취소」, 포커스는 취소에 (UC-012-03)
+- [X] T033 [US2] **확인 전에는 어떤 요청도 보내지 않는다** (FR-412 · SC-617). 취소하면 줄이 평상 상태로 돌아가고 목록이 그대로다
+- [X] T034 [US2] 완료 표시를 더한다 — 목록 위에 옮겨진 위치를 `mono` 로 잘리지 않게 표시하고, 되돌리는 방법 한 줄을 붙인다. **자동으로 사라지지 않는다** (FR-410·FR-425 · UC-012-04). `trashed_to` 가 `null` 이면 「목록에서 뺐습니다」로 문구가 바뀐다
+- [X] T035 [US2] `was_open === true` 면 열린 프로젝트 상태를 비운다 — `frontend/src/App.tsx` 의 `opened` 를 `null` 로 만들고 사용자는 선택 화면에 남는다. 「돌아가기」가 사라진다 (FR-416 · UC-012-05). `App.tsx` 와 `ProjectSetup.tsx` 사이의 콜백이 필요하다
+- [X] T036 [US2] 거절·실패 사유를 그 줄에 표시한다 — 기존 `ErrorNotice` 를 쓴다. `PROJECT_DELETE_FAILED` 문구에 **「프로젝트는 그대로 있습니다」가 반드시 들어간다** (UC-012-06). 400/404 는 목록을 다시 불러온다
+- [X] T037 [P] [US2] `frontend/tests/ProjectSetup.test.tsx` 에 US2 검사를 더한다 — 확인 전 요청 0건(SC-617), 취소가 아무것도 바꾸지 않음, 완료 표시에 `trashed_to` 가 그대로 나오는지, 409 사유가 그 줄에 붙는지, 500 문구에 「그대로 있습니다」가 있는지
 
 **Checkpoint**: US1 + US2 로 명세의 P1 이 모두 선다.
 
@@ -130,22 +130,22 @@ Web app 구조다. 백엔드는 `backend/src/itb/`, 프런트엔드는 `frontend
 **Independent Test**: 관리/외부/접근 불가 세 종류의 줄에 어떤 조작이 있는지, 각 설명이 디스크의
 파일이 어떻게 되는지 말하는지 확인한다 ([quickstart.md](quickstart.md) §2 이야기 6).
 
-- [ ] T038 [US3] `frontend/src/pages/ProjectSetup.tsx` 의 `ProjectRow` 가 **`accessible` × `origin` 표**로 조작 집합을 고르게 한다 — 줄마다 따로 판단하는 코드를 남기지 않는다 ([data-model.md](data-model.md) §3 · UC-012-01)
-- [ ] T039 [US3] 두 조작의 라벨과 설명을 확정한다 — 「삭제」는 「프로젝트 폴더를 휴지통으로 옮깁니다. 파일은 지워지지 않고 되돌릴 수 있습니다.」, 「목록에서 치우기」는 기존 문구 유지. **둘 다 디스크의 파일이 어떻게 되는지 말한다** (FR-422·FR-423 · UC-012-07)
-- [ ] T040 [US3] `origin === "external"` 인 줄의 확인 단계에 「도구 바깥에서 만든 위치입니다」를 표시한다 (FR-424 · UC-012-03)
-- [ ] T041 [US3] `accessible === false` 인 줄에서 삭제를 **제공하지 않고** 「목록에서 치우기」만 남긴다 (FR-418). 기존 동작이므로 회귀시키지 않는 것이 요점이다
-- [ ] T042 [P] [US3] `frontend/tests/ProjectRowActions.test.tsx` 를 만든다 — [data-model.md](data-model.md) §3 의 표를 그대로 검사로 옮긴다. 세 줄 상태 × 네 조작의 유무, 두 설명의 문구, external 확인 문구
+- [X] T038 [US3] `frontend/src/pages/ProjectSetup.tsx` 의 `ProjectRow` 가 **`accessible` × `origin` 표**로 조작 집합을 고르게 한다 — 줄마다 따로 판단하는 코드를 남기지 않는다 ([data-model.md](data-model.md) §3 · UC-012-01)
+- [X] T039 [US3] 두 조작의 라벨과 설명을 확정한다 — 「삭제」는 「프로젝트 폴더를 휴지통으로 옮깁니다. 파일은 지워지지 않고 되돌릴 수 있습니다.」, 「목록에서 치우기」는 기존 문구 유지. **둘 다 디스크의 파일이 어떻게 되는지 말한다** (FR-422·FR-423 · UC-012-07)
+- [X] T040 [US3] `origin === "external"` 인 줄의 확인 단계에 「도구 바깥에서 만든 위치입니다」를 표시한다 (FR-424 · UC-012-03)
+- [X] T041 [US3] `accessible === false` 인 줄에서 삭제를 **제공하지 않고** 「목록에서 치우기」만 남긴다 (FR-418). 기존 동작이므로 회귀시키지 않는 것이 요점이다
+- [X] T042 [P] [US3] `frontend/tests/ProjectRowActions.test.tsx` 를 만든다 — [data-model.md](data-model.md) §3 의 표를 그대로 검사로 옮긴다. 세 줄 상태 × 네 조작의 유무, 두 설명의 문구, external 확인 문구
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T043 [P] `backend/tests/contract/test_project_and_tests_api.py` 를 개정한다 — 프로젝트 라우트 목록이 늘었다 ([research.md](research.md) R10)
-- [ ] T044 [P] `backend/tests/contract/test_project_list_api.py` 에 **삭제된 프로젝트가 목록에 다시 나타나지 않는지** 회귀 검사를 더한다 (FR-421)
-- [ ] T045 [P] `docs/` 의 사용자 문서에 두 조작을 적는다 — 특히 **휴지통 위치와 되돌리는 방법**. 도구 안에 복구 화면이 없으므로 문서가 유일한 안내다
-- [ ] T046 [P] `README.md` 또는 `docs/DEVELOPMENT.md` 에 `~/.local/share/itb/trash/` 가 생긴다는 사실을 적는다 — 디스크를 차지하고 도구가 비우지 않는다
-- [ ] T047 전체 검증을 돌린다 — `cd backend && uv run ruff check src/ tests/ && uv run lint-imports && uv run python -m itb.schema.export --check && uv run pytest -q`, `cd frontend && npx tsc --noEmit && npx vitest run`. T001 의 기준선과 비교해 **012 가 깬 것이 없는지** 확인한다
-- [ ] T048 손 검증을 돌린다 — [quickstart.md](quickstart.md) §2 의 여섯 이야기와 §3 의 회귀 5건. `XDG_DATA_HOME`·`XDG_CONFIG_HOME` 을 임시 디렉터리로 지정해 실제 자산을 건드리지 않는다
+- [X] T043 [P] `backend/tests/contract/test_project_and_tests_api.py` — **개정할 것이 없었다.** 이 파일은 라우트 목록을 세지 않고 개별 라우트의 동작만 본다. 라우트가 늘어도 걸리지 않는다 (research R10 의 예측이 빗나간 항목)
+- [X] T044 [P] `backend/tests/contract/test_project_list_api.py` 에 **삭제된 프로젝트가 목록에 다시 나타나지 않는지** 회귀 검사를 더한다 (FR-421)
+- [X] T045 [P] `docs/` 의 사용자 문서에 두 조작을 적는다 — 특히 **휴지통 위치와 되돌리는 방법**. 도구 안에 복구 화면이 없으므로 문서가 유일한 안내다
+- [X] T046 [P] `README.md` 또는 `docs/DEVELOPMENT.md` 에 `~/.local/share/itb/trash/` 가 생긴다는 사실을 적는다 — 디스크를 차지하고 도구가 비우지 않는다
+- [X] T047 전체 검증을 돌린다 — `cd backend && uv run ruff check src/ tests/ && uv run lint-imports && uv run python -m itb.schema.export --check && uv run pytest -q`, `cd frontend && npx tsc --noEmit && npx vitest run`. T001 의 기준선과 비교해 **012 가 깬 것이 없는지** 확인한다
+- [ ] T048 손 검증을 돌린다 (**사람이 판정한다** · [docs/PENDING-HUMAN-VERIFICATION.md](../../docs/PENDING-HUMAN-VERIFICATION.md) §12 에 등록했다) — [quickstart.md](quickstart.md) §2 의 여섯 이야기와 §3 의 회귀 5건. `XDG_DATA_HOME`·`XDG_CONFIG_HOME` 을 임시 디렉터리로 지정해 실제 자산을 건드리지 않는다
 
 ---
 

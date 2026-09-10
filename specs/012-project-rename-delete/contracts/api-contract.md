@@ -12,6 +12,7 @@
 | POST | `/api/project/create` | 만들기 | 위치를 묻지 않는다 |
 | POST | `/api/project/open` | 열기 | 본문 `path` |
 | DELETE | `/api/project/registry` | **목록에서만** 치우기 | 본문 `root` |
+| ★ GET | `/api/project/summary` | 삭제 확인이 보여줄 것(테스트 수) | 질의 `root` |
 | ★ PATCH | `/api/project/name` | 표시 이름 변경 | 본문 `root` |
 | ★ POST | `/api/project/trash` | **휴지통으로 보내기** | 본문 `root` |
 
@@ -149,3 +150,23 @@ project.trash(root: string): Promise<TrashProjectResponse>
 기존 `project.forget(root)` 는 이름도 동작도 그대로 둔다. **`delete` 라는 이름을 쓰지
 않는다** — 두 조작 중 어느 쪽이 `delete` 인지 읽는 사람이 헷갈리는 순간, 화면이 잘못된
 쪽을 부른다.
+
+---
+
+## §5 `GET /api/project/summary` — 확인 단계가 셀 것
+
+**요청**: `?root=<프로젝트 경로>` (규칙은 §1 과 같다)
+
+**응답 200**
+
+```json
+{ "root": "...", "name": "결제", "test_count": 7, "origin": "managed" }
+```
+
+**목록 응답에 싣지 않는 이유**: 목록을 그리려고 프로젝트 N개를 열어 테스트를 세면 첫
+화면이 느려진다. `registry._probe` 가 "목록을 그리려고 프로젝트 N개를 파싱하지 않는다" 를
+지킨 것과 같은 이유다 (plan.md Performance Goals). 확인 단계에 들어가는 순간 그 프로젝트
+하나만 센다.
+
+**읽지 못해도 실패하지 않는다.** 셀 수 없으면 `test_count: 0` 이다 — 깨진 프로젝트일수록
+지울 수 없어지면 곤란하고, 사용자는 이름과 경로로 판단할 수 있다.
