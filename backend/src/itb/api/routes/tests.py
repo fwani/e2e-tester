@@ -125,6 +125,14 @@ class TestListResponse(BaseModel):
     그룹을 고르는 자리(`GET /api/groups`)는 전부 싣는다."""
 
     tests: list[TestListRow]
+    draft_count: int = 0
+    """녹화되지 않은 초안 수 (014 FR-035).
+
+    **초안 자체는 `tests` 에 섞지 않는다** (FR-027). 초안은 실행할 수 없으므로 목록의
+    행과 같은 것을 할 수 없고, 같은 배열에 두면 화면이 매번 갈라 봐야 한다. 수만 여기서
+    알려 주고 목록은 `GET /api/drafts` 가 준다.
+    """
+
     problems: list[str] = Field(default_factory=list)
     """읽을 수 없는 정의 파일의 사유. 깨진 파일 하나가 목록을 막지 않는다."""
 
@@ -277,6 +285,7 @@ async def list_tests(
             for prefix, n in sorted(counts_by_group.items())
         ],
         tests=rows,
+        draft_count=repo.drafts.count(),
         problems=problems,
     )
 

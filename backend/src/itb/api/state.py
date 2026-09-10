@@ -15,6 +15,7 @@ from itb.api.errors import ErrorCode, bad_request
 from itb.api.ws.control_channel import ControlChannelRegistry
 from itb.api.ws.session_events import EventBroker
 from itb.execution.session import SessionManager
+from itb.portability.plan_store import ImportPlanStore
 from itb.secrets.keys import KeyPaths
 from itb.secrets.unlock import KeyUnlock
 from itb.storage.repository import ProjectRepository
@@ -48,6 +49,14 @@ class AppState:
     sessions: SessionManager
     broker: EventBroker
     key_paths: KeyPaths
+    import_plans: ImportPlanStore = field(default_factory=ImportPlanStore)
+    """가져오기 계획 (014 · research R8).
+
+    **디스크에 쓰지 않는다.** 확정 전에는 아무것도 만들지 않아야 하는데(FR-016), 디스크에
+    쓰면 그 자체가 "만든 것"이 된다. 앱 수명에 두는 이유는 세션과 무관하기 때문이다 —
+    새 프로젝트를 만들며 가져오는 경로에는 열린 프로젝트조차 없다.
+    """
+
     control: ControlChannelRegistry = field(default_factory=ControlChannelRegistry)
     session_files: SessionFileRegistry = field(default_factory=SessionFileRegistry)
     """사용자가 보낸 파일 (010 FR-337b).

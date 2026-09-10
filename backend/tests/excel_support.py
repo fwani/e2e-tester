@@ -6,9 +6,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import io
 import pathlib
+from collections.abc import Iterator
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -121,3 +123,97 @@ def sheet_names(data: bytes) -> list[str]:
         return list(wb.sheetnames)
     finally:
         wb.close()
+
+
+# ─── 가져오기 검증용 ────────────────────────────────────────────────────────
+
+HEADER_ROW = ["TC ID", "대상기능", "테스트항목", "수행자", "수행 절차", "기대 결과", "결과"]
+
+
+def build_xlsx(sheets: dict[str, list[list[Any]]], *, header: list[Any] | None = None) -> bytes:
+    """시트 이름 → 데이터 행들 로 워크북 바이트를 만든다.
+
+    머리글은 기본으로 :data:`HEADER_ROW` 를 쓴다. 머리글 자체를 시험하려면 `header` 를
+    주거나, 값에 머리글을 포함한 뒤 `header=[]` 를 준다.
+    """
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    for name, rows in sheets.items():
+        ws = wb.create_sheet(title=name)
+        head = HEADER_ROW if header is None else header
+        if head:
+            ws.append(head)
+        for row in rows:
+            ws.append(row)
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def upload(client: TestClient, data: bytes, filename: str = "설계서.xlsx") -> Any:
+    """미리보기에 파일을 올린다."""
+    return client.post(
+        "/api/import/preview",
+        files={
+            "file": (
+                filename,
+                data,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+
+def preview(client: TestClient, sheets: dict[str, list[list[Any]]], **kw: Any) -> dict[str, Any]:
+    """워크북을 만들어 올리고 계획을 돌려준다. 실패하면 그 자리에서 드러낸다."""
+    resp = upload(client, build_xlsx(sheets, **kw))
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+def row(
+    tc_id: str | None = None,
+    name: str | None = None,
+    description: str | None = None,
+    actor: str | None = None,
+    procedure: str | None = None,
+    expectation: str | None = None,
+    outcome: str | None = None,
+) -> list[Any]:
+    """머리글 순서에 맞춘 데이터 행 하나."""
+    return [tc_id, name, description, actor, procedure, expectation, outcome]
+
+
+@contextlib.contextmanager
+def draft_write_fails(*, on_call: int | None = None) -> Iterator[None]:
+    """초안 쓰기를 실패시킨다 — 되돌림을 실물로 확인하기 위한 것이다.
+
+    **`monkeypatch.undo()` 를 쓰지 않는다.** 그것은 같은 `monkeypatch` 인스턴스가 걸어 둔
+    *모든* 변경을 되돌리므로, `isolated_home` 이 설정한 `HOME`·`XDG_*` 까지 풀린다. 그러면
+    그 뒤의 요청이 **개발자의 실제 홈**을 보게 되고, 검증이 엉뚱한 것을 확인한다
+    (실제로 프로젝트 목록에 개발자의 진짜 프로젝트가 나타났다).
+
+    이 도우미는 자기가 바꾼 것만 되돌린다.
+
+    Args:
+        on_call: 몇 번째 호출에서 실패할지 (1부터). ``None`` 이면 언제나 실패한다.
+    """
+    from itb.storage.drafts import DraftStore
+
+    original = DraftStore.write
+    calls = {"n": 0}
+
+    def patched(self: DraftStore, draft: object) -> object:
+        calls["n"] += 1
+        if on_call is None or calls["n"] == on_call:
+            msg = "초안 쓰기를 일부러 실패시킨다"
+            raise OSError(msg)
+        return original(self, draft)  # type: ignore[arg-type]
+
+    DraftStore.write = patched  # type: ignore[method-assign]
+    try:
+        yield
+    finally:
+        DraftStore.write = original  # type: ignore[method-assign]
