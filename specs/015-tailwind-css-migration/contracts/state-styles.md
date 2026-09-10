@@ -57,7 +57,14 @@ FR-009(상호작용 상태 보존)와 SC-008(초점 표시 0건 유실)이 이�
 | S-16 | `.btn.file:focus-within` | `outline: 2px solid var(--run)`·`outline-offset: 2px` | ✅ `ui/Field` FileButton `focus-within:outline-run` |
 | S-17 | `.btn.disabled:focus-within` | `outline: 2px solid var(--hair-2)`·`outline-offset: 2px` | ✅ `ui/Field` FileButton off `focus-within:outline-hair-2` |
 
-**진행**: 이관 11 / 17. 남은 것은 S-08~S-10(국면 이름 입력)·S-12(분절)·S-14(전역 초점 링, T068 가드가 지킴)·S-15(`.navlink`).
+**진행**: 이관 12 / 17 (S-15 `.navlink:hover` 가 유틸리티 대응표에 들어가며 함께 옮겨졌다).
+
+남은 것은 S-08~S-10(국면 이름 입력)·S-12(분절 조작)·S-14(전역 초점 링)다.
+S-14 는 옮기는 것이 아니라 **지우지 않는 것**이 요구이며 T068 가드가 지킨다.
+나머지 넷은 그 부품이 아직 해체되지 않았다 — 해체할 때 함께 옮긴다.
+
+**이관된 것이 실제로 지켜지는지는 `tests/InteractionStates.test.tsx`(T058)가 본다.**
+hover 하나를 지우거나 초점 링의 한 분기만 지워도 잡는 것을 확인했다.
 
 ## S-14 는 특별하다 — 지우는 것이 회귀다
 

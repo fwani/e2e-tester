@@ -208,12 +208,12 @@ className="btn sm quiet"                (이미 겪었다)
 
 - [X] T052 [P] [US3] `frontend/scripts/count-violations.mjs` 를 새 체계에 맞게 갱신한다 — G-1(색 리터럴)은 유지하고, G-2(시각 속성 인라인)의 근거였던 「허용 목록」이 폐지됐으므로 판정을 LC-3(런타임 계산값만)으로 바꾼다. **규칙의 정의처가 이 파일이라는 성질을 유지한다** — 테스트가 여기서 함수를 가져다 쓴다
 - [X] T053 [P] [US3] `frontend/tests/VisualLanguage.test.tsx` 의 판정 방법을 전환한다. 이 테스트는 「화면 코드가 `className` 으로 정본을 소비하는가」를 봤는데, 의미 클래스가 사라져 전제가 없어졌다. **같은 목적(정본 이탈 없음)을 새 체계에서 확인하도록 고친다 — 삭제하지 않는다** (US3 시나리오 4). 무엇을 왜 바꿨는지 파일 머리주석에 적는다
-- [ ] T054 [P] [US3] `frontend/tests/DesignTokens.test.tsx` 를 확인·갱신한다 — 정본 자체는 바뀌지 않았으므로 통과해야 한다. 통과하지 않으면 정본을 건드린 것이다 (C-2 위반)
-- [ ] T055 [P] [US3] `frontend/src/theme/exceptions.ts` 의 죽은 예외를 정리한다 — 등록됐으나 쓰이지 않는 항목을 가드가 보고하면 삭제한다 (008 C-14)
-- [ ] T056 [US3] SC-011 을 실증한다 — `Phase` 에 국면을 임시로 추가하고 `npm run typecheck` 가 **실패하는지** 확인한다. 통과하면 FR-020a 가 깨진 것이다. 확인 후 되돌리고 결과를 기록 ([quickstart.md](quickstart.md) §1-7)
-- [ ] T057 [US3] SC-012 를 확인한다 — 표시 컴포넌트가 자기 자리 크기를 스스로 정하는 곳이 있는지 훑는다. `frontend/src/components/workbench/TargetPane.tsx`·`WorkArea.tsx` 와 `PhaseAside` 가 007 S-12 의 당사자였으므로 특히 본다. 결과를 `specs/015-tailwind-css-migration/baseline.md` 에 기록
-- [ ] T058 [P] [US3] 상호작용 상태 보존을 검증한다 (FR-009) — hover·focus·선택·비활성 네 상태의 표현이 전환 전후로 같은지 확인한다. 자동으로 볼 수 있는 부분(상태별 클래스가 붙는가)은 `frontend/tests/InteractionStates.test.tsx` 로, 실제 모습은 T066 H-7 로 본다. **analyze 가 찾은 커버리지 공백이다** — 기존 계획은 초점만 보고 hover·비활성을 어디서도 보지 않았다
-- [ ] T059 [US3] 가드 4종이 실제로 실패를 잡는지 확인한다 — 각각 일부러 어기고 되돌린다 (quickstart.md §1-3·§1-4). **가드가 동작하지 않으면 없는 것과 같다**
+- [X] T054 [P] [US3] `frontend/tests/DesignTokens.test.tsx` 를 확인·갱신한다 — 정본 자체는 바뀌지 않았으므로 통과해야 한다. 통과하지 않으면 정본을 건드린 것이다 (C-2 위반)
+- [X] T055 [P] [US3] `frontend/src/theme/exceptions.ts` 의 죽은 예외를 정리한다 — 등록됐으나 쓰이지 않는 항목을 가드가 보고하면 삭제한다 (008 C-14)
+- [X] T056 [US3] SC-011 을 실증한다 — `Phase` 에 국면을 임시로 추가하고 `npm run typecheck` 가 **실패하는지** 확인한다. 통과하면 FR-020a 가 깨진 것이다. 확인 후 되돌리고 결과를 기록 ([quickstart.md](quickstart.md) §1-7)
+- [X] T057 [US3] SC-012 를 확인한다 — 표시 컴포넌트가 자기 자리 크기를 스스로 정하는 곳이 있는지 훑는다. `frontend/src/components/workbench/TargetPane.tsx`·`WorkArea.tsx` 와 `PhaseAside` 가 007 S-12 의 당사자였으므로 특히 본다. 결과를 `specs/015-tailwind-css-migration/baseline.md` 에 기록
+- [X] T058 [P] [US3] 상호작용 상태 보존을 검증한다 (FR-009) — hover·focus·선택·비활성 네 상태의 표현이 전환 전후로 같은지 확인한다. 자동으로 볼 수 있는 부분(상태별 클래스가 붙는가)은 `frontend/tests/InteractionStates.test.tsx` 로, 실제 모습은 T066 H-7 로 본다. **analyze 가 찾은 커버리지 공백이다** — 기존 계획은 초점만 보고 hover·비활성을 어디서도 보지 않았다
+- [X] T059 [US3] 가드 4종이 실제로 실패를 잡는지 확인한다 — 각각 일부러 어기고 되돌린다 (quickstart.md §1-3·§1-4). **가드가 동작하지 않으면 없는 것과 같다**
 
 ---
 
