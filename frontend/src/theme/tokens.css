@@ -126,6 +126,26 @@ a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
              overflow-y:auto;display:flex;flex-direction:column;gap:8px;
              pointer-events:none;}
 .toast-layer > *{pointer-events:auto;}
+
+/* 토스트의 몸통. 층이 자리를 정하고 이것이 형태를 정한다 (`components/Toast.tsx`).
+
+   `.notice` 는 `flex:0 0 32px` 인 **한 줄짜리 띠**다. 토스트에는 여러 줄이 온다 —
+   내보내기 경고는 바뀐 시트 이름을 줄마다 세고, 오류는 「다음 행동」이 따라온다.
+   높이를 풀고 최소 높이만 지킨다. 닫기는 위에 붙어 첫 줄과 나란하다. */
+/* `flex` 를 반드시 함께 되돌린다. `.notice` 는 `flex:0 0 32px` 이고, 층이 세로 flex 이므로
+   그 **기준 크기가 높이를 32px 로 못 박는다** — `height:auto` 로는 이기지 못한다
+   (기준 크기가 `height` 보다 먼저다). 되돌리지 않으면 두 줄짜리 알림이 아래 알림에
+   가려 잘린다. 실측으로 잡았다. */
+.toast{flex:0 0 auto;height:auto;min-height:var(--h-notice);padding:8px 12px;align-items:flex-start;}
+.toast > .toast-body{flex:1;min-width:0;}
+
+/* 뜻의 바탕을 되살린다. `.notice.float` 가 `background:var(--panel)` 을 (0,2,0) 으로
+   못 박아 `.tint-*` (0,1,0) 를 이겼고, 그래서 **모든 토스트가 흰색이었다** — 경고와
+   오류가 형태로 구별되지 않았다. 같은 (0,2,0) 이되 뒤에 와서 이긴다.
+   값은 `.tint-*` 와 같다. 새로 만들지 않는다. */
+.toast.tint-fail{background:var(--fail-t);border-color:var(--fail-line);}
+.toast.tint-warn{background:var(--warn-t);border-color:var(--warn-line);}
+.toast.tint-run {background:var(--run-t); border-color:var(--run);}
 .body{flex:1;min-height:0;display:flex;}
 .left{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:12px;}
 .steps{flex:0 0 460px;border-left:1px solid var(--hair-2);background:var(--panel);

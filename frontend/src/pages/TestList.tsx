@@ -66,6 +66,7 @@ import {
 import { ErrorNotice, describeError, localError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
+import { Toast } from "../components/Toast";
 import { isRunning } from "../lib/sessionState";
 import { EDIT_ENTRY_LABEL, outcomeChip, outcomeLabel, stepLabel } from "../lib/wording";
 import { chipClass, rowClass } from "../theme/tone";
@@ -561,25 +562,36 @@ export function TestList({
         목록으로 떨어지는데, 그 사실과 복귀 수단이 없으면 사용자는 새 실행을 시작한다.
       */}
       {openSession !== null && (
-        <div
-          className={`notice ${isRunning(openSession.state) ? "tint-run" : "tint-warn"}`}
-          role="status"
-          data-open-session
+        <Toast
+          mark="data-open-session"
+          tone={isRunning(openSession.state) ? "info" : "warn"}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16">
-            <circle cx="8" cy="8" r="4.5" fill="currentColor" />
-          </svg>
-          <span>
-            <b>{openSession.test_id ?? "테스트"}</b> · {openSession.state_label} · Step{" "}
-            {openSession.steps.length}개
-          </span>
-          <div className="spacer" />
+          {/*
+            **닫기를 주지 않는다.** 이것은 지나간 사실이 아니라 「지금 무언가가 돌고
+            있다」는 상태이고, 그 상태가 끝나면 스스로 사라진다 (`openSession` 이
+            비워진다). 닫을 수 있게 하면 복귀 수단만 사라지고 세션은 그대로 남아,
+            사용자는 돌고 있는 줄 모르고 새 실행을 시작한다 — 005 FR-168 이 막으려던
+            바로 그것이다.
+          */}
+          <div className="row" style={{ gap: 8, alignItems: "center" }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="8" cy="8" r="4.5" fill="currentColor" />
+            </svg>
+            <span>
+              <b>{openSession.test_id ?? "테스트"}</b> · {openSession.state_label} · Step{" "}
+              {openSession.steps.length}개
+            </span>
+          </div>
           {onResumeSession && (
-            <button className="btn sm" onClick={() => onResumeSession(openSession)}>
+            <button
+              className="btn sm"
+              style={{ marginTop: 8 }}
+              onClick={() => onResumeSession(openSession)}
+            >
               실행 화면 보기
             </button>
           )}
-        </div>
+        </Toast>
       )}
 
       <div
@@ -602,9 +614,9 @@ export function TestList({
         )}
 
         {error !== null && (
-          <div className="tint-fail" style={{ padding: "8px 14px", whiteSpace: "pre-wrap" }} role="alert">
+          <Toast tone="error" onDismiss={() => setError(null)}>
             <ErrorNotice error={error} />
-          </div>
+          </Toast>
         )}
 
         {data !== null && data.problems.length > 0 && (
@@ -797,11 +809,10 @@ export function TestList({
           알 길이 없다.
         */}
         {exported !== null && (
-          <div
-            data-export-notice
-            role="status"
-            className={exported.warnings > 0 ? "tint-warn" : "tint-run"}
-            style={{ padding: "10px 12px", marginBottom: 10 }}
+          <Toast
+            mark="data-export-notice"
+            tone={exported.warnings > 0 ? "warn" : "info"}
+            onDismiss={() => setExported(null)}
           >
             <div className="strong-sm">{exported.filename} 을 내려받았습니다.</div>
             {exported.warnings > 0 && (
@@ -840,10 +851,7 @@ export function TestList({
                 읽지 못해 빠진 정의 {(exported.detail?.unreadable ?? []).length}건이 있습니다.
               </div>
             )}
-            <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setExported(null)}>
-              확인
-            </button>
-          </div>
+          </Toast>
         )}
         {!isEmptyProject && confirmingBulk && (
           <TestBulkConfirm

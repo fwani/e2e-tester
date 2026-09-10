@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError, ai, type ProjectView } from "../api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "../components/ErrorNotice";
+import { Toast } from "../components/Toast";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
 import { Workbench } from "../components/workbench/Workbench";
@@ -307,9 +308,9 @@ export function ComposeView({
         }}
       />
       {error !== null && (
-        <div style={{ position: "fixed", inset: "auto 24px 24px auto", maxWidth: 420 }}>
+        <Toast tone="error" onDismiss={() => setError(null)}>
           <ErrorNotice error={error} />
-        </div>
+        </Toast>
       )}
     </>
   );

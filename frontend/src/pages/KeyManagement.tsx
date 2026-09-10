@@ -16,6 +16,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import { Toast } from "../components/Toast";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { DESTROY_CONFIRM, secrets, type KeyStatus } from "../api/client";
@@ -155,7 +156,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       </div>
 
       {error !== null && (
-        <ErrorNotice error={error} />
+        <Toast tone="error" onDismiss={() => setError(null)}>
+          <ErrorNotice error={error} />
+        </Toast>
       )}
 
       {notice !== null && (

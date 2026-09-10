@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrandMark, HeaderBar } from "../components/design/Chrome";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import { Toast } from "../components/Toast";
 import { ImportDoneNotice, ImportFilePicker, ImportPreview } from "./ImportPreview";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
@@ -158,7 +159,11 @@ export function ProjectSetup({
         </div>
 
         {warning !== null && <Notice tone="warn">{warning}</Notice>}
-        {error !== null && <ErrorNotice error={error} />}
+        {error !== null && (
+          <Toast tone="error" onDismiss={() => setError(null)}>
+            <ErrorNotice error={error} />
+          </Toast>
+        )}
 
         {mode.kind === "list" && trashed !== null && (
           <TrashedNotice result={trashed} onDismiss={() => setTrashed(null)} />
@@ -636,7 +641,11 @@ function ProjectRow({
         />
       )}
 
-      {rowError !== null && <ErrorNotice error={rowError} />}
+      {rowError !== null && (
+        <Toast tone="error" onDismiss={() => setRowError(null)}>
+          <ErrorNotice error={rowError} />
+        </Toast>
+      )}
     </div>
   );
 }
@@ -944,7 +953,11 @@ function FolderPicker({
         </div>
       </div>
 
-      {error !== null && <ErrorNotice error={error} />}
+      {error !== null && (
+        <Toast tone="error" onDismiss={() => setError(null)}>
+          <ErrorNotice error={error} />
+        </Toast>
+      )}
 
       <div style={{ maxHeight: 360, overflowY: "auto" }}>
         {parent !== null && (

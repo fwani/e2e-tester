@@ -18,6 +18,7 @@ import {
   type SessionView,
 } from "./api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
+import { Toast } from "./components/Toast";
 import { ComposeView } from "./pages/ComposeView";
 import { ImportDoneNotice, ImportPreview } from "./pages/ImportPreview";
 import { KeyManagement } from "./pages/KeyManagement";
@@ -443,41 +444,22 @@ export function App() {
         「닫기」가 유일한 퇴장이다 (`NoticeStack` 의 `LINGER_MS` 와 같은 규칙).
       */}
       {error !== null && (
-        <div className="toast-layer" data-app-notice-layer>
-          <div
-            className="notice float tint-fail"
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 8,
-              height: "auto",
-              minHeight: "var(--h-notice)",
-              padding: "8px 12px",
-            }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <ErrorNotice
-                error={error}
-                action={
-                  error.sessionId
-                    ? { label: "실행 중인 세션 보기", onClick: () => openSession(error.sessionId!) }
-                    : null
-                }
-              />
-            </div>
-            <button className="btn sm quiet" aria-label="알림 닫기" onClick={() => setError(null)}>
-              닫기
-            </button>
-          </div>
-        </div>
+        <Toast mark="data-app-notice" tone="error" onDismiss={() => setError(null)}>
+          <ErrorNotice
+            error={error}
+            action={
+              error.sessionId
+                ? { label: "실행 중인 세션 보기", onClick: () => openSession(error.sessionId!) }
+                : null
+            }
+          />
+        </Toast>
       )}
 
       {screen.name === "list" && (
         <>
         {importDone !== null && (
-          <div style={{ padding: "12px 28px 0" }}>
-            <ImportDoneNotice result={importDone} onDismiss={() => setImportDone(null)} />
-          </div>
+          <ImportDoneNotice result={importDone} onDismiss={() => setImportDone(null)} />
         )}
         <TestList
           projectName={opened.name}

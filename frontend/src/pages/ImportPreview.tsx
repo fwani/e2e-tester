@@ -26,6 +26,7 @@ import type {
 import { ApiError, imports } from "../api/client";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import { Toast } from "../components/Toast";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 /** 컬럼 7개. 순서는 서버의 `ORDER` 와 같다 — 화면이 다른 순서를 쓰면 사용자가 헷갈린다. */
@@ -198,7 +199,11 @@ export function ImportPreview({
       </HeaderBar>
 
       <div style={{ padding: "20px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
-        <ErrorNotice error={error} />
+        {error !== null && (
+          <Toast tone="error" onDismiss={() => setError(null)}>
+            <ErrorNotice error={error} />
+          </Toast>
+        )}
 
         {/* ── 무엇이 만들어지는가 ─────────────────────────────────────── */}
         <div data-import-summary className="tint-run" style={{ padding: "12px 14px" }}>
@@ -664,12 +669,7 @@ export function ImportDoneNotice({
     result.skipped.length + result.skipped_sheets.length + result.renumbered.length;
 
   return (
-    <div
-      data-import-done
-      role="status"
-      className={noise > 0 ? "tint-warn" : "tint-run"}
-      style={{ padding: "10px 12px", marginBottom: 10 }}
-    >
+    <Toast mark="data-import-done" tone={noise > 0 ? "warn" : "info"} onDismiss={onDismiss}>
       <div className="strong-sm">
         그룹 {groups}개, 테스트 초안 {drafts}건을 만들었습니다.
       </div>
@@ -715,10 +715,7 @@ export function ImportDoneNotice({
         </details>
       )}
 
-      <button className="btn sm" style={{ marginTop: 8 }} onClick={onDismiss}>
-        확인
-      </button>
-    </div>
+    </Toast>
   );
 }
 
