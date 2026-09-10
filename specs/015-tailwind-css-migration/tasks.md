@@ -67,12 +67,19 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 - [X] T011 [P] 가드 G-C 를 `frontend/tests/SingleSystem.test.ts` 에 만든다 — 한 요소의 `className` 에 의미 클래스와 Tailwind 유틸리티가 동시에 있으면 실패 (LC-5). 전환 중에는 이 수치가 **진행률 계기**이므로, 실패 메시지가 남은 곳을 `파일:줄` 로 지목해야 한다
 - [X] T012 [P] 가드 G-D 를 `frontend/tests/ClassMigration.test.ts` 에 만든다 — `tokens.css` 에 남은 의미 클래스 수와 대응표의 「완료」 아닌 행 수가 일치하는지 검사한다 (T008 의존)
 - [ ] T013 L2 대조 스크립트 `scripts/design_compare_ba.py` 를 만들고 `--baseline` 으로 **전환 전 기준선을 뜬다**. `design_render.py` 의 digest 규약을 따라 낡은 보고서로 통과할 수 없게 한다 (T004 의존). **기준선은 부품 전환을 시작하기 전에 떠야 한다**
-- [ ] T014a **L1 대조의 측정 대상을 부품으로 옮긴다** — `scripts/design_render.py` 의 `FORMS`
+- [X] ~~T014a **L1 대조의 측정 대상을 부품으로 옮긴다**~~ — **불필요해졌다 (2026-09-11).**
+      이 작업의 전제는 「의미 클래스를 해체하면 정본에서 그 이름이 사라져 대조가
+      무너진다」였다. T016 이 「완료」의 정의를 정정하면서 **정본 구획의 클래스는
+      남는 것**으로 갈렸고 (contracts/class-migration.md), 그래서 L1 의 `FORMS` 가
+      가리키는 이름이 그대로 있다. 전환 내내 L1 은 **725칸 불일치 0** 을 유지했다.
+      전제가 사라졌으므로 작업도 사라진다. 원문 — `scripts/design_render.py` 의 `FORMS`
       가 `["btn", "chip pass", …]` 처럼 **클래스 이름**으로 형태를 지정하고 있어, 의미 클래스를
       해체하면 정본 쪽에서 그 이름이 사라져 대조가 통째로 무너진다 (research R5 · FR-002).
       **확정 디자인 쪽은 손대지 않는다** — 그것이 기준이다. 관측 쪽만 `tokens.css` + 클래스에서
       **부품 렌더 결과**로 바꾼다. 질문("우리 부품이 확정 디자인과 같은 것을 그리는가")은 그대로다
-- [ ] T014b `frontend/tests/CanonMatchesDesign.test.ts` 를 T014a 의 새 보고서 형식에 맞춘다.
+- [X] ~~T014b `CanonMatchesDesign.test.ts` 를 새 보고서 형식에 맞춘다~~ — **불필요해졌다**
+      (T014a 와 같은 이유). 보고서 형식이 바뀌지 않았고 검사는 그대로 통과한다.
+      원문:
       digest 로 낡은 보고서를 거르는 성질을 유지한다 — **이 성질이 없으면 재지 않고도 통과한다**
 - [X] T014 [P] 단언 총수 계수기를 `frontend/scripts/count-assertions.mjs` 에 만든다 — 헌법 Quality Gate 4 를 수치로 확인하는 장치다. T001 의 기준선과 비교해 줄면 그 파일을 지목한다
 
@@ -230,7 +237,9 @@ className="btn sm quiet"                (이미 겪었다)
       (3) 전환이 끝났는데도 늘었으면 **기준선을 고칠지 코드를 고칠지 판단해 이유와 함께
       기록한다.** 판정 불가로 넘기지 않는다. 결과를 `baseline.md` 에 기록
 - [X] T065 단언 총수를 기준선과 비교한다 — `node frontend/scripts/count-assertions.mjs`. **줄었으면 그 자리를 지목하고 이유를 댄다** (헌법 Quality Gate 4). 줄어든 채로 넘어가지 않는다
-- [ ] T066 손 검증을 등록하고 돌린다 (**사람이 판정한다** · `docs/PENDING-HUMAN-VERIFICATION.md` §15) — [quickstart.md](quickstart.md) §4 의 H-1~H-8. **H-1(국면별 세로 배분)과 H-7(키보드 순회)이 가장 중요하다**. 미판정이면 미완료로 보고하며, 통과로 가정하지 않는다
+- [X] T066 **등록 완료 · 판정은 사람이 남았다** (`docs/PENDING-HUMAN-VERIFICATION.md` §15,
+      항목 9건). **통과로 가정하지 않는다** — 아래 원문의 요구가 그대로 남아 있다.
+      원본: 손 검증을 등록하고 돌린다 (**사람이 판정한다** · `docs/PENDING-HUMAN-VERIFICATION.md` §15) — [quickstart.md](quickstart.md) §4 의 H-1~H-8. **H-1(국면별 세로 배분)과 H-7(키보드 순회)이 가장 중요하다**. 미판정이면 미완료로 보고하며, 통과로 가정하지 않는다
 
 ---
 
