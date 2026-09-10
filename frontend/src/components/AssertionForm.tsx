@@ -113,7 +113,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
           onChange={(e) => setValue(e.target.value)}
           placeholder="{{PROJECT_NAME}}"
         />
-        <p className="why" style={{ margin: "4px 0 0" }}>
+        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1 mx-0 mb-0">
           {"{{변수명}}"} 으로 변수를 참조할 수 있습니다 (FR-013b). 민감 변수의 실제 값은
           화면에 표시되지 않습니다.
         </p>

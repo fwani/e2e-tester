@@ -154,7 +154,7 @@ export function ProjectSetup({
         )}
       </HeaderBar>
 
-      <main style={{ flex: 1, padding: "24px 32px 32px", maxWidth: 960, width: "100%", margin: "0 auto" }}>
+      <main className="flex-1 pt-s5 px-s6 pb-s6 max-w-[960px] w-full my-0 mx-auto">
         <div className="flex flex-col gap-s2 mb-[20px]">
           <Eyebrow>PROJECT</Eyebrow>
           <div className="title">프로젝트</div>
@@ -233,16 +233,14 @@ export function ProjectSetup({
             busy={busy}
             defaultName={mode.plan.file_name.replace(/\.[^.]+$/, "")}
             importNote={
-              <div
-                className="tint-run"
+              <div className="bg-run-t border border-run rounded-base py-[10px] px-s3 mt-[10px] text-[13px] font-semibold leading-none font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1"
                 data-import-note
-                style={{ padding: "10px 12px", marginTop: 10 }}
               >
-                <div className="strong-sm">
+                <div>
                   {mode.plan.file_name} 에서 그룹 {mode.plan.group_count}개, 테스트 초안{" "}
                   {mode.plan.draft_count}건을 함께 만듭니다.
                 </div>
-                <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
+                <div>
                   초안은 아직 테스트가 아닙니다. 만든 뒤 하나씩 녹화하면 테스트가 됩니다.
                 </div>
               </div>
@@ -761,7 +759,7 @@ function TrashedNotice({
           </div>
         </>
       )}
-      <button className="navlink" onClick={onDismiss} style={{ marginTop: 8 }}>
+      <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken mt-s2" onClick={onDismiss}>
         확인했습니다
       </button>
     </div>
@@ -961,10 +959,8 @@ function FolderPicker({
 
       <div className="max-h-[360px] overflow-y-auto">
         {parent !== null && (
-          <button
-            className="navlink"
+          <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken w-full h-[44px] justify-start text-left py-0 px-[20px]"
             onClick={() => go(parent)}
-            style={{ width: "100%", height: 44, justifyContent: "flex-start", textAlign: "left", padding: "0 20px" }}
           >
             ↑ 상위 폴더
           </button>
@@ -983,10 +979,8 @@ function FolderPicker({
             key={e.path}
             className="border-t border-hair flex items-center gap-s3 py-[10px] px-[18px]"
           >
-            <button
-              className="navlink"
+            <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken flex-1 justify-start text-left p-0 h-[32px]"
               onClick={() => go(e.path)}
-              style={{ flex: 1, justifyContent: "flex-start", textAlign: "left", padding: 0, height: 32 }}
             >
               📁 {e.name}
             </button>

@@ -2935,15 +2935,7 @@ function Modal({ label, children }: { label: string; children: ReactNode }) {
     <div
       role="dialog"
       aria-label={label}
-      className="modal-scrim"
-      style={{
-        position: "fixed",
-        inset: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 30,
-      }}
+      className="fixed inset-0 flex items-center justify-center z-[30] bg-scrim-strong"
     >
       <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
         {children}

@@ -552,8 +552,20 @@ input.phase-name:disabled { border-color: transparent; color: var(--ink-2); }
 /* Step 패널의 바닥 — 그 국면의 Step 조작이 모이는 유일한 자리 (007 FR-235). */
 .steps-ft { border-top: 1px solid var(--hair-2); background: var(--sunken-2); }
 
-/* 겹침의 뒤를 덮는 막. 확정 디자인의 겹침 패널이 뒤 내용을 눌러 둔다. */
-.scrim { background: rgba(20, 23, 28, 0.28); }
+/* 겹침의 뒤를 덮는 막. 확정 디자인의 겹침 패널이 뒤 내용을 눌러 둔다.
+
+   015 — 값에 **이름을 준다.** 규칙에만 있으면 클래스를 해체할 때 값이 화면 코드나
+   Tailwind 설정으로 옮겨 가고, 그것이 정본을 둘로 만든다 (FR-001). 새 값이 아니라
+   여기 있던 값에 이름을 붙인 것이며, 파생 구획의 목적이 바로 그것이다.
+
+   `--ink`(#14171C = rgb(20,23,28))를 투명도로 낮춘 것이고 다른 색을 섞지 않았다.
+   0.28 은 겹침 640, 0.45 는 화면 전체를 덮는 확인 판이다 — 덮는 면적이 클수록
+   짙게 한다 (DC-009). */
+:root {
+  --scrim: rgba(20, 23, 28, 0.28);
+  --scrim-strong: rgba(20, 23, 28, 0.45);
+}
+.scrim { background: var(--scrim); }
 
 /* AI 가 쓰는 입력 — 자연어 지시문. 사람이 쓰는 입력과 구분되는 유일한 자리다
    (확정 디자인의 AI 국면이 `--ai` 계열을 쓴다). */
@@ -654,7 +666,7 @@ input.ai, textarea.ai { border-color: var(--ai); }
 }
 
 /* 화면 전체를 덮는 확인 판. 겹침과 같은 문법이되 가운데 선다. */
-.modal-scrim { background: rgba(20, 23, 28, 0.45); }
+.modal-scrim { background: var(--scrim-strong); }
 .modal {
   background: var(--panel);
   border: 1px solid var(--hair-2);

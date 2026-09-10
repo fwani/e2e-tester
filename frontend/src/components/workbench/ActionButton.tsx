@@ -161,8 +161,7 @@ export function ActionButton({
           <button
             type="button"
             data-remedy-for={action}
-            className="textlink"
-            style={{ flex: "0 0 auto" }}
+            className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-semibold flex-none"
             onClick={() => onRemedy(capability.remedy!.action)}
           >
             {ACTION_LABEL[capability.remedy.action]}

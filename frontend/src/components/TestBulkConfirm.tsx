@@ -104,7 +104,7 @@ export function TrashedTestsNotice({
       <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px]">
         {TESTS_RESTORE_HINT}
       </div>
-      <button className="navlink" onClick={onDismiss} style={{ marginTop: 6 }}>
+      <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken mt-[6px]" onClick={onDismiss}>
         확인했습니다
       </button>
     </div>
@@ -265,7 +265,7 @@ export function RenumberedNotice({
           있으면 함께 고치세요.
         </div>
       )}
-      <button className="navlink" onClick={onDismiss} style={{ marginTop: 6 }}>
+      <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken mt-[6px]" onClick={onDismiss}>
         확인했습니다
       </button>
     </div>

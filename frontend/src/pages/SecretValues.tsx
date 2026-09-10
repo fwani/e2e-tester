@@ -75,7 +75,7 @@ export function SecretValues({
   const ready = name.trim() !== "" && value !== "";
 
   return (
-    <main style={{ maxWidth: 720, margin: "32px auto", padding: "0 16px" }}>
+    <main className="max-w-[720px] my-s6 mx-auto py-0 px-s4">
       <div className="flex items-center gap-s2 mb-s4">
         <h1 className="font-sans text-[20px] font-bold leading-[1.3] m-0">비밀 값</h1>
         <span className="spacer" />

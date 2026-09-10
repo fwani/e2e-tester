@@ -140,14 +140,12 @@ export function InsertStepForm({
         <label className="flex flex-col gap-s1">
           <span className="lbl">탭 번호</span>
           <input
-            aria-label="탭 번호"
-            className="mono"
+            aria-label="탭 번호" className="font-mono w-[96px]"
             type="number"
             min={0}
             value={tab}
             disabled={!usable}
             onChange={(e) => setTab(Math.max(0, Number(e.target.value) || 0))}
-            style={{ width: 96 }}
           />
         </label>
       )}

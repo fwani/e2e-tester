@@ -616,7 +616,7 @@ export function TestList({
         {data !== null && data.problems.length > 0 && (
           <div className="bg-warn-t border border-warn-line rounded-base py-s2 px-[14px]" role="status">
             <strong>읽지 못한 정의 파일이 있습니다.</strong>
-            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+            <ul className="mt-[6px] mx-0 mb-0 pl-[18px]">
               {data.problems.map((p) => (
                 <li key={p} className="num">
                   {p}
@@ -987,10 +987,8 @@ export function TestList({
               {(grouped ?? [{ prefix: "", label: "", items: rows }]).map((section) => (
                 <div key={section.prefix || "__flat__"}>
                   {grouped !== null && (
-                    <div
-                      className="lbl"
+                    <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 pt-[10px] px-[17px] pb-s1"
                       data-group-heading={section.prefix}
-                      style={{ padding: "10px 17px 4px" }}
                     >
                       {section.label} {section.items.length}
                     </div>
@@ -1454,14 +1452,14 @@ function Row({
               들어가도 안전하다.
             */}
             {onOpenDefinition && (
-              <button className="navlink" onClick={onOpenDefinition} style={{ justifyContent: "flex-start" }}>
+              <button data-row-menu-item className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken justify-start" onClick={onOpenDefinition}>
                 {EDIT_ENTRY_LABEL}
               </button>
             )}
-            <button className="navlink" onClick={onRenameStart} style={{ justifyContent: "flex-start" }}>
+            <button data-row-menu-item className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken justify-start" onClick={onRenameStart}>
               이름
             </button>
-              <button className="navlink fail-ink" onClick={onDeleteStart} style={{ justifyContent: "flex-start" }}>
+              <button data-row-menu-item className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken text-fail justify-start" onClick={onDeleteStart}>
                 삭제
               </button>
             </div>,
@@ -1702,7 +1700,7 @@ function EmptyProject({
             <summary className="font-sans text-[13.5px] font-bold leading-none cursor-pointer">
               엑셀 파일을 더 넣기
             </summary>
-            <div className="why" style={{ margin: "6px 0 10px" }}>
+            <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-[10px]">
               가져온 초안에 더해집니다. 같은 그룹 접두어면 같은 그룹으로 들어갑니다.
             </div>
             <ImportFilePicker
@@ -1715,7 +1713,7 @@ function EmptyProject({
         {onImportPlan !== undefined && draftCount === 0 && (
           <div className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">
             <div className="subtitle">이미 쓰던 설계서가 있나요?</div>
-            <div className="why" style={{ margin: "6px 0 10px" }}>
+            <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-[10px]">
               엑셀 파일을 넣으면 그룹과 테스트 초안을 만듭니다. 초안은 하나씩 녹화하면
               테스트가 됩니다.
             </div>

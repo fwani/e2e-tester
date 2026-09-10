@@ -406,8 +406,7 @@ export function StepList({
       {footer !== undefined && footer !== null && (
         <div
           data-workbench-step-footer
-          className="steps-ft"
-          style={{ padding: "12px 14px 14px", maxHeight: "52%", overflowY: "auto" }}
+          className="border-t border-hair-2 bg-sunken-2 pt-s3 px-[14px] pb-[14px] max-h-[52%] overflow-y-auto"
         >
           {footer}
         </div>

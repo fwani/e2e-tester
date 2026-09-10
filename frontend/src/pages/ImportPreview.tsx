@@ -279,7 +279,7 @@ export function ImportPreview({
               전체 끄기
             </Button>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table className="w-full border-collapse">
             {/*
               `scope` 를 붙인다 — 없으면 화면 낭독기가 칸을 읽을 때 어느 열인지 말할 수
               없고, 「가져오기 / USER / 40」 같은 값만 흐른다.
@@ -390,7 +390,7 @@ export function ImportPreview({
                           글자 크기는 정본이 정한다 (시각 언어 G-2). 표본 표의 글자는
                           `.why` 가 이미 작게 그리므로 인라인으로 다시 선언하지 않는다.
                         */}
-                        <table style={{ marginTop: 6, borderCollapse: "collapse" }}>
+                        <table className="mt-[6px] border-collapse">
                           <tbody>
                             {sheet.sample.map((sampleRow) => (
                               <tr key={sampleRow.row}>

@@ -107,9 +107,11 @@ export function Modal({ layout, children, ...rest }: SurfaceProps) {
  * 겹침(`soft`)은 뒤가 아직 거기 있다는 뜻이다. 값은 정본 그대로다.
  */
 export function Scrim({ strength = "soft", layout, children, ...rest }: SurfaceProps & { strength?: "soft" | "strong" }) {
+  // 값이 아니라 이름을 쓴다 — `--color-scrim`·`--color-scrim-strong` 은
+  // `theme/tailwind.css` 가 정본 `--ink` 계열로 정의한다 (FR-001).
   const TONE: Record<"soft" | "strong", string> = {
-    soft: "bg-[rgba(20,23,28,0.28)]",
-    strong: "bg-[rgba(20,23,28,0.45)]",
+    soft: "bg-scrim",
+    strong: "bg-scrim-strong",
   };
   const cls = [TONE[strength], layout].filter(Boolean).join(" ");
   return (

@@ -299,7 +299,7 @@ export function StepDetail({
                 />
                 {alreadyReference ? (
                   <>
-                    <p className="why" style={{ margin: "4px 0 0" }}>
+                    <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1 mx-0 mb-0">
                       변수 참조입니다. 실제 값은 비밀 파일의 암호문에 있으며 화면에 표시되지
                       않습니다.
                     </p>
@@ -328,7 +328,7 @@ export function StepDetail({
 
                 {/* DR-023·SC-106 — 화면 이동 0회. 비밀 값을 이 자리에서 넣는다. */}
                 {!alreadyReference && canMarkSensitive && (
-                  <button className="navlink" style={{ marginTop: 4 }} onClick={() => setSecretOpen((v) => !v)}>
+                  <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken mt-s1" onClick={() => setSecretOpen((v) => !v)}>
                     {secretOpen ? "▾" : "▸"} 여기서 비밀 값 넣기
                   </button>
                 )}
@@ -365,7 +365,7 @@ export function StepDetail({
                   disabled={!canEdit}
                   onChange={(e) => setFileName(e.target.value)}
                 />
-                <p className="why" style={{ margin: "4px 0 0" }}>
+                <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1 mx-0 mb-0">
                   {uploadFileNote(fileName)}
                 </p>
               </div>
@@ -405,7 +405,7 @@ export function StepDetail({
         */}
         {shot !== undefined && (
           <div className="pane" data-step-shot>
-            <div className="pane-hd lbl band" style={{ padding: "0 12px" }}>
+            <div className="bg-sunken border-b border-hair-2 text-ink-2 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 h-[36px] flex items-center py-0 px-s3">
               이 STEP 이 끝난 화면
             </div>
             {shot.url !== null && !shotBroken ? (
@@ -443,7 +443,7 @@ export function StepDetail({
         */}
         {detail.attempts !== null && detail.attempts.length > 0 && (
           <div className="pane">
-            <div className="pane-hd lbl band" style={{ padding: "0 12px" }}>
+            <div className="bg-sunken border-b border-hair-2 text-ink-2 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 h-[36px] flex items-center py-0 px-s3">
               시도한 LOCATOR (우선순위 순)
             </div>
             {detail.attempts.map((a, i) => (
@@ -504,7 +504,7 @@ export function StepDetail({
               {showDsl ? "▾" : "▸"} 테스트 DSL 미리보기
             </button>
             {showDsl && (
-              <pre className="code-block" style={{ padding: 10, overflowX: "auto", margin: "6px 0 0" }}>
+              <pre className="bg-ink text-panel rounded-base font-mono text-[11px] leading-[1.6] p-[10px] overflow-x-auto mt-[6px] mx-0 mb-0">
                 {dslPreview(step)}
               </pre>
             )}

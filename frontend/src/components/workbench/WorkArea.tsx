@@ -337,7 +337,7 @@ export function WorkArea({
               <strong className="strong-sm">
                 ⚠ 이 테스트의 정의 파일이 편집을 시작한 뒤에 바뀌었습니다.
               </strong>
-              <p className="why" style={{ margin: "6px 0 10px" }}>
+              <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-[10px]">
                 파일 밖에서 고친 내용이 있습니다. 어떻게 할지 고르세요.
               </p>
               {/* 무엇을 버리는지 라벨에 적는다 (006 FR-209 · ui-contract §7). */}
@@ -478,11 +478,11 @@ function AlwaysVisibleFailure({
         >
           <strong className="strong-sm fail-ink">AI 가 막혔습니다</strong>
           {blocked.attempted !== null && (
-            <p className="why mono" style={{ margin: "6px 0 0" }}>
+            <p className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[6px] mx-0 mb-0">
               시도: {blocked.attempted}
             </p>
           )}
-          <p className="line" style={{ margin: "6px 0 10px" }}>
+          <p className="font-sans text-[13px] leading-[1.4] mt-[6px] mx-0 mb-[10px]">
             {blocked.reason}
           </p>
           {/*
@@ -506,7 +506,7 @@ function AlwaysVisibleFailure({
               onSubmit={(text) => onChoose?.("answer", text)}
             />
           )}
-          <div className="row" data-action="ai.chooseBlocked" style={{ gap: 8, flexWrap: "wrap" }}>
+          <div className="flex items-center gap-s2 flex-wrap" data-action="ai.chooseBlocked">
             {blocked.choices
               // 답변은 위 칸이 갖는다 — 같은 조작이 두 자리에 있으면 사용자는 둘이 다른
               // 것인지 확인하느라 멈춘다 (FR-235).

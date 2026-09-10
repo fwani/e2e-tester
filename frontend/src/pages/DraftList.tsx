@@ -70,7 +70,7 @@ export function DraftSection({
         </div>
       )}
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table className="w-full border-collapse">
         {/* `scope` 가 없으면 낭독기가 칸을 읽을 때 어느 열인지 말할 수 없다. */}
         <thead className="grid-head">
           <tr>

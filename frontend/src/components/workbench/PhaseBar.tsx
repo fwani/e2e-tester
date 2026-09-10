@@ -192,8 +192,7 @@ function PhaseTestName({
     return (
       <div
         data-phase-test-name
-        className="phase-name"
-        style={{ maxWidth: 300, minWidth: 0 }}
+        className="font-sans text-[17px] font-bold leading-none whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px] min-w-0"
         title={testName}
       >
         {testName}
@@ -212,15 +211,13 @@ function PhaseTestName({
     >
       <input
         data-action="test.rename"
-        aria-label={ACTION_LABEL["test.rename"]}
-        className="phase-name"
+        aria-label={ACTION_LABEL["test.rename"]} className="font-sans text-[17px] font-bold leading-none whitespace-nowrap overflow-hidden text-ellipsis flex-initial min-w-0 max-w-[300px]"
         value={testName}
         disabled={disabled}
         maxLength={200}
         placeholder={ACTION_LABEL["test.rename"]}
         aria-describedby={disabled ? reasonId : undefined}
         title={testName}
-        style={{ flex: "0 1 auto", minWidth: 0, maxWidth: 300 }}
         onChange={(e) => rename.onChange(e.target.value)}
       />
       {rename.status !== undefined && rename.status !== null && (
@@ -253,8 +250,7 @@ function PhaseTestName({
             <button
               type="button"
               data-remedy-for="test.rename"
-              className="textlink"
-              style={{ flex: "0 0 auto" }}
+              className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-semibold flex-none"
               onClick={() => rename.onRemedy(remedy.action)}
             >
               {ACTION_LABEL[remedy.action]}

@@ -146,7 +146,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
   const confirmed = confirm === DESTROY_CONFIRM;
 
   return (
-    <main style={{ maxWidth: 720, margin: "32px auto", padding: "0 16px" }}>
+    <main className="max-w-[720px] my-s6 mx-auto py-0 px-s4">
       <div className="flex items-center gap-s2 mb-s4">
         <h1 className="font-sans text-[20px] font-bold leading-[1.3] m-0">키 관리</h1>
         <span className="spacer" />
@@ -289,7 +289,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
               다시 잠그기
             </Button>
           </div>
-          <p className="line" style={{ margin: "8px 0 0" }}>
+          <p className="font-sans text-[13px] leading-[1.4] mt-s2 mx-0 mb-0">
             암호구로 보호된 키이며, 이 백엔드 프로세스가 암호구를 들고 있습니다. 민감
             변수를 쓰는 재실행과 AI 작성이 가능합니다. <b>백엔드를 다시 띄우면 다시
             잠깁니다.</b>

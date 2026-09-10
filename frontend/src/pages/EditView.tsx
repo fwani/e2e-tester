@@ -401,7 +401,7 @@ export function EditView({
 
   if (error !== null && view === null) {
     return (
-      <main style={{ maxWidth: 900, margin: "32px auto", padding: "0 16px" }}>
+      <main className="max-w-[900px] my-s6 mx-auto py-0 px-s4">
         <ErrorNotice error={error} />
         <button className="secondary" onClick={onBack}>
           목록으로
@@ -1048,19 +1048,19 @@ export function EditView({
                 왜 못 고치는지 알 수 없다.
               */}
               {"target" in current && (
-                <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+                <p>
                   {lockedFieldNotice(lockedReason("steps[].target") ?? "live_browser_required")}
                 </p>
               )}
               {current.type === "drag" && (
-                <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+                <p>
                   {lockedFieldNotice(
                     lockedReason("steps[].drop_target") ?? "live_browser_required",
                   )}
                 </p>
               )}
               {current.type === "assertion" && current.assertion.target && (
-                <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+                <p>
                   {lockedFieldNotice(
                     lockedReason("steps[].assertion.target") ?? "live_browser_required",
                   )}
@@ -1090,15 +1090,7 @@ export function EditView({
         <div
           role="alertdialog"
           aria-label="저장하지 않은 변경 확인"
-          className="modal-scrim"
-          style={{
-            position: "fixed",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 30,
-          }}
+          className="fixed inset-0 flex items-center justify-center z-[30] bg-scrim-strong"
         >
           <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
             <strong className="subtitle">{unsavedLeaveWarning(pending)}</strong>
@@ -1199,7 +1191,7 @@ function EditFields({
       {ops.length > 0 && (
         <div>
           <strong className="lbl">저장하지 않은 변경</strong>
-          <ul className="why" style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+          <ul className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-0 pl-[18px]">
             {ops.map((op, i) => (
               <li key={`${op.op}-${i}`} className="flex items-center gap-s2 gap-[6px]">
                 <span className="mono spacer">{describeOp(op, steps)}</span>

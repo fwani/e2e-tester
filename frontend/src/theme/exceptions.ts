@@ -66,21 +66,6 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
       "덮는 확인 판이다 — 덮는 면적이 클수록 짙게 한다.",
     requirement: "DC-009 · FR-266",
   },
-  {
-    file: "frontend/src/ui/Surface.tsx",
-    // 계수기(`scripts/count-violations.mjs`)는 색을 **표기 조각**으로 잡는다 —
-    // 보고되는 값이 `rgba(` 이므로 등록도 그 형태여야 한다. 파일이
-    // `ui/Surface.tsx` 하나로 좁혀지므로 범위가 넓어지지 않는다.
-    pattern: "^rgba\\($",
-    axis: "color",
-    reason:
-      "위 항목과 **같은 값**이다. 015 가 가림막을 부품(`ui/Surface` 의 `Scrim`)으로 " +
-      "해체하면서 값이 정본에서 부품으로 옮겨 왔다. 정본에 토큰이 없으므로 " +
-      "`var()` 로 참조할 수 없고, `bg-ink/28` 로 근사하면 Tailwind 가 oklab 으로 " +
-      "보간해 값이 달라진다 — FR-008(시각 동일성)이 그것을 허용하지 않는다. " +
-      "새 색이 아니라 --ink(#14171C)를 투명도로 낮춘 것이며, 정의는 여전히 한 곳이다.",
-    requirement: "015 FR-008 · DC-009",
-  },
 ];
 
 /** `reason` 이 비어 있으면 등록이 아니다 (EX-1). 가드와 이 모듈 양쪽이 쓴다. */

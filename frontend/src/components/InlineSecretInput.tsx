@@ -146,7 +146,7 @@ export function InlineSecretInput({
           placeholder="LOGIN_PASSWORD"
         />
         {name !== "" && !nameOk && (
-          <p className="why fail-ink" style={{ margin: "4px 0 0" }}>
+          <p className="font-sans text-[11px] leading-[1.4] text-ink-3 text-fail mt-s1 mx-0 mb-0">
             대문자로 시작하고 대문자·숫자·밑줄만 쓸 수 있습니다.
           </p>
         )}

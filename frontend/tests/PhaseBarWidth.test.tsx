@@ -153,7 +153,7 @@ describe("줄어들어도 잃지 않는다", () => {
     expect(remedy).not.toBeNull();
     // 말줄임하는 칸 **안**에 있으면 폭이 모자랄 때 빠져나갈 길이 사라진다.
     expect(remedy.closest("[data-disabled-reason-text]")).toBeNull();
-    expect(remedy.style.flex).toBe("0 0 auto");
+    expect(canShrink(remedy), "해소 수단이 줄어든다 — 말줄임에 잘린다").toBe(false);
   });
 });
 
