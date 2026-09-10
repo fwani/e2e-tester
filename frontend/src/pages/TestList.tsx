@@ -35,7 +35,15 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { tests, type SessionView, type TestListRow, type TestListResponse } from "../api/client";
+import {
+  ai,
+  ApiError,
+  tests,
+  type AiAvailability,
+  type SessionView,
+  type TestListRow,
+  type TestListResponse,
+} from "../api/client";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
@@ -909,9 +917,34 @@ function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
  *
  * 008 이 처음 정의한 화면이다. 이전에는 목록 표 안에 한 줄짜리 안내를 뒀는데, **첫
  * 사용자가 실제로 보는 화면**이 그것이었다. 여기서 두 갈래(녹화·AI)를 나란히 보여주고
- * 각각 무엇이 필요한지 말한다 — AI 는 키가 있어야 하므로 비활성이고 이유를 붙인다.
+ * 각각 무엇이 필요한지 말한다.
+ *
+ * ## AI 쪽 상태는 **확인해서** 말한다 (001 DR-021)
+ *
+ * 008 판은 「키 필요」 표식과 「언어모델 키 등록하기」 버튼을 **고정 문구로** 뒀다.
+ * 그래서 자격 증명이 이미 있는 환경(`/api/ai/availability` 가 `available: true`)에서도
+ * 화면은 키가 없다고 말하고, 이 화면에서 AI 로 시작하는 길이 아예 없었다 — 첫 사용자가
+ * 보는 화면이 사실과 반대되는 상태다. `ComposeView` 는 처음부터 이 점검을 했으므로
+ * 같은 사실을 두 화면이 다르게 말하고 있었다.
+ *
+ * 확인 전에는 「키 필요」도 「사용 가능」도 말하지 않는다 — 아직 모르는 것을 단정하면
+ * 고정 문구와 같은 결함이 된다.
  */
 function EmptyProject({ onCreate, onOpenKeys }: { onCreate: () => void; onOpenKeys?: () => void }) {
+  const [aiReady, setAiReady] = useState<AiAvailability | null>(null);
+
+  useEffect(() => {
+    void ai
+      .availability()
+      .then(setAiReady)
+      .catch((exc: unknown) =>
+        setAiReady({
+          available: false,
+          reason: exc instanceof ApiError ? exc.message : String(exc),
+        }),
+      );
+  }, []);
+
   return (
     <div
       className="pane"
@@ -977,15 +1010,44 @@ function EmptyProject({ onCreate, onOpenKeys }: { onCreate: () => void; onOpenKe
                 <path d="M8 2v3M8 11v3M2 8h3M11 8h3M4.2 4.2l2 2M9.8 9.8l2 2M11.8 4.2l-2 2M6.2 9.8l-2 2" />
               </svg>
               <div className="subtitle ai-ink">AI 로 만들기</div>
-              <span className="chip warn" style={{ marginLeft: "auto" }}>
-                키 필요
-              </span>
+              {/* 확인이 끝난 뒤에만 표식을 붙인다 (DR-021) */}
+              {aiReady !== null && (
+                <span
+                  className={aiReady.available ? "chip ai" : "chip warn"}
+                  data-ai-ready={aiReady.available ? "yes" : "no"}
+                  style={{ marginLeft: "auto" }}
+                >
+                  {aiReady.available ? "사용 가능" : "키 필요"}
+                </span>
+              )}
             </div>
             <div className="why">할 일을 말로 적으면 AI 가 브라우저에서 해봅니다.</div>
-            {/* 쓸 수 없는 조작을 감추지 않는다 (006 ui-contract §2). 여기서 키 등록으로 간다. */}
-            <button className="btn off" onClick={onOpenKeys} disabled={onOpenKeys === undefined} style={{ justifyContent: "center" }}>
-              언어모델 키 등록하기
-            </button>
+            {/*
+              쓸 수 없는 조작을 감추지 않는다 (006 ui-contract §2). 쓸 수 있으면
+              **막지도 않는다** — 키가 있는데 키 등록으로 보내면 갈 곳이 없다.
+            */}
+            {aiReady?.available === true ? (
+              <button className="btn primary" onClick={onCreate} style={{ justifyContent: "center" }}>
+                AI 로 시작하기
+              </button>
+            ) : (
+              <>
+                {/* 왜 못 쓰는지 백엔드가 준 문구를 그대로 보여준다 (DR-016) */}
+                {aiReady !== null && aiReady.reason !== null && (
+                  <div className="why" style={{ whiteSpace: "pre-wrap" }}>
+                    {aiReady.reason}
+                  </div>
+                )}
+                <button
+                  className="btn off"
+                  onClick={onOpenKeys}
+                  disabled={aiReady === null || onOpenKeys === undefined}
+                  style={{ justifyContent: "center" }}
+                >
+                  {aiReady === null ? "확인 중…" : "언어모델 키 등록하기"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
