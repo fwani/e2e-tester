@@ -36,7 +36,13 @@ interface Call {
 }
 
 /** 그룹 질의를 실제로 보내는지 보려면 URL 을 기록해야 한다. */
-function stub(rows: TestListRow[], groups: GroupSummary[]) {
+function stub(
+  rows: TestListRow[],
+  groups: GroupSummary[],
+  defined: { prefix: string; name: string; count: number }[] = groups
+    .filter((g) => g.name !== null)
+    .map((g) => ({ prefix: g.prefix, name: g.name as string, count: g.count })),
+) {
   const calls: Call[] = [];
   vi.stubGlobal(
     "fetch",
@@ -48,7 +54,8 @@ function stub(rows: TestListRow[], groups: GroupSummary[]) {
         body: init?.body === undefined ? undefined : JSON.parse(String(init.body)),
       });
       if (url.includes("/api/groups")) {
-        return new Response(JSON.stringify({ groups: [] }), {
+        // 정의된 그룹 전부 — **테스트가 0개인 것도 포함한다** (013 converge T061).
+        return new Response(JSON.stringify({ groups: defined }), {
           status: init?.method === "POST" ? 201 : 200,
           headers: { "content-type": "application/json" },
         });
@@ -359,5 +366,82 @@ describe("그룹 정리", () => {
       expect(document.querySelector("[data-test-selection-bar]")).not.toBeNull(),
     );
     expect(screen.queryByLabelText("그룹으로 옮기기")).toBeNull();
+  });
+});
+
+// ─── converge 2회차 · 빈 그룹을 없앨 수 있는가 (T061) ─────────────────────
+
+describe("테스트가 0개인 그룹", () => {
+  it("띠에서 사라지지 않는다 — 없앨 방법이 화면에 있어야 한다", async () => {
+    // 목록 응답은 빈 그룹을 뺀다 (FR-450 — 소제목이 목록을 어지럽히지 않는다).
+    // 띠까지 그것을 근거로 삼으면 **테스트를 전부 옮긴 그룹을 고를 수도, 없앨 수도
+    // 없다** — 012 에서 사용자가 지적한 「없앨 방법이 없는 줄」과 같은 형태다.
+    stub(
+      [row({ id: "TC-001", name: "그룹 없는 것" })],
+      [{ prefix: "TC", name: null, count: 1 }],
+      [{ prefix: "EMPTY", name: "비어 있는 그룹", count: 0 }],
+    );
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("그룹 없는 것");
+
+    await waitFor(() =>
+      expect(
+        within(bar() as HTMLElement).getByRole("button", { name: /비어 있는 그룹/ }),
+      ).toBeTruthy(),
+    );
+  });
+
+  it("골라서 없앨 수 있다", async () => {
+    const calls = stub(
+      [row({ id: "TC-001", name: "그룹 없는 것" })],
+      [{ prefix: "TC", name: null, count: 1 }],
+      [{ prefix: "EMPTY", name: "비어 있는 그룹", count: 0 }],
+    );
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("그룹 없는 것");
+    const user = userEvent.setup();
+
+    await screen.findByRole("button", { name: /비어 있는 그룹/ });
+    await user.click(screen.getByRole("button", { name: /비어 있는 그룹/ }));
+    // 클릭 뒤 목록이 다시 오고 띠가 다시 그려진다 — 그 뒤에 조작이 나타난다.
+    await waitFor(() =>
+      expect(
+        Array.from(document.querySelectorAll("button")).map((b) => b.textContent),
+      ).toContain("그룹 없애기"),
+    );
+    await user.click(screen.getByRole("button", { name: "그룹 없애기" }));
+    await user.click(await screen.findByRole("button", { name: "없애기" }));
+
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "DELETE" && c.url.includes("/api/groups/EMPTY"))).toBe(
+        true,
+      ),
+    );
+  });
+
+  it("골랐는데 0건이어도 「빈 프로젝트」 화면이 되지 않는다", async () => {
+    /*
+      converge 2회차에서 실제로 걸린 결함이다. `isEmptyProject` 가 검색어는 이미
+      고려했는데(`query.trim() === ""`) 그룹 걸러 보기는 빠져 있었다. 그래서 테스트가
+      0개인 그룹을 고르는 순간 화면이 **첫 사용자 안내로 바뀌고 그룹 띠까지 사라져**,
+      사용자가 돌아올 길을 잃었다.
+    */
+    stub(
+      [row({ id: "TC-001", name: "그룹 없는 것" })],
+      [{ prefix: "TC", name: null, count: 1 }],
+      [{ prefix: "EMPTY", name: "비어 있는 그룹", count: 0 }],
+    );
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("그룹 없는 것");
+    const user = userEvent.setup();
+
+    await screen.findByRole("button", { name: /비어 있는 그룹/ });
+    await user.click(screen.getByRole("button", { name: /비어 있는 그룹/ }));
+
+    // 띠가 남아 있어야 돌아올 수 있다.
+    await waitFor(() => expect(bar()).not.toBeNull());
+    expect(
+      within(bar() as HTMLElement).getByRole("button", { name: /^전체/ }),
+    ).toBeTruthy();
   });
 });

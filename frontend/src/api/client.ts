@@ -769,7 +769,12 @@ export const sessions = {
   stop: (id: string) => post<SessionView>(`/api/sessions/${id}/stop`),
   /** 검토 중인 초안을 버린다. **여기서 비로소 세션이 파괴된다** (DR-014). */
   discard: (id: string) => post<void>(`/api/sessions/${id}/discard`),
-  save: (id: string, name: string) => post<Test>(`/api/sessions/${id}/save`, { name }),
+  /**
+   * 테스트로 저장한다. `group` 은 **아직 저장되지 않은 세션에만** 뜻이 있다 (013 FR-443) —
+   * 이미 저장된 테스트의 그룹을 바꾸는 것은 `tests.move` 가 원자성 규약과 함께 한다.
+   */
+  save: (id: string, name: string, group?: string | null) =>
+    post<Test>(`/api/sessions/${id}/save`, group ? { name, group } : { name }),
   tabs: (id: string) => get<TabsResponse>(`/api/sessions/${id}/tabs`),
   setMirrorTab: (id: string, tabIndex: number) =>
     post<TabsResponse>(`/api/sessions/${id}/mirror-tab`, { tab_index: tabIndex }),

@@ -59,16 +59,35 @@ export interface PhaseNameEdit {
   status?: ReactNode;
 }
 
+/**
+ * 저장할 그룹 (013 FR-443 · converge T062).
+ *
+ * **이름 옆에 둔다.** 이름과 그룹은 「이 테스트가 무엇으로 저장되는가」를 함께 정하고,
+ * 그룹은 식별자에 들어가므로(`USER-001`) 저장 시점에 정해져야 한다.
+ *
+ * **아직 저장되지 않은 세션에만** 준다. 이미 저장된 테스트의 그룹을 바꾸는 것은 파일과
+ * 실행 산출물을 옮기는 일이고, `POST /api/tests:move` 가 원자성 규약과 함께 그것을 한다 —
+ * 저장에 자산 이동을 숨기지 않는다.
+ */
+export interface PhaseGroupPick {
+  options: { prefix: string; name: string }[];
+  /** 고른 접두어. `null` 이면 그룹 없음 (`TC-###`). */
+  value: string | null;
+  onChange: (prefix: string | null) => void;
+}
+
 export interface PhaseBarProps {
   bar: PhaseBarModel;
   testName: string;
   /** 이름을 그 자리에서 고친다 (011 UC-011-2). 없으면 읽기 전용 표시 */
   rename?: PhaseNameEdit;
+  /** 저장할 그룹 (013 FR-443). 고를 그룹이 없으면 주지 않는다 — 자리를 뺏지 않는다 */
+  group?: PhaseGroupPick;
   /** 그 국면의 주요 조작. 오른쪽에 온다 */
   actions: ReactNode;
 }
 
-export function PhaseBar({ bar, testName, rename, actions }: PhaseBarProps) {
+export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProps) {
   return (
     <div data-workbench-phase-bar className="phase" style={{ flex: "0 0 48px" }}>
       {/*
@@ -85,6 +104,27 @@ export function PhaseBar({ bar, testName, rename, actions }: PhaseBarProps) {
       </div>
 
       <PhaseTestName testName={testName} rename={rename} />
+
+      {/*
+        013 FR-443 — 그룹을 이름 옆에서 고른다. **그룹이 하나도 없으면 그리지 않는다**
+        (SC-627): 그룹을 쓰지 않는 사용자에게 새 칸을 강요하지 않는다.
+      */}
+      {group !== undefined && group.options.length > 0 && (
+        <select
+          data-phase-group
+          aria-label="저장할 그룹"
+          value={group.value ?? ""}
+          onChange={(e) => group.onChange(e.target.value === "" ? null : e.target.value)}
+          style={{ margin: 0, flex: "0 0 auto", maxWidth: 160 }}
+        >
+          <option value="">그룹 없음</option>
+          {group.options.map((g) => (
+            <option key={g.prefix} value={g.prefix}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      )}
 
       {bar.progressLabel !== null && (
         <div className="phase-progress" style={{ flex: "0 0 auto" }}>

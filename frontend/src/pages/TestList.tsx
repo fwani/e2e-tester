@@ -43,6 +43,7 @@ import {
   type AiAvailability,
   type SessionView,
   type TestListRow,
+  type TestGroup,
   type TestListResponse,
   type TrashedTest,
 } from "../api/client";
@@ -170,6 +171,17 @@ export function TestList({
   const [trashed, setTrashed] = useState<TrashedTest[] | null>(null);
   /** 고른 그룹의 접두어. `null` 이면 전체 (013 FR-441). */
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  /**
+   * **정의된 그룹 전부** — 테스트가 0개인 것도 포함한다 (013 converge T061).
+   *
+   * 목록 응답(`data.groups`)은 테스트가 **있는** 그룹만 싣는다 (FR-450 — 소제목이
+   * 목록을 어지럽히지 않아야 한다). 그것을 띠의 근거로 쓰면 **테스트를 전부 옮긴 그룹이
+   * 띠에서 사라져 고를 수도, 이름을 고칠 수도, 없앨 수도 없다.**
+   *
+   * 두 응답의 규칙을 합치지 않는다 — 어지럽히지 않는 것은 **소제목** 이야기이고, 띠는
+   * **고르는 자리**라 비어 있어도 있어야 한다 (contracts/api-contract.md §5).
+   */
+  const [definedGroups, setDefinedGroups] = useState<TestGroup[]>([]);
 
   const reload = async (q: string, group: string | null = groupFilter) => {
     try {
@@ -187,7 +199,7 @@ export function TestList({
     setError(null);
     try {
       await fn();
-      await reload(query);
+      await Promise.all([reload(query), reloadGroups()]);
     } catch (exc) {
       setError(describeError(exc));
     } finally {
@@ -195,8 +207,20 @@ export function TestList({
     }
   };
 
+  const reloadGroups = async () => {
+    try {
+      // `?? []` 가 없으면 응답이 어긋났을 때 **목록 화면 전체가 깨진다.** 그룹은
+      // 선택 사항인데 그것 때문에 아무것도 못 하게 되어서는 안 된다.
+      setDefinedGroups((await groupsApi.list()).groups ?? []);
+    } catch {
+      // 그룹을 못 불러와도 목록은 그려야 한다 — 첫 화면이 막히면 아무것도 못 한다.
+      setDefinedGroups([]);
+    }
+  };
+
   useEffect(() => {
     void reload(query, groupFilter);
+    void reloadGroups();
     // 검색어·그룹이 바뀔 때마다 다시 조회한다. 로컬 도구이므로 디바운스 없이도 충분하다.
   }, [query, groupFilter]);
 
@@ -294,6 +318,20 @@ export function TestList({
     return sections;
   }, [rows, data, groupFilter]);
 
+  const mergedGroups = useMemo(() => {
+    const fromList = data?.groups ?? [];
+    const seen = new Set(fromList.map((g) => g.prefix));
+    const empties = definedGroups
+      .filter((g) => !seen.has(g.prefix))
+      .map((g) => ({ prefix: g.prefix, name: g.name, count: 0 }));
+    return [...fromList, ...empties].sort((a, b) => {
+      // 「그룹 없음」은 마지막에 온다 — 이름이 있는 묶음을 먼저 보여준다.
+      if (a.prefix === "TC") return 1;
+      if (b.prefix === "TC") return -1;
+      return (a.name ?? a.prefix).localeCompare(b.name ?? b.prefix, "ko");
+    });
+  }, [data, definedGroups]);
+
   const totalSteps = useMemo(() => all.reduce((s, t) => s + t.step_count, 0), [all]);
 
   /** 고른 것들을 휴지통으로 (013 FR-432). 확인을 거친 뒤에만 부른다. */
@@ -324,8 +362,16 @@ export function TestList({
     return times.reduce((a, b) => (new Date(a).getTime() > new Date(b).getTime() ? a : b));
   }, [all]);
 
-  /** 테스트가 하나도 없는 첫 사용자 화면 — `EmptyList.dc.html` 이 기준이다. */
-  const isEmptyProject = data !== null && all.length === 0 && query.trim() === "";
+  /**
+   * 테스트가 하나도 없는 첫 사용자 화면 — `EmptyList.dc.html` 이 기준이다.
+   *
+   * **걸러 본 결과가 0건인 것은 「빈 프로젝트」가 아니다.** 검색어는 처음부터 그렇게
+   * 다뤘고(`query.trim() === ""`), 013 이 더한 그룹 걸러 보기에도 같은 이유가 그대로
+   * 적용된다 — 그것을 빠뜨리면 **테스트가 0개인 그룹을 고르는 순간 화면이 첫 사용자
+   * 안내로 바뀌고 그룹 띠까지 사라져**, 사용자가 돌아올 길을 잃는다 (converge T061).
+   */
+  const isEmptyProject =
+    data !== null && all.length === 0 && query.trim() === "" && groupFilter === null;
 
   const liveOf = (testId: string) => activeSessions.find((s) => s.test_id === testId) ?? null;
   /**
@@ -509,7 +555,12 @@ export function TestList({
         {/* ─── 그룹 띠 (013 UC-013-06) ──────────────────────────────────── */}
         {!isEmptyProject && (
           <TestGroupBar
-            groups={data?.groups ?? []}
+            /*
+              **정의된 그룹 ∪ 실제로 테스트가 있는 접두어.** 앞쪽이 빈 그룹을 살리고,
+              뒤쪽이 「그룹 없음」과 정의가 없는 접두어를 살린다. 어느 한쪽만으로는
+              띠에서 사라지는 것이 생긴다.
+            */
+            groups={mergedGroups}
             active={groupFilter}
             busy={busy}
             onPick={(prefix) => {

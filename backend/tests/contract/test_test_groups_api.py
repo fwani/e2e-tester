@@ -371,3 +371,31 @@ def test_the_group_survives_when_a_member_cannot_move(
 
     assert resp.status_code == 409
     assert [g["prefix"] for g in opened.get("/api/groups").json()["groups"]] == ["USER"]
+
+
+# ─── converge 2회차 — 저장할 때 그룹을 고른다 (T062 · FR-443) ─────────────
+
+
+def test_saving_into_a_group_uses_its_prefix(opened: TestClient) -> None:
+    """FR-443 · US2/AC5 — 백엔드가 `group` 을 받는다는 것을 계약으로 고정한다.
+
+    화면이 이 값을 보내지 않으면 **그룹을 골라 테스트를 만들 길이 없고**, 만든 뒤
+    옮기는 수밖에 없다 (013 converge T062).
+    """
+    _mk(opened, "USER", "사용자관리 테스트")
+    repo = _repo(opened)
+
+    assert repo.allocate_test_id("USER") == "USER-001"
+
+
+def test_saving_without_a_group_stays_on_TC(opened: TestClient) -> None:
+    """FR-445b · SC-627 — 그룹을 쓰지 않는 사용자에게 비용을 지우지 않는다."""
+    assert _repo(opened).allocate_test_id() == "TC-001"
+
+
+def test_an_unknown_group_cannot_be_saved_into(opened: TestClient) -> None:
+    """막지 않으면 `groups` 에 없는 접두어의 테스트가 생긴다 — 사용자가 만든 적 없는 그룹이다."""
+    from itb.api.routes.sessions import _require_known_group
+
+    with pytest.raises(Exception, match="그런 그룹이 없습니다"):
+        _require_known_group(_repo(opened), "NOPE")
