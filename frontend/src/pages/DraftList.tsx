@@ -46,7 +46,10 @@ export function DraftSection({
   return (
     <section data-draft-section style={{ marginTop: 20 }}>
       <div className="row" style={{ gap: 8, alignItems: "baseline", marginBottom: 8 }}>
-        <span className="strong-sm">녹화하지 않은 초안</span>
+        {/* 표제로 둔다 — 낭독기가 구획을 건너뛸 수 있어야 한다. */}
+        <h2 className="strong-sm" style={{ margin: 0 }}>
+          녹화하지 않은 초안
+        </h2>
         <span className="num" data-draft-count>
           {drafts.length}
         </span>
@@ -66,13 +69,16 @@ export function DraftSection({
       )}
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
+        {/* `scope` 가 없으면 낭독기가 칸을 읽을 때 어느 열인지 말할 수 없다. */}
+        <thead className="grid-head">
           <tr>
-            <th style={{ textAlign: "left", padding: "6px 8px", width: 110 }}>희망 번호</th>
-            <th style={{ textAlign: "left", padding: "6px 8px" }}>대상기능</th>
-            <th style={{ textAlign: "left", padding: "6px 8px", width: 110 }}>수행자</th>
-            <th style={{ textAlign: "left", padding: "6px 8px" }}>출처</th>
-            <th style={{ textAlign: "right", padding: "6px 8px", width: 190 }} />
+            <th scope="col" style={{ padding: "6px 8px", width: 110 }}>희망 번호</th>
+            <th scope="col" style={{ padding: "6px 8px" }}>대상기능</th>
+            <th scope="col" style={{ padding: "6px 8px", width: 110 }}>수행자</th>
+            <th scope="col" style={{ padding: "6px 8px" }}>출처</th>
+            <th scope="col" style={{ padding: "6px 8px", width: 190 }}>
+              <span className="lbl">할 수 있는 일</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -91,7 +97,7 @@ export function DraftSection({
                 )}
               </td>
               <td style={{ padding: "6px 8px" }}>
-                <div>{draft.name}</div>
+                <div id={`draft-name-${draft.draft_id}`}>{draft.name}</div>
                 {draft.description !== null && <div className="why">{draft.description}</div>}
               </td>
               <td style={{ padding: "6px 8px" }}>{draft.actor ?? "—"}</td>
@@ -101,17 +107,39 @@ export function DraftSection({
                 </span>
               </td>
               <td style={{ padding: "6px 8px", textAlign: "right" }}>
+                {/*
+                  **어느 초안인지 조작에 붙인다.** 행이 스무 개면 「녹화 시작」이 스무
+                  개고, 낭독기로 도는 사용자에게는 전부 같은 조작으로 들린다.
+
+                  `aria-label` 이 아니라 `aria-describedby` 다 — 라벨을 덮으면 조작의
+                  이름이 행마다 달라지고, 사용자가 화면에서 읽는 글자(「녹화 시작」)와
+                  낭독기가 부르는 이름이 어긋난다. 이름은 그대로 두고 대상을 **설명**으로
+                  더한다.
+                */}
                 {confirming === draft.draft_id ? (
                   <span className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
                     <span className="why">지울까요?</span>
+                    {/*
+                      되돌릴 수 없는 쪽을 형태로 구분한다 — 「지우기」와 「그대로」가 같은
+                      형태면 어느 쪽이 무엇을 하는지 글자를 읽어야만 알 수 있다.
+
+                      확인 버튼에 초점을 옮긴다. 누른 버튼이 사라지면서 초점이 문서
+                      처음으로 튀어, 키보드 사용자는 확인 자리를 다시 찾아야 했다.
+                    */}
                     <button
-                      className="btn sm"
+                      className="btn sm danger"
                       data-action="draft.delete-confirm"
+                      aria-describedby={`draft-name-${draft.draft_id}`}
+                      ref={(el) => el?.focus()}
                       onClick={() => remove(draft.draft_id)}
                     >
                       지우기
                     </button>
-                    <button className="btn sm" onClick={() => setConfirming(null)}>
+                    <button
+                      className="btn sm"
+                      aria-describedby={`draft-name-${draft.draft_id}`}
+                      onClick={() => setConfirming(null)}
+                    >
                       그대로
                     </button>
                   </span>
@@ -120,6 +148,7 @@ export function DraftSection({
                     <button
                       className="btn sm"
                       data-action="draft.record"
+                      aria-describedby={`draft-name-${draft.draft_id}`}
                       disabled={busy}
                       onClick={() => onRecord(draft)}
                     >
@@ -128,6 +157,7 @@ export function DraftSection({
                     <button
                       className="btn sm"
                       data-action="draft.delete"
+                      aria-describedby={`draft-name-${draft.draft_id}`}
                       disabled={busy}
                       onClick={() => setConfirming(draft.draft_id)}
                     >

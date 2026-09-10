@@ -26,6 +26,7 @@ import type {
 import { ApiError, imports } from "../api/client";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import { Toast } from "../components/Toast";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 /** 컬럼 7개. 순서는 서버의 `ORDER` 와 같다 — 화면이 다른 순서를 쓰면 사용자가 헷갈린다. */
@@ -119,6 +120,7 @@ export function ImportPreview({
   const answered = asking.filter((s) => (prefixes[s.sheet_name] ?? "").trim() !== "").length;
   const needMapping = plan.sheets.filter((s) => isOn(s) && !usable(s));
   const nothingChosen = plan.sheets.every((s) => !isOn(s));
+  const onCount = plan.sheets.filter((s) => isOn(s)).length;
 
   /*
     확정하면 늘어날 초안 수.
@@ -197,7 +199,11 @@ export function ImportPreview({
       </HeaderBar>
 
       <div style={{ padding: "20px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
-        <ErrorNotice error={error} />
+        {error !== null && (
+          <Toast tone="error" onDismiss={() => setError(null)}>
+            <ErrorNotice error={error} />
+          </Toast>
+        )}
 
         {/* ── 무엇이 만들어지는가 ─────────────────────────────────────── */}
         <div data-import-summary className="tint-run" style={{ padding: "12px 14px" }}>
@@ -207,10 +213,22 @@ export function ImportPreview({
           <div className="why" style={{ marginTop: 4 }}>
             초안은 아직 테스트가 아닙니다. 하나씩 골라 AI 녹화로 완성하면 테스트가 됩니다.
           </div>
+          {/*
+            수용량은 **그룹마다** 넘친다 (FR-039d). 그런데 문구는 「이 프로젝트에 남은
+            번호」라는 총량을 말했다 — 판정과 설명이 어긋나 있었고, 사용자는 어느 그룹의
+            어느 행을 덜어야 하는지 알 수 없었다. 넘친 그룹과 그 그룹의 남은 칸을
+            **그룹마다** 말한다.
+          */}
           {overCapacity && (
-            <div className="why" style={{ marginTop: 6 }} data-capacity-warning>
-              이 프로젝트에 남은 번호는 {plan.capacity.available}개입니다. 가져올 행을 줄이거나
-              프로젝트를 나누세요.
+            <div className="why fail-ink" style={{ marginTop: 6 }} data-capacity-warning>
+              {tooFull.map(([prefix, n]) => (
+                <div key={prefix}>
+                  그룹 「{prefix}」에 {n}건을 넣으려 하지만 남은 번호는 {roomOf(prefix)}개입니다.
+                </div>
+              ))}
+              <div style={{ marginTop: 4 }}>
+                그 그룹의 시트를 끄거나, 프로젝트를 나누세요.
+              </div>
             </div>
           )}
         </div>
@@ -227,17 +245,52 @@ export function ImportPreview({
 
         {/* ── 시트별 ──────────────────────────────────────────────────── */}
         <div>
-          <div className="strong-sm" style={{ marginBottom: 8 }}>
-            시트 {plan.sheets.length}개
+          <div className="row" style={{ marginBottom: 8, gap: 10 }}>
+            <h2 className="strong-sm" style={{ margin: 0 }}>
+              시트 {plan.sheets.length}개
+            </h2>
+            <span className="why" data-sheet-on-count>
+              {onCount}개 켜짐
+            </span>
+            <div className="spacer" />
+            {/*
+              **한 번에 켜고 끈다.** 이 화면은 시트 200개를 받을 수 있다(이 파일 머리말).
+              행마다 체크 상자만 두면 「이 시트 하나만 가져오기」에 199번의 클릭이 든다 —
+              가장 흔한 두 뜻(전부·하나만)이 가장 비싼 조작이었다.
+            */}
+            <button
+              className="btn sm"
+              data-action="import.all-on"
+              disabled={busy || onCount === plan.sheets.length}
+              onClick={() =>
+                setIncluded(Object.fromEntries(plan.sheets.map((s) => [s.sheet_name, true])))
+              }
+            >
+              전체 켜기
+            </button>
+            <button
+              className="btn sm"
+              data-action="import.all-off"
+              disabled={busy || onCount === 0}
+              onClick={() =>
+                setIncluded(Object.fromEntries(plan.sheets.map((s) => [s.sheet_name, false])))
+              }
+            >
+              전체 끄기
+            </button>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
+            {/*
+              `scope` 를 붙인다 — 없으면 화면 낭독기가 칸을 읽을 때 어느 열인지 말할 수
+              없고, 「가져오기 / USER / 40」 같은 값만 흐른다.
+            */}
+            <thead className="grid-head">
               <tr>
-                <th style={{ textAlign: "left", padding: "6px 8px", width: 44 }}>가져오기</th>
-                <th style={{ textAlign: "left", padding: "6px 8px" }}>시트</th>
-                <th style={{ textAlign: "left", padding: "6px 8px", width: 160 }}>그룹 접두어</th>
-                <th style={{ textAlign: "right", padding: "6px 8px", width: 80 }}>행</th>
-                <th style={{ textAlign: "left", padding: "6px 8px" }}>메모</th>
+                <th scope="col" style={{ padding: "6px 8px", width: 44 }}>가져오기</th>
+                <th scope="col" style={{ padding: "6px 8px" }}>시트</th>
+                <th scope="col" style={{ padding: "6px 8px", width: 160 }}>그룹 접두어</th>
+                <th scope="col" style={{ padding: "6px 8px", width: 80 }}>행</th>
+                <th scope="col" style={{ padding: "6px 8px" }}>메모</th>
               </tr>
             </thead>
             <tbody>
@@ -453,8 +506,13 @@ export function ImportPreview({
         </div>
 
         {/* ── 무엇이 빠지는가 ─────────────────────────────────────────── */}
+        {/*
+          **많으면 접어 둔다.** 시트 200개를 받는 화면이므로 건너뛸 행이 수백 건일 수
+          있고, 그때 펼친 목록이 확정 버튼을 화면 밖으로 밀어낸다. 20건까지는 펼쳐
+          둔다 — 그 규모에서는 전부 읽는 것이 사용자가 하려는 일이다.
+        */}
         {plan.skipped.length > 0 && (
-          <details data-skipped-rows open>
+          <details data-skipped-rows open={plan.skipped.length <= 20}>
             <summary className="strong-sm" style={{ cursor: "pointer" }}>
               건너뛸 행 {plan.skipped.length}건
             </summary>
@@ -468,11 +526,21 @@ export function ImportPreview({
           </details>
         )}
 
-        {/* ── 확정 ─────────────────────────────────────────────────────── */}
-        <div className="row" style={{ gap: 8, marginTop: 8 }}>
+        {/*
+          ── 확정 ───────────────────────────────────────────────────────────
+
+          **띠가 화면 아래에 붙어 따라온다** (`.commit-bar`). 시트가 200개면 이 자리가
+          스크롤 수천 픽셀 아래로 밀리고, 시트 하나를 고친 사용자는 확정하려고 목록
+          끝까지 내려가야 했다. 되돌릴 길(취소)이 멀어지는 것도 같은 문제다.
+        */}
+        <div
+          className="commit-bar row"
+          style={{ gap: 8, marginTop: 8, padding: "10px 0", flexWrap: "wrap" }}
+        >
           <button
             className="btn primary"
             data-action="import.confirm"
+            aria-busy={busy}
             disabled={busy || overCapacity || nothingChosen}
             onClick={confirm}
           >
@@ -517,23 +585,49 @@ export function ImportFilePicker({
   onPlan,
   onError,
   disabled = false,
+  small = false,
 }: {
   label: string;
   onPlan: (plan: ImportPlanView) => void;
   onError: (error: ErrorInfo) => void;
   disabled?: boolean;
+  /**
+   * 이웃과 같은 크기로 맞춘다 (`.btn.sm` — 높이 26·12px).
+   *
+   * **조작의 크기는 자리가 정한다.** 이 컴포넌트는 언제나 전체 크기 `.btn` 이었고,
+   * 목록 툴바의 이웃은 전부 `.btn sm` 이다 — 「엑셀에서 가져오기」만 혼자 커서
+   * 더 중요한 조작처럼 보였다. 크기는 위계를 말하므로 이웃과 어긋나면 거짓말이 된다.
+   */
+  small?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
 
+  const off = disabled || busy;
+
   return (
-    <label className={`btn${disabled || busy ? " disabled" : ""}`} style={{ cursor: "pointer" }}>
+    /*
+      **`<label>` 이 조작이고 초점은 안쪽 칸에 있다.**
+
+      이전 판은 칸을 `display:none` 으로 감췄다. 그러면 칸이 Tab 순서에서 사라지고
+      `<label>` 은 원래 초점을 받지 않으므로, 이 조작에 **키보드로 도달할 수 없었다** —
+      「엑셀에서 가져오기」와 「엑셀에서 새 프로젝트」 둘 다 그 상태였다. 이 도구는
+      키보드로 도는 도구다 (`tokens.css` 의 `:focus-visible` 주석).
+
+      `.file-input` 은 보이지 않게만 하고 초점은 남긴다. 링은 라벨이 그린다
+      (`.btn.file:focus-within`). `<input type=file>` 은 초점을 받은 상태에서
+      Space·Enter 로 열리므로, 마우스 없이 같은 일을 할 수 있다.
+    */
+    <label
+      className={`btn file${small ? " sm" : ""}${off ? " disabled" : ""}`}
+      aria-disabled={off}
+    >
       {busy ? "읽는 중…" : label}
       <input
         type="file"
         accept=".xlsx"
         data-import-file
-        disabled={disabled || busy}
-        style={{ display: "none" }}
+        disabled={off}
+        className="file-input"
         onChange={(event) => {
           const file = event.target.files?.[0];
           // 값을 비워 둔다 — 같은 파일을 다시 고를 수 있어야 한다.
@@ -575,12 +669,7 @@ export function ImportDoneNotice({
     result.skipped.length + result.skipped_sheets.length + result.renumbered.length;
 
   return (
-    <div
-      data-import-done
-      role="status"
-      className={noise > 0 ? "tint-warn" : "tint-run"}
-      style={{ padding: "10px 12px", marginBottom: 10 }}
-    >
+    <Toast mark="data-import-done" tone={noise > 0 ? "warn" : "info"} onDismiss={onDismiss}>
       <div className="strong-sm">
         그룹 {groups}개, 테스트 초안 {drafts}건을 만들었습니다.
       </div>
@@ -626,10 +715,7 @@ export function ImportDoneNotice({
         </details>
       )}
 
-      <button className="btn sm" style={{ marginTop: 8 }} onClick={onDismiss}>
-        확인
-      </button>
-    </div>
+    </Toast>
   );
 }
 
