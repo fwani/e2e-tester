@@ -237,10 +237,47 @@ export interface TestListRow {
   outcome: "pass" | "fail" | null;
   last_run_at: string | null;
   failure_summary: FailureSummary | null;
+  /**
+   * 이 테스트가 속한 그룹의 접두어 (013 FR-438). 그룹 없음은 `TC`.
+   *
+   * **식별자에서 유도한 값이다.** 저장된 필드가 아니다 (013 data-model §3).
+   */
+  group_prefix: string;
 }
+
+/** 목록 위 그룹 띠가 그릴 것 (013 FR-440). */
+export interface GroupSummary {
+  prefix: string;
+  /** 사람이 읽는 이름. 그룹 없음(`TC`)과 **정의가 없는 접두어**는 `null` 이다. */
+  name: string | null;
+  /** **걸러 보기 전** 개수다 — 걸러 본 뒤에도 다른 그룹으로 갈 수 있어야 한다. */
+  count: number;
+}
+
+/** 그룹 하나 (013 · contracts/api-contract.md §5). */
+export interface TestGroup {
+  prefix: string;
+  name: string;
+  count: number;
+}
+
+export const groups = {
+  list: () => get<{ groups: TestGroup[] }>("/api/groups"),
+  /**
+   * 그룹 만들기 (013 FR-444d). **이름과 접두어를 따로 받는다** — 한글 이름을 유지하면서
+   * 식별자는 짧게 둔다.
+   */
+  create: (prefix: string, name: string) =>
+    post<TestGroup>("/api/groups", { prefix, name }),
+  /** 이름만 바꾼다. **접두어는 바꾸지 않는다** — 그것은 자산을 옮기는 일이다. */
+  rename: (prefix: string, name: string) =>
+    patch<TestGroup>(`/api/groups/${prefix}`, { name }),
+};
 
 export interface TestListResponse {
   counts: { total: number; pass: number; fail: number };
+  /** 테스트가 **있는** 그룹만 (FR-450). 고르는 자리는 `groups.list()` 를 쓴다. */
+  groups: GroupSummary[];
   tests: TestListRow[];
   problems: string[];
 }
@@ -257,8 +294,14 @@ export interface TrashedTest {
 }
 
 export const tests = {
-  list: (q?: string) =>
-    get<TestListResponse>(`/api/tests${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  /** 목록. `q`(이름·식별자)와 `group`(접두어)이 **함께** 걸린다 (013 FR-441). */
+  list: (q?: string, group?: string) => {
+    const query = new URLSearchParams();
+    if (q) query.set("q", q);
+    if (group) query.set("group", group);
+    const suffix = query.toString();
+    return get<TestListResponse>(`/api/tests${suffix ? `?${suffix}` : ""}`);
+  },
   get: (id: string) => get<Test>(`/api/tests/${id}`),
   rename: (id: string, name: string) => patch<Test>(`/api/tests/${id}`, { name }),
   /**

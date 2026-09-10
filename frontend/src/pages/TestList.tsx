@@ -38,6 +38,7 @@ import { createPortal } from "react-dom";
 import {
   ai,
   ApiError,
+  groups as groupsApi,
   tests,
   type AiAvailability,
   type SessionView,
@@ -45,6 +46,7 @@ import {
   type TestListResponse,
   type TrashedTest,
 } from "../api/client";
+import { TestGroupBar } from "../components/TestGroupBar";
 import {
   TestBulkConfirm,
   TestSelectionBar,
@@ -166,10 +168,14 @@ export function TestList({
   const [confirmingBulk, setConfirmingBulk] = useState(false);
   /** 방금 옮긴 것들. **자동으로 사라지지 않는다** (FR-437b · UC-013-05). */
   const [trashed, setTrashed] = useState<TrashedTest[] | null>(null);
+  /** 고른 그룹의 접두어. `null` 이면 전체 (013 FR-441). */
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
 
-  const reload = async (q: string) => {
+  const reload = async (q: string, group: string | null = groupFilter) => {
     try {
-      setData(await tests.list(q.trim() || undefined));
+      // 그룹은 **서버에서** 거른다 (013 FR-441). 화면에서 거르면 그룹 개수와 목록이
+      // 갈릴 수 있다 — 개수는 걸러 보기 전 값이어야 하기 때문이다.
+      setData(await tests.list(q.trim() || undefined, group ?? undefined));
       setError(null);
     } catch (exc) {
       setError(describeError(exc));
@@ -190,9 +196,9 @@ export function TestList({
   };
 
   useEffect(() => {
-    void reload(query);
-    // 검색어가 바뀔 때마다 다시 조회한다. 로컬 도구이므로 디바운스 없이도 충분하다.
-  }, [query]);
+    void reload(query, groupFilter);
+    // 검색어·그룹이 바뀔 때마다 다시 조회한다. 로컬 도구이므로 디바운스 없이도 충분하다.
+  }, [query, groupFilter]);
 
   const all = useMemo(() => data?.tests ?? [], [data]);
 
@@ -463,6 +469,23 @@ export function TestList({
             </>
           )}
         </div>
+
+        {/* ─── 그룹 띠 (013 UC-013-06) ──────────────────────────────────── */}
+        {!isEmptyProject && (
+          <TestGroupBar
+            groups={data?.groups ?? []}
+            active={groupFilter}
+            busy={busy}
+            onPick={(prefix) => {
+              // 걸러 보기가 바뀌면 보이지 않게 된 것은 선택에서도 빠진다 (FR-429).
+              // 선택은 `effectiveSelection` 이 읽을 때 거르므로 여기서 비우지 않는다.
+              setGroupFilter(prefix);
+            }}
+            onCreate={(prefix, name) =>
+              void act(() => groupsApi.create(prefix, name))
+            }
+          />
+        )}
 
         {/* ─── 선택·확인·완료 (013 UC-013-02·04·05) ─────────────────────── */}
         {!isEmptyProject && trashed !== null && (
