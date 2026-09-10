@@ -208,3 +208,53 @@ def test_summary_refuses_unknown_paths(client: TestClient, tmp_path: pathlib.Pat
 
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "INVALID_PATH"
+
+
+# ─── 없앨 방법이 없는 줄을 없앤다 (SC-622 · 사용자 지적 2026-09-10) ─────────
+
+
+def test_an_unreadable_project_can_still_be_deleted(client: TestClient) -> None:
+    """SC-622 — **「목록에서 치우기」로는 사라지지 않는 줄이 있다.**
+
+    목록은 스캔 ∪ 레지스트리다. 프로젝트 파일이 남아 있는 한 스캔이 계속 찾아내므로,
+    읽을 권한이 없어 열지 못하는 프로젝트는 레지스트리에서 빼도 목록에 돌아온다.
+    삭제까지 막으면 그 줄을 없앨 방법이 사라진다 — 화면에 길이 없어서 못 하는 것과
+    도구가 못 하는 것은 다르다.
+    """
+    root = _create(client, "읽을 수 없게 될 것")
+    marker = pathlib.Path(root) / "itb-project.yaml"
+    original = marker.stat().st_mode
+    marker.chmod(0o000)
+
+    try:
+        listed = client.get("/api/project/list").json()["projects"]
+        row = next(p for p in listed if p["root"] == root)
+        assert row["accessible"] is False  # 열 수 없는 상태가 맞다
+
+        # 「목록에서 치우기」로는 사라지지 않는다 — 스캔이 다시 찾는다.
+        client.request("DELETE", "/api/project/registry", json={"root": root})
+        assert root in _roots(client)
+
+        resp = client.post("/api/project/trash", json={"root": root})
+    finally:
+        if marker.exists():
+            marker.chmod(original)
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["trashed_to"] is not None
+    assert root not in _roots(client)
+
+
+def test_a_project_whose_folder_vanished_leaves_the_list_on_delete(client: TestClient) -> None:
+    """사용자 지적 — 「옮길 수 없다」가 「못 없앤다」가 되어서는 안 된다 (FR-418·FR-420)."""
+    import shutil
+
+    root = _create(client, "밖에서 지워질 것")
+    shutil.rmtree(root)
+    assert root in _roots(client)  # 레지스트리에 남아 목록에 보인다
+
+    resp = client.post("/api/project/trash", json={"root": root})
+
+    assert resp.status_code == 200
+    assert resp.json()["trashed_to"] is None
+    assert root not in _roots(client)

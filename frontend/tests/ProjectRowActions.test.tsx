@@ -103,21 +103,51 @@ describe("줄 상태 × 조작 (data-model §3)", () => {
     expect(screen.getByRole("button", { name: "목록에서 치우기" })).toBeTruthy();
   });
 
-  it("열 수 없는 줄에는 삭제가 없고 목록에서 치우기만 있다 (FR-418)", async () => {
+  it("열 수 없는 줄에도 삭제가 있다 (FR-418 · SC-622 · 사용자 지적 2026-09-10)", async () => {
+    // 최초 판은 여기서 삭제를 뺐고, 그것이 **없앨 방법이 없는 줄**을 만들었다. 목록이
+    // 스캔 ∪ 레지스트리이므로 파일은 있는데 읽지 못하는 프로젝트는 「목록에서 치우기」로
+    // 빼도 스캔에 다시 걸려 돌아온다.
     stub({ "/api/project/list": listing([gone]) });
     render(<ProjectSetup onOpened={() => {}} />);
 
     await screen.findByText("옮겨진 것");
-    expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "이름 바꾸기" })).toBeNull();
+    expect(screen.getByRole("button", { name: "삭제" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "목록에서 치우기" })).toBeTruthy();
+    // 이름 변경만 접근 가능 여부를 탄다 — 프로젝트 파일을 읽고 써야 하기 때문이다.
+    expect(screen.queryByRole("button", { name: "이름 바꾸기" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "열기" })).toBeNull();
   });
 
-  it("열 수 없는 줄은 왜 조작이 없는지 말한다 (FR-406)", async () => {
+  it("열 수 없는 줄은 왜 이름을 못 바꾸는지 말한다 (FR-406)", async () => {
     stub({ "/api/project/list": listing([gone]) });
     render(<ProjectSetup onOpened={() => {}} />);
 
-    await screen.findByText(/열 수 없는 상태여서 이름 변경과 삭제를 할 수 없습니다/);
+    await screen.findByText(/열 수 없는 상태여서 이름을 바꿀 수 없습니다/);
+  });
+
+  it("열 수 없는 줄의 확인 단계는 무슨 일이 일어날지 미리 말한다 (UC-012-03)", async () => {
+    stub({ "/api/project/list": listing([gone]) });
+    render(<ProjectSetup onOpened={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+
+    await screen.findByText(/이미 없으면\s*목록에서만 뺍니다/);
+  });
+
+  it("폴더가 이미 없으면 삭제가 그 줄을 목록에서 뺀다 (FR-420 · SC-622)", async () => {
+    // 사용자 지적의 핵심: **옮길 수 없다는 것이 못 없앤다는 뜻이 되면 안 된다.**
+    stub({
+      "/api/project/list": listing([gone]),
+      "/api/project/trash": {
+        body: { root: gone.root, name: gone.name, trashed_to: null, was_open: false },
+      },
+    });
+    render(<ProjectSetup onOpened={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+    fireEvent.click(await screen.findByRole("button", { name: "휴지통으로 옮기기" }));
+
+    await screen.findByText(/목록에서 뺐습니다/);
   });
 
   it("두 조작의 설명이 디스크의 파일이 어떻게 되는지 각각 말한다 (FR-423 · SC-620)", async () => {

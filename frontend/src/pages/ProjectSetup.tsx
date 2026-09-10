@@ -292,10 +292,17 @@ type RowMode =
  * | `accessible` | 열기 | 이름 변경 | 삭제 | 목록에서 치우기 |
  * |---|---|---|---|---|
  * | `true`  | O | O | O | O |
- * | `false` | X | X | X | O |
+ * | `false` | X | X | **O** | O |
  *
- * 접근 불가인 줄에 삭제가 없는 이유는 **옮길 대상이 없기 때문**이다 (FR-418). 그 줄에서
- * 사용자가 원하는 것은 목록 정리이고, 그것은 기존 조작이 이미 한다.
+ * **삭제는 어느 줄에서나 있다** (FR-418 · SC-622 · 사용자 지적 2026-09-10). 최초 판은
+ * 「옮길 대상이 없다」는 이유로 접근 불가 줄에서 삭제를 뺐는데, 그것이 **없앨 방법이 없는
+ * 줄**을 만들었다 — 목록이 스캔 ∪ 레지스트리이므로 파일은 있는데 읽지 못하는 프로젝트는
+ * 「목록에서 치우기」로 빼도 스캔에 다시 걸려 돌아온다.
+ *
+ * 서버는 처음부터 이 요청을 받을 수 있었다: 옮길 폴더가 있으면 옮기고, 없으면
+ * `trashed_to: null` 로 목록에서 빼는 것으로 끝낸다 (FR-420).
+ *
+ * 이름 변경만 접근 가능 여부를 탄다 — 그쪽은 프로젝트 파일을 **읽고 써야** 한다.
  */
 function ProjectRow({
   item,
@@ -366,6 +373,8 @@ function ProjectRow({
     setRowError(null);
     setNameProblem(null);
     setMode({ kind: "confirming", summary: null });
+    // 열 수 없는 줄은 셀 수 없다. 물어봐야 0 이 오므로 아예 묻지 않는다.
+    if (!item.accessible) return;
     // 여기서 처음 센다. 목록 조회에 싣지 않는 이유는 목록을 그리려고 프로젝트 N개를
     // 열게 되기 때문이다 (UC-012-03).
     void project
@@ -444,33 +453,43 @@ function ProjectRow({
             </div>
           )}
           {!item.accessible && (
-            // 왜 이 줄에 이름 변경·삭제가 없는지 말한다 (FR-406·FR-418). 조작을 그냥
-            // 빼면 사용자는 자기가 잘못 본 줄 안다.
+            // 왜 이 줄에 이름 변경이 없는지 말한다 (FR-406). 조작을 그냥 빼면 사용자는
+            // 자기가 잘못 본 줄 안다. **삭제는 있다** — 없애는 길까지 막으면 이 줄은
+            // 목록에서 사라지지 않는다 (FR-418 · SC-622).
             <div className="why" style={{ marginTop: 4 }}>
-              열 수 없는 상태여서 이름 변경과 삭제를 할 수 없습니다. 목록에서만 치울 수 있습니다.
+              열 수 없는 상태여서 이름을 바꿀 수 없습니다. 삭제하거나 목록에서 치울 수 있습니다.
             </div>
           )}
         </div>
 
         {mode.kind !== "confirming" && (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {item.accessible && mode.kind === "idle" && (
+            {mode.kind === "idle" && (
               <>
-                <button className="btn" onClick={onOpen} disabled={locked}>
-                  열기
-                </button>
-                <button
-                  className="navlink"
-                  onClick={() => setMode({ kind: "editing", draft: item.name })}
-                  disabled={locked}
-                >
-                  이름 바꾸기
-                </button>
+                {item.accessible && (
+                  <>
+                    <button className="btn" onClick={onOpen} disabled={locked}>
+                      열기
+                    </button>
+                    <button
+                      className="navlink"
+                      onClick={() => setMode({ kind: "editing", draft: item.name })}
+                      disabled={locked}
+                    >
+                      이름 바꾸기
+                    </button>
+                  </>
+                )}
+                {/* 삭제는 열 수 없는 줄에도 있다 (FR-418 · SC-622). */}
                 <button
                   className="navlink"
                   onClick={openConfirm}
                   disabled={locked}
-                  title="프로젝트 폴더를 휴지통으로 옮깁니다. 파일은 지워지지 않고 되돌릴 수 있습니다."
+                  title={
+                    item.accessible
+                      ? "프로젝트 폴더를 휴지통으로 옮깁니다. 파일은 지워지지 않고 되돌릴 수 있습니다."
+                      : "폴더가 남아 있으면 휴지통으로 옮기고, 이미 없으면 목록에서만 뺍니다."
+                  }
                 >
                   삭제
                 </button>
@@ -541,6 +560,14 @@ function ConfirmTrash({
         // 그 사실을 알고 결정하게 한다 (FR-424).
         <div className="line" style={{ marginTop: 6 }}>
           이 폴더는 도구 바깥에서 만들어진 위치입니다.
+        </div>
+      )}
+      {!item.accessible && (
+        // 무슨 일이 일어날지 미리 말한다 (UC-012-03). 열 수 없는 줄에서는 옮길 것이
+        // 없을 수 있고, 그때 결과는 「목록에서 뺐다」다 — 놀라게 하지 않는다.
+        <div className="line" style={{ marginTop: 6 }}>
+          지금 열 수 없는 상태입니다. 폴더가 남아 있으면 휴지통으로 옮기고, 이미 없으면
+          목록에서만 뺍니다.
         </div>
       )}
       <div className="note" style={{ marginTop: 6 }}>

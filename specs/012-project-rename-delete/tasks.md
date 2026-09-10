@@ -224,3 +224,21 @@ T003 (paths.py) ∥ T006 (registry.py) ∥ T008 (domain/error.py)
 ## Phase 8: Convergence (2회차)
 
 - [X] T050 완료 표시에 **원래 경로**를 함께 남긴다 per SC-616 · FR-425 (partial) — `frontend/src/pages/ProjectSetup.tsx` 의 `TrashedNotice` 가 `trashed_to` 만 그린다. 되돌리기는 **출발지와 도착지 둘 다** 있어야 하는데 「원래 자리로 옮기세요」의 "원래 자리" 가 화면에 없다. 관리 위치 프로젝트라면 짐작할 수 있지만 **외부 위치 프로젝트는 추측이 불가능하다** — 사용자가 직접 고른 경로이기 때문이다. `result.root` 가 응답에 이미 있으므로 그리기만 하면 된다. `frontend/tests/ProjectRowActions.test.tsx` 에 검사를 더한다
+
+---
+
+## Phase 9: 사용자 지적 (2026-09-10) — 없앨 수 없는 줄을 없앤다
+
+**지적**: 「실제 파일이 없는 경우에는 휴지통으로 옮기는 게 불가능할 텐데, 그렇다는 건
+목록에서 삭제되어야 한다.」
+
+**확인한 것**: 백엔드는 이미 그렇게 한다 (FR-420 · `move_to_trash` 가 `None` 을 주고
+`registry.forget` 이 돈다). **막고 있던 것은 화면이다** — FR-418 이 접근 불가 줄에서 삭제를
+아예 그리지 않게 했다. 그 결과 목록이 스캔 ∪ 레지스트리인 탓에, 파일은 있는데 읽지 못하는
+프로젝트는 「목록에서 치우기」로 빼도 스캔에 다시 걸려 돌아오고 **그 줄을 없앨 방법이 화면에
+하나도 남지 않는다.**
+
+- [X] T051 `frontend/src/pages/ProjectSetup.tsx` 의 `ProjectRow` 가 **`accessible === false` 인 줄에도 「삭제」를 그리게** 한다 per FR-418 · SC-622 (contradicts) — 이름 변경만 접근 가능 여부를 탄다(프로젝트 파일을 읽고 써야 한다). 안내 문구도 「이름 변경과 삭제를 할 수 없습니다」 → 「이름을 바꿀 수 없습니다」로 좁힌다
+- [X] T052 `ConfirmTrash` 가 접근 불가 줄에서는 **무슨 일이 일어날지 미리 말하게** 한다 per FR-411 · UC-012-03 (partial) — 「폴더가 이미 없으면 목록에서만 뺍니다」. 테스트 수는 셀 수 없으므로 표시하지 않는다
+- [X] T053 [P] `frontend/tests/ProjectRowActions.test.tsx` 의 「열 수 없는 줄에는 삭제가 없다」 검사를 **뒤집는다** per SC-622 — 삭제가 있고, 눌러서 확인하면 `trashed_to: null` 응답으로 줄이 사라지는 데까지 센다
+- [X] T054 [P] `backend/tests/contract/test_project_trash_api.py` 에 **읽을 수 없는 프로젝트도 옮겨지는지** 검사를 더한다 per SC-622 — `itb-project.yaml` 을 읽을 수 없게 만든 관리 위치 프로젝트가 삭제로 목록에서 사라져야 한다. 이 경우가 「목록에서 치우기」로는 사라지지 않는다는 것도 함께 센다
