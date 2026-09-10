@@ -204,6 +204,9 @@ describe("DC-011 — 기준 폭을 유지한 채 스크롤한다", () => {
     // 절대 배치라 페이지 스크롤이 닿지 않는다. 없으면 좁은 창에서 잘린다.
     // 007 통합으로 겹침의 주인이 `SessionScreen` 에서 `Workbench` 로 옮겨졌다 —
     // 일곱 국면이 **같은 겹침 하나**를 쓴다 (FR-230).
-    expect(workbench).toMatch(/overflowX:\s*"auto"/);
+    //
+    // 015 T030 — 배치가 클래스로 바뀌었다. **묻는 것은 그대로다.** 두 표기를 모두
+    // 받는다 — 아직 전환하지 않은 화면이 있는 동안 인라인도 정답이기 때문이다.
+    expect(workbench).toMatch(/overflowX:\s*"auto"|\boverflow-x-auto\b/);
   });
 });

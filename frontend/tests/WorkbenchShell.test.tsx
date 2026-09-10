@@ -65,7 +65,12 @@ describe("3층 구조 (T018 · FR-218c)", () => {
     // 좌측은 남는 폭을 가져가고(grow 1), Step 패널은 고정이다(grow 0 · basis 460px).
     const left = el("[data-workbench-target]").parentElement!;
     const panel = el("[data-workbench-step-panel]");
-    expect(left.style.flexGrow).toBe("1");
+    // 015 T030 — 좌측 열이 클래스로 바뀌었다. `flex-1` 이 `flex:1 1 0%` 이므로 grow 는 1 이다.
+    // 묻는 것은 그대로: **남는 폭을 가져가는 것이 좌측뿐인가.**
+    expect(
+      left.style.flexGrow !== "" ? left.style.flexGrow : /\bflex-1\b/.test(left.className) ? "1" : "0",
+      "좌측 열이 남는 폭을 가져가지 않는다",
+    ).toBe("1");
     expect(panel.style.flexGrow).toBe("0");
     expect(panel.style.flexBasis).toBe("460px");
   });

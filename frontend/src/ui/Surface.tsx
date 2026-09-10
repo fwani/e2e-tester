@@ -106,13 +106,17 @@ export function Modal({ layout, children, ...rest }: SurfaceProps) {
  * 두 농도는 **뜻이 다르다.** 대화상자(`strong`)는 뒤를 만질 수 없다는 뜻이고,
  * 겹침(`soft`)은 뒤가 아직 거기 있다는 뜻이다. 값은 정본 그대로다.
  */
-export function Scrim({ strength = "soft", layout, ...rest }: SurfaceProps & { strength?: "soft" | "strong" }) {
+export function Scrim({ strength = "soft", layout, children, ...rest }: SurfaceProps & { strength?: "soft" | "strong" }) {
   const TONE: Record<"soft" | "strong", string> = {
     soft: "bg-[rgba(20,23,28,0.28)]",
     strong: "bg-[rgba(20,23,28,0.45)]",
   };
   const cls = [TONE[strength], layout].filter(Boolean).join(" ");
-  return <div className={cls} data-strength={strength} {...rest} />;
+  return (
+    <div className={cls} data-strength={strength} {...rest}>
+      {children}
+    </div>
+  );
 }
 
 /** 정본 `.divider` — 세로 구분선. */
