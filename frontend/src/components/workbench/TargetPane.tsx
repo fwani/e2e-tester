@@ -30,7 +30,6 @@ import type { SlotSize } from "../../lib/layout";
 import { ACTION_LABEL, openBrowserAtStepLabel } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 import type { EmptyReason, TargetView } from "./model";
-
 /** 확정 디자인의 산출물 탭. 순서와 문구를 그대로 옮겼다 (`RunResult.dc.html`). */
 const ARTIFACT_TABS: { kind: ArtifactKind; label: string }[] = [
   { kind: "screenshot", label: "SCREENSHOT" },
@@ -38,7 +37,6 @@ const ARTIFACT_TABS: { kind: ArtifactKind; label: string }[] = [
   { kind: "network", label: "NETWORK" },
   { kind: "trace", label: "TRACE" },
 ];
-
 /**
  * 왜 비었는지 (FR-245 · 005 FR-173).
  *
@@ -75,7 +73,6 @@ export interface TargetPaneProps {
   onOpenBrowser?: () => void;
   onRemedy?: (action: keyof CapabilityMap) => void;
 }
-
 /**
  * 조작이 이 국면에 있지만 지금은 쓸 수 없을 때, **그 자리에** 이유를 남긴다 (FR-234).
  *
@@ -150,8 +147,7 @@ export function TargetPane({
           <div
             /* 산출물 고르기의 자리 (`artifact.select`). */
             data-action="artifact.select"
-            className="tabs"
-            style={{ flex: "0 0 36px", display: "flex", alignItems: "stretch" }}
+            className="bg-sunken border-b border-hair-2 [&>button]:border-0 [&>button]:border-r [&>button]:border-hair-2 [&>button]:rounded-none [&>button]:bg-transparent [&>button]:shadow-none [&>button]:text-ink-2 [&>button]:font-mono [&>button]:text-[11px] [&>button]:font-semibold [&>button]:leading-none [&>button]:tracking-[0.1em] [&>button[aria-pressed=true]]:bg-panel [&>button[aria-pressed=true]]:text-ink [&>button:disabled]:border-solid [&>button:disabled]:text-ink-3 flex-[0_0_36px] flex items-stretch"
           >
             {ARTIFACT_TABS.map((t) => {
               const usable = target.available.includes(t.kind);

@@ -18,6 +18,7 @@ import { PHASE_LABEL } from "../src/lib/wording";
 import { workbenchModel } from "./helpers/model";
 import { stepResult } from "./helpers/workbench";
 
+import { flexOf } from "./helpers/style";
 function renderShell(model: WorkbenchModel) {
   return render(
     <Workbench
@@ -44,7 +45,12 @@ describe("3층 구조 (T018 · FR-218c)", () => {
 
   it("국면 띠는 48px 이다 — 008 「계기판」 값 (v1 은 74px 였다)", () => {
     renderShell(workbenchModel("running"));
-    expect(el("[data-workbench-phase-bar]").style.flex).toBe("0 0 48px");
+    // 015 — 배치가 클래스로 바뀌었다. `h-phase` 는 `--h-phase`(48px)다.
+    // 묻는 것은 그대로: 국면 띠가 008 「계기판」 값 48px 인가 (v1 은 74px 였다).
+    expect(flexOf(el("[data-workbench-phase-bar]")), "국면 띠가 줄어든다").toBe("0 0 auto");
+    expect(el("[data-workbench-phase-bar]").className, "국면 띠 높이가 48px 이 아니다").toContain(
+      "h-phase",
+    );
   });
 
   it("Step 패널은 460px 고정이다 — 확정 디자인 3종 공통값", () => {

@@ -159,8 +159,7 @@ export function WorkArea({
                 placeholder={
                   "로그인한 다음 프로젝트 메뉴로 이동해서\nTEST라는 프로젝트를 생성하고\n프로젝트 목록에 TEST가 있는지 확인해."
                 }
-                className="ai"
-                style={{ minHeight: "auto" }}
+                className="border-ai min-h-auto"
               />
             {work.composeReason !== null && (
               <span

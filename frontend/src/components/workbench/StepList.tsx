@@ -200,7 +200,6 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   */
   return <div aria-label={label} data-outcome={outcome} style={box} />;
 }
-
 /**
  * 요소를 어떻게 찾는지 한 줄로. 확정 디자인의 `role=menuitem`·`testId=…` 형태.
  *
@@ -522,7 +521,7 @@ function StepRow({
           {step.label}
         </button>
 
-        <div data-cell="detail" className="m" style={{ flexWrap: "nowrap", overflow: "hidden", height: 17 }}>
+        <div data-cell="detail" className="flex items-center gap-[6px] min-w-0 flex-nowrap overflow-hidden h-[17px]">
           {/*
             결과 국면에서 정의와 매칭되지 않은 행은 이 칸들이 **빈다.** 다른 칸을 그
             자리로 당기지 않는다 (FR-223 · research R3).
@@ -541,14 +540,14 @@ function StepRow({
                 만들지 않는다.** 주의 계열인 이유: 지금 목록에 보이지만 파일에는 없다.
               */}
               {step.isUnsaved === true && (
-                <span data-cell="unsaved" className="chip warn" style={{ flex: "0 0 auto" }}>
+                <span data-cell="unsaved" className="inline-flex items-center gap-[5px] h-[19px] px-[6px] border border-hair-2 rounded-chip font-mono text-[10px] font-semibold leading-none tracking-[.06em] text-ink-2 bg-sunken-2 border-warn text-warn bg-warn-t flex-[0_0_auto]">
                   미저장
                 </span>
               )}
 
               {/* FR-030a — 최초 탭이 아닌 Step 은 어느 탭에서 일어나는지 보여야 한다 */}
               {dsl.tab > 0 && (
-                <span data-cell="tab" className="chip" style={{ flex: "0 0 auto" }}>
+                <span data-cell="tab" className="inline-flex items-center gap-[5px] h-[19px] px-[6px] border border-hair-2 rounded-chip font-mono text-[10px] font-semibold leading-none tracking-[.06em] text-ink-2 bg-sunken-2 flex-[0_0_auto]">
                   탭 {dsl.tab}
                 </span>
               )}
@@ -559,7 +558,7 @@ function StepRow({
 
               {/* FR-083 — 민감 값은 참조로만 저장되므로 표시해도 평문이 새지 않는다 */}
               {value !== null && (
-                <div data-cell="value" className="loc ai-ink" style={{ flex: "0 0 auto" }}>
+                <div data-cell="value" className="font-mono text-[11px] leading-none text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis text-ai flex-[0_0_auto]">
                   {value}
                 </div>
               )}

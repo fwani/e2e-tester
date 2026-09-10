@@ -87,7 +87,7 @@ export interface PhaseBarProps {
 
 export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProps) {
   return (
-    <div data-workbench-phase-bar className="phase" style={{ flex: "0 0 48px" }}>
+    <div data-workbench-phase-bar className="flex-none h-phase flex items-center gap-s3 px-s4 bg-panel border-b border-hair-2 flex-[0_0_48px]">
       {/*
         국면 표시. **화면에 하나뿐이다** (FR-219). 색만으로 국면을 알리지 않으므로 라벨이
         항상 텍스트로 있다 (ui-contract §7). 어느 변형인지는 `theme/tone.ts` 가 정한다 —
@@ -217,7 +217,7 @@ function PhaseTestName({
         onChange={(e) => rename.onChange(e.target.value)}
       />
       {rename.status !== undefined && rename.status !== null && (
-        <span data-phase-save-state className="chip" style={{ flex: "0 0 auto" }}>
+        <span data-phase-save-state className="inline-flex items-center gap-[5px] h-[19px] px-[6px] border border-hair-2 rounded-chip font-mono text-[10px] font-semibold leading-none tracking-[.06em] text-ink-2 bg-sunken-2 flex-[0_0_auto]">
           {rename.status}
         </span>
       )}
