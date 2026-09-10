@@ -6,7 +6,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { initialLocation, useScreenUrl } from "./hooks/useScreenUrl";
 
-import { project, sessions, type ProjectView, type SessionView } from "./api/client";
+import {
+  project,
+  sessions,
+  setExpectedProjectRoot,
+  type ProjectView,
+  type SessionView,
+} from "./api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
 import { ComposeView } from "./pages/ComposeView";
 import { KeyManagement } from "./pages/KeyManagement";
@@ -123,6 +129,23 @@ export function App() {
     composeLock.current = false;
     setComposePending(false);
   };
+  /*
+    2026-09-10 사용자 보고 1번 — **화면이 보고 있는 프로젝트를 모든 요청이 함께 말한다.**
+
+    「a 프로젝트에서 새 테스트를 만들었는데 b 프로젝트 목록에 들어갔다」의 원인은 시작
+    URL 이 아니라 이 값이 서버와 갈라질 수 있다는 것이었다 (`client.ts` 의
+    `setExpectedProjectRoot` 주석).
+
+    **효과로 미루지 않고 여기서 곧바로 세운다.** 효과는 렌더 뒤에 돌고, 자식의 효과가
+    부모보다 먼저 돈다 — 프로젝트를 바꾼 직후 새로 붙는 목록 화면의 첫 조회가 **옛
+    프로젝트의 경로**를 달고 나가게 된다. 그러면 자동 복구가 사용자가 방금 떠난 프로젝트를
+    다시 열어, 고치려던 것과 같은 뒤바뀜이 된다.
+  */
+  const openProject = (p: ProjectView | null) => {
+    setExpectedProjectRoot(p?.root ?? null);
+    setOpened(p);
+  };
+
   /** 살아 있는 세션. 목록 화면이 이것을 배너로 알린다 (UX U-05). */
   const [active, setActive] = useState<SessionView[]>([]);
 
@@ -152,7 +175,7 @@ export function App() {
     void project
       .current()
       .then((p) => {
-        setOpened(p);
+        openProject(p);
         // 005 FR-166 (U-15) — 주소가 가리키는 화면으로 복원한다.
         //
         // 이전에는 결과 화면에서 새로고침하면 목록으로 되돌아갔다. 결과 자체는 남아
@@ -345,7 +368,7 @@ export function App() {
     return (
       <ProjectSetup
         onOpened={(p) => {
-          setOpened(p);
+          openProject(p);
           setScreen({ name: "list" });
         }}
         /*
@@ -357,7 +380,7 @@ export function App() {
           삭제로 열린 프로젝트가 닫혔다 (012 FR-416). 비우지 않으면 사용자는 사라진
           프로젝트를 가리키는 「돌아가기」를 계속 보고, 그것을 누르면 없는 것을 그린다.
         */
-        onProjectClosed={() => setOpened(null)}
+        onProjectClosed={() => openProject(null)}
         /*
           목록에서 고친 이름이 다른 화면에도 나타나야 한다 (012 FR-405).
 
@@ -373,21 +396,43 @@ export function App() {
 
   return (
     <>
+      {/*
+        2026-09-10 사용자 결정 — **토스트는 오른쪽 위 한 자리다.**
+
+        이 배너는 화면 맨 위 문서 흐름 안에 있었고, 그래서 뜰 때마다 아래 화면 전부를
+        밀어 내렸다 (2026-09-09 에 `Workbench` 의 알림이 고친 것과 **같은 결함**이 여기
+        남아 있었다). 자리도 달랐다 — 국면 화면의 알림은 다른 데서 떴다.
+
+        같은 층(`.toast-layer`)에 올린다. 오류이므로 **스스로 사라지지 않는다** —
+        「닫기」가 유일한 퇴장이다 (`NoticeStack` 의 `LINGER_MS` 와 같은 규칙).
+      */}
       {error !== null && (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 16px" }}>
-          <div style={{ flex: 1 }}>
-            <ErrorNotice
-              error={error}
-              action={
-                error.sessionId
-                  ? { label: "실행 중인 세션 보기", onClick: () => openSession(error.sessionId!) }
-                  : null
-              }
-            />
+        <div className="toast-layer" data-app-notice-layer>
+          <div
+            className="notice float tint-fail"
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              height: "auto",
+              minHeight: "var(--h-notice)",
+              padding: "8px 12px",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <ErrorNotice
+                error={error}
+                action={
+                  error.sessionId
+                    ? { label: "실행 중인 세션 보기", onClick: () => openSession(error.sessionId!) }
+                    : null
+                }
+              />
+            </div>
+            <button className="btn sm quiet" aria-label="알림 닫기" onClick={() => setError(null)}>
+              닫기
+            </button>
           </div>
-          <button className="ghost" onClick={() => setError(null)}>
-            닫기
-          </button>
         </div>
       )}
 
@@ -523,6 +568,14 @@ export function App() {
           onShowResult={(testId, stepId) =>
             setScreen({ name: "result", testId, focusStepId: stepId ?? null })
           }
+          /*
+            2026-09-10 사용자 결정 — 실행이 끝나면 결과 국면으로 스스로 넘어간다.
+
+            **편집에서 출발한 세션은 예외다.** 그 세션이 돌아갈 곳은 편집 화면이고
+            (006 FR-204), 결과로 튕기면 사용자는 고치던 자리를 잃는다. 그 판단 근거인
+            `returnToEdit` 은 여기에만 있으므로 여기서 정한다.
+          */
+          autoShowResult={(screen.returnToEdit ?? null) === null}
           /*
             2026-09-09 사용자 보고 — 「실행 후 에러가 났을 때 고치는 방법이 없음」.
 

@@ -70,11 +70,18 @@ def test_replay_reuses_the_saved_definition_only(
 
     정의 파일을 지운 뒤 재실행을 요청하면 `404` 여야 한다. 세션이 어딘가에 사본을 들고
     있으면 이 요청이 성공해 버린다.
+
+    **삭제는 `204` 가 아니다** (013 FR-437). 옮겨진 자리를 돌려주지 않으면 사용자가
+    되돌릴 수 없어, 「파괴하지 않는다」는 결정이 사용자에게는 삭제와 구별되지 않는다.
+    이 검사가 재는 것은 삭제의 응답 형태가 아니라 **정의가 실제로 사라졌는가**이므로,
+    옮겨진 자리가 실렸는지까지만 확인하고 넘어간다.
     """
     test_id = record_login(keyed_client, fixture_app)
     assert replay(keyed_client, test_id)["state"] == "completed"
 
-    assert keyed_client.delete(f"/api/tests/{test_id}").status_code == 204
+    removed = keyed_client.delete(f"/api/tests/{test_id}")
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["trashed_to"], "옮겨진 자리가 없으면 되돌릴 방법이 없다"
 
     resp = keyed_client.post(
         "/api/sessions", json={"mode": "replay", "test_id": test_id}

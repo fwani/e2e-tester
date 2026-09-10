@@ -211,6 +211,12 @@ class BrowserToolbox:
     refs: dict[str, ObservedElement] = field(default_factory=dict)
     _ref_seq: int = 0
     blocked_reason: str | None = None
+    blocked_question: str | None = None
+    """막힌 김에 **사람에게 물을 것** (2026-09-10 사용자 결정).
+
+    `blocked_reason` 과 갈라 둔다. 사유는 「왜 못 했는가」이고 질문은 「무엇을 알려 주면
+    되는가」다 — 뭉치면 화면이 답 칸을 무엇에 대해 여는지 말할 수 없다.
+    """
 
     # ─── 읽기 전용 도구 ────────────────────────────────────────────────────
 
@@ -486,12 +492,21 @@ class BrowserToolbox:
         )
         return await self._execute(step, element=element_ref or f"assert:{kind}")
 
-    async def report_blocked(self, reason: str) -> dict[str, Any]:
-        """수행 불가 선언 (FR-069). 루프를 끊고 사용자 선택으로 넘긴다."""
+    async def report_blocked(
+        self, reason: str, question: str | None = None
+    ) -> dict[str, Any]:
+        """수행 불가 선언 (FR-069). 루프를 끊고 사용자 선택으로 넘긴다.
+
+        `question` 은 **사람에게 물을 한 문장**이다 (2026-09-10 사용자 결정). 새 도구를
+        만들지 않고 여기에 붙이는 이유는 도구 표면이 계약이기 때문이다 (`TOOL_NAMES`) —
+        늘리면 Step 종류와의 1:1 이 깨진다. 물을 것이 있다는 사실은 **막힘의 성질**이지
+        별개의 동작이 아니다.
+        """
         self.limits.record_call()
         # **예외를 던지지 않는다.** SDK 가 도구 예외를 잡아 모델에게 돌려주므로 예외로는
         # 루프를 끊을 수 없다. 상태로 남기고 우리가 소유한 루프 본문이 끊는다.
         self.blocked_reason = reason
+        self.blocked_question = (question or "").strip() or None
         return {
             "acknowledged": True,
             "message": "수행 불가를 접수했습니다. 사용자가 이어서 처리합니다. 끝내세요.",
@@ -735,9 +750,12 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         return await toolbox.close_tab(tab)
 
     @beta_async_tool
-    async def report_blocked(reason: str) -> dict[str, Any]:
-        """지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다."""
-        return await toolbox.report_blocked(reason)
+    async def report_blocked(reason: str, question: str = "") -> dict[str, Any]:
+        """지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다.
+
+        사람이 알려 주면 풀릴 일이면 `question` 에 물어볼 한 문장을 함께 적는다.
+        """
+        return await toolbox.report_blocked(reason, question or None)
 
     return [
         list_tabs,
@@ -846,8 +864,13 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
         },
     ),
     "report_blocked": (
-        "지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다.",
-        {"type": "object", "properties": {"reason": {"type": "string"}}, "required": ["reason"]},
+        "지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다. "
+        "사람이 알려 주면 풀릴 일이면 question 에 물어볼 한 문장을 함께 적는다.",
+        {
+            "type": "object",
+            "properties": {"reason": {"type": "string"}, "question": {"type": "string"}},
+            "required": ["reason"],
+        },
     ),
 }
 """도구 이름 → (설명, 입력 스키마). `build_tools` 의 도구 11종과 같은 목록이다.

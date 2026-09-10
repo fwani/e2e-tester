@@ -112,7 +112,7 @@ export interface WorkbenchProps {
   onRepick?: (slot: RepickSlot) => void;
   onSelectArtifact?: (kind: ArtifactKind) => void;
   onOpenBrowser?: () => void;
-  onChooseBlocked?: (choice: string) => void;
+  onChooseBlocked?: (choice: string, answer?: string) => void;
   onReloadDefinition?: () => void;
   onOverwriteStale?: () => void;
   onDismissNotice?: (id: string) => void;
@@ -276,39 +276,20 @@ export function Workbench({
           그래서 **띄우기만 한다**: 겹쳐 뜨고, 스스로 사라지지 않는다. 지울 수 있는 것은
           지금처럼 「닫기」로 지운다.
 
-          ## 자리
+          ## 자리 — **오른쪽 위** (2026-09-10 사용자 결정)
 
-          좌측 영역 **아래쪽**이다. 위쪽에 두면 미러의 머리(대상 앱의 주소·상단 바)를
-          가리는데, 녹화 중 사용자가 보는 곳이 정확히 거기다. 폭은 560px 로 묶어 미러를
-          통째로 덮지 않고, 넘치면 이 묶음 안에서 스크롤한다 — 알림이 많다고 화면이
-          늘어나지 않는다.
+          「토스트 알림의 위치를 오른쪽 위로 정의한다 (mac 의 알림과 같은 개념)」.
+
+          2026-09-09 에는 좌측 영역 **아래쪽**이었다. 근거는 「위쪽에 두면 미러의 머리를
+          가린다」였는데, 그 자리는 미러가 있는 국면에서만 뜻이 있었다 — 결과·편집
+          국면에서는 본문 위 아무 데나였다. 자리를 뷰포트에 고정하면 그 차이가 사라지고,
+          「알림은 늘 같은 데서 뜬다」가 국면을 넘어 성립한다 (FR-235 와 같은 성질).
+
+          형태는 정본이 갖는다 (`tokens.css` 의 `.toast-layer`).
         */}
-        <div
-          data-workbench-notice-layer
-          style={{
-            position: "absolute",
-            left: 16,
-            bottom: 16,
-            width: `min(560px, calc(100% - ${STEP_PANEL_WIDTH + 32}px))`,
-            maxHeight: "60%",
-            overflowY: "auto",
-            zIndex: 12,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            /*
-              **비어 있을 때 아래를 막지 않는다.** 이 층은 알림이 없어도 자리를 잡고
-              있으므로, 포인터를 통과시키지 않으면 미러의 그 띠가 조용히 클릭을 먹는다 —
-              010 SC-516 이 0건으로 두려는 조용한 실패와 같은 형태다. 알림 자체는 아래
-              `auto` 로 되돌려 버튼을 누를 수 있게 한다.
-            */
-            pointerEvents: "none",
-          }}
-        >
-          <div style={{ pointerEvents: "auto" }}>{noticesExtra}</div>
-          <div style={{ pointerEvents: "auto" }}>
-            <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
-          </div>
+        <div data-workbench-notice-layer className="toast-layer">
+          {noticesExtra}
+          <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
         </div>
 
         {/*

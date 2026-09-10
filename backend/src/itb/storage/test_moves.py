@@ -157,6 +157,16 @@ def target_id(test_id: str, to_prefix: str) -> str:
 def move_test_to_group(repo: ProjectRepository, test_id: str, to_prefix: str) -> MovedTest:
     """테스트 하나의 그룹을 바꾼다 (013 contracts/api-contract.md §4).
 
+    접두어만 갈아 끼우고 :func:`rename_test_id` 에 맡긴다 — 그룹 이동과 번호 재정렬은
+    **같은 일**(식별자를 바꾸고 정의·산출물을 따라 옮긴다)이고, 두 벌로 두면 한쪽에만
+    되돌림이 들어간다.
+    """
+    return rename_test_id(repo, test_id, target_id(test_id, to_prefix))
+
+
+def rename_test_id(repo: ProjectRepository, test_id: str, new_id: str) -> MovedTest:
+    """테스트의 식별자를 바꾸고 정의와 산출물을 함께 옮긴다.
+
     **순서가 계약이다.**
 
     1. `.runs/<옛ID>/` → `.runs/<새ID>/` (있을 때만)
@@ -172,7 +182,10 @@ def move_test_to_group(repo: ProjectRepository, test_id: str, to_prefix: str) ->
     **알려진 창**: 2와 3 사이에 정의 파일이 두 자리에 있다. 이 도구는 로컬 단독 실행이고
     그 사이에 목록을 읽는 다른 요청이 사실상 없다. 그래도 없는 것처럼 적지 않는다.
     """
-    new_id = target_id(test_id, to_prefix)
+    if new_id == test_id:
+        # 바꿀 것이 없다. 파일을 건드리면 mtime 이 흔들리고, 그것을 보고 있는 편집 화면의
+        # 충돌 감지가 이유 없이 반응한다 (012 FR-407 과 같은 판단).
+        return MovedTest(from_id=test_id, to_id=test_id, name=repo.read_test(test_id).name)
     if not TEST_ID_RE.match(new_id):
         msg = f"만들 수 없는 식별자입니다: {new_id}"
         raise MoveError(msg)
@@ -204,12 +217,12 @@ def move_test_to_group(repo: ProjectRepository, test_id: str, to_prefix: str) ->
                 new_path.unlink()
             if runs_moved and new_runs.is_dir():
                 shutil.move(str(new_runs), str(old_runs))
-        msg = f"그룹을 옮기지 못했습니다: {exc.strerror or exc}"
+        msg = f"식별자를 바꾸지 못했습니다: {exc.strerror or exc}"
         raise MoveError(msg) from exc
 
     return MovedTest(from_id=test_id, to_id=new_id, name=test.name)
 
 
 def move_test_back(repo: ProjectRepository, moved: MovedTest) -> None:
-    """되돌린다 — 복수 이동이 도중에 실패했을 때 쓴다 (`run_all` 의 3번 걸음)."""
-    move_test_to_group(repo, moved.to_id, moved.from_id.split("-", 1)[0])
+    """되돌린다 — 복수 이동·재번호가 도중에 실패했을 때 쓴다 (`run_all` 의 3번 걸음)."""
+    rename_test_id(repo, moved.to_id, moved.from_id)

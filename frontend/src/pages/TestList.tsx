@@ -51,9 +51,11 @@ import { TestGroupBar } from "../components/TestGroupBar";
 import {
   TestBulkConfirm,
   TestSelectionBar,
+  RenumberConfirm,
+  RenumberedNotice,
   TrashedTestsNotice,
 } from "../components/TestBulkConfirm";
-import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import { ErrorNotice, describeError, localError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
 import { isRunning } from "../lib/sessionState";
@@ -169,6 +171,17 @@ export function TestList({
   const [confirmingBulk, setConfirmingBulk] = useState(false);
   /** 방금 옮긴 것들. **자동으로 사라지지 않는다** (FR-437b · UC-013-05). */
   const [trashed, setTrashed] = useState<TrashedTest[] | null>(null);
+  /**
+   * 번호 정리 (2026-09-10 사용자 보고 2번).
+   *
+   * **확인을 받는다.** 식별자는 사용자가 git 에 커밋해 보관하는 자산의 이름이고
+   * (헌법 원칙 V), 이 조작은 그 이름을 여러 개 한꺼번에 바꾼다. 삭제와 같은 무게로 다룬다.
+   */
+  const [confirmingRenumber, setConfirmingRenumber] = useState(false);
+  /** 방금 바뀐 번호. 삭제 결과와 같은 이유로 **자동으로 사라지지 않는다.** */
+  const [renumbered, setRenumbered] = useState<
+    { renumbered: { from_id: string; to_id: string; name: string }[]; unchanged: number } | null
+  >(null);
   /** 고른 그룹의 접두어. `null` 이면 전체 (013 FR-441). */
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   /**
@@ -194,17 +207,76 @@ export function TestList({
     }
   };
 
-  const act = async (fn: () => Promise<unknown>) => {
+  /**
+   * 조작 하나를 걸고 목록을 다시 읽는다.
+   *
+   * **결과를 돌려준다** (2026-09-10). 이전에는 `await fn()` 의 값을 버렸고, 그래서
+   * `.then((res) => …)` 로 완료 표시를 세우던 **한 개 삭제가 아무것도 그리지 않았다** —
+   * `res` 가 언제나 `undefined` 였기 때문이다. 여러 개 삭제는 `act` 를 지나지 않아
+   * 표시가 떴으므로, 「한 개와 여러 개의 결과가 같다」(SC-632)가 조용히 깨져 있었다.
+   */
+  const act = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
     setBusy(true);
     setError(null);
     try {
-      await fn();
+      const result = await fn();
       await Promise.all([reload(query), reloadGroups()]);
+      return result;
     } catch (exc) {
       setError(describeError(exc));
+      return undefined;
     } finally {
       setBusy(false);
     }
+  };
+
+  /**
+   * 삭제 결과를 화면에 세운다 — **옮긴 것과 이미 없던 것을 갈라서** (2026-09-10).
+   *
+   * `trashed_to === null` 은 「요청 시점에 이미 없어서 옮길 것이 없었다」다 (013 FR-436).
+   * 그것을 옮긴 것과 같이 다루면 화면은 **옮기지 않은 것을 옮겼다고 말하고**, 「옮긴
+   * 자리」 칸에 빈 값을 그린다. 다른 창에서 이미 지운 뒤 이 창에서 지운 사용자가 정확히
+   * 그것을 본다 (003 AS-046 · 조용한 성공 EC-007).
+   *
+   * 없던 것을 **오류로 만들지는 않는다** — 사용자가 원한 결과는 이미 이루어져 있다.
+   * 사실만 말하고 다음 행동(목록이 이미 갱신됐다)을 붙인다.
+   */
+  const showDeleteOutcome = (deleted: TrashedTest[]) => {
+    const moved = deleted.filter((t) => t.trashed_to !== null);
+    const missing = deleted.filter((t) => t.trashed_to === null);
+    setTrashed(moved.length > 0 ? moved : null);
+    setError(
+      missing.length === 0
+        ? null
+        : localError(
+            missing.length === 1
+              ? `「${missing[0]!.name}」은(는) 이미 지워져 있어 옮기지 않았습니다.`
+              : `${missing.length}개는 이미 지워져 있어 옮기지 않았습니다.`,
+            "다른 창이나 편집기에서 먼저 지운 것으로 보입니다. 목록은 방금 갱신했습니다.",
+          ),
+    );
+  };
+
+  /**
+   * 번호를 `001` 부터 다시 붙인다 (2026-09-10 사용자 보고 2번).
+   *
+   * 결과를 **띄우고 지우지 않는다** — 어느 식별자가 어디로 갔는지가 사용자가 자기
+   * 저장소에서 찾아야 할 정보다.
+   */
+  const runRenumber = () => {
+    setConfirmingRenumber(false);
+    setBusy(true);
+    setError(null);
+    void tests
+      .renumber()
+      .then(async (result) => {
+        setRenumbered(result);
+        // 고른 것은 옛 식별자를 가리킨다 — 그대로 두면 없는 것을 지우려 든다.
+        setSelected(new Set());
+        await Promise.all([reload(query), reloadGroups()]);
+      })
+      .catch((exc: unknown) => setError(describeError(exc)))
+      .finally(() => setBusy(false));
   };
 
   const reloadGroups = async () => {
@@ -342,11 +414,14 @@ export function TestList({
     setError(null);
     void tests
       .deleteMany(ids)
-      .then((res) => {
-        setTrashed(res.deleted);
+      .then(async (res) => {
         setSelected(new Set());
         setConfirmingBulk(false);
-        return reload(query);
+        // **목록을 먼저 읽는다.** `reload` 는 성공하면 `setError(null)` 로 지난 오류를
+        // 걷는데, 결과 표시를 그 앞에 세우면 방금 세운 「이미 지워져 있었습니다」가
+        // 같은 틱에 지워진다.
+        await reload(query);
+        showDeleteOutcome(res.deleted);
       })
       .catch((exc: unknown) => {
         // **선택을 비우지 않는다** (UC-013-07). 다시 고르게 만들면 실행을 멈추고
@@ -548,6 +623,28 @@ export function TestList({
               >
                 {recentFirst ? "최근 실행 순" : "저장된 순"}
               </button>
+
+              {/*
+                번호 정리 (2026-09-10 사용자 보고 2번 — 「번호를 일괄적으로 맞추거나
+                재조정하는 방법이 있으면 좋겠다」).
+
+                자리가 정렬 옆인 이유는 **둘 다 목록을 읽는 방식에 대한 조작**이기
+                때문이다. 실행·삭제 같은 대상 조작이 아니다.
+
+                **걸러 보기와 무관하다.** 프로젝트 전체의 번호를 다시 붙이므로, 지금
+                보이는 것만 대상으로 오해되지 않게 확인 단계가 그 사실을 말한다.
+              */}
+              <button
+                className="btn sm"
+                data-action="tests.renumber"
+                disabled={busy || counts.all === 0}
+                onClick={() => {
+                  setRenumbered(null);
+                  setConfirmingRenumber(true);
+                }}
+              >
+                번호 정리
+              </button>
             </>
           )}
         </div>
@@ -584,6 +681,17 @@ export function TestList({
         {/* ─── 선택·확인·완료 (013 UC-013-02·04·05) ─────────────────────── */}
         {!isEmptyProject && trashed !== null && (
           <TrashedTestsNotice trashed={trashed} onDismiss={() => setTrashed(null)} />
+        )}
+        {!isEmptyProject && confirmingRenumber && (
+          <RenumberConfirm
+            total={data?.counts.total ?? 0}
+            busy={busy}
+            onConfirm={runRenumber}
+            onCancel={() => setConfirmingRenumber(false)}
+          />
+        )}
+        {!isEmptyProject && renumbered !== null && (
+          <RenumberedNotice result={renumbered} onDismiss={() => setRenumbered(null)} />
         )}
         {!isEmptyProject && confirmingBulk && (
           <TestBulkConfirm
@@ -747,7 +855,7 @@ export function TestList({
                         void act(() => tests.remove(row.id))
                           .then((res) => {
                             setConfirmingDelete(null);
-                            if (res !== undefined) setTrashed([res]);
+                            if (res !== undefined) showDeleteOutcome([res]);
                           })
                       }
                       onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}

@@ -28,6 +28,8 @@
  * 컴포넌트가 `isAiSession` 조건 뒤에 숨어, 실패가 상태에 담겨도 화면에 도달하지 못했다.
  * 사용자에게는 "아무 일도 일어나지 않음" 으로 보였다. 접힘·탭·겹침 뒤에 두지 않는다.
  */
+import { useState } from "react";
+
 import { ErrorNotice } from "../ErrorNotice";
 import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../lib/wording";
 import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
@@ -55,7 +57,7 @@ export interface WorkAreaProps {
   sizeKind: SlotSize["kind"];
   /** AI 선택지 조작의 상태. 고를 것이 없어도 자리와 이유는 남는다 (FR-234) */
   chooseBlocked?: { kind: "enabled" } | { kind: "disabled"; reason: string } | { kind: "not_applicable" };
-  onChooseBlocked?: (choice: string) => void;
+  onChooseBlocked?: (choice: string, answer?: string) => void;
   onReload?: () => void;
   onOverwriteStale?: () => void;
   busy?: boolean;
@@ -444,7 +446,7 @@ function AlwaysVisibleFailure({
   error: import("../ErrorNotice").ErrorInfo | null;
   blocked: AiBlockedState | null;
   choose?: WorkAreaProps["chooseBlocked"];
-  onChoose?: (choice: string) => void;
+  onChoose?: (choice: string, answer?: string) => void;
   busy: boolean;
 }) {
   /*
@@ -481,15 +483,120 @@ function AlwaysVisibleFailure({
           <p className="line" style={{ margin: "6px 0 10px" }}>
             {blocked.reason}
           </p>
+          {/*
+            2026-09-10 사용자 결정 — **답해서 이어 가는 길**.
+
+            「문제가 생기면 사람에게 넘기는데, 넘기는 방법이 현재는 직접 클릭으로
+            takeover 하는 개념이다. 대화를 통해서 답변을 하거나 인터뷰로 답변을 하고,
+            그러면 다시 AI 가 테스트 스텝을 생성하거나 수정하는 것이다」.
+
+            **답 칸이 선택지보다 위에 온다.** 막힘의 상당수는 AI 가 화면을 못 다루는 것이
+            아니라 **모르는 것이 있어서**이고, 그때 사람이 할 일은 한 문장을 쓰는 것이다.
+            선택지 뒤에 두면 사용자는 그 전에 「직접 수행」을 누른다.
+
+            질문이 없어도 칸은 열린다 — 물을 것을 특정하지 못한 채 막히는 경우가 있고,
+            그때도 사람은 무엇이 문제인지 알 수 있다.
+          */}
+          {blocked.choices.includes("answer") && (
+            <BlockedAnswer
+              question={blocked.question}
+              busy={busy}
+              onSubmit={(text) => onChoose?.("answer", text)}
+            />
+          )}
           <div className="row" data-action="ai.chooseBlocked" style={{ gap: 8, flexWrap: "wrap" }}>
-            {blocked.choices.map((c) => (
-              <button key={c} className="btn sm" disabled={busy} onClick={() => onChoose?.(c)}>
-                {c}
-              </button>
-            ))}
+            {blocked.choices
+              // 답변은 위 칸이 갖는다 — 같은 조작이 두 자리에 있으면 사용자는 둘이 다른
+              // 것인지 확인하느라 멈춘다 (FR-235).
+              .filter((c) => c !== "answer")
+              .map((c) => (
+                <button key={c} className="btn sm" disabled={busy} onClick={() => onChoose?.(c)}>
+                  {AI_CHOICE_LABEL[c] ?? c}
+                </button>
+              ))}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * 막힘 선택지의 표시 문구.
+ *
+ * 이전에는 서버가 준 값(`takeover`·`retry`…)이 **그대로 버튼 글자**였다. 화면에 영어
+ * 식별자가 그대로 나오는 자리였고, 「skip」이 무엇을 건너뛰는지 화면이 말하지 않았다.
+ *
+ * 사전에 없는 값은 값 그대로 보인다 — 서버가 선택지를 늘렸을 때 버튼이 사라지는 것보다
+ * 낫다 (읽기 어려운 버튼은 고칠 수 있지만 없는 버튼은 알아챌 수 없다).
+ */
+const AI_CHOICE_LABEL: Record<string, string> = {
+  takeover: "직접 조작해 이어가기",
+  answer: "답하고 AI 에게 돌려주기",
+  retry: "AI 에게 다시",
+  skip: "이 동작 건너뛰기",
+  abort: "AI 작성 끝내기",
+};
+
+/**
+ * AI 에게 답을 써서 돌려주는 칸 (2026-09-10 사용자 결정).
+ *
+ * **입력을 여기서 들고 있는다.** 바깥(`SessionScreen`)에 두면 막힘 상태가 갱신될 때마다
+ * 쓰던 문장이 날아간다 — AI 는 답을 기다리는 동안에도 이벤트를 낸다.
+ *
+ * `Enter` 로 보내지 않는다. 여러 줄로 설명하는 것이 정상이고, 그 자리에서 `Enter` 가
+ * 전송이면 문단을 나누다 실수로 보낸다.
+ */
+function BlockedAnswer({
+  question,
+  busy,
+  onSubmit,
+}: {
+  question: string | null;
+  busy: boolean;
+  onSubmit: (text: string) => void;
+}) {
+  const [text, setText] = useState("");
+  const ready = text.trim() !== "";
+  return (
+    <div
+      data-blocked-answer
+      style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}
+    >
+      <label className="lbl" htmlFor="blocked-answer">
+        {question !== null ? `AI 의 질문 — ${question}` : "AI 에게 알려 주기"}
+      </label>
+      <textarea
+        id="blocked-answer"
+        rows={2}
+        value={text}
+        disabled={busy}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={
+          question !== null
+            ? "여기에 답을 적으면 AI 가 그 자리에서 이어서 진행합니다."
+            : "무엇을 하면 되는지 알려 주면 AI 가 이어서 진행합니다. 예) 저장 버튼은 오른쪽 위 「등록」입니다."
+        }
+        style={{ minHeight: "auto" }}
+      />
+      <div className="row" style={{ gap: 8 }}>
+        <button
+          className="btn sm primary"
+          data-blocked-answer-send
+          disabled={busy || !ready}
+          onClick={() => {
+            onSubmit(text.trim());
+            setText("");
+          }}
+        >
+          답하고 계속
+        </button>
+        {!ready && (
+          <span className="why">
+            답을 적으면 AI 가 같은 대화에 이어서 진행합니다. 이미 만든 Step 은 그대로입니다.
+          </span>
+        )}
+      </div>
     </div>
   );
 }

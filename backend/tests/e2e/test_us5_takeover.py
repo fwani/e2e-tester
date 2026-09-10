@@ -59,7 +59,7 @@ def test_quickstart_section7_takeover_flow(
         session = client.app.state.itb.sessions.require(sid)
         assert session.open_tabs(), "실패가 브라우저를 닫았다 — FR-069 위반"
         assert blocked["reason"]
-        assert blocked["choices"] == ["takeover", "retry", "skip", "abort"]
+        assert blocked["choices"] == ["takeover", "answer", "retry", "skip", "abort"]
         screen_before = current_url(client, sid)
 
         # 3단계 — "직접 수행". AI 가 남긴 화면 그대로다

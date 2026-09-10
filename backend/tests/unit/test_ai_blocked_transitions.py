@@ -25,6 +25,9 @@ from itb.execution.state_machine import (
 
 EXPECTED: dict[AiChoice, SessionState] = {
     AiChoice.TAKEOVER: SessionState.TAKEOVER_RECORDING,
+    # 2026-09-10 — 사람이 **답을 주고** AI 에게 돌려준다. 도착 상태는 `RETRY` 와 같지만
+    # 명령을 갈라 두는 이유는 거절 문구다 (`Command.CHOOSE_ANSWER` 옆 주석).
+    AiChoice.ANSWER: SessionState.AI_RUNNING,
     AiChoice.RETRY: SessionState.AI_RUNNING,
     AiChoice.SKIP: SessionState.AI_RUNNING,
     # 002 — FR-074 는 종료 시 "그때까지 성공한 Step 의 저장 여부를 확인" 을
@@ -34,8 +37,12 @@ EXPECTED: dict[AiChoice, SessionState] = {
 
 
 def test_four_choices_are_exactly_the_contract() -> None:
-    """계약(rest-api §AI 실패 시 선택)의 4종. 더도 덜도 없다."""
-    assert CHOICES == ("takeover", "retry", "skip", "abort")
+    """계약(rest-api §AI 실패 시 선택)의 선택지. 더도 덜도 없다.
+
+    2026-09-10 에 `answer` 가 더해져 다섯이 됐다 — 「대화를 통해서 답변을 하거나 인터뷰로
+    답변을 하고, 그러면 다시 AI 가 테스트 스텝을 생성하거나 수정한다」 (사용자 결정).
+    """
+    assert CHOICES == ("takeover", "answer", "retry", "skip", "abort")
 
 
 @pytest.mark.parametrize(("choice", "expected"), list(EXPECTED.items()))

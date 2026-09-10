@@ -235,7 +235,7 @@ async function renderPhase(phase: Phase) {
         focusedStepId: "st-1",
         detailOpen: true,
         aiInstruction: "로그인한 다음 프로젝트를 만들어",
-        aiBlocked: { attempted: null, reason: "막혔습니다", choices: ["takeover"] },
+        aiBlocked: { attempted: null, reason: "막혔습니다", question: null, choices: ["takeover"] },
       })}
     />,
   );

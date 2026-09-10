@@ -1029,10 +1029,17 @@ def _empty_draft(work: SessionWork) -> Test:
     )
 
 
-async def _run_agent(session_id: str, instruction: str | None = None) -> None:
+async def _run_agent(
+    session_id: str, instruction: str | None = None, answer: str | None = None
+) -> None:
     """에이전트를 돌리고 결과를 이벤트로 바꾼다 (FR-059·FR-063·FR-067·FR-069).
 
     **취소는 결과로 기록하지 않는다** — 사용자가 일시정지·중지한 것이며 실패가 아니다.
+
+    들어오는 길이 셋이고 **끝나는 길은 하나다** (2026-09-10). 새 지시(`instruction`)·
+    사람이 준 답(`answer`)·사람 인수 후 재개(둘 다 없음) 가운데 무엇으로 시작했든
+    막힘·실패·완료 처리는 아래 한 곳을 지난다 — 갈라 두면 한쪽에서 `ai_blocked` 를
+    빠뜨리고, 그 세션은 선택지 없이 멈춘 것처럼 보인다.
     """
     from itb.authoring.agent import AgentStatus, AuthoringAgent
     from itb.authoring.blocked import enter_blocked
@@ -1043,7 +1050,9 @@ async def _run_agent(session_id: str, instruction: str | None = None) -> None:
     agent: AuthoringAgent = work.agent
 
     try:
-        if instruction is None:
+        if answer is not None:
+            outcome = await agent.resume_with_answer(answer)
+        elif instruction is None:
             takeover = work.takeover
             note = takeover.summary() if takeover is not None else "사람이 이어받았습니다."
             outcome = await agent.resume_after_takeover(note)
@@ -1552,8 +1561,15 @@ async def record_actions_stop(session_id: str) -> SessionView:
 class AiChoiceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    choice: Literal["takeover", "retry", "skip", "abort"]
-    """FR-071~FR-074. 정의되지 않은 값은 Pydantic 이 `422` 로 거절한다 (FR-043a)."""
+    choice: Literal["takeover", "answer", "retry", "skip", "abort"]
+    """FR-071~FR-074 + `answer`. 정의되지 않은 값은 Pydantic 이 `422` 로 거절한다 (FR-043a)."""
+
+    answer: str | None = Field(default=None, max_length=8000)
+    """`choice="answer"` 일 때 사람이 준 답 (2026-09-10 사용자 결정).
+
+    **다른 선택지에서는 받지 않는다** — 아래 라우트가 거절한다. 실어 보내 놓고 무시하면
+    사용자는 자기가 쓴 문장이 전달됐다고 믿는다.
+    """
 
 
 class AiStepRequest(BaseModel):
@@ -1594,6 +1610,21 @@ async def ai_choice(session_id: str, body: AiChoiceRequest, state: State) -> Ses
 
     w = work_of(session_id)
     choice = AiChoice(body.choice)
+
+    # **답변은 `answer` 에서만 뜻이 있다.** 다른 선택지에 실려 오면 조용히 버리지 않는다 —
+    # 사용자는 자기가 쓴 문장이 AI 에게 갔다고 믿게 된다.
+    answer = (body.answer or "").strip()
+    if choice is AiChoice.ANSWER and not answer:
+        raise bad_request(
+            ErrorCode.DEFINITION_INVALID,
+            "답변이 비어 있습니다. AI 에게 알려 줄 내용을 적어 주세요.",
+        )
+    if choice is not AiChoice.ANSWER and answer:
+        raise bad_request(
+            ErrorCode.DEFINITION_INVALID,
+            f"「{choice.value}」 에는 답변을 실을 수 없습니다.",
+        )
+
     command = command_for(choice)
     _apply(w, command)
 
@@ -1612,6 +1643,12 @@ async def ai_choice(session_id: str, body: AiChoiceRequest, state: State) -> Ses
         await w.session.apply(command)
         return view_of(w)
 
+    if choice is AiChoice.ANSWER:
+        # 2026-09-10 — 사람이 답을 줬다. **같은 대화에 이어 붙여** 그 자리에서 이어 간다.
+        await w.session.apply(command)
+        _resume_agent_with_answer(w, answer)
+        return view_of(w)
+
     # retry / skip — 현재 상태에서 AI 에게 돌려준다 (FR-072·FR-073).
     await w.session.apply(command)
     note = (
@@ -1623,6 +1660,23 @@ async def ai_choice(session_id: str, body: AiChoiceRequest, state: State) -> Ses
     )
     _start_agent_note(w, note)
     return view_of(w)
+
+
+def _resume_agent_with_answer(work: SessionWork, answer: str) -> None:
+    """사람이 준 답으로 에이전트를 이어서 돌린다 (2026-09-10 사용자 결정).
+
+    `_start_agent_note` 와 갈라 둔다. 그쪽이 나르는 것은 **제품이 만든 지시**(「다시
+    시도하세요」)이고 이것은 **사람이 쓴 문장**이다 — 에이전트가 둘을 같은 무게로 읽으면
+    안 되므로 문장을 감싸는 일은 `resume_with_answer` 가 갖는다.
+    """
+    from itb.authoring.agent import AuthoringAgent
+
+    if not isinstance(work.agent, AuthoringAgent):  # pragma: no cover - ai 세션에서만 온다
+        return
+    # 예산을 되돌리는 일은 `resume_with_answer` 가 한다 — 답변 경로의 규칙을 한 곳에 둔다.
+    work.agent_task = asyncio.create_task(
+        _run_agent(work.session.session_id, answer=answer)
+    )
 
 
 def _start_agent_note(work: SessionWork, note: str) -> None:

@@ -82,6 +82,15 @@ class Command(StrEnum):
     RECORD_ACTIONS_STOP = "record_actions_stop"
     AI_BLOCK = "ai_block"
     CHOOSE_TAKEOVER = "choose_takeover"
+    CHOOSE_ANSWER = "choose_answer"
+    """사람이 **답을 주고** AI 에게 돌려준다 (2026-09-10 사용자 결정).
+
+    `CHOOSE_RETRY` 와 도착 상태는 같지만 뜻이 다르다 — 그쪽은 「같은 것을 다시 해 봐라」
+    이고 이것은 「막힌 것에 대한 답이 여기 있다」다. 갈라 두는 이유는 거절 문구다:
+    상태 기계가 명령 이름으로 사유를 만들므로, 합치면 답변이 거절될 때 「AI에게 다시」로
+    안내된다.
+    """
+
     CHOOSE_RETRY = "choose_retry"
     CHOOSE_SKIP = "choose_skip"
     CHOOSE_ABORT = "choose_abort"
@@ -186,6 +195,7 @@ _TRANSITIONS: dict[SessionState, dict[Command, SessionState]] = {
     SessionState.AI_BLOCKED: {
         # 4선택지 (FR-070). 세션은 유지된다.
         Command.CHOOSE_TAKEOVER: SessionState.TAKEOVER_RECORDING,
+        Command.CHOOSE_ANSWER: SessionState.AI_RUNNING,
         Command.CHOOSE_RETRY: SessionState.AI_RUNNING,
         Command.CHOOSE_SKIP: SessionState.AI_RUNNING,
         Command.CHOOSE_ABORT: SessionState.REVIEW,
@@ -252,6 +262,7 @@ _COMMAND_LABELS: dict[Command, str] = {
     Command.RECORD_ACTIONS_STOP: "직접 동작 추가 종료",
     Command.AI_BLOCK: "AI 실패 처리",
     Command.CHOOSE_TAKEOVER: "직접 수행",
+    Command.CHOOSE_ANSWER: "답하고 AI에게 돌려주기",
     Command.CHOOSE_RETRY: "AI에게 다시",
     Command.CHOOSE_SKIP: "건너뛰기",
     Command.CHOOSE_ABORT: "종료",

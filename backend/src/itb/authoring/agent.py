@@ -49,6 +49,10 @@ SYSTEM_PROMPT = """\
 - 지시를 완료했으면 무엇을 했는지 짧게 정리하고 끝내세요.
 - 지시를 수행할 수 없으면 report_blocked 로 **무엇이 막았는지 구체적으로** 알리세요.
   추측으로 다른 요소를 누르지 마세요. 사람이 이어받을 수 있습니다.
+- 막힌 이유가 **모르는 것**이면 (어느 계정으로 로그인할지, 비슷한 버튼 중 어느 것인지,
+  어떤 값을 넣을지) report_blocked 의 question 에 **사람에게 물어볼 한 문장**을 함께
+  적으세요. 사람이 답을 주면 그 자리에서 이어서 수행하게 됩니다.
+- 사람이 답을 주면 그 답만으로 이어 가세요. 이미 만들어진 Step 을 다시 만들지 마세요.
 - 로그인 화면을 만나면 지시문에 있는 자격 증명만 쓰세요. 값을 만들어 내지 마세요.
 """
 
@@ -75,6 +79,13 @@ class AgentOutcome:
     reason: str | None = None
     attempted: str | None = None
     """막힌 시점에 시도하던 동작. `ai_blocked` 이벤트의 `attempted` 다 (FR-070)."""
+
+    question: str | None = None
+    """사람에게 물을 한 문장 (2026-09-10 사용자 결정).
+
+    `reason` 과 갈라 둔다 — 사유는 「왜 못 했는가」이고 질문은 「무엇을 알려 주면
+    되는가」다. 화면은 이 값이 있을 때 답 칸을 그 질문에 대한 것으로 연다.
+    """
 
     step_count: int = 0
     tool_calls: int = 0
@@ -182,6 +193,35 @@ class AuthoringAgent:
         self.messages.append({"role": "user", "content": text})
         return await self._drive()
 
+    async def resume_with_answer(self, answer: str) -> AgentOutcome:
+        """사람이 준 답을 받아 **막힌 자리에서 이어서** 수행한다 (2026-09-10 사용자 결정).
+
+        `resume_after_takeover` 와 **대칭이다.** 그쪽은 「사람이 화면을 조작해 풀었다」를
+        전하고 이것은 「사람이 알려 줬다」를 전한다. 둘 다 같은 대화에 이어 붙는다 —
+        새 지시로 시작하면 앞서 무엇을 하다 막혔는지 잊고 처음부터 다시 한다.
+
+        예산을 새로 준다. 앞선 시도가 쓴 호출을 이어서 세면, 답을 준 순간 상한에 닿아
+        「답했는데 아무 일도 일어나지 않는다」가 된다 (FR-066 · `_start_agent_note` 와
+        같은 판단).
+        """
+        text = answer.strip()
+        if not text:
+            msg = "답변이 비어 있습니다. 무엇을 알려 줄지 적어 주세요."
+            raise ValueError(msg)
+        self.toolbox.limits.reset()
+        self.messages.append(
+            {
+                "role": "user",
+                "content": (
+                    f"사람의 답변입니다: {text}\n"
+                    "이 답을 반영해 남은 지시를 이어서 수행하세요. 화면이 바뀌었을 수 "
+                    "있으니 observe_page 로 먼저 확인하고, 이미 만들어진 Step 을 다시 "
+                    "만들지 마세요. 그래도 막히면 report_blocked 로 다시 알리세요."
+                ),
+            }
+        )
+        return await self._drive()
+
     async def resume_after_takeover(self, note: str) -> AgentOutcome:
         """사람이 이어받아 처리한 뒤 남은 지시를 이어서 수행한다 (FR-076, T125).
 
@@ -210,6 +250,7 @@ class AuthoringAgent:
         # 인수 후 재개가 첫 메시지에서 곧바로 다시 막힌 것으로 판정된다 (US5 통합 테스트가
         # 잡았다). 앞선 결과는 이미 호출자에게 보고됐으므로 여기서 들고 있을 이유가 없다.
         self.toolbox.blocked_reason = None
+        self.toolbox.blocked_question = None
         try:
             selected, build = select_driver()
             driver = self.driver or selected
@@ -276,6 +317,7 @@ class AuthoringAgent:
                 AgentStatus.BLOCKED,
                 reason=stopped,
                 attempted=self.toolbox.limits.last_failed_element,
+                question=self.toolbox.blocked_question,
                 step_count=self._count(),
                 tool_calls=self.toolbox.limits.calls,
             )
