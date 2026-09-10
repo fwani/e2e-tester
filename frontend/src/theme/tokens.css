@@ -701,8 +701,19 @@ input.ai, textarea.ai { border-color: var(--ai); }
   white-space: nowrap;
 }
 
-/* 초점이 안쪽 칸에 있으므로 링은 라벨이 그린다. `:focus-visible` 과 같은 링이다. */
-.btn.file { position: relative; cursor: pointer; }
+/* 초점이 안쪽 칸에 있으므로 링은 라벨이 그린다. `:focus-visible` 과 같은 링이다.
+
+   **전역 `label` 규칙을 되돌린다.** 위의 `label { margin:12px 0 6px; letter-spacing:.08em;
+   text-transform:uppercase }` 은 폼 라벨을 위한 것이고 `.btn` 은 그 셋을 덮지 않는다.
+   그래서 파일 선택만 이웃 버튼보다 12px 내려앉고 글자가 벌어져 보였다 — 조작이지
+   폼 라벨이 아니다. */
+.btn.file {
+  position: relative;
+  cursor: pointer;
+  margin: 0;
+  letter-spacing: normal;
+  text-transform: none;
+}
 .btn.file:focus-within { outline: 2px solid var(--run); outline-offset: 2px; }
 
 /* 쓸 수 없는 라벨 조작. `<label>` 은 `:disabled` 를 받지 못하므로 형태를 따로 둔다 —

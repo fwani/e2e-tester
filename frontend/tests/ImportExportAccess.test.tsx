@@ -18,6 +18,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ImportPlanView, SheetPlanView } from "../src/api/client";
 import { ImportFilePicker, ImportPreview } from "../src/pages/ImportPreview";
+import tokens from "../src/theme/tokens.css?raw";
 
 const sheet = (over: Partial<SheetPlanView> = {}): SheetPlanView => ({
   sheet_name: "회원",
@@ -92,6 +93,46 @@ describe("파일 선택 — 마우스 없이 쓸 수 있는가", () => {
     expect(label.className).toContain("disabled");
     expect(label.getAttribute("aria-disabled")).toBe("true");
     expect((document.querySelector("[data-import-file]") as HTMLInputElement).disabled).toBe(true);
+  });
+});
+
+/**
+ * 2026-09-10 사용자 보고 — 「엑셀에서 가져오기 버튼이 다른 버튼보다 훨씬 크고 이상하게
+ * 생겼다」.
+ *
+ * 원인이 둘이었고 둘 다 **크기와 자리**였다.
+ *
+ * 1. 목록 툴바의 이웃은 전부 `.btn sm` (26px·12px) 인데 이 조작만 전체 크기 `.btn`
+ *    (32px·13px) 이었다. 크기는 위계를 말하므로 이웃과 어긋나면 거짓말이 된다.
+ * 2. 전역 `label` 규칙(`margin:12px 0 6px`·`letter-spacing:.08em`)이 새어 들어와
+ *    12px 내려앉고 글자가 벌어졌다. `.btn` 이 그 셋을 덮지 않는다.
+ *
+ * 실제 치수는 브라우저만 잴 수 있다 (jsdom 은 CSS 를 계산하지 않는다). 여기서는 그
+ * 치수를 **결정하는 것** — 크기 클래스와 되돌림 규칙의 존재 — 를 지킨다.
+ */
+describe("파일 선택의 크기와 자리 (2026-09-10 사용자 보고)", () => {
+  it("작을 때 이웃과 같은 크기 클래스를 단다", () => {
+    render(
+      <ImportFilePicker label="엑셀에서 가져오기" small onPlan={() => {}} onError={() => {}} />,
+    );
+    const label = document.querySelector("label.btn") as HTMLLabelElement;
+    expect(label.className.split(/\s+/)).toContain("sm");
+  });
+
+  it("기본은 전체 크기다 — 이웃이 전체 크기인 자리가 있다", () => {
+    render(<ImportFilePicker label="엑셀에서 새 프로젝트" onPlan={() => {}} onError={() => {}} />);
+    const label = document.querySelector("label.btn") as HTMLLabelElement;
+    expect(label.className.split(/\s+/)).not.toContain("sm");
+  });
+
+  it("`.btn.file` 이 전역 `label` 규칙을 되돌린다", () => {
+    const rule = /\.btn\.file\s*\{([^}]*)\}/.exec(tokens);
+    expect(rule, "`.btn.file` 규칙이 없다").not.toBeNull();
+    const body = rule![1] as string;
+    // 전역 `label` 이 주는 셋을 각각 되돌려야 한다.
+    expect(body).toMatch(/margin:\s*0/);
+    expect(body).toMatch(/letter-spacing:\s*normal/);
+    expect(body).toMatch(/text-transform:\s*none/);
   });
 });
 

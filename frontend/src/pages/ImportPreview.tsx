@@ -580,11 +580,20 @@ export function ImportFilePicker({
   onPlan,
   onError,
   disabled = false,
+  small = false,
 }: {
   label: string;
   onPlan: (plan: ImportPlanView) => void;
   onError: (error: ErrorInfo) => void;
   disabled?: boolean;
+  /**
+   * 이웃과 같은 크기로 맞춘다 (`.btn.sm` — 높이 26·12px).
+   *
+   * **조작의 크기는 자리가 정한다.** 이 컴포넌트는 언제나 전체 크기 `.btn` 이었고,
+   * 목록 툴바의 이웃은 전부 `.btn sm` 이다 — 「엑셀에서 가져오기」만 혼자 커서
+   * 더 중요한 조작처럼 보였다. 크기는 위계를 말하므로 이웃과 어긋나면 거짓말이 된다.
+   */
+  small?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -603,7 +612,10 @@ export function ImportFilePicker({
       (`.btn.file:focus-within`). `<input type=file>` 은 초점을 받은 상태에서
       Space·Enter 로 열리므로, 마우스 없이 같은 일을 할 수 있다.
     */
-    <label className={`btn file${off ? " disabled" : ""}`} aria-disabled={off}>
+    <label
+      className={`btn file${small ? " sm" : ""}${off ? " disabled" : ""}`}
+      aria-disabled={off}
+    >
       {busy ? "읽는 중…" : label}
       <input
         type="file"

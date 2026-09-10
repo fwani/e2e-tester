@@ -736,6 +736,7 @@ export function TestList({
                 <ImportFilePicker
                   label="엑셀에서 가져오기"
                   disabled={busy}
+                  small
                   onPlan={onImportPlan}
                   onError={setError}
                 />
