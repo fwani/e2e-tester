@@ -422,33 +422,33 @@ L2 대조의 부재(T074)가 이번에 분명해졌다.
 남은 것은 **코드가 아니라 기록과 범위**다. 이번 라운드가 검사를 여럿 새로 세웠는데
 (L2 대조 · G-E · 정본 분리) 그 사실이 계약·절차·손 검증 목록에 아직 반영되지 않았다.
 
-- [ ] T083 **L2 가 덮지 못한 화면을 명시한다** per FR-011·SC-001 (partial) — **HIGH.**
+- [X] T083 **L2 가 덮지 못한 화면을 명시한다** per FR-011·SC-001 (partial) — **HIGH.**
       `scripts/design_compare_ba.py` 의 `SCENARIOS` 는 화면 8개를 연다. 작업대의 일곱
       국면·Step 상세 겹침·토스트 층·결과·편집·미러는 **한 번도 대조되지 않았다.**
       FR-011 은 「어떤 화면을 무엇으로 대조했는지」를 요구하고 그것은 보고서에 있지만,
       **덮지 못한 것이 어디인지도 함께 남아야** 「불일치 0」이 무엇에 대한 말인지 읽을
       수 있다. 시나리오를 늘릴 수 있는 것(세션 상태를 API 로 만들 수 있는 화면)과
       없는 것(실제 브라우저 세션이 필요한 국면)을 갈라 적는다
-- [ ] T084 **손 검증 목록 §15 를 다시 가른다** per plan: 손 검증 위임 (partial) —
+- [X] T084 **손 검증 목록 §15 를 다시 가른다** per plan: 손 검증 위임 (partial) —
       **HIGH.** `docs/PENDING-HUMAN-VERIFICATION.md` §15 는 「L1 은 화면이 정본을 제대로
       쓰는지 보지 못한다」를 근거로 9개를 사람에게 넘겼다. **그 전제가 바뀌었다** —
       L2 가 34,272칸을 기계로 대조한다. 15-1·15-2·15-5 는 상당 부분이 덮였고,
       15-6~15-9(마스킹·키보드 순회·IME·hover)는 여전히 사람만 할 수 있다.
       낡은 수동 절차(`git worktree add /tmp/itb-before f49c31c~1`)도 L2 가 대신한다.
       **줄일 수 있는 것을 줄이지 않으면 목록이 관성으로 남고, 남은 넷이 묻힌다**
-- [ ] T085 **G-E 와 정본 분리를 계약에 등재한다** per contracts/tailwind-theme.md
+- [X] T085 **G-E 와 정본 분리를 계약에 등재한다** per contracts/tailwind-theme.md
       (partial) — MEDIUM. 이번 라운드의 두 핵심 결정이 코드에만 있다.
       (1) **G-E** — 한 요소에 같은 속성이 두 번 붙지 않는다. 가드 표(C-9 옆)에 넣고,
       「`className` 의 순서는 승부를 정하지 않는다」는 사실과 흰 버튼의 실측을 남긴다.
       (2) **정본 분리** — 앱은 `tokens.app.css`(변수·요소 규칙)만 들이고 클래스 규칙은
       싣지 않는다. C-2(정본을 손대지 않는다)와 나란히 조항으로 적고, 생성 규칙과
       가드(`CanonSplit`)를 함께 건다
-- [ ] T086 [P] **`state-styles.md` 의 이관 칸을 채운다** per contracts/state-styles.md
+- [X] T086 [P] **`state-styles.md` 의 이관 칸을 채운다** per contracts/state-styles.md
       (partial) — MEDIUM. S-08·S-09·S-10(`input.phase-name` 의 hover·focus·disabled)은
       `workbench/PhaseBar` 로, S-12(`.segmented > button:disabled`)는 `ui/Table` 의
       `Segmented` 로 실제로 옮겼는데 표는 ⬜ 그대로다. **표가 진행 상태의 유일한
       기록이므로 사실과 어긋나면 무엇이 남았는지 알 수 없다**
-- [ ] T087 [P] **검증 절차에 새 검사 셋을 넣는다** per quickstart.md (partial) —
+- [X] T087 [P] **검증 절차에 새 검사 셋을 넣는다** per quickstart.md (partial) —
       MEDIUM. 지금 절차를 그대로 따르면 이번에 세운 것을 하나도 돌리지 않는다.
       (1) `npm test -- --run ClassConflict` (G-E), (2) `node scripts/split-canon.mjs
       --check`, (3) `design_compare_ba.py --compare` 뒤 `BeforeAfterParity` 재실행.
@@ -459,8 +459,24 @@ L2 대조의 부재(T074)가 이번에 분명해졌다.
       **기준은 여전히 미달이며, 단위를 고치는 것은 명세 변경이라 여기서 하지 않았다.**
       작업으로 등록해 둔다 — 판정만 기록하고 넘어가면 다음 라운드가 같은 자리에서
       다시 멈춘다. 사용자가 「고치지 않는다」를 고르면 그 결정을 spec 에 적는다
-- [ ] T089 [P] **늘어나는 알림 부품이 필요한지 판단한다** per SC-010 (partial) — LOW.
+- [X] T089 [P] **늘어나는 알림 부품이 필요한지 판단한다** per SC-010 (partial) — LOW.
       `workbench/WorkArea` 의 두 줄이 `min-h-notice` 로 알림 모양을 직접 쓴다.
       `ui/Notice` 는 높이를 못 박는 부품(정본 `.notice` = `flex: 0 0 32px`)이라 성질이
       다르다 — 복제가 아니라 **아직 없는 부품**이다. 지금은 한 곳뿐이라 만들지 않았다.
       두 번째가 생기면 만들고, 안 생기면 이 줄을 지운다
+
+
+### 수렴 3회차 처리 결과 (2026-09-11)
+
+7건 중 **6건을 처리했다.** 남은 하나(T088)는 **사용자 판단이 필요하다** — 성공 기준의
+단위를 고치는 것은 명세 변경이므로 여기서 하지 않는다.
+
+| 작업 | 결과 |
+|---|---|
+| T083 | `quickstart.md` §3 에 「이 대조가 덮지 못하는 것」 표를 넣었다 — 작업대 국면·겹침·토스트·결과·편집·미러·상호작용·파일 탐색기 |
+| T084 | `PENDING-HUMAN-VERIFICATION.md` §15 를 다시 갈랐다 — 15-5 는 기계로, 15-1·15-2 는 절반으로. 낡은 수동 대조 절차를 지웠다 |
+| T085 | `tailwind-theme.md` 에 C-9(같은 속성 두 번 금지)·C-10(정본 분리)과 가드 G-E·G-A6 을 등재했다 |
+| T086 | `state-styles.md` 17줄 전부 이관 완료로 갱신 (여섯 줄이 실제로는 옮겨졌는데 ⬜ 였다) |
+| T087 | `quickstart.md` 에 G-E·`split-canon --check`·`BeforeAfterParity` 세 단계를 넣었다 |
+| T088 | **열린 채로 둔다** — SC-007 의 단위는 사용자가 정한다 |
+| T089 | 판정 기록 (`baseline.md`) — 쓰는 곳이 하나뿐이라 부품을 만들지 않는다. 두 번째가 생기면 만든다 |

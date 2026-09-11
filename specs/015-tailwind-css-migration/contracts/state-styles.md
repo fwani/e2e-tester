@@ -41,19 +41,19 @@ FR-009(상호작용 상태 보존)와 SC-008(초점 표시 0건 유실)이 이�
 | S-05 | `button.danger:hover` | `background: var(--fail-t)` | ✅ `ui/Button` VARIANT.danger `hover:bg-fail-t` |
 | S-06 | `input::placeholder`, `textarea::placeholder` | `color: var(--ink-3)` | ✅ `ui/Field` Field `[&_input]:placeholder:text-ink-3` |
 | S-07 | `input:disabled`, `select:disabled`, `textarea:disabled` | 투명 배경·점선 테두리·`--ink-3` | ✅ `ui/Field` Field `[&_input]` disabled 계열 |
-| S-08 | `input.phase-name:hover:not(:disabled)` | `border-color: var(--hair-2)` | ⬜ 국면 이름 입력 (T026) |
-| S-09 | `input.phase-name:focus` | `border-color: var(--hair-2)`·`background: var(--panel)`·`outline: none` | ⬜ 국면 이름 입력 (T026) |
-| S-10 | `input.phase-name:disabled` | `border-color: transparent`·`color: var(--ink-2)` | ⬜ 국면 이름 입력 (T026) |
+| S-08 | `input.phase-name:hover:not(:disabled)` | `border-color: var(--hair-2)` | ✅ `workbench/PhaseBar` — `enabled:hover:border-hair-2` |
+| S-09 | `input.phase-name:focus` | `border-color: var(--hair-2)`·`background: var(--panel)`·`outline: none` | ✅ `workbench/PhaseBar` — `focus:border-hair-2 focus:bg-panel focus:outline-none`. **링을 지우는 것이 아니라 바꾼다** — 평소 투명하던 테두리와 바탕이 드러난다. `theme/exceptions.ts` 에 이유와 함께 등록 |
+| S-10 | `input.phase-name:disabled` | `border-color: transparent`·`color: var(--ink-2)` | ✅ `workbench/PhaseBar` — `disabled:border-transparent disabled:text-ink-2` |
 | S-11 | `.tabs > button:disabled` | `border-style: solid`·`color: var(--ink-3)` | ✅ `ui/Table` Tabs `[&>button:disabled]` |
-| S-12 | `.segmented > button:disabled` | 투명 배경·`border-style: solid`·`--ink-3` | ⬜ 분절 조작 (T027) |
+| S-12 | `.segmented > button:disabled` | 투명 배경·`border-style: solid`·`--ink-3` | ✅ `ui/Table` 의 `Segmented` — `[&>button:disabled]:…` |
 | S-13 | `.srow-check input[type="checkbox"]:disabled` | `cursor: default`·`opacity: .4` | ✅ `ui/StepRow` StepCheck `[&_input:disabled]` |
 
 ### 클래스 규칙 (레이어 안에서도 특이도로 이길 수 있으나, 함께 옮긴다)
 
 | # | 셀렉터 | 선언 | 이관 |
 |---|---|---|---|
-| S-14 | `:focus-visible` | `outline: 2px solid var(--run)`·`outline-offset: 2px` | ⬜ **전역** — T068 가드가 지킨다 |
-| S-15 | `.navlink:hover` | `background: var(--sunken)` | ⬜ 수식 군 (T027) |
+| S-14 | `:focus-visible` | `outline: 2px solid var(--run)`·`outline-offset: 2px` | ✅ **전역** — 정본의 요소 규칙이므로 옮기지 않는다. `tokens.app.css` 에 그대로 실리고 `tests/FocusRing.test.tsx` 가 지운 곳을 잡는다 |
+| S-15 | `.navlink:hover` | `background: var(--sunken)` | ✅ `ui/Button` 의 `navLinkClasses()` — `hover:bg-sunken` |
 | S-16 | `.btn.file:focus-within` | `outline: 2px solid var(--run)`·`outline-offset: 2px` | ✅ `ui/Field` FileButton `focus-within:outline-run` |
 | S-17 | `.btn.disabled:focus-within` | `outline: 2px solid var(--hair-2)`·`outline-offset: 2px` | ✅ `ui/Field` FileButton off `focus-within:outline-hair-2` |
 
@@ -76,3 +76,19 @@ S-09 (`input.phase-name:focus { outline: none }`) 는 **의도된 예외**다 �
 초점을 표시하므로 링을 뺀다. 이런 예외는 `theme/exceptions.ts` 에 이유와 함께 등록한다.
 
 가드는 T068 (`FocusRing.test.tsx`) 이다.
+
+
+---
+
+## 이관 완료 (2026-09-11 · 수렴 3회차 T086)
+
+17줄 전부 이관됐다. **여섯 줄(S-08~S-10·S-12·S-14·S-15)이 실제로는 옮겨졌는데 표가 ⬜ 였다** —
+표가 진행 상태의 유일한 기록이므로 사실과 어긋나면 무엇이 남았는지 알 수 없다.
+L2 대조가 그 넷 중 셋(국면 이름 입력의 hover·focus·disabled)에서 실제 회귀를 찾아
+고치게 했고, 그때 표를 함께 갱신하지 않은 것이 이 어긋남의 원인이다.
+
+**hover·focus 는 L2 도 보지 못한다.** L2 는 정적인 화면을 잰다 — 마우스를 올리거나
+Tab 을 누른 모습은 재지 않는다. 그래서 이 표와 `tests/InteractionStates.test.tsx`
+(상태 **선언**이 있는가)와 `tests/FocusRing.test.tsx`(링을 지우지 않았는가) 셋이
+함께 그 자리를 지킨다. 실제로 그렇게 보이는지는 사람이 본다
+(`docs/PENDING-HUMAN-VERIFICATION.md` §15-9).
