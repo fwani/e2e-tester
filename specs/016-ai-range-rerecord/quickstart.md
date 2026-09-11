@@ -40,9 +40,22 @@ ITB_AI_DRIVER=claude-code uv run itb
 cd backend && uv run lint-imports
 
 cd backend && uv run ruff check src/ tests/
-cd backend && uv run pytest
+cd backend && bash scripts/test-backend.sh          # ← `uv run pytest` 가 아니다
 cd backend && uv run python -m itb.schema.export --check   # 변경 없이 통과해야 한다
-cd frontend && npx tsc --noEmit && npm test -- --run
+cd frontend && npx tsc --noEmit && npx vitest run
+```
+
+> **`uv run pytest` 를 그대로 쓰지 않는다.** 48건이 오류로 나오는데 회귀가 아니라
+> 명령 오용이다 — 경과 시간을 단언하는 모듈(`tests/tiers.py` 의 `TIMING_MODULES`)이
+> 병렬 실행을 **스스로 거부한다**. 프로세스 8개가 CPU 를 나눠 쓰면 재는 값이 제품의
+> 성질이 아니라 그 순간의 부하가 되기 때문이다. 정규 명령은 위의 스크립트이며, 병렬
+> 계층과 순차 계층을 모두 돈다 (`baseline.md` T001-a).
+
+`design_compare_ba.py --compare` 도 함께 돌린다 — 016 은 화면을 건드리므로 015 의
+L2 대조 보고서가 낡는다. 「불일치 0건」이 지금 화면에 대한 말이 되려면 다시 재야 한다.
+
+```bash
+backend/.venv/bin/python scripts/design_compare_ba.py --compare
 ```
 
 `schema.export --check` 가 **변경을 보고하면 실패다.** 이 기능은 저장 형식을 건드리지
@@ -157,17 +170,21 @@ cd frontend && npx tsc --noEmit && npm test -- --run
 
 ## 7. 성공 기준 측정
 
-| 기준 | 측정 방법 |
-|---|---|
-| **SC-001** 조작 5회 이하 | Step 12개 테스트의 가운데 5개 교체. 체크(1) + 시작(1) + 지시(1) + 확정(1) + 저장(1) = 5 |
-| **SC-002** 지금의 절반 이하 | 같은 작업을 「브라우저 열기 → 직접 녹화 → 정리」로 해 조작을 센다. 시간도 함께 기록한다 (계획 §알려진 위험) |
-| **SC-003** 10건 중 7건 | 시나리오 10개를 기본 드라이버로. 개발용 드라이버 결과는 쓰지 않는다 |
-| **SC-004** 20/20 | §3-2 |
-| **SC-005** 전체 실행 성공 | §3-1 7번 |
-| **SC-006** 형식 구별 불가 | §4 7번 + 자동 검사 |
-| **SC-007** 원칙 II | §5 + `lint-imports` |
-| **SC-008** 민감값 | §6 |
-| **SC-009** 기존 흐름 불변 | 재녹화를 쓰지 않는 편집 시나리오 5개의 조작 횟수를 016 전후로 비교 |
+| 기준 | 누가 재나 | 지금 상태 |
+|---|---|---|
+| **SC-001** 조작 5회 이하 | **사람** | 설계값 5 (체크·시작·지시·확정·저장). 실측 필요 |
+| **SC-002** 지금의 절반 이하 | **사람** | `PENDING-HUMAN-VERIFICATION.md` §16-1. **시간도 함께 적는다** |
+| **SC-003** 10건 중 7건 | **사람** | §16-2. 기본 드라이버로만 |
+| **SC-004** 버리기 20/20 | 자동 | `us_rerecord/test_commit_and_discard.py` (통합 20회 + 단위 20회) |
+| **SC-005** 전체 실행 성공 | 자동 | `test_commit_then_replay` — 확정·저장 후 `completed` |
+| **SC-006** 형식 구별 불가 | 자동 | `unit/test_agent_edit_tools.py` — 값(저장 형식)과 구조(공유 함수) 양쪽 |
+| **SC-007** 원칙 II | 자동 | `lint-imports` + `test_principle_ii_timeline.py` (드라이버 호출 0회 · 태스크 비겹침) |
+| **SC-008** 민감값 | 자동 | `unit/test_definition_summary.py`(값 100종 + 구조 2) · `us_rerecord/test_sensitive_in_rerecord.py`(디스크) |
+| **SC-009** 기존 흐름 불변 | 자동 (일부) | `frontend/tests/RerecordRegression.test.tsx`. 브라우저가 필요한 항목은 §16 |
+
+**넷이 사람에게 남았다** (SC-001·002·003 과 §16-3·16-4 의 사용성 판단). 자동으로 잴 수
+있는 것을 사람에게 넘기면 목록이 관성으로 남고, 정작 사람만 할 수 있는 것이 묻힌다 —
+015 가 §15 에서 겪은 일이다.
 
 ---
 
