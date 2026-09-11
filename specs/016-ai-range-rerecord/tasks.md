@@ -100,7 +100,7 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 
 - [X] T023 [P] [US1] `backend/tests/us_rerecord/test_chat_turn.py` — 채팅 한 턴이 `PAUSED → AI_RUNNING → PAUSED` 를 지나고, 이력에 사용자·AI 차례가 순서대로 붙는지
 - [X] T024 [P] [US1] `backend/tests/us_rerecord/test_chat_boundary.py` — 빈 입력·상한 초과·`paused` 아닌 상태에서의 호출이 전부 `400`/`409` 로 거절되고 사유가 있는지 (FR-010)
-- [ ] T025 [P] [US1] `frontend/tests/ChatPanel.test.tsx` — 자리가 편집 국면에서 **보이되 잠기고** 해소 조작을 가리키는지, `paused` 에서 활성인지 (FR-234 · ui-contract §2)
+- [X] T025 [P] [US1] `frontend/tests/ChatPanel.test.tsx` — 자리가 편집 국면에서 **보이되 잠기고** 해소 조작을 가리키는지, `paused` 에서 활성인지 (FR-234 · ui-contract §2)
 
 ### Implementation for US1
 
@@ -114,7 +114,7 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [X] T033 [US1] `frontend/src/components/workbench/ActionPalette.tsx` — `ai.rerecord` 를 팔레트에 놓고, **브라우저를 연다는 사실을 이름 옆에서 미리 말한다** (ui-contract §1-1)
 - [X] T034 [US1] `frontend/src/pages/SessionScreen.tsx` 또는 편집 화면 — `ai.rerecord` 를 누르면 고른 구간으로 `mode=rerecord` 세션을 만든다. 연속이 아니면 **시작하지 않고** 이유를 말한다 (FR-016)
 - [X] T034a [US1] `frontend/src/pages/SessionScreen.tsx` — **저장하지 않은 편집이 있으면 시작 전에 확인을 받는다** (FR-022 · api-contract §1 「저장하지 않은 편집」). 선택지 셋: 저장하고 시작 · 저장하지 않고 시작 · 취소. **편집을 버리지 않는다** — 세션이 끝나면 돌아온다
-- [ ] T034b [P] [US1] `frontend/tests/RerecordStart.test.tsx` 신규 — 미저장 편집이 있을 때 확인이 뜨는지, 「취소」가 세션을 만들지 않는지, 「저장하지 않고 시작」 후에도 편집이 화면에 남는지 (FR-022)
+- [X] T034b [P] [US1] `frontend/tests/RerecordStart.test.tsx` 신규 — 미저장 편집이 있을 때 확인이 뜨는지, 「취소」가 세션을 만들지 않는지, 「저장하지 않고 시작」 후에도 편집이 화면에 남는지 (FR-022)
 - [X] T035 [US1] `frontend/tests/CapabilityUI.test.tsx` 수정 — 새 조작 4개의 **자리**가 실제로 있는지 (FR-235)
 
 **Checkpoint**: quickstart §2 가 통과한다. 이 시점에 Step 을 하나도 만들지 않아도
@@ -136,7 +136,7 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [X] T037 [P] [US2] `backend/tests/us_rerecord/test_discard.py` — 버리기 후 목록이 시작 전과 **id·순서·내용까지 동일**한지 (불변식 9 · SC-004). **20회 반복**으로 단언한다
 - [X] T038 [P] [US2] `backend/tests/us_rerecord/test_discard_realign.py` — 버리기가 도착점까지 다시 실행하고(FR-031), 세션이 살아 있으며(FR-031a), 되맞춤 구간에서 드라이버 호출이 0회인지(FR-031b), 되맞춤 실패 시 두 사실을 함께 알리는지(FR-031c · 불변식 11)
 - [X] T039 [P] [US2] `backend/tests/us_rerecord/test_no_disk_before_commit.py` — 확정 전 「저장」이 확정되지 않은 교체를 디스크에 내리지 않는지 (FR-029)
-- [ ] T040 [P] [US2] `frontend/tests/RerecordTransaction.test.tsx` — 재녹화 띠가 구간과 개수를 말하고, `can_commit` 이 거짓이면 확정이 사유와 함께 잠기는지
+- [X] T040 [P] [US2] `frontend/tests/RerecordTransaction.test.tsx` — 재녹화 띠가 구간과 개수를 말하고, `can_commit` 이 거짓이면 확정이 사유와 함께 잠기는지
 - [X] T040a [P] [US2] `backend/tests/us_rerecord/test_blocked_in_rerecord.py` 신규 — 재녹화 중 AI 가 막히면 **브라우저가 닫히지 않고**(FR-041 · 원칙 III) 5선택지가 뜨며, 그때까지 만든 Step 이 **보존**되는지(FR-043). 새 경로 `PAUSED → AI_RUNNING → AI_BLOCKED` 를 지난다 — 기존 동작의 재사용이지만 이 전이는 이번에 처음 생긴다
 - [X] T040b [P] [US2] `backend/tests/us_rerecord/test_commit_then_replay.py` 신규 — 확정·저장 후 그 테스트를 **처음부터 끝까지 실행해 성공**하는지 (SC-005). 재녹화가 만든 Step 이 이어 붙은 자리에서 깨지지 않음을 본다
 - [X] T040c [P] [US2] `backend/tests/us_rerecord/test_sensitive_in_rerecord.py` 신규 — 재녹화로 만든 Step 의 민감값이 기존 녹화와 **같은 규칙**으로 변수 참조가 되는지 (FR-045). `SensitiveCapturer` 가 toolbox 에 붙어 있어 자동으로 될 가능성이 높지만, 가능성은 검사가 아니다
