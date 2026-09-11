@@ -36,6 +36,8 @@ import chrome from "../src/components/design/Chrome.tsx?raw";
 import compose from "../src/pages/ComposeView.tsx?raw";
 import workbench from "../src/components/workbench/Workbench.tsx?raw";
 import stepList from "../src/components/workbench/StepList.tsx?raw";
+// 015 — 행의 **형태**는 부품이 갖는다. 정본 `.srow` 가 유틸리티로 풀려 온 곳이다.
+import stepRowUi from "../src/ui/StepRow.tsx?raw";
 
 /** 주석을 걷어낸 실제 선언부. 주석의 설명 문구가 단언을 통과시키면 안 된다. */
 const declarations = tokens.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -161,9 +163,20 @@ describe("밀도 — 이 개편이 실제로 사는 곳", () => {
       그것이 v1→v2 에서 색과 구조가 남은 경로다. 이제 둘을 나눠 센다.
 
       (a) 정본의 `.srow` 가 52px 를 선언한다  (b) 행이 그 형태를 실제로 쓴다
+
+      ## 2026-09-11 — (b) 를 다른 자리에서 잰다 (015)
+
+      (b) 는 `className={\`srow …\`}` 를 찾았다. 그 이름이 정본 규칙을 가리키던 동안에는
+      맞는 질문이었는데, T075 가 의미 클래스를 번들에서 빼자 **이름은 그대로인데 형태가
+      없는** 상태가 됐고 이 단언은 초록이었다 (사용자 보고 「스텝 리스트가 매우 깨졌다」).
+
+      형태는 이제 `ui/StepRow` 가 `--h-step` 을 가리키는 유틸리티로 갖는다. 그래서
+      **부품이 그 토큰을 쓰는가**와 **목록이 그 부품을 쓰는가** 둘을 잰다. 사본을 보지
+      않는다는 규율은 그대로다 — `h-step` 은 값이 아니라 정본 토큰의 이름이다.
     */
     expect(declarations).toMatch(/\.srow\{[^}]*height:52px/);
-    expect(stepList).toMatch(/className=\{`srow /);
+    expect(stepRowUi, "행 부품이 행 높이 토큰을 쓰지 않는다").toMatch(/\bh-step\b/);
+    expect(stepList, "Step 목록이 행 부품을 쓰지 않는다").toMatch(/StepRow as UiStepRow/);
   });
 
   it("Step 이름을 한 줄로 자른다 — 감싸면 52px 가 성립하지 않는다", () => {

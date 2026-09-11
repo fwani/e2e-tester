@@ -105,9 +105,10 @@ describe("작업 화면의 높이 (사용자 보고 2026-09-09)", () => {
     const areas = scrollAreas();
     expect(areas.length, "세로 스크롤 영역이 하나도 없다").toBeGreaterThan(0);
 
-    // Step 행은 정본의 `.srow` 다. `data-action="step.select"` 는 목록 **패널 전체**의
+    // Step 행은 `[data-step-row]` 다 — 2026-09-11 전에는 정본 `.srow` 를 집었고,
+    // 그 클래스가 번들에서 빠지며 형태를 잃었다 (`CanonSplit` 의 다섯째 검사). `data-action="step.select"` 는 목록 **패널 전체**의
     // 자리 표시이므로 스크롤 영역보다 바깥에 있다 — 그것으로 재면 늘 실패한다.
-    const holdsSteps = areas.some((el) => el.querySelector(".srow") !== null);
+    const holdsSteps = areas.some((el) => el.querySelector("[data-step-row]") !== null);
     expect(
       holdsSteps,
       "Step 행이 스크롤 영역 밖에 있다 — 목록이 길어지면 화면이 길어진다",
@@ -122,7 +123,7 @@ describe("작업 화면의 높이 (사용자 보고 2026-09-09)", () => {
     */
     render(<SessionWorkbench {...sessionProps({ view: sessionView({ steps: manySteps(60) }) })} />);
 
-    const stepArea = scrollAreas().find((el) => el.querySelector(".srow") !== null);
+    const stepArea = scrollAreas().find((el) => el.querySelector("[data-step-row]") !== null);
     expect(stepArea).toBeDefined();
     // 015 — 두 표기를 함께 읽는다. 묻는 것은 그대로다.
     expect(

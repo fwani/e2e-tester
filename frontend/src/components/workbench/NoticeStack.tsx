@@ -52,9 +52,11 @@ import { ACTION_LABEL } from "../../lib/wording";
 import type { Notice } from "./model";
 
 import { Button } from "../../ui/Button";
+import { DismissButton } from "../Toast";
 
 
 import { Toast, type NoticeTone } from "../../ui/Notice";
+import { useSwipeDismiss, TOAST_LINGER_MS } from "../../ui/useToastDismiss";
 /**
  * 알림의 뜻 → 정본의 옅은 바탕 (`States.dc.html`).
  *
@@ -81,22 +83,29 @@ export interface NoticeStackProps {
  * ## 2026-09-10 — 오류는 스스로 사라지지 않는다 (사용자 결정)
  *
  * 「warning 은 일정 시간 뜨고 사라지면 될 것 같고, 에러의 경우 warning 보다 길게라던지
- * 닫기 전까지라던지 정리가 필요하다」.
+ * 닫기 전까지라던지 정리가 필요하다」. 오류 알림은 사유 + 다음 행동 두 줄이고
+ * (003 EC-004), 그 「다음 행동」은 **읽고 나서 하는 것**이라는 것이 근거였다.
  *
- * 12초로는 부족하다는 것이 요구의 실체다. 오류 알림은 사유 + 다음 행동 두 줄이고
- * (003 EC-004), 그 「다음 행동」은 **읽고 나서 하는 것**이다 — 읽는 동안이 아니라
- * 수행하는 동안에도 화면에 있어야 한다. 자리를 비켜 준 뒤 사용자가 「뭐라고 했더라」로
- * 돌아오면, 근거를 남기려던 005 FR-154 가 되살아난 것과 같은 상태가 된다.
+ * ## 2026-09-11 — 뒤집혔다. 토스트는 전부 비켜 준다 (사용자 결정)
  *
- * 경고·안내는 반대다. 지나간 사실을 알릴 뿐이고 근거는 결과 화면의 기록에 남는다
- * (2026-09-09 결정). 짧게 뜨고 비켜 준다.
+ * 「toast 가 계속 떠있음. … 토스트이기 때문에 자동으로 5초 뒤에 사라져야 함」.
  *
- * 마우스를 올린 동안에는 세지 않는 규칙은 그대로다.
+ * 위 규칙이 화면에서 만든 것은 **영영 떠 있는 알림**이었다. 오류는 대개 상태에서
+ * 파생되므로(연결 실패·유실) 사라져도 다음 렌더에 돌아왔고, `null` 은 그것을 닫기
+ * 단추 하나에 걸어 두었다. 「다음 행동을 수행하는 동안에도 화면에 있어야 한다」는
+ * 판단은 남지만, 그것을 **화면을 계속 가리는 방식**으로 지킬 필요는 없다 — 근거는
+ * 결과 화면의 기록에 있고(2026-09-09), 원인이 그대로면 알림도 그대로 돌아온다.
+ *
+ * 뜻에 따라 다르지 않다. 셋 다 `TOAST_LINGER_MS` 다 — 「어떤 것은 사라지고 어떤 것은
+ * 안 사라진다」가 사용자에게는 규칙이 아니라 고장으로 읽혔다.
+ *
+ * 마우스를 올린 동안에는 세지 않는 규칙은 그대로다. 읽는 중에 사라지는 것이 토스트의
+ * 유일한 실패 방식이다.
  */
 const LINGER_MS: Record<Notice["tone"], number | null> = {
-  error: null,
-  warn: 7000,
-  info: 5000,
+  error: TOAST_LINGER_MS,
+  warn: TOAST_LINGER_MS,
+  info: TOAST_LINGER_MS,
 };
 
 /**
@@ -166,6 +175,11 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
     };
   }, []);
 
+  const drop = (n: Notice) => {
+    setHidden((prev) => new Set(prev).add(fingerprint(n)));
+    onDismiss?.(n.id);
+  };
+
   if (shown.length === 0) return null;
   return (
     <div
@@ -175,62 +189,77 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
       className="flex flex-col gap-s2"
     >
       {shown.map((n) => (
-        <Toast
-          key={n.id}
-          role={n.role}
-          data-notice={n.id}
-          /*
-            이 묶음은 문서 흐름이 아니라 좌측 영역 위에 떠 있다 (2026-09-09 ·
-            `Workbench` 의 알림 층). 그래서 흐름 안의 `Notice` 가 아니라 `Toast` 다 —
-            높이를 못 박지 않고 최소 높이만 지키므로 여러 줄 알림이 잘리지 않는다.
-          */
-          tone={TONE[n.tone]}
-          layout="gap-s3"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="font-sans text-[13px] font-semibold leading-none">{n.message}</div>
-            {/*
-              `nextAction` 이 별도 줄인 이유는 003 EC-004 다 — 문장에 뭉개면 "대상 앱에
-              연결할 수 없습니다" 뒤에 와야 하는 "떠 있는지 확인하세요" 가 사라진다.
-            */}
-            {n.nextAction !== null && (
-              <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
-                {n.nextAction}
-              </div>
-            )}
-          </div>
-          {n.action !== null && (
-            <Button
-              size="sm"
-              data-notice-action={n.action.actionId}
-              onClick={() => onAct?.(n.action!.actionId)} >
-              {n.action.label || ACTION_LABEL[n.action.actionId]}
-            </Button>
-          )}
-          {/*
-            **닫기는 모든 알림에 있다** (2026-09-09).
-
-            이전에는 `dismissible` 인 것만 가졌다. 그 구별의 근거는 「지우면 근거가
-            사라지는 알림이 있다」였는데, 경고·안내는 스스로 사라지고 오류는 이 버튼이
-            유일한 퇴장이므로 (2026-09-10) 그 구별은 남아 있어도
-            사용자에게는 「어떤 것은 손으로 지울 수 있고 어떤 것은 못 지운다」로만 보인다.
-            먼저 읽고 치우는 길을 막을 이유가 없다.
-
-            `dismissible` 은 모델에 남는다 — 값이 아직 다른 뜻을 갖는다(자동으로 걷히기
-            전에도 지울 수 있는가)기보다, 지우는 순간 **바깥 상태까지 비울 대상**인지를
-            구별한다. 그 판정은 `onDismiss` 를 받는 화면이 이미 갖고 있다.
-          */}
-          <Button
-            size="sm" variant="quiet"
-            aria-label="알림 닫기"
-            onClick={() => {
-              setHidden((prev) => new Set(prev).add(fingerprint(n)));
-              onDismiss?.(n.id);
-            }} >
-            닫기
-          </Button>
-        </Toast>
+        <NoticeToast key={n.id} notice={n} onAct={onAct} onDrop={() => drop(n)} />
       ))}
     </div>
+  );
+}
+
+/**
+ * 알림 하나.
+ *
+ * 낱개 부품인 이유는 **밀어내기가 낱개의 것**이기 때문이다 (2026-09-11). 끌린 거리와
+ * 날아가는 중인지는 알림마다 다르므로, 묶음이 그것을 다 들고 있으면 `Map<지문, 상태>`
+ * 가 하나 더 생긴다. 시간은 묶음이 세고(위 `useEffect`) 손짓은 여기가 맡는다.
+ */
+function NoticeToast({
+  notice: n,
+  onAct,
+  onDrop,
+}: {
+  notice: Notice;
+  onAct?: (action: ActionId) => void;
+  onDrop: () => void;
+}) {
+  const exit = useSwipeDismiss(onDrop);
+
+  return (
+    <Toast
+      role={n.role}
+      data-notice={n.id}
+      /*
+        이 묶음은 문서 흐름이 아니라 뷰포트 오른쪽 위에 떠 있다 (2026-09-10 ·
+        `Workbench` 의 알림 층). 그래서 흐름 안의 `Notice` 가 아니라 `Toast` 다 —
+        높이를 못 박지 않고 최소 높이만 지키므로 여러 줄 알림이 잘리지 않는다.
+      */
+      tone={TONE[n.tone]}
+      layout="gap-s3"
+      style={exit.style}
+      {...exit.handlers}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="font-sans text-[13px] font-semibold leading-none">{n.message}</div>
+        {/*
+          `nextAction` 이 별도 줄인 이유는 003 EC-004 다 — 문장에 뭉개면 "대상 앱에
+          연결할 수 없습니다" 뒤에 와야 하는 "떠 있는지 확인하세요" 가 사라진다.
+        */}
+        {n.nextAction !== null && (
+          <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
+            {n.nextAction}
+          </div>
+        )}
+      </div>
+      {n.action !== null && (
+        <Button
+          size="sm"
+          data-notice-action={n.action.actionId}
+          onClick={() => onAct?.(n.action!.actionId)}
+        >
+          {n.action.label || ACTION_LABEL[n.action.actionId]}
+        </Button>
+      )}
+      {/*
+        **닫기는 모든 알림에 있다** (2026-09-09).
+
+        이전에는 `dismissible` 인 것만 가졌다. 그 구별의 근거는 「지우면 근거가 사라지는
+        알림이 있다」였는데, 이제 모든 알림이 5초 뒤 스스로 물러나므로 (2026-09-11)
+        그 구별은 사용자에게 「어떤 것은 손으로 지울 수 있고 어떤 것은 못 지운다」로만
+        보인다. 먼저 읽고 치우는 길을 막을 이유가 없다.
+
+        `dismissible` 은 모델에 남는다 — 지우는 순간 **바깥 상태까지 비울 대상**인지를
+        구별한다. 그 판정은 `onDismiss` 를 받는 화면이 이미 갖고 있다.
+      */}
+      <DismissButton onClick={onDrop} />
+    </Toast>
   );
 }

@@ -10,8 +10,17 @@
  * 1. 알림 층은 **한 자리**다 (`.toast-layer`). 국면마다 다른 데서 뜨면 사용자는 그것을
  *    찾아야 한다 — 007 이 자리를 모은 것과 같은 이유이며, 여기서 그 자리를 화면 밖
  *    (뷰포트 오른쪽 위)으로 옮긴다.
- * 2. **오류는 스스로 사라지지 않는다.** 「다음 행동」은 읽고 나서 하는 것이므로,
- *    수행하는 동안에도 화면에 있어야 한다.
+ * 2. 머무는 시간.
+ *
+ * ## 2026-09-11 — (2)가 뒤집혔다 (사용자 결정)
+ *
+ * 그때의 조항은 「**오류는 스스로 사라지지 않는다** — 다음 행동은 읽고 나서 하는
+ * 것이므로 수행하는 동안에도 화면에 있어야 한다」였다.
+ *
+ * 「toast 가 계속 떠있음. … 토스트이기 때문에 자동으로 5초 뒤에 사라져야 함」.
+ *
+ * 그 조항이 화면에서 만든 것은 영영 떠 있는 알림이었다. 이제 **뜻에 관계없이 5초**이며,
+ * 여기서 그것을 잰다. 자세한 근거는 `NoticeStack` 의 `LINGER_MS`.
  */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,6 +30,7 @@ import { SessionWorkbench } from "../src/pages/SessionScreen";
 import type { Notice } from "../src/components/workbench/model";
 import { sessionProps } from "./helpers/session";
 import { sessionView } from "./helpers/workbench";
+import { TOAST_LINGER_MS } from "../src/ui/useToastDismiss";
 
 afterEach(cleanup);
 
@@ -56,21 +66,32 @@ describe("머무는 시간 (2026-09-10)", () => {
     render(<NoticeStack notices={[notice("warn", "지나간 사실")]} />);
     expect(screen.getByText("지나간 사실")).toBeTruthy();
 
-    act(() => void vi.advanceTimersByTime(10_000));
+    act(() => void vi.advanceTimersByTime(TOAST_LINGER_MS + 100));
 
     expect(screen.queryByText("지나간 사실")).toBeNull();
   });
 
-  it("오류는 닫기 전까지 남는다", () => {
+  it("오류도 스스로 사라진다 — 5초다 (2026-09-11)", () => {
     render(<NoticeStack notices={[notice("error", "대상 앱에 연결할 수 없습니다")]} />);
 
-    // 옛 상한(12초)의 두 배를 넘겨도 그대로다.
+    // 5초 직전까지는 그대로다 — 읽을 시간을 주지 않고 걷어 가면 그것도 고장이다.
+    act(() => void vi.advanceTimersByTime(TOAST_LINGER_MS - 500));
+    expect(screen.getByText("대상 앱에 연결할 수 없습니다")).toBeTruthy();
+
+    act(() => void vi.advanceTimersByTime(600));
+    expect(screen.queryByText("대상 앱에 연결할 수 없습니다")).toBeNull();
+  });
+
+  it("읽는 동안에는 세지 않는다 — 마우스를 올려 두면 남는다", () => {
+    render(<NoticeStack notices={[notice("error", "대상 앱에 연결할 수 없습니다")]} />);
+
+    fireEvent.mouseEnter(document.querySelector("[data-workbench-notices]")!);
     act(() => void vi.advanceTimersByTime(60_000));
 
     expect(screen.getByText("대상 앱에 연결할 수 없습니다")).toBeTruthy();
   });
 
-  it("오류도 닫기로는 걷힌다 — 남는다는 것이 못 지운다는 뜻은 아니다", () => {
+  it("5초를 기다리지 않고 손으로도 걷힌다", () => {
     render(<NoticeStack notices={[notice("error", "대상 앱에 연결할 수 없습니다")]} />);
 
     fireEvent.click(screen.getByLabelText("알림 닫기"));

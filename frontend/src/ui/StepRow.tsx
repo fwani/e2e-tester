@@ -25,8 +25,20 @@
  */
 import type { ComponentPropsWithRef, ReactNode } from "react";
 
-/** 정본 `.srow.{pass,fail,run,paused}`. `none` 은 결말 없음. */
-export type StepMark = "none" | "pass" | "fail" | "run" | "paused";
+/**
+ * 정본 `.srow.{pass,fail,run}`. `none` 은 결말 없음.
+ *
+ * ## `paused` 는 여기 없다 (2026-09-11)
+ *
+ * 처음에는 넷을 한 줄에 세웠다 — `"none" | "pass" | "fail" | "run" | "paused"`. 그것은
+ * 011 이 고친 결함을 **타입으로 되살린 것**이었다. 일시정지는 결말과 **동시에 성립한다**
+ * (실패한 Step 에서 멈출 수 있다). 한 값에 담으면 언제나 하나만 남고, 그것이 「통과한
+ * Step 을 고르면 결말이 사라진다」였다 (사용자 보고 7 · UC-011-11).
+ *
+ * 정본도 둘을 따로 쓴다 — `.srow.fail` 과 `.srow.paused` 는 함께 붙는 클래스다.
+ * 그래서 여기서도 `mark` 와 `paused` 가 **따로** 온다.
+ */
+export type StepMark = "none" | "pass" | "fail" | "run";
 
 /**
  * 결말별 왼쪽 테두리와 바탕. **지목(`selected`)과 다른 채널이다.**
@@ -38,7 +50,14 @@ const MARK: Record<StepMark, string> = {
   pass: "border-l-pass",
   fail: "border-l-fail bg-fail-t",
   run: "border-l-run bg-run-t",
-  paused: "border-l-transparent bg-warn-t",
+};
+
+/** 결말별 **왼쪽 테두리만.** 일시정지가 바탕을 가져갈 때 쓴다 (아래 참조). */
+const MARK_LINE: Record<StepMark, string> = {
+  none: "border-l-transparent",
+  pass: "border-l-pass",
+  fail: "border-l-fail",
+  run: "border-l-run",
 };
 
 type DivProps = Omit<ComponentPropsWithRef<"div">, "className">;
@@ -94,17 +113,35 @@ export function StepPanelFoot({ layout, children, ...rest }: DivProps & { layout
  */
 export function StepRow({
   mark = "none",
+  paused = false,
   selected = false,
   withCheck = false,
   layout,
   children,
   ...rest
-}: DivProps & { mark?: StepMark; selected?: boolean; withCheck?: boolean; layout?: string; children?: ReactNode }) {
+}: DivProps & {
+  mark?: StepMark;
+  /** 여기서 멈춰 있다 (FR-034). **결말과 동시에 성립한다** — 위 `StepMark` 주석. */
+  paused?: boolean;
+  selected?: boolean;
+  withCheck?: boolean;
+  layout?: string;
+  children?: ReactNode;
+}) {
   const cls = [
     "grid items-center gap-[10px] h-step pt-[6px] pr-s3 pb-[6px] pl-[9px]",
     "border-b border-hair border-l-[3px] border-solid",
     withCheck ? "grid-cols-[22px_26px_1fr_58px_20px_auto]" : "grid-cols-[26px_1fr_58px_20px_auto]",
-    MARK[mark],
+    /*
+      **바탕을 두 번 내보내지 않는다.** `bg-fail-t` 와 `bg-warn-t` 가 한 요소에 함께
+      붙으면 이기는 쪽은 산출 CSS 의 순서가 정하고, 그 순서는 우리가 정하지 않는다
+      (`ui/Notice` 가 같은 사고를 기록했다 — 모든 토스트가 흰색이었다).
+
+      정본에서는 `.srow.paused` 가 `.srow.fail` 보다 **뒤에** 있으므로 일시정지가
+      바탕을 가져간다. 그 판정을 여기서 한 번 내리고, 결말은 왼쪽 테두리에 남긴다 —
+      채널이 갈려 있으므로 결말은 사라지지 않는다.
+    */
+    paused ? `${MARK_LINE[mark]} bg-warn-t` : MARK[mark],
     // 지목 — **안쪽 링.** 결말이 쓰는 테두리·바탕을 건드리지 않으므로 함께 보인다.
     // 2px 인 이유는 1px 이 행 경계선(`--hair`)과 구별되지 않기 때문이고,
     // 잉크를 쓰는 이유는 지목이 상태가 아니라 「지금 보고 있는 곳」이어서다.
@@ -114,7 +151,13 @@ export function StepRow({
     .filter(Boolean)
     .join(" ");
   return (
-    <div className={cls} data-mark={mark} data-selected={selected ? "true" : undefined} {...rest}>
+    <div
+      className={cls}
+      data-mark={mark}
+      data-paused={paused ? "true" : undefined}
+      data-selected={selected ? "true" : undefined}
+      {...rest}
+    >
       {children}
     </div>
   );
@@ -130,6 +173,9 @@ export function StepCheck({ layout, children, ...rest }: DivProps & { layout?: s
   const cls = [
     "flex items-center justify-center",
     "[&_input]:w-[14px] [&_input]:h-[14px] [&_input]:min-h-0 [&_input]:m-0 [&_input]:p-0",
+    // 정본이 함께 정한 둘. 빠뜨리면 체크는 브라우저 기본색이 되고, 누를 수 있다는
+    // 것이 커서에 나타나지 않는다.
+    "[&_input]:accent-ink [&_input]:cursor-pointer",
     // S-13
     "[&_input:disabled]:cursor-default [&_input:disabled]:opacity-40",
     layout,

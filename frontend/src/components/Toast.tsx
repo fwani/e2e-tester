@@ -30,6 +30,7 @@ import { createPortal } from "react-dom";
 import { Button } from "../ui/Button";
 import { Toast as UiToast, TOAST_LAYER_CLASSES } from "../ui/Notice";
 import type { NoticeTone } from "../ui/Notice";
+import { useToastDismiss } from "../ui/useToastDismiss";
 
 /** 알림의 뜻 → 정본의 옅은 바탕. `NoticeStack` 의 `TONE` 과 같은 값이다. */
 export type ToastTone = "error" | "warn" | "info" | "plain";
@@ -68,10 +69,10 @@ export interface ToastProps {
   /** 무엇인지. 바탕색만 정하고 문장을 대신하지 않는다. */
   tone?: ToastTone;
   /**
-   * 닫는 길. `undefined` 면 닫기 버튼을 그리지 않는다.
+   * 닫는 길. `undefined` 면 **세 퇴장이 전부 없다** — 닫기 단추도, 밀어내기도,
+   * 5초 뒤 사라짐도. 닫을 곳이 없는데 사라지면 상태만 남고 알림이 없어진다.
    *
-   * **오류에는 반드시 준다.** 오류는 스스로 사라지지 않으므로 (`NoticeStack` 의
-   * `LINGER_MS`), 닫기가 없으면 화면에 영원히 남는다.
+   * 진행 중 상태를 알리는 토스트만 이것을 비운다 (「돌고 있습니다」). 나머지는 준다.
    */
   onDismiss?: () => void;
   /** 검사와 실측이 이 토스트를 집을 표식 (`data-export-notice` 등). */
@@ -88,21 +89,57 @@ export interface ToastProps {
  * 알림 하나를 토스트 층에 띄운다.
  *
  * 부르는 쪽은 조건부로 그리기만 하면 된다 — `{error !== null && <Toast …>}`.
- * 사라지는 것은 상태를 가진 쪽이 정한다 (여기는 자리와 형태만 맡는다).
+ *
+ * ## 2026-09-11 — 퇴장은 이 부품의 것이다 (사용자 결정)
+ *
+ * 이전에는 「사라지는 것은 상태를 가진 쪽이 정한다」였고, 그래서 **아무도 정하지
+ * 않았다** — 11개 화면이 `onDismiss` 만 주고 시간은 주지 않았으므로 오류 토스트는
+ * 손으로 닫을 때까지 떠 있었다. 그것이 「toast 가 계속 떠있음」의 실체다.
+ *
+ * 자리를 한 곳으로 모은 것과 같은 이유로 **퇴장도 한 곳으로 모은다**. 화면은 「이
+ * 알림이 있는가」만 말하고, 5초·밀어내기·`×` 는 `useToastDismiss` 가 맡는다.
  */
 export function Toast({ tone = "plain", onDismiss, mark, role, children }: ToastProps) {
   const tint = TINT[tone];
   const speak = role ?? (tone === "error" ? "alert" : "status");
+  const exit = useToastDismiss(onDismiss);
 
   return createPortal(
-    <UiToast tone={tint} role={speak} {...(mark === undefined ? {} : { [mark]: "" })}>
+    <UiToast
+      tone={tint}
+      role={speak}
+      style={exit.style}
+      {...exit.handlers}
+      {...(mark === undefined ? {} : { [mark]: "" })}
+    >
       <div className="flex-1 min-w-0">{children}</div>
-      {onDismiss !== undefined && (
-        <Button size="sm" variant="quiet" aria-label="알림 닫기" onClick={onDismiss}>
-          닫기
-        </Button>
-      )}
+      {onDismiss !== undefined && <DismissButton onClick={onDismiss} />}
     </UiToast>,
     toastLayer(),
+  );
+}
+
+/**
+ * `×`. 2026-09-11 사용자 결정 — 「x 가 가능해야함」.
+ *
+ * 글자 「닫기」였다. 토스트는 뜻을 말하는 한두 줄이고, 그 옆의 낱말 하나가 문장만큼
+ * 무겁게 보였다. 맥의 알림과 같은 개념으로 자리를 잡은 이상 (2026-09-10) 닫는 것도
+ * 같은 모양이다 — 눈에 띄지 않는 `×`.
+ *
+ * **이름은 남는다.** `aria-label="알림 닫기"` 가 낭독기가 듣는 것이고, 검사도 이것으로
+ * 집는다 — 모양이 글자에서 기호로 바뀌어도 「닫는 길이 있는가」라는 질문은 그대로다.
+ */
+export function DismissButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      aria-label="알림 닫기"
+      title="닫기"
+      onClick={onClick}
+      layout="shrink-0"
+    >
+      ×
+    </Button>
   );
 }

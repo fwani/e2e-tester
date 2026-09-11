@@ -78,15 +78,32 @@ function outcomeIsReadable(row: HTMLElement, outcome: StepOutcome): boolean {
   return mark.getAttribute("aria-label") === displayOutcomeLabel(outcome);
 }
 
-/** 결말이 왼쪽 3px 채널을 갖는가. 클래스로 잰다 — 색 값은 정본이 소유한다. */
+/*
+  ## 2026-09-11 — **의도를 재고 구현을 재지 않는다** (015)
+
+  이 셋은 `row.classList.contains("pass"|"paused"|"sel")` 였다. 정본 클래스가 행의
+  형태를 주던 동안에는 그것이 「채널이 살아 있는가」와 같은 말이었다.
+
+  그런데 T075 가 그 규칙을 번들에서 빼자 **클래스는 붙어 있는데 아무 형태도 없는**
+  상태가 됐고, 이 검사들은 전부 초록이었다. 화면은 무너져 있었다 (사용자 보고
+  「테스트 스텝 리스트 뷰가 매우 깨졌다」).
+
+  그래서 부품이 내보내는 **의도 속성**을 읽는다 — `data-mark`·`data-paused`·
+  `data-selected`. 이름이 실제로 형태를 만드는지는 다른 검사가 본다 (가드 G-B,
+  그리고 「그 자리가 아무 형태도 받지 못하는가」를 묻는 `CanonSplit`).
+  묻는 것은 처음과 같다: **네 채널이 서로를 밀어내지 않는가.**
+*/
+
+/** 결말이 왼쪽 3px 채널을 갖는가. 값(색)은 부품이 소유하므로 **뜻**만 읽는다. */
 const outcomeHasLeftChannel = (row: HTMLElement, outcome: StepOutcome) =>
-  row.classList.contains({ pass: "pass", fail: "fail", running: "run" }[outcome as "pass"] ?? "");
+  row.getAttribute("data-mark") ===
+  ({ pass: "pass", fail: "fail", running: "run" }[outcome as "pass"] ?? "none");
 
 const isPausedMarked = (row: HTMLElement) =>
-  row.hasAttribute("data-paused-here") && row.classList.contains("paused");
+  row.hasAttribute("data-paused-here") && row.getAttribute("data-paused") === "true";
 
 const isSelectedMarked = (row: HTMLElement) =>
-  row.getAttribute("aria-current") === "true" && row.classList.contains("sel");
+  row.getAttribute("aria-current") === "true" && row.getAttribute("data-selected") === "true";
 
 describe("UC-011-11 — 지목이 결말을 대체하지 않는다", () => {
   it.each(MARKED_OUTCOMES)("%s 인 Step 을 고르면 결말과 지목이 함께 보인다", (outcome) => {

@@ -29,6 +29,31 @@
  *
  * 패널 머리는 **잉크 채움을 버렸다.** v1 은 검정 바탕 + 흰 글자였고, 그 무게가 460px
  * 패널 전체를 눌렀다. v2 는 옅은 우물 + `.lbl` 이다 — 색은 상태에만 쓴다.
+ *
+ * ## 2026-09-11 (015) — 목록이 통째로 무너져 있었다 (사용자 보고)
+ *
+ * 「테스트 스텝 리스트 뷰가 매우 깨졌다」.
+ *
+ * 원인은 이 파일이 **정본 클래스를 마지막까지 쓰고 있었다**는 것이다. 행은
+ * `className="srow pass sel"` 였고, 격자·높이·왼쪽 표식·안쪽 링이 전부 정본
+ * `tokens.css` 의 `.srow` 규칙에서 왔다.
+ *
+ * T075(SC-007)가 번들을 `tokens.app.css` 로 바꿨다 — 변수와 요소 규칙만 남기고 **의미
+ * 클래스 규칙 148개를 뺐다.** 근거는 「전환이 끝나 화면 코드가 의미 클래스를 하나도
+ * 쓰지 않는다」였는데, 이 파일이 그 전제의 반례였다.
+ *
+ * 그래서 화면에서 `.srow` 는 **아무 규칙도 받지 못했다.** 행은 `display:block` 이 되어
+ * 칸들이 세로로 쌓였고(52px → 137px), 체크칸은 `input{width:100%;min-height:32px}` 를
+ * 그대로 받아 452px 짜리 상자가 됐다. 검사는 전부 초록이었다 — 클래스 이름은 실제로
+ * 붙어 있었으므로 `classList.contains("srow")` 는 통과한다. 015 가 `ui/Button` 에서
+ * 겪은 것과 **같은 형태의 사고**다 (「toHaveClass 는 통과했다」).
+ *
+ * 고침은 자리를 옮기는 것이 아니라 **부품을 쓰는 것**이다. `ui/StepRow` 가 정본
+ * `.srow` 계열을 유틸리티로 이미 갖고 있었고 아무도 쓰지 않고 있었다 (T026).
+ * 이제 이 파일은 부품을 조립하고 **형태를 하나도 갖지 않는다** (SC-010).
+ *
+ * 되풀이를 막는 것은 이 고침이 아니라 가드다 — `tests/CanonSplit.test.ts` 의
+ * 「번들에 없는 정본 클래스를 화면이 쓰지 않는다」가 그 전제를 매번 다시 잰다.
  */
 import type { ReactNode } from "react";
 
@@ -39,6 +64,15 @@ import { ActionButton } from "./ActionButton";
 import type { Step, TargetLocator } from "../../types/generated/step";
 import type { StepOutcome, WorkbenchStep } from "./model";
 import { Chip } from "../../ui/Chip";
+import {
+  StepCheck,
+  StepOps,
+  StepPanel,
+  StepPanelFoot,
+  StepPanelHead,
+  StepRow as UiStepRow,
+  type StepMark,
+} from "../../ui/StepRow";
 /**
  * Step 패널의 고정 폭 (FR-218a). Step 패널을 가진 확정 디자인 3종이 공유한다.
  *
@@ -62,14 +96,14 @@ export const STEP_PANEL_WIDTH = 460;
  *
  * `Record<StepOutcome, …>` 로 두면 결말이 늘어날 때 컴파일러가 요구한다.
  */
-const OUTCOME_MARK: Record<StepOutcome, string> = {
+const OUTCOME_MARK: Record<StepOutcome, StepMark> = {
   pass: "pass",
   fail: "fail",
   running: "run",
-  pending: "",
-  skipped: "",
-  not_run: "",
-  recorded: "",
+  pending: "none",
+  skipped: "none",
+  not_run: "none",
+  recorded: "none",
 };
 /** Step 패널의 머리 — 정본 `.steps-hd`. 옅은 우물 + 라벨 + 작성 표식 + 개수. */
 export function StepPanelHeader({
@@ -82,7 +116,7 @@ export function StepPanelHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="grow-0 shrink-0 basis-[36px] h-[36px] flex items-center gap-s2 px-s3 bg-sunken border-b border-hair-2">
+    <StepPanelHead>
       <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">TEST STEPS</div>
       <div className="flex-1" />
       {children}
@@ -90,7 +124,7 @@ export function StepPanelHeader({
         작성 {authoring === "ai" ? "AI" : "RECORD"}
       </Chip>
       <div className="font-mono text-[12px] leading-none font-normal text-ink-3">{count}</div>
-    </div>
+    </StepPanelHead>
   );
 }
 /**
@@ -298,15 +332,13 @@ export function StepList({
   const chosen = new Set(deleteTargets?.selected ?? []);
   const allChosen = steps.length > 0 && steps.every((s) => chosen.has(s.id));
   return (
-    <div
+    <StepPanel
       data-workbench-step-panel
       /*
         Step 지목(`step.select`)의 **자리**는 이 패널이다 (ui-contract §4-1). 행마다
         표시하면 자리가 200개가 되고, "한 조작에 한 자리" 를 셀 수 없다 (FR-235).
       */
       data-action="step.select"
-      // `basis-steps` 는 `--w-steps`(460px) — `STEP_PANEL_WIDTH` 와 같은 값이다.
-      className="flex-none basis-steps border-l border-hair-2 bg-panel flex flex-col"
     >
       <StepPanelHeader authoring={authoring} count={steps.length}>
         {/*
@@ -394,29 +426,15 @@ export function StepList({
       </div>
 
       {footer !== undefined && footer !== null && (
-        <div
+        <StepPanelFoot
           data-workbench-step-footer
-          className="border-t border-hair-2 bg-sunken-2 pt-s3 px-[14px] pb-[14px] max-h-[52%] overflow-y-auto"
+          layout="pt-s3 px-[14px] pb-[14px] max-h-[52%] overflow-y-auto"
         >
           {footer}
-        </div>
+        </StepPanelFoot>
       )}
-    </div>
+    </StepPanel>
   );
-}
-/**
- * 행에 붙는 클래스 — **상태마다 하나씩 더한다** (011 UC-011-11).
- *
- * 배타 삼항이 아니라 누적이라는 것이 요점이다. 넷 중 셋이 여기서 나오고(결말·일시정지·
- * 지목), 삭제 대상은 칸 0 의 체크 칸이 스스로 말한다.
- */
-function rowClassName(step: WorkbenchStep, selected: boolean): string {
-  const classes = ["srow"];
-  const outcome = OUTCOME_MARK[step.outcome];
-  if (outcome !== "") classes.push(outcome);
-  if (step.isPausedHere) classes.push("paused");
-  if (selected) classes.push("sel");
-  return classes.join(" ");
 }
 /**
  * Step 행 하나 — **유일한 구현**.
@@ -446,8 +464,17 @@ function StepRow({
   const value = dsl ? stepValue(dsl) : null;
 
   return (
-    <div
+    <UiStepRow
       data-step-row={step.id}
+      /*
+        **네 상태가 네 인자로 들어간다** (011 UC-011-11). 하나의 클래스 자리에 배타적으로
+        넣던 것이 「통과한 Step 을 고르면 결말이 사라진다」였다 — 그 구조가 여기서
+        타입으로 불가능해졌다 (`ui/StepRow` 의 `StepMark` 주석).
+      */
+      mark={OUTCOME_MARK[step.outcome]}
+      paused={step.isPausedHere}
+      selected={selected}
+      withCheck={deleteTarget !== undefined}
       /* 일시정지 위치는 **속성으로** 말한다. 008 에서 모든 행이 결말 표식으로
          왼쪽 테두리를 갖게 됐으므로, 인라인 스타일을 훑어서는 구분할 수 없다. */
       data-paused-here={step.isPausedHere ? "" : undefined}
@@ -457,26 +484,14 @@ function StepRow({
         사용자에게 「지금 보고 있는 행」이 전달되지 않았다.
       */
       aria-current={selected ? "true" : undefined}
-      /*
+    >
+      {/*
         v1 은 `15px 18px` + 15px 이름 + 6px 간격이라 행이 125px 였고, 900px 창에서 5행밖에
         보이지 않았다. 실무 테스트는 20~50 Step 이다. 정보도 그대로다 — 여백과 글자 크기만
-        내렸다 (5행 → 13행). 그 값은 이제 정본의 `.srow` 가 갖는다.
-
-        ## 2026-09-10 (011) — **배타 삼항을 없앴다**
-
-        이전 판:
-
-            className={`srow ${isPausedHere ? "paused" : selected ? "sel" : OUTCOME_MARK[…]}`}
-
-        삼항이 셋을 줄 세우므로 **언제나 하나만 남았다.** 통과한 Step 을 고르면 `sel` 이
-        `pass` 를 밀어내 결말이 사라지고, 일시정지 행은 `paused` 가 이겨 골라도 선택이
-        보이지 않았다 (사용자 보고 7 「선택한 스텝을 명확하게 표시한다」).
-
-        이제 셋이 함께 붙고, 정본의 CSS 가 **서로 다른 채널**을 준다 — 결말은 왼쪽 3px
-        테두리, 일시정지는 바탕, 지목은 안쪽 링. 클래스가 겹쳐도 표시가 겹치지 않는다.
-      */
-      className={rowClassName(step, selected)}
-    >
+        내렸다 (5행 → 13행). **그 값은 이제 부품 `ui/StepRow` 가 갖는다** — 2026-09-11
+        이전에는 정본 `.srow` 였고, 그 규칙이 번들에서 빠지며 행이 통째로 무너졌다
+        (머리주석 참조).
+      */}
       {/*
         칸 0 — 삭제 대상 체크 (011 FR-380 · UC-011-13·15).
 
@@ -490,7 +505,7 @@ function StepRow({
         형태 아이콘이다.
       */}
       {deleteTarget !== undefined && (
-        <div data-cell="check" className="flex items-center justify-center">
+        <StepCheck>
           <input
             type="checkbox"
             data-row-action="step.toggleDeleteTarget"
@@ -503,7 +518,7 @@ function StepRow({
             }}
             onChange={deleteTarget.onToggle}
           />
-        </div>
+        </StepCheck>
       )}
 
       {/* 칸 1 — 번호. **모든 국면에서 보인다** (FR-224 · S-08) */}
@@ -529,7 +544,9 @@ function StepRow({
           */}
           {dsl !== null && (
             <>
-              <Chip data-cell="type" tone={dsl.author === "ai" ? "ai" : "default"}>
+              {/* `flex-[0_0_auto]` — 칩은 줄지 않는다. 이웃 칩들과 같은 규칙이고,
+                  빠지면 `flex-nowrap` 줄에서 이것만 눌려 글자가 잘린다. */}
+              <Chip data-cell="type" tone={dsl.author === "ai" ? "ai" : "default"} layout="flex-[0_0_auto]">
                 {dsl.type.toUpperCase()}
               </Chip>
 
@@ -556,7 +573,13 @@ function StepRow({
 
               {/* FR-083 — 민감 값은 참조로만 저장되므로 표시해도 평문이 새지 않는다 */}
               {value !== null && (
- <div data-cell="value" className="font-mono text-[11px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis flex-[0_0_auto]">
+                <div
+                  data-cell="value"
+                  /* 값은 **AI 잉크**다 (정본 `.loc.ai-ink` — `.ai-ink` 가 뒤에 있어
+                     `.loc` 의 `--ink-3` 를 이긴다). 015 전환에서 `ai-ink` 만 떨어져
+                     값이 다른 회색 글자와 구별되지 않았다. */
+                  className="font-mono text-[11px] leading-none font-normal text-ai whitespace-nowrap overflow-hidden text-ellipsis flex-[0_0_auto]"
+                >
                   {value}
                 </div>
               )}
@@ -587,10 +610,8 @@ function StepRow({
         반복하면 결말을 읽는 화면이 쓸 수 없는 조작으로 덮인다.
       */}
       {actions !== undefined && actions !== null && (
-        <div data-cell="ops" className="flex items-center gap-s1">
-          {actions}
-        </div>
+        <StepOps data-cell="ops">{actions}</StepOps>
       )}
-    </div>
+    </UiStepRow>
   );
 }
