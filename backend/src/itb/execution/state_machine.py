@@ -216,6 +216,43 @@ _TRANSITIONS: dict[SessionState, dict[Command, SessionState]] = {
     SessionState.PAUSED: {
         Command.EDIT_STEPS: SessionState.PAUSED,
         Command.RECORD_ACTIONS_START: SessionState.RECORDING,
+        # 016 (research R4) — **AI 가 이어 만드는 자리.** 위 `RECORD_ACTIONS_START` 와
+        # 대칭이다: 사람이 이어 녹화하는 자리가 있으면 AI 가 이어 만드는 자리도 있어야
+        # 한다. 016 의 채팅 턴과 구간 재녹화가 여기로 들어온다.
+        #
+        # ## 원칙 II 와의 관계 — 2026-09-11 사용자 결정
+        #
+        # 이 한 줄은 「일시정지를 경유해 AI 상태에 도달할 수 없다」는 옛 단언을 깬다.
+        # 깨도 되는 이유는 **헌법이 이미 이 동작을 요구하기 때문**이다:
+        #
+        #   원칙 III — "Steps executed while paused — recorded by direct user operation,
+        #   **or added via natural language** — MUST be captured into the same Step Model
+        #   and inserted at the paused position."
+        #
+        # 헌법이 한편에서 요구하는 것을 다른 편에서 금지할 수는 없다. 따라서 원칙 II 의
+        # "replay path" 는 **저장된 Step 의 자동 실행**을 뜻하고, 사용자가 손으로
+        # 일시정지하는 순간 그 경로를 벗어나 작성으로 들어간다.
+        #
+        # 그리고 제품은 이 선을 **이미 넘고 있었다.** `ai_step`(US6)이 재실행을
+        # 일시정지한 세션에서 언어모델을 부른다. 옛 단언이 그것을 못 잡은 이유는 하나뿐
+        # 이다 — 그 경로가 상태 전이를 하지 않아서. 즉 옛 단언은 「LLM 호출」이 아니라
+        # 「상태 이름」을 지키고 있었다.
+        #
+        # 그래서 016 은 약한 단언을 **더 강한 단언으로 갈아 끼운다**:
+        #   - 여기(전이): 자동으로는 못 간다. `BEGIN_AI` 라는 사용자 명령으로만 간다
+        #   - `tests/test_principle_ii_timeline.py`: **러너가 도는 동안 드라이버 호출 0회**
+        # 상태 이름이 아니라 실제 호출을 본다 — 이것이 원칙 II 가 요구한 것이다.
+        #
+        # 턴이 끝나면 호출자가 `PAUSE` 를 적용해 돌아온다 (기존 `AI_RUNNING` 행).
+        # 막힘·5선택지도 기존 경로 그대로다 — **이 한 줄이 016 의 유일한 전이 변경이다.**
+        #
+        # 상태를 `PAUSED` 로 둔 채 플래그로 「AI 가 도는 중」을 표현하는 방법도 있었다
+        # (`ai_step` 이 지금 그렇게 한다). 쓰지 않은 이유: 막힘을 표현하려면
+        # `PAUSED → AI_BLOCKED` 를 더해야 하고, 그러면 5선택지의 복귀 지점
+        # (`CHOOSE_* → AI_RUNNING`)이 재녹화에서만 달라져야 한다 — **전이표가 세션
+        # 종류를 알아야 하는 상태**가 된다. 전이표는 지금 세션 종류를 모르고, 그것이
+        # 이 표가 읽히는 이유다.
+        Command.BEGIN_AI: SessionState.AI_RUNNING,
         Command.RESUME: SessionState.REPLAYING,
         Command.RUN_FROM: SessionState.REPLAYING,
         Command.SAVE: SessionState.PAUSED,

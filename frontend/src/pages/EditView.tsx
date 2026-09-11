@@ -915,8 +915,8 @@ export function EditView({
         /* 011 — 삭제 대상 고르기 (UC-011-14·15) */
         deleteTargets={{
           selected: deleteSelection,
-          capability: capabilities["step.toggleDeleteTarget"],
-          allCapability: capabilities["step.selectAllDeleteTargets"],
+          capability: capabilities["step.toggleSelection"],
+          allCapability: capabilities["step.selectAll"],
           onToggle: (stepId) =>
             setDeleteSelection((prev) =>
               prev.includes(stepId) ? prev.filter((id) => id !== stepId) : [...prev, stepId],

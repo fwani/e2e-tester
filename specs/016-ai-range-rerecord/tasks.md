@@ -58,30 +58,30 @@ description: "Task list for 016 편집 중 AI 구간 재녹화"
 
 ### 상태 기계 (data-model §3 · R4)
 
-- [ ] T009 `backend/tests/unit/test_state_machine.py` 에 전이 하나를 단언하는 테스트를 더한다 — `PAUSED + BEGIN_AI → AI_RUNNING`, 그리고 **다른 상태의 전이표가 바뀌지 않았음**
-- [ ] T010 `backend/src/itb/execution/state_machine.py` 의 `_TRANSITIONS[SessionState.PAUSED]` 에 `Command.BEGIN_AI: SessionState.AI_RUNNING` 한 줄을 더한다. 주석에 근거(research R4)를 적는다
+- [X] T009 `backend/tests/unit/test_state_machine.py` 에 전이 하나를 단언하는 테스트를 더한다 — `PAUSED + BEGIN_AI → AI_RUNNING`, 그리고 **다른 상태의 전이표가 바뀌지 않았음**
+- [X] T010 `backend/src/itb/execution/state_machine.py` 의 `_TRANSITIONS[SessionState.PAUSED]` 에 `Command.BEGIN_AI: SessionState.AI_RUNNING` 한 줄을 더한다. 주석에 근거(research R4)를 적는다
 
 ### 세션 생성 — `mode: "rerecord"` (api-contract §1 · R5)
 
-- [ ] T011 `backend/src/itb/api/routes/sessions.py` — `CreateSessionRequest` 에 `mode: "rerecord"` 와 `rerecord_step_ids: list[str]` 를 더한다. `ai_instruction` 은 이 모드에서 **거절**한다. 경계 검증: 구간 존재·연속·비어있지 않음 → `400 DEFINITION_INVALID`(003 의 `category`·`next_action` 포함)
-- [ ] T012 `backend/src/itb/api/routes/sessions.py` — `mode=rerecord` 분기를 구현한다. `authoring_mode = AI`, `BEGIN_REPLAY`, `_build_engine`, `_start_runner(pause_before_index=구간 첫 Step 순번)`. **러너가 멈춘 뒤에** `_build_agent` 를 부른다 (api-contract §1 의 순서가 계약이다). 도착점 실패 시 세션을 남기고 실패한 Step 정보를 실어 `409` (FR-020)
-- [ ] T013 `backend/src/itb/api/routes/sessions.py` — `SessionWork.rerecord: RerecordTransaction | None` 필드와 `mode=rerecord` 시 트랜잭션 생성
+- [X] T011 `backend/src/itb/api/routes/sessions.py` — `CreateSessionRequest` 에 `mode: "rerecord"` 와 `rerecord_step_ids: list[str]` 를 더한다. `ai_instruction` 은 이 모드에서 **거절**한다. 경계 검증: 구간 존재·연속·비어있지 않음 → `400 DEFINITION_INVALID`(003 의 `category`·`next_action` 포함)
+- [X] T012 `backend/src/itb/api/routes/sessions.py` — `mode=rerecord` 분기를 구현한다. `authoring_mode = AI`, `BEGIN_REPLAY`, `_build_engine`, `_start_runner(pause_before_index=구간 첫 Step 순번)`. **러너가 멈춘 뒤에** `_build_agent` 를 부른다 (api-contract §1 의 순서가 계약이다). 도착점 실패 시 세션을 남기고 실패한 Step 정보를 실어 `409` (FR-020)
+- [X] T013 `backend/src/itb/api/routes/sessions.py` — `SessionWork.rerecord: RerecordTransaction | None` 필드와 `mode=rerecord` 시 트랜잭션 생성
 - [ ] T013a [P] `backend/tests/us_rerecord/test_arrival_point.py` 신규 — 도착점 경계: **구간이 Step 1 부터면 아무것도 실행하지 않고 시작 주소만 연다** (FR-021), 구간 끝이 목록 끝인 경우, 앞 구간이 깨져 도착점에 닿지 못하는 경우 (FR-020)
 
 ### 원칙 II 시간 축 검사 (R9 · 불변식 6) ⚠️ 이연 불가
 
-- [ ] T014 [P] `backend/tests/test_principle_ii_timeline.py` 신규 — 가짜 드라이버로 호출 횟수를 세어 **도착점 만들기 구간에서 0회**임을 단언한다. `AuthoringAgent.driver` 교체 지점을 쓴다
-- [ ] T015 `backend/tests/test_principle_ii_timeline.py` (T014 와 같은 파일) — `work.runner` 와 `work.agent_task` 의 **생존 구간이 겹치지 않음**을 단언한다 (불변식 6). 러너 시작/종료·에이전트 시작/종료 시각을 기록해 비교한다
+- [X] T014 [P] `backend/tests/test_principle_ii_timeline.py` 신규 — 가짜 드라이버로 호출 횟수를 세어 **도착점 만들기 구간에서 0회**임을 단언한다. `AuthoringAgent.driver` 교체 지점을 쓴다
+- [X] T015 `backend/tests/test_principle_ii_timeline.py` (T014 와 같은 파일) — `work.runner` 와 `work.agent_task` 의 **생존 구간이 겹치지 않음**을 단언한다 (불변식 6). 러너 시작/종료·에이전트 시작/종료 시각을 기록해 비교한다
 
 ### 조작 목록과 권한표 (ui-contract §1·§2)
 
-- [ ] T016 `frontend/src/lib/actions.ts` — `AI_ACTIONS` 에 `ai.rerecord`·`ai.chat`·`ai.rerecordCommit`·`ai.rerecordDiscard` 를 더한다 (3 → 7). 각 조작에 ui-contract §1-1 의 설명을 주석으로 붙인다
-- [ ] T017 `frontend/src/lib/actions.ts` — `step.toggleDeleteTarget → step.toggleSelection`, `step.selectAllDeleteTargets → step.selectAll` 개칭. **개칭 근거를 주석에 적는다** (체크의 뜻이 하나에서 둘로 늘었다)
-- [ ] T018 `frontend/src/lib/capabilities.ts` — 새 조건 `C16: canCommitRerecord`·`C17: hasRerecord`, 새 비활성 사유 `ALREADY_IN_SESSION`·`NEEDS_SESSION` 을 등록한다. 가시성: `ai.rerecord`·`ai.chat` 은 `keep`
-- [ ] T019 `frontend/src/lib/capabilities.ts` — 10개 국면 × 새 조작 4개 = 40셀을 ui-contract §2 의 표대로 채운다. 개칭 2건을 모든 행에 반영한다
-- [ ] T020 `frontend/tests/CapabilityCoverage.test.ts` 수정 — 조작 수 42 → 46, 개칭 2건, 새 조건의 사실 이름 등록을 반영한다
-- [ ] T021 [P] `frontend/src/api/client.ts` — `SessionView` 에 `rerecord: RerecordView | null`, `RerecordView` 타입(`range_step_ids`·`created_step_ids`·`can_commit`), 이벤트 이름 3개(`chat_turn`·`rerecord_changed`·`rerecord_realign_failed`)를 더한다
-- [ ] T022 `backend/src/itb/api/routes/sessions.py` — `SessionView` 응답에 `rerecord` 를 싣는다. **`can_commit` 은 서버가 판정한다** (화면이 조건을 복제하지 않는다)
+- [X] T016 `frontend/src/lib/actions.ts` — `AI_ACTIONS` 에 `ai.rerecord`·`ai.chat`·`ai.rerecordCommit`·`ai.rerecordDiscard` 를 더한다 (3 → 7). 각 조작에 ui-contract §1-1 의 설명을 주석으로 붙인다
+- [X] T017 `frontend/src/lib/actions.ts` — `step.toggleDeleteTarget → step.toggleSelection`, `step.selectAllDeleteTargets → step.selectAll` 개칭. **개칭 근거를 주석에 적는다** (체크의 뜻이 하나에서 둘로 늘었다)
+- [X] T018 `frontend/src/lib/capabilities.ts` — 새 조건 `C16: canCommitRerecord`·`C17: hasRerecord`, 새 비활성 사유 `ALREADY_IN_SESSION`·`NEEDS_SESSION` 을 등록한다. 가시성: `ai.rerecord`·`ai.chat` 은 `keep`
+- [X] T019 `frontend/src/lib/capabilities.ts` — 10개 국면 × 새 조작 4개 = 40셀을 ui-contract §2 의 표대로 채운다. 개칭 2건을 모든 행에 반영한다
+- [X] T020 `frontend/tests/CapabilityCoverage.test.ts` 수정 — 조작 수 42 → 46, 개칭 2건, 새 조건의 사실 이름 등록을 반영한다
+- [X] T021 [P] `frontend/src/api/client.ts` — `SessionView` 에 `rerecord: RerecordView | null`, `RerecordView` 타입(`range_step_ids`·`created_step_ids`·`can_commit`), 이벤트 이름 3개(`chat_turn`·`rerecord_changed`·`rerecord_realign_failed`)를 더한다
+- [X] T022 `backend/src/itb/api/routes/sessions.py` — `SessionView` 응답에 `rerecord` 를 싣는다. **`can_commit` 은 서버가 판정한다** (화면이 조건을 복제하지 않는다)
 
 **Checkpoint**: `uv run lint-imports` 와 T014·T015 가 통과해야 다음으로 간다. 원칙 II 가
 깨진 상태에서 쌓은 것은 전부 되돌려야 한다.

@@ -72,8 +72,8 @@ describe("UC-011-15 — 체크와 지목은 서로를 바꾸지 않는다", () =
         onSelect={onSelect}
         deleteTargets={{
           selected,
-          capability: CAPS["step.toggleDeleteTarget"],
-          allCapability: CAPS["step.selectAllDeleteTargets"],
+          capability: CAPS["step.toggleSelection"],
+          allCapability: CAPS["step.selectAll"],
           onToggle,
           onToggleAll: () => undefined,
           onRemedy: () => undefined,
@@ -95,7 +95,7 @@ describe("UC-011-15 — 체크와 지목은 서로를 바꾸지 않는다", () =
     const user = userEvent.setup();
     const { onToggle, onSelect } = renderList([], null);
     const check = document.querySelector(
-      '[data-row-action="step.toggleDeleteTarget"]',
+      '[data-row-action="step.toggleSelection"]',
     ) as HTMLInputElement;
     expect(check, "체크 칸이 없다").not.toBeNull();
     await user.click(check);
@@ -106,7 +106,7 @@ describe("UC-011-15 — 체크와 지목은 서로를 바꾸지 않는다", () =
   it("체크한 행을 지목해도 체크가 유지된다", () => {
     renderList(["st-1"], "st-1");
     const check = document.querySelector(
-      '[data-step-row="st-1"] [data-row-action="step.toggleDeleteTarget"]',
+      '[data-step-row="st-1"] [data-row-action="step.toggleSelection"]',
     ) as HTMLInputElement;
     expect(check.checked).toBe(true);
     const row = document.querySelector('[data-step-row="st-1"]')!;
@@ -162,7 +162,7 @@ function renderPausedSession(count = 5) {
 
 const checkFor = (stepId: string) =>
   document.querySelector(
-    `[data-step-row="${stepId}"] [data-row-action="step.toggleDeleteTarget"]`,
+    `[data-step-row="${stepId}"] [data-row-action="step.toggleSelection"]`,
   ) as HTMLInputElement;
 
 const paletteButton = (action: string) =>
@@ -189,11 +189,11 @@ describe("UC-011-17 — 고른 개수가 보인다", () => {
     renderPausedSession(4);
     await waitFor(() => expect(checkFor("st-1")).not.toBeNull());
 
-    const all = paletteButton("step.selectAllDeleteTargets");
+    const all = paletteButton("step.selectAll");
     expect(all, "전부 고르기가 없다").not.toBeNull();
     await user.click(all!);
     await waitFor(() => expect(checkFor("st-4").checked).toBe(true));
-    await user.click(paletteButton("step.selectAllDeleteTargets")!);
+    await user.click(paletteButton("step.selectAll")!);
     await waitFor(() => expect(checkFor("st-4").checked).toBe(false));
   });
 });

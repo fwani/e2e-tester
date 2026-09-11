@@ -19,8 +19,8 @@
  *   국면 띠      run.* (실행·일시정지·계속·중지·속도) · save · edits.revert · test.rename
  *   헤더          session.open · result.show · nav.editStep · nav.back
  *   대상 앱 영역  browser.openAt · artifact.select · tab.select · mirror.*
- *   Step 행       step.select · step.toggleDeleteTarget
- *   Step 패널 머리 step.selectAllDeleteTargets
+ *   Step 행       step.select · step.toggleSelection
+ *   Step 패널 머리 step.selectAll
  *   Step 상세     step.update · step.markSensitive · step.repick
  *   **이 팔레트** 나머지 전부 — Step 작성·순서·삭제 · test.setStartUrl · ai.compose
  *
@@ -71,7 +71,7 @@ export const PALETTE_ACTIONS: ActionId[] = [
     묶여 있어야 하고, 순서가 「하나 → 고른 것 → 이 뒤 전부」로 범위가 넓어지는 차례여야
     사용자가 무엇을 누르는지 헷갈리지 않는다.
 
-    행마다의 체크(`step.toggleDeleteTarget`)와 전부 고르기는 여기 없다 — 그것들의 집은
+    행마다의 체크(`step.toggleSelection`)와 전부 고르기는 여기 없다 — 그것들의 집은
     Step 행과 패널 머리다 (007 계약 §2-7).
   */
   "step.deleteSelected",

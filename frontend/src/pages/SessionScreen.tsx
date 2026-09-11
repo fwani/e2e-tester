@@ -1484,8 +1484,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       */
       deleteTargets={{
         selected: deleteSelection,
-        capability: capabilities["step.toggleDeleteTarget"],
-        allCapability: capabilities["step.selectAllDeleteTargets"],
+        capability: capabilities["step.toggleSelection"],
+        allCapability: capabilities["step.selectAll"],
         onToggle: (stepId) => onToggleDeleteTarget?.(stepId),
         onToggleAll: () => onToggleAllDeleteTargets?.(),
         onRemedy,

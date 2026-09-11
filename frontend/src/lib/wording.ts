@@ -733,6 +733,17 @@ export function sessionPhaseLabel(
  * 005 FR-147).
  */
 export const ACTION_LABEL: Record<ActionId, string> = {
+  /* ─── 016 구간 재녹화 (contracts/ui-contract.md §1-1) ─── */
+  /**
+   * **「브라우저가 열립니다」를 이름에 넣는다** (009 가 `browser.openAt` 에서 세운 규칙).
+   *
+   * R6 이 「채팅은 세션 안에서만 산다」를 정하면서 이 표시가 필수가 됐다 — 사용자가
+   * 요약 하나 물으려다 브라우저가 뜨는 것을 예상할 수 있어야 한다.
+   */
+  "ai.rerecord": "AI 로 다시 만들기 (브라우저 열림)",
+  "ai.chat": "AI 에게 말하기",
+  "ai.rerecordCommit": "확정",
+  "ai.rerecordDiscard": "버리기",
   "run.all": "처음부터 실행",
   "run.from": "이 Step 부터 실행",
   "run.fromHere": "이 Step 부터 이어 실행",
@@ -768,8 +779,8 @@ export const ACTION_LABEL: Record<ActionId, string> = {
     하나이고, 아래 둘은 여러 개다. 라벨이 비슷하면 사용자는 어느 것이 무엇을 지우는지
     누르기 전에 알 수 없다.
   */
-  "step.toggleDeleteTarget": "지울 대상으로 고르기",
-  "step.selectAllDeleteTargets": "전부 고르기",
+  "step.toggleSelection": "지울 대상으로 고르기",
+  "step.selectAll": "전부 고르기",
   "step.deleteSelected": "고른 것 지우기",
   "step.deleteAfter": "이 뒤 전부 지우기",
   /**
@@ -1086,6 +1097,33 @@ export const DISABLED_REASON = {
    * 사실을 고른 뒤에야 알게 되고, 그것이 S-15 와 같은 종류의 결함이다 (FR-234).
    */
   C15: "「AI로 만들기」를 고르면 쓸 수 있습니다",
+  /* ─── 016 구간 재녹화 (contracts/ui-contract.md §2) ─── */
+  /** C16 — 아직 만들어진 Step 이 없다 (불변식 10) */
+  C16: "아직 만들어진 Step 이 없습니다. 지시를 보내 Step 을 먼저 만드세요",
+  /** C17 — 진행 중인 교체가 없다 */
+  C17: "진행 중인 재녹화가 없습니다",
+  /**
+   * 016 — 이미 세션이 열려 있다.
+   *
+   * 재녹화는 세션을 **만드는** 조작이므로 세션 안에서는 성립하지 않는다. 대신 그
+   * 세션 안에서 대화로 진행하면 된다.
+   */
+  ALREADY_IN_SESSION: "이미 세션이 열려 있습니다. 이 세션 안에서 대화로 진행하세요",
+  /**
+   * 016 R6 — 채팅은 세션 안에서만 산다.
+   *
+   * 편집 국면의 대화 자리는 **보이되 잠긴다** (FR-234). 감추면 이 기능의 존재를 알
+   * 방법이 없고, 그것이 감춰진 조작이다.
+   */
+  NEEDS_SESSION: "AI 와 대화하려면 먼저 「AI 로 다시 만들기」로 시작하세요",
+  /**
+   * 016 — 막혀 있을 때는 **답변 칸**이 답을 받는다.
+   *
+   * 초안은 이 자리를 `cond(C11)` 로 둬서 막힘일 때 대화 패널을 활성화했다. 그것은
+   * 답변 입구를 둘로 만드는 것이고, ui-contract §3-1 이 금지하는 것("막힘은 대화
+   * 패널이 그리지 않는다")과 같은 문서 안에서 충돌했다 (analyze F1).
+   */
+  USE_BLOCKED_ANSWER: "AI 가 막혀 있습니다. 위의 답변 칸에 알려 주세요",
   /* ─── 010 미러 조작 (contracts/mirror-control.md §1 런타임 덮어쓰기) ───
    *
    * 넷 다 **국면이 아니라 런타임 사정**이다. 국면 열에 적으면 한 국면이 빠지고, 빠진

@@ -259,8 +259,8 @@ export function ComposeView({
         */
         deleteTargets={{
           selected: [],
-          capability: capabilities["step.toggleDeleteTarget"],
-          allCapability: capabilities["step.selectAllDeleteTargets"],
+          capability: capabilities["step.toggleSelection"],
+          allCapability: capabilities["step.selectAll"],
           onToggle: () => undefined,
           onToggleAll: () => undefined,
           onRemedy: () => undefined,

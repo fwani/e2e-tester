@@ -31,6 +31,12 @@ from itb.api.ws.control_channel import (
     state_message,
     validate,
 )
+from itb.authoring.rerecord import (
+    EmptyRangeError,
+    RangeNotContiguousError,
+    RerecordTransaction,
+    validate_range,
+)
 from itb.domain.draft import DRAFT_ID_PATTERN, Draft, compose_instruction
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.run_result import RunScope, StepOutcome, scope_of
@@ -62,7 +68,7 @@ from itb.execution.state_machine import (
     is_manipulation_phase,
     state_label,
 )
-from itb.execution.step_edits import allocate_step_id
+from itb.execution.step_edits import StepNotFoundError, allocate_step_id
 from itb.execution.step_executor import StepExecutor
 from itb.mirror.prompts import BrowserPrompts
 from itb.mirror.tab_switch import MirrorController
@@ -203,6 +209,17 @@ class SessionWork:
     resolver: object | None = None
     last_blocked: object | None = None
     """마지막 `ai_blocked` 결과. `retry`·`skip` 이 무엇을 재시도할지의 근거다."""
+
+    # ─── 구간 재녹화 (016) ─────────────────────────────────────────────────
+    rerecord: RerecordTransaction | None = None
+    """진행 중인 구간 교체. 세션당 최대 하나 (data-model §1-2).
+
+    **스냅샷을 들고 있지 않다.** FR-037 이 AI 의 편집 권한을 이 트랜잭션의
+    `created_step_ids` 로 한정하므로 옛 구간과 구간 밖이 바뀌지 않는다 (research R7).
+
+    `agent`·`compiler` 와 달리 타입을 그대로 쓴다 — `itb.authoring.rerecord` 는
+    언어모델을 알지 못하는 순수 모듈이므로 API 계층이 항상 끌고 와도 비용이 없다.
+    """
 
     base_variables: list[Variable] = field(default_factory=list)
     """세션이 시작될 때 불러온 테스트의 변수 정의.
@@ -439,7 +456,14 @@ def require_paused(w: SessionWork) -> None:
 class CreateSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    mode: Literal["record", "replay", "ai"]
+    mode: Literal["record", "replay", "ai", "rerecord"]
+    """`rerecord` 는 016 의 구간 재녹화다 (contracts/api-contract.md §1).
+
+    **`replay` 와 `ai` 를 합친 것이 아니다.** `authoring_mode` 가 `ai` 이면서 러너를
+    도착점까지 돌린다 — 그 조합이 기존 세 모드 어디에도 없다 (research R5).
+    `authoring_mode` 는 세션의 불변 속성이므로(001 DR-020) **만들 때 정해야 하고**,
+    그래서 모드가 하나 늘었다.
+    """
     test_id: str | None = Field(default=None, pattern=TEST_ID_PATTERN)
     """재실행·편집 대상 테스트.
 
@@ -470,6 +494,16 @@ class CreateSessionRequest(BaseModel):
 
     **무인 실행은 명시해야 한다.** 저장된 취향이 CI 를 느리게 만들지 않는 유일한 방법이
     요청에 `fast` 를 넣는 것이다 (contracts/rest-api.md §1).
+    """
+
+    rerecord_step_ids: list[str] = Field(default_factory=list, max_length=500)
+    """다시 만들 구간의 Step id (016 FR-015). `rerecord` 모드에서만 쓴다.
+
+    **순번이 아니라 id 다.** 재녹화 도중 새 Step 이 구간 시작 위치에 삽입되므로 옛
+    구간의 순번은 계속 밀린다 (data-model §1-1).
+
+    받은 순서는 상관없다 — 화면의 체크 순서는 사용자가 누른 순서다. 목록 순서로
+    정규화하고 **연속인지만** 본다 (`validate_range`).
     """
 
     pause_before_index: int | None = Field(default=None, ge=0)
@@ -529,6 +563,31 @@ class DraftOriginView(BaseModel):
     draft_id: str
     name: str
     group_prefix: str
+
+
+class RerecordView(BaseModel):
+    """진행 중인 구간 교체 (016 · contracts/api-contract.md §3).
+
+    **`Step` 에 아무것도 더하지 않는다** (불변식 7). 화면이 `range_step_ids` 와 목록을
+    대조해 「교체 대상」을 계산한다. Step 에 그 필드를 두면 (a) 작성 주체 외의 의미가
+    저장 형식에 생겨 원칙 I 이 흔들리고 (b) 확정되지 않은 상태가 디스크에 내려갈 문이
+    열린다 (FR-029 위반의 문).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    range_step_ids: list[str]
+    """교체 대상 (옛 Step). 확정 전까지 목록에 남아 있다 (FR-024)."""
+
+    created_step_ids: list[str]
+    """이번 세션이 만든 Step. AI 편집 도구의 권한 범위이기도 하다 (FR-037)."""
+
+    can_commit: bool
+    """확정할 수 있는가 (불변식 10).
+
+    **서버가 판정한다.** 화면이 조건을 복제하면 서버와 갈리고, 갈리면 활성으로 그린
+    버튼이 눌린 뒤 거절된다 (005 U-01 의 형태).
+    """
 
 
 class SessionView(BaseModel):
@@ -659,6 +718,14 @@ class SessionView(BaseModel):
     run_start_index: int = Field(default=0, ge=0)
     """현재 실행이 시작한 Step (005 FR-149·FR-150). 화면이 건너뛴 구간을 말하는 근거다."""
 
+    rerecord: RerecordView | None = None
+    """진행 중인 구간 교체 (016). 없으면 일반 세션이다.
+
+    화면은 `authoring_mode === "ai"` 와 이 값이 있는지로 재녹화 세션을 안다 —
+    `mode` 를 뷰에 싣지 않는 이유는 그것이 **만들 때의 요청**이지 지금 상태가 아니기
+    때문이다.
+    """
+
     saved_at: datetime | None = None
     """마지막 저장 시각 (005 FR-154). `None` 이면 미저장.
 
@@ -757,7 +824,24 @@ def view_of(w: SessionWork) -> SessionView:
         pause_settled=_pause_settled(w),
         run_scope=scope_of(w.engine.start_index if w.engine is not None else 0),
         run_start_index=w.engine.start_index if w.engine is not None else 0,
+        rerecord=_rerecord_view(w),
         saved_at=w.saved_at,
+    )
+
+
+def _rerecord_view(w: SessionWork) -> RerecordView | None:
+    """진행 중인 교체를 뷰로 옮긴다 (016).
+
+    **끝난 트랜잭션은 `None` 이다.** 확정·버리기 뒤에도 남겨 두면 화면이 재녹화 띠를
+    계속 그리고, 사용자는 아직 무언가 진행 중이라고 읽는다.
+    """
+    tx = w.rerecord
+    if tx is None or tx.settled:
+        return None
+    return RerecordView(
+        range_step_ids=list(tx.range.step_ids),
+        created_step_ids=list(tx.created_step_ids),
+        can_commit=tx.can_commit,
     )
 
 
@@ -808,10 +892,11 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     project = repo.read_project()
 
     existing_test: Test | None = None
-    if body.mode == "replay":
+    if body.mode in ("replay", "rerecord"):
         if body.test_id is None:
             raise bad_request(
-                ErrorCode.DEFINITION_INVALID, "replay 모드는 test_id 가 필요합니다."
+                ErrorCode.DEFINITION_INVALID,
+                f"{body.mode} 모드는 test_id 가 필요합니다.",
             )
         try:
             existing_test = repo.read_test(body.test_id)
@@ -822,8 +907,8 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     draft: Draft | None = None
     instruction = body.ai_instruction
     if body.draft_id is not None:
-        if body.mode == "replay":
-            # 재실행은 이미 저장된 테스트를 돌리는 것이므로 초안과 상관이 없다.
+        if body.mode in ("replay", "rerecord"):
+            # 재실행·재녹화는 이미 저장된 테스트를 다루므로 초안과 상관이 없다.
             raise bad_request(
                 ErrorCode.DEFINITION_INVALID,
                 "초안에서 시작하는 것은 새로 만들 때만 됩니다.",
@@ -845,6 +930,37 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
             validate_instruction(instruction)
         except ValueError as exc:
             raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
+
+    rerecord_range = None
+    if body.mode == "rerecord":
+        assert existing_test is not None  # noqa: S101 - 위에서 이미 거절했다
+        # 016 FR-015·FR-016 — **구간을 경계에서 검증한다.** 브라우저를 띄운 뒤에
+        # 거절하면 사용자는 창이 떴다 사라지는 것을 보고, 무엇이 잘못됐는지는 그
+        # 뒤에야 안다.
+        if body.ai_instruction is not None:
+            # 재녹화의 지시는 채팅으로 온다 (api-contract §1). 두 입구를 두면
+            # 사용자는 어느 쪽에 써야 하는지 모른다.
+            raise bad_request(
+                ErrorCode.DEFINITION_INVALID,
+                "재녹화는 지시문 대신 대화로 진행합니다.",
+                next_action="세션을 연 뒤 대화로 지시하세요.",
+            )
+        try:
+            rerecord_range = validate_range(
+                list(existing_test.steps), list(body.rerecord_step_ids)
+            )
+        except StepNotFoundError as exc:
+            raise bad_request(
+                ErrorCode.DEFINITION_INVALID,
+                str(exc),
+                next_action="화면을 새로 고친 뒤 다시 고르세요.",
+            ) from exc
+        except (EmptyRangeError, RangeNotContiguousError) as exc:
+            raise bad_request(
+                ErrorCode.DEFINITION_INVALID,
+                str(exc),
+                next_action="이어진 Step 을 하나 이상 고르세요.",
+            ) from exc
 
     # 005 FR-128 — 확인과 예약을 **한 락 안에서** 함께 한다.
     #
@@ -992,6 +1108,28 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         await _start_runner(
             work, start_index=0, pause_before_index=body.pause_before_index
         )
+    elif body.mode == "rerecord":
+        # 016 (research R5 · api-contract §1) — **순서가 계약이다.**
+        #
+        #   1. 러너를 도착점까지 돌린다   ← 이 구간에 에이전트 태스크는 없다
+        #   2. 러너가 멈춘다
+        #   3. 그제서야 에이전트를 만든다 (`chat` 핸들러가 첫 턴에서)
+        #
+        # 원칙 II 가 요구하는 것은 임포트 금지가 아니라 **재실행 중 언어모델 호출
+        # 금지**다. `itb.api` 는 `execution-no-llm` 계약의 `source_modules` 에 없으므로
+        # 린터가 이 겹침을 잡지 못한다 — `tests/test_principle_ii_timeline.py` 가
+        # 러너와 에이전트 태스크의 생존 구간이 겹치지 않음을 본다 (불변식 6).
+        assert existing_test is not None  # noqa: S101 - 위에서 이미 거절했다
+        assert rerecord_range is not None  # noqa: S101 - 위에서 만들었다
+        await session.apply(Command.BEGIN_REPLAY)
+        _build_engine(work, state, existing_test)
+        arrival = next(
+            i
+            for i, st in enumerate(existing_test.steps)
+            if st.id == rerecord_range.first
+        )
+        work.rerecord = RerecordTransaction(range=rerecord_range, arrival_index=arrival)
+        await _start_runner(work, start_index=0, pause_before_index=arrival)
     else:
         await session.apply(Command.BEGIN_AI)
         _build_agent(work, state)

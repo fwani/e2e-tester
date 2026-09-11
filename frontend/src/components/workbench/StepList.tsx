@@ -353,7 +353,7 @@ export function StepList({
               {deleteSelectionCount(chosen.size)}
             </span>
             <ActionButton
-              action="step.selectAllDeleteTargets"
+              action="step.selectAll"
               capability={deleteTargets.allCapability}
               label={allChosen ? "전부 풀기" : undefined}
               compact
@@ -382,7 +382,7 @@ export function StepList({
         */
         data-action={
           deleteTargets !== undefined && isShown(deleteTargets.capability)
-            ? "step.toggleDeleteTarget"
+            ? "step.toggleSelection"
             : undefined
         }
         className="flex-1 min-h-0 overflow-y-auto"
@@ -508,8 +508,8 @@ function StepRow({
         <StepCheck>
           <input
             type="checkbox"
-            data-row-action="step.toggleDeleteTarget"
-            aria-label={`${step.label} ${ACTION_LABEL["step.toggleDeleteTarget"]}`}
+            data-row-action="step.toggleSelection"
+            aria-label={`${step.label} ${ACTION_LABEL["step.toggleSelection"]}`}
             checked={deleteTarget.chosen}
             disabled={deleteTarget.capability.kind !== "enabled"}
             onClick={(e) => {
