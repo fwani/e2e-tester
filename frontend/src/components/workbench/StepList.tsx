@@ -558,7 +558,7 @@ function StepRow({
 
               {/* FR-083 — 민감 값은 참조로만 저장되므로 표시해도 평문이 새지 않는다 */}
               {value !== null && (
-                <div data-cell="value" className="font-mono text-[11px] leading-none text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis text-ai flex-[0_0_auto]">
+ <div data-cell="value" className="font-mono text-[11px] leading-none text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis flex-[0_0_auto]">
                   {value}
                 </div>
               )}

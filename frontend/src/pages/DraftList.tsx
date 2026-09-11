@@ -47,7 +47,7 @@ export function DraftSection({
 
   return (
     <section data-draft-section className="mt-[20px]">
-      <div className="flex items-center gap-s2 items-baseline mb-s2">
+ <div className="flex gap-s2 items-baseline mb-s2">
         {/* 표제로 둔다 — 낭독기가 구획을 건너뛸 수 있어야 한다. */}
         <h2 className="font-sans text-[13px] font-semibold leading-none m-0">
           녹화하지 않은 초안
@@ -119,7 +119,7 @@ export function DraftSection({
                   더한다.
                 */}
                 {confirming === draft.draft_id ? (
-                  <span className="flex items-center gap-s2 gap-[6px] justify-end">
+ <span className="flex items-center gap-[6px] justify-end">
                     <span className="font-sans text-[11px] leading-[1.4] text-ink-3">지울까요?</span>
                     {/*
                       되돌릴 수 없는 쪽을 형태로 구분한다 — 「지우기」와 「그대로」가 같은
@@ -144,7 +144,7 @@ export function DraftSection({
                     </Button>
                   </span>
                 ) : (
-                  <span className="flex items-center gap-s2 gap-[6px] justify-end">
+ <span className="flex items-center gap-[6px] justify-end">
                     <Button
                       size="sm"
                       data-action="draft.record"

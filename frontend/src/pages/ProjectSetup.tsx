@@ -233,14 +233,14 @@ export function ProjectSetup({
             busy={busy}
             defaultName={mode.plan.file_name.replace(/\.[^.]+$/, "")}
             importNote={
-              <div className="bg-run-t border border-run rounded-base py-[10px] px-s3 mt-[10px] text-[13px] font-semibold leading-none font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1"
+              <div className="bg-run-t border border-run rounded-base py-[10px] px-s3 mt-[10px]"
                 data-import-note
               >
-                <div>
+                <div className="font-sans text-[13px] font-semibold leading-none">
                   {mode.plan.file_name} 에서 그룹 {mode.plan.group_count}개, 테스트 초안{" "}
                   {mode.plan.draft_count}건을 함께 만듭니다.
                 </div>
-                <div>
+                <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
                   초안은 아직 테스트가 아닙니다. 만든 뒤 하나씩 녹화하면 테스트가 됩니다.
                 </div>
               </div>
@@ -558,7 +558,7 @@ function ProjectRow({
             </div>
           )}
           <div
-            className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono overflow-hidden text-ellipsis whitespace-nowrap"
+ className="font-sans text-[11px] leading-[1.4] text-ink-3 overflow-hidden text-ellipsis whitespace-nowrap"
             title={item.root}
           >
             {item.root}
@@ -666,7 +666,7 @@ function ConfirmTrash({
   return (
     <div className="bg-warn-t border border-warn-line rounded-base py-s3 px-[14px]" role="group" aria-label="삭제 확인">
       <div className="font-sans text-[13.5px] font-bold leading-none">「{item.name}」을(를) 휴지통으로 옮길까요?</div>
-      <div className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-s1">
+ <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
         {item.root}
       </div>
       {summary !== null && (
@@ -738,13 +738,13 @@ function TrashedNotice({
           <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 mt-s2">
             옮긴 곳
           </div>
-          <div className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[2px] break-all">
+ <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[2px] break-all">
             {result.trashed_to}
           </div>
           <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 mt-s2">
             원래 자리
           </div>
-          <div className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[2px] break-all">
+ <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[2px] break-all">
             {result.root}
           </div>
           <div className="font-sans text-[13.5px] leading-[1.7] text-ink-2 mt-s2">

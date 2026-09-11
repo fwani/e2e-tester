@@ -133,7 +133,7 @@ export function StepEditFields({
         <span className="font-sans text-[12px] leading-none text-ink-3">
           대기 시간
         </span>
-        <span className="flex items-center gap-s2 gap-[6px]">
+ <span className="flex items-center gap-[6px]">
           <input
             aria-label="Step 대기 시간 (ms)"
             type="number"

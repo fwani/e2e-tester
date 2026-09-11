@@ -191,7 +191,7 @@ export function WorkArea({
 
           <Section title="진행">
             {work.messages.length === 0 ? (
-              <p className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono m-0">
+ <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
                 아직 기록이 없습니다.
               </p>
             ) : (
@@ -261,7 +261,7 @@ export function WorkArea({
                   004 FR-121 — **실제로 기다린 시간**이다. 예전에는 후보별 대기 중
                   최댓값을 "timeout" 이라 불렀는데, 그것은 설정값도 실측값도 아니었다.
                 */}
-                <div className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono pl-[20px]">
+ <div className="font-sans text-[11px] leading-[1.4] text-ink-3 pl-[20px]">
                   {`요소를 ${work.step.element_wait_ms} ms 기다렸습니다`}
                 </div>
               </div>
@@ -385,7 +385,7 @@ function ModeCard({
       <span className="font-sans text-[13.5px] leading-[1.7] text-ink-2">{summary}</span>
       <span className="flex flex-col gap-[5px]">
         {bullets.map((b) => (
-          <span key={b} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">
+ <span key={b} className="font-sans text-[11px] leading-[1.4] text-ink-3">
             {b}
           </span>
         ))}
@@ -447,7 +447,7 @@ function AlwaysVisibleFailure({
         >
           <strong className="font-sans text-[13px] font-semibold leading-none text-fail">AI 가 막혔습니다</strong>
           {blocked.attempted !== null && (
-            <p className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[6px] mx-0 mb-0">
+ <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-0">
               시도: {blocked.attempted}
             </p>
           )}

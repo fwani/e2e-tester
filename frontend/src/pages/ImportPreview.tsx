@@ -189,7 +189,7 @@ export function ImportPreview({
         <HeaderDivider />
         <span className="font-sans text-[13.5px] font-bold leading-none">엑셀에서 가져오기</span>
         <div className="flex-1" />
-        <span className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">{plan.file_name}</span>
+ <span className="font-sans text-[11px] leading-[1.4] text-ink-3">{plan.file_name}</span>
       </HeaderBar>
 
       <div className="py-[20px] px-[28px] flex flex-col gap-s4">
@@ -214,7 +214,7 @@ export function ImportPreview({
             **그룹마다** 말한다.
           */}
           {overCapacity && (
-            <div className="font-sans text-[11px] leading-[1.4] text-ink-3 text-fail mt-[6px]" data-capacity-warning>
+ <div className="font-sans text-[11px] leading-[1.4] text-fail mt-[6px]" data-capacity-warning>
               {tooFull.map(([prefix, n]) => (
                 <div key={prefix}>
                   그룹 「{prefix}」에 {n}건을 넣으려 하지만 남은 번호는 {roomOf(prefix)}개입니다.
@@ -239,7 +239,7 @@ export function ImportPreview({
 
         {/* ── 시트별 ──────────────────────────────────────────────────── */}
         <div>
-          <div className="flex items-center gap-s2 mb-s2 gap-[10px]">
+ <div className="flex items-center mb-s2 gap-[10px]">
             <h2 className="font-sans text-[13px] font-semibold leading-none m-0">
               시트 {plan.sheets.length}개
             </h2>
@@ -387,7 +387,7 @@ export function ImportPreview({
                             {sheet.sample.map((sampleRow) => (
                               <tr key={sampleRow.row}>
                                 <td className="py-[2px] px-[6px]">
-                                  <label className="flex items-center gap-s2 gap-s1">
+ <label className="flex items-center gap-s1">
                                     <input
                                       type="radio"
                                       name={`header-row-${sheet.sheet_name}`}
@@ -401,7 +401,7 @@ export function ImportPreview({
                                         }))
                                       }
                                     />
-                                    <span className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">{sampleRow.row}</span>
+ <span className="font-sans text-[11px] leading-[1.4] text-ink-3">{sampleRow.row}</span>
                                   </label>
                                 </td>
                                 {sampleRow.cells.slice(0, 8).map((cell, i) => (
@@ -429,7 +429,7 @@ export function ImportPreview({
                           {ALL_COLUMNS.map((column) => (
                             <label
                               key={column}
-                              className="flex gap-s2 gap-[6px] items-center"
+ className="flex gap-[6px] items-center"
                             >
                               <span className="font-sans text-[11px] leading-[1.4] text-ink-3 min-w-[76px]">
                                 {column}
@@ -476,7 +476,7 @@ export function ImportPreview({
                           번호가 바뀐 행 {sheet.renumbered.length}건
                         </summary>
                         {sheet.renumbered.map((r) => (
-                          <div key={`${r.row}-${r.from}`} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">
+ <div key={`${r.row}-${r.from}`} className="font-sans text-[11px] leading-[1.4] text-ink-3">
                             {r.row}행: {r.from} → {r.to}
                           </div>
                         ))}
@@ -533,7 +533,7 @@ export function ImportPreview({
           </Button>
           {/* 전부 끄면 만들 것이 없다 (FR-020d). 막고, 왜 막혔는지 말한다. */}
           {nothingChosen && (
-            <span className="font-sans text-[11px] leading-[1.4] text-ink-3 text-fail" data-nothing-chosen>
+ <span className="font-sans text-[11px] leading-[1.4] text-fail" data-nothing-chosen>
               가져올 시트를 하나도 고르지 않았습니다.
             </span>
           )}
@@ -675,7 +675,7 @@ export function ImportDoneNotice({
             번호가 바뀐 행 {result.renumbered.length}건
           </summary>
           {result.renumbered.map((r) => (
-            <div key={`${r.row}-${r.from}`} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">
+ <div key={`${r.row}-${r.from}`} className="font-sans text-[11px] leading-[1.4] text-ink-3">
               {r.row}행: {r.from} → {r.to}
             </div>
           ))}

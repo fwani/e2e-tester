@@ -1193,7 +1193,7 @@ function EditFields({
           <strong className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">저장하지 않은 변경</strong>
           <ul className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-0 pl-[18px]">
             {ops.map((op, i) => (
-              <li key={`${op.op}-${i}`} className="flex items-center gap-s2 gap-[6px]">
+ <li key={`${op.op}-${i}`} className="flex items-center gap-[6px]">
                 <span className="font-mono flex-1">{describeOp(op, steps)}</span>
                 <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={() => onRevert(i)}>
                   되돌리기

@@ -343,7 +343,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       */}
       {hasKeys && (
         <section
-          className="bg-panel border border-hair rounded-base border-fail p-[14px] mt-s4 flex flex-col gap-[10px]"
+ className="bg-panel border rounded-base border-fail p-[14px] mt-s4 flex flex-col gap-[10px]"
         >
           <strong className="text-fail">키 교체·삭제</strong>
           <p className="font-sans text-[13px] leading-[1.4] m-0">

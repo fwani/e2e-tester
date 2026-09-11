@@ -294,7 +294,7 @@ export function StepDetail({
                     )}
                   </>
                 ) : (
-                  <label className="flex items-center gap-s2 gap-[6px] mt-[6px]">
+ <label className="flex items-center gap-[6px] mt-[6px]">
                     <input
                       type="checkbox"
                       data-action="step.markSensitive"
@@ -433,7 +433,7 @@ export function StepDetail({
             {detail.attempts.map((a, i) => (
               <div
                 key={`${a.candidate}-${i}`}
-                className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] text-ink-3 font-mono${a.matched ? "" : " muted"}`}
+ className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] text-ink-3 ${a.matched ? "" : " muted"}`}
               >
                 <span className="font-bold w-[84px]">
                   {a.candidate}

@@ -230,9 +230,11 @@ export function ComposeView({
         */
         noticesExtra={
           fromDraft !== null ? (
-            <div className="bg-run-t border border-run rounded-base py-s2 px-[10px] text-[13px] font-semibold leading-none font-sans text-[11px] leading-[1.4] text-ink-3 ml-[6px]" data-from-draft={fromDraft.draft_id}>
-              <span>초안 「{fromDraft.name}」에서 시작합니다.</span>
-              <span>
+            <div className="bg-run-t border border-run rounded-base py-s2 px-[10px]" data-from-draft={fromDraft.draft_id}>
+              <span className="font-sans text-[13px] font-semibold leading-none">
+                초안 「{fromDraft.name}」에서 시작합니다.
+              </span>
+              <span className="font-sans text-[11px] leading-[1.4] text-ink-3 ml-[6px]">
                 지시문을 고쳐도 됩니다. 저장하면 이 초안은 사라집니다.
               </span>
             </div>

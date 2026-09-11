@@ -25,7 +25,7 @@ export function TabStrip({ tabs, mirroredTabIndex, maxTabs, onSelect }: TabStrip
   // T023(판·머리 군)·T027(수식 군) 뒤에 온다 — 배치는 부품보다 나중이다 (research R6).
   return (
     <div
-      className="flex items-center gap-s2 border-b border-hair gap-s1 py-[6px] px-s2 overflow-x-auto"
+ className="flex items-center border-b border-hair gap-s1 py-[6px] px-s2 overflow-x-auto"
     >
       {open.map((tab) => (
         <Button

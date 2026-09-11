@@ -521,7 +521,7 @@ function UseWindowAction({
   if (capability.kind === "disabled" && capability.visibility === "hide") return null;
   const disabled = capability.kind === "disabled";
   return (
-    <span className="flex items-center gap-s2 gap-[6px]">
+ <span className="flex items-center gap-[6px]">
       <Button
         type="button"
         data-action="mirror.useWindow"

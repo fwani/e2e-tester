@@ -615,7 +615,7 @@ export function TestList({
         )}
 
         {/* ─── 조작 줄 — 검색 · 결말 필터 · 정렬 ─────────────────────────── */}
-        <div className="flex items-center gap-s2 gap-[10px]">
+ <div className="flex items-center gap-[10px]">
           <div className={`${`field${isEmptyProject ? " off" : ""}`} flex-1 max-w-[520px]`} >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7">
               <circle cx="7" cy="7" r="4.6" />
@@ -639,7 +639,7 @@ export function TestList({
                 거르지 못했다. 개수는 **거르기 전 전체**를 세므로 필터가 자기 자신을
                 0으로 만들어 돌아올 길을 없애지 않는다.
               */}
-              <div className="flex items-center gap-s2 gap-[6px]" role="group" aria-label="결말로 거르기">
+ <div className="flex items-center gap-[6px]" role="group" aria-label="결말로 거르기">
                 {(["all", "pass", "fail", "none"] as const).map((key) => (
                   <Button
                     key={key}
@@ -819,7 +819,7 @@ export function TestList({
                   잘린 칸 {(exported.detail?.truncations ?? []).length}건
                 </summary>
                 {(exported.detail?.truncations ?? []).map((t) => (
-                  <div key={`${t.test_id}-${t.column}`} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono">
+ <div key={`${t.test_id}-${t.column}`} className="font-sans text-[11px] leading-[1.4] text-ink-3">
                     {t.test_id} · {t.column} — {t.dropped_lines}줄 생략
                   </div>
                 ))}
@@ -1322,14 +1322,14 @@ function Row({
 
         {/* FR-005 — 실패한 테스트는 실패 Step 번호와 메시지 요약을 인라인으로 보여준다. */}
         {row.failure_summary !== null && (
-          <div className="font-mono text-[11.5px] leading-none text-ink-3 text-fail whitespace-nowrap overflow-hidden text-ellipsis">
+ <div className="font-mono text-[11.5px] leading-none text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
             {stepLabel(row.failure_summary.step_index)} · {row.failure_summary.message}
           </div>
         )}
 
         {confirming && (
           <div className="flex items-center gap-s2 pt-s1">
-            <span className="font-mono text-[12px] leading-none text-ink-3 text-fail">
+ <span className="font-mono text-[12px] leading-none text-ink-3">
               「{row.name}」을 지웁니다. 되돌릴 수 없습니다.
             </span>
             <Button size="sm" variant="danger" disabled={busy} onClick={onDeleteConfirm}>

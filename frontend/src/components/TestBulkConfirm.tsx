@@ -93,7 +93,7 @@ export function TrashedTestsNotice({
         {trashed.map((t) => (
           <div
             key={t.id}
-            className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[2px] break-all"
+ className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[2px] break-all"
           >
             {t.trashed_to}
           </div>
@@ -247,7 +247,7 @@ export function RenumberedNotice({
             바뀐 식별자 {changed}건
           </summary>
           {result.renumbered.map((m) => (
-            <div key={m.from_id} className="font-sans text-[11px] leading-[1.4] text-ink-3 font-mono mt-[2px]">
+ <div key={m.from_id} className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[2px]">
               {m.from_id} → {m.to_id} · {m.name}
             </div>
           ))}

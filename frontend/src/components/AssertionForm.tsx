@@ -121,7 +121,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
 
       {(kind === "text" || kind === "url") && (
         <div className="flex items-center gap-s2 gap-s3">
-          <label className="flex items-center gap-s2 gap-[6px]">
+ <label className="flex items-center gap-[6px]">
             <input
               type="radio"
               name="assertion-match"
@@ -130,7 +130,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
             />
             일치
           </label>
-          <label className="flex items-center gap-s2 gap-[6px]">
+ <label className="flex items-center gap-[6px]">
             <input
               type="radio"
               name="assertion-match"

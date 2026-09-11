@@ -47,7 +47,13 @@ describe("3층 구조 (T018 · FR-218c)", () => {
     renderShell(workbenchModel("running"));
     // 015 — 배치가 클래스로 바뀌었다. `h-phase` 는 `--h-phase`(48px)다.
     // 묻는 것은 그대로: 국면 띠가 008 「계기판」 값 48px 인가 (v1 은 74px 였다).
-    expect(flexOf(el("[data-workbench-phase-bar]")), "국면 띠가 줄어든다").toBe("0 0 auto");
+    //
+    // **기댓값을 `0 0 auto` 로 완화했던 것을 되돌린다 (2026-09-11).** 전환 전 인라인은
+    // `flex: "0 0 48px"` 였는데, 전환이 `flex-none`(=`0 0 auto`)과 `flex-[0_0_48px]` 를
+    // **둘 다** 붙였고 `.flex-none` 이 산출 CSS 에서 뒤에 와 48px 가 졌다. 그때 검사를
+    // 고쳐 통과시킨 것이 이 줄이다 — 회귀를 잡는 대신 회귀에 맞춘 것이며 헌법
+    // Quality Gate 4 가 금지하는 형태다. `flex-none` 을 지우고 기댓값을 되돌렸다.
+    expect(flexOf(el("[data-workbench-phase-bar]")), "국면 띠가 줄어든다").toBe("0 0 48px");
     expect(el("[data-workbench-phase-bar]").className, "국면 띠 높이가 48px 이 아니다").toContain(
       "h-phase",
     );
