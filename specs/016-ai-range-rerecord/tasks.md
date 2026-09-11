@@ -352,3 +352,25 @@ Task: "T014 원칙 II — 도착점 구간 드라이버 호출 0회"
 - [X] T074 [P] `backend/tests/us_rerecord/test_session_lost_in_rerecord.py` 신규 per FR-044 (missing) — 재녹화 중 세션 유실을 유도한다. 확정되지 않은 Step 이 **보존**되고, 목록이 「새 + 옛」 중간 상태임을 알리며, 트랜잭션이 닫히는지 확인한다
 - [X] T075 [P] `backend/tests/us_rerecord/test_sensitive_in_rerecord.py` 에 **대화 이력이 디스크에 없음**을 더한다 per FR-014 (partial) — 지금은 정의 파일만 본다. FR-013(민감값이 이력에 남지 않는다)의 실질적 방어가 「쓰지 않는다」이므로, 세션 종료 후 프로젝트 디렉터리 전체에서 대화 문장을 찾아 없음을 확인한다
 - [X] T076 [P] `frontend/tests/RerecordStart.test.tsx` 에 **점유 중 잠김** 1건을 더한다 per FR-017 (partial) — 다른 세션이 그 테스트를 잡고 있으면(`blocking_session_id`) 「AI 로 다시 만들기」가 보이되 잠기고 해소 조작을 가리키는지. 서버의 409 는 기존 기제로 동작하지만 화면이 **미리** 막는지는 확인되지 않았다
+
+
+---
+
+## Phase 8: Convergence (2회차)
+
+**2026-09-11 수렴 3회차** — 발견 2건, **둘 다 LOW**. CRITICAL·HIGH·MEDIUM 0.
+1회차의 6건(T071~T076)은 전부 해소됐다. 헌법 원칙 I~V 위반 없음.
+
+- [ ] T077 **FR-030 의 「번호」가 무엇인지 못박는다** per FR-030 (contradicts) —
+  `specs/016-ai-range-rerecord/spec.md` 의 FR-030 이 「확정·버리기 후 Step 번호는
+  빈자리 없이 다시 매겨진다」인데, 실측하니 **Step id 는 빈자리를 남긴다**
+  (`delete_steps` 뒤 `step-01, step-04, step-05`). 그것이 이 제품의 기존 설계다 —
+  `allocate_step_id` 가 「이미 쓰인 번호를 피한다」이고, id 를 다시 매기면 실행
+  산출물(`.runs/`)과 결과의 `step_id` 대응이 깨진다. 사용자가 보는 **표시 번호**는
+  목록 위치에서 파생되므로(`stepNumber(index0)`) 이미 연속이며, 요구사항은 그것을
+  말한 것이다. 문구가 둘을 구별하지 못했다 — FR-030 을 「표시 번호」로 고치고 id 가
+  빈자리를 남기는 것이 의도임을 적는다. quickstart §3-1 5번의 기대도 함께 맞춘다
+- [ ] T078 [P] `backend/tests/us_rerecord/test_chat_turn.py` 에 **중지** 1건을 더한다
+  per FR-011 (missing) — `AI_RUNNING` 이 `PAUSABLE_STATES` 에 있어 동작하지만 재녹화
+  경로에서 확인되지 않았다. 채팅 턴이 도는 중 `pause` 로 멈추고 **그때까지 만든 Step
+  이 남는지**(FR-067) 본다. 취소는 실패가 아니므로 `ai_error` 가 나오지 않아야 한다
