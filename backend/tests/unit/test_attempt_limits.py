@@ -112,3 +112,43 @@ def test_stop_notice_tells_the_model_to_stop() -> None:
     """
     assert STOP_NOTICE["stop"] is True
     assert "더 이상 도구를 부르지 마세요" in str(STOP_NOTICE["message"])
+
+
+# ─── 016 — 상한은 구간 크기와 무관하다 (T065 · FR-042) ─────────────────────
+
+
+def test_the_budget_does_not_scale_with_the_rerecord_range() -> None:
+    """**구간이 크다고 상한이 늘지 않는다** (FR-042).
+
+    늘리면 상한이 뜻을 잃는다 — 사용자가 목록 전체를 골라 재녹화를 걸면 예산이 Step
+    수만큼 늘어나고, 그때 「40회」는 아무것도 막지 못한다.
+
+    상한은 `AttemptLimits` 의 기본값 하나이며, 트랜잭션이나 구간을 **알지 못한다.**
+    그 무지가 이 성질의 구현이다.
+    """
+    import inspect
+
+    from itb.authoring import tools as tools_mod
+
+    source = inspect.getsource(tools_mod.AttemptLimits)
+    for leak in ("rerecord", "range", "step_ids", "transaction"):
+        assert leak not in source, (
+            f"상한이 구간을 알게 됐다: {leak} — 구간 크기에 비례하면 상한이 뜻을 잃는다"
+        )
+
+
+def test_editing_tools_share_the_one_budget() -> None:
+    """편집 도구도 **같은 예산**을 쓴다 (FR-042).
+
+    따로 두면 「만들고 지우기」를 반복하며 우회할 수 있다 — 만들기 예산이 떨어져도
+    고치기로 계속 도는 상태가 된다.
+    """
+    import inspect
+
+    from itb.authoring.tools import STEP_EDITING_TOOLS, BrowserToolbox
+
+    for name in STEP_EDITING_TOOLS:
+        source = inspect.getsource(getattr(BrowserToolbox, name))
+        assert "self.limits.record_call()" in source, (
+            f"{name} 이 예산을 세지 않는다 — 상한을 우회할 수 있다"
+        )

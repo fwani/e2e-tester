@@ -478,3 +478,55 @@ def test_the_agent_prepends_the_summary_to_every_turn() -> None:
         f"입구가 {len(appenders)}개다 — run·chat·resume_with_answer·"
         f"resume_after_takeover 넷 이상이어야 한다"
     )
+
+
+# ─── T064 — 예산 실측 ───────────────────────────────────────────────────────
+
+
+def test_the_budget_is_measured_not_guessed() -> None:
+    """기본 예산이 **실측에 근거한다** (plan.md 알려진 위험 2 · analyze A1).
+
+    T004 는 잠정값 8KB 로 박았다. 이 검사가 실제 크기를 재고, 그 값과 예산의 관계를
+    고정한다 — 너무 작으면 평범한 테스트에서 축약이 상시로 일어나고, 너무 크면 매 턴의
+    토큰이 낭비된다 (요약은 대화마다 다시 붙는다).
+
+    **여유를 2배로 둔다.** Step 하나의 줄 길이는 표시 이름과 대상 이름에 따라 늘어나고,
+    실제 테스트의 이름은 이 검사의 `동작 N` 보다 길다.
+    """
+    hundred = len(build_definition_summary(many_steps(100), range_ids=[]).encode())
+    per_step = hundred / 100
+
+    assert hundred <= DEFAULT_SUMMARY_BUDGET, (
+        f"Step 100개가 {hundred}바이트로 예산({DEFAULT_SUMMARY_BUDGET})을 넘는다"
+    )
+    # 짧은 이름 기준 2배 여유. 긴 이름은 아래 검사가 따로 본다.
+    assert hundred * 2 <= DEFAULT_SUMMARY_BUDGET, (
+        f"여유가 2배 미만이다 (Step 100개 = {hundred}바이트, 한 줄 평균 {per_step:.0f}바이트). "
+        f"실제 테스트의 표시 이름은 이 검사보다 길다."
+    )
+    # 너무 크지도 않아야 한다 — **매 턴** 붙는 값이다 (FR-003). 16KB 는 대략 4천
+    # 토큰이고, 열 차례면 요약만 4만 토큰이다. 그 이상이 필요하면 축약이 받는다.
+    assert DEFAULT_SUMMARY_BUDGET <= 16384, (
+        f"예산 {DEFAULT_SUMMARY_BUDGET}바이트는 매 턴 붙기에 크다"
+    )
+
+
+def test_a_realistic_test_fits_comfortably() -> None:
+    """실제에 가까운 길이의 이름으로도 Step 100개가 들어간다.
+
+    `동작 N` 같은 짧은 이름으로만 재면 예산이 실제보다 넉넉해 보인다.
+    """
+    long_named: list[Step] = [
+        ClickStep(
+            id=f"step-{i + 1:02d}",
+            label=f"주문 관리 화면에서 {i + 1}번째 항목의 상세 보기 버튼 클릭",
+            target=target(f"{i + 1}번째 항목 상세 보기"),
+        )
+        for i in range(100)
+    ]
+    text = build_definition_summary(long_named, range_ids=[])
+    assert "생략" not in text, (
+        f"긴 이름의 Step 100개가 예산을 넘어 축약됐다 "
+        f"(전체 {len(build_definition_summary(long_named, range_ids=[], budget=10**9).encode())}"
+        f"바이트 / 예산 {DEFAULT_SUMMARY_BUDGET})"
+    )

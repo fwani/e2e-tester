@@ -137,9 +137,9 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [X] T038 [P] [US2] `backend/tests/us_rerecord/test_discard_realign.py` — 버리기가 도착점까지 다시 실행하고(FR-031), 세션이 살아 있으며(FR-031a), 되맞춤 구간에서 드라이버 호출이 0회인지(FR-031b), 되맞춤 실패 시 두 사실을 함께 알리는지(FR-031c · 불변식 11)
 - [X] T039 [P] [US2] `backend/tests/us_rerecord/test_no_disk_before_commit.py` — 확정 전 「저장」이 확정되지 않은 교체를 디스크에 내리지 않는지 (FR-029)
 - [ ] T040 [P] [US2] `frontend/tests/RerecordTransaction.test.tsx` — 재녹화 띠가 구간과 개수를 말하고, `can_commit` 이 거짓이면 확정이 사유와 함께 잠기는지
-- [ ] T040a [P] [US2] `backend/tests/us_rerecord/test_blocked_in_rerecord.py` 신규 — 재녹화 중 AI 가 막히면 **브라우저가 닫히지 않고**(FR-041 · 원칙 III) 5선택지가 뜨며, 그때까지 만든 Step 이 **보존**되는지(FR-043). 새 경로 `PAUSED → AI_RUNNING → AI_BLOCKED` 를 지난다 — 기존 동작의 재사용이지만 이 전이는 이번에 처음 생긴다
+- [X] T040a [P] [US2] `backend/tests/us_rerecord/test_blocked_in_rerecord.py` 신규 — 재녹화 중 AI 가 막히면 **브라우저가 닫히지 않고**(FR-041 · 원칙 III) 5선택지가 뜨며, 그때까지 만든 Step 이 **보존**되는지(FR-043). 새 경로 `PAUSED → AI_RUNNING → AI_BLOCKED` 를 지난다 — 기존 동작의 재사용이지만 이 전이는 이번에 처음 생긴다
 - [X] T040b [P] [US2] `backend/tests/us_rerecord/test_commit_then_replay.py` 신규 — 확정·저장 후 그 테스트를 **처음부터 끝까지 실행해 성공**하는지 (SC-005). 재녹화가 만든 Step 이 이어 붙은 자리에서 깨지지 않음을 본다
-- [ ] T040c [P] [US2] `backend/tests/us_rerecord/test_sensitive_in_rerecord.py` 신규 — 재녹화로 만든 Step 의 민감값이 기존 녹화와 **같은 규칙**으로 변수 참조가 되는지 (FR-045). `SensitiveCapturer` 가 toolbox 에 붙어 있어 자동으로 될 가능성이 높지만, 가능성은 검사가 아니다
+- [X] T040c [P] [US2] `backend/tests/us_rerecord/test_sensitive_in_rerecord.py` 신규 — 재녹화로 만든 Step 의 민감값이 기존 녹화와 **같은 규칙**으로 변수 참조가 되는지 (FR-045). `SensitiveCapturer` 가 toolbox 에 붙어 있어 자동으로 될 가능성이 높지만, 가능성은 검사가 아니다
 
 ### Implementation for US2
 
@@ -190,8 +190,8 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T064 [P] `backend/tests/unit/test_definition_summary.py` 에 **예산 실측**을 더한다 — Step 100개 요약의 실제 바이트 수를 재고, 그 값으로 T004 의 잠정 `budget`(8KB)을 교체한다 (plan.md 알려진 위험 2 · analyze A1)
-- [ ] T065 [P] `backend/tests/unit/test_attempt_limits.py` 수정 — 편집 도구도 호출 1회로 세는지, 구간 크기와 무관하게 상한이 적용되는지 (FR-042)
+- [X] T064 [P] `backend/tests/unit/test_definition_summary.py` 에 **예산 실측**을 더한다 — Step 100개 요약의 실제 바이트 수를 재고, 그 값으로 T004 의 잠정 `budget`(8KB)을 교체한다 (plan.md 알려진 위험 2 · analyze A1)
+- [X] T065 [P] `backend/tests/unit/test_attempt_limits.py` 수정 — 편집 도구도 호출 1회로 세는지, 구간 크기와 무관하게 상한이 적용되는지 (FR-042)
 - [ ] T066 [P] `frontend/tests/` — 회귀 확인 quickstart §8 의 6항목을 자동 검사로 가능한 것만 옮긴다 (SC-009)
 - [ ] T067 `README.md` 갱신 — 016 을 기능 표에 넣고, 「AI 로 다시 만들기」를 사용법에 적는다. 도구 표면이 16종이 된 사실을 아키텍처 절에 반영한다
 - [ ] T068 `docs/PENDING-HUMAN-VERIFICATION.md` 에 §16 을 더한다 — SC-002(조작 횟수 비교)·SC-003(10건 중 7건)은 **사람이 측정**해야 한다. 개발용 드라이버 결과는 SC-003 의 근거로 쓰지 않는다
