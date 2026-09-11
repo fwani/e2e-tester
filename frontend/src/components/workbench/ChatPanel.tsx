@@ -20,6 +20,23 @@
  * 진행은 `ai_progress` 이벤트(FR-060)가 이미 흐르고, 중지는 `run.pause` 다. 새 버튼을
  * 만들지 않는다 — 「한 조작에 한 자리」(FR-235)이고, 중지 버튼이 둘이면 사용자는 어느
  * 쪽이 무엇을 멈추는지 판단해야 한다.
+ *
+ * ## 미러를 덮지 않는다 (2026-09-11 사용자 보고)
+ *
+ * > 「ai 대화가 미리보기 화면을 덮쳐서 아무것도 보이지 않는다」
+ *
+ * 이 패널은 좌측 열의 셋째 자리인데 **배분을 아무도 정하지 않았다.** 선언이 없는 flex
+ * 자식의 최소 높이는 「내용 전체」이고, 미러 자리는 `flex-1`(basis 0)이라 더 줄일 것이
+ * 없다 — 그래서 대화 차례가 쌓일수록 미러가 0 에 가까워졌다. 자리가 둘에서 셋으로 늘
+ * 때 셋째를 빠뜨린 것이며, S-12 와 같은 형태다 (`lib/layout.ts` 의 `CHAT_SLOT_CLASS`).
+ *
+ * 고친 것은 둘로 나뉘고, 그 나눔이 요점이다.
+ *
+ * - **높이의 상한**은 `lib/layout.ts` 가 정한다. 이 패널은 자기 크기를 모른다 —
+ *   표시 컴포넌트가 자기 자리 크기를 정하지 않는다는 성질 그대로다 (015 FR-020b).
+ * - **줄어드는 방법**은 이 파일이 정한다. 뿌리에 `min-h-0`(줄어들 수 있다)을 두고,
+ *   넘치는 것은 **대화 기록만** 자기 안에서 스크롤한다. 입력칸·상한 표시는 줄지
+ *   않는다 (`shrink-0`) — 답이 길어질 때 쓸 칸이 스크롤 아래로 사라지면 안 된다.
  */
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
@@ -89,8 +106,8 @@ export function ChatPanel({
   };
 
   return (
-    <section className="flex flex-col gap-s3" aria-label="AI 와 대화">
-      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">
+    <section className="flex flex-col gap-s3 min-h-0" aria-label="AI 와 대화">
+      <div className="shrink-0 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">
         AI 와 대화
       </div>
 
@@ -105,8 +122,16 @@ export function ChatPanel({
         </Notice>
       )}
 
+      {/*
+        **줄어드는 자리는 여기 하나다** (2026-09-11 사용자 보고 · 위 머리말).
+
+        `min-h-0` 이 없으면 이 영역의 최소 높이가 대화 내용 전체가 되고, 그러면
+        `overflow-y-auto` 를 두고도 스크롤할 것이 남지 않는다 — 자리가 내용만큼
+        늘어나 미러를 밀어낸다. 「스크롤이 안 먹는」 가장 흔한 원인이며,
+        `WorkbenchHeight.test.tsx` 가 Step 목록에서 같은 것을 센다.
+      */}
       <div
-        className="flex flex-col gap-s2 overflow-y-auto"
+        className="flex flex-col gap-s2 min-h-0 overflow-y-auto"
         role="log"
         aria-live="polite"
         aria-label="대화 기록"
@@ -155,7 +180,7 @@ export function ChatPanel({
         <div ref={tail} />
       </div>
 
-      <form onSubmit={submit} className="flex flex-col gap-s2">
+      <form onSubmit={submit} className="shrink-0 flex flex-col gap-s2">
         <label className="sr-only" htmlFor="ai-chat-input">
           AI 에게 할 말
         </label>

@@ -31,7 +31,7 @@ import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard, BrandMark, Breadcrumb, HeaderBar, HeaderDivider } from "../design/Chrome";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
-import { flexClassOf, splitFor } from "../../lib/layout";
+import { CHAT_SLOT_CLASS, flexClassOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
 import { PhaseBar, type PhaseGroupPick, type PhaseNameEdit } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
@@ -357,8 +357,27 @@ export function Workbench({
             016 — 대화 패널. 없으면 자리를 차지하지 않는다 (`WorkArea` 와 같은 규칙).
             대상 앱과 작업 영역 **아래**인 이유: 대화는 화면을 보면서 하는 일이고,
             화면을 밀어내면 그 전제가 깨진다.
+
+            ## 배분을 내려 준다 (2026-09-11 사용자 보고)
+
+            > 「ai 대화가 미리보기 화면을 덮쳐서 아무것도 보이지 않는다」
+
+            016 은 이 자리를 **선언 없이** 걸었다. 선언이 없는 flex 자식은 최소 높이가
+            「내용 전체」이고, 위의 대상 앱 슬롯은 `flex-1`(basis 0)이라 더 줄일 것이
+            없다 — 그래서 대화가 길어질수록 미러가 0 에 가까워졌다. 화면을 밀어내지
+            않는다는 위 전제가 **선언으로 뒷받침되지 않은 상태**였다.
+
+            그래서 다른 두 자리와 같은 규율을 받는다: 크기는 이 컴포넌트가 아니라
+            `lib/layout.ts` 가 정하고(`CHAT_SLOT_CLASS`), 여기서는 자리만 준다. 껍데기
+            `div` 를 한 겹 두는 이유는 `leftExtra` 가 `ReactNode` 라 props 로 크기를
+            내려줄 수 없기 때문이다 — `WorkArea` 처럼 `sizeClass` 를 받게 하면 이 확장
+            자리에 오는 것이 무엇이든 대화 패널의 사정을 알아야 한다.
           */}
-          {leftExtra}
+          {leftExtra != null && leftExtra !== false && (
+            <div data-workbench-left-extra className={CHAT_SLOT_CLASS}>
+              {leftExtra}
+            </div>
+          )}
         </div>
 
         {/* 우 — Step 목록 460px 고정 */}

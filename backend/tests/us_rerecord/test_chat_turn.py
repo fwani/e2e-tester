@@ -163,3 +163,49 @@ class _Block:
     def __init__(self, text: str) -> None:
         self.type = "text"
         self.text = text
+
+
+# ─── 중지 (T078 · FR-011·FR-065·FR-067) ────────────────────────────────────
+
+
+def test_a_turn_can_be_stopped_and_what_was_made_survives(
+    keyed_client: TestClient, fixture_app: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """**도는 중에 멈출 수 있고, 그때까지 만든 Step 은 남는다** (FR-011·FR-067).
+
+    `AI_RUNNING` 이 `PAUSABLE_STATES` 에 있으므로 기제는 이미 있다. 확인하는 것은
+    **재녹화 경로에서도 그런가**다 — 016 이 `PAUSED + BEGIN_AI` 라는 새 입구를
+    만들었고, 그 입구로 들어온 턴도 같은 문으로 나갈 수 있어야 한다.
+
+    **취소는 실패가 아니다** (FR-065). `ai_error` 가 나오면 사용자는 자기가 멈춘 것을
+    제품의 오류로 읽는다.
+    """
+    from tests.us4_support import assert_url_contains, observe
+    from tests.us_rerecord.support import wait_for_state
+
+    # 오래 도는 대본. 멈출 창을 만든다.
+    install_driver(
+        monkeypatch,
+        [observe(), assert_url_contains("/"), observe(), observe(), observe()],
+    )
+    test_id = record_login(keyed_client, fixture_app)
+    saved = [s["id"] for s in keyed_client.get(f"/api/tests/{test_id}").json()["steps"]]
+
+    sid = open_rerecord(keyed_client, test_id, [saved[-1]])
+    assert isinstance(sid, str)
+    try:
+        started = keyed_client.post(f"/api/sessions/{sid}/chat", json={"text": "확인해 줘"})
+        assert started.status_code == 200, started.text
+
+        paused = keyed_client.post(f"/api/sessions/{sid}/pause")
+        assert paused.status_code in (200, 202, 409), paused.text
+
+        view = wait_for_state(keyed_client, sid, {"paused"})
+        assert view["state"] == "paused", "멈추지 못했다 — FR-011 위반"
+
+        # 그때까지 만든 것이 남아 있고, 교체는 계속 진행 중이다.
+        assert view["rerecord"] is not None, "멈췄다고 교체가 취소되면 안 된다"
+        # 취소는 실패가 아니다 — 목록이 사라지지 않는다 (FR-067).
+        assert len(view["steps"]) >= len(saved)
+    finally:
+        stop_quietly(keyed_client, sid)
