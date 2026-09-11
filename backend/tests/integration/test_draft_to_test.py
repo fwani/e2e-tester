@@ -31,8 +31,13 @@ def seed_draft(client: TestClient, rows: list[list[object]] | None = None) -> li
 def fake_session(project_client: TestClient):
     """저장할 것이 있는 가짜 세션을 `_WORK` 에 심는다.
 
-    `SessionWork` 는 브라우저 세션과 리코더를 요구하지만, 저장 경로는 `steps`·`start_url`·
-    `draft_id` 만 본다. 나머지는 저장에 닿지 않으므로 최소한만 채운다.
+    `SessionWork` 는 브라우저 세션과 리코더를 요구하지만, 저장 경로가 실제로 보는 것은
+    몇 개뿐이다. 나머지는 저장에 닿지 않으므로 최소한만 채운다.
+
+    **`__new__` 로 만들므로 여기 적지 않은 필드는 존재하지 않는다** (`slots=True`).
+    저장 경로가 새 필드를 읽기 시작하면 `AttributeError` 로 여기서 터진다 — 016 이
+    `rerecord` 를 읽게 되면서 실제로 그랬다. 터지는 것이 옳다: 조용히 `None` 이 되면
+    「저장 경로가 무엇을 보는가」가 이 픽스처에 기록되지 않는다.
     """
 
     class _NoCaptures:
@@ -56,6 +61,8 @@ def fake_session(project_client: TestClient):
         work.saved_at = None
         work.saved_snapshot = []
         work.base_variables = []
+        # 016 FR-029 — 저장 경로가 「확정되지 않은 교체가 있는가」를 본다.
+        work.rerecord = None
         _WORK[session_id] = work
         return session_id
 

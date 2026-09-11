@@ -246,7 +246,7 @@ describe("키보드 경로 (SC-507 · FR-303)", () => {
     for (const op of ops) {
       expect(op.getAttribute("aria-label"), "이름 없는 조작이 있다").toBeTruthy();
       const action = op.getAttribute("data-row-action");
-      if (action === "step.toggleDeleteTarget") {
+      if (action === "step.toggleSelection") {
         expect(op.tagName).toBe("INPUT");
         expect((op as HTMLInputElement).type).toBe("checkbox");
       } else {

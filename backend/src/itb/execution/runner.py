@@ -253,8 +253,6 @@ class RunnerTask:
                 self._boundary.clear()
 
             index = self._session.current_step_index
-            if index >= self._total:
-                break
 
             # 006 FR-200 — 편집을 위해 지정된 지점이다. 이 Step 을 **실행하기 전에**
             # 멈춘다: 고치려는 Step 은 대개 실패하는 Step 이므로, 실행한 뒤에 멈추면
@@ -266,11 +264,21 @@ class RunnerTask:
             #
             # **한 번만 멈춘다.** 사용자가 「계속하기」를 누른 뒤 같은 자리에 다시 걸리면
             # 실행이 앞으로 나아가지 못한다.
+            #
+            # **끝 검사보다 앞에 둔다** (2026-09-11 사용자 보고). 뒤에 두면 목록 끝
+            # (`index == total`)을 목표로 준 세션이 마지막 Step 을 실행한 뒤 그대로
+            # 종료한다 — 멈추지 않으므로 「맨 끝에 이어서 만들기」가 성립하지 않는다.
+            # 그 자리가 필요한 이유는 AI 에게 「마지막에 하나 더」를 시킬 자리가 제품에
+            # 없었기 때문이다: 대화는 `paused` 에서만 되고, 끝까지 실행하면 `finished`
+            # 였다. 목표에 도달하지 않은 경우의 동작은 이 순서 변경에 영향받지 않는다.
             if self._pause_before is not None and index == self._pause_before:
                 self._pause_before = None
                 with contextlib.suppress(InvalidTransitionError):
                     await self._session.apply(Command.PAUSE)
                 continue
+
+            if index >= self._total:
+                break
 
             should_continue = await self._run_step(self._session, index)
             # **상대 전진.** 실행 중에 편집이 들어와 위치가 밀렸어도 "방금 실행한 Step

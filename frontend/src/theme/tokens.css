@@ -138,8 +138,20 @@ a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
    `position:fixed` 이므로 아트보드 밖에 산다. 헤더(56px) 아래에서 시작해 머리띠를
    가리지 않는다. 비어 있을 때 아래를 막지 않도록 `pointer-events` 는 층에서 끄고
    알림에서만 되살린다 (010 SC-516 이 0건으로 두려는 조용한 실패). */
-.toast-layer{position:fixed;top:calc(var(--h-header) + 8px);right:16px;z-index:60;
-             width:min(420px, calc(100vw - 32px));max-height:calc(100vh - var(--h-header) - 24px);
+/* 자리는 **국면 띠 아래**다 (2026-09-11 사용자 보고).
+
+   전에는 `--h-header + 8px` 이었고, 그 자리가 국면 띠(48px)를 정면으로 덮었다. 국면
+   띠는 이 화면의 주요 조작이 사는 줄이다 — 저장·확정·계속하기·중지가 거기 있고,
+   토스트는 `pointer-events:auto` 인 자식이므로 **덮은 버튼의 클릭을 먹는다.**
+
+   실측에서 「저장」이 미확정 교체 때문에 잠기고, 그 옆의 해소 링크 「확정」이 바로 그
+   토스트에 가려 눌리지 않았다. 사용자에게는 「저장도 확정도 안 되는 화면」이 됐다.
+
+   2026-09-10 의 「자리는 뷰포트 오른쪽 위」는 그대로다 — 한 칸(48px) 내려올 뿐이고,
+   국면마다 다른 데서 뜨지 않는다는 그 결정의 요지는 지켜진다. */
+.toast-layer{position:fixed;top:calc(var(--h-header) + var(--h-phase) + 8px);right:16px;z-index:60;
+             width:min(420px, calc(100vw - 32px));
+             max-height:calc(100vh - var(--h-header) - var(--h-phase) - 24px);
              overflow-y:auto;display:flex;flex-direction:column;gap:8px;
              pointer-events:none;}
 .toast-layer > *{pointer-events:auto;}

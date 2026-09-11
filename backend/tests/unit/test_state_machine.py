@@ -192,6 +192,58 @@ def test_run_from_step_allowed_in_paused() -> None:
     assert next_state(SessionState.PAUSED, Command.RUN_FROM) is SessionState.REPLAYING
 
 
+def test_begin_ai_from_paused_enters_ai_running() -> None:
+    """016 research R4 — **AI 가 이어 만드는 자리.** 016 의 유일한 전이 추가다.
+
+    `RECORD_ACTIONS_START`(사람이 이어 녹화한다)와 대칭이다. 016 의 채팅 턴과 구간
+    재녹화가 이 전이로 들어오고, 턴이 끝나면 `PAUSE` 로 돌아온다.
+    """
+    assert next_state(SessionState.PAUSED, Command.BEGIN_AI) is SessionState.AI_RUNNING
+    # 돌아오는 길이 있어야 턴이 끝난다.
+    assert next_state(SessionState.AI_RUNNING, Command.PAUSE) is SessionState.PAUSED
+    # 막힘도 기존 경로 그대로다 — 016 은 이 길을 새로 만들지 않는다.
+    assert next_state(SessionState.AI_RUNNING, Command.AI_BLOCK) is SessionState.AI_BLOCKED
+
+
+def test_016_added_exactly_one_transition() -> None:
+    """**다른 상태의 전이표는 바뀌지 않았다** (T009).
+
+    016 은 전이 하나만 더한다. 그보다 많이 바뀌었다면 계획(research R4)이 어긋난 것이고,
+    국면표·화면·검사가 따라오지 못한 자리가 생긴다.
+
+    여기 적은 수는 016 **이후**의 값이다. 전이를 더하거나 빼면 이 검사가 먼저 실패하고,
+    작성자는 그 변경이 의도된 것인지 답해야 한다.
+    """
+    expected = {
+        SessionState.STARTING: 5,
+        SessionState.RECORDING: 4,
+        SessionState.REPLAYING: 6,
+        SessionState.AI_RUNNING: 6,
+        SessionState.AI_BLOCKED: 9,
+        SessionState.TAKEOVER_RECORDING: 6,
+        SessionState.PAUSED: 8,  # 016 에서 7 → 8 (BEGIN_AI)
+        SessionState.REVIEW: 3,
+        SessionState.LOST: 1,
+        SessionState.COMPLETED: 0,
+        SessionState.FAILED: 0,
+        SessionState.STOPPED: 0,
+    }
+    actual = {state: len(allowed_commands(state)) for state in SessionState}
+    assert actual == expected
+
+
+def test_pausing_itself_does_not_use_an_llm() -> None:
+    """016 이 원칙 II 판정을 흔들지 않았다.
+
+    `PAUSED → AI_RUNNING` 이 생겼으므로 「일시정지에서 언어모델로 갈 수 있다」가 참이
+    됐다. 그것은 의도된 것이고(작성 경로다), 흔들리면 안 되는 것은 **재실행 상태**와
+    **일시정지 상태 자체**다 — 멈춰 있는 동안에는 아무 호출도 일어나지 않는다.
+    """
+    assert uses_llm(SessionState.REPLAYING) is False
+    assert uses_llm(SessionState.PAUSED) is False
+    assert uses_llm(SessionState.AI_RUNNING) is True
+
+
 def test_resume_after_takeover_returns_to_ai() -> None:
     """FR-076 — 사람이 이어받은 뒤 계속하기를 누르면 AI 가 남은 지시를 맡는다."""
     assert next_state(SessionState.TAKEOVER_RECORDING, Command.RESUME) is SessionState.AI_RUNNING
@@ -351,10 +403,62 @@ def test_replay_path_cannot_reach_ai_states() -> None:
     assert not (reachable & {SessionState.AI_RUNNING, SessionState.AI_BLOCKED})
 
 
-def test_paused_from_replay_cannot_reach_ai_states() -> None:
-    """일시정지를 경유해도 AI 상태로 넘어갈 수 없다."""
+def test_paused_reaches_ai_only_by_an_explicit_user_command() -> None:
+    """일시정지에서 AI 상태로 가는 길은 **사용자 명령 하나뿐**이다 (016, 2026-09-11).
+
+    ## 이 단언은 016 에서 좁혀졌다
+
+    이전 문장은 「일시정지를 경유해도 AI 상태로 넘어갈 수 없다」였다. 016 이 채팅 턴을
+    위해 `PAUSED + BEGIN_AI → AI_RUNNING` 을 더하면서 그 문장이 깨졌다. 약화가 아니라
+    **교체**이며, 근거는 셋이다.
+
+    **1. 헌법이 이미 이 동작을 요구한다.** 원칙 III: "Steps executed while paused —
+    recorded by direct user operation, **or added via natural language** — MUST be
+    captured into the same Step Model." 헌법이 한편에서 요구하는 것을 다른 편에서
+    금지할 수는 없다. 원칙 II 의 "replay path" 는 저장된 Step 의 **자동 실행**이고,
+    사용자가 손으로 멈추는 순간 그 경로를 벗어나 작성으로 들어간다.
+
+    **2. 제품은 이미 이 선을 넘고 있었다.** `ai_step`(US6, FR-078)이 재실행을 일시정지한
+    세션에서 언어모델을 부른다. 옛 단언이 그것을 못 잡은 이유는 하나뿐이다 — 그 경로가
+    상태 전이를 하지 않아서. 즉 옛 단언은 「LLM 호출」이 아니라 **「상태 이름」**을 지키고
+    있었고, 이름을 우회하면 그대로 통과했다.
+
+    **3. 더 강한 단언으로 갈아 끼웠다.** `tests/test_principle_ii_timeline.py` 가
+    **러너가 도는 동안 드라이버 호출이 0회**임을 본다. 상태 이름이 아니라 실제 호출을
+    보므로 `ai_step` 같은 우회가 통하지 않는다.
+
+    ## 그래서 여기서 지키는 것
+
+    **자동으로는 못 간다.** AI 상태로 가는 유일한 길이 `BEGIN_AI` 라는 명시적 사용자
+    명령이어야 한다. 이어서 실행(`RESUME`)·이 Step 부터(`RUN_FROM`)·편집(`EDIT_STEPS`)
+    어느 것도 AI 로 흘러들어서는 안 된다 — 그것이 원칙 II 가 실제로 막으려는 것이다.
+    """
+    to_ai = {
+        c
+        for c in allowed_commands(SessionState.PAUSED)
+        if next_state(SessionState.PAUSED, c)
+        in {SessionState.AI_RUNNING, SessionState.AI_BLOCKED}
+    }
+    assert to_ai == {Command.BEGIN_AI}, (
+        f"일시정지에서 AI 로 가는 길이 늘었다: {sorted(c.value for c in to_ai)}. "
+        "사용자가 명시적으로 AI 를 부르는 명령 하나여야 한다 (원칙 II)."
+    )
+
+    # 실행 계열은 여전히 실행으로만 간다. 이것이 「자동으로는 못 간다」의 실체다.
+    assert next_state(SessionState.PAUSED, Command.RESUME) is SessionState.REPLAYING
+    assert next_state(SessionState.PAUSED, Command.RUN_FROM) is SessionState.REPLAYING
+    assert next_state(SessionState.PAUSED, Command.EDIT_STEPS) is SessionState.PAUSED
+
+
+def test_replay_still_cannot_pause_itself_into_ai() -> None:
+    """**한 걸음으로는 여전히 못 간다.** `REPLAYING` 에서 AI 로 직행하는 길은 없다.
+
+    위 단언이 좁혀졌으므로 그 앞단을 여기서 따로 고정한다 — 재실행 중인 세션이 스스로
+    AI 상태로 넘어가는 일은 어떤 명령으로도 일어나지 않는다.
+    """
     reachable = {
-        next_state(SessionState.PAUSED, c) for c in allowed_commands(SessionState.PAUSED)
+        next_state(SessionState.REPLAYING, c)
+        for c in allowed_commands(SessionState.REPLAYING)
     }
     assert not (reachable & {SessionState.AI_RUNNING, SessionState.AI_BLOCKED})
 

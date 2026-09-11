@@ -88,14 +88,25 @@ export const STEP_ACTIONS = [
    * 뒤의 둘은 팔레트에 산다. 하나로 뭉개면 「한 조작에 한 자리」를 셀 수 없다 (FR-235).
    */
   /**
-   * 이 행을 삭제 대상에 넣고 뺀다 — **지목과 다른 조작이다** (FR-380a).
+   * 이 행을 고른 것에 넣고 뺀다 — **지목과 다른 조작이다** (FR-380a).
    *
    * 행 본문을 누르는 것은 `step.select`(상세 열기)이고, 이것은 칸 0 의 체크 칸이다.
-   * 같은 누름에 두 뜻을 주면 사용자는 상세를 보려다 삭제 대상을 만든다.
+   * 같은 누름에 두 뜻을 주면 사용자는 상세를 보려다 대상을 만든다.
+   *
+   * **016 에서 `step.toggleDeleteTarget` 에서 개칭했다.** 같은 체크를 016 의 구간
+   * 재녹화가 **대상 구간 지정**에도 쓴다 (FR-015). 이름이 삭제 전용이면 거짓이 되고,
+   * 체크 칸을 둘로 만들면 사용자가 어느 쪽에 체크할지 판단해야 한다.
+   *
+   * 개칭에는 전례가 있다 — 009 가 `step.reorder → step.moveUp` 으로 했고 근거가
+   * 같았다: 이름이 실제 뜻을 따라가야 한다. **조작 수는 늘지 않는다.**
    */
-  "step.toggleDeleteTarget",
-  /** 목록 전체를 삭제 대상으로 고르고 한 번에 푼다 (FR-380c). 자리는 Step 패널 머리 */
-  "step.selectAllDeleteTargets",
+  "step.toggleSelection",
+  /**
+   * 목록 전체를 고르고 한 번에 푼다 (FR-380c). 자리는 Step 패널 머리.
+   *
+   * 016 에서 `step.selectAllDeleteTargets` 에서 개칭했다 (위와 같은 이유).
+   */
+  "step.selectAll",
   /** 고른 것 전부 지우기 (FR-382). 부분 적용을 남기지 않는다 (FR-388) */
   "step.deleteSelected",
   /**
@@ -128,8 +139,42 @@ export const TEST_ACTIONS = [
   "edits.revert",
 ] as const;
 
-/** AI (3) */
-export const AI_ACTIONS = ["ai.compose", "ai.start", "ai.chooseBlocked"] as const;
+/** AI (7) — 016 에서 3 → 7 (contracts/ui-contract.md §1-1) */
+export const AI_ACTIONS = [
+  "ai.compose",
+  "ai.start",
+  "ai.chooseBlocked",
+  /**
+   * 「AI 로 다시 만들기」 — 고른 구간으로 재녹화 세션을 시작한다 (016 FR-015·FR-018).
+   *
+   * **누르면 브라우저가 열린다.** 그 사실을 이름 옆에서 **미리** 말해야 한다 —
+   * 009 가 `browser.openAt` 에서 세운 규칙이고, 016 의 R6("채팅은 세션 안에서만
+   * 산다")이 결정되면서 이 표시가 필수가 됐다. 사용자가 요약 하나 물으려다 브라우저가
+   * 뜨는 것을 예상할 수 있어야 한다.
+   *
+   * 구간 지정은 `step.toggleSelection` 을 재사용한다 — 새 조작을 만들지 않는다.
+   */
+  "ai.rerecord",
+  /**
+   * AI 에게 말하기 — 대화 한 차례를 보낸다 (016 FR-007·FR-009).
+   *
+   * **세션 안에서만 산다** (R6). 편집 국면에서는 보이되 잠기고 `ai.rerecord` 를
+   * 가리킨다 — 감추지 않는 이유는 FR-234(감춰진 조작을 만들지 않는다)다.
+   *
+   * **막힘 답변과 다른 조작이다.** 막혔을 때는 기존 `ai.chooseBlocked` 가 답을 받는다.
+   * 답변 입구를 둘로 만들면 사용자는 어느 쪽에 써야 하는지 모른다 (ui-contract §2).
+   */
+  "ai.chat",
+  /** 확정 — 옛 구간을 지우고 교체를 끝낸다 (016 FR-025·FR-026). 자리는 재녹화 띠 */
+  "ai.rerecordCommit",
+  /**
+   * 버리기 — 새로 만든 것을 지우고 도착점으로 되맞춘다 (016 FR-027·FR-031).
+   *
+   * **세션을 끝내지 않는다** (FR-031a). 끝내는 조작은 기존 `run.stop` 이고, 둘이 같은
+   * 일을 하면 사용자는 누를 때마다 차이를 확인하느라 멈춘다.
+   */
+  "ai.rerecordDiscard",
+] as const;
 
 /**
  * 미러 조작 (2) — 010 FR-316 · contracts/mirror-control.md §1.

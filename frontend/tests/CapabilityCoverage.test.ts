@@ -46,13 +46,37 @@ describe("조작 목록 (T008)", () => {
    * 009 가 `step.insertManual`·`step.moveDown` 을 더해 36개가 됐다 (FR-305 · 계약 §1).
    * 010 이 `mirror.control`·`mirror.useWindow` 를 더해 38개가 됐다 (FR-316 · 계약 §1).
    * 011 이 복수 삭제 넷을 더해 42개가 됐다 (FR-380~FR-385 · 011 계약 §1).
+   * 016 이 AI 조작 넷을 더해 46개가 됐다 (016 계약 §1-1).
    *
    * **미러 조작을 표에 넣는 것이 010 의 설계 결정이다** (research R9). 표 밖에 두면
    * 「각 국면 열이 그 국면 화면의 전부」라는 이 표의 성질이 깨진다. 011 의 복수 삭제도
    * 같은 이유로 표 안에 있다 — 대상 개수(0개인가)만 화면이 좁힌다.
+   *
+   * **016 은 조작을 넷 더하고 둘을 개칭했다.** 개칭(`step.toggleDeleteTarget →
+   * step.toggleSelection`·`step.selectAllDeleteTargets → step.selectAll`)은 수를
+   * 바꾸지 않는다 — 같은 체크를 구간 재녹화가 **대상 구간 지정**에도 쓰게 되면서
+   * 이름이 뜻을 따라간 것이다 (009 의 `step.reorder → step.moveUp` 과 같은 종류).
    */
-  it("42개다 — 011 계약 §1 의 합계와 같아야 한다", () => {
-    expect(ACTION_IDS).toHaveLength(42);
+  it("46개다 — 016 계약 §1-1 의 합계와 같아야 한다", () => {
+    expect(ACTION_IDS).toHaveLength(46);
+  });
+
+  it("016 이 더한 넷이 목록에 있다", () => {
+    for (const id of [
+      "ai.rerecord",
+      "ai.chat",
+      "ai.rerecordCommit",
+      "ai.rerecordDiscard",
+    ] as const) {
+      expect(ACTION_IDS, `016 조작이 빠졌다: ${id}`).toContain(id);
+    }
+  });
+
+  it("016 이 개칭한 옛 이름은 남아 있지 않다", () => {
+    /* 옛 이름이 남으면 같은 뜻의 조작이 둘이 되고, 화면이 어느 쪽을 묻는지 갈린다. */
+    for (const gone of ["step.toggleDeleteTarget", "step.selectAllDeleteTargets"]) {
+      expect(ACTION_IDS as readonly string[]).not.toContain(gone);
+    }
   });
 
   it("중복이 없다", () => {
@@ -61,13 +85,13 @@ describe("조작 목록 (T008)", () => {
 });
 
 describe("권한표 커버리지 (T012)", () => {
-  it("열 국면 × 42 조작 전부에 답이 있다", () => {
+  it("열 국면 × 46 조작 전부에 답이 있다", () => {
     for (const phase of PHASES) {
       const map = capabilitiesFor(phase);
       for (const action of ACTION_IDS) {
         expect(map[action], `${phase} × ${action} 이 비어 있다`).toBeDefined();
       }
-      expect(Object.keys(map)).toHaveLength(42);
+      expect(Object.keys(map)).toHaveLength(46);
     }
   });
 

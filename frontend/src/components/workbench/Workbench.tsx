@@ -31,7 +31,7 @@ import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard, BrandMark, Breadcrumb, HeaderBar, HeaderDivider } from "../design/Chrome";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
-import { flexClassOf, splitFor } from "../../lib/layout";
+import { CHAT_SLOT_CLASS, flexClassOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
 import { PhaseBar, type PhaseGroupPick, type PhaseNameEdit } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
@@ -76,8 +76,27 @@ export interface WorkbenchProps {
   headerActions?: ReactNode;
   /** Step 행 안의 편집 조작 */
   rowActions?: WorkbenchStepActions;
-  /** Step 패널 헤더 오른쪽에 얹는 것 */
+  /** Step 패널 헤더 오른쪽에 얹는 것 — **짧은 표식**의 자리다 */
   stepHeaderExtra?: ReactNode;
+  /**
+   * Step 패널 머리 아래 **한 줄 전체**의 띠 (2026-09-11 사용자 보고).
+   *
+   * 016 의 재녹화 띠가 산다. 처음에는 `stepHeaderExtra` 에 걸었고 머리 한 줄에서 60px
+   * 남짓을 받아 확정·버리기 버튼이 보이지 않았다 (`StepList` 의 `band` 주석). 문장과
+   * 조작을 가진 것은 자기 줄이 필요하다.
+   */
+  stepBand?: ReactNode;
+  /**
+   * 좌측 열 **아래**에 얹는 것 (016).
+   *
+   * 016 의 대화 패널이 여기 산다. 배치 계약(007 FR-218·008)을 건드리지 않기 위해
+   * 새 영역을 만드는 대신 확장 자리를 하나 더 뒀다 — 영역의 **순서와 개수**가 국면에
+   * 따라 바뀌지 않는다는 성질(FR-218c)이 그대로여야 한다.
+   *
+   * `noticesExtra`·`stepHeaderExtra` 와 같은 종류의 자리이며, 없으면 **아무 자리도
+   * 차지하지 않는다.**
+   */
+  leftExtra?: ReactNode;
   /** Step 이 0개일 때의 안내. 국면마다 다르다 */
   stepEmptyNotice?: ReactNode;
   /**
@@ -87,6 +106,8 @@ export interface WorkbenchProps {
    * 자리만 준다. 주지 않으면 체크 칸을 그리지 않는다 (UC-011-14).
    */
   deleteTargets?: Parameters<typeof StepList>[0]["deleteTargets"];
+  /** 016 — 교체 대상인 Step id 들 (FR-024). `StepList` 로 그대로 내려간다 */
+  rerecordTargets?: Parameters<typeof StepList>[0]["rerecordTargets"];
   /** Step 패널 바닥의 조작 블록. **일곱 국면에서 같은 자리다** (FR-235) */
   stepFooter?: ReactNode;
   /**
@@ -139,8 +160,11 @@ export function Workbench({
   headerActions,
   rowActions,
   stepHeaderExtra,
+  stepBand,
+  leftExtra,
   stepEmptyNotice,
   deleteTargets,
+  rerecordTargets,
   stepFooter,
   stepDetailExtra,
   stepDetailOwnFields = true,
@@ -338,6 +362,39 @@ export function Workbench({
               busy={busy}
             />
           )}
+          {/*
+            016 — 대화 패널. 없으면 자리를 차지하지 않는다 (`WorkArea` 와 같은 규칙).
+            대상 앱과 작업 영역 **아래**인 이유: 대화는 화면을 보면서 하는 일이고,
+            화면을 밀어내면 그 전제가 깨진다.
+
+            ## 배분을 내려 준다 (2026-09-11 사용자 보고)
+
+            > 「ai 대화가 미리보기 화면을 덮쳐서 아무것도 보이지 않는다」
+
+            016 은 이 자리를 **선언 없이** 걸었다. 선언이 없는 flex 자식은 최소 높이가
+            「내용 전체」이고, 위의 대상 앱 슬롯은 `flex-1`(basis 0)이라 더 줄일 것이
+            없다 — 그래서 대화가 길어질수록 미러가 0 에 가까워졌다. 화면을 밀어내지
+            않는다는 위 전제가 **선언으로 뒷받침되지 않은 상태**였다.
+
+            그래서 다른 두 자리와 같은 규율을 받는다: 크기는 이 컴포넌트가 아니라
+            `lib/layout.ts` 가 정하고(`CHAT_SLOT_CLASS`), 여기서는 자리만 준다. 껍데기
+            `div` 를 한 겹 두는 이유는 `leftExtra` 가 `ReactNode` 라 props 로 크기를
+            내려줄 수 없기 때문이다 — `WorkArea` 처럼 `sizeClass` 를 받게 하면 이 확장
+            자리에 오는 것이 무엇이든 대화 패널의 사정을 알아야 한다.
+
+            여백과 경계는 **③-b 와 같은 것을 쓴다** (`WorkArea` 의 그 줄). 016 은 이
+            자리를 맨몸으로 걸어서 대화 문장이 창 왼쪽 끝에 붙어 있었다 — 위의 두 자리와
+            달리 「자리」로 읽히지 않고, 미러 아래로 흘러나온 것처럼 보인다. 새 값을
+            만들지 않는다: 셋째 자리도 좌측 열의 자리이므로 같은 문법을 받는다.
+          */}
+          {leftExtra != null && leftExtra !== false && (
+            <div
+              data-workbench-left-extra
+              className={`border-t border-hair-2 bg-sunken-2 ${CHAT_SLOT_CLASS} py-s3 px-s4`}
+            >
+              {leftExtra}
+            </div>
+          )}
         </div>
 
         {/* 우 — Step 목록 460px 고정 */}
@@ -348,8 +405,10 @@ export function Workbench({
           onSelect={onSelectStep}
           rowActions={rowActions}
           headerExtra={stepHeaderExtra}
+          band={stepBand}
           emptyNotice={stepEmptyNotice}
           deleteTargets={deleteTargets}
+          rerecordTargets={rerecordTargets}
           footer={stepFooter}
         />
 

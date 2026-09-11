@@ -716,6 +716,70 @@ export interface SessionView {
 
   /** 마지막 저장 시각 (005 FR-154). `null` 이면 미저장 — U-09 가 이것이었다. */
   saved_at?: string | null;
+
+  /**
+   * 진행 중인 구간 교체 (016). 없으면 일반 세션이다.
+   *
+   * 화면은 `authoring_mode === "ai"` 와 이 값의 유무로 재녹화 세션을 안다 — 서버가
+   * `mode` 를 뷰에 싣지 않는 이유는 그것이 **만들 때의 요청**이지 지금 상태가 아니기
+   * 때문이다.
+   */
+  rerecord?: RerecordView | null;
+
+  /**
+   * AI 가 막혀 있으면 그 내용 (2026-09-11 사용자 보고).
+   *
+   * **이벤트만으로는 복원되지 않았다.** 사유·질문·선택지는 `ai_blocked` 이벤트로만
+   * 왔고, 이벤트는 그 순간 붙어 있던 화면에게만 간다. 목록으로 나갔다 돌아오면 화면은
+   * 상태가 `ai_blocked` 인 것만 알고 무엇이 막았는지·무엇을 고를 수 있는지를 몰라
+   * 「고를 선택지가 없습니다」를 그렸다 — 세션이 막다른 길이 됐다.
+   */
+  blocked?: BlockedView | null;
+}
+
+/** AI 가 막힌 자리 (FR-069·FR-070). `SessionView.blocked` 의 모양이다. */
+export interface BlockedView {
+  /** 막힌 시점에 시도하던 동작. */
+  attempted?: string | null;
+  /** 왜 못 했는가. */
+  reason: string;
+  /** 사람에게 물을 한 문장. 없으면 사람이 먼저 말한다. */
+  question?: string | null;
+  /** 고를 수 있는 것. **서버가 준다** — 화면이 복제하면 선택지가 늘 때 갈린다. */
+  choices: string[];
+}
+
+/**
+ * 진행 중인 구간 교체 (016 · contracts/api-contract.md §3).
+ *
+ * **`Step` 에는 아무 표시도 없다** (불변식 7). 화면이 `range_step_ids` 와 목록을
+ * 대조해 「교체 대상」을 계산한다. Step 에 그 필드를 두면 작성 주체 외의 의미가 저장
+ * 형식에 생겨 원칙 I 이 흔들리고, 확정되지 않은 상태가 디스크에 내려갈 문이 열린다.
+ */
+export interface RerecordView {
+  /** 교체 대상 (옛 Step). 확정 전까지 목록에 남아 있다 (FR-024). */
+  range_step_ids: string[];
+  /** 이번 세션이 만든 Step. AI 편집 도구의 권한 범위이기도 하다 (FR-037). */
+  created_step_ids: string[];
+  /**
+   * 확정할 수 있는가 (불변식 10).
+   *
+   * **서버가 판정한 값을 그대로 쓴다.** 화면이 「만든 Step 이 1개 이상인가」를 스스로
+   * 세면 서버와 갈리고, 갈리면 활성으로 그린 버튼이 눌린 뒤 거절된다 (005 U-01).
+   */
+  can_commit: boolean;
+}
+
+/** 대화 한 차례 (016 FR-009 · api-contract §2-4). */
+export interface ChatTurn {
+  role: "user" | "assistant";
+  text: string;
+  at: string;
+}
+
+/** 대화 이력 조회 응답 (016). */
+export interface ChatHistory {
+  turns: ChatTurn[];
 }
 
 /** 화면 복원에 필요한 최소 Step 결과 (005 FR-171). */
@@ -808,7 +872,15 @@ export const sessions = {
   /** 살아 있는 세션 전부. 새로고침으로 놓친 세션을 되찾는 길이다 (UX U-05). */
   list: () => get<SessionListResponse>("/api/sessions"),
   create: (body: {
-    mode: "record" | "replay" | "ai";
+    /** `rerecord` 는 016 의 구간 재녹화 (contracts/api-contract.md §1). */
+    mode: "record" | "replay" | "ai" | "rerecord";
+    /**
+     * 다시 만들 구간의 Step id (016 FR-015). `rerecord` 모드에서만 쓴다.
+     *
+     * **순번이 아니라 id 다** — 재녹화 도중 새 Step 이 구간 시작 위치에 삽입되므로
+     * 옛 구간의 순번은 계속 밀린다. 받은 순서는 상관없다.
+     */
+    rerecord_step_ids?: string[];
     test_id?: string | null;
     start_url?: string | null;
     ai_instruction?: string | null;
@@ -982,6 +1054,39 @@ export const sessions = {
    */
   aiStep: (id: string, instruction: string) =>
     post<AiStepResponse>(`/api/sessions/${id}/ai-step`, { instruction }),
+
+  /* ─── 016 구간 재녹화 (contracts/api-contract.md §2) ─── */
+
+  /**
+   * AI 에게 말을 건다 (FR-007). 상태가 `paused` 일 때만 받는다.
+   *
+   * **요청은 즉시 돌아온다.** 진행과 결과는 `ai_progress`·`chat_turn`·`step_added`
+   * 이벤트로 온다 — 턴이 길어질 수 있으므로 응답을 기다리면 화면이 멈춘다.
+   *
+   * 막혔을 때는 이 길이 아니라 기존 답변 경로(`chooseBlocked`)를 쓴다. 답변 입구를
+   * 둘로 만들지 않는다.
+   */
+  chat: (id: string, text: string) =>
+    post<SessionView>(`/api/sessions/${id}/chat`, { text }),
+
+  /**
+   * 대화 이력을 되찾는다 (FR-009). 새로 고침·재접속 뒤에 쓴다.
+   *
+   * 서버는 이력을 **디스크에 쓰지 않는다** (FR-014) — 세션이 끝나면 사라진다.
+   */
+  chatHistory: (id: string) => get<ChatHistory>(`/api/sessions/${id}/chat`),
+
+  /** 확정 — 옛 구간을 지운다 (FR-025·FR-026). */
+  rerecordCommit: (id: string) =>
+    post<SessionView>(`/api/sessions/${id}/rerecord/commit`, {}),
+
+  /**
+   * 버리기 — 새로 만든 것을 지우고 도착점으로 되맞춘다 (FR-027·FR-031).
+   *
+   * **세션을 끝내지 않는다** (FR-031a). 끝내려면 `stop` 을 쓴다.
+   */
+  rerecordDiscard: (id: string) =>
+    post<SessionView>(`/api/sessions/${id}/rerecord/discard`, {}),
   repick: (id: string, stepId: string, body: { slot?: RepickSlot; selector?: string }) =>
     post<RepickResponse>(`/api/sessions/${id}/steps/${stepId}/repick`, {
       slot: body.slot ?? "target",

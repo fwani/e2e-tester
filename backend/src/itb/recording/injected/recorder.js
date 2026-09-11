@@ -116,6 +116,57 @@
     return null;
   };
 
+  /**
+   * 이 요소가 **어느 묶음 안에 있는가** (2026-09-11 사용자 보고).
+   *
+   * > 「검색 input 이 한화면에 두개가 있을때, 명확한 위치를 선택하지 못하고 다른 input 에
+   * > 입력을 하는 문제가 있다」
+   *
+   * 접근 이름이 같은 검색 칸 둘은 `tag`·`role`·`name`·`type` 이 **한 칸도 다르지 않다.**
+   * 그때 사람이 쓰는 구별은 「사용자 목록 쪽 검색」처럼 **그것이 속한 묶음**이고, 그
+   * 사실이 관찰 결과에 없으면 에이전트는 목록 순서상 앞의 것을 고를 수밖에 없다.
+   *
+   * **가장 가까운 묶음 하나만 본다.** 조상을 계속 올라가면 결국 문서 전체가 나오고, 그
+   * 이름은 두 칸에 똑같이 붙어 구별에 쓸모가 없다.
+   *
+   * 이름의 출처는 세 가지이며 순서가 있다 — `aria-label`(작성자가 밝힌 이름) →
+   * `legend`/`caption`(표·묶음의 제목) → 묶음 안 첫 제목. 묶음 **전체 텍스트**는 쓰지
+   * 않는다: 검색 결과 수십 줄이 그 자리에 들어오면 관찰 결과가 컨텍스트를 다 먹는다.
+   */
+  const CONTAINER =
+    "section,form,fieldset,dialog,nav,aside,article,table,main,header,footer," +
+    "[role=region],[role=search],[role=form],[role=dialog],[role=group],[role=table]," +
+    "[aria-label]";
+  const CONTAINER_MAX_HOPS = 8;
+
+  const containerLabel = (el) => {
+    let node = el.parentElement;
+    for (let hops = 0; node && node.nodeType === 1 && hops < CONTAINER_MAX_HOPS; hops += 1) {
+      let isContainer = false;
+      try {
+        isContainer = node.matches(CONTAINER);
+      } catch {
+        isContainer = false;
+      }
+      if (isContainer) {
+        const aria = clean(node.getAttribute("aria-label"));
+        if (aria) return aria;
+        const titled = node.querySelector("legend,caption");
+        if (titled) {
+          const t = clean(titled.textContent);
+          if (t) return t;
+        }
+        const heading = node.querySelector("h1,h2,h3,h4,h5,h6,[role=heading]");
+        if (heading) {
+          const t = clean(heading.textContent);
+          if (t) return t;
+        }
+      }
+      node = node.parentElement;
+    }
+    return null;
+  };
+
   const cssEscape = (value) =>
     typeof CSS !== "undefined" && CSS.escape ? CSS.escape(value) : value.replace(/"/g, '\\"');
 
@@ -155,8 +206,28 @@
       const id = node.getAttribute("id");
       // 난수처럼 보이는 id 는 안정적이지 않으므로 쓰지 않는다.
       if (id && !/\d{4,}|[0-9a-f]{8,}/i.test(id)) {
-        parts.unshift(`${name}#${cssEscape(id)}`);
-        break; // id 는 문서에서 유일해야 하므로 더 올라갈 이유가 없다
+        const byId = `${name}#${cssEscape(id)}`;
+        /*
+          **id 가 실제로 유일할 때만 멈춘다** (2026-09-11 사용자 보고).
+
+          이전 판은 「id 는 문서에서 유일해야 하므로 더 올라갈 이유가 없다」로 멈췄다.
+          그것은 규격이 지켜진다는 **가정**이고, 실측한 대상 화면은 지키지 않았다 —
+          상단 전역 검색 칸과 목록의 이름 검색 칸이 `id="text-input-example-11"` 를
+          함께 쓰고 있었다.
+
+          그 가정이 깨지면 **두 요소가 같은 css 를 받는다.** 그 뒤의 모든 것이 조용히
+          어긋난다: `observe_page` 가 둘에 같은 경로를 주고, 도구가 그 경로로 요소를
+          다시 찾을 때 `querySelector` 가 **문서 순서상 첫 번째**를 준다. 에이전트가
+          목록의 검색 칸을 정확히 지목해도 입력은 헤더 칸에 들어갔고, 화면은 아무 일도
+          일어나지 않은 것처럼 보였다.
+
+          유일하지 않으면 id 를 **쓰지 않고** 평소 경로(위치)로 가른다. 짧은 경로를
+          잃지만, 짧고 틀린 경로보다 길고 맞는 경로가 낫다.
+        */
+        if (matchesOnly(byId, node)) {
+          parts.unshift(byId);
+          break;
+        }
       }
       let part = name;
       const parent = node.parentElement;
@@ -378,6 +449,31 @@
         visible: rect.width > 0 && rect.height > 0,
         disabled: el.disabled === true,
         type: el.getAttribute("type"),
+        /*
+          **이름이 같은 요소를 구별하는 사실들** (2026-09-11 사용자 보고 · `containerLabel`
+          주석). 넷 다 이미 문서에 있던 것이고 새로 만든 표식이 아니다 — 사용자가 지시문에
+          `id="text-input-example-11"` 처럼 적어 주는 것이 바로 이 값들이다.
+
+          `name` 과 같은 값이어도 그대로 싣는다. 「이 칸의 이름이 placeholder 에서 왔다」는
+          사실 자체가 구별에 쓰인다 — 한쪽은 label 이 있고 다른 쪽은 placeholder 뿐인 경우가
+          실제로 갈리는 지점이다.
+        */
+        id: clean(el.getAttribute("id")),
+        placeholder: clean(el.getAttribute("placeholder")),
+        label: described.label,
+        context: containerLabel(el),
+        /*
+          **이 경로가 이 요소 하나만 가리키는가** (2026-09-11 사용자 보고).
+
+          참조를 받은 도구는 이 `css` 로 요소를 **다시 찾는다.** 경로가 둘 이상을
+          가리키면 문서 순서상 첫 번째가 잡히고, 에이전트가 무엇을 골랐든 조작은 다른
+          요소에 간다 — 실측에서 헤더 검색 칸에 입력이 들어간 경로가 그것이다.
+
+          `cssPath` 가 중복 id 를 가르게 된 뒤로는 대개 참이다. 거짓으로 남는 것은
+          shadow DOM 처럼 `querySelectorAll` 로 닿지 않는 자리뿐이고, 그때는 **조작을
+          거절하는 편이 낫다** — 004 가 `.first` 폴백을 지운 것과 같은 판단이다.
+        */
+        unique: described.verified.css === "verified",
       });
     }
     return {

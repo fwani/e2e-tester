@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>같은 이름의 검색 칸이 둘</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 2026-09-11 사용자 보고: 「검색 input 이 한화면에 두개가 있을때, 명확한 위치를
+       선택하지 못하고 다른 input 에 입력을 하는 문제가 있다」
+
+       그 화면을 그대로 만든다. 두 검색 칸은 **접근 가능한 이름이 같다** — label 도
+       aria-label 도 없고 같은 placeholder 를 쓰므로, 관찰 결과에서 tag·role·name·type
+       이 한 칸도 다르지 않다. 검색 버튼 둘도 같은 사정이다.
+
+       구별되는 것은 셋뿐이다: `id`, 속한 묶음의 이름(`aria-label`/제목), 그리고 목록
+       순서. 앞의 둘이 관찰 결과에 실리는지가 판정 대상이다. -->
+  <main>
+    <h1>운영 관리</h1>
+
+    <section aria-label="사용자 목록" class="card">
+      <h2>사용자 목록</h2>
+      <input id="user-search" type="text" placeholder="이름 또는 아이디를 검색하세요.">
+      <button id="user-search-go">검색</button>
+      <p id="user-result">사용자 검색 결과 없음</p>
+    </section>
+
+    <section aria-label="조직 목록" class="card">
+      <h2>조직 목록</h2>
+      <input id="org-search" type="text" placeholder="이름 또는 아이디를 검색하세요.">
+      <button id="org-search-go">검색</button>
+      <p id="org-result">조직 검색 결과 없음</p>
+    </section>
+  </main>
+
+  <script>
+    // 어느 칸에 썼는지가 화면에 남아야 한다 — 틀린 칸에 입력한 것을 눈으로 볼 수 있어야
+    // 하고, 검증도 그 문장을 읽는다.
+    const wire = (input, button, result, label) => {
+      document.getElementById(button).addEventListener("click", () => {
+        const value = document.getElementById(input).value.trim();
+        document.getElementById(result).textContent =
+          value === "" ? `${label} 검색어 없음` : `${label} 검색 결과: ${value}`;
+      });
+    };
+    wire("user-search", "user-search-go", "user-result", "사용자");
+    wire("org-search", "org-search-go", "org-result", "조직");
+  </script>
+</body>
+</html>

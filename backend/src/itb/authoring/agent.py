@@ -50,6 +50,14 @@ SYSTEM_PROMPT = """\
 - 화면을 조작하기 전에 반드시 observe_page 로 지금 화면을 확인하세요.
 - 다른 도구에는 observe_page 가 준 element_ref 만 넘기세요. CSS 셀렉터를 직접 만들지 마세요.
 - 화면이 바뀌었을 수 있으면 observe_page 를 다시 부르세요. 참조는 화면이 바뀌면 낡습니다.
+- 요소에 `duplicate_with` 가 붙어 있으면 **이름만으로는 구별되지 않는 요소가 여럿**입니다.
+  `id`·`placeholder`·`label`·`context` 를 보고 지시문이 가리키는 쪽을 고르세요
+  (`context` 는 그 요소가 속한 묶음의 이름입니다 — 예: 「사용자 목록」).
+  지시문이 어느 쪽인지 말하지 않으면 **고르지 말고** report_blocked 의 question 으로
+  물으세요. 절반의 확률로 다른 칸에 입력하는 것보다 한 번 묻는 것이 낫습니다.
+- 요소에 `unique: false` 가 붙어 있으면 그 요소를 가리키는 경로가 화면에서 **유일하지
+  않습니다.** 조작하면 거절됩니다 — 어느 것을 조작할지 제품이 정할 수 없기 때문입니다.
+  같은 일을 할 수 있는 다른 요소를 찾고, 없으면 report_blocked 로 물으세요.
 - 한 지시를 여러 동작으로 나누어 차례로 수행하세요. 성공한 동작만 테스트로 남습니다.
 - 지시를 완료했으면 무엇을 했는지 짧게 정리하고 끝내세요.
 - 지시를 수행할 수 없으면 report_blocked 로 **무엇이 막았는지 구체적으로** 알리세요.
@@ -59,6 +67,15 @@ SYSTEM_PROMPT = """\
   적으세요. 사람이 답을 주면 그 자리에서 이어서 수행하게 됩니다.
 - 사람이 답을 주면 그 답만으로 이어 가세요. 이미 만들어진 Step 을 다시 만들지 마세요.
 - 로그인 화면을 만나면 지시문에 있는 자격 증명만 쓰세요. 값을 만들어 내지 마세요.
+
+지금 만들고 있는 테스트의 Step 목록이 사용자 메시지 앞에 `[지금 테스트]` 로 주어집니다
+(016 FR-001). 그 목록에 대해:
+
+- 목록을 근거로 답하세요. 목록에 없는 Step 을 지목하지 마세요.
+- update_step·delete_step·move_step·repick_target 은 **이번에 당신이 만든 Step 에만**
+  쓸 수 있습니다. 다른 Step 을 고치려 하면 거절됩니다 — 사람에게 말하세요.
+- 고치기는 방금 만든 것을 다듬을 때만 쓰세요. 만들고 지우기를 반복하지 마세요.
+- `◀ 교체 구간` 으로 표시된 Step 은 사용자가 확정할 때 사라집니다. 당신이 지우지 마세요.
 """
 
 
@@ -188,6 +205,45 @@ class AuthoringAgent:
     compiler: StepCompiler | None = None
     """확정된 Step 을 센 주체. `ai_finished` 의 `step_count` 근거다 (FR-063)."""
 
+    summary_source: Callable[[], str] | None = None
+    """지금 정의의 요약을 만들어 주는 것 (016 FR-001·FR-003).
+
+    **값이 아니라 함수다.** 목록은 턴 사이에 바뀐다 — 에이전트가 Step 을 만들고, 사람이
+    고치고, 확정·버리기가 구간을 옮긴다. 값으로 들고 있으면 5분 전 목록을 근거로 답한다.
+
+    호출자(`itb.api.routes.sessions`)가 세션의 작업 중 목록을 읽어 넘긴다. 여기서
+    직접 읽지 않는 이유는 에이전트가 목록을 소유하지 않기 때문이다 — 소유하면 실패
+    경로에서 Step 이 사라질 수 있는 자리가 하나 더 생긴다 (FR-067).
+    """
+
+    last_reply: str = ""
+    """이번 턴에 모델이 낸 **마지막 텍스트** (016 FR-009).
+
+    대화 이력에 AI 의 차례로 실린다. `ai_progress` 로 흘러가는 중간 텍스트와 다른
+    쓰임이다 — 그쪽은 「지금 무엇을 하는 중인지」이고 이것은 「무엇을 했는지」다.
+
+    **`AgentOutcome` 에 넣지 않은 이유**: outcome 은 루프의 **판정**이고, 판정은 실패
+    경로에서도 만들어져야 한다. 응답 텍스트를 거기 섞으면 「막혔는데 응답이 있다」 같은
+    조합을 호출자가 해석해야 한다.
+    """
+
+    def _with_summary(self, text: str) -> str:
+        """사용자 메시지 앞에 정의 요약을 붙인다 (016 FR-003).
+
+        **매 턴 붙인다.** 첫 메시지에만 넣으면 대화가 길어질수록 에이전트가 보는 목록이
+        낡는다 — 자기가 방금 만든 Step 도 모르는 상태가 된다.
+
+        요약을 만들 수 없으면(`summary_source` 가 없거나 빈 문자열) **조용히 넘어간다.**
+        요약은 맥락이지 전제가 아니고, 016 이전 경로(US4·US6)가 그것 없이도 돌던 것이
+        계속 돌아야 한다.
+        """
+        if self.summary_source is None:
+            return text
+        summary = self.summary_source()
+        if not summary:
+            return text
+        return f"{summary}\n\n[사용자] {text}"
+
     async def run(self, instruction: str) -> AgentOutcome:
         """지시문 하나를 수행한다.
 
@@ -195,7 +251,24 @@ class AuthoringAgent:
         를 덧붙여 부르므로, 에이전트가 앞서 무엇을 했는지 알고 이어서 진행한다.
         """
         text = validate_instruction(instruction)
-        self.messages.append({"role": "user", "content": text})
+        self.messages.append({"role": "user", "content": self._with_summary(text)})
+        return await self._drive()
+
+    async def chat(self, text: str) -> AgentOutcome:
+        """대화 한 차례 (016 FR-007).
+
+        **`run` 과 갈라 둔 이유는 뜻이다.** `run` 이 나르는 것은 「이 지시를 수행하라」
+        이고 이것은 「내가 말을 걸었다」이다. 에이전트에게는 둘 다 사용자 메시지지만,
+        호출자에게는 결말 처리가 다르다 — 지시는 완수하면 작성이 끝나고, 대화는 끝나도
+        세션이 계속 산다.
+
+        예산을 새로 준다. 앞선 턴이 쓴 호출을 이어서 세면, 몇 마디 주고받은 뒤부터
+        말을 걸어도 아무 일도 일어나지 않는다 (FR-066 · `resume_with_answer` 와 같은
+        판단).
+        """
+        message = validate_instruction(text)
+        self.toolbox.limits.reset()
+        self.messages.append({"role": "user", "content": self._with_summary(message)})
         return await self._drive()
 
     async def resume_with_answer(self, answer: str) -> AgentOutcome:
@@ -217,7 +290,9 @@ class AuthoringAgent:
         self.messages.append(
             {
                 "role": "user",
-                "content": (
+                # 016 FR-003 — 요약은 **매 턴** 붙는다. 막힌 사이에 사람이 목록을
+                # 고쳤을 수 있고, 그때 낡은 목록으로 이어 가면 없는 Step 을 지목한다.
+                "content": self._with_summary(
                     f"사람의 답변입니다: {text}\n"
                     "이 답을 반영해 남은 지시를 이어서 수행하세요. 화면이 바뀌었을 수 "
                     "있으니 observe_page 로 먼저 확인하고, 이미 만들어진 Step 을 다시 "
@@ -240,7 +315,8 @@ class AuthoringAgent:
         self.messages.append(
             {
                 "role": "user",
-                "content": (
+                # 016 FR-003 — 사람이 이어받는 동안 목록이 가장 많이 바뀐다.
+                "content": self._with_summary(
                     f"사람이 이어받아 다음을 처리했습니다: {note}\n"
                     "지금 화면을 observe_page 로 다시 확인한 뒤, 남은 지시를 이어서 "
                     "수행하세요. 이미 처리된 동작을 다시 하지 마세요."
@@ -256,6 +332,8 @@ class AuthoringAgent:
         # 잡았다). 앞선 결과는 이미 호출자에게 보고됐으므로 여기서 들고 있을 이유가 없다.
         self.toolbox.blocked_reason = None
         self.toolbox.blocked_question = None
+        # 016 — 지난 턴의 응답이 이번 턴의 대화 이력에 실리면 안 된다.
+        self.last_reply = ""
         try:
             selected, build = select_driver()
             driver = self.driver or selected
@@ -339,6 +417,13 @@ class AuthoringAgent:
         도구 실행 자체의 진행은 도구가 알린다. 여기서는 **모델의 판단**을 전한다 —
         사용자가 "AI 가 지금 무엇을 하는 중인지" 를 읽는 것이 이 이벤트의 목적이다.
         """
+        # 016 — 진행 보고 여부와 무관하게 **마지막 응답은 기록한다.** `on_progress` 가
+        # 없다고 대화 이력이 비면, 화면을 새로 고쳤을 때 AI 의 답이 사라진다.
+        for block in getattr(message, "content", None) or []:
+            text = getattr(block, "text", None)
+            if isinstance(text, str) and text.strip():
+                self.last_reply = text.strip()
+
         if self.on_progress is None:
             return
         for block in getattr(message, "content", None) or []:

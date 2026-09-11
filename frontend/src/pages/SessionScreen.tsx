@@ -27,10 +27,12 @@ import { describeError, fromEvent, localError } from "../components/ErrorNotice"
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import {
+  ai,
   groups as groupsApi,
   sessions,
   type AddAssertionBody,
   type AiChoice,
+  type ChatTurn,
   type ManualStepSpec,
   type RepickSlot,
   type RunPacing,
@@ -43,6 +45,8 @@ import {
   type SessionSubscription,
 } from "../api/ws";
 import { AssertionForm } from "../components/AssertionForm";
+import { ChatPanel } from "../components/workbench/ChatPanel";
+import { RerecordBar, rangeLabelOf } from "../components/workbench/RerecordBar";
 import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
 import {
   BrowserPromptPanel,
@@ -285,6 +289,24 @@ export interface SessionWorkbenchProps {
   deleteSelection?: string[];
   onToggleDeleteTarget?: (stepId: string) => void;
   onToggleAllDeleteTargets?: () => void;
+
+  /* ─── 016 구간 재녹화 (contracts/api-contract.md §2) ─────────────────── */
+
+  /** 대화 이력. 소유는 컨테이너다 — `chat_turn` 이벤트로 누적하고 새로 고침 때 되찾는다 */
+  chatTurns?: ChatTurn[];
+  /**
+   * 이번 턴에 AI 가 **무엇을 하고 있는지** (FR-011 · 2026-09-11 사용자 요청).
+   *
+   * `ai_progress` 이벤트를 **턴 단위로 모은 것**이다. 마지막 한 줄만 넘기면 사용자는
+   * 「지금」만 알고 「무엇을 거쳐 왔는지」를 모른다 — 막히거나 엉뚱한 것을 눌렀을 때
+   * 어디서 어긋났는지 되짚을 수 없다.
+   */
+  aiProgress?: string[];
+  /** 언어모델을 쓸 수 없는 사유 (FR-012). **서버가 준 문장을 그대로** 내려보낸다 */
+  aiUnavailableReason?: string | null;
+  onChat?: (text: string) => void;
+  onRerecordCommit?: () => void;
+  onRerecordDiscard?: () => void;
   /**
    * 009 FR-298·FR-301 — **행에서** 순서를 바꾼다.
    *
@@ -392,6 +414,13 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     deleteSelection = [],
     onToggleDeleteTarget,
     onToggleAllDeleteTargets,
+    // ─── 016 구간 재녹화 ───
+    chatTurns = [],
+    aiProgress = [],
+    aiUnavailableReason = null,
+    onChat,
+    onRerecordCommit,
+    onRerecordDiscard,
     onApplyReorder,
     onRunFromHere,
     onRerunAll,
@@ -628,6 +657,14 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     mirrorLive: props.mirrorLive,
     controlChannelOpen: props.controlChannelOpen,
     controlSurfaceIsMirror: (props.controlSurface ?? "mirror") === "mirror",
+    /*
+      016 구간 재녹화 (contracts/ui-contract.md §2).
+
+      **둘 다 서버가 판정한 값을 그대로 쓴다.** 「만든 Step 이 1개 이상인가」를 화면이
+      다시 세면 서버와 갈리고, 갈리면 활성으로 그린 버튼이 눌린 뒤 거절된다 (005 U-01).
+    */
+    hasRerecord: view.rerecord != null,
+    canCommitRerecord: view.rerecord?.can_commit === true,
   };
   const capabilities = capabilitiesFor(phase, facts);
 
@@ -1484,14 +1521,58 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       */
       deleteTargets={{
         selected: deleteSelection,
-        capability: capabilities["step.toggleDeleteTarget"],
-        allCapability: capabilities["step.selectAllDeleteTargets"],
+        capability: capabilities["step.toggleSelection"],
+        allCapability: capabilities["step.selectAll"],
         onToggle: (stepId) => onToggleDeleteTarget?.(stepId),
         onToggleAll: () => onToggleAllDeleteTargets?.(),
         onRemedy,
       }}
       noticesExtra={
         offline ? <LiveConnectionBanner onReconnect={() => onReconnect?.()} /> : null
+      }
+      /*
+        016 — 구간 재녹화 띠. `rerecord` 가 있을 때만 나타난다.
+
+        Step 패널 머리에 두는 이유: 이 띠가 말하는 것이 「목록의 어느 구간을 교체
+        중인가」이고, 그 구간이 바로 아래 목록에 그려진다. 국면 띠로 올리면 대상과
+        설명이 화면 양끝으로 갈린다.
+      */
+      /* 016 FR-024 — 확정하면 사라질 옛 구간을 목록에서 구분해 보인다 */
+      rerecordTargets={view.rerecord?.range_step_ids}
+      /*
+        2026-09-11 사용자 보고 — 띠는 머리 **아래 한 줄**이다 (`Workbench` 의 `stepBand`).
+        머리 오른쪽(`stepHeaderExtra`)에 걸었을 때 60px 남짓을 받아 확정·버리기가
+        보이지 않았고, 확정이 저장의 전제라 사용자에게는 「저장이 안 된다」로 보였다.
+      */
+      stepBand={
+        view.rerecord != null ? (
+          <RerecordBar
+            rerecord={view.rerecord}
+            capabilities={capabilities}
+            rangeLabel={rangeLabelOf(
+              view.rerecord.range_step_ids,
+              view.steps.map((s) => s.id),
+            )}
+            onCommit={() => onRerecordCommit?.()}
+            onDiscard={() => onRerecordDiscard?.()}
+            onRemedy={onRemedy}
+          />
+        ) : null
+      }
+      /*
+        016 — 대화 패널. 좌측 열 아래, 대상 앱과 작업 영역 **다음**이다 (Workbench
+        `leftExtra`). 대화는 화면을 보면서 하는 일이므로 화면을 밀어내지 않는다.
+      */
+      leftExtra={
+        <ChatPanel
+          turns={chatTurns}
+          capability={capabilities["ai.chat"]}
+          busy={view.state === "ai_running"}
+          progress={aiProgress}
+          unavailableReason={aiUnavailableReason ?? null}
+          onSend={(text) => onChat?.(text)}
+          onRemedy={onRemedy}
+        />
       }
       stepEmptyNotice={
         phase === "running" ? "아직 기록된 Step 이 없습니다." : "기록된 Step 이 없습니다."
@@ -1882,6 +1963,29 @@ export function SessionScreen({
     null,
   );
   const [aiMessages, setAiMessages] = useState<string[]>([]);
+  /*
+    016 — 대화 이력 (FR-009).
+
+    **서버가 소유하고 화면이 비춘다.** `chat_turn` 이벤트로 누적하고, 새로 고침·재접속
+    뒤에는 `GET /chat` 으로 되찾는다 (아래 `useEffect`). 화면만 들고 있으면 새로
+    고침에서 대화가 사라지고, 그러면 「서버에 이력을 둔다」는 설계가 뜻을 잃는다.
+  */
+  const [chatTurns, setChatTurns] = useState<ChatTurn[]>([]);
+  /*
+    016 FR-012 — 언어모델을 쓸 수 있는가. **서버가 준 사유를 그대로 들고 있는다.**
+
+    001 DR-021 이 세운 규칙을 그대로 따른다 — 화면에 들어오는 순간 확인한다. 눌러 봐야
+    아는 것은 늦다. 쓸 수 있으면 `null` 이고, 그때 대화 자리는 아무 말도 하지 않는다.
+  */
+  const [aiUnavailable, setAiUnavailable] = useState<string | null>(null);
+  /**
+   * 이번 턴의 진행 자취 (FR-011).
+   *
+   * `aiMessages` 와 갈라 둔다 — 그쪽은 세션 전체에 쌓이는 기록이고 이것은 **지금 도는
+   * 턴**의 것이다. 한 자리에 두면 지난 턴의 줄이 이번 턴의 자취에 섞이고, 사용자는
+   * 무엇이 방금 일어난 일인지 구별할 수 없다.
+   */
+  const [turnProgress, setTurnProgress] = useState<string[]>([]);
   const [aiError, setAiError] = useState<ErrorInfo | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
   const [pacingSaved, setPacingSaved] = useState(true);
@@ -1911,6 +2015,44 @@ export function SessionScreen({
     } catch {
       // 조용히 넘긴다 — 위 주석. 세션 자체의 실패는 이미 위에서 잡았다.
     }
+  }, [sessionId]);
+
+  /*
+    016 FR-009 — 대화 이력을 **되찾는다.**
+
+    세션이 바뀌거나 화면을 새로 고치면 `chatTurns` 가 비어 있다. 서버가 들고 있는
+    것을 한 번 읽어 채운다 — 읽지 못해도 조용히 넘긴다. 대화는 보조 정보이고, 그것
+    하나 때문에 붉은 배너를 띄울 이유가 없다 (탭 조회와 같은 판단).
+  */
+  useEffect(() => {
+    let alive = true;
+    void ai
+      .availability()
+      .then((it) => {
+        if (alive) setAiUnavailable(it.available ? null : (it.reason ?? "언어모델을 쓸 수 없습니다."));
+      })
+      .catch(() => {
+        // 점검 자체가 실패해도 대화 자리를 잠그지 않는다 — 실제로 쓸 수 있는데
+        // 못 쓴다고 말하는 쪽이 더 나쁘다. 쓸 수 없으면 첫 시도에서 사유가 온다.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    sessions
+      .chatHistory(sessionId)
+      .then((history) => {
+        if (alive) setChatTurns(history.turns);
+      })
+      .catch(() => {
+        /* 조용히 넘긴다 — 위 주석 */
+      });
+    return () => {
+      alive = false;
+    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -2060,8 +2202,11 @@ export function SessionScreen({
             break;
           case "ai_progress":
             setAiMessages((prev) => [...prev, event.message]);
+            setTurnProgress((prev) => [...prev, event.message]);
             break;
           case "ai_blocked":
+            // **자취를 지우지 않는다.** 막혔을 때야말로 「무엇을 하다 막혔는지」가
+            // 필요하다 — 5선택지를 고르려면 그것을 알아야 한다 (FR-070).
             setAiBlocked({
               attempted: event.attempted ?? null,
               reason: event.reason ?? "AI 가 더 진행하지 못했습니다.",
@@ -2084,10 +2229,44 @@ export function SessionScreen({
             break;
           case "ai_finished":
             setAiBlocked(null);
+            // 턴이 끝났다. 남는 기록은 AI 의 답(대화 차례)이다 — 자취를 함께 쌓으면
+            // 「무엇을 했는가」와 「무엇을 하는 중인가」가 섞인다.
+            setTurnProgress([]);
             void resync();
             break;
           case "step_updated":
             setRepickWaiting(null);
+            void resync();
+            break;
+          /* ─── 016 구간 재녹화 ─── */
+          case "chat_turn":
+            // **누적만 한다.** `resync` 를 부르지 않는 이유는 대화가 Step 목록을
+            // 바꾸지 않기 때문이다 — 바꿨다면 `step_added` 가 따로 온다.
+            setChatTurns((prev) => [
+              ...prev,
+              { role: event.role, text: event.text, at: event.at },
+            ]);
+            break;
+          case "rerecord_changed":
+            void resync();
+            break;
+          case "rerecord_realign_failed":
+            /*
+              **두 사실을 한 자리에서 말한다** (불변식 11 · FR-031c).
+
+              정의는 이미 되돌아갔고, 화면은 그것과 어긋나 있다. 둘 중 하나만 말하면
+              사용자는 무엇을 믿어야 할지 모른다.
+            */
+            setAiError(
+              localError(
+                event.definition_reverted
+                  ? `새로 만든 Step 을 되돌렸습니다. 다만 화면을 원래 위치로 되돌리지 못했습니다 (${event.reason}).`
+                  : event.reason,
+                event.definition_reverted
+                  ? "화면과 목록이 어긋나 있으므로 세션을 닫는 것을 권합니다."
+                  : "목록을 확인한 뒤 저장 여부를 정하세요.",
+              ),
+            );
             void resync();
             break;
           default:
@@ -2709,6 +2888,27 @@ export function SessionScreen({
       .finally(() => setBusy(false));
   };
 
+  /*
+    막힘은 **서버가 권위다** (2026-09-11 사용자 보고).
+
+    이벤트로 받은 로컬 상태(`aiBlocked`)는 이벤트가 도착한 화면에만 있다. 목록으로
+    나갔다 「이어서 보기」로 돌아오면 그 화면은 상태가 `ai_blocked` 인 것만 알고 사유도
+    질문도 선택지도 몰랐다 — 실측에서 「고를 선택지가 없습니다」를 그렸고, 대화 패널은
+    「위의 답변 칸에 알려 주세요」라고 말하는데 그 칸이 없었다.
+
+    **로컬을 버리지는 않는다.** 이벤트가 `resync` 보다 먼저 닿으므로, 뷰가 아직 옛
+    값일 짧은 동안 막힘을 즉시 보여 주는 것은 로컬이다. 뷰에 값이 있으면 뷰가 이긴다 —
+    `changePacing` 이 「서버가 권위다」로 세운 것과 같은 규칙이다.
+  */
+  const blockedNow: AiBlockedState | null = view.blocked
+    ? {
+        attempted: view.blocked.attempted ?? null,
+        reason: view.blocked.reason,
+        question: view.blocked.question ?? null,
+        choices: view.blocked.choices,
+      }
+    : aiBlocked;
+
   return (
     <>
       <SessionWorkbench
@@ -2716,7 +2916,7 @@ export function SessionScreen({
         aiInstruction={aiInstruction}
         aiMessages={aiMessages}
         aiError={aiError}
-        aiBlocked={aiBlocked}
+        aiBlocked={blockedNow}
         summary={summary}
         failure={failure}
         outcomeOf={outcomeOf}
@@ -2854,6 +3054,27 @@ export function SessionScreen({
             prev.length === view.steps.length ? [] : view.steps.map((s) => s.id),
           )
         }
+        /* ─── 016 구간 재녹화 (contracts/api-contract.md §2) ─── */
+        chatTurns={chatTurns}
+        /*
+          이번 **턴**의 진행 자취다. `aiMessages` 는 세션 전체에 쌓이므로 그대로
+          넘기면 지난 턴의 것이 섞인다 — 턴이 시작될 때 표시를 끊는다.
+        */
+        aiProgress={turnProgress}
+        aiUnavailableReason={aiUnavailable}
+        /*
+          **낙관적으로 붙이지 않는다.** 사용자의 말은 서버가 `chat_turn` 으로 되돌려
+          준다 — 화면이 먼저 붙이면 실패했을 때 보내지 않은 말이 이력에 남고, 되돌리는
+          코드가 한 벌 더 생긴다.
+        */
+        onChat={(text) => {
+          // **턴이 시작될 때 자취를 비운다.** 지난 턴의 줄이 남아 있으면 사용자는
+          // 방금 보낸 말에 대한 반응인지 앞의 것인지 구별할 수 없다.
+          setTurnProgress([]);
+          void act(() => sessions.chat(sessionId, text));
+        }}
+        onRerecordCommit={() => void act(() => sessions.rerecordCommit(sessionId))}
+        onRerecordDiscard={() => void act(() => sessions.rerecordDiscard(sessionId))}
         onApplyReorder={(order) => void edit(() => sessions.reorderSteps(sessionId, order))}
         onRunFromHere={(stepIndex) => void act(() => sessions.runFrom(sessionId, stepIndex))}
         onRerunAll={() => rerun()}
@@ -2882,7 +3103,7 @@ export function SessionScreen({
             사유만 남고 선택지 셋(직접 조작·다시·답하기)이 사라져, 사용자는 무엇이
             잘못됐는지 읽고도 이어 갈 수단이 없었다.
           */
-          const previous = aiBlocked;
+          const previous = blockedNow;
           setAiBlocked(null);
           void act(
             () => sessions.aiChoice(sessionId, choice as AiChoice, answer),

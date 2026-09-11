@@ -206,12 +206,20 @@ def wait_for_event(
     raise AssertionError  # pragma: no cover
 
 
-def start_ai_session(client: TestClient, fixture_app: str, instruction: str) -> str:
+def start_ai_session(
+    client: TestClient, fixture_app: str, instruction: str, page: str = "login.html"
+) -> str:
+    """AI 작성 세션을 시작한다.
+
+    `page` 는 **로그인 화면이 아닌 데서 시작하는 검증**을 위한 자리다 (2026-09-11). 기본값이
+    있으므로 기존 호출은 그대로다 — 기본값을 지우면 대본 하나를 고치는 일이 스무 곳을
+    고치는 일이 된다.
+    """
     created = client.post(
         "/api/sessions",
         json={
             "mode": "ai",
-            "start_url": f"{fixture_app}/login.html",
+            "start_url": f"{fixture_app}/{page}",
             "ai_instruction": instruction,
         },
     )

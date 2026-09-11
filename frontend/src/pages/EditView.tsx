@@ -27,7 +27,8 @@ import {
   type EditOp,
   type ManualStepSpec,
 } from "../api/client";
-import { ErrorNotice, describeError } from "../components/ErrorNotice";
+import { ErrorNotice, describeError, localError } from "../components/ErrorNotice";
+import { ChatPanel } from "../components/workbench/ChatPanel";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { StepEditFields } from "../components/StepEditFields";
 import { ActionButton } from "../components/workbench/ActionButton";
@@ -91,6 +92,14 @@ export interface EditViewProps {
      */
     instruction?: string | null,
   ) => void;
+  /**
+   * 016 — 고른 구간으로 **재녹화 세션**을 연다 (FR-015·FR-018).
+   *
+   * `onOpenBrowserAt` 과 갈라 둔다. 그쪽은 「한 지점에 도착해 기록을 켠다」이고 이것은
+   * 「구간을 교체한다」이며, 서버에서 다른 모드다 (`mode=rerecord`). 같은 콜백으로
+   * 묶으면 인자로 갈래를 판정해야 하고, 그 판정이 화면과 서버 두 곳에 생긴다.
+   */
+  onRerecordRange?: (testId: string, stepIds: string[]) => void;
   /** 실행 중이라는 안내가 가리킨 세션으로 이동한다 (005 FR-126). */
   onOpenSession?: (sessionId: string) => void;
   /** 결과 국면으로 이동 (FR-239 의 왕복). */
@@ -238,6 +247,7 @@ export function EditView({
   onBack,
   onRun,
   onOpenBrowserAt,
+  onRerecordRange,
   onOpenSession,
   onShowResult,
   runPending = false,
@@ -512,7 +522,23 @@ export function EditView({
   };
 
   const openBrowserHere = (instruction: string | null = null) => {
-    if (current === null || currentIndex < 0 || onOpenBrowserAt === undefined) return;
+    if (onOpenBrowserAt === undefined) return;
+    /*
+      **고른 Step 이 없으면 맨 끝이다** (2026-09-11 사용자 보고).
+
+      그 전까지 이 조작은 Step 을 고르지 않으면 잠겼고, 그래서 「목록 맨 끝에 하나 더」
+      를 할 길이 없었다 — 마지막 Step 을 고르면 그 **앞**에서 멈추고, 끝까지 실행하면
+      대화할 수 없는 국면(`finished`)이 된다. 재녹화는 구간을 **교체**하므로 마지막
+      Step 을 고르면 확정 때 그것이 지워진다.
+
+      `dslSteps.length` 는 「마지막 Step 까지 전부 실행한 자리」다. 서버가 그 값을 받고
+      (`pause_before_index`), 러너가 거기서 멈추며, 대화가 만든 Step 은 일시정지 위치
+      뒤에 붙는다 (`_aim_compiler` · FR-023a) — 배선이 이미 있고 입구만 없었다.
+    */
+    if (current === null || currentIndex < 0) {
+      onOpenBrowserAt(testId, dslSteps.length, null, instruction);
+      return;
+    }
     onOpenBrowserAt(testId, currentIndex, current.id, instruction);
   };
 
@@ -522,8 +548,19 @@ export function EditView({
    * 두 경로가 같은 Step 을 다르게 들고 있는 상태를 만들지 않는다.
    */
   const openBrowser = (instruction: string | null = null) => {
+    afterSaving(() => openBrowserHere(instruction));
+  };
+
+  /**
+   * 저장하지 않은 변경이 있으면 **먼저 저장한 뒤** 세션을 연다 (006 FR-203).
+   *
+   * `openBrowser` 안에 있던 것을 016 이 꺼냈다. 재녹화도 세션을 여는 조작이고
+   * (FR-022), 같은 상황에서 다르게 굴면 사용자는 어느 쪽이 편집을 지키는지 외워야
+   * 한다. **새 확인을 만들지 않는다** — 011 이 `openBrowser` 에서 세운 판단이다.
+   */
+  const afterSaving = (next: () => void) => {
     if (pending === 0) {
-      openBrowserHere(instruction);
+      next();
       return;
     }
     setSaving(true);
@@ -533,7 +570,7 @@ export function EditView({
         setView(v);
         setOps([]);
         setSavedName(v.test.name);
-        openBrowserHere(instruction);
+        next();
       })
       /*
         011 FR-374c (UC-011-25) — **열기가 실패하면 시작하지 않는다.**
@@ -544,6 +581,51 @@ export function EditView({
       .catch((exc: unknown) => setError(describeError(exc)))
       .finally(() => setSaving(false));
   };
+
+  /**
+   * 016 — 고른 구간으로 재녹화를 시작한다 (FR-015·FR-016·FR-022).
+   *
+   * 구간 지정은 **삭제 대상 체크를 그대로 쓴다** (`step.toggleSelection`, 016 에서
+   * 개칭). 체크 칸을 둘로 만들면 사용자가 어느 쪽에 체크할지 판단해야 한다.
+   *
+   * **FR-022(저장하지 않은 편집)는 `afterSaving` 이 처리한다.** api-contract §1 의
+   * 초안은 확인 대화(저장하고 시작 / 저장하지 않고 시작 / 취소)를 새로 만들라고
+   * 적었는데, 이 저장소에는 이미 규칙이 있었다 — 006 FR-203 「먼저 저장한 뒤 연다」이고
+   * 011 이 「새 확인을 만들지 않는다」를 명시했다. 재녹화도 세션을 여는 조작이므로
+   * 같은 규칙을 받는다. 없던 규칙을 만드는 것보다 있는 규칙을 따르는 쪽이 옳다.
+   */
+  function startRerecord() {
+    if (onRerecordRange === undefined) return;
+    if (deleteSelection.length === 0) return;
+
+    const order = dslSteps.map((s) => s.id);
+    const positions = deleteSelection
+      .map((id) => order.indexOf(id))
+      .filter((i) => i >= 0)
+      .sort((a, b) => a - b);
+    const head = positions[0];
+    const tail = positions[positions.length - 1];
+    const contiguous =
+      head !== undefined &&
+      tail !== undefined &&
+      positions.length > 0 &&
+      tail - head === positions.length - 1;
+
+    if (!contiguous) {
+      // **시작하지 않고 이유를 말한다** (FR-016). 서버까지 갔다 오면 그 사이 브라우저가
+      // 뜬다 — 사용자는 창이 떴다 사라지는 것을 보고 무엇이 잘못됐는지 나중에 안다.
+      setError(
+        localError(
+          "고른 Step 이 이어져 있지 않습니다.",
+          "재녹화는 연속한 구간에만 할 수 있습니다. 이어진 Step 을 고르세요.",
+        ),
+      );
+      return;
+    }
+
+    const ids = positions.map((i) => order[i]).filter((id): id is string => id !== undefined);
+    afterSaving(() => onRerecordRange(testId, ids));
+  }
 
   function runAction(action: ActionId) {
     switch (action) {
@@ -585,6 +667,23 @@ export function EditView({
           openBrowser(nl.trim());
           setNl("");
         }
+        break;
+      /*
+        016 FR-015·FR-016·FR-022 — 고른 구간으로 재녹화 세션을 연다.
+
+        **연속 구간인지 여기서 먼저 본다.** 서버도 거절하지만(api-contract §1), 화면이
+        먼저 말하면 브라우저가 떴다 사라지는 것을 보지 않아도 된다.
+
+        미저장 편집은 기존 `openBrowser` 의 「저장하고 열기」와 같은 확인을 지난다 —
+        새 확인을 만들지 않는다 (FR-022 · 011 이 세운 규칙).
+      */
+      case "ai.rerecord":
+        startRerecord();
+        break;
+      case "ai.chat":
+        // 편집 국면에서는 잠겨 있다 (`off(NEEDS_SESSION)`). 해소 조작이 위를 가리키므로
+        // 여기 닿는 일은 없지만, 닿아도 재녹화 시작으로 보낸다.
+        startRerecord();
         break;
       case "session.open":
         if (loaded.blocking_session_id) onOpenSession?.(loaded.blocking_session_id);
@@ -629,7 +728,11 @@ export function EditView({
     "step.moveUp",
     "step.moveDown",
     "step.delete",
-    "browser.openAt",
+    /*
+      `browser.openAt` 은 **여기 없다** (2026-09-11 사용자 보고). 고른 Step 이 없어도
+      뜻이 있는 조작이 됐다 — 그때는 목록 맨 끝에서 멈춘다 (`openBrowserHere`).
+      잠가 두면 「맨 끝에 하나 더」를 할 입구가 사라진다.
+    */
     /* 011 — 「어디 뒤인지」를 알아야 뜻이 있다. `deleteSelected` 는 아래에서 따로 좁힌다 */
     "step.deleteAfter",
   ];
@@ -915,8 +1018,8 @@ export function EditView({
         /* 011 — 삭제 대상 고르기 (UC-011-14·15) */
         deleteTargets={{
           selected: deleteSelection,
-          capability: capabilities["step.toggleDeleteTarget"],
-          allCapability: capabilities["step.selectAllDeleteTargets"],
+          capability: capabilities["step.toggleSelection"],
+          allCapability: capabilities["step.selectAll"],
           onToggle: (stepId) =>
             setDeleteSelection((prev) =>
               prev.includes(stepId) ? prev.filter((id) => id !== stepId) : [...prev, stepId],
@@ -927,6 +1030,20 @@ export function EditView({
             ),
           onRemedy: runAction,
         }}
+        /*
+          016 R6 — **채팅은 세션 안에서만 산다.** 편집 화면의 자리는 보이되 잠기고
+          「AI 로 다시 만들기」를 가리킨다 (`off(NEEDS_SESSION)`).
+
+          감추지 않는 이유는 FR-234 다 — 감추면 이 기능이 있다는 사실을 알 방법이 없다.
+        */
+        leftExtra={
+          <ChatPanel
+            turns={[]}
+            capability={capabilities["ai.chat"]}
+            onSend={() => runAction("ai.rerecord")}
+            onRemedy={runAction}
+          />
+        }
         headerActions={headerActions}
         /*
           009 FR-298 — 행 조작. `rowActions` 자리는 007 이 열어 두었고 넘기는 화면이

@@ -141,3 +141,74 @@ async def test_failed_result_surfaces_its_reason(monkeypatch: pytest.MonkeyPatch
     with pytest.raises(RuntimeError, match="max_turns"):
         async for _ in mod.claude_code_driver([], [{"role": "user", "content": "x"}], LlmConfig()):
             pass
+
+
+# ─── 016 — 편집 도구가 개발용 드라이버에도 있다 (T062) ─────────────────────
+
+
+def test_editing_tools_are_on_the_dev_driver_surface_too() -> None:
+    """**두 드라이버의 표면이 갈리지 않는다** (016 US3).
+
+    `QUALIFIED_TOOL_NAMES` 는 `TOOL_SCHEMAS` 에서 파생되므로 새 도구가 자동으로 따라
+    들어온다. 그 자동 전파가 실제로 도는지 확인한다 — 끊기면 기본 드라이버에서는 되고
+    개발용에서는 안 되는 도구가 생기고, 개발 중에 본 동작이 제품 동작과 달라진다.
+    """
+    from itb.authoring.tools import MCP_SERVER_NAME, QUALIFIED_TOOL_NAMES, STEP_EDITING_TOOLS
+
+    for name in STEP_EDITING_TOOLS:
+        qualified = f"mcp__{MCP_SERVER_NAME}__{name}"
+        assert qualified in QUALIFIED_TOOL_NAMES, (
+            f"개발용 드라이버 표면에 {name} 이 없다 — 두 경로가 갈렸다"
+        )
+
+
+def test_the_dev_driver_surface_equals_the_default_one() -> None:
+    """표면 전체가 같다. 016 이후 16종."""
+    from itb.authoring.tools import MCP_SERVER_NAME, QUALIFIED_TOOL_NAMES, TOOL_NAMES
+
+    expected = {f"mcp__{MCP_SERVER_NAME}__{name}" for name in TOOL_NAMES}
+    assert set(QUALIFIED_TOOL_NAMES) == expected
+    assert len(QUALIFIED_TOOL_NAMES) == 16
+
+
+def test_builtin_tools_are_still_blocked() -> None:
+    """016 이 도구를 넷 더했다고 **내장 도구 차단이 느슨해지지 않았다** (FR-086).
+
+    편집 도구는 MCP 서버 쪽에 등록되므로 내장 도구 차단과 무관하다. 그 무관함을
+    여기서 고정한다 — 새 도구를 더하다 차단 목록을 건드리면 파일 시스템이 열린다.
+    """
+    from itb.authoring.claude_code_driver import BLOCKED_BUILTINS
+
+    for dangerous in ("Bash", "Write", "Edit", "Read", "WebFetch"):
+        assert dangerous in BLOCKED_BUILTINS, f"{dangerous} 차단이 사라졌다"
+
+
+def test_every_tool_on_the_dev_driver_actually_builds() -> None:
+    """이름만 맞는 것으로는 부족하다 — **감싸는 쪽도 전수를 돈다**.
+
+    016 은 `TOOL_SCHEMAS` 에 편집 도구 넷을 더했지만 `build_mcp_tools` 안의 핸들러
+    사전은 그대로 두었다. 이름 검사(T062)는 `TOOL_SCHEMAS` 에서 파생된 목록만 보므로
+    통과했고, 실제 호출은 `KeyError: 'update_step'` 로 죽었다. 목록이 두 번 적히면
+    한쪽만 갱신된다 — 그 실패를 여기서 잡는다.
+
+    툴박스는 브라우저가 필요하므로 **이름만 맞춘 대역**을 쓴다. 검사 대상은 도구
+    표면이지 브라우저 동작이 아니다 (브라우저 쪽은 us3 계층이 본다).
+    """
+    from itb.authoring.tools import TOOL_SCHEMAS, build_mcp_tools
+
+    class FakeToolbox:
+        def __init__(self) -> None:
+            self.called: list[str] = []
+
+        def __getattr__(self, name: str) -> Any:
+            async def call(**kwargs: Any) -> dict[str, Any]:
+                self.called.append(name)
+                return {"ok": name}
+
+            return call
+
+    toolbox = FakeToolbox()
+    built = build_mcp_tools(toolbox)  # type: ignore[arg-type]
+
+    assert {t.name for t in built} == set(TOOL_SCHEMAS)
+    assert len(built) == 16

@@ -120,6 +120,30 @@ type Cell =
  * 키가 조용히 `undefined` 가 되어 「감출지 남길지 모르는 조작」이 되지 않게 한다.
  */
 const REASON_VISIBILITY: Record<DisabledReasonKey, Visibility> = {
+  /* ─── 016 구간 재녹화 ─── */
+  /**
+   * **셋은 감추고 둘은 남긴다.** 기준은 「지금 이 화면에서 곧바로 해소할 수 있는
+   * 전제인가」다 (2026-09-09 에 이 파일이 좁힌 규칙).
+   *
+   * `C16`·`C17` 은 **진행 중인 교체가 없다**는 뜻이다. 확정·버리기 버튼이 재녹화가
+   * 아닌 모든 화면에 상시로 떠 있을 이유가 없다 — 그것이 검토 국면에서 조작 자리
+   * 24개 중 14개가 비활성이던 상태를 만든 종류의 판단이다.
+   *
+   * `ALREADY_IN_SESSION` 도 같다. 세션 안에서 「AI 로 다시 만들기」는 찾을 일이 없는
+   * 조작이고(이미 그 안에 있다), 남기면 모든 일시정지 화면에 잠긴 버튼이 하나 는다.
+   */
+  C16: "hide",
+  C17: "hide",
+  ALREADY_IN_SESSION: "hide",
+  /**
+   * 이 둘은 **남긴다.** 사용자가 지금 곧바로 해소할 수 있고, 감추면 기능의 존재를
+   * 알 방법이 없다 (FR-234).
+   *
+   * - `NEEDS_SESSION` — 「Step 을 골라 브라우저를 그 앞에서 멈추세요」를 가리킨다
+   * - `USE_BLOCKED_ANSWER` — 「위의 답변 칸에 알려 주세요」를 가리킨다
+   */
+  NEEDS_SESSION: "keep",
+  USE_BLOCKED_ANSWER: "keep",
   /* ─── 남긴다 — 지금 곧바로 해소할 수 있는 전제 ─── */
   /**
    * 요청이 도는 중인 넷은 **남긴다.** 곧 풀리는 상태이고, 그 사이 버튼이 사라지면
@@ -216,6 +240,8 @@ const REASON_VISIBILITY: Record<DisabledReasonKey, Visibility> = {
    */
   O7: "keep",
   O9: "hide",
+  /** O14 — 교체가 끝나지 않아 저장을 잠갔다. 같은 화면의 「확정」으로 해소한다. **남긴다.** */
+  O14: "keep",
   RUNNING_NO_EDIT: "hide",
   RUN_FINISHED_NO_EDIT: "hide",
   RESULT_NO_EDIT: "hide",
@@ -281,7 +307,9 @@ export type ConditionKey =
   | "C12"
   | "C13"
   | "C14"
-  | "C15";
+  | "C15"
+  | "C16"
+  | "C17";
 
 /**
  * 조건을 평가하는 데 필요한 사실. **화면이 아는 것만** 담는다.
@@ -320,6 +348,16 @@ export interface CapabilityFacts {
   hasInstruction?: boolean;
   /** C15 — 만드는 방법으로 AI 를 골랐다 (2회차 · 만들기 국면) */
   aiModeChosen?: boolean;
+  /**
+   * C16 — 재녹화를 확정할 수 있다 (016 불변식 10).
+   *
+   * **서버가 판정한 값을 그대로 쓴다** (`SessionView.rerecord.can_commit`). 화면이
+   * 「만든 Step 이 1개 이상인가」를 스스로 세면 서버와 갈리고, 갈리면 활성으로 그린
+   * 버튼이 눌린 뒤 거절된다 (005 U-01 의 형태).
+   */
+  canCommitRerecord?: boolean;
+  /** C17 — 진행 중인 교체가 있다 (016). `SessionView.rerecord !== null` */
+  hasRerecord?: boolean;
 
   /* ─── 전 국면 덮어쓰기 O1~O4 (§3-6) ─── */
   /** O1 — 실행 요청이 진행 중이다 */
@@ -381,6 +419,8 @@ const CONDITION_FACT: Record<ConditionKey, keyof CapabilityFacts> = {
   C14: "hasInstruction",
   /** C15 — 만드는 방법으로 AI 를 골랐다 (2회차) */
   C15: "aiModeChosen",
+  C16: "canCommitRerecord",
+  C17: "hasRerecord",
 };
 
 /** 조건이 거짓일 때의 해소 방법. 표의 셀이 지정하지 않으면 이것을 쓴다. */
@@ -501,8 +541,8 @@ const OVERRIDES: {
         것과 갈리는 이유는 같다: 삽입은 0개일 때야말로 필요하고, 삭제는 0개일 때 할 것이
         없다.
       */
-      "step.toggleDeleteTarget",
-      "step.selectAllDeleteTargets",
+      "step.toggleSelection",
+      "step.selectAll",
       "step.deleteSelected",
       "step.deleteAfter",
     ],
@@ -547,8 +587,8 @@ const OVERRIDES: {
       "step.markSensitive",
       "step.repick",
       "step.delete",
-      "step.toggleDeleteTarget",
-      "step.selectAllDeleteTargets",
+      "step.toggleSelection",
+      "step.selectAll",
       "step.deleteSelected",
       "step.deleteAfter",
       "step.moveUp",
@@ -624,6 +664,28 @@ const OVERRIDES: {
     actions: ["mirror.control"],
     remedy: null,
   },
+  /*
+    O14 — 교체가 끝나지 않았으면 저장을 **미리** 잠근다 (2026-09-11 사용자 보고 · 016 FR-029).
+
+    > 「ai 로 변경한 내용(추가,변경) 저장도 안돼」
+
+    서버는 확정되지 않은 교체의 저장을 409 로 거절한다 (`sessions.py` 의 `save`). 그러나
+    화면의 `save` 셀은 C8(Step 이 있다)만 봤으므로 버튼이 **활성으로 보이다가 눌러야**
+    거절됐다 — 005 U-01 의 형태이고, `RerecordStart` 가 「미리 잠긴다 — 눌러 보고 409 를
+    받지 않는다」로 같은 종류를 이미 막았던 자리다. 재녹화 띠가 목록 머리에 짓눌려
+    확정 버튼이 보이지 않던 것과 겹쳐, 사용자에게는 「저장이 안 된다」로만 보였다.
+
+    해소는 **확정**이다. 버리기도 정당한 길이지만 저장하려는 사람이 원하는 것은 만든
+    것을 남기는 쪽이고, 해소 링크는 하나만 가리킨다 (FR-235). 버리기는 사유 문구가 말한다.
+
+    `keep` 이다 — 이 화면에서 곧바로 해소할 수 있는 전제다 (재녹화 띠가 같은 화면에 있다).
+  */
+  {
+    key: "O14",
+    fact: "hasRerecord",
+    actions: ["save"],
+    remedy: "ai.rerecordCommit",
+  },
 ];
 
 /** O4·O9 는 「…이 있다」가 **거짓일 때** 걸린다 — 다른 덮어쓰기와 참·거짓 방향이 반대다. */
@@ -666,6 +728,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     0개일 때 「조작이 어디에 쌓이는지」를 보여 줄 수 없다 (S-15).
   */
   composing: {
+    "ai.rerecord": na("N2"),
+    "ai.chat": na("N2"),
+    "ai.rerecordCommit": na("N2"),
+    "ai.rerecordDiscard": na("N2"),
     "run.all": na("N2"),
     "run.from": na("N2"),
     "run.fromHere": na("N2"),
@@ -701,8 +767,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": off("NOT_STARTED_YET", "record.start"),
-    "step.selectAllDeleteTargets": off("NOT_STARTED_YET", "record.start"),
+    "step.toggleSelection": off("NOT_STARTED_YET", "record.start"),
+    "step.selectAll": off("NOT_STARTED_YET", "record.start"),
     "step.deleteSelected": off("NOT_STARTED_YET", "record.start"),
     "step.deleteAfter": off("NOT_STARTED_YET", "record.start"),
     "step.moveUp": off("NOT_STARTED_YET", "record.start"),
@@ -735,6 +801,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
   },
   /* 녹화 — 사람이 대상 앱을 조작해 Step 을 만든다 */
   recording: {
+    "ai.rerecord": na("N1"),
+    "ai.chat": off("NEEDS_PAUSE", "run.pause"),
+    "ai.rerecordCommit": na("N2"),
+    "ai.rerecordDiscard": na("N2"),
     "run.all": na("N2"),
     "run.from": na("N2"),
     "run.fromHere": na("N2"),
@@ -760,8 +830,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": off("NEEDS_PAUSE", "run.pause"),
-    "step.selectAllDeleteTargets": off("NEEDS_PAUSE", "run.pause"),
+    "step.toggleSelection": off("NEEDS_PAUSE", "run.pause"),
+    "step.selectAll": off("NEEDS_PAUSE", "run.pause"),
     "step.deleteSelected": off("NEEDS_PAUSE", "run.pause"),
     "step.deleteAfter": off("NEEDS_PAUSE", "run.pause"),
     "step.moveUp": off("NEEDS_PAUSE", "run.pause"),
@@ -792,6 +862,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
 
   /* AI 작성 — AI 가 지시문대로 Step 을 만든다 */
   ai_authoring: {
+    "ai.rerecord": off("AI_RUNNING", "run.stop"),
+    "ai.chat": off("AI_RUNNING", "run.pause"),
+    "ai.rerecordCommit": off("AI_RUNNING", "run.pause"),
+    "ai.rerecordDiscard": off("AI_RUNNING", "run.pause"),
     "run.all": na("N2"),
     "run.from": na("N2"),
     "run.fromHere": na("N2"),
@@ -817,8 +891,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": off("NEEDS_PAUSE", "run.pause"),
-    "step.selectAllDeleteTargets": off("NEEDS_PAUSE", "run.pause"),
+    "step.toggleSelection": off("NEEDS_PAUSE", "run.pause"),
+    "step.selectAll": off("NEEDS_PAUSE", "run.pause"),
     "step.deleteSelected": off("NEEDS_PAUSE", "run.pause"),
     "step.deleteAfter": off("NEEDS_PAUSE", "run.pause"),
     "step.moveUp": off("NEEDS_PAUSE", "run.pause"),
@@ -848,6 +922,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
 
   /* 사람이 직접 조작 — AI 가 막힌 자리를 사람이 이어받는다 */
   takeover: {
+    "ai.rerecord": off("AI_RUNNING", "run.stop"),
+    "ai.chat": off("USE_BLOCKED_ANSWER", "ai.chooseBlocked"),
+    "ai.rerecordCommit": off("NEEDS_PAUSE", "run.resume"),
+    "ai.rerecordDiscard": off("NEEDS_PAUSE", "run.resume"),
     "run.all": na("N2"),
     "run.from": na("N2"),
     "run.fromHere": na("N2"),
@@ -880,8 +958,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": off("NEEDS_PAUSE", "run.resume"),
-    "step.selectAllDeleteTargets": off("NEEDS_PAUSE", "run.resume"),
+    "step.toggleSelection": off("NEEDS_PAUSE", "run.resume"),
+    "step.selectAll": off("NEEDS_PAUSE", "run.resume"),
     "step.deleteSelected": off("NEEDS_PAUSE", "run.resume"),
     "step.deleteAfter": off("NEEDS_PAUSE", "run.resume"),
     "step.moveUp": off("NEEDS_PAUSE", "run.resume"),
@@ -906,6 +984,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
 
   /* 실행 중 — 저장된 테스트를 재생한다 */
   running: {
+    "ai.rerecord": off("RUNNING_NO_EDIT", "run.pause"),
+    "ai.chat": off("RUNNING_NO_EDIT", "run.pause"),
+    "ai.rerecordCommit": off("RUNNING_NO_EDIT", "run.pause"),
+    "ai.rerecordDiscard": off("RUNNING_NO_EDIT", "run.pause"),
     /*
       T037 대조 — 끝난 실행에서는 **재실행이 실제로 열린다.** `SessionScreen` 의
       `rerun()` 이 세션을 폐기하고 새 세션을 연다. 표가 `○` 로 못박고 있던 것은
@@ -937,8 +1019,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": off("RUNNING_NO_EDIT", "run.pause"),
-    "step.selectAllDeleteTargets": off("RUNNING_NO_EDIT", "run.pause"),
+    "step.toggleSelection": off("RUNNING_NO_EDIT", "run.pause"),
+    "step.selectAll": off("RUNNING_NO_EDIT", "run.pause"),
     "step.deleteSelected": off("RUNNING_NO_EDIT", "run.pause"),
     "step.deleteAfter": off("RUNNING_NO_EDIT", "run.pause"),
     "step.moveUp": off("RUNNING_NO_EDIT", "run.pause"),
@@ -967,6 +1049,16 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
 
   /* 일시정지 / 검토 — 세션이 멈춰 있고 편집·저장을 받는다 */
   paused: {
+    /* ─── 016 구간 재녹화 (contracts/ui-contract.md §2) ───────────────────
+       **`paused` 가 재녹화의 집이다.** 확정·버리기·교체 대상 보기·손 편집이 전부 이
+       국면에서 일어난다 (research R4). 채팅이 `ON` 인 유일한 행이기도 하다.
+
+       `ai.rerecord` 가 `off` 인 이유: 재녹화는 세션을 **만드는** 조작이므로 세션
+       안에서는 성립하지 않는다. 대신 이 세션에서 대화로 진행하면 된다. */
+    "ai.rerecord": off("ALREADY_IN_SESSION"),
+    "ai.chat": ON,
+    "ai.rerecordCommit": cond("C16"),
+    "ai.rerecordDiscard": cond("C17"),
     "run.all": cond("C1"),
     "run.from": cond("C1"),
     "run.fromHere": cond("C2"),
@@ -1006,8 +1098,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": ON,
-    "step.selectAllDeleteTargets": ON,
+    "step.toggleSelection": ON,
+    "step.selectAll": ON,
     "step.deleteSelected": ON,
     "step.deleteAfter": ON,
     "step.moveUp": ON,
@@ -1050,6 +1142,25 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     - `save` 는 이 국면의 **주 조작**이다 (`SessionScreen` 이 강조를 준다).
   */
   review: {
+    "ai.rerecord": off("NEEDS_BROWSER", "run.all"),
+    "ai.chat": off("NEEDS_BROWSER", "run.all"),
+    /*
+      **확정·버리기는 여기서도 쓸 수 있다** (2026-09-11 사용자 보고).
+
+      016 초안은 넷을 묶어 「브라우저가 없다」(N3)로 적었다. 그것이 `ai.rerecord`·
+      `ai.chat` 에는 맞고 이 둘에는 틀렸다 — 확정은 **정의만 고치는 편집**이고,
+      서버도 `REVIEW` 에서 받는다 (`require_paused` 는 `is_editable` 을 쓴다).
+
+      막다른 길을 만든 것이 이 두 칸이었다. 교체를 연 채 「AI 작성 끝내기」나 「중지」를
+      누르면 세션은 `REVIEW` 로 온다. 저장은 미확정 교체를 거절하고(FR-029), 화면에는
+      확정도 버리기도 없다 — 남은 길이 「나가기」뿐이고 그것은 만든 것을 전부 버린다.
+      실측에서 사용자가 그 상태로 남긴 세션을 그대로 만났다.
+
+      비활성 사유의 해소 링크(O14)가 `ai.rerecordCommit` 을 가리키는 것도 이 칸이
+      `na` 인 동안에는 아무 데도 닿지 않았다.
+    */
+    "ai.rerecordCommit": cond("C16"),
+    "ai.rerecordDiscard": cond("C17"),
     /** 저장된 테스트가 있으면 다시 걸 수 있다. 세션은 이미 끝났으므로 C1 은 참이다 */
     "run.all": cond("C1"),
     "run.from": cond("C1"),
@@ -1086,8 +1197,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": ON,
-    "step.selectAllDeleteTargets": ON,
+    "step.toggleSelection": ON,
+    "step.selectAll": ON,
     "step.deleteSelected": ON,
     "step.deleteAfter": ON,
     "step.moveUp": ON,
@@ -1128,6 +1239,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     끝까지 성공한 세션을 저장할 길이 여기밖에 없다.
   */
   finished: {
+    "ai.rerecord": off("RUN_FINISHED_NO_EDIT", "save"),
+    "ai.chat": off("RUN_FINISHED_NO_EDIT", "save"),
+    "ai.rerecordCommit": na("N2"),
+    "ai.rerecordDiscard": na("N2"),
     /** 이 국면의 주 조작. 세션이 끝났으므로 새 실행이 열린다 */
     "run.all": ON,
     "run.from": ON,
@@ -1173,8 +1288,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": off("RUN_FINISHED_NO_EDIT", "save"),
-    "step.selectAllDeleteTargets": off("RUN_FINISHED_NO_EDIT", "save"),
+    "step.toggleSelection": off("RUN_FINISHED_NO_EDIT", "save"),
+    "step.selectAll": off("RUN_FINISHED_NO_EDIT", "save"),
     "step.deleteSelected": off("RUN_FINISHED_NO_EDIT", "save"),
     "step.deleteAfter": off("RUN_FINISHED_NO_EDIT", "save"),
     "step.moveUp": off("RUN_FINISHED_NO_EDIT", "save"),
@@ -1215,6 +1330,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
 
   /* 결과보기 — 끝난 실행의 결말과 산출물 */
   result: {
+    "ai.rerecord": off("RESULT_NO_EDIT", "nav.editStep"),
+    "ai.chat": off("RESULT_NO_EDIT", "nav.editStep"),
+    "ai.rerecordCommit": na("N2"),
+    "ai.rerecordDiscard": na("N2"),
     "run.all": ON,
     "run.from": ON,
     "run.fromHere": na("N3"),
@@ -1240,8 +1359,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": off("RESULT_NO_EDIT", "nav.editStep"),
-    "step.selectAllDeleteTargets": off("RESULT_NO_EDIT", "nav.editStep"),
+    "step.toggleSelection": off("RESULT_NO_EDIT", "nav.editStep"),
+    "step.selectAll": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.deleteSelected": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.deleteAfter": off("RESULT_NO_EDIT", "nav.editStep"),
     "step.moveUp": off("RESULT_NO_EDIT", "nav.editStep"),
@@ -1266,6 +1385,24 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
 
   /* 편집 — 세션 없이 정의를 고친다 */
   editing: {
+    /* ─── 016 구간 재녹화 (contracts/ui-contract.md §2) ───────────────────
+       **`ai.rerecord` 가 `cond("C7")` 인 이유**는 009 T063 이 고친 결함이다 — 다른
+       세션이 그 테스트를 잡고 있으면 서버가 409 로 거절하는데, 화면이 활성으로 그리면
+       눌린 뒤에 거절된다. `step.recordStart`·`step.addNaturalLanguage` 가 같은 자리에서
+       같은 판정을 받는다.
+
+       **`ai.chat` 이 `off("NEEDS_SESSION")` 인 것이 R6 의 결정이 표에 나타난 형태다.**
+       채팅은 세션 안에서만 산다. 자리는 보이되 잠기고 해소 조작을 가리킨다 (FR-234).
+
+       해소 조작은 **「브라우저 열어 이 Step 앞에서 멈추기」다** (2026-09-11 사용자 보고).
+       016 은 `ai.rerecord` 를 가리켰는데, 그것은 「구간을 골라 교체」하는 한 가지 쓰임이다.
+       사용자가 말한 그림은 「위치를 고르면 브라우저가 그 앞까지 실행해 멈추고, 거기서
+       AI 가 끼운다」이고, 그 조작이 `browser.openAt` 이다 — 일시정지 세션의 대화는 그
+       위치에 끼운다 (FR-023a). 교체는 사유 문구가 두 번째 길로 말한다. */
+    "ai.rerecord": cond("C7"),
+    "ai.chat": off("NEEDS_SESSION", "browser.openAt"),
+    "ai.rerecordCommit": na("N3"),
+    "ai.rerecordDiscard": na("N3"),
     "run.all": ON,
     "run.from": ON,
     "run.fromHere": na("N3"),
@@ -1344,8 +1481,8 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     /* 011 복수 삭제 — 판정은 `step.delete` 와 같다. 한 개를 지울 수 없는
        상태에서 여러 개를 지울 수 있으면 안 되고, 그 역도 안 된다.
        대상 개수(0개인가)는 국면이 아니므로 화면이 좁힌다 (`narrow`) */
-    "step.toggleDeleteTarget": cond("C7"),
-    "step.selectAllDeleteTargets": cond("C7"),
+    "step.toggleSelection": cond("C7"),
+    "step.selectAll": cond("C7"),
     "step.deleteSelected": cond("C7"),
     "step.deleteAfter": cond("C7"),
     "step.moveUp": cond("C7"),

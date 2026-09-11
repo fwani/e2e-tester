@@ -187,7 +187,7 @@ describe("FR-386 — 편집의 복수 삭제는 되돌릴 수 있다", () => {
     await renderEdit();
 
     const check = document.querySelector(
-      '[data-row-action="step.toggleDeleteTarget"]',
+      '[data-row-action="step.toggleSelection"]',
     ) as HTMLInputElement | null;
     expect(check, "편집 국면에 체크 칸이 없다").not.toBeNull();
     await user.click(check!);
