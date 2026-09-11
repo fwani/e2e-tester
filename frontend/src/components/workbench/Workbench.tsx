@@ -78,6 +78,17 @@ export interface WorkbenchProps {
   rowActions?: WorkbenchStepActions;
   /** Step 패널 헤더 오른쪽에 얹는 것 */
   stepHeaderExtra?: ReactNode;
+  /**
+   * 좌측 열 **아래**에 얹는 것 (016).
+   *
+   * 016 의 대화 패널이 여기 산다. 배치 계약(007 FR-218·008)을 건드리지 않기 위해
+   * 새 영역을 만드는 대신 확장 자리를 하나 더 뒀다 — 영역의 **순서와 개수**가 국면에
+   * 따라 바뀌지 않는다는 성질(FR-218c)이 그대로여야 한다.
+   *
+   * `noticesExtra`·`stepHeaderExtra` 와 같은 종류의 자리이며, 없으면 **아무 자리도
+   * 차지하지 않는다.**
+   */
+  leftExtra?: ReactNode;
   /** Step 이 0개일 때의 안내. 국면마다 다르다 */
   stepEmptyNotice?: ReactNode;
   /**
@@ -139,6 +150,7 @@ export function Workbench({
   headerActions,
   rowActions,
   stepHeaderExtra,
+  leftExtra,
   stepEmptyNotice,
   deleteTargets,
   stepFooter,
@@ -338,6 +350,12 @@ export function Workbench({
               busy={busy}
             />
           )}
+          {/*
+            016 — 대화 패널. 없으면 자리를 차지하지 않는다 (`WorkArea` 와 같은 규칙).
+            대상 앱과 작업 영역 **아래**인 이유: 대화는 화면을 보면서 하는 일이고,
+            화면을 밀어내면 그 전제가 깨진다.
+          */}
+          {leftExtra}
         </div>
 
         {/* 우 — Step 목록 460px 고정 */}

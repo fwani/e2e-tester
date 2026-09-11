@@ -82,12 +82,28 @@ export const PALETTE_ACTIONS: ActionId[] = [
   "save.overwriteStale",
 ];
 /**
- * Step 을 더하는 두 길이 나란히 서는 줄 (011 FR-374).
+ * 테스트를 채우는 길들이 나란히 서는 줄 (011 FR-374 · 016 이 셋째를 더했다).
  *
  * 자연어 입력칸 바로 아래다. `PALETTE_ACTIONS` 에서 뽑아낸 이유는 자리이지 성격이
  * 아니다 — 같은 묶음에 있어야 대등하게 읽힌다.
  */
-const AUTHORING_ROW: ActionId[] = ["step.recordStart", "step.recordStop"];
+const AUTHORING_ROW: ActionId[] = [
+  "step.recordStart",
+  "step.recordStop",
+  /*
+    016 — 「AI 로 다시 만들기」가 여기 선다.
+
+    같은 줄에 둔 이유는 **같은 종류의 선택**이기 때문이다. 사용자가 지금 고르는 것은
+    「이 테스트를 어떻게 채울 것인가」이고, 그 답이 셋이다 — 직접 녹화한다 / 말로
+    지시한다(바로 위 입력칸) / **고른 구간을 다시 만든다**.
+
+    자리를 따로 내면 011 이 고친 문제가 돌아온다: 같은 일을 하는 길이 다른 무게로
+    놓이면 사용자는 한쪽을 「주된 방법」으로 읽는다 (사용자 보고 3).
+
+    **누르면 브라우저가 열린다**는 사실은 라벨이 말한다 (`ACTION_LABEL`).
+  */
+  "ai.rerecord",
+];
 
 export interface ActionPaletteProps {
   capabilities: CapabilityMap;

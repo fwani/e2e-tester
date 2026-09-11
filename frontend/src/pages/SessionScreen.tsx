@@ -31,6 +31,7 @@ import {
   sessions,
   type AddAssertionBody,
   type AiChoice,
+  type ChatTurn,
   type ManualStepSpec,
   type RepickSlot,
   type RunPacing,
@@ -43,6 +44,8 @@ import {
   type SessionSubscription,
 } from "../api/ws";
 import { AssertionForm } from "../components/AssertionForm";
+import { ChatPanel } from "../components/workbench/ChatPanel";
+import { RerecordBar, rangeLabelOf } from "../components/workbench/RerecordBar";
 import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
 import {
   BrowserPromptPanel,
@@ -285,6 +288,18 @@ export interface SessionWorkbenchProps {
   deleteSelection?: string[];
   onToggleDeleteTarget?: (stepId: string) => void;
   onToggleAllDeleteTargets?: () => void;
+
+  /* ─── 016 구간 재녹화 (contracts/api-contract.md §2) ─────────────────── */
+
+  /** 대화 이력. 소유는 컨테이너다 — `chat_turn` 이벤트로 누적하고 새로 고침 때 되찾는다 */
+  chatTurns?: ChatTurn[];
+  /** `ai_progress` 의 마지막 메시지. AI 가 도는 동안 무엇을 하는 중인지 (FR-060·FR-011) */
+  aiProgress?: string | null;
+  /** 언어모델을 쓸 수 없는 사유 (FR-012). **서버가 준 문장을 그대로** 내려보낸다 */
+  aiUnavailableReason?: string | null;
+  onChat?: (text: string) => void;
+  onRerecordCommit?: () => void;
+  onRerecordDiscard?: () => void;
   /**
    * 009 FR-298·FR-301 — **행에서** 순서를 바꾼다.
    *
@@ -392,6 +407,13 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     deleteSelection = [],
     onToggleDeleteTarget,
     onToggleAllDeleteTargets,
+    // ─── 016 구간 재녹화 ───
+    chatTurns = [],
+    aiProgress = null,
+    aiUnavailableReason = null,
+    onChat,
+    onRerecordCommit,
+    onRerecordDiscard,
     onApplyReorder,
     onRunFromHere,
     onRerunAll,
@@ -628,6 +650,14 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     mirrorLive: props.mirrorLive,
     controlChannelOpen: props.controlChannelOpen,
     controlSurfaceIsMirror: (props.controlSurface ?? "mirror") === "mirror",
+    /*
+      016 구간 재녹화 (contracts/ui-contract.md §2).
+
+      **둘 다 서버가 판정한 값을 그대로 쓴다.** 「만든 Step 이 1개 이상인가」를 화면이
+      다시 세면 서버와 갈리고, 갈리면 활성으로 그린 버튼이 눌린 뒤 거절된다 (005 U-01).
+    */
+    hasRerecord: view.rerecord != null,
+    canCommitRerecord: view.rerecord?.can_commit === true,
   };
   const capabilities = capabilitiesFor(phase, facts);
 
@@ -1492,6 +1522,43 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       }}
       noticesExtra={
         offline ? <LiveConnectionBanner onReconnect={() => onReconnect?.()} /> : null
+      }
+      /*
+        016 — 구간 재녹화 띠. `rerecord` 가 있을 때만 나타난다.
+
+        Step 패널 머리에 두는 이유: 이 띠가 말하는 것이 「목록의 어느 구간을 교체
+        중인가」이고, 그 구간이 바로 아래 목록에 그려진다. 국면 띠로 올리면 대상과
+        설명이 화면 양끝으로 갈린다.
+      */
+      stepHeaderExtra={
+        view.rerecord != null ? (
+          <RerecordBar
+            rerecord={view.rerecord}
+            capabilities={capabilities}
+            rangeLabel={rangeLabelOf(
+              view.rerecord.range_step_ids,
+              view.steps.map((s) => s.id),
+            )}
+            onCommit={() => onRerecordCommit?.()}
+            onDiscard={() => onRerecordDiscard?.()}
+            onRemedy={onRemedy}
+          />
+        ) : null
+      }
+      /*
+        016 — 대화 패널. 좌측 열 아래, 대상 앱과 작업 영역 **다음**이다 (Workbench
+        `leftExtra`). 대화는 화면을 보면서 하는 일이므로 화면을 밀어내지 않는다.
+      */
+      leftExtra={
+        <ChatPanel
+          turns={chatTurns}
+          capability={capabilities["ai.chat"]}
+          busy={view.state === "ai_running"}
+          progress={aiProgress}
+          unavailableReason={aiUnavailableReason ?? null}
+          onSend={(text) => onChat?.(text)}
+          onRemedy={onRemedy}
+        />
       }
       stepEmptyNotice={
         phase === "running" ? "아직 기록된 Step 이 없습니다." : "기록된 Step 이 없습니다."
