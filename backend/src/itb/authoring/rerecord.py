@@ -7,10 +7,14 @@
 구간 밖은 바뀌지 않는다. 바뀌지 않는 것을 복사해 두고 나중에 같은지 비교하는 것은 일이
 아니라 의식이다.
 
-남는 것은 id 목록 둘이고, 두 결말이 **같은 함수의 다른 인자**가 된다.
+남는 것은 id 집합 둘이고, 두 결말이 **같은 함수의 다른 인자**가 된다.
 
-    확정 → delete_steps(steps, range.step_ids)        옛 구간이 사라진다
-    버리기 → delete_steps(steps, created_step_ids)    새 것이 사라진다 = 시작 전과 같다
+    확정 → delete_steps(steps, range.step_ids)   옛 구간이 사라진다
+    버리기 → delete_steps(steps, created(steps)) 새 것이 사라진다 = 시작 전과 같다
+
+「이번에 만든 것」은 기록하지 않고 **도출한다** — 시작 시점 id 집합에 없으면 만든
+것이다. 생성 경로가 둘(리코더 sink·손 삽입)이고 하나를 놓치면 조용히 깨지기 때문이다
+(`baseline_ids` 주석 참조).
 
 `delete_steps` 는 011 FR-388 의 **전부-또는-전무**를 보장한다. 검증에서 걸리면 아무것도
 만들지 않으므로 부분 적용이 남지 않는다 (FR-026·FR-027).
@@ -29,7 +33,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from itb.domain.step import Step
 from itb.execution.step_edits import EditResult, delete_steps, find_index
@@ -121,13 +125,13 @@ def validate_range(steps: list[Step], step_ids: list[str]) -> StepRange:
 class RerecordTransaction:
     """진행 중인 구간 교체 하나. 세션당 최대 하나.
 
-    `created_step_ids` 는 **이번 세션이 만든 Step** 이고, 두 가지로 쓰인다:
+    「이번 세션이 만든 Step」은 두 가지로 쓰인다:
 
     1. 버리기의 대상 (FR-027)
     2. AI 편집 도구의 권한 범위 (FR-037 · 불변식 8)
 
-    2번이 1번을 성립시킨다. 권한이 이 목록으로 한정되므로 다른 Step 이 바뀌지 않고,
-    바뀌지 않으므로 이 목록만 지우면 시작 전과 같아진다 (불변식 9).
+    2번이 1번을 성립시킨다. 권한이 그 집합으로 한정되므로 다른 Step 이 바뀌지 않고,
+    바뀌지 않으므로 그것만 지우면 시작 전과 같아진다 (불변식 9).
     """
 
     range: StepRange
@@ -138,35 +142,54 @@ class RerecordTransaction:
     계산하면 그 사이 삽입된 Step 때문에 값이 밀려 엉뚱한 곳에 멈춘다.
     """
 
-    created_step_ids: list[str] = field(default_factory=list)
+    baseline_ids: frozenset[str] = frozenset()
+    """재녹화 **시작 시점**에 목록에 있던 Step 의 id.
+
+    ## 왜 「만든 것을 기록」이 아니라 「있던 것을 기억」인가
+
+    초안은 생성 지점마다 `record(step_id)` 를 부르는 방식이었다. 구현하다 깨졌다 —
+    Step 이 만들어지는 길이 **둘**이었기 때문이다:
+
+      1. `_accept_step` — 리코더 sink 와 AI 컴파일러가 지난다
+      2. `itb.api.routes.steps` 의 삽입 — 손으로 넣는 Step (009 FR-285)
+
+    2번을 놓쳤고, 그래서 손으로 넣은 Step 이 권한 범위 밖에 남아 확정이 「만든 것이
+    없다」로 거절됐다. **길을 하나 더 놓치면 같은 일이 또 일어난다.**
+
+    시작 시점 id 를 기억하면 길을 셀 필요가 없다 — 지금 목록에 있는데 그때 없었으면
+    이번 세션이 만든 것이다. 새 경로가 생겨도 자동으로 덮인다.
+
+    **research R7 의 「스냅샷을 만들지 않는다」와 어긋나지 않는다.** 그 판단이 거절한
+    것은 **내용의 복사본**(되돌릴 때 비교하려고 목록을 통째로 떠 두는 것)이고, 이것은
+    id 집합이다. 되돌리기는 여전히 `delete_steps` 한 번이다.
+    """
+
     settled: bool = False
 
-    @property
-    def can_commit(self) -> bool:
+    def created(self, steps: list[Step]) -> list[str]:
+        """이번 세션이 만든 Step — **목록 순서로** (불변식 8·9).
+
+        순서를 목록에서 가져오는 이유는 `delete_steps` 가 순서를 보지 않기 때문이 아니라,
+        사용자에게 보이는 순서와 같아야 하기 때문이다 (화면이 「새로 만든 것 3개」를
+        센다).
+        """
+        return [s.id for s in steps if s.id not in self.baseline_ids]
+
+    def can_commit(self, steps: list[Step]) -> bool:
         """확정할 수 있는가 (불변식 10).
 
         **서버가 판정한다.** 화면이 조건을 복제하면 서버와 갈리고, 갈리면 활성으로 그린
         버튼이 눌린 뒤 거절된다 (005 U-01 의 형태).
         """
-        return not self.settled and bool(self.created_step_ids)
+        return not self.settled and bool(self.created(steps))
 
-    def record(self, step_id: str) -> None:
-        """새로 만들어진 Step 을 권한 범위에 넣는다."""
-        if step_id not in self.created_step_ids:
-            self.created_step_ids.append(step_id)
+    def owns(self, step_id: str, steps: list[Step]) -> bool:
+        """AI 가 고칠 수 있는 Step 인가 (불변식 8).
 
-    def forget(self, step_id: str) -> None:
-        """AI 가 자기가 만든 Step 을 지웠다. 범위에서도 뺀다.
-
-        빼지 않으면 버리기가 없는 id 를 지우려 들고, `delete_steps` 가 전부-또는-전무로
-        거절해 **되돌리기 자체가 실패한다.**
+        **목록에 있으면서 시작 시점에 없던 것**만 참이다. 목록에 아예 없는 id 는 거짓이다
+        — 지워진 Step 을 고치라는 요청은 범위 문제가 아니라 대상 부재다.
         """
-        if step_id in self.created_step_ids:
-            self.created_step_ids.remove(step_id)
-
-    def owns(self, step_id: str) -> bool:
-        """AI 가 고칠 수 있는 Step 인가 (불변식 8)."""
-        return step_id in self.created_step_ids
+        return step_id not in self.baseline_ids and any(s.id == step_id for s in steps)
 
     def _guard(self) -> None:
         if self.settled:
@@ -179,7 +202,7 @@ class RerecordTransaction:
         실패했을 때 되돌릴 수도 다시 시도할 수도 없는 상태가 남는다.
         """
         self._guard()
-        if not self.created_step_ids:
+        if not self.created(steps):
             raise NothingCreatedError
         return delete_steps(steps, current_step_index, list(self.range.step_ids))
 
@@ -190,7 +213,7 @@ class RerecordTransaction:
         그때 결과는 목록 그대로다 (`delete_steps` 가 빈 목록에 아무것도 하지 않는다).
         """
         self._guard()
-        return delete_steps(steps, current_step_index, list(self.created_step_ids))
+        return delete_steps(steps, current_step_index, self.created(steps))
 
     def close(self) -> None:
         """끝났음을 표시한다. 호출자가 결과를 반영한 뒤에 부른다."""

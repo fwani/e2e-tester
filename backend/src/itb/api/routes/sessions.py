@@ -33,6 +33,7 @@ from itb.api.ws.control_channel import (
 )
 from itb.authoring.rerecord import (
     EmptyRangeError,
+    NothingCreatedError,
     RangeNotContiguousError,
     RerecordTransaction,
     validate_range,
@@ -839,6 +840,13 @@ def view_of(w: SessionWork) -> SessionView:
     )
 
 
+def _rerecord_payload(w: SessionWork) -> dict[str, object] | None:
+    """이벤트에 실을 모양. 뷰와 **같은 판정을 쓴다** — 두 곳이 갈리면 화면이 받는 값과
+    조회하는 값이 달라진다."""
+    view = _rerecord_view(w)
+    return None if view is None else view.model_dump(mode="json")
+
+
 def _rerecord_view(w: SessionWork) -> RerecordView | None:
     """진행 중인 교체를 뷰로 옮긴다 (016).
 
@@ -850,8 +858,8 @@ def _rerecord_view(w: SessionWork) -> RerecordView | None:
         return None
     return RerecordView(
         range_step_ids=list(tx.range.step_ids),
-        created_step_ids=list(tx.created_step_ids),
-        can_commit=tx.can_commit,
+        created_step_ids=tx.created(w.steps),
+        can_commit=tx.can_commit(w.steps),
     )
 
 
@@ -1138,7 +1146,13 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
             for i, st in enumerate(existing_test.steps)
             if st.id == rerecord_range.first
         )
-        work.rerecord = RerecordTransaction(range=rerecord_range, arrival_index=arrival)
+        work.rerecord = RerecordTransaction(
+            range=rerecord_range,
+            arrival_index=arrival,
+            # 지금 목록에 있는 것이 「원래 있던 것」이다. 이 뒤에 생기는 것은 전부
+            # 이번 세션이 만든 것이며, **어느 길로 만들어졌든** 그렇다.
+            baseline_ids=frozenset(st.id for st in existing_test.steps),
+        )
         await _start_runner(work, start_index=0, pause_before_index=arrival)
     else:
         await session.apply(Command.BEGIN_AI)
@@ -1518,6 +1532,30 @@ def _loss_handler(state: AppState, session_id: str):  # noqa: ANN201 - LossHandl
         if w.engine is not None:
             with contextlib.suppress(Exception):
                 await w.engine.finalize(False, session_lost=True)
+        # 016 FR-044 — 확정되지 않은 교체가 있었다면 **그 사실과 운명을 알린다.**
+        #
+        # **보존한다.** 기존 유실 처리가 「그때까지의 결과를 보존」하는 것과 같은 판단이며
+        # (`_loss_handler` 의 머리말), 사용자가 버리기를 고르지 않았는데 제품이 버리지
+        # 않는다. 다만 목록은 「옛 구간 + 새 Step」이 함께 있는 **중간 상태**이므로,
+        # 그것을 말하지 않으면 사용자는 저장하고 나서야 안다.
+        #
+        # 트랜잭션은 닫는다 — 브라우저가 없으므로 확정도 버리기도 할 수 없다. 열어 두면
+        # 화면이 재녹화 띠를 계속 그리고 누를 수 없는 버튼을 보여 준다.
+        tx = w.rerecord
+        if tx is not None and not tx.settled:
+            await w.session.emit(
+                "rerecord_realign_failed",
+                failed_step_id=None,
+                reason=(
+                    f"세션이 유실되어 재녹화를 끝낼 수 없습니다 ({reason}). "
+                    f"새로 만든 Step {len(tx.created(w.steps))}개와 옛 구간 "
+                    f"{len(tx.range)}개가 목록에 함께 남아 있습니다."
+                ),
+                definition_reverted=False,
+            )
+            tx.close()
+            await w.session.emit("rerecord_changed", rerecord=None)
+
         # 010 FR-347 — 세션이 유실됐다. 남은 마지막 프레임을 클릭해도 보낼 대상이 없다.
         await _close_control_channel(state, session_id, reason)
         await _cleanup_session_extras(state, w, session_id, reason)
@@ -1551,6 +1589,10 @@ async def _accept_step(session_id: str, step: Step, index: int) -> None:
     else:
         w.steps.insert(index, step)
         at = index
+
+    if w.rerecord is not None and not w.rerecord.settled:
+        # 016 — 만든 개수가 바뀌면 확정 가능 여부가 바뀐다 (불변식 10).
+        await w.session.emit("rerecord_changed", rerecord=_rerecord_payload(w))
 
     # **리코더가 만든 Step 은 이미 수행된 동작이다.** 그래서 실행 위치를 그 뒤로 옮긴다 —
     # 옮기지 않으면 "계속하기" 가 사용자가 방금 손으로 한 동작을 다시 실행한다. 로그인이
@@ -1922,10 +1964,38 @@ async def chat(session_id: str, body: ChatRequest, state: State) -> SessionView:
             ErrorCode.DEFINITION_INVALID, "무엇을 하고 싶은지 적어 주세요."
         )
 
+    # 016 FR-023 — **새 Step 은 구간 시작 위치부터 들어간다.**
+    #
+    # 삽입마다 위치가 밀리는 것은 `StepCompiler` 가 이미 처리한다 (`insert_at` 을
+    # 스스로 전진시킨다). 여기서는 시작점만 정한다.
+    #
+    # 구간의 첫 Step 을 **id 로 다시 찾는다.** 시작 시점의 순번(`arrival_index`)을
+    # 그대로 쓰면 안 된다 — 앞선 턴이 만든 Step 이 이미 그 앞에 들어가 있을 수 있다.
+    _aim_compiler_at_range(w)
+
     _record_turn(w, "user", text)
     await w.session.apply(Command.BEGIN_AI)
     w.agent_task = asyncio.create_task(_run_chat_turn(session_id, text))
     return view_of(w)
+
+
+def _aim_compiler_at_range(w: SessionWork) -> None:
+    """컴파일러의 삽입 위치를 교체 구간 앞으로 맞춘다 (FR-023).
+
+    재녹화가 아니면 아무것도 하지 않는다 — 일반 AI 작성은 목록 끝에 붙는 것이 맞다.
+    """
+    from itb.authoring.compiler import StepCompiler  # noqa: PLC0415
+
+    tx = w.rerecord
+    compiler = w.compiler
+    if tx is None or tx.settled or not isinstance(compiler, StepCompiler):
+        return
+    for index, step in enumerate(w.steps):
+        if step.id == tx.range.first:
+            compiler.insert_at = index
+            return
+    # 구간의 첫 Step 이 사라졌다 — 사람이 손으로 지운 경우다. 끝에 붙인다.
+    compiler.insert_at = None
 
 
 @router.get("/{session_id}/chat")
@@ -1989,6 +2059,158 @@ async def _run_chat_turn(session_id: str, text: str) -> None:
     if agent.last_reply:
         _record_turn(work, "assistant", agent.last_reply)
     await _settle_agent_outcome(work, outcome)
+
+
+# ─── 구간 교체의 두 결말 (016 US2 · api-contract §2-2·§2-3) ───────────────
+
+
+@router.post("/{session_id}/rerecord/commit")
+async def rerecord_commit(session_id: str) -> SessionView:
+    """확정 — 옛 구간을 **한 번에** 지운다 (FR-025·FR-026·FR-030).
+
+    전부-또는-전무다 (`delete_steps`, 011 FR-388). 검증에서 걸리면 아무것도 만들지
+    않으므로 부분 적용이 남지 않는다.
+
+    **트랜잭션은 결과를 반영한 뒤에 닫는다.** 먼저 닫으면 삭제가 실패했을 때 되돌릴
+    수도 다시 시도할 수도 없는 상태가 남는다.
+    """
+    w = work_of(session_id)
+    tx = _require_open_rerecord(w)
+    require_paused(w)
+
+    try:
+        result = tx.commit(w.steps, w.current_step_index)
+    except NothingCreatedError as exc:
+        raise conflict(
+            ErrorCode.DEFINITION_INVALID,
+            str(exc),
+            next_action="지시를 보내 Step 을 먼저 만드세요.",
+        ) from exc
+
+    _apply_rerecord_edit(w, result)
+    tx.close()
+    await w.session.emit("rerecord_changed", rerecord=None)
+    return view_of(w)
+
+
+@router.post("/{session_id}/rerecord/discard")
+async def rerecord_discard(session_id: str) -> SessionView:
+    """버리기 — 이번에 만든 것을 지우고 **도착점으로 되맞춘다** (FR-027·FR-031).
+
+    ## 두 걸음이다
+
+    1. 정의를 되돌린다 — `created_step_ids` 를 한 번에 지우면 시작 전과 같아진다
+       (불변식 9). 스냅샷이 필요 없는 이유는 FR-037 이 AI 의 편집 권한을 그 목록으로
+       한정했기 때문이다 (research R7).
+    2. **화면을 되맞춘다** — 정의만 되돌리고 화면을 두면 「편집은 화면에 반영된다」가
+       깨진다 (원칙 III 불변식 3). 브라우저에는 AI 가 한 조작이 이미 적용돼 있다.
+
+    ## 세션을 끝내지 않는다 (FR-031a)
+
+    끝내는 조작은 기존 「중지」다. 둘이 같은 일을 하면 사용자는 누를 때마다 차이를
+    확인하느라 멈춘다. 그리고 이 기능의 값은 **시행착오 루프**에 있다 — 버릴 때마다
+    세션이 사라지면 그 루프가 성립하지 않는다.
+    """
+    w = work_of(session_id)
+    tx = _require_open_rerecord(w)
+    require_paused(w)
+
+    result = tx.discard(w.steps, w.current_step_index)
+    _apply_rerecord_edit(w, result)
+    tx.close()
+    await w.session.emit("rerecord_changed", rerecord=None)
+
+    # **되맞춤은 정의를 되돌린 뒤에 한다.** 순서가 뒤집히면 실행 도중 목록이 바뀌어
+    # 러너가 없는 Step 을 가리킨다.
+    await _realign_to_arrival(w, tx.arrival_index)
+    return view_of(w)
+
+
+def _require_open_rerecord(w: SessionWork) -> RerecordTransaction:
+    """진행 중인 교체를 꺼낸다. 없거나 끝났으면 거절한다.
+
+    **연타 방지가 여기 있다.** 버리기의 되맞춤 실행이 도는 중에 한 번 더 눌리면
+    실행이 겹친다.
+    """
+    tx = w.rerecord
+    if tx is None or tx.settled:
+        raise conflict(
+            ErrorCode.DEFINITION_INVALID,
+            "진행 중인 재녹화가 없습니다.",
+            next_action="편집 화면에서 구간을 골라 「AI 로 다시 만들기」를 누르세요.",
+        )
+    return tx
+
+
+def _apply_rerecord_edit(w: SessionWork, result: object) -> None:
+    """편집 결과를 세션에 반영한다. **`steps.py` 의 `_apply_edit` 와 같은 일이다.**
+
+    거기 있는 것을 부르지 않는 이유는 임포트 방향이다 — `sessions.py` 가
+    `steps.py` 를 임포트하면 라우터끼리 얽힌다. 하는 일이 네 줄이고, 그 넷이 무엇인지는
+    양쪽 주석이 같은 근거를 적고 있다.
+    """
+    from itb.execution.step_edits import EditResult  # noqa: PLC0415
+
+    if not isinstance(result, EditResult):  # pragma: no cover - 호출자가 지킨다
+        return
+    w.steps = result.steps
+    w.current_step_index = result.current_step_index
+    for message in result.warnings:
+        w.session.add_edit_warning(message)
+    if w.runner is not None:
+        w.runner.retarget(len(w.steps))
+
+
+async def _return_to_start(w: SessionWork) -> None:
+    """브라우저를 시작 주소로 되돌린다 — 되맞춤의 첫 걸음 (016 FR-031).
+
+    **이것이 없으면 되맞춤이 실패한다.** 버리기 시점의 브라우저는 구간 안에서 AI 가
+    조작한 자리에 있고, 그 자리에서 앞 구간을 처음부터 돌리면 첫 Step 부터 요소를
+    찾지 못한다. 도착점을 처음 만들 때는 세션이 막 열려 시작 주소에 있었으므로 이
+    문제가 없었다 — 그래서 같은 배선을 재사용하면 될 것처럼 보였고, 실제로는 아니었다.
+
+    **새 세션과 같지는 않다.** 쿠키·로컬 저장소는 그대로 남는다. 지우지 않는 이유는
+    원칙 III 이다 — 세션 상태를 보존하는 것이 이 제품의 성질이고, 되돌리기 하나 때문에
+    로그인을 날리면 사용자는 재녹화를 쓸수록 느려진다. 그 대가로 「시작 주소를 다시
+    연 상태」와 「처음 연 상태」가 완전히 같지는 않다.
+
+    여분의 탭도 닫지 않는다. 같은 이유이며, 앞 구간이 탭을 열었다면 그 탭은 앞 구간을
+    다시 돌 때 다시 열린다.
+    """
+    tabs = w.session.open_tabs()
+    if not tabs or not w.start_url:
+        return
+    with contextlib.suppress(Exception):
+        await tabs[0].page.goto(w.start_url)
+
+
+async def _realign_to_arrival(w: SessionWork, arrival_index: int) -> None:
+    """화면을 도착점으로 되돌린다 (FR-031·FR-031b·FR-031c).
+
+    **이 구간에도 에이전트는 없다** (불변식 6). 러너만 돈다 — 도착점을 처음 만들 때와
+    같은 규칙이다.
+
+    실패하면 **두 사실을 함께 알린다** (불변식 11): 정의는 이미 되돌아갔고, 화면은
+    그것과 어긋나 있다. 둘 중 하나만 말하면 사용자는 무엇을 믿어야 할지 모른다.
+    """
+    if w.engine is None:
+        # 엔진이 없으면 되맞출 대상이 없다 — 재녹화 세션은 항상 엔진을 갖지만,
+        # 세션이 유실된 뒤 등 비정상 경로에서 여기 닿을 수 있다.
+        return
+    try:
+        # **상태를 먼저 옮긴다.** 옮기지 않으면 러너가 도는 동안 화면이 「일시정지」라고
+        # 말한다 — 실제로는 실행 중이므로 거짓이고, 그 사이 들어온 편집이 러너와 겹친다.
+        # `RUN_FROM` 은 `PAUSED → REPLAYING` 전이로 이미 표에 있다.
+        await w.session.apply(Command.RUN_FROM)
+        await _return_to_start(w)
+        await _start_runner(w, start_index=0, pause_before_index=arrival_index)
+    except Exception as exc:  # noqa: BLE001 - 어떤 실패든 사용자에게 두 사실을 알린다
+        await w.session.emit(
+            "rerecord_realign_failed",
+            failed_step_id=None,
+            reason=f"{type(exc).__name__}: {exc}",
+            definition_reverted=True,
+        )
 
 
 class AiStepRequest(BaseModel):
@@ -2304,6 +2526,20 @@ async def save(session_id: str, body: SaveRequest, state: State) -> SavedTestVie
         raise bad_request(
             ErrorCode.STEP_LIST_EMPTY,
             "Step 이 없어 저장할 수 없습니다. 먼저 동작을 기록하세요.",
+        )
+
+    # 016 FR-029 — **확정되지 않은 교체는 디스크에 닿지 않는다.**
+    #
+    # 지금 목록은 「옛 구간 + 새 Step」이 함께 있는 중간 상태다. 그대로 저장하면
+    # 사용자가 의도하지 않은 정의가 자산이 되고, 되돌릴 방법은 손편집뿐이다.
+    #
+    # 거절하되 **양쪽 길을 다 말한다** — 확정도 버리기도 사용자의 정당한 선택이다.
+    if w.rerecord is not None and not w.rerecord.settled:
+        raise conflict(
+            ErrorCode.DEFINITION_INVALID,
+            "재녹화가 아직 끝나지 않아 저장할 수 없습니다. "
+            "지금 목록에는 옛 구간과 새 Step 이 함께 있습니다.",
+            next_action="「확정」으로 교체를 끝내거나 「버리기」로 되돌린 뒤 저장하세요.",
         )
 
     draft = _draft_of(repo, w)

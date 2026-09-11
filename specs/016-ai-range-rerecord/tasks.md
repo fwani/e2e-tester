@@ -132,25 +132,25 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 
 ### Tests for US2 ⚠️
 
-- [ ] T036 [P] [US2] `backend/tests/us_rerecord/test_commit.py` — 확정이 옛 구간을 한 번에 지우고(FR-026), 만든 것이 없으면 거절하며(불변식 10), 번호가 빈자리 없이 다시 매겨지는지(FR-030)
-- [ ] T037 [P] [US2] `backend/tests/us_rerecord/test_discard.py` — 버리기 후 목록이 시작 전과 **id·순서·내용까지 동일**한지 (불변식 9 · SC-004). **20회 반복**으로 단언한다
-- [ ] T038 [P] [US2] `backend/tests/us_rerecord/test_discard_realign.py` — 버리기가 도착점까지 다시 실행하고(FR-031), 세션이 살아 있으며(FR-031a), 되맞춤 구간에서 드라이버 호출이 0회인지(FR-031b), 되맞춤 실패 시 두 사실을 함께 알리는지(FR-031c · 불변식 11)
-- [ ] T039 [P] [US2] `backend/tests/us_rerecord/test_no_disk_before_commit.py` — 확정 전 「저장」이 확정되지 않은 교체를 디스크에 내리지 않는지 (FR-029)
+- [X] T036 [P] [US2] `backend/tests/us_rerecord/test_commit.py` — 확정이 옛 구간을 한 번에 지우고(FR-026), 만든 것이 없으면 거절하며(불변식 10), 번호가 빈자리 없이 다시 매겨지는지(FR-030)
+- [X] T037 [P] [US2] `backend/tests/us_rerecord/test_discard.py` — 버리기 후 목록이 시작 전과 **id·순서·내용까지 동일**한지 (불변식 9 · SC-004). **20회 반복**으로 단언한다
+- [X] T038 [P] [US2] `backend/tests/us_rerecord/test_discard_realign.py` — 버리기가 도착점까지 다시 실행하고(FR-031), 세션이 살아 있으며(FR-031a), 되맞춤 구간에서 드라이버 호출이 0회인지(FR-031b), 되맞춤 실패 시 두 사실을 함께 알리는지(FR-031c · 불변식 11)
+- [X] T039 [P] [US2] `backend/tests/us_rerecord/test_no_disk_before_commit.py` — 확정 전 「저장」이 확정되지 않은 교체를 디스크에 내리지 않는지 (FR-029)
 - [ ] T040 [P] [US2] `frontend/tests/RerecordTransaction.test.tsx` — 재녹화 띠가 구간과 개수를 말하고, `can_commit` 이 거짓이면 확정이 사유와 함께 잠기는지
 - [ ] T040a [P] [US2] `backend/tests/us_rerecord/test_blocked_in_rerecord.py` 신규 — 재녹화 중 AI 가 막히면 **브라우저가 닫히지 않고**(FR-041 · 원칙 III) 5선택지가 뜨며, 그때까지 만든 Step 이 **보존**되는지(FR-043). 새 경로 `PAUSED → AI_RUNNING → AI_BLOCKED` 를 지난다 — 기존 동작의 재사용이지만 이 전이는 이번에 처음 생긴다
-- [ ] T040b [P] [US2] `backend/tests/us_rerecord/test_commit_then_replay.py` 신규 — 확정·저장 후 그 테스트를 **처음부터 끝까지 실행해 성공**하는지 (SC-005). 재녹화가 만든 Step 이 이어 붙은 자리에서 깨지지 않음을 본다
+- [X] T040b [P] [US2] `backend/tests/us_rerecord/test_commit_then_replay.py` 신규 — 확정·저장 후 그 테스트를 **처음부터 끝까지 실행해 성공**하는지 (SC-005). 재녹화가 만든 Step 이 이어 붙은 자리에서 깨지지 않음을 본다
 - [ ] T040c [P] [US2] `backend/tests/us_rerecord/test_sensitive_in_rerecord.py` 신규 — 재녹화로 만든 Step 의 민감값이 기존 녹화와 **같은 규칙**으로 변수 참조가 되는지 (FR-045). `SensitiveCapturer` 가 toolbox 에 붙어 있어 자동으로 될 가능성이 높지만, 가능성은 검사가 아니다
 
 ### Implementation for US2
 
-- [ ] T041 [US2] `backend/src/itb/api/routes/sessions.py` — 채팅 턴의 `StepCompiler.insert_at` 을 **구간 시작 위치**로 맞춘다 (FR-023). 삽입마다 위치가 밀리는 것은 컴파일러가 이미 처리한다
-- [ ] T042 [US2] `backend/src/itb/api/routes/sessions.py` — 새 Step 의 id 를 `rerecord.created_step_ids` 에 기록한다 (불변식 8·9 의 근거)
-- [ ] T043 [US2] `backend/src/itb/api/routes/sessions.py` — `POST /{session_id}/rerecord/commit` 구현 (api-contract §2-2). 게이트·`delete_steps` 한 번·트랜잭션 닫기
-- [ ] T044 [US2] `backend/src/itb/api/routes/sessions.py` — `POST /{session_id}/rerecord/discard` 구현 (api-contract §2-3). `delete_steps` → 트랜잭션 닫기 → **도착점까지 되맞춤 실행**. 연타는 `409`
-- [ ] T045 [US2] `backend/src/itb/api/routes/sessions.py` — 되맞춤 실패 시 `rerecord_realign_failed` 이벤트를 낸다. `definition_reverted: true` 를 **함께** 싣는다 (api-contract §4-3)
-- [ ] T046 [US2] `backend/src/itb/api/routes/sessions.py` — 저장 경로에 확정 전 교체가 내려가지 않도록 게이트를 건다 (FR-029). T039 를 통과시킨다
-- [ ] T047 [US2] `backend/src/itb/api/routes/sessions.py` — `rerecord_changed` 이벤트 (api-contract §4-2)
-- [ ] T048 [US2] `backend/src/itb/api/routes/sessions.py` — 세션 유실 시 확정되지 않은 새 Step 을 **보존**하고 그 사실을 알린다 (FR-044). 기존 `_loss_handler` 가 「그때까지의 결과를 보존」하는 것과 같은 판단이다 — 사용자가 버리기를 고르지 않았는데 제품이 버리지 않는다. 다만 **옛 구간도 함께 남으므로** 목록이 「새 + 옛」인 상태임을 안내하고, 유실 후에는 저장만 가능하다는 기존 불변식 5 를 따른다
+- [X] T041 [US2] `backend/src/itb/api/routes/sessions.py` — 채팅 턴의 `StepCompiler.insert_at` 을 **구간 시작 위치**로 맞춘다 (FR-023). 삽입마다 위치가 밀리는 것은 컴파일러가 이미 처리한다
+- [X] T042 [US2] `backend/src/itb/api/routes/sessions.py` — 새 Step 의 id 를 `rerecord.created_step_ids` 에 기록한다 (불변식 8·9 의 근거)
+- [X] T043 [US2] `backend/src/itb/api/routes/sessions.py` — `POST /{session_id}/rerecord/commit` 구현 (api-contract §2-2). 게이트·`delete_steps` 한 번·트랜잭션 닫기
+- [X] T044 [US2] `backend/src/itb/api/routes/sessions.py` — `POST /{session_id}/rerecord/discard` 구현 (api-contract §2-3). `delete_steps` → 트랜잭션 닫기 → **도착점까지 되맞춤 실행**. 연타는 `409`
+- [X] T045 [US2] `backend/src/itb/api/routes/sessions.py` — 되맞춤 실패 시 `rerecord_realign_failed` 이벤트를 낸다. `definition_reverted: true` 를 **함께** 싣는다 (api-contract §4-3)
+- [X] T046 [US2] `backend/src/itb/api/routes/sessions.py` — 저장 경로에 확정 전 교체가 내려가지 않도록 게이트를 건다 (FR-029). T039 를 통과시킨다
+- [X] T047 [US2] `backend/src/itb/api/routes/sessions.py` — `rerecord_changed` 이벤트 (api-contract §4-2)
+- [X] T048 [US2] `backend/src/itb/api/routes/sessions.py` — 세션 유실 시 확정되지 않은 새 Step 을 **보존**하고 그 사실을 알린다 (FR-044). 기존 `_loss_handler` 가 「그때까지의 결과를 보존」하는 것과 같은 판단이다 — 사용자가 버리기를 고르지 않았는데 제품이 버리지 않는다. 다만 **옛 구간도 함께 남으므로** 목록이 「새 + 옛」인 상태임을 안내하고, 유실 후에는 저장만 가능하다는 기존 불변식 5 를 따른다
 - [ ] T049 [P] [US2] `frontend/src/components/workbench/RerecordBar.tsx` 신규 — 구간·개수·확정·버리기 (ui-contract §3-2)
 - [ ] T050 [US2] `frontend/src/components/workbench/StepList.tsx` — `range_step_ids` 로 「교체 대상」을 **계산해** 그린다. **Step 에 필드를 더하지 않는다** (불변식 7). 008 시각 언어의 기존 어휘만 쓴다
 - [ ] T051 [US2] `frontend/src/pages/SessionScreen.tsx` — `rerecord_changed`·`rerecord_realign_failed` 구독, 확정·버리기 호출, 되맞춤 실패 안내 (ui-contract §3-4 의 문면)

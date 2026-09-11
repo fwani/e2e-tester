@@ -69,3 +69,27 @@ def step_ids(client: TestClient, sid: str) -> list[str]:
 
 def saved_step_ids(client: TestClient, test_id: str) -> list[str]:
     return [s["id"] for s in client.get(f"/api/tests/{test_id}").json()["steps"]]
+
+
+def wait_for_index(
+    client: TestClient, sid: str, index: int, timeout_s: float = 90.0
+) -> dict[str, Any]:
+    """실행 위치가 그 자리에 닿을 때까지 기다린다.
+
+    `wait_for_state` 로는 부족한 자리가 있다 — 되맞춤은 `paused` 에서 시작해 `paused`
+    로 끝나므로, 상태만 보면 **시작하기도 전에** 통과한다.
+    """
+    deadline = time.monotonic() + timeout_s
+    last: dict[str, Any] = {}
+    while time.monotonic() < deadline:
+        last = dict(client.get(f"/api/sessions/{sid}").json())
+        if last["state"] == "paused" and last["current_step_index"] == index:
+            return last
+        if last["state"] in {"failed", "stopped", "lost", "review"}:
+            pytest.fail(f"되맞춤 중 세션이 끝났다: {last['state']}")
+        time.sleep(0.03)
+    pytest.fail(
+        f"실행 위치가 {index} 에 닿지 못했다 "
+        f"(마지막: {last.get('state')} @ {last.get('current_step_index')})"
+    )
+    raise AssertionError  # pragma: no cover

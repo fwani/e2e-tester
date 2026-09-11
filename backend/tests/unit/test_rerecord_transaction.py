@@ -102,7 +102,16 @@ def test_an_unknown_id_is_rejected_by_the_existing_rule() -> None:
 
 
 def tx(steps: list[Step], ids: list[str], arrival: int) -> RerecordTransaction:
-    return RerecordTransaction(range=validate_range(steps, ids), arrival_index=arrival)
+    """트랜잭션을 만든다. **시작 시점 id 집합을 함께 굳힌다.**
+
+    그것이 「이번 세션이 만든 것」의 정의다 — 생성 지점마다 기록하지 않고 도출한다
+    (`baseline_ids` 주석: 생성 경로가 둘이고 하나를 놓치면 조용히 깨진다).
+    """
+    return RerecordTransaction(
+        range=validate_range(steps, ids),
+        arrival_index=arrival,
+        baseline_ids=frozenset(s.id for s in steps),
+    )
 
 
 def test_commit_removes_the_old_range_in_one_go() -> None:
@@ -114,8 +123,6 @@ def test_commit_removes_the_old_range_in_one_go() -> None:
     new_a = ClickStep(id="step-09", label="새 1", target=target("n1"))
     new_b = ClickStep(id="step-10", label="새 2", target=target("n2"))
     working = [*steps[:3], new_a, new_b, *steps[3:]]
-    t.record(new_a.id)
-    t.record(new_b.id)
 
     result = t.commit(working, current_step_index=3)
     ids = [s.id for s in result.steps]
@@ -136,7 +143,7 @@ def test_commit_is_refused_when_nothing_was_created() -> None:
     """빈 것으로 교체하는 것은 구간 삭제이지 재녹화가 아니다 (FR-028 · 불변식 10)."""
     steps = steps_of(6)
     t = tx(steps, ["step-03"], arrival=2)
-    assert t.can_commit is False
+    assert t.can_commit(steps) is False
     with pytest.raises(NothingCreatedError):
         t.commit(steps, current_step_index=2)
 
@@ -144,8 +151,10 @@ def test_commit_is_refused_when_nothing_was_created() -> None:
 def test_can_commit_turns_true_once_something_is_made() -> None:
     steps = steps_of(6)
     t = tx(steps, ["step-03"], arrival=2)
-    t.record("step-07")
-    assert t.can_commit is True
+    assert t.can_commit(steps) is False
+
+    working = [*steps, ClickStep(id="step-07", label="새", target=target("n"))]
+    assert t.can_commit(working) is True
 
 
 # ─── 버리기 (FR-027 · 불변식 9) ─────────────────────────────────────────────
@@ -163,8 +172,6 @@ def test_discard_restores_the_list_exactly() -> None:
         ClickStep(id="step-11", label="새 3", target=target("n3")),
     ]
     working = [*steps[:3], *made, *steps[3:]]
-    for s in made:
-        t.record(s.id)
 
     result = t.discard(working, current_step_index=3)
     assert snapshot(result.steps) == before
@@ -187,8 +194,6 @@ def test_discard_restores_exactly_every_time(round_no: int) -> None:
         for i in range(1 + round_no % 4)
     ]
     working = [*steps[:2], *made, *steps[2:]]
-    for s in made:
-        t.record(s.id)
 
     result = t.discard(working, current_step_index=2)
     assert snapshot(result.steps) == before
@@ -203,20 +208,23 @@ def test_discard_with_nothing_created_is_allowed() -> None:
     assert snapshot(result.steps) == before
 
 
-def test_a_step_the_ai_deleted_leaves_the_scope() -> None:
-    """AI 가 자기가 만든 Step 을 지우면 권한 범위에서도 빠진다.
+def test_a_step_the_ai_deleted_simply_stops_existing() -> None:
+    """AI 가 자기가 만든 Step 을 지워도 되돌리기가 깨지지 않는다.
 
-    빠지지 않으면 버리기가 **없는 id** 를 지우려 들고, `delete_steps` 가 전부-또는-전무로
-    거절해 되돌리기 자체가 실패한다. 되돌릴 수 없는 되돌리기는 없느니만 못하다.
+    **기록 방식이었다면 문제가 됐다** — 지워진 id 가 목록에 남아 버리기가 없는 것을
+    지우려 들고, `delete_steps` 가 전부-또는-전무로 거절해 되돌리기 자체가 실패한다.
+
+    도출 방식에는 그 문제가 **없다.** 「지금 목록에 있는데 시작 시점에 없던 것」이므로,
+    지워진 Step 은 애초에 세어지지 않는다. 설계를 바꾸면서 결함 한 종류가 사라졌다.
     """
     steps = steps_of(5)
     t = tx(steps, ["step-02"], arrival=1)
     made = ClickStep(id="step-09", label="새", target=target("n"))
     working = [steps[0], made, *steps[1:]]
-    t.record(made.id)
+    assert t.created(working) == ["step-09"]
 
-    t.forget(made.id)  # AI 가 delete_step 으로 지웠다
     after_ai_delete = [s for s in working if s.id != made.id]
+    assert t.created(after_ai_delete) == [], "지워진 것은 세지 않는다"
 
     result = t.discard(after_ai_delete, current_step_index=1)
     assert snapshot(result.steps) == snapshot(steps)
@@ -233,19 +241,39 @@ def test_the_scope_is_what_this_session_made() -> None:
     """
     steps = steps_of(6)
     t = tx(steps, ["step-03", "step-04"], arrival=2)
-    t.record("step-07")
+    working = [*steps, ClickStep(id="step-07", label="새", target=target("n"))]
 
-    assert t.owns("step-07") is True
-    assert t.owns("step-03") is False, "교체 대상은 AI 가 못 건드린다"
-    assert t.owns("step-01") is False, "구간 밖도 마찬가지다"
+    assert t.owns("step-07", working) is True
+    assert t.owns("step-03", working) is False, "교체 대상은 AI 가 못 건드린다"
+    assert t.owns("step-01", working) is False, "구간 밖도 마찬가지다"
+    assert t.owns("step-99", working) is False, "목록에 없는 id 는 대상 부재다"
 
 
-def test_recording_the_same_step_twice_does_not_duplicate() -> None:
+def test_created_follows_the_list_order() -> None:
+    """만든 것의 순서는 **목록 순서**다 — 화면이 그 순서로 센다."""
     steps = steps_of(4)
     t = tx(steps, ["step-02"], arrival=1)
-    t.record("step-09")
-    t.record("step-09")
-    assert t.created_step_ids == ["step-09"]
+    a = ClickStep(id="step-20", label="나중", target=target("a"))
+    b = ClickStep(id="step-10", label="먼저", target=target("b"))
+    working = [steps[0], b, a, *steps[1:]]
+    assert t.created(working) == ["step-10", "step-20"]
+
+
+def test_any_creation_path_is_covered() -> None:
+    """**어느 길로 만들어졌든 세어진다** (baseline_ids 주석의 근거).
+
+    초안은 생성 지점마다 `record()` 를 부르는 방식이었고, 손 삽입 경로를 놓쳐 확정이
+    「만든 것이 없다」로 거절됐다. 도출 방식은 길을 세지 않는다.
+    """
+    steps = steps_of(3)
+    t = tx(steps, ["step-02"], arrival=1)
+    # 리코더가 넣었든 손으로 넣었든 AI 가 만들었든 목록에 있으면 같다.
+    working = [
+        *steps,
+        ClickStep(id="step-50", label="어떤 길로든", target=target("x")),
+    ]
+    assert t.created(working) == ["step-50"]
+    assert t.can_commit(working) is True
 
 
 # ─── 연타 방지 ──────────────────────────────────────────────────────────────
@@ -258,14 +286,14 @@ def test_a_settled_transaction_refuses_both_endings() -> None:
     """
     steps = steps_of(5)
     t = tx(steps, ["step-02"], arrival=1)
-    t.record("step-09")
+    working = [*steps, ClickStep(id="step-09", label="새", target=target("n"))]
     t.close()
 
     with pytest.raises(TransactionSettledError):
-        t.commit(steps, current_step_index=1)
+        t.commit(working, current_step_index=1)
     with pytest.raises(TransactionSettledError):
-        t.discard(steps, current_step_index=1)
-    assert t.can_commit is False
+        t.discard(working, current_step_index=1)
+    assert t.can_commit(working) is False
 
 
 def test_commit_does_not_close_by_itself() -> None:
@@ -278,7 +306,6 @@ def test_commit_does_not_close_by_itself() -> None:
     t = tx(steps, ["step-02"], arrival=1)
     made = ClickStep(id="step-09", label="새", target=target("n"))
     working = [steps[0], made, *steps[1:]]
-    t.record(made.id)
 
     t.commit(working, current_step_index=1)
     assert t.settled is False
@@ -295,6 +322,12 @@ def test_the_arrival_index_is_frozen_at_the_start() -> None:
     """
     steps = steps_of(8)
     t = tx(steps, ["step-04"], arrival=3)
-    for i in range(5):
-        t.record(f"step-{90 + i}")
+    grown = [
+        *steps,
+        *(
+            ClickStep(id=f"step-{90 + i}", label=f"새 {i}", target=target(f"n{i}"))
+            for i in range(5)
+        ),
+    ]
+    assert len(t.created(grown)) == 5
     assert t.arrival_index == 3
