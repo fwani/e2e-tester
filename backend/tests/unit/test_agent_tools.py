@@ -108,11 +108,9 @@ def test_tools_that_do_not_produce_steps_are_all_accounted_for() -> None:
     from itb.authoring.tools import CONTROL_TOOLS, READ_ONLY_TOOLS, STEP_EDITING_TOOLS
 
     non_producing = set(TOOL_NAMES) - set(STEP_PRODUCING_TOOLS)
-    assert non_producing == set(READ_ONLY_TOOLS) | set(CONTROL_TOOLS) | set(
-        STEP_EDITING_TOOLS
-    ), (
-        f"어느 분류에도 없는 도구가 있다: "
-        f"{sorted(non_producing - set(READ_ONLY_TOOLS) - set(CONTROL_TOOLS) - set(STEP_EDITING_TOOLS))}"
+    classified = set(READ_ONLY_TOOLS) | set(CONTROL_TOOLS) | set(STEP_EDITING_TOOLS)
+    assert non_producing == classified, (
+        f"어느 분류에도 없는 도구가 있다: {sorted(non_producing - classified)}"
     )
 
 
