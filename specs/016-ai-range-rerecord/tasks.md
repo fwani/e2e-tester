@@ -31,7 +31,7 @@ description: "Task list for 016 편집 중 AI 구간 재녹화"
 **Purpose**: 기준선을 확인한다. 새 의존성은 없다.
 
 - [ ] T001 현재 브랜치에서 전체 검증을 돌려 **기준선이 초록**임을 확인한다 — `cd backend && uv run lint-imports && uv run ruff check src/ tests/ && uv run pytest && uv run python -m itb.schema.export --check` · `cd frontend && npx tsc --noEmit && npm test -- --run`. 실패가 있으면 그 목록을 `specs/016-ai-range-rerecord/baseline.md` 에 적고 이 기능과 무관함을 확인한다
-- [ ] T002 [P] `specs/016-ai-range-rerecord/contracts/agent-tools.md` §1 의 도구 분류표를 기준으로, `backend/src/itb/authoring/tools.py` 의 현재 `TOOL_NAMES` 12개가 네 분류에 빠짐없이 들어가는지 손으로 대조하고 결과를 같은 문서에 각주로 남긴다 (구현 전 사실 확인)
+- [ ] T002 [P] `specs/016-ai-range-rerecord/contracts/agent-tools.md` §1 의 도구 분류표를 기준으로, `backend/src/itb/authoring/tools.py` 의 현재 `TOOL_NAMES` 12개가 네 분류에 빠짐없이 들어가는지 손으로 대조하고 결과를 `specs/016-ai-range-rerecord/baseline.md` 에 적는다 (계약 문서는 고치지 않는다 — 구현 작업이 계약을 수정하면 순서가 뒤집힌다)
 
 ---
 
@@ -45,9 +45,11 @@ description: "Task list for 016 편집 중 AI 구간 재녹화"
 ### 정의 요약 (FR-001~FR-006 · R8)
 
 - [ ] T003 [P] `backend/tests/unit/test_definition_summary.py` 에 **실패하는** 테스트를 먼저 쓴다: (a) 요약에 순번·id·label·종류·대상 요약·탭이 있다 (b) **어떤 Step 의 `value` 도 없다** — 값 100종(사번·주소·카드번호 형태 포함) property 검사 (c) 교체 구간이 표시된다 (d) 예산 초과 시 `… (Step n~m 생략) …` 가 명시된다
-- [ ] T004 `backend/src/itb/authoring/summary.py` 신규 — `build_definition_summary(steps, range_ids, budget) -> str`. **`Step.value` 에 접근하지 않는다** (R8). 입력값이 있는 Step 은 `값 있음` 또는 변수 참조 이름만 적는다. T003 을 통과시킨다
+- [ ] T004 `backend/src/itb/authoring/summary.py` 신규 — `build_definition_summary(steps, range_ids, budget) -> str`. **`Step.value` 에 접근하지 않는다** (R8). 입력값이 있는 Step 은 `값 있음` 또는 변수 참조 이름만 적는다. `budget` 기본값은 **잠정 8KB** 로 박고 T064 가 실측값으로 교체한다 (A1). T003 을 통과시킨다
 - [ ] T005 `backend/src/itb/authoring/agent.py` 에 요약 주입을 배선한다 — `AuthoringAgent` 가 `summary_source: Callable[[], str] | None` 을 받고, **매 턴의 사용자 메시지 앞에** 요약을 덧붙인다 (FR-003 · agent-tools.md §3). 첫 메시지에만 넣지 않는다
 - [ ] T006 `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에 agent-tools.md §3 의 4줄을 더한다. **기존 줄은 하나도 지우지 않는다**
+- [ ] T006a `backend/src/itb/api/routes/sessions.py` — **기존 AI 작성(US4)·자연어 Step 추가(US6) 경로에도 같은 요약을 주입한다** (FR-005). 마감이 아니라 여기서 한다 — T005 가 주입 지점을 이미 만들었고, 나중에 붙이면 US4·US6 회귀가 마지막에 드러난다 (analyze I1)
+- [ ] T006b [P] `backend/tests/unit/test_definition_summary.py` 에 회귀 단언을 더한다 — US4·US6 경로의 에이전트도 요약을 받는지 (FR-005)
 
 ### 교체 트랜잭션 (data-model §1-2 · R7)
 
@@ -64,6 +66,7 @@ description: "Task list for 016 편집 중 AI 구간 재녹화"
 - [ ] T011 `backend/src/itb/api/routes/sessions.py` — `CreateSessionRequest` 에 `mode: "rerecord"` 와 `rerecord_step_ids: list[str]` 를 더한다. `ai_instruction` 은 이 모드에서 **거절**한다. 경계 검증: 구간 존재·연속·비어있지 않음 → `400 DEFINITION_INVALID`(003 의 `category`·`next_action` 포함)
 - [ ] T012 `backend/src/itb/api/routes/sessions.py` — `mode=rerecord` 분기를 구현한다. `authoring_mode = AI`, `BEGIN_REPLAY`, `_build_engine`, `_start_runner(pause_before_index=구간 첫 Step 순번)`. **러너가 멈춘 뒤에** `_build_agent` 를 부른다 (api-contract §1 의 순서가 계약이다). 도착점 실패 시 세션을 남기고 실패한 Step 정보를 실어 `409` (FR-020)
 - [ ] T013 `backend/src/itb/api/routes/sessions.py` — `SessionWork.rerecord: RerecordTransaction | None` 필드와 `mode=rerecord` 시 트랜잭션 생성
+- [ ] T013a [P] `backend/tests/us_rerecord/test_arrival_point.py` 신규 — 도착점 경계: **구간이 Step 1 부터면 아무것도 실행하지 않고 시작 주소만 연다** (FR-021), 구간 끝이 목록 끝인 경우, 앞 구간이 깨져 도착점에 닿지 못하는 경우 (FR-020)
 
 ### 원칙 II 시간 축 검사 (R9 · 불변식 6) ⚠️ 이연 불가
 
@@ -105,11 +108,13 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [ ] T027 [US1] `backend/src/itb/api/routes/sessions.py` — `_run_agent` 의 종료 처리를 **두 결말로 가른다**: 기존 US4 의 「지시 완수 → `FINISH_PASS`」와 016 의 「턴 완료 → `PAUSE`」. 호출자가 어느 쪽인지 넘긴다. 막힘·실패 처리는 **한 곳을 그대로 지난다**
 - [ ] T028 [US1] `backend/src/itb/api/routes/sessions.py` — `GET /{session_id}/chat` 구현 (api-contract §2-4). `AuthoringAgent.messages` 에서 `ChatTurn` 목록을 만든다. **디스크에 쓰지 않는다** (FR-014)
 - [ ] T029 [US1] `backend/src/itb/api/routes/sessions.py` — `chat_turn` 이벤트 발행 (api-contract §4-1)
-- [ ] T030 [P] [US1] `frontend/src/components/workbench/ChatPanel.tsx` 신규 — 이력·입력(상한 표시)·진행 표시(`ai_progress` 재사용)·중지(`run.pause` 재사용). **막힘은 그리지 않는다** — 기존 `ai_blocked` 5선택지가 뜬다 (ui-contract §3-1)
+- [ ] T030 [P] [US1] `frontend/src/components/workbench/ChatPanel.tsx` 신규 — 이력·입력(상한 표시)·진행 표시(`ai_progress` 재사용)·중지(`run.pause` 재사용)·**언어모델 없음 안내**(`GET /api/ai/availability` 의 `reason` 을 그대로, FR-012). **막힘은 그리지 않는다** — 기존 `ai_blocked` 5선택지가 뜨고 패널은 그리로 가리킨다 (ui-contract §3-1 · `USE_BLOCKED_ANSWER`)
 - [ ] T031 [US1] `frontend/src/components/workbench/model.ts`·`Workbench.tsx` — 대화 패널을 국면 배치에 넣는다. `frontend/src/lib/layout.ts` 의 `Record<Phase, …>` 표를 지난다 (007 배치 계약)
 - [ ] T032 [US1] `frontend/src/pages/SessionScreen.tsx` — `chat_turn` 구독, `POST /chat` 호출, 새로 고침 시 `GET /chat` 복구
 - [ ] T033 [US1] `frontend/src/components/workbench/ActionPalette.tsx` — `ai.rerecord` 를 팔레트에 놓고, **브라우저를 연다는 사실을 이름 옆에서 미리 말한다** (ui-contract §1-1)
 - [ ] T034 [US1] `frontend/src/pages/SessionScreen.tsx` 또는 편집 화면 — `ai.rerecord` 를 누르면 고른 구간으로 `mode=rerecord` 세션을 만든다. 연속이 아니면 **시작하지 않고** 이유를 말한다 (FR-016)
+- [ ] T034a [US1] `frontend/src/pages/SessionScreen.tsx` — **저장하지 않은 편집이 있으면 시작 전에 확인을 받는다** (FR-022 · api-contract §1 「저장하지 않은 편집」). 선택지 셋: 저장하고 시작 · 저장하지 않고 시작 · 취소. **편집을 버리지 않는다** — 세션이 끝나면 돌아온다
+- [ ] T034b [P] [US1] `frontend/tests/RerecordStart.test.tsx` 신규 — 미저장 편집이 있을 때 확인이 뜨는지, 「취소」가 세션을 만들지 않는지, 「저장하지 않고 시작」 후에도 편집이 화면에 남는지 (FR-022)
 - [ ] T035 [US1] `frontend/tests/CapabilityUI.test.tsx` 수정 — 새 조작 4개의 **자리**가 실제로 있는지 (FR-235)
 
 **Checkpoint**: quickstart §2 가 통과한다. 이 시점에 Step 을 하나도 만들지 않아도
@@ -132,6 +137,9 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [ ] T038 [P] [US2] `backend/tests/us_rerecord/test_discard_realign.py` — 버리기가 도착점까지 다시 실행하고(FR-031), 세션이 살아 있으며(FR-031a), 되맞춤 구간에서 드라이버 호출이 0회인지(FR-031b), 되맞춤 실패 시 두 사실을 함께 알리는지(FR-031c · 불변식 11)
 - [ ] T039 [P] [US2] `backend/tests/us_rerecord/test_no_disk_before_commit.py` — 확정 전 「저장」이 확정되지 않은 교체를 디스크에 내리지 않는지 (FR-029)
 - [ ] T040 [P] [US2] `frontend/tests/RerecordTransaction.test.tsx` — 재녹화 띠가 구간과 개수를 말하고, `can_commit` 이 거짓이면 확정이 사유와 함께 잠기는지
+- [ ] T040a [P] [US2] `backend/tests/us_rerecord/test_blocked_in_rerecord.py` 신규 — 재녹화 중 AI 가 막히면 **브라우저가 닫히지 않고**(FR-041 · 원칙 III) 5선택지가 뜨며, 그때까지 만든 Step 이 **보존**되는지(FR-043). 새 경로 `PAUSED → AI_RUNNING → AI_BLOCKED` 를 지난다 — 기존 동작의 재사용이지만 이 전이는 이번에 처음 생긴다
+- [ ] T040b [P] [US2] `backend/tests/us_rerecord/test_commit_then_replay.py` 신규 — 확정·저장 후 그 테스트를 **처음부터 끝까지 실행해 성공**하는지 (SC-005). 재녹화가 만든 Step 이 이어 붙은 자리에서 깨지지 않음을 본다
+- [ ] T040c [P] [US2] `backend/tests/us_rerecord/test_sensitive_in_rerecord.py` 신규 — 재녹화로 만든 Step 의 민감값이 기존 녹화와 **같은 규칙**으로 변수 참조가 되는지 (FR-045). `SensitiveCapturer` 가 toolbox 에 붙어 있어 자동으로 될 가능성이 높지만, 가능성은 검사가 아니다
 
 ### Implementation for US2
 
@@ -142,7 +150,7 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [ ] T045 [US2] `backend/src/itb/api/routes/sessions.py` — 되맞춤 실패 시 `rerecord_realign_failed` 이벤트를 낸다. `definition_reverted: true` 를 **함께** 싣는다 (api-contract §4-3)
 - [ ] T046 [US2] `backend/src/itb/api/routes/sessions.py` — 저장 경로에 확정 전 교체가 내려가지 않도록 게이트를 건다 (FR-029). T039 를 통과시킨다
 - [ ] T047 [US2] `backend/src/itb/api/routes/sessions.py` — `rerecord_changed` 이벤트 (api-contract §4-2)
-- [ ] T048 [US2] `backend/src/itb/api/routes/sessions.py` — 세션 유실 시 확정되지 않은 새 Step 의 운명을 결정하고 알린다 (FR-044). 기존 `_loss_handler` 에 붙인다
+- [ ] T048 [US2] `backend/src/itb/api/routes/sessions.py` — 세션 유실 시 확정되지 않은 새 Step 을 **보존**하고 그 사실을 알린다 (FR-044). 기존 `_loss_handler` 가 「그때까지의 결과를 보존」하는 것과 같은 판단이다 — 사용자가 버리기를 고르지 않았는데 제품이 버리지 않는다. 다만 **옛 구간도 함께 남으므로** 목록이 「새 + 옛」인 상태임을 안내하고, 유실 후에는 저장만 가능하다는 기존 불변식 5 를 따른다
 - [ ] T049 [P] [US2] `frontend/src/components/workbench/RerecordBar.tsx` 신규 — 구간·개수·확정·버리기 (ui-contract §3-2)
 - [ ] T050 [US2] `frontend/src/components/workbench/StepList.tsx` — `range_step_ids` 로 「교체 대상」을 **계산해** 그린다. **Step 에 필드를 더하지 않는다** (불변식 7). 008 시각 언어의 기존 어휘만 쓴다
 - [ ] T051 [US2] `frontend/src/pages/SessionScreen.tsx` — `rerecord_changed`·`rerecord_realign_failed` 구독, 확정·버리기 호출, 되맞춤 실패 안내 (ui-contract §3-4 의 문면)
@@ -162,7 +170,7 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 ### Tests for US3 ⚠️
 
 - [ ] T052 [P] [US3] `backend/tests/unit/test_tool_surface.py` 수정 — agent-tools.md §1 의 검사 4개: 네 분류 합집합 == `TOOL_NAMES`·교집합 없음, `STEP_PRODUCING_TOOLS` ↔ Step 종류 1:1(기존), `TOOL_SCHEMAS` 키 == `TOOL_NAMES`
-- [ ] T053 [P] [US3] `backend/tests/unit/test_agent_edit_tools.py` 신규 — **편집 도구의 결과가 사람 편집 경로의 결과와 Step 으로서 같은지** (SC-006 · agent-tools.md §1 검사 3)
+- [ ] T053 [P] [US3] `backend/tests/unit/test_agent_edit_tools.py` 신규 — **편집 도구의 결과가 사람 편집 경로의 결과와 Step 으로서 같은지** (SC-006 · agent-tools.md §1 검사 3), 그리고 **같은 이벤트로 화면에 나가는지** (FR-039). 같은 함수를 지나는 것과 같은 이벤트를 내는 것은 다른 보장이므로 둘 다 단언한다
 - [ ] T054 [P] [US3] `backend/tests/unit/test_edit_tool_scope.py` 신규 — 불변식 8: 구간 밖·옛 구간 Step 에 대한 편집이 **거절을 반환**하고(예외 아님) 사유가 있는지 (FR-038)
 
 ### Implementation for US3
@@ -182,8 +190,7 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T063 [P] `backend/src/itb/api/routes/sessions.py` — **기존 AI 작성(US4)·자연어 Step 추가(US6) 경로에도 정의 요약을 주입한다** (FR-005). 경로마다 AI 가 아는 것이 다르면 사용자는 예측할 수 없다
-- [ ] T064 [P] `backend/tests/unit/test_definition_summary.py` 에 **예산 실측**을 더한다 — Step 100개 요약의 실제 바이트 수를 재고, 그 값으로 `budget` 기본값을 정한다 (plan.md 알려진 위험 2)
+- [ ] T064 [P] `backend/tests/unit/test_definition_summary.py` 에 **예산 실측**을 더한다 — Step 100개 요약의 실제 바이트 수를 재고, 그 값으로 T004 의 잠정 `budget`(8KB)을 교체한다 (plan.md 알려진 위험 2 · analyze A1)
 - [ ] T065 [P] `backend/tests/unit/test_attempt_limits.py` 수정 — 편집 도구도 호출 1회로 세는지, 구간 크기와 무관하게 상한이 적용되는지 (FR-042)
 - [ ] T066 [P] `frontend/tests/` — 회귀 확인 quickstart §8 의 6항목을 자동 검사로 가능한 것만 옮긴다 (SC-009)
 - [ ] T067 `README.md` 갱신 — 016 을 기능 표에 넣고, 「AI 로 다시 만들기」를 사용법에 적는다. 도구 표면이 16종이 된 사실을 아키텍처 절에 반영한다
@@ -227,15 +234,15 @@ Phase 6 Polish
 
 | 묶음 | 함께 돌릴 수 있는 작업 |
 |---|---|
-| Phase 2 테스트 선행 | T003 · T007 · T014 (다른 파일). T015 는 T014 와 같은 파일이므로 직렬 |
+| Phase 2 테스트 선행 | T003 · T006b · T007 · T013a · T014 (다른 파일). T015 는 T014 와 같은 파일이므로 직렬 |
 | Phase 2 프론트 | T021 은 백엔드와 병렬 (타입만 먼저 맞춘다) |
-| Phase 3 테스트 | T023 · T024 · T025 |
-| Phase 4 테스트 | T036 · T037 · T038 · T039 · T040 |
+| Phase 3 테스트 | T023 · T024 · T025 · T034b |
+| Phase 4 테스트 | T036 · T037 · T038 · T039 · T040 · T040a · T040b · T040c |
 | Phase 5 테스트 | T052 · T053 · T054 |
-| Phase 6 | T063 · T064 · T065 · T066 |
+| Phase 6 | T064 · T065 · T066 |
 
 **주의**: `backend/src/itb/api/routes/sessions.py` 를 건드리는 작업은 T011·T012·T013·
-T022·T026·T027·T028·T029·T041~T048·T063 으로 많다. 전부 직렬이다 — 병렬로 돌리면
+T022·T026·T027·T028·T029·T041~T048·T006a 로 많다. 전부 직렬이다 — 병렬로 돌리면
 같은 파일에서 충돌한다.
 
 ---

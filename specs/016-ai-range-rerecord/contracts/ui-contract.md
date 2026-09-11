@@ -60,7 +60,7 @@
 | **composing** | `na(N2)` 고칠 테스트가 없다 | `na(N2)` | `na(N2)` | `na(N2)` |
 | **recording** | `na(N1)` 이미 만드는 중 | `off(NEEDS_PAUSE, run.pause)` | `na(N2)` | `na(N2)` |
 | **ai_authoring** | `off(AI_RUNNING, run.stop)` | `off(AI_RUNNING, run.pause)` | `off(AI_RUNNING, run.pause)` | `off(AI_RUNNING, run.pause)` |
-| **takeover** | `off(AI_RUNNING, run.stop)` | `cond(C11)` 막힘 답변 경로로 | `off(NEEDS_PAUSE, run.resume)` | `off(NEEDS_PAUSE, run.resume)` |
+| **takeover** | `off(AI_RUNNING, run.stop)` | `off(USE_BLOCKED_ANSWER, ai.chooseBlocked)` | `off(NEEDS_PAUSE, run.resume)` | `off(NEEDS_PAUSE, run.resume)` |
 | **running** | `off(RUNNING_NO_EDIT, run.pause)` | `off(RUNNING_NO_EDIT, run.pause)` | `off(RUNNING_NO_EDIT, run.pause)` | `off(RUNNING_NO_EDIT, run.pause)` |
 | **paused** | `off(ALREADY_IN_SESSION)` | **`ON`** | `cond(C16)` | `cond(C17)` |
 | **review** | `off(NEEDS_BROWSER, run.all)` | `off(NEEDS_BROWSER, run.all)` | `na(N3)` 브라우저가 없다 | `na(N3)` |
@@ -85,6 +85,13 @@
 |---|---|
 | `ALREADY_IN_SESSION` | 이미 세션이 열려 있습니다. 이 세션 안에서 대화로 진행하세요 |
 | `NEEDS_SESSION` | AI 와 대화하려면 먼저 「AI 로 다시 만들기」로 시작하세요 |
+| `USE_BLOCKED_ANSWER` | AI 가 막혀 있습니다. 위의 답변 칸에 알려 주세요 |
+
+**`USE_BLOCKED_ANSWER` 가 왜 필요한가**: 초안은 takeover 국면의 `ai.chat` 을
+`cond(C11)`(막힘일 때 활성)로 뒀다. 그것은 **답변 입구를 둘로 만드는 것**이고, 바로 아래
+§3-1 이 금지하는 것(「막힘은 대화 패널이 그리지 않는다」)과 같은 문서 안에서 충돌했다.
+API 계약도 채팅 게이트를 `paused` 하나로 정한다 (api-contract §2-1). 답변 입구는 기존
+`ai.chooseBlocked` 하나이고, 대화 패널은 그리로 **가리킨다.**
 
 ### 이 표에서 읽어야 할 두 가지
 
