@@ -192,9 +192,9 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 
 - [X] T064 [P] `backend/tests/unit/test_definition_summary.py` 에 **예산 실측**을 더한다 — Step 100개 요약의 실제 바이트 수를 재고, 그 값으로 T004 의 잠정 `budget`(8KB)을 교체한다 (plan.md 알려진 위험 2 · analyze A1)
 - [X] T065 [P] `backend/tests/unit/test_attempt_limits.py` 수정 — 편집 도구도 호출 1회로 세는지, 구간 크기와 무관하게 상한이 적용되는지 (FR-042)
-- [ ] T066 [P] `frontend/tests/` — 회귀 확인 quickstart §8 의 6항목을 자동 검사로 가능한 것만 옮긴다 (SC-009)
-- [ ] T067 `README.md` 갱신 — 016 을 기능 표에 넣고, 「AI 로 다시 만들기」를 사용법에 적는다. 도구 표면이 16종이 된 사실을 아키텍처 절에 반영한다
-- [ ] T068 `docs/PENDING-HUMAN-VERIFICATION.md` 에 §16 을 더한다 — SC-002(조작 횟수 비교)·SC-003(10건 중 7건)은 **사람이 측정**해야 한다. 개발용 드라이버 결과는 SC-003 의 근거로 쓰지 않는다
+- [X] T066 [P] `frontend/tests/` — 회귀 확인 quickstart §8 의 6항목을 자동 검사로 가능한 것만 옮긴다 (SC-009)
+- [X] T067 `README.md` 갱신 — 016 을 기능 표에 넣고, 「AI 로 다시 만들기」를 사용법에 적는다. 도구 표면이 16종이 된 사실을 아키텍처 절에 반영한다
+- [X] T068 `docs/PENDING-HUMAN-VERIFICATION.md` 에 §16 을 더한다 — SC-002(조작 횟수 비교)·SC-003(10건 중 7건)은 **사람이 측정**해야 한다. 개발용 드라이버 결과는 SC-003 의 근거로 쓰지 않는다
 - [ ] T069 전체 검증을 돌린다 — `uv run lint-imports` → `ruff check` → `pytest` → `schema.export --check`(**변경 없이 통과해야 한다**) → `tsc --noEmit` → `npm test -- --run`
 - [ ] T070 quickstart.md 를 처음부터 끝까지 실수행하고 §7 성공 기준 표의 자동 측정 가능 항목을 채운다
 
