@@ -63,6 +63,7 @@ import {
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
+import { Button } from "../ui/Button";
 
 
 export interface EditViewProps {
@@ -403,9 +404,9 @@ export function EditView({
     return (
       <main className="max-w-[900px] my-s6 mx-auto py-0 px-s4">
         <ErrorNotice error={error} />
-        <button className="secondary" onClick={onBack}>
+        <Button onClick={onBack}>
           목록으로
-        </button>
+        </Button>
       </main>
     );
   }
@@ -1105,8 +1106,7 @@ export function EditView({
               >
                 저장하고 나가기
               </button>
-              <button
-                className="secondary"
+              <Button
                 onClick={() => {
                   const next = leaving;
                   setOps([]);
@@ -1115,10 +1115,10 @@ export function EditView({
                 }}
               >
                 버리고 나가기
-              </button>
-              <button className="ghost" onClick={() => setLeaving(null)}>
+              </Button>
+              <Button variant="ghost" onClick={() => setLeaving(null)}>
                 머무르기
-              </button>
+              </Button>
             </div>
           </div>
         </div>

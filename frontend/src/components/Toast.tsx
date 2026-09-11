@@ -28,15 +28,18 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "../ui/Button";
+import { Toast as UiToast, TOAST_LAYER_CLASSES } from "../ui/Notice";
+import type { NoticeTone } from "../ui/Notice";
 
 /** 알림의 뜻 → 정본의 옅은 바탕. `NoticeStack` 의 `TONE` 과 같은 값이다. */
 export type ToastTone = "error" | "warn" | "info" | "plain";
 
-const TINT: Record<ToastTone, string> = {
-  error: "tint-fail",
-  warn: "tint-warn",
-  info: "tint-run",
-  plain: "",
+/** 결말 어휘 → `ui/Notice` 의 `tone`. 정본의 `.tint-*` 가 여기로 왔다 (015 T073). */
+const TINT: Record<ToastTone, NoticeTone> = {
+  error: "fail",
+  warn: "warn",
+  info: "run",
+  plain: "default",
 };
 
 /** 층을 찾는 표식. 클래스가 아니라 속성으로 찾는다 — 형태는 정본이 정한다. */
@@ -54,7 +57,9 @@ function toastLayer(): HTMLElement {
 
   const made = document.createElement("div");
   made.setAttribute(LAYER_ATTR, "");
-  made.className = "toast-layer";
+  // 015 T073 — 정본 `.toast-layer` 가 `ui/Notice` 로 왔다. **자리를 두 곳에서 정하지
+  // 않는다** — 포털 대상은 명령형으로 만들 수밖에 없으므로 상수를 꺼내 쓴다.
+  made.className = TOAST_LAYER_CLASSES;
   document.body.appendChild(made);
   return made;
 }
@@ -90,18 +95,14 @@ export function Toast({ tone = "plain", onDismiss, mark, role, children }: Toast
   const speak = role ?? (tone === "error" ? "alert" : "status");
 
   return createPortal(
-    <div
-      className={`notice float toast${tint === "" ? "" : ` ${tint}`}`}
-      role={speak}
-      {...(mark === undefined ? {} : { [mark]: "" })}
-    >
+    <UiToast tone={tint} role={speak} {...(mark === undefined ? {} : { [mark]: "" })}>
       <div className="flex-1 min-w-0">{children}</div>
       {onDismiss !== undefined && (
         <Button size="sm" variant="quiet" aria-label="알림 닫기" onClick={onDismiss}>
           닫기
         </Button>
       )}
-    </div>,
+    </UiToast>,
     toastLayer(),
   );
 }

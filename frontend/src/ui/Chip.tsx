@@ -18,7 +18,7 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 
 /** 정본의 `.chip.{pass,fail,warn,run,ai}`. `default` 는 수식 없는 `.chip`. */
-export type ChipTone = "default" | "pass" | "fail" | "warn" | "run" | "ai";
+export type ChipTone = "default" | "pass" | "fail" | "warn" | "run" | "ai" | "off";
 
 export interface ChipProps extends Omit<ComponentPropsWithRef<"span">, "className"> {
   readonly tone?: ChipTone;
@@ -55,6 +55,9 @@ const TONE: Record<ChipTone, string> = {
   warn: "border-warn text-warn bg-warn-t",
   run: "border-run text-run bg-run-t",
   ai: "border-ai text-ai bg-ai-t",
+  // 정본 `.chip.off` — 미실행. 점선이고 자리를 지킨다. **테두리 색은 기본과 같다** —
+  // 정본이 `border-style` 만 바꾸고 `.chip` 의 `border-color:var(--hair-2)` 를 남긴다.
+  off: "border-dashed border-hair-2 text-ink-3 bg-transparent",
 };
 
 export function Chip({ tone = "default", layout, children, ...rest }: ChipProps) {

@@ -31,7 +31,7 @@ import type { ReactNode } from "react";
 export function BrandMark() {
   return (
     <div className="flex items-center gap-[9px]">
-      <div className="brand">
+      <div className="w-[26px] h-[26px] bg-ink text-panel rounded-base flex items-center justify-center flex-none">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
           <rect x="2" y="2" width="12" height="12" rx="1.5" />
           <path d="M5 8.2l2 2 4-4.4" />

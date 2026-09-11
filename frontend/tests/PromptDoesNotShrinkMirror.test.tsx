@@ -50,7 +50,7 @@ describe("브라우저 요구는 미러 위에 쌓인다 — 옆에 서지 않�
 
   it("본문이 세로로 쌓인다 (flexDirection: column)", () => {
     render(
-      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "" }}>
+      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "default" }}>
         <div data-testid="prompt">요구 패널</div>
         <div data-testid="mirror">미러</div>
       </BrowserFrame>,
@@ -71,7 +71,7 @@ describe("브라우저 요구는 미러 위에 쌓인다 — 옆에 서지 않�
       맞으면 폭은 브라우저가 맞춘다.
     */
     render(
-      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "" }}>
+      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "default" }}>
         <div data-testid="prompt">파일을 고르세요</div>
         <div data-testid="mirror">미러</div>
       </BrowserFrame>,
@@ -88,7 +88,7 @@ describe("브라우저 요구는 미러 위에 쌓인다 — 옆에 서지 않�
   it("높이를 잃지 않는다 — minHeight 0 이 남아 있다", () => {
     // `column` 으로 바꾸면서 `minHeight: 0` 을 잃으면 미러가 세로로 넘쳐 잘린다.
     render(
-      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "" }}>
+      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "default" }}>
         <div>미러</div>
       </BrowserFrame>,
     );

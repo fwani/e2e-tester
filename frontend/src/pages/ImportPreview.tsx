@@ -30,6 +30,7 @@ import { Toast } from "../components/Toast";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { Button } from "../ui/Button";
+import { FileButton } from "../ui/Field";
 /** 컬럼 7개. 순서는 서버의 `ORDER` 와 같다 — 화면이 다른 순서를 쓰면 사용자가 헷갈린다. */
 const ALL_COLUMNS = [
   "TC ID",
@@ -598,18 +599,14 @@ export function ImportFilePicker({
       (`.btn.file:focus-within`). `<input type=file>` 은 초점을 받은 상태에서
       Space·Enter 로 열리므로, 마우스 없이 같은 일을 할 수 있다.
     */
-    <label
-      className={`btn file${small ? " sm" : ""}${off ? " disabled" : ""}`}
+    <FileButton
+      off={off}
+      small={small}
       aria-disabled={off}
-    >
-      {busy ? "읽는 중…" : label}
-      <input
-        type="file"
-        accept=".xlsx"
-        data-import-file
-        disabled={off}
-        className="file-input"
-        onChange={(event) => {
+      inputProps={{
+        accept: ".xlsx",
+        "data-import-file": true,
+        onChange: (event) => {
           const file = event.target.files?.[0];
           // 값을 비워 둔다 — 같은 파일을 다시 고를 수 있어야 한다.
           event.target.value = "";
@@ -622,9 +619,11 @@ export function ImportFilePicker({
               onError(exc instanceof ApiError ? describeError(exc) : describeError(exc)),
             )
             .finally(() => setBusy(false));
-        }}
-      />
-    </label>
+        },
+      }}
+    >
+      {busy ? "읽는 중…" : label}
+    </FileButton>
   );
 }
 /**

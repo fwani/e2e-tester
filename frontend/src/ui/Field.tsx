@@ -135,7 +135,11 @@ export function FileButton({
   small?: boolean;
   layout?: string;
   children?: ReactNode;
-  inputProps?: Omit<ComponentPropsWithRef<"input">, "className" | "type">;
+  /**
+   * 안쪽 `<input type=file>` 에 그대로 넘긴다. `data-*` 도 받는다 — 검사가 그 입력칸을
+   * 지목하는 통로이며(`data-import-file`), 부품이 감싼다고 사라지면 안 된다.
+   */
+  inputProps?: Omit<ComponentPropsWithRef<"input">, "className" | "type"> & Record<`data-${string}`, unknown>;
 }) {
   const cls = [
     // `.btn` 의 형태 — `ui/Button` 과 같은 값이다. 라벨이므로 컴포넌트를 나눴다.

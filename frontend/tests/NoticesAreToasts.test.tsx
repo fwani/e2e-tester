@@ -21,6 +21,7 @@ import { Toast } from "../src/components/Toast";
 import { ImportDoneNotice } from "../src/pages/ImportPreview";
 import { TestList } from "../src/pages/TestList";
 import type { ImportResultView } from "../src/api/client";
+import { TOAST_LAYER_CLASSES } from "../src/ui/Notice";
 
 const EMPTY_LISTING = { counts: { total: 0, pass: 0, fail: 0 }, groups: [], tests: [], problems: [] };
 
@@ -75,12 +76,14 @@ describe("토스트 층", () => {
       </>,
     );
     expect(document.querySelectorAll("[data-toast-layer]").length).toBe(1);
-    expect(layer()!.querySelectorAll(".toast").length).toBe(2);
+    // 015 — 알림을 **정본 클래스가 아니라 `data-tone`** 으로 센다. 묻는 것은 그대로:
+    // 층이 하나이고 그 안에 알림 둘이 있는가.
+    expect(layer()!.querySelectorAll("[data-tone]").length).toBe(2);
   });
 
   it("층은 정본의 자리를 쓴다", () => {
     render(<Toast>무엇이든</Toast>);
-    expect(layer()!.className).toContain("toast-layer");
+    expect(layer()!.className, "층이 정본의 자리를 쓰지 않는다").toBe(TOAST_LAYER_CLASSES);
   });
 
   it("오류는 낭독기에게 alert 이고 닫는 길이 있다", () => {
@@ -92,7 +95,9 @@ describe("토스트 층", () => {
     );
     const toast = document.querySelector("[data-err]") as HTMLElement;
     expect(toast.getAttribute("role")).toBe("alert");
-    expect(toast.className).toContain("tint-fail");
+    // 「오류임이 형태에 있는가」를 **의도**로 묻는다. 유틸리티 조합을 읽으면 색 하나만
+    // 바꿔도 검사가 깨지고, 정작 물어야 할 것은 사라진다 (LC-4 ②).
+    expect(toast.getAttribute("data-tone"), "오류 형태가 아니다").toBe("fail");
     screen.getByRole("button", { name: "알림 닫기" }).click();
     expect(onDismiss).toHaveBeenCalled();
   });

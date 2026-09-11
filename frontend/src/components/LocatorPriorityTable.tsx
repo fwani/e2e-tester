@@ -12,6 +12,8 @@
 import type { TargetLocator } from "../types/generated/step";
 
 import { Button } from "../ui/Button";
+import { Chip } from "../ui/Chip";
+import type { ChipTone } from "../ui/Chip";
 
 type Status = "verified" | "ambiguous" | "unverified" | "not_collected";
 
@@ -92,12 +94,12 @@ export function displayStates(target: TargetLocator): Record<string, string> {
   return out;
 }
 
-function tone(state: string): string {
+function tone(state: string): ChipTone {
   if (state === "사용 중") return "pass";
-  if (state.startsWith("대체")) return "";
+  if (state.startsWith("대체")) return "default";
   if (state === "최후") return "warn";
   if (state === "모호(사용 불가)" || state === "검증 실패") return "fail";
-  return "";
+  return "default";
 }
 
 export interface LocatorPriorityTableProps {
@@ -171,12 +173,12 @@ export function LocatorPriorityTable({
                 <td className="font-mono text-[12px] leading-none text-ink-3 pt-0 pr-0 pb-0 pl-[14px]">
                   {i + 1}
                 </td>
-                <td className={missing ? "dim" : "strong-sm"}>{row.label}</td>
-                <td className={`font-mono${missing ? " dim" : ""}`} >
+                <td className={missing ? "text-ink-3" : "font-sans text-[13px] font-semibold leading-none"}>{row.label}</td>
+                <td className={`font-mono${missing ? " text-ink-3" : ""}`} >
                   {row.value ?? "수집되지 않음"}
                 </td>
                 <td className="pt-0 pr-[14px] pb-0 pl-0 text-right">
-                  {!missing && <span className={`chip ${tone(state)}`}>{state}</span>}
+                  {!missing && <Chip tone={tone(state)}>{state}</Chip>}
                 </td>
               </tr>
             );

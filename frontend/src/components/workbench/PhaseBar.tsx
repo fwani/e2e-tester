@@ -35,8 +35,9 @@ import type { ReactNode } from "react";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
-import { chipClassForTone } from "../../theme/tone";
+import { chipToneForTone } from "../../theme/tone";
 import type { PhaseBar as PhaseBarModel } from "./model";
+import { Chip } from "../../ui/Chip";
 /**
  * 이름을 그 자리에서 고치는 데 필요한 것 (011 · `test.rename`).
  *
@@ -93,12 +94,9 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
         항상 텍스트로 있다 (ui-contract §7). 어느 변형인지는 `theme/tone.ts` 가 정한다 —
         화면이 결말을 스스로 가르면 중지가 실패로 보인다 (U-03).
       */}
-      <div
-        data-phase-pill
-        className={`${chipClassForTone(bar.phaseTone)} h-[22px] flex-none`}
-      >
+      <Chip data-phase-pill tone={chipToneForTone(bar.phaseTone)} layout="h-[22px] flex-none">
         {bar.phaseLabel}
-      </div>
+      </Chip>
 
       <PhaseTestName testName={testName} rename={rename} />
 
@@ -216,10 +214,14 @@ function PhaseTestName({
         title={testName}
         onChange={(e) => rename.onChange(e.target.value)}
       />
+      {/*
+        015 T073 — 여기서 칩 모양을 손으로 조립하고 있었다. 같은 종류의 표식이 화면마다
+        다른 조합을 얻는 것이 SC-010 이 막으려는 것이므로 부품으로 되돌린다.
+      */}
       {rename.status !== undefined && rename.status !== null && (
-        <span data-phase-save-state className="inline-flex items-center gap-[5px] h-[19px] px-[6px] border border-hair-2 rounded-chip font-mono text-[10px] font-semibold leading-none tracking-[.06em] text-ink-2 bg-sunken-2 flex-[0_0_auto]">
+        <Chip data-phase-save-state layout="flex-[0_0_auto]">
           {rename.status}
-        </span>
+        </Chip>
       )}
       {/*
         잠긴 이유 — **`ActionButton` 과 같은 구조를 쓴다** (`flex: 0 1 auto` · `minWidth: 0`

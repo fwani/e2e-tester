@@ -379,7 +379,15 @@ function ModeCard({
       data-compose-mode={mode}
       aria-pressed={selected}
       onClick={() => onPick(mode)}
-      className={`bg-panel border border-hair rounded-base text-left text-ink${selected ? " on" : ""}${ai ? " tint-ai" : ""}`}
+      className={[
+        "border rounded-base text-left text-ink",
+        // 정본 `.tint-ai` — AI 쪽만 바탕과 테두리가 다르다. 고른 것은 `.pick.on` 의
+        // 잉크 테두리와 승강으로 말한다. **두 축이 서로 다른 속성을 쓰므로 겹쳐도 된다.**
+        ai ? "bg-ai-t border-ai" : "bg-panel border-hair",
+        selected ? "border-ink shadow-e1" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       <span className="font-sans text-[13.5px] font-bold leading-none">{title}</span>
       <span className="font-sans text-[13.5px] leading-[1.7] text-ink-2">{summary}</span>

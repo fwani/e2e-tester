@@ -15,6 +15,8 @@
  * 시각 언어가 아니다. 정본에 들이지 않는다 (FR-266).
  */
 import type { ReactNode } from "react";
+import { Chip } from "../../ui/Chip";
+import type { ChipTone } from "../../ui/Chip";
 /**
  * 지금 이 미러가 무엇인지 (읽기 전용 · 녹화 중 · 일시정지 …).
  *
@@ -24,7 +26,7 @@ import type { ReactNode } from "react";
 export interface ModeBadge {
   label: string;
   /** 정본의 `.chip` 변형. 빈 값이면 중립이다. */
-  tone: "" | "pass" | "fail" | "warn" | "run" | "ai";
+  tone: ChipTone;
 }
 /** 주소 칸 왼쪽의 점 셋. 실제 브라우저를 뜻하는 관용 표기이며 조작이 아니다. */
 function WindowDots() {
@@ -56,7 +58,7 @@ export function BrowserFrame({
       >
         <WindowDots />
         <div className="flex-1 h-[19px] flex items-center px-s2 bg-panel">{url}</div>
-        <span className={`chip ${badge.tone}`.trimEnd()}>{badge.label}</span>
+        <Chip tone={badge.tone}>{badge.label}</Chip>
       </div>
       {/*
         2026-09-09 — **`column` 이 빠져 있었다** (사용자 보고: 「파일 업로드 후에 미러

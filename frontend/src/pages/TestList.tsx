@@ -69,11 +69,12 @@ import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/des
 import { Toast } from "../components/Toast";
 import { isRunning } from "../lib/sessionState";
 import { EDIT_ENTRY_LABEL, outcomeChip, outcomeLabel, stepLabel } from "../lib/wording";
-import { chipClass, rowClass } from "../theme/tone";
+import { chipTone, rowMark } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
 import { Button } from "../ui/Button";
 import { Chip } from "../ui/Chip";
+import { rowClasses } from "../ui/Table";
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
 const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
@@ -501,7 +502,7 @@ export function TestList({
         <HeaderDivider />
         <div className="flex items-center gap-s2">
           <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">프로젝트</span>
-          <span className="pill">{projectName}</span>
+          <span className="h-control-sm inline-flex items-center gap-[7px] px-[9px] border border-hair-2 rounded-base bg-panel text-ink font-sans text-[12px] font-semibold leading-none shadow-none">{projectName}</span>
           {/*
             **프로젝트 목록으로 가는 길** (사용자 보고 · 2026-09-09 — 「프로젝트 목록으로
             가는 방법이 없다」).
@@ -1254,7 +1255,7 @@ function Row({
         어느 표식인지는 `theme/tone.ts` 가 결말 넷 전부에서 정한다 — 화면이
         `outcome === "pass" ? …` 로 가르면 중지가 실패로 보인다 (U-03).
       */
-      className={rowClass(row.outcome, live)}
+      className={rowClasses(rowMark(row.outcome, live))}
       data-test-row={row.id}
       style={{
         display: "grid",
@@ -1482,13 +1483,13 @@ function OutcomeChip({ outcome, running = false }: { outcome: Outcome | null; ru
       칸이 빈 칸이면 사용자가 처음 보는 것이 "아무것도 없음" 이 된다. 점선 표식은
       「아직 결과가 없다」는 사실 자체를 상태로 보여준다 (Language.dc.html §04).
     */
-    return <span className={chipClass(null)}>미실행</span>;
+    return <Chip tone={chipTone(null)}>미실행</Chip>;
   }
   return (
     // 색만으로 구분하지 않는다 — 표식에는 항상 글자가 있고, 스크린리더에는 한국어 문장을 준다.
-    <span className={chipClass(outcome)} title={outcomeLabel(outcome)}>
+    <Chip tone={chipTone(outcome)} title={outcomeLabel(outcome)}>
       {outcomeChip(outcome)}
-    </span>
+    </Chip>
   );
 }
 

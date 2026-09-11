@@ -682,9 +682,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
    * 거치지 않았다. 같은 상태를 다른 화면이 다른 색으로 칠할 수 있는 형태였다.
    */
   const badge = (() => {
-    if (finishedWhilePausing) return { label: "실행 종료", tone: "" as const };
-    if (pausing) return { label: "일시정지 중…", tone: "" as const };
-    if (review) return { label: "SESSION ENDED", tone: "" as const };
+    if (finishedWhilePausing) return { label: "실행 종료", tone: "default" as const };
+    if (pausing) return { label: "일시정지 중…", tone: "default" as const };
+    if (review) return { label: "SESSION ENDED", tone: "default" as const };
     if (phase === "takeover") {
       return view.state === "takeover_recording"
         ? { label: "HUMAN CONTROL", tone: "fail" as const }
@@ -696,7 +696,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         : { label: "PAUSED", tone: "warn" as const };
     }
     if (manipulating) return { label: "RECORDING", tone: "fail" as const };
-    return { label: "READ ONLY", tone: "" as const };
+    return { label: "READ ONLY", tone: "default" as const };
   })();
 
   /* ─── 층③ 좌측 아래 — 국면 보조 영역 ────────────────────────────────────── */
@@ -2950,9 +2950,9 @@ function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
       <div className="font-sans text-[20px] font-bold leading-[1.3]">실행 화면을 닫습니다</div>
       <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2">결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
       <div className="flex justify-end gap-[10px] mt-[18px]">
-        <button className="secondary" onClick={onCancel}>
+        <Button onClick={onCancel}>
           돌아가기
-        </button>
+        </Button>
         <button onClick={onConfirm}>닫기</button>
       </div>
     </Modal>
@@ -3006,12 +3006,12 @@ function RerunConfirm({
       </p>
 
       <div className="flex justify-end gap-[10px] mt-[18px]">
-        <button className="secondary" onClick={onCancel}>
+        <Button onClick={onCancel}>
           돌아가기
-        </button>
-        <button className="danger" disabled={busy} onClick={onDiscardAndRun}>
+        </Button>
+        <Button variant="danger" disabled={busy} onClick={onDiscardAndRun}>
           버리고 실행
-        </button>
+        </Button>
         <button disabled={busy || saveName.trim() === ""} onClick={onSaveAndRun}>
           저장하고 실행
         </button>
@@ -3059,12 +3059,12 @@ function LeaveConfirm({
         </>
       )}
       <div className="flex justify-end gap-[10px] mt-[18px]">
-        <button className="secondary" onClick={onCancel}>
+        <Button onClick={onCancel}>
           돌아가기
-        </button>
-        <button className="danger" disabled={busy} onClick={onDiscard}>
+        </Button>
+        <Button variant="danger" disabled={busy} onClick={onDiscard}>
           저장하지 않고 나가기
-        </button>
+        </Button>
         <button disabled={busy || saveName.trim() === ""} onClick={onSave}>
           저장하고 나가기
         </button>

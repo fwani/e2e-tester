@@ -38,6 +38,7 @@ import { ACTION_LABEL, deleteSelectionCount, displayOutcomeLabel, stepNumber } f
 import { ActionButton } from "./ActionButton";
 import type { Step, TargetLocator } from "../../types/generated/step";
 import type { StepOutcome, WorkbenchStep } from "./model";
+import { Chip } from "../../ui/Chip";
 /**
  * Step 패널의 고정 폭 (FR-218a). Step 패널을 가진 확정 디자인 3종이 공유한다.
  *
@@ -85,9 +86,9 @@ export function StepPanelHeader({
       <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">TEST STEPS</div>
       <div className="flex-1" />
       {children}
-      <span className={`${authoring === "ai" ? "chip ai" : "chip"} flex-none`}>
+      <Chip tone={authoring === "ai" ? "ai" : "default"} layout="flex-none">
         작성 {authoring === "ai" ? "AI" : "RECORD"}
-      </span>
+      </Chip>
       <div className="font-mono text-[12px] leading-none text-ink-3">{count}</div>
     </div>
   );
@@ -514,7 +515,7 @@ function StepRow({
       <div className="min-w-0 flex flex-col gap-[3px]">
         <button
           type="button"
-          className="srow-name"
+          className="border-0 p-0 h-[18px] bg-transparent shadow-none text-left text-ink cursor-pointer font-sans text-[13px] font-semibold leading-[1.25] whitespace-nowrap overflow-hidden text-ellipsis"
           onClick={onSelect}
           aria-pressed={selected}
         >

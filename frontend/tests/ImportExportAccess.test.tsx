@@ -69,7 +69,11 @@ describe("파일 선택 — 마우스 없이 쓸 수 있는가", () => {
     const input = document.querySelector("[data-import-file]") as HTMLInputElement;
     expect(input).not.toBeNull();
     expect(input.style.display).toBe("");
-    expect(input.className).toContain("file-input");
+    // 015 — 판정 **방법**만 바뀐다. 정본 `.file-input` 이 하던 「보이지 않되 초점은
+    // 남긴다」를 이제 유틸리티가 한다. 묻는 것은 그대로다: 잘라서 감췄는가(초점을
+    // 남기는 방식), 아니면 `display:none`·`hidden` 으로 지웠는가(초점을 잃는 방식).
+    expect(input.className, "잘라 감추는 방식이 아니다").toContain("[clip-path:inset(50%)]");
+    expect(input.className.split(/\s+/), "요소를 지워 초점을 잃게 한다").not.toContain("hidden");
   });
 
   it("초점을 받을 수 있다", () => {
@@ -81,16 +85,22 @@ describe("파일 선택 — 마우스 없이 쓸 수 있는가", () => {
 
   it("초점 링은 라벨이 그린다 — 안쪽 칸이 보이지 않으므로", () => {
     render(<ImportFilePicker label="엑셀에서 가져오기" onPlan={() => {}} onError={() => {}} />);
-    const label = document.querySelector("label.btn") as HTMLLabelElement;
-    expect(label.className).toContain("file");
+    // 라벨을 **구조로** 집는다 — 안쪽 입력칸의 조상이 곧 그 라벨이다.
+    const label = (document.querySelector("[data-import-file]") as HTMLInputElement)
+      .closest("label") as HTMLLabelElement;
+    expect(label, "파일 칸을 감싸는 라벨이 없다").not.toBeNull();
+    expect(label.className, "쓸 수 있는 파일 선택에 초점 링이 없다").toContain("focus-within:outline-run");
   });
 
   it("쓸 수 없을 때 그 사실이 형태와 표식에 함께 있다", () => {
     render(
       <ImportFilePicker label="엑셀에서 가져오기" disabled onPlan={() => {}} onError={() => {}} />,
     );
-    const label = document.querySelector("label.btn") as HTMLLabelElement;
-    expect(label.className).toContain("disabled");
+    const label = (document.querySelector("[data-import-file]") as HTMLInputElement)
+      .closest("label") as HTMLLabelElement;
+    // 형태 — 정본 `.btn.disabled` 의 점선이 여기로 왔다. 의도는 `data-off` 가 말한다.
+    expect(label.getAttribute("data-off")).toBe("true");
+    expect(label.className, "쓸 수 없는 형태(점선)가 아니다").toContain("border-dashed");
     expect(label.getAttribute("aria-disabled")).toBe("true");
     expect((document.querySelector("[data-import-file]") as HTMLInputElement).disabled).toBe(true);
   });
@@ -115,14 +125,18 @@ describe("파일 선택의 크기와 자리 (2026-09-10 사용자 보고)", () =
     render(
       <ImportFilePicker label="엑셀에서 가져오기" small onPlan={() => {}} onError={() => {}} />,
     );
-    const label = document.querySelector("label.btn") as HTMLLabelElement;
-    expect(label.className.split(/\s+/)).toContain("sm");
+    const label = (document.querySelector("[data-import-file]") as HTMLInputElement)
+      .closest("label") as HTMLLabelElement;
+    // `.btn.sm` 의 26px 는 `--h-control-sm` 이고 유틸리티 이름이 `h-control-sm` 이다.
+    expect(label.className.split(/\s+/), "이웃과 같은 작은 크기가 아니다").toContain("h-control-sm");
   });
 
   it("기본은 전체 크기다 — 이웃이 전체 크기인 자리가 있다", () => {
     render(<ImportFilePicker label="엑셀에서 새 프로젝트" onPlan={() => {}} onError={() => {}} />);
-    const label = document.querySelector("label.btn") as HTMLLabelElement;
-    expect(label.className.split(/\s+/)).not.toContain("sm");
+    const label = (document.querySelector("[data-import-file]") as HTMLInputElement)
+      .closest("label") as HTMLLabelElement;
+    expect(label.className.split(/\s+/), "전체 크기가 아니다").toContain("h-control");
+    expect(label.className.split(/\s+/)).not.toContain("h-control-sm");
   });
 
   it("`.btn.file` 이 전역 `label` 규칙을 되돌린다", () => {

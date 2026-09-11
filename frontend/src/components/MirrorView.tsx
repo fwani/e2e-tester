@@ -424,7 +424,7 @@ export function MirrorView({
                 보이지 않고 포인터도 받지 않는다 — 클릭·끌기·휠은 그대로 화면(`<img>`)
                 으로 간다. 형태는 정본의 `.ime-capture` 가 갖는다 (C-7).
               */
-              className="ime-capture"
+              className="absolute inset-0 w-full h-full p-0 m-0 opacity-0 border-none outline-none resize-none overflow-hidden pointer-events-none caret-transparent"
             />
             <img
               ref={imageRef}

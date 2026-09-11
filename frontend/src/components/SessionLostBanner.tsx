@@ -72,9 +72,9 @@ export function SessionLostBanner({
           </button>
         )}
         {onRunFromStart && (
-          <button className="secondary" disabled={busy} onClick={onRunFromStart}>
+          <Button disabled={busy} onClick={onRunFromStart}>
             처음부터 실행
-          </button>
+          </Button>
         )}
       </div>
     </div>

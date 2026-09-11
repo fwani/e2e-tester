@@ -10,6 +10,7 @@
  * 필요하면 `pacing_changed` 이벤트가 실어 보낸 `delay_ms` 를 쓴다.
  */
 import { PACING_LABEL, PACING_ORDER, type RunPacing } from "../api/client";
+import { Segmented } from "../ui/Table";
 
 export interface PacingControlProps {
   value: RunPacing;
@@ -51,11 +52,7 @@ export function PacingControl({
   return (
     <div className="flex items-center gap-s2">
       <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
-      <div
-        role="group"
-        aria-label="실행 속도"
-        className="segmented"
-      >
+      <Segmented role="group" aria-label="실행 속도">
         {PACING_ORDER.map((pacing) => {
           const active = pacing === value;
           return (
@@ -74,7 +71,7 @@ export function PacingControl({
             </button>
           );
         })}
-      </div>
+      </Segmented>
       {!preferenceSaved && (
         <span
           role="status"

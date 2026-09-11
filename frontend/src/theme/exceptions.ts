@@ -103,6 +103,19 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
       "쓰는 자리라 FR-003 과도 어긋나지 않는다.",
     requirement: "015 FR-005 · 007 FR-218a",
   },
+  {
+    file: "frontend/src/components/MirrorView.tsx",
+    pattern: "^outline-none$",
+    axis: "class-name",
+    reason:
+      "한글 입력을 받는 **보이지 않는** 칸이다 (정본 `.ime-capture`). 미러 위에 겹쳐 " +
+      "`opacity:0` · `pointer-events:none` 으로 놓이며, 클릭·끌기·휠은 그대로 뒤의 " +
+      "화면으로 간다. 초점은 이 칸이 받지만 **사용자가 보는 초점 자리는 미러 자체**이고, " +
+      "여기에 링을 그리면 화면 전체를 두르는 사각형이 뜬다 — 어디에 있는지를 알려주는 " +
+      "것이 아니라 가리는 표시가 된다. 정본이 `outline:none` 으로 정한 것을 그대로 " +
+      "옮긴 것이며, 015 가 새로 지운 것이 아니다.",
+    requirement: "015 FR-010 · SC-008",
+  },
 ];
 
 /** `reason` 이 비어 있으면 등록이 아니다 (EX-1). 가드와 이 모듈 양쪽이 쓴다. */

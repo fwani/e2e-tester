@@ -212,9 +212,9 @@ export function StepDetail({
             {step !== null && (
               <>
                 <Chip>{step.type.toUpperCase()}</Chip>
-                <span className={`${step.author === "ai" ? "chip ai" : "chip"} py-s2 px-s3`}>
+                <Chip tone={step.author === "ai" ? "ai" : "default"} layout="py-s2 px-s3">
                   {step.author === "ai" ? "AI" : "RECORD"}
-                </span>
+                </Chip>
               </>
             )}
           </div>
@@ -433,7 +433,7 @@ export function StepDetail({
             {detail.attempts.map((a, i) => (
               <div
                 key={`${a.candidate}-${i}`}
- className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] text-ink-3 ${a.matched ? "" : " muted"}`}
+ className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] ${a.matched ? "text-ink-3" : "text-ink-2"}`}
               >
                 <span className="font-bold w-[84px]">
                   {a.candidate}

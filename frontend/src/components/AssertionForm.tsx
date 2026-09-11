@@ -10,6 +10,7 @@
 import { useState } from "react";
 
 import type { AddAssertionBody, AssertionKind, MatchMode } from "../api/client";
+import { Button } from "../ui/Button";
 
 const KINDS: { kind: AssertionKind; label: string; hint: string }[] = [
   { kind: "visible", label: "요소가 보인다", hint: "대기 시간 안에 나타나고 보이면 통과" },
@@ -157,9 +158,9 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
           추가
         </button>
         {onCancel && (
-          <button className="secondary" onClick={onCancel} disabled={busy}>
+          <Button onClick={onCancel} disabled={busy}>
             취소
-          </button>
+          </Button>
         )}
       </div>
     </div>

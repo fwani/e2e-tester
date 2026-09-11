@@ -399,6 +399,17 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
           return [...text.matchAll(/rgba?\([^)]*\)|#[0-9A-Fa-f]{3,8}\b|\b\d+(?:\.\d+)?px\b/g)].some(
             (m) => re.test(m[0]),
           );
+        if (e.axis === "class-name")
+          /*
+            **클래스 이름 하나하나에 건다.** 파일 전체 텍스트에 걸면 `^outline-none$`
+            처럼 앵커가 붙은 패턴이 영원히 맞지 않아, 살아 있는 예외가 죽은 것으로
+            보고된다. 예외를 쓰는 쪽(`FocusRing` 의 `excused`)이 **토큰 하나**를 주므로
+            여기서도 같은 단위로 물어야 한다 — 두 곳이 다른 단위를 쓰면 한쪽이 거짓말한다.
+            (`class-name` 축이 처음 쓰인 2026-09-11 에 드러났다.)
+          */
+          return [...text.matchAll(/"([^"\n]*)"|`([^`\n]*)`/g)]
+            .flatMap((m) => ((m[1] ?? m[2] ?? "") as string).split(/\s+/))
+            .some((tok) => tok !== "" && re.test(tok));
         return re.test(text);
       });
     });

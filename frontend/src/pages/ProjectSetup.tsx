@@ -520,7 +520,7 @@ function ProjectRow({
 
   return (
     <div
-      className={`${first ? "" : "rule-top "}${item.accessible ? "" : "dim"}`.trim() || undefined}
+      className={`${first ? "" : "border-t border-hair "}${item.accessible ? "" : "text-ink-3"}`.trim() || undefined}
     >
       <div className="flex items-center gap-[14px]">
         <div className="flex-1 min-w-0">

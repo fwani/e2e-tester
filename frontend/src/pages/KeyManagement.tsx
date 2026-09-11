@@ -316,7 +316,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           */}
           <p
             id="passphrase-rule"
-            className={`why ${tooShort ? "fail-ink" : ""}`.trimEnd()}
+            className={`font-sans text-[11px] leading-[1.4] ${tooShort ? "text-fail" : "text-ink-3"}`}
           >
             {tooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${passphrase.length}자입니다.`
@@ -377,7 +377,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           />
           <p
             id="regen-passphrase-rule"
-            className={`why ${newTooShort ? "fail-ink" : ""}`.trimEnd()}
+            className={`font-sans text-[11px] leading-[1.4] ${newTooShort ? "text-fail" : "text-ink-3"}`}
           >
             {newTooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${newPassphrase.length}자입니다.`

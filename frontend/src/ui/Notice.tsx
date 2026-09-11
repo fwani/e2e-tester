@@ -114,16 +114,14 @@ export function Toast({ tone = "default", layout, children, ...rest }: NoticePro
  * 비어 있을 때 아래를 막지 않도록 **층에서 포인터를 끄고 알림에서만 되살린다.**
  * 그것을 `[&>*]:pointer-events-auto` 로 옮겼다 — 정본 `.toast-layer > *` 와 같다.
  */
+export const TOAST_LAYER_CLASSES =
+  "fixed right-s4 z-[60] top-[calc(var(--h-header)+8px)] " +
+  "w-[min(420px,calc(100vw-32px))] max-h-[calc(100vh-var(--h-header)-24px)] " +
+  "overflow-y-auto flex flex-col gap-s2 " +
+  "pointer-events-none [&>*]:pointer-events-auto";
+
 export function ToastLayer({ layout, children, ...rest }: Omit<NoticeProps, "tone">) {
-  const cls = [
-    "fixed right-s4 z-[60] top-[calc(var(--h-header)+8px)]",
-    "w-[min(420px,calc(100vw-32px))] max-h-[calc(100vh-var(--h-header)-24px)]",
-    "overflow-y-auto flex flex-col gap-s2",
-    "pointer-events-none [&>*]:pointer-events-auto",
-    layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const cls = [TOAST_LAYER_CLASSES, layout].filter(Boolean).join(" ");
   return (
     <div className={cls} {...rest}>
       {children}
