@@ -399,3 +399,82 @@ def test_range_ids_that_are_not_in_the_list_are_ignored() -> None:
     """
     text = build_definition_summary(sample_steps(), range_ids=["step-99"])
     assert "교체 구간" not in text
+
+
+# ─── FR-005 — 모든 AI 경로가 같은 요약을 받는다 (T006b) ─────────────────────
+
+
+def test_every_ai_path_shares_one_injection_point() -> None:
+    """US4·US6·016 이 **같은 한 곳**에서 요약을 받는다 (FR-005).
+
+    경로마다 AI 가 아는 것이 다르면 사용자는 어느 경로에서 무엇을 말할 수 있는지
+    예측하지 못한다. 배선이 한 곳(`_build_agent` 의 `summary_source`)임을 구조로
+    고정한다 — 두 곳이 되는 순간 한쪽이 빠지고, 빠진 경로에서 AI 는 정의를 모른다.
+    """
+    from itb.api.routes import sessions as routes
+
+    source = inspect.getsource(routes)
+    tree = ast.parse(source)
+
+    wired = [
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.keyword) and node.arg == "summary_source"
+    ]
+    assert len(wired) == 1, (
+        f"`summary_source` 배선이 {len(wired)}곳이다. 한 곳이어야 한다 (FR-005) — "
+        "두 곳이 되면 한쪽이 빠지고, 빠진 경로에서 AI 는 정의를 모른다."
+    )
+
+    builders = [
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef)
+        and any(
+            isinstance(k, ast.keyword) and k.arg == "summary_source"
+            for inner in ast.walk(node)
+            if isinstance(inner, ast.Call)
+            for k in inner.keywords
+        )
+    ]
+    assert builders == ["_build_agent"], (
+        f"요약 배선이 예상 밖의 함수에 있다: {builders}. "
+        "`_build_agent` 하나가 모든 AI 경로의 조립 지점이다."
+    )
+
+
+def test_the_agent_prepends_the_summary_to_every_turn() -> None:
+    """요약이 **매 턴** 붙는다 (FR-003).
+
+    첫 메시지에만 붙이면 대화가 길어질수록 에이전트가 보는 목록이 낡는다 — 자기가
+    방금 만든 Step 도 모르는 상태가 된다.
+    """
+    from itb.authoring.agent import AuthoringAgent
+
+    tree = ast.parse(inspect.getsource(AuthoringAgent))
+    appenders = [
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.AsyncFunctionDef)
+        and any(
+            isinstance(inner, ast.Attribute) and inner.attr == "append"
+            for inner in ast.walk(node)
+        )
+    ]
+    wrapped = [
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.AsyncFunctionDef)
+        and any(
+            isinstance(inner, ast.Attribute) and inner.attr == "_with_summary"
+            for inner in ast.walk(node)
+        )
+    ]
+    assert set(appenders) == set(wrapped), (
+        f"이력에 사용자 메시지를 붙이면서 요약을 빠뜨린 입구가 있다: "
+        f"{sorted(set(appenders) - set(wrapped))}"
+    )
+    assert len(appenders) >= 4, (
+        f"입구가 {len(appenders)}개다 — run·chat·resume_with_answer·"
+        f"resume_after_takeover 넷 이상이어야 한다"
+    )

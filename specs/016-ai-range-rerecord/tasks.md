@@ -48,8 +48,8 @@ description: "Task list for 016 편집 중 AI 구간 재녹화"
 - [X] T004 `backend/src/itb/authoring/summary.py` 신규 — `build_definition_summary(steps, range_ids, budget) -> str`. **`Step.value` 에 접근하지 않는다** (R8). 입력값이 있는 Step 은 `값 있음` 또는 변수 참조 이름만 적는다. `budget` 기본값은 **잠정 8KB** 로 박고 T064 가 실측값으로 교체한다 (A1). T003 을 통과시킨다
 - [X] T005 `backend/src/itb/authoring/agent.py` 에 요약 주입을 배선한다 — `AuthoringAgent` 가 `summary_source: Callable[[], str] | None` 을 받고, **매 턴의 사용자 메시지 앞에** 요약을 덧붙인다 (FR-003 · agent-tools.md §3). 첫 메시지에만 넣지 않는다
 - [X] T006 `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에 agent-tools.md §3 의 4줄을 더한다. **기존 줄은 하나도 지우지 않는다**
-- [ ] T006a `backend/src/itb/api/routes/sessions.py` — **기존 AI 작성(US4)·자연어 Step 추가(US6) 경로에도 같은 요약을 주입한다** (FR-005). 마감이 아니라 여기서 한다 — T005 가 주입 지점을 이미 만들었고, 나중에 붙이면 US4·US6 회귀가 마지막에 드러난다 (analyze I1)
-- [ ] T006b [P] `backend/tests/unit/test_definition_summary.py` 에 회귀 단언을 더한다 — US4·US6 경로의 에이전트도 요약을 받는지 (FR-005)
+- [X] T006a `backend/src/itb/api/routes/sessions.py` — **기존 AI 작성(US4)·자연어 Step 추가(US6) 경로에도 같은 요약을 주입한다** (FR-005). 마감이 아니라 여기서 한다 — T005 가 주입 지점을 이미 만들었고, 나중에 붙이면 US4·US6 회귀가 마지막에 드러난다 (analyze I1)
+- [X] T006b [P] `backend/tests/unit/test_definition_summary.py` 에 회귀 단언을 더한다 — US4·US6 경로의 에이전트도 요약을 받는지 (FR-005)
 
 ### 교체 트랜잭션 (data-model §1-2 · R7)
 
@@ -66,7 +66,7 @@ description: "Task list for 016 편집 중 AI 구간 재녹화"
 - [X] T011 `backend/src/itb/api/routes/sessions.py` — `CreateSessionRequest` 에 `mode: "rerecord"` 와 `rerecord_step_ids: list[str]` 를 더한다. `ai_instruction` 은 이 모드에서 **거절**한다. 경계 검증: 구간 존재·연속·비어있지 않음 → `400 DEFINITION_INVALID`(003 의 `category`·`next_action` 포함)
 - [X] T012 `backend/src/itb/api/routes/sessions.py` — `mode=rerecord` 분기를 구현한다. `authoring_mode = AI`, `BEGIN_REPLAY`, `_build_engine`, `_start_runner(pause_before_index=구간 첫 Step 순번)`. **러너가 멈춘 뒤에** `_build_agent` 를 부른다 (api-contract §1 의 순서가 계약이다). 도착점 실패 시 세션을 남기고 실패한 Step 정보를 실어 `409` (FR-020)
 - [X] T013 `backend/src/itb/api/routes/sessions.py` — `SessionWork.rerecord: RerecordTransaction | None` 필드와 `mode=rerecord` 시 트랜잭션 생성
-- [ ] T013a [P] `backend/tests/us_rerecord/test_arrival_point.py` 신규 — 도착점 경계: **구간이 Step 1 부터면 아무것도 실행하지 않고 시작 주소만 연다** (FR-021), 구간 끝이 목록 끝인 경우, 앞 구간이 깨져 도착점에 닿지 못하는 경우 (FR-020)
+- [X] T013a [P] `backend/tests/us_rerecord/test_arrival_point.py` 신규 — 도착점 경계: **구간이 Step 1 부터면 아무것도 실행하지 않고 시작 주소만 연다** (FR-021), 구간 끝이 목록 끝인 경우, 앞 구간이 깨져 도착점에 닿지 못하는 경우 (FR-020)
 
 ### 원칙 II 시간 축 검사 (R9 · 불변식 6) ⚠️ 이연 불가
 
@@ -98,16 +98,16 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 
 ### Tests for US1 ⚠️ 먼저 쓰고 실패를 확인한다
 
-- [ ] T023 [P] [US1] `backend/tests/us_rerecord/test_chat_turn.py` — 채팅 한 턴이 `PAUSED → AI_RUNNING → PAUSED` 를 지나고, 이력에 사용자·AI 차례가 순서대로 붙는지
-- [ ] T024 [P] [US1] `backend/tests/us_rerecord/test_chat_boundary.py` — 빈 입력·상한 초과·`paused` 아닌 상태에서의 호출이 전부 `400`/`409` 로 거절되고 사유가 있는지 (FR-010)
+- [X] T023 [P] [US1] `backend/tests/us_rerecord/test_chat_turn.py` — 채팅 한 턴이 `PAUSED → AI_RUNNING → PAUSED` 를 지나고, 이력에 사용자·AI 차례가 순서대로 붙는지
+- [X] T024 [P] [US1] `backend/tests/us_rerecord/test_chat_boundary.py` — 빈 입력·상한 초과·`paused` 아닌 상태에서의 호출이 전부 `400`/`409` 로 거절되고 사유가 있는지 (FR-010)
 - [ ] T025 [P] [US1] `frontend/tests/ChatPanel.test.tsx` — 자리가 편집 국면에서 **보이되 잠기고** 해소 조작을 가리키는지, `paused` 에서 활성인지 (FR-234 · ui-contract §2)
 
 ### Implementation for US1
 
-- [ ] T026 [US1] `backend/src/itb/api/routes/sessions.py` — `POST /{session_id}/chat` 구현 (api-contract §2-1). `paused` 게이트 → 요약 생성 → `BEGIN_AI` → 에이전트 태스크 → 턴 종료 시 `PAUSE`. 요청은 즉시 반환한다
-- [ ] T027 [US1] `backend/src/itb/api/routes/sessions.py` — `_run_agent` 의 종료 처리를 **두 결말로 가른다**: 기존 US4 의 「지시 완수 → `FINISH_PASS`」와 016 의 「턴 완료 → `PAUSE`」. 호출자가 어느 쪽인지 넘긴다. 막힘·실패 처리는 **한 곳을 그대로 지난다**
-- [ ] T028 [US1] `backend/src/itb/api/routes/sessions.py` — `GET /{session_id}/chat` 구현 (api-contract §2-4). `AuthoringAgent.messages` 에서 `ChatTurn` 목록을 만든다. **디스크에 쓰지 않는다** (FR-014)
-- [ ] T029 [US1] `backend/src/itb/api/routes/sessions.py` — `chat_turn` 이벤트 발행 (api-contract §4-1)
+- [X] T026 [US1] `backend/src/itb/api/routes/sessions.py` — `POST /{session_id}/chat` 구현 (api-contract §2-1). `paused` 게이트 → 요약 생성 → `BEGIN_AI` → 에이전트 태스크 → 턴 종료 시 `PAUSE`. 요청은 즉시 반환한다
+- [X] T027 [US1] `backend/src/itb/api/routes/sessions.py` — `_run_agent` 의 종료 처리를 **두 결말로 가른다**: 기존 US4 의 「지시 완수 → `FINISH_PASS`」와 016 의 「턴 완료 → `PAUSE`」. 호출자가 어느 쪽인지 넘긴다. 막힘·실패 처리는 **한 곳을 그대로 지난다**
+- [X] T028 [US1] `backend/src/itb/api/routes/sessions.py` — `GET /{session_id}/chat` 구현 (api-contract §2-4). `AuthoringAgent.messages` 에서 `ChatTurn` 목록을 만든다. **디스크에 쓰지 않는다** (FR-014)
+- [X] T029 [US1] `backend/src/itb/api/routes/sessions.py` — `chat_turn` 이벤트 발행 (api-contract §4-1)
 - [ ] T030 [P] [US1] `frontend/src/components/workbench/ChatPanel.tsx` 신규 — 이력·입력(상한 표시)·진행 표시(`ai_progress` 재사용)·중지(`run.pause` 재사용)·**언어모델 없음 안내**(`GET /api/ai/availability` 의 `reason` 을 그대로, FR-012). **막힘은 그리지 않는다** — 기존 `ai_blocked` 5선택지가 뜨고 패널은 그리로 가리킨다 (ui-contract §3-1 · `USE_BLOCKED_ANSWER`)
 - [ ] T031 [US1] `frontend/src/components/workbench/model.ts`·`Workbench.tsx` — 대화 패널을 국면 배치에 넣는다. `frontend/src/lib/layout.ts` 의 `Record<Phase, …>` 표를 지난다 (007 배치 계약)
 - [ ] T032 [US1] `frontend/src/pages/SessionScreen.tsx` — `chat_turn` 구독, `POST /chat` 호출, 새로 고침 시 `GET /chat` 복구

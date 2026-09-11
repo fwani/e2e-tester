@@ -37,12 +37,14 @@ from itb.authoring.rerecord import (
     RerecordTransaction,
     validate_range,
 )
+from itb.authoring.summary import build_definition_summary
 from itb.domain.draft import DRAFT_ID_PATTERN, Draft, compose_instruction
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.run_result import RunScope, StepOutcome, scope_of
 from itb.domain.step import Author, NavigateStep, Step
 from itb.domain.test_case import (
     GROUP_PREFIX_PATTERN,
+    MAX_INSTRUCTION_CHARS,
     RESERVED_PREFIX,
     TEST_ID_PATTERN,
     AuthoringMode,
@@ -209,6 +211,14 @@ class SessionWork:
     resolver: object | None = None
     last_blocked: object | None = None
     """마지막 `ai_blocked` 결과. `retry`·`skip` 이 무엇을 재시도할지의 근거다."""
+
+    chat_turns: list[ChatTurnView] = field(default_factory=list)
+    """대화 이력 (016 FR-009·FR-014).
+
+    **디스크에 쓰지 않는다.** 세션의 것이며 테스트 자산을 대화로 오염시키지 않는다.
+    에이전트의 `messages` 와 **다른 목적**이다 — 그쪽은 모델에게 가는 컨텍스트(요약이
+    덧붙어 있다)이고 이것은 사람이 읽는 기록이다.
+    """
 
     # ─── 구간 재녹화 (016) ─────────────────────────────────────────────────
     rerecord: RerecordTransaction | None = None
@@ -1252,6 +1262,21 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
         toolbox=toolbox,
         compiler=compiler,
         on_progress=lambda message: work.session.emit("ai_progress", message=message),
+        # 016 FR-001·FR-003·FR-005 — **모든 AI 경로가 같은 요약을 받는다.**
+        #
+        # US4(지시문 하나)·US6(자연어 Step 추가)·016(대화)이 여기 한 곳을 지나므로,
+        # 경로마다 AI 가 아는 것이 달라질 수 없다. 다르면 사용자는 어느 경로에서
+        # 무엇을 말할 수 있는지 예측하지 못한다.
+        #
+        # **함수로 넘긴다.** 목록은 턴 사이에 바뀐다 — 에이전트가 Step 을 만들고,
+        # 사람이 고치고, 확정·버리기가 구간을 옮긴다. 값으로 넘기면 5분 전 목록을
+        # 근거로 답한다.
+        summary_source=lambda: build_definition_summary(
+            work.steps,
+            range_ids=(
+                list(work.rerecord.range.step_ids) if work.rerecord is not None else []
+            ),
+        ),
     )
 
 
@@ -1286,8 +1311,7 @@ async def _run_agent(
     막힘·실패·완료 처리는 아래 한 곳을 지난다 — 갈라 두면 한쪽에서 `ai_blocked` 를
     빠뜨리고, 그 세션은 선택지 없이 멈춘 것처럼 보인다.
     """
-    from itb.authoring.agent import AgentStatus, AuthoringAgent
-    from itb.authoring.blocked import enter_blocked
+    from itb.authoring.agent import AuthoringAgent  # noqa: PLC0415
 
     work = _WORK.get(session_id)
     if work is None or not isinstance(work.agent, AuthoringAgent):
@@ -1305,6 +1329,26 @@ async def _run_agent(
             outcome = await agent.run(instruction)
     except asyncio.CancelledError:
         raise
+
+    await _settle_agent_outcome(work, outcome)
+
+
+async def _settle_agent_outcome(work: SessionWork, outcome: object) -> None:
+    """에이전트 루프의 결말을 처리한다 — **모든 입구가 여기로 모인다.**
+
+    입구는 넷이다: 새 지시(US4)·사람이 준 답(US5)·인수 후 재개(US5)·대화 한 차례
+    (016 US1). 결말 처리를 갈라 두면 한쪽에서 `ai_blocked` 를 빠뜨리고, 그 세션은
+    선택지 없이 멈춘 것처럼 보인다.
+
+    **끝나면 항상 `PAUSED` 로 돌아온다** (`_hold_for_review`). 016 이 이 성질에 기대고
+    있다 — 대화 턴이 끝나면 사용자가 확정·버리기·손 편집을 할 수 있어야 하고, 그것이
+    전부 `paused` 국면의 조작이다 (research R4).
+    """
+    from itb.authoring.agent import AgentOutcome, AgentStatus  # noqa: PLC0415
+    from itb.authoring.blocked import enter_blocked  # noqa: PLC0415
+
+    if not isinstance(outcome, AgentOutcome):  # pragma: no cover - 호출자가 지킨다
+        return
 
     work.last_blocked = outcome
     if outcome.status is AgentStatus.BLOCKED:
@@ -1815,6 +1859,136 @@ class AiChoiceRequest(BaseModel):
     **다른 선택지에서는 받지 않는다** — 아래 라우트가 거절한다. 실어 보내 놓고 무시하면
     사용자는 자기가 쓴 문장이 전달됐다고 믿는다.
     """
+
+
+# ─── 대화 (016 US1 · api-contract §2-1·§2-4) ───────────────────────────────
+
+
+class ChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, max_length=MAX_INSTRUCTION_CHARS)
+    """사용자가 AI 에게 하는 말 (FR-010).
+
+    상한의 출처는 지시문과 **같다** — 두 입구가 다른 상한을 가지면 사용자는 어느
+    쪽이 얼마까지인지 외워야 한다.
+    """
+
+
+class ChatTurnView(BaseModel):
+    """대화 한 차례 (data-model §1-4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["user", "assistant"]
+    text: str
+    at: datetime
+
+
+class ChatHistoryResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    turns: list[ChatTurnView]
+
+
+@router.post("/{session_id}/chat")
+async def chat(session_id: str, body: ChatRequest, state: State) -> SessionView:
+    """AI 에게 말을 건다 (016 FR-007·FR-009·FR-011 · api-contract §2-1).
+
+    **`paused` 게이트다.** 막혔을 때 말을 거는 것은 기존 답변 경로
+    (`AiChoice.ANSWER`)이고, 여기로 오지 않는다 — 답변 입구를 둘로 만들면 사용자는
+    어느 쪽에 써야 하는지 모른다.
+
+    **요청은 즉시 돌아온다.** 턴이 길 수 있고 그 사이 사용자가 중지할 수 있어야 한다
+    (FR-011). 진행과 결과는 이벤트로 간다.
+
+    에이전트를 **여기서 처음 만들 수 있다.** `mode=rerecord` 는 러너가 멈춘 뒤에
+    에이전트를 만들기로 했고(원칙 II · api-contract §1 의 순서), 그 「뒤」가 여기다.
+    녹화로 시작한 세션도 같은 길로 들어온다 — `ai_step` 이 이미 그렇게 한다.
+    """
+    from itb.authoring.agent import AuthoringAgent  # noqa: PLC0415
+
+    w = work_of(session_id)
+    _require_paused_for_chat(w)
+
+    if not isinstance(w.agent, AuthoringAgent):
+        _build_agent(w, state)
+    if not isinstance(w.agent, AuthoringAgent):  # pragma: no cover - 조립은 위에서 끝난다
+        raise bad_request(ErrorCode.DEFINITION_INVALID, "대화를 준비할 수 없습니다.")
+
+    text = body.text.strip()
+    if not text:
+        raise bad_request(
+            ErrorCode.DEFINITION_INVALID, "무엇을 하고 싶은지 적어 주세요."
+        )
+
+    _record_turn(w, "user", text)
+    await w.session.apply(Command.BEGIN_AI)
+    w.agent_task = asyncio.create_task(_run_chat_turn(session_id, text))
+    return view_of(w)
+
+
+@router.get("/{session_id}/chat")
+async def chat_history(session_id: str) -> ChatHistoryResponse:
+    """대화 이력 (016 FR-009 · api-contract §2-4).
+
+    화면 새로 고침·재접속 후 이력을 되찾기 위한 것이다.
+
+    **디스크에 쓰지 않는다** (FR-014). 세션이 끝나면 사라지며, 그것이 FR-013(민감값이
+    이력에 남지 않는다)의 실질적 방어다 — 사용자가 채팅에 비밀번호를 적는 것을 제품이
+    막을 수는 없지만, 남기지 않을 수는 있다 (research R8).
+    """
+    w = work_of(session_id)
+    return ChatHistoryResponse(turns=list(w.chat_turns))
+
+
+def _require_paused_for_chat(w: SessionWork) -> None:
+    """대화는 `paused` 에서만 받는다.
+
+    `require_paused` 를 그대로 쓰지 않는 이유는 `REVIEW` 다 — 그쪽도 편집 가능하지만
+    **브라우저가 없다.** 화면을 보지 못하는 AI 와 대화하는 것은 이 기능이 약속한 것이
+    아니다 (research R6: 가치의 대부분이 화면에서 나온다).
+    """
+    if w.session.state is not SessionState.PAUSED:
+        raise conflict(
+            ErrorCode.NOT_PAUSED,
+            f"현재 상태가 '{state_label(w.session.state)}' 이므로 대화할 수 없습니다.",
+            next_action=(
+                "AI 가 막혀 있으면 답변 칸에 알려 주세요. 실행 중이면 일시정지하세요."
+            ),
+        )
+
+
+def _record_turn(w: SessionWork, role: str, text: str) -> None:
+    """대화 이력에 한 차례를 붙이고 이벤트로 알린다 (FR-009 · api-contract §4-1)."""
+    turn = ChatTurnView(role=role, text=text, at=datetime.now(UTC))  # type: ignore[arg-type]
+    w.chat_turns.append(turn)
+    # 이벤트 발행은 비동기이지만 이 함수는 동기다 — 호출자가 이미 이벤트 루프 안에
+    # 있으므로 태스크로 띄운다. 순서는 `chat_turns` 가 이미 보장한다.
+    _ = asyncio.create_task(  # noqa: RUF006 - 발행 실패가 대화를 막지 않는다
+        w.session.emit("chat_turn", role=role, text=text, at=turn.at.isoformat())
+    )
+
+
+async def _run_chat_turn(session_id: str, text: str) -> None:
+    """대화 한 차례를 돌린다 (016).
+
+    **`_run_agent` 와 갈라 둔 것은 입구뿐이고 결말은 같다.** 막힘·실패·완료 처리를
+    `_settle_agent_outcome` 하나가 지난다 — 갈라 두면 한쪽에서 `ai_blocked` 를
+    빠뜨리고, 그 세션은 선택지 없이 멈춘 것처럼 보인다 (`_run_agent` 의 머리말과 같은
+    이유다).
+    """
+    from itb.authoring.agent import AuthoringAgent  # noqa: PLC0415
+
+    work = _WORK.get(session_id)
+    if work is None or not isinstance(work.agent, AuthoringAgent):
+        return
+    agent: AuthoringAgent = work.agent
+
+    outcome = await agent.chat(text)
+    if agent.last_reply:
+        _record_turn(work, "assistant", agent.last_reply)
+    await _settle_agent_outcome(work, outcome)
 
 
 class AiStepRequest(BaseModel):

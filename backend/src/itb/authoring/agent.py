@@ -208,6 +208,17 @@ class AuthoringAgent:
     경로에서 Step 이 사라질 수 있는 자리가 하나 더 생긴다 (FR-067).
     """
 
+    last_reply: str = ""
+    """이번 턴에 모델이 낸 **마지막 텍스트** (016 FR-009).
+
+    대화 이력에 AI 의 차례로 실린다. `ai_progress` 로 흘러가는 중간 텍스트와 다른
+    쓰임이다 — 그쪽은 「지금 무엇을 하는 중인지」이고 이것은 「무엇을 했는지」다.
+
+    **`AgentOutcome` 에 넣지 않은 이유**: outcome 은 루프의 **판정**이고, 판정은 실패
+    경로에서도 만들어져야 한다. 응답 텍스트를 거기 섞으면 「막혔는데 응답이 있다」 같은
+    조합을 호출자가 해석해야 한다.
+    """
+
     def _with_summary(self, text: str) -> str:
         """사용자 메시지 앞에 정의 요약을 붙인다 (016 FR-003).
 
@@ -233,6 +244,23 @@ class AuthoringAgent:
         """
         text = validate_instruction(instruction)
         self.messages.append({"role": "user", "content": self._with_summary(text)})
+        return await self._drive()
+
+    async def chat(self, text: str) -> AgentOutcome:
+        """대화 한 차례 (016 FR-007).
+
+        **`run` 과 갈라 둔 이유는 뜻이다.** `run` 이 나르는 것은 「이 지시를 수행하라」
+        이고 이것은 「내가 말을 걸었다」이다. 에이전트에게는 둘 다 사용자 메시지지만,
+        호출자에게는 결말 처리가 다르다 — 지시는 완수하면 작성이 끝나고, 대화는 끝나도
+        세션이 계속 산다.
+
+        예산을 새로 준다. 앞선 턴이 쓴 호출을 이어서 세면, 몇 마디 주고받은 뒤부터
+        말을 걸어도 아무 일도 일어나지 않는다 (FR-066 · `resume_with_answer` 와 같은
+        판단).
+        """
+        message = validate_instruction(text)
+        self.toolbox.limits.reset()
+        self.messages.append({"role": "user", "content": self._with_summary(message)})
         return await self._drive()
 
     async def resume_with_answer(self, answer: str) -> AgentOutcome:
@@ -296,6 +324,8 @@ class AuthoringAgent:
         # 잡았다). 앞선 결과는 이미 호출자에게 보고됐으므로 여기서 들고 있을 이유가 없다.
         self.toolbox.blocked_reason = None
         self.toolbox.blocked_question = None
+        # 016 — 지난 턴의 응답이 이번 턴의 대화 이력에 실리면 안 된다.
+        self.last_reply = ""
         try:
             selected, build = select_driver()
             driver = self.driver or selected
@@ -379,6 +409,13 @@ class AuthoringAgent:
         도구 실행 자체의 진행은 도구가 알린다. 여기서는 **모델의 판단**을 전한다 —
         사용자가 "AI 가 지금 무엇을 하는 중인지" 를 읽는 것이 이 이벤트의 목적이다.
         """
+        # 016 — 진행 보고 여부와 무관하게 **마지막 응답은 기록한다.** `on_progress` 가
+        # 없다고 대화 이력이 비면, 화면을 새로 고쳤을 때 AI 의 답이 사라진다.
+        for block in getattr(message, "content", None) or []:
+            text = getattr(block, "text", None)
+            if isinstance(text, str) and text.strip():
+                self.last_reply = text.strip()
+
         if self.on_progress is None:
             return
         for block in getattr(message, "content", None) or []:
