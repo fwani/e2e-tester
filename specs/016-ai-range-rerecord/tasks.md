@@ -113,7 +113,7 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [X] T032 [US1] `frontend/src/pages/SessionScreen.tsx` — `chat_turn` 구독, `POST /chat` 호출, 새로 고침 시 `GET /chat` 복구
 - [X] T033 [US1] `frontend/src/components/workbench/ActionPalette.tsx` — `ai.rerecord` 를 팔레트에 놓고, **브라우저를 연다는 사실을 이름 옆에서 미리 말한다** (ui-contract §1-1)
 - [X] T034 [US1] `frontend/src/pages/SessionScreen.tsx` 또는 편집 화면 — `ai.rerecord` 를 누르면 고른 구간으로 `mode=rerecord` 세션을 만든다. 연속이 아니면 **시작하지 않고** 이유를 말한다 (FR-016)
-- [ ] T034a [US1] `frontend/src/pages/SessionScreen.tsx` — **저장하지 않은 편집이 있으면 시작 전에 확인을 받는다** (FR-022 · api-contract §1 「저장하지 않은 편집」). 선택지 셋: 저장하고 시작 · 저장하지 않고 시작 · 취소. **편집을 버리지 않는다** — 세션이 끝나면 돌아온다
+- [X] T034a [US1] `frontend/src/pages/SessionScreen.tsx` — **저장하지 않은 편집이 있으면 시작 전에 확인을 받는다** (FR-022 · api-contract §1 「저장하지 않은 편집」). 선택지 셋: 저장하고 시작 · 저장하지 않고 시작 · 취소. **편집을 버리지 않는다** — 세션이 끝나면 돌아온다
 - [ ] T034b [P] [US1] `frontend/tests/RerecordStart.test.tsx` 신규 — 미저장 편집이 있을 때 확인이 뜨는지, 「취소」가 세션을 만들지 않는지, 「저장하지 않고 시작」 후에도 편집이 화면에 남는지 (FR-022)
 - [X] T035 [US1] `frontend/tests/CapabilityUI.test.tsx` 수정 — 새 조작 4개의 **자리**가 실제로 있는지 (FR-235)
 

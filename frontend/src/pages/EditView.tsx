@@ -532,8 +532,19 @@ export function EditView({
    * 두 경로가 같은 Step 을 다르게 들고 있는 상태를 만들지 않는다.
    */
   const openBrowser = (instruction: string | null = null) => {
+    afterSaving(() => openBrowserHere(instruction));
+  };
+
+  /**
+   * 저장하지 않은 변경이 있으면 **먼저 저장한 뒤** 세션을 연다 (006 FR-203).
+   *
+   * `openBrowser` 안에 있던 것을 016 이 꺼냈다. 재녹화도 세션을 여는 조작이고
+   * (FR-022), 같은 상황에서 다르게 굴면 사용자는 어느 쪽이 편집을 지키는지 외워야
+   * 한다. **새 확인을 만들지 않는다** — 011 이 `openBrowser` 에서 세운 판단이다.
+   */
+  const afterSaving = (next: () => void) => {
     if (pending === 0) {
-      openBrowserHere(instruction);
+      next();
       return;
     }
     setSaving(true);
@@ -543,7 +554,7 @@ export function EditView({
         setView(v);
         setOps([]);
         setSavedName(v.test.name);
-        openBrowserHere(instruction);
+        next();
       })
       /*
         011 FR-374c (UC-011-25) — **열기가 실패하면 시작하지 않는다.**
@@ -560,6 +571,12 @@ export function EditView({
    *
    * 구간 지정은 **삭제 대상 체크를 그대로 쓴다** (`step.toggleSelection`, 016 에서
    * 개칭). 체크 칸을 둘로 만들면 사용자가 어느 쪽에 체크할지 판단해야 한다.
+   *
+   * **FR-022(저장하지 않은 편집)는 `afterSaving` 이 처리한다.** api-contract §1 의
+   * 초안은 확인 대화(저장하고 시작 / 저장하지 않고 시작 / 취소)를 새로 만들라고
+   * 적었는데, 이 저장소에는 이미 규칙이 있었다 — 006 FR-203 「먼저 저장한 뒤 연다」이고
+   * 011 이 「새 확인을 만들지 않는다」를 명시했다. 재녹화도 세션을 여는 조작이므로
+   * 같은 규칙을 받는다. 없던 규칙을 만드는 것보다 있는 규칙을 따르는 쪽이 옳다.
    */
   function startRerecord() {
     if (onRerecordRange === undefined) return;
@@ -591,7 +608,7 @@ export function EditView({
     }
 
     const ids = positions.map((i) => order[i]).filter((id): id is string => id !== undefined);
-    guard(() => onRerecordRange(testId, ids));
+    afterSaving(() => onRerecordRange(testId, ids));
   }
 
   function runAction(action: ActionId) {
