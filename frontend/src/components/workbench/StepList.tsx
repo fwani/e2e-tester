@@ -538,16 +538,16 @@ function StepRow({
                 만들지 않는다.** 주의 계열인 이유: 지금 목록에 보이지만 파일에는 없다.
               */}
               {step.isUnsaved === true && (
-                <span data-cell="unsaved" className="inline-flex items-center gap-[5px] h-[19px] px-[6px] border border-hair-2 rounded-chip font-mono text-[10px] font-semibold leading-none tracking-[.06em] text-ink-2 bg-sunken-2 border-warn text-warn bg-warn-t flex-[0_0_auto]">
+                <Chip data-cell="unsaved" tone="warn" layout="flex-[0_0_auto]">
                   미저장
-                </span>
+                </Chip>
               )}
 
               {/* FR-030a — 최초 탭이 아닌 Step 은 어느 탭에서 일어나는지 보여야 한다 */}
               {dsl.tab > 0 && (
-                <span data-cell="tab" className="inline-flex items-center gap-[5px] h-[19px] px-[6px] border border-hair-2 rounded-chip font-mono text-[10px] font-semibold leading-none tracking-[.06em] text-ink-2 bg-sunken-2 flex-[0_0_auto]">
+                <Chip data-cell="tab" layout="flex-[0_0_auto]">
                   탭 {dsl.tab}
-                </span>
+                </Chip>
               )}
 
               <div data-cell="locator" className="font-mono text-[11px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">

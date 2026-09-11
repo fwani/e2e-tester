@@ -20,6 +20,7 @@
  * 모서리·그림자는 여기 없다 (`contracts/visual-language.md` §2).
  */
 import type { ReactNode } from "react";
+import { Pill } from "../../ui/Chip";
 
 /**
  * 헤더 왼쪽의 제품 표시. 18장 전부에서 동일하다.
@@ -132,7 +133,7 @@ export function Breadcrumb({ testId }: { testId: string }) {
   return (
     <div className="flex items-center text-ink-2 gap-s2">
       <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">테스트</span>
-      <span className="h-control-sm inline-flex items-center gap-[7px] px-[9px] border border-hair-2 rounded-base bg-panel text-ink font-mono text-[12px] font-semibold leading-none shadow-none">{testId}</span>
+      <Pill>{testId}</Pill>
     </div>
   );
 }

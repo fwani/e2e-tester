@@ -66,6 +66,30 @@ const TONE: Record<ChipTone, string> = {
  * 그룹 거르기(`TestGroupBar`)의 칩은 누를 수 있어야 하므로 `<button>` 이다. 그 자리가
  * 자기 힘으로 칩 모양을 조립하면 같은 종류의 표식이 두 모습을 갖는다 (SC-010).
  */
+/**
+ * 정본 `.pill` — 칩보다 한 치수 큰 표식. 프로젝트 이름·「초안」처럼 **머리띠에서 지금
+ * 무엇을 다루는지**를 말하는 자리에 쓴다.
+ *
+ * 015 T028 — 같은 모양이 화면 세 곳(`design/Chrome`·`workbench/Workbench`·`TestList`)
+ * 에서 따로 조립되고 있었다. 같은 종류의 부품이 화면마다 다른 모습을 갖는 것이
+ * SC-010 이 막으려는 것이므로 한 곳으로 모은다.
+ */
+export function Pill({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"span">, "className"> & { layout?: string; children?: ReactNode }) {
+  const cls = [
+    "h-control-sm inline-flex items-center gap-[7px] px-[9px]",
+    "border border-hair-2 rounded-base bg-panel text-ink",
+    "font-sans text-[12px] font-semibold leading-none shadow-none",
+    layout,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <span className={cls} {...rest}>
+      {children}
+    </span>
+  );
+}
+
 export function chipClasses(tone: ChipTone = "default", layout?: string): string {
   return [BASE, TONE[tone], layout].filter(Boolean).join(" ");
 }

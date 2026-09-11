@@ -66,7 +66,7 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 - [X] T010 가드 G-B 를 `frontend/tests/ClassExistence.test.ts` 에 만든다 — `.tsx` 가 쓰는 Tailwind 클래스가 빌드 산출 CSS 에 실재하는지 확인한다. **오타를 일부러 넣어 실패하는 것을 확인한다.** 이 가드가 없으면 `toHaveClass` 는 거짓말을 할 수 있다 ([contracts/layout-contract-v2.md](contracts/layout-contract-v2.md) LC-4 ③) (T003 의존)
 - [X] T011 [P] 가드 G-C 를 `frontend/tests/SingleSystem.test.ts` 에 만든다 — 한 요소의 `className` 에 의미 클래스와 Tailwind 유틸리티가 동시에 있으면 실패 (LC-5). 전환 중에는 이 수치가 **진행률 계기**이므로, 실패 메시지가 남은 곳을 `파일:줄` 로 지목해야 한다
 - [X] T012 [P] 가드 G-D 를 `frontend/tests/ClassMigration.test.ts` 에 만든다 — `tokens.css` 에 남은 의미 클래스 수와 대응표의 「완료」 아닌 행 수가 일치하는지 검사한다 (T008 의존)
-- [ ] T013 L2 대조 스크립트 `scripts/design_compare_ba.py` 를 만들고 `--baseline` 으로 **전환 전 기준선을 뜬다**. `design_render.py` 의 digest 규약을 따라 낡은 보고서로 통과할 수 없게 한다 (T004 의존). **기준선은 부품 전환을 시작하기 전에 떠야 한다**
+- [X] T013 L2 대조 스크립트 `scripts/design_compare_ba.py` 를 만들고 `--baseline` 으로 **전환 전 기준선을 뜬다**. `design_render.py` 의 digest 규약을 따라 낡은 보고서로 통과할 수 없게 한다 (T004 의존). **기준선은 부품 전환을 시작하기 전에 떠야 한다**
 - [X] ~~T014a **L1 대조의 측정 대상을 부품으로 옮긴다**~~ — **불필요해졌다 (2026-09-11).**
       이 작업의 전제는 「의미 클래스를 해체하면 정본에서 그 이름이 사라져 대조가
       무너진다」였다. T016 이 「완료」의 정의를 정정하면서 **정본 구획의 클래스는
@@ -165,7 +165,7 @@ className="btn sm quiet"                (이미 겪었다)
 - [X] T026 [P] [US2] Step 행 군을 `frontend/src/ui/` 또는 기존 `components/workbench/` 로 해체한다 — `.steps` `.steps-hd` `.steps-ft` `.srow` `.srow-check` `.srow-name` `.srow-ops` `.phase` `.phase-name` `.phase-progress`. **행 높이 52px 고정이 유지되어야 한다** (009 FR-304). `StepRowLayout`·`DesignStepRow`·`StepRowStates`·`StepListPerformance` 가 검증 대상
 - [X] T027 [P] [US2] 타이포·수식 군을 유틸리티로 해체한다 — `.mono` `.muted` `.dim` `.quiet` `.meta` `.note` `.log` `.code-block` `.addr` `.loc` `.line` `.name` `.left` `.sunken` `.strong-sm` `.sm` `.d` `.m` `.n` `.t` `.danger-edge` `.op` `.pick` `.segmented` `.textlink` `.navlink`. 부품이 아니라 수식이므로 컴포넌트를 만들지 않고 유틸리티 조합으로 옮긴다.
       **`.disabled`·`.bare` 는 T015(Button), `.float` 은 T022(모달·층) 관할이므로 여기서 다루지 않는다** — 병렬 실행 시 같은 정의를 두 곳에서 지우는 것을 막는다
-- [ ] T028 [US2] 4-A 완료를 확인한다 — `tokens.css` 에 의미 클래스 0개, 대응표 「완료」 109/109, 가드 G-C 0건, 테스트 전량 통과, L2 대조 불일치 0.
+- [X] T028 [US2] 4-A 완료를 확인한다 — `tokens.css` 에 의미 클래스 0개, 대응표 「완료」 109/109, 가드 G-C 0건, 테스트 전량 통과, L2 대조 불일치 0.
       **아울러 두 가지를 판정한다** (analyze 가 찾은 공백): (1) **SC-010** — 같은 종류의 부품이 화면마다 다른 모습을 갖지 않는가. `ui/` 밖에서 버튼·칩·알림 모양을 조립하는 곳이 있으면 위반이다. (2) **SC-006** — 어떤 요소의 스타일을 고칠 때 찾아야 할 곳이 부품 파일 하나와 정본 하나뿐인가. 세 번째 장소가 생겼으면 그것이 무엇인지 적는다
 
 ### 4-B. 배치 전환 — 인라인 455곳 → 유틸리티
@@ -229,7 +229,7 @@ className="btn sm quiet"                (이미 겪었다)
 - [X] T060 [P] `specs/008-visual-language/contracts/visual-language.md` §2 「허용되는 인라인 `style`」이 폐지되고 [contracts/layout-contract-v2.md](contracts/layout-contract-v2.md) 로 대체됐음을 원문에 표시한다. **지우지 말고 「015 가 개정함」을 적는다** — 왜 그 목록이 있었는지가 기록으로 남아야 한다
 - [X] T061 [P] `frontend/src/theme/tokens.css` 머리주석 중 「화면 코드는 `className` 으로 소비하며 값을 다시 적지 않는다」가 사실과 달라졌으므로 갱신을 요청하는 항목을 만든다. **이 파일은 `extract_canon.py` 의 출력이므로 직접 고치지 않는다** — 주석 생성 부분을 스크립트에서 고치거나, 파생 구획에 주석을 남긴다 (C-2)
 - [X] T062 [P] `specs/015-tailwind-css-migration/contracts/class-migration.md` 를 최종 상태로 확정한다 — 109행 전부 「완료」, 미상 0건 (SC-009)
-- [ ] T063 L2 대조를 실행한다 — `scripts/design_compare_ba.py --compare`. 불일치가 있으면 각각 의도된 것인지 판단한다. **의도되지 않은 불일치가 하나라도 있으면 전환이 끝난 것이 아니다** (SC-001)
+- [X] T063 L2 대조를 실행한다 — `scripts/design_compare_ba.py --compare`. 불일치가 있으면 각각 의도된 것인지 판단한다. **의도되지 않은 불일치가 하나라도 있으면 전환이 끝난 것이 아니다** (SC-001)
 - [X] T064 배포 산출물 크기를 기준선과 비교한다 — `npm run build` 후 CSS 크기가 T001 기록(15.04 kB)보다 늘지 않았는지 (SC-007).
       **미달일 때 할 일** (T071 이 정의): (1) 산출 CSS 에서 무엇이 늘었는지 **지목한다** —
       남은 의미 클래스인지, 유틸리티인지, 레이어 폴리필인지. (2) 남은 의미 클래스 때문이면
@@ -347,22 +347,65 @@ Task: "모달·층 군을 ui/Modal.tsx 로 해체 (T022)"
 늘어난 이유는 회귀가 아니라 **판정이 남긴 몫**이다 — SC-007 미달의 대응(T075)과
 L2 대조의 부재(T074)가 이번에 분명해졌다.
 
-- [ ] T073 **의미 클래스 43개의 남은 사용처를 옮긴다** per FR-006·SC-010 (partial) — **HIGH.**
+- [X] T073 **의미 클래스 43개의 남은 사용처를 옮긴다** per FR-006·SC-010 (partial) — **HIGH.**
       착수 시 104 → 지금 43. 남은 것은 두 부류다. (1) 조건부 표현식 안
       (`` `${cond ? "chip ai" : "chip"}` ``) — 기계 치환이 닿지 않아 사람이 부품 prop
       (`<Chip tone={cond ? "ai" : "default"}>`)으로 바꿔야 한다. (2) 부품이 있는 것
       (`.btn`·`.field`·`.notice`) — 유틸리티로 풀면 같은 부품이 화면마다 다른 조합을
       얻어 SC-010 이 깨진다. **`state-styles.md` 의 남은 이관 5건(S-08~S-10·S-12)도
       여기 딸려 있다** — 그 부품이 해체될 때 함께 옮긴다
-- [ ] T074 **L2 대조를 만든다** per FR-011·SC-001 (missing) — **HIGH.** T013·T063 이
+- [X] T074 **L2 대조를 만든다** per FR-011·SC-001 (missing) — **HIGH.** T013·T063 이
       미착수라 **시각 동일성이 전부 사람 눈에 달려 있다.** L1 은 정본 시트가 확정
       디자인과 같음을 보증할 뿐, 화면이 그 정본을 제대로 쓰는지는 보지 못한다.
       `scripts/design_render.py` 의 방법(chromium + `getComputedStyle` + digest 로
       낡음 판정)을 그대로 쓰되 대상을 「전환 전 화면 ↔ 전환 후 화면」으로 바꾼다.
       전환 전 상태는 `git worktree` 로 꺼낸다 (research R5)
-- [ ] T075 **SC-007 을 실제로 해소한다** per SC-007 (contradicts) — CSS 34.79 kB 로
+- [X] T075 **SC-007 을 실제로 해소한다** per SC-007 (contradicts) — CSS 34.79 kB 로
       미달이 확정됐고 원인도 지목했다(base 14.38 = 정본 · utilities 17.06). 그런데
       **줄이는 작업이 없다** — T064 는 판정만 했다. 정본 구획을 번들에서 빼면 된다:
       앱은 `:root` 변수만 불러오고 클래스 규칙은 L1 스크립트만 읽게 한다.
       **T073 이 끝난 뒤에야 안전하다** (화면이 정본 클래스를 하나도 쓰지 않아야 한다).
       그 뒤 base 는 변수 선언만 남아 1 kB 아래로 내려간다
+
+
+---
+
+## Phase 9: 사용자 신고와 수렴 3회차 (2026-09-11)
+
+사용자 신고 「버튼과 글자가 모두 흰색이라 안 보인다」에서 시작해, 그것과 같은 계통의
+결함을 찾다가 잔여 작업 6건이 함께 끝났다.
+
+- [X] T076 가드 G-E 를 만든다 — 한 요소에 같은 속성이 두 번 붙는 것을 막는다.
+      `className` 의 순서는 승부를 정하지 않고 산출 CSS 의 순서가 정한다. 리터럴뿐
+      아니라 부품의 **조합 전부**를 본다 (`tests/ClassConflict.test.ts`)
+- [X] T077 부품 셋(`Button`·`Chip`·`Field`)의 BASE/VARIANT 충돌을 없앤다 —
+      변종이 건드리는 속성은 BASE 가 갖지 않는다. 흰 버튼·회색 상태칩의 원인
+- [X] T078 화면 코드 43곳의 중복 선언을 전환 전 화면에 맞춰 정리한다
+- [X] T079 G-B 가 정본 클래스를 실재로 치던 것을 고친다 — T075 이후 정본 클래스는
+      아무 CSS 도 만들지 않으므로, 봐주면 무스타일 요소를 초록으로 보고한다
+- [X] T080 `classNameGroups()` 가 중첩 템플릿을 읽도록 고친다 — 정규식으로 백틱 짝을
+      찾으면 `` `${`num ${x}`} …` `` 에서 안쪽 이름이 보이지 않는다
+- [X] T081 SC-010 위반 4종을 부품으로 모은다 — 칩 5곳 · 「필」 3곳 · navlink 26곳 ·
+      분절 선택 띠. 새 부품 `<Pill>`·`<Segmented>`·`navLinkClasses()`
+- [X] T082 L2 보고서의 신선도 가드를 세운다 (`tests/BeforeAfterParity.test.ts`) —
+      화면이 바뀌었는데 다시 재지 않으면 「불일치 0」이 지금 화면에 대한 말이 아니다
+
+### 수렴 3회차 판정
+
+| 축 | 값 |
+|---|---|
+| 미완료 작업 | **0** (2회차 5 → 0) |
+| 테스트 | 1283/1283 · 삭제·건너뜀 0 |
+| L2 대조 | 34,272칸 · 의도되지 않은 불일치 **0** |
+| L1 대조 | 725칸 불일치 0 |
+| 화면 코드의 의미 클래스 | **0** |
+| 인라인 위반 | 색 0 · 인라인 30(전부 등록된 예외) · 팔레트 밖 0종 |
+| CSS 크기 | 25.39 kB (기준선 15.04) — **SC-007 미달, 판정은 baseline.md** |
+
+**사용자 판단이 필요한 것 둘** (여기서 결정하지 않았다):
+
+1. **SC-007 의 단위** — 「스타일 크기」로 재면 이 기능은 구조상 통과할 수 없다.
+   FR-019 가 스타일의 거처를 JS 에서 CSS 로 옮기기로 했기 때문이다. 전체 전송량
+   (gzip)으로는 +3.8% 다. 기준을 고칠지는 명세 변경이다 (baseline.md)
+2. **대응표 「완료」 조항** — 파생 구획의 정의를 지워야 「완료」인데, T075 이후 그
+   정의들은 번들에 실리지 않고 일부는 L1 대조가 읽는다 (contracts/class-migration.md)

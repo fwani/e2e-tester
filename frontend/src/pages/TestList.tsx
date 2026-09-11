@@ -73,7 +73,7 @@ import { chipTone, rowMark } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
 import { Button, navLinkClasses } from "../ui/Button";
-import { Chip } from "../ui/Chip";
+import { Chip, Pill } from "../ui/Chip";
 import { rowClasses } from "../ui/Table";
 import { Field } from "../ui/Field";
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
@@ -496,7 +496,7 @@ export function TestList({
         <HeaderDivider />
         <div className="flex items-center gap-s2">
           <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">프로젝트</span>
-          <span className="h-control-sm inline-flex items-center gap-[7px] px-[9px] border border-hair-2 rounded-base bg-panel text-ink font-sans text-[12px] font-semibold leading-none shadow-none">{projectName}</span>
+          <Pill>{projectName}</Pill>
           {/*
             **프로젝트 목록으로 가는 길** (사용자 보고 · 2026-09-09 — 「프로젝트 목록으로
             가는 방법이 없다」).

@@ -43,6 +43,7 @@ import type { WorkbenchModel } from "./model";
 import { Lbl } from "../../ui/Field";
 import { Scrim } from "../../ui/Surface";
 import { Row } from "../../ui/Table";
+import { Pill } from "../../ui/Chip";
 
 
 /** 최소 기준 폭. 확정 디자인 6종 공통값 (research R1). */
@@ -239,7 +240,7 @@ export function Workbench({
           <Row layout="text-ink-2">
             <Lbl>테스트</Lbl>
             {/* 정본 `.pill mono` — `.pill` 이 `.mono` 보다 뒤에 정의돼 **글꼴은 sans 였다.** */}
-            <span className="h-control-sm inline-flex items-center gap-[7px] px-[9px] border border-hair-2 rounded-base bg-panel text-ink font-sans text-[12px] font-semibold leading-none shadow-none">초안</span>
+            <Pill>초안</Pill>
           </Row>
         )}
         <div className="flex-1" />
