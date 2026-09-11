@@ -44,6 +44,8 @@ import type { ActionId } from "../../lib/actions";
 import type { CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
 
+
+import { Button, type ButtonVariant } from "../../ui/Button";
 export interface ActionButtonProps {
   action: ActionId;
   capability: CapabilityState;
@@ -89,7 +91,9 @@ export function ActionButton({
   const disabled = capability.kind === "disabled";
   const text = label ?? ACTION_LABEL[action];
 
-  const variant = disabled
+  // 정본 `.btn` 수식자 이름을 그대로 쓰던 자리다. 이제 `ui/Button` 의 variant 를 고른다 —
+  // 수식 없음은 `""` 가 아니라 `"default"` 다 (015 T016).
+  const variant: ButtonVariant = disabled
     ? "off"
     : emphasis === true
       ? "primary"
@@ -97,25 +101,26 @@ export function ActionButton({
         ? "danger"
         : emphasis === "quiet"
           ? "quiet"
-          : "";
+          : "default";
 
   const button = (
-    <button
+    <Button
       type="button"
       data-action={action}
       disabled={disabled}
       aria-describedby={disabled ? reasonId : undefined}
       onClick={disabled ? undefined : onRun}
-      className={`btn ${compact ? "sm " : ""}${variant}`.trimEnd()}
+      size={compact ? "sm" : "md"}
+      variant={variant}
       /*
         **버튼은 줄지 않는다.** 국면 띠는 한 줄이고, 줄 폭이 모자랄 때 눌러야 할 것이
         먼저 찌그러지면 안 된다 — 줄어드는 것은 이유 문구 쪽이다 (아래).
       */
-      style={{ flex: "0 0 auto" }}
+      layout="flex-none"
     >
       {icon}
       {text}
-    </button>
+    </Button>
   );
 
   if (!disabled) return button;
@@ -134,7 +139,7 @@ export function ActionButton({
     잘리면 이유를 읽고도 할 수 있는 일이 없다 (ui-contract §4-1 의 3번).
   */
   return (
-    <span className="row" style={{ gap: 8, minWidth: 0 }}>
+    <span className="flex items-center gap-s2 min-w-0">
       {button}
       {/*
         이유는 **시각적으로만** 두지 않는다. `aria-describedby` 로 버튼에 묶여 있어야
@@ -143,20 +148,12 @@ export function ActionButton({
       <span
         id={reasonId}
         data-disabled-reason={action}
-        className="why"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 4,
-          flex: "0 1 auto",
-          minWidth: 0,
-          maxWidth: 260,
-        }}
+        className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
       >
         <span
           data-disabled-reason-text
           title={capability.reason}
-          style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
         >
           {capability.reason}
         </span>
@@ -164,8 +161,7 @@ export function ActionButton({
           <button
             type="button"
             data-remedy-for={action}
-            className="textlink"
-            style={{ flex: "0 0 auto" }}
+            className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-sans text-[12px] font-semibold leading-[1.4] underline cursor-pointer flex-none"
             onClick={() => onRemedy(capability.remedy!.action)}
           >
             {ACTION_LABEL[capability.remedy.action]}

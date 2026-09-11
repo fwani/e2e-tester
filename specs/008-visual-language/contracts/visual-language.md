@@ -57,6 +57,21 @@
 
 ### 허용되는 인라인 `style`
 
+> ## ⚠️ 이 절은 015 가 개정했다 (2026-09-11)
+>
+> **지우지 않는다** — 왜 이 목록이 있었는지가 기록으로 남아야 한다.
+>
+> 015 「Tailwind CSS 전환」이 배치까지 유틸리티 클래스로 옮기면서 이 허용 목록을
+> 폐지했다. 대체 계약은
+> [`specs/015-tailwind-css-migration/contracts/layout-contract-v2.md`](../../015-tailwind-css-migration/contracts/layout-contract-v2.md)
+> 이며, 인라인에 남을 자격은 **런타임 계산값**뿐이다 (LC-3).
+>
+> **개정된 것은 표현이지 구조가 아니다.** `lib/layout.ts` 의 `Record<Phase, …>` 표와
+> 「부모가 자식에 내려준다」는 흐름은 그대로다 — 007 이 S-12(편집 국면에서 두 자리가
+> 뒤바뀜)를 고치며 세운 성질은 개정 대상이 아니었다 (015 FR-020).
+>
+> 아래 목록은 **2026-09-11 이전의 규칙**이다.
+
 C-7 이 금지하지 않는 것만. 아래는 **배치**이며 007 계약의 관할이다.
 
 `display` · `flex` · `flexGrow` · `flexBasis` · `flexDirection` · `gap` · `gridTemplateColumns` ·

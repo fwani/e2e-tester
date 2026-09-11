@@ -44,13 +44,8 @@ export interface StepEditFieldsProps {
   }) => void;
 }
 
-const rowStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "92px 1fr",
-  gap: 8,
-  alignItems: "center",
-  marginTop: 8,
-};
+/** 한 줄의 배치 — 라벨 92px + 입력칸. 015 가 인라인에서 클래스로 옮겼다. */
+const ROW_CLASS = "grid grid-cols-[92px_1fr] gap-s2 items-center mt-s2";
 
 export function StepEditFields({
   step,
@@ -66,8 +61,8 @@ export function StepEditFields({
 
   return (
     <div>
-      <label style={rowStyle}>
-        <span className="field-label">
+      <label className={ROW_CLASS}>
+        <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
           표시 이름
         </span>
         <input
@@ -81,13 +76,13 @@ export function StepEditFields({
 
       {value !== null && (
         <>
-          <label style={rowStyle}>
-            <span className="field-label">
+          <label className={ROW_CLASS}>
+            <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
               입력값
             </span>
             <input
               aria-label="Step 입력값"
-              className="mono"
+              className="font-mono"
               value={value}
               disabled={!editable || valueIsSecret}
               maxLength={4000}
@@ -95,7 +90,7 @@ export function StepEditFields({
             />
           </label>
           {valueIsSecret && (
-            <p className="why" style={{ margin: "4px 0 0 100px" }}>
+            <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1 mr-0 mb-0 ml-[100px]">
               {SENSITIVE_VALUE_NOTICE}
             </p>
           )}
@@ -103,13 +98,13 @@ export function StepEditFields({
       )}
 
       {isNavigate(step) && (
-        <label style={rowStyle}>
-          <span className="field-label">
+        <label className={ROW_CLASS}>
+          <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
             주소
           </span>
           <input
             aria-label="Step 주소"
-            className="mono"
+            className="font-mono"
             value={step.url}
             disabled={!editable}
             maxLength={2000}
@@ -119,13 +114,13 @@ export function StepEditFields({
       )}
 
       {step.type === "assertion" && (
-        <label style={rowStyle}>
-          <span className="field-label">
+        <label className={ROW_CLASS}>
+          <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
             기대값
           </span>
           <input
             aria-label="검증 기대값"
-            className="mono"
+            className="font-mono"
             value={step.assertion.value ?? ""}
             disabled={!editable}
             maxLength={4000}
@@ -134,11 +129,11 @@ export function StepEditFields({
         </label>
       )}
 
-      <label style={rowStyle}>
-        <span className="field-label">
+      <label className={ROW_CLASS}>
+        <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
           대기 시간
         </span>
-        <span className="row" style={{ gap: 6 }}>
+ <span className="flex items-center gap-[6px]">
           <input
             aria-label="Step 대기 시간 (ms)"
             type="number"
@@ -146,7 +141,7 @@ export function StepEditFields({
             max={60000}
             value={step.timeout_ms}
             disabled={!editable}
-            style={{ width: 110 }}
+            className="w-[110px]"
             onChange={(e) => {
               const next = Number(e.target.value);
               if (Number.isFinite(next) && next >= 1 && next <= 60000) {
@@ -154,14 +149,14 @@ export function StepEditFields({
               }
             }}
           />
-          <span className="why">
+          <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
             ms
           </span>
         </span>
       </label>
 
-      <label style={rowStyle}>
-        <span className="field-label">
+      <label className={ROW_CLASS}>
+        <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
           대상 탭
         </span>
         <input
@@ -170,7 +165,7 @@ export function StepEditFields({
           min={0}
           value={step.tab}
           disabled={!editable}
-          style={{ width: 110 }}
+          className="w-[110px]"
           onChange={(e) => {
             const next = Number(e.target.value);
             if (Number.isInteger(next) && next >= 0) onChange({ tab: next });

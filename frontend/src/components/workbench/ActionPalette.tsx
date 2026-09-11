@@ -46,7 +46,6 @@ import { isShown, type CapabilityMap, type CapabilityState } from "../../lib/cap
 import { ACTION_LABEL } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 
-
 /**
  * 버튼 줄의 **고정 순서**. 국면이 이 순서를 바꾸지 않는다.
  *
@@ -82,7 +81,6 @@ export const PALETTE_ACTIONS: ActionId[] = [
   "ai.start",
   "save.overwriteStale",
 ];
-
 /**
  * Step 을 더하는 두 길이 나란히 서는 줄 (011 FR-374).
  *
@@ -106,10 +104,8 @@ export interface ActionPaletteProps {
    * 담지 않으면 무엇에 걸지 모르는 조작이 활성으로 남아 눌러도 아무 일이 없다.
    */
   narrow?: (action: ActionId, base: CapabilityState) => CapabilityState;
-
   /** 자연어로 Step 추가 (FR-078). 입력칸과 버튼이 한 쌍이다 */
   nl: { value: string; onChange: (v: string) => void; onSubmit: () => void };
-
   /**
    * 직접 입력으로 Step 추가 (009 FR-285). **자연어 입력과 같은 문법이다** — 조작 하나가
    * 그 자리에서 입력면을 여닫는다.
@@ -122,7 +118,6 @@ export interface ActionPaletteProps {
     /** 열려 있을 때 그 자리에 그릴 것. 화면이 만든다 — 팔레트가 폼을 소유하지 않는다 */
     form: ReactNode;
   };
-
   /*
     **테스트 이름은 이 팔레트가 받지 않는다** (011). 국면 띠가 표시와 편집을 함께 갖고,
     화면은 `Workbench` 의 `phaseName` 으로 그것을 넘긴다 (UC-011-2). 여기 다시 받으면
@@ -134,7 +129,6 @@ export interface ActionPaletteProps {
   /** AI 지시문 (`ai.compose`). 기록이며 국면에 따라 읽기 전용이다 (FR-063) */
   instruction: string | null;
   onInstructionChange?: (v: string) => void;
-
   /*
     **저장 버튼도 이 팔레트가 받지 않는다** (011). 라벨과 좁힌 권한은 국면 띠의 저장
     조작이 갖는다 — 화면이 `phaseActions` 로 만들어 넘긴다 (007 계약 §2-7).
@@ -205,8 +199,8 @@ export function ActionPalette({
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div className="lbl">지금 할 수 있는 것</div>
+    <div className="flex flex-col gap-s3">
+      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">지금 할 수 있는 것</div>
 
       {/*
         ─── Step 을 더하는 두 길 (011 FR-374 · UC-011-23) ──────────────────────
@@ -222,17 +216,16 @@ export function ActionPalette({
         쓸 수 없으면 입력칸을 잠그고 이유는 버튼이 말한다 (FR-234).
       */}
       {AUTHORING_ROW.some(shown) || shown("step.addNaturalLanguage") ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="flex flex-col gap-s2">
           {shown("step.addNaturalLanguage") && (
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div className="flex gap-[10px] items-start">
               <input
                 aria-label="자연어로 Step 추가"
                 value={nl.value}
                 disabled={!usable("step.addNaturalLanguage")}
                 onChange={(e) => nl.onChange(e.target.value)}
                 placeholder="생성된 프로젝트가 목록에 있는지 확인해."
-                className="ai"
-                style={{ flex: "1", minWidth: 0 }}
+                className="border-ai flex-1 min-w-0"
               />
               {button("step.addNaturalLanguage", () => {
                 if (nl.value.trim() === "") return;
@@ -240,13 +233,13 @@ export function ActionPalette({
               })}
             </div>
           )}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
+          <div className="flex flex-wrap gap-[10px] items-start">
             {AUTHORING_ROW.filter(shown).map((action) => button(action, () => onRun(action)))}
           </div>
         </div>
       ) : null}
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
+      <div className="flex flex-wrap gap-[10px] items-start">
         {PALETTE_ACTIONS.filter(shown).map((action) => button(action, () => onRun(action)))}
       </div>
 
@@ -265,8 +258,7 @@ export function ActionPalette({
       */}
       {shown("test.setStartUrl") && (
         <div
-          className="rule-top"
-          style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 12 }}
+          className="border-t border-hair flex flex-col gap-s2 pt-s3"
         >
           {shown("test.setStartUrl") && (
             <Field
@@ -317,12 +309,11 @@ export function ActionPalette({
       {saveNotice}
 
       {stepCount === 0 && emptyHint !== undefined && (
-        <div className="why">{emptyHint}</div>
+        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{emptyHint}</div>
       )}
     </div>
   );
 }
-
 /**
  * 값을 고치는 조작 하나 — 입력칸이 곧 그 조작이다.
  *
@@ -379,9 +370,9 @@ function Field({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span className="field-label" style={{ width: 76 }}>
+    <div className="flex flex-col gap-s1">
+      <div className="flex items-center gap-s2">
+        <span className="font-sans text-[12px] leading-none font-normal text-ink-3 w-[76px]">
           {label}
         </span>
         {multiline ? (
@@ -394,8 +385,7 @@ function Field({
         <span
           id={reasonId}
           data-disabled-reason={action}
-          className="why"
-          style={{ paddingLeft: 84 }}
+          className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 pl-[84px]"
         >
           {capability.reason}
           {capability.remedy !== null && (
@@ -404,7 +394,7 @@ function Field({
               <button
                 type="button"
                 data-remedy-for={action}
-                className="textlink"
+                className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-sans text-[12px] font-semibold leading-[1.4] underline cursor-pointer"
                 onClick={() => onRemedy(capability.remedy!.action)}
               >
                 {ACTION_LABEL[capability.remedy.action]}

@@ -18,6 +18,7 @@ import { PHASE_LABEL } from "../src/lib/wording";
 import { workbenchModel } from "./helpers/model";
 import { stepResult } from "./helpers/workbench";
 
+import { flexOf } from "./helpers/style";
 function renderShell(model: WorkbenchModel) {
   return render(
     <Workbench
@@ -44,12 +45,23 @@ describe("3층 구조 (T018 · FR-218c)", () => {
 
   it("국면 띠는 48px 이다 — 008 「계기판」 값 (v1 은 74px 였다)", () => {
     renderShell(workbenchModel("running"));
-    expect(el("[data-workbench-phase-bar]").style.flex).toBe("0 0 48px");
+    // 015 — 배치가 클래스로 바뀌었다. `h-phase` 는 `--h-phase`(48px)다.
+    // 묻는 것은 그대로: 국면 띠가 008 「계기판」 값 48px 인가 (v1 은 74px 였다).
+    //
+    // **기댓값을 `0 0 auto` 로 완화했던 것을 되돌린다 (2026-09-11).** 전환 전 인라인은
+    // `flex: "0 0 48px"` 였는데, 전환이 `flex-none`(=`0 0 auto`)과 `flex-[0_0_48px]` 를
+    // **둘 다** 붙였고 `.flex-none` 이 산출 CSS 에서 뒤에 와 48px 가 졌다. 그때 검사를
+    // 고쳐 통과시킨 것이 이 줄이다 — 회귀를 잡는 대신 회귀에 맞춘 것이며 헌법
+    // Quality Gate 4 가 금지하는 형태다. `flex-none` 을 지우고 기댓값을 되돌렸다.
+    expect(flexOf(el("[data-workbench-phase-bar]")), "국면 띠가 줄어든다").toBe("0 0 48px");
+    expect(el("[data-workbench-phase-bar]").className, "국면 띠 높이가 48px 이 아니다").toContain(
+      "h-phase",
+    );
   });
 
   it("Step 패널은 460px 고정이다 — 확정 디자인 3종 공통값", () => {
     renderShell(workbenchModel("running"));
-    expect(el("[data-workbench-step-panel]").style.flex).toBe("0 0 460px");
+    expect(el("[data-workbench-step-panel]").className, "Step 패널이 460px 고정이 아니다").toContain("basis-steps");
   });
 
   it("최소 기준 폭이 1440px 이고 넓으면 늘어난다 (FR-218·FR-218a)", () => {
@@ -65,9 +77,14 @@ describe("3층 구조 (T018 · FR-218c)", () => {
     // 좌측은 남는 폭을 가져가고(grow 1), Step 패널은 고정이다(grow 0 · basis 460px).
     const left = el("[data-workbench-target]").parentElement!;
     const panel = el("[data-workbench-step-panel]");
-    expect(left.style.flexGrow).toBe("1");
-    expect(panel.style.flexGrow).toBe("0");
-    expect(panel.style.flexBasis).toBe("460px");
+    // 015 T030 — 좌측 열이 클래스로 바뀌었다. `flex-1` 이 `flex:1 1 0%` 이므로 grow 는 1 이다.
+    // 묻는 것은 그대로: **남는 폭을 가져가는 것이 좌측뿐인가.**
+    expect(
+      left.style.flexGrow !== "" ? left.style.flexGrow : /\bflex-1\b/.test(left.className) ? "1" : "0",
+      "좌측 열이 남는 폭을 가져가지 않는다",
+    ).toBe("1");
+    expect(flexOf(panel), "Step 패널이 남는 폭을 가져간다").toBe("0 0 auto");
+    expect(panel.className, "Step 패널 폭이 460px 이 아니다").toContain("basis-steps");
   });
 });
 
@@ -92,7 +109,7 @@ describe("일곱 국면이 같은 껍데기를 쓴다 (SC-003 · FR-217)", () =>
       shapes.add(
         [
           el("[data-workbench-phase-bar]").style.flex,
-          el("[data-workbench-step-panel]").style.flex,
+          el("[data-workbench-step-panel]").className,
           el("[data-workbench-target]").parentElement!.style.flex,
         ].join("|"),
       );
@@ -203,7 +220,7 @@ describe("국면 보조 영역 (FR-218e)", () => {
 
   it("보조 영역이 있든 없든 다른 영역의 자리가 바뀌지 않는다", () => {
     const without = renderShell(workbenchModel("running", { work: null }));
-    const shapeA = el("[data-workbench-step-panel]").style.flex;
+    const shapeA = el("[data-workbench-step-panel]").className;
     without.unmount();
 
     renderShell(
@@ -217,7 +234,7 @@ describe("국면 보조 영역 (FR-218e)", () => {
         },
       }),
     );
-    expect(el("[data-workbench-step-panel]").style.flex).toBe(shapeA);
+    expect(el("[data-workbench-step-panel]").className).toBe(shapeA);
   });
 });
 
@@ -381,7 +398,9 @@ describe("Step 상세 — 구현도 하나, 자리도 하나다 (FR-229·FR-230�
         workbenchModel(phase, { focusedStepId: "st-1", detail: { ...DETAIL_FIXTURE } }),
       );
       const detail = el("[data-workbench-step-detail]");
-      expect(detail.style.width, `국면 ${phase}`).toBe("640px");
+      // 015 — `w-detail` 은 `--w-detail`(640px)이다. 묻는 것은 그대로:
+      // 상세의 폭이 모든 국면에서 같은가 (FR-230).
+      expect(detail.className, `국면 ${phase} 의 상세 폭이 다르다`).toContain("w-detail");
       expect(detail.getAttribute("role"), `국면 ${phase}`).toBe("dialog");
       // ③-b 안에 상세가 걸린 국면이 없다 — 인라인 자리는 사라졌다.
       expect(

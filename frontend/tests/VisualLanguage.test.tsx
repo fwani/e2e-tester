@@ -30,6 +30,9 @@
 import { describe, expect, it } from "vitest";
 
 import { VISUAL_LANGUAGE_EXCEPTIONS, isRegistered } from "../src/theme/exceptions";
+import { scan as rawScan } from "../scripts/count-violations.mjs";
+
+import { generatedClasses } from "./helpers/tailwind";
 import tokens from "../src/theme/tokens.css?raw";
 import uiContract from "../../specs/007-unify-test-screens/contracts/ui-contract.md?raw";
 
@@ -61,17 +64,6 @@ const SOURCES = import.meta.glob("../src/**/*.tsx", {
 /** G-1 — 표기를 바꿔 빠져나갈 수 없게 잡는다. */
 const COLOR = /#[0-9A-Fa-f]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/g;
 
-/** G-2 — `contracts/visual-language.md` §2 C-7 의 목록. 배치 속성은 여기 없다. */
-const VISUAL_PROPS = [
-  "background", "backgroundColor", "backgroundImage",
-  "border", "borderTop", "borderRight", "borderBottom", "borderLeft",
-  "borderColor", "borderRadius", "borderStyle", "borderWidth",
-  "boxShadow", "color",
-  "font", "fontFamily", "fontSize", "fontWeight", "fontStyle",
-  "letterSpacing", "lineHeight", "textDecoration", "textTransform",
-  "opacity", "outline",
-];
-const VISUAL_PROP = new RegExp(`(?<![A-Za-z])(${VISUAL_PROPS.join("|")})\\s*:`, "g");
 
 /** 주석은 세지 않는다 — 근거를 적은 것이지 화면에 나가는 값이 아니다. */
 function stripComments(text: string): string {
@@ -84,6 +76,14 @@ function stripComments(text: string): string {
 function repoPath(globKey: string): string {
   return globKey.replace(/^\.\.\//, "frontend/");
 }
+
+/**
+ * Tailwind 가 실제로 만들어 내는 클래스. 015 T053.
+ *
+ * 이름 규칙을 형태로 추측하지 않는다 — 어간 목록으로 갈랐다가 정본 `.grid-head` 를
+ * `grid-*` 유틸리티로 잘못 본 전례가 있다.
+ */
+const TAILWIND_CLASSES = generatedClasses();
 
 interface Finding {
   file: string;
@@ -123,21 +123,25 @@ const CANON_CLASSES = new Set(
   ),
 );
 
-/** 원문 하나를 판정한다. 실제 파일과 **인위적인 원문**이 같은 함수를 지난다. */
+/**
+ * 원문 하나를 판정한다. 실제 파일과 **인위적인 원문**이 같은 함수를 지난다.
+ *
+ * ## 세는 일은 계수기가 한다 (015 T052)
+ *
+ * 이 파일이 자체 정규식으로 훑던 것을 `scripts/count-violations.mjs` 의 `scan()` 에
+ * 넘겼다. 015 가 G-2 에 배치 속성을 더하면서 두 곳이 갈렸고, 그 결과 오탐이 쏟아졌다 —
+ * `visibility: "keep"` 은 capability 모델의 필드이지 CSS 가 아닌데 G-2 로 잡혔다.
+ *
+ * 계수기는 인라인 `style={{…}}` **안**만 본다. 그 범위 판정이 여기 없었기 때문에
+ * 생긴 차이이고, 규칙을 두 곳에 두면 그것 자체가 이 기능이 고치려는 결함이라는 말이
+ * 규칙의 *적용 범위*에도 그대로 맞았다.
+ *
+ * 예외 거르기(`allowed`)는 여기 남는다 — 계수기는 원시 계수를 내고 판정은 검사가 한다.
+ */
 function scanText(file: string, raw: string): Finding[] {
-  const found: Finding[] = [];
-  stripComments(raw)
-    .split("\n")
-    .forEach((line, i) => {
-      for (const m of line.matchAll(COLOR)) {
-        if (!allowed(file, "G-1", m[0])) found.push({ file, line: i + 1, axis: "G-1", value: m[0] });
-      }
-      for (const m of line.matchAll(VISUAL_PROP)) {
-        const prop = m[1] as string;
-        if (!allowed(file, "G-2", prop)) found.push({ file, line: i + 1, axis: "G-2", value: prop });
-      }
-    });
-  return found;
+  return (rawScan(raw) as { line: number; axis: string; value: string }[])
+    .filter((f) => (f.axis === "G-1" || f.axis === "G-2") && !allowed(file, f.axis as Finding["axis"], f.value))
+    .map((f) => ({ file, line: f.line, axis: f.axis as Finding["axis"], value: f.value }));
 }
 
 function scan(): Finding[] {
@@ -217,6 +221,20 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
       **한계 — 문자열 리터럴만 본다.** `` className={`chip ${variant}`} `` 의 `${…}` 는
       클래스 이름이 아니라 식이므로 통째로 버린다. 그 계산된 변형은 `theme/tone.ts` 의
       `as const` 표가 좁히고, 아래 「정본이 형태 27종을 전부 선언한다」가 받친다.
+
+      ## 2026-09-10 (015 T053) — 판정 기준을 넓혔다. 검증 대상은 그대로다
+
+      015 가 Tailwind 를 들이면서 **형태의 출처가 둘이 됐다** — 정본과 Tailwind 산출물.
+      「정본에 있는가」만 물으면 `bg-panel`·`flex-none` 같은 정상 유틸리티가 전부 위반이
+      된다. 그것은 이 검사가 막으려던 것이 아니다.
+
+      이 검사가 묻는 것은 처음부터 **「그 자리가 아무 형태도 받지 못하는가」**였다
+      (008 에서 `.badge`→`.chip` 통일 후 6개 파일이 존재하지 않는 클래스를 가리켰고
+      675건이 전부 통과했다). 그 질문은 그대로 두고, 답이 될 수 있는 곳을 하나 늘린다.
+
+      Tailwind 쪽 판정은 **산출물을 실제로 조회한다** — 이름 규칙을 추측하지 않는다
+      (`tests/helpers/tailwind.ts`). 같은 것을 가드 G-B 가 더 촘촘히 보므로, 여기는
+      008 이 세운 축(G-1·G-2·G-3·G-6)의 일관성을 지키는 자리로 남는다.
     */
     const CLASS_ATTR = /className=(?:"([^"]*)"|\{`([^`]*)`\})/g;
     const orphans: string[] = [];
@@ -226,7 +244,7 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
         const literal = m[1] ?? (m[2] as string).replace(/\$\{[^}]*\}/g, " ");
         for (const name of literal.split(/\s+/)) {
           if (!/^[a-z][a-z0-9-]*$/.test(name)) continue;
-          if (CANON_CLASSES.has(name) || allowed(file, "G-3", name)) continue;
+          if (CANON_CLASSES.has(name) || TAILWIND_CLASSES.has(name) || allowed(file, "G-3", name)) continue;
           orphans.push(`${file} — .${name}`);
         }
       }
@@ -373,11 +391,25 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
         const text = stripComments(CORPUS[f] as string);
         if (e.axis === "color") return [...text.matchAll(COLOR)].some((m) => re.test(m[0]));
         if (e.axis === "inline-style")
-          return [...text.matchAll(VISUAL_PROP)].some((m) => re.test(m[1] as string));
+          // 계수기가 세고 여기는 매칭만 본다 — 규칙이 한 곳에 있어야 갈리지 않는다.
+          return (rawScan(text) as { axis: string; value: string }[])
+            .filter((x) => x.axis === "G-2")
+            .some((x) => re.test(x.value));
         if (e.axis === "token")
           return [...text.matchAll(/rgba?\([^)]*\)|#[0-9A-Fa-f]{3,8}\b|\b\d+(?:\.\d+)?px\b/g)].some(
             (m) => re.test(m[0]),
           );
+        if (e.axis === "class-name")
+          /*
+            **클래스 이름 하나하나에 건다.** 파일 전체 텍스트에 걸면 `^outline-none$`
+            처럼 앵커가 붙은 패턴이 영원히 맞지 않아, 살아 있는 예외가 죽은 것으로
+            보고된다. 예외를 쓰는 쪽(`FocusRing` 의 `excused`)이 **토큰 하나**를 주므로
+            여기서도 같은 단위로 물어야 한다 — 두 곳이 다른 단위를 쓰면 한쪽이 거짓말한다.
+            (`class-name` 축이 처음 쓰인 2026-09-11 에 드러났다.)
+          */
+          return [...text.matchAll(/"([^"\n]*)"|`([^`\n]*)`/g)]
+            .flatMap((m) => ((m[1] ?? m[2] ?? "") as string).split(/\s+/))
+            .some((tok) => tok !== "" && re.test(tok));
         return re.test(text);
       });
     });

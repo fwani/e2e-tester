@@ -123,6 +123,32 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * 상세 층의 자리 — **인라인과 클래스 두 표기를 모두 읽는다.**
+ *
+ * 015 가 배치를 클래스로 옮기는 중이라 전환된 화면과 아직인 화면이 공존한다.
+ * 두 표기를 같은 이름으로 환산해 비교하므로, 이 검사가 묻는 것(「자리가 모든 국면에서
+ * 같은가」)은 전환 중에도 그대로 성립한다.
+ */
+function placement(el: HTMLElement): { position: string; right: string; top: string; bottom: string } {
+  const cls = el.className;
+  const pick = (side: "right" | "top" | "bottom"): string => {
+    const inline = el.style[side];
+    if (inline !== "") return inline;
+    const m = new RegExp(`\\b${side}-(\\[[^\\]]+\\]|[a-z0-9-]+)`).exec(cls);
+    return m?.[1] ?? "";
+  };
+  const position =
+    el.style.position !== ""
+      ? el.style.position
+      : /\babsolute\b/.test(cls)
+        ? "absolute"
+        : /\bfixed\b/.test(cls)
+          ? "fixed"
+          : "";
+  return { position, right: pick("right"), top: pick("top"), bottom: pick("bottom") };
+}
+
 describe("UC-011-7 — 상세의 자리는 Step 목록 왼쪽이고 국면마다 같다", () => {
   it.each(PHASES)("%s — 상세가 열리면 목록 왼쪽에 붙는다", async (phase) => {
     await renderPhaseWithDetail(phase);
@@ -130,13 +156,19 @@ describe("UC-011-7 — 상세의 자리는 Step 목록 왼쪽이고 국면마다
     if (layer === null) return; // 그 국면에서 상세가 열리지 않으면 잴 것이 없다
 
     /*
-      **`right` 가 Step 패널 폭이다.** 0 이면 목록을 덮는다 (011 이전 상태).
-      좌표를 직접 적지 않고 정본 상수와 대조한다 — 패널 폭이 바뀌면 함께 바뀌어야 한다.
+      **오른쪽 끝이 Step 패널 왼쪽 가장자리다.** 0 이면 목록을 덮는다 (011 이전 상태).
+
+      015 T030 — 배치가 클래스로 바뀌었다. `right-steps` 는 `--w-steps`(460px)이고
+      그것이 `STEP_PANEL_WIDTH` 와 같은 값이다. 좌표를 직접 적지 않고 **토큰 이름으로**
+      대조한다 — 패널 폭이 바뀌면 정본 한 곳만 고치면 된다.
     */
-    expect(layer.style.right, `${phase} — 상세가 아직 목록을 덮는 자리에 있다`).toBe(
-      `${STEP_PANEL_WIDTH}px`,
+    expect(placement(layer).right, `${phase} — 상세가 아직 목록을 덮는 자리에 있다`).toBe(
+      "steps",
     );
-    expect(layer.style.position).toBe("absolute");
+    expect(placement(layer).position).toBe("absolute");
+    // `right-steps` 가 가리키는 값과 코드 상수가 어긋나면 층이 목록을 덮거나 뜬다.
+    // 이름으로 대조한 위 단언이 그 값까지 보증하지는 못하므로 여기서 못 박는다.
+    expect(STEP_PANEL_WIDTH, "STEP_PANEL_WIDTH 가 --w-steps(460px) 와 어긋났다").toBe(460);
   });
 
   it("자리가 모든 국면에서 같다 (FR-369)", async () => {
@@ -145,7 +177,8 @@ describe("UC-011-7 — 상세의 자리는 Step 목록 왼쪽이고 국면마다
       await renderPhaseWithDetail(phase);
       const layer = detailLayer();
       if (layer !== null) {
-        const key = `${layer.style.position}|${layer.style.right}|${layer.style.top}|${layer.style.bottom}`;
+        const p = placement(layer);
+        const key = `${p.position}|${p.right}|${p.top}|${p.bottom}`;
         seen.set(key, [...(seen.get(key) ?? []), phase]);
       }
       cleanup();

@@ -5,6 +5,7 @@ import {
 } from "../lib/wording";
 import type { TrashedTest } from "../api/client";
 
+import { Button, navLinkClasses } from "../ui/Button";
 /**
  * 테스트 복수 삭제 확인 — **목록 바로 아래에서** 묻는다 (013 FR-430 · UC-013-04).
  *
@@ -36,36 +37,27 @@ export function TestBulkConfirm({
     <div
       data-test-bulk-confirm
       role="status"
-      className="tint-warn line"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        marginBottom: 10,
-      }}
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
-      <span className="strong-sm">{deleteTestsConfirm(names)}</span>
+      <span className="font-sans text-[13px] font-semibold leading-none">{deleteTestsConfirm(names)}</span>
       {/* 012 가 프로젝트 삭제에서 정한 것과 같다 — 되돌릴 수 있다는 사실을 확인 시점에
           말한다. 011 의 `BULK_DELETE_IRREVERSIBLE` 과 정반대 자리다. */}
-      <span className="why">{TESTS_DELETE_REVERTIBLE}</span>
-      <div className="spacer" />
+      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{TESTS_DELETE_REVERTIBLE}</span>
+      <div className="flex-1" />
       {/* 돌아가기가 기본이다 — 포커스를 여기에 둔다. */}
-      <button className="btn sm" onClick={onCancel} disabled={busy} autoFocus>
+      <Button size="sm" onClick={onCancel} disabled={busy} autoFocus>
         돌아가기
-      </button>
-      <button
+      </Button>
+      <Button
         data-test-bulk-confirm-run
-        className="btn sm danger"
+        size="sm" variant="danger"
         onClick={onConfirm}
-        disabled={busy}
-      >
+        disabled={busy} >
         지우기
-      </button>
+      </Button>
     </div>
   );
 }
-
 /**
  * 무엇을 어디로 옮겼는지 (013 FR-437a·FR-437b · UC-013-05).
  *
@@ -83,10 +75,9 @@ export function TrashedTestsNotice({
     <div
       data-trashed-notice
       role="status"
-      className="tint-warn"
-      style={{ padding: "10px 12px", marginBottom: 10 }}
+      className="bg-warn-t border border-warn-line rounded-base py-[10px] px-s3 mb-[10px]"
     >
-      <div className="strong-sm">
+      <div className="font-sans text-[13px] font-semibold leading-none">
         {trashed.length === 1
           ? `「${trashed[0]!.name}」을(를) 휴지통으로 옮겼습니다.`
           : `${trashed.length}개를 휴지통으로 옮겼습니다.`}
@@ -95,30 +86,28 @@ export function TrashedTestsNotice({
         기본은 **펼친 상태**다 (UC-013-05). 접어 두면 사용자가 되돌리는 방법을 못 본 채
         알림을 닫는다. 여러 개일 때 길어지므로 접을 수 있게만 해 둔다.
       */}
-      <details open style={{ marginTop: 6 }}>
-        <summary className="why" style={{ cursor: "pointer" }}>
+      <details open className="mt-[6px]">
+        <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
           옮긴 자리 {trashed.length}곳
         </summary>
         {trashed.map((t) => (
           <div
             key={t.id}
-            className="why mono"
-            style={{ marginTop: 2, wordBreak: "break-all" }}
+ className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[2px] break-all"
           >
             {t.trashed_to}
           </div>
         ))}
       </details>
-      <div className="why" style={{ marginTop: 6 }}>
+      <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
         {TESTS_RESTORE_HINT}
       </div>
-      <button className="navlink" onClick={onDismiss} style={{ marginTop: 6 }}>
+      <button className={navLinkClasses("mt-[6px]")} onClick={onDismiss}>
         확인했습니다
       </button>
     </div>
   );
 }
-
 /**
  * 고른 것들에 대한 조작 띠 (013 FR-427·FR-428 · UC-013-02).
  *
@@ -148,41 +137,33 @@ export function TestSelectionBar({
   return (
     <div
       data-test-selection-bar
-      className="tint-warn line"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        marginBottom: 10,
-      }}
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
-      <span className="strong-sm">{selectedCount}개 선택됨</span>
+      <span className="font-sans text-[13px] font-semibold leading-none">{selectedCount}개 선택됨</span>
       {/*
         **대상은 지금 화면에 보이는 것뿐이다** (FR-428 · SC-625). 걸러진 것까지 고르면
         사용자가 보지 못한 테스트가 삭제 대상이 된다.
       */}
       <button
-        className="navlink"
+        className={navLinkClasses()}
         onClick={allVisibleSelected ? onClear : onSelectAllVisible}
         disabled={busy || visibleCount === 0}
       >
         {allVisibleSelected ? "선택 해제" : `보이는 것 전부 선택 (${visibleCount})`}
       </button>
-      <div className="spacer" />
+      <div className="flex-1" />
       {extra}
       {/*
         「왜 못 누르는가」를 말할 자리가 없다 — **이 띠는 고른 것이 1개 이상일 때만
         그려지기 때문이다** (UC-013-02 · SC-627). 0개일 때의 안내를 여기에 두면 닿을 수
         없는 가지가 된다.
       */}
-      <button data-test-bulk-delete className="btn sm danger" onClick={onDelete} disabled={busy}>
+      <Button data-test-bulk-delete size="sm" variant="danger" onClick={onDelete} disabled={busy}>
         선택한 항목 삭제
-      </button>
+      </Button>
     </div>
   );
 }
-
 /**
  * 번호 정리 확인 (2026-09-10 사용자 보고 2번).
  *
@@ -210,39 +191,30 @@ export function RenumberConfirm({
     <div
       data-renumber-confirm
       role="status"
-      className="tint-warn line"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        marginBottom: 10,
-      }}
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
-      <span className="strong-sm">
+      <span className="font-sans text-[13px] font-semibold leading-none">
         테스트 {total}개의 번호를 001부터 다시 붙일까요?
       </span>
-      <span className="why">
+      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
         그룹 접두어와 순서는 그대로입니다. 지금 보이는 것만이 아니라 프로젝트 전체가
         대상이며, 되돌리는 조작은 없습니다.
       </span>
-      <div className="spacer" />
+      <div className="flex-1" />
       {/* 돌아가기가 기본이다 — 포커스를 여기에 둔다. */}
-      <button className="btn sm" onClick={onCancel} disabled={busy} autoFocus>
+      <Button size="sm" onClick={onCancel} disabled={busy} autoFocus>
         돌아가기
-      </button>
-      <button
+      </Button>
+      <Button
         data-renumber-confirm-run
-        className="btn sm danger"
+        size="sm" variant="danger"
         onClick={onConfirm}
-        disabled={busy}
-      >
+        disabled={busy} >
         번호 정리
-      </button>
+      </Button>
     </div>
   );
 }
-
 /**
  * 번호 정리 결과 (2026-09-10 사용자 보고 2번).
  *
@@ -262,33 +234,32 @@ export function RenumberedNotice({
     <div
       data-renumbered-notice
       role="status"
-      className={changed === 0 ? "tint-warn" : "tint-run"}
-      style={{ padding: "10px 12px", marginBottom: 10 }}
+      className={`${changed === 0 ? "bg-warn-t border border-warn-line rounded-base" : "bg-run-t border border-run rounded-base"} py-[10px] px-s3 mb-[10px]`}
     >
-      <div className="strong-sm">
+      <div className="font-sans text-[13px] font-semibold leading-none">
         {changed === 0
           ? `번호는 이미 정리되어 있었습니다 (${result.unchanged}개).`
           : `${changed}개의 번호를 바꿨습니다. ${result.unchanged}개는 제자리였습니다.`}
       </div>
       {changed > 0 && (
-        <details open style={{ marginTop: 6 }}>
-          <summary className="why" style={{ cursor: "pointer" }}>
+        <details open className="mt-[6px]">
+          <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
             바뀐 식별자 {changed}건
           </summary>
           {result.renumbered.map((m) => (
-            <div key={m.from_id} className="why mono" style={{ marginTop: 2 }}>
+ <div key={m.from_id} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[2px]">
               {m.from_id} → {m.to_id} · {m.name}
             </div>
           ))}
         </details>
       )}
       {changed > 0 && (
-        <div className="why" style={{ marginTop: 6 }}>
+        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
           정의 파일과 실행 산출물이 함께 옮겨졌습니다. 저장소에 옛 식별자를 적어 둔 곳이
           있으면 함께 고치세요.
         </div>
       )}
-      <button className="navlink" onClick={onDismiss} style={{ marginTop: 6 }}>
+      <button className={navLinkClasses("mt-[6px]")} onClick={onDismiss}>
         확인했습니다
       </button>
     </div>

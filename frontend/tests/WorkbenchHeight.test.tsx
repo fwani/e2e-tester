@@ -27,6 +27,7 @@ import { sessionProps } from "./helpers/session";
 import { sessionView } from "./helpers/workbench";
 import type { Step } from "../src/types/generated/step";
 
+import { minHeightIsZero, scrolls } from "./helpers/style";
 /** Step 을 넉넉히 만든다 — 화면이 길어지는 조건을 재현한다. */
 function manySteps(count: number): Step[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -60,10 +61,14 @@ function boundedBox(): HTMLElement | null {
 }
 
 /** 세로로 스크롤하는 영역들. */
+/**
+ * 세로 스크롤 영역.
+ *
+ * 015 — 배치가 유틸리티로 옮겨져 `style.overflowY` 만 보면 전환된 화면에서 하나도
+ * 찾지 못한다. `helpers/style.ts` 의 `scrolls()` 가 두 표기를 함께 읽는다.
+ */
 function scrollAreas(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>("div")].filter(
-    (el) => el.style.overflowY === "auto",
-  );
+  return [...document.querySelectorAll<HTMLElement>("div")].filter(scrolls);
 }
 
 describe("작업 화면의 높이 (사용자 보고 2026-09-09)", () => {
@@ -119,10 +124,11 @@ describe("작업 화면의 높이 (사용자 보고 2026-09-09)", () => {
 
     const stepArea = scrollAreas().find((el) => el.querySelector(".srow") !== null);
     expect(stepArea).toBeDefined();
+    // 015 — 두 표기를 함께 읽는다. 묻는 것은 그대로다.
     expect(
-      stepArea?.style.minHeight,
+      minHeightIsZero(stepArea!),
       "스크롤 영역에 `min-height: 0` 이 없다 — flex 안에서 줄어들지 못한다",
-    ).toBe("0");
+    ).toBe(true);
   });
 
   it("**창이 기준보다 작으면 최소 높이를 지킨다** — 층이 눌리지 않는다", () => {

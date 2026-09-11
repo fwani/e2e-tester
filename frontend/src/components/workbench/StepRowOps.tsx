@@ -24,6 +24,7 @@
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap, CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
+import { StepOpButton } from "../../ui/StepRow";
 
 /** 칸 5 의 조작과 그 표식. 라벨은 접근 가능한 이름이 갖는다. */
 const OPS: { action: ActionId; mark: string; danger?: boolean }[] = [
@@ -84,11 +85,11 @@ export function StepRowOps({
         const disabled = state.kind !== "enabled" || busy;
         const why = state.kind === "disabled" ? ` — ${state.reason}` : "";
         return (
-          <button
+          <StepOpButton
             key={action}
             type="button"
             data-row-action={action}
-            className={`op${danger === true ? " danger" : ""}${disabled ? " off" : ""}`}
+            tone={disabled ? "off" : danger === true ? "danger" : "default"}
             /*
               FR-303 — 접근 가능한 이름의 형태를 지킨다. 기존 「〈이름〉 위로」·「〈이름〉
               아래로」가 그 형태이며, 키보드만 쓰는 사용자가 목록을 훑을 때 어느 Step 의
@@ -105,7 +106,7 @@ export function StepRowOps({
             }}
           >
             {mark}
-          </button>
+          </StepOpButton>
         );
       })}
     </>
@@ -133,13 +134,13 @@ export function ConfirmDelete({
 }) {
   return (
     <>
-      <span className="why" role="status" style={{ whiteSpace: "nowrap" }}>
+      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 whitespace-nowrap" role="status">
         지울까요?
       </span>
-      <button
+      <StepOpButton
         type="button"
         data-row-action="step.delete.confirm"
-        className="op danger"
+        tone="danger"
         aria-label={`${label} 지우기 확인`}
         onClick={(e) => {
           e.stopPropagation();
@@ -147,11 +148,11 @@ export function ConfirmDelete({
         }}
       >
         ✓
-      </button>
-      <button
+      </StepOpButton>
+      <StepOpButton
         type="button"
         data-row-action="step.delete.cancel"
-        className="op"
+        tone="default"
         aria-label={`${label} 지우기 취소`}
         onClick={(e) => {
           e.stopPropagation();
@@ -159,7 +160,7 @@ export function ConfirmDelete({
         }}
       >
         ↩
-      </button>
+      </StepOpButton>
     </>
   );
 }

@@ -38,7 +38,7 @@ import { ACTION_LABEL, deleteSelectionCount, displayOutcomeLabel, stepNumber } f
 import { ActionButton } from "./ActionButton";
 import type { Step, TargetLocator } from "../../types/generated/step";
 import type { StepOutcome, WorkbenchStep } from "./model";
-
+import { Chip } from "../../ui/Chip";
 /**
  * Step 패널의 고정 폭 (FR-218a). Step 패널을 가진 확정 디자인 3종이 공유한다.
  *
@@ -50,7 +50,6 @@ import type { StepOutcome, WorkbenchStep } from "./model";
  * 필요해졌다 (상세 층의 `right`). 셋이 갈리면 상세가 목록을 덮거나 사이가 벌어진다.
  */
 export const STEP_PANEL_WIDTH = 460;
-
 /**
  * 행 왼쪽 3px 결말 표식 — 결말 → 정본의 `.srow` 변형 (008「계기판」).
  *
@@ -72,7 +71,6 @@ const OUTCOME_MARK: Record<StepOutcome, string> = {
   not_run: "",
   recorded: "",
 };
-
 /** Step 패널의 머리 — 정본 `.steps-hd`. 옅은 우물 + 라벨 + 작성 표식 + 개수. */
 export function StepPanelHeader({
   authoring,
@@ -84,18 +82,17 @@ export function StepPanelHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="steps-hd">
-      <div className="lbl">TEST STEPS</div>
-      <div className="spacer" />
+    <div className="grow-0 shrink-0 basis-[36px] h-[36px] flex items-center gap-s2 px-s3 bg-sunken border-b border-hair-2">
+      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">TEST STEPS</div>
+      <div className="flex-1" />
       {children}
-      <span className={authoring === "ai" ? "chip ai" : "chip"}>
+      <Chip tone={authoring === "ai" ? "ai" : "default"}>
         작성 {authoring === "ai" ? "AI" : "RECORD"}
-      </span>
-      <div className="num">{count}</div>
+      </Chip>
+      <div className="font-mono text-[12px] leading-none font-normal text-ink-3">{count}</div>
     </div>
   );
 }
-
 /**
  * 결말 표식. **일곱 값 전부 텍스트 라벨을 갖는다** (005 FR-141·FR-151).
  *
@@ -104,7 +101,6 @@ export function StepPanelHeader({
  */
 export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   const label = displayOutcomeLabel(outcome);
-
   /*
     008「계기판」 — **형태로 말한다** (Language.dc.html §04).
 
@@ -127,7 +123,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   if (outcome === "pass") {
     return (
       <div aria-label={label} data-outcome="pass" style={box}>
-        <svg className="pass-ink" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
+        <svg className="text-pass" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
           <path d="M3 8.4l3.2 3.2L13 4.8" />
         </svg>
       </div>
@@ -137,7 +133,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   if (outcome === "fail") {
     return (
       <div aria-label={label} data-outcome="fail" style={box}>
-        <svg className="fail-ink" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
+        <svg className="text-fail" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
           <path d="M4 4l8 8M12 4l-8 8" />
         </svg>
       </div>
@@ -147,7 +143,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   if (outcome === "running") {
     return (
       <div aria-label={label} data-outcome="running" style={box}>
-        <svg className="run-ink" width="16" height="16" viewBox="0 0 16 16">
+        <svg className="text-run" width="16" height="16" viewBox="0 0 16 16">
           <circle cx="8" cy="8" r="4.5" fill="currentColor" />
         </svg>
       </div>
@@ -162,7 +158,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
         data-outcome="skipped"
         style={box}
       >
-        <svg className="dim" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="text-ink-3" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M4 4l4 4-4 4M9 4l4 4-4 4" />
         </svg>
       </div>
@@ -177,7 +173,7 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
         data-outcome="not_run"
         style={box}
       >
-        <svg className="dim" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="2.6 2.4">
+        <svg className="text-ink-3" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="2.6 2.4">
           <circle cx="8" cy="8" r="5" />
         </svg>
       </div>
@@ -192,13 +188,12 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
         data-outcome="recorded"
         style={box}
       >
-        <svg className="fail-ink" width="16" height="16" viewBox="0 0 16 16">
+        <svg className="text-fail" width="16" height="16" viewBox="0 0 16 16">
           <circle cx="8" cy="8" r="3.4" fill="currentColor" />
         </svg>
       </div>
     );
   }
-
   /*
     `pending` — 아직 돌리지 않았다. **아무것도 그리지 않는다.** 칸은 남긴다
     (FR-223 — 다른 칸을 그 자리로 당기지 않는다). 편집 국면의 목록 전체가 이 상태이고,
@@ -206,8 +201,6 @@ export function OutcomeMark({ outcome }: { outcome: StepOutcome }) {
   */
   return <div aria-label={label} data-outcome={outcome} style={box} />;
 }
-
-
 /**
  * 요소를 어떻게 찾는지 한 줄로. 확정 디자인의 `role=menuitem`·`testId=…` 형태.
  *
@@ -237,7 +230,6 @@ function describeTarget(t: TargetLocator): string {
   if (t.css?.status === "verified") return `css=${t.css.value}`;
   return "식별 후보 없음";
 }
-
 /** 입력값. 민감 값은 `{{변수명}}` 참조로만 저장되므로 그대로 보여도 안전하다 (FR-083). */
 function stepValue(step: Step): string | null {
   if (step.type === "fill" || step.type === "select") return step.value;
@@ -272,7 +264,6 @@ export interface StepListProps {
    * 자리이며, 조작이 국면마다 다른 곳에 있던 것을 여기 하나로 모은다.
    */
   footer?: ReactNode;
-
   /**
    * 삭제 대상 고르기 (011 FR-380 · UC-011-14·15).
    *
@@ -290,7 +281,6 @@ export interface StepListProps {
     onRemedy: (action: ActionId) => void;
   };
 }
-
 /**
  * 우측 460px 패널. `Main.dc.html`·`RunnerPaused.dc.html`·`Takeover.dc.html` 공통.
  */
@@ -315,8 +305,8 @@ export function StepList({
         표시하면 자리가 200개가 되고, "한 조작에 한 자리" 를 셀 수 없다 (FR-235).
       */
       data-action="step.select"
-      className="steps"
-      style={{ flex: `0 0 ${STEP_PANEL_WIDTH}px` }}
+      // `basis-steps` 는 `--w-steps`(460px) — `STEP_PANEL_WIDTH` 와 같은 값이다.
+      className="flex-none basis-steps border-l border-hair-2 bg-panel flex flex-col"
     >
       <StepPanelHeader authoring={authoring} count={steps.length}>
         {/*
@@ -327,7 +317,7 @@ export function StepList({
         */}
         {deleteTargets !== undefined && isShown(deleteTargets.allCapability) && (
           <>
-            <span className="why" data-delete-selection-count>
+            <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" data-delete-selection-count>
               {deleteSelectionCount(chosen.size)}
             </span>
             <ActionButton
@@ -363,7 +353,7 @@ export function StepList({
             ? "step.toggleDeleteTarget"
             : undefined
         }
-        style={{ flex: "1", minHeight: "0", overflowY: "auto" }}
+        className="flex-1 min-h-0 overflow-y-auto"
       >
         {/*
           007 T071 (FR-243) — **지목한 Step 이 더 이상 없다.**
@@ -373,13 +363,13 @@ export function StepList({
           자기가 보던 것이 그것이라고 믿고, 빈 화면을 주면 목록을 잃는다.
         */}
         {focusedStepId !== null && !steps.some((s) => s.id === focusedStepId) && (
-          <div role="status" data-focus-missing className="tint-warn line" style={{ padding: "12px 14px" }}>
+          <div role="status" data-focus-missing className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal py-s3 px-[14px]">
             보고 있던 Step 이 이 목록에 없습니다. 그 사이에 지워졌거나 순서가 바뀌었을 수
             있습니다.
           </div>
         )}
         {steps.length === 0 && (
-          <div className="why" style={{ padding: "18px" }}>
+          <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 p-[18px]">
             {emptyNotice ?? "아직 Step 이 없습니다."}
           </div>
         )}
@@ -406,8 +396,7 @@ export function StepList({
       {footer !== undefined && footer !== null && (
         <div
           data-workbench-step-footer
-          className="steps-ft"
-          style={{ padding: "12px 14px 14px", maxHeight: "52%", overflowY: "auto" }}
+          className="border-t border-hair-2 bg-sunken-2 pt-s3 px-[14px] pb-[14px] max-h-[52%] overflow-y-auto"
         >
           {footer}
         </div>
@@ -415,7 +404,6 @@ export function StepList({
     </div>
   );
 }
-
 /**
  * 행에 붙는 클래스 — **상태마다 하나씩 더한다** (011 UC-011-11).
  *
@@ -430,7 +418,6 @@ function rowClassName(step: WorkbenchStep, selected: boolean): string {
   if (selected) classes.push("sel");
   return classes.join(" ");
 }
-
 /**
  * Step 행 하나 — **유일한 구현**.
  *
@@ -503,7 +490,7 @@ function StepRow({
         형태 아이콘이다.
       */}
       {deleteTarget !== undefined && (
-        <div data-cell="check" className="srow-check">
+        <div data-cell="check" className="flex items-center justify-center">
           <input
             type="checkbox"
             data-row-action="step.toggleDeleteTarget"
@@ -520,60 +507,56 @@ function StepRow({
       )}
 
       {/* 칸 1 — 번호. **모든 국면에서 보인다** (FR-224 · S-08) */}
-      <div data-cell="number" className="n">
+      <div data-cell="number" className="font-mono text-[12px] font-medium leading-none text-ink-3 text-right">
         {stepNumber(step.index)}
       </div>
 
       {/* 칸 2 — 이름과 부속 정보 */}
-      <div className="t">
+      <div className="min-w-0 flex flex-col gap-[3px]">
         <button
           type="button"
-          className="srow-name"
+          className="border-0 p-0 h-[18px] bg-transparent shadow-none text-left text-ink cursor-pointer font-sans text-[13px] font-semibold leading-[1.25] whitespace-nowrap overflow-hidden text-ellipsis"
           onClick={onSelect}
           aria-pressed={selected}
         >
           {step.label}
         </button>
 
-        <div data-cell="detail" className="m" style={{ flexWrap: "nowrap", overflow: "hidden", height: 17 }}>
+        <div data-cell="detail" className="flex items-center gap-[6px] min-w-0 flex-nowrap overflow-hidden h-[17px]">
           {/*
             결과 국면에서 정의와 매칭되지 않은 행은 이 칸들이 **빈다.** 다른 칸을 그
             자리로 당기지 않는다 (FR-223 · research R3).
           */}
           {dsl !== null && (
             <>
-              <span
-                data-cell="type"
-                className={dsl.author === "ai" ? "chip ai" : "chip"}
-                style={{ flex: "0 0 auto" }}
-              >
+              <Chip data-cell="type" tone={dsl.author === "ai" ? "ai" : "default"}>
                 {dsl.type.toUpperCase()}
-              </span>
+              </Chip>
 
               {/*
                 009 FR-310 — 저장되지 않은 삽입. 정본의 `.chip.warn` 을 쓰고 **새 색을
                 만들지 않는다.** 주의 계열인 이유: 지금 목록에 보이지만 파일에는 없다.
               */}
               {step.isUnsaved === true && (
-                <span data-cell="unsaved" className="chip warn" style={{ flex: "0 0 auto" }}>
+                <Chip data-cell="unsaved" tone="warn" layout="flex-[0_0_auto]">
                   미저장
-                </span>
+                </Chip>
               )}
 
               {/* FR-030a — 최초 탭이 아닌 Step 은 어느 탭에서 일어나는지 보여야 한다 */}
               {dsl.tab > 0 && (
-                <span data-cell="tab" className="chip" style={{ flex: "0 0 auto" }}>
+                <Chip data-cell="tab" layout="flex-[0_0_auto]">
                   탭 {dsl.tab}
-                </span>
+                </Chip>
               )}
 
-              <div data-cell="locator" className="loc">
+              <div data-cell="locator" className="font-mono text-[11px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
                 {locatorSummary(dsl)}
               </div>
 
               {/* FR-083 — 민감 값은 참조로만 저장되므로 표시해도 평문이 새지 않는다 */}
               {value !== null && (
-                <div data-cell="value" className="loc ai-ink" style={{ flex: "0 0 auto" }}>
+ <div data-cell="value" className="font-mono text-[11px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis flex-[0_0_auto]">
                   {value}
                 </div>
               )}
@@ -583,7 +566,7 @@ function StepRow({
       </div>
 
       {/* 칸 3 — 소요 시간. 없으면 자리를 비운다 (FR-223) */}
-      <div data-cell="duration" className="d">
+      <div data-cell="duration" className="font-mono text-[11px] leading-none font-normal text-ink-3 text-right">
         {step.durationMs !== null ? `${step.durationMs} ms` : ""}
       </div>
 
@@ -604,7 +587,7 @@ function StepRow({
         반복하면 결말을 읽는 화면이 쓸 수 없는 조작으로 덮인다.
       */}
       {actions !== undefined && actions !== null && (
-        <div data-cell="ops" className="srow-ops">
+        <div data-cell="ops" className="flex items-center gap-s1">
           {actions}
         </div>
       )}

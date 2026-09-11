@@ -41,7 +41,10 @@ describe("알림 층의 자리 (2026-09-10)", () => {
     render(<SessionWorkbench {...sessionProps({ view: sessionView({ state: "replaying" }) })} />);
     const layer = document.querySelector("[data-workbench-notice-layer]");
     expect(layer).not.toBeNull();
-    expect(layer!.className).toContain("toast-layer");
+    // 015 — `.toast-layer` 가 유틸리티로 해체됐다. **묻는 것은 그대로다**: 알림 층이
+    // 뷰포트 오른쪽 위 한 자리인가. 국면마다 다른 데서 뜨면 사용자는 그것을 찾아야 한다.
+    expect(layer!.className, "알림 층이 화면에 고정되지 않았다").toContain("fixed");
+    expect(layer!.className, "알림 층이 오른쪽에 붙지 않았다").toContain("right-s4");
   });
 });
 

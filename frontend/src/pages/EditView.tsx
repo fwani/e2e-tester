@@ -63,6 +63,7 @@ import {
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
+import { Button, navLinkClasses } from "../ui/Button";
 
 
 export interface EditViewProps {
@@ -401,18 +402,18 @@ export function EditView({
 
   if (error !== null && view === null) {
     return (
-      <main style={{ maxWidth: 900, margin: "32px auto", padding: "0 16px" }}>
+      <main className="max-w-[900px] my-s6 mx-auto py-0 px-s4">
         <ErrorNotice error={error} />
-        <button className="secondary" onClick={onBack}>
+        <Button onClick={onBack}>
           목록으로
-        </button>
+        </Button>
       </main>
     );
   }
 
   if (view === null || test === null) {
     return (
-      <main style={{ padding: 32 }} className="muted">
+      <main className="p-s6 text-ink-2">
         불러오는 중…
       </main>
     );
@@ -1031,7 +1032,7 @@ export function EditView({
           current !== null ? (
             <>
               {/* Step 종류는 편집 대상이 아니다 — 지우고 새로 넣는 일이다 (006 FR-191). */}
-              <p className="why" style={{ margin: 0 }}>
+              <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
                 {lockedFieldNotice(
                   lockedReason("steps[].type") ?? "delete_and_insert_instead",
                 )}
@@ -1048,19 +1049,19 @@ export function EditView({
                 왜 못 고치는지 알 수 없다.
               */}
               {"target" in current && (
-                <p className="why" style={{ margin: 0 }}>
+                <p>
                   {lockedFieldNotice(lockedReason("steps[].target") ?? "live_browser_required")}
                 </p>
               )}
               {current.type === "drag" && (
-                <p className="why" style={{ margin: 0 }}>
+                <p>
                   {lockedFieldNotice(
                     lockedReason("steps[].drop_target") ?? "live_browser_required",
                   )}
                 </p>
               )}
               {current.type === "assertion" && current.assertion.target && (
-                <p className="why" style={{ margin: 0 }}>
+                <p>
                   {lockedFieldNotice(
                     lockedReason("steps[].assertion.target") ?? "live_browser_required",
                   )}
@@ -1090,19 +1091,11 @@ export function EditView({
         <div
           role="alertdialog"
           aria-label="저장하지 않은 변경 확인"
-          className="modal-scrim"
-          style={{
-            position: "fixed",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 30,
-          }}
+          className="fixed inset-0 flex items-center justify-center z-[30] bg-scrim-strong"
         >
-          <div className="modal" style={{ width: 520, padding: 24 }}>
-            <strong className="subtitle">{unsavedLeaveWarning(pending)}</strong>
-            <div className="row" style={{ gap: 8, marginTop: 12 }}>
+          <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
+            <strong className="font-sans text-[13.5px] font-bold leading-none">{unsavedLeaveWarning(pending)}</strong>
+            <div className="flex items-center gap-s2 mt-s3">
               <button
                 onClick={() => {
                   const next = leaving;
@@ -1113,8 +1106,7 @@ export function EditView({
               >
                 저장하고 나가기
               </button>
-              <button
-                className="secondary"
+              <Button
                 onClick={() => {
                   const next = leaving;
                   setOps([]);
@@ -1123,10 +1115,10 @@ export function EditView({
                 }}
               >
                 버리고 나가기
-              </button>
-              <button className="ghost" onClick={() => setLeaving(null)}>
+              </Button>
+              <Button variant="ghost" onClick={() => setLeaving(null)}>
                 머무르기
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1169,24 +1161,15 @@ function EditFields({
     return (
       <div
         data-edit-fields-empty
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          textAlign: "center",
-        }}
+        className="flex-1 min-h-0 flex flex-col items-center justify-center gap-[10px] text-center"
       >
-        <svg className="dim" width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <svg className="text-ink-3" width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.6">
           <rect x="3" y="5" width="26" height="6" rx="1.5" />
           <rect x="3" y="13" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
           <rect x="3" y="21" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
         </svg>
-        <div className="strong-sm">고칠 Step 을 고르세요</div>
-        <div className="why" style={{ maxWidth: 420 }}>
+        <div className="font-sans text-[13px] font-semibold leading-none">고칠 Step 을 고르세요</div>
+        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 max-w-[420px]">
           오른쪽 목록에서 Step 을 누르면 상세가 열립니다. 값 · 순서 · 삭제는 브라우저 없이
           고칠 수 있고, 고친 것은 여기에 「저장하지 않은 변경」으로 쌓입니다.
         </div>
@@ -1195,11 +1178,11 @@ function EditFields({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div className="flex flex-col gap-[10px]">
       {/* FR-212 — 어떤 변수가 민감인지 밝히고, 값은 화면에 오지 않는다고 말한다. */}
       {sensitiveNames.length > 0 && (
-        <p className="why" style={{ margin: 0 }}>
-          민감 변수 <span className="mono">{sensitiveNames.join(", ")}</span> (값은 표시되지
+        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
+          민감 변수 <span className="font-mono">{sensitiveNames.join(", ")}</span> (값은 표시되지
           않습니다)
         </p>
       )}
@@ -1207,12 +1190,12 @@ function EditFields({
       {/* 개별 되돌리기 (006 FR-190). 되돌리기는 연산을 목록에서 빼는 것이다. */}
       {ops.length > 0 && (
         <div>
-          <strong className="lbl">저장하지 않은 변경</strong>
-          <ul className="why" style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+          <strong className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">저장하지 않은 변경</strong>
+          <ul className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-0 pl-[18px]">
             {ops.map((op, i) => (
-              <li key={`${op.op}-${i}`} className="row" style={{ gap: 6 }}>
-                <span className="mono spacer">{describeOp(op, steps)}</span>
-                <button className="navlink" onClick={() => onRevert(i)}>
+ <li key={`${op.op}-${i}`} className="flex items-center gap-[6px]">
+                <span className="font-mono flex-1">{describeOp(op, steps)}</span>
+                <button className={navLinkClasses()} onClick={() => onRevert(i)}>
                   되돌리기
                 </button>
               </li>

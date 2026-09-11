@@ -121,9 +121,17 @@ export function fromEvent(
  */
 const TONE: Record<Category, { tint: string; ink: string; label: string }> = {
   // 막은 것 — 고치면 되는 일이라 주의 계열이다.
-  blocked: { tint: "tint-warn", ink: "warn-ink", label: "확인이 필요합니다" },
+  blocked: {
+    tint: "bg-warn-t border border-warn-line rounded-base",
+    ink: "text-warn",
+    label: "확인이 필요합니다",
+  },
   // 깨진 것 — 사용자가 할 수 있는 일이 없다. 실패 계열로 분명히 구분한다.
-  broken: { tint: "tint-fail", ink: "fail-ink", label: "도구에 문제가 생겼습니다" },
+  broken: {
+    tint: "bg-fail-t border border-fail-line rounded-base",
+    ink: "text-fail",
+    label: "도구에 문제가 생겼습니다",
+  },
 };
 
 export function ErrorNotice({
@@ -151,32 +159,26 @@ export function ErrorNotice({
       data-error-notice
       data-category={error.category}
       data-code={error.code}
-      className={tone.tint}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        padding: compact ? "8px 10px" : "12px 14px",
-      }}
+      className={`${tone.tint} flex flex-col gap-[6px] ${compact ? "py-s2 px-[10px]" : "py-s3 px-[14px]"}`}
     >
       {!compact && (
-        <div className={`lbl ${tone.ink}`}>{tone.label}</div>
+        <div
+          className={`font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase ${tone.ink}`}
+        >
+          {tone.label}
+        </div>
       )}
       <div
         data-error-message
-        className="notice-body"
-        style={{
-          whiteSpace: "pre-wrap",
-          // 아주 긴 입력이 그대로 되돌아와도 화면을 밀어내지 않는다 (AP-015).
-          overflowWrap: "anywhere",
-        }}
+        // `.notice-body` + 줄바꿈 보존. 아주 긴 입력이 그대로 되돌아와도 화면을
+        // 밀어내지 않는다 (AP-015) — `break-anywhere` 가 그 몫이다.
+        className="font-sans text-[13px] font-semibold leading-[1.5] whitespace-pre-wrap [overflow-wrap:anywhere]"
       >
         {error.message}
       </div>
       <div
         data-error-next-action
-        className="line muted"
-        style={{ overflowWrap: "anywhere" }}
+        className="font-sans text-[13px] leading-[1.4] font-normal text-ink-2 [overflow-wrap:anywhere]"
       >
         {error.nextAction}
       </div>

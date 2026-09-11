@@ -1,6 +1,8 @@
 import { BULK_DELETE_IRREVERSIBLE, deleteManyConfirm } from "../../lib/wording";
 import type { WorkbenchStep } from "./model";
 
+import { Button } from "../../ui/Button";
+
 /**
  * 복수 삭제 확인 — **목록 바로 아래에서** 묻는다 (011 FR-384 · UC-011-18).
  *
@@ -42,33 +44,29 @@ export function BulkDeleteConfirm({
     <div
       data-bulk-delete-confirm
       role="status"
-      className="tint-warn line"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        marginBottom: 10,
-      }}
+      className={
+        // `.tint-warn` + `.line` (contracts/utility-map.md)
+        "bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal " +
+        "flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
+      }
     >
-      <span className="strong-sm">{deleteManyConfirm(indices)}</span>
+      <span className="font-sans text-[13px] font-semibold leading-none">{deleteManyConfirm(indices)}</span>
       {!revertible && (
-        <span data-bulk-delete-irreversible className="why">
+        <span data-bulk-delete-irreversible className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
           {BULK_DELETE_IRREVERSIBLE}
         </span>
       )}
-      <div className="spacer" />
-      <button className="btn sm" onClick={onCancel} disabled={busy}>
+      <div className="flex-1" />
+      <Button size="sm" onClick={onCancel} disabled={busy}>
         돌아가기
-      </button>
-      <button
+      </Button>
+      <Button
         data-bulk-delete-confirm-run
-        className="btn sm danger"
+        size="sm" variant="danger"
         onClick={onConfirm}
-        disabled={busy}
-      >
+        disabled={busy} >
         지우기
-      </button>
+      </Button>
     </div>
   );
 }

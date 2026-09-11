@@ -10,10 +10,11 @@
  * **원칙 I**: 작성 주체는 표식으로만 구분한다. Step 의 구조와 실행 방식은 동일하다.
  */
 import { outcomeChip, outcomeLabel } from "../lib/wording";
-import { chipClass } from "../theme/tone";
+import { chipTone } from "../theme/tone";
 import type { Author } from "../types/generated/step";
 import type { Outcome } from "../types/generated/run-result";
 
+import { Chip } from "../ui/Chip";
 /**
  * 실행 결말 배지 (005 T039 · FR-141).
  *
@@ -25,30 +26,30 @@ import type { Outcome } from "../types/generated/run-result";
  */
 export function OutcomeBadge({ outcome }: { outcome: Outcome | null }) {
   if (outcome === null) {
-    return <span className={chipClass(null)}>미실행</span>;
+    return <Chip tone={chipTone(null)}>미실행</Chip>;
   }
   // 색만으로 구분하지 않는다 — 칩에는 항상 텍스트 라벨이 있고, 스크린리더에는
   // 한국어 문장을 준다.
   return (
-    <span className={chipClass(outcome)} title={outcomeLabel(outcome)}>
+    <Chip tone={chipTone(outcome)} title={outcomeLabel(outcome)}>
       {outcomeChip(outcome)}
-    </span>
+    </Chip>
   );
 }
 
 export function AuthoringBadge({ mode }: { mode: "record" | "ai" }) {
   // FR-002a — 테스트를 시작한 방식으로 고정한다. AI 로 시작해 사람이 이어받아도 AI 다.
   return (
-    <span className={`chip ${mode === "ai" ? "ai" : ""}`}>
+    <Chip tone={mode === "ai" ? "ai" : "default"}>
       {mode === "ai" ? "AI" : "RECORD"}
-    </span>
+    </Chip>
   );
 }
 
 export function AuthorBadge({ author }: { author: Author }) {
   // FR-075 — Step 별 작성 주체. 표시만 다르고 실행은 동일하다.
-  if (author === "ai") return <span className="chip ai">AI</span>;
-  return <span className="chip">HUMAN</span>;
+  if (author === "ai") return <Chip tone="ai">AI</Chip>;
+  return <Chip>HUMAN</Chip>;
 }
 
 export function StepTypeBadge({ type }: { type: string }) {
@@ -62,11 +63,11 @@ export function StepTypeBadge({ type }: { type: string }) {
     hover: "HOVER",
     drag: "DRAG",
   };
-  return <span className="chip mono">{label[type] ?? type.toUpperCase()}</span>;
+  return <Chip>{label[type] ?? type.toUpperCase()}</Chip>;
 }
 
 export function TabBadge({ tab }: { tab: number }) {
   // FR-030a — 탭 참조. 최초 탭(0)은 표시하지 않아 화면을 어지럽히지 않는다.
   if (tab === 0) return null;
-  return <span className="chip warn mono">탭 {tab}</span>;
+  return <Chip tone="warn">탭 {tab}</Chip>;
 }

@@ -1,0 +1,482 @@
+---
+description: "Task list for 015 Tailwind CSS 전환"
+---
+
+# Tasks: Tailwind CSS 전환
+
+**Input**: Design documents from `/specs/015-tailwind-css-migration/`
+
+**Prerequisites**: [plan.md](plan.md) · [spec.md](spec.md) · [research.md](research.md) ·
+[data-model.md](data-model.md) · [contracts/](contracts/)
+
+**Tests**: 이 기능은 **기존 테스트를 지키는 것**이 요건이다 (FR-012·FR-013, 헌법 Quality
+Gate 4). 새 테스트는 회귀 가드 4종과 기존 13개 파일의 판정 방법 전환이며, 둘 다 요건에서
+직접 나온 것이므로 선택 사항이 아니다.
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: 병렬 가능 (다른 파일 · 미완료 작업에 의존하지 않음)
+- **[Story]**: US1 / US2 / US3
+- 모든 작업에 파일 경로가 있다
+
+## Path Conventions
+
+Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `scripts/`.
+**백엔드는 건드리지 않는다** (plan.md Constitution Check — 원칙 II 증거).
+
+## 규모 (전환 전 실측, 2026-09-10)
+
+| 축 | 값 | 출처 |
+|---|---|---|
+| 의미 클래스 | **109개** (규칙 블록 139개) | `tokens.css` 주석 제외 셀렉터 추출 |
+| 배치 인라인 | **455곳 / `.tsx` 39개** | `grep -c 'style={{'` |
+| 영향받는 테스트 | **13개 파일 · 45+ 단언** | `.style.` 직접 읽기 |
+| 현재 시각 언어 위반 | **0건** | `count-violations.mjs` |
+
+---
+
+## Phase 1: Setup — 기준선과 스파이크
+
+**Purpose**: 전환을 시작하기 전에 (1) 되돌아볼 기준선을 남기고 (2) research 의 미해결
+3건을 해소한다.
+
+**⚠️ T002 가 실패하면 research R2 를 다시 정해야 한다.** 그 전에는 T005 이후로 갈 수 없다.
+
+- [X] T001 [P] 전환 전 기준선 수치를 `specs/015-tailwind-css-migration/baseline.md` 에 기록한다 — 단언 총수(`grep -rc 'expect(' frontend/tests`), 인라인 455곳의 파일별 분포, `npm run build` 후 CSS 크기, `count-violations.mjs` 출력, 테스트 통과 수. **이 수치가 없으면 "줄지 않았다"를 나중에 증명할 수 없다**
+- [X] T002 스파이크 S1 — `frontend/src/theme/tailwind.css` 초안으로 `@theme inline { --color-pass: var(--pass) }` 가 동작하는지 확인한다. 확인 항목: 기본 유틸리티(`bg-pass`), **불투명도 수식(`bg-pass/50`)**, 임의값과의 조합. 결과를 [research.md](research.md) 미해결 표에 기록한다. 실패 시 R2 대안(정본 파이프라인 확장)으로 전환하고 그 사실을 적는다
+- [X] T003 [P] 스파이크 S2 — 빌드 산출 CSS 에서 클래스 실재를 확인하는 방법을 정한다 (Vite 빌드 결과 파싱 vs 테스트 내 Tailwind 실행). 판단 기준은 **테스트 실행 시간**과 **오타를 실제로 잡는가**. 결과를 research.md 에 기록
+- [X] T004 [P] 스파이크 S3 — L2 대조(전환 전↔후)의 구현 방법을 정한다. `scripts/design_render.py` 의 chromium 사용 방식을 재사용하며, 전환 전 상태를 `git worktree` 로 꺼낼지 정적 기준선 JSON 으로 뜰지 결정한다. 빌드 시간이 실용성을 좌우하므로 실측한다. 결과를 research.md 에 기록
+- [X] T005 Tailwind v4 를 설치하고 `frontend/vite.config.ts` 에 `@tailwindcss/vite` 플러그인을 추가한다 — `npm i -D tailwindcss@4 @tailwindcss/vite`. 버전을 고정해 `package-lock.json` 에 남긴다 (T002 의존)
+- [X] T006 `frontend/src/theme/tailwind.css` 를 만든다 — `@import "tailwindcss"` · `@import "./tokens.css"` · `@theme inline` 으로 정본 토큰 전량에 Tailwind 이름을 붙인다. 이름 규약은 [contracts/tailwind-theme.md](contracts/tailwind-theme.md) C-3. **오른쪽은 전부 `var(정본토큰)` 이며 리터럴 값이 하나도 없어야 한다** (C-1)
+- [X] T007 진입점에서 `theme/tailwind.css` 를 불러오도록 바꾼다 (`frontend/src/main.tsx` 또는 현재 `tokens.css` 를 불러오는 곳). **이 시점에 화면이 하나도 바뀌지 않아야 한다** — 아직 유틸리티를 쓰는 곳이 없다. `npm test -- --run` 전량 통과 확인
+
+**Checkpoint**: Tailwind 가 설치됐고 정본을 참조하며, 기존 화면은 그대로다.
+
+---
+
+## Phase 2: Foundational — 가드를 먼저 세운다
+
+**Purpose**: 전환을 시작하기 **전에** 감시 장치를 세운다.
+
+**⚠️ 이 순서는 뒤집을 수 없다.** 가드 없이 전환하면 무엇이 언제 깨졌는지 알 수 없고,
+전환이 끝난 뒤 가드를 만들면 이미 들어온 위반을 기준선으로 삼게 된다.
+
+- [X] T008 [P] [contracts/class-migration.md](contracts/class-migration.md) 의 표를 채운다 — 의미 클래스 109개 각각에 대해 이름·`.tsx` 사용처 수·행선지(미정)·상태(미착수). 사용처가 0인 클래스는 「삭제 — 쓰이지 않음」으로 표시한다. **이 표가 SC-009 의 판정 대상이다**
+- [X] T009 [P] 가드 G-A1 을 `frontend/tests/TailwindThemeLiteral.test.ts` 에 만든다 — `theme/tailwind.css` 의 모든 `--*:` 선언 오른쪽이 `var(…)` 인지 검사한다. 리터럴이 하나라도 있으면 실패 (FR-016 · C-1)
+- [X] T010 가드 G-B 를 `frontend/tests/ClassExistence.test.ts` 에 만든다 — `.tsx` 가 쓰는 Tailwind 클래스가 빌드 산출 CSS 에 실재하는지 확인한다. **오타를 일부러 넣어 실패하는 것을 확인한다.** 이 가드가 없으면 `toHaveClass` 는 거짓말을 할 수 있다 ([contracts/layout-contract-v2.md](contracts/layout-contract-v2.md) LC-4 ③) (T003 의존)
+- [X] T011 [P] 가드 G-C 를 `frontend/tests/SingleSystem.test.ts` 에 만든다 — 한 요소의 `className` 에 의미 클래스와 Tailwind 유틸리티가 동시에 있으면 실패 (LC-5). 전환 중에는 이 수치가 **진행률 계기**이므로, 실패 메시지가 남은 곳을 `파일:줄` 로 지목해야 한다
+- [X] T012 [P] 가드 G-D 를 `frontend/tests/ClassMigration.test.ts` 에 만든다 — `tokens.css` 에 남은 의미 클래스 수와 대응표의 「완료」 아닌 행 수가 일치하는지 검사한다 (T008 의존)
+- [X] T013 L2 대조 스크립트 `scripts/design_compare_ba.py` 를 만들고 `--baseline` 으로 **전환 전 기준선을 뜬다**. `design_render.py` 의 digest 규약을 따라 낡은 보고서로 통과할 수 없게 한다 (T004 의존). **기준선은 부품 전환을 시작하기 전에 떠야 한다**
+- [X] ~~T014a **L1 대조의 측정 대상을 부품으로 옮긴다**~~ — **불필요해졌다 (2026-09-11).**
+      이 작업의 전제는 「의미 클래스를 해체하면 정본에서 그 이름이 사라져 대조가
+      무너진다」였다. T016 이 「완료」의 정의를 정정하면서 **정본 구획의 클래스는
+      남는 것**으로 갈렸고 (contracts/class-migration.md), 그래서 L1 의 `FORMS` 가
+      가리키는 이름이 그대로 있다. 전환 내내 L1 은 **725칸 불일치 0** 을 유지했다.
+      전제가 사라졌으므로 작업도 사라진다. 원문 — `scripts/design_render.py` 의 `FORMS`
+      가 `["btn", "chip pass", …]` 처럼 **클래스 이름**으로 형태를 지정하고 있어, 의미 클래스를
+      해체하면 정본 쪽에서 그 이름이 사라져 대조가 통째로 무너진다 (research R5 · FR-002).
+      **확정 디자인 쪽은 손대지 않는다** — 그것이 기준이다. 관측 쪽만 `tokens.css` + 클래스에서
+      **부품 렌더 결과**로 바꾼다. 질문("우리 부품이 확정 디자인과 같은 것을 그리는가")은 그대로다
+- [X] ~~T014b `CanonMatchesDesign.test.ts` 를 새 보고서 형식에 맞춘다~~ — **불필요해졌다**
+      (T014a 와 같은 이유). 보고서 형식이 바뀌지 않았고 검사는 그대로 통과한다.
+      원문:
+      digest 로 낡은 보고서를 거르는 성질을 유지한다 — **이 성질이 없으면 재지 않고도 통과한다**
+- [X] T014 [P] 단언 총수 계수기를 `frontend/scripts/count-assertions.mjs` 에 만든다 — 헌법 Quality Gate 4 를 수치로 확인하는 장치다. T001 의 기준선과 비교해 줄면 그 파일을 지목한다
+
+**Checkpoint**: 가드 4종이 살아 있고, 각각 일부러 어겨서 실제로 잡는 것을 확인했다.
+
+---
+
+## Phase 3: User Story 1 — 토큰을 Tailwind 로 소비하는 길 (Priority: P1) 🎯 MVP
+
+**Goal**: 정본 토큰이 Tailwind 이름으로 소비되고, 그 값이 복제되지 않았음을 실증한다.
+
+**Independent Test**: 시범 전환한 부품 하나와 화면 하나가 전과 동일하게 보이고,
+정본 토큰 값을 바꾸면 그 화면도 함께 바뀐다. 나머지 38개 파일은 그대로여도 성립한다.
+
+- [X] T015 [US1] `frontend/src/ui/Button.tsx` 를 만들어 `.btn` 계열(`.btn`·`.primary`·`.secondary`·`.ghost`·`.danger`·`.disabled`·`.bare`)을 대체한다. 도메인을 모르는 순수 부품이어야 한다. 대응표(T008)의 해당 행을 「구현」으로 갱신
+- [X] T016 [US1] `.btn` 계열 사용처를 `ui/Button` 으로 전량 교체하고 `tokens.css` 정의를 **삭제한다**. 대응표를 「완료」로 갱신. **정의를 남긴 채 부품만 만들면 두 체계가 공존한 채 굳는다** — 007 이 겪은 「전사」 실패의 형태 (data-model.md 상태 전이)
+- [X] T017 [US1] 작은 화면 하나(`frontend/src/components/TabStrip.tsx`, 인라인 2곳)를 배치까지 완전 전환해 **부품+배치가 함께 동작하는 것**을 확인한다. 이 화면을 이후 전환의 본보기로 삼는다
+- [X] T018 [US1] US1 수용 시나리오 3건을 검증한다 — (1) 통과 색을 Tailwind 이름 하나로 지정하고 코드에 `#1A7F45` 가 없다, (2) 시범 화면의 전후 시각 차이 0, (3) **정본 토큰 값을 임시로 바꾸면 화면도 바뀐다**(값 복제가 없다는 증거). 확인 후 되돌린다
+
+**Checkpoint**: 길이 뚫렸다. 이후 작업은 이 길을 따라가는 반복이다.
+
+---
+
+## Phase 4: User Story 2 — 전면 해체 (Priority: P2)
+
+**Goal**: 의미 클래스 109개와 배치 인라인 455곳이 사라진다.
+
+**Independent Test**: `style={{` 검색 결과가 등록된 예외뿐이고, `tokens.css` 에 부품
+클래스가 남지 않으며, 기존 테스트가 전량 통과한다.
+
+### 4-A. 부품 해체 — 의미 클래스 109개 → `frontend/src/ui/`
+
+**순서 근거**: 화면은 부품의 조합이다. 부품을 먼저 세우면 화면 전환이 치환이 된다.
+반대로 가면 같은 버튼이 화면마다 다른 조합을 얻어 SC-010 이 깨진다 (research R6).
+
+---
+
+#### ⚠️ 2026-09-10 T019 착수 시 드러난 것 — 「군 단위 전환」은 성립하지 않는다
+
+계획은 클래스를 9군으로 나누고 각 군을 독립 작업으로, 그것도 **전부 병렬로** 두었다.
+`.btn` 은 우연히 그렇게 되었지만 (버튼이 독립적이라) 나머지는 그렇지 않다.
+
+**의미 클래스는 서로 조합되어 쓰인다.**
+
+```
+.chip.pass  .chip.fail  .chip.warn      상태 색조가 칩 부품의 variant 다
+.srow.pass  .srow.fail  .srow.run       Step 행 부품의 variant 다
+className="row tint-warn"               수식이 다른 부품 위에 얹힌다
+className="btn sm quiet"                (이미 겪었다)
+```
+
+한 요소의 클래스는 **동시에** 전환되어야 한다. 하나만 유틸리티로 바꾸면 그 요소에 두
+체계가 걸리고 가드 G-C 가 잡는다 — 그것이 LC-5 의 요구이고, 특이도 사고를 막는 장치다.
+
+그리고 **같은 `.tsx` 파일을 여러 군이 건드린다.** `TestList.tsx` 하나가 칩·알림·필드·표를
+모두 쓴다. 9군 병렬은 같은 파일에 동시에 손대는 것이라 성립하지 않는다.
+
+**정정된 순서** — 「부품 만들기」와 「사용처 교체」를 분리한다:
+
+| 단계 | 내용 | 왜 |
+|---|---|---|
+| **4-A-1** | 부품 컴포넌트를 **전부 만든다.** `tokens.css` 도 사용처도 손대지 않는다 | 부품 정의가 한 곳에 모이는 것이 SC-010 의 요구다. 만들기만 하는 동안 화면은 무사하다 |
+| **4-A-2** | **화면을 하나씩** 전환한다. 그 파일 안의 모든 요소를 부품+유틸리티로 **동시에** 옮긴다 | 한 요소에 두 체계가 걸리지 않는 유일한 방법이다 |
+| **4-A-3** | 사용 0 이 된 클래스 정의를 파생 구획에서 삭제한다 | 정본 구획은 남는다 (「완료」의 정의 참조) |
+
+4-A-2 는 4-B(배치 전환)와 같은 단위이므로 **화면별로 합쳐진다.** T029~T051 이 그 자리다 —
+각 화면에서 부품 교체와 배치 전환을 함께 한다.
+
+아래 T019~T027 은 이제 **4-A-1(부품 만들기)** 이며 사용처 교체를 포함하지 않는다.
+
+---
+
+**각 부품 작업의 완료 조건** (정정): 부품 구현 + `data-*` 로 의도 노출 + 대응표 「구현」 +
+테스트 전량 통과. **사용처 교체와 정의 삭제는 화면별 작업(T029~T051)에서 한다.**
+
+- [X] T019 [P] [US2] 상태·색조 군을 `frontend/src/ui/tone.ts` + 관련 부품으로 해체한다 — `.pass` `.fail` `.warn` `.run` `.ai` `.paused` `.pass-ink` `.fail-ink` `.warn-ink` `.run-ink` `.ai-ink` `.tint-pass` `.tint-fail` `.tint-warn` `.tint-run` `.tint-ai` `.in-use` `.off` `.on`. 기존 `theme/tone.ts` 와 합류시킨다. **새 색을 만들지 않는다** (FR-003 · 008 규율)
+- [X] T020 [P] [US2] 칩·배지 군을 `frontend/src/ui/Chip.tsx`·`Badge.tsx` 로 해체한다 — `.chip` `.pill` `.dot` `.band` `.num` `.sel` `.last-resort`. `Badges.test.tsx`·`OutcomeVocabulary.test.tsx` 가 검증 대상
+- [X] T021 [P] [US2] 알림·토스트 군을 `frontend/src/ui/Notice.tsx`·`Toast.tsx` 로 해체한다 — `.notice` `.notice-body` `.toast` `.toast-body` `.toast-layer` `.why` `.hint-line`. **`tokens.css` 주석이 기록한 두 사고(특이도로 모든 토스트가 흰색이 된 일, 기준 크기가 `height` 를 이겨 두 줄이 잘린 일)가 재발하지 않는지 확인한다.** `NoticesAreToasts.test.tsx`·`ToastPlacement.test.tsx` 가 검증 대상
+- [X] T022 [P] [US2] 모달·층 군을 `frontend/src/ui/Modal.tsx`·`Overlay.tsx` 로 해체한다 — `.modal` `.modal-scrim` `.scrim` `.overlay-pane` `.float`. 승강(z-index) 관계가 보존되어야 한다
+- [X] T023 [P] [US2] 판·머리 군을 `frontend/src/ui/Pane.tsx`·`Header.tsx` 로 해체한다 — `.pane` `.pane-hd` `.hdr` `.body` `.title` `.subtitle` `.brand` `.brand-name` `.divider` `.spacer` `.rule-top` `.rule-bottom`
+- [X] T024 [P] [US2] 폼·필드 군을 `frontend/src/ui/Field.tsx`·`FileInput.tsx` 로 해체한다 — `.field` `.field-label` `.lbl` `.file` `.file-input` `.ime-capture` `.answer-q` `.commit-bar`. **`.ime-capture` 의 한글 입력 처리가 보존되어야 한다** (FR-010)
+- [X] T025 [P] [US2] 표·격자 군을 `frontend/src/ui/Table.tsx`·`Grid.tsx` 로 해체한다 — `.table` `.thead` `.tfoot` `.trow` `.row` `.grid-head` `.key-cell` `.tabs`. `LocatorPriorityTable.test.tsx` 가 검증 대상
+- [X] T026 [P] [US2] Step 행 군을 `frontend/src/ui/` 또는 기존 `components/workbench/` 로 해체한다 — `.steps` `.steps-hd` `.steps-ft` `.srow` `.srow-check` `.srow-name` `.srow-ops` `.phase` `.phase-name` `.phase-progress`. **행 높이 52px 고정이 유지되어야 한다** (009 FR-304). `StepRowLayout`·`DesignStepRow`·`StepRowStates`·`StepListPerformance` 가 검증 대상
+- [X] T027 [P] [US2] 타이포·수식 군을 유틸리티로 해체한다 — `.mono` `.muted` `.dim` `.quiet` `.meta` `.note` `.log` `.code-block` `.addr` `.loc` `.line` `.name` `.left` `.sunken` `.strong-sm` `.sm` `.d` `.m` `.n` `.t` `.danger-edge` `.op` `.pick` `.segmented` `.textlink` `.navlink`. 부품이 아니라 수식이므로 컴포넌트를 만들지 않고 유틸리티 조합으로 옮긴다.
+      **`.disabled`·`.bare` 는 T015(Button), `.float` 은 T022(모달·층) 관할이므로 여기서 다루지 않는다** — 병렬 실행 시 같은 정의를 두 곳에서 지우는 것을 막는다
+- [X] T028 [US2] 4-A 완료를 확인한다 — `tokens.css` 에 의미 클래스 0개, 대응표 「완료」 109/109, 가드 G-C 0건, 테스트 전량 통과, L2 대조 불일치 0.
+      **아울러 두 가지를 판정한다** (analyze 가 찾은 공백): (1) **SC-010** — 같은 종류의 부품이 화면마다 다른 모습을 갖지 않는가. `ui/` 밖에서 버튼·칩·알림 모양을 조립하는 곳이 있으면 위반이다. (2) **SC-006** — 어떤 요소의 스타일을 고칠 때 찾아야 할 곳이 부품 파일 하나와 정본 하나뿐인가. 세 번째 장소가 생겼으면 그것이 무엇인지 적는다
+
+### 4-B. 배치 전환 — 인라인 455곳 → 유틸리티
+
+**⚠️ 각 작업에 해당 테스트의 판정 방법 전환이 포함된다.** 화면을 바꾸면 그 화면을 보던
+테스트가 함께 깨지므로 같은 커밋에서 처리한다. 판정 *방법*만 바꾸고 **무엇을 검증하던
+테스트인지는 바꾸지 않는다** (LC-6 · 헌법 Quality Gate 4).
+
+**그리고 바꾼 테스트마다 무엇을 왜 바꿨는지 그 파일 머리주석에 적는다** (FR-014).
+이 저장소의 기존 관행이며, 적지 않으면 다음 사람이 그 테스트가 원래 무엇을 보던 것인지
+알 수 없다 — 그때 테스트는 지워지기 쉬워진다. 각 4-B 작업의 완료 조건에 포함된다.
+
+- [X] T029 [US2] `frontend/src/lib/layout.ts` 의 배치 표 출력을 클래스 문자열로 바꾼다 — `Record<Phase, …>` 표 자체와 「부모가 내려준다」 구조는 **그대로 둔다**. 새로 더하는 것은 `Record<VerticalSplit, string>` 전수 대응뿐이다 (research R3 · LC-2). 이것이 4-B 전체의 기반이므로 먼저 한다
+- [X] T030 [US2] `frontend/src/components/workbench/Workbench.tsx` (4곳) 전환 + `WorkbenchShell.test.tsx`(단언 12개)·`WorkbenchHeight.test.tsx` 판정 방법 전환. **국면별 세로 배분이 전과 같은지가 S-12 재발 여부다**
+- [X] T031 [P] [US2] `frontend/src/pages/TestList.tsx` (55곳) 전환 + `TestListFilters`·`TestListActions`·`TestListSelection`·`RowMenuVisible` 판정 방법 전환. **최대 화면이므로 커밋을 쪼갠다** (RK-5)
+- [X] T032 [P] [US2] `frontend/src/pages/ProjectSetup.tsx` (55곳) 전환 + `ProjectSetup.test.tsx`·`ProjectRowActions.test.tsx`. 커밋을 쪼갠다
+- [X] T033 [P] [US2] `frontend/src/pages/ImportPreview.tsx` (41곳) 전환 + `ImportPreview.test.tsx`·`ImportExportAccess.test.tsx`
+- [X] T034 [P] [US2] `frontend/src/components/workbench/WorkArea.tsx` (30곳) 전환 + `PromptDoesNotShrinkMirror.test.tsx`·`ResultAttemptsVisible.test.tsx`
+- [X] T035 [P] [US2] `frontend/src/pages/KeyManagement.tsx` (28곳) 전환 + `KeyManagement.test.tsx`
+- [X] T036 [P] [US2] `frontend/src/components/workbench/StepDetail.tsx` (24곳) 전환 + `DetailPlacement.test.tsx`(단언 6개)·`DetailBlocksMirrorInput.test.tsx`(단언 6개). **상세 층이 목록을 덮지 않는 자리·폭 640px 이 계약이다**
+- [X] T037 [P] [US2] `frontend/src/pages/DraftList.tsx` (17곳) 전환 + `DraftList.test.tsx`·`DraftsFirstOnEmpty.test.tsx`
+- [X] T038 [P] [US2] **`button.ghost` 1곳 포함** (T070). `frontend/src/pages/EditView.tsx` (15곳) · `frontend/src/components/TestBulkConfirm.tsx` (15곳) 전환 + `EditEntryPoints`·`DeleteSelection`·`TestBulkConfirm` 관련 테스트
+- [X] T039 [P] [US2] `frontend/src/pages/SecretValues.tsx` (13곳) · `frontend/src/components/InlineSecretInput.tsx` (7곳) 전환 + `InlineSecret.test.tsx`·`SensitiveAcrossPhases.test.tsx`. **마스킹 표현이 보존되어야 한다** (헌법 보안 요건)
+- [X] T040 [P] [US2] `frontend/src/components/workbench/PhaseBar.tsx` (13곳) 전환 + `PhaseBarWidth.test.tsx`(단언 11개)·`PhaseContext.test.tsx`. 줄임표·`min-width:0` 처리가 계약이다
+- [X] T041 [P] [US2] `frontend/src/components/workbench/ActionPalette.tsx` (13곳) · `ActionButton.tsx` (5곳) 전환 + `CapabilityUI.test.tsx`
+- [X] T042 [P] [US2] `frontend/src/components/workbench/InsertStepForm.tsx` (12곳) 전환 + `StepInsert.test.tsx`·`InsertViaBrowser.test.tsx`
+- [X] T043 [P] [US2] `frontend/src/components/workbench/TargetPane.tsx` (11곳) 전환 + `TargetPane.test.tsx`. **이 파일 주석이 「1회차에 `pane.style.flex` 를 넣었고 그것이 크기까지 고정했다」는 실패를 기록하고 있다 — 읽고 같은 함정을 피한다**
+- [X] T044 [P] [US2] `frontend/src/components/MirrorView.tsx` (11곳) 전환 + `MirrorView.test.tsx`·`MirrorInput.test.ts`. **미러 스케일이 런타임 계산값이면 예외 등록 대상이다** (LC-3)
+- [X] T045 [P] [US2] `frontend/src/components/workbench/StepList.tsx` (10곳) · `StepRowOps.tsx` (1곳) 전환 + `StepRowLayout`·`StepRowActions`·`StepNumberConsistency`
+- [X] T046 [P] [US2] **`button.secondary` 1곳·`.bare` 1곳 포함** (T070). `frontend/src/components/LocatorPriorityTable.tsx` (9곳) · `AssertionForm.tsx` (9곳) 전환 + `LocatorPriorityTable.test.tsx`
+- [X] T047 [P] [US2] **`button.secondary` 4곳 포함** (T070). `frontend/src/pages/SessionScreen.tsx` (7곳) · `frontend/src/components/TestGroupBar.tsx` (7곳) · `SessionLostBanner.tsx` (6곳) 전환 + `TestGroups.test.tsx`·`ActiveSessions.test.tsx`
+- [X] T048 [P] [US2] 워크벤치 잔여 소형 전환 — `NoticeStack.tsx`(4) · `BulkDeleteConfirm.tsx`(1) + `NoticesAreToasts.test.tsx`
+- [X] T049 [P] [US2] 디자인 껍데기 전환 — `frontend/src/components/design/Chrome.tsx`(4) · `BrowserFrame.tsx`(4) + `WindowFallback.test.tsx`
+- [X] T050 [P] [US2] 잔여 소형 전환 — `StepEditFields.tsx`(4) · `ResultView.tsx`(3) · `StartingIndicator.tsx`(3) · `PacingControl.tsx`(3) · `ErrorNotice.tsx`(3) · `ComposeView.tsx`(2) · `LiveConnectionBanner.tsx`(2) · `BrowserPromptPanel.tsx`(1) · `App.tsx`(1) + 관련 테스트
+- [X] T051 [US2] 남은 인라인을 전부 `frontend/src/theme/exceptions.ts` 에 등록한다 — 각 항목에 `file`·`pattern`·`axis`·`reason`. **자격은 런타임 계산값뿐이다** (LC-3). `reason` 이 비면 등록이 아니다. 자격 없는 것은 등록하지 말고 전환한다
+
+**Checkpoint**: 인라인 잔량 = 등록된 예외뿐. 의미 클래스 0개. 테스트 전량 통과.
+
+---
+
+## Phase 5: User Story 3 — 회귀 방지를 새 체계에 심는다 (Priority: P3)
+
+**Goal**: 값 리터럴 유입과 계약 이탈을 자동으로 막는다. 이번 정리가 다음 개정에서
+무너지지 않게 한다.
+
+**Independent Test**: 화면 코드에 색 리터럴을 일부러 넣으면 테스트가 실패한다.
+
+- [X] T052 [P] [US3] `frontend/scripts/count-violations.mjs` 를 새 체계에 맞게 갱신한다 — G-1(색 리터럴)은 유지하고, G-2(시각 속성 인라인)의 근거였던 「허용 목록」이 폐지됐으므로 판정을 LC-3(런타임 계산값만)으로 바꾼다. **규칙의 정의처가 이 파일이라는 성질을 유지한다** — 테스트가 여기서 함수를 가져다 쓴다
+- [X] T053 [P] [US3] `frontend/tests/VisualLanguage.test.tsx` 의 판정 방법을 전환한다. 이 테스트는 「화면 코드가 `className` 으로 정본을 소비하는가」를 봤는데, 의미 클래스가 사라져 전제가 없어졌다. **같은 목적(정본 이탈 없음)을 새 체계에서 확인하도록 고친다 — 삭제하지 않는다** (US3 시나리오 4). 무엇을 왜 바꿨는지 파일 머리주석에 적는다
+- [X] T054 [P] [US3] `frontend/tests/DesignTokens.test.tsx` 를 확인·갱신한다 — 정본 자체는 바뀌지 않았으므로 통과해야 한다. 통과하지 않으면 정본을 건드린 것이다 (C-2 위반)
+- [X] T055 [P] [US3] `frontend/src/theme/exceptions.ts` 의 죽은 예외를 정리한다 — 등록됐으나 쓰이지 않는 항목을 가드가 보고하면 삭제한다 (008 C-14)
+- [X] T056 [US3] SC-011 을 실증한다 — `Phase` 에 국면을 임시로 추가하고 `npm run typecheck` 가 **실패하는지** 확인한다. 통과하면 FR-020a 가 깨진 것이다. 확인 후 되돌리고 결과를 기록 ([quickstart.md](quickstart.md) §1-7)
+- [X] T057 [US3] SC-012 를 확인한다 — 표시 컴포넌트가 자기 자리 크기를 스스로 정하는 곳이 있는지 훑는다. `frontend/src/components/workbench/TargetPane.tsx`·`WorkArea.tsx` 와 `PhaseAside` 가 007 S-12 의 당사자였으므로 특히 본다. 결과를 `specs/015-tailwind-css-migration/baseline.md` 에 기록
+- [X] T058 [P] [US3] 상호작용 상태 보존을 검증한다 (FR-009) — hover·focus·선택·비활성 네 상태의 표현이 전환 전후로 같은지 확인한다. 자동으로 볼 수 있는 부분(상태별 클래스가 붙는가)은 `frontend/tests/InteractionStates.test.tsx` 로, 실제 모습은 T066 H-7 로 본다. **analyze 가 찾은 커버리지 공백이다** — 기존 계획은 초점만 보고 hover·비활성을 어디서도 보지 않았다
+- [X] T059 [US3] 가드 4종이 실제로 실패를 잡는지 확인한다 — 각각 일부러 어기고 되돌린다 (quickstart.md §1-3·§1-4). **가드가 동작하지 않으면 없는 것과 같다**
+
+---
+
+## Phase 6: 계약 문서와 최종 판정
+
+- [X] T060 [P] `specs/008-visual-language/contracts/visual-language.md` §2 「허용되는 인라인 `style`」이 폐지되고 [contracts/layout-contract-v2.md](contracts/layout-contract-v2.md) 로 대체됐음을 원문에 표시한다. **지우지 말고 「015 가 개정함」을 적는다** — 왜 그 목록이 있었는지가 기록으로 남아야 한다
+- [X] T061 [P] `frontend/src/theme/tokens.css` 머리주석 중 「화면 코드는 `className` 으로 소비하며 값을 다시 적지 않는다」가 사실과 달라졌으므로 갱신을 요청하는 항목을 만든다. **이 파일은 `extract_canon.py` 의 출력이므로 직접 고치지 않는다** — 주석 생성 부분을 스크립트에서 고치거나, 파생 구획에 주석을 남긴다 (C-2)
+- [X] T062 [P] `specs/015-tailwind-css-migration/contracts/class-migration.md` 를 최종 상태로 확정한다 — 109행 전부 「완료」, 미상 0건 (SC-009)
+- [X] T063 L2 대조를 실행한다 — `scripts/design_compare_ba.py --compare`. 불일치가 있으면 각각 의도된 것인지 판단한다. **의도되지 않은 불일치가 하나라도 있으면 전환이 끝난 것이 아니다** (SC-001)
+- [X] T064 배포 산출물 크기를 기준선과 비교한다 — `npm run build` 후 CSS 크기가 T001 기록(15.04 kB)보다 늘지 않았는지 (SC-007).
+      **미달일 때 할 일** (T071 이 정의): (1) 산출 CSS 에서 무엇이 늘었는지 **지목한다** —
+      남은 의미 클래스인지, 유틸리티인지, 레이어 폴리필인지. (2) 남은 의미 클래스 때문이면
+      그것은 전환이 안 끝난 것이므로 **크기 문제가 아니라 진행 문제**로 보고한다.
+      (3) 전환이 끝났는데도 늘었으면 **기준선을 고칠지 코드를 고칠지 판단해 이유와 함께
+      기록한다.** 판정 불가로 넘기지 않는다. 결과를 `baseline.md` 에 기록
+- [X] T065 단언 총수를 기준선과 비교한다 — `node frontend/scripts/count-assertions.mjs`. **줄었으면 그 자리를 지목하고 이유를 댄다** (헌법 Quality Gate 4). 줄어든 채로 넘어가지 않는다
+- [X] T066 **등록 완료 · 판정은 사람이 남았다** (`docs/PENDING-HUMAN-VERIFICATION.md` §15,
+      항목 9건). **통과로 가정하지 않는다** — 아래 원문의 요구가 그대로 남아 있다.
+      원본: 손 검증을 등록하고 돌린다 (**사람이 판정한다** · `docs/PENDING-HUMAN-VERIFICATION.md` §15) — [quickstart.md](quickstart.md) §4 의 H-1~H-8. **H-1(국면별 세로 배분)과 H-7(키보드 순회)이 가장 중요하다**. 미판정이면 미완료로 보고하며, 통과로 가정하지 않는다
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Phase 1 (Setup)**: 의존 없음. **T002 스파이크가 T005~T007 을 막는다**
+- **Phase 2 (Foundational)**: Phase 1 완료 후. **모든 전환 작업을 막는다** — 가드 없이 전환하지 않는다
+- **Phase 3 (US1)**: Phase 2 완료 후. MVP
+- **Phase 4 (US2)**: Phase 3 완료 후. 4-A 가 4-B 를 **막지 않는다**(독립)이나, **4-A 를 먼저 하는 것이 R6 의 결정**이다 — 부품 일관성 때문
+- **Phase 5 (US3)**: Phase 4 완료 후 (전환이 끝나야 새 체계의 가드를 확정할 수 있다)
+- **Phase 6**: 전부 완료 후
+
+### 특별한 순서 제약
+
+| 제약 | 이유 |
+|---|---|
+| T013(L2 기준선)은 **어떤 전환보다 먼저** | 전환 후에 기준선을 뜨면 비교 대상이 없다 |
+| T001(수치 기준선)은 **가장 먼저** | 같은 이유 |
+| T029(배치 표)는 4-B 의 다른 모든 작업보다 먼저 | 나머지가 이 표의 출력을 쓴다 |
+| T016(정의 삭제)은 T015(부품 구현) 직후 | 정의를 남기면 두 체계가 공존한 채 굳는다 |
+| T002 실패 시 T005 이전으로 되돌아감 | research R2 재설계 |
+
+### Parallel Opportunities
+
+- **Phase 1**: T001·T003·T004 병렬 (T002 는 단독 — 결과가 나머지를 좌우)
+- **Phase 2**: T008·T009·T011·T012·T014 병렬. T010·T013 은 스파이크 결과 의존
+- **Phase 4-A**: T019~T027 병렬 가능 — **부품 파일만 만들 때에 한해서다.** 사용처를 함께 고치면 같은 `.tsx` 를 여러 작업이 건드린다 (위 정정)
+- **Phase 4-B**: T031~T050 **20개 병렬** — 서로 다른 화면. 단 T029·T030 완료 후
+- **Phase 5**: T052~T055·T058 병렬
+- **Phase 6**: T060~T062 병렬
+
+### Parallel Example: Phase 4-A
+
+```bash
+# 부품 9군을 동시에 — 서로 다른 파일이고 의존이 없다
+Task: "상태·색조 군을 ui/tone.ts 로 해체 (T019)"
+Task: "칩·배지 군을 ui/Chip.tsx 로 해체 (T020)"
+Task: "알림·토스트 군을 ui/Notice.tsx 로 해체 (T021)"
+Task: "모달·층 군을 ui/Modal.tsx 로 해체 (T022)"
+...
+```
+
+---
+
+## Implementation Strategy
+
+### MVP (User Story 1 까지)
+
+1. Phase 1 Setup — **T002 스파이크가 관문이다**
+2. Phase 2 Foundational — 가드를 먼저 세운다
+3. Phase 3 US1 — 길이 뚫린 것을 실증
+4. **멈추고 판정**: 시범 화면의 전후 차이 0, 토큰 변경이 화면에 전파됨
+
+여기서 멈춰도 의미가 있다. Tailwind 가 정본을 참조하며 동작하고, 나머지는 같은 길의 반복이다.
+
+### Incremental Delivery
+
+1. Setup + Foundational → 기반과 감시 장치
+2. US1 → 시범 부품·화면 (MVP)
+3. US2 4-A → 부품 전량. **여기서 멈춰도 화면은 정상이다**
+4. US2 4-B → 배치 전량
+5. US3 → 회귀 가드 확정
+6. Phase 6 → 판정
+
+각 단계 끝에서 테스트 전량이 통과하고 화면이 정상이다.
+
+---
+
+## Notes
+
+- **커밋 단위**: 작업 하나 또는 논리적 묶음. 대형 화면(T031·T032)은 더 쪼갠다 (RK-5)
+- **각 전환 작업의 완료 조건**: 코드 전환 + 해당 테스트 판정 방법 전환 + **변경 사유를 그 테스트
+  파일 머리주석에 기록**(FR-014) + 대응표 갱신 + `npm test -- --run` 전량 통과.
+  다섯 중 하나라도 빠지면 미완료
+- **하지 말 것**: 테스트를 지우거나 `toBeDefined()` 로 무르게 바꿔 통과시키기 (헌법 Quality
+  Gate 4). 새 색·새 치수 만들기 (FR-003). `tokens.css` 직접 수정 (C-2).
+  `git add -A` 로 커밋하기
+- **막히면**: 진행이 안 되는 이유를 적고 멈춘다. 요건을 낮춰 통과시키지 않는다
+
+---
+
+## Phase 7: Convergence
+
+**수렴 1회차** (2026-09-10) — 구현 T001~T020 을 마친 상태에서 spec·plan·계약 대비 평가.
+헌법 위반 0건. 아래는 코드가 드러낸 것이며 기존 작업에 담기지 않은 몫이다.
+
+- [X] T067 요소 선택자 규칙의 **상태 스타일을 전수 조사해 각 부품으로 이관한다** per FR-009 (contradicts) — **HIGH.** `tokens.css` 를 `layer(base)` 로 내린 결과, 요소 규칙이 유틸리티에 진다. 실측 9곳: `button:hover`·`button:active`·`button:disabled`·`input:disabled`·`input.phase-name:hover/:focus/:disabled`·`.tabs > button:disabled`·`.segmented > button:disabled`. **`ui/Button` 에서 실제로 hover 가 사라졌고 손으로 고쳤다** — 화면은 멀쩡해 보이고 테스트도 통과해서, 마우스를 올려야만 보였다. 남은 부품마다 반복될 구조적 함정이므로 목록을 만들어 놓고 부품을 만든다
+- [X] T068 **초점 링 보존을 가드로 세운다** per SC-008 (missing) — **HIGH.** 전역 `:focus-visible { outline: 2px solid var(--run) }` 도 base 레이어에 있다. 부품이나 화면에 `outline-none` 계열이 하나라도 들어가면 초점 링이 사라지고, 그것이 SC-008 이 0건을 요구하는 회귀다. **키보드 사용자에게만 보이므로 눈으로는 잡히지 않는다.** `frontend/tests/FocusRing.test.tsx` 로 `outline-none`·`focus:outline-none` 사용을 막고, 정당한 예외는 `theme/exceptions.ts` 에 이유와 함께 등록하게 한다
+- [X] T069 `layer(base)` 결정을 계약으로 승격한다 per plan: 핵심 결정 (partial) — 지금은 `src/ui/Button.tsx` 주석에만 있다. [contracts/tailwind-theme.md](contracts/tailwind-theme.md) C-6 옆에 조항으로 적고, **정본을 레이어 밖으로 되돌리면 유틸리티가 전부 진다**는 사실과 그 근거(요소 규칙이 레이어 밖에서 모든 레이어를 이긴다)를 남긴다. 가드로도 확인한다 — `tailwind.css` 의 정본 `@import` 에 `layer(base)` 가 있는가
+- [X] T070 `button.secondary`·`button.ghost`·`button.danger` 의 사용처 8곳 전환과 정의 삭제를 화면별 작업에 넣는다 per FR-006 (missing) — `ui/Button` 에 variant 는 만들었으나(T015) 교체가 어느 작업에도 없다. `.secondary` 7곳·`.ghost` 1곳이며, 해당 화면 작업(T031~T050)의 설명에 명시한다
+- [X] T071 SC-007 미달 시의 대응을 정의한다 per SC-007 (partial) — 현재 CSS 는 21.10 kB 로 기준선 15.04 kB 를 넘는다. T064 는 **판정만** 하고 미달일 때 무엇을 할지가 없다. 공존이 끝나면 순감할 것으로 보지만 그것은 예상이다. 미달이 남으면 (1) 원인을 산출물에서 지목하고 (2) 기준선을 고칠지 코드를 고칠지 판단해 기록한다. **판정 불가로 넘기지 않는다**
+- [X] T072 [P] [quickstart.md](quickstart.md) §2-2 의 검사를 고친다 per quickstart §2-2 (contradicts) — `grep -nE '…(?!var\()'` 는 PCRE lookahead 라 macOS 기본 grep 에서 동작하지 않는다. 절차가 조용히 0건을 내 통과처럼 보인다. 이미 같은 것을 검사하는 가드가 있으므로(`TailwindThemeLiteral.test.ts`) 그것을 부르도록 바꾼다
+
+---
+
+## Phase 8: Convergence (2회차)
+
+**수렴 2회차** (2026-09-11) — T001~T072 중 71건을 마친 상태에서 평가.
+헌법 위반 0건. 자동 검증은 전부 통과한다 (테스트 1269 · L1 725칸 불일치 0 · 위반 0 ·
+단언 1934→1978).
+
+**미완료가 3 → 5 로 늘었다.** 줄지 않았으므로 sdd 규칙대로 반복을 멈추고 보고한다.
+늘어난 이유는 회귀가 아니라 **판정이 남긴 몫**이다 — SC-007 미달의 대응(T075)과
+L2 대조의 부재(T074)가 이번에 분명해졌다.
+
+- [X] T073 **의미 클래스 43개의 남은 사용처를 옮긴다** per FR-006·SC-010 (partial) — **HIGH.**
+      착수 시 104 → 지금 43. 남은 것은 두 부류다. (1) 조건부 표현식 안
+      (`` `${cond ? "chip ai" : "chip"}` ``) — 기계 치환이 닿지 않아 사람이 부품 prop
+      (`<Chip tone={cond ? "ai" : "default"}>`)으로 바꿔야 한다. (2) 부품이 있는 것
+      (`.btn`·`.field`·`.notice`) — 유틸리티로 풀면 같은 부품이 화면마다 다른 조합을
+      얻어 SC-010 이 깨진다. **`state-styles.md` 의 남은 이관 5건(S-08~S-10·S-12)도
+      여기 딸려 있다** — 그 부품이 해체될 때 함께 옮긴다
+- [X] T074 **L2 대조를 만든다** per FR-011·SC-001 (missing) — **HIGH.** T013·T063 이
+      미착수라 **시각 동일성이 전부 사람 눈에 달려 있다.** L1 은 정본 시트가 확정
+      디자인과 같음을 보증할 뿐, 화면이 그 정본을 제대로 쓰는지는 보지 못한다.
+      `scripts/design_render.py` 의 방법(chromium + `getComputedStyle` + digest 로
+      낡음 판정)을 그대로 쓰되 대상을 「전환 전 화면 ↔ 전환 후 화면」으로 바꾼다.
+      전환 전 상태는 `git worktree` 로 꺼낸다 (research R5)
+- [X] T075 **SC-007 을 실제로 해소한다** per SC-007 (contradicts) — CSS 34.79 kB 로
+      미달이 확정됐고 원인도 지목했다(base 14.38 = 정본 · utilities 17.06). 그런데
+      **줄이는 작업이 없다** — T064 는 판정만 했다. 정본 구획을 번들에서 빼면 된다:
+      앱은 `:root` 변수만 불러오고 클래스 규칙은 L1 스크립트만 읽게 한다.
+      **T073 이 끝난 뒤에야 안전하다** (화면이 정본 클래스를 하나도 쓰지 않아야 한다).
+      그 뒤 base 는 변수 선언만 남아 1 kB 아래로 내려간다
+
+
+---
+
+## Phase 9: 사용자 신고와 수렴 3회차 (2026-09-11)
+
+사용자 신고 「버튼과 글자가 모두 흰색이라 안 보인다」에서 시작해, 그것과 같은 계통의
+결함을 찾다가 잔여 작업 6건이 함께 끝났다.
+
+- [X] T076 가드 G-E 를 만든다 — 한 요소에 같은 속성이 두 번 붙는 것을 막는다.
+      `className` 의 순서는 승부를 정하지 않고 산출 CSS 의 순서가 정한다. 리터럴뿐
+      아니라 부품의 **조합 전부**를 본다 (`tests/ClassConflict.test.ts`)
+- [X] T077 부품 셋(`Button`·`Chip`·`Field`)의 BASE/VARIANT 충돌을 없앤다 —
+      변종이 건드리는 속성은 BASE 가 갖지 않는다. 흰 버튼·회색 상태칩의 원인
+- [X] T078 화면 코드 43곳의 중복 선언을 전환 전 화면에 맞춰 정리한다
+- [X] T079 G-B 가 정본 클래스를 실재로 치던 것을 고친다 — T075 이후 정본 클래스는
+      아무 CSS 도 만들지 않으므로, 봐주면 무스타일 요소를 초록으로 보고한다
+- [X] T080 `classNameGroups()` 가 중첩 템플릿을 읽도록 고친다 — 정규식으로 백틱 짝을
+      찾으면 `` `${`num ${x}`} …` `` 에서 안쪽 이름이 보이지 않는다
+- [X] T081 SC-010 위반 4종을 부품으로 모은다 — 칩 5곳 · 「필」 3곳 · navlink 26곳 ·
+      분절 선택 띠. 새 부품 `<Pill>`·`<Segmented>`·`navLinkClasses()`
+- [X] T082 L2 보고서의 신선도 가드를 세운다 (`tests/BeforeAfterParity.test.ts`) —
+      화면이 바뀌었는데 다시 재지 않으면 「불일치 0」이 지금 화면에 대한 말이 아니다
+
+### 수렴 3회차 판정
+
+| 축 | 값 |
+|---|---|
+| 미완료 작업 | **0** (2회차 5 → 0) |
+| 테스트 | 1283/1283 · 삭제·건너뜀 0 |
+| L2 대조 | 34,272칸 · 의도되지 않은 불일치 **0** |
+| L1 대조 | 725칸 불일치 0 |
+| 화면 코드의 의미 클래스 | **0** |
+| 인라인 위반 | 색 0 · 인라인 30(전부 등록된 예외) · 팔레트 밖 0종 |
+| CSS 크기 | 25.39 kB (기준선 15.04) — **SC-007 미달, 판정은 baseline.md** |
+
+**사용자 판단이 필요한 것 둘** (여기서 결정하지 않았다):
+
+1. **SC-007 의 단위** — 「스타일 크기」로 재면 이 기능은 구조상 통과할 수 없다.
+   FR-019 가 스타일의 거처를 JS 에서 CSS 로 옮기기로 했기 때문이다. 전체 전송량
+   (gzip)으로는 +3.8% 다. 기준을 고칠지는 명세 변경이다 (baseline.md)
+2. **대응표 「완료」 조항** — 파생 구획의 정의를 지워야 「완료」인데, T075 이후 그
+   정의들은 번들에 실리지 않고 일부는 L1 대조가 읽는다 (contracts/class-migration.md)
+
+---
+
+## Phase 10: Convergence (3회차)
+
+**수렴 3회차** (2026-09-11) — T001~T082 를 마친 상태에서 평가. 미완료 0 에서 시작했다.
+헌법 위반 0건 (단언 1934 → 2011 · 건너뛴 테스트 0 · Quality Gate 4 충족).
+자동 검증은 전부 통과한다 — 테스트 1283 · L1 725칸 불일치 0 · L2 34,272칸 불일치 0 ·
+인라인 위반 0 · 화면 코드의 의미 클래스 0.
+
+남은 것은 **코드가 아니라 기록과 범위**다. 이번 라운드가 검사를 여럿 새로 세웠는데
+(L2 대조 · G-E · 정본 분리) 그 사실이 계약·절차·손 검증 목록에 아직 반영되지 않았다.
+
+- [X] T083 **L2 가 덮지 못한 화면을 명시한다** per FR-011·SC-001 (partial) — **HIGH.**
+      `scripts/design_compare_ba.py` 의 `SCENARIOS` 는 화면 8개를 연다. 작업대의 일곱
+      국면·Step 상세 겹침·토스트 층·결과·편집·미러는 **한 번도 대조되지 않았다.**
+      FR-011 은 「어떤 화면을 무엇으로 대조했는지」를 요구하고 그것은 보고서에 있지만,
+      **덮지 못한 것이 어디인지도 함께 남아야** 「불일치 0」이 무엇에 대한 말인지 읽을
+      수 있다. 시나리오를 늘릴 수 있는 것(세션 상태를 API 로 만들 수 있는 화면)과
+      없는 것(실제 브라우저 세션이 필요한 국면)을 갈라 적는다
+- [X] T084 **손 검증 목록 §15 를 다시 가른다** per plan: 손 검증 위임 (partial) —
+      **HIGH.** `docs/PENDING-HUMAN-VERIFICATION.md` §15 는 「L1 은 화면이 정본을 제대로
+      쓰는지 보지 못한다」를 근거로 9개를 사람에게 넘겼다. **그 전제가 바뀌었다** —
+      L2 가 34,272칸을 기계로 대조한다. 15-1·15-2·15-5 는 상당 부분이 덮였고,
+      15-6~15-9(마스킹·키보드 순회·IME·hover)는 여전히 사람만 할 수 있다.
+      낡은 수동 절차(`git worktree add /tmp/itb-before f49c31c~1`)도 L2 가 대신한다.
+      **줄일 수 있는 것을 줄이지 않으면 목록이 관성으로 남고, 남은 넷이 묻힌다**
+- [X] T085 **G-E 와 정본 분리를 계약에 등재한다** per contracts/tailwind-theme.md
+      (partial) — MEDIUM. 이번 라운드의 두 핵심 결정이 코드에만 있다.
+      (1) **G-E** — 한 요소에 같은 속성이 두 번 붙지 않는다. 가드 표(C-9 옆)에 넣고,
+      「`className` 의 순서는 승부를 정하지 않는다」는 사실과 흰 버튼의 실측을 남긴다.
+      (2) **정본 분리** — 앱은 `tokens.app.css`(변수·요소 규칙)만 들이고 클래스 규칙은
+      싣지 않는다. C-2(정본을 손대지 않는다)와 나란히 조항으로 적고, 생성 규칙과
+      가드(`CanonSplit`)를 함께 건다
+- [X] T086 [P] **`state-styles.md` 의 이관 칸을 채운다** per contracts/state-styles.md
+      (partial) — MEDIUM. S-08·S-09·S-10(`input.phase-name` 의 hover·focus·disabled)은
+      `workbench/PhaseBar` 로, S-12(`.segmented > button:disabled`)는 `ui/Table` 의
+      `Segmented` 로 실제로 옮겼는데 표는 ⬜ 그대로다. **표가 진행 상태의 유일한
+      기록이므로 사실과 어긋나면 무엇이 남았는지 알 수 없다**
+- [X] T087 [P] **검증 절차에 새 검사 셋을 넣는다** per quickstart.md (partial) —
+      MEDIUM. 지금 절차를 그대로 따르면 이번에 세운 것을 하나도 돌리지 않는다.
+      (1) `npm test -- --run ClassConflict` (G-E), (2) `node scripts/split-canon.mjs
+      --check`, (3) `design_compare_ba.py --compare` 뒤 `BeforeAfterParity` 재실행.
+      **셋 다 「돌리지 않으면 조용히 낡는」 종류**라 절차에 있어야 한다
+- [ ] T088 **SC-007 의 기준 단위를 사용자에게 묻는다** per SC-007 (contradicts) —
+      MEDIUM. 25.39 kB (기준선 15.04). 원인 지목·구조 개선(정본 12.5 kB 분리)·전체
+      전송량 재측정(gzip +3.8%)까지 마쳤고 판정과 권고를 `baseline.md` 에 적었다.
+      **기준은 여전히 미달이며, 단위를 고치는 것은 명세 변경이라 여기서 하지 않았다.**
+      작업으로 등록해 둔다 — 판정만 기록하고 넘어가면 다음 라운드가 같은 자리에서
+      다시 멈춘다. 사용자가 「고치지 않는다」를 고르면 그 결정을 spec 에 적는다
+- [X] T089 [P] **늘어나는 알림 부품이 필요한지 판단한다** per SC-010 (partial) — LOW.
+      `workbench/WorkArea` 의 두 줄이 `min-h-notice` 로 알림 모양을 직접 쓴다.
+      `ui/Notice` 는 높이를 못 박는 부품(정본 `.notice` = `flex: 0 0 32px`)이라 성질이
+      다르다 — 복제가 아니라 **아직 없는 부품**이다. 지금은 한 곳뿐이라 만들지 않았다.
+      두 번째가 생기면 만들고, 안 생기면 이 줄을 지운다
+
+
+### 수렴 3회차 처리 결과 (2026-09-11)
+
+7건 중 **6건을 처리했다.** 남은 하나(T088)는 **사용자 판단이 필요하다** — 성공 기준의
+단위를 고치는 것은 명세 변경이므로 여기서 하지 않는다.
+
+| 작업 | 결과 |
+|---|---|
+| T083 | `quickstart.md` §3 에 「이 대조가 덮지 못하는 것」 표를 넣었다 — 작업대 국면·겹침·토스트·결과·편집·미러·상호작용·파일 탐색기 |
+| T084 | `PENDING-HUMAN-VERIFICATION.md` §15 를 다시 갈랐다 — 15-5 는 기계로, 15-1·15-2 는 절반으로. 낡은 수동 대조 절차를 지웠다 |
+| T085 | `tailwind-theme.md` 에 C-9(같은 속성 두 번 금지)·C-10(정본 분리)과 가드 G-E·G-A6 을 등재했다 |
+| T086 | `state-styles.md` 17줄 전부 이관 완료로 갱신 (여섯 줄이 실제로는 옮겨졌는데 ⬜ 였다) |
+| T087 | `quickstart.md` 에 G-E·`split-canon --check`·`BeforeAfterParity` 세 단계를 넣었다 |
+| T088 | **열린 채로 둔다** — SC-007 의 단위는 사용자가 정한다 |
+| T089 | 판정 기록 (`baseline.md`) — 쓰는 곳이 하나뿐이라 부품을 만들지 않는다. 두 번째가 생기면 만든다 |

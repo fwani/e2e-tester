@@ -20,6 +20,7 @@ import { PHASES } from "../src/lib/phase";
 import { workbenchStep, workbenchSteps } from "./helpers/model";
 import { fillStep } from "./helpers/workbench";
 
+import { flexOf } from "./helpers/style";
 /** 행 안의 칸을 `data-cell` 로 읽는다. 순서가 곧 자리다. */
 function cellsOf(row: HTMLElement): string[] {
   return Array.from(row.querySelectorAll("[data-cell]")).map(
@@ -209,7 +210,8 @@ describe("Step 패널 (FR-221)", () => {
   it("폭이 460px 고정이다 — 확정 디자인 3종 공통값 (research R1)", () => {
     renderList();
     const panel = document.querySelector<HTMLElement>("[data-workbench-step-panel]")!;
-    expect(panel.style.flex).toBe("0 0 460px");
+    expect(panel.className, "Step 패널이 460px 고정이 아니다").toContain("basis-steps");
+    expect(flexOf(panel), "Step 패널이 줄어든다").toBe("0 0 auto");
   });
 
   it("Step 이 0개면 국면별 안내를 보여준다", () => {

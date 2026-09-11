@@ -11,6 +11,10 @@
  */
 import type { TargetLocator } from "../types/generated/step";
 
+import { Button } from "../ui/Button";
+import { Chip } from "../ui/Chip";
+import type { ChipTone } from "../ui/Chip";
+
 type Status = "verified" | "ambiguous" | "unverified" | "not_collected";
 
 interface Row {
@@ -19,7 +23,6 @@ interface Row {
   value: string | null;
   status: Status | null;
 }
-
 /** FR-018 의 우선순위. 이 순서가 화면 표기의 근거다. */
 const PRIORITY = ["test_id", "role", "label", "text", "stable_attr", "css"] as const;
 
@@ -61,7 +64,6 @@ function rowsOf(t: TargetLocator): Row[] {
     status: raw[kind].status,
   }));
 }
-
 /**
  * 표시 상태를 파생한다 (FR-019a).
  *
@@ -92,12 +94,12 @@ export function displayStates(target: TargetLocator): Record<string, string> {
   return out;
 }
 
-function tone(state: string): string {
+function tone(state: string): ChipTone {
   if (state === "사용 중") return "pass";
-  if (state.startsWith("대체")) return "";
+  if (state.startsWith("대체")) return "default";
   if (state === "최후") return "warn";
   if (state === "모호(사용 불가)" || state === "검증 실패") return "fail";
-  return "";
+  return "default";
 }
 
 export interface LocatorPriorityTableProps {
@@ -122,22 +124,22 @@ export function LocatorPriorityTable({
   const usable = rows.filter((r) => r.status === "verified").length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div className="row" style={{ gap: 8 }}>
-        <strong className="lbl">{title}</strong>
-        <span className={`chip ${usable >= 2 ? "pass" : "warn"}`}>
+    <div className="flex flex-col gap-[6px]">
+      <div className="flex items-center gap-s2">
+        <strong className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{title}</strong>
+        <Chip tone={usable >= 2 ? "pass" : "warn"} layout="break-all">
           사용 가능 후보 {usable}
-        </span>
-        <span className="spacer" />
+        </Chip>
+        <span className="flex-1" />
         {onRepick && (
-          <button className="btn sm" disabled={busy || repicking} onClick={onRepick}>
+          <Button size="sm" disabled={busy || repicking} onClick={onRepick}>
             {repicking ? "브라우저에서 클릭 대기 중…" : "다시 집기"}
-          </button>
+          </Button>
         )}
       </div>
 
       {repicking && (
-        <p className="why" style={{ margin: 0 }}>
+        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
           실제 브라우저 창에서 대상 요소를 클릭하세요. 그 클릭은 Step 으로 기록되지
           않습니다.
         </p>
@@ -148,13 +150,13 @@ export function LocatorPriorityTable({
         바탕으로 구분하는 규칙은 그대로다 — **순서 자체가 정보**이므로(원칙 IV) 어느
         줄이 쓰이는지 표에서 바로 읽혀야 한다.
       */}
-      <table className="table pane">
+      <table className="w-full border-collapse bg-panel border border-hair rounded-base [&_td]:px-s3 [&_td]:h-[40px] [&_td]:font-sans [&_td]:text-[12px] [&_td]:leading-none [&_tr+tr_td]:border-t [&_tr+tr_td]:border-hair">
         <thead>
           <tr>
-            <th style={{ width: 20 }} />
-            <th style={{ width: 118 }} />
+            <th className="w-[20px]" />
+            <th className="w-[118px]" />
             <th />
-            <th style={{ width: 118 }} />
+            <th className="w-[118px]" />
           </tr>
         </thead>
         <tbody>
@@ -166,17 +168,22 @@ export function LocatorPriorityTable({
             return (
               <tr
                 key={row.kind}
-                className={inUse ? "in-use" : last ? "last-resort" : undefined}
+                /* 정본 `.table tr.in-use td` · `.table tr.last-resort td` — 바탕은
+                   행이 아니라 **칸**이 받는다. 행에 주면 칸 사이 경계선 위로 색이
+                   비친다. 자식 선택자를 그대로 옮겼다. */
+                className={
+                  inUse ? "[&>td]:bg-pass-t" : last ? "[&>td]:bg-sunken-2" : undefined
+                }
               >
-                <td className="num" style={{ padding: "0 0 0 14px" }}>
+                <td className="font-mono text-[12px] leading-none font-normal text-ink-3 pt-0 pr-0 pb-0 pl-[14px]">
                   {i + 1}
                 </td>
-                <td className={missing ? "dim" : "strong-sm"}>{row.label}</td>
-                <td className={`mono${missing ? " dim" : ""}`} style={{ wordBreak: "break-all" }}>
+                <td className={missing ? "text-ink-3" : "font-sans text-[13px] font-semibold leading-none"}>{row.label}</td>
+                <td className={`font-mono${missing ? " text-ink-3" : ""}`} >
                   {row.value ?? "수집되지 않음"}
                 </td>
-                <td style={{ padding: "0 14px 0 0", textAlign: "right" }}>
-                  {!missing && <span className={`chip ${tone(state)}`}>{state}</span>}
+                <td className="pt-0 pr-[14px] pb-0 pl-0 text-right">
+                  {!missing && <Chip tone={tone(state)}>{state}</Chip>}
                 </td>
               </tr>
             );

@@ -26,16 +26,31 @@ describe("브라우저 요구는 미러 위에 쌓인다 — 옆에 서지 않�
       본문 컨테이너를 찾는 법: 머리 띠(`.pane-hd`)의 **다음 형제**다. 클래스나 순번으로
       찾으면 껍데기가 바뀔 때 검사가 조용히 다른 것을 재게 된다.
     */
-    const head = document.querySelector(".pane-hd");
+    // 015 — `.pane-hd` 가 유틸리티로 해체돼 셀렉터로 찾을 수 없다. 자리 표식을 붙였다.
+    const head = document.querySelector("[data-frame-head]");
     expect(head, "브라우저 껍데기의 머리 띠가 없다").not.toBeNull();
     const next = head!.nextElementSibling as HTMLElement | null;
     expect(next, "머리 띠 다음에 본문 컨테이너가 없다").not.toBeNull();
     return next!;
   }
 
+  /**
+   * 본문이 쌓이는 방향 — **인라인과 클래스 두 표기를 모두 읽는다** (015).
+   *
+   * 이 검사가 묻는 것은 「패널이 미러 옆에 서지 않는가」다. 가로로 서면 패널이 자기
+   * 콘텐츠 폭을 가져가고 미러가 눌린다 — 그것이 사용자가 본 화면이다. 표기가 바뀌어도
+   * 그 질문은 그대로다.
+   */
+  function stack(el: HTMLElement): string {
+    if (el.style.flexDirection !== "") return el.style.flexDirection;
+    if (/\bflex-col\b/.test(el.className)) return "column";
+    if (/\bflex-row\b/.test(el.className)) return "row";
+    return "";
+  }
+
   it("본문이 세로로 쌓인다 (flexDirection: column)", () => {
     render(
-      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "" }}>
+      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "default" }}>
         <div data-testid="prompt">요구 패널</div>
         <div data-testid="mirror">미러</div>
       </BrowserFrame>,
@@ -44,7 +59,7 @@ describe("브라우저 요구는 미러 위에 쌓인다 — 옆에 서지 않�
       **`row` 가 기본값이므로 빈 값도 실패로 본다.** `expect(...).not.toBe("row")` 로
       두면 값이 비었을 때 통과하는데, 비어 있다는 것이 바로 이 결함의 형태였다.
     */
-    expect(body().style.flexDirection).toBe("column");
+    expect(stack(body()), "본문이 가로로 선다 — 패널이 미러 폭을 가져간다").toBe("column");
   });
 
   it("요구 패널이 뜬 동안에도 미러가 폭을 잃지 않는다", () => {
@@ -56,14 +71,15 @@ describe("브라우저 요구는 미러 위에 쌓인다 — 옆에 서지 않�
       맞으면 폭은 브라우저가 맞춘다.
     */
     render(
-      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "" }}>
+      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "default" }}>
         <div data-testid="prompt">파일을 고르세요</div>
         <div data-testid="mirror">미러</div>
       </BrowserFrame>,
     );
     const container = body();
-    expect(container.style.display).toBe("flex");
-    expect(container.style.flexDirection).toBe("column");
+    expect(container.style.display !== "" ? container.style.display : container.className)
+      .toMatch(/flex/);
+    expect(stack(container), "본문이 가로로 선다 — 패널이 미러 폭을 가져간다").toBe("column");
     // 두 자녀가 같은 컨테이너에 있다 — 패널이 미러 밖으로 나가 있지 않다.
     expect(container.querySelector('[data-testid="prompt"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="mirror"]')).not.toBeNull();
@@ -72,10 +88,15 @@ describe("브라우저 요구는 미러 위에 쌓인다 — 옆에 서지 않�
   it("높이를 잃지 않는다 — minHeight 0 이 남아 있다", () => {
     // `column` 으로 바꾸면서 `minHeight: 0` 을 잃으면 미러가 세로로 넘쳐 잘린다.
     render(
-      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "" }}>
+      <BrowserFrame url="https://x.test/" badge={{ label: "MIRROR", tone: "default" }}>
         <div>미러</div>
       </BrowserFrame>,
     );
-    expect(body().style.minHeight).toBe("0");
+    // 015 — 클래스로 바뀌었다. `min-h-0` 이 `minHeight: 0` 과 같은 뜻이다.
+    const el = body();
+    expect(
+      el.style.minHeight !== "" ? el.style.minHeight : /\bmin-h-0\b/.test(el.className) ? "0" : "없음",
+      "minHeight 0 을 잃으면 미러가 세로로 넘쳐 잘린다",
+    ).toBe("0");
   });
 });

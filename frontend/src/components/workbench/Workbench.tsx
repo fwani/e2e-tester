@@ -31,14 +31,19 @@ import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard, BrandMark, Breadcrumb, HeaderBar, HeaderDivider } from "../design/Chrome";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
-import { flexOf, splitFor } from "../../lib/layout";
+import { flexClassOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
 import { PhaseBar, type PhaseGroupPick, type PhaseNameEdit } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
-import { StepList, STEP_PANEL_WIDTH } from "./StepList";
+import { StepList } from "./StepList";
 import { TargetPane } from "./TargetPane";
 import { WorkArea } from "./WorkArea";
 import type { WorkbenchModel } from "./model";
+
+import { Lbl } from "../../ui/Field";
+import { Scrim } from "../../ui/Surface";
+import { Row } from "../../ui/Table";
+import { Pill } from "../../ui/Chip";
 
 
 /** 최소 기준 폭. 확정 디자인 6종 공통값 (research R1). */
@@ -161,8 +166,8 @@ export function Workbench({
    * 1회차에 두 파일이 각자 하드코딩한 것과 같은 상태다 (spec S-12).
    */
   const split = splitFor(model.phase);
-  const targetStyle = flexOf(split.targetSlot);
-  const workStyle = flexOf(split.workArea);
+  const targetClass = flexClassOf(split.targetSlot);
+  const workClass = flexClassOf(split.workArea);
 
   /*
     Step 상세 — **구현도 하나, 자리도 하나다** (FR-229·FR-230).
@@ -228,15 +233,17 @@ export function Workbench({
           않고 「초안」을 쓴다. 자리가 사라지면 헤더 구성이 국면에 따라 달라진다
           (FR-217).
         */}
+        {/* 정본 `.row.muted` — `.muted` 는 `--ink-2` 다 (`--ink-3` 는 `.dim`). */}
         {model.testId !== null ? (
           <Breadcrumb testId={model.testId} />
         ) : (
-          <div className="row muted" style={{ gap: "8px" }}>
-            <span className="lbl">테스트</span>
-            <span className="pill mono">초안</span>
-          </div>
+          <Row layout="text-ink-2">
+            <Lbl>테스트</Lbl>
+            {/* 정본 `.pill mono` — `.pill` 이 `.mono` 보다 뒤에 정의돼 **글꼴은 sans 였다.** */}
+            <Pill>초안</Pill>
+          </Row>
         )}
-        <div className="spacer" />
+        <div className="flex-1" />
         {headerActions}
       </HeaderBar>
 
@@ -255,7 +262,7 @@ export function Workbench({
         않고 여기서 기준을 잡는다 — `Artboard` 는 확정 디자인 8종이 공유하는 껍데기이므로
         007 이 그 안쪽 배치를 바꾸지 않는다.
       */}
-      <div style={{ flex: "1", minHeight: "0", display: "flex", position: "relative" }}>
+      <div className="flex-1 min-h-0 flex relative">
         {/*
           알림 — **한 자리이고, 화면을 밀어내지 않는다** (2026-09-09 사용자 보고).
 
@@ -287,7 +294,7 @@ export function Workbench({
 
           형태는 정본이 갖는다 (`tokens.css` 의 `.toast-layer`).
         */}
-        <div data-workbench-notice-layer className="toast-layer">
+        <div data-workbench-notice-layer className="fixed right-s4 z-[60] top-[calc(var(--h-header)+8px)] w-[min(420px,calc(100vw-32px))] max-h-[calc(100vh-var(--h-header)-24px)] overflow-y-auto flex flex-col gap-s2 pointer-events-none [&>*]:pointer-events-auto">
           {noticesExtra}
           <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
         </div>
@@ -304,13 +311,10 @@ export function Workbench({
           겹치므로(밀어내지 않으므로), 「상세를 열고 닫아도 이 열의 폭 선언이 같은가」를
           검사가 셀 수 있어야 한다 (UC-011-8).
         */}
-        <div
-          data-workbench-left-column
-          style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column" }}
-        >
+        <div data-workbench-left-column className="flex-1 min-w-0 flex flex-col">
           <TargetPane
             target={model.target}
-            size={targetStyle}
+            sizeClass={targetClass}
             sizeKind={split.targetSlot.kind}
             capabilities={capabilities}
             onSelectArtifact={onSelectArtifact}
@@ -325,7 +329,7 @@ export function Workbench({
           {model.work !== null && (
             <WorkArea
               work={model.work}
-              size={workStyle}
+              sizeClass={workClass}
               sizeKind={split.workArea.kind}
               chooseBlocked={capabilities["ai.chooseBlocked"]}
               onChooseBlocked={onChooseBlocked}
@@ -363,7 +367,7 @@ export function Workbench({
           수정한다」. `right: 0` 이면 상세가 **Step 목록을 덮는다** — 방금 고른 행을 보면서
           상세를 읽을 수 없고, 무엇을 골랐는지 확인하려면 닫아야 했다.
 
-          `right: STEP_PANEL_WIDTH` 로 목록 왼쪽 가장자리에 붙인다. 1440px 기준으로 상세
+          `right-steps`(= `--w-steps` = `STEP_PANEL_WIDTH`) 로 목록 왼쪽 가장자리에 붙인다. 1440px 기준으로 상세
           640px 왼쪽에 대상 앱 340px 가 남는다.
 
           **겹침은 유지한다** (clarify 결정 1). 대상 앱을 밀어 나란히 놓으면 최소 기준
@@ -375,29 +379,21 @@ export function Workbench({
           사용자가 보이지 않는 곳을 실제로 조작하게 된다. 층이 그 영역을 덮어 삼킨다.
         */}
         {model.detail !== null && (
-          <div
+          <Scrim
             data-workbench-detail-layer
-            className="scrim"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: STEP_PANEL_WIDTH,
-              bottom: 0,
-              display: "flex",
-              justifyContent: "flex-end",
-              zIndex: 20,
-              /*
-                DC-011 — 창이 확정 디자인의 기준 폭(640px)보다 좁으면 **기준 폭을 유지한
-                채 스크롤한다.** 겹침이 절대 배치라 페이지 스크롤이 닿지 않으므로 가로
-                스크롤을 여기서 준다. 없으면 좁은 창에서 판이 잘린 채 접근할 수 없다.
-              */
-              overflowX: "auto",
-              overflowY: "auto",
-            }}
+            strength="soft"
+            /*
+              `right-steps` 는 Step 패널 폭(`--w-steps` = 460px)이다 — 상세가 목록을
+              덮지 않는다는 계약이 이 한 값에 걸려 있다.
+
+              DC-011 — 창이 확정 디자인의 기준 폭(640px)보다 좁으면 **기준 폭을 유지한
+              채 스크롤한다.** 겹침이 절대 배치라 페이지 스크롤이 닿지 않으므로 가로
+              스크롤을 여기서 준다. 없으면 좁은 창에서 판이 잘린 채 접근할 수 없다.
+            */
+            layout="absolute top-0 left-0 right-steps bottom-0 flex justify-end z-20 overflow-x-auto overflow-y-auto"
           >
             {detailNode}
-          </div>
+          </Scrim>
         )}
       </div>
     </Artboard>

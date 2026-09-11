@@ -20,6 +20,7 @@
  * 모서리·그림자는 여기 없다 (`contracts/visual-language.md` §2).
  */
 import type { ReactNode } from "react";
+import { Pill } from "../../ui/Chip";
 
 /**
  * 헤더 왼쪽의 제품 표시. 18장 전부에서 동일하다.
@@ -30,26 +31,32 @@ import type { ReactNode } from "react";
  */
 export function BrandMark() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-      <div className="brand">
+    <div className="flex items-center gap-[9px]">
+      <div className="w-[26px] h-[26px] bg-ink text-panel rounded-base flex items-center justify-center flex-none">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
           <rect x="2" y="2" width="12" height="12" rx="1.5" />
           <path d="M5 8.2l2 2 4-4.4" />
         </svg>
       </div>
-      <div className="brand-name">ITB</div>
+      <div className="font-sans text-[15px] font-bold leading-none tracking-[-0.01em]">ITB</div>
     </div>
   );
 }
 
 /** 헤더 안에서 블록을 가르는 세로 막대. 18장 전부에서 동일하다. */
 export function HeaderDivider() {
-  return <div className="divider" />;
+  return <div className="w-px h-[20px] bg-hair-2 flex-none" />;
 }
 
 /** 헤더 층. 높이 56 — `ui-contract.md` §1-2 의 값이다. */
 export function HeaderBar({ children }: { children: ReactNode }) {
-  return <div className="hdr">{children}</div>;
+  // 정본 `.hdr` 은 `flex: 0 0 56px` — 기준 크기가 56px 이다. `flex-none`(=`0 0 auto`)
+  // 은 기준을 내용에서 가져오므로 같은 뜻이 아니다 (L2 대조가 잡았다).
+  return (
+    <div className="grow-0 shrink-0 basis-header h-header flex items-center gap-[14px] px-s4 bg-panel border-b border-hair">
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -104,7 +111,7 @@ export function Artboard({
   children: ReactNode;
 }) {
   return (
-    <div style={{ overflowX: "auto", minHeight: "100vh" }}>
+    <div className="overflow-x-auto min-h-[100vh]">
       <div
         style={{
           ...(grow ? { minWidth: `${width}px`, width: "100%" } : { width: `${width}px` }),
@@ -124,9 +131,9 @@ export function Artboard({
 /** 통합 작업 화면의 경로 표시 — 「테스트 / TC-001」. */
 export function Breadcrumb({ testId }: { testId: string }) {
   return (
-    <div className="row muted" style={{ gap: "8px" }}>
-      <span className="lbl">테스트</span>
-      <span className="pill mono">{testId}</span>
+    <div className="flex items-center text-ink-2 gap-s2">
+      <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">테스트</span>
+      <Pill>{testId}</Pill>
     </div>
   );
 }

@@ -6,6 +6,19 @@
  * 합쳐 보면 편집 국면에서 채울 것이 없는 자리가 700px 를 가져갔다. 판단이 두 파일에
  * 흩어져 있으면 어느 한 쪽만 보고는 그 결함을 볼 수 없다 — 그래서 표로 모았고, 이
  * 검사가 그 표와 두 파일을 함께 센다.
+
+ * ## 2026-09-10 (015 T029) — 판정 방법을 바꿨다. 검증 대상은 그대로다
+ *
+ * 배분이 스타일 객체(`SlotStyle`)에서 클래스 문자열로 바뀌었다. `size: SlotStyle` 과
+ * `...size,` 를 찾던 단언이 성립하지 않는다.
+ *
+ * **이 검사가 묻는 것은 「표시 컴포넌트가 자기 크기를 스스로 정하지 않는가」다** —
+ * 007 이 S-12(편집 국면에서 두 자리가 뒤바뀜)를 고치며 세운 성질이고, 015 가 배치
+ * 계약을 개정해도 **그 성질은 개정 대상이 아니다** (FR-020b).
+ *
+ * 그래서 같은 것을 새 표기로 묻는다. 하드코딩 금지 단언은 **늘렸다** — 인라인
+ * `flex: "1"` 뿐 아니라 유틸리티 `flex-1` 로 같은 일을 하는 것도 막는다. 표기만 바꿔
+ * 빠져나갈 수 있으면 검사가 아니다.
  */
 import { describe, expect, it } from "vitest";
 
@@ -164,18 +177,30 @@ describe("표시 컴포넌트가 자기 크기를 갖지 않는다 (S-12 재발 
     it(`${file} 의 뿌리 요소가 크기를 인자로 받는다`, () => {
       const source = sourceOf(file);
 
-      // 크기 인자를 받는다
-      expect(source, `${file} 에 size 인자가 없다`).toContain("size: SlotStyle");
-      // 뿌리 요소가 그것을 펼친다
+      // 크기 인자를 받는다 — 015 T029 에서 스타일 객체가 클래스 문자열로 바뀌었다
+      expect(source, `${file} 에 크기 인자가 없다`).toContain("sizeClass: string");
+      // 뿌리 요소가 그것을 쓴다
       expect(source).toContain(marker);
-      expect(source, `${file} 뿌리가 size 를 펼치지 않는다`).toContain("...size,");
+      expect(source, `${file} 뿌리가 sizeClass 를 붙이지 않는다`).toContain("${sizeClass}");
 
-      // 1회차의 하드코딩 형태가 남아 있지 않다
+      // 1회차의 하드코딩 형태가 남아 있지 않다 (인라인·유틸리티 양쪽 표기를 본다)
       expect(source, `${file} 에 flex: "1" 하드코딩이 남았다`).not.toContain('flex: "1"');
       expect(source, `${file} 에 flex: 0 0 auto 하드코딩이 남았다`).not.toContain("0 0 auto");
       expect(source, `${file} 에 maxHeight 하드코딩이 남았다 — fill 을 무력화한다`).not.toContain(
         'maxHeight: "45%"',
       );
+      /*
+        유틸리티로 같은 일을 하는 것도 막는다 — 표기만 바꿔 빠져나갈 수 없어야 한다.
+
+        **뿌리 요소만 본다.** 파일 전체에서 `flex-1` 을 찾으면 자식 요소가 자기 안에서
+        쓰는 것까지 걸린다 (1회차에 WorkArea 에서 났다). 이 검사가 묻는 것은
+        「**뿌리**가 자기 크기를 스스로 정하지 않는가」다.
+      */
+      const rootTag = source.slice(source.indexOf(marker) - 400, source.indexOf(marker) + 400);
+      expect(rootTag, `${file} 뿌리에 flex-1 하드코딩이 남았다`).not.toMatch(
+        /className=\{?`?[^`"\n]*\bflex-1\b/,
+      );
+      expect(source, `${file} 에 max-h-[45%] 하드코딩이 남았다`).not.toContain("max-h-[45%]");
     });
   }
 });

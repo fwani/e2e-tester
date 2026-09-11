@@ -171,7 +171,11 @@ describe("밀도 — 이 개편이 실제로 사는 곳", () => {
     // **둘 다** 잘라야 한다 — 한쪽만 자르면 화면에서 행 높이가 흔들린다.
     expect(declarations).toMatch(/\.srow \.t b\{[^}]*text-overflow:ellipsis/);
     expect(declarations).toMatch(/\.srow \.t \.srow-name \{[\s\S]*?text-overflow: ellipsis/);
-    expect(stepList).toMatch(/className="srow-name"/);
+    // 015 — 정본 `.srow .t .srow-name` 이 유틸리티로 풀렸다. 묻는 것은 그대로다:
+    // 제품의 Step 이름이 **한 줄로 잘리는가**. 셋이 모두 있어야 잘린다.
+    expect(stepList, "Step 이름이 줄바꿈한다").toMatch(/whitespace-nowrap/);
+    expect(stepList, "넘친 부분이 그대로 보인다").toMatch(/overflow-hidden/);
+    expect(stepList, "잘린 자리에 말줄임이 없다").toMatch(/text-ellipsis/);
   });
 
   it("결말을 색만으로 구분하지 않는다 — 왼쪽 표식과 오른쪽 형태가 짝을 이룬다", () => {
@@ -183,7 +187,8 @@ describe("밀도 — 이 개편이 실제로 사는 곳", () => {
 describe("DC-011 — 기준 폭을 유지한 채 스크롤한다", () => {
   it("Artboard 가 가로 스크롤 컨테이너다", () => {
     // 디자인은 고정 폭이다. 좁은 창에서 임의로 재배치하지 않고 스크롤한다.
-    expect(chrome).toMatch(/overflowX:\s*"auto"/);
+    // 015 — 배치가 클래스로 바뀌었다. 두 표기를 모두 받는다.
+    expect(chrome).toMatch(/overflowX:\s*"auto"|\boverflow-x-auto\b/);
   });
 
   it("고정 폭 화면이 맨몸으로 놓이지 않는다", () => {
@@ -204,6 +209,9 @@ describe("DC-011 — 기준 폭을 유지한 채 스크롤한다", () => {
     // 절대 배치라 페이지 스크롤이 닿지 않는다. 없으면 좁은 창에서 잘린다.
     // 007 통합으로 겹침의 주인이 `SessionScreen` 에서 `Workbench` 로 옮겨졌다 —
     // 일곱 국면이 **같은 겹침 하나**를 쓴다 (FR-230).
-    expect(workbench).toMatch(/overflowX:\s*"auto"/);
+    //
+    // 015 T030 — 배치가 클래스로 바뀌었다. **묻는 것은 그대로다.** 두 표기를 모두
+    // 받는다 — 아직 전환하지 않은 화면이 있는 동안 인라인도 정답이기 때문이다.
+    expect(workbench).toMatch(/overflowX:\s*"auto"|\boverflow-x-auto\b/);
   });
 });

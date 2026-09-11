@@ -35,9 +35,9 @@ import type { ReactNode } from "react";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
-import { chipClassForTone } from "../../theme/tone";
+import { chipToneForTone } from "../../theme/tone";
 import type { PhaseBar as PhaseBarModel } from "./model";
-
+import { Chip } from "../../ui/Chip";
 /**
  * 이름을 그 자리에서 고치는 데 필요한 것 (011 · `test.rename`).
  *
@@ -58,7 +58,6 @@ export interface PhaseNameEdit {
    */
   status?: ReactNode;
 }
-
 /**
  * 저장할 그룹 (013 FR-443 · converge T062).
  *
@@ -89,19 +88,15 @@ export interface PhaseBarProps {
 
 export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProps) {
   return (
-    <div data-workbench-phase-bar className="phase" style={{ flex: "0 0 48px" }}>
+ <div data-workbench-phase-bar className="h-phase flex items-center gap-s3 px-s4 bg-panel border-b border-hair-2 flex-[0_0_48px]">
       {/*
         국면 표시. **화면에 하나뿐이다** (FR-219). 색만으로 국면을 알리지 않으므로 라벨이
         항상 텍스트로 있다 (ui-contract §7). 어느 변형인지는 `theme/tone.ts` 가 정한다 —
         화면이 결말을 스스로 가르면 중지가 실패로 보인다 (U-03).
       */}
-      <div
-        data-phase-pill
-        className={chipClassForTone(bar.phaseTone)}
-        style={{ height: "22px", flex: "0 0 auto" }}
-      >
+      <Chip data-phase-pill tone={chipToneForTone(bar.phaseTone)} layout="h-[22px] flex-none">
         {bar.phaseLabel}
-      </div>
+      </Chip>
 
       <PhaseTestName testName={testName} rename={rename} />
 
@@ -115,7 +110,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
           aria-label="저장할 그룹"
           value={group.value ?? ""}
           onChange={(e) => group.onChange(e.target.value === "" ? null : e.target.value)}
-          style={{ margin: 0, flex: "0 0 auto", maxWidth: 160 }}
+          className="m-0 flex-none max-w-[160px]"
         >
           <option value="">그룹 없음</option>
           {group.options.map((g) => (
@@ -127,7 +122,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
       )}
 
       {bar.progressLabel !== null && (
-        <div className="phase-progress" style={{ flex: "0 0 auto" }}>
+        <div className="font-sans text-[12px] leading-none font-normal text-ink-3 flex-none">
           {bar.progressLabel}
         </div>
       )}
@@ -143,21 +138,14 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
       {bar.runSummary !== null && (
         <div
           data-run-summary
-          className="line"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
+          className="font-sans text-[13px] leading-[1.4] font-normal flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis"
           title={typeof bar.runSummary === "string" ? bar.runSummary : undefined}
         >
           {bar.runSummary}
         </div>
       )}
 
-      {bar.runSummary === null && <div className="spacer" />}
+      {bar.runSummary === null && <div className="flex-1" />}
 
       {/*
         조작 묶음. **줄어들 수 있어야 한다** (`0 1 auto` · `minWidth: 0`).
@@ -168,13 +156,13 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
 
         011 이 여기에 저장·되돌리기를 더했다. 같은 위험이 커지므로 규칙은 그대로 유지한다.
       */}
-      <div className="row" style={{ flex: "0 1 auto", minWidth: 0 }}>
+      {/* 조작 묶음 — 검사가 이 자리를 찾는 표식이다 (015: `.row` 셀렉터를 대체). */}
+      <div data-phase-actions className="flex items-center gap-s2 flex-initial min-w-0">
         {actions}
       </div>
     </div>
   );
 }
-
 /**
  * 테스트 이름 — **표시와 편집이 같은 자리다** (011 UC-011-2).
  *
@@ -198,8 +186,7 @@ function PhaseTestName({
     return (
       <div
         data-phase-test-name
-        className="phase-name"
-        style={{ maxWidth: 300, minWidth: 0 }}
+        className="font-sans text-[17px] font-bold leading-none whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px] min-w-0"
         title={testName}
       >
         {testName}
@@ -214,25 +201,35 @@ function PhaseTestName({
   return (
     <div
       data-phase-test-name
-      style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 420, minWidth: 0 }}
+      className="flex items-center gap-s2 max-w-[420px] min-w-0"
     >
       <input
         data-action="test.rename"
         aria-label={ACTION_LABEL["test.rename"]}
-        className="phase-name"
+        /*
+          정본 `input.phase-name` 이 주던 것을 함께 옮긴다 (015 L2 대조가 잡았다).
+          이것이 없으면 전역 `input{}` 규칙이 이겨 **이름 칸이 32px 짜리 회색 테두리
+          입력칸으로 보인다** — 띠 안에서 제목처럼 보이던 것이 폼 칸이 된다.
+          초점 표시는 테두리와 바탕으로 한다 (정본이 `outline:none` 으로 정한 자리이며
+          `theme/exceptions.ts` 에 등록돼 있다).
+        */
+        className="font-sans text-[17px] font-bold leading-none whitespace-nowrap overflow-hidden text-ellipsis flex-initial min-w-0 max-w-[300px] w-auto min-h-[26px] px-[6px] border border-transparent bg-transparent text-ink enabled:hover:border-hair-2 focus:border-hair-2 focus:bg-panel focus:outline-none disabled:border-transparent disabled:text-ink-2"
         value={testName}
         disabled={disabled}
         maxLength={200}
         placeholder={ACTION_LABEL["test.rename"]}
         aria-describedby={disabled ? reasonId : undefined}
         title={testName}
-        style={{ flex: "0 1 auto", minWidth: 0, maxWidth: 300 }}
         onChange={(e) => rename.onChange(e.target.value)}
       />
+      {/*
+        015 T073 — 여기서 칩 모양을 손으로 조립하고 있었다. 같은 종류의 표식이 화면마다
+        다른 조합을 얻는 것이 SC-010 이 막으려는 것이므로 부품으로 되돌린다.
+      */}
       {rename.status !== undefined && rename.status !== null && (
-        <span data-phase-save-state className="chip" style={{ flex: "0 0 auto" }}>
+        <Chip data-phase-save-state layout="flex-[0_0_auto]">
           {rename.status}
-        </span>
+        </Chip>
       )}
       {/*
         잠긴 이유 — **`ActionButton` 과 같은 구조를 쓴다** (`flex: 0 1 auto` · `minWidth: 0`
@@ -246,20 +243,12 @@ function PhaseTestName({
         <span
           id={reasonId}
           data-disabled-reason="test.rename"
-          className="why"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            flex: "0 1 auto",
-            minWidth: 0,
-            maxWidth: 260,
-          }}
+          className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
         >
           <span
             data-disabled-reason-text
             title={rename.capability.kind === "disabled" ? rename.capability.reason : undefined}
-            style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
           >
             {rename.capability.kind === "disabled" ? rename.capability.reason : ""}
           </span>
@@ -267,8 +256,7 @@ function PhaseTestName({
             <button
               type="button"
               data-remedy-for="test.rename"
-              className="textlink"
-              style={{ flex: "0 0 auto" }}
+              className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-sans text-[12px] font-semibold leading-[1.4] underline cursor-pointer flex-none"
               onClick={() => rename.onRemedy(remedy.action)}
             >
               {ACTION_LABEL[remedy.action]}

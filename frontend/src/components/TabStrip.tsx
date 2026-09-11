@@ -7,6 +7,8 @@
  */
 import type { TabView } from "../api/client";
 
+import { Button } from "../ui/Button";
+
 export interface TabStripProps {
   tabs: TabView[];
   mirroredTabIndex: number;
@@ -18,26 +20,31 @@ export function TabStrip({ tabs, mirroredTabIndex, maxTabs, onSelect }: TabStrip
   const open = tabs.filter((t) => !t.closed);
   if (open.length <= 1) return null; // 탭이 하나면 표시할 이유가 없다
 
+  // 껍데기(`.row rule-bottom`)의 인라인은 아직 옮기지 못했다. 그 두 클래스가 해체되기
+  // 전에 유틸리티를 함께 붙이면 한 요소에 두 체계가 걸린다 (LC-5 · 가드 G-C).
+  // T023(판·머리 군)·T027(수식 군) 뒤에 온다 — 배치는 부품보다 나중이다 (research R6).
   return (
     <div
-      className="row rule-bottom"
-      style={{ gap: 4, padding: "6px 8px", overflowX: "auto" }}
+ className="flex items-center border-b border-hair gap-s1 py-[6px] px-s2 overflow-x-auto"
     >
       {open.map((tab) => (
-        <button
+        <Button
           key={tab.tab_index}
-          className={`btn sm${tab.tab_index === mirroredTabIndex ? " primary" : ""}`}
+          size="sm"
+          variant={tab.tab_index === mirroredTabIndex ? "primary" : "default"}
           aria-current={tab.tab_index === mirroredTabIndex ? "true" : undefined}
           onClick={() => onSelect(tab.tab_index)}
-          style={{ whiteSpace: "nowrap", maxWidth: 220, overflow: "hidden" }}
+          /* 배치는 자리가 정한다 — 부품은 자기 폭을 모른다 (LC-1).
+             `whitespace-nowrap` 은 Button 이 이미 갖고 있다. */
+          layout="max-w-[220px] overflow-hidden"
           title={tab.url}
         >
-          <span className="mono">탭 {tab.tab_index}</span>
+          <span className="font-mono">탭 {tab.tab_index}</span>
           {tab.title ? ` · ${tab.title}` : ""}
-        </button>
+        </Button>
       ))}
-      <span className="spacer" />
-      <span className="dim mono">
+      <span className="flex-1" />
+      <span className="text-ink-3 font-mono">
         {open.length} / {maxTabs}
       </span>
     </div>

@@ -46,3 +46,7 @@ Thumbs.db
 test-results/
 playwright-report/
 blob-report/
+
+# L2 대조가 전환 전 코드를 꺼내 두는 곳 (scripts/design_compare_ba.py)
+.l2-before/
+.l2-data/

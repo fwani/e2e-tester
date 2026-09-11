@@ -15,6 +15,8 @@ import { drafts as draftsApi } from "../api/client";
 import { describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
+import { Button } from "../ui/Button";
+
 export function DraftSection({
   drafts,
   problems,
@@ -44,69 +46,69 @@ export function DraftSection({
   };
 
   return (
-    <section data-draft-section style={{ marginTop: 20 }}>
-      <div className="row" style={{ gap: 8, alignItems: "baseline", marginBottom: 8 }}>
+    <section data-draft-section className="mt-[20px]">
+ <div className="flex gap-s2 items-baseline mb-s2">
         {/* 표제로 둔다 — 낭독기가 구획을 건너뛸 수 있어야 한다. */}
-        <h2 className="strong-sm" style={{ margin: 0 }}>
+        <h2 className="font-sans text-[13px] font-semibold leading-none m-0">
           녹화하지 않은 초안
         </h2>
-        <span className="num" data-draft-count>
+        <span className="font-mono text-[12px] leading-none font-normal text-ink-3" data-draft-count>
           {drafts.length}
         </span>
-        <span className="why">
+        <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
           엑셀에서 들여온 항목입니다. 하나씩 녹화하면 테스트가 됩니다.
         </span>
       </div>
 
       {problems.length > 0 && (
-        <div className="tint-warn" style={{ padding: "8px 10px", marginBottom: 8 }}>
+        <div className="bg-warn-t border border-warn-line rounded-base py-s2 px-[10px] mb-s2">
           {problems.map((p) => (
-            <div key={p} className="why">
+            <div key={p} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
               {p}
             </div>
           ))}
         </div>
       )}
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table className="w-full border-collapse">
         {/* `scope` 가 없으면 낭독기가 칸을 읽을 때 어느 열인지 말할 수 없다. */}
-        <thead className="grid-head">
+        <thead className="bg-sunken border-b border-hair-2">
           <tr>
-            <th scope="col" style={{ padding: "6px 8px", width: 110 }}>희망 번호</th>
-            <th scope="col" style={{ padding: "6px 8px" }}>대상기능</th>
-            <th scope="col" style={{ padding: "6px 8px", width: 110 }}>수행자</th>
-            <th scope="col" style={{ padding: "6px 8px" }}>출처</th>
-            <th scope="col" style={{ padding: "6px 8px", width: 190 }}>
-              <span className="lbl">할 수 있는 일</span>
+            <th scope="col" className="py-[6px] px-s2 w-[110px]">희망 번호</th>
+            <th scope="col" className="py-[6px] px-s2">대상기능</th>
+            <th scope="col" className="py-[6px] px-s2 w-[110px]">수행자</th>
+            <th scope="col" className="py-[6px] px-s2">출처</th>
+            <th scope="col" className="py-[6px] px-s2 w-[190px]">
+              <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">할 수 있는 일</span>
             </th>
           </tr>
         </thead>
         <tbody>
           {drafts.map((draft) => (
             <tr key={draft.draft_id} data-draft-row={draft.draft_id}>
-              <td style={{ padding: "6px 8px" }}>
-                <span className="mono">{draft.desired_test_id ?? "—"}</span>
+              <td className="py-[6px] px-s2">
+                <span className="font-mono">{draft.desired_test_id ?? "—"}</span>
                 {draft.desired_test_id !== null && !draft.desired_id_available && (
                   /*
                     희망 번호가 이미 쓰이고 있다. **막지 않는다** — 저장할 때 다른 번호를
                     받는다는 예고일 뿐이다 (FR-032). 초안은 번호를 예약하지 않는다.
                   */
-                  <div className="why" data-id-taken={draft.draft_id}>
+                  <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" data-id-taken={draft.draft_id}>
                     이 번호는 이미 쓰입니다. 저장할 때 다른 번호를 받습니다.
                   </div>
                 )}
               </td>
-              <td style={{ padding: "6px 8px" }}>
+              <td className="py-[6px] px-s2">
                 <div id={`draft-name-${draft.draft_id}`}>{draft.name}</div>
-                {draft.description !== null && <div className="why">{draft.description}</div>}
+                {draft.description !== null && <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{draft.description}</div>}
               </td>
-              <td style={{ padding: "6px 8px" }}>{draft.actor ?? "—"}</td>
-              <td style={{ padding: "6px 8px" }}>
-                <span className="why">
+              <td className="py-[6px] px-s2">{draft.actor ?? "—"}</td>
+              <td className="py-[6px] px-s2">
+                <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
                   {draft.source.file_name} · {draft.source.sheet_name} {draft.source.row}행
                 </span>
               </td>
-              <td style={{ padding: "6px 8px", textAlign: "right" }}>
+              <td className="py-[6px] px-s2 text-right">
                 {/*
                   **어느 초안인지 조작에 붙인다.** 행이 스무 개면 「녹화 시작」이 스무
                   개고, 낭독기로 도는 사용자에게는 전부 같은 조작으로 들린다.
@@ -117,8 +119,8 @@ export function DraftSection({
                   더한다.
                 */}
                 {confirming === draft.draft_id ? (
-                  <span className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
-                    <span className="why">지울까요?</span>
+ <span className="flex items-center gap-[6px] justify-end">
+                    <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">지울까요?</span>
                     {/*
                       되돌릴 수 없는 쪽을 형태로 구분한다 — 「지우기」와 「그대로」가 같은
                       형태면 어느 쪽이 무엇을 하는지 글자를 읽어야만 알 수 있다.
@@ -126,43 +128,39 @@ export function DraftSection({
                       확인 버튼에 초점을 옮긴다. 누른 버튼이 사라지면서 초점이 문서
                       처음으로 튀어, 키보드 사용자는 확인 자리를 다시 찾아야 했다.
                     */}
-                    <button
-                      className="btn sm danger"
+                    <Button
+                      size="sm" variant="danger"
                       data-action="draft.delete-confirm"
                       aria-describedby={`draft-name-${draft.draft_id}`}
                       ref={(el) => el?.focus()}
-                      onClick={() => remove(draft.draft_id)}
-                    >
+                      onClick={() => remove(draft.draft_id)} >
                       지우기
-                    </button>
-                    <button
-                      className="btn sm"
+                    </Button>
+                    <Button
+                      size="sm"
                       aria-describedby={`draft-name-${draft.draft_id}`}
-                      onClick={() => setConfirming(null)}
-                    >
+                      onClick={() => setConfirming(null)} >
                       그대로
-                    </button>
+                    </Button>
                   </span>
                 ) : (
-                  <span className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
-                    <button
-                      className="btn sm"
+ <span className="flex items-center gap-[6px] justify-end">
+                    <Button
+                      size="sm"
                       data-action="draft.record"
                       aria-describedby={`draft-name-${draft.draft_id}`}
                       disabled={busy}
-                      onClick={() => onRecord(draft)}
-                    >
+                      onClick={() => onRecord(draft)} >
                       녹화 시작
-                    </button>
-                    <button
-                      className="btn sm"
+                    </Button>
+                    <Button
+                      size="sm"
                       data-action="draft.delete"
                       aria-describedby={`draft-name-${draft.draft_id}`}
                       disabled={busy}
-                      onClick={() => setConfirming(draft.draft_id)}
-                    >
+                      onClick={() => setConfirming(draft.draft_id)} >
                       지우기
-                    </button>
+                    </Button>
                   </span>
                 )}
               </td>

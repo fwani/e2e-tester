@@ -51,6 +51,10 @@ import type { ActionId } from "../../lib/actions";
 import { ACTION_LABEL } from "../../lib/wording";
 import type { Notice } from "./model";
 
+import { Button } from "../../ui/Button";
+
+
+import { Toast, type NoticeTone } from "../../ui/Notice";
 /**
  * 알림의 뜻 → 정본의 옅은 바탕 (`States.dc.html`).
  *
@@ -58,10 +62,11 @@ import type { Notice } from "./model";
  * 없는 색**이었다. v2 의 알림은 옅은 바탕 + 같은 계열 경계이고 글자는 본문 잉크다 —
  * 문장을 색으로 소리치지 않는다. 무엇인지는 문장이 말한다.
  */
-const TONE: Record<Notice["tone"], string> = {
-  error: "tint-fail",
-  warn: "tint-warn",
-  info: "",
+/** 알림 뜻 → `ui/Notice` 의 바탕. 015 가 `.tint-*` 를 부품으로 옮기며 갈아끼웠다. */
+const TONE: Record<Notice["tone"], NoticeTone> = {
+  error: "fail",
+  warn: "warn",
+  info: "default",
 };
 
 export interface NoticeStackProps {
@@ -167,47 +172,40 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
       data-workbench-notices
       onMouseEnter={() => setHeld(true)}
       onMouseLeave={() => setHeld(false)}
-      style={{ display: "flex", flexDirection: "column", gap: 8 }}
+      className="flex flex-col gap-s2"
     >
       {shown.map((n) => (
-        <div
+        <Toast
           key={n.id}
           role={n.role}
           data-notice={n.id}
           /*
-            `float` — 이 묶음은 문서 흐름이 아니라 좌측 영역 위에 떠 있다 (2026-09-09 ·
-            `Workbench` 의 알림 층). 형태는 정본이 갖는다 (`tokens.css` 의 `.notice.float`).
+            이 묶음은 문서 흐름이 아니라 좌측 영역 위에 떠 있다 (2026-09-09 ·
+            `Workbench` 의 알림 층). 그래서 흐름 안의 `Notice` 가 아니라 `Toast` 다 —
+            높이를 못 박지 않고 최소 높이만 지키므로 여러 줄 알림이 잘리지 않는다.
           */
-          className={`notice float ${TONE[n.tone]}`.trimEnd()}
-          style={{
-            flex: "0 0 auto",
-            height: "auto",
-            minHeight: "var(--h-notice)",
-            alignItems: "flex-start",
-            padding: "8px 16px",
-            gap: 12,
-          }}
+          tone={TONE[n.tone]}
+          layout="gap-s3"
         >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="strong-sm">{n.message}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-sans text-[13px] font-semibold leading-none">{n.message}</div>
             {/*
               `nextAction` 이 별도 줄인 이유는 003 EC-004 다 — 문장에 뭉개면 "대상 앱에
               연결할 수 없습니다" 뒤에 와야 하는 "떠 있는지 확인하세요" 가 사라진다.
             */}
             {n.nextAction !== null && (
-              <div className="why" style={{ marginTop: 4 }}>
+              <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
                 {n.nextAction}
               </div>
             )}
           </div>
           {n.action !== null && (
-            <button
-              className="btn sm"
+            <Button
+              size="sm"
               data-notice-action={n.action.actionId}
-              onClick={() => onAct?.(n.action!.actionId)}
-            >
+              onClick={() => onAct?.(n.action!.actionId)} >
               {n.action.label || ACTION_LABEL[n.action.actionId]}
-            </button>
+            </Button>
           )}
           {/*
             **닫기는 모든 알림에 있다** (2026-09-09).
@@ -222,17 +220,16 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
             전에도 지울 수 있는가)기보다, 지우는 순간 **바깥 상태까지 비울 대상**인지를
             구별한다. 그 판정은 `onDismiss` 를 받는 화면이 이미 갖고 있다.
           */}
-          <button
-            className="btn sm quiet"
+          <Button
+            size="sm" variant="quiet"
             aria-label="알림 닫기"
             onClick={() => {
               setHidden((prev) => new Set(prev).add(fingerprint(n)));
               onDismiss?.(n.id);
-            }}
-          >
+            }} >
             닫기
-          </button>
-        </div>
+          </Button>
+        </Toast>
       ))}
     </div>
   );

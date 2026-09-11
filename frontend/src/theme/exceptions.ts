@@ -66,6 +66,69 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
       "덮는 확인 판이다 — 덮는 면적이 클수록 짙게 한다.",
     requirement: "DC-009 · FR-266",
   },
+  {
+    file: "frontend/src/pages/TestList.tsx",
+    pattern:
+      "^(gridTemplateColumns|position|top|left|zIndex|visibility|display|flexDirection|gap|padding|width|minWidth|height|minHeight|paddingTop|paddingBottom)$",
+    axis: "inline-style",
+    reason:
+      "세 자리가 **렌더 시점에야 값이 정해진다.** (1) 행 메뉴는 누른 행의 화면 좌표에 " +
+      "맞춰 뜬다 — `menuPos` 는 `getBoundingClientRect()` 로 잰 값이고, 자리를 재기 " +
+      "전에는 그리지 않는다(그리면 왼쪽 위에서 제자리로 튄다). (2) 표 머리와 행의 " +
+      "격자 열은 **같은 상수**를 써야 하고(FR-273 · V-08) 두 곳에 적으면 어긋난다 — " +
+      "값을 복제하지 않으려고 상수 참조를 남긴다. (3) 행은 이름 변경·삭제 확인이 " +
+      "**안에서 펼쳐질 때만** 높이를 늘린다 — 펼침 여부는 렌더 시점의 상태다.",
+    requirement: "015 FR-005 · FR-273 · 013 UC-013-01",
+  },
+  {
+    file: "frontend/src/components/workbench/ActionPalette.tsx",
+    pattern: "^(minHeight|height)$",
+    axis: "inline-style",
+    reason:
+      "공통 입력 속성(`common.style`)을 펼친 위에 높이만 덧쓴다. 여러 줄 입력은 48px, " +
+      "한 줄은 40px 이며 나머지 속성은 `common` 이 정한다. 펼침(`...common.style`)을 " +
+      "클래스로 바꾸려면 `common` 을 쓰는 모든 자리를 함께 옮겨야 하고, 그것은 이 " +
+      "기능의 범위를 넘는 구조 변경이다.",
+    requirement: "015 FR-005",
+  },
+  {
+    file: "frontend/src/components/design/Chrome.tsx",
+    pattern: "^(width|minWidth|height|minHeight|display|flexDirection)$",
+    axis: "inline-style",
+    reason:
+      "아트보드 껍데기의 크기는 **호출부가 정한다** — 화면마다 기준 폭이 다르고 " +
+      "(1000·1440), 늘어나는지(`grow`)·화면 높이를 채우는지(`fill`)도 호출부의 " +
+      "판단이다. `width={1440} grow` 처럼 값이 props 로 들어오므로 Tailwind 가 " +
+      "스캔할 수 있는 정적 클래스로 만들 수 없다. 값을 지어내는 것이 아니라 받아서 " +
+      "쓰는 자리라 FR-003 과도 어긋나지 않는다.",
+    requirement: "015 FR-005 · 007 FR-218a",
+  },
+  {
+    file: "frontend/src/components/MirrorView.tsx",
+    pattern: "^outline-none$",
+    axis: "class-name",
+    reason:
+      "한글 입력을 받는 **보이지 않는** 칸이다 (정본 `.ime-capture`). 미러 위에 겹쳐 " +
+      "`opacity:0` · `pointer-events:none` 으로 놓이며, 클릭·끌기·휠은 그대로 뒤의 " +
+      "화면으로 간다. 초점은 이 칸이 받지만 **사용자가 보는 초점 자리는 미러 자체**이고, " +
+      "여기에 링을 그리면 화면 전체를 두르는 사각형이 뜬다 — 어디에 있는지를 알려주는 " +
+      "것이 아니라 가리는 표시가 된다. 정본이 `outline:none` 으로 정한 것을 그대로 " +
+      "옮긴 것이며, 015 가 새로 지운 것이 아니다.",
+    requirement: "015 FR-010 · SC-008",
+  },
+  {
+    file: "frontend/src/components/workbench/PhaseBar.tsx",
+    pattern: "^focus:outline-none$",
+    axis: "class-name",
+    reason:
+      "국면 띠의 테스트 이름 칸이다. **초점 표시를 지우는 것이 아니라 바꾼다** — " +
+      "정본 `input.phase-name:focus` 가 `outline:none` 과 함께 `border-color:var(--hair-2)` " +
+      "와 `background:var(--panel)` 를 준다. 평소에는 테두리가 투명해 제목처럼 보이다가 " +
+      "초점을 받으면 테두리와 바탕이 드러나 **입력 가능한 칸임이 나타난다.** 링을 " +
+      "겹쳐 그리면 띠 높이(48px) 안에서 2px 링이 위아래로 잘린다. " +
+      "015 는 이 형태를 옮길 뿐 새로 정하지 않는다 (FR-008).",
+    requirement: "015 FR-008 · SC-008 · 007 FR-219",
+  },
 ];
 
 /** `reason` 이 비어 있으면 등록이 아니다 (EX-1). 가드와 이 모듈 양쪽이 쓴다. */

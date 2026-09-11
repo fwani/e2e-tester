@@ -9,6 +9,8 @@
  * 것" 처럼 읽힌다.
  */
 
+import { Button } from "../ui/Button";
+
 export interface SessionLostBannerProps {
   reason: string;
   /** 보존된 Step 수. 0이면 저장할 것이 없다. */
@@ -32,24 +34,23 @@ export function SessionLostBanner({
   return (
     <div
       role="alert"
-      className="tint-fail"
-      style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
+      className="bg-fail-t border border-fail-line rounded-base p-[14px] flex flex-col gap-[10px]"
     >
-      <div className="row" style={{ gap: 8 }}>
-        <strong className="strong-sm fail-ink">브라우저 세션이 유실됐습니다</strong>
-        <span className="spacer" />
+      <div className="flex items-center gap-s2">
+        <strong className="font-sans text-[13px] font-semibold leading-none text-fail">브라우저 세션이 유실됐습니다</strong>
+        <span className="flex-1" />
         {onClose && (
-          <button className="btn sm quiet" onClick={onClose}>
+          <Button size="sm" variant="quiet" onClick={onClose}>
             닫기
-          </button>
+          </Button>
         )}
       </div>
 
-      <p className="line" style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+      <p className="font-sans text-[13px] leading-[1.4] font-normal m-0 whitespace-pre-wrap">
         {reason}
       </p>
 
-      <p className="line" style={{ margin: 0 }}>
+      <p className="font-sans text-[13px] leading-[1.4] font-normal m-0">
         {hasSteps ? (
           <>
             기록된 Step <strong>{stepCount}개</strong>는 보존됐습니다. 저장하거나 처음부터
@@ -60,20 +61,20 @@ export function SessionLostBanner({
         )}
       </p>
 
-      <p className="why" style={{ margin: 0 }}>
+      <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
         이어서 실행과 Step 편집은 브라우저가 없어 할 수 없습니다.
       </p>
 
-      <div className="row" style={{ gap: 8 }}>
+      <div className="flex items-center gap-s2">
         {hasSteps && onSave && (
           <button disabled={busy} onClick={onSave}>
             지금까지 저장
           </button>
         )}
         {onRunFromStart && (
-          <button className="secondary" disabled={busy} onClick={onRunFromStart}>
+          <Button disabled={busy} onClick={onRunFromStart}>
             처음부터 실행
-          </button>
+          </Button>
         )}
       </div>
     </div>

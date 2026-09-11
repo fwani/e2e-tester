@@ -34,6 +34,7 @@ import { sessionProps } from "./helpers/session";
 import { definitionView, runResult, sessionView } from "./helpers/workbench";
 import type { SessionState } from "../src/api/client";
 
+import { minWidthIsZero } from "./helpers/style";
 /** 011 이 국면 띠로 옮긴 셋 (011 계약 §1 · 007 계약 §2-7). */
 const MOVED_TO_PHASE_BAR: ActionId[] = ["save", "edits.revert", "test.rename"];
 
@@ -216,10 +217,11 @@ describe("UC-011-3 — 국면 띠는 조작이 늘어도 줄어들 수 있다", 
     await renderPhase("paused");
     const nameSlot = document.querySelector("[data-phase-test-name]") as HTMLElement | null;
     expect(nameSlot).not.toBeNull();
-    // 브라우저·jsdom 이 `0` 과 `0px` 을 다르게 정규화한다 — 값으로 잰다.
+    // 015 — 배치가 유틸리티로 옮겨졌다. `helpers/style.ts` 가 두 표기를 함께 읽는다.
+    // 묻는 것은 그대로다: 이름 자리가 내용 폭 밑으로 줄어들 수 있는가.
     expect(
-      parseFloat(nameSlot!.style.minWidth || "NaN"),
+      minWidthIsZero(nameSlot!),
       "이름 자리에 minWidth: 0 이 없다",
-    ).toBe(0);
+    ).toBe(true);
   });
 });

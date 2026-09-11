@@ -158,11 +158,11 @@ export function ResultView({
   */
   if (result === null) {
     return (
-      <main style={{ padding: 32 }}>
+      <main className="p-s6">
         {error !== null ? (
           <ErrorNotice error={error} />
         ) : (
-          <p className="why">결과를 불러오는 중…</p>
+          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">결과를 불러오는 중…</p>
         )}
       </main>
     );
@@ -569,16 +569,16 @@ function artifactBody({
 }) {
   if (artifactError !== null) {
     return (
-      <p className="line fail-ink">{artifactError.message}</p>
+      <p className="font-sans text-[13px] leading-[1.4] font-normal text-fail">{artifactError.message}</p>
     );
   }
-  if (artifact === null) return <p className="why">불러오는 중…</p>;
+  if (artifact === null) return <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">불러오는 중…</p>;
   if (tab === "screenshot" && artifact.src !== undefined) {
     return (
       <img
         src={artifact.src}
         alt={`${stepLabel(failedIndex)} 실패 시점`}
-        style={{ width: "100%", height: "auto", display: "block" }}
+        className="w-full h-auto block"
         // 깨진 이미지 아이콘을 남기지 않는다 — 무엇이 없는지 말한다.
         onError={onImageError}
       />
@@ -587,8 +587,7 @@ function artifactBody({
   return (
     <pre
       data-artifact-text
-      className="log"
-      style={{ margin: 0 }}
+      className="font-mono text-[12px] leading-[1.6] font-normal whitespace-pre-wrap m-0"
     >
       {artifact.text === "" || artifact.text === undefined
         ? emptyArtifactMessage(tab)

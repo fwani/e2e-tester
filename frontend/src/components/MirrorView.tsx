@@ -44,6 +44,8 @@ import {
   wheelEventOf,
 } from "./mirror/useMirrorInput";
 
+import { Button } from "../ui/Button";
+import { Chip } from "../ui/Chip";
 /**
  * 미리보기의 국면 (005 재점검 U-04-b).
  *
@@ -65,9 +67,7 @@ export interface MirrorViewProps {
   degradedReason?: string | null;
   /** 현재 표시 중인 탭. 여러 탭일 때 무엇을 보고 있는지 알려 준다 (FR-030f). */
   tabIndex?: number;
-
   /* ─── 010 미러 조작 ─────────────────────────────────────────────────── */
-
   /**
    * 「미러에서 조작하기」의 권한표 판정 (FR-316).
    *
@@ -139,7 +139,6 @@ export function MirrorView({
   const imeRef = useRef<HTMLTextAreaElement | null>(null);
   /** 미러가 지금 키 입력을 받는가 (FR-320). 화면이 그 사실을 말해야 한다 */
   const [focused, setFocused] = useState(false);
-
   /**
    * 미러가 초점을 가져간다 (FR-320). **조합 요소로 준다** — 그래야 IME 가 붙는다.
    *
@@ -150,7 +149,6 @@ export function MirrorView({
     if (imeRef.current !== null) imeRef.current.focus({ preventScroll: true });
     else surfaceEl?.focus({ preventScroll: true });
   };
-
   /**
    * 조합 요소를 비운다. 확정된 글자는 **대상 브라우저**에 들어갔고 여기 남을 이유가 없다.
    *
@@ -160,7 +158,6 @@ export function MirrorView({
   const clearIme = () => {
     if (imeRef.current !== null) imeRef.current.value = "";
   };
-
   /**
    * 조작을 받는가. **표가 정한다** (FR-316).
    *
@@ -168,7 +165,6 @@ export function MirrorView({
    * 이므로 역시 받지 않는다.
    */
   const controllable = control?.kind === "enabled" && surface === "mirror" && frame !== null;
-
   /** 왜 지금 조작할 수 없는가. 표가 이유를 갖고 있으면 그것을 쓴다 (SC-516). */
   const blockedReason =
     control === undefined
@@ -185,7 +181,6 @@ export function MirrorView({
     if (event === null || onInput === undefined) return;
     onInput(event);
   };
-
   /** `ImeBridge` 에 넘길 통로. 참조가 매번 바뀌면 브리지가 매번 다시 붙는다. */
   const emitStable = useCallback(
     (event: InputEvent) => onInput?.(event),
@@ -193,7 +188,6 @@ export function MirrorView({
   );
 
   const context = { imageRef, frame: geometry, tab: tabIndex ?? 0 };
-
   /**
    * 조작을 받지 않는 상태에서의 클릭. **조용히 버리지 않는다** (SC-516 · FR-315).
    *
@@ -230,7 +224,6 @@ export function MirrorView({
     releaseCapture(event);
     emit(pointerEventOf("pointer.up", nativeOf(event), context));
   };
-
   /**
    * 브라우저가 포인터를 거둬 갔다 (010 T089 · FR-318).
    *
@@ -279,7 +272,6 @@ export function MirrorView({
       ),
     );
   };
-
   /**
    * 키 입력 (FR-320 · T042).
    *
@@ -311,7 +303,7 @@ export function MirrorView({
       잘린다. 잘리는 것과 줄어드는 것은 사용자에게 다르게 보이고, 잘리면 대상 화면의
       오른쪽이 조용히 사라진다.
     */
-    <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, flex: 1 }}>
+    <div className="flex flex-col min-h-0 min-w-0 flex-1">
       {/*
         FR-325~FR-327 — 한글 조합을 대상 브라우저로 옮긴다. 아무것도 그리지 않는다.
         조합의 주인은 미러 영역 자체이고, 이 컴포넌트는 그 영역의 조합 사건을 채널로
@@ -326,16 +318,16 @@ export function MirrorView({
       <PhaseNotice phase={phase} tabIndex={tabIndex} surface={surface} />
 
       {degradedReason !== null && (
-        <div className="row sunken" style={{ gap: 8, padding: "6px 14px" }}>
-          <span className="chip warn mono">1 FPS</span>
-          <span className="muted">{degradedReason}</span>
+        <div className="flex items-center bg-sunken-2 gap-s2 py-[6px] px-[14px]">
+          <Chip tone="warn">1 FPS</Chip>
+          <span className="text-ink-2">{degradedReason}</span>
           {/*
             FR-345 — **왜 그것이 조작에 문제인지**를 말한다. 강등 사유(`degradedReason`)는
             서버가 보낸 「무엇이 일어났는가」이고, 이 문장은 「그것이 지금 조작에 어떤
             뜻인가」다. 둘은 다른 사실이며, 뒤엣것이 없으면 사용자는 1 FPS 라는 말을 읽고도
             자기 클릭이 왜 빗나갔는지 알 수 없다.
           */}
-          {controllable && <span className="why">{MIRROR_DEGRADED_WARNING}</span>}
+          {controllable && <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{MIRROR_DEGRADED_WARNING}</span>}
           {/*
             FR-345·FR-353a — 강등 상태에서 **조작은 막지 않되** 정확하지 않을 수 있다는
             사실과 전환 수단을 **같은 자리에** 둔다. 사실만 말하고 수단을 다른 곳에 두면
@@ -352,11 +344,10 @@ export function MirrorView({
       )}
 
       <div
-        className="sunken"
-        style={{ flex: 1, display: "grid", placeItems: "center", overflow: "hidden", minHeight: 0 }}
+        className="bg-sunken-2 flex-1 grid place-items-center overflow-hidden min-h-0"
       >
         {stoppedReason !== null ? (
-          <p className="muted" style={{ textAlign: "center", padding: 24 }}>
+          <p className="text-ink-2 text-center p-s5">
             {stoppedReason}
           </p>
         ) : frame !== null ? (
@@ -383,7 +374,7 @@ export function MirrorView({
             data-key-target={controllable && focused ? "mirror" : "product"}
             aria-disabled={controllable ? undefined : "true"}
             tabIndex={controllable ? 0 : -1}
-            className={controllable ? "tint-run" : undefined}
+            className={`${controllable ? "bg-run-t border border-run rounded-base" : undefined} gap-s2 py-[10px] px-[14px]`}
             onKeyDown={(event) => onKey(event, "key.down")}
             onKeyUp={(event) => onKey(event, "key.up")}
             /*
@@ -402,13 +393,6 @@ export function MirrorView({
               const next = event.relatedTarget as Node | null;
               if (next !== null && event.currentTarget.contains(next)) return;
               setFocused(false);
-            }}
-            style={{
-              position: "relative",
-              display: "grid",
-              placeItems: "center",
-              maxWidth: "100%",
-              maxHeight: "100%",
             }}
           >
             {/*
@@ -440,7 +424,7 @@ export function MirrorView({
                 보이지 않고 포인터도 받지 않는다 — 클릭·끌기·휠은 그대로 화면(`<img>`)
                 으로 간다. 형태는 정본의 `.ime-capture` 가 갖는다 (C-7).
               */
-              className="ime-capture"
+              className="absolute inset-0 w-full h-full p-0 m-0 opacity-0 border-none outline-none resize-none overflow-hidden pointer-events-none caret-transparent"
             />
             <img
               ref={imageRef}
@@ -460,13 +444,7 @@ export function MirrorView({
                 클릭이 이 컴포넌트에 닿지 않고, 사용자는 왜 안 되는지 들을 자리가 없다.
                 전달하지 않는 것과 이유를 말하지 않는 것은 다르다.
               */
-              style={{
-                maxWidth: "100%",
-                maxHeight: "100%",
-                pointerEvents: "auto",
-                userSelect: "none",
-                cursor: controllable ? "default" : "not-allowed",
-              }}
+              className={`max-w-full max-h-full pointer-events-auto select-none ${controllable ? "cursor-default" : "cursor-not-allowed"}`}
               draggable={false}
               onPointerDown={onPointerDown}
               onPointerUp={onPointerUp}
@@ -481,16 +459,16 @@ export function MirrorView({
             data-action="mirror.control"
             data-controllable="false"
             aria-disabled="true"
-            style={{ padding: 24 }}
+            className="p-s5"
           >
-            <p className="muted" style={{ textAlign: "center" }}>
+            <p className="text-ink-2 text-center">
               {mirrorEmptyMessage(phase, surface)}
             </p>
           </div>
         )}
       </div>
 
-      <div className="row" style={{ gap: 8, padding: "6px 14px" }}>
+      <div className="flex items-center gap-s2 py-[6px] px-[14px]">
         {/*
           FR-234·SC-516 — **조작을 받지 않는 모든 상태에서 이유가 같은 자리에 있다.**
 
@@ -500,12 +478,12 @@ export function MirrorView({
           `blockedReason` 이 그 네 경우를 한 문장으로 모은다.
         */}
         {!controllable && (
-          <span className="why" data-disabled-reason="mirror.control">
+          <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" data-disabled-reason="mirror.control">
             {blockedReason}
           </span>
         )}
         {controllable && (
-          <span className="muted">
+          <span className="text-ink-2">
             {focused ? MIRROR_KEYS_GO_TO_TARGET : MIRROR_FOCUS_HINT}
           </span>
         )}
@@ -516,7 +494,6 @@ export function MirrorView({
     </div>
   );
 }
-
 /**
  * 「실제 창에서 조작하기」 (FR-349·FR-353 · US5).
  *
@@ -544,25 +521,24 @@ function UseWindowAction({
   if (capability.kind === "disabled" && capability.visibility === "hide") return null;
   const disabled = capability.kind === "disabled";
   return (
-    <span className="row" style={{ gap: 6 }}>
-      <button
+ <span className="flex items-center gap-[6px]">
+      <Button
         type="button"
         data-action="mirror.useWindow"
-        className={`btn ${compact ? "sm" : ""}`.trimEnd()}
+        size={compact ? "sm" : "md"}
         disabled={disabled}
         onClick={disabled ? undefined : onUseWindow}
       >
         실제 창에서 조작하기
-      </button>
+      </Button>
       {disabled && (
-        <span className="why" data-disabled-reason="mirror.useWindow">
+        <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" data-disabled-reason="mirror.useWindow">
           {capability.reason}
         </span>
       )}
     </span>
   );
 }
-
 /** 국면별 안내. 어디서 조작해야 하는지를 매번 분명히 한다 (FR-023b · FR-350). */
 function PhaseNotice({
   phase,
@@ -582,18 +558,17 @@ function PhaseNotice({
 
   return (
     <div
-      className={`row${phase === "manipulation" ? " tint-warn" : ""}`}
-      style={{ gap: 8, padding: "10px 14px" }}
+      className={`flex items-center gap-s2${phase === "manipulation" ? " bg-warn-t border border-warn-line rounded-base" : ""} relative grid place-items-center max-w-full max-h-full`}
     >
       {asBadge ? (
-        <span className="chip mono">{notice.title}</span>
+        <Chip>{notice.title}</Chip>
       ) : (
         <strong>
           {notice.title}
           {tabSuffix}
         </strong>
       )}
-      <span className="muted">
+      <span className="text-ink-2">
         {notice.detail}
         {asBadge ? `${tabSuffix}.` : ""}
       </span>
@@ -612,6 +587,5 @@ function nativeOf(event: PointerEvent<HTMLImageElement>) {
     shiftKey: event.shiftKey,
   };
 }
-
 /** 버튼 이름 변환을 재수출한다 — 검증이 같은 규칙을 쓴다. */
 export { buttonNameOf };

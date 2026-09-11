@@ -2,6 +2,9 @@ import { useState } from "react";
 
 import type { GroupSummary } from "../api/client";
 
+import { Button, navLinkClasses } from "../ui/Button";
+import { chipClasses } from "../ui/Chip";
+
 /**
  * 목록 위 그룹 띠 (013 FR-440·FR-441 · UC-013-06).
  *
@@ -36,8 +39,8 @@ export function TestGroupBar({
   const realGroups = groups.filter((g) => g.prefix !== "TC");
   if (realGroups.length === 0 && !adding) {
     return (
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-        <button className="navlink" onClick={() => setAdding(true)} disabled={busy}>
+      <div className="flex justify-end mb-s2">
+        <button className={navLinkClasses()} onClick={() => setAdding(true)} disabled={busy}>
           + 그룹
         </button>
       </div>
@@ -51,10 +54,18 @@ export function TestGroupBar({
       data-test-group-bar
       role="group"
       aria-label="그룹으로 거르기"
-      style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}
+      className="flex items-center gap-s2 mb-s2 flex-wrap"
     >
+      {/*
+        **`sel` 을 떼었다 (015 T073).** 정본에 `.chip.sel` 규칙이 없다 — `.sel` 은
+        `.srow.sel`·`.trow.sel` 로만 정의돼 있어, 이 자리에서는 **전환 전에도 아무
+        일도 하지 않았다.** 고른 그룹이 시각적으로 구별되지 않는 상태이며, 지금
+        그것을 말하는 것은 `aria-pressed` 뿐이다.
+        시각 동일성이 요건이므로(FR-008) 여기서 모양을 새로 만들지 않는다 —
+        고칠 일이라면 별도 판단이 필요하다.
+      */}
       <button
-        className={active === null ? "chip sel" : "chip"}
+        className={chipClasses()}
         aria-pressed={active === null}
         onClick={() => onPick(null)}
         disabled={busy}
@@ -64,7 +75,7 @@ export function TestGroupBar({
       {groups.map((g) => (
         <button
           key={g.prefix}
-          className={active === g.prefix ? "chip sel" : "chip"}
+          className={chipClasses()}
           aria-pressed={active === g.prefix}
           data-group-chip={g.prefix}
           onClick={() => onPick(g.prefix)}
@@ -87,7 +98,7 @@ export function TestGroupBar({
         groups.some((g) => g.prefix === active && g.name !== null) && (
           <>
             <button
-              className="navlink"
+              className={navLinkClasses()}
               disabled={busy}
               onClick={() =>
                 setEditing({
@@ -99,7 +110,7 @@ export function TestGroupBar({
               이름 바꾸기
             </button>
             <button
-              className="navlink"
+              className={navLinkClasses()}
               disabled={busy}
               onClick={() =>
                 setRemoving(groups.find((g) => g.prefix === active) ?? null)
@@ -124,10 +135,10 @@ export function TestGroupBar({
             if (e.key === "Escape") setEditing(null);
           }}
           onBlur={() => setEditing(null)}
-          style={{ margin: 0, width: 180 }}
+          className="m-0 w-[180px]"
         />
       )}
-      <div className="spacer" />
+      <div className="flex-1" />
       {removing !== null && (
         <ConfirmDisband
           group={removing}
@@ -149,7 +160,7 @@ export function TestGroupBar({
           }}
         />
       ) : (
-        <button className="navlink" onClick={() => setAdding(true)} disabled={busy}>
+        <button className={navLinkClasses()} onClick={() => setAdding(true)} disabled={busy}>
           + 그룹
         </button>
       )}
@@ -184,7 +195,7 @@ function NewGroupForm({
   const ready = name.trim() !== "" && prefixOk;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+    <div className="flex items-center gap-[6px] flex-wrap">
       <input
         aria-label="그룹 이름"
         placeholder="사용자관리 테스트"
@@ -192,7 +203,7 @@ function NewGroupForm({
         autoFocus
         disabled={busy}
         onChange={(e) => setName(e.target.value)}
-        style={{ margin: 0, width: 180 }}
+        className="m-0 w-[180px]"
       />
       <input
         aria-label="그룹 접두어"
@@ -200,24 +211,23 @@ function NewGroupForm({
         value={prefix}
         disabled={busy}
         onChange={(e) => setPrefix(e.target.value)}
-        style={{ margin: 0, width: 90 }}
+        className="m-0 w-[90px]"
       />
-      <span className="why">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
+      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
       {prefix.trim() !== "" && !prefixOk && (
-        <span className="line fail-ink">
+        <span className="font-sans text-[13px] leading-[1.4] font-normal text-fail">
           {cleanPrefix === "TC"
             ? "TC 는 그룹 없는 테스트가 씁니다."
             : "영문 대문자·숫자 1~8자, 첫 글자는 영문입니다."}
         </span>
       )}
-      <button
-        className="btn sm"
+      <Button
+        size="sm"
         disabled={busy || !ready}
-        onClick={() => onSubmit(cleanPrefix, name.trim())}
-      >
+        onClick={() => onSubmit(cleanPrefix, name.trim())} >
         만들기
-      </button>
-      <button className="navlink" onClick={onCancel} disabled={busy}>
+      </Button>
+      <button className={navLinkClasses()} onClick={onCancel} disabled={busy}>
         취소
       </button>
     </div>
@@ -250,19 +260,18 @@ function ConfirmDisband({
     <span
       data-group-disband-confirm
       role="status"
-      className="tint-warn line"
-      style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 8px" }}
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal inline-flex items-center gap-s2 py-s1 px-s2"
     >
-      <span className="strong-sm">
+      <span className="font-sans text-[13px] font-semibold leading-none">
         「{group.name ?? group.prefix}」을(를) 없앨까요? 테스트 {group.count}개가 그룹 없음으로
         돌아가고 식별자가 TC-### 로 바뀝니다 · 지워지지 않습니다
       </span>
-      <button className="btn sm" onClick={onCancel} disabled={busy} autoFocus>
+      <Button size="sm" onClick={onCancel} disabled={busy} autoFocus>
         돌아가기
-      </button>
-      <button className="btn sm danger" onClick={onConfirm} disabled={busy}>
+      </Button>
+      <Button size="sm" variant="danger" onClick={onConfirm} disabled={busy}>
         없애기
-      </button>
+      </Button>
     </span>
   );
 }

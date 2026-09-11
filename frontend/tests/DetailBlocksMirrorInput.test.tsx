@@ -61,31 +61,48 @@ describe("UC-011-9 — 상세 층이 그 아래 미러를 가로막는다", () =
       **`left` 가 있어야 한다.** 없으면 절대 배치 상자가 내용 폭으로 줄어들고, 판 옆의
       빈 자리에서 클릭이 미러에 닿는다 — 보이지 않는 곳을 조작하게 된다.
     */
-    expect(el.style.left, "층이 왼쪽 끝까지 덮지 않는다").toBe("0px");
-    expect(el.style.right).toBe(`${STEP_PANEL_WIDTH}px`);
-    expect(el.style.top).toBe("0px");
-    expect(el.style.bottom).toBe("0px");
+    // 015 T030 — 배치가 클래스로 바뀌었다. **묻는 것은 그대로다**: 층이 Step 목록을
+    // 덮지 않고 그 왼쪽까지만 오는가. `right-steps` 는 `--w-steps`(= STEP_PANEL_WIDTH)다.
+    expect(el.className, "층이 왼쪽 끝까지 덮지 않는다").toContain("left-0");
+    expect(el.className, "층이 Step 목록을 덮는다").toContain("right-steps");
+    expect(el.className).toContain("top-0");
+    expect(el.className).toContain("bottom-0");
+    // 클래스 이름이 실제로 그 폭을 그리는지는 정본 토큰이 보증한다 — 값이 어긋나면
+    // L1 대조가 잡는다. 여기서 다시 재면 같은 값을 두 곳에 적는 것이 된다.
+    expect(STEP_PANEL_WIDTH, "STEP_PANEL_WIDTH 가 --w-steps 와 어긋났다").toBe(460);
   });
 
   it("층이 포인터를 통과시키지 않는다", async () => {
     await renderWithDetail(true);
     const el = layer()!;
+    // 015 T030 — 클래스로 바뀌었다. 묻는 것은 그대로: 층이 클릭을 받는가.
     expect(
-      el.style.pointerEvents,
-      "`pointerEvents: none` 이면 클릭이 그대로 미러에 닿는다",
-    ).not.toBe("none");
+      el.className,
+      "`pointer-events-none` 이면 클릭이 그대로 미러에 닿는다",
+    ).not.toContain("pointer-events-none");
   });
 
   it("층이 미러보다 위에 있다", async () => {
     await renderWithDetail(true);
     const el = layer()!;
+    // 015 T030 — `z-20` 클래스로 바뀌었다. 묻는 것은 그대로: 층이 미러보다 위인가.
     const z = Number.parseInt(el.style.zIndex || "0", 10);
-    expect(z, "겹침 층에 z-index 가 없다").toBeGreaterThan(0);
+    const zClass = /\bz-\[?(\d+)\]?\b/.exec(el.className);
+    const zValue = z > 0 ? z : Number.parseInt(zClass?.[1] ?? "0", 10);
+    expect(zValue, "겹침 층에 z-index 가 없다").toBeGreaterThan(0);
   });
 
   it("가려진 영역이 눈으로도 가려진 것으로 보인다", async () => {
     await renderWithDetail(true);
-    // `.scrim` 이 반투명 잉크를 깐다 — 아래가 조작 대상이 아니라는 것을 색으로도 말한다.
-    expect(layer()!.classList.contains("scrim")).toBe(true);
+    // 반투명 잉크가 깔린다 — 아래가 조작 대상이 아니라는 것을 색으로도 말한다.
+    // 015 T030 — `.scrim` 이 `ui/Surface` 의 `Scrim` 부품이 됐다. 클래스 이름 대신
+    // 부품이 내보내는 `data-strength` 를 읽는다 (LC-4 ②).
+    const el = layer()!;
+    // 농도까지 묻는다. 겹침(640px)은 `soft`, 화면 전체를 덮는 확인 판은 `strong` 이다 —
+    // 덮는 면적이 클수록 짙게 한다는 것이 정본의 판단이다 (DC-009).
+    expect(
+      el.dataset.strength ?? (el.classList.contains("scrim") ? "soft" : "없음"),
+      "가림막이 없거나 농도가 다르다 — 아래가 조작 가능해 보인다",
+    ).toBe("soft");
   });
 });

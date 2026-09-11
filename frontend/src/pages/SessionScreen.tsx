@@ -114,6 +114,8 @@ import {
 import type { Step } from "../types/generated/step";
 import type { Outcome, StepOutcome as RunStepOutcome } from "../types/generated/run-result";
 
+import { Button } from "../ui/Button";
+
 export type { AiBlockedState } from "../components/workbench/model";
 
 /**
@@ -680,9 +682,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
    * 거치지 않았다. 같은 상태를 다른 화면이 다른 색으로 칠할 수 있는 형태였다.
    */
   const badge = (() => {
-    if (finishedWhilePausing) return { label: "실행 종료", tone: "" as const };
-    if (pausing) return { label: "일시정지 중…", tone: "" as const };
-    if (review) return { label: "SESSION ENDED", tone: "" as const };
+    if (finishedWhilePausing) return { label: "실행 종료", tone: "default" as const };
+    if (pausing) return { label: "일시정지 중…", tone: "default" as const };
+    if (review) return { label: "SESSION ENDED", tone: "default" as const };
     if (phase === "takeover") {
       return view.state === "takeover_recording"
         ? { label: "HUMAN CONTROL", tone: "fail" as const }
@@ -694,7 +696,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         : { label: "PAUSED", tone: "warn" as const };
     }
     if (manipulating) return { label: "RECORDING", tone: "fail" as const };
-    return { label: "READ ONLY", tone: "" as const };
+    return { label: "READ ONLY", tone: "default" as const };
   })();
 
   /* ─── 층③ 좌측 아래 — 국면 보조 영역 ────────────────────────────────────── */
@@ -1265,7 +1267,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
             **줄지 않는다.** 안의 버튼 넷은 `white-space: nowrap` 이라 좁아지면 줄어드는
             대신 잘린다 — 국면 띠에서 줄어드는 몫은 이유 문구가 받는다 (`ActionButton`).
           */
-          style={{ display: "inline-flex", flexDirection: "column", gap: 4, flex: "0 0 auto" }}
+          className="inline-flex flex-col gap-s1 flex-none"
         >
           <PacingControl
             value={view.pacing}
@@ -1286,7 +1288,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           {capabilities["run.pacing"].kind === "disabled" && (
             <span
               data-disabled-reason="run.pacing"
-              className="why"
+              className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
             >
               {capabilities["run.pacing"].reason}
             </span>
@@ -1335,10 +1337,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     view.saved_at != null ? (
       <div
         role="status"
-        className="tint-pass"
-        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px" }}
+        className="bg-pass-t border border-pass rounded-base flex items-center gap-[10px] py-s2 px-s3"
       >
-        <svg className="pass-ink" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
+        <svg className="text-pass" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.8">
           <path d="M3 8.5l3.5 3.5L13 4.5" />
         </svg>
         {/*
@@ -1349,12 +1350,12 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           쓸 수 있다 — 확인줄이 id 를 말하면 사용자는 방금 저장한 것이 무엇인지 그 문장
           에서 알 수 없다.
         */}
-        <span className="strong-sm">{editSavedNotice(displayName || title)}</span>
-        <div className="spacer" />
+        <span className="font-sans text-[13px] font-semibold leading-none">{editSavedNotice(displayName || title)}</span>
+        <div className="flex-1" />
         {onShowList && (
-          <button className="btn sm" onClick={onShowList} disabled={busy}>
+          <Button size="sm" onClick={onShowList} disabled={busy}>
             목록에서 보기
-          </button>
+          </Button>
         )}
       </div>
     ) : null;
@@ -2934,17 +2935,9 @@ function Modal({ label, children }: { label: string; children: ReactNode }) {
     <div
       role="dialog"
       aria-label={label}
-      className="modal-scrim"
-      style={{
-        position: "fixed",
-        inset: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 30,
-      }}
+      className="fixed inset-0 flex items-center justify-center z-[30] bg-scrim-strong"
     >
-      <div className="modal" style={{ width: 520, padding: 24 }}>
+      <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
         {children}
       </div>
     </div>
@@ -2954,12 +2947,12 @@ function Modal({ label, children }: { label: string; children: ReactNode }) {
 function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
   return (
     <Modal label="실행 화면 닫기 확인">
-      <div className="title">실행 화면을 닫습니다</div>
-      <p className="note">결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-        <button className="secondary" onClick={onCancel}>
+      <div className="font-sans text-[20px] font-bold leading-[1.3]">실행 화면을 닫습니다</div>
+      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
+      <div className="flex justify-end gap-[10px] mt-[18px]">
+        <Button onClick={onCancel}>
           돌아가기
-        </button>
+        </Button>
         <button onClick={onConfirm}>닫기</button>
       </div>
     </Modal>
@@ -3005,20 +2998,20 @@ function RerunConfirm({
   const scope = fromStepIndex === null ? "처음부터" : `${stepLabel(fromStepIndex)}부터`;
   return (
     <Modal label="저장하지 않고 다시 실행 확인">
-      <div className="title">저장하지 않은 기록이 있습니다</div>
-      <p className="note">
+      <div className="font-sans text-[20px] font-bold leading-[1.3]">저장하지 않은 기록이 있습니다</div>
+      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
         기록된 Step {stepCount}개 중 저장하지 않은 변경이 있습니다. {scope} 실행하면 지금
         세션을 버리고 <strong>저장된 정의</strong>를 재생하므로, 저장하지 않은 기록은
         사라집니다.
       </p>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-        <button className="secondary" onClick={onCancel}>
+      <div className="flex justify-end gap-[10px] mt-[18px]">
+        <Button onClick={onCancel}>
           돌아가기
-        </button>
-        <button className="danger" disabled={busy} onClick={onDiscardAndRun}>
+        </Button>
+        <Button variant="danger" disabled={busy} onClick={onDiscardAndRun}>
           버리고 실행
-        </button>
+        </Button>
         <button disabled={busy || saveName.trim() === ""} onClick={onSaveAndRun}>
           저장하고 실행
         </button>
@@ -3049,8 +3042,8 @@ function LeaveConfirm({
 }) {
   return (
     <Modal label="저장하지 않고 나가기 확인">
-      <div className="title">저장하지 않은 기록이 있습니다</div>
-      <p className="note">
+      <div className="font-sans text-[20px] font-bold leading-[1.3]">저장하지 않은 기록이 있습니다</div>
+      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
         기록된 Step {stepCount}개가 있습니다. 저장하지 않고 나가면 사라집니다.
       </p>
       {askName && (
@@ -3065,13 +3058,13 @@ function LeaveConfirm({
           />
         </>
       )}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-        <button className="secondary" onClick={onCancel}>
+      <div className="flex justify-end gap-[10px] mt-[18px]">
+        <Button onClick={onCancel}>
           돌아가기
-        </button>
-        <button className="danger" disabled={busy} onClick={onDiscard}>
+        </Button>
+        <Button variant="danger" disabled={busy} onClick={onDiscard}>
           저장하지 않고 나가기
-        </button>
+        </Button>
         <button disabled={busy || saveName.trim() === ""} onClick={onSave}>
           저장하고 나가기
         </button>

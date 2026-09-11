@@ -85,7 +85,9 @@ describe("행 메뉴는 잘라 내는 조상 밖에 있다", () => {
 
   it("메뉴 항목은 그대로 있다 — 자리를 옮긴 것이지 없앤 것이 아니다", async () => {
     const menu = await openRowMenu();
-    const labels = [...menu.querySelectorAll(".navlink")].map((b) => b.textContent);
+    // 015 — `.navlink` 가 유틸리티로 해체돼 셀렉터로 찾을 수 없다. 자리 표식을 붙였다.
+    // 자리를 찾는 일에 모양을 쓰는 것이 애초에 약한 결합이었다.
+    const labels = [...menu.querySelectorAll("[data-row-menu-item]")].map((b) => b.textContent);
     expect(labels).toEqual(["편집", "이름", "삭제"]);
   });
 

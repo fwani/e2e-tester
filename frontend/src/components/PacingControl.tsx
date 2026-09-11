@@ -10,6 +10,7 @@
  * 필요하면 `pacing_changed` 이벤트가 실어 보낸 `delay_ms` 를 쓴다.
  */
 import { PACING_LABEL, PACING_ORDER, type RunPacing } from "../api/client";
+import { Segmented } from "../ui/Table";
 
 export interface PacingControlProps {
   value: RunPacing;
@@ -49,13 +50,9 @@ export function PacingControl({
   manipulationPhase = false,
 }: PacingControlProps) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <span className="lbl">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
-      <div
-        role="group"
-        aria-label="실행 속도"
-        className="segmented"
-      >
+    <div className="flex items-center gap-s2">
+      <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
+      <Segmented role="group" aria-label="실행 속도">
         {PACING_ORDER.map((pacing) => {
           const active = pacing === value;
           return (
@@ -68,18 +65,17 @@ export function PacingControl({
               onClick={() => {
                 if (!active) onChange(pacing);
               }}
-              style={{ padding: "0 12px", cursor: busy || disabled ? "default" : "pointer" }}
+              className={`px-s3 ${busy || disabled ? "cursor-default" : "cursor-pointer"}`}
             >
               {PACING_LABEL[pacing]}
             </button>
           );
         })}
-      </div>
+      </Segmented>
       {!preferenceSaved && (
         <span
           role="status"
-          className="why warn-ink"
-          style={{ maxWidth: "180px" }}
+          className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 text-warn max-w-[180px]"
         >
           설정을 저장하지 못해 다음 실행에는 유지되지 않습니다.
         </span>

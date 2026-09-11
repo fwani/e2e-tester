@@ -12,6 +12,8 @@
  * 사용자는 지금까지 한 조작이 날아간 줄 알고 처음부터 다시 한다.
  */
 
+import { Button } from "../ui/Button";
+
 export interface LiveConnectionBannerProps {
   /** 즉시 재연결. 자동 재시도를 기다리지 않는다. */
   onReconnect?: () => void;
@@ -21,17 +23,16 @@ export function LiveConnectionBanner({ onReconnect }: LiveConnectionBannerProps)
   return (
     <div
       role="status"
-      className="tint-warn"
-      style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 12 }}
+      className="bg-warn-t border border-warn-line rounded-base py-[10px] px-s4 flex items-center gap-s3"
     >
-      <span style={{ flex: 1 }}>
+      <span className="flex-1">
         <strong>실시간 연결이 끊겼습니다.</strong> 조작한 내용은 서버에 계속 기록되고
         있습니다 — 화면만 멈춰 있습니다. 자동으로 다시 연결하는 중입니다.
       </span>
       {onReconnect && (
-        <button className="btn sm" onClick={onReconnect}>
+        <Button size="sm" onClick={onReconnect}>
           지금 다시 연결
-        </button>
+        </Button>
       )}
     </div>
   );

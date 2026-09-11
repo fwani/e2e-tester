@@ -39,6 +39,8 @@ import type { Step } from "../../types/generated/step";
 import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
 
+import { Button, navLinkClasses } from "../../ui/Button";
+import { Chip } from "../../ui/Chip";
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
   return /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(value);
@@ -47,7 +49,6 @@ function isReference(value: string): boolean {
 function hasValue(step: Step): step is Extract<Step, { value: string }> {
   return step.type === "fill" || step.type === "select";
 }
-
 /**
  * 파일 이름을 갖는 Step 인가 (2026-09-09 · `upload`).
  *
@@ -58,7 +59,6 @@ function hasValue(step: Step): step is Extract<Step, { value: string }> {
 function hasFileName(step: Step): step is Extract<Step, { file_name: string }> {
   return step.type === "upload";
 }
-
 /** 저장된 정의 그대로의 미리보기 (FR-016). 파일 내용과 일치해야 한다. */
 function dslPreview(step: Step): string {
   return JSON.stringify(step, null, 2);
@@ -146,7 +146,6 @@ export function StepDetail({
   const [sensitive, setSensitive] = useState(false);
   const [showDsl, setShowDsl] = useState(false);
   const [secretOpen, setSecretOpen] = useState(false);
-
   // 다른 Step 을 고르면 입력값을 그 Step 기준으로 다시 잡는다.
   useEffect(() => {
     setLabel(step?.label ?? "");
@@ -175,24 +174,11 @@ export function StepDetail({
       */
       role="dialog"
       aria-label="Step 상세"
-      className="overlay-pane"
-      style={{
-        // 우측 640px 고정 — 모든 국면에서 같다 (FR-230).
-        width: "640px",
-        display: "flex",
-        flexDirection: "column",
-        overflowY: "auto",
-      }}
+      // `w-detail` 은 `--w-detail`(640px) — 우측 고정 폭이며 모든 국면에서 같다 (FR-230).
+      className="bg-panel border-l border-hair-2 shadow-e2 w-detail flex flex-col overflow-y-auto"
     >
       <div
-        className="pane-hd"
-        style={{
-          flex: "0 0 44px",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "0 16px",
-        }}
+        className="bg-sunken border-b border-hair-2 text-ink-2 flex-[0_0_44px] flex items-center gap-s3 py-0 px-s4"
       >
         {/*
           머리 띠 문구는 두 배치에서 같다. 「STEP nn 편집」처럼 배치마다 다르게 쓰면
@@ -200,10 +186,9 @@ export function StepDetail({
           (WorkbenchShell.test.tsx — 「배치는 껍데기만 바꾼다」). 번호와 종류는 바로
           아래 줄이 이미 말한다.
         */}
-        <div className="lbl">STEP 상세</div>
-        <div className="spacer" />
-        <button
-          /*
+        <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">STEP 상세</div>
+        <div className="flex-1" />
+        <Button /*
             011 UC-011-10 — 닫는 조작은 **상세 안에** 있고 모든 국면에서 같은 자리다.
             표식을 두는 이유: 011 이 상세를 대상 앱 위로 옮겼으므로, 닫을 방법이 판 안에
             있다는 것이 검사로 세져야 한다. 겹침이 미러를 덮은 채 닫을 수 없으면 사용자는
@@ -211,31 +196,30 @@ export function StepDetail({
           */
           data-detail-close
           aria-label="닫기"
-          className="btn sm quiet"
+          size="icon" variant="quiet"
           onClick={onClose}
-          style={{ padding: "0 7px" }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M4 4l8 8M12 4l-8 8" />
           </svg>
-        </button>
+        </Button>
       </div>
 
-      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div className="num">{stepNumber(detail.index)}</div>
+      <div className="p-s4 flex flex-col gap-s4">
+        <div className="flex flex-col gap-[10px]">
+          <div className="flex items-center gap-[10px]">
+            <div className="font-mono text-[12px] leading-none font-normal text-ink-3">{stepNumber(detail.index)}</div>
             {step !== null && (
               <>
-                <span className="chip">{step.type.toUpperCase()}</span>
-                <span className={step.author === "ai" ? "chip ai" : "chip"}>
+                <Chip>{step.type.toUpperCase()}</Chip>
+                <Chip tone={step.author === "ai" ? "ai" : "default"} layout="py-s2 px-s3">
                   {step.author === "ai" ? "AI" : "RECORD"}
-                </span>
+                </Chip>
               </>
             )}
           </div>
           {/* 640px 안에서 혼자 서므로 크게 둔다 */}
-          <div className="title">
+          <div className="font-sans text-[20px] font-bold leading-[1.3]">
             {step?.label ?? "이 결과 이후 정의에서 사라진 Step"}
           </div>
         </div>
@@ -247,8 +231,7 @@ export function StepDetail({
         {detail.failure !== null && (
           <div
             role="note"
-            className="tint-fail line fail-ink"
-            style={{ padding: "12px 14px" }}
+            className="bg-fail-t border border-fail-line rounded-base font-sans text-[13px] leading-[1.4] font-normal text-fail py-s3 px-[14px]"
           >
             {detail.failure.message ?? "실패 이유가 기록되지 않았습니다."}
           </div>
@@ -264,14 +247,14 @@ export function StepDetail({
             id="reason-step-sensitive"
             data-action="step.markSensitive"
             data-disabled-reason="step.markSensitive"
-            className="why"
+            className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
           >
             {SENSITIVE_NO_VALUE}
           </span>
         )}
 
         {step === null ? (
-          <p className="note">
+          <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
             이 실행에는 있었지만 지금 정의에는 없는 Step 입니다. 결말과 소요 시간은 그때의
             기록이고, 동작 종류·대상 요약·값은 보여줄 수 없습니다.
           </p>
@@ -300,18 +283,18 @@ export function StepDetail({
                 />
                 {alreadyReference ? (
                   <>
-                    <p className="why" style={{ margin: "4px 0 0" }}>
+                    <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
                       변수 참조입니다. 실제 값은 비밀 파일의 암호문에 있으며 화면에 표시되지
                       않습니다.
                     </p>
                     {canMarkSensitive && (
-                      <button className="navlink" onClick={() => setSecretOpen((v) => !v)}>
+                      <button className={navLinkClasses()} onClick={() => setSecretOpen((v) => !v)}>
                         {secretOpen ? "▾" : "▸"} 비밀 값 다시 넣기
                       </button>
                     )}
                   </>
                 ) : (
-                  <label className="row" style={{ gap: 6, marginTop: 6 }}>
+ <label className="flex items-center gap-[6px] mt-[6px]">
                     <input
                       type="checkbox"
                       data-action="step.markSensitive"
@@ -329,13 +312,13 @@ export function StepDetail({
 
                 {/* DR-023·SC-106 — 화면 이동 0회. 비밀 값을 이 자리에서 넣는다. */}
                 {!alreadyReference && canMarkSensitive && (
-                  <button className="navlink" style={{ marginTop: 4 }} onClick={() => setSecretOpen((v) => !v)}>
+                  <button className={navLinkClasses("mt-s1")} onClick={() => setSecretOpen((v) => !v)}>
                     {secretOpen ? "▾" : "▸"} 여기서 비밀 값 넣기
                   </button>
                 )}
 
                 {secretOpen && (
-                  <div style={{ marginTop: 8 }}>
+                  <div className="mt-s2">
                     <InlineSecretInput
                       currentName={alreadyReference ? referenceName(value) : null}
                       busy={busy}
@@ -366,7 +349,7 @@ export function StepDetail({
                   disabled={!canEdit}
                   onChange={(e) => setFileName(e.target.value)}
                 />
-                <p className="why" style={{ margin: "4px 0 0" }}>
+                <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
                   {uploadFileNote(fileName)}
                 </p>
               </div>
@@ -405,8 +388,8 @@ export function StepDetail({
           볼 이유가 있는 것인지 알 수 없다.
         */}
         {shot !== undefined && (
-          <div className="pane" data-step-shot>
-            <div className="pane-hd lbl band" style={{ padding: "0 12px" }}>
+          <div className="bg-panel border border-hair rounded-base" data-step-shot>
+            <div className="bg-sunken border-b border-hair-2 text-ink-2 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 h-[36px] flex items-center py-0 px-s3">
               이 STEP 이 끝난 화면
             </div>
             {shot.url !== null && !shotBroken ? (
@@ -414,7 +397,7 @@ export function StepDetail({
                 data-step-shot-image
                 src={shot.url}
                 alt={`${stepNumber(detail.index)} 이 끝난 시점의 화면`}
-                style={{ display: "block", width: "100%", height: "auto" }}
+                className="block w-full h-auto"
                 /*
                   011 FR-396b — **파일이 사라졌을 수 있다.**
 
@@ -430,8 +413,7 @@ export function StepDetail({
             ) : (
               <div
                 data-step-shot-missing
-                className="why"
-                style={{ padding: "12px" }}
+                className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 p-s3"
               >
                 {shotBroken ? MISSING_SHOT_REASON.superseded : shot.note}
               </div>
@@ -444,25 +426,24 @@ export function StepDetail({
           정의는 "무엇으로 찾을 계획인가" 이고 이것은 "무엇을 시도했고 몇 개가 맞았나" 다.
         */}
         {detail.attempts !== null && detail.attempts.length > 0 && (
-          <div className="pane">
-            <div className="pane-hd lbl band" style={{ padding: "0 12px" }}>
+          <div className="bg-panel border border-hair rounded-base">
+            <div className="bg-sunken border-b border-hair-2 text-ink-2 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 h-[36px] flex items-center py-0 px-s3">
               시도한 LOCATOR (우선순위 순)
             </div>
             {detail.attempts.map((a, i) => (
               <div
                 key={`${a.candidate}-${i}`}
-                className={`row rule-top why mono${a.matched ? "" : " muted"}`}
-                style={{ padding: "8px 12px" }}
+ className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] font-normal ${a.matched ? "text-ink-3" : "text-ink-2"}`}
               >
-                <span className="key-cell" style={{ width: 84 }}>
+                <span className="font-bold w-[84px]">
                   {a.candidate}
                 </span>
-                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                <span className="flex-1 min-w-0 overflow-hidden text-ellipsis">
                   {a.expression}
                 </span>
-                <span style={{ width: 54, textAlign: "right" }}>{a.match_count}개</span>
-                <span style={{ width: 62, textAlign: "right" }}>{a.waited_ms} ms</span>
-                <span className="key-cell" style={{ width: 44, textAlign: "right" }}>
+                <span className="w-[54px] text-right">{a.match_count}개</span>
+                <span className="w-[62px] text-right">{a.waited_ms} ms</span>
+                <span className="font-bold w-[44px] text-right">
                   {a.matched ? "맞음" : "아님"}
                 </span>
               </div>
@@ -502,11 +483,11 @@ export function StepDetail({
 
         {step !== null && (
           <div>
-            <button className="navlink" onClick={() => setShowDsl((v) => !v)}>
+            <button className={navLinkClasses()} onClick={() => setShowDsl((v) => !v)}>
               {showDsl ? "▾" : "▸"} 테스트 DSL 미리보기
             </button>
             {showDsl && (
-              <pre className="code-block" style={{ padding: 10, overflowX: "auto", margin: "6px 0 0" }}>
+              <pre className="bg-ink text-panel rounded-base font-mono text-[11px] leading-[1.6] font-normal p-[10px] overflow-x-auto mt-[6px] mx-0 mb-0">
                 {dslPreview(step)}
               </pre>
             )}
@@ -517,7 +498,7 @@ export function StepDetail({
           조작은 **감추지 않는다.** 쓸 수 없으면 비활성으로 남고 이유와 해소 방법이
           붙는다 (FR-234). 「해당 없음」인 국면에서만 `ActionButton` 이 `null` 을 낸다.
         */}
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <div className="flex gap-[10px] flex-wrap">
           <ActionButton
             action="step.update"
             capability={capabilities["step.update"]}
@@ -541,7 +522,7 @@ export function StepDetail({
             onRemedy={onRemedy}
             onRun={() => onRepick("target")}
             icon={
-              <svg className="fail-ink" width="15" height="15" viewBox="0 0 20 20">
+              <svg className="text-fail" width="15" height="15" viewBox="0 0 20 20">
                 <circle cx="10" cy="10" r="5" fill="currentColor" />
               </svg>
             }

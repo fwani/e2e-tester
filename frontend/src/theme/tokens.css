@@ -8,8 +8,25 @@
  * 개정에서 즉시 깨지고, 실제로 v1→v2 전환에서 기하(3px→1px·모서리)는 옮겨졌으나 색과
  * 구조는 v1 이 남았다. 화면 코드에 색 리터럴 338개가 살아 있었고 토큰 사용률은 12%였다.
  *
- * 이제 시각 언어의 값은 **여기에만** 있다. 화면 코드는 `className` 으로 소비하며 값을
- * 다시 적지 않는다 (008 FR-263 · contracts/visual-language.md C-1).
+ * 이제 시각 언어의 값은 **여기에만** 있다. 화면 코드는 값을 다시 적지 않는다
+ * (008 FR-263 · contracts/visual-language.md C-1).
+ *
+ * ## 015 가 「어떻게 소비하는가」를 바꿨다 (2026-09-11)
+ *
+ * 008 은 화면이 이 파일의 **클래스**(`.btn`·`.chip`)를 `className` 으로 쓰게 했다.
+ * 015 「Tailwind CSS 전환」이 그 소비 방식을 바꿨다 — 화면은 이제 Tailwind 유틸리티를
+ * 쓰고, 그 유틸리티는 `theme/tailwind.css` 의 `@theme inline` 을 거쳐 **아래 토큰을
+ * 참조**한다. 값은 여전히 여기에만 있다.
+ *
+ *     .bg-pass { background-color: var(--pass) }     ← 값을 복제하지 않는다
+ *
+ * **아래 「정본」 구획의 클래스 규칙은 그대로 남는다.** 화면이 쓰지 않게 되어도
+ * 지우지 않는다 — 그것은 확정 디자인이 무엇을 그리는지의 **기록**이고, L1 대조
+ * (`scripts/design_render.py`)가 그것을 기준으로 삼는다. 파생 구획(아래 두 번째
+ * 구획)의 클래스는 다르다: 손으로 쓴 것이므로 쓰이지 않으면 지운다.
+ *
+ * 이 파일은 `layer(base)` 로 들어간다 (`theme/tailwind.css` C-8). 레이어 밖에 두면
+ * `button{…}` 같은 요소 규칙이 유틸리티를 이겨 015 가 통째로 막힌다.
  *
  * ## 아래 「정본」 구획은 손으로 고치지 않는다
  *
@@ -267,8 +284,6 @@ button:hover { background: var(--sunken-2); }
 button:active { box-shadow: none; }
 
 /* 주 동작 — 색이 아니라 채움으로 말한다. 한 화면에 하나다 (FR-269 · C-10). */
-button.primary { background: var(--ink); border-color: var(--ink); color: var(--panel); }
-button.primary:hover { background: var(--ink-2); }
 
 /* 이전 판의 이름. 지금은 기본형이 곧 보조 조작이다. */
 button.secondary { background: var(--panel); color: var(--ink); }
@@ -528,7 +543,6 @@ input.phase-name:disabled { border-color: transparent; color: var(--ink-2); }
 
 /* 강조를 뺀 조작 (005 FR-147 · U-08). 끝난 실행의 「닫기」처럼 되돌리기 어려운 것이
    화면에서 가장 눈에 띄는 컨트롤이 되지 않게 한다. 형태는 기본형이고 무게만 낮춘다. */
-.btn.quiet { color: var(--ink-2); box-shadow: none; }
 
 /* Step 행 안의 이름. 확정 디자인은 `.srow .t b` 로 그리지만 제품에서는 **누를 수 있는
    요소**여야 한다(행 지목 · 접근성). 형태는 같고 상자만 없앤다. */
@@ -555,8 +569,20 @@ input.phase-name:disabled { border-color: transparent; color: var(--ink-2); }
 /* Step 패널의 바닥 — 그 국면의 Step 조작이 모이는 유일한 자리 (007 FR-235). */
 .steps-ft { border-top: 1px solid var(--hair-2); background: var(--sunken-2); }
 
-/* 겹침의 뒤를 덮는 막. 확정 디자인의 겹침 패널이 뒤 내용을 눌러 둔다. */
-.scrim { background: rgba(20, 23, 28, 0.28); }
+/* 겹침의 뒤를 덮는 막. 확정 디자인의 겹침 패널이 뒤 내용을 눌러 둔다.
+
+   015 — 값에 **이름을 준다.** 규칙에만 있으면 클래스를 해체할 때 값이 화면 코드나
+   Tailwind 설정으로 옮겨 가고, 그것이 정본을 둘로 만든다 (FR-001). 새 값이 아니라
+   여기 있던 값에 이름을 붙인 것이며, 파생 구획의 목적이 바로 그것이다.
+
+   `--ink`(#14171C = rgb(20,23,28))를 투명도로 낮춘 것이고 다른 색을 섞지 않았다.
+   0.28 은 겹침 640, 0.45 는 화면 전체를 덮는 확인 판이다 — 덮는 면적이 클수록
+   짙게 한다 (DC-009). */
+:root {
+  --scrim: rgba(20, 23, 28, 0.28);
+  --scrim-strong: rgba(20, 23, 28, 0.45);
+}
+.scrim { background: var(--scrim); }
 
 /* AI 가 쓰는 입력 — 자연어 지시문. 사람이 쓰는 입력과 구분되는 유일한 자리다
    (확정 디자인의 AI 국면이 `--ai` 계열을 쓴다). */
@@ -657,7 +683,7 @@ input.ai, textarea.ai { border-color: var(--ai); }
 }
 
 /* 화면 전체를 덮는 확인 판. 겹침과 같은 문법이되 가운데 선다. */
-.modal-scrim { background: rgba(20, 23, 28, 0.45); }
+.modal-scrim { background: var(--scrim-strong); }
 .modal {
   background: var(--panel);
   border: 1px solid var(--hair-2);

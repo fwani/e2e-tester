@@ -26,7 +26,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Workbench } from "../src/components/workbench/Workbench";
 import type { EmptyReason, TargetView } from "../src/components/workbench/model";
 import { PHASES, type Phase } from "../src/lib/phase";
-import { flexOf, splitFor } from "../src/lib/layout";
+import { flexClassOf, splitFor } from "../src/lib/layout";
 import { workbenchModel } from "./helpers/model";
 
 const el = (selector: string) => document.querySelector<HTMLElement>(selector);
@@ -99,8 +99,13 @@ describe("네 내용이 같은 자리를 쓴다 (FR-244 · S-11 해소)", () => 
     for (const phase of PHASES) {
       const view = show(ALL_TARGETS[0]!, phase);
       const pane = el("[data-workbench-target]")!;
-      const expected = flexOf(splitFor(phase).targetSlot);
-      expect(pane.style.flex, `${phase} 의 ③-a 높이가 배분표와 다르다`).toBe(expected.flex);
+      // 015 T029 — 배분이 스타일 객체에서 클래스로 바뀌었다. **묻는 것은 그대로다**:
+      // 그리는 값이 배분표와 일치하는가. 어긋나면 표시 컴포넌트가 표를 무시하고 자기
+      // 크기를 쓴 것이며 그것이 S-12 의 형태다.
+      const expected = flexClassOf(splitFor(phase).targetSlot);
+      for (const cls of expected.split(" ")) {
+        expect(pane.className, `${phase} 의 ③-a 높이가 배분표와 다르다`).toContain(cls);
+      }
       expect(pane.dataset.slotSize, `${phase} 의 배분 표식`).toBe(
         splitFor(phase).targetSlot.kind,
       );

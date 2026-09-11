@@ -26,11 +26,10 @@
  */
 import type { ArtifactKind } from "../../api/client";
 import { isShown, type CapabilityMap } from "../../lib/capabilities";
-import type { SlotSize, SlotStyle } from "../../lib/layout";
+import type { SlotSize } from "../../lib/layout";
 import { ACTION_LABEL, openBrowserAtStepLabel } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 import type { EmptyReason, TargetView } from "./model";
-
 /** 확정 디자인의 산출물 탭. 순서와 문구를 그대로 옮겼다 (`RunResult.dc.html`). */
 const ARTIFACT_TABS: { kind: ArtifactKind; label: string }[] = [
   { kind: "screenshot", label: "SCREENSHOT" },
@@ -38,7 +37,6 @@ const ARTIFACT_TABS: { kind: ArtifactKind; label: string }[] = [
   { kind: "network", label: "NETWORK" },
   { kind: "trace", label: "TRACE" },
 ];
-
 /**
  * 왜 비었는지 (FR-245 · 005 FR-173).
  *
@@ -62,7 +60,12 @@ export interface TargetPaneProps {
    *
    * 이미 CSS 값으로 환산되어 있다 — 이 파일은 118px 이 어디서 왔는지 알 필요가 없다.
    */
-  size: SlotStyle;
+  /**
+   * 이 자리의 배분 — **클래스로 온다** (015 T029).
+   *
+   * 이미 CSS 로 환산되어 있다. 이 파일은 88px 이 어디서 왔는지 알 필요가 없다.
+   */
+  sizeClass: string;
   /** 어느 배분인지. 검사와 대조 기록이 읽는 표식일 뿐 분기에 쓰지 않는다 */
   sizeKind: SlotSize["kind"];
   capabilities: CapabilityMap;
@@ -70,7 +73,6 @@ export interface TargetPaneProps {
   onOpenBrowser?: () => void;
   onRemedy?: (action: keyof CapabilityMap) => void;
 }
-
 /**
  * 조작이 이 국면에 있지만 지금은 쓸 수 없을 때, **그 자리에** 이유를 남긴다 (FR-234).
  *
@@ -90,7 +92,7 @@ function Unavailable({
   return (
     <span
       data-disabled-reason={action}
-      className="why"
+      className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
     >
       {state.reason}
     </span>
@@ -99,7 +101,7 @@ function Unavailable({
 
 export function TargetPane({
   target,
-  size,
+  sizeClass,
   sizeKind,
   capabilities,
   onSelectArtifact,
@@ -110,14 +112,10 @@ export function TargetPane({
     <div
       data-workbench-target
       data-slot-size={sizeKind}
-      style={{
-        ...size,
-        minWidth: "0",
-        padding: "20px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "14px",
-      }}
+      // `p-[20px]` 이다. **토큰(`--s-5`=24px)으로 올리면 안 된다** — 확정 디자인
+      // `Main.dc.html` 의 좌측 여백이 20px 이고 이 파일 머리주석이 그 출처를 적는다.
+      // 토큰에 맞추려고 값을 바꾸면 시각 동일성이 깨진다 (L2 대조가 잡았다).
+      className={`${sizeClass} min-w-0 p-[20px] flex flex-col gap-[14px]`}
     >
       {target.kind === "mirror" && (
         <>
@@ -136,14 +134,13 @@ export function TargetPane({
               {target.tabs ?? <Unavailable action="tab.select" capabilities={capabilities} />}
             </div>
           )}
-          <div style={{ flex: 1, minHeight: 0, display: "flex" }}>{target.mirror}</div>
+          <div className="flex-1 min-h-0 flex">{target.mirror}</div>
         </>
       )}
 
       {target.kind === "artifacts" && (
         <div
-          className="pane"
-          style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
+          className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col"
         >
           {/*
             산출물 종류를 고르는 조작은 **이 영역 안에** 있다 (FR-246). 지원되지 않는
@@ -153,8 +150,7 @@ export function TargetPane({
           <div
             /* 산출물 고르기의 자리 (`artifact.select`). */
             data-action="artifact.select"
-            className="tabs"
-            style={{ flex: "0 0 36px", display: "flex", alignItems: "stretch" }}
+            className="bg-sunken border-b border-hair-2 [&>button]:border-0 [&>button]:border-r [&>button]:border-hair-2 [&>button]:rounded-none [&>button]:bg-transparent [&>button]:shadow-none [&>button]:text-ink-2 [&>button]:font-mono [&>button]:text-[11px] [&>button]:font-semibold [&>button]:leading-none [&>button]:tracking-[0.1em] [&>button[aria-pressed=true]]:bg-panel [&>button[aria-pressed=true]]:text-ink [&>button:disabled]:border-solid [&>button:disabled]:text-ink-3 flex-[0_0_36px] flex items-stretch"
           >
             {ARTIFACT_TABS.map((t) => {
               const usable = target.available.includes(t.kind);
@@ -168,7 +164,7 @@ export function TargetPane({
                   aria-pressed={active}
                   title={usable ? undefined : EMPTY_MESSAGE.not_supported}
                   onClick={usable ? () => onSelectArtifact?.(t.kind) : undefined}
-                  style={{ padding: "0 16px", cursor: usable ? "pointer" : "not-allowed" }}
+                  className={`px-s4 ${usable ? "cursor-pointer" : "cursor-not-allowed"}`}
                 >
                   {t.label}
                 </button>
@@ -183,8 +179,7 @@ export function TargetPane({
           {target.available.length < ARTIFACT_TABS.length && (
             <div
               data-disabled-reason="artifact.select"
-              className="why rule-bottom"
-              style={{ padding: "6px 16px" }}
+              className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 border-b border-hair py-[6px] px-s4"
             >
               {ARTIFACT_TABS.filter((t) => !target.available.includes(t.kind))
                 .map((t) => t.label)
@@ -192,7 +187,7 @@ export function TargetPane({
               는 이 실행에 남지 않았습니다 (MVP 미지원).
             </div>
           )}
-          <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "16px" }}>
+          <div className="flex-1 min-h-0 overflow-auto p-s4">
             {target.body}
           </div>
         </div>
@@ -204,20 +199,11 @@ export function TargetPane({
             008 — **가로 한 줄이다.** v1 은 제목 · 설명 · 버튼을 세로로 쌓아 166px 를
             썼고, 그 자리가 118px 로 정해지면서 내용이 잘렸다. 담는 것은 그대로다.
           */
-          className="pane"
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 16,
-            padding: "0 14px",
-          }}
+          className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-row items-center gap-s4 py-0 px-[14px]"
         >
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-            <div className="strong-sm">브라우저가 열려 있지 않습니다</div>
-            <p className="why" style={{ margin: 0 }}>
+          <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
+            <div className="font-sans text-[13px] font-semibold leading-none">브라우저가 열려 있지 않습니다</div>
+            <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
               값·순서·삭제는 브라우저 없이 고칠 수 있습니다. 요소를 다시 집거나 직접
               조작으로 Step 을 더하려면 브라우저가 필요합니다.
             </p>
@@ -246,17 +232,7 @@ export function TargetPane({
         <div
           data-target-empty={target.reason}
           role="status"
-          className="pane note"
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "24px",
-            whiteSpace: "pre-wrap",
-            textAlign: "center",
-          }}
+          className="bg-panel border border-hair rounded-base font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2 flex-1 min-h-0 flex items-center justify-center p-s5 whitespace-pre-wrap text-center"
         >
           {EMPTY_MESSAGE[target.reason]}
         </div>
