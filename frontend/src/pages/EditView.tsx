@@ -522,7 +522,23 @@ export function EditView({
   };
 
   const openBrowserHere = (instruction: string | null = null) => {
-    if (current === null || currentIndex < 0 || onOpenBrowserAt === undefined) return;
+    if (onOpenBrowserAt === undefined) return;
+    /*
+      **고른 Step 이 없으면 맨 끝이다** (2026-09-11 사용자 보고).
+
+      그 전까지 이 조작은 Step 을 고르지 않으면 잠겼고, 그래서 「목록 맨 끝에 하나 더」
+      를 할 길이 없었다 — 마지막 Step 을 고르면 그 **앞**에서 멈추고, 끝까지 실행하면
+      대화할 수 없는 국면(`finished`)이 된다. 재녹화는 구간을 **교체**하므로 마지막
+      Step 을 고르면 확정 때 그것이 지워진다.
+
+      `dslSteps.length` 는 「마지막 Step 까지 전부 실행한 자리」다. 서버가 그 값을 받고
+      (`pause_before_index`), 러너가 거기서 멈추며, 대화가 만든 Step 은 일시정지 위치
+      뒤에 붙는다 (`_aim_compiler` · FR-023a) — 배선이 이미 있고 입구만 없었다.
+    */
+    if (current === null || currentIndex < 0) {
+      onOpenBrowserAt(testId, dslSteps.length, null, instruction);
+      return;
+    }
     onOpenBrowserAt(testId, currentIndex, current.id, instruction);
   };
 
@@ -712,7 +728,11 @@ export function EditView({
     "step.moveUp",
     "step.moveDown",
     "step.delete",
-    "browser.openAt",
+    /*
+      `browser.openAt` 은 **여기 없다** (2026-09-11 사용자 보고). 고른 Step 이 없어도
+      뜻이 있는 조작이 됐다 — 그때는 목록 맨 끝에서 멈춘다 (`openBrowserHere`).
+      잠가 두면 「맨 끝에 하나 더」를 할 입구가 사라진다.
+    */
     /* 011 — 「어디 뒤인지」를 알아야 뜻이 있다. `deleteSelected` 는 아래에서 따로 좁힌다 */
     "step.deleteAfter",
   ];

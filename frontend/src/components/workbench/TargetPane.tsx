@@ -27,7 +27,7 @@
 import type { ArtifactKind } from "../../api/client";
 import { isShown, type CapabilityMap } from "../../lib/capabilities";
 import type { SlotSize } from "../../lib/layout";
-import { ACTION_LABEL, openBrowserAtStepLabel } from "../../lib/wording";
+import { openBrowserAtStepLabel, OPEN_BROWSER_AT_END } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 import type { EmptyReason, TargetView } from "./model";
 /** 확정 디자인의 산출물 탭. 순서와 문구를 그대로 옮겼다 (`RunResult.dc.html`). */
@@ -215,7 +215,12 @@ export function TargetPane({
               target.label ??
               (target.stepIndex !== null
                 ? openBrowserAtStepLabel(target.stepIndex)
-                : ACTION_LABEL["browser.openAt"])
+                : /*
+                    고른 Step 이 없으면 **맨 끝**이다 (2026-09-11 사용자 보고).
+                    사전의 이름(「이 Step 앞에서」)은 고른 것이 있을 때의 말이며,
+                    없을 때 그대로 쓰면 어느 자리에서 멈추는지가 거짓이 된다.
+                  */
+                  OPEN_BROWSER_AT_END)
             }
             emphasis
             onRun={onOpenBrowser}

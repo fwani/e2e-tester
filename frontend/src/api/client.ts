@@ -725,6 +725,28 @@ export interface SessionView {
    * 때문이다.
    */
   rerecord?: RerecordView | null;
+
+  /**
+   * AI 가 막혀 있으면 그 내용 (2026-09-11 사용자 보고).
+   *
+   * **이벤트만으로는 복원되지 않았다.** 사유·질문·선택지는 `ai_blocked` 이벤트로만
+   * 왔고, 이벤트는 그 순간 붙어 있던 화면에게만 간다. 목록으로 나갔다 돌아오면 화면은
+   * 상태가 `ai_blocked` 인 것만 알고 무엇이 막았는지·무엇을 고를 수 있는지를 몰라
+   * 「고를 선택지가 없습니다」를 그렸다 — 세션이 막다른 길이 됐다.
+   */
+  blocked?: BlockedView | null;
+}
+
+/** AI 가 막힌 자리 (FR-069·FR-070). `SessionView.blocked` 의 모양이다. */
+export interface BlockedView {
+  /** 막힌 시점에 시도하던 동작. */
+  attempted?: string | null;
+  /** 왜 못 했는가. */
+  reason: string;
+  /** 사람에게 물을 한 문장. 없으면 사람이 먼저 말한다. */
+  question?: string | null;
+  /** 고를 수 있는 것. **서버가 준다** — 화면이 복제하면 선택지가 늘 때 갈린다. */
+  choices: string[];
 }
 
 /**

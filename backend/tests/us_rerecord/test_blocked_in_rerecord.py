@@ -16,7 +16,13 @@ from fastapi.testclient import TestClient
 from tests.us2_support import record_login, stop_quietly
 from tests.us3_support import record_login_then_two_menus
 from tests.us4_support import install_driver, report_blocked
-from tests.us_rerecord.support import open_rerecord, say, step_ids
+from tests.us_rerecord.support import (
+    open_rerecord,
+    say,
+    step_ids,
+    turns,
+    wait_for_state,
+)
 
 pytestmark = pytest.mark.browser
 
@@ -124,5 +130,95 @@ def test_answering_resumes_inside_the_same_rerecord(
 
         view = wait_for_state(keyed_client, sid, {"paused", "ai_blocked"})
         assert view["rerecord"] is not None, "답변 뒤에도 교체는 진행 중이어야 한다"
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+def test_the_block_survives_a_reload(
+    keyed_client: TestClient, fixture_app: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """**화면을 새로 고쳐도 막힘이 남는다** (2026-09-11 사용자 보고).
+
+    ## 무엇이 문제였나
+
+    사유·질문·선택지는 `ai_blocked` **이벤트로만** 갔다. 이벤트는 그 순간 붙어 있던
+    화면에게만 간다 — 목록으로 나갔다 「이어서 보기」로 돌아온 화면은 상태가
+    `ai_blocked` 인 것만 알고 무엇이 막았는지도, 무엇을 물었는지도, 무엇을 고를 수
+    있는지도 몰랐다.
+
+    실측에서 그 화면은 「고를 선택지가 없습니다」를 그렸고, 대화 패널은 「위의 답변 칸에
+    알려 주세요」라고 말하는데 **그 칸이 없었다.** 남은 길은 세션을 버리는 것뿐이었다.
+
+    005 U-18 이 같은 형태였고 그 고침이 `step_results` 였다 — 이벤트 없이도 화면이
+    복원되게 한다. 이 검사는 **이벤트를 한 번도 보지 않고** 세션 조회만으로 막힘을
+    복원할 수 있는지 본다.
+    """
+    install_driver(
+        monkeypatch,
+        [report_blocked("어느 계정으로 로그인할지 모르겠습니다", "어느 계정인가요?")],
+    )
+    test_id = record_login(keyed_client, fixture_app)
+    saved = [s["id"] for s in keyed_client.get(f"/api/tests/{test_id}").json()["steps"]]
+
+    sid = open_rerecord(keyed_client, test_id, [saved[-1]])
+    assert isinstance(sid, str)
+    try:
+        say(keyed_client, sid, "로그인해 줘")
+
+        # **새로 붙은 화면이 하는 일 그대로** — 세션을 조회한다. 이벤트는 없다.
+        view = keyed_client.get(f"/api/sessions/{sid}").json()
+        blocked = view.get("blocked")
+
+        assert blocked is not None, (
+            "세션 조회에 막힘이 없다 — 새로 고친 화면은 무엇이 막았는지 알 수 없다"
+        )
+        assert "어느 계정" in blocked["reason"]
+        assert blocked["question"] == "어느 계정인가요?", (
+            "질문이 없으면 화면이 답 칸을 무엇에 대해 여는지 말할 수 없다"
+        )
+        # 고를 것이 함께 온다 — 「고를 선택지가 없습니다」가 바로 이것이 없어서였다.
+        assert "answer" in blocked["choices"]
+        assert "takeover" in blocked["choices"]
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+def test_the_block_is_gone_after_it_is_answered(
+    keyed_client: TestClient, fixture_app: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """**지난 막힘은 남지 않는다.**
+
+    상태가 아니라 마지막 결과만 보고 실으면, 이어받아 진행한 세션에도 막힘이 계속
+    붙어 있다 — 화면은 답 칸을 다시 그리고 사용자는 이미 끝난 질문에 또 답한다.
+    """
+    install_driver(
+        monkeypatch,
+        [report_blocked("어느 계정으로 로그인할지 모르겠습니다", "어느 계정인가요?")],
+    )
+    test_id = record_login(keyed_client, fixture_app)
+    saved = [s["id"] for s in keyed_client.get(f"/api/tests/{test_id}").json()["steps"]]
+
+    sid = open_rerecord(keyed_client, test_id, [saved[-1]])
+    assert isinstance(sid, str)
+    try:
+        say(keyed_client, sid, "로그인해 줘")
+        assert keyed_client.get(f"/api/sessions/{sid}").json()["blocked"] is not None
+
+        # 사람이 답한다. 이 턴은 아무것도 하지 않고 끝난다.
+        install_driver(monkeypatch, [])
+        answered = keyed_client.post(
+            f"/api/sessions/{sid}/ai-choice",
+            json={"choice": "answer", "answer": "admin 계정으로 하세요"},
+        )
+        assert answered.status_code == 200, answered.text
+        wait_for_state(keyed_client, sid, {"paused"})
+
+        view = keyed_client.get(f"/api/sessions/{sid}").json()
+        assert view["blocked"] is None, "지난 막힘이 남아 있다 — 화면이 답 칸을 다시 연다"
+
+        # **답과 그 뒤의 응답이 대화에 남는다** (2026-09-11 사용자 보고).
+        # 남지 않으면 새로 고쳤을 때 사용자가 무엇을 알려 줬는지가 사라진다.
+        said = [t["text"] for t in turns(keyed_client, sid) if t["role"] == "user"]
+        assert any("admin 계정" in text for text in said), said
     finally:
         stop_quietly(keyed_client, sid)

@@ -288,6 +288,18 @@ export interface StepListProps {
   rowActions?: (step: WorkbenchStep) => ReactNode;
   /** 헤더 오른쪽에 얹는 것 (순서 변경 토글 등) */
   headerExtra?: ReactNode;
+  /**
+   * 머리 **아래**, 목록 **위**에 놓이는 한 줄 전체의 띠 (2026-09-11 사용자 보고).
+   *
+   * 016 의 재녹화 띠가 처음에는 `headerExtra` 로 머리 한 줄에 끼워졌다. 머리는 36px
+   * 높이에 「TEST STEPS · 작성 · 개수」가 이미 있는 자리라, 띠가 받는 폭이 60px 남짓이었다.
+   * 문장이 세로로 꺾여 겹치고 **확정·버리기 버튼이 보이지 않았다** — 사용자에게는
+   * 「저장이 안 된다」로 보였다 (확정이 저장의 전제다 · FR-029).
+   *
+   * 머리는 짧은 표식의 자리이고, 문장과 버튼 둘을 가진 것은 자기 줄이 필요하다. 없으면
+   * 아무 자리도 차지하지 않는다 (`Workbench` 의 `leftExtra` 와 같은 규칙).
+   */
+  band?: ReactNode;
   /** Step 이 0개일 때의 안내. 국면마다 다르다 */
   emptyNotice?: ReactNode;
   /**
@@ -332,6 +344,7 @@ export function StepList({
   onSelect,
   rowActions,
   headerExtra,
+  band,
   emptyNotice,
   footer,
   deleteTargets,
@@ -383,6 +396,12 @@ export function StepList({
         )}
         {headerExtra}
       </StepPanelHeader>
+      {/* 머리 아래 한 줄 전체 — 재녹화 띠의 자리 (위 `band` 주석). 없으면 그리지 않는다. */}
+      {band != null && band !== false && (
+        <div data-step-panel-band className="shrink-0 border-b border-hair-2">
+          {band}
+        </div>
+      )}
 
       <div
         /*

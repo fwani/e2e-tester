@@ -42,6 +42,8 @@ describe("대화 자리 — 보이되 잠긴다 (FR-234 · R6)", () => {
     const box = screen.getByLabelText("AI 에게 할 말") as HTMLTextAreaElement;
     expect(box.disabled).toBe(true);
     // 무엇을 하면 풀리는지 말해야 한다 — 잠긴 채 이유가 없으면 사용자는 갇힌다.
+    // 2026-09-11 — 해소 조작은 위치 기준(이 Step 앞에서 멈추기)이고, 교체는 사유 문구가 말한다.
+    expect(screen.getByText(/이 Step 앞에서 멈추기/)).toBeTruthy();
     expect(screen.getByText(/AI 로 다시 만들기/)).toBeTruthy();
   });
 

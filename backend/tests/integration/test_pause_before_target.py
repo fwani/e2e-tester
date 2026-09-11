@@ -132,17 +132,57 @@ def test_도달_전_실패하면_목표가_남는다(keyed_client: TestClient, f
 @pytest.mark.browser
 @pytest.mark.usefixtures("fixture_app")
 def test_목표가_범위를_벗어나면_거절한다(keyed_client: TestClient, fixture_app: str) -> None:
-    """006 FR-211 의 규칙이 그대로다 — 러너가 영원히 만나지 못하는 지점을 기다리지 않는다."""
+    """006 FR-211 의 규칙이 그대로다 — 러너가 영원히 만나지 못하는 지점을 기다리지 않는다.
+
+    **경계가 한 칸 옮겨졌다** (2026-09-11 사용자 보고). `total` 은 「전부 실행한 자리」이며
+    이제 범위 안이다 — 아래 검사가 그것을 본다. 여전히 만나지 못하는 것은 그 너머다.
+    """
     test_id = record_login(keyed_client, fixture_app)
     total = len(keyed_client.get(f"/api/tests/{test_id}/definition").json()["test"]["steps"])
 
     created = keyed_client.post(
         "/api/sessions",
-        json={"mode": "replay", "test_id": test_id, "pause_before_index": total},
+        json={"mode": "replay", "test_id": test_id, "pause_before_index": total + 1},
     )
 
     assert created.status_code == 400
     assert created.json()["error"]["code"] == "DEFINITION_INVALID"
+
+
+@pytest.mark.browser
+@pytest.mark.usefixtures("fixture_app")
+def test_목록_끝에서도_멈춘다(keyed_client: TestClient, fixture_app: str) -> None:
+    """**전부 실행한 자리에서 멈춘다** (2026-09-11 사용자 보고).
+
+    ## 왜 이 자리가 필요한가
+
+    AI 에게 「마지막에 하나 더」를 시킬 길이 없었다. 대화는 `paused` 에서만 되는데
+    (api-contract §2-1), 마지막 Step 을 고르면 그 **앞**에서 멈추고 끝까지 실행하면
+    `finished` 가 된다 — 둘 다 「목록 끝에 이어서」가 아니다. 재녹화는 구간을
+    **교체**하므로 마지막 Step 을 고르면 확정 때 그것이 지워진다.
+
+    실측에서 사용자의 「이름 검색 Step 을 마지막에 추가해 줘」가 이것 때문에 막혔다.
+
+    ## 무엇을 보는가
+
+    러너가 마지막 Step 을 **실행한 뒤** 멈추고, 그 자리가 곧 목록 끝이다. 대화가 만든
+    Step 은 일시정지 위치 뒤에 붙으므로(`_aim_compiler` · FR-023a) 끝에 이어진다.
+    """
+    test_id = record_login(keyed_client, fixture_app)
+    total = len(keyed_client.get(f"/api/tests/{test_id}/definition").json()["test"]["steps"])
+
+    sid = _open_at(keyed_client, test_id, total)
+    try:
+        view = _wait_state(keyed_client, sid, ("paused",))
+        # 전부 실행했다 — 결과가 Step 수만큼 있고 전부 통과다.
+        outcomes = [r["outcome"] for r in view["step_results"]]
+        assert len(outcomes) == total, f"{total}개를 다 돌지 않았다: {outcomes}"
+        assert set(outcomes) == {"pass"}, outcomes
+        # **그리고 멈춰 있다.** 여기가 대화로 이어 만들 수 있는 자리다.
+        assert view["current_step_index"] == total
+        assert "edit_steps" in view["allowed_commands"]
+    finally:
+        stop_quietly(keyed_client, sid)
 
 
 @pytest.mark.browser

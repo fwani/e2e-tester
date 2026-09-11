@@ -1539,7 +1539,12 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       */
       /* 016 FR-024 — 확정하면 사라질 옛 구간을 목록에서 구분해 보인다 */
       rerecordTargets={view.rerecord?.range_step_ids}
-      stepHeaderExtra={
+      /*
+        2026-09-11 사용자 보고 — 띠는 머리 **아래 한 줄**이다 (`Workbench` 의 `stepBand`).
+        머리 오른쪽(`stepHeaderExtra`)에 걸었을 때 60px 남짓을 받아 확정·버리기가
+        보이지 않았고, 확정이 저장의 전제라 사용자에게는 「저장이 안 된다」로 보였다.
+      */
+      stepBand={
         view.rerecord != null ? (
           <RerecordBar
             rerecord={view.rerecord}
@@ -2883,6 +2888,27 @@ export function SessionScreen({
       .finally(() => setBusy(false));
   };
 
+  /*
+    막힘은 **서버가 권위다** (2026-09-11 사용자 보고).
+
+    이벤트로 받은 로컬 상태(`aiBlocked`)는 이벤트가 도착한 화면에만 있다. 목록으로
+    나갔다 「이어서 보기」로 돌아오면 그 화면은 상태가 `ai_blocked` 인 것만 알고 사유도
+    질문도 선택지도 몰랐다 — 실측에서 「고를 선택지가 없습니다」를 그렸고, 대화 패널은
+    「위의 답변 칸에 알려 주세요」라고 말하는데 그 칸이 없었다.
+
+    **로컬을 버리지는 않는다.** 이벤트가 `resync` 보다 먼저 닿으므로, 뷰가 아직 옛
+    값일 짧은 동안 막힘을 즉시 보여 주는 것은 로컬이다. 뷰에 값이 있으면 뷰가 이긴다 —
+    `changePacing` 이 「서버가 권위다」로 세운 것과 같은 규칙이다.
+  */
+  const blockedNow: AiBlockedState | null = view.blocked
+    ? {
+        attempted: view.blocked.attempted ?? null,
+        reason: view.blocked.reason,
+        question: view.blocked.question ?? null,
+        choices: view.blocked.choices,
+      }
+    : aiBlocked;
+
   return (
     <>
       <SessionWorkbench
@@ -2890,7 +2916,7 @@ export function SessionScreen({
         aiInstruction={aiInstruction}
         aiMessages={aiMessages}
         aiError={aiError}
-        aiBlocked={aiBlocked}
+        aiBlocked={blockedNow}
         summary={summary}
         failure={failure}
         outcomeOf={outcomeOf}
@@ -3077,7 +3103,7 @@ export function SessionScreen({
             사유만 남고 선택지 셋(직접 조작·다시·답하기)이 사라져, 사용자는 무엇이
             잘못됐는지 읽고도 이어 갈 수단이 없었다.
           */
-          const previous = aiBlocked;
+          const previous = blockedNow;
           setAiBlocked(null);
           void act(
             () => sessions.aiChoice(sessionId, choice as AiChoice, answer),

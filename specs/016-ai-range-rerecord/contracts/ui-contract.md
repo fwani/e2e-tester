@@ -63,7 +63,7 @@
 | **takeover** | `off(AI_RUNNING, run.stop)` | `off(USE_BLOCKED_ANSWER, ai.chooseBlocked)` | `off(NEEDS_PAUSE, run.resume)` | `off(NEEDS_PAUSE, run.resume)` |
 | **running** | `off(RUNNING_NO_EDIT, run.pause)` | `off(RUNNING_NO_EDIT, run.pause)` | `off(RUNNING_NO_EDIT, run.pause)` | `off(RUNNING_NO_EDIT, run.pause)` |
 | **paused** | `off(ALREADY_IN_SESSION)` | **`ON`** | `cond(C16)` | `cond(C17)` |
-| **review** | `off(NEEDS_BROWSER, run.all)` | `off(NEEDS_BROWSER, run.all)` | `na(N3)` 브라우저가 없다 | `na(N3)` |
+| **review** | `off(NEEDS_BROWSER, run.all)` | `off(NEEDS_BROWSER, run.all)` | **`cond(C16)`** | **`cond(C17)`** |
 | **finished** | `off(RUN_FINISHED_NO_EDIT, save)` | `off(RUN_FINISHED_NO_EDIT, save)` | `na(N2)` | `na(N2)` |
 | **result** | `off(RESULT_NO_EDIT, nav.editStep)` | `off(RESULT_NO_EDIT, nav.editStep)` | `na(N2)` | `na(N2)` |
 | **editing** | **`cond(C7)`** | `off(NEEDS_SESSION, ai.rerecord)` | `na(N3)` | `na(N3)` |
@@ -92,6 +92,24 @@
 §3-1 이 금지하는 것(「막힘은 대화 패널이 그리지 않는다」)과 같은 문서 안에서 충돌했다.
 API 계약도 채팅 게이트를 `paused` 하나로 정한다 (api-contract §2-1). 답변 입구는 기존
 `ai.chooseBlocked` 하나이고, 대화 패널은 그리로 **가리킨다.**
+
+### `review` 행의 확정·버리기는 **`na` 가 아니다** (2026-09-11 사용자 보고)
+
+초안은 넷을 묶어 「브라우저가 없다」(N3)로 적었다. 그것이 `ai.rerecord`·`ai.chat` 에는
+맞고 나머지 둘에는 틀렸다 — **확정은 정의만 고치는 편집이고 브라우저를 쓰지 않는다.**
+서버도 그렇게 동작한다: `rerecord/commit` 의 게이트는 `require_paused` 이고, 그것은
+`is_editable`(=`PAUSED` 또는 `REVIEW`)을 본다.
+
+그 한 칸이 **막다른 길**을 만들었다. 교체를 연 채 「AI 작성 끝내기」나 「중지」를 누르면
+세션은 `review` 로 온다. 저장은 미확정 교체를 거절하고(FR-029), 화면에는 확정도 버리기도
+없다 — 남은 길이 「나가기」뿐이고 그것은 만든 것을 전부 버린다. 비활성 사유 O14 의 해소
+링크가 `ai.rerecordCommit` 을 가리키는 것도 이 칸이 `na` 인 동안에는 **아무 데도 닿지
+않았다.**
+
+실측에서 사용자가 그 상태로 남긴 세션(Step 27개 · 저장 안 됨)을 그대로 만났다.
+
+`review` 의 버리기는 **되맞춤을 하지 않는다** — 브라우저가 이미 닫혔으므로 되맞출 화면이
+없다. 정의를 되돌리는 것이 이 국면에서 버리기가 약속하는 전부다 (`rerecord_discard`).
 
 ### 이 표에서 읽어야 할 두 가지
 
@@ -154,6 +172,12 @@ API 계약도 채팅 게이트를 `paused` 하나로 정한다 (api-contract §2
 
 - `확정` 은 `can_commit` 이 거짓이면 비활성이고, 사유를 말한다 (「먼저 Step 을 만드세요」)
 - `버리기` 는 만든 것이 없어도 활성이다 — 그만두는 것은 정상이다
+
+**자리는 Step 목록 머리 아래의 한 줄 전체다** (`Workbench` 의 `stepBand` · 2026-09-11 사용자
+보고). 처음 구현은 머리 오른쪽(`stepHeaderExtra`)에 걸었고, 머리 36px 한 줄에는 「TEST STEPS ·
+작성 · 개수」가 이미 있어 띠가 60px 남짓을 받았다 — 문장이 세로로 꺾여 겹치고 확정·버리기가
+보이지 않았다. 확정이 저장의 전제(FR-029)이므로 사용자에게는 「저장이 안 된다」로 보였다.
+같은 보고로 `save` 가 교체 중에 미리 잠긴다 (007 ui-contract §3-6 의 O14).
 
 ### 3-3. Step 목록의 「교체 대상」 표시
 

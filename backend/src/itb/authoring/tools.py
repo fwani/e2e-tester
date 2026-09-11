@@ -75,6 +75,57 @@ MAX_CONSECUTIVE_ELEMENT_FAILURES = 3
 OBSERVE_ELEMENT_LIMIT = 120
 """한 번에 보여 줄 요소 수 상한. 화면이 크면 컨텍스트를 다 먹는다."""
 
+DISTINGUISHING_FIELDS = ("id", "placeholder", "label", "context")
+"""이름이 같은 요소를 **구별하는 사실들** (2026-09-11 사용자 보고).
+
+관찰 스크립트가 실어 보내는 값이며 이 순서대로 결과에 실린다. 넷 다 이미 문서에 있던
+것이고 새로 만든 표식이 아니다 — 사용자가 지시문에 `id="text-input-example-11"` 처럼
+적어 주는 것이 바로 이 값들이다.
+"""
+
+DUPLICATE_KEY_FIELDS = ("tag", "role", "name", "type")
+"""이 넷이 모두 같으면 **에이전트가 구별할 수 없다** — `mark_duplicates` 의 묶음 기준."""
+
+
+def mark_duplicates(elements: list[dict[str, Any]]) -> None:
+    """이름만으로는 구별되지 않는 요소들에 `duplicate_with` 를 붙인다. 제자리에서 고친다.
+
+    ## 무엇이 문제였나 (2026-09-11 사용자 보고)
+
+    > 「ai 에게 시킬때 검색 input 이 한화면에 두개가 있을때, 명확한 위치를 선택하지 못하고
+    > 다른 input 에 입력을 하는 문제가 있다」
+
+    `observe_page` 가 주는 줄이 `tag=input · role=textbox · name=<placeholder> · type=text`
+    일 때, 같은 placeholder 를 가진 검색 칸 둘은 **한 칸도 다르지 않다.** 에이전트는 목록
+    순서상 앞의 것을 고를 수밖에 없고, 그것이 사용자가 본 「다른 input 에 입력」이다.
+
+    시스템 프롬프트는 「추측으로 다른 요소를 누르지 마세요」라고 적고 있었지만, 그 규칙은
+    **지킬 수 없는 규칙**이었다 — 에이전트는 자기가 추측하고 있다는 사실조차 알 수 없었다.
+
+    ## 왜 여기서 대신 고르지 않는가
+
+    제품이 하나를 골라 주면 그것도 추측이다. 004 가 `.first` 폴백을 지운 근거와 같다 —
+    자동으로 하나를 고르면 **틀렸을 때 조용히 통과한다**. 그래서 이 함수는 고르지 않고
+    「둘이 구별되지 않는다」는 사실만 싣는다. 고르는 것은 지시문을 읽는 쪽의 일이고,
+    지시문이 말해 주지 않으면 물어야 한다 (`SYSTEM_PROMPT` · FR-069).
+
+    ## 보이지 않는 요소도 센다
+
+    화면에 없는 것과 이름이 겹쳐도 사람은 그것을 구별로 쓰지 않는다. 반대로 `visible` 로
+    걸러 세면, hover 로 열리는 메뉴 안의 같은 이름 항목이 묶음에서 빠져 「하나뿐」으로
+    보인다 — 관찰이 보이지 않는 요소를 목록에서 빼지 않는 것과 같은 판단이다.
+    """
+    groups: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
+    for row in elements:
+        groups.setdefault(tuple(row.get(f) for f in DUPLICATE_KEY_FIELDS), []).append(row)
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        refs = [str(m["element_ref"]) for m in members]
+        for row in members:
+            # 자기 자신은 빼고 적는다 — 「나 말고 이것들이 나와 같아 보인다」가 읽을 말이다.
+            row["duplicate_with"] = [r for r in refs if r != row["element_ref"]]
+
 
 @dataclass(slots=True)
 class AttemptLimits:
@@ -185,6 +236,17 @@ class ObservedElement:
     visible: bool
     disabled: bool
 
+    unique: bool = True
+    """`css` 가 **이 요소 하나만** 가리키는가 (2026-09-11 사용자 보고).
+
+    도구는 이 `css` 로 요소를 다시 찾는다. 둘 이상을 가리키면 문서 순서상 첫 번째가
+    잡히고, 에이전트가 무엇을 골랐든 조작은 다른 요소에 간다. 그래서 거짓이면
+    `_act_on_element` 가 **거절한다** — 조용히 다른 요소를 조작하지 않는다.
+
+    기본값이 참인 것은 낡은 주입 스크립트가 이 사실을 싣지 않는 경우뿐이며, 그때는
+    지금까지와 같이 동작한다.
+    """
+
 
 StepSink = Callable[[Step], Awaitable[None]]
 """성공한 동작을 Step 으로 확정하는 통로. `compiler` 가 구현한다."""
@@ -242,6 +304,18 @@ class BrowserToolbox:
 
     없으면 **아무것도 고칠 수 없다.** 기본값이 「전부 허용」이면, 배선을 빠뜨린 경로에서
     AI 가 사용자의 멀쩡한 Step 을 건드린다 — 모르는 것을 참으로 보지 않는다.
+    """
+
+    current_index: Callable[[], int] | None = None
+    """지금 실행 위치를 읽는 통로 (2026-09-11 사용자 보고).
+
+    편집 연산(`step_edits`)은 실행 위치를 받아 **그 값을 고쳐 돌려준다** — 앞에서 지운
+    Step 만큼 위치를 당기는 식이다. 그 결과가 세션에 그대로 반영되므로(`_apply_rerecord_edit`),
+    여기서 넘기는 값이 곧 세션의 다음 실행 위치가 된다.
+
+    없으면 0 을 넘긴다. 그것이 실측에서 사고를 냈다 — AI 가 Step 대상을 다시 지목하자
+    실행 위치가 23 에서 0 으로 돌아갔고, 화면은 「Step 01 에서 중지」로 바뀌었다.
+    그 상태로 「계속하기」를 누르면 이미 지나온 로그인부터 다시 실행한다 (SC-007 위반).
     """
 
     test_id_attribute: str = "data-testid"
@@ -314,19 +388,37 @@ class BrowserToolbox:
                 name=entry.get("name"),
                 visible=bool(entry.get("visible")),
                 disabled=bool(entry.get("disabled")),
+                # 관찰 스크립트가 싣지 않으면(낡은 주입) 지금까지와 같이 동작한다.
+                unique=bool(entry.get("unique", True)),
             )
             self.refs[ref] = observed
-            elements.append(
-                {
-                    "element_ref": ref,
-                    "tag": observed.tag,
-                    "role": observed.role,
-                    "name": observed.name,
-                    "visible": observed.visible,
-                    "disabled": observed.disabled,
-                    "type": entry.get("type"),
-                }
-            )
+            row: dict[str, Any] = {
+                "element_ref": ref,
+                "tag": observed.tag,
+                "role": observed.role,
+                "name": observed.name,
+                "visible": observed.visible,
+                "disabled": observed.disabled,
+                "type": entry.get("type"),
+            }
+            # 이름이 같은 요소를 구별하는 사실들 (2026-09-11 사용자 보고 · `mark_duplicates`).
+            # **없는 것은 싣지 않는다** — `null` 칸이 120줄 쌓이면 읽을 것이 늘어날 뿐이다.
+            for key in DISTINGUISHING_FIELDS:
+                value = entry.get(key)
+                if isinstance(value, str) and value:
+                    row[key] = value
+            # **조작할 수 없는 요소는 미리 말한다** (2026-09-11 실측).
+            #
+            # 경로가 이 요소 하나를 가리키지 못하면 `_act_on_element` 가 거절한다. 그
+            # 사실을 관찰 단계에서 알려 주면 에이전트가 헛되이 시도하고 실패 예산을
+            # 깎는 대신 다른 요소를 찾거나 사람에게 물을 수 있다.
+            #
+            # **참일 때는 싣지 않는다** — 대부분 참이므로 120줄에 같은 칸이 붙으면 읽을
+            # 것만 는다 (`DISTINGUISHING_FIELDS` 와 같은 판단).
+            if not observed.unique:
+                row["unique"] = False
+            elements.append(row)
+        mark_duplicates(elements)
         return {
             "tab": tab,
             "url": raw.get("url"),
@@ -635,13 +727,19 @@ class BrowserToolbox:
         return steps, None
 
     def _current_index(self) -> int:
-        """편집 연산에 넘길 실행 위치.
+        """편집 연산에 넘길 실행 위치 (2026-09-11 사용자 보고).
 
-        재녹화 세션은 일시정지 상태이고 위치는 세션이 소유한다. 도구는 그 값을 알지
-        못하므로 **0 을 넘긴다** — 편집 연산이 이 값으로 하는 일은 「실행된 구간을
-        건드렸는가」 경고뿐이고, 그 판정은 반영 시점에 호출자가 다시 한다.
+        **세션이 소유한 값을 읽어 온다.** 이전 판은 여기서 0 을 넘기며 「편집 연산이 이
+        값으로 하는 일은 경고뿐」이라고 적었는데, 그것이 틀렸다 — `step_edits` 는 경고만
+        내는 것이 아니라 **위치 자체를 계산해 돌려주고**, 그 값이 `_apply_rerecord_edit`
+        을 지나 세션의 실행 위치가 된다.
+
+        그래서 AI 가 Step 하나를 고치면 실행 위치가 0 으로 되돌아갔다. 화면은 「Step 01
+        에서 중지」로 바뀌고, 「계속하기」는 이미 지나온 로그인부터 다시 실행한다.
+
+        통로가 없으면 0 이다 — 편집 도구를 쓰지 않는 세션에서는 이 값이 쓰이지 않는다.
         """
-        return 0
+        return self.current_index() if self.current_index is not None else 0
 
     async def update_step(self, step_id: str, field: str, value: str) -> dict[str, Any]:
         """Step 의 편집 가능한 속성을 고친다 (FR-032).
@@ -846,6 +944,28 @@ class BrowserToolbox:
                 "error": (
                     f"요소 참조를 찾을 수 없습니다: {element_ref}. "
                     "observe_page 를 먼저 불러 참조를 받으세요."
+                )
+            }
+
+        # **가리키는 것이 하나가 아니면 조작하지 않는다** (2026-09-11 사용자 보고).
+        #
+        # 아래 `collect_by_selector` 는 이 `css` 로 요소를 **다시 찾는다.** 경로가 둘
+        # 이상을 가리키면 `querySelector` 가 문서 순서상 첫 번째를 주고, 에이전트가 무엇을
+        # 지목했든 조작은 다른 요소에 간다. 실측에서 목록의 이름 검색 칸을 정확히 지목한
+        # 입력이 헤더의 전역 검색 칸에 들어갔고, 화면은 아무 일도 없는 것처럼 보였다.
+        #
+        # **여기서 대신 고르지 않는다.** 하나를 골라 주면 그것도 추측이고, 틀렸을 때
+        # 조용히 통과한다 (004 가 `.first` 폴백을 지운 근거 · `mark_duplicates` 머리말).
+        # 에이전트에게 돌려주고 사람에게 묻게 한다 (FR-069).
+        if not observed.unique:
+            self.limits.record_failure(element_ref)
+            return {
+                "error": (
+                    f"이 요소를 가리키는 경로가 화면에서 유일하지 않습니다: "
+                    f"{observed.name or element_ref}. 같은 자리를 가리키는 요소가 둘 "
+                    "이상이어서 어느 것을 조작할지 제품이 정할 수 없습니다. "
+                    "다른 요소로 같은 일을 할 수 있는지 observe_page 로 확인하고, "
+                    "없으면 report_blocked 로 사람에게 물으세요."
                 )
             }
 

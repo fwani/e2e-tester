@@ -34,8 +34,17 @@ export function flexOf(el: HTMLElement): string {
   return "";
 }
 
-/** 「이 요소가 줄어들 수 있는가」 — `flex-shrink` 가 0 이 아닌가. */
+/**
+ * 「이 요소가 줄어들 수 있는가」 — `flex-shrink` 가 0 이 아닌가.
+ *
+ * `flex` 축약 말고 **`shrink-0` 단독 유틸리티**도 읽는다 (2026-09-11). 축약은 basis 까지
+ * 함께 정하므로, 「높이는 내용이 정하되 줄지는 않는다」를 말할 때는 `shrink-0` 만 붙는
+ * 것이 맞다 — `ChatPanel` 의 입력 폼이 그 경우다. 이것을 못 읽으면 선언이 있는데도
+ * 「없으므로 기본값 1」로 판정해 검사가 헛돈다.
+ */
 export function canShrink(el: HTMLElement): boolean {
+  if (el.style.flexShrink !== "") return Number.parseFloat(el.style.flexShrink) !== 0;
+  if (/\bshrink-0\b/.test(el.className)) return false;
   const f = flexOf(el);
   if (f === "") return true; // 선언이 없으면 기본값(1)이다
   const parts = f.split(/\s+/);

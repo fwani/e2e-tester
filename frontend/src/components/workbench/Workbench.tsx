@@ -76,8 +76,16 @@ export interface WorkbenchProps {
   headerActions?: ReactNode;
   /** Step 행 안의 편집 조작 */
   rowActions?: WorkbenchStepActions;
-  /** Step 패널 헤더 오른쪽에 얹는 것 */
+  /** Step 패널 헤더 오른쪽에 얹는 것 — **짧은 표식**의 자리다 */
   stepHeaderExtra?: ReactNode;
+  /**
+   * Step 패널 머리 아래 **한 줄 전체**의 띠 (2026-09-11 사용자 보고).
+   *
+   * 016 의 재녹화 띠가 산다. 처음에는 `stepHeaderExtra` 에 걸었고 머리 한 줄에서 60px
+   * 남짓을 받아 확정·버리기 버튼이 보이지 않았다 (`StepList` 의 `band` 주석). 문장과
+   * 조작을 가진 것은 자기 줄이 필요하다.
+   */
+  stepBand?: ReactNode;
   /**
    * 좌측 열 **아래**에 얹는 것 (016).
    *
@@ -152,6 +160,7 @@ export function Workbench({
   headerActions,
   rowActions,
   stepHeaderExtra,
+  stepBand,
   leftExtra,
   stepEmptyNotice,
   deleteTargets,
@@ -372,9 +381,17 @@ export function Workbench({
             `div` 를 한 겹 두는 이유는 `leftExtra` 가 `ReactNode` 라 props 로 크기를
             내려줄 수 없기 때문이다 — `WorkArea` 처럼 `sizeClass` 를 받게 하면 이 확장
             자리에 오는 것이 무엇이든 대화 패널의 사정을 알아야 한다.
+
+            여백과 경계는 **③-b 와 같은 것을 쓴다** (`WorkArea` 의 그 줄). 016 은 이
+            자리를 맨몸으로 걸어서 대화 문장이 창 왼쪽 끝에 붙어 있었다 — 위의 두 자리와
+            달리 「자리」로 읽히지 않고, 미러 아래로 흘러나온 것처럼 보인다. 새 값을
+            만들지 않는다: 셋째 자리도 좌측 열의 자리이므로 같은 문법을 받는다.
           */}
           {leftExtra != null && leftExtra !== false && (
-            <div data-workbench-left-extra className={CHAT_SLOT_CLASS}>
+            <div
+              data-workbench-left-extra
+              className={`border-t border-hair-2 bg-sunken-2 ${CHAT_SLOT_CLASS} py-s3 px-s4`}
+            >
               {leftExtra}
             </div>
           )}
@@ -388,6 +405,7 @@ export function Workbench({
           onSelect={onSelectStep}
           rowActions={rowActions}
           headerExtra={stepHeaderExtra}
+          band={stepBand}
           emptyNotice={stepEmptyNotice}
           deleteTargets={deleteTargets}
           rerecordTargets={rerecordTargets}

@@ -139,7 +139,7 @@ const REASON_VISIBILITY: Record<DisabledReasonKey, Visibility> = {
    * 이 둘은 **남긴다.** 사용자가 지금 곧바로 해소할 수 있고, 감추면 기능의 존재를
    * 알 방법이 없다 (FR-234).
    *
-   * - `NEEDS_SESSION` — 「AI 로 다시 만들기로 시작하세요」를 가리킨다
+   * - `NEEDS_SESSION` — 「Step 을 골라 브라우저를 그 앞에서 멈추세요」를 가리킨다
    * - `USE_BLOCKED_ANSWER` — 「위의 답변 칸에 알려 주세요」를 가리킨다
    */
   NEEDS_SESSION: "keep",
@@ -240,6 +240,8 @@ const REASON_VISIBILITY: Record<DisabledReasonKey, Visibility> = {
    */
   O7: "keep",
   O9: "hide",
+  /** O14 — 교체가 끝나지 않아 저장을 잠갔다. 같은 화면의 「확정」으로 해소한다. **남긴다.** */
+  O14: "keep",
   RUNNING_NO_EDIT: "hide",
   RUN_FINISHED_NO_EDIT: "hide",
   RESULT_NO_EDIT: "hide",
@@ -661,6 +663,28 @@ const OVERRIDES: {
     fact: "controlSurfaceIsMirror",
     actions: ["mirror.control"],
     remedy: null,
+  },
+  /*
+    O14 — 교체가 끝나지 않았으면 저장을 **미리** 잠근다 (2026-09-11 사용자 보고 · 016 FR-029).
+
+    > 「ai 로 변경한 내용(추가,변경) 저장도 안돼」
+
+    서버는 확정되지 않은 교체의 저장을 409 로 거절한다 (`sessions.py` 의 `save`). 그러나
+    화면의 `save` 셀은 C8(Step 이 있다)만 봤으므로 버튼이 **활성으로 보이다가 눌러야**
+    거절됐다 — 005 U-01 의 형태이고, `RerecordStart` 가 「미리 잠긴다 — 눌러 보고 409 를
+    받지 않는다」로 같은 종류를 이미 막았던 자리다. 재녹화 띠가 목록 머리에 짓눌려
+    확정 버튼이 보이지 않던 것과 겹쳐, 사용자에게는 「저장이 안 된다」로만 보였다.
+
+    해소는 **확정**이다. 버리기도 정당한 길이지만 저장하려는 사람이 원하는 것은 만든
+    것을 남기는 쪽이고, 해소 링크는 하나만 가리킨다 (FR-235). 버리기는 사유 문구가 말한다.
+
+    `keep` 이다 — 이 화면에서 곧바로 해소할 수 있는 전제다 (재녹화 띠가 같은 화면에 있다).
+  */
+  {
+    key: "O14",
+    fact: "hasRerecord",
+    actions: ["save"],
+    remedy: "ai.rerecordCommit",
   },
 ];
 
@@ -1120,8 +1144,23 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
   review: {
     "ai.rerecord": off("NEEDS_BROWSER", "run.all"),
     "ai.chat": off("NEEDS_BROWSER", "run.all"),
-    "ai.rerecordCommit": na("N3"),
-    "ai.rerecordDiscard": na("N3"),
+    /*
+      **확정·버리기는 여기서도 쓸 수 있다** (2026-09-11 사용자 보고).
+
+      016 초안은 넷을 묶어 「브라우저가 없다」(N3)로 적었다. 그것이 `ai.rerecord`·
+      `ai.chat` 에는 맞고 이 둘에는 틀렸다 — 확정은 **정의만 고치는 편집**이고,
+      서버도 `REVIEW` 에서 받는다 (`require_paused` 는 `is_editable` 을 쓴다).
+
+      막다른 길을 만든 것이 이 두 칸이었다. 교체를 연 채 「AI 작성 끝내기」나 「중지」를
+      누르면 세션은 `REVIEW` 로 온다. 저장은 미확정 교체를 거절하고(FR-029), 화면에는
+      확정도 버리기도 없다 — 남은 길이 「나가기」뿐이고 그것은 만든 것을 전부 버린다.
+      실측에서 사용자가 그 상태로 남긴 세션을 그대로 만났다.
+
+      비활성 사유의 해소 링크(O14)가 `ai.rerecordCommit` 을 가리키는 것도 이 칸이
+      `na` 인 동안에는 아무 데도 닿지 않았다.
+    */
+    "ai.rerecordCommit": cond("C16"),
+    "ai.rerecordDiscard": cond("C17"),
     /** 저장된 테스트가 있으면 다시 걸 수 있다. 세션은 이미 끝났으므로 C1 은 참이다 */
     "run.all": cond("C1"),
     "run.from": cond("C1"),
@@ -1353,9 +1392,15 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
        같은 판정을 받는다.
 
        **`ai.chat` 이 `off("NEEDS_SESSION")` 인 것이 R6 의 결정이 표에 나타난 형태다.**
-       채팅은 세션 안에서만 산다. 자리는 보이되 잠기고 해소 조작을 가리킨다 (FR-234). */
+       채팅은 세션 안에서만 산다. 자리는 보이되 잠기고 해소 조작을 가리킨다 (FR-234).
+
+       해소 조작은 **「브라우저 열어 이 Step 앞에서 멈추기」다** (2026-09-11 사용자 보고).
+       016 은 `ai.rerecord` 를 가리켰는데, 그것은 「구간을 골라 교체」하는 한 가지 쓰임이다.
+       사용자가 말한 그림은 「위치를 고르면 브라우저가 그 앞까지 실행해 멈추고, 거기서
+       AI 가 끼운다」이고, 그 조작이 `browser.openAt` 이다 — 일시정지 세션의 대화는 그
+       위치에 끼운다 (FR-023a). 교체는 사유 문구가 두 번째 길로 말한다. */
     "ai.rerecord": cond("C7"),
-    "ai.chat": off("NEEDS_SESSION", "ai.rerecord"),
+    "ai.chat": off("NEEDS_SESSION", "browser.openAt"),
     "ai.rerecordCommit": na("N3"),
     "ai.rerecordDiscard": na("N3"),
     "run.all": ON,
