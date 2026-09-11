@@ -1,0 +1,142 @@
+/**
+ * **생성물이다. 손대지 않는다.** `scripts/split-canon.mjs` 가 `theme/tokens.css` 에서
+ * 뽑는다 (015 T075).
+ *
+ * 정본의 `:root` 변수와 요소 규칙만 담는다. 의미 클래스 규칙은 화면 코드가 더 이상
+ * 쓰지 않으므로 번들에 싣지 않는다 — 정본 파일에는 그대로 남아 있고
+ * (`theme/tokens.css`), L1 대조가 그것을 읽는다.
+ *
+ * 고칠 일이 있으면 정본을 고치고 다시 뽑는다:  node scripts/split-canon.mjs
+ */
+
+:root {
+  --bg:#F2F4F7; --panel:#FFFFFF; --sunken:#EAEDF2; --sunken-2:#F7F8FA;
+  --ink:#14171C; --ink-2:#4A515C; --ink-3:#6E757F;
+  --hair:#E3E6EB; --hair-2:#CBD0D8;
+  --pass:#1A7F45; --pass-t:#E8F5ED;
+  --fail:#C8371D; --fail-t:#FCEDE9;
+  --warn:#8F5A00; --warn-t:#FBF3E2;
+  --run:#0B6BCB;  --run-t:#E8F1FB;
+  --ai:#6B3FD4;   --ai-t:#F0EBFB;
+  --radius:3px; --radius-chip:2px; --radius-lg:6px;
+  --e-1:0 1px 2px rgba(20,23,28,.07);
+  --e-2:0 16px 40px rgba(20,23,28,.18);
+  --font-sans:"IBM Plex Sans KR",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+}
+
+*,*::before,*::after {box-sizing:border-box;
+}
+
+body {margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);
+     font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;
+     font-variant-numeric:tabular-nums;
+}
+
+a {color:var(--run);text-decoration:none;
+}
+
+a:hover {color:#08529E;
+}
+
+:root {
+  
+  --warn-line: #E5D3AC;
+  --fail-line: #EFC7BC;
+
+  
+  --mark: 3px;
+
+  
+  --h-header: 56px;
+  --h-phase: 48px;
+  --h-notice: 32px;
+  --h-control: 32px;
+  --h-control-sm: 26px;
+  --h-step: 52px;            
+  --w-steps: 460px;          
+  --w-detail: 640px;         
+  --w-min: 1440px;           
+
+  
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --gap: 12px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--run);
+  outline-offset: 2px;
+}
+
+button {
+  font: 600 13px/1 var(--font-sans);
+  cursor: pointer;
+  height: var(--h-control);
+  padding: 0 12px;
+  border: 1px solid var(--hair-2);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--e-1);
+}
+
+button:hover { background: var(--sunken-2);
+}
+
+button:active { box-shadow: none;
+}
+
+button:disabled {
+  background: transparent;
+  border: 1px dashed var(--hair-2);
+  color: var(--ink-3);
+  box-shadow: none;
+  font-weight: 500;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+input, select, textarea {
+  font: 400 13px/1.4 var(--font-sans);
+  width: 100%;
+  min-height: var(--h-control);
+  padding: 0 10px;
+  border: 1px solid var(--hair-2);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+textarea { padding: 8px 10px; line-height: 1.5;
+}
+
+input::placeholder, textarea::placeholder { color: var(--ink-3);
+}
+
+input:disabled, select:disabled, textarea:disabled {
+  background: transparent;
+  border-style: dashed;
+  color: var(--ink-3);
+}
+
+label {
+  display: block;
+  font: 600 11px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin: 12px 0 6px;
+  text-transform: uppercase;
+}
+
+code { font-family: var(--font-mono); font-size: 12px;
+}
+
+:root {
+  --scrim: rgba(20, 23, 28, 0.28);
+  --scrim-strong: rgba(20, 23, 28, 0.45);
+}

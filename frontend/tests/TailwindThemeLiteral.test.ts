@@ -89,7 +89,9 @@ describe("G-A1 — Tailwind 테마에는 값이 없다", () => {
     //
     // 이 한 줄이 빠지면 화면은 「그냥 예전 그대로」로 보인다. 무엇이 잘못됐는지
     // 알려 주는 것이 아무것도 없으므로 검사로 못 박는다.
-    const m = /@import\s+"\.\/tokens\.css"([^;]*);/.exec(css);
+    // T075 이후 앱이 들이는 것은 정본에서 뽑아낸 `tokens.app.css` 다. 묻는 것은
+    // 그대로다: **앱이 들이는 정본이 base 레이어에 놓이는가.**
+    const m = /@import\s+"\.\/tokens(?:\.app)?\.css"([^;]*);/.exec(css);
     expect(m, "tailwind.css 가 정본을 @import 하지 않는다").not.toBeNull();
     expect(
       (m?.[1] ?? "").includes("layer(base)"),

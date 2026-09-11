@@ -74,8 +74,11 @@ export function generatedClasses(): Set<string> {
  */
 export function utilityOnlyClasses(): Set<string> {
   if (utilCache !== null) return utilCache;
+  // **정본 `@import` 를 걷어낸다.** 걷지 않으면 임시 디렉터리에서 상대 경로가 풀리지
+  // 않아 Tailwind CLI 가 멈춘다. 파일 이름이 `tokens.app.css` 로 바뀔 수 있으므로
+  // 둘 다 받는다 (T075).
   const theme = readFileSync(join(ROOT, "src/theme/tailwind.css"), "utf8").replace(
-    /@import\s+"\.\/tokens\.css"[^;]*;/,
+    /@import\s+"\.\/tokens(?:\.app)?\.css"[^;]*;/,
     "",
   );
   // `:root { … }` 블록만 통째로 뽑는다. 줄 단위로 거르면 중괄호가 짝을 잃어
@@ -230,8 +233,11 @@ let declCache: Map<string, UtilityDecl> | null = null;
  */
 export function utilityDeclarations(): Map<string, UtilityDecl> {
   if (declCache !== null) return declCache;
+  // **정본 `@import` 를 걷어낸다.** 걷지 않으면 임시 디렉터리에서 상대 경로가 풀리지
+  // 않아 Tailwind CLI 가 멈춘다. 파일 이름이 `tokens.app.css` 로 바뀔 수 있으므로
+  // 둘 다 받는다 (T075).
   const theme = readFileSync(join(ROOT, "src/theme/tailwind.css"), "utf8").replace(
-    /@import\s+"\.\/tokens\.css"[^;]*;/,
+    /@import\s+"\.\/tokens(?:\.app)?\.css"[^;]*;/,
     "",
   );
   const tokens = readFileSync(join(ROOT, "src/theme/tokens.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");

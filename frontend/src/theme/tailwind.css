@@ -63,6 +63,19 @@
  * 대가: 아직 해체되지 않은 의미 클래스도 base 로 내려가 유틸리티에 진다. 그래서
  * LC-5(한 요소는 한 체계만)가 규칙이 아니라 **필수**가 된다. 가드 G-C 가 감시한다.
  *
+ * ## 왜 `tokens.css` 가 아니라 `tokens.app.css` 인가 (T075 · SC-007)
+ *
+ * 전환이 끝나 **화면 코드가 의미 클래스를 하나도 쓰지 않는다.** 그런데 정본 파일
+ * 전체를 들이고 있었으므로 클래스 규칙 148개(12.5 kB)가 아무도 읽지 않는 채 사용자
+ * 에게 내려갔다 — 산출 CSS 36.8 kB 중 3분의 1이다.
+ *
+ * 그 규칙들을 **지울 수는 없다.** `scripts/extract_canon.py` 가 확정 디자인에서 추출한
+ * 기록이자 L1 대조의 기준이다. 그래서 지우는 대신 **번들에서 뺀다** —
+ * `scripts/split-canon.mjs` 가 정본에서 `:root` 변수와 요소 규칙만 뽑아
+ * `tokens.app.css` 를 만들고, 앱은 그것을 불러온다. 정본 파일은 그대로 있다.
+ *
+ * 낡으면 `tests/CanonSplit.test.ts` 가 잡는다.
+ *
  * 간격(`--spacing-*`)은 비우지 않았다. 배치 계약이 아직 서는 중이라(T029) 어떤 치수가
  * 실제로 필요한지 모르고, 지금 조이면 전환이 임의값(`p-[7px]`)으로 도피한다 — 그것이
  * 더 나쁘다. T051(예외 등록) 시점에 실제 사용을 보고 다시 판단한다.
@@ -73,7 +86,7 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
-@import "./tokens.css" layer(base);
+@import "./tokens.app.css" layer(base);
 
 @theme inline {
   /* ── 색 ─────────────────────────────────────────────────────────────
