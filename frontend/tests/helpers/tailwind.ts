@@ -21,7 +21,7 @@ let utilCache: Set<string> | null = null;
  * 임시 파일은 **프로젝트 안에** 만든다 — 시스템 임시 디렉터리에는 `tailwindcss/…` 를
  * 해석할 `node_modules` 가 없다. 실측 ~1.2초 (Tailwind 자체는 54ms).
  */
-function runTailwind(inputCss: string): Set<string> {
+function runTailwindRaw(inputCss: string): string {
   const dir = mkdtempSync(join(ROOT, ".tw-probe-"));
   try {
     const input = join(dir, "in.css");
@@ -31,15 +31,21 @@ function runTailwind(inputCss: string): Set<string> {
       cwd: ROOT,
       stdio: "pipe",
     });
-    const css = readFileSync(output, "utf8");
+    return readFileSync(output, "utf8");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function runTailwind(inputCss: string): Set<string> {
+  {
+    const css = runTailwindRaw(inputCss);
     const out = new Set<string>();
     // 이스케이프된 형태(`.basis-\[460px\]`)를 원래 이름으로 되돌린다.
     for (const m of css.matchAll(/\.((?:\\.|[a-zA-Z0-9_-])+)(?=[\s,{:>~+])/g)) {
       out.add((m[1] as string).replace(/\\(.)/g, "$1"));
     }
     return out;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
   }
 }
 
@@ -199,4 +205,278 @@ export function classNameGroups(): { names: string[]; file: string; line: number
     }
   }
   return out;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 가드 G-E 가 쓰는 것 — 「한 요소에 같은 속성이 두 번」을 보려면 두 가지가 더 필요하다.
+ * (1) 각 유틸리티가 **어떤 속성을 선언하는가**, (2) 산출 CSS 에서 **누가 뒤에 오는가**.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** 한 유틸리티 클래스가 선언하는 속성과 산출 CSS 에서의 위치. */
+export interface UtilityDecl {
+  readonly props: ReadonlySet<string>;
+  /** 산출 CSS 안의 위치. 같은 속성을 다투면 **큰 쪽이 이긴다** (동일 특이도). */
+  readonly order: number;
+}
+
+let declCache: Map<string, UtilityDecl> | null = null;
+
+/**
+ * Tailwind 가 만든 유틸리티의 속성과 순서.
+ *
+ * **정본을 뺀 입력으로 묻는다** — `utilityOnlyClasses()` 와 같은 이유다. 정본 클래스가
+ * 섞이면 「`.meta` 와 `.mono` 가 font-family 를 다툰다」 같은, 이 가드의 관할이 아닌
+ * 것까지 나온다 (그쪽은 정본의 캐스케이드이고 G-C 가 공존 자체를 막는다).
+ */
+export function utilityDeclarations(): Map<string, UtilityDecl> {
+  if (declCache !== null) return declCache;
+  const theme = readFileSync(join(ROOT, "src/theme/tailwind.css"), "utf8").replace(
+    /@import\s+"\.\/tokens\.css"[^;]*;/,
+    "",
+  );
+  const tokens = readFileSync(join(ROOT, "src/theme/tokens.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const vars = Array.from(tokens.matchAll(/:root\s*\{[^}]*\}/g), (m) => m[0]).join("\n");
+  const css = runTailwindRaw(`${theme}\n${vars}\n`);
+
+  const head = css.match(/@layer\s+utilities\s*\{/);
+  const out = new Map<string, { props: Set<string>; order: number }>();
+  if (head === null || head.index === undefined) {
+    declCache = out;
+    return out;
+  }
+  // 여는 중괄호에서 시작해 짝을 맞춘다. **한 칸 뒤에서 시작하면** 첫 규칙의 닫는
+  // 괄호를 레이어의 끝으로 오인한다 — 이 가드를 만들며 실제로 겪었고, 그때 읽힌
+  // 클래스가 1개였다.
+  const open = head.index + head[0].length - 1;
+  let depth = 0;
+  let close = open;
+  for (let i = open; i < css.length; i += 1) {
+    if (css[i] === "{") depth += 1;
+    else if (css[i] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        close = i;
+        break;
+      }
+    }
+  }
+  walkRules(css.slice(open + 1, close), open + 1, out);
+  declCache = out;
+  return out;
+}
+
+/** 규칙을 훑어 「선택자의 첫 클래스 → 선언된 속성」을 모은다. 중첩 at-규칙은 파고든다. */
+function walkRules(text: string, base: number, out: Map<string, { props: Set<string>; order: number }>): void {
+  let i = 0;
+  let sel = "";
+  while (i < text.length) {
+    if (text[i] !== "{") {
+      sel += text[i];
+      i += 1;
+      continue;
+    }
+    let depth = 1;
+    let j = i + 1;
+    while (j < text.length && depth > 0) {
+      if (text[j] === "{") depth += 1;
+      else if (text[j] === "}") depth -= 1;
+      j += 1;
+    }
+    const body = text.slice(i + 1, j - 1);
+    const selector = sel.trim();
+    if (selector.startsWith("@")) {
+      walkRules(body, base + i + 1, out);
+    } else {
+      const props: string[] = [];
+      for (const d of body.matchAll(/(?:^|;)\s*([-a-zA-Z][-a-zA-Z0-9]*)\s*:/g)) props.push(d[1] as string);
+      for (const part of selector.split(",")) {
+        const m = part.match(/\.((?:\\.|[a-zA-Z0-9_-])+)/);
+        if (m === null) continue;
+        const name = (m[1] as string).replace(/\\(.)/g, "$1");
+        let entry = out.get(name);
+        if (entry === undefined) {
+          entry = { props: new Set<string>(), order: base + i };
+          out.set(name, entry);
+        }
+        // `--tw-*` 는 Tailwind 내부 변수다. 그것까지 세면 관계없는 유틸리티가
+        // 서로 다투는 것처럼 보인다 (`shadow-*` 와 `ring-*` 등).
+        for (const p of props) if (!p.startsWith("--tw")) entry.props.add(p);
+      }
+    }
+    sel = "";
+    i = j;
+  }
+}
+
+/** 변형 접두(`hover:`·`disabled:`)와 유틸리티 본체를 가른다. 대괄호 안의 `:` 는 세지 않는다. */
+export function splitVariant(name: string): { variant: string; utility: string } {
+  let depth = 0;
+  const cut: number[] = [];
+  for (let i = 0; i < name.length; i += 1) {
+    const c = name[i];
+    if (c === "[") depth += 1;
+    else if (c === "]") depth -= 1;
+    else if (c === ":" && depth === 0) cut.push(i);
+  }
+  if (cut.length === 0) return { variant: "", utility: name };
+  const last = cut[cut.length - 1] as number;
+  return { variant: name.slice(0, last), utility: name.slice(last + 1) };
+}
+
+/**
+ * 부품이 **조립해서** 요소에 붙이는 클래스 조합 전부.
+ *
+ * ## 왜 리터럴만 보면 부족한가
+ *
+ * `ui/Button` 은 흰 배경 위에 흰 글자를 그리고 있었다 (2026-09-11 사용자 신고).
+ * 원인은 `BASE` 의 `bg-panel` 과 `VARIANT.primary` 의 `bg-ink` 가 **둘 다 살아
+ * 있었던 것**이고, Tailwind 는 `className` 의 순서가 아니라 **산출 CSS 의 순서**로
+ * 승자를 정하므로 나중에 적은 `bg-ink` 가 졌다.
+ *
+ * 그런데 두 클래스는 **서로 다른 문자열 리터럴**에 있다. 리터럴을 하나씩 보는 검사는
+ * 조립된 결과를 영원히 보지 못한다 — 그래서 이 부분이 있다.
+ *
+ * ## 무엇을 조합으로 치는가
+ *
+ *     const cls = [BASE, SIZE[size], VARIANT[variant], layout].filter(Boolean).join(" ");
+ *
+ * 배열의 각 자리를 **선택지 목록**으로 푼다. `BASE` 는 하나, `VARIANT[variant]` 는
+ * 그 표의 값 전부, 삼항은 양쪽. `layout` 처럼 알 수 없는 것은 빈 문자열로 둔다 —
+ * 부품 밖에서 오는 배치이며 이 검사의 관할이 아니다.
+ *
+ * 표의 값끼리는 **서로 조합하지 않는다.** `primary` 와 `danger` 는 동시에 붙지 않는다.
+ */
+export function composedClassGroups(): { names: string[]; file: string; line: number; via: string }[] {
+  const out: { names: string[]; file: string; line: number; via: string }[] = [];
+  const files = execFileSync("find", ["src", "-name", "*.tsx"], { cwd: ROOT, encoding: "utf8" })
+    .trim()
+    .split("\n");
+  for (const rel of files) {
+    const txt = stripLineComments(withoutComments(readFileSync(join(ROOT, rel), "utf8")));
+    const consts = stringConstants(txt);
+    const records = recordConstants(txt);
+    for (const m of txt.matchAll(/\]\s*\.filter\(Boolean\)\s*\.join\(" "\)/g)) {
+      // **`[` 를 앞에서 찾으면 안 된다.** `gap-[6px]` 의 대괄호에서 매칭이 시작되어
+      // 배열이 아닌 것을 배열로 읽는다 (실제로 그래서 `ui/Button` 을 통째로 놓쳤다).
+      // 닫는 `]` 에서 뒤로 짝을 맞춰 여는 `[` 를 찾는다.
+      const close = m.index ?? 0;
+      let depth = 0;
+      let open = -1;
+      for (let i = close; i >= 0; i -= 1) {
+        if (txt[i] === "]") depth += 1;
+        else if (txt[i] === "[") {
+          depth -= 1;
+          if (depth === 0) {
+            open = i;
+            break;
+          }
+        }
+      }
+      if (open < 0) continue;
+      const slots = splitTopLevel(txt.slice(open + 1, close)).map((s) => resolveSlot(s.trim(), consts, records));
+      const line = txt.slice(0, open).split("\n").length;
+      let combos: string[][] = [[]];
+      for (const choices of slots) {
+        const next: string[][] = [];
+        for (const acc of combos) for (const c of choices) next.push(c === "" ? acc : [...acc, ...c.split(/\s+/)]);
+        // 폭발 방지. 실측에서 가장 큰 것이 6×2 이므로 여유가 크다.
+        combos = next.slice(0, 64);
+      }
+      const via = txt.slice(open + 1, close).replace(/\s+/g, " ").trim();
+      for (const names of combos) {
+        if (names.length > 1) out.push({ names, file: rel, line, via });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * `//` 주석을 지운다 (줄 번호는 보존한다). **문자열 안의 `//` 는 건드리지 않는다** —
+ * `"https://…"` 를 자르면 없는 클래스를 만들어 낸다.
+ *
+ * 부품의 클래스 상수는 조각 사이에 주석을 끼워 두는 일이 잦고(`ui/Button` 의 BASE 가
+ * 그렇다), 그것을 지우지 않으면 `"…" + "…"` 연결이 거기서 끊겨 **상수를 통째로 놓친다.**
+ * 흰 버튼이 이 가드에 처음 안 잡힌 이유가 그것이었다.
+ */
+function stripLineComments(text: string): string {
+  let out = "";
+  let quote: string | null = null;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i] as string;
+    if (quote !== null) {
+      out += c;
+      if (c === "\\") {
+        i += 1;
+        out += text[i] ?? "";
+      } else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      quote = c;
+      out += c;
+      continue;
+    }
+    if (c === "/" && text[i + 1] === "/") {
+      while (i < text.length && text[i] !== "\n") i += 1;
+      out += "\n";
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+
+/** `const NAME = "…"` / `const NAME =\n  "…" + "…"` 를 이어 붙여 모은다. */
+function stringConstants(txt: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const m of txt.matchAll(/const\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*string\s*)?=\s*((?:"[^"]*"|`[^`]*`)(?:\s*\+\s*(?:"[^"]*"|`[^`]*`))*)\s*;/g)) {
+    const joined = Array.from((m[2] as string).matchAll(/"([^"]*)"|`([^`]*)`/g), (x) => (x[1] ?? x[2] ?? "") as string).join(" ");
+    out.set(m[1] as string, joined);
+  }
+  return out;
+}
+
+/** `const NAME: Record<…> = { a: "…", b: "…" }` 의 값 전부. */
+function recordConstants(txt: string): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const m of txt.matchAll(/const\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*Record<[^>]*>\s*=\s*\{([^}]*)\}/g)) {
+    out.set(
+      m[1] as string,
+      Array.from((m[2] as string).matchAll(/:\s*"([^"]*)"/g), (x) => x[1] as string),
+    );
+  }
+  return out;
+}
+
+/** 대괄호·중괄호·괄호 깊이를 세며 최상위 쉼표로 가른다. */
+function splitTopLevel(text: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let acc = "";
+  for (const ch of text) {
+    if ("([{".includes(ch)) depth += 1;
+    else if (")]}".includes(ch)) depth -= 1;
+    if (ch === "," && depth === 0) {
+      out.push(acc);
+      acc = "";
+    } else acc += ch;
+  }
+  if (acc.trim() !== "") out.push(acc);
+  return out;
+}
+
+/** 배열의 한 자리가 될 수 있는 클래스 문자열 전부. 알 수 없으면 `[""]`. */
+function resolveSlot(slot: string, consts: Map<string, string>, records: Map<string, string[]>): string[] {
+  const lit = slot.match(/^(?:"([^"]*)"|`([^`$]*)`)$/);
+  if (lit !== null) return [(lit[1] ?? lit[2] ?? "") as string];
+  const rec = slot.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*\[/);
+  if (rec !== null && records.has(rec[1] as string)) return records.get(rec[1] as string) as string[];
+  if (consts.has(slot)) return [consts.get(slot) as string];
+  const tern = slot.match(/\?([^]*)$/);
+  if (tern !== null) {
+    const parts = Array.from((tern[1] as string).matchAll(/"([^"]*)"|`([^`$]*)`/g), (x) => (x[1] ?? x[2] ?? "") as string);
+    if (parts.length > 0) return parts;
+  }
+  return [""];
 }

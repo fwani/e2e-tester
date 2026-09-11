@@ -139,13 +139,17 @@ export function FileButton({
 }) {
   const cls = [
     // `.btn` 의 형태 — `ui/Button` 과 같은 값이다. 라벨이므로 컴포넌트를 나눴다.
-    "relative inline-flex items-center gap-[6px] px-s3 border rounded-base",
-    "font-sans text-[13px] font-semibold leading-none whitespace-nowrap",
-    "cursor-pointer m-0 tracking-normal normal-case",
-    small ? "h-control-sm px-[9px] text-[12px]" : "h-control",
+    //
+    // **크기·상태가 정하는 속성은 여기 적지 않는다.** 같은 속성을 두 번 적으면 이기는
+    // 쪽을 Tailwind 의 정렬 순서가 정하고, `className` 에 나중에 적은 쪽이 진다 —
+    // 그래서 `small` 이 글자 크기도 좌우 여백도 바꾸지 못하고 있었다 (G-E).
+    "relative inline-flex items-center gap-[6px] border rounded-base",
+    "font-sans leading-none whitespace-nowrap",
+    "m-0 tracking-normal normal-case",
+    small ? "h-control-sm px-[9px] text-[12px]" : "h-control px-s3 text-[13px]",
     off
       ? "bg-transparent border-dashed border-hair-2 text-ink-3 shadow-none font-medium cursor-not-allowed"
-      : "bg-panel border-hair-2 text-ink shadow-e1 hover:bg-sunken-2",
+      : "bg-panel border-hair-2 text-ink shadow-e1 font-semibold cursor-pointer hover:bg-sunken-2",
     // S-16·S-17 — 라벨이 링을 그린다. 안쪽 입력칸이 초점을 받기 때문이다.
     off
       ? "focus-within:outline focus-within:outline-2 focus-within:outline-hair-2 focus-within:outline-offset-2"

@@ -22,6 +22,25 @@
  * `.btn.primary` 의 글자색이 정본에서 `#fff` 리터럴이었다. 여기서는 `text-panel`
  * (`--panel` = `#FFFFFF`)을 쓴다. **값은 같고** 팔레트 밖 리터럴 하나가 사라진다.
  *
+ * ## 왜 BASE 에 색·배경·그림자·굵기가 없는가
+ *
+ * **`className` 의 순서는 승부를 정하지 않는다.** 같은 속성을 두 유틸리티가 선언하면
+ * 이기는 쪽은 **산출 CSS 에서 뒤에 오는 것**이고, 그 순서는 Tailwind 가 정한다.
+ *
+ * 이 파일의 1회차는 BASE 에 `bg-panel text-ink` 를 두고 변종이 `bg-ink text-panel` 로
+ * 덮어쓰게 했다. 덮이지 않았다 — `.bg-panel` 이 `.bg-ink` 보다 뒤에 놓이기 때문이다.
+ * 결과는 **흰 배경 위의 흰 글자**였고, 강조 버튼이 보이지 않았다 (2026-09-11 신고).
+ * danger 는 테두리도 글자도 빨갛지 않았고, `sm` 은 글자 크기와 좌우 여백이 `md` 였다.
+ *
+ * `toHaveClass("bg-ink")` 는 통과했다. 클래스는 실제로 붙어 있었기 때문이다.
+ *
+ * 그래서 규율을 뒤집었다 — **변종이 건드리는 속성은 BASE 가 아예 갖지 않는다.**
+ * 배경·테두리색·글자색·그림자·글자굵기·hover 배경은 `VARIANT` 가, 높이·좌우 여백·
+ * 글자 크기는 `SIZE` 가 **각자 온전히** 갖는다. 표의 항목마다 같은 속성을 다 적어야
+ * 하므로 조금 길어지지만, 한 요소에 같은 속성이 두 번 붙는 일이 없어진다.
+ *
+ * 가드 `tests/ClassConflict.test.ts`(G-E)가 이 규율을 강제한다.
+ *
  * ## 왜 `<button>` 만 받는가
  *
  * 착수 시점 실측에서 `.btn` 은 44곳 전부 `<button>` 에 쓰였다. 파일 선택 버튼
@@ -61,16 +80,18 @@ export interface ButtonProps extends Omit<ComponentPropsWithRef<"button">, "clas
  * `font-semibold`=600, `leading-none`=line-height:1.
  */
 const BASE =
-  "inline-flex items-center gap-[6px] px-s3 " +
-  "border border-hair-2 rounded-base bg-panel text-ink " +
-  "font-sans text-[13px] font-semibold leading-none shadow-e1 whitespace-nowrap " +
-  // 상태 — 정본의 `button:hover`·`button:active`·`button:disabled` 를 옮겼다.
+  "inline-flex items-center gap-[6px] " +
+  "border rounded-base " +
+  "font-sans leading-none whitespace-nowrap " +
+  // 상태 — 정본의 `button:active`·`button:disabled` 를 옮겼다.
   // **이것을 빠뜨리면 조용한 회귀가 된다.** 정본을 `layer(base)` 로 들이므로
-  // 요소 규칙(`button:hover{…}`)이 유틸리티(`bg-panel`)에 지고, hover 배경 변화가
-  // 사라진다. 화면은 멀쩡해 보이고 테스트도 통과한다 — 마우스를 올려야만 보인다.
+  // 요소 규칙(`button:hover{…}`)이 유틸리티에 지고, 상태 변화가 사라진다.
+  // 화면은 멀쩡해 보이고 테스트도 통과한다 — 마우스를 올려야만 보인다.
   // FR-009(상호작용 상태 보존)가 이것을 요건으로 못 박은 이유다.
-  "hover:bg-sunken-2 active:shadow-none " +
-  "disabled:bg-transparent disabled:border-dashed disabled:border-hair-2 " +
+  //
+  // `hover` 배경은 여기 두지 않는다 — 변종마다 다르기 때문이다. 아래 「왜 BASE 가
+  // 비어 있는가」 참조.
+  "active:shadow-none disabled:bg-transparent disabled:border-dashed disabled:border-hair-2 " +
   "disabled:text-ink-3 disabled:shadow-none disabled:font-medium disabled:cursor-not-allowed";
 
 /**
@@ -80,22 +101,22 @@ const BASE =
 const VARIANT: Record<ButtonVariant, string> = {
   // `button.secondary` 도 여기로 온다 — 정본 주석이 「이전 판의 이름. 지금은 기본형이
   // 곧 보조 조작이다」라고 적었고, 선언이 실제로 `button{}` 기본과 같다.
-  default: "",
+  default: "bg-panel border-hair-2 text-ink shadow-e1 font-semibold hover:bg-sunken-2",
   // 정본: background:var(--ink); border-color:var(--ink); color:#fff
-  primary: "bg-ink border-ink text-panel hover:bg-ink-2",
+  primary: "bg-ink border-ink text-panel shadow-e1 font-semibold hover:bg-ink-2",
   // 정본: background:var(--panel); border-color:var(--fail); color:var(--fail)
-  danger: "bg-panel border-fail text-fail hover:bg-fail-t",
+  danger: "bg-panel border-fail text-fail shadow-e1 font-semibold hover:bg-fail-t",
   // 정본: background:transparent; border:1px dashed; color:var(--ink-3); box-shadow:none; font-weight:500
   off: "bg-transparent border-dashed border-hair-2 text-ink-3 shadow-none font-medium hover:bg-transparent",
-  // 정본: color:var(--ink-2); box-shadow:none
-  quiet: "text-ink-2 shadow-none",
+  // 정본: color:var(--ink-2); box-shadow:none. 배경·테두리는 기본형과 같다.
+  quiet: "bg-panel border-hair-2 text-ink-2 shadow-none font-semibold hover:bg-sunken-2",
   // 정본 `button.ghost`: 투명 배경·테두리, 그림자 없음, hover 시 sunken
-  ghost: "bg-transparent border-transparent text-ink-2 shadow-none hover:bg-sunken",
+  ghost: "bg-transparent border-transparent text-ink-2 shadow-none font-semibold hover:bg-sunken",
 };
 
-/** 정본: `.btn` 은 32px, `.btn.sm` 은 26px·padding 9px·12px 글자. */
+/** 정본: `.btn` 은 32px·padding 12px·13px 글자, `.btn.sm` 은 26px·9px·12px. */
 const SIZE: Record<ButtonSize, string> = {
-  md: "h-control",
+  md: "h-control px-s3 text-[13px]",
   sm: "h-control-sm px-[9px] text-[12px]",
 };
 

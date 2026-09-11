@@ -35,17 +35,21 @@ export interface ChipProps extends Omit<ComponentPropsWithRef<"span">, "classNam
  */
 const BASE =
   "inline-flex items-center gap-[5px] h-[19px] px-[6px] " +
-  "border border-hair-2 rounded-chip " +
-  "font-mono text-[10px] font-semibold leading-none tracking-[.06em] " +
-  "text-ink-2 bg-sunken-2";
+  "border rounded-chip " +
+  "font-mono text-[10px] font-semibold leading-none tracking-[.06em]";
 
 /**
- * 상태별 덧칠. **`Record` 로 두어 상태가 늘 때 빠뜨릴 수 없게 한다.**
+ * 상태별 색. **`Record` 로 두어 상태가 늘 때 빠뜨릴 수 없게 한다.**
  * 셋 다(테두리·글자·배경) 함께 바꾸는 것이 정본의 규율이다 — 하나만 바꾸면
  * 대비가 무너져 글자가 배경에 묻힌다.
+ *
+ * **덧칠이 아니라 전부다.** `default` 도 색 셋을 적는다. BASE 에 두고 덮어쓰게 하면
+ * 덮이지 않는다 — `.bg-sunken-2` 가 `.bg-pass-t` 보다 산출 CSS 에서 뒤에 오므로
+ * 상태 배경이 전부 회색으로 그려지고 있었다 (2026-09-11, `ui/Button` 과 같은 원인).
+ * 가드 `tests/ClassConflict.test.ts`(G-E)가 막는다.
  */
 const TONE: Record<ChipTone, string> = {
-  default: "",
+  default: "border-hair-2 text-ink-2 bg-sunken-2",
   pass: "border-pass text-pass bg-pass-t",
   fail: "border-fail text-fail bg-fail-t",
   warn: "border-warn text-warn bg-warn-t",
