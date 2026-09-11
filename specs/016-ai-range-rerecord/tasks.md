@@ -30,8 +30,8 @@ description: "Task list for 016 편집 중 AI 구간 재녹화"
 
 **Purpose**: 기준선을 확인한다. 새 의존성은 없다.
 
-- [ ] T001 현재 브랜치에서 전체 검증을 돌려 **기준선이 초록**임을 확인한다 — `cd backend && uv run lint-imports && uv run ruff check src/ tests/ && uv run pytest && uv run python -m itb.schema.export --check` · `cd frontend && npx tsc --noEmit && npm test -- --run`. 실패가 있으면 그 목록을 `specs/016-ai-range-rerecord/baseline.md` 에 적고 이 기능과 무관함을 확인한다
-- [ ] T002 [P] `specs/016-ai-range-rerecord/contracts/agent-tools.md` §1 의 도구 분류표를 기준으로, `backend/src/itb/authoring/tools.py` 의 현재 `TOOL_NAMES` 12개가 네 분류에 빠짐없이 들어가는지 손으로 대조하고 결과를 `specs/016-ai-range-rerecord/baseline.md` 에 적는다 (계약 문서는 고치지 않는다 — 구현 작업이 계약을 수정하면 순서가 뒤집힌다)
+- [X] T001 현재 브랜치에서 전체 검증을 돌려 **기준선이 초록**임을 확인한다 — `cd backend && uv run lint-imports && uv run ruff check src/ tests/ && uv run pytest && uv run python -m itb.schema.export --check` · `cd frontend && npx tsc --noEmit && npm test -- --run`. 실패가 있으면 그 목록을 `specs/016-ai-range-rerecord/baseline.md` 에 적고 이 기능과 무관함을 확인한다
+- [X] T002 [P] `specs/016-ai-range-rerecord/contracts/agent-tools.md` §1 의 도구 분류표를 기준으로, `backend/src/itb/authoring/tools.py` 의 현재 `TOOL_NAMES` 12개가 네 분류에 빠짐없이 들어가는지 손으로 대조하고 결과를 `specs/016-ai-range-rerecord/baseline.md` 에 적는다 (계약 문서는 고치지 않는다 — 구현 작업이 계약을 수정하면 순서가 뒤집힌다)
 
 ---
 
@@ -44,8 +44,8 @@ description: "Task list for 016 편집 중 AI 구간 재녹화"
 
 ### 정의 요약 (FR-001~FR-006 · R8)
 
-- [ ] T003 [P] `backend/tests/unit/test_definition_summary.py` 에 **실패하는** 테스트를 먼저 쓴다: (a) 요약에 순번·id·label·종류·대상 요약·탭이 있다 (b) **어떤 Step 의 `value` 도 없다** — 값 100종(사번·주소·카드번호 형태 포함) property 검사 (c) 교체 구간이 표시된다 (d) 예산 초과 시 `… (Step n~m 생략) …` 가 명시된다
-- [ ] T004 `backend/src/itb/authoring/summary.py` 신규 — `build_definition_summary(steps, range_ids, budget) -> str`. **`Step.value` 에 접근하지 않는다** (R8). 입력값이 있는 Step 은 `값 있음` 또는 변수 참조 이름만 적는다. `budget` 기본값은 **잠정 8KB** 로 박고 T064 가 실측값으로 교체한다 (A1). T003 을 통과시킨다
+- [X] T003 [P] `backend/tests/unit/test_definition_summary.py` 에 **실패하는** 테스트를 먼저 쓴다: (a) 요약에 순번·id·label·종류·대상 요약·탭이 있다 (b) **어떤 Step 의 `value` 도 없다** — 값 100종(사번·주소·카드번호 형태 포함) property 검사 (c) 교체 구간이 표시된다 (d) 예산 초과 시 `… (Step n~m 생략) …` 가 명시된다
+- [X] T004 `backend/src/itb/authoring/summary.py` 신규 — `build_definition_summary(steps, range_ids, budget) -> str`. **`Step.value` 에 접근하지 않는다** (R8). 입력값이 있는 Step 은 `값 있음` 또는 변수 참조 이름만 적는다. `budget` 기본값은 **잠정 8KB** 로 박고 T064 가 실측값으로 교체한다 (A1). T003 을 통과시킨다
 - [ ] T005 `backend/src/itb/authoring/agent.py` 에 요약 주입을 배선한다 — `AuthoringAgent` 가 `summary_source: Callable[[], str] | None` 을 받고, **매 턴의 사용자 메시지 앞에** 요약을 덧붙인다 (FR-003 · agent-tools.md §3). 첫 메시지에만 넣지 않는다
 - [ ] T006 `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에 agent-tools.md §3 의 4줄을 더한다. **기존 줄은 하나도 지우지 않는다**
 - [ ] T006a `backend/src/itb/api/routes/sessions.py` — **기존 AI 작성(US4)·자연어 Step 추가(US6) 경로에도 같은 요약을 주입한다** (FR-005). 마감이 아니라 여기서 한다 — T005 가 주입 지점을 이미 만들었고, 나중에 붙이면 US4·US6 회귀가 마지막에 드러난다 (analyze I1)
