@@ -67,22 +67,54 @@ describe("대화 기록", () => {
     expect(screen.getByText(/물어보거나/)).toBeTruthy();
   });
 
-  it("AI 가 도는 동안 진행을 보인다 (FR-011)", () => {
+  it("**자취 전체**를 보인다 — 마지막 한 줄이 아니다 (FR-011)", () => {
+    /*
+      한 줄만 보이면 사용자는 「지금」만 알고 「무엇을 거쳐 왔는지」를 모른다 —
+      막히거나 엉뚱한 것을 눌렀을 때 어디서 어긋났는지 되짚을 수 없다.
+    */
     render(
       <ChatPanel
         turns={TURNS}
         capability={inPaused}
         busy
-        progress="로그인 버튼을 찾는 중"
+        progress={["화면을 살펴보는 중", "로그인 클릭 — 수행 중"]}
         onSend={vi.fn()}
       />,
     );
-    expect(screen.getByText("로그인 버튼을 찾는 중")).toBeTruthy();
+
+    expect(screen.getByText("화면을 살펴보는 중")).toBeTruthy();
+    expect(screen.getByText("로그인 클릭 — 수행 중")).toBeTruthy();
   });
 
-  it("진행 메시지가 없어도 도는 중임을 말한다", () => {
+  it("실패도 자취에 남는다 — 무엇을 하다 실패했는지가 필요하다", () => {
+    render(
+      <ChatPanel
+        turns={[]}
+        capability={inPaused}
+        busy
+        progress={["로그인 클릭 — 수행 중", "로그인 클릭 — 실패: 요소를 찾지 못했습니다"]}
+        onSend={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/실패: 요소를 찾지 못했습니다/)).toBeTruthy();
+  });
+
+  it("자취가 아직 없어도 도는 중임을 말한다", () => {
     render(<ChatPanel turns={[]} capability={inPaused} busy onSend={vi.fn()} />);
-    expect(screen.getByText(/수행 중/)).toBeTruthy();
+    // 첫 보고가 오기 전의 짧은 구간. 비워 두면 「보냈는데 아무 일도 없다」로 보인다.
+    expect(screen.getByText("AI 가 수행 중입니다…")).toBeTruthy();
+  });
+
+  it("멈춰 있으면 자취를 그리지 않는다", () => {
+    render(
+      <ChatPanel
+        turns={TURNS}
+        capability={inPaused}
+        progress={["지난 턴의 줄"]}
+        onSend={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("지난 턴의 줄")).toBeNull();
   });
 });
 

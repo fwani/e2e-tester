@@ -35,9 +35,18 @@ export const CHAT_MAX_CHARS = 8000;
 export interface ChatPanelProps {
   turns: ChatTurn[];
   capability: CapabilityState;
-  /** 지금 AI 가 도는 중인가. `ai_progress` 의 마지막 메시지를 함께 보여 준다. */
+  /** 지금 AI 가 도는 중인가. */
   busy?: boolean;
-  progress?: string | null;
+  /**
+   * 이번 턴에 AI 가 **무엇을 하고 있는지** (FR-011 · 2026-09-11 사용자 요청).
+   *
+   * **마지막 한 줄이 아니라 자취 전체다.** 한 줄만 보이면 사용자는 「지금」만 알고
+   * 「무엇을 거쳐 왔는지」를 모른다 — 막히거나 엉뚱한 것을 눌렀을 때 어디서
+   * 어긋났는지 되짚을 수 없다.
+   *
+   * `ai_progress` 이벤트를 턴 단위로 모은 것이며, 턴이 시작될 때 비워진다.
+   */
+  progress?: string[];
   /** 언어모델을 쓸 수 없을 때의 사유 (FR-012). 서버가 준 문장을 **그대로** 쓴다. */
   unavailableReason?: string | null;
   onSend: (text: string) => void;
@@ -48,7 +57,7 @@ export function ChatPanel({
   turns,
   capability,
   busy = false,
-  progress = null,
+  progress = [],
   unavailableReason = null,
   onSend,
   onRemedy,
@@ -66,7 +75,7 @@ export function ChatPanel({
   */
   useEffect(() => {
     tail.current?.scrollIntoView?.({ block: "end" });
-  }, [turns.length, progress]);
+  }, [turns.length, progress.length]);
 
   const enabled = capability.kind === "enabled" && !busy && unavailableReason === null;
   const tooLong = draft.length > CHAT_MAX_CHARS;
@@ -110,10 +119,38 @@ export function ChatPanel({
         {turns.map((turn, index) => (
           <ChatBubble key={`${turn.at}-${index}`} turn={turn} />
         ))}
+        {/*
+          **자취를 그대로 보인다** (FR-011).
+
+          AI 가 도는 동안 무엇을 하는 중인지가 사용자가 읽는 것이다. 도구가 시도
+          **전에** 알리므로(`BrowserToolbox._announce`), 요소를 기다리는 동안에도
+          줄이 하나 서 있고 실패하면 그 줄 다음에 사유가 붙는다.
+
+          턴이 끝나면 사라진다 — 남은 기록은 AI 의 답(대화 차례)이다. 둘을 함께
+          쌓으면 「무엇을 했는가」와 「무엇을 하는 중인가」가 섞인다.
+        */}
         {busy && (
-          <p className="text-ink-3" role="status">
-            {progress ?? "AI 가 수행 중입니다…"}
-          </p>
+          <div className="flex flex-col gap-[2px]" role="status" aria-live="polite">
+            <span className="font-mono text-[11px] uppercase tracking-[.08em] text-ink-3">
+              수행 중
+            </span>
+            {progress.length === 0 ? (
+              <p className="text-ink-3">AI 가 수행 중입니다…</p>
+            ) : (
+              <ol className="flex flex-col gap-[2px]">
+                {progress.map((line, i) => (
+                  <li
+                    key={`${i}-${line}`}
+                    /* 마지막 줄이 지금 하는 일이다. 앞의 것은 지나간 것이므로 흐린다 */
+                    /* 마지막 줄은 기본 글자색 — 따로 지정하지 않는다 */
+                    className={i === progress.length - 1 ? undefined : "text-ink-3"}
+                  >
+                    {line}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
         )}
         <div ref={tail} />
       </div>

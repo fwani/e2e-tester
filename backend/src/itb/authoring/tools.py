@@ -24,6 +24,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -283,6 +284,9 @@ class BrowserToolbox:
         """
         if not self.limits.record_call():
             return dict(STOP_NOTICE)
+        # 관찰은 Step 을 만들지 않지만 **시간이 든다.** 알리지 않으면 그 동안 화면이
+        # 조용하고, 사용자는 AI 가 멈춘 줄 안다.
+        await self._announce("화면을 살펴보는 중" + (f" (탭 {tab})" if tab else ""))
         handle = self._tab(tab)
         try:
             raw = await handle.page.evaluate(
@@ -652,6 +656,8 @@ class BrowserToolbox:
         if steps is None:
             return refusal  # type: ignore[return-value]
 
+        await self._announce(f"{step_id} 의 {field} 를 고치는 중")
+
         kwargs: dict[str, Any] = {field: value}
         try:
             result = update_step(steps, self._current_index(), step_id, **kwargs)
@@ -683,6 +689,8 @@ class BrowserToolbox:
         if steps is None:
             return refusal  # type: ignore[return-value]
 
+        await self._announce(f"{step_id} 을 지우는 중")
+
         result = delete_step(steps, self._current_index(), step_id)
         await self.on_edit(result)  # type: ignore[misc]
         return {"ok": True, "deleted": step_id, "remaining": len(result.steps)}
@@ -705,6 +713,9 @@ class BrowserToolbox:
         if steps is None:
             return refusal  # type: ignore[return-value]
 
+        await self._announce(
+            f"{step_id} 을 {'위로' if direction == 'up' else '아래로'} 옮기는 중"
+        )
         index = find_index(steps, step_id)
         target = index - 1 if direction == "up" else index + 1
         if target < 0 or target >= len(steps):
@@ -745,6 +756,7 @@ class BrowserToolbox:
         if steps is None:
             return refusal  # type: ignore[return-value]
 
+        await self._announce(f"{step_id} 의 대상을 다시 지목하는 중")
         observed = self.refs.get(element_ref)
         if observed is None:
             return {
@@ -794,6 +806,29 @@ class BrowserToolbox:
             ),
         }
 
+    async def _announce(self, text: str) -> None:
+        """지금 무엇을 하는 중인지 알린다 (FR-060 · 2026-09-11 사용자 요청).
+
+        ## 왜 **하기 전에** 알리는가
+
+        이전에는 `_execute` 가 **성공한 뒤에** Step 이름 하나를 보냈다. 그래서:
+
+        - 요소를 기다리는 동안(최대 `timeout_ms`) 화면이 조용하다 — 사용자에게는
+          「멈춘 것」과 「기다리는 것」이 같아 보인다
+        - **실패하면 아무것도 보고되지 않는다.** 무엇을 하다 실패했는지 남지 않는다
+        - 관찰·편집처럼 Step 을 만들지 않는 도구는 아예 흔적이 없다
+
+        사용자가 읽는 것은 「AI 가 지금 무엇을 하는 중인지」이고, 그것은 **시도**의
+        기록이지 성공의 기록이 아니다.
+
+        보고에 실패해도 도구를 멈추지 않는다 — 진행 표시는 곁가지이고, 그것 때문에
+        작성이 끊기면 안 된다.
+        """
+        if self.on_progress is None:
+            return
+        with contextlib.suppress(Exception):
+            await self.on_progress(text)
+
     async def _act_on_element(
         self,
         element_ref: str,
@@ -841,19 +876,23 @@ class BrowserToolbox:
         재실행에서 통과한다" 가 별도의 보장이 아니라 같은 코드를 지난 결과가 된다.
         """
         tabs_before = len(self.session.tabs)
+        # **하기 전에 알린다.** 요소를 기다리는 동안 화면이 조용하면 사용자는 멈춘
+        # 것과 기다리는 것을 구별할 수 없다 (`_announce` 머리말).
+        await self._announce(f"{step.label} — 수행 중")
         try:
             await self.executor.execute(step)
         except StepFailure as exc:
             self.limits.record_failure(element)
+            await self._announce(f"{step.label} — 실패: {exc}")
             return {"error": str(exc)}
         except TabNotFoundError as exc:
             self.limits.record_failure(element)
+            await self._announce(f"{step.label} — 실패: {exc}")
             return {"error": str(exc)}
 
         self.limits.record_success(element)
         await self.on_step(step)
-        if self.on_progress is not None:
-            await self.on_progress(step.label)
+        await self._announce(f"{step.label} — 완료")
 
         result: dict[str, Any] = {"ok": True, "step": step.label}
         # 새 탭 열림을 도구 결과에 덧붙인다 — 에이전트가 탭 전환을 스스로 판단하려면

@@ -294,8 +294,14 @@ export interface SessionWorkbenchProps {
 
   /** 대화 이력. 소유는 컨테이너다 — `chat_turn` 이벤트로 누적하고 새로 고침 때 되찾는다 */
   chatTurns?: ChatTurn[];
-  /** `ai_progress` 의 마지막 메시지. AI 가 도는 동안 무엇을 하는 중인지 (FR-060·FR-011) */
-  aiProgress?: string | null;
+  /**
+   * 이번 턴에 AI 가 **무엇을 하고 있는지** (FR-011 · 2026-09-11 사용자 요청).
+   *
+   * `ai_progress` 이벤트를 **턴 단위로 모은 것**이다. 마지막 한 줄만 넘기면 사용자는
+   * 「지금」만 알고 「무엇을 거쳐 왔는지」를 모른다 — 막히거나 엉뚱한 것을 눌렀을 때
+   * 어디서 어긋났는지 되짚을 수 없다.
+   */
+  aiProgress?: string[];
   /** 언어모델을 쓸 수 없는 사유 (FR-012). **서버가 준 문장을 그대로** 내려보낸다 */
   aiUnavailableReason?: string | null;
   onChat?: (text: string) => void;
@@ -410,7 +416,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     onToggleAllDeleteTargets,
     // ─── 016 구간 재녹화 ───
     chatTurns = [],
-    aiProgress = null,
+    aiProgress = [],
     aiUnavailableReason = null,
     onChat,
     onRerecordCommit,
@@ -1967,6 +1973,14 @@ export function SessionScreen({
     아는 것은 늦다. 쓸 수 있으면 `null` 이고, 그때 대화 자리는 아무 말도 하지 않는다.
   */
   const [aiUnavailable, setAiUnavailable] = useState<string | null>(null);
+  /**
+   * 이번 턴의 진행 자취 (FR-011).
+   *
+   * `aiMessages` 와 갈라 둔다 — 그쪽은 세션 전체에 쌓이는 기록이고 이것은 **지금 도는
+   * 턴**의 것이다. 한 자리에 두면 지난 턴의 줄이 이번 턴의 자취에 섞이고, 사용자는
+   * 무엇이 방금 일어난 일인지 구별할 수 없다.
+   */
+  const [turnProgress, setTurnProgress] = useState<string[]>([]);
   const [aiError, setAiError] = useState<ErrorInfo | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
   const [pacingSaved, setPacingSaved] = useState(true);
@@ -2183,8 +2197,11 @@ export function SessionScreen({
             break;
           case "ai_progress":
             setAiMessages((prev) => [...prev, event.message]);
+            setTurnProgress((prev) => [...prev, event.message]);
             break;
           case "ai_blocked":
+            // **자취를 지우지 않는다.** 막혔을 때야말로 「무엇을 하다 막혔는지」가
+            // 필요하다 — 5선택지를 고르려면 그것을 알아야 한다 (FR-070).
             setAiBlocked({
               attempted: event.attempted ?? null,
               reason: event.reason ?? "AI 가 더 진행하지 못했습니다.",
@@ -2207,6 +2224,9 @@ export function SessionScreen({
             break;
           case "ai_finished":
             setAiBlocked(null);
+            // 턴이 끝났다. 남는 기록은 AI 의 답(대화 차례)이다 — 자취를 함께 쌓으면
+            // 「무엇을 했는가」와 「무엇을 하는 중인가」가 섞인다.
+            setTurnProgress([]);
             void resync();
             break;
           case "step_updated":
@@ -3011,17 +3031,22 @@ export function SessionScreen({
         /* ─── 016 구간 재녹화 (contracts/api-contract.md §2) ─── */
         chatTurns={chatTurns}
         /*
-          진행 표시는 `ai_progress` 의 **마지막** 메시지다. 전부 보여 주면 대화 이력과
-          섞여 무엇이 답이고 무엇이 진행인지 갈리지 않는다.
+          이번 **턴**의 진행 자취다. `aiMessages` 는 세션 전체에 쌓이므로 그대로
+          넘기면 지난 턴의 것이 섞인다 — 턴이 시작될 때 표시를 끊는다.
         */
-        aiProgress={aiMessages.length > 0 ? (aiMessages[aiMessages.length - 1] ?? null) : null}
+        aiProgress={turnProgress}
         aiUnavailableReason={aiUnavailable}
         /*
           **낙관적으로 붙이지 않는다.** 사용자의 말은 서버가 `chat_turn` 으로 되돌려
           준다 — 화면이 먼저 붙이면 실패했을 때 보내지 않은 말이 이력에 남고, 되돌리는
           코드가 한 벌 더 생긴다.
         */
-        onChat={(text) => void act(() => sessions.chat(sessionId, text))}
+        onChat={(text) => {
+          // **턴이 시작될 때 자취를 비운다.** 지난 턴의 줄이 남아 있으면 사용자는
+          // 방금 보낸 말에 대한 반응인지 앞의 것인지 구별할 수 없다.
+          setTurnProgress([]);
+          void act(() => sessions.chat(sessionId, text));
+        }}
         onRerecordCommit={() => void act(() => sessions.rerecordCommit(sessionId))}
         onRerecordDiscard={() => void act(() => sessions.rerecordDiscard(sessionId))}
         onApplyReorder={(order) => void edit(() => sessions.reorderSteps(sessionId, order))}
