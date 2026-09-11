@@ -374,6 +374,38 @@ export function App() {
   };
 
   /**
+   * 016 — 고른 구간으로 **재녹화 세션**을 연다 (FR-015·FR-018).
+   *
+   * `openBrowserAt` 과 갈라 둔 이유는 서버에서 **다른 모드**이기 때문이다
+   * (`mode=rerecord`). 그쪽은 「한 지점에 도착해 기록을 켠다」이고 이것은 「구간을
+   * 교체한다」이며, 도착점 계산·트랜잭션 생성·authoring_mode 가 전부 서버 몫이다
+   * (api-contract §1). 같은 함수로 묶으면 인자로 갈래를 판정해야 하고, 그 판정이
+   * 화면과 서버 두 곳에 생긴다.
+   *
+   * **기록을 켜지 않는다.** 재녹화의 지시는 대화로 오므로 `recordOnArrival` 이
+   * 거짓이다 — 켜면 AI 가 만든 Step 과 사용자가 만든 Step 이 같은 자리에 섞인다
+   * (011 이 `instructionOnArrival` 에서 세운 판단과 같다).
+   */
+  const openRerecord = (testId: string, stepIds: string[]) => {
+    if (pendingRun !== null) return;
+    setPendingRun(testId);
+    setError(null);
+    void sessions
+      .create({ mode: "rerecord", test_id: testId, rerecord_step_ids: stepIds })
+      .then((session) =>
+        setScreen({
+          name: "runner",
+          session,
+          // 006 FR-204 — 끝나면 출발한 편집 화면으로 돌아온다. 재녹화도 편집의 일이다.
+          returnToEdit: { testId, stepId: stepIds[0] ?? null },
+          recordOnArrival: false,
+        }),
+      )
+      .catch((exc: unknown) => setError(describeError(exc)))
+      .finally(() => setPendingRun(null));
+  };
+
+  /**
    * 거절 안내가 가리킨 세션으로 이동한다 (005 T024 · FR-126).
    *
    * 거절은 목록에서도 결과 화면에서도 날 수 있고 배너는 두 화면 **위**에 있다. 그래서
@@ -531,6 +563,7 @@ export function App() {
           onOpenBrowserAt={(testId, stepIndex, stepId, instruction) =>
             openBrowserAt(testId, stepIndex, stepId, instruction ?? null)
           }
+          onRerecordRange={openRerecord}
           onOpenSession={openSession}
           /* 007 FR-239 — 편집 ↔ 결과 왕복에서도 보던 Step 을 잃지 않는다. */
           onShowResult={(testId, stepId) =>

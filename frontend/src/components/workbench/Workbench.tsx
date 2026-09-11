@@ -98,6 +98,8 @@ export interface WorkbenchProps {
    * 자리만 준다. 주지 않으면 체크 칸을 그리지 않는다 (UC-011-14).
    */
   deleteTargets?: Parameters<typeof StepList>[0]["deleteTargets"];
+  /** 016 — 교체 대상인 Step id 들 (FR-024). `StepList` 로 그대로 내려간다 */
+  rerecordTargets?: Parameters<typeof StepList>[0]["rerecordTargets"];
   /** Step 패널 바닥의 조작 블록. **일곱 국면에서 같은 자리다** (FR-235) */
   stepFooter?: ReactNode;
   /**
@@ -153,6 +155,7 @@ export function Workbench({
   leftExtra,
   stepEmptyNotice,
   deleteTargets,
+  rerecordTargets,
   stepFooter,
   stepDetailExtra,
   stepDetailOwnFields = true,
@@ -368,6 +371,7 @@ export function Workbench({
           headerExtra={stepHeaderExtra}
           emptyNotice={stepEmptyNotice}
           deleteTargets={deleteTargets}
+          rerecordTargets={rerecordTargets}
           footer={stepFooter}
         />
 

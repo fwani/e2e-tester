@@ -110,9 +110,9 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [X] T029 [US1] `backend/src/itb/api/routes/sessions.py` — `chat_turn` 이벤트 발행 (api-contract §4-1)
 - [X] T030 [P] [US1] `frontend/src/components/workbench/ChatPanel.tsx` 신규 — 이력·입력(상한 표시)·진행 표시(`ai_progress` 재사용)·중지(`run.pause` 재사용)·**언어모델 없음 안내**(`GET /api/ai/availability` 의 `reason` 을 그대로, FR-012). **막힘은 그리지 않는다** — 기존 `ai_blocked` 5선택지가 뜨고 패널은 그리로 가리킨다 (ui-contract §3-1 · `USE_BLOCKED_ANSWER`)
 - [X] T031 [US1] `frontend/src/components/workbench/model.ts`·`Workbench.tsx` — 대화 패널을 국면 배치에 넣는다. `frontend/src/lib/layout.ts` 의 `Record<Phase, …>` 표를 지난다 (007 배치 계약)
-- [ ] T032 [US1] `frontend/src/pages/SessionScreen.tsx` — `chat_turn` 구독, `POST /chat` 호출, 새로 고침 시 `GET /chat` 복구
+- [X] T032 [US1] `frontend/src/pages/SessionScreen.tsx` — `chat_turn` 구독, `POST /chat` 호출, 새로 고침 시 `GET /chat` 복구
 - [X] T033 [US1] `frontend/src/components/workbench/ActionPalette.tsx` — `ai.rerecord` 를 팔레트에 놓고, **브라우저를 연다는 사실을 이름 옆에서 미리 말한다** (ui-contract §1-1)
-- [ ] T034 [US1] `frontend/src/pages/SessionScreen.tsx` 또는 편집 화면 — `ai.rerecord` 를 누르면 고른 구간으로 `mode=rerecord` 세션을 만든다. 연속이 아니면 **시작하지 않고** 이유를 말한다 (FR-016)
+- [X] T034 [US1] `frontend/src/pages/SessionScreen.tsx` 또는 편집 화면 — `ai.rerecord` 를 누르면 고른 구간으로 `mode=rerecord` 세션을 만든다. 연속이 아니면 **시작하지 않고** 이유를 말한다 (FR-016)
 - [ ] T034a [US1] `frontend/src/pages/SessionScreen.tsx` — **저장하지 않은 편집이 있으면 시작 전에 확인을 받는다** (FR-022 · api-contract §1 「저장하지 않은 편집」). 선택지 셋: 저장하고 시작 · 저장하지 않고 시작 · 취소. **편집을 버리지 않는다** — 세션이 끝나면 돌아온다
 - [ ] T034b [P] [US1] `frontend/tests/RerecordStart.test.tsx` 신규 — 미저장 편집이 있을 때 확인이 뜨는지, 「취소」가 세션을 만들지 않는지, 「저장하지 않고 시작」 후에도 편집이 화면에 남는지 (FR-022)
 - [X] T035 [US1] `frontend/tests/CapabilityUI.test.tsx` 수정 — 새 조작 4개의 **자리**가 실제로 있는지 (FR-235)
@@ -152,8 +152,8 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [X] T047 [US2] `backend/src/itb/api/routes/sessions.py` — `rerecord_changed` 이벤트 (api-contract §4-2)
 - [X] T048 [US2] `backend/src/itb/api/routes/sessions.py` — 세션 유실 시 확정되지 않은 새 Step 을 **보존**하고 그 사실을 알린다 (FR-044). 기존 `_loss_handler` 가 「그때까지의 결과를 보존」하는 것과 같은 판단이다 — 사용자가 버리기를 고르지 않았는데 제품이 버리지 않는다. 다만 **옛 구간도 함께 남으므로** 목록이 「새 + 옛」인 상태임을 안내하고, 유실 후에는 저장만 가능하다는 기존 불변식 5 를 따른다
 - [X] T049 [P] [US2] `frontend/src/components/workbench/RerecordBar.tsx` 신규 — 구간·개수·확정·버리기 (ui-contract §3-2)
-- [ ] T050 [US2] `frontend/src/components/workbench/StepList.tsx` — `range_step_ids` 로 「교체 대상」을 **계산해** 그린다. **Step 에 필드를 더하지 않는다** (불변식 7). 008 시각 언어의 기존 어휘만 쓴다
-- [ ] T051 [US2] `frontend/src/pages/SessionScreen.tsx` — `rerecord_changed`·`rerecord_realign_failed` 구독, 확정·버리기 호출, 되맞춤 실패 안내 (ui-contract §3-4 의 문면)
+- [X] T050 [US2] `frontend/src/components/workbench/StepList.tsx` — `range_step_ids` 로 「교체 대상」을 **계산해** 그린다. **Step 에 필드를 더하지 않는다** (불변식 7). 008 시각 언어의 기존 어휘만 쓴다
+- [X] T051 [US2] `frontend/src/pages/SessionScreen.tsx` — `rerecord_changed`·`rerecord_realign_failed` 구독, 확정·버리기 호출, 되맞춤 실패 안내 (ui-contract §3-4 의 문면)
 
 **Checkpoint**: quickstart §3 전체(정상·버리기 20회·이상 경로 10종)가 통과한다.
 

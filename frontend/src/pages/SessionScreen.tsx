@@ -27,6 +27,7 @@ import { describeError, fromEvent, localError } from "../components/ErrorNotice"
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import {
+  ai,
   groups as groupsApi,
   sessions,
   type AddAssertionBody,
@@ -1530,6 +1531,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         중인가」이고, 그 구간이 바로 아래 목록에 그려진다. 국면 띠로 올리면 대상과
         설명이 화면 양끝으로 갈린다.
       */
+      /* 016 FR-024 — 확정하면 사라질 옛 구간을 목록에서 구분해 보인다 */
+      rerecordTargets={view.rerecord?.range_step_ids}
       stepHeaderExtra={
         view.rerecord != null ? (
           <RerecordBar
@@ -1949,6 +1952,21 @@ export function SessionScreen({
     null,
   );
   const [aiMessages, setAiMessages] = useState<string[]>([]);
+  /*
+    016 — 대화 이력 (FR-009).
+
+    **서버가 소유하고 화면이 비춘다.** `chat_turn` 이벤트로 누적하고, 새로 고침·재접속
+    뒤에는 `GET /chat` 으로 되찾는다 (아래 `useEffect`). 화면만 들고 있으면 새로
+    고침에서 대화가 사라지고, 그러면 「서버에 이력을 둔다」는 설계가 뜻을 잃는다.
+  */
+  const [chatTurns, setChatTurns] = useState<ChatTurn[]>([]);
+  /*
+    016 FR-012 — 언어모델을 쓸 수 있는가. **서버가 준 사유를 그대로 들고 있는다.**
+
+    001 DR-021 이 세운 규칙을 그대로 따른다 — 화면에 들어오는 순간 확인한다. 눌러 봐야
+    아는 것은 늦다. 쓸 수 있으면 `null` 이고, 그때 대화 자리는 아무 말도 하지 않는다.
+  */
+  const [aiUnavailable, setAiUnavailable] = useState<string | null>(null);
   const [aiError, setAiError] = useState<ErrorInfo | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
   const [pacingSaved, setPacingSaved] = useState(true);
@@ -1978,6 +1996,44 @@ export function SessionScreen({
     } catch {
       // 조용히 넘긴다 — 위 주석. 세션 자체의 실패는 이미 위에서 잡았다.
     }
+  }, [sessionId]);
+
+  /*
+    016 FR-009 — 대화 이력을 **되찾는다.**
+
+    세션이 바뀌거나 화면을 새로 고치면 `chatTurns` 가 비어 있다. 서버가 들고 있는
+    것을 한 번 읽어 채운다 — 읽지 못해도 조용히 넘긴다. 대화는 보조 정보이고, 그것
+    하나 때문에 붉은 배너를 띄울 이유가 없다 (탭 조회와 같은 판단).
+  */
+  useEffect(() => {
+    let alive = true;
+    void ai
+      .availability()
+      .then((it) => {
+        if (alive) setAiUnavailable(it.available ? null : (it.reason ?? "언어모델을 쓸 수 없습니다."));
+      })
+      .catch(() => {
+        // 점검 자체가 실패해도 대화 자리를 잠그지 않는다 — 실제로 쓸 수 있는데
+        // 못 쓴다고 말하는 쪽이 더 나쁘다. 쓸 수 없으면 첫 시도에서 사유가 온다.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    sessions
+      .chatHistory(sessionId)
+      .then((history) => {
+        if (alive) setChatTurns(history.turns);
+      })
+      .catch(() => {
+        /* 조용히 넘긴다 — 위 주석 */
+      });
+    return () => {
+      alive = false;
+    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -2155,6 +2211,37 @@ export function SessionScreen({
             break;
           case "step_updated":
             setRepickWaiting(null);
+            void resync();
+            break;
+          /* ─── 016 구간 재녹화 ─── */
+          case "chat_turn":
+            // **누적만 한다.** `resync` 를 부르지 않는 이유는 대화가 Step 목록을
+            // 바꾸지 않기 때문이다 — 바꿨다면 `step_added` 가 따로 온다.
+            setChatTurns((prev) => [
+              ...prev,
+              { role: event.role, text: event.text, at: event.at },
+            ]);
+            break;
+          case "rerecord_changed":
+            void resync();
+            break;
+          case "rerecord_realign_failed":
+            /*
+              **두 사실을 한 자리에서 말한다** (불변식 11 · FR-031c).
+
+              정의는 이미 되돌아갔고, 화면은 그것과 어긋나 있다. 둘 중 하나만 말하면
+              사용자는 무엇을 믿어야 할지 모른다.
+            */
+            setAiError(
+              localError(
+                event.definition_reverted
+                  ? `새로 만든 Step 을 되돌렸습니다. 다만 화면을 원래 위치로 되돌리지 못했습니다 (${event.reason}).`
+                  : event.reason,
+                event.definition_reverted
+                  ? "화면과 목록이 어긋나 있으므로 세션을 닫는 것을 권합니다."
+                  : "목록을 확인한 뒤 저장 여부를 정하세요.",
+              ),
+            );
             void resync();
             break;
           default:
@@ -2921,6 +3008,22 @@ export function SessionScreen({
             prev.length === view.steps.length ? [] : view.steps.map((s) => s.id),
           )
         }
+        /* ─── 016 구간 재녹화 (contracts/api-contract.md §2) ─── */
+        chatTurns={chatTurns}
+        /*
+          진행 표시는 `ai_progress` 의 **마지막** 메시지다. 전부 보여 주면 대화 이력과
+          섞여 무엇이 답이고 무엇이 진행인지 갈리지 않는다.
+        */
+        aiProgress={aiMessages.length > 0 ? (aiMessages[aiMessages.length - 1] ?? null) : null}
+        aiUnavailableReason={aiUnavailable}
+        /*
+          **낙관적으로 붙이지 않는다.** 사용자의 말은 서버가 `chat_turn` 으로 되돌려
+          준다 — 화면이 먼저 붙이면 실패했을 때 보내지 않은 말이 이력에 남고, 되돌리는
+          코드가 한 벌 더 생긴다.
+        */
+        onChat={(text) => void act(() => sessions.chat(sessionId, text))}
+        onRerecordCommit={() => void act(() => sessions.rerecordCommit(sessionId))}
+        onRerecordDiscard={() => void act(() => sessions.rerecordDiscard(sessionId))}
         onApplyReorder={(order) => void edit(() => sessions.reorderSteps(sessionId, order))}
         onRunFromHere={(stepIndex) => void act(() => sessions.runFrom(sessionId, stepIndex))}
         onRerunAll={() => rerun()}

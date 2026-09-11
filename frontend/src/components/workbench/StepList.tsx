@@ -304,6 +304,13 @@ export interface StepListProps {
    * **주지 않으면 체크 칸을 그리지 않는다.** 읽기 전용 국면(결과)에는 삭제 대상 선택이
    * 없고, 그때 칸을 그리면 고를 수 있는 것처럼 보인다 — 근거 있는 부재다 (007 §4-2).
    */
+  /**
+   * 016 — 교체 대상인 Step id 들 (FR-024).
+   *
+   * `SessionView.rerecord.range_step_ids` 를 그대로 내려보낸다. 판정은 서버가 했고
+   * 화면은 대조만 한다.
+   */
+  rerecordTargets?: string[];
   deleteTargets?: {
     /** 지금 고른 Step id 들 */
     selected: string[];
@@ -328,8 +335,20 @@ export function StepList({
   emptyNotice,
   footer,
   deleteTargets,
+  rerecordTargets,
 }: StepListProps) {
   const chosen = new Set(deleteTargets?.selected ?? []);
+  /*
+    016 FR-024 — 확정하면 사라질 옛 구간.
+
+    **`Step` 에는 아무 표시도 없다** (불변식 7). 세션이 준 id 목록과 대조해 여기서
+    계산한다. Step 에 필드를 두면 작성 주체 외의 의미가 저장 형식에 생기고(원칙 I),
+    확정되지 않은 상태가 디스크에 내려갈 문이 열린다 (FR-029).
+
+    `chosen`(사용자가 지금 체크한 것)과 **다른 축이다.** 한 자리에 두면 재녹화 중에
+    체크를 바꿀 때 무엇이 지워질지 알 수 없다.
+  */
+  const replacing = new Set(rerecordTargets ?? []);
   const allChosen = steps.length > 0 && steps.every((s) => chosen.has(s.id));
   return (
     <StepPanel
@@ -412,6 +431,7 @@ export function StepList({
             selected={s.id === focusedStepId}
             onSelect={() => onSelect(s.id)}
             actions={rowActions?.(s)}
+            replacing={replacing.has(s.id)}
             deleteTarget={
               deleteTargets === undefined || !isShown(deleteTargets.capability)
                 ? undefined
@@ -447,12 +467,15 @@ function StepRow({
   selected,
   onSelect,
   actions,
+  replacing = false,
   deleteTarget,
 }: {
   step: WorkbenchStep;
   selected: boolean;
   onSelect: () => void;
   actions?: ReactNode;
+  /** 016 — 확정하면 사라질 옛 구간인가 (FR-024). 판정은 `StepList` 가 했다 */
+  replacing?: boolean;
   /** 칸 0 의 체크 칸 (011). 없으면 그 칸을 그리지 않는다 (UC-011-14) */
   deleteTarget?: {
     chosen: boolean;
@@ -557,6 +580,17 @@ function StepRow({
               {step.isUnsaved === true && (
                 <Chip data-cell="unsaved" tone="warn" layout="flex-[0_0_auto]">
                   미저장
+                </Chip>
+              )}
+
+              {/*
+                016 FR-024 — 확정하면 사라질 옛 구간. 정본의 `.chip.ai` 를 쓰고 **새
+                색을 만들지 않는다.** AI 계열인 이유: 이 구간이 교체 대상이 된 것은
+                사용자가 AI 에게 다시 만들라고 했기 때문이다.
+              */}
+              {replacing && (
+                <Chip data-cell="rerecord-target" tone="ai" layout="flex-[0_0_auto]">
+                  교체 대상
                 </Chip>
               )}
 
