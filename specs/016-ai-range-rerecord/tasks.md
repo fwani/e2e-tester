@@ -195,8 +195,8 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 - [X] T066 [P] `frontend/tests/` — 회귀 확인 quickstart §8 의 6항목을 자동 검사로 가능한 것만 옮긴다 (SC-009)
 - [X] T067 `README.md` 갱신 — 016 을 기능 표에 넣고, 「AI 로 다시 만들기」를 사용법에 적는다. 도구 표면이 16종이 된 사실을 아키텍처 절에 반영한다
 - [X] T068 `docs/PENDING-HUMAN-VERIFICATION.md` 에 §16 을 더한다 — SC-002(조작 횟수 비교)·SC-003(10건 중 7건)은 **사람이 측정**해야 한다. 개발용 드라이버 결과는 SC-003 의 근거로 쓰지 않는다
-- [ ] T069 전체 검증을 돌린다 — `uv run lint-imports` → `ruff check` → `pytest` → `schema.export --check`(**변경 없이 통과해야 한다**) → `tsc --noEmit` → `npm test -- --run`
-- [ ] T070 quickstart.md 를 처음부터 끝까지 실수행하고 §7 성공 기준 표의 자동 측정 가능 항목을 채운다
+- [X] T069 전체 검증을 돌린다 — `uv run lint-imports` → `ruff check` → `pytest` → `schema.export --check`(**변경 없이 통과해야 한다**) → `tsc --noEmit` → `npm test -- --run`
+- [X] T070 quickstart.md 를 처음부터 끝까지 실수행하고 §7 성공 기준 표의 자동 측정 가능 항목을 채운다
 
 ---
 
@@ -291,3 +291,49 @@ Task: "T014 원칙 II — 도착점 구간 드라이버 호출 0회"
 - `uv run python -m itb.schema.export --check` 가 **변경을 보고하면 실패다.** 이 기능은
   저장 형식을 건드리지 않기로 했다
 - 사람이 해야 하는 측정(SC-002·SC-003)은 T068 로 넘긴다. 자동으로 재지 않는다
+
+
+---
+
+## 016 검증 기록 (2026-09-11)
+
+### T069 — 전체 검증
+
+| 검사 | 결과 |
+|---|---|
+| `uv run lint-imports` | **통과** — Contracts: 3 kept, 0 broken |
+| `uv run ruff check src/ tests/` | **통과** |
+| `bash scripts/test-backend.sh` | **통과** — 병렬 2643 · 순차 48 (1 skipped) |
+| `uv run python -m itb.schema.export --check` | **통과** — 드리프트 없음 |
+| `npx tsc --noEmit` | **통과** |
+| `npx vitest run` | **통과** — 108 파일 · 1340건 |
+| `design_compare_ba.py --compare` | **통과** — 불일치 0건 |
+
+**1차 실행에서 16건이 실패했다.** 원인은 하나였다 — `SessionWork.__new__` 로 만드는
+테스트 픽스처 둘(`test_draft_to_test.py`·`test_us9_draft_recording.py`)이 `slots=True`
+아래에서 필요한 필드만 손으로 채우는데, 016 이 저장 경로에 `rerecord` 를 읽게 하면서
+`AttributeError` 가 났다.
+
+**픽스처를 고쳤고, 터진 것이 옳다.** 조용히 `None` 이 되면 「저장 경로가 무엇을
+보는가」가 픽스처에 기록되지 않는다. 픽스처의 머리말도 그 사실에 맞춰 다시 썼다.
+
+### T070 — quickstart 실수행
+
+**자동으로 잴 수 있는 것은 전부 검사가 됐다.** quickstart §7 을 「누가 재나」 표로
+다시 썼고, 아홉 중 여섯이 자동이다. 절차 문서(§2~§6)의 손 확인은 실제 브라우저와
+언어모델 자격 증명이 필요하므로 **사람이 한다.**
+
+| 기준 | 상태 |
+|---|---|
+| SC-004 버리기 20/20 | 자동 — 통합 20회 + 단위 20회 |
+| SC-005 확정 후 전체 실행 | 자동 — `test_commit_then_replay` |
+| SC-006 형식 구별 불가 | 자동 — 값·구조 양쪽 |
+| SC-007 원칙 II | 자동 — 린터 + 시간 축 3건 |
+| SC-008 민감값 | 자동 — 값 100종 + 구조 2 + 디스크 |
+| SC-009 기존 흐름 불변 | 자동(일부) — 회귀 6건 |
+| **SC-001·002·003** | **사람** — `docs/PENDING-HUMAN-VERIFICATION.md` §16 |
+
+### 남은 것
+
+`PENDING-HUMAN-VERIFICATION.md` §16 의 넷. 전부 사람이 판단해야 하는 것이다 —
+조작 횟수 측정, 성공률 측정, 시행착오 루프의 체감, 「브라우저 열림」 표시의 충분함.

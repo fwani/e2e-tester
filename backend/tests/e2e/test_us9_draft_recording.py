@@ -44,6 +44,8 @@ def recorded_session():
         work.saved_at = None
         work.saved_snapshot = []
         work.base_variables = []
+        # 016 FR-029 — 저장 경로가 「확정되지 않은 교체가 있는가」를 본다.
+        work.rerecord = None
         _WORK[session_id] = work
         return session_id
 
