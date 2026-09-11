@@ -18,7 +18,7 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { secrets, type SecretsResponse } from "../api/client";
 
-import { Button } from "../ui/Button";
+import { Button, navLinkClasses } from "../ui/Button";
 
 import { Chip } from "../ui/Chip";
 export interface SecretValuesProps {
@@ -144,7 +144,7 @@ export function SecretValues({
                 <Chip tone="pass">보관됨</Chip>
                 <span className="flex-1" />
                 <button
-                  className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
+                  className={navLinkClasses()}
                   disabled={busy}
                   onClick={() => {
                     setBusy(true);

@@ -2,7 +2,8 @@ import { useState } from "react";
 
 import type { GroupSummary } from "../api/client";
 
-import { Button } from "../ui/Button";
+import { Button, navLinkClasses } from "../ui/Button";
+import { chipClasses } from "../ui/Chip";
 
 /**
  * 목록 위 그룹 띠 (013 FR-440·FR-441 · UC-013-06).
@@ -39,7 +40,7 @@ export function TestGroupBar({
   if (realGroups.length === 0 && !adding) {
     return (
       <div className="flex justify-end mb-s2">
-        <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={() => setAdding(true)} disabled={busy}>
+        <button className={navLinkClasses()} onClick={() => setAdding(true)} disabled={busy}>
           + 그룹
         </button>
       </div>
@@ -55,8 +56,16 @@ export function TestGroupBar({
       aria-label="그룹으로 거르기"
       className="flex items-center gap-s2 mb-s2 flex-wrap"
     >
+      {/*
+        **`sel` 을 떼었다 (015 T073).** 정본에 `.chip.sel` 규칙이 없다 — `.sel` 은
+        `.srow.sel`·`.trow.sel` 로만 정의돼 있어, 이 자리에서는 **전환 전에도 아무
+        일도 하지 않았다.** 고른 그룹이 시각적으로 구별되지 않는 상태이며, 지금
+        그것을 말하는 것은 `aria-pressed` 뿐이다.
+        시각 동일성이 요건이므로(FR-008) 여기서 모양을 새로 만들지 않는다 —
+        고칠 일이라면 별도 판단이 필요하다.
+      */}
       <button
-        className={active === null ? "chip sel" : "chip"}
+        className={chipClasses()}
         aria-pressed={active === null}
         onClick={() => onPick(null)}
         disabled={busy}
@@ -66,7 +75,7 @@ export function TestGroupBar({
       {groups.map((g) => (
         <button
           key={g.prefix}
-          className={active === g.prefix ? "chip sel" : "chip"}
+          className={chipClasses()}
           aria-pressed={active === g.prefix}
           data-group-chip={g.prefix}
           onClick={() => onPick(g.prefix)}
@@ -89,7 +98,7 @@ export function TestGroupBar({
         groups.some((g) => g.prefix === active && g.name !== null) && (
           <>
             <button
-              className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
+              className={navLinkClasses()}
               disabled={busy}
               onClick={() =>
                 setEditing({
@@ -101,7 +110,7 @@ export function TestGroupBar({
               이름 바꾸기
             </button>
             <button
-              className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
+              className={navLinkClasses()}
               disabled={busy}
               onClick={() =>
                 setRemoving(groups.find((g) => g.prefix === active) ?? null)
@@ -151,7 +160,7 @@ export function TestGroupBar({
           }}
         />
       ) : (
-        <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={() => setAdding(true)} disabled={busy}>
+        <button className={navLinkClasses()} onClick={() => setAdding(true)} disabled={busy}>
           + 그룹
         </button>
       )}
@@ -218,7 +227,7 @@ function NewGroupForm({
         onClick={() => onSubmit(cleanPrefix, name.trim())} >
         만들기
       </Button>
-      <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onCancel} disabled={busy}>
+      <button className={navLinkClasses()} onClick={onCancel} disabled={busy}>
         취소
       </button>
     </div>

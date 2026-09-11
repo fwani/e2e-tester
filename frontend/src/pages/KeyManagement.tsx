@@ -185,15 +185,15 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       >
         <div className="flex items-center gap-s2">
           <strong>키 상태</strong>
-          <span className={`${`chip ${hasKeys ? "pass" : "warn"}`} m-0`}>
+          <Chip tone={hasKeys ? "pass" : "warn"} layout="m-0">
             {hasKeys ? "준비됨" : "없음"}
-          </span>
+          </Chip>
           {protectedKey && <Chip>암호구 보호</Chip>}
           {/* 보호 여부와 **지금 열려 있는지**는 다른 정보다. 둘 다 보여야 한다. */}
           {protectedKey && (
-            <span className={`${`chip ${unlocked ? "pass" : "warn"}`} m-0`}>
+            <Chip tone={unlocked ? "pass" : "warn"} layout="m-0">
               {unlocked ? "열림" : "잠김"}
-            </span>
+            </Chip>
           )}
         </div>
 

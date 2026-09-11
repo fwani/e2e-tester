@@ -60,9 +60,19 @@ const TONE: Record<ChipTone, string> = {
   off: "border-dashed border-hair-2 text-ink-3 bg-transparent",
 };
 
+/**
+ * 칩의 클래스. **`<span>` 이 아닌 칩도 이것을 쓴다.**
+ *
+ * 그룹 거르기(`TestGroupBar`)의 칩은 누를 수 있어야 하므로 `<button>` 이다. 그 자리가
+ * 자기 힘으로 칩 모양을 조립하면 같은 종류의 표식이 두 모습을 갖는다 (SC-010).
+ */
+export function chipClasses(tone: ChipTone = "default", layout?: string): string {
+  return [BASE, TONE[tone], layout].filter(Boolean).join(" ");
+}
+
 export function Chip({ tone = "default", layout, children, ...rest }: ChipProps) {
   // 클래스를 조립하지 않는다 — 표에서 완성된 문자열을 꺼내 이을 뿐이다 (가드 G-B).
-  const cls = [BASE, TONE[tone], layout].filter(Boolean).join(" ");
+  const cls = chipClasses(tone, layout);
   // `data-tone` 으로 의도를 내보낸다. 검사가 유틸리티 조합 대신 이것을 읽으면
   // 「이 칩이 실패를 말하는가」라는 질문이 살아남는다 (LC-4 ②).
   return (

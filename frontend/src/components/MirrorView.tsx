@@ -558,7 +558,7 @@ function PhaseNotice({
 
   return (
     <div
-      className={`${`row${phase === "manipulation" ? " bg-warn-t border border-warn-line rounded-base" : ""}`} relative grid place-items-center max-w-full max-h-full`}
+      className={`flex items-center gap-s2${phase === "manipulation" ? " bg-warn-t border border-warn-line rounded-base" : ""} relative grid place-items-center max-w-full max-h-full`}
     >
       {asBadge ? (
         <Chip>{notice.title}</Chip>

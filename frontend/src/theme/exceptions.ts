@@ -116,6 +116,19 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
       "옮긴 것이며, 015 가 새로 지운 것이 아니다.",
     requirement: "015 FR-010 · SC-008",
   },
+  {
+    file: "frontend/src/components/workbench/PhaseBar.tsx",
+    pattern: "^focus:outline-none$",
+    axis: "class-name",
+    reason:
+      "국면 띠의 테스트 이름 칸이다. **초점 표시를 지우는 것이 아니라 바꾼다** — " +
+      "정본 `input.phase-name:focus` 가 `outline:none` 과 함께 `border-color:var(--hair-2)` " +
+      "와 `background:var(--panel)` 를 준다. 평소에는 테두리가 투명해 제목처럼 보이다가 " +
+      "초점을 받으면 테두리와 바탕이 드러나 **입력 가능한 칸임이 나타난다.** 링을 " +
+      "겹쳐 그리면 띠 높이(48px) 안에서 2px 링이 위아래로 잘린다. " +
+      "015 는 이 형태를 옮길 뿐 새로 정하지 않는다 (FR-008).",
+    requirement: "015 FR-008 · SC-008 · 007 FR-219",
+  },
 ];
 
 /** `reason` 이 비어 있으면 등록이 아니다 (EX-1). 가드와 이 모듈 양쪽이 쓴다. */

@@ -127,9 +127,9 @@ export function LocatorPriorityTable({
     <div className="flex flex-col gap-[6px]">
       <div className="flex items-center gap-s2">
         <strong className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{title}</strong>
-        <span className={`${`chip ${usable >= 2 ? "pass" : "warn"}`} break-all`}>
+        <Chip tone={usable >= 2 ? "pass" : "warn"} layout="break-all">
           사용 가능 후보 {usable}
-        </span>
+        </Chip>
         <span className="flex-1" />
         {onRepick && (
           <Button size="sm" disabled={busy || repicking} onClick={onRepick}>
@@ -168,7 +168,12 @@ export function LocatorPriorityTable({
             return (
               <tr
                 key={row.kind}
-                className={inUse ? "in-use" : last ? "last-resort" : undefined}
+                /* 정본 `.table tr.in-use td` · `.table tr.last-resort td` — 바탕은
+                   행이 아니라 **칸**이 받는다. 행에 주면 칸 사이 경계선 위로 색이
+                   비친다. 자식 선택자를 그대로 옮겼다. */
+                className={
+                  inUse ? "[&>td]:bg-pass-t" : last ? "[&>td]:bg-sunken-2" : undefined
+                }
               >
                 <td className="font-mono text-[12px] leading-none text-ink-3 pt-0 pr-0 pb-0 pl-[14px]">
                   {i + 1}

@@ -37,7 +37,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { canonClasses, classNameGroups, generatedClasses } from "./helpers/tailwind";
+import { classNameGroups, generatedClasses } from "./helpers/tailwind";
 
 const ROOT = join(__dirname, "..");
 
@@ -83,7 +83,6 @@ function assembledClassNames(): string[] {
 }
 
 describe("G-B — 코드가 쓰는 클래스가 실제로 CSS 를 만든다", () => {
-  const canon = canonClasses();
   const generated = generatedClasses();
   const groups = classNameGroups();
 
@@ -92,11 +91,26 @@ describe("G-B — 코드가 쓰는 클래스가 실제로 CSS 를 만든다", ()
     expect(groups.length, "className 을 하나도 읽지 못했다").toBeGreaterThan(50);
   });
 
-  it("정적 클래스가 전부 실재한다 — 정본 클래스이거나 Tailwind 가 만든 것", () => {
+  it("정적 클래스가 전부 실재한다 — Tailwind 산출물에 있는 것", () => {
+    /*
+      **정본 클래스를 더 이상 봐주지 않는다 (2026-09-11 · T075).**
+
+      T075 가 정본의 클래스 규칙을 번들에서 뺐다 — 화면 코드가 쓰지 않으므로 아무도
+      읽지 않는 12.5 kB 였다. 그 순간부터 `className="chip warn"` 은 **아무 CSS 도 만들지
+      않는다.** 파일(`tokens.css`)에는 규칙이 남아 있으므로 `canon.has(name)` 은 참이고,
+      이 검사는 통과했다 — **검사가 거짓말을 하고 있었다.**
+
+      L2 대조(`scripts/design_compare_ba.py`)가 그 사실을 잡았다. 화면 여덟 개에서
+      요소 열 몇 개가 통째로 무스타일이 됐고, 그중 하나는 「없음」 칩이었다.
+
+      이제 **Tailwind 가 실제로 만든 것만** 실재로 본다. `generated` 는 앱과 같은
+      입력(`theme/tailwind.css` → `tokens.app.css`)으로 물으므로 정본 클래스는 들어
+      있지 않다. 정본 클래스가 남아 있으면 여기서 걸린다.
+    */
     const missing = new Set<string>();
     for (const g of groups) {
       for (const name of g.names) {
-        if (!canon.has(name) && !generated.has(name)) missing.add(`  ${g.file}:${g.line}  .${name}`);
+        if (!generated.has(name)) missing.add(`  ${g.file}:${g.line}  .${name}`);
       }
     }
     const list = Array.from(missing).sort();

@@ -36,7 +36,7 @@ export function Field({ off = false, layout, children, ...rest }: DivProps & { o
     "h-control flex items-center gap-s2 px-[10px] border rounded-base",
     off ? "border-dashed border-hair-2 bg-transparent" : "border-hair-2 bg-panel",
     // 안쪽 입력칸을 벗긴다 — 정본 `.field input` 을 그대로 옮겼다.
-    "[&_input]:flex-1 [&_input]:min-h-0 [&_input]:p-0 [&_input]:border-0",
+    "[&_input]:flex-1 [&_input]:min-h-auto [&_input]:p-0 [&_input]:border-0",
     "[&_input]:bg-transparent [&_input]:shadow-none [&_input]:outline-none",
     "[&_input]:font-sans [&_input]:text-[13px] [&_input]:leading-none",
     "[&_input]:placeholder:text-ink-3",
@@ -169,7 +169,7 @@ export function FileButton({
         type="file"
         disabled={off}
         // 정본 `.file-input` — 보이지 않되 초점은 남긴다.
-        className="absolute w-px h-px min-h-0 p-0 m-0 border-0 overflow-hidden [clip-path:inset(50%)]"
+        className="absolute w-px h-px min-h-0 p-0 m-0 border-0 overflow-hidden [clip-path:inset(50%)] whitespace-nowrap"
         {...inputProps}
       />
     </label>

@@ -394,7 +394,7 @@ function Field({
               <button
                 type="button"
                 data-remedy-for={action}
-                className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-semibold"
+                className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-sans text-[12px] font-semibold leading-[1.4] underline cursor-pointer"
                 onClick={() => onRemedy(capability.remedy!.action)}
               >
                 {ACTION_LABEL[capability.remedy.action]}

@@ -205,7 +205,15 @@ function PhaseTestName({
     >
       <input
         data-action="test.rename"
-        aria-label={ACTION_LABEL["test.rename"]} className="font-sans text-[17px] font-bold leading-none whitespace-nowrap overflow-hidden text-ellipsis flex-initial min-w-0 max-w-[300px]"
+        aria-label={ACTION_LABEL["test.rename"]}
+        /*
+          정본 `input.phase-name` 이 주던 것을 함께 옮긴다 (015 L2 대조가 잡았다).
+          이것이 없으면 전역 `input{}` 규칙이 이겨 **이름 칸이 32px 짜리 회색 테두리
+          입력칸으로 보인다** — 띠 안에서 제목처럼 보이던 것이 폼 칸이 된다.
+          초점 표시는 테두리와 바탕으로 한다 (정본이 `outline:none` 으로 정한 자리이며
+          `theme/exceptions.ts` 에 등록돼 있다).
+        */
+        className="font-sans text-[17px] font-bold leading-none whitespace-nowrap overflow-hidden text-ellipsis flex-initial min-w-0 max-w-[300px] w-auto min-h-[26px] px-[6px] border border-transparent bg-transparent text-ink enabled:hover:border-hair-2 focus:border-hair-2 focus:bg-panel focus:outline-none disabled:border-transparent disabled:text-ink-2"
         value={testName}
         disabled={disabled}
         maxLength={200}
@@ -248,7 +256,7 @@ function PhaseTestName({
             <button
               type="button"
               data-remedy-for="test.rename"
-              className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-semibold flex-none"
+              className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-sans text-[12px] font-semibold leading-[1.4] underline cursor-pointer flex-none"
               onClick={() => rename.onRemedy(remedy.action)}
             >
               {ACTION_LABEL[remedy.action]}

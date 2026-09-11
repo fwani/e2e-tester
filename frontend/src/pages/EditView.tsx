@@ -63,7 +63,7 @@ import {
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
-import { Button } from "../ui/Button";
+import { Button, navLinkClasses } from "../ui/Button";
 
 
 export interface EditViewProps {
@@ -1195,7 +1195,7 @@ function EditFields({
             {ops.map((op, i) => (
  <li key={`${op.op}-${i}`} className="flex items-center gap-[6px]">
                 <span className="font-mono flex-1">{describeOp(op, steps)}</span>
-                <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={() => onRevert(i)}>
+                <button className={navLinkClasses()} onClick={() => onRevert(i)}>
                   되돌리기
                 </button>
               </li>

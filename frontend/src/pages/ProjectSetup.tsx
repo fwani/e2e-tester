@@ -19,7 +19,7 @@ import { Toast } from "../components/Toast";
 import { ImportDoneNotice, ImportFilePicker, ImportPreview } from "./ImportPreview";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { Button } from "../ui/Button";
+import { Button, navLinkClasses } from "../ui/Button";
 
 import {
   fs,
@@ -148,7 +148,7 @@ export function ProjectSetup({
         <BrandMark />
         <div className="flex-1" />
         {onCancel !== undefined && (
-          <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onCancel}>
+          <button className={navLinkClasses()} onClick={onCancel}>
             돌아가기
           </button>
         )}
@@ -588,7 +588,7 @@ function ProjectRow({
                       열기
                     </Button>
                     <button
-                      className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
+                      className={navLinkClasses()}
                       onClick={() => setMode({ kind: "editing", draft: item.name })}
                       disabled={locked}
                     >
@@ -598,7 +598,7 @@ function ProjectRow({
                 )}
                 {/* 삭제는 열 수 없는 줄에도 있다 (FR-418 · SC-622). */}
                 <button
-                  className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
+                  className={navLinkClasses()}
                   onClick={openConfirm}
                   disabled={locked}
                   title={
@@ -612,7 +612,7 @@ function ProjectRow({
               </>
             )}
             <button
-              className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken"
+              className={navLinkClasses()}
               onClick={onForget}
               disabled={locked}
               // 삭제와 결과가 다르다. 두 설명 모두 디스크의 파일이 어떻게 되는지
@@ -753,7 +753,7 @@ function TrashedNotice({
           </div>
         </>
       )}
-      <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken mt-s2" onClick={onDismiss}>
+      <button className={navLinkClasses("mt-s2")} onClick={onDismiss}>
         확인했습니다
       </button>
     </div>
@@ -835,7 +835,12 @@ function CreateForm({
       */}
       <p
         id="create-blockers"
-        className={`${`why ${ready ? "" : "text-fail"}`.trimEnd()} flex flex-col gap-[10px] py-[14px] px-s4`}
+        /*
+          정본 `.why`(11px/1.4 · ink-3) + `.fail-ink`(빨강). 015 전환 중 다른 요소의
+          상자 모양(flex-col · gap · padding)이 여기 얹혀 **한 줄 안내가 상자가 됐다** —
+          L2 대조가 잡았다. 정본이 주던 것만 남긴다.
+        */
+        className={`font-sans text-[11px] leading-[1.4] ${ready ? "text-ink-3" : "text-fail"} mt-s4 mx-0 mb-0`}
       >
         {ready
           ? "만들 준비가 되었습니다."
@@ -949,7 +954,7 @@ function FolderPicker({
 
       <div className="max-h-[360px] overflow-y-auto">
         {parent !== null && (
-          <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken w-full h-[44px] justify-start text-left py-0 px-[20px]"
+          <button className={navLinkClasses("w-full h-[44px] justify-start text-left py-0 px-[20px]")}
             onClick={() => go(parent)}
           >
             ↑ 상위 폴더
@@ -969,7 +974,7 @@ function FolderPicker({
             key={e.path}
             className="border-t border-hair flex items-center gap-s3 py-[10px] px-[18px]"
           >
-            <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken flex-1 justify-start text-left p-0 h-[32px]"
+            <button className={navLinkClasses("flex-1 justify-start text-left p-0 h-[32px]")}
               onClick={() => go(e.path)}
             >
               📁 {e.name}
@@ -1007,11 +1012,13 @@ function FolderPicker({
 // ─── 알림 ───────────────────────────────────────────────────────────────────
 
 function Notice({ tone, children }: { tone: "warn" | "fail"; children: React.ReactNode }) {
+  // 비교를 `className` 밖으로 뺀다. 안에 두면 비교값 `"fail"` 이 정본 클래스 이름과
+  // 같아, 정본 클래스를 찾는 가드(G-B)가 그것을 클래스로 오인한다.
+  const isFail = tone === "fail";
   return (
     <div
-      className={`${tone === "fail" ? "bg-fail-t border border-fail-line rounded-base" : "bg-warn-t border border-warn-line rounded-base"} mt-s4 mx-0 mb-0`}
-      
-      role={tone === "fail" ? "alert" : "status"}
+      className={`${isFail ? "bg-fail-t border border-fail-line" : "bg-warn-t border border-warn-line"} rounded-base mt-s4 mx-0 mb-0`}
+      role={isFail ? "alert" : "status"}
     >
       {children}
     </div>

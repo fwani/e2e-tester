@@ -201,6 +201,33 @@ export function classNameGroups(): { names: string[]; file: string; line: number
     for (const m of txt.matchAll(/className=\{\s*`([^]*?)`/g)) {
       add(stripHoles(m[1] as string).replace(/`/g, " "), m.index ?? 0);
     }
+    // ①-b `${…}` **안쪽**의 리터럴. `stripHoles` 가 지우는 자리다.
+    //
+    // 지우고 나면 `` `${`field${off ? " off" : ""}`} flex-1` `` 의 `field` 가 사라져,
+    // 가드는 그 요소에 유틸리티만 있다고 믿는다. T075 가 정본 클래스를 번들에서 뺀
+    // 뒤로 그것은 **아무 CSS 도 만들지 않는 이름**이므로 반드시 보여야 한다 —
+    // L2 대조가 그 구멍으로 새어 나간 회귀를 여덟 화면에서 찾아냈다 (2026-09-11).
+    for (const m of txt.matchAll(/className=\{/g)) {
+      const start = (m.index ?? 0) + m[0].length - 1;
+      let depth = 0;
+      let end = start;
+      for (let i = start; i < txt.length; i += 1) {
+        if (txt[i] === "{") depth += 1;
+        else if (txt[i] === "}") {
+          depth -= 1;
+          if (depth === 0) {
+            end = i;
+            break;
+          }
+        }
+      }
+      for (const lit of literalsIn(txt.slice(start + 1, end))) {
+        // **클래스 모양의 토큰만 받는다.** 홀 안에는 비교값(`x === "manipulation"`)이
+        // 섞여 있어, 거르지 않으면 가드가 관계없는 문자열을 위반으로 보고한다.
+        const tokens = lit.split(/\s+/).filter((t) => /^[a-zA-Z][a-zA-Z0-9_:./[\]#%!-]*$/.test(t));
+        if (tokens.length > 0) add(tokens.join(" "), start);
+      }
+    }
     // ② 부품의 클래스 상수
     for (const m of txt.matchAll(/"([^"\n]{2,})"|`([^`\n]{2,})`/g)) {
       const blob = stripHoles((m[1] ?? m[2] ?? "") as string).replace(/`/g, " ");
@@ -430,6 +457,58 @@ function stripLineComments(text: string): string {
     }
     out += c;
   }
+  return out;
+}
+
+/**
+ * 표현식 안의 **모든** 문자열·템플릿 리터럴 조각. `${…}` 안에 또 리터럴이 있어도 찾는다.
+ *
+ * 정규식으로 `` `([^`]*)` `` 를 찾으면 **중첩 템플릿에서 틀린다** —
+ * `` `${`num ${x}`} ml-auto` `` 에서 바깥 백틱과 안쪽 백틱이 짝지어져 `${` 만 잡히고
+ * `num` 은 보이지 않는다. 그래서 정본 클래스가 남았는데도 가드가 통과했다
+ * (2026-09-11 · L2 대조가 찾아냈다). 문자 단위로 따옴표 상태를 따라가면 중첩이
+ * 문제되지 않는다.
+ */
+function literalsIn(expr: string): string[] {
+  const out: string[] = [];
+  const stack: string[] = [];
+  let buf = "";
+  const flush = (): void => {
+    if (buf !== "") out.push(buf);
+    buf = "";
+  };
+  for (let i = 0; i < expr.length; i += 1) {
+    const c = expr[i] as string;
+    const top = stack[stack.length - 1];
+    if (top === undefined) {
+      if (c === '"' || c === "'" || c === "`") stack.push(c);
+      continue;
+    }
+    if (top === "}") {
+      // `${…}` 안 — 여기서 또 리터럴이 시작될 수 있다.
+      if (c === '"' || c === "'" || c === "`") stack.push(c);
+      else if (c === "{") stack.push("}");
+      else if (c === "}") stack.pop();
+      continue;
+    }
+    if (c === "\\") {
+      i += 1;
+      continue;
+    }
+    if (c === top) {
+      stack.pop();
+      flush();
+      continue;
+    }
+    if (top === "`" && c === "$" && expr[i + 1] === "{") {
+      flush();
+      stack.push("}");
+      i += 1;
+      continue;
+    }
+    buf += c;
+  }
+  flush();
   return out;
 }
 

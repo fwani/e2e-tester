@@ -529,12 +529,9 @@ function StepRow({
           */}
           {dsl !== null && (
             <>
-              <span
-                data-cell="type"
-                className={dsl.author === "ai" ? "chip ai" : "chip"}
-              >
+              <Chip data-cell="type" tone={dsl.author === "ai" ? "ai" : "default"}>
                 {dsl.type.toUpperCase()}
-              </span>
+              </Chip>
 
               {/*
                 009 FR-310 — 저장되지 않은 삽입. 정본의 `.chip.warn` 을 쓰고 **새 색을

@@ -409,7 +409,9 @@ export function ImportPreview({
                                   <td
                                     key={i}
                                     className={
-                                      headerRowOf(sheet) === sampleRow.row ? "strong-sm" : "why"
+                                      headerRowOf(sheet) === sampleRow.row
+                                        ? "font-sans text-[13px] font-semibold leading-none"
+                                        : "font-sans text-[11px] leading-[1.4] text-ink-3"
                                     }
                                   >
                                     {cell}

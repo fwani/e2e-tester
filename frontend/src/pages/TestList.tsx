@@ -72,9 +72,10 @@ import { EDIT_ENTRY_LABEL, outcomeChip, outcomeLabel, stepLabel } from "../lib/w
 import { chipTone, rowMark } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
-import { Button } from "../ui/Button";
+import { Button, navLinkClasses } from "../ui/Button";
 import { Chip } from "../ui/Chip";
 import { rowClasses } from "../ui/Table";
+import { Field } from "../ui/Field";
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
 const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
@@ -96,13 +97,6 @@ function relativeTime(iso: string | null): string {
 /** 결말 필터. 확정 디자인이 그리는 넷이며 그 이상 늘리지 않는다 (FR-272). */
 type OutcomeFilter = "all" | "pass" | "fail" | "none";
 /** 개수 옆의 잉크. 확정 디자인은 통과·실패 개수에만 상태 색을 쓴다. */
-const FILTER_INK: Record<OutcomeFilter, string> = {
-  all: "",
-  pass: "pass-ink",
-  fail: "fail-ink",
-  none: "dim",
-};
-
 const FILTER_LABEL: Record<OutcomeFilter, string> = {
   all: "전체",
   pass: "통과",
@@ -517,7 +511,7 @@ export function TestList({
             (DC-010).
           */}
           {onOpenProjects && (
-            <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onOpenProjects}>
+            <button className={navLinkClasses()} onClick={onOpenProjects}>
               바꾸기
             </button>
           )}
@@ -525,12 +519,12 @@ export function TestList({
         <div className="flex-1" />
         {/* 확정 디자인에 없는 화면들의 진입점. 눈에 띄지 않게 둔다 (DC-010). */}
         {onOpenSecrets && (
-          <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onOpenSecrets}>
+          <button className={navLinkClasses()} onClick={onOpenSecrets}>
             비밀 값
           </button>
         )}
         {onOpenKeys && (
-          <button className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken" onClick={onOpenKeys}>
+          <button className={navLinkClasses()} onClick={onOpenKeys}>
             키 관리
           </button>
         )}
@@ -617,7 +611,7 @@ export function TestList({
 
         {/* ─── 조작 줄 — 검색 · 결말 필터 · 정렬 ─────────────────────────── */}
  <div className="flex items-center gap-[10px]">
-          <div className={`${`field${isEmptyProject ? " off" : ""}`} flex-1 max-w-[520px]`} >
+          <Field off={isEmptyProject} layout="flex-1 max-w-[520px]">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7">
               <circle cx="7" cy="7" r="4.6" />
               <path d="M10.6 10.6L14 14" />
@@ -631,7 +625,7 @@ export function TestList({
               disabled={isEmptyProject}
               onChange={(e) => setQuery(e.target.value)}
             />
-          </div>
+          </Field>
 
           {!isEmptyProject && (
             <>
@@ -650,7 +644,15 @@ export function TestList({
                     onClick={() => setFilter(key)}
                   >
                     {FILTER_LABEL[key]}
-                    <span className={`${`num ${FILTER_INK[key]}`} ml-auto`}>{counts[key]}</span>
+                    {/*
+                      정본 `.num`(mono 12px · ink-3). **결말별 색을 주지 않는다** —
+                      정본에서 `.num` 이 `.pass-ink`·`.fail-ink` 보다 뒤에 정의돼
+                      **전환 전에도 색이 덮이지 않았다.** 시각 동일성이 요건이므로
+                      (FR-008) 여기서 색을 새로 만들지 않는다.
+                    */}
+                    <span className="font-mono text-[12px] leading-none text-ink-3 ml-auto">
+                      {counts[key]}
+                    </span>
                   </Button>
                 ))}
               </div>
@@ -1431,14 +1433,14 @@ function Row({
               들어가도 안전하다.
             */}
             {onOpenDefinition && (
-              <button data-row-menu-item className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken justify-start" onClick={onOpenDefinition}>
+              <button data-row-menu-item className={navLinkClasses("justify-start")} onClick={onOpenDefinition}>
                 {EDIT_ENTRY_LABEL}
               </button>
             )}
-            <button data-row-menu-item className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken justify-start" onClick={onRenameStart}>
+            <button data-row-menu-item className={navLinkClasses("justify-start")} onClick={onRenameStart}>
               이름
             </button>
-              <button data-row-menu-item className="h-[28px] inline-flex items-center px-[10px] border-0 rounded-base hover:bg-sunken text-fail justify-start" onClick={onDeleteStart}>
+              <button data-row-menu-item className={navLinkClasses("text-fail justify-start")} onClick={onDeleteStart}>
                 삭제
               </button>
             </div>,
@@ -1617,12 +1619,12 @@ function EmptyProject({
               <div className="font-sans text-[13.5px] font-bold leading-none text-ai">AI 로 만들기</div>
               {/* 확인이 끝난 뒤에만 표식을 붙인다 (DR-021) */}
               {aiReady !== null && (
-                <span
-                  className={aiReady.available ? "chip ai" : "chip warn"}
+                <Chip
+                  tone={aiReady.available ? "ai" : "warn"}
                   data-ai-ready={aiReady.available ? "yes" : "no"}
                 >
                   {aiReady.available ? "사용 가능" : "키 필요"}
-                </span>
+                </Chip>
               )}
             </div>
             <div className="font-sans text-[11px] leading-[1.4] text-ink-3">할 일을 말로 적으면 AI 가 브라우저에서 해봅니다.</div>
@@ -1772,7 +1774,7 @@ function ActiveSessionsBanner({
             <span className="font-sans text-[13px] leading-[1.4] flex-1">{label}</span>
             {asking ? (
               <>
-                <span className={saved ? "muted" : "fail-ink"}>
+                <span className={saved ? "text-ink-2" : "text-fail"}>
                   {saved
                     ? `${s.test_id ?? "테스트"} 로 저장돼 있습니다. 이 작업 창만 닫습니다.`
                     : `Step ${s.steps.length}개가 사라집니다. 정말 버릴까요?`}

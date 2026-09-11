@@ -247,9 +247,9 @@ export function WorkArea({
                 {work.step.locator_attempts.map((a) => (
                   <div
                     key={`${a.candidate}-${a.expression}`}
-                    className="flex items-center gap-s2 font-mono font-sans text-[11px] leading-[1.4] text-ink-3"
+                    className="flex items-center gap-s2 font-sans text-[11px] leading-[1.4] text-ink-3"
                   >
-                    <span className={a.matched ? "pass-ink" : "fail-ink"}>
+                    <span className={a.matched ? "text-pass" : "text-fail"}>
                       {a.matched ? "✓" : "×"}
                     </span>
                     <span className="flex-1 min-w-0 overflow-hidden text-ellipsis">
@@ -380,7 +380,11 @@ function ModeCard({
       aria-pressed={selected}
       onClick={() => onPick(mode)}
       className={[
+        // **배치를 빠뜨리면 카드가 32px 짜리 단추가 된다** (015 L2 대조가 잡았다).
+        // 전환 전 인라인이 주던 것: flex:1 1 0 · min-width:0 · height:auto ·
+        // padding:16px 18px · display:flex · column · gap:8px.
         "border rounded-base text-left text-ink",
+        "flex-1 min-w-0 h-auto py-s4 px-[18px] flex flex-col gap-s2",
         // 정본 `.tint-ai` — AI 쪽만 바탕과 테두리가 다르다. 고른 것은 `.pick.on` 의
         // 잉크 테두리와 승강으로 말한다. **두 축이 서로 다른 속성을 쓰므로 겹쳐도 된다.**
         ai ? "bg-ai-t border-ai" : "bg-panel border-hair",

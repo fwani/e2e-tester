@@ -120,6 +120,41 @@ const SIZE: Record<ButtonSize, string> = {
   sm: "h-control-sm px-[9px] text-[12px]",
 };
 
+
+/**
+ * 정본 `.navlink` — **확정 디자인에 없는 화면으로 가는 길.** 015 T073·T074.
+ *
+ * 버튼이지만 버튼처럼 보이지 않는다: 테두리도 그림자도 배경도 없고 글자가 한 톤 연하다.
+ * 목록 위의 「바꾸기」·「비밀 값」·「키 관리」, 행 메뉴의 항목, 접었다 펴는 토글이
+ * 이것이다. 눈에 띄지 않게 두는 것이 의도다 (`pages/TestList.tsx` 주석).
+ *
+ * ## 왜 함수인가
+ *
+ * 26곳이 쓰고, 그중 여럿이 `<button>` 그대로여야 한다 (행 메뉴가 `data-row-menu-item`
+ * 으로 집는 자리, `justify-start` 로 왼쪽 정렬하는 자리 등). 부품으로 감싸는 대신
+ * **정의를 한 곳에 두고 클래스를 꺼내 쓴다** — `ui/Chip` 의 `chipClasses`,
+ * `ui/Table` 의 `rowClasses` 와 같은 규율이다.
+ *
+ * ## 빠뜨리면 버튼이 된다
+ *
+ * 1회차 전환은 `h-[28px] inline-flex items-center px-[10px] border-0 rounded-base
+ * hover:bg-sunken` 까지만 옮기고 **배경·글자색·굵기·그림자를 빠뜨렸다.** 그것들은
+ * 전역 `button{}` 규칙이 주므로, 빠진 자리에서 `.navlink` 는 **보통 버튼으로
+ * 그려졌다** — 흰 바탕에 회색 테두리와 그림자. 26곳 전부가 그랬고, 눈으로도 기존
+ * 검사로도 잡히지 않았다. L2 대조(`scripts/design_compare_ba.py`)가 찾았다.
+ */
+export function navLinkClasses(layout?: string): string {
+  return [
+    "h-[28px] inline-flex items-center px-[10px] border-0 rounded-base",
+    // 전역 `button{}` 이 주는 것을 되돌린다. 이 넷이 `.navlink` 의 정체다.
+    "bg-transparent text-ink-2 font-sans text-[13px] font-medium leading-none shadow-none",
+    "hover:bg-sunken",
+    layout,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function Button({ variant = "default", size = "md", layout, children, ...rest }: ButtonProps) {
   // 클래스 이름을 조립하지 않는다 — 표에서 완성된 문자열을 꺼내 이어 붙일 뿐이다.
   // Tailwind 는 소스를 텍스트로 스캔하므로 `bg-${x}` 같은 것을 찾지 못한다 (가드 G-B).
