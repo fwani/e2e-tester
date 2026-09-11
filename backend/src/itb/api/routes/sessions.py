@@ -1270,6 +1270,20 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
         capturer=capturer,
         on_variable=resolver.declare,
         test_id_attribute=work.recorder.test_id_attribute,
+        # ─── 016 US3 — 편집 도구가 쓰는 통로 ────────────────────────────
+        #
+        # 도구는 목록을 소유하지 않는다 (`on_step` 과 같은 구조). 읽기·쓰기·권한
+        # 판정을 세션이 넘긴다.
+        steps_source=lambda: work.steps,
+        on_edit=lambda result: _apply_ai_edit(work, result),
+        # **모르는 것을 참으로 보지 않는다.** 재녹화가 아니면 AI 는 아무것도 고칠 수
+        # 없다 — 일반 AI 작성에서 자기가 만든 Step 을 고치는 것은 016 의 범위 밖이고,
+        # 허용하려면 「이번 세션이 만든 것」의 정의가 그쪽에도 필요하다.
+        in_scope=lambda step_id: (
+            work.rerecord is not None
+            and not work.rerecord.settled
+            and work.rerecord.owns(step_id, work.steps)
+        ),
     )
     work.toolbox = toolbox
     work.agent = AuthoringAgent(
@@ -1292,6 +1306,44 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
             ),
         ),
     )
+
+
+async def _apply_ai_edit(work: SessionWork, result: object) -> None:
+    """AI 편집 도구의 결과를 세션에 반영하고 **사람 편집과 같은 이벤트로** 알린다.
+
+    FR-039 — 작성 주체별 이벤트를 만들지 않는다. 화면이 「AI 가 고친 것」과 「사람이
+    고친 것」을 다른 통로로 받으면, 한쪽만 그리는 자리가 생긴다.
+
+    **새 이벤트를 만들지 않았다.** `itb.api.routes.steps` 가 내는 것과 같은 이름을
+    쓴다 — `step_updated`·`step_removed`·`steps_reordered`. 무엇이 바뀌었는지는 바뀐
+    목록을 이전 목록과 대조해 판정한다. 편집 연산마다 다른 sink 를 두는 방법도 있었지만,
+    그러면 도구 넷이 각자 이벤트를 알아야 하고 「도구는 목록을 소유하지 않는다」가
+    흐려진다.
+    """
+    from itb.execution.step_edits import EditResult  # noqa: PLC0415
+
+    if not isinstance(result, EditResult):  # pragma: no cover - 호출자가 지킨다
+        return
+
+    before = {st.id: st for st in work.steps}
+    before_order = [st.id for st in work.steps]
+    _apply_rerecord_edit(work, result)
+    after = {st.id: st for st in work.steps}
+    after_order = [st.id for st in work.steps]
+
+    for gone in before_order:
+        if gone not in after:
+            await work.session.emit("step_removed", step_id=gone)
+    for step_id, step in after.items():
+        old_step = before.get(step_id)
+        if old_step is not None and old_step != step:
+            await work.session.emit("step_updated", step=step.model_dump(mode="json"))
+    if set(before_order) == set(after_order) and before_order != after_order:
+        await work.session.emit("steps_reordered", order=after_order)
+
+    if work.rerecord is not None and not work.rerecord.settled:
+        await work.session.emit("rerecord_changed", rerecord=_rerecord_payload(work))
+    await work.session.publish_edit_warnings()
 
 
 def _empty_draft(work: SessionWork) -> Test:

@@ -169,20 +169,20 @@ Step 을 가리키고 민감 값이 나오지 않는지 본다. 구간을 확정
 
 ### Tests for US3 ⚠️
 
-- [ ] T052 [P] [US3] `backend/tests/unit/test_tool_surface.py` 수정 — agent-tools.md §1 의 검사 4개: 네 분류 합집합 == `TOOL_NAMES`·교집합 없음, `STEP_PRODUCING_TOOLS` ↔ Step 종류 1:1(기존), `TOOL_SCHEMAS` 키 == `TOOL_NAMES`
-- [ ] T053 [P] [US3] `backend/tests/unit/test_agent_edit_tools.py` 신규 — **편집 도구의 결과가 사람 편집 경로의 결과와 Step 으로서 같은지** (SC-006 · agent-tools.md §1 검사 3), 그리고 **같은 이벤트로 화면에 나가는지** (FR-039). 같은 함수를 지나는 것과 같은 이벤트를 내는 것은 다른 보장이므로 둘 다 단언한다
-- [ ] T054 [P] [US3] `backend/tests/unit/test_edit_tool_scope.py` 신규 — 불변식 8: 구간 밖·옛 구간 Step 에 대한 편집이 **거절을 반환**하고(예외 아님) 사유가 있는지 (FR-038)
+- [X] T052 [P] [US3] `backend/tests/unit/test_tool_surface.py` 수정 — agent-tools.md §1 의 검사 4개: 네 분류 합집합 == `TOOL_NAMES`·교집합 없음, `STEP_PRODUCING_TOOLS` ↔ Step 종류 1:1(기존), `TOOL_SCHEMAS` 키 == `TOOL_NAMES`
+- [X] T053 [P] [US3] `backend/tests/unit/test_agent_edit_tools.py` 신규 — **편집 도구의 결과가 사람 편집 경로의 결과와 Step 으로서 같은지** (SC-006 · agent-tools.md §1 검사 3), 그리고 **같은 이벤트로 화면에 나가는지** (FR-039). 같은 함수를 지나는 것과 같은 이벤트를 내는 것은 다른 보장이므로 둘 다 단언한다
+- [X] T054 [P] [US3] `backend/tests/unit/test_edit_tool_scope.py` 신규 — 불변식 8: 구간 밖·옛 구간 Step 에 대한 편집이 **거절을 반환**하고(예외 아님) 사유가 있는지 (FR-038)
 
 ### Implementation for US3
 
-- [ ] T055 [US3] `backend/src/itb/authoring/tools.py` — 분류 튜플 4개를 만든다: `READ_ONLY_TOOLS`·`STEP_PRODUCING_TOOLS`(기존)·`STEP_EDITING_TOOLS`·`CONTROL_TOOLS`. `TOOL_NAMES` 를 네 분류의 합으로 정의한다
-- [ ] T056 [US3] `backend/src/itb/authoring/tools.py` — `BrowserToolbox` 에 권한 범위 판정을 더한다. 편집 도구의 `step_id` 는 이번 세션이 만든 Step 이어야 한다 (불변식 8). 범위 밖이면 `{"error": ...}` 반환
-- [ ] T057 [US3] `backend/src/itb/authoring/tools.py` — `update_step` 도구. `itb.execution.step_edits.update_step` 을 지난다. `FieldNotSupportedError` 사유를 그대로 돌려준다 (agent-tools.md §2-1)
-- [ ] T058 [US3] `backend/src/itb/authoring/tools.py` — `delete_step` 도구. `step_edits.delete_step` 을 지난다. **복수 삭제 도구는 만들지 않는다** (agent-tools.md §2-2)
-- [ ] T059 [US3] `backend/src/itb/authoring/tools.py` — `move_step` 도구. `direction: "up"|"down"` 만 받고 `step_edits.reorder_steps` 를 지난다. 이동 범위도 권한 범위 안이다 (agent-tools.md §2-3)
-- [ ] T060 [US3] `backend/src/itb/authoring/tools.py` — `repick_target` 도구. **`element_ref` 만 받는다**(원칙 IV). 후보를 `itb.locator.collector` 로 **살아 있는 페이지에서** 새로 수집한다. `RepickController` 를 쓰지 않는다 (agent-tools.md §2-4)
-- [ ] T061 [US3] `backend/src/itb/authoring/tools.py` — `build_tools`·`TOOL_SCHEMAS` 에 새 도구 4종을 등록한다. `QUALIFIED_TOOL_NAMES` 는 자동으로 따라온다
-- [ ] T062 [US3] `backend/tests/unit/test_claude_code_driver.py` 수정 — 개발용 드라이버에서도 편집 도구가 표면에 있는지 (기본과 개발용의 표면이 갈리지 않게)
+- [X] T055 [US3] `backend/src/itb/authoring/tools.py` — 분류 튜플 4개를 만든다: `READ_ONLY_TOOLS`·`STEP_PRODUCING_TOOLS`(기존)·`STEP_EDITING_TOOLS`·`CONTROL_TOOLS`. `TOOL_NAMES` 를 네 분류의 합으로 정의한다
+- [X] T056 [US3] `backend/src/itb/authoring/tools.py` — `BrowserToolbox` 에 권한 범위 판정을 더한다. 편집 도구의 `step_id` 는 이번 세션이 만든 Step 이어야 한다 (불변식 8). 범위 밖이면 `{"error": ...}` 반환
+- [X] T057 [US3] `backend/src/itb/authoring/tools.py` — `update_step` 도구. `itb.execution.step_edits.update_step` 을 지난다. `FieldNotSupportedError` 사유를 그대로 돌려준다 (agent-tools.md §2-1)
+- [X] T058 [US3] `backend/src/itb/authoring/tools.py` — `delete_step` 도구. `step_edits.delete_step` 을 지난다. **복수 삭제 도구는 만들지 않는다** (agent-tools.md §2-2)
+- [X] T059 [US3] `backend/src/itb/authoring/tools.py` — `move_step` 도구. `direction: "up"|"down"` 만 받고 `step_edits.reorder_steps` 를 지난다. 이동 범위도 권한 범위 안이다 (agent-tools.md §2-3)
+- [X] T060 [US3] `backend/src/itb/authoring/tools.py` — `repick_target` 도구. **`element_ref` 만 받는다**(원칙 IV). 후보를 `itb.locator.collector` 로 **살아 있는 페이지에서** 새로 수집한다. `RepickController` 를 쓰지 않는다 (agent-tools.md §2-4)
+- [X] T061 [US3] `backend/src/itb/authoring/tools.py` — `build_tools`·`TOOL_SCHEMAS` 에 새 도구 4종을 등록한다. `QUALIFIED_TOOL_NAMES` 는 자동으로 따라온다
+- [X] T062 [US3] `backend/tests/unit/test_claude_code_driver.py` 수정 — 개발용 드라이버에서도 편집 도구가 표면에 있는지 (기본과 개발용의 표면이 갈리지 않게)
 
 **Checkpoint**: quickstart §4 가 통과한다. 세 스토리가 전부 독립적으로 동작한다.
 

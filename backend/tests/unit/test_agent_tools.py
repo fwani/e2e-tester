@@ -93,13 +93,27 @@ def test_no_arbitrary_execution_tool_exists() -> None:
     )
 
 
-def test_read_only_tools_do_not_produce_steps() -> None:
-    """`list_tabs`·`observe_page`·`report_blocked` 는 Step 을 만들지 않는다.
+def test_tools_that_do_not_produce_steps_are_all_accounted_for() -> None:
+    """Step 을 만들지 않는 도구가 **전부 어느 분류엔가 들어 있다**.
 
-    읽기 전용 도구가 Step 을 만들면 정의에 실행할 것이 없는 Step 이 들어간다.
+    ## 016 이 이 검사를 다시 적었다
+
+    이전 문장은 「`list_tabs`·`observe_page`·`report_blocked` 셋」이었다. 016 이 편집
+    도구 넷을 더하면서 그 셋이 일곱이 됐고, 검사가 실패했다 — **검사가 제 일을 한
+    것이다.** 목록을 늘리는 대신 분류로 답한다.
+
+    읽기 전용·제어·편집 도구가 Step 을 만들면 정의에 실행할 것이 없는 Step 이 들어간다.
+    분류의 정합성 자체는 `test_tool_surface.py` 가 본다.
     """
-    read_only = set(TOOL_NAMES) - set(STEP_PRODUCING_TOOLS)
-    assert read_only == {"list_tabs", "observe_page", "report_blocked"}
+    from itb.authoring.tools import CONTROL_TOOLS, READ_ONLY_TOOLS, STEP_EDITING_TOOLS
+
+    non_producing = set(TOOL_NAMES) - set(STEP_PRODUCING_TOOLS)
+    assert non_producing == set(READ_ONLY_TOOLS) | set(CONTROL_TOOLS) | set(
+        STEP_EDITING_TOOLS
+    ), (
+        f"어느 분류에도 없는 도구가 있다: "
+        f"{sorted(non_producing - set(READ_ONLY_TOOLS) - set(CONTROL_TOOLS) - set(STEP_EDITING_TOOLS))}"
+    )
 
 
 def test_module_does_not_import_sdk_at_module_level() -> None:

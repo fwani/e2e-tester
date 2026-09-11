@@ -44,6 +44,16 @@ from itb.domain.step import (
 )
 from itb.execution.element_probe import collect_by_selector, describe_element
 from itb.execution.session import BrowserSession, TabNotFoundError
+from itb.execution.step_edits import (
+    EditResult,
+    FieldNotSupportedError,
+    StepNotFoundError,
+    ValueNotSupportedError,
+    delete_step,
+    find_index,
+    reorder_steps,
+    update_step,
+)
 from itb.execution.step_executor import StepExecutor, StepFailure
 from itb.secrets.capture import SensitiveCapturer
 
@@ -182,6 +192,14 @@ ProgressSink = Callable[[str], Awaitable[None]]
 """`ai_progress` 발행 통로 (FR-060)."""
 
 
+EditSink = Callable[["EditResult"], Awaitable[None]]
+"""편집 결과를 받는 통로 (016 US3).
+
+`StepSink` 와 대칭이다 — 그쪽은 「새 Step 하나」를, 이쪽은 「바뀐 목록 전체」를 나른다.
+편집 연산(`step_edits`)이 새 목록을 돌려주므로 모양이 그렇게 갈린다.
+"""
+
+
 @dataclass(slots=True)
 class BrowserToolbox:
     """에이전트가 브라우저에 할 수 있는 일 전부.
@@ -202,6 +220,27 @@ class BrowserToolbox:
 
     저장 전 세션에는 `Test.variables` 가 없으므로, 등록하지 않으면 방금 만든 참조를
     실행기가 "정의되지 않은 변수" 로 거절한다.
+    """
+
+    # ─── 편집 도구가 쓰는 통로 (016 US3) ─────────────────────────────────
+    #
+    # **목록을 소유하지 않는다.** 만드는 도구가 `on_step` 으로 넘기는 것과 같은
+    # 구조다 — 소유하면 실패 경로에서 Step 이 사라질 자리가 하나 더 생긴다 (FR-067).
+    steps_source: Callable[[], list[Step]] | None = None
+    """지금 작업 중 목록을 읽는 통로. 없으면 편집 도구가 「준비되지 않았다」를 돌려준다."""
+
+    on_edit: EditSink | None = None
+    """편집 결과를 세션에 반영하고 이벤트를 발행하는 통로.
+
+    **사람의 편집과 같은 이벤트로 나가야 한다** (FR-039). 그래서 발행을 여기서 하지
+    않고 호출자에게 맡긴다 — 두 곳에서 발행하면 화면이 같은 변경을 두 번 받는다.
+    """
+
+    in_scope: Callable[[str], bool] | None = None
+    """이 Step 을 고칠 수 있는가 (FR-037 · 불변식 8).
+
+    없으면 **아무것도 고칠 수 없다.** 기본값이 「전부 허용」이면, 배선을 빠뜨린 경로에서
+    AI 가 사용자의 멀쩡한 Step 을 건드린다 — 모르는 것을 참으로 보지 않는다.
     """
 
     test_id_attribute: str = "data-testid"
@@ -558,6 +597,203 @@ class BrowserToolbox:
         attrs = element.get("attributes") or {}
         return str(attrs.get("type") or "").lower() == "password"
 
+    # ─── 편집 도구 (016 US3 · contracts/agent-tools.md §2) ────────────────
+    #
+    # **넷 다 사람의 편집과 같은 순수 함수를 지난다** (`itb.execution.step_edits`).
+    # 원칙 I 이 문서의 약속이 아니라 코드의 성질이 되는 지점이다 — 같은 함수를 지나면
+    # 다를 수가 없다.
+    #
+    # **거절은 예외가 아니라 반환값이다** (FR-038). SDK 는 도구가 던진 예외를 잡아
+    # 모델에게 돌려주므로 예외로는 루프를 끊을 수 없고, 무엇보다 이 거절들은 오류가
+    # 아니라 **정상적인 답**이다 — 「그건 내 권한 밖입니다」.
+
+    def _editable(self, step_id: str) -> tuple[list[Step], None] | tuple[None, dict[str, Any]]:
+        """편집 준비가 됐고 그 Step 이 권한 범위 안인지 본다 (불변식 8).
+
+        성공하면 지금 목록을, 실패하면 에이전트에게 돌려줄 거절을 반환한다.
+        """
+        if self.steps_source is None or self.on_edit is None:
+            return None, {
+                "error": "이 세션에서는 Step 을 고칠 수 없습니다.",
+            }
+        steps = self.steps_source()
+        if self.in_scope is None or not self.in_scope(step_id):
+            return None, {
+                "error": (
+                    f"{step_id} 은 이번에 당신이 만든 Step 이 아니므로 고칠 수 없습니다. "
+                    "사람에게 말하세요 — 사람은 편집 화면에서 고칠 수 있습니다."
+                )
+            }
+        try:
+            find_index(steps, step_id)
+        except StepNotFoundError as exc:
+            return None, {"error": str(exc)}
+        return steps, None
+
+    def _current_index(self) -> int:
+        """편집 연산에 넘길 실행 위치.
+
+        재녹화 세션은 일시정지 상태이고 위치는 세션이 소유한다. 도구는 그 값을 알지
+        못하므로 **0 을 넘긴다** — 편집 연산이 이 값으로 하는 일은 「실행된 구간을
+        건드렸는가」 경고뿐이고, 그 판정은 반영 시점에 호출자가 다시 한다.
+        """
+        return 0
+
+    async def update_step(self, step_id: str, field: str, value: str) -> dict[str, Any]:
+        """Step 의 편집 가능한 속성을 고친다 (FR-032).
+
+        **고칠 수 있는 필드 목록을 여기 복제하지 않는다.** `step_edits.update_step` 이
+        `FieldNotSupportedError` 로 판정하고, 그 사유를 그대로 돌려준다 — 복제하면
+        사람이 고칠 수 있는 것과 AI 가 고칠 수 있는 것이 갈린다 (원칙 I).
+        """
+        if not self.limits.record_call():
+            return dict(STOP_NOTICE)
+        steps, refusal = self._editable(step_id)
+        if steps is None:
+            return refusal  # type: ignore[return-value]
+
+        kwargs: dict[str, Any] = {field: value}
+        try:
+            result = update_step(steps, self._current_index(), step_id, **kwargs)
+        except TypeError:
+            return {
+                "error": (
+                    f"고칠 수 없는 필드입니다: {field}. "
+                    "표시 이름(label)·입력값(value)·제한 시간(timeout_ms) 등을 쓸 수 있습니다."
+                )
+            }
+        except (FieldNotSupportedError, ValueNotSupportedError) as exc:
+            return {"error": str(exc)}
+        except ValueError as exc:
+            return {"error": f"값이 올바르지 않습니다: {exc}"}
+
+        await self.on_edit(result)  # type: ignore[misc]
+        changed = next(st for st in result.steps if st.id == step_id)
+        return {"ok": True, "step_id": step_id, "field": field, "label": changed.label}
+
+    async def delete_step(self, step_id: str) -> dict[str, Any]:
+        """Step 을 지운다 (FR-033).
+
+        **복수 삭제 도구는 만들지 않는다.** 에이전트가 하나씩 부르면 되고, 전부-또는-전무
+        보장이 필요한 것은 확정·버리기이지 에이전트의 정리가 아니다.
+        """
+        if not self.limits.record_call():
+            return dict(STOP_NOTICE)
+        steps, refusal = self._editable(step_id)
+        if steps is None:
+            return refusal  # type: ignore[return-value]
+
+        result = delete_step(steps, self._current_index(), step_id)
+        await self.on_edit(result)  # type: ignore[misc]
+        return {"ok": True, "deleted": step_id, "remaining": len(result.steps)}
+
+    async def move_step(self, step_id: str, direction: str) -> dict[str, Any]:
+        """Step 을 한 칸 옮긴다 (FR-034).
+
+        **방향만 받는다. 절대 순번을 받지 않는다.** 사람의 조작(`step.moveUp`·
+        `step.moveDown`)과 같은 모양이며, 절대 순번을 받으면 에이전트가 목록을 다시
+        관찰하지 않고 낡은 순번을 넘길 수 있다.
+
+        **옮길 자리도 권한 범위 안이어야 한다.** 옛 구간 위로 올라가려 하면 거절한다 —
+        허용하면 확정이 지울 구간과 남길 것의 경계가 흐려진다.
+        """
+        if not self.limits.record_call():
+            return dict(STOP_NOTICE)
+        if direction not in ("up", "down"):
+            return {"error": f"방향은 up 또는 down 이어야 합니다: {direction}"}
+        steps, refusal = self._editable(step_id)
+        if steps is None:
+            return refusal  # type: ignore[return-value]
+
+        index = find_index(steps, step_id)
+        target = index - 1 if direction == "up" else index + 1
+        if target < 0 or target >= len(steps):
+            return {"error": f"{step_id} 은 이미 {'처음' if direction == 'up' else '끝'}입니다."}
+        if self.in_scope is None or not self.in_scope(steps[target].id):
+            return {
+                "error": (
+                    f"그 자리({steps[target].id})는 이번에 당신이 만든 구간 밖입니다. "
+                    "만든 Step 들 사이에서만 옮길 수 있습니다."
+                )
+            }
+
+        order = [st.id for st in steps]
+        order[index], order[target] = order[target], order[index]
+        result = reorder_steps(steps, self._current_index(), order)
+        await self.on_edit(result)  # type: ignore[misc]
+        return {"ok": True, "step_id": step_id, "index": target}
+
+    async def repick_target(
+        self, step_id: str, element_ref: str, slot: str = "target"
+    ) -> dict[str, Any]:
+        """Step 의 대상 요소를 다시 지정한다 (FR-035).
+
+        **`element_ref` 만 받는다. 셀렉터를 받지 않는다** (헌법 원칙 IV). 후보 묶음은
+        `collect_by_selector` 가 **살아 있는 페이지에서** 새로 수집한다 — 저장되는 것은
+        단일 셀렉터가 아니라 후보 묶음이다.
+
+        **`RepickController` 를 쓰지 않는다.** 그것은 「사람의 다음 클릭 한 번을 대상
+        지정으로 쓴다」는 대기 상태 기계이고, AI 는 기다릴 것이 없다 — 이미 참조를 갖고
+        있다. 같은 이름의 두 기제를 합치면, 사람이 다시 집기를 걸어 둔 상태에서 AI 가
+        대상을 바꾸는 경우에 어느 쪽이 이기는지가 정의되지 않는다.
+        """
+        if not self.limits.record_call():
+            return dict(STOP_NOTICE)
+        if slot not in ("target", "drop_target"):
+            return {"error": f"slot 은 target 또는 drop_target 이어야 합니다: {slot}"}
+        steps, refusal = self._editable(step_id)
+        if steps is None:
+            return refusal  # type: ignore[return-value]
+
+        observed = self.refs.get(element_ref)
+        if observed is None:
+            return {
+                "error": (
+                    f"요소 참조를 찾을 수 없습니다: {element_ref}. "
+                    "observe_page 를 먼저 불러 참조를 받으세요."
+                )
+            }
+
+        step = steps[find_index(steps, step_id)]
+        if not hasattr(step, slot):
+            return {
+                "error": (
+                    f"{step.type.value} Step 은 {slot} 을 갖지 않습니다. "
+                    "대상을 지목하는 Step 에만 쓸 수 있습니다."
+                )
+            }
+
+        tab = self._tab_of_ref(element_ref)
+        try:
+            page = self._tab(tab).page
+        except TabNotFoundError as exc:
+            return {"error": str(exc)}
+
+        target = await collect_by_selector(page, observed.css, self.test_id_attribute)
+        if target is None:
+            return {
+                "error": (
+                    f"요소를 찾지 못했습니다: {observed.name or element_ref}. "
+                    "화면이 바뀌었을 수 있습니다. observe_page 로 다시 확인하세요."
+                )
+            }
+
+        # **모델을 통째로 바꾼다.** 필드만 갈아 끼우면 pydantic 검증을 지나지 않아,
+        # 후보가 하나도 없는 `TargetLocator` 같은 상태가 조용히 저장될 수 있다.
+        replaced = step.model_copy(update={slot: target, "label": self._label(element_ref, "지목")})
+        new_steps = [replaced if st.id == step_id else st for st in steps]
+        await self.on_edit(EditResult(new_steps, self._current_index(), []))  # type: ignore[misc]
+        return {
+            "ok": True,
+            "step_id": step_id,
+            "label": replaced.label,
+            "candidates": sum(
+                1
+                for c in (target.test_id, target.label, target.text, target.stable_attr, target.css)
+                if c is not None
+            ),
+        }
+
     async def _act_on_element(
         self,
         element_ref: str,
@@ -634,21 +870,61 @@ class BrowserToolbox:
 
 # ─── SDK 도구 정의 ──────────────────────────────────────────────────────────
 
-TOOL_NAMES: tuple[str, ...] = (
+READ_ONLY_TOOLS: tuple[str, ...] = (
     "list_tabs",
     "observe_page",
-    "click",
-    "fill",
-    "select",
-    "navigate",
-    "hover",
-    "drag",
-    "upload",
-    "assert_condition",
-    "close_tab",
-    "report_blocked",
 )
-"""도구 표면 전체. **이 목록이 계약이다** — 늘리면 Step 종류와의 1:1 이 깨진다 (T106)."""
+"""화면을 읽기만 하는 도구. 조작하지 않으므로 Step 을 만들지 않는다."""
+
+CONTROL_TOOLS: tuple[str, ...] = ("report_blocked",)
+"""루프의 흐름을 바꾸는 도구. Step 을 만들지 않고 **에이전트를 멈춘다** (FR-069).
+
+016 이전에는 분류가 없었다. 「`TOOL_NAMES` 는 계약이다」라는 문장이 정확히는
+`STEP_PRODUCING_TOOLS` 에 대한 것이었는데, 그 사실을 적을 자리가 없어서 `report_blocked`
+와 `observe_page` 가 계약 밖에 떠 있었다 (baseline.md T002).
+"""
+
+STEP_EDITING_TOOLS: tuple[str, ...] = (
+    "update_step",
+    "delete_step",
+    "move_step",
+    "repick_target",
+)
+"""Step 을 **고치는** 도구 (016 US3).
+
+**새 Step 종류를 만들지 않는다** — 그래서 `STEP_PRODUCING_TOOLS` ↔ Step 종류의 1:1 이
+그대로다 (FR-040). 넷 다 사람의 편집과 **같은 순수 함수**(`itb.execution.step_edits`)를
+지나므로, 결과가 다를 수가 없다 (원칙 I · FR-036).
+
+권한은 **이번 세션이 만든 Step** 으로 한정된다 (FR-037 · 불변식 8). 그 한정이 되돌리기를
+스냅샷 없이 성립시킨다 (research R7).
+"""
+
+TOOL_NAMES: tuple[str, ...] = (
+    *READ_ONLY_TOOLS,
+    *(
+        "click",
+        "fill",
+        "select",
+        "navigate",
+        "hover",
+        "drag",
+        "upload",
+        "assert_condition",
+        "close_tab",
+    ),
+    *STEP_EDITING_TOOLS,
+    *CONTROL_TOOLS,
+)
+"""도구 표면 전체 (16종). **네 분류의 합집합이며, 그것이 계약이다.**
+
+016 이 12 → 16 으로 넓혔다. 넓히는 것이 아니라 **정확히 적는 것**이었다 — 「늘리면 Step
+종류와의 1:1 이 깨진다」는 옛 문장은 실제로는 `STEP_PRODUCING_TOOLS` 에 대한 것이고,
+`observe_page`·`report_blocked` 는 이미 Step 을 만들지 않으면서 이 목록에 있었다.
+
+검사(`test_tool_surface.py`)가 네 분류의 합집합이 이 목록과 같고 교집합이 없음을
+고정한다. 분류에서 빠진 도구도, 두 분류에 든 도구도 생기지 않는다.
+"""
 
 STEP_PRODUCING_TOOLS: tuple[str, ...] = (
     "click",
@@ -749,6 +1025,38 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         """탭을 닫는다. 성공하면 탭 닫기 Step 으로 기록된다."""
         return await toolbox.close_tab(tab)
 
+    # ─── 편집 도구 (016 US3) ─────────────────────────────────────────────
+
+    @beta_async_tool
+    async def update_step(step_id: str, field: str, value: str) -> dict[str, Any]:
+        """이번에 만든 Step 의 속성 하나를 고친다.
+
+        field 에는 label(표시 이름)·value(입력값)·timeout_ms(제한 시간) 등을 쓴다.
+        다른 Step 은 고칠 수 없다 — 사람에게 말하세요.
+        """
+        return await toolbox.update_step(step_id, field, value)
+
+    @beta_async_tool
+    async def delete_step(step_id: str) -> dict[str, Any]:
+        """이번에 만든 Step 하나를 지운다. 다른 Step 은 지울 수 없다."""
+        return await toolbox.delete_step(step_id)
+
+    @beta_async_tool
+    async def move_step(step_id: str, direction: str) -> dict[str, Any]:
+        """이번에 만든 Step 을 한 칸 옮긴다. direction 은 up 또는 down 이다."""
+        return await toolbox.move_step(step_id, direction)
+
+    @beta_async_tool
+    async def repick_target(
+        step_id: str, element_ref: str, slot: str = "target"
+    ) -> dict[str, Any]:
+        """이번에 만든 Step 의 대상 요소를 다시 지정한다.
+
+        element_ref 는 observe_page 가 준 참조여야 한다. CSS 셀렉터를 직접 만들지 마라.
+        slot 은 drag Step 에서만 drop_target 이 될 수 있다.
+        """
+        return await toolbox.repick_target(step_id, element_ref, slot)
+
     @beta_async_tool
     async def report_blocked(reason: str, question: str = "") -> dict[str, Any]:
         """지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다.
@@ -769,6 +1077,10 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         upload,
         assert_condition,
         close_tab,
+        update_step,
+        delete_step,
+        move_step,
+        repick_target,
         report_blocked,
     ]
 
@@ -863,6 +1175,51 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
             "required": ["tab"],
         },
     ),
+    "update_step": (
+        "이번에 만든 Step 의 속성 하나를 고친다. field 에는 label·value·timeout_ms 등을 "
+        "쓴다. 다른 Step 은 고칠 수 없다 — 사람에게 말하라.",
+        {
+            "type": "object",
+            "properties": {
+                "step_id": {"type": "string"},
+                "field": {"type": "string"},
+                "value": {"type": "string"},
+            },
+            "required": ["step_id", "field", "value"],
+        },
+    ),
+    "delete_step": (
+        "이번에 만든 Step 하나를 지운다. 다른 Step 은 지울 수 없다.",
+        {
+            "type": "object",
+            "properties": {"step_id": {"type": "string"}},
+            "required": ["step_id"],
+        },
+    ),
+    "move_step": (
+        "이번에 만든 Step 을 한 칸 옮긴다. direction 은 up 또는 down 이다.",
+        {
+            "type": "object",
+            "properties": {
+                "step_id": {"type": "string"},
+                "direction": {"type": "string", "enum": ["up", "down"]},
+            },
+            "required": ["step_id", "direction"],
+        },
+    ),
+    "repick_target": (
+        "이번에 만든 Step 의 대상 요소를 다시 지정한다. element_ref 는 observe_page 가 "
+        "준 참조여야 한다 — CSS 셀렉터를 직접 만들지 마라.",
+        {
+            "type": "object",
+            "properties": {
+                "step_id": {"type": "string"},
+                "element_ref": {"type": "string"},
+                "slot": {"type": "string", "enum": ["target", "drop_target"]},
+            },
+            "required": ["step_id", "element_ref"],
+        },
+    ),
     "report_blocked": (
         "지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다. "
         "사람이 알려 주면 풀릴 일이면 question 에 물어볼 한 문장을 함께 적는다.",
@@ -873,7 +1230,7 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
         },
     ),
 }
-"""도구 이름 → (설명, 입력 스키마). `build_tools` 의 도구 11종과 같은 목록이다.
+"""도구 이름 → (설명, 입력 스키마). `build_tools` 의 도구 16종과 같은 목록이다.
 
 **이 목록이 곧 허용 목록이다.** 개발용 드라이버는 여기 없는 도구를 전부 거부한다 —
 Claude Code 가 기본으로 주는 파일 읽기·쓰기·Bash 가 그 대상이다 (FR-086).

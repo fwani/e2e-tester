@@ -141,3 +141,43 @@ async def test_failed_result_surfaces_its_reason(monkeypatch: pytest.MonkeyPatch
     with pytest.raises(RuntimeError, match="max_turns"):
         async for _ in mod.claude_code_driver([], [{"role": "user", "content": "x"}], LlmConfig()):
             pass
+
+
+# ─── 016 — 편집 도구가 개발용 드라이버에도 있다 (T062) ─────────────────────
+
+
+def test_editing_tools_are_on_the_dev_driver_surface_too() -> None:
+    """**두 드라이버의 표면이 갈리지 않는다** (016 US3).
+
+    `QUALIFIED_TOOL_NAMES` 는 `TOOL_SCHEMAS` 에서 파생되므로 새 도구가 자동으로 따라
+    들어온다. 그 자동 전파가 실제로 도는지 확인한다 — 끊기면 기본 드라이버에서는 되고
+    개발용에서는 안 되는 도구가 생기고, 개발 중에 본 동작이 제품 동작과 달라진다.
+    """
+    from itb.authoring.tools import MCP_SERVER_NAME, QUALIFIED_TOOL_NAMES, STEP_EDITING_TOOLS
+
+    for name in STEP_EDITING_TOOLS:
+        qualified = f"mcp__{MCP_SERVER_NAME}__{name}"
+        assert qualified in QUALIFIED_TOOL_NAMES, (
+            f"개발용 드라이버 표면에 {name} 이 없다 — 두 경로가 갈렸다"
+        )
+
+
+def test_the_dev_driver_surface_equals_the_default_one() -> None:
+    """표면 전체가 같다. 016 이후 16종."""
+    from itb.authoring.tools import MCP_SERVER_NAME, QUALIFIED_TOOL_NAMES, TOOL_NAMES
+
+    expected = {f"mcp__{MCP_SERVER_NAME}__{name}" for name in TOOL_NAMES}
+    assert set(QUALIFIED_TOOL_NAMES) == expected
+    assert len(QUALIFIED_TOOL_NAMES) == 16
+
+
+def test_builtin_tools_are_still_blocked() -> None:
+    """016 이 도구를 넷 더했다고 **내장 도구 차단이 느슨해지지 않았다** (FR-086).
+
+    편집 도구는 MCP 서버 쪽에 등록되므로 내장 도구 차단과 무관하다. 그 무관함을
+    여기서 고정한다 — 새 도구를 더하다 차단 목록을 건드리면 파일 시스템이 열린다.
+    """
+    from itb.authoring.claude_code_driver import BLOCKED_BUILTINS
+
+    for dangerous in ("Bash", "Write", "Edit", "Read", "WebFetch"):
+        assert dangerous in BLOCKED_BUILTINS, f"{dangerous} 차단이 사라졌다"
