@@ -64,8 +64,8 @@ export interface NoticeProps extends Omit<ComponentPropsWithRef<"div">, "classNa
  */
 export function Notice({ tone = "default", layout, children, ...rest }: NoticeProps) {
   const cls = [
-    "flex-none h-notice flex items-center gap-s2 px-s4",
-    "font-sans text-[12px] leading-none border-b border-hair",
+    "grow-0 shrink-0 basis-notice h-notice flex items-center gap-s2 px-s4",
+    "font-sans text-[12px] leading-none font-normal border-b border-hair",
     tone === "default" ? "" : TONE[tone],
     layout,
   ]
@@ -90,7 +90,7 @@ export function Notice({ tone = "default", layout, children, ...rest }: NoticePr
 export function Toast({ tone = "default", layout, children, ...rest }: NoticeProps) {
   const cls = [
     "flex-none min-h-notice flex items-start gap-s2 px-s3 py-s2",
-    "font-sans text-[12px] leading-none",
+    "font-sans text-[12px] leading-none font-normal",
     "border rounded-chip shadow-e2",
     TONE[tone],
     layout,

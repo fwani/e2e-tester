@@ -1288,7 +1288,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           {capabilities["run.pacing"].kind === "disabled" && (
             <span
               data-disabled-reason="run.pacing"
-              className="font-sans text-[11px] leading-[1.4] text-ink-3"
+              className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
             >
               {capabilities["run.pacing"].reason}
             </span>
@@ -2948,7 +2948,7 @@ function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
   return (
     <Modal label="실행 화면 닫기 확인">
       <div className="font-sans text-[20px] font-bold leading-[1.3]">실행 화면을 닫습니다</div>
-      <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2">결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
+      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
       <div className="flex justify-end gap-[10px] mt-[18px]">
         <Button onClick={onCancel}>
           돌아가기
@@ -2999,7 +2999,7 @@ function RerunConfirm({
   return (
     <Modal label="저장하지 않고 다시 실행 확인">
       <div className="font-sans text-[20px] font-bold leading-[1.3]">저장하지 않은 기록이 있습니다</div>
-      <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2">
+      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
         기록된 Step {stepCount}개 중 저장하지 않은 변경이 있습니다. {scope} 실행하면 지금
         세션을 버리고 <strong>저장된 정의</strong>를 재생하므로, 저장하지 않은 기록은
         사라집니다.
@@ -3043,7 +3043,7 @@ function LeaveConfirm({
   return (
     <Modal label="저장하지 않고 나가기 확인">
       <div className="font-sans text-[20px] font-bold leading-[1.3]">저장하지 않은 기록이 있습니다</div>
-      <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2">
+      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
         기록된 Step {stepCount}개가 있습니다. 저장하지 않고 나가면 사라집니다.
       </p>
       {askName && (

@@ -196,9 +196,9 @@ export function StepDetail({
           */
           data-detail-close
           aria-label="닫기"
-          size="sm" variant="quiet"
+          size="icon" variant="quiet"
           onClick={onClose}
-          layout="py-0 px-[7px]" >
+        >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M4 4l8 8M12 4l-8 8" />
           </svg>
@@ -208,7 +208,7 @@ export function StepDetail({
       <div className="p-s4 flex flex-col gap-s4">
         <div className="flex flex-col gap-[10px]">
           <div className="flex items-center gap-[10px]">
-            <div className="font-mono text-[12px] leading-none text-ink-3">{stepNumber(detail.index)}</div>
+            <div className="font-mono text-[12px] leading-none font-normal text-ink-3">{stepNumber(detail.index)}</div>
             {step !== null && (
               <>
                 <Chip>{step.type.toUpperCase()}</Chip>
@@ -231,7 +231,7 @@ export function StepDetail({
         {detail.failure !== null && (
           <div
             role="note"
-            className="bg-fail-t border border-fail-line rounded-base font-sans text-[13px] leading-[1.4] text-fail py-s3 px-[14px]"
+            className="bg-fail-t border border-fail-line rounded-base font-sans text-[13px] leading-[1.4] font-normal text-fail py-s3 px-[14px]"
           >
             {detail.failure.message ?? "실패 이유가 기록되지 않았습니다."}
           </div>
@@ -247,14 +247,14 @@ export function StepDetail({
             id="reason-step-sensitive"
             data-action="step.markSensitive"
             data-disabled-reason="step.markSensitive"
-            className="font-sans text-[11px] leading-[1.4] text-ink-3"
+            className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
           >
             {SENSITIVE_NO_VALUE}
           </span>
         )}
 
         {step === null ? (
-          <p className="font-sans text-[13.5px] leading-[1.7] text-ink-2">
+          <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
             이 실행에는 있었지만 지금 정의에는 없는 Step 입니다. 결말과 소요 시간은 그때의
             기록이고, 동작 종류·대상 요약·값은 보여줄 수 없습니다.
           </p>
@@ -283,7 +283,7 @@ export function StepDetail({
                 />
                 {alreadyReference ? (
                   <>
-                    <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1 mx-0 mb-0">
+                    <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
                       변수 참조입니다. 실제 값은 비밀 파일의 암호문에 있으며 화면에 표시되지
                       않습니다.
                     </p>
@@ -349,7 +349,7 @@ export function StepDetail({
                   disabled={!canEdit}
                   onChange={(e) => setFileName(e.target.value)}
                 />
-                <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1 mx-0 mb-0">
+                <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
                   {uploadFileNote(fileName)}
                 </p>
               </div>
@@ -413,7 +413,7 @@ export function StepDetail({
             ) : (
               <div
                 data-step-shot-missing
-                className="font-sans text-[11px] leading-[1.4] text-ink-3 p-s3"
+                className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 p-s3"
               >
                 {shotBroken ? MISSING_SHOT_REASON.superseded : shot.note}
               </div>
@@ -433,7 +433,7 @@ export function StepDetail({
             {detail.attempts.map((a, i) => (
               <div
                 key={`${a.candidate}-${i}`}
- className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] ${a.matched ? "text-ink-3" : "text-ink-2"}`}
+ className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] font-normal ${a.matched ? "text-ink-3" : "text-ink-2"}`}
               >
                 <span className="font-bold w-[84px]">
                   {a.candidate}
@@ -487,7 +487,7 @@ export function StepDetail({
               {showDsl ? "▾" : "▸"} 테스트 DSL 미리보기
             </button>
             {showDsl && (
-              <pre className="bg-ink text-panel rounded-base font-mono text-[11px] leading-[1.6] p-[10px] overflow-x-auto mt-[6px] mx-0 mb-0">
+              <pre className="bg-ink text-panel rounded-base font-mono text-[11px] leading-[1.6] font-normal p-[10px] overflow-x-auto mt-[6px] mx-0 mb-0">
                 {dslPreview(step)}
               </pre>
             )}

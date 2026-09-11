@@ -84,7 +84,7 @@ export function InsertStepForm({
       </div>
 
       {!usable && capability.kind === "disabled" && (
-        <div className="font-sans text-[11px] leading-[1.4] text-ink-3" role="status">
+        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" role="status">
           {capability.reason}
         </div>
       )}
@@ -170,7 +170,7 @@ export function InsertStepForm({
 
       {/* 무엇이 들어가는지 미리 보여준다 — 목록에 어떤 이름으로 뜰지가 여기서 정해진다 */}
       {ready && (
-        <div className="font-sans text-[11px] leading-[1.4] text-ink-3" aria-label="넣을 Step 미리보기">
+        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" aria-label="넣을 Step 미리보기">
           {manualStepLabel(spec)}
         </div>
       )}
@@ -206,7 +206,7 @@ export function InsertStepForm({
             </Button>
           ))}
         </div>
-        <div className="font-sans text-[11px] leading-[1.4] text-ink-3" role="status">
+        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" role="status">
           {BROWSER_ONLY_KIND_REASON}
         </div>
         {/* 갈 길을 같은 자리에 둔다 — 없는 방법을 가리키지 않는다 (006 E-03) */}
@@ -217,7 +217,7 @@ export function InsertStepForm({
           브라우저 열어 이 자리에서 멈추기
         </Button>
         {browserCapability.kind === "disabled" && (
-          <div className="font-sans text-[11px] leading-[1.4] text-ink-3">{browserCapability.reason}</div>
+          <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{browserCapability.reason}</div>
         )}
       </div>
     </div>

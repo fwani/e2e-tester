@@ -75,7 +75,7 @@ export function PacingControl({
       {!preferenceSaved && (
         <span
           role="status"
-          className="font-sans text-[11px] leading-[1.4] text-ink-3 text-warn max-w-[180px]"
+          className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 text-warn max-w-[180px]"
         >
           설정을 저장하지 못해 다음 실행에는 유지되지 않습니다.
         </span>

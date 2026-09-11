@@ -64,7 +64,8 @@ export function PaneHead({ band = false, layout, children, ...rest }: SurfacePro
 /** 정본 `.hdr` — 화면 맨 위 머리띠. 높이는 `--h-header`(56px) 고정. */
 export function AppHeader({ layout, children, ...rest }: SurfaceProps) {
   const cls = [
-    "flex-none h-header flex items-center gap-[14px] px-s4 bg-panel border-b border-hair",
+    // 정본 `.hdr` 은 `flex: 0 0 56px` — 기준 크기가 56px 이다 (L2 대조).
+    "grow-0 shrink-0 basis-header h-header flex items-center gap-[14px] px-s4 bg-panel border-b border-hair",
     layout,
   ]
     .filter(Boolean)

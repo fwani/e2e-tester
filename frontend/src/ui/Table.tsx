@@ -106,7 +106,15 @@ export function GridHead({ layout, children, ...rest }: Omit<ComponentPropsWithR
  * 화면에서는 「테두리가 없네」로만 보이고 테스트는 통과했을 오류다.
  */
 export function rowClasses(mark: RowMark = "none"): string {
-  return `h-[44px] items-center border-b border-hair border-solid border-l-[length:var(--mark)] ${MARK[mark]}`;
+  return (
+    // **위·오른쪽 폭을 0 으로 못 박는다.** `border-solid` 는 네 변 전부에 선 종류를
+    // 주는데, 폭을 지정하지 않은 변은 초기값 `medium`(3px)을 받는다 — 정본은 변별
+    // shorthand(`border-bottom: 1px solid …`)를 써서 나머지 변이 `none` 으로 남았다.
+    // 이것을 빠뜨리면 모든 행이 위·오른쪽에 3px 회색 선을 얻고, 그만큼 너비가 줄어
+    // 격자 열까지 밀린다 (L2 대조가 611px → 608px 로 잡았다).
+    "h-[44px] items-center border-b border-hair border-solid border-t-0 border-r-0 " +
+    `border-l-[length:var(--mark)] ${MARK[mark]}`
+  );
 }
 
 export function TableRow({ mark = "none", layout, children, ...rest }: Omit<ComponentPropsWithRef<"tr">, "className"> & { mark?: RowMark; layout?: string; children?: ReactNode }) {

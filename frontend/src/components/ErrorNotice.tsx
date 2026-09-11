@@ -178,7 +178,7 @@ export function ErrorNotice({
       </div>
       <div
         data-error-next-action
-        className="font-sans text-[13px] leading-[1.4] text-ink-2 [overflow-wrap:anywhere]"
+        className="font-sans text-[13px] leading-[1.4] font-normal text-ink-2 [overflow-wrap:anywhere]"
       >
         {error.nextAction}
       </div>

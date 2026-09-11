@@ -46,13 +46,13 @@ export function BulkDeleteConfirm({
       role="status"
       className={
         // `.tint-warn` + `.line` (contracts/utility-map.md)
-        "bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] " +
+        "bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal " +
         "flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
       }
     >
       <span className="font-sans text-[13px] font-semibold leading-none">{deleteManyConfirm(indices)}</span>
       {!revertible && (
-        <span data-bulk-delete-irreversible className="font-sans text-[11px] leading-[1.4] text-ink-3">
+        <span data-bulk-delete-irreversible className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
           {BULK_DELETE_IRREVERSIBLE}
         </span>
       )}

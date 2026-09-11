@@ -38,11 +38,11 @@ export function StartingIndicator({
       className="flex flex-col items-center justify-center gap-s2 p-s6"
     >
       <Chip>STARTING</Chip>
-      <p className="m-0 font-sans text-[13px] leading-[1.4] text-ink-2">
+      <p className="m-0 font-sans text-[13px] leading-[1.4] font-normal text-ink-2">
         {message}
       </p>
       {slow && (
-        <p className="m-0 text-center font-sans text-[11px] leading-[1.4] text-ink-3">
+        <p className="m-0 text-center font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
           평소보다 오래 걸리고 있습니다. 브라우저가 설치되어 있는지, 다른 창이 자원을 쓰고
           있지 않은지 확인하세요.
         </p>

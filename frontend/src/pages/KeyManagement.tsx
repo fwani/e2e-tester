@@ -208,7 +208,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           </dd>
         </dl>
 
-        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
           키는 프로젝트 밖(
           <span className="font-mono">{status?.key_dir ?? "…"}</span>
           )에 있습니다. 이 장비의 모든 ITB 프로젝트가 이 키 하나를 씁니다. 테스트 정의에는
@@ -229,7 +229,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           className="bg-warn-t border border-warn-line rounded-base p-[14px] mt-s4 flex flex-col gap-[10px]"
         >
           <strong>비밀키가 잠겨 있습니다</strong>
-          <p className="font-sans text-[13px] leading-[1.4] m-0">
+          <p className="font-sans text-[13px] leading-[1.4] font-normal m-0">
             비밀 값을 저장하는 데에는 문제가 없지만, <b>재실행과 AI 작성은 비밀키를 열어야
             합니다.</b> 암호구를 입력해 잠금을 해제하세요. 해제하지 않으면 민감 변수를 쓰는
             Step 이 사유와 함께 실패합니다.
@@ -251,7 +251,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           />
           <p
             id="unlock-rule"
-            className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0"
+            className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0"
           >
             {unlockTooShort
               ? `암호구는 8자 이상입니다. 지금 ${unlockPassphrase.length}자입니다.`
@@ -266,7 +266,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
               잠금 해제
             </button>
           </div>
-          <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
             사람이 없는 실행(CI 등)에서는 백엔드 프로세스에 환경 변수{" "}
             <span className="font-mono">{PASSPHRASE_ENV}</span> 로 공급할 수도 있습니다. 암호구
             자체를 없애려면 아래에서 키를 교체하세요 — 교체하면 보관된 민감 값은 다시
@@ -288,7 +288,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
               다시 잠그기
             </Button>
           </div>
-          <p className="font-sans text-[13px] leading-[1.4] mt-s2 mx-0 mb-0">
+          <p className="font-sans text-[13px] leading-[1.4] font-normal mt-s2 mx-0 mb-0">
             암호구로 보호된 키이며, 이 백엔드 프로세스가 암호구를 들고 있습니다. 민감
             변수를 쓰는 재실행과 AI 작성이 가능합니다. <b>백엔드를 다시 띄우면 다시
             잠깁니다.</b>
@@ -316,13 +316,13 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           */}
           <p
             id="passphrase-rule"
-            className={`font-sans text-[11px] leading-[1.4] ${tooShort ? "text-fail" : "text-ink-3"}`}
+            className={`font-sans text-[11px] leading-[1.4] font-normal ${tooShort ? "text-fail" : "text-ink-3"} m-0`}
           >
             {tooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${passphrase.length}자입니다.`
               : "암호구를 걸려면 8자 이상 200자 이하로 적으세요."}
           </p>
-          <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
             암호구를 걸면 비밀키 <b>파일</b>이 잠깁니다. 잊으면 보관된 값을 읽을 수 없고,
             제품이 복구해 줄 방법은 없습니다. 만든 직후에는 바로 실행할 수 있고, 백엔드를
             다시 띄운 뒤에는 이 화면에서 잠금을 해제하면 됩니다.
@@ -346,14 +346,14 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
  className="bg-panel border rounded-base border-fail p-[14px] mt-s4 flex flex-col gap-[10px]"
         >
           <strong className="text-fail">키 교체·삭제</strong>
-          <p className="font-sans text-[13px] leading-[1.4] m-0">
+          <p className="font-sans text-[13px] leading-[1.4] font-normal m-0">
             <b>되돌릴 수 없습니다.</b> 키는 장비에 하나이므로 <b>이 장비의 모든 ITB 프로젝트</b>
             에서 지금 키로 봉인된 민감 값이 전부 못 읽게 됩니다. 열려 있는 프로젝트의 암호문은
             함께 비우고, 다른 프로젝트의 암호문은 그 프로젝트를 열 때 재입력을 안내합니다.
           </p>
           {/* 영향 범위를 숫자와 이름으로 보인다 — "이 프로젝트" 라고만 말하면 나머지가
               조용히 깨진다 (UX U-09). */}
-          <p className="font-sans text-[13px] leading-[1.4] m-0" data-sealed-projects>
+          <p className="font-sans text-[13px] leading-[1.4] font-normal m-0" data-sealed-projects>
             {status === null ? (
               "영향받는 프로젝트를 확인하는 중…"
             ) : status.sealed_projects.length === 0 ? (
@@ -377,7 +377,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           />
           <p
             id="regen-passphrase-rule"
-            className={`font-sans text-[11px] leading-[1.4] ${newTooShort ? "text-fail" : "text-ink-3"}`}
+            className={`font-sans text-[11px] leading-[1.4] font-normal ${newTooShort ? "text-fail" : "text-ink-3"} m-0`}
           >
             {newTooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${newPassphrase.length}자입니다.`
@@ -404,7 +404,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
               키 삭제
             </Button>
           </div>
-          <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
             <b>교체</b>는 지우고 새 키를 바로 만듭니다. <b>삭제</b>는 지우기만 합니다 — 키가
             없으면 민감 값을 새로 저장할 수도, 기존 값을 읽을 수도 없습니다.
           </p>

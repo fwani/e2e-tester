@@ -52,7 +52,7 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 export type ButtonVariant = "default" | "primary" | "danger" | "off" | "quiet" | "ghost";
 
 /** 정본의 `.btn.sm`. `md` 는 수식 없는 기본 크기(32px)다. */
-export type ButtonSize = "md" | "sm";
+export type ButtonSize = "md" | "sm" | "icon";
 
 // React 19 는 함수 컴포넌트가 `ref` 를 일반 prop 으로 받는다. `ComponentPropsWithRef`
 // 를 쓰면 호출부가 하던 `ref` 전달이 그대로 이어진다 — 기존 코드를 고치지 않는다.
@@ -118,6 +118,16 @@ const VARIANT: Record<ButtonVariant, string> = {
 const SIZE: Record<ButtonSize, string> = {
   md: "h-control px-s3 text-[13px]",
   sm: "h-control-sm px-[9px] text-[12px]",
+  /*
+    아이콘만 담는 작은 단추 — 정본에서 `.btn.sm` 에 `padding: 0 7px` 를 인라인으로
+    더하던 자리다 (행 메뉴 `⋯`, 상세 닫기 `×`).
+
+    **`layout` 으로 넘기면 안 된다.** `layout` 은 표 뒤에 이어 붙지만 승부는 산출 CSS
+    순서가 정하고, `px-[9px]` 이 `px-[7px]` 을 이겨 **여백이 바뀌지 않는다** —
+    실제로 그 상태였고 L2 대조가 잡았다 (28px 여야 할 단추가 32px). 가드 G-E 는
+    호출부의 `layout` 까지는 보지 못하므로, 크기를 다투는 값은 이 표에 둔다.
+  */
+  icon: "h-control-sm px-[7px] text-[12px]",
 };
 
 

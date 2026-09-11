@@ -194,7 +194,7 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
               연결할 수 없습니다" 뒤에 와야 하는 "떠 있는지 확인하세요" 가 사라진다.
             */}
             {n.nextAction !== null && (
-              <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
+              <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
                 {n.nextAction}
               </div>
             )}

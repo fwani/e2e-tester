@@ -601,7 +601,7 @@ export function TestList({
             <strong>읽지 못한 정의 파일이 있습니다.</strong>
             <ul className="mt-[6px] mx-0 mb-0 pl-[18px]">
               {data.problems.map((p) => (
-                <li key={p} className="font-mono text-[12px] leading-none text-ink-3">
+                <li key={p} className="font-mono text-[12px] leading-none font-normal text-ink-3">
                   {p}
                 </li>
               ))}
@@ -650,7 +650,7 @@ export function TestList({
                       **전환 전에도 색이 덮이지 않았다.** 시각 동일성이 요건이므로
                       (FR-008) 여기서 색을 새로 만들지 않는다.
                     */}
-                    <span className="font-mono text-[12px] leading-none text-ink-3 ml-auto">
+                    <span className="font-mono text-[12px] leading-none font-normal text-ink-3 ml-auto">
                       {counts[key]}
                     </span>
                   </Button>
@@ -798,7 +798,7 @@ export function TestList({
           >
             <div className="font-sans text-[13px] font-semibold leading-none">{exported.filename} 을 내려받았습니다.</div>
             {exported.warnings > 0 && (
-              <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1">
+              <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
                 시트 이름이 바뀌었거나 긴 칸이 잘린 곳이 {exported.warnings}건 있습니다.
               </div>
             )}
@@ -810,7 +810,7 @@ export function TestList({
             {(exported.detail?.sheet_renames ?? []).length > 0 && (
               <div className="mt-[6px]" data-export-renames>
                 {(exported.detail?.sheet_renames ?? []).map((r) => (
-                  <div key={r.group_name} className="font-sans text-[11px] leading-[1.4] text-ink-3">
+                  <div key={r.group_name} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
                     그룹 「{r.group_name}」은 「{r.sheet_name}」 시트가 됐습니다.
                   </div>
                 ))}
@@ -818,18 +818,18 @@ export function TestList({
             )}
             {(exported.detail?.truncations ?? []).length > 0 && (
               <details className="mt-[6px]" data-export-truncations>
-                <summary className="font-sans text-[11px] leading-[1.4] text-ink-3 cursor-pointer">
+                <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
                   잘린 칸 {(exported.detail?.truncations ?? []).length}건
                 </summary>
                 {(exported.detail?.truncations ?? []).map((t) => (
- <div key={`${t.test_id}-${t.column}`} className="font-sans text-[11px] leading-[1.4] text-ink-3">
+ <div key={`${t.test_id}-${t.column}`} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
                     {t.test_id} · {t.column} — {t.dropped_lines}줄 생략
                   </div>
                 ))}
               </details>
             )}
             {(exported.detail?.unreadable ?? []).length > 0 && (
-              <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px]" data-export-unreadable>
+              <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]" data-export-unreadable>
                 읽지 못해 빠진 정의 {(exported.detail?.unreadable ?? []).length}건이 있습니다.
               </div>
             )}
@@ -956,7 +956,7 @@ export function TestList({
               {/* 확정 디자인은 행이 있는 상태만 그린다. 아래 둘은 undefined-states.md 에
                   기록했고 정본의 형태만으로 그린다 (DC-009). */}
               {data === null && (
-                <div className="font-sans text-[11px] leading-[1.4] text-ink-3 py-s5 px-[17px]">
+                <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 py-s5 px-[17px]">
                   불러오는 중…
                 </div>
               )}
@@ -1052,7 +1052,7 @@ export function TestList({
             <div
               className="bg-sunken-2 border-t border-hair flex-[0_0_40px] flex items-center gap-[14px] py-0 px-[14px]"
             >
-              <span className="font-sans text-[11px] leading-[1.4] text-ink-3">
+              <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
                 테스트 {counts.all}개 · Step {totalSteps}개 · 마지막 전체 실행{" "}
                 {lastRun === null ? "없음" : relativeTime(lastRun)}
               </span>
@@ -1064,7 +1064,7 @@ export function TestList({
               <Button size="sm" variant="off" disabled>
                 Playwright 로 내보내기
               </Button>
-              <span className="font-sans text-[11px] leading-[1.4] text-ink-3">MVP 미지원</span>
+              <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">MVP 미지원</span>
             </div>
           </div>
         )}
@@ -1298,7 +1298,7 @@ function Row({
         <OutcomeChip outcome={row.outcome} running={live} />
       </div>
 
-      <div className="font-mono text-[12px] leading-none text-ink-3">{row.id}</div>
+      <div className="font-mono text-[12px] leading-none font-normal text-ink-3">{row.id}</div>
 
       <div className="min-w-0 flex flex-col gap-[3px]">
         {renaming !== null ? (
@@ -1325,14 +1325,14 @@ function Row({
 
         {/* FR-005 — 실패한 테스트는 실패 Step 번호와 메시지 요약을 인라인으로 보여준다. */}
         {row.failure_summary !== null && (
- <div className="font-mono text-[11.5px] leading-none text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
+ <div className="font-mono text-[11.5px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
             {stepLabel(row.failure_summary.step_index)} · {row.failure_summary.message}
           </div>
         )}
 
         {confirming && (
           <div className="flex items-center gap-s2 pt-s1">
- <span className="font-mono text-[12px] leading-none text-ink-3">
+ <span className="font-mono text-[12px] leading-none font-normal text-ink-3">
               「{row.name}」을 지웁니다. 되돌릴 수 없습니다.
             </span>
             <Button size="sm" variant="danger" disabled={busy} onClick={onDeleteConfirm}>
@@ -1345,7 +1345,7 @@ function Row({
         )}
       </div>
 
-      <div className="font-mono text-[12px] leading-none text-ink-3 text-right">
+      <div className="font-mono text-[12px] leading-none font-normal text-ink-3 text-right">
         {row.step_count}
       </div>
 
@@ -1353,7 +1353,7 @@ function Row({
         <AuthoringChip mode={row.authoring_mode} />
       </div>
 
-      <div className="font-mono text-[11.5px] leading-none text-ink-3">{live ? "실행 중" : relativeTime(row.last_run_at)}</div>
+      <div className="font-mono text-[11.5px] leading-none font-normal text-ink-3">{live ? "실행 중" : relativeTime(row.last_run_at)}</div>
 
       {/*
         005 FR-130 — 「실행」은 **항상** 두고, 결과가 있으면 「결과 보기」도 함께 둔다
@@ -1395,10 +1395,10 @@ function Row({
 
         <Button
           ref={menuAnchor}
-          size="sm"
+          size="icon"
           aria-label={`${row.name} 추가 동작`}
           onClick={onToggleMenu}
-          layout="py-0 px-[7px]" >
+        >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
             <circle cx="6" cy="2" r="1.1" />
             <circle cx="6" cy="6" r="1.1" />
@@ -1578,7 +1578,7 @@ function EmptyProject({
           <h2 className="font-sans text-[20px] font-bold leading-[1.3] m-0">
             아직 테스트가 없습니다
           </h2>
-          <div className="font-sans text-[13.5px] leading-[1.7] text-ink-2">
+          <div className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
             {draftCount > 0 ? (
               <span data-empty-with-drafts>
                 위의 초안 {draftCount}건을 녹화하면 테스트가 됩니다.
@@ -1605,7 +1605,7 @@ function EmptyProject({
               </svg>
               <div className="font-sans text-[13.5px] font-bold leading-none">직접 녹화</div>
             </div>
-            <div className="font-sans text-[11px] leading-[1.4] text-ink-3">브라우저를 직접 조작해서 만듭니다. 키가 필요 없습니다.</div>
+            <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">브라우저를 직접 조작해서 만듭니다. 키가 필요 없습니다.</div>
             <Button variant="primary" onClick={onCreate} layout="justify-center">
               녹화로 시작하기
             </Button>
@@ -1627,7 +1627,7 @@ function EmptyProject({
                 </Chip>
               )}
             </div>
-            <div className="font-sans text-[11px] leading-[1.4] text-ink-3">할 일을 말로 적으면 AI 가 브라우저에서 해봅니다.</div>
+            <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">할 일을 말로 적으면 AI 가 브라우저에서 해봅니다.</div>
             {/*
               쓸 수 없는 조작을 감추지 않는다 (006 ui-contract §2). 쓸 수 있으면
               **막지도 않는다** — 키가 있는데 키 등록으로 보내면 갈 곳이 없다.
@@ -1640,7 +1640,7 @@ function EmptyProject({
               <>
                 {/* 왜 못 쓰는지 백엔드가 준 문구를 그대로 보여준다 (DR-016) */}
                 {aiReady !== null && aiReady.reason !== null && (
-                  <div className="font-sans text-[11px] leading-[1.4] text-ink-3 whitespace-pre-wrap">
+                  <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 whitespace-pre-wrap">
                     {aiReady.reason}
                   </div>
                 )}
@@ -1668,7 +1668,7 @@ function EmptyProject({
             <summary className="font-sans text-[13.5px] font-bold leading-none cursor-pointer">
               엑셀 파일을 더 넣기
             </summary>
-            <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-[10px]">
+            <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-[10px]">
               가져온 초안에 더해집니다. 같은 그룹 접두어면 같은 그룹으로 들어갑니다.
             </div>
             <ImportFilePicker
@@ -1681,7 +1681,7 @@ function EmptyProject({
         {onImportPlan !== undefined && draftCount === 0 && (
           <div className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">
             <div className="font-sans text-[13.5px] font-bold leading-none">이미 쓰던 설계서가 있나요?</div>
-            <div className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-[10px]">
+            <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-[10px]">
               엑셀 파일을 넣으면 그룹과 테스트 초안을 만듭니다. 초안은 하나씩 녹화하면
               테스트가 됩니다.
             </div>
@@ -1771,7 +1771,7 @@ function ActiveSessionsBanner({
             data-session-id={s.session_id}
             className="flex items-center gap-s2 gap-s3 flex-wrap"
           >
-            <span className="font-sans text-[13px] leading-[1.4] flex-1">{label}</span>
+            <span className="font-sans text-[13px] leading-[1.4] font-normal flex-1">{label}</span>
             {asking ? (
               <>
                 <span className={saved ? "text-ink-2" : "text-fail"}>

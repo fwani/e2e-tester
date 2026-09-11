@@ -118,7 +118,7 @@ export function SecretValues({
       )}
 
       {missing.length > 0 && (
-        <p className="font-sans text-[13px] leading-[1.4] text-ink-2">
+        <p className="font-sans text-[13px] leading-[1.4] font-normal text-ink-2">
           아직 값이 없는 변수: <span className="font-mono">{missing.join(", ")}</span>. 값이
           없으면 해당 Step 이 사유와 함께 실패합니다.
         </p>
@@ -133,11 +133,11 @@ export function SecretValues({
         </div>
 
         {(data?.names.length ?? 0) === 0 ? (
-          <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
             보관된 값이 없습니다.
           </p>
         ) : (
-          <ul className="font-sans text-[13px] leading-[1.4] m-0 pl-[18px]">
+          <ul className="font-sans text-[13px] leading-[1.4] font-normal m-0 pl-[18px]">
             {data?.names.map((entry) => (
               <li key={entry.name} className="flex items-center gap-s2">
                 <span className="font-mono">{entry.name}</span>
@@ -164,7 +164,7 @@ export function SecretValues({
           </ul>
         )}
 
-        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
           값은 어떤 화면에도 표시되지 않습니다. 서버에 값을 돌려주는 경로가 없습니다.
         </p>
       </section>
@@ -189,7 +189,7 @@ export function SecretValues({
           onChange={(e) => setValue(e.target.value)}
           autoComplete="off"
         />
-        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
           입력한 값은 공개키로 즉시 봉인되어 저장됩니다. 비밀키는 필요하지 않습니다.
           같은 이름으로 다시 넣으면 이전 값을 대체합니다.
         </p>

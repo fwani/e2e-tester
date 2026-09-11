@@ -232,12 +232,14 @@ export function Workbench({
           않고 「초안」을 쓴다. 자리가 사라지면 헤더 구성이 국면에 따라 달라진다
           (FR-217).
         */}
+        {/* 정본 `.row.muted` — `.muted` 는 `--ink-2` 다 (`--ink-3` 는 `.dim`). */}
         {model.testId !== null ? (
           <Breadcrumb testId={model.testId} />
         ) : (
-          <Row layout="text-ink-3">
+          <Row layout="text-ink-2">
             <Lbl>테스트</Lbl>
-            <span className="h-control-sm inline-flex items-center gap-[7px] px-[9px] border border-hair-2 rounded-base bg-panel text-ink font-mono text-[12px] font-semibold leading-none shadow-none">초안</span>
+            {/* 정본 `.pill mono` — `.pill` 이 `.mono` 보다 뒤에 정의돼 **글꼴은 sans 였다.** */}
+            <span className="h-control-sm inline-flex items-center gap-[7px] px-[9px] border border-hair-2 rounded-base bg-panel text-ink font-sans text-[12px] font-semibold leading-none shadow-none">초안</span>
           </Row>
         )}
         <div className="flex-1" />

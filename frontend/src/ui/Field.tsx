@@ -53,7 +53,7 @@ export function Field({ off = false, layout, children, ...rest }: DivProps & { o
 
 /** 정본 `.field-label` — 칸 위의 설명. 라벨(`Lbl`)과 다르다 — 이쪽은 문장이다. */
 export function FieldLabel({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["font-sans text-[12px] leading-none text-ink-3", layout].filter(Boolean).join(" ");
+  const cls = ["font-sans text-[12px] leading-none font-normal text-ink-3", layout].filter(Boolean).join(" ");
   return (
     <div className={cls} {...rest}>
       {children}
@@ -87,7 +87,7 @@ export function Lbl({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"s
  * 라벨이 아니라 **본문**이다 (위 `Lbl` 주석 참조).
  */
 export function AnswerQuestion({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["font-sans text-[13px] leading-[1.4] text-ink", layout].filter(Boolean).join(" ");
+  const cls = ["font-sans text-[13px] leading-[1.4] font-normal text-ink", layout].filter(Boolean).join(" ");
   return (
     <div className={cls} {...rest}>
       {children}

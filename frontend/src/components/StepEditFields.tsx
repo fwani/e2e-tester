@@ -62,7 +62,7 @@ export function StepEditFields({
   return (
     <div>
       <label className={ROW_CLASS}>
-        <span className="font-sans text-[12px] leading-none text-ink-3">
+        <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
           표시 이름
         </span>
         <input
@@ -77,7 +77,7 @@ export function StepEditFields({
       {value !== null && (
         <>
           <label className={ROW_CLASS}>
-            <span className="font-sans text-[12px] leading-none text-ink-3">
+            <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
               입력값
             </span>
             <input
@@ -90,7 +90,7 @@ export function StepEditFields({
             />
           </label>
           {valueIsSecret && (
-            <p className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-s1 mr-0 mb-0 ml-[100px]">
+            <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1 mr-0 mb-0 ml-[100px]">
               {SENSITIVE_VALUE_NOTICE}
             </p>
           )}
@@ -99,7 +99,7 @@ export function StepEditFields({
 
       {isNavigate(step) && (
         <label className={ROW_CLASS}>
-          <span className="font-sans text-[12px] leading-none text-ink-3">
+          <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
             주소
           </span>
           <input
@@ -115,7 +115,7 @@ export function StepEditFields({
 
       {step.type === "assertion" && (
         <label className={ROW_CLASS}>
-          <span className="font-sans text-[12px] leading-none text-ink-3">
+          <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
             기대값
           </span>
           <input
@@ -130,7 +130,7 @@ export function StepEditFields({
       )}
 
       <label className={ROW_CLASS}>
-        <span className="font-sans text-[12px] leading-none text-ink-3">
+        <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
           대기 시간
         </span>
  <span className="flex items-center gap-[6px]">
@@ -149,14 +149,14 @@ export function StepEditFields({
               }
             }}
           />
-          <span className="font-sans text-[11px] leading-[1.4] text-ink-3">
+          <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
             ms
           </span>
         </span>
       </label>
 
       <label className={ROW_CLASS}>
-        <span className="font-sans text-[12px] leading-none text-ink-3">
+        <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
           대상 탭
         </span>
         <input

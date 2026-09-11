@@ -139,7 +139,7 @@ export function LocatorPriorityTable({
       </div>
 
       {repicking && (
-        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
           실제 브라우저 창에서 대상 요소를 클릭하세요. 그 클릭은 Step 으로 기록되지
           않습니다.
         </p>
@@ -175,7 +175,7 @@ export function LocatorPriorityTable({
                   inUse ? "[&>td]:bg-pass-t" : last ? "[&>td]:bg-sunken-2" : undefined
                 }
               >
-                <td className="font-mono text-[12px] leading-none text-ink-3 pt-0 pr-0 pb-0 pl-[14px]">
+                <td className="font-mono text-[12px] leading-none font-normal text-ink-3 pt-0 pr-0 pb-0 pl-[14px]">
                   {i + 1}
                 </td>
                 <td className={missing ? "text-ink-3" : "font-sans text-[13px] font-semibold leading-none"}>{row.label}</td>

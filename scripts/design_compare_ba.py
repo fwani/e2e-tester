@@ -128,6 +128,32 @@ SCENARIOS = [
 # (docs/PENDING-HUMAN-VERIFICATION.md).
 
 
+# ── 의도된 차이 ───────────────────────────────────────────────────────────
+# **불일치를 지우는 곳이 아니라 판단을 적는 곳이다** (T063 · SC-001). 여기 없는 차이는
+# 전부 회귀로 본다. 이유 없이 등록할 수 없도록 `reason` 을 필수로 둔다.
+INTENDED: list[dict[str, str]] = [
+    {
+        "screen": "test-create",
+        "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[0]",
+        "reason": (
+            "국면 표시가 `<div class=\"chip\">` 에서 부품 `ui/Chip` 으로 바뀌었고, 그 부품은 "
+            "`<span>` 을 그린다. **계산된 스타일은 한 칸도 다르지 않다** — 요소 이름만 "
+            "바뀌었고 둘 다 `inline-flex` 다. 칩은 글 안에 놓이는 표식이므로 `<span>` 이 "
+            "맞는 요소이며, 검사와 실측은 클래스가 아니라 `data-phase-pill` 로 이 자리를 "
+            "집는다. 사람이 보는 화면에는 차이가 없다 (SC-001)."
+        ),
+    },
+]
+
+
+def is_intended(m: dict) -> str | None:
+    for row in INTENDED:
+        if row["screen"] == m["screen"] and row.get("path") == m.get("path"):
+            if "prop" not in row or row.get("prop") == m.get("prop"):
+                return row["reason"]
+    return None
+
+
 def digest(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()[:16]
 
@@ -135,7 +161,7 @@ def digest(text: str) -> str:
 def source_digest(frontend: Path) -> str:
     """화면 코드와 테마의 digest. 이것이 바뀌면 보고서는 낡은 것이다."""
     parts: list[str] = []
-    for rel in sorted(p for p in (frontend / "src").rglob("*") if p.suffix in {".tsx", ".ts", ".css"}):
+    for rel in sorted((p for p in (frontend / "src").rglob("*") if p.suffix in {".tsx", ".ts", ".css"}), key=str):
         parts.append(str(rel.relative_to(frontend)))
         parts.append(rel.read_text(encoding="utf-8"))
     return digest("\n".join(parts))
@@ -539,7 +565,9 @@ def main() -> int:
         return 0
 
     assert after is not None
-    mismatches, compared = compare(before, after)
+    raw, compared = compare(before, after)
+    intended = [{**m, "reason": is_intended(m)} for m in raw if is_intended(m) is not None]
+    mismatches = [m for m in raw if is_intended(m) is None]
     REPORT.write_text(
         json.dumps(
             {
@@ -552,6 +580,8 @@ def main() -> int:
                 "props": len(PROPS),
                 "compared": compared,
                 "mismatches": mismatches,
+                # 판단이 적힌 차이. 통과 조건에서 빠지지만 **보고서에서 사라지지는 않는다.**
+                "intended": intended,
             },
             ensure_ascii=False,
             indent=1,
@@ -559,7 +589,7 @@ def main() -> int:
         encoding="utf-8",
     )
     print(f"화면 {len(SCENARIOS)}개 · 속성 {len(PROPS)}개 · 대조 {compared}칸")
-    print(f"불일치 {len(mismatches)}건 → {REPORT}")
+    print(f"불일치 {len(mismatches)}건 (의도된 차이 {len(intended)}건 제외) → {REPORT}")
     for m in mismatches[:40]:
         if m["kind"] == "prop":
             print(f"  ✗ [{m['screen']}] {m['path']} {m['prop']}: {m['before']!r} → {m['after']!r}")

@@ -122,7 +122,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
       )}
 
       {bar.progressLabel !== null && (
-        <div className="font-sans text-[12px] leading-none text-ink-3 flex-none">
+        <div className="font-sans text-[12px] leading-none font-normal text-ink-3 flex-none">
           {bar.progressLabel}
         </div>
       )}
@@ -138,7 +138,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
       {bar.runSummary !== null && (
         <div
           data-run-summary
-          className="font-sans text-[13px] leading-[1.4] flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis"
+          className="font-sans text-[13px] leading-[1.4] font-normal flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis"
           title={typeof bar.runSummary === "string" ? bar.runSummary : undefined}
         >
           {bar.runSummary}
@@ -243,7 +243,7 @@ function PhaseTestName({
         <span
           id={reasonId}
           data-disabled-reason="test.rename"
-          className="font-sans text-[11px] leading-[1.4] text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
+          className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
         >
           <span
             data-disabled-reason-text

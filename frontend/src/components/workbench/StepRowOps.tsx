@@ -134,7 +134,7 @@ export function ConfirmDelete({
 }) {
   return (
     <>
-      <span className="font-sans text-[11px] leading-[1.4] text-ink-3 whitespace-nowrap" role="status">
+      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 whitespace-nowrap" role="status">
         지울까요?
       </span>
       <StepOpButton

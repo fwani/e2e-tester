@@ -49,7 +49,13 @@ export function HeaderDivider() {
 
 /** 헤더 층. 높이 56 — `ui-contract.md` §1-2 의 값이다. */
 export function HeaderBar({ children }: { children: ReactNode }) {
-  return <div className="flex-none h-header flex items-center gap-[14px] px-s4 bg-panel border-b border-hair">{children}</div>;
+  // 정본 `.hdr` 은 `flex: 0 0 56px` — 기준 크기가 56px 이다. `flex-none`(=`0 0 auto`)
+  // 은 기준을 내용에서 가져오므로 같은 뜻이 아니다 (L2 대조가 잡았다).
+  return (
+    <div className="grow-0 shrink-0 basis-header h-header flex items-center gap-[14px] px-s4 bg-panel border-b border-hair">
+      {children}
+    </div>
+  );
 }
 
 /**

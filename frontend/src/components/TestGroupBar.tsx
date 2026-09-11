@@ -213,9 +213,9 @@ function NewGroupForm({
         onChange={(e) => setPrefix(e.target.value)}
         className="m-0 w-[90px]"
       />
-      <span className="font-sans text-[11px] leading-[1.4] text-ink-3">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
+      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
       {prefix.trim() !== "" && !prefixOk && (
-        <span className="font-sans text-[13px] leading-[1.4] text-fail">
+        <span className="font-sans text-[13px] leading-[1.4] font-normal text-fail">
           {cleanPrefix === "TC"
             ? "TC 는 그룹 없는 테스트가 씁니다."
             : "영문 대문자·숫자 1~8자, 첫 글자는 영문입니다."}
@@ -260,7 +260,7 @@ function ConfirmDisband({
     <span
       data-group-disband-confirm
       role="status"
-      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] inline-flex items-center gap-s2 py-s1 px-s2"
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal inline-flex items-center gap-s2 py-s1 px-s2"
     >
       <span className="font-sans text-[13px] font-semibold leading-none">
         「{group.name ?? group.prefix}」을(를) 없앨까요? 테스트 {group.count}개가 그룹 없음으로

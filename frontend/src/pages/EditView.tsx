@@ -1032,7 +1032,7 @@ export function EditView({
           current !== null ? (
             <>
               {/* Step 종류는 편집 대상이 아니다 — 지우고 새로 넣는 일이다 (006 FR-191). */}
-              <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+              <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
                 {lockedFieldNotice(
                   lockedReason("steps[].type") ?? "delete_and_insert_instead",
                 )}
@@ -1169,7 +1169,7 @@ function EditFields({
           <rect x="3" y="21" width="26" height="6" rx="1.5" strokeDasharray="3 3" />
         </svg>
         <div className="font-sans text-[13px] font-semibold leading-none">고칠 Step 을 고르세요</div>
-        <div className="font-sans text-[11px] leading-[1.4] text-ink-3 max-w-[420px]">
+        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 max-w-[420px]">
           오른쪽 목록에서 Step 을 누르면 상세가 열립니다. 값 · 순서 · 삭제는 브라우저 없이
           고칠 수 있고, 고친 것은 여기에 「저장하지 않은 변경」으로 쌓입니다.
         </div>
@@ -1181,7 +1181,7 @@ function EditFields({
     <div className="flex flex-col gap-[10px]">
       {/* FR-212 — 어떤 변수가 민감인지 밝히고, 값은 화면에 오지 않는다고 말한다. */}
       {sensitiveNames.length > 0 && (
-        <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
           민감 변수 <span className="font-mono">{sensitiveNames.join(", ")}</span> (값은 표시되지
           않습니다)
         </p>
@@ -1191,7 +1191,7 @@ function EditFields({
       {ops.length > 0 && (
         <div>
           <strong className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">저장하지 않은 변경</strong>
-          <ul className="font-sans text-[11px] leading-[1.4] text-ink-3 mt-[6px] mx-0 mb-0 pl-[18px]">
+          <ul className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-0 pl-[18px]">
             {ops.map((op, i) => (
  <li key={`${op.op}-${i}`} className="flex items-center gap-[6px]">
                 <span className="font-mono flex-1">{describeOp(op, steps)}</span>

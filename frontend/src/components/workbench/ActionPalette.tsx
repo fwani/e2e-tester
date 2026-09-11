@@ -309,7 +309,7 @@ export function ActionPalette({
       {saveNotice}
 
       {stepCount === 0 && emptyHint !== undefined && (
-        <div className="font-sans text-[11px] leading-[1.4] text-ink-3">{emptyHint}</div>
+        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{emptyHint}</div>
       )}
     </div>
   );
@@ -372,7 +372,7 @@ function Field({
   return (
     <div className="flex flex-col gap-s1">
       <div className="flex items-center gap-s2">
-        <span className="font-sans text-[12px] leading-none text-ink-3 w-[76px]">
+        <span className="font-sans text-[12px] leading-none font-normal text-ink-3 w-[76px]">
           {label}
         </span>
         {multiline ? (
@@ -385,7 +385,7 @@ function Field({
         <span
           id={reasonId}
           data-disabled-reason={action}
-          className="font-sans text-[11px] leading-[1.4] text-ink-3 pl-[84px]"
+          className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 pl-[84px]"
         >
           {capability.reason}
           {capability.remedy !== null && (

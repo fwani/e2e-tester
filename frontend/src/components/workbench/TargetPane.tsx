@@ -92,7 +92,7 @@ function Unavailable({
   return (
     <span
       data-disabled-reason={action}
-      className="font-sans text-[11px] leading-[1.4] text-ink-3"
+      className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
     >
       {state.reason}
     </span>
@@ -112,7 +112,10 @@ export function TargetPane({
     <div
       data-workbench-target
       data-slot-size={sizeKind}
-      className={`${sizeClass} min-w-0 p-s5 flex flex-col gap-[14px]`}
+      // `p-[20px]` 이다. **토큰(`--s-5`=24px)으로 올리면 안 된다** — 확정 디자인
+      // `Main.dc.html` 의 좌측 여백이 20px 이고 이 파일 머리주석이 그 출처를 적는다.
+      // 토큰에 맞추려고 값을 바꾸면 시각 동일성이 깨진다 (L2 대조가 잡았다).
+      className={`${sizeClass} min-w-0 p-[20px] flex flex-col gap-[14px]`}
     >
       {target.kind === "mirror" && (
         <>
@@ -176,7 +179,7 @@ export function TargetPane({
           {target.available.length < ARTIFACT_TABS.length && (
             <div
               data-disabled-reason="artifact.select"
-              className="font-sans text-[11px] leading-[1.4] text-ink-3 border-b border-hair py-[6px] px-s4"
+              className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 border-b border-hair py-[6px] px-s4"
             >
               {ARTIFACT_TABS.filter((t) => !target.available.includes(t.kind))
                 .map((t) => t.label)
@@ -200,7 +203,7 @@ export function TargetPane({
         >
           <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
             <div className="font-sans text-[13px] font-semibold leading-none">브라우저가 열려 있지 않습니다</div>
-            <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+            <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
               값·순서·삭제는 브라우저 없이 고칠 수 있습니다. 요소를 다시 집거나 직접
               조작으로 Step 을 더하려면 브라우저가 필요합니다.
             </p>
@@ -229,7 +232,7 @@ export function TargetPane({
         <div
           data-target-empty={target.reason}
           role="status"
-          className="bg-panel border border-hair rounded-base font-sans text-[13.5px] leading-[1.7] text-ink-2 flex-1 min-h-0 flex items-center justify-center p-s5 whitespace-pre-wrap text-center"
+          className="bg-panel border border-hair rounded-base font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2 flex-1 min-h-0 flex items-center justify-center p-s5 whitespace-pre-wrap text-center"
         >
           {EMPTY_MESSAGE[target.reason]}
         </div>

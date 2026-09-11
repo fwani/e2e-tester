@@ -102,7 +102,7 @@ export function InlineSecretInput({
           role="status"
           className="bg-warn-t border border-warn-line rounded-base py-[10px] px-s3"
         >
-          <div className="font-sans text-[13px] leading-[1.4] mb-s2">
+          <div className="font-sans text-[13px] leading-[1.4] font-normal mb-s2">
             공개키가 없어 값을 봉인할 수 없습니다. 여기서 바로 만들 수 있습니다.
           </div>
           <button disabled={disabled} onClick={makeKey}>
@@ -146,7 +146,7 @@ export function InlineSecretInput({
           placeholder="LOGIN_PASSWORD"
         />
         {name !== "" && !nameOk && (
- <p className="font-sans text-[11px] leading-[1.4] text-fail mt-s1 mx-0 mb-0">
+ <p className="font-sans text-[11px] leading-[1.4] font-normal text-fail mt-s1 mx-0 mb-0">
             대문자로 시작하고 대문자·숫자·밑줄만 쓸 수 있습니다.
           </p>
         )}
@@ -165,17 +165,17 @@ export function InlineSecretInput({
       </div>
 
       {error !== null && (
-        <p role="alert" className="font-sans text-[13px] leading-[1.4] text-fail m-0">
+        <p role="alert" className="font-sans text-[13px] leading-[1.4] font-normal text-fail m-0">
           {error}
         </p>
       )}
       {notice !== null && (
-        <p role="status" className="font-sans text-[13px] leading-[1.4] text-ink-2 m-0">
+        <p role="status" className="font-sans text-[13px] leading-[1.4] font-normal text-ink-2 m-0">
           {notice}
         </p>
       )}
 
-      <p className="font-sans text-[11px] leading-[1.4] text-ink-3 m-0">
+      <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
         값은 공개키로 암호화되어 테스트 정의와 분리된 비밀 파일에 저장됩니다. Step 에는{" "}
         <code>{"{{변수명}}"}</code> 참조만 남습니다.
       </p>

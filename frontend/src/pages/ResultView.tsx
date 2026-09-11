@@ -162,7 +162,7 @@ export function ResultView({
         {error !== null ? (
           <ErrorNotice error={error} />
         ) : (
-          <p className="font-sans text-[11px] leading-[1.4] text-ink-3">결과를 불러오는 중…</p>
+          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">결과를 불러오는 중…</p>
         )}
       </main>
     );
@@ -569,10 +569,10 @@ function artifactBody({
 }) {
   if (artifactError !== null) {
     return (
-      <p className="font-sans text-[13px] leading-[1.4] text-fail">{artifactError.message}</p>
+      <p className="font-sans text-[13px] leading-[1.4] font-normal text-fail">{artifactError.message}</p>
     );
   }
-  if (artifact === null) return <p className="font-sans text-[11px] leading-[1.4] text-ink-3">불러오는 중…</p>;
+  if (artifact === null) return <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">불러오는 중…</p>;
   if (tab === "screenshot" && artifact.src !== undefined) {
     return (
       <img
@@ -587,7 +587,7 @@ function artifactBody({
   return (
     <pre
       data-artifact-text
-      className="font-mono text-[12px] leading-[1.6] whitespace-pre-wrap m-0"
+      className="font-mono text-[12px] leading-[1.6] font-normal whitespace-pre-wrap m-0"
     >
       {artifact.text === "" || artifact.text === undefined
         ? emptyArtifactMessage(tab)

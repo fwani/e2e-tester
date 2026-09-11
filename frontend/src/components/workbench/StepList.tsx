@@ -82,14 +82,14 @@ export function StepPanelHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex-none h-[36px] flex items-center gap-s2 px-s3 bg-sunken border-b border-hair-2">
+    <div className="grow-0 shrink-0 basis-[36px] h-[36px] flex items-center gap-s2 px-s3 bg-sunken border-b border-hair-2">
       <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">TEST STEPS</div>
       <div className="flex-1" />
       {children}
-      <Chip tone={authoring === "ai" ? "ai" : "default"} layout="flex-none">
+      <Chip tone={authoring === "ai" ? "ai" : "default"}>
         작성 {authoring === "ai" ? "AI" : "RECORD"}
       </Chip>
-      <div className="font-mono text-[12px] leading-none text-ink-3">{count}</div>
+      <div className="font-mono text-[12px] leading-none font-normal text-ink-3">{count}</div>
     </div>
   );
 }
@@ -317,7 +317,7 @@ export function StepList({
         */}
         {deleteTargets !== undefined && isShown(deleteTargets.allCapability) && (
           <>
-            <span className="font-sans text-[11px] leading-[1.4] text-ink-3" data-delete-selection-count>
+            <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" data-delete-selection-count>
               {deleteSelectionCount(chosen.size)}
             </span>
             <ActionButton
@@ -363,13 +363,13 @@ export function StepList({
           자기가 보던 것이 그것이라고 믿고, 빈 화면을 주면 목록을 잃는다.
         */}
         {focusedStepId !== null && !steps.some((s) => s.id === focusedStepId) && (
-          <div role="status" data-focus-missing className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] py-s3 px-[14px]">
+          <div role="status" data-focus-missing className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal py-s3 px-[14px]">
             보고 있던 Step 이 이 목록에 없습니다. 그 사이에 지워졌거나 순서가 바뀌었을 수
             있습니다.
           </div>
         )}
         {steps.length === 0 && (
-          <div className="font-sans text-[11px] leading-[1.4] text-ink-3 p-[18px]">
+          <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 p-[18px]">
             {emptyNotice ?? "아직 Step 이 없습니다."}
           </div>
         )}
@@ -550,13 +550,13 @@ function StepRow({
                 </span>
               )}
 
-              <div data-cell="locator" className="font-mono text-[11px] leading-none text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
+              <div data-cell="locator" className="font-mono text-[11px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
                 {locatorSummary(dsl)}
               </div>
 
               {/* FR-083 — 민감 값은 참조로만 저장되므로 표시해도 평문이 새지 않는다 */}
               {value !== null && (
- <div data-cell="value" className="font-mono text-[11px] leading-none text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis flex-[0_0_auto]">
+ <div data-cell="value" className="font-mono text-[11px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis flex-[0_0_auto]">
                   {value}
                 </div>
               )}
@@ -566,7 +566,7 @@ function StepRow({
       </div>
 
       {/* 칸 3 — 소요 시간. 없으면 자리를 비운다 (FR-223) */}
-      <div data-cell="duration" className="font-mono text-[11px] leading-none text-ink-3 text-right">
+      <div data-cell="duration" className="font-mono text-[11px] leading-none font-normal text-ink-3 text-right">
         {step.durationMs !== null ? `${step.durationMs} ms` : ""}
       </div>
 

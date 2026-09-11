@@ -327,7 +327,7 @@ export function MirrorView({
             뜻인가」다. 둘은 다른 사실이며, 뒤엣것이 없으면 사용자는 1 FPS 라는 말을 읽고도
             자기 클릭이 왜 빗나갔는지 알 수 없다.
           */}
-          {controllable && <span className="font-sans text-[11px] leading-[1.4] text-ink-3">{MIRROR_DEGRADED_WARNING}</span>}
+          {controllable && <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{MIRROR_DEGRADED_WARNING}</span>}
           {/*
             FR-345·FR-353a — 강등 상태에서 **조작은 막지 않되** 정확하지 않을 수 있다는
             사실과 전환 수단을 **같은 자리에** 둔다. 사실만 말하고 수단을 다른 곳에 두면
@@ -478,7 +478,7 @@ export function MirrorView({
           `blockedReason` 이 그 네 경우를 한 문장으로 모은다.
         */}
         {!controllable && (
-          <span className="font-sans text-[11px] leading-[1.4] text-ink-3" data-disabled-reason="mirror.control">
+          <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" data-disabled-reason="mirror.control">
             {blockedReason}
           </span>
         )}
@@ -532,7 +532,7 @@ function UseWindowAction({
         실제 창에서 조작하기
       </Button>
       {disabled && (
-        <span className="font-sans text-[11px] leading-[1.4] text-ink-3" data-disabled-reason="mirror.useWindow">
+        <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" data-disabled-reason="mirror.useWindow">
           {capability.reason}
         </span>
       )}

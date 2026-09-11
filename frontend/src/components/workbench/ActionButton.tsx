@@ -148,7 +148,7 @@ export function ActionButton({
       <span
         id={reasonId}
         data-disabled-reason={action}
-        className="font-sans text-[11px] leading-[1.4] text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
+        className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
       >
         <span
           data-disabled-reason-text

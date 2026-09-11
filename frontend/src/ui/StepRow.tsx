@@ -58,7 +58,7 @@ export function StepPanel({ layout, children, ...rest }: DivProps & { layout?: s
 /** 정본 `.steps-hd` — Step 패널의 머리 띠 (36px). */
 export function StepPanelHead({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
   const cls = [
-    "flex-none h-[36px] flex items-center gap-s2 px-s3 bg-sunken border-b border-hair-2",
+    "grow-0 shrink-0 basis-[36px] h-[36px] flex items-center gap-s2 px-s3 bg-sunken border-b border-hair-2",
     layout,
   ]
     .filter(Boolean)
@@ -186,7 +186,7 @@ export function StepOpButton({ tone = "default", layout, children, ...rest }: Om
 /** 정본 `.phase` — 국면 띠 (48px). */
 export function PhaseBand({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
   const cls = [
-    "flex-none h-phase flex items-center gap-s3 px-s4 bg-panel border-b border-hair-2",
+    "grow-0 shrink-0 basis-phase h-phase flex items-center gap-s3 px-s4 bg-panel border-b border-hair-2",
     layout,
   ]
     .filter(Boolean)
