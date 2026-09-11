@@ -340,3 +340,148 @@ def test_the_test_still_runs_end_to_end_after_a_commit(
     assert result["state"] == "completed", (
         f"교체한 테스트가 처음부터 돌지 않는다: {result.get('state')} — SC-005 위반"
     )
+
+
+# ─── 되맞춤 실패 (T073 · FR-031c · 불변식 11) ──────────────────────────────
+
+
+def test_a_failed_realign_says_both_facts(
+    keyed_client: TestClient,
+    fixture_app: str,
+    monkeypatch: pytest.MonkeyPatch,
+    event_log: list[tuple[str, dict[str, Any]]],
+) -> None:
+    """되맞춤이 실패하면 **두 사실을 함께** 말한다 (불변식 11).
+
+    정의는 이미 원본으로 돌아갔고, 화면은 그것과 어긋나 있다. 둘 중 하나만 말하면
+    사용자는 무엇을 믿어야 할지 모른다 — 목록을 보고 「되돌아갔구나」 하면서 화면은
+    엉뚱한 자리에 있거나, 「실패했구나」 하면서 목록이 이미 바뀐 것을 모른다.
+
+    실패를 **유도한다.** 되맞춤은 시작 주소로 돌아간 뒤 앞 구간을 다시 도는데, 그
+    첫 걸음(`_return_to_start`)을 터뜨린다 — 실제로도 대상 앱이 내려가면 그렇게 된다.
+    """
+    test_id = record_login_then_two_menus(keyed_client, fixture_app)
+    saved = [s["id"] for s in keyed_client.get(f"/api/tests/{test_id}").json()["steps"]]
+    at = len(saved) - 1
+
+    sid = open_rerecord(keyed_client, test_id, [saved[-1]])
+    assert isinstance(sid, str)
+    try:
+        insert_manual(keyed_client, sid, f"{fixture_app}/projects.html", at)
+
+        # 되맞춤의 첫 걸음을 터뜨린다.
+        from itb.api.routes import sessions as routes
+
+        async def boom(_w: Any) -> None:
+            msg = "대상 앱에 닿을 수 없습니다"
+            raise RuntimeError(msg)
+
+        monkeypatch.setattr(routes, "_return_to_start", boom)
+
+        resp = keyed_client.post(f"/api/sessions/{sid}/rerecord/discard")
+        assert resp.status_code == 200, resp.text
+
+        failed = [p for name, p in event_log if name == "rerecord_realign_failed"]
+        assert failed, (
+            f"되맞춤 실패가 알려지지 않았다. 받은 이벤트: {sorted({n for n, _ in event_log})}"
+        )
+
+        payload = failed[0]
+        # **사실 1** — 정의는 이미 되돌아갔다.
+        assert payload["definition_reverted"] is True
+        # **사실 2** — 왜 화면을 맞추지 못했는가.
+        assert "대상 앱에 닿을 수 없습니다" in payload["reason"]
+
+        # 그리고 실제로 정의는 되돌아가 있다 — 말과 상태가 같아야 한다.
+        after = [s["id"] for s in keyed_client.get(f"/api/sessions/{sid}").json()["steps"]]
+        assert after == saved, "되돌아갔다고 말했는데 목록이 다르다"
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+# ─── 도착점에 닿지 못하면 재녹화를 시작하지 않는다 (T071 · FR-020) ─────────
+
+
+def test_a_broken_prefix_closes_the_transaction(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """앞 구간이 깨지면 **교체가 시작되지 않는다** (FR-020 · 수렴 T071).
+
+    트랜잭션은 러너를 띄우기 전에 만들어진다 — 도착점 순번을 그 시점에만 알 수 있기
+    때문이다. 그래서 닫아 주지 않으면 「교체가 시작된 채 세션은 실패」인 상태가 남고,
+    사용자는 재녹화 띠를 보면서 확정도 버리기도 할 수 없다 (둘 다 `paused` 를 요구하고
+    세션은 `failed` 다).
+    """
+    from tests.us2_support import break_first_click
+
+    test_id = record_login_then_two_menus(keyed_client, fixture_app)
+    broken = break_first_click(keyed_client, test_id)
+    saved = [s["id"] for s in keyed_client.get(f"/api/tests/{test_id}").json()["steps"]]
+    assert broken < len(saved) - 1, "깨진 Step 이 앞 구간에 있어야 한다"
+
+    resp = keyed_client.post(
+        "/api/sessions",
+        json={"mode": "rerecord", "test_id": test_id, "rerecord_step_ids": [saved[-1]]},
+    )
+    assert resp.status_code == 201, resp.text
+    sid = resp.json()["session_id"]
+    try:
+        view = wait_for_state(keyed_client, sid, {"failed", "review"})
+        assert view["rerecord"] is None, (
+            "도착점에 닿지 못했는데 교체가 시작된 채로 남았다 — FR-020 위반"
+        )
+        # 어느 Step 에서 실패했는지 결과에 남아 있어야 한다.
+        results = view.get("step_results") or []
+        assert any(r["outcome"] == "fail" for r in results), (
+            "실패한 Step 이 결과에 드러나지 않는다"
+        )
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+# ─── 세션 유실 (T074 · FR-044) ─────────────────────────────────────────────
+
+
+def test_a_lost_session_keeps_what_was_made_and_says_so(
+    keyed_client: TestClient, fixture_app: str
+) -> None:
+    """세션이 유실되면 만든 Step 을 **보존**하고 중간 상태임을 알린다 (FR-044).
+
+    기존 유실 처리가 「그때까지의 결과를 보존」하는 것과 같은 판단이다 — 사용자가
+    버리기를 고르지 않았는데 제품이 버리지 않는다. 다만 목록은 「옛 구간 + 새 Step」이
+    함께 있는 중간 상태이므로, 그것을 말하지 않으면 사용자는 저장하고 나서야 안다.
+    """
+    test_id = record_login_then_two_menus(keyed_client, fixture_app)
+    saved = [s["id"] for s in keyed_client.get(f"/api/tests/{test_id}").json()["steps"]]
+    at = len(saved) - 1
+
+    sid = open_rerecord(keyed_client, test_id, [saved[-1]])
+    assert isinstance(sid, str)
+    try:
+        made = insert_manual(keyed_client, sid, f"{fixture_app}/projects.html", at)
+
+        # 브라우저를 사용자가 닫은 것처럼 만든다.
+        #
+        # **실제로 창을 닫지 않는다.** 유실 처리(`_loss_handler`)를 직접 부르는 것이
+        # 이 검사가 보려는 것이다 — 창을 닫는 경로는 010 이 이미 검증했고, 여기서
+        # 재현하면 실패 원인이 둘이 된다 (감지 / 처리).
+        from itb.api.routes import sessions as routes
+
+        handler = routes._loss_handler(
+            keyed_client.app.state.itb,  # type: ignore[attr-defined]
+            sid,
+        )
+        keyed_client.portal.call(  # type: ignore[attr-defined]
+            lambda: handler("사용자가 창을 닫았습니다")
+        )
+
+        view = keyed_client.get(f"/api/sessions/{sid}").json()
+        steps_now = [s["id"] for s in view["steps"]]
+        assert made in steps_now, "유실되면서 만든 Step 이 사라졌다 — FR-044 위반"
+        for old in saved:
+            assert old in steps_now, "옛 구간도 남아 있어야 한다 (중간 상태)"
+        assert view["rerecord"] is None, (
+            "브라우저가 없으면 확정도 버리기도 할 수 없다 — 트랜잭션을 닫아야 한다"
+        )
+    finally:
+        stop_quietly(keyed_client, sid)

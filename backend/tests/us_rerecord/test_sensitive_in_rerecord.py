@@ -85,3 +85,56 @@ def test_the_secret_never_reaches_the_definition_on_disk(
     assert SECRET not in path.read_text(encoding="utf-8"), (
         "정의 파일에 평문 비밀번호가 있다 — 사용자가 git 에 커밋할 자산이다"
     )
+
+
+# ─── 대화 이력은 디스크에 닿지 않는다 (T075 · FR-014) ──────────────────────
+
+
+CHAT_SECRET = "chat-must-never-reach-disk-4b7"
+
+
+def test_the_chat_history_is_never_written_to_disk(
+    keyed_client: TestClient, fixture_app: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """**대화 이력이 디스크 어디에도 없다** (FR-014).
+
+    이것이 FR-013(민감값이 이력에 남지 않는다)의 **실질적 방어**다. 사용자가 채팅에
+    비밀번호를 적는 것을 제품이 막을 수는 없다 — 막으려 들면 정상 문장을 가린다.
+    막을 수 있는 것은 「남기지 않는 것」이고, 그것이 지켜지는지는 **파일을 뒤져야**
+    알 수 있다.
+
+    정의 파일만 보는 것으로는 부족하다 (위 검사들). 실행 산출물·설정·휴지통 어디에도
+    없어야 한다.
+    """
+    install_driver(monkeypatch, [])
+    test_id = record_login_then_two_menus(keyed_client, fixture_app)
+    saved = [s["id"] for s in keyed_client.get(f"/api/tests/{test_id}").json()["steps"]]
+
+    sid = open_rerecord(keyed_client, test_id, [saved[-1]])
+    assert isinstance(sid, str)
+    try:
+        say(keyed_client, sid, f"내 비밀번호는 {CHAT_SECRET} 이야")
+        # 이력에는 있다 — 화면이 보여 줘야 하므로.
+        from tests.us_rerecord.support import turns
+
+        assert any(CHAT_SECRET in t["text"] for t in turns(keyed_client, sid)), (
+            "이력에 없으면 이 검사가 헛돈다"
+        )
+        keyed_client.post(f"/api/sessions/{sid}/save", json={"name": "대화 뒤 저장"})
+    finally:
+        stop_quietly(keyed_client, sid)
+
+    # **프로젝트 디렉터리 전체를 뒤진다.** 정의·실행 산출물·설정 어디에도 없어야 한다.
+    repo = keyed_client.app.state.itb.repository
+    root = repo.paths.root
+    found: list[str] = []
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            if CHAT_SECRET in path.read_text(encoding="utf-8", errors="ignore"):
+                found.append(str(path.relative_to(root)))
+        except OSError:  # pragma: no cover - 읽을 수 없는 파일은 넘긴다
+            continue
+
+    assert found == [], f"대화가 디스크에 남았다: {found} — FR-014 위반"

@@ -181,3 +181,34 @@ def test_builtin_tools_are_still_blocked() -> None:
 
     for dangerous in ("Bash", "Write", "Edit", "Read", "WebFetch"):
         assert dangerous in BLOCKED_BUILTINS, f"{dangerous} 차단이 사라졌다"
+
+
+def test_every_tool_on_the_dev_driver_actually_builds() -> None:
+    """이름만 맞는 것으로는 부족하다 — **감싸는 쪽도 전수를 돈다**.
+
+    016 은 `TOOL_SCHEMAS` 에 편집 도구 넷을 더했지만 `build_mcp_tools` 안의 핸들러
+    사전은 그대로 두었다. 이름 검사(T062)는 `TOOL_SCHEMAS` 에서 파생된 목록만 보므로
+    통과했고, 실제 호출은 `KeyError: 'update_step'` 로 죽었다. 목록이 두 번 적히면
+    한쪽만 갱신된다 — 그 실패를 여기서 잡는다.
+
+    툴박스는 브라우저가 필요하므로 **이름만 맞춘 대역**을 쓴다. 검사 대상은 도구
+    표면이지 브라우저 동작이 아니다 (브라우저 쪽은 us3 계층이 본다).
+    """
+    from itb.authoring.tools import TOOL_SCHEMAS, build_mcp_tools
+
+    class FakeToolbox:
+        def __init__(self) -> None:
+            self.called: list[str] = []
+
+        def __getattr__(self, name: str) -> Any:
+            async def call(**kwargs: Any) -> dict[str, Any]:
+                self.called.append(name)
+                return {"ok": name}
+
+            return call
+
+    toolbox = FakeToolbox()
+    built = build_mcp_tools(toolbox)  # type: ignore[arg-type]
+
+    assert {t.name for t in built} == set(TOOL_SCHEMAS)
+    assert len(built) == 16

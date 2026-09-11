@@ -346,9 +346,9 @@ Task: "T014 원칙 II — 도착점 구간 드라이버 호출 0회"
 **2026-09-11 수렴 1회차** — 발견 5건 (CRITICAL 0 · HIGH 1 · MEDIUM 3 · LOW 1).
 헌법 원칙 I~V 위반 없음.
 
-- [ ] T071 **도착점에 닿지 못하면 재녹화를 시작하지 않는다** per FR-020 (contradicts) — `backend/src/itb/api/routes/sessions.py` 의 `mode=rerecord` 분기가 러너를 띄우기 **전에** `RerecordTransaction` 을 만든다. 앞 구간이 깨져 도착점에 닿지 못해도 교체가 시작된 상태로 남고, 그때 화면은 재녹화 띠를 그린다. 러너 실패를 관측해 트랜잭션을 닫고 그 사실을 알린다 (`rerecord_changed: null` + 실패한 Step 을 가리키는 안내)
-- [ ] T072 `specs/016-ai-range-rerecord/contracts/api-contract.md` §1 실패표를 **실제 흐름에 맞게** 고친다 per api-contract §1 (contradicts) — 「도착점에 닿지 못했다 → `409`」는 성립하지 않는다. 러너를 요청 안에서 기다려야 하는데 그것은 research R1(요청 수명과 분리)을 깬다. 실제는 `201` 뒤 `state: failed` 이며, T071 이 그 자리에서 트랜잭션을 닫는다
-- [ ] T073 [P] `backend/tests/us_rerecord/test_discard_realign.py` 에 **되맞춤 실패** 경로를 더한다 per FR-031c · 불변식 11 (missing) — 지금은 성공 경로만 본다. 실패를 유도해 `rerecord_realign_failed` 가 **두 사실**(`definition_reverted: true` + 사유)을 함께 싣는지 확인한다. 하나만 말하면 사용자는 무엇을 믿어야 할지 모른다
-- [ ] T074 [P] `backend/tests/us_rerecord/test_session_lost_in_rerecord.py` 신규 per FR-044 (missing) — 재녹화 중 세션 유실을 유도한다. 확정되지 않은 Step 이 **보존**되고, 목록이 「새 + 옛」 중간 상태임을 알리며, 트랜잭션이 닫히는지 확인한다
-- [ ] T075 [P] `backend/tests/us_rerecord/test_sensitive_in_rerecord.py` 에 **대화 이력이 디스크에 없음**을 더한다 per FR-014 (partial) — 지금은 정의 파일만 본다. FR-013(민감값이 이력에 남지 않는다)의 실질적 방어가 「쓰지 않는다」이므로, 세션 종료 후 프로젝트 디렉터리 전체에서 대화 문장을 찾아 없음을 확인한다
-- [ ] T076 [P] `frontend/tests/RerecordStart.test.tsx` 에 **점유 중 잠김** 1건을 더한다 per FR-017 (partial) — 다른 세션이 그 테스트를 잡고 있으면(`blocking_session_id`) 「AI 로 다시 만들기」가 보이되 잠기고 해소 조작을 가리키는지. 서버의 409 는 기존 기제로 동작하지만 화면이 **미리** 막는지는 확인되지 않았다
+- [X] T071 **도착점에 닿지 못하면 재녹화를 시작하지 않는다** per FR-020 (contradicts) — `backend/src/itb/api/routes/sessions.py` 의 `mode=rerecord` 분기가 러너를 띄우기 **전에** `RerecordTransaction` 을 만든다. 앞 구간이 깨져 도착점에 닿지 못해도 교체가 시작된 상태로 남고, 그때 화면은 재녹화 띠를 그린다. 러너 실패를 관측해 트랜잭션을 닫고 그 사실을 알린다 (`rerecord_changed: null` + 실패한 Step 을 가리키는 안내)
+- [X] T072 `specs/016-ai-range-rerecord/contracts/api-contract.md` §1 실패표를 **실제 흐름에 맞게** 고친다 per api-contract §1 (contradicts) — 「도착점에 닿지 못했다 → `409`」는 성립하지 않는다. 러너를 요청 안에서 기다려야 하는데 그것은 research R1(요청 수명과 분리)을 깬다. 실제는 `201` 뒤 `state: failed` 이며, T071 이 그 자리에서 트랜잭션을 닫는다
+- [X] T073 [P] `backend/tests/us_rerecord/test_discard_realign.py` 에 **되맞춤 실패** 경로를 더한다 per FR-031c · 불변식 11 (missing) — 지금은 성공 경로만 본다. 실패를 유도해 `rerecord_realign_failed` 가 **두 사실**(`definition_reverted: true` + 사유)을 함께 싣는지 확인한다. 하나만 말하면 사용자는 무엇을 믿어야 할지 모른다
+- [X] T074 [P] `backend/tests/us_rerecord/test_session_lost_in_rerecord.py` 신규 per FR-044 (missing) — 재녹화 중 세션 유실을 유도한다. 확정되지 않은 Step 이 **보존**되고, 목록이 「새 + 옛」 중간 상태임을 알리며, 트랜잭션이 닫히는지 확인한다
+- [X] T075 [P] `backend/tests/us_rerecord/test_sensitive_in_rerecord.py` 에 **대화 이력이 디스크에 없음**을 더한다 per FR-014 (partial) — 지금은 정의 파일만 본다. FR-013(민감값이 이력에 남지 않는다)의 실질적 방어가 「쓰지 않는다」이므로, 세션 종료 후 프로젝트 디렉터리 전체에서 대화 문장을 찾아 없음을 확인한다
+- [X] T076 [P] `frontend/tests/RerecordStart.test.tsx` 에 **점유 중 잠김** 1건을 더한다 per FR-017 (partial) — 다른 세션이 그 테스트를 잡고 있으면(`blocking_session_id`) 「AI 로 다시 만들기」가 보이되 잠기고 해소 조작을 가리키는지. 서버의 409 는 기존 기제로 동작하지만 화면이 **미리** 막는지는 확인되지 않았다

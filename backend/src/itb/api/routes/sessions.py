@@ -41,7 +41,7 @@ from itb.authoring.rerecord import (
 from itb.authoring.summary import build_definition_summary
 from itb.domain.draft import DRAFT_ID_PATTERN, Draft, compose_instruction
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
-from itb.domain.run_result import RunScope, StepOutcome, scope_of
+from itb.domain.run_result import RunResult, RunScope, StepOutcome, scope_of
 from itb.domain.step import Author, NavigateStep, Step
 from itb.domain.test_case import (
     GROUP_PREFIX_PATTERN,
@@ -1554,17 +1554,63 @@ async def _start_runner(
             await work.mirror.follow(step.tab)
         return await engine.run_step(session, index)
 
+    async def finished(passed: bool, session_lost: bool = False) -> RunResult:
+        """실행이 끝났다. 016 이 여기에 한 가지를 더한다.
+
+        **도착점에 닿지 못하면 재녹화를 시작하지 않는다** (FR-020 · 수렴 T071).
+
+        트랜잭션은 러너를 띄우기 **전에** 만들어진다 — 도착점 순번을 그 시점에만 알 수
+        있기 때문이다(그 뒤에는 목록이 바뀐다). 그래서 앞 구간이 깨지면 「교체가 시작된
+        채 화면은 실패」인 상태가 남았다. 사용자는 재녹화 띠를 보면서 확정도 버리기도
+        할 수 없다 — 둘 다 `paused` 를 요구하는데 세션은 `failed` 다.
+
+        **실패한 실행이 도착점을 만들던 것이었다면 트랜잭션을 닫는다.** 판정 근거는
+        「아직 아무것도 만들지 않았다」이다 — 만든 것이 있으면 그것은 도착점 구간이
+        아니라 사용자가 대화로 만든 것이고, 그때의 실패는 다른 사정이다.
+        """
+        result = await engine.finalize(passed, session_lost=session_lost)
+        tx = work.rerecord
+        if not passed and tx is not None and not tx.settled and not tx.created(work.steps):
+            tx.close()
+            await work.session.emit("rerecord_changed", rerecord=None)
+            await work.session.emit(
+                "rerecord_realign_failed",
+                failed_step_id=_first_failed_step_id(work),
+                reason=(
+                    "앞 구간을 실행하지 못해 재녹화를 시작하지 못했습니다. "
+                    "그 Step 을 먼저 고친 뒤 다시 시도하세요."
+                ),
+                # 되돌릴 것이 없다 — 아직 아무것도 만들지 않았다.
+                definition_reverted=False,
+            )
+        return result
+
     runner = RunnerTask(
         session=work.session,
         step_runner=run_one,
         total_steps=len(engine.test.steps),
         start_index=start_index,
-        on_finished=engine.finalize,
+        on_finished=finished,
         pause_before_index=pause_before_index,
     )
     work.runner = runner
     # 태스크만 띄우고 즉시 반환한다. 실제 Step 실행은 요청 수명과 분리된다 (research R1).
     runner.start()
+
+
+def _first_failed_step_id(work: SessionWork) -> str | None:
+    """실패한 첫 Step 의 id. 없으면 `None`.
+
+    엔진이 들고 있는 Step 결과에서 찾는다 — 러너는 어느 Step 에서 멈췄는지 알지만
+    「왜」는 결과에 있다. 사용자에게 필요한 것은 **어느 것을 고쳐야 하는가**다 (FR-020).
+    """
+    engine = work.engine
+    if engine is None:
+        return None
+    for progress in _progress_of(work):
+        if progress.outcome is StepOutcome.FAIL:
+            return progress.step_id
+    return None
 
 
 def _loss_handler(state: AppState, session_id: str):  # noqa: ANN201 - LossHandler 를 만든다

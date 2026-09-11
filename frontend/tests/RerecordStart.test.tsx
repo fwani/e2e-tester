@@ -30,7 +30,7 @@ const FOUR = [
   clickStep({ id: "st-4" }),
 ] as const satisfies readonly [unknown, ...unknown[]];
 
-function stubFetch(onSave?: () => void) {
+function stubFetch(onSave?: () => void, blocking = false) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -38,7 +38,21 @@ function stubFetch(onSave?: () => void) {
       if (url.includes("/definition")) {
         if (init?.method === "PUT") onSave?.();
         return new Response(
-          JSON.stringify(definitionView({ test: makeTest({ steps: [...FOUR] as NonNullable<Parameters<typeof makeTest>[0]>["steps"] }) })),
+          JSON.stringify(
+            definitionView({
+              test: makeTest({
+                steps: [...FOUR] as NonNullable<Parameters<typeof makeTest>[0]>["steps"],
+              }),
+              // 다른 세션이 그 테스트를 잡고 있으면 정의는 읽기 전용이다 (006 FR-206).
+              ...(blocking
+                ? {
+                    editable: false,
+                    blocked_by: "running",
+                    blocking_session_id: "s-other",
+                  }
+                : {}),
+            }),
+          ),
           { status: 200 },
         );
       }
@@ -50,8 +64,9 @@ function stubFetch(onSave?: () => void) {
 async function renderEdit(
   overrides: Partial<Parameters<typeof EditView>[0]> = {},
   onSave?: () => void,
+  blocking = false,
 ) {
-  stubFetch(onSave);
+  stubFetch(onSave, blocking);
   render(
     <EditView
       testId="TC-001"
@@ -178,5 +193,36 @@ describe("저장하지 않은 편집 (FR-022 · 006 FR-203)", () => {
 
     await waitFor(() => expect(saved).toHaveBeenCalled());
     await waitFor(() => expect(onRerecordRange).toHaveBeenCalled());
+  });
+});
+
+
+describe("다른 세션이 잡고 있으면 (FR-017)", () => {
+  it("**미리 잠긴다** — 눌러 보고 409 를 받지 않는다", async () => {
+    /*
+      서버는 `409 SESSION_BUSY` 로 거절한다. 그것만으로는 부족하다 — 009 T063 이 고친
+      결함이 바로 「활성으로 그렸다가 눌리면 거절」이었다. 표가 `cond(C7)` 로 두는
+      이유가 이것이고, 이 검사가 그 판정이 실제로 화면에 닿는지 본다.
+    */
+    const onRerecordRange = vi.fn();
+    await renderEdit({ onRerecordRange }, undefined, true);
+
+    const button = rerecordButton();
+    expect(button, "조작이 화면에서 사라졌다 — 잠기되 보여야 한다 (FR-234)").not.toBeNull();
+    expect(button?.disabled).toBe(true);
+
+    // 눌러도 아무 일이 없다.
+    if (button !== null) await userEvent.click(button);
+    expect(onRerecordRange).not.toHaveBeenCalled();
+  });
+
+  it("무엇을 하면 풀리는지 **가리킨다** — 그 세션으로 가는 조작이 있다", async () => {
+    /*
+      잠긴 채 이유만 있으면 사용자는 갇힌다. 005 FR-126 이 그 세션으로 가는 길을
+      요구하고, 016 은 그것을 새로 만들지 않고 기존 `session.open` 을 쓴다.
+    */
+    await renderEdit({}, undefined, true);
+    const open = document.querySelector('button[data-action="session.open"]');
+    expect(open, "실행 중인 세션으로 가는 조작이 없다").not.toBeNull();
   });
 });

@@ -1290,19 +1290,11 @@ def build_mcp_tools(toolbox: BrowserToolbox) -> list[Any]:
 
     from claude_agent_sdk import tool  # noqa: PLC0415 - SDK 경계를 함수 안에 둔다
 
+    # 도구 이름 = `BrowserToolbox` 메서드 이름이다. 목록을 여기 한 번 더 적으면
+    # `TOOL_SCHEMAS` 가 늘어날 때 한쪽만 갱신되어 `KeyError` 가 난다 — 016 의
+    # `STEP_EDITING_TOOLS` 넷이 실제로 그렇게 빠졌다. 이름으로 찾아 쓴다.
     handlers: dict[str, Callable[..., Awaitable[dict[str, Any]]]] = {
-        "list_tabs": toolbox.list_tabs,
-        "observe_page": toolbox.observe_page,
-        "click": toolbox.click,
-        "fill": toolbox.fill,
-        "select": toolbox.select,
-        "navigate": toolbox.navigate,
-        "hover": toolbox.hover,
-        "drag": toolbox.drag,
-        "upload": toolbox.upload,
-        "assert_condition": toolbox.assert_condition,
-        "close_tab": toolbox.close_tab,
-        "report_blocked": toolbox.report_blocked,
+        name: getattr(toolbox, name) for name in TOOL_SCHEMAS
     }
 
     def wrap(name: str) -> Any:
