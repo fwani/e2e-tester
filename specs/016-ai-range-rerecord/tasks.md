@@ -46,15 +46,15 @@ description: "Task list for 016 편집 중 AI 구간 재녹화"
 
 - [X] T003 [P] `backend/tests/unit/test_definition_summary.py` 에 **실패하는** 테스트를 먼저 쓴다: (a) 요약에 순번·id·label·종류·대상 요약·탭이 있다 (b) **어떤 Step 의 `value` 도 없다** — 값 100종(사번·주소·카드번호 형태 포함) property 검사 (c) 교체 구간이 표시된다 (d) 예산 초과 시 `… (Step n~m 생략) …` 가 명시된다
 - [X] T004 `backend/src/itb/authoring/summary.py` 신규 — `build_definition_summary(steps, range_ids, budget) -> str`. **`Step.value` 에 접근하지 않는다** (R8). 입력값이 있는 Step 은 `값 있음` 또는 변수 참조 이름만 적는다. `budget` 기본값은 **잠정 8KB** 로 박고 T064 가 실측값으로 교체한다 (A1). T003 을 통과시킨다
-- [ ] T005 `backend/src/itb/authoring/agent.py` 에 요약 주입을 배선한다 — `AuthoringAgent` 가 `summary_source: Callable[[], str] | None` 을 받고, **매 턴의 사용자 메시지 앞에** 요약을 덧붙인다 (FR-003 · agent-tools.md §3). 첫 메시지에만 넣지 않는다
-- [ ] T006 `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에 agent-tools.md §3 의 4줄을 더한다. **기존 줄은 하나도 지우지 않는다**
+- [X] T005 `backend/src/itb/authoring/agent.py` 에 요약 주입을 배선한다 — `AuthoringAgent` 가 `summary_source: Callable[[], str] | None` 을 받고, **매 턴의 사용자 메시지 앞에** 요약을 덧붙인다 (FR-003 · agent-tools.md §3). 첫 메시지에만 넣지 않는다
+- [X] T006 `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에 agent-tools.md §3 의 4줄을 더한다. **기존 줄은 하나도 지우지 않는다**
 - [ ] T006a `backend/src/itb/api/routes/sessions.py` — **기존 AI 작성(US4)·자연어 Step 추가(US6) 경로에도 같은 요약을 주입한다** (FR-005). 마감이 아니라 여기서 한다 — T005 가 주입 지점을 이미 만들었고, 나중에 붙이면 US4·US6 회귀가 마지막에 드러난다 (analyze I1)
 - [ ] T006b [P] `backend/tests/unit/test_definition_summary.py` 에 회귀 단언을 더한다 — US4·US6 경로의 에이전트도 요약을 받는지 (FR-005)
 
 ### 교체 트랜잭션 (data-model §1-2 · R7)
 
-- [ ] T007 [P] `backend/tests/unit/test_rerecord_transaction.py` 에 **실패하는** 테스트를 먼저 쓴다: 구간 검증(존재·연속·비어있지 않음), 확정이 `range.step_ids` 를 지운다, 버리기가 `created_step_ids` 를 지운다, 불변식 9(버리면 시작 전과 id·순서·내용이 같다), 불변식 10(만든 것이 없으면 확정 거절)
-- [ ] T008 `backend/src/itb/authoring/rerecord.py` 신규 — `StepRange`·`RerecordTransaction` 과 `validate_range`·`commit`·`discard`. 확정·버리기 모두 `itb.execution.step_edits.delete_steps` **한 번**을 지난다 (전부-또는-전무). **스냅샷을 만들지 않는다** (R7). T007 을 통과시킨다
+- [X] T007 [P] `backend/tests/unit/test_rerecord_transaction.py` 에 **실패하는** 테스트를 먼저 쓴다: 구간 검증(존재·연속·비어있지 않음), 확정이 `range.step_ids` 를 지운다, 버리기가 `created_step_ids` 를 지운다, 불변식 9(버리면 시작 전과 id·순서·내용이 같다), 불변식 10(만든 것이 없으면 확정 거절)
+- [X] T008 `backend/src/itb/authoring/rerecord.py` 신규 — `StepRange`·`RerecordTransaction` 과 `validate_range`·`commit`·`discard`. 확정·버리기 모두 `itb.execution.step_edits.delete_steps` **한 번**을 지난다 (전부-또는-전무). **스냅샷을 만들지 않는다** (R7). T007 을 통과시킨다
 
 ### 상태 기계 (data-model §3 · R4)
 

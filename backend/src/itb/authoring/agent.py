@@ -59,6 +59,15 @@ SYSTEM_PROMPT = """\
   적으세요. 사람이 답을 주면 그 자리에서 이어서 수행하게 됩니다.
 - 사람이 답을 주면 그 답만으로 이어 가세요. 이미 만들어진 Step 을 다시 만들지 마세요.
 - 로그인 화면을 만나면 지시문에 있는 자격 증명만 쓰세요. 값을 만들어 내지 마세요.
+
+지금 만들고 있는 테스트의 Step 목록이 사용자 메시지 앞에 `[지금 테스트]` 로 주어집니다
+(016 FR-001). 그 목록에 대해:
+
+- 목록을 근거로 답하세요. 목록에 없는 Step 을 지목하지 마세요.
+- update_step·delete_step·move_step·repick_target 은 **이번에 당신이 만든 Step 에만**
+  쓸 수 있습니다. 다른 Step 을 고치려 하면 거절됩니다 — 사람에게 말하세요.
+- 고치기는 방금 만든 것을 다듬을 때만 쓰세요. 만들고 지우기를 반복하지 마세요.
+- `◀ 교체 구간` 으로 표시된 Step 은 사용자가 확정할 때 사라집니다. 당신이 지우지 마세요.
 """
 
 
@@ -188,6 +197,34 @@ class AuthoringAgent:
     compiler: StepCompiler | None = None
     """확정된 Step 을 센 주체. `ai_finished` 의 `step_count` 근거다 (FR-063)."""
 
+    summary_source: Callable[[], str] | None = None
+    """지금 정의의 요약을 만들어 주는 것 (016 FR-001·FR-003).
+
+    **값이 아니라 함수다.** 목록은 턴 사이에 바뀐다 — 에이전트가 Step 을 만들고, 사람이
+    고치고, 확정·버리기가 구간을 옮긴다. 값으로 들고 있으면 5분 전 목록을 근거로 답한다.
+
+    호출자(`itb.api.routes.sessions`)가 세션의 작업 중 목록을 읽어 넘긴다. 여기서
+    직접 읽지 않는 이유는 에이전트가 목록을 소유하지 않기 때문이다 — 소유하면 실패
+    경로에서 Step 이 사라질 수 있는 자리가 하나 더 생긴다 (FR-067).
+    """
+
+    def _with_summary(self, text: str) -> str:
+        """사용자 메시지 앞에 정의 요약을 붙인다 (016 FR-003).
+
+        **매 턴 붙인다.** 첫 메시지에만 넣으면 대화가 길어질수록 에이전트가 보는 목록이
+        낡는다 — 자기가 방금 만든 Step 도 모르는 상태가 된다.
+
+        요약을 만들 수 없으면(`summary_source` 가 없거나 빈 문자열) **조용히 넘어간다.**
+        요약은 맥락이지 전제가 아니고, 016 이전 경로(US4·US6)가 그것 없이도 돌던 것이
+        계속 돌아야 한다.
+        """
+        if self.summary_source is None:
+            return text
+        summary = self.summary_source()
+        if not summary:
+            return text
+        return f"{summary}\n\n[사용자] {text}"
+
     async def run(self, instruction: str) -> AgentOutcome:
         """지시문 하나를 수행한다.
 
@@ -195,7 +232,7 @@ class AuthoringAgent:
         를 덧붙여 부르므로, 에이전트가 앞서 무엇을 했는지 알고 이어서 진행한다.
         """
         text = validate_instruction(instruction)
-        self.messages.append({"role": "user", "content": text})
+        self.messages.append({"role": "user", "content": self._with_summary(text)})
         return await self._drive()
 
     async def resume_with_answer(self, answer: str) -> AgentOutcome:
@@ -217,7 +254,9 @@ class AuthoringAgent:
         self.messages.append(
             {
                 "role": "user",
-                "content": (
+                # 016 FR-003 — 요약은 **매 턴** 붙는다. 막힌 사이에 사람이 목록을
+                # 고쳤을 수 있고, 그때 낡은 목록으로 이어 가면 없는 Step 을 지목한다.
+                "content": self._with_summary(
                     f"사람의 답변입니다: {text}\n"
                     "이 답을 반영해 남은 지시를 이어서 수행하세요. 화면이 바뀌었을 수 "
                     "있으니 observe_page 로 먼저 확인하고, 이미 만들어진 Step 을 다시 "
@@ -240,7 +279,8 @@ class AuthoringAgent:
         self.messages.append(
             {
                 "role": "user",
-                "content": (
+                # 016 FR-003 — 사람이 이어받는 동안 목록이 가장 많이 바뀐다.
+                "content": self._with_summary(
                     f"사람이 이어받아 다음을 처리했습니다: {note}\n"
                     "지금 화면을 observe_page 로 다시 확인한 뒤, 남은 지시를 이어서 "
                     "수행하세요. 이미 처리된 동작을 다시 하지 마세요."
