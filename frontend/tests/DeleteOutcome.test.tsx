@@ -16,6 +16,7 @@
  * 둘이 합쳐져 「조용한 성공」이 됐다. 이 파일이 그 자리를 지킨다.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TestList } from "../src/pages/TestList";
@@ -73,10 +74,15 @@ function mount() {
   );
 }
 
-/** 행 메뉴 → 삭제 → 확인. 확인 버튼의 이름도 「삭제」다. */
+/**
+ * 행 메뉴 → 삭제 → 확인. 확인 버튼의 이름도 「삭제」다.
+ *
+ * 017 T056 — 메뉴는 포인터로 열고(Radix 메뉴는 누름 없는 클릭으로 열리지 않는다), 메뉴의 「삭제」는 **메뉴 항목**
+ * 역할이다. 그래서 두 「삭제」가 이제 역할로 갈린다 — 메뉴 항목 → 행 안 확인 단추.
+ */
 async function deleteFirstRow(name: string) {
-  fireEvent.click(await screen.findByRole("button", { name: `${name} 추가 동작` }));
-  fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+  await userEvent.setup().click(await screen.findByRole("button", { name: `${name} 추가 동작` }));
+  fireEvent.click(screen.getByRole("menuitem", { name: "삭제" }));
   fireEvent.click(screen.getByRole("button", { name: "삭제" }));
 }
 

@@ -14,6 +14,7 @@
  * | `PointerEvent` | `DropdownMenu` 트리거(pointerdown 의 `button`) | `fireEvent.pointerDown` 이 `button` 없는 사건을 만든다 |
  * | `has/set/releasePointerCapture` | 누르고 끄는 조작 | 호출 즉시 `is not a function` |
  * | `scrollIntoView` | 메뉴·목록이 고른 항목을 보이게 한다 | 키보드 이동 시 예외 |
+ * | `matches(':popover-open')`·`matches(':modal')` | 떠 있는 내용의 자리 계산(floating-ui `isTopLayer`) | **예외가 아니라 느려진다** — 아래 절 |
  *
  * **이미 있는 것은 덮지 않는다.** 모든 줄이 「없을 때만」 심는다. 테스트가 요소 하나에
  * 따로 심은 대역(`MirrorView.test.tsx` 의 포인터 캡처 등)은 인스턴스 속성이라 그대로 이긴다.
@@ -23,6 +24,22 @@
  * **동작을 흉내 내지 않는다.** `ResizeObserver` 는 아무것도 관찰하지 않고, 캡처 함수는
  * 캡처하지 않는다. jsdom 은 배치를 계산하지 않으므로 흉내 낼 값이 애초에 없다 — 크기와
  * 자리는 화면 순회(chromium)가 잰다 (screen-sweep.md).
+ *
+ * ## 최상위 층 의사 클래스 — 틀린 답이 아니라 **느린 답**이었다 (017 T056)
+ *
+ * floating-ui 는 떠 있는 내용의 자리를 계산할 때 조상마다 `el.matches(':popover-open')`·`el.matches(':modal')`
+ * 로 최상위 층(top layer)에 있는지 묻는다. jsdom 의 선택자 엔진은 이 둘을 모르지만 **예외를 던지지 않고** 한 번에
+ * 약 150ms 를 쓴 뒤 거짓을 돌려준다. 실측(2026-09-15 · jsdom 25 · floating-ui 1.8):
+ *
+ * | | 시간 |
+ * |---|---|
+ * | `matches` 두 선택자 × 100회 | 30.6초 |
+ * | `computePosition` 한 번 (그대로) | 5.8초 |
+ * | `computePosition` 한 번 (두 선택자만 바로 거짓) | 1ms |
+ *
+ * 그래서 Radix 메뉴·툴팁 하나를 여는 검사가 2~10초씩 걸려 기본 제한(5초)을 넘었다 (Foundational 스파이크의
+ * 「툴팁이 열리는 데 8초」가 이것이었다). jsdom 에는 최상위 층이 없으므로 **두 선택자에 맞는 요소는 있을 수 없다** —
+ * 거짓을 바로 돌려주는 것은 흉내가 아니라 jsdom 이 느리게 내던 같은 답이다. 다른 선택자는 원래 함수가 받는다.
  */
 
 if (typeof window !== "undefined") {
@@ -76,4 +93,16 @@ if (typeof window !== "undefined") {
   if (typeof proto.setPointerCapture !== "function") proto.setPointerCapture = () => {};
   if (typeof proto.releasePointerCapture !== "function") proto.releasePointerCapture = () => {};
   if (typeof proto.scrollIntoView !== "function") proto.scrollIntoView = () => {};
+
+  // 머리주석 「최상위 층 의사 클래스」. 한 번만 감싼다 — 설정 파일이 여러 번 실행돼도 겹겹이 감싸지 않는다.
+  const TOP_LAYER = new Set([":popover-open", ":modal"]);
+  const marked = Element.prototype.matches as typeof Element.prototype.matches & { __topLayerShortcut?: true };
+  if (marked.__topLayerShortcut !== true) {
+    const original = Element.prototype.matches;
+    const matches = function (this: Element, selectors: string): boolean {
+      return TOP_LAYER.has(selectors) ? false : original.call(this, selectors);
+    } as typeof Element.prototype.matches & { __topLayerShortcut?: true };
+    matches.__topLayerShortcut = true;
+    Element.prototype.matches = matches;
+  }
 }

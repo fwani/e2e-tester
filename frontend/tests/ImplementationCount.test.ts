@@ -201,6 +201,8 @@ const RETIRED_SYMBOLS: { path: string; pattern: RegExp; what: string }[] = [
   { path: "ui/Surface.tsx", pattern: /\bexport function (?:Modal|OverlayPane)\b/, what: "ui/Surface 의 Modal·OverlayPane" },
   { path: "pages/EditView.tsx", pattern: /role="alertdialog"/, what: "EditView 의 수제 이탈 확인 판" },
   { path: "components/workbench/StepDetail.tsx", pattern: /role="dialog"/, what: "StepDetail 의 수제 대화상자 판" },
+  // T056 — 떠 있는 메뉴도 같다. 포털과 좌표 계산을 손으로 하던 행 메뉴가 `ui/DropdownMenu` 로 옮겨졌다.
+  { path: "pages/TestList.tsx", pattern: /\bMENU_Z\b|\bcreatePortal\(/, what: "TestList 의 수제 행 메뉴(포털·좌표 계산)" },
 ];
 
 describe("017 — 대화상자·겹침 판의 구현은 부품 한 벌이다 (T054)", () => {

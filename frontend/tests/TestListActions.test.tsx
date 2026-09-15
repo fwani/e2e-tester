@@ -10,6 +10,7 @@
  * DC-007 위반이다. **단언은 그대로다 — 메뉴를 여는 한 단계만 앞에 붙였다.**
  */
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TestList } from "../src/pages/TestList";
@@ -52,12 +53,18 @@ const noop = () => undefined;
 async function renderList() {
   render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
   await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
-  openMenu();
+  await openMenu();
 }
 
-/** 확정 디자인의 `⋯` 버튼. 행의 추가 동작은 전부 이 뒤에 있다. */
-function openMenu() {
-  act(() => screen.getByRole("button", { name: "로그인 추가 동작" }).click());
+/**
+ * 확정 디자인의 `⋯` 버튼. 행의 추가 동작은 전부 이 뒤에 있다.
+ *
+ * 017 T056 — **포인터로 누른다.** 행 메뉴가 Radix 메뉴가 되며 단추는 `pointerdown`(마우스)과 Enter·Space·↓(키보드)로
+ * 열린다. 017 전 검사가 쓰던 `element.click()` 은 사람이 만들 수 없는 사건(누름 없는 클릭)이라 열지 못한다.
+ * 묻는 것은 그대로다 — 메뉴를 열고 항목을 고르면 그 조작이 일어나는가.
+ */
+async function openMenu() {
+  await userEvent.setup().click(screen.getByRole("button", { name: "로그인 추가 동작" }));
 }
 
 describe("TestList — 이름 변경·삭제 (FR-007)", () => {
@@ -98,8 +105,9 @@ describe("TestList — 이름 변경·삭제 (FR-007)", () => {
 
   it("이름 변경은 PATCH 로 보낸다", async () => {
     await renderList();
-    // 목록 헤더에도 "이름" 이 있으므로 버튼으로 좁힌다.
-    act(() => screen.getByRole("button", { name: "이름" }).click());
+    // 목록 헤더에도 "이름" 이 있으므로 역할로 좁힌다. 017 T056 — 행 메뉴가 Radix 메뉴가 되며 항목의 역할이
+    // 버튼에서 **메뉴 항목**(`menuitem`)으로 바뀌었다. 보조기술이 듣는 역할이 실제로 바뀐 것이다.
+    act(() => screen.getByRole("menuitem", { name: "이름" }).click());
 
     const input = screen.getByLabelText("새 이름") as HTMLInputElement;
     expect(input.value).toBe("로그인");
@@ -136,7 +144,7 @@ describe("TestList — 이름 변경·삭제 (FR-007)", () => {
       />,
     );
     await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
-    openMenu();
+    await openMenu();
 
     expect(screen.queryByText("정의 보기")).toBeNull();
     expect(screen.getAllByText("편집").length).toBe(1);

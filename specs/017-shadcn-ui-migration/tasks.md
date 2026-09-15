@@ -161,9 +161,9 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 
 ### 4-D. 메뉴
 
-- [ ] T055 [US2] `frontend/src/ui/DropdownMenu.tsx` 를 shadcn `dropdown-menu` 이식으로 — `Menu·MenuTrigger·MenuContent·MenuItem`(`data-variant=danger` → `text-fail`), 포털, z 40, 내용 `bg-panel border-hair-2 shadow-e2 rounded-base`, 움직임 없음, 트리거 `aria-haspopup`·`aria-expanded`
-- [ ] T056 [US2] `frontend/src/pages/TestList.tsx` 행 메뉴를 `Menu` 로 옮긴다 — 트리거는 `Button size="icon"`(`aria-label` `{행 이름} 추가 동작` 유지), 항목에 `data-row-menu-item` 유지, 내용에 `data-row-menu={row.id}` 유지. 수제 포털·`MENU_Z`·위치 계산·스크롤 1px 닫힘·창 크기 닫힘 코드를 지운다. `RowMenuVisible`·`TestListActions`·`EditEntryPoints` 의 열기를 `userEvent` 로 바꾸고 test-ledger 에 적는다. `ImplementationCount` `RETIRED` 에 수제 행 메뉴 추가 (T055 의존)
-- [ ] T057 [P] [US2] 동작 테스트 `frontend/tests/MenuKeyboard.test.tsx` — 트리거에 초점을 두고 Enter·Space·ArrowDown 으로 열림 · 화살표로 항목 이동 · Esc 로 닫히고 트리거로 초점 복귀 (FR-012 · T056 의존)
+- [X] T055 [US2] `frontend/src/ui/DropdownMenu.tsx` 를 shadcn `dropdown-menu` 이식으로 — `Menu·MenuTrigger·MenuContent·MenuItem`(`data-variant=danger` → `text-fail`), 포털, z 40, 내용 `bg-panel border-hair-2 shadow-e2 rounded-base`, 움직임 없음, 트리거 `aria-haspopup`·`aria-expanded`
+- [X] T056 [US2] `frontend/src/pages/TestList.tsx` 행 메뉴를 `Menu` 로 옮긴다 — 트리거는 `Button size="icon"`(`aria-label` `{행 이름} 추가 동작` 유지), 항목에 `data-row-menu-item` 유지, 내용에 `data-row-menu={row.id}` 유지. 수제 포털·`MENU_Z`·위치 계산·스크롤 1px 닫힘·창 크기 닫힘 코드를 지운다. `RowMenuVisible`·`TestListActions`·`EditEntryPoints` 의 열기를 `userEvent` 로 바꾸고 test-ledger 에 적는다. `ImplementationCount` `RETIRED` 에 수제 행 메뉴 추가 (T055 의존)
+- [X] T057 [P] [US2] 동작 테스트 `frontend/tests/MenuKeyboard.test.tsx` — 트리거에 초점을 두고 Enter·Space·ArrowDown 으로 열림 · 화살표로 항목 이동 · Esc 로 닫히고 트리거로 초점 복귀 (FR-012 · T056 의존)
 
 ### 4-E. 탭과 분절 선택
 

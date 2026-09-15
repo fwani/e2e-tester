@@ -17,9 +17,9 @@
 
 | 파일 | verifies (바뀌면 안 되는 것) | change (판정 방법) | why | 전→후 단언 | 상태 |
 |---|---|---|---|---|---|
-| `RowMenuVisible.test.tsx` | 행 메뉴가 표에 잘리지 않고 보이며, 다시 누르면 닫힌다 | `.click()` → `userEvent.click()` 으로 연다. 위치 인라인 스타일 읽기 → 메뉴 내용이 문서에 있고 표 컨테이너 밖(포털)에 있음을 확인 | Radix `DropdownMenu` 트리거는 `click` 이 아니라 pointerdown·keydown 으로 연다. 위치는 부품이 계산한다 | | ⬜ |
-| `TestListActions.test.tsx` | 행 메뉴에서 편집·이름 바꾸기·삭제에 닿는다 | 메뉴 열기를 `userEvent` 로 | 같음 | | ⬜ |
-| `EditEntryPoints.test.tsx` | 행 메뉴의 「편집」이 편집 국면으로 간다 | 같음 | 같음 | | ⬜ |
+| `RowMenuVisible.test.tsx` | 행 메뉴가 표에 잘리지 않고 보이며, 다시 누르면 닫힌다 | `.click()` → `userEvent.click()` 으로 연다. 위치 인라인 스타일 읽기 → 메뉴 내용이 문서에 있고 표 컨테이너 밖(포털)에 있음을 확인 | 같음 (4 검사 · 판정 대상만 옮김) | ✅ T056 — **실제 변경**: 포인터 누름(`userEvent.click`)으로 연다. 「문서 바닥에 붙는다」·「창 기준 고정 배치」를 메뉴 자신이 아니라 Radix 가 자리 잡는 감싸개(`data-radix-popper-content-wrapper`)에서 본다. 「닫으면 사라진다」는 다시 누르기 대신 **Esc** 로 닫는다 — 모달 메뉴가 열린 동안 뒤쪽(여는 단추 포함)은 포인터를 받지 않아 jsdom 에서 다시 누를 수 없다. 실제 브라우저에서 다시 누르면 바깥 누름으로 닫힌다. 여는 법의 키보드 경로는 `MenuKeyboard` 가 본다 |
+| `TestListActions.test.tsx` | 행 메뉴에서 편집·이름 바꾸기·삭제에 닿는다 | 메뉴 열기를 `userEvent` 로 | 같음 | ✅ T056 — 열기를 `userEvent.click` 으로. 「이름」 항목을 역할 `button` 이 아니라 `menuitem` 으로 찾는다 — 보조기술이 듣는 역할이 실제로 바뀌었다 |
+| `EditEntryPoints.test.tsx` | 행 메뉴의 「편집」이 편집 국면으로 간다 | 같음 | 같음 | ✅ T056 — 열기 2곳을 `userEvent.click` 으로 |
 | `PacingControl.test.tsx` | 고른 실행 속도가 남는다 | `aria-pressed` → `role="radio"` + `aria-checked` | `ToggleGroup type="single"` 은 배타 선택을 라디오로 알린다 (FR-013) | 4→4 | ⬜ |
 | `RunnerPacing.test.tsx` | 실행 중에 바꾼 속도가 남는다 | 같음 | 같음 | | ⬜ |
 | `NoticesAreToasts.test.tsx` | 목록의 알림이 내용을 밀어내지 않고 한 층에 뜬다 | 진행 중 세션 경우 — 토스트가 아니라 **흐름 안 띠 하나**가 그 사실을 말함을 확인한다 | B-02 · FR-018b. 같은 사실을 두 자리가 말했다 | 2→5 (세션 경우) | ✅ T023 |
@@ -29,14 +29,16 @@
 | `WorkbenchHeight.test.tsx` | 작업 화면이 창 높이에 맞고 Step 목록이 스크롤 영역이다 | 높이 인라인 읽기 자리 조정 (머리띠가 밖으로 나온 뒤의 요소) | 같음 | | ⬜ |
 | `VerticalSplit.test.ts` · `TargetPane.test.tsx` · `ComposePhase.test.tsx` | 국면별 대상 앱 자리의 배치 판단 | 만들기 국면의 `targetSlot` 기대값 `fixed(88)` → `content` | B-04 · v3 L5 — 판단 자체가 바뀐다. **테스트가 지키던 성질(표가 결정하고 부모가 내려준다)은 같다** | | ⬜ |
 | `StepRowLayout.test.tsx` · `SavePlacement.test.tsx` · `RerecordBandPlacement.test.tsx` | Step 패널 머리·바닥의 구성 | 바닥 상한을 배치 표에서 읽는 형태로 | B-03 · v3 L4 | | ⬜ |
-| `DetailPlacement.test.tsx` · `DetailBlocksMirrorInput.test.tsx` | Step 상세 판의 자리·미러 입력 차단 | 판이 `DetailPanel`(비모달 Dialog) 로 그려진 뒤 같은 속성을 읽는다 | research R7 | | ⬜ |
+| `DetailPlacement.test.tsx` · `DetailBlocksMirrorInput.test.tsx` | Step 상세 판의 자리·미러 입력 차단 | 판이 `DetailPanel`(비모달 Dialog) 로 그려진 뒤 같은 속성을 읽는다 | 같음 | 불필요 (T052) — 판을 `data-workbench-step-detail` 로 찾으므로 `DetailPanel` 로 그린 뒤에도 그대로 통과 |
 | `DesignTokens.test.tsx` · `InteractionStates.test.tsx` · `FocusRing.test.tsx` | 부품이 정본 치수·상태·초점을 지킨다 | 부품 파일이 `cva` 형태로 바뀐 뒤 찾는 문자열 갱신. 경로(`src/ui/*.tsx`)는 그대로 | research R1 · R5 | | ⬜ |
-| `ClassConflict.test.ts` | 나중에 적은 클래스가 진다 | 헬퍼가 `cva`·`cn` 을 읽는다 (guards H-1) | research R9 ① | | ⬜ |
-| `ImplementationCount.test.ts` | 구현이 또 한 벌 생기지 않는다 | `RETIRED` 에 옛 모달·수제 메뉴·옛 겹침 판 추가 | 옛 구현 삭제를 센다 | 늘어남 | ⬜ |
-| `ImportPreview.test.tsx` · `InlineSecret.test.tsx` · `TestGroups.test.tsx` | 선택칸으로 고른 값이 반영된다 | **변경 없음 예상** — `NativeSelect` 는 실제 `<select>` 다 | research R2 | | ⬜ |
-| `StepRowActions.test.tsx` · `RerecordStart.test.tsx` · `DeleteOutcome.test.tsx` | 체크박스로 고른 Step | **변경 없음 예상** — `Checkbox` 는 실제 `<input type=checkbox>` 다 | research R2 | | ⬜ |
-| 확인 대화상자를 여는 화면 테스트 (`SaveNamePrompt` · `RunTrigger` · `RunFinished` · `PauseTransition` 등) | 확인 후의 동작 | 대화상자가 열린 동안 뒤쪽 요소를 `getByRole` 로 찾던 순서를 **닫은 뒤**로 | 모달이 뒤쪽에 `aria-hidden` 을 건다 — 테스트 라이브러리가 접근 불가 요소를 찾지 않는다 | | ⬜ |
+| `ClassConflict.test.ts` | 나중에 적은 클래스가 진다 | 헬퍼가 `cva`·`cn` 을 읽는다 (guards H-1) | 그대로 | ✅ T012 (Foundational) |
+| `ImplementationCount.test.ts` | 구현이 또 한 벌 생기지 않는다 | `RETIRED` 에 옛 모달·수제 메뉴·옛 겹침 판 추가 | 옛 구현 삭제를 센다 | +5 | ✅ T054·T056 — `RETIRED` 는 파일 존재를 보므로 **이름 단위 퇴역 목록**을 새로 뒀다 (넓힌 가드 표) |
+| `ImportPreview.test.tsx` · `InlineSecret.test.tsx` · `TestGroups.test.tsx` | 선택칸으로 고른 값이 반영된다 | **변경 없음 예상** — `NativeSelect` 는 실제 `<select>` 다 | 같음 | 불필요 (T038·T045·T047) — 예상대로 그대로 통과 |
+| `StepRowActions.test.tsx` · `RerecordStart.test.tsx` · `DeleteOutcome.test.tsx` | 체크박스로 고른 Step | **변경 없음 예상** — `Checkbox` 는 실제 `<input type=checkbox>` 다 | 같음 | 체크박스는 불필요(예상대로). **`DeleteOutcome` 은 행 메뉴 때문에 바뀌었다** (T056) — 메뉴를 `userEvent.click` 으로 열고, 메뉴의 「삭제」를 `menuitem` 으로 찾는다. 두 「삭제」(메뉴 항목 · 행 안 확인 단추)가 이제 역할로 갈린다 |
+| 확인 대화상자를 여는 화면 테스트 (`SaveNamePrompt` · `RunTrigger` · `RunFinished` · `PauseTransition` 등) | 확인 후의 동작 | 대화상자가 열린 동안 뒤쪽 요소를 `getByRole` 로 찾던 순서를 **닫은 뒤**로 | 같음 | 불필요 (T050·T051) — 확인 창을 누르는 `SaveNamePrompt`·`TestDefinition` 이 `document.querySelector` 로 찾아 포털·`aria-hidden` 의 영향을 받지 않았다 |
 | `BeforeAfterParity.test.ts` | 전환 전후 화면이 같다 | 보고서 갱신 · `INTENDED` 추가 | 매 단계 | | ⬜ |
+
+**환경 보완 (T056)** — `tests/setup/dom.ts` 가 jsdom 의 `el.matches(':popover-open')`·`el.matches(':modal')` 에 바로 거짓을 돌려준다. jsdom 이 이 둘에 한 번 약 150ms 를 써 Radix 메뉴·툴팁을 여는 검사가 2~10초씩 걸리고 5초 제한을 넘었다(floating-ui 가 조상마다 묻는다). jsdom 에는 최상위 층이 없어 **같은 답을 빨리 낸다** — 판정을 바꾸거나 제한을 늘리지 않았다 (research S3 원인 판명).
 
 ## 넓힌 가드 — 판정 대상이 늘어난 것
 
@@ -62,6 +64,7 @@
 | US1 끝 (2026-09-15) | 113 | **2197** (+13) | 640 (±0) | 0 | `ToastPlacement` 에 알림 층 높이·배제 조건·복사본 없음·띠 표식·`aria-live` 단언 · `NoticesAreToasts` 세션 경우를 「한 자리가 말한다 · 복귀 조작 하나」로 |
 | US2 4-A·4-B 끝 (2026-09-15) | 113 | **2203** (+6) | 640 (±0) | 0 | G-B 가 조립 조합의 한 낱말짜리 값을 읽는지 자체 점검(+1 · T029) · 템플릿 구멍 판정 자체 점검 4 + 전수 1(+5 · N-04). 화면 전환(원시 요소 77 → 부품)에서 **바꾼 단언은 없다** — 테스트가 역할·이름·`data-*` 로 찾으므로 부품이 감싸도 그대로 통과했다 |
 | US2 4-C 끝 (2026-09-15) | 116 | **2236** (+33) | 640 (±0) | 0 | 새 동작 테스트 `DialogFocus`(7 검사) · `ToastOverModal`(4) · `MirrorInputWithDialog`(2) · `ImplementationCount` 이름 단위 퇴역(+5). 새 파일의 첫 판에 무른 단언 7개(`toBeDefined` · `not.toBeNull`)가 있었다 — `data-state`·`aria-live`·`role` 의 **구체 값**으로 바꿔 무른 단언을 늘리지 않았다. 대화상자 전환에서 **바꾼 기존 단언은 없다** — 확인 창을 누르는 두 파일(`SaveNamePrompt`·`TestDefinition`)이 `document.querySelector` 로 찾아 포털과 `aria-hidden` 의 영향을 받지 않았다 |
+| US2 4-D 끝 (2026-09-15) | 117 | **2252** (+16) | **639** (−1) | 0 | 새 동작 테스트 `MenuKeyboard`(7 검사 — Enter·Space·↓ 로 열기 · 화살표 · Esc 복귀 · 항목 선택 · 실제 행 단추의 `aria-haspopup`·`aria-expanded`). 무른 단언 −1 은 `RowMenuVisible` 의 「메뉴가 열렸다」를 `not.toBeNull()` 에서 `data-state` 값으로 바꾼 것 |
 
 ## 새로 더하는 테스트
 

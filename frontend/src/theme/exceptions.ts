@@ -74,15 +74,14 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
   {
     file: "frontend/src/pages/TestList.tsx",
     pattern:
-      "^(gridTemplateColumns|position|top|left|zIndex|visibility|display|flexDirection|gap|padding|width|minWidth|height|minHeight|paddingTop|paddingBottom)$",
+      "^(gridTemplateColumns|display|gap|padding|width|height|minHeight|paddingTop|paddingBottom)$",
     axis: "inline-style",
     reason:
-      "세 자리가 **렌더 시점에야 값이 정해진다.** (1) 행 메뉴는 누른 행의 화면 좌표에 " +
-      "맞춰 뜬다 — `menuPos` 는 `getBoundingClientRect()` 로 잰 값이고, 자리를 재기 " +
-      "전에는 그리지 않는다(그리면 왼쪽 위에서 제자리로 튄다). (2) 표 머리와 행의 " +
-      "격자 열은 **같은 상수**를 써야 하고(FR-273 · V-08) 두 곳에 적으면 어긋난다 — " +
-      "값을 복제하지 않으려고 상수 참조를 남긴다. (3) 행은 이름 변경·삭제 확인이 " +
-      "**안에서 펼쳐질 때만** 높이를 늘린다 — 펼침 여부는 렌더 시점의 상태다.",
+      "두 자리가 **렌더 시점에야 값이 정해진다.** (1) 표 머리와 행의 격자 열은 **같은 " +
+      "상수**를 써야 하고(FR-273 · V-08) 두 곳에 적으면 어긋난다 — 값을 복제하지 않으려고 " +
+      "상수 참조를 남긴다. (2) 행은 이름 변경·삭제 확인이 **안에서 펼쳐질 때만** 높이를 " +
+      "늘린다 — 펼침 여부는 렌더 시점의 상태다. 행 메뉴의 화면 좌표(`menuPos`)는 017 T056 에서 " +
+      "`ui/DropdownMenu` 로 옮기며 지웠다.",
     requirement: "015 FR-005 · FR-273 · 013 UC-013-01",
   },
   {

@@ -9,6 +9,7 @@
  * 렌더해 **진입점 → 도착 화면**을 실제로 걷는다.
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "../src/App";
@@ -210,7 +211,8 @@ describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", ()
     render(<App />);
     await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
 
-    act(() => screen.getByLabelText("로그인 추가 동작").click());
+    // 017 T056 — Radix 메뉴는 포인터 누름으로 열린다 (`TestListActions` 의 `openMenu` 주석).
+    await userEvent.setup().click(screen.getByLabelText("로그인 추가 동작"));
     act(() => screen.getByText("편집").click());
 
     // 도착한 화면에서 실제로 고칠 수 있다 — 저장 컨트롤이 있다.
@@ -237,7 +239,8 @@ describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", ()
     render(<App />);
     await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
 
-    act(() => screen.getByLabelText("로그인 추가 동작").click());
+    // 017 T056 — Radix 메뉴는 포인터 누름으로 열린다 (`TestListActions` 의 `openMenu` 주석).
+    await userEvent.setup().click(screen.getByLabelText("로그인 추가 동작"));
     expect(screen.queryByText("정의 보기")).toBeNull();
   });
 });

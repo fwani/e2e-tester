@@ -25,8 +25,16 @@
  * 잘림도 겹침도 브라우저의 레이아웃 결과이고 jsdom 은 그것을 계산하지 않는다. 그래서
  * `WorkbenchHeight.test.tsx` 와 같은 방식으로 **결과가 아니라 구조**를 잰다 — 메뉴가
  * 잘라 내는 조상 **밖**에 있는가. 밖에 있으면 잘릴 수 없다.
+ *
+ * ## 017 T056 — 메뉴를 그리는 것이 Radix 가 됐다. **묻는 것은 그대로다**
+ *
+ * 포털·좌표 계산을 손으로 하던 판이 `ui/DropdownMenu` 가 됐다. Radix 는 메뉴를 **자리 잡는 감싸개**
+ * (`data-radix-popper-content-wrapper`) 안에 두고 그 감싸개를 문서 바닥에 붙이며 창 기준 고정 배치로 놓는다. 그래서
+ * 「바닥에 붙는다」·「창 기준이다」를 메뉴 자신이 아니라 **그 감싸개**에서 본다. 여는 법은 포인터 누름이고(누름 없는
+ * `click()` 으로는 열리지 않는다), 닫는 법은 Esc 다 — 열린 동안 뒤쪽은 포인터를 받지 않는다.
  */
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TestList } from "../src/pages/TestList";
@@ -64,9 +72,9 @@ const noop = () => undefined;
 async function openRowMenu() {
   render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} onOpenDefinition={noop} />);
   await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
-  act(() => screen.getByRole("button", { name: "로그인 추가 동작" }).click());
+  await userEvent.setup().click(screen.getByRole("button", { name: "로그인 추가 동작" }));
   const menu = document.querySelector<HTMLElement>("[data-row-menu]");
-  expect(menu, "메뉴가 열리지 않았다").not.toBeNull();
+  expect(menu?.getAttribute("data-state"), "메뉴가 열리지 않았다").toBe("open");
   return menu as HTMLElement;
 }
 
@@ -75,12 +83,13 @@ describe("행 메뉴는 잘라 내는 조상 밖에 있다", () => {
     const menu = await openRowMenu();
     // 행 안에 있으면 목록 스크롤 상자와 `.pane` 이 잘라 낸다 — 그것이 보고된 결함이다.
     expect(menu.closest("[data-test-row]")).toBeNull();
-    expect(menu.parentElement).toBe(document.body);
+    expect(menu.closest("[data-radix-popper-content-wrapper]")?.parentElement).toBe(document.body);
   });
 
   it("자리는 창 기준이다 — 스크롤 상자 안의 자리로 잡으면 다시 잘린다", async () => {
     const menu = await openRowMenu();
-    expect(menu.style.position).toBe("fixed");
+    const placed = menu.closest<HTMLElement>("[data-radix-popper-content-wrapper]");
+    expect(placed?.style.position).toBe("fixed");
   });
 
   it("메뉴 항목은 그대로 있다 — 자리를 옮긴 것이지 없앤 것이 아니다", async () => {
@@ -93,7 +102,7 @@ describe("행 메뉴는 잘라 내는 조상 밖에 있다", () => {
 
   it("닫으면 문서에서 사라진다 — 떠 있는 채로 남지 않는다", async () => {
     await openRowMenu();
-    act(() => screen.getByRole("button", { name: "로그인 추가 동작" }).click());
+    await userEvent.setup().keyboard("{Escape}");
     expect(document.querySelector("[data-row-menu]")).toBeNull();
   });
 });
