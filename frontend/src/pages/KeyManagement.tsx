@@ -24,6 +24,7 @@ import { DESTROY_CONFIRM, secrets, type KeyStatus } from "../api/client";
 import { Button } from "../ui/Button";
 
 import { Chip } from "../ui/Chip";
+import { Input } from "../ui/Input";
 const PASSPHRASE_ENV = "ITB_KEY_PASSPHRASE";
 
 export interface KeyManagementProps {
@@ -235,7 +236,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
             Step 이 사유와 함께 실패합니다.
           </p>
           <label htmlFor="unlock-passphrase">암호구</label>
-          <input
+          <Input
             id="unlock-passphrase"
             type="password"
             value={unlockPassphrase}
@@ -259,12 +260,12 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
                 "백엔드를 다시 띄우면 다시 잠깁니다."}
           </p>
           <div>
-            <button
+            <Button
               disabled={busy || unlockPassphrase === "" || unlockTooShort}
               onClick={unlock}
             >
               잠금 해제
-            </button>
+            </Button>
           </div>
           <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
             사람이 없는 실행(CI 등)에서는 백엔드 프로세스에 환경 변수{" "}
@@ -302,7 +303,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         >
           <strong>키 쌍 만들기</strong>
           <label htmlFor="passphrase">암호구 (선택)</label>
-          <input
+          <Input
             id="passphrase"
             type="password"
             value={passphrase}
@@ -329,9 +330,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           </p>
           <div>
             {/* 제약에 맞지 않으면 제출 자체를 막는다 — 실패를 겪게 할 이유가 없다. */}
-            <button disabled={busy || tooShort} onClick={generate}>
+            <Button disabled={busy || tooShort} onClick={generate}>
               키 쌍 만들기
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -367,7 +368,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           </p>
 
           <label htmlFor="regen-passphrase">새 암호구 (선택, 교체할 때만 적용)</label>
-          <input
+          <Input
             id="regen-passphrase"
             type="password"
             value={newPassphrase}
@@ -387,9 +388,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           <label htmlFor="destroy-confirm">
             확인 문구 — <span className="font-mono">{DESTROY_CONFIRM}</span> 를 그대로 입력하세요
           </label>
-          <input
+          <Input
             id="destroy-confirm"
-            className="font-mono"
+            font="mono"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             placeholder={DESTROY_CONFIRM}
@@ -397,9 +398,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           />
 
           <div className="flex items-center gap-s2">
-            <button disabled={busy || !confirmed || newTooShort} onClick={regenerate}>
+            <Button disabled={busy || !confirmed || newTooShort} onClick={regenerate}>
               키 교체
-            </button>
+            </Button>
             <Button disabled={busy || !confirmed} onClick={destroy}>
               키 삭제
             </Button>

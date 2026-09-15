@@ -15,6 +15,7 @@
  */
 import { ApiError } from "../api/client";
 import type { Category, ErrorBody } from "../types/generated/error-response";
+import { Button } from "../ui/Button";
 
 /** 화면이 상태에 담는 형태. 문자열 대신 이것을 담아야 다음 행동이 살아남는다. */
 export interface ErrorInfo {
@@ -184,9 +185,9 @@ export function ErrorNotice({
       </div>
       {action !== null && (
         <div>
-          <button data-error-action onClick={action.onClick}>
+          <Button data-error-action onClick={action.onClick}>
             {action.label}
-          </button>
+          </Button>
         </div>
       )}
     </div>

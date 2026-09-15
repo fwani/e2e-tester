@@ -139,13 +139,18 @@ export function TestSelectionBar({
       data-test-selection-bar
       className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
-      <span className="font-sans text-[13px] font-semibold leading-none">{selectedCount}개 선택됨</span>
+      {/*
+        **이 둘은 줄바꿈하지도 줄어들지도 않는다** (017 B-07). 선택칸이 남은 폭을 전부 가져가던 때
+        좁은 창에서 「3개 선택됨」이 두 줄로 꺾이고 「보이는 것 전부 선택」이 잘렸다.
+      */}
+      <span className="font-sans text-[13px] font-semibold leading-none whitespace-nowrap shrink-0">{selectedCount}개 선택됨</span>
       {/*
         **대상은 지금 화면에 보이는 것뿐이다** (FR-428 · SC-625). 걸러진 것까지 고르면
         사용자가 보지 못한 테스트가 삭제 대상이 된다.
       */}
       <Button
         variant="nav"
+        layout="whitespace-nowrap shrink-0"
         onClick={allVisibleSelected ? onClear : onSelectAllVisible}
         disabled={busy || visibleCount === 0}
       >

@@ -82,6 +82,45 @@ function assembledClassNames(): string[] {
   return out;
 }
 
+/**
+ * 템플릿 구멍이 `undefined`·`null`·`false` 를 **글자로** 내놓는가. 017 N-04.
+ *
+ *     className={`${on ? undefined : "text-ink-3"} p-1`}   위반 — 켜진 쪽에 `undefined` 라는 클래스가 붙는다
+ *     className={`${on && "text-ink-3"} p-1`}              위반 — 꺼진 쪽에 `false` 라는 클래스가 붙는다
+ *     className={on ? undefined : "text-ink-3"}             정상 — React 가 속성을 빼 준다
+ *
+ * React 는 `className={undefined}` 를 속성 없음으로 처리하지만 템플릿 문자열 안에서는 `String(undefined)` 가
+ * 된다. 015 의 기계적 치환(569e51e)이 가져오기 미리보기의 시트 행에 이것을 남겼다 — 위의 조립 검사는
+ * 구멍 **앞**에 클래스 글자가 붙은 형태만 보므로 놓쳤다.
+ */
+function holeRendersNothingAsText(expr: string): boolean {
+  if (!expr.trimStart().startsWith("`")) return false;
+  for (const ins of expr.matchAll(/\$\{([^]*?)\}/g)) {
+    const raw = ins[1] as string;
+    const q = raw.indexOf("?");
+    const branches = q >= 0 ? raw.slice(q + 1) : raw;
+    if (/\b(?:undefined|null)\b/.test(branches)) return true;
+    if (q < 0 && raw.includes("&&")) return true;
+  }
+  return false;
+}
+
+function textualNothingHoles(): string[] {
+  const out: string[] = [];
+  const files = execFileSync("find", ["src", "-name", "*.tsx"], { cwd: ROOT, encoding: "utf8" })
+    .trim()
+    .split("\n");
+  for (const rel of files) {
+    const txt = readFileSync(join(ROOT, rel), "utf8");
+    for (const m of txt.matchAll(/className=\{([^]*?)\}\s*(?:>|\n|[a-zA-Z-]+=)/g)) {
+      const expr = m[1] as string;
+      if (!holeRendersNothingAsText(expr)) continue;
+      out.push(`  ${rel}:${txt.slice(0, m.index).split("\n").length}  ${expr.replace(/\s+/g, " ").slice(0, 90)}`);
+    }
+  }
+  return out;
+}
+
 describe("G-B — 코드가 쓰는 클래스가 실제로 CSS 를 만든다", () => {
   const generated = generatedClasses();
   /*
@@ -131,6 +170,21 @@ describe("G-B — 코드가 쓰는 클래스가 실제로 CSS 를 만든다", ()
       "이 클래스는 아무 CSS 도 만들지 않는다. 화면은 스타일 없이 렌더된다.\n" +
         "오타이거나, Tailwind 가 스캔하지 못한 이름이다 (LC-4 ③).\n" +
         list.join("\n"),
+    ).toEqual([]);
+  });
+
+  it("템플릿 구멍이 undefined·null·false 를 클래스 이름으로 내놓지 않는다 (017 N-04)", () => {
+    // 검사가 헛돌지 않는다 — 실제로 잡았던 형태와 정상 형태를 먼저 가른다.
+    expect(holeRendersNothingAsText('`${on ? undefined : "text-ink-3"} py-[2px]`')).toBe(true);
+    expect(holeRendersNothingAsText('`${on && "text-ink-3"} py-[2px]`')).toBe(true);
+    expect(holeRendersNothingAsText('`row${on ? " on" : ""}`')).toBe(false);
+    expect(holeRendersNothingAsText('on ? undefined : "text-ink-3"')).toBe(false);
+    const holes = textualNothingHoles();
+    expect(
+      holes,
+      "템플릿 문자열 안에서 undefined·null·false 는 글자가 된다 — 없는 클래스 이름이 붙는다.\n" +
+        "조건마다 완성된 문자열을 고르거나 cn(…) 으로 잇는다.\n" +
+        holes.join("\n"),
     ).toEqual([]);
   });
 

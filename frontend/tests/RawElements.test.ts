@@ -47,8 +47,12 @@ const ROOT = join(__dirname, "..");
  * |---|---|---|
  * | Foundational | — | 108 |
  * | T026 `navLinkClasses` 26곳 → `Button variant="nav"` | `<button>` −26 | 82 |
+ * | 4-B 화면 조작 요소 → `Button`·`Input`·`Textarea`·`NativeSelect`·`Checkbox`·`Radio`·`FileButton` (T034·T036~T043·T046·T047 · SessionScreen·EditView·ChatPanel 은 T067 을 앞당김) | `<button>` −19 · `<input>` −50 · `<select>` −4 · `<textarea>` −4 | 5 |
+ *
+ * 남은 5 는 전부 **고르기 단추**다 — 산출물 탭(T058) · 실행 속도(T060) · 그룹 칩 2 · 만드는 방법 카드(T061).
+ * 모양이 아니라 동작(하나만 고른다 · 화살표 이동)이 바뀌므로 `Tabs`·`ToggleGroup` 과 함께 옮긴다.
  */
-const REMAINING_BUDGET = 82;
+const REMAINING_BUDGET = 5;
 
 const RAW = /<(button|input|select|textarea)\b/g;
 

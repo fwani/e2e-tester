@@ -38,6 +38,9 @@ import { ACTION_LABEL } from "../../lib/wording";
 import { chipToneForTone } from "../../theme/tone";
 import type { PhaseBar as PhaseBarModel } from "./model";
 import { Chip } from "../../ui/Chip";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+import { NativeSelect, NativeSelectOption } from "../../ui/NativeSelect";
 /**
  * 이름을 그 자리에서 고치는 데 필요한 것 (011 · `test.rename`).
  *
@@ -105,20 +108,20 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
         (SC-627): 그룹을 쓰지 않는 사용자에게 새 칸을 강요하지 않는다.
       */}
       {group !== undefined && group.options.length > 0 && (
-        <select
+        <NativeSelect
           data-phase-group
           aria-label="저장할 그룹"
           value={group.value ?? ""}
           onChange={(e) => group.onChange(e.target.value === "" ? null : e.target.value)}
-          className="m-0 flex-none max-w-[160px]"
+          width="fill" layout="m-0 flex-none max-w-[160px]"
         >
-          <option value="">그룹 없음</option>
+          <NativeSelectOption value="">그룹 없음</NativeSelectOption>
           {group.options.map((g) => (
-            <option key={g.prefix} value={g.prefix}>
+            <NativeSelectOption key={g.prefix} value={g.prefix}>
               {g.name}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       )}
 
       {bar.progressLabel !== null && (
@@ -203,7 +206,7 @@ function PhaseTestName({
       data-phase-test-name
       className="flex items-center gap-s2 max-w-[420px] min-w-0"
     >
-      <input
+      <Input
         data-action="test.rename"
         aria-label={ACTION_LABEL["test.rename"]}
         /*
@@ -213,7 +216,7 @@ function PhaseTestName({
           초점 표시는 테두리와 바탕으로 한다 (정본이 `outline:none` 으로 정한 자리이며
           `theme/exceptions.ts` 에 등록돼 있다).
         */
-        className="font-sans text-[17px] font-bold leading-none whitespace-nowrap overflow-hidden text-ellipsis flex-initial min-w-0 max-w-[300px] w-auto min-h-[26px] px-[6px] border border-transparent bg-transparent text-ink enabled:hover:border-hair-2 focus:border-hair-2 focus:bg-panel focus:outline-none disabled:border-transparent disabled:text-ink-2"
+        variant="title" layout="flex-initial min-w-0 max-w-[300px]"
         value={testName}
         disabled={disabled}
         maxLength={200}
@@ -253,14 +256,14 @@ function PhaseTestName({
             {rename.capability.kind === "disabled" ? rename.capability.reason : ""}
           </span>
           {remedy !== null && (
-            <button
+            <Button
               type="button"
               data-remedy-for="test.rename"
-              className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-sans text-[12px] font-semibold leading-[1.4] underline cursor-pointer flex-none"
+              variant="link" layout="flex-none"
               onClick={() => rename.onRemedy(remedy.action)}
             >
               {ACTION_LABEL[remedy.action]}
-            </button>
+            </Button>
           )}
         </span>
       )}

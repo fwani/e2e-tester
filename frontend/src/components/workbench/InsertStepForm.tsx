@@ -34,6 +34,7 @@ import {
 import type { CapabilityState } from "../../lib/capabilities";
 
 import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
 
 /** 넣을 수 있는 종류의 순서. 자주 쓰는 것부터다. */
 const KINDS: InsertableKind[] = ["navigate", "assert_url", "assert_text", "close_tab"];
@@ -110,9 +111,9 @@ export function InsertStepForm({
       {(kind === "navigate" || kind === "assert_url") && (
         <label className="flex flex-col gap-s1">
           <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">주소</span>
-          <input
+          <Input
             aria-label="주소"
-            className="font-mono"
+            font="mono"
             value={url}
             disabled={!usable}
             maxLength={2000}
@@ -125,7 +126,7 @@ export function InsertStepForm({
       {kind === "assert_text" && (
         <label className="flex flex-col gap-s1">
           <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">기대 텍스트</span>
-          <input
+          <Input
             aria-label="기대 텍스트"
             value={text}
             disabled={!usable}
@@ -139,8 +140,8 @@ export function InsertStepForm({
       {kind === "close_tab" && (
         <label className="flex flex-col gap-s1">
           <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">탭 번호</span>
-          <input
-            aria-label="탭 번호" className="font-mono w-[96px]"
+          <Input
+            aria-label="탭 번호" font="mono" layout="w-[96px]"
             type="number"
             min={0}
             value={tab}

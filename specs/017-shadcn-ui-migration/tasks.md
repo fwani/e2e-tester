@@ -131,23 +131,23 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 - [X] T031 [P] [US2] `frontend/src/ui/NativeSelect.tsx` 를 shadcn `native-select` 이식으로 — 실제 `<select>`, **`w-auto` 가 기본**(정본 `width:100%` 번짐 차단 · B-07), 펼침 표시 `▾`(`aria-hidden`), 감싸개 비활성 점선
 - [X] T032 [P] [US2] `frontend/src/ui/Checkbox.tsx` 를 만든다 — **네이티브** `<input type="checkbox">` 14px 명시(`accent-color` 잉크 · B-08), `checked`·`onCheckedChange`·`onClick` 통과(전파를 삼키지 않는다). `frontend/src/ui/StepRow.tsx` `StepCheck` 가 이것을 쓴다. `StepRowActions`·`RerecordStart`·`DeleteOutcome` 무변경 통과 확인 (research R2)
 - [X] T033 [P] [US2] `frontend/src/ui/Radio.tsx` 를 만든다 — 네이티브 `<input type="radio">`, 크기 명시
-- [ ] T034 [US2] (부분 — `Lbl`·`FieldLabel` 은 T028 에서 `ui/Label` 로 옮겼다. 안쪽 입력 벗기기 제거는 검색 칸을 `Input bare` 로 바꾸는 T047 과 함께) `frontend/src/ui/Field.tsx` 를 고친다 — `Field` 안쪽 입력은 `Input variant="bare"` 를 쓴다(`[&_input]` 벗기기 제거), `FileButton` 이 `multiple` 을 받는다, `cn` 사용 (T028·T029 의존)
+- [X] T034 [US2] `frontend/src/ui/Field.tsx` 를 고친다 — `Field` 안쪽 입력은 `Input variant="bare"` 를 쓴다(`[&_input]` 벗기기 제거), `FileButton` 이 `multiple` 을 받는다, `cn` 사용 (T028·T029 의존)
 - [X] T035 [P] [US2] `frontend/src/ui/Table.tsx` 를 shadcn `table` 이식으로 — `Table·TableHeader·TableBody·TableFooter·TableRow(mark)·TableHead·TableCell`, 머리 칸은 왼쪽 정렬·정본 머리 글꼴을 부품이 정한다(B-09). `rowClasses`·`Row`·`Spacer` 유지. `Tabs`·`Segmented` 는 T052·T053 까지 남긴다
 
 ### 4-B. 화면의 원시 요소를 부품으로 (파일마다 한 커밋 · 커밋마다 G-G 예산을 내린다)
 
-- [ ] T036 [P] [US2] `frontend/src/components/AssertionForm.tsx` — 버튼 1 · 입력 3 · 라디오 3 → `Button`·`Input`·`Radio` (T025·T029·T033 의존)
-- [ ] T037 [P] [US2] `frontend/src/components/BrowserPromptPanel.tsx` — 입력 1 · 파일 입력 1 → `Input`·`FileButton multiple`. `BrowserPrompt.test.tsx` 통과 (T034 의존)
-- [ ] T038 [P] [US2] `frontend/src/components/ErrorNotice.tsx` · `SessionLostBanner.tsx` · `InlineSecretInput.tsx` — 버튼 4 · 입력 2(비밀번호 포함) · 선택칸 1 → 부품. `InlineSecret`·`SensitiveAcrossPhases`·`abnormal/error-notice` 통과 (마스킹 유지)
-- [ ] T039 [P] [US2] `frontend/src/components/StepEditFields.tsx` — 입력 6(숫자 2 포함) → `Input`
-- [ ] T040 [P] [US2] `frontend/src/components/TestBulkConfirm.tsx` · `TestGroupBar.tsx` — 버튼 10 · 입력 3(인라인 이름 고치기 `Input size="sm"`) → 부품. 선택 띠의 「N개 선택됨」·「보이는 것 전부 선택」이 `whitespace-nowrap shrink-0` 을 갖는다 (B-07). `TestListSelection`·`TestGroups` 통과
-- [ ] T041 [P] [US2] `frontend/src/components/workbench/ActionButton.tsx` · `ActionPalette.tsx` — 밑줄 해소 링크 → `Button variant="link"`, 입력 2 · 여러 줄 1 · 지역 `Field` → `Input`·`Textarea variant="ai"`. `AuthoringParity`·`StepInsert` 통과
-- [ ] T042 [P] [US2] `frontend/src/components/workbench/PhaseBar.tsx` · `StepList.tsx` · `WorkArea.tsx` · `InsertStepForm.tsx` — 버튼 3 · 국면 이름 `Input variant="title"` · 선택칸 → `NativeSelect` · 체크박스 → `Checkbox` · 행 선택 글자 단추 → `Button variant="bare"` · 입력 4 · 여러 줄 2. `PhaseBarWidth`·`StepRowLayout`·`StepRowStates`·`ComposePhase` 통과
-- [ ] T043 [P] [US2] `frontend/src/components/workbench/StepDetail.tsx` — 버튼 3 · 입력 4 · 체크박스 1 → 부품 (판 자체는 T050)
-- [ ] T044 [P] [US2] `frontend/src/pages/DraftList.tsx` · `frontend/src/components/LocatorPriorityTable.tsx` — 원시 `<table>` → 표 부품 (B-09). `DraftList`·`DraftsFirstOnEmpty`·`LocatorPriorityTable` 통과
-- [ ] T045 [P] [US2] `frontend/src/pages/ImportPreview.tsx` — 입력 · 체크박스 · 라디오 · 선택칸 · 표 2 → 부품. `ImportPreview.test.tsx` 의 `fireEvent.change` 무변경 통과 확인
-- [ ] T046 [P] [US2] `frontend/src/pages/KeyManagement.tsx` · `SecretValues.tsx` · `ProjectSetup.tsx` — 버튼 14 · 입력 10(비밀번호 4 · 인라인 이름 고치기) → 부품. `KeyManagement`·`ProjectSetup`·`ProjectRowActions` 통과
-- [ ] T047 [US2] `frontend/src/pages/TestList.tsx` — 버튼(행 메뉴 제외) · 검색 입력(`Field` + `Input bare`) · 체크박스 2(머리 전체 선택 포함 · 같은 `Checkbox` · B-08) · 「그룹으로 옮기기」 선택칸 → `NativeSelect`(B-07). `TestListSelection`·`TestListFilters`·`TestGroups` 통과
+- [X] T036 [P] [US2] `frontend/src/components/AssertionForm.tsx` — 버튼 1 · 입력 3 · 라디오 3 → `Button`·`Input`·`Radio` (T025·T029·T033 의존)
+- [X] T037 [P] [US2] `frontend/src/components/BrowserPromptPanel.tsx` — 입력 1 · 파일 입력 1 → `Input`·`FileButton multiple`. `BrowserPrompt.test.tsx` 통과 (T034 의존)
+- [X] T038 [P] [US2] `frontend/src/components/ErrorNotice.tsx` · `SessionLostBanner.tsx` · `InlineSecretInput.tsx` — 버튼 4 · 입력 2(비밀번호 포함) · 선택칸 1 → 부품. `InlineSecret`·`SensitiveAcrossPhases`·`abnormal/error-notice` 통과 (마스킹 유지)
+- [X] T039 [P] [US2] `frontend/src/components/StepEditFields.tsx` — 입력 6(숫자 2 포함) → `Input`
+- [X] T040 [P] [US2] `frontend/src/components/TestBulkConfirm.tsx` · `TestGroupBar.tsx` — 버튼 10 · 입력 3(인라인 이름 고치기 `Input size="sm"`) → 부품. 선택 띠의 「N개 선택됨」·「보이는 것 전부 선택」이 `whitespace-nowrap shrink-0` 을 갖는다 (B-07). `TestListSelection`·`TestGroups` 통과
+- [X] T041 [P] [US2] `frontend/src/components/workbench/ActionButton.tsx` · `ActionPalette.tsx` — 밑줄 해소 링크 → `Button variant="link"`, 입력 2 · 여러 줄 1 · 지역 `Field` → `Input`·`Textarea variant="ai"`. `AuthoringParity`·`StepInsert` 통과
+- [X] T042 [P] [US2] `frontend/src/components/workbench/PhaseBar.tsx` · `StepList.tsx` · `WorkArea.tsx` · `InsertStepForm.tsx` — 버튼 3 · 국면 이름 `Input variant="title"` · 선택칸 → `NativeSelect` · 체크박스 → `Checkbox` · 행 선택 글자 단추 → `Button variant="bare"` · 입력 4 · 여러 줄 2. `PhaseBarWidth`·`StepRowLayout`·`StepRowStates`·`ComposePhase` 통과
+- [X] T043 [P] [US2] `frontend/src/components/workbench/StepDetail.tsx` — 버튼 3 · 입력 4 · 체크박스 1 → 부품 (판 자체는 T050)
+- [X] T044 [P] [US2] `frontend/src/pages/DraftList.tsx` · `frontend/src/components/LocatorPriorityTable.tsx` — 원시 `<table>` → 표 부품 (B-09). `DraftList`·`DraftsFirstOnEmpty`·`LocatorPriorityTable` 통과
+- [X] T045 [P] [US2] `frontend/src/pages/ImportPreview.tsx` — 입력 · 체크박스 · 라디오 · 선택칸 · 표 2 → 부품. `ImportPreview.test.tsx` 의 `fireEvent.change` 무변경 통과 확인
+- [X] T046 [P] [US2] `frontend/src/pages/KeyManagement.tsx` · `SecretValues.tsx` · `ProjectSetup.tsx` — 버튼 14 · 입력 10(비밀번호 4 · 인라인 이름 고치기) → 부품. `KeyManagement`·`ProjectSetup`·`ProjectRowActions` 통과
+- [X] T047 [US2] `frontend/src/pages/TestList.tsx` — 버튼(행 메뉴 제외) · 검색 입력(`Field` + `Input bare`) · 체크박스 2(머리 전체 선택 포함 · 같은 `Checkbox` · B-08) · 「그룹으로 옮기기」 선택칸 → `NativeSelect`(B-07). `TestListSelection`·`TestListFilters`·`TestGroups` 통과
 
 ### 4-C. 대화상자
 
@@ -182,7 +182,7 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 ### 4-G. 부품 층 마감
 
 - [ ] T066 [US2] `frontend/src/ui/Notice.tsx` · `Surface.tsx` · `StepRow.tsx` 의 `[…].filter(Boolean).join(" ")` 을 `cn`·`cva` 로 옮기고 출처 줄을 갱신한다. `ClassConflict` 자체 점검 하한 통과 (T012 의존)
-- [ ] T067 [US2] 남은 원시 요소를 정리한다 — `frontend/src/pages/SessionScreen.tsx` 입력 1 · `frontend/src/pages/EditView.tsx` 버튼 2 · 그 밖 G-G 가 지목하는 자리. **`REMAINING_BUDGET` = 등록된 `raw-element` 예외 수** 에 도달한다 (SC-005)
+- [ ] T067 [US2] (부분 — `SessionScreen` 입력 1·버튼 3 · `EditView` 버튼 1 · `ChatPanel` 여러 줄 1 은 4-B 에서 앞당겨 옮겼다. 남은 원시 요소 5 는 T058·T060·T061 의 고르기 단추) 남은 원시 요소를 정리한다 — `frontend/src/pages/SessionScreen.tsx` 입력 1 · `frontend/src/pages/EditView.tsx` 버튼 2 · 그 밖 G-G 가 지목하는 자리. **`REMAINING_BUDGET` = 등록된 `raw-element` 예외 수** 에 도달한다 (SC-005)
 - [ ] T068 [US2] [contracts/ui-parts.md](contracts/ui-parts.md) §1 `상태` 칸을 전부 ✅ 로 갱신하고, 이식 중 대응표 §2 에 더한 줄을 확인한다. `grep -rn "ui/Modal\|OverlayPane\b\|navLinkClasses\|filter(Boolean).join" frontend/src` 결과 0
 - [ ] T069 [US2] 순회 · L2 를 돌려 `frontend/tests/sweep-report.json` · `frontend/tests/l2-report.json` 을 갱신한다 — 부품 전환에서 생긴 구조 차이(`NativeSelect` 감싸개 · 표 부품 · 포털)를 사유와 함께 `scripts/design_compare_ba.py` `INTENDED` 에 등록하고, 순회에서 부품 층으로 해결된 B-07·B-08·B-09 를 알려진 깨짐 등록부에서 지운다(사라졌을 때만)
 

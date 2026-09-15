@@ -36,6 +36,8 @@ import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
 import type { SlotSize } from "../../lib/layout";
 
 import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+import { Textarea } from "../../ui/Textarea";
 
 export interface WorkAreaProps {
   work: WorkAreaView;
@@ -92,14 +94,14 @@ export function WorkArea({
         <>
           {/* `test.setStartUrl` 의 자리 — 이 국면에서는 작업 영역이다 (FR-235) */}
           <Section title="시작 URL">
-            <input
+            <Input
               id="start-url"
               data-action="test.setStartUrl"
               aria-label="시작 URL"
               value={work.startUrl}
               onChange={(e) => work.onStartUrlChange(e.target.value)}
               placeholder="https://[대상 앱 URL]/login"
-              className="font-mono"
+              font="mono"
             />
           </Section>
 
@@ -145,7 +147,7 @@ export function WorkArea({
             뒤에야 알게 된다. S-15(목록이 0개면 자리도 없다)와 같은 종류의 결함이다.
           */}
           <Section title="자연어 지시">
-            <textarea
+            <Textarea
                 id="ai-instruction"
                 data-action="ai.compose"
                 aria-label="자연어 지시"
@@ -156,7 +158,7 @@ export function WorkArea({
                 placeholder={
                   "로그인한 다음 프로젝트 메뉴로 이동해서\nTEST라는 프로젝트를 생성하고\n프로젝트 목록에 TEST가 있는지 확인해."
                 }
-                className="border-ai min-h-auto"
+                variant="ai" layout="min-h-auto"
               />
             {work.composeReason !== null && (
               <span
@@ -583,7 +585,7 @@ function BlockedAnswer({
           {question}
         </p>
       )}
-      <textarea
+      <Textarea
         id="blocked-answer"
         ref={box}
         rows={3}
@@ -607,7 +609,7 @@ function BlockedAnswer({
             ? "여기에 답을 적으면 AI 가 그 자리에서 이어서 진행합니다."
             : "무엇을 하면 되는지 알려 주면 AI 가 이어서 진행합니다. 예) 저장 버튼은 오른쪽 위 「등록」입니다."
         }
-        className="min-h-auto"
+        layout="min-h-auto"
       />
       <div className="flex items-center gap-s2">
         <Button

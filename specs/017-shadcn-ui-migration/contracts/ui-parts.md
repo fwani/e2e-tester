@@ -22,13 +22,13 @@
 | `cn.ts` | `cn` | — | (로컬) | `[…].filter(Boolean).join(" ")` 37곳 | ✅ T010 |
 | `Button.tsx` | `Button` · `buttonVariants` | raw (+ `Slot` 로 `asChild`) | `button` | `ui/Button` · `navLinkClasses` · 밑줄 해소 링크 3곳 · 클래스 없는 원시 `<button>` 16곳 | ✅ T025·T026 — `nav` 26곳 전환 |
 | `Chip.tsx` | `Chip` · `chipVariants` · `Pill` | raw | `badge` | `ui/Chip` · `chipClasses` | ✅ T027 |
-| `Input.tsx` | `Input` | native | `input` | 원시 텍스트형 `<input>` 40곳 · `ui/Field` 안쪽 벗기기 · 국면 이름 입력 · 인라인 이름 고치기 2곳 | ✅ T029 (화면 적용은 4-B) |
-| `Textarea.tsx` | `Textarea` | native | `textarea` | 원시 `<textarea>` 5곳 (IME 칸 제외) | ✅ T030 (화면 적용은 4-B) |
-| `NativeSelect.tsx` | `NativeSelect` · `NativeSelectOption` | native | `native-select` | 원시 `<select>` 4곳 | ✅ T031 (화면 적용은 4-B) |
-| `Checkbox.tsx` | `Checkbox` | native | (원본 `checkbox` 은 Radix — **쓰지 않는다**, research R2) | 원시 체크박스 5곳 · `StepCheck` | ✅ T032 (화면 적용은 4-B) |
-| `Radio.tsx` | `Radio` | native | (원본 `radio-group` 은 Radix — 쓰지 않는다) | 원시 라디오 4곳 | ✅ T033 (화면 적용은 4-B) |
+| `Input.tsx` | `Input` | native | `input` | 원시 텍스트형 `<input>` 40곳 · `ui/Field` 안쪽 벗기기 · 국면 이름 입력 · 인라인 이름 고치기 2곳 | ✅ T029 · 화면 적용 T036~T047 (`ai` 변종 · `font` 축 추가) |
+| `Textarea.tsx` | `Textarea` | native | `textarea` | 원시 `<textarea>` 5곳 (IME 칸 제외) | ✅ T030 · 화면 적용 T041·T042 |
+| `NativeSelect.tsx` | `NativeSelect` · `NativeSelectOption` | native | `native-select` | 원시 `<select>` 4곳 | ✅ T031 · 화면 적용 T038·T042·T045·T047 (`width` 축 추가) |
+| `Checkbox.tsx` | `Checkbox` | native | (원본 `checkbox` 은 Radix — **쓰지 않는다**, research R2) | 원시 체크박스 5곳 · `StepCheck` | ✅ T032 · 화면 적용 T042·T043·T045·T047 |
+| `Radio.tsx` | `Radio` | native | (원본 `radio-group` 은 Radix — 쓰지 않는다) | 원시 라디오 4곳 | ✅ T033 · 화면 적용 T036·T045 |
 | `Label.tsx` | `Label` · `Lbl` · `FieldLabel` | raw | `label` (Radix `Label` 은 쓰지 않는다 — 텍스트 선택 방지뿐) | `ui/Field` 의 `Lbl`·`FieldLabel` · 전역 `label{}` 에 기대던 폼 라벨 | ✅ T028 |
-| `Field.tsx` | `Field` · `FileButton` · `CommitBar` · `AnswerQuestion` | raw | — (015 계승) | 같음. `FileButton` 이 `multiple` 을 받는다 (`BrowserPromptPanel`) | ⬜ |
+| `Field.tsx` | `Field` · `FileButton` · `CommitBar` · `AnswerQuestion` | raw | — (015 계승) | 같음. `FileButton` 이 `multiple` 을 받는다 (`BrowserPromptPanel`) | ✅ T034 — 안쪽 입력 벗기기를 지우고 `Input bare` 로 |
 | `Dialog.tsx` | `Dialog` · `DialogContent` · `DialogHeader` · `DialogTitle` · `DialogDescription` · `DialogFooter` · `DialogClose` | **radix** `Dialog` | `dialog` | `SessionScreen` 지역 `Modal` (닫기·재실행·떠나기 확인) · `ui/Modal` | ⬜ |
 | `AlertDialog.tsx` | `AlertDialog` · `AlertDialogContent` · … · `AlertDialogAction` · `AlertDialogCancel` | **radix** `AlertDialog` | `alert-dialog` | `EditView` 저장 안 한 채 떠나기 확인 | ⬜ |
 | `OverlayPane.tsx` | `DetailPanel` · `DetailPanelTitle` | **radix** `Dialog` `modal={false}` · 포털 없음 | — (research R7) | `ui/Surface` `OverlayPane` · `StepDetail` 의 `role="dialog"` 수제 판 | ⬜ |
@@ -37,7 +37,7 @@
 | `ToggleGroup.tsx` | `ToggleGroup` · `ToggleGroupItem` (`appearance`: `segmented` · `filter` · `chip` · `card`) | **radix** `ToggleGroup` `type="single"` | `toggle-group` · `toggle` | `ui/Table` `Segmented` · `PacingControl` · `TestList` 거르기·정렬 · `TestGroupBar` 칩 · `WorkArea` 만드는 방법 카드 · `InsertStepForm` 가짜 라디오 2곳 | ⬜ |
 | `Tooltip.tsx` | `TooltipProvider` · `Tooltip` · `Truncate` | **radix** `Tooltip` | `tooltip` | 잘린 글자·아이콘 단추의 `title` 만으로 보이던 전체 이름 (비활성 사유의 `title` 은 **유지**) | ⬜ |
 | `Disclosure.tsx` | `Disclosure` | native `<details>` | — (Radix `Collapsible` 은 쓰지 않는다) | `StepDetail` ▸/▾ 수제 토글 3곳 · 모양이 제각각인 `<details>` 10곳 | ⬜ |
-| `Table.tsx` | `Table` · `TableHeader` · `TableBody` · `TableFooter` · `TableRow` · `TableHead` · `TableCell` · `rowClasses` · `Row` · `Spacer` | raw | `table` | `ui/Table` 전부 · `DraftList` 원시 `<table>` · `LocatorPriorityTable` · `ImportPreview` 표 2곳 | ✅ T035 (화면 적용은 T044·T045) |
+| `Table.tsx` | `Table` · `TableHeader` · `TableBody` · `TableFooter` · `TableRow` · `TableHead` · `TableCell` · `rowClasses` · `Row` · `Spacer` | raw | `table` | `ui/Table` 전부 · `DraftList` 원시 `<table>` · `LocatorPriorityTable` · `ImportPreview` 표 2곳 | ✅ T035 · 화면 적용 T044·T045 (`compact` 변종 · `align` · `muted` 추가 · N-05) |
 | `Notice.tsx` | `Notice` · `Toast` · `ToastLayer` · `TOAST_LAYER_CLASSES` | raw | — (015 계승 · research R6) | 같음 + `Workbench` 알림 층 복사본 | ⬜ |
 | `Surface.tsx` | `Pane` · `PaneHead` · `AppHeader` · `Scrim` · `Divider` | raw | — (015 계승) | 같음. `Modal`·`OverlayPane` 은 위 부품으로 옮긴다 | ⬜ |
 | `StepRow.tsx` | (015 그대로) | raw | — | 체크 칸은 `Checkbox` 를 쓴다 | ⬜ |
@@ -122,7 +122,10 @@
 | 자리 | 부품 · 변종 | 이유 |
 |---|---|---|
 | 국면 띠의 테스트 이름 (`PhaseBar.tsx:206`) | `Input variant="title"` | 평소 표시처럼 보이고 hover·초점에 테두리가 드러난다 (S-08~S-10). 초점 링 대신 테두리 — `exceptions.ts` 등록 유지 |
-| 인라인 이름 고치기 (`TestGroupBar.tsx:130` · `ProjectSetup.tsx:540`) | `Input size="sm"` | Enter·Esc·blur 처리는 화면 몫 |
+| 인라인 이름 고치기 (`TestGroupBar.tsx:130` · `ProjectSetup.tsx:540`) | `Input` (기본 크기) + `layout` 폭 | Enter·Esc·blur 처리는 화면 몫. **계획의 `size="sm"` 은 두지 않았다** (T040·T046) — 두 자리 모두 전환 전 32px 칸이었고, 줄이면 옆 버튼(32px)과 높이가 어긋난다. 크기 축이 필요한 자리가 생기면 그때 더한다 |
+| 옮겨 적는 글자 칸 (주소·셀렉터·변수 이름·확인 문구) | `Input font="mono"` | 전환 전 `className="font-mono"` 를 화면이 입혔다. `layout` 으로 넘기면 부품의 `font-sans` 와 같은 속성을 다툰다 — 축으로 둔다 (N-03) |
+| AI 에게 건네는 한 줄 (`ActionPalette` 자연어 Step 추가) | `Input variant="ai"` | `Textarea variant="ai"` 와 같은 문법 — 테두리만 `--ai` |
+| 폼 안에서 위아래 칸과 폭을 맞추는 선택칸 (`InlineSecretInput` · `ImportPreview` 열 짝짓기 · `PhaseBar` 그룹) | `NativeSelect width="fill"` | 기본은 내용 폭(B-07). 폭을 `layout` 으로 넘기면 `w-auto` 와 다툰다 |
 | `Field` 안의 입력 (검색) | `Input variant="bare"` | 테두리는 `Field` 가 그린다 |
 | AI 지시문 | `Textarea variant="ai"` | 정본 `textarea.ai{border-color:var(--ai)}` |
 | 클릭 전파를 멈추는 행 체크박스 (`TestList.tsx:1280` · `StepList.tsx:551`) | `Checkbox` 의 `onClick` 통과 | 부품이 사건을 삼키지 않는다 |

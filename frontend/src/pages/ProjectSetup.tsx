@@ -36,6 +36,7 @@ import {
 } from "../api/client";
 
 import { Chip } from "../ui/Chip";
+import { Input } from "../ui/Input";
 type Mode =
   | { kind: "list" }
   | { kind: "create" }
@@ -531,7 +532,7 @@ function ProjectRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-s2">
             {mode.kind === "editing" ? (
-              <input
+              <Input
                 aria-label="프로젝트 이름"
                 value={mode.draft}
                 autoFocus
@@ -549,7 +550,7 @@ function ProjectRow({
                 onBlur={() => {
                   if (!pending) commitRename(mode.draft);
                 }}
-                className="m-0 max-w-[320px]"
+                layout="m-0 max-w-[320px]"
               />
             ) : (
               <span className="font-sans text-[13.5px] font-bold leading-none">{item.name}</span>
@@ -811,10 +812,10 @@ function CreateForm({
       </p>
 
       <label htmlFor="name">프로젝트 이름</label>
-      <input id="name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+      <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
 
       <label htmlFor="url">기본 시작 URL</label>
-      <input
+      <Input
         id="url"
         value={startUrl}
         onChange={(e) => setStartUrl(e.target.value)}
@@ -827,7 +828,7 @@ function CreateForm({
       )}
 
       <label htmlFor="attr">testId 속성명</label>
-      <input id="attr" value={testIdAttr} onChange={(e) => setTestIdAttr(e.target.value)} />
+      <Input id="attr" value={testIdAttr} onChange={(e) => setTestIdAttr(e.target.value)} />
       <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
         대상 앱이 쓰는 속성명입니다. <code>data-test</code>, <code>data-cy</code> 를 쓰는 앱도
         흔합니다. 요소를 찾는 최우선 기준이 됩니다.
@@ -856,7 +857,7 @@ function CreateForm({
         <Button onClick={onCancel} disabled={busy}>
           취소
         </Button>
-        <button
+        <Button
           aria-describedby="create-blockers"
           disabled={busy || !ready}
           onClick={() =>
@@ -868,7 +869,7 @@ function CreateForm({
           }
         >
           만들기 →
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -904,7 +905,7 @@ function CreatedNotice({
       </p>
 
       <div className="flex justify-end mt-[20px]">
-        <button onClick={onContinue}>시작하기 →</button>
+        <Button onClick={onContinue}>시작하기 →</Button>
       </div>
     </div>
   );

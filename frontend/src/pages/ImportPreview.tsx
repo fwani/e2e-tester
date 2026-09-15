@@ -31,6 +31,11 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { Button } from "../ui/Button";
 import { FileButton } from "../ui/Field";
+import { Checkbox } from "../ui/Checkbox";
+import { Input } from "../ui/Input";
+import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
+import { Radio } from "../ui/Radio";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/Table";
 /** 컬럼 7개. 순서는 서버의 `ORDER` 와 같다 — 화면이 다른 순서를 쓰면 사용자가 헷갈린다. */
 const ALL_COLUMNS = [
   "TC ID",
@@ -272,28 +277,33 @@ export function ImportPreview({
               전체 끄기
             </Button>
           </div>
-          <table className="w-full border-collapse">
+          <Table>
             {/*
               `scope` 를 붙인다 — 없으면 화면 낭독기가 칸을 읽을 때 어느 열인지 말할 수
               없고, 「가져오기 / USER / 40」 같은 값만 흐른다.
             */}
-            <thead data-grid-head className="bg-sunken border-b border-hair-2">
-              <tr>
-                <th scope="col" className="py-[6px] px-s2 w-[44px]">가져오기</th>
-                <th scope="col" className="py-[6px] px-s2">시트</th>
-                <th scope="col" className="py-[6px] px-s2 w-[160px]">그룹 접두어</th>
-                <th scope="col" className="py-[6px] px-s2 w-[80px]">행</th>
-                <th scope="col" className="py-[6px] px-s2">메모</th>
-              </tr>
-            </thead>
-            <tbody>
+            <TableHeader data-grid-head>
+              <TableRow>
+                <TableHead scope="col" layout="w-[44px]">가져오기</TableHead>
+                <TableHead scope="col">시트</TableHead>
+                <TableHead scope="col" layout="w-[160px]">그룹 접두어</TableHead>
+                <TableHead scope="col" align="right" layout="w-[80px]">행</TableHead>
+                <TableHead scope="col">메모</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {plan.sheets.map((sheet) => (
-                <tr
+                <TableRow
                   key={sheet.sheet_name}
                   data-sheet-row={sheet.sheet_name}
-                  className={`${isOn(sheet) ? undefined : "text-ink-3"} py-[2px] px-[6px] max-w-[140px] overflow-hidden text-ellipsis whitespace-nowrap`}
+                  /*
+                    끈 시트는 정본 .dim 처럼 글자만 흐리다. 015 의 기계적 치환(569e51e)이 이 자리를 템플릿
+                    문자열로 바꾸며 켜진 행에 undefined 라는 클래스 이름을 붙이고, 모든 행에 줄바꿈 금지와
+                    최대 폭 140px 을 줬다 — 메모 칸의 긴 안내가 한 줄로 늘어나 표가 옆으로 밀렸다 (017 N-04).
+                  */
+                  tone={isOn(sheet) ? "default" : "muted"}
                 >
-                  <td className="py-[6px] px-s2">
+                  <TableCell>
                     {/*
                       가져올 시트를 고른다 (FR-020a). **기본은 켜짐**이다 — 사용자가 파일을
                       넣은 뜻은 「가져오겠다」이고, 빼는 것이 예외다.
@@ -301,8 +311,7 @@ export function ImportPreview({
                       끄는 것과 접두어를 못 정해 건너뛰는 것은 **다른 사실**이라 결과에서도
                       구별해 보고한다 (FR-020c).
                     */}
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       data-sheet-include={sheet.sheet_name}
                       aria-label={`${sheet.sheet_name} 가져오기`}
                       checked={isOn(sheet)}
@@ -313,9 +322,9 @@ export function ImportPreview({
                         }))
                       }
                     />
-                  </td>
-                  <td className="py-[6px] px-s2">{sheet.sheet_name}</td>
-                  <td className="py-[6px] px-s2">
+                  </TableCell>
+                  <TableCell>{sheet.sheet_name}</TableCell>
+                  <TableCell>
                     {!isOn(sheet) ? (
                       <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">가져오지 않음</span>
                     ) : !usable(sheet) ? (
@@ -326,7 +335,7 @@ export function ImportPreview({
                         않는다** — 한글 시트 이름에서 뽑은 접두어는 사용자가 예측할 수
                         없다. 비워 두면 그 시트를 건너뛴다 (FR-022b).
                       */
-                      <input
+                      <Input
                         data-prefix-input={sheet.sheet_name}
                         aria-label={`${sheet.sheet_name} 그룹 접두어`}
                         placeholder="예: USER (비우면 건너뜀)"
@@ -338,16 +347,16 @@ export function ImportPreview({
                             [sheet.sheet_name]: e.target.value.toUpperCase(),
                           }))
                         }
-                        className="w-full"
+                        layout="w-full"
                       />
                     ) : (
                       <span className="font-mono">{sheet.prefix}</span>
                     )}
-                  </td>
-                  <td className="py-[6px] px-s2 text-right">
+                  </TableCell>
+                  <TableCell align="right">
                     {usable(sheet) ? sheet.row_count : sheet.total_rows}
-                  </td>
-                  <td className="py-[6px] px-s2">
+                  </TableCell>
+                  <TableCell>
                     {/*
                       필수 컬럼을 못 찾은 시트 (FR-020g).
 
@@ -383,14 +392,13 @@ export function ImportPreview({
                           글자 크기는 정본이 정한다 (시각 언어 G-2). 표본 표의 글자는
                           `.why` 가 이미 작게 그리므로 인라인으로 다시 선언하지 않는다.
                         */}
-                        <table className="mt-[6px] border-collapse">
-                          <tbody>
+                        <Table variant="compact" layout="mt-[6px]">
+                          <TableBody>
                             {sheet.sample.map((sampleRow) => (
-                              <tr key={sampleRow.row}>
-                                <td className="py-[2px] px-[6px]">
+                              <TableRow key={sampleRow.row}>
+                                <TableCell>
  <label className="flex items-center gap-s1">
-                                    <input
-                                      type="radio"
+                                    <Radio
                                       name={`header-row-${sheet.sheet_name}`}
                                       data-header-row={`${sheet.sheet_name}:${sampleRow.row}`}
                                       aria-label={`${sheet.sheet_name} 의 ${sampleRow.row}행을 머리글로`}
@@ -404,23 +412,21 @@ export function ImportPreview({
                                     />
  <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{sampleRow.row}</span>
                                   </label>
-                                </td>
+                                </TableCell>
                                 {sampleRow.cells.slice(0, 8).map((cell, i) => (
-                                  <td
-                                    key={i}
-                                    className={
-                                      headerRowOf(sheet) === sampleRow.row
-                                        ? "font-sans text-[13px] font-semibold leading-none"
-                                        : "font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
-                                    }
-                                  >
-                                    {cell}
-                                  </td>
+                                  <TableCell key={i}>
+                                    {/* 고른 머리글 행만 굵게 — 글자 모양은 칸이 아니라 칸 안의 글자가 갖는다 (ui/Table N-05). */}
+                                    {headerRowOf(sheet) === sampleRow.row ? (
+                                      <span className="font-sans text-[13px] font-semibold leading-none text-ink">{cell}</span>
+                                    ) : (
+                                      cell
+                                    )}
+                                  </TableCell>
                                 ))}
-                              </tr>
+                              </TableRow>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableBody>
+                        </Table>
                       </details>
                     )}
                     {isOn(sheet) && (
@@ -440,7 +446,7 @@ export function ImportPreview({
                                   column as (typeof REQUIRED_COLUMNS)[number],
                                 ) && " *"}
                               </span>
-                              <select
+                              <NativeSelect
                                 data-column-select={`${sheet.sheet_name}:${column}`}
                                 aria-label={`${sheet.sheet_name} 의 ${column} 열`}
                                 value={String(columnsOf(sheet)[column] ?? -1)}
@@ -453,15 +459,15 @@ export function ImportPreview({
                                     },
                                   }))
                                 }
-                                className="m-0"
+                                width="fill" layout="m-0"
                               >
-                                <option value="-1">쓰지 않음</option>
+                                <NativeSelectOption value="-1">쓰지 않음</NativeSelectOption>
                                 {headersOf(sheet).map((label, pos) => (
-                                  <option key={`${label}-${pos}`} value={String(pos)}>
+                                  <NativeSelectOption key={`${label}-${pos}`} value={String(pos)}>
                                     {label}
-                                  </option>
+                                  </NativeSelectOption>
                                 ))}
-                              </select>
+                              </NativeSelect>
                             </label>
                           ))}
                         </div>
@@ -485,11 +491,11 @@ export function ImportPreview({
                         ))}
                       </details>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* ── 무엇이 빠지는가 ─────────────────────────────────────────── */}

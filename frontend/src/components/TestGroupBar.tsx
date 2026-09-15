@@ -4,6 +4,7 @@ import type { GroupSummary } from "../api/client";
 
 import { Button } from "../ui/Button";
 import { chipClasses } from "../ui/Chip";
+import { Input } from "../ui/Input";
 
 /**
  * 목록 위 그룹 띠 (013 FR-440·FR-441 · UC-013-06).
@@ -121,7 +122,7 @@ export function TestGroupBar({
           </>
         )}
       {editing !== null && (
-        <input
+        <Input
           aria-label="그룹 이름 바꾸기"
           value={editing.name}
           autoFocus
@@ -135,7 +136,7 @@ export function TestGroupBar({
             if (e.key === "Escape") setEditing(null);
           }}
           onBlur={() => setEditing(null)}
-          className="m-0 w-[180px]"
+          layout="m-0 w-[180px]"
         />
       )}
       <div className="flex-1" />
@@ -196,22 +197,22 @@ function NewGroupForm({
 
   return (
     <div className="flex items-center gap-[6px] flex-wrap">
-      <input
+      <Input
         aria-label="그룹 이름"
         placeholder="사용자관리 테스트"
         value={name}
         autoFocus
         disabled={busy}
         onChange={(e) => setName(e.target.value)}
-        className="m-0 w-[180px]"
+        layout="m-0 w-[180px]"
       />
-      <input
+      <Input
         aria-label="그룹 접두어"
         placeholder="USER"
         value={prefix}
         disabled={busy}
         onChange={(e) => setPrefix(e.target.value)}
-        className="m-0 w-[90px]"
+        layout="m-0 w-[90px]"
       />
       <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
       {prefix.trim() !== "" && !prefixOk && (

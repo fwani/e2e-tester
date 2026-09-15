@@ -23,6 +23,8 @@ import type { BrowserPromptKind } from "../lib/wording";
 import { promptTitle, promptDetail, PROMPT_ACTIONS } from "../lib/wording";
 
 import { Button } from "../ui/Button";
+import { FileButton } from "../ui/Field";
+import { Input } from "../ui/Input";
 
 export interface BrowserPromptState {
   promptId: string;
@@ -83,7 +85,7 @@ export function BrowserPromptPanel({
       {prompt.message === "" && <span className="text-ink-2">{promptDetail(prompt.kind)}</span>}
 
       {prompt.kind === "dialog.prompt" && (
-        <input
+        <Input
           type="text"
           value={text}
           onChange={(event) => setText(event.target.value)}
@@ -93,13 +95,28 @@ export function BrowserPromptPanel({
       )}
 
       {isFile && (
-        <input
-          type="file"
-          multiple={prompt.multiple === true}
-          aria-label={PROMPT_ACTIONS.fileLabel}
-          data-prompt-file
-          onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
-        />
+        /*
+          파일 선택은 정본 `.btn.file` 로 그린다 (017 T037). 브라우저 기본 위젯은 모양을 정할 수 없어
+          화면마다 다르게 보였다. 위젯이 보여 주던 「고른 파일 이름」은 옆 글자가 맡는다 — 무엇을
+          보낼지 확인한 뒤 「이 파일 보내기」를 누를 수 있어야 한다.
+        */
+        <>
+          <FileButton
+            inputProps={{
+              multiple: prompt.multiple === true,
+              "aria-label": PROMPT_ACTIONS.fileLabel,
+              "data-prompt-file": true,
+              onChange: (event) => setFiles(Array.from(event.target.files ?? [])),
+            }}
+          >
+            {PROMPT_ACTIONS.choose}
+          </FileButton>
+          {files.length > 0 && (
+            <span className="text-ink-2" data-prompt-file-names>
+              {files.map((f) => f.name).join(", ")}
+            </span>
+          )}
+        </>
       )}
 
       <span className="flex-1" />

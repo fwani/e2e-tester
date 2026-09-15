@@ -73,6 +73,8 @@ import {
   StepRow as UiStepRow,
   type StepMark,
 } from "../../ui/StepRow";
+import { Button } from "../../ui/Button";
+import { Checkbox } from "../../ui/Checkbox";
 /**
  * Step 패널의 고정 폭 (FR-218a). Step 패널을 가진 확정 디자인 3종이 공유한다.
  *
@@ -548,8 +550,7 @@ function StepRow({
       */}
       {deleteTarget !== undefined && (
         <StepCheck>
-          <input
-            type="checkbox"
+          <Checkbox
             data-row-action="step.toggleSelection"
             aria-label={`${step.label} ${ACTION_LABEL["step.toggleSelection"]}`}
             checked={deleteTarget.chosen}
@@ -570,14 +571,14 @@ function StepRow({
 
       {/* 칸 2 — 이름과 부속 정보 */}
       <div className="min-w-0 flex flex-col gap-[3px]">
-        <button
+        <Button
           type="button"
-          className="border-0 p-0 h-[18px] bg-transparent shadow-none text-left text-ink cursor-pointer font-sans text-[13px] font-semibold leading-[1.25] whitespace-nowrap overflow-hidden text-ellipsis"
+          variant="bare"
           onClick={onSelect}
           aria-pressed={selected}
         >
           {step.label}
-        </button>
+        </Button>
 
         <div data-cell="detail" className="flex items-center gap-[6px] min-w-0 flex-nowrap overflow-hidden h-[17px]">
           {/*

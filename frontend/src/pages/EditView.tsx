@@ -1213,7 +1213,7 @@ export function EditView({
           <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
             <strong className="font-sans text-[13.5px] font-bold leading-none">{unsavedLeaveWarning(pending)}</strong>
             <div className="flex items-center gap-s2 mt-s3">
-              <button
+              <Button
                 onClick={() => {
                   const next = leaving;
                   setLeaving(null);
@@ -1222,7 +1222,7 @@ export function EditView({
                 }}
               >
                 저장하고 나가기
-              </button>
+              </Button>
               <Button
                 onClick={() => {
                   const next = leaving;

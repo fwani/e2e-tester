@@ -351,12 +351,6 @@ KNOWN: list[dict] = [
     {"id": "B-04", "where": r"^test-create@", "kind": "spillY", "match": r"아직 브라우저를 열지 않았습니다"},
     {"id": "B-05", "where": r"^test-create@", "kind": "wrap", "match": r"TEST STEPS|고른 것 없음|작성"},
     {"id": "B-06", "where": r"^test-create@", "kind": "metric", "match": r"^nlInputWidth"},
-    {"id": "B-07", "where": r"^test-list-selected@", "kind": "wrap", "match": r"선택됨|전부 선택"},
-    {"id": "B-07", "where": r"^test-list-selected@", "kind": "metric", "match": r"^selectionSelectWidth"},
-    {"id": "B-08", "where": r"^test-list", "kind": "metric", "match": r"^checkboxSizes"},
-    # 표 머리의 전체 선택 체크박스가 28px 칸을 넘친다 — B-08 의 DOM 쪽 증상 (baseline `div 35>28`).
-    {"id": "B-08", "where": r"^test-list", "kind": "spill", "match": r"^div\{\} 3\d>28$"},
-    {"id": "B-09", "where": r"^test-list", "kind": "align", "match": r"희망 번호|대상기능|수행자|출처|할 수 있는 일"},
     {"id": "B-10", "where": r"^(test-list[a-z-]*|result-[a-z]+|edit[a-z-]*|test-create|runner-[a-z]+)@(1920|2560)$",
      "kind": "policy", "match": r"^data"},
     {"id": "B-11", "where": r"@1280$", "kind": "shell", "match": r"header"},

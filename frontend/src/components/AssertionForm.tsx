@@ -11,6 +11,8 @@ import { useState } from "react";
 
 import type { AddAssertionBody, AssertionKind, MatchMode } from "../api/client";
 import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
+import { Radio } from "../ui/Radio";
 
 const KINDS: { kind: AssertionKind; label: string; hint: string }[] = [
   { kind: "visible", label: "요소가 보인다", hint: "대기 시간 안에 나타나고 보이면 통과" },
@@ -72,8 +74,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
         </legend>
         {KINDS.map((k) => (
           <label key={k.kind} className="flex items-center gap-s2 items-start">
-            <input
-              type="radio"
+            <Radio
               name="assertion-kind"
               value={k.kind}
               checked={kind === k.kind}
@@ -95,7 +96,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
           <label htmlFor="assertion-selector">
             대상 요소 (CSS 셀렉터){targetRequired ? " — 필수" : " — 생략하면 화면 전체"}
           </label>
-          <input
+          <Input
             id="assertion-selector"
             value={selector}
             onChange={(e) => setSelector(e.target.value)}
@@ -108,7 +109,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
         <label htmlFor="assertion-value">
           비교 값{valueRequired ? " — 필수" : " (선택)"}
         </label>
-        <input
+        <Input
           id="assertion-value"
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -123,8 +124,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
       {(kind === "text" || kind === "url") && (
         <div className="flex items-center gap-s2 gap-s3">
  <label className="flex items-center gap-[6px]">
-            <input
-              type="radio"
+            <Radio
               name="assertion-match"
               checked={match === "equals"}
               onChange={() => setMatch("equals")}
@@ -132,8 +132,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
             일치
           </label>
  <label className="flex items-center gap-[6px]">
-            <input
-              type="radio"
+            <Radio
               name="assertion-match"
               checked={match === "contains"}
               onChange={() => setMatch("contains")}
@@ -145,7 +144,7 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
 
       <div>
         <label htmlFor="assertion-label">표시 이름 (선택)</label>
-        <input
+        <Input
           id="assertion-label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
@@ -154,9 +153,9 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
       </div>
 
       <div className="flex items-center gap-s2">
-        <button disabled={busy || !ready} onClick={submit}>
+        <Button disabled={busy || !ready} onClick={submit}>
           추가
-        </button>
+        </Button>
         {onCancel && (
           <Button onClick={onCancel} disabled={busy}>
             취소

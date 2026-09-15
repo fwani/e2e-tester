@@ -76,6 +76,9 @@ import { Button } from "../ui/Button";
 import { Chip, Pill } from "../ui/Chip";
 import { rowClasses } from "../ui/Table";
 import { Field } from "../ui/Field";
+import { Checkbox } from "../ui/Checkbox";
+import { Input } from "../ui/Input";
+import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
 const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
@@ -583,7 +586,7 @@ export function TestList({
               <circle cx="7" cy="7" r="4.6" />
               <path d="M10.6 10.6L14 14" />
             </svg>
-            <input
+            <Input variant="bare"
               aria-label="테스트 검색"
               placeholder={
                 isEmptyProject ? "검색할 테스트가 아직 없습니다" : "이름 · ID · Step 안의 locator 로 검색"
@@ -824,7 +827,7 @@ export function TestList({
             extra={
               // 그룹이 하나도 없으면 옮길 곳이 없다 — 그리지 않는다 (SC-627).
               (data?.groups ?? []).some((g) => g.prefix !== "TC") ? (
-                <select
+                <NativeSelect
                   aria-label="그룹으로 옮기기"
                   disabled={busy}
                   value=""
@@ -835,18 +838,22 @@ export function TestList({
                       setSelected(new Set()),
                     );
                   }}
-                  className="m-0"
+                  /*
+                    닫힌 선택칸은 늘 「그룹으로 옮기기…」만 보인다(값이 늘 빈 문자열이다). 폭을 내용에 맡기면
+                    **보이지 않는 가장 긴 그룹 이름**이 폭을 정해 띠를 차지한다 — 최대 폭을 둔다 (017 B-07).
+                  */
+                  layout="m-0 max-w-[240px]"
                 >
-                  <option value="">그룹으로 옮기기…</option>
+                  <NativeSelectOption value="">그룹으로 옮기기…</NativeSelectOption>
                   {(data?.groups ?? [])
                     .filter((g) => g.name !== null)
                     .map((g) => (
-                      <option key={g.prefix} value={g.prefix}>
+                      <NativeSelectOption key={g.prefix} value={g.prefix}>
                         {g.name}
-                      </option>
+                      </NativeSelectOption>
                     ))}
-                  <option value="TC">그룹에서 빼기</option>
-                </select>
+                  <NativeSelectOption value="TC">그룹에서 빼기</NativeSelectOption>
+                </NativeSelect>
               ) : undefined
             }
           />
@@ -896,8 +903,7 @@ export function TestList({
               style={{ gridTemplateColumns: GRID }}
             >
               <div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   aria-label="보이는 테스트 전부 선택"
                   checked={allVisibleSelected}
                   disabled={busy || rows.length === 0}
@@ -1244,8 +1250,7 @@ function Row({
         함께 일어나면 갈라 둔 뜻이 없다.
       */}
       <div onClick={(e) => e.stopPropagation()} className="flex items-center">
-        <input
-          type="checkbox"
+        <Checkbox
           aria-label={`${row.name} 선택`}
           data-test-select={row.id}
           checked={selected}
@@ -1270,7 +1275,7 @@ function Row({
       <div className="min-w-0 flex flex-col gap-[3px]">
         {renaming !== null ? (
           <div className="flex items-center gap-s2 pr-s3">
-            <input
+            <Input
               aria-label="새 이름"
               value={renaming}
               autoFocus

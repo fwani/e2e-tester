@@ -86,17 +86,6 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
     requirement: "015 FR-005 · FR-273 · 013 UC-013-01",
   },
   {
-    file: "frontend/src/components/workbench/ActionPalette.tsx",
-    pattern: "^(minHeight|height)$",
-    axis: "inline-style",
-    reason:
-      "공통 입력 속성(`common.style`)을 펼친 위에 높이만 덧쓴다. 여러 줄 입력은 48px, " +
-      "한 줄은 40px 이며 나머지 속성은 `common` 이 정한다. 펼침(`...common.style`)을 " +
-      "클래스로 바꾸려면 `common` 을 쓰는 모든 자리를 함께 옮겨야 하고, 그것은 이 " +
-      "기능의 범위를 넘는 구조 변경이다.",
-    requirement: "015 FR-005",
-  },
-  {
     file: "frontend/src/components/design/Chrome.tsx",
     pattern: "^(width|minWidth|height|minHeight|display|flexDirection)$",
     axis: "inline-style",
@@ -122,38 +111,13 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
     requirement: "015 FR-010 · SC-008",
   },
   {
-    file: "frontend/src/components/workbench/PhaseBar.tsx",
-    pattern: "^focus:outline-none$",
-    axis: "class-name",
-    reason:
-      "국면 띠의 테스트 이름 칸이다. **초점 표시를 지우는 것이 아니라 바꾼다** — " +
-      "정본 `input.phase-name:focus` 가 `outline:none` 과 함께 `border-color:var(--hair-2)` " +
-      "와 `background:var(--panel)` 를 준다. 평소에는 테두리가 투명해 제목처럼 보이다가 " +
-      "초점을 받으면 테두리와 바탕이 드러나 **입력 가능한 칸임이 나타난다.** 링을 " +
-      "겹쳐 그리면 띠 높이(48px) 안에서 2px 링이 위아래로 잘린다. " +
-      "015 는 이 형태를 옮길 뿐 새로 정하지 않는다 (FR-008).",
-    requirement: "015 FR-008 · SC-008 · 007 FR-219",
-  },
-  {
-    file: "frontend/src/ui/Field.tsx",
-    pattern: "^\\[&_input\\]:outline-none$",
-    axis: "class-name",
-    reason:
-      "입력칸을 감싸는 상자(정본 `.field`) 안쪽의 입력이다. 테두리를 상자가 그리므로 **초점 표시도 " +
-      "상자가 그린다** — 상자의 `focus-within:outline-2 outline-run` 이 전역 `:focus-visible` 과 같은 " +
-      "링을 둘러 준다. 안쪽 입력에 링을 남기면 상자 안에서 한 번 더 그려져 두 겹이 된다. " +
-      "017 이 가드를 넓히며 찾았다(N-01): 015 까지는 안쪽 링만 지우고 상자가 링을 그리지 않아 " +
-      "검색 칸에 초점 표시가 **아예 없었다** — `FocusRing` 이 `[&_input]:` 접두를 읽지 못해 놓쳤다.",
-    requirement: "017 FR-015 · 015 SC-008",
-  },
-  {
     file: "frontend/src/ui/Input.tsx",
     pattern: "^outline-none$",
     axis: "class-name",
     reason:
       "`Input variant=\"bare\"` — 테두리 상자(`ui/Field`, 정본 `.field`) 안의 입력이다. 테두리와 **초점 링을 " +
       "상자가** `focus-within:outline-2 outline-run` 으로 그리므로 안쪽 링을 벗는다. 남기면 상자 안에서 " +
-      "링이 두 겹이 된다. `ui/Field` 의 `[&_input]:outline-none` 예외와 같은 자리를 부품으로 옮긴 것이다 (017 N-01).",
+      "링이 두 겹이 된다. `ui/Field` 가 `[&_input]:outline-none` 으로 안쪽을 벗기던 자리를 부품으로 옮겼다 — 그 예외는 017 T034 에서 지웠다 (017 N-01).",
     requirement: "017 FR-015 · 015 SC-008",
   },
   {
@@ -163,7 +127,7 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
     reason:
       "`Input variant=\"title\"` — 국면 띠의 테스트 이름 칸이다 (정본 `input.phase-name`). **초점 표시를 지우는 " +
       "것이 아니라 바꾼다** — 초점을 받으면 투명하던 테두리와 바탕이 드러나 입력 가능한 칸임이 나타난다. " +
-      "링을 겹쳐 그리면 띠 높이(48px) 안에서 2px 링이 위아래로 잘린다. `PhaseBar` 의 같은 예외를 부품으로 옮긴 것이다.",
+      "링을 겹쳐 그리면 띠 높이(48px) 안에서 2px 링이 위아래로 잘린다. `PhaseBar` 에 있던 같은 예외를 부품으로 옮겼다 — 그 예외는 017 T042 에서 지웠다.",
     requirement: "015 FR-008 · SC-008 · 007 FR-219",
   },
   {

@@ -374,7 +374,15 @@ export function MirrorView({
             data-key-target={controllable && focused ? "mirror" : "product"}
             aria-disabled={controllable ? undefined : "true"}
             tabIndex={controllable ? 0 : -1}
-            className={`${controllable ? "bg-run-t border border-run rounded-base" : undefined} gap-s2 py-[10px] px-[14px]`}
+            /*
+              조건마다 완성된 문자열을 고른다. 템플릿 구멍에 `undefined` 를 두면 조작할 수 없을 때
+              `undefined` 라는 클래스 이름이 붙는다 (017 N-04 · 가드 G-B 가 잡았다).
+            */
+            className={
+              controllable
+                ? "bg-run-t border border-run rounded-base gap-s2 py-[10px] px-[14px]"
+                : "gap-s2 py-[10px] px-[14px]"
+            }
             onKeyDown={(event) => onKey(event, "key.down")}
             onKeyUp={(event) => onKey(event, "key.up")}
             /*

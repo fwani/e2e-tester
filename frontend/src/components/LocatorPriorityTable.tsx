@@ -14,6 +14,7 @@ import type { TargetLocator } from "../types/generated/step";
 import { Button } from "../ui/Button";
 import { Chip } from "../ui/Chip";
 import type { ChipTone } from "../ui/Chip";
+import { Table, TableBody, TableCell, TableRow } from "../ui/Table";
 
 type Status = "verified" | "ambiguous" | "unverified" | "not_collected";
 
@@ -149,47 +150,48 @@ export function LocatorPriorityTable({
         008 — 형태는 정본의 `.table` 이 갖는다. 지금 쓰이는 줄과 최후 수단(CSS)을 옅은
         바탕으로 구분하는 규칙은 그대로다 — **순서 자체가 정보**이므로(원칙 IV) 어느
         줄이 쓰이는지 표에서 바로 읽혀야 한다.
+
+        칸의 글자 모양은 칸 안의 글자가 갖는다 (017 N-05). 008 부터 칸에 준 모노 글꼴 · 굵은 이름 · 양 끝
+        14px 여백은 정본 .table td 의 한 단계 깊은 선택자에 져서 한 번도 그려지지 않았다 — 후보 값이 본문
+        글꼴로 보였다. 양 끝 여백은 표가 같은 깊이 이상의 선택자로 준다.
       */}
-      <table className="w-full border-collapse bg-panel border border-hair rounded-base [&_td]:px-s3 [&_td]:h-[40px] [&_td]:font-sans [&_td]:text-[12px] [&_td]:leading-none [&_tr+tr_td]:border-t [&_tr+tr_td]:border-hair">
-        <thead>
-          <tr>
-            <th className="w-[20px]" />
-            <th className="w-[118px]" />
-            <th />
-            <th className="w-[118px]" />
-          </tr>
-        </thead>
-        <tbody>
+      <Table
+        variant="panel"
+        layout="[&_td:first-child]:pl-[14px] [&_td:first-child]:pr-0 [&_td:last-child]:pl-0 [&_td:last-child]:pr-[14px]"
+      >
+        {/* 열 폭만 정한다 — 이름 없는 머리 칸(빈 th 네 개)을 두지 않는다. */}
+        <colgroup>
+          <col className="w-[20px]" />
+          <col className="w-[118px]" />
+          <col />
+          <col className="w-[118px]" />
+        </colgroup>
+        <TableBody>
           {rows.map((row, i) => {
             const state = states[row.kind] ?? "수집되지 않음";
             const inUse = state === "사용 중";
             const last = i === rows.length - 1;
             const missing = row.value === null;
             return (
-              <tr
-                key={row.kind}
-                /* 정본 `.table tr.in-use td` · `.table tr.last-resort td` — 바탕은
-                   행이 아니라 **칸**이 받는다. 행에 주면 칸 사이 경계선 위로 색이
-                   비친다. 자식 선택자를 그대로 옮겼다. */
-                className={
-                  inUse ? "[&>td]:bg-pass-t" : last ? "[&>td]:bg-sunken-2" : undefined
-                }
-              >
-                <td className="font-mono text-[12px] leading-none font-normal text-ink-3 pt-0 pr-0 pb-0 pl-[14px]">
-                  {i + 1}
-                </td>
-                <td className={missing ? "text-ink-3" : "font-sans text-[13px] font-semibold leading-none"}>{row.label}</td>
-                <td className={`font-mono${missing ? " text-ink-3" : ""}`} >
-                  {row.value ?? "수집되지 않음"}
-                </td>
-                <td className="pt-0 pr-[14px] pb-0 pl-0 text-right">
-                  {!missing && <Chip tone={tone(state)}>{state}</Chip>}
-                </td>
-              </tr>
+              // 정본 `.table tr.in-use td` · `.table tr.last-resort td` — 바탕은 행이 아니라 **칸**이 받는다 (`TableRow` tone).
+              <TableRow key={row.kind} tone={inUse ? "in-use" : last ? "last-resort" : "default"}>
+                <TableCell>
+                  <span className="font-mono text-[12px] leading-none font-normal text-ink-3">{i + 1}</span>
+                </TableCell>
+                <TableCell>
+                  <span className={missing ? "text-ink-3" : "font-sans text-[13px] font-semibold leading-none"}>
+                    {row.label}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className={missing ? "font-mono text-ink-3" : "font-mono"}>{row.value ?? "수집되지 않음"}</span>
+                </TableCell>
+                <TableCell align="right">{!missing && <Chip tone={tone(state)}>{state}</Chip>}</TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

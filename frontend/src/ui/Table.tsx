@@ -3,28 +3,39 @@
  *
  * 출처: shadcn new-york-v4/table @ shadcn 4.21.0 (2026-09-15) — `Table`·`TableHeader`·`TableBody`·`TableFooter`·
  * `TableRow`·`TableHead`·`TableCell` 의 구조와 `data-slot`, 가로로 넘치는 표를 감싸는 컨테이너를 가져왔다. 클래스는
- * 정본 `.table`·`.thead`·`.grid-head`·`.tfoot` 으로 옮겼다. 원본의 `hover:bg-muted/50`·`data-[state=selected]`·
+ * 정본 `.table`·`.thead`·`.grid-head`·`.tfoot`·`.dim` 으로 옮겼다. 원본의 `hover:bg-muted/50`·`data-[state=selected]`·
  * `text-sm`·`[&:has([role=checkbox])]` 는 남지 않는다 — 정본 표에는 hover 강조가 없다.
  *
  * 015 의 손으로 만든 표 부품(`Table`·`TableHead`(thead)·`TableFoot`·`GridHead`·`TableRow`)은 **화면이 하나도 쓰지 않아**
  * 같은 자리에서 교체했다. 화면이 쓰는 `Row`·`Spacer`·`rowClasses`·`Segmented`·`Tabs` 는 그대로다
  * (`Segmented`·`Tabs` 는 017 T058~T062 에서 `ToggleGroup`·`Tabs` 부품으로 옮기며 지운다).
  *
- * ## 표는 두 밀도다
+ * ## 표는 세 밀도다
  *
  * | variant | 정본 | 쓰는 곳 |
  * |---|---|---|
  * | `panel` | `.table` — 판 테두리 · 칸 12px 여백 · 40px · 12px 글자 · 줄 사이 실선 | 후보 우선순위 표 |
  * | `grid` | `.grid-head` 표 — 칸 6px/8px 여백 | 초안 목록 · 가져오기 미리보기 |
+ * | `compact` | `.why` 글자의 작은 표본 — 칸 2px/6px 여백, 폭은 내용만큼 | 가져오기 미리보기의 머리글 행 고르기 |
  *
  * 칸의 형태를 **표가 정한다** (정본 `.table td`). 칸마다 여백을 적으면 같은 표 안에서 칸이 서로 달라진다.
+ *
+ * ## 칸의 글자 모양을 칸(`TableCell`)에 주지 않는다 — 칸 안의 글자에 준다 (017 N-05)
+ *
+ * 표가 모든 칸에 주는 규칙은 `[&_td]:…` 로 쓰여 **선택자가 한 단계 깊다**(`.표 td` · 명시도 0,1,1). 칸 자신에게
+ * 준 유틸리티(`.font-mono` · 0,1,0)는 순서와 상관없이 **진다.** 015 는 정본의 인라인 값을 칸의 유틸리티로 옮겼고,
+ * 후보 우선순위 표의 값 칸이 모노 글꼴을, 이름 칸이 13px 을, 양 끝 칸이 14px 여백을 잃었다 — 클래스는 붙어 있고
+ * 가드 G-B 는 그 클래스가 CSS 를 만든다는 것만 보므로 아무도 몰랐다.
+ *
+ * 그래서 글자 모양은 칸 안의 `<span>` 이 갖고, 칸마다 다른 여백은 표가 **같은 깊이 이상의 선택자**
+ * (`[&_td:first-child]:…`)로 준다. 오른쪽 정렬은 `align` 으로 준다(표가 정렬을 정하지 않으므로 다투지 않는다).
  *
  * ## 머리 칸은 한 모양이다 (B-09)
  *
  * 015 전환에서 초안 표의 머리가 `.grid-head` 가 아닌 옅은 우물 바탕만 받아, 브라우저 기본 `th{text-align:center;
  * font-weight:bold}` 이 드러났다 — 머리 칸이 가운데, 본문 칸이 왼쪽에 서고, 마지막 머리만 모노 대문자였다.
- * `TableHead` 가 정본 `.grid-head th` 를 명시해 기본값에 기대지 않는다. 오른쪽에 서는 열은 `layout` 으로
- * 정렬만 준다 (본문 칸과 같은 쪽).
+ * `TableHead` 가 정본 `.grid-head th` 를 명시해 기본값에 기대지 않는다. 오른쪽에 서는 열은 머리와 본문에
+ * **같은 `align`** 을 준다.
  *
  * ## 행 결말은 왼쪽 테두리로 말한다 (`rowClasses`)
  *
@@ -38,18 +49,21 @@ import { cn } from "./cn";
 
 type LayoutProps = { layout?: string; children?: ReactNode };
 
-export type TableVariant = "panel" | "grid";
+export type TableVariant = "panel" | "grid" | "compact";
 
-export const tableVariants = cva("w-full border-collapse", {
+export const tableVariants = cva("border-collapse", {
   variants: {
     variant: {
       // 정본 `.table{width:100%;border-collapse:collapse;background:var(--panel)}` · `.table td{padding:0 12px;
       // height:40px;font:400 12px/1}` · `.table tr + tr td{border-top:1px solid var(--hair)}` + 판 테두리
       panel:
-        "bg-panel border border-hair rounded-base " +
+        "w-full bg-panel border border-hair rounded-base " +
         "[&_td]:px-s3 [&_td]:h-[40px] [&_td]:font-sans [&_td]:text-[12px] [&_td]:leading-none " +
         "[&_tr+tr_td]:border-t [&_tr+tr_td]:border-hair",
-      grid: "[&_th]:py-[6px] [&_th]:px-s2 [&_td]:py-[6px] [&_td]:px-s2",
+      grid: "w-full [&_th]:py-[6px] [&_th]:px-s2 [&_td]:py-[6px] [&_td]:px-s2",
+      // 정본 `.why{font:400 11px/1.4 sans;color:--ink-3}` 글자의 작은 표본. 폭은 내용만큼이다 — 칸 안에 놓인다.
+      compact:
+        "[&_td]:py-[2px] [&_td]:px-[6px] [&_td]:font-sans [&_td]:text-[11px] [&_td]:leading-[1.4] [&_td]:text-ink-3",
     },
   },
   defaultVariants: { variant: "grid" },
@@ -97,8 +111,11 @@ export function TableFooter({ layout, children, ...rest }: Omit<ComponentPropsWi
   );
 }
 
-/** 표 행의 뜻. 정본 `.table tr.in-use td`(지금 쓰이는 줄) · `.table tr.last-resort td`(최후 수단). */
-export type TableRowTone = "default" | "in-use" | "last-resort";
+/**
+ * 표 행의 뜻. 정본 `.table tr.in-use td`(지금 쓰이는 줄) · `.table tr.last-resort td`(최후 수단) ·
+ * `.dim`(가져오지 않기로 한 줄처럼 **빠진** 줄 — 글자만 흐리다).
+ */
+export type TableRowTone = "default" | "in-use" | "last-resort" | "muted";
 
 const ROW_TONE: Record<TableRowTone, string> = {
   default: "",
@@ -106,6 +123,8 @@ const ROW_TONE: Record<TableRowTone, string> = {
   "in-use": "[&>td]:bg-pass-t",
   // 옅은 우물 — 쓸 수는 있으나 마지막이라는 뜻이다 (원칙 IV).
   "last-resort": "[&>td]:bg-sunken-2",
+  // 정본 `.dim{color:var(--ink-3)}` — 칸이 물려받는다. 칸 안 글자가 제 색을 가지면 그것이 이긴다.
+  muted: "text-ink-3",
 };
 
 export function TableRow({
@@ -121,29 +140,51 @@ export function TableRow({
   );
 }
 
+/** 칸의 가로 정렬. 오른쪽에 서는 열은 머리와 본문에 같은 값을 준다 (B-09). */
+export type TableAlign = "left" | "right";
+
 /**
  * 머리 칸 — 정본 `.grid-head th{text-align:left;font:600 11px/1 mono;letter-spacing:.08em;uppercase;color:--ink-3}`.
  * 여백은 표의 `variant` 가 정한다.
  */
-export function TableHead({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"th">, "className"> & LayoutProps) {
+export const tableHeadVariants = cva(
+  "align-middle font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 whitespace-nowrap",
+  {
+    variants: { align: { left: "text-left", right: "text-right" } },
+    defaultVariants: { align: "left" },
+  },
+);
+
+export function TableHead({
+  align = "left",
+  layout,
+  children,
+  ...rest
+}: Omit<ComponentPropsWithRef<"th">, "className" | "align"> & LayoutProps & { align?: TableAlign }) {
   return (
-    <th
-      className={cn(
-        "text-left align-middle font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 whitespace-nowrap",
-        layout,
-      )}
-      data-slot="table-head"
-      {...rest}
-    >
+    <th className={cn(tableHeadVariants({ align }), layout)} data-slot="table-head" {...rest}>
       {children}
     </th>
   );
 }
 
-/** 본문 칸. 여백·높이·글자는 표의 `variant` 가 정한다 (정본 `.table td`). */
-export function TableCell({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"td">, "className"> & LayoutProps) {
+/**
+ * 본문 칸. 여백·높이·글자는 표의 `variant` 가 정한다 (정본 `.table td`). `left` 는 정렬을 정하지 않는다 — 표나
+ * 행이 물려주는 값을 그대로 쓴다.
+ */
+export const tableCellVariants = cva("align-middle", {
+  variants: { align: { left: "", right: "text-right" } },
+  defaultVariants: { align: "left" },
+});
+
+export function TableCell({
+  align = "left",
+  layout,
+  children,
+  ...rest
+}: Omit<ComponentPropsWithRef<"td">, "className" | "align"> & LayoutProps & { align?: TableAlign }) {
   return (
-    <td className={cn("align-middle", layout)} data-slot="table-cell" {...rest}>
+    <td className={cn(tableCellVariants({ align }), layout)} data-slot="table-cell" {...rest}>
       {children}
     </td>
   );

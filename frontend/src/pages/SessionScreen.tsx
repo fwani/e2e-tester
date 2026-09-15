@@ -119,6 +119,7 @@ import type { Step } from "../types/generated/step";
 import type { Outcome, StepOutcome as RunStepOutcome } from "../types/generated/run-result";
 
 import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
 
 export type { AiBlockedState } from "../components/workbench/model";
 
@@ -3174,7 +3175,7 @@ function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
         <Button onClick={onCancel}>
           돌아가기
         </Button>
-        <button onClick={onConfirm}>닫기</button>
+        <Button onClick={onConfirm}>닫기</Button>
       </div>
     </Modal>
   );
@@ -3233,9 +3234,9 @@ function RerunConfirm({
         <Button variant="danger" disabled={busy} onClick={onDiscardAndRun}>
           버리고 실행
         </Button>
-        <button disabled={busy || saveName.trim() === ""} onClick={onSaveAndRun}>
+        <Button disabled={busy || saveName.trim() === ""} onClick={onSaveAndRun}>
           저장하고 실행
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -3270,7 +3271,7 @@ function LeaveConfirm({
       {askName && (
         <>
           <label htmlFor="leave-save-name">테스트 이름</label>
-          <input
+          <Input
             id="leave-save-name"
             value={saveName}
             autoFocus
@@ -3286,9 +3287,9 @@ function LeaveConfirm({
         <Button variant="danger" disabled={busy} onClick={onDiscard}>
           저장하지 않고 나가기
         </Button>
-        <button disabled={busy || saveName.trim() === ""} onClick={onSave}>
+        <Button disabled={busy || saveName.trim() === ""} onClick={onSave}>
           저장하고 나가기
-        </button>
+        </Button>
       </div>
     </Modal>
   );

@@ -1,5 +1,5 @@
 /**
- * 폼 — 입력칸·라벨·파일 선택. 015 T024.
+ * 폼 — 입력칸·라벨·파일 선택. 015 T024 · 017 T034.
  *
  * 출처: 015 (손으로 만든 부품)
  *
@@ -12,8 +12,8 @@
  *
  * | # | 정본 | 여기서 |
  * |---|---|---|
- * | S-06 | `input::placeholder{color:--ink-3}` | `placeholder:text-ink-3` |
- * | S-07 | `input:disabled{투명·점선·--ink-3}` | `disabled:*` |
+ * | S-06 | `input::placeholder{color:--ink-3}` | `ui/Input` `bare` 의 `placeholder:text-ink-3` |
+ * | S-07 | `input:disabled{투명·점선·--ink-3}` | `Field` 의 `off` |
  * | S-16 | `.btn.file:focus-within{링}` | `FileButton` 의 `focus-within:outline-*` |
  * | S-17 | `.btn.disabled:focus-within{흐린 링}` | `FileButton` 의 off 상태 |
  *
@@ -22,34 +22,33 @@
  */
 import type { ComponentPropsWithRef, ReactNode } from "react";
 
+import { cn } from "./cn";
+
 type DivProps = Omit<ComponentPropsWithRef<"div">, "className">;
 
 /**
  * 정본 `.field` — 입력칸을 감싸는 테두리 상자.
  *
- * 안쪽 `<input>` 은 테두리·바탕·그림자를 벗는다 (정본 `.field input`). 테두리는 이
- * 상자가 그리므로, 안쪽이 또 그리면 두 겹이 된다.
+ * 안쪽 입력은 **`<Input variant="bare">`** 를 쓴다 (정본 `.field input`). 테두리는 이 상자가 그리므로,
+ * 안쪽이 또 그리면 두 겹이 된다.
+ *
+ * 017 전에는 이 상자가 `[&_input]:border-0 …` 로 **안쪽 요소를 벗겼다** — 부모가 자식의 모양을 정하는
+ * 형태라, 상자 안에 입력이 아닌 것(체크박스)을 두면 그것까지 벗겨졌고 `FocusRing` 가드는 접두가 붙은
+ * `outline-none` 을 읽지 못했다(017 N-01). 모양은 이제 입력 부품이 스스로 갖는다.
  *
  * `off` 는 정본 `.field.off` — 담을 것이 아직 없는 상태다. 점선이고 **자리를 지킨다**
  * (`.btn.off` 와 같은 문법 · 006 ui-contract §2 「쓸 수 없는 조작은 감추지 않는다」).
  */
 export function Field({ off = false, layout, children, ...rest }: DivProps & { off?: boolean; layout?: string; children?: ReactNode }) {
-  const cls = [
+  const cls = cn(
     "h-control flex items-center gap-s2 px-[10px] border rounded-base",
     off ? "border-dashed border-hair-2 bg-transparent" : "border-hair-2 bg-panel",
-    // 초점 표시는 **상자가** 그린다 — 안쪽 입력은 링을 벗는다(아래). 017 이 찾은 N-01:
+    // 초점 표시는 **상자가** 그린다 — 안쪽 입력(Input 의 bare 변종)은 링을 벗는다. 017 이 찾은 N-01:
     // 015 까지는 안쪽 링만 지우고 상자가 링을 그리지 않아 검색 칸에 초점 표시가 없었다.
     // 값은 전역 `:focus-visible` 과 같다 (`FileButton` 의 S-16 과 같은 구조).
     "focus-within:outline focus-within:outline-2 focus-within:outline-run focus-within:outline-offset-2",
-    // 안쪽 입력칸을 벗긴다 — 정본 `.field input` 을 그대로 옮겼다.
-    "[&_input]:flex-1 [&_input]:min-h-auto [&_input]:p-0 [&_input]:border-0",
-    "[&_input]:bg-transparent [&_input]:shadow-none [&_input]:outline-none",
-    "[&_input]:font-sans [&_input]:text-[13px] [&_input]:leading-none",
-    "[&_input]:placeholder:text-ink-3",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <div className={cls} data-off={off ? "true" : undefined} {...rest}>
       {children}
@@ -63,12 +62,11 @@ export { FieldLabel, Lbl } from "./Label";
 /**
  * 정본 `.answer-q` — AI 가 막혔을 때 사람이 답을 적는 자리의 질문.
  *
- * 라벨이 아니라 **본문**이다 (위 `Lbl` 주석 참조).
+ * 라벨이 아니라 **본문**이다 (`ui/Label` 의 `Lbl` 주석 참조).
  */
 export function AnswerQuestion({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["font-sans text-[13px] leading-[1.4] font-normal text-ink", layout].filter(Boolean).join(" ");
   return (
-    <div className={cls} {...rest}>
+    <div className={cn("font-sans text-[13px] leading-[1.4] font-normal text-ink", layout)} {...rest}>
       {children}
     </div>
   );
@@ -81,9 +79,8 @@ export function AnswerQuestion({ layout, children, ...rest }: DivProps & { layou
  * 밀려나지 않게 하는 것이 이 부품의 성질이다.
  */
 export function CommitBar({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["sticky bottom-0 z-10 bg-panel border-t border-hair-2", layout].filter(Boolean).join(" ");
   return (
-    <div className={cls} {...rest}>
+    <div className={cn("sticky bottom-0 z-10 bg-panel border-t border-hair-2", layout)} {...rest}>
       {children}
     </div>
   );
@@ -93,7 +90,8 @@ export function CommitBar({ layout, children, ...rest }: DivProps & { layout?: s
  * 정본 `.btn.file` + `.file-input` — 파일 선택.
  *
  * `<label>` 안에 보이지 않는 `<input type="file">` 을 둔다. 브라우저 기본 파일 선택
- * 위젯은 형태를 정할 수 없으므로 이 구조를 쓴다.
+ * 위젯은 형태를 정할 수 없으므로 이 구조를 쓴다. 여러 파일은 `inputProps.multiple` 로 받는다
+ * (브라우저 요구 패널의 파일 선택 · 017 T037).
  *
  * **입력칸을 `display:none` 으로 감추지 않는다.** 감추면 초점을 받지 못해 키보드로
  * 도달할 수 없다. 1px 로 줄이고 `clip-path` 로 잘라 **보이지 않되 초점은 남긴다** —
@@ -120,7 +118,7 @@ export function FileButton({
    */
   inputProps?: Omit<ComponentPropsWithRef<"input">, "className" | "type"> & Record<`data-${string}`, unknown>;
 }) {
-  const cls = [
+  const cls = cn(
     // `.btn` 의 형태 — `ui/Button` 과 같은 값이다. 라벨이므로 컴포넌트를 나눴다.
     //
     // **크기·상태가 정하는 속성은 여기 적지 않는다.** 같은 속성을 두 번 적으면 이기는
@@ -138,9 +136,7 @@ export function FileButton({
       ? "focus-within:outline focus-within:outline-2 focus-within:outline-hair-2 focus-within:outline-offset-2"
       : "focus-within:outline focus-within:outline-2 focus-within:outline-run focus-within:outline-offset-2",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <label className={cls} data-off={off ? "true" : undefined} {...rest}>
       {children}

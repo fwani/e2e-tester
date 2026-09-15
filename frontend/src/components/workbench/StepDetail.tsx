@@ -41,6 +41,8 @@ import type { StepDetail as StepDetailModel } from "./model";
 
 import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
+import { Checkbox } from "../../ui/Checkbox";
+import { Input } from "../../ui/Input";
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
   return /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(value);
@@ -263,7 +265,7 @@ export function StepDetail({
             {ownFields && (
             <div>
               <label htmlFor="detail-label">표시 이름</label>
-              <input
+              <Input
                 id="detail-label"
                 value={label}
                 disabled={!canEdit}
@@ -275,7 +277,7 @@ export function StepDetail({
             {ownFields && hasValueField && (
               <div>
                 <label htmlFor="detail-value">입력값</label>
-                <input
+                <Input
                   id="detail-value"
                   value={value}
                   disabled={!canEdit || alreadyReference}
@@ -295,8 +297,7 @@ export function StepDetail({
                   </>
                 ) : (
  <label className="flex items-center gap-[6px] mt-[6px]">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       data-action="step.markSensitive"
                       aria-describedby={canMarkSensitive ? undefined : "reason-step-sensitive"}
                       checked={sensitive}
@@ -343,7 +344,7 @@ export function StepDetail({
             {ownFields && hasFileField && (
               <div>
                 <label htmlFor="detail-file-name">올릴 파일 이름</label>
-                <input
+                <Input
                   id="detail-file-name"
                   value={fileName}
                   disabled={!canEdit}
@@ -360,7 +361,7 @@ export function StepDetail({
             {ownFields && (
             <div>
               <label htmlFor="detail-timeout">대기 시간 (ms)</label>
-              <input
+              <Input
                 id="detail-timeout"
                 type="number"
                 min={1}

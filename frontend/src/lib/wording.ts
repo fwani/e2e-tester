@@ -557,6 +557,8 @@ export const PROMPT_ACTIONS = {
   accept: "확인",
   /** **취소도 응답이다.** 보내지 않으면 대상 페이지가 계속 기다린다 (FR-339) */
   dismiss: "취소",
+  /** 파일을 고르는 단추 (정본 `.btn.file`). 고른 이름은 옆 글자가 보여 준다 */
+  choose: "파일 고르기",
   attach: "이 파일 보내기",
   useWindow: "실제 창에서 조작하기",
   textLabel: "대상 페이지에 보낼 값",

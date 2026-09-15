@@ -158,14 +158,14 @@ export function ActionButton({
           {capability.reason}
         </span>
         {capability.remedy !== null && onRemedy !== undefined && (
-          <button
+          <Button
             type="button"
             data-remedy-for={action}
-            className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-sans text-[12px] font-semibold leading-[1.4] underline cursor-pointer flex-none"
+            variant="link" layout="flex-none"
             onClick={() => onRemedy(capability.remedy!.action)}
           >
             {ACTION_LABEL[capability.remedy.action]}
-          </button>
+          </Button>
         )}
       </span>
     </span>

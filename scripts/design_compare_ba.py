@@ -143,14 +143,61 @@ INTENDED: list[dict[str, str]] = [
             "집는다. 사람이 보는 화면에는 차이가 없다 (SC-001)."
         ),
     },
+    # ── 017 4-B — 원시 조작 요소를 부품으로 (T036~T047) ────────────────────────────
+    {
+        "screens": ["keys", "secrets", "project-create"],
+        "path_re": r"BODY/DIV\[0\]/(?:DIV\[0\]/)?MAIN\[\d\]/(?:SECTION|DIV)\[\d+\]/DIV\[\d+\]/BUTTON\[\d\]",
+        "props": ["display", "white-space", "align-items", "gap"],
+        "reason": (
+            "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 "
+            "「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 "
+            "브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · "
+            "align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 "
+            "원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+        ),
+    },
+    {
+        "screens": ["test-list", "test-list-unrun", "test-list-passed"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[0\]/DIV\[0\]/INPUT\[0\]|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[1\]/DIV\[0\]/DIV\[\d+\]/DIV\[0\]/INPUT\[0\]",
+        "props": ["width", "height", "min-height", "margin-top", "margin-right", "margin-bottom", "margin-left"],
+        "reason": (
+            "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 "
+            "전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 "
+            "크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+        ),
+    },
+    {
+        "screens": ["test-list", "test-list-unrun", "test-list-passed"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[0\]|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[0\]/DIV\[0\]|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[1\]|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[1\]/DIV\[0\]/DIV\[\d+\]/DIV\[0\]",
+        "props": ["height"],
+        "reason": (
+            "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 "
+            "밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, "
+            "그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+        ),
+    },
 ]
 
 
 def is_intended(m: dict) -> str | None:
+    """등록부의 한 줄이 이 불일치를 설명하는가.
+
+    줄은 **좁게** 적는다 — 화면(`screen` 하나 또는 `screens` 목록) · 자리(`path` 정확히 또는 `path_re`
+    정규식 전체 일치) · 속성(`prop` 하나 또는 `props` 목록, 없으면 그 자리의 모든 속성). 017 4-B 에서
+    같은 부품 전환이 목록 행마다 같은 차이를 내 줄을 행 수만큼 적게 되자 정규식 자리를 더했다.
+    """
     for row in INTENDED:
-        if row["screen"] == m["screen"] and row.get("path") == m.get("path"):
-            if "prop" not in row or row.get("prop") == m.get("prop"):
-                return row["reason"]
+        screens = row.get("screens") or [row.get("screen")]
+        if m["screen"] not in screens:
+            continue
+        if "path_re" in row:
+            if m.get("path") is None or re.fullmatch(row["path_re"], m["path"]) is None:
+                continue
+        elif row.get("path") != m.get("path"):
+            continue
+        props = row.get("props") or ([row["prop"]] if "prop" in row else None)
+        if props is None or m.get("prop") in props:
+            return row["reason"]
     return None
 
 

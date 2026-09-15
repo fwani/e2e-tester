@@ -7,7 +7,7 @@
 | # | 이름 · 파일 | 무엇을 막는가 | 017 에서 |
 |---|---|---|---|
 | G-A1 | `TailwindThemeLiteral` | 테마에 값 리터럴 | **범위 유지.** `--radius-*`·`--shadow-*`·`--text-*`·`--animate-*` 의 `initial` 이 키워드로 통과하는지 확인 |
-| G-B | `ClassExistence` | 생성되지 않는 클래스 | 헬퍼 판정 문자 집합을 넓힌다 (아래 H-2). 이름공간을 비워 shadcn 기본 스케일이 여기서 걸린다 (research R4) |
+| G-B | `ClassExistence` | 생성되지 않는 클래스 | 헬퍼 판정 문자 집합을 넓힌다 (아래 H-2). 이름공간을 비워 shadcn 기본 스케일이 여기서 걸린다 (research R4). **구현 중 더 넓혔다**: 조립 조합(`cva`·`cn`)의 한 낱말짜리 값도 실재 확인(T029 · `aria-invalid:` 발견) · 템플릿 구멍이 `undefined`·`null`·`false` 를 글자로 내놓는 자리 금지(T045 · N-04) |
 | G-C | `SingleSystem` | 의미 클래스와 유틸리티 혼용 | 그대로 |
 | G-D | `ClassMigration` | 해체한 의미 클래스의 재사용 | 그대로 |
 | G-E | `ClassConflict` | 나중에 적은 클래스가 CSS 에서 진다 | **`cva`·`cn` 을 읽게 넓힌다** (H-1) |
