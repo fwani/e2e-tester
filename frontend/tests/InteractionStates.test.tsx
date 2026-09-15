@@ -88,10 +88,20 @@ describe("상호작용 상태가 보존된다 (FR-009 · state-styles.md)", () =
     expect(src, "비활성 입력칸 표시가 없다 (S-07)").toMatch(/\[&_input:disabled\]|disabled:/);
   });
 
-  it("`ui/Table` 의 탭이 비활성 표시를 갖는다", () => {
+  it("`ui/Tabs` 의 탭이 비활성 표시를 갖는다", () => {
     // S-11 — 없으면 비활성 탭이 활성과 구별되지 않는다.
-    const src = readFileSync(join(ROOT, "src/ui/Table.tsx"), "utf8");
-    expect(src, "비활성 탭 표시가 없다 (S-11)").toContain("[&>button:disabled]");
+    // 017 T058·T062 — 탭 줄이 `ui/Table` 의 `Tabs`(부모가 `[&>button:disabled]` 로 자식을 칠함)에서 `ui/Tabs` 의
+    // `TabsTrigger`(자기 자신의 `disabled:`)로 옮겨졌다. 찾는 곳과 형태만 바뀌었다 — 실선 테두리와 흐린 글자.
+    const src = readFileSync(join(ROOT, "src/ui/Tabs.tsx"), "utf8");
+    expect(src, "비활성 탭이 점선을 되돌리지 않는다 (S-11)").toContain("disabled:border-solid");
+    expect(src, "비활성 탭 글자가 흐리지 않다 (S-11)").toContain("disabled:text-ink-3");
+  });
+
+  it("`ui/ToggleGroup` 의 분절 띠가 비활성 표시를 갖는다", () => {
+    // S-12 — 017 T060 전에는 `ui/Table` 의 `Segmented` 가 가졌다. 고른 칸도 비활성이면 비활성이 이긴다(정본 순서).
+    const src = readFileSync(join(ROOT, "src/ui/ToggleGroup.tsx"), "utf8");
+    expect(src, "비활성 칸 표시가 없다 (S-12)").toContain("disabled:border-solid");
+    expect(src, "고른 색이 비활성보다 이긴다 (S-12)").toContain("enabled:data-[state=on]:bg-sunken");
   });
 
   it("`ui/StepRow` 의 체크 상자가 비활성 표시를 갖는다", () => {

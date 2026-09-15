@@ -62,9 +62,8 @@ export const chipVariants = cva(
 );
 
 /**
- * 칩의 클래스. **`<span>` 이 아닌 칩도 이것을 쓴다** — 누를 수 있는 그룹 거르기 칩(`TestGroupBar`)이
- * 자기 힘으로 칩 모양을 조립하면 같은 종류의 표식이 두 모습을 갖는다 (SC-010). 017 T061 에서 그 자리가
- * `ToggleGroup` 으로 옮겨 가면 이 함수를 쓰는 곳이 사라진다.
+ * 칩의 클래스. 누를 수 있는 그룹 거르기 칩은 017 T061 에서 `ui/ToggleGroup` 의 `chip` 모양이 됐고, 그 모양은
+ * `chipVariants` 를 직접 잇는다 — 같은 종류의 표식이 두 모습을 갖지 않는다 (SC-010).
  */
 export function chipClasses(tone: ChipTone = "default", layout?: string): string {
   return cn(chipVariants({ tone }), layout);

@@ -38,6 +38,7 @@ import type { SlotSize } from "../../lib/layout";
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
 import { Textarea } from "../../ui/Textarea";
+import { ToggleGroup, ToggleGroupItem } from "../../ui/ToggleGroup";
 
 export interface WorkAreaProps {
   work: WorkAreaView;
@@ -106,14 +107,18 @@ export function WorkArea({
           </Section>
 
           <Section title="만드는 방법">
-            <div className="flex gap-[14px]">
+            <ToggleGroup
+              appearance="card"
+              aria-label="만드는 방법"
+              // 아직 고르지 않았으면(null) 어느 카드도 골라지지 않은 채로 그린다.
+              value={work.mode ?? ""}
+              onValueChange={(next) => work.onModeChange(next as ComposeMode)}
+            >
               <ModeCard
                 mode="record"
                 title="직접 녹화"
                 summary="브라우저를 직접 조작해서 테스트를 만듭니다."
                 bullets={["클릭 · 입력 · 선택 · 화면 이동을 그대로 기록", "기록 중 언제든 멈추고 고칠 수 있음"]}
-                selected={work.mode === "record"}
-                onPick={work.onModeChange}
               />
               <ModeCard
                 mode="ai"
@@ -121,10 +126,8 @@ export function WorkArea({
                 summary="할 일을 문장으로 쓰면 AI 가 조작하고 Step 을 만듭니다."
                 bullets={["성공한 동작만 Step으로 기록", "다시 돌릴 때는 AI를 쓰지 않음"]}
                 ai
-                selected={work.mode === "ai"}
-                onPick={work.onModeChange}
               />
-            </div>
+            </ToggleGroup>
           </Section>
 
           {/*
@@ -359,8 +362,9 @@ export function WorkArea({
 /**
  * 만드는 방법 카드 (2회차 · FR-258 · 승인 대상 B7).
  *
- * `CreateTest.dc.html` 의 카드 두 장을 국면 작업 영역 폭에 맞춰 옮겼다. 선택 표시는
- * 확정 디자인의 강조 버튼과 같은 문법이다 — 채움 + 하드 오프셋 그림자.
+ * `CreateTest.dc.html` 의 카드 두 장을 국면 작업 영역 폭에 맞춰 옮겼다. 고른 것은 정본 `.pick.on` 의
+ * 잉크 테두리와 승강으로 말한다 — `ui/ToggleGroup` 의 `card` 모양이다 (017 T061). 둘 중 하나를 고르는 자리이므로
+ * 라디오로 알리고 화살표로 오간다.
  */
 function ModeCard({
   mode,
@@ -368,8 +372,6 @@ function ModeCard({
   summary,
   bullets,
   ai = false,
-  selected,
-  onPick,
 }: {
   mode: ComposeMode;
   title: string;
@@ -377,28 +379,15 @@ function ModeCard({
   bullets: string[];
   /** AI 로 만드는 쪽인가. 사람 작성과 구분하는 유일한 색이다 (`--ai`). */
   ai?: boolean;
-  selected: boolean;
-  onPick: (next: ComposeMode) => void;
 }) {
   return (
-    <button
-      type="button"
+    <ToggleGroupItem
+      value={mode}
       data-compose-mode={mode}
-      aria-pressed={selected}
-      onClick={() => onPick(mode)}
-      className={[
-        // **배치를 빠뜨리면 카드가 32px 짜리 단추가 된다** (015 L2 대조가 잡았다).
-        // 전환 전 인라인이 주던 것: flex:1 1 0 · min-width:0 · height:auto ·
-        // padding:16px 18px · display:flex · column · gap:8px.
-        "border rounded-base text-left text-ink",
-        "flex-1 min-w-0 h-auto py-s4 px-[18px] flex flex-col gap-s2",
-        // 정본 `.tint-ai` — AI 쪽만 바탕과 테두리가 다르다. 고른 것은 `.pick.on` 의
-        // 잉크 테두리와 승강으로 말한다. **두 축이 서로 다른 속성을 쓰므로 겹쳐도 된다.**
-        ai ? "bg-ai-t border-ai" : "bg-panel border-hair",
-        selected ? "border-ink shadow-e1" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      tone={ai ? "ai" : "default"}
+      // 줄을 나눠 갖는 폭만 여기서 준다. 높이·여백·세로 배치는 카드 모양이 갖는다 — 015 L2 대조가 「배치를 빠뜨리면
+      // 카드가 32px 짜리 단추가 된다」를 잡았던 값(height:auto · padding:16px 18px · column · gap:8px)이 거기 있다.
+      layout="flex-1 min-w-0"
     >
       <span className="font-sans text-[13.5px] font-bold leading-none">{title}</span>
       <span className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">{summary}</span>
@@ -409,7 +398,7 @@ function ModeCard({
           </span>
         ))}
       </span>
-    </button>
+    </ToggleGroupItem>
   );
 }
 

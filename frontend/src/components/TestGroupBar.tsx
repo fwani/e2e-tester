@@ -3,8 +3,8 @@ import { useState } from "react";
 import type { GroupSummary } from "../api/client";
 
 import { Button } from "../ui/Button";
-import { chipClasses } from "../ui/Chip";
 import { Input } from "../ui/Input";
+import { ToggleGroup, ToggleGroupItem } from "../ui/ToggleGroup";
 
 /**
  * 목록 위 그룹 띠 (013 FR-440·FR-441 · UC-013-06).
@@ -15,6 +15,9 @@ import { Input } from "../ui/Input";
  * 개수는 **걸러 보기 전** 값이다. 한 그룹만 보고 있어도 다른 그룹의 개수를 보고 그리로
  * 갈 수 있어야 한다 (contracts/api-contract.md §1).
  */
+/** 「전체」 칩의 값. 그룹 접두어는 대문자라 겹치지 않는다 — 고르기 묶음은 빈 값을 「고른 것 없음」으로 쓴다. */
+const ALL = "__all__";
+
 export function TestGroupBar({
   groups,
   active,
@@ -51,41 +54,34 @@ export function TestGroupBar({
   const total = groups.reduce((n, g) => n + g.count, 0);
 
   return (
-    <div
+    <ToggleGroup
+      appearance="chip"
       data-test-group-bar
-      role="group"
       aria-label="그룹으로 거르기"
-      className="flex items-center gap-s2 mb-s2 flex-wrap"
+      value={active ?? ALL}
+      onValueChange={(next) => onPick(next === ALL ? null : next)}
+      layout="mb-s2 flex-wrap"
     >
       {/*
-        **`sel` 을 떼었다 (015 T073).** 정본에 `.chip.sel` 규칙이 없다 — `.sel` 은
-        `.srow.sel`·`.trow.sel` 로만 정의돼 있어, 이 자리에서는 **전환 전에도 아무
-        일도 하지 않았다.** 고른 그룹이 시각적으로 구별되지 않는 상태이며, 지금
-        그것을 말하는 것은 `aria-pressed` 뿐이다.
-        시각 동일성이 요건이므로(FR-008) 여기서 모양을 새로 만들지 않는다 —
-        고칠 일이라면 별도 판단이 필요하다.
+        **고른 그룹이 보인다 (017 N-06 · T061).** 015 는 정본에 없는 `.chip.sel` 을 떼며 「고른 그룹이 시각적으로
+        구별되지 않는 상태이며 그것을 말하는 것은 `aria-pressed` 뿐」이라고 적고 판단을 미뤘다 — 목록이 걸러져
+        있는데 어느 그룹으로 걸렀는지 칩 줄에서 읽을 수 없었다. 이제 고른 칩이 잉크 테두리·글자를 갖는다. 새 모양이
+        아니라 정본이 「고른 것」을 말하는 문법(`.pick.on` 의 잉크 테두리)이며 채우지 않는다. 고른 상태는 라디오로 알린다.
       */}
-      <button
-        className={chipClasses()}
-        aria-pressed={active === null}
-        onClick={() => onPick(null)}
-        disabled={busy}
-      >
+      <ToggleGroupItem value={ALL} disabled={busy}>
         전체 {total}
-      </button>
+      </ToggleGroupItem>
       {groups.map((g) => (
-        <button
+        <ToggleGroupItem
           key={g.prefix}
-          className={chipClasses()}
-          aria-pressed={active === g.prefix}
+          value={g.prefix}
           data-group-chip={g.prefix}
-          onClick={() => onPick(g.prefix)}
           disabled={busy}
           // 정의가 없는 접두어는 이름을 지어내지 않는다 — 접두어가 곧 이름이다.
           title={g.name ?? `${g.prefix} — 그룹 정의가 없습니다`}
         >
           {g.name ?? (g.prefix === "TC" ? "그룹 없음" : g.prefix)} {g.count}
-        </button>
+        </ToggleGroupItem>
       ))}
       {/*
         그룹 조작은 **그 그룹을 고른 상태에서만** 나온다. 칩마다 조작을 달면 띠가
@@ -165,7 +161,7 @@ export function TestGroupBar({
           + 그룹
         </Button>
       )}
-    </div>
+    </ToggleGroup>
   );
 }
 

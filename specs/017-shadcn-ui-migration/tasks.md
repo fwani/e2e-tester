@@ -167,11 +167,11 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 
 ### 4-E. 탭과 분절 선택
 
-- [ ] T058 [US2] `frontend/src/ui/Tabs.tsx` 를 shadcn `tabs` 이식으로 — 정본 `.tabs` 모습(`bg-sunken` 줄 · 고른 탭 `bg-panel` · 11px 모노 대문자). `frontend/src/components/workbench/TargetPane.tsx` 산출물 탭(클래스 복사본)을 옮긴다 — `data-artifact-tab`·`data-action="artifact.select"` 유지. `TargetPane.test.tsx` 통과, 판정 방법이 바뀌면 test-ledger
-- [ ] T059 [US2] `frontend/src/ui/ToggleGroup.tsx` 를 shadcn `toggle-group`·`toggle` 이식으로 — `type="single"`, `appearance`: `segmented`(정본 `.segmented`) · `filter`(목록 거르기 · 고른 것 채움) · `chip`(그룹 칩) · `card`(정본 `.pick`)
-- [ ] T060 [US2] `frontend/src/components/PacingControl.tsx` 를 `ToggleGroup appearance="segmented"` 로 — `data-testid="pacing-*"` 유지. `PacingControl.test.tsx`·`RunnerPacing.test.tsx` 의 `aria-pressed` 를 `role="radio"`·`aria-checked` 로 바꾸고 test-ledger 에 적는다 (T059 의존)
-- [ ] T061 [US2] `frontend/src/pages/TestList.tsx` 거르기·정렬 · `frontend/src/components/TestGroupBar.tsx` 그룹 칩 · `frontend/src/components/workbench/WorkArea.tsx` 만드는 방법 카드 · `frontend/src/components/workbench/InsertStepForm.tsx` 가짜 라디오 2곳을 `ToggleGroup` 으로 — `data-compose-mode`·`data-group-chip` 유지. `TestListFilters`·`TestGroups`·`ComposePhase`·`StepInsert` 통과 (T059 의존)
-- [ ] T062 [US2] `frontend/src/ui/Table.tsx` 에서 `Tabs`·`Segmented` 를 지운다 — 참조 0 확인 (T058·T060·T061 의존)
+- [X] T058 [US2] `frontend/src/ui/Tabs.tsx` 를 shadcn `tabs` 이식으로 — 정본 `.tabs` 모습(`bg-sunken` 줄 · 고른 탭 `bg-panel` · 11px 모노 대문자). `frontend/src/components/workbench/TargetPane.tsx` 산출물 탭(클래스 복사본)을 옮긴다 — `data-artifact-tab`·`data-action="artifact.select"` 유지. `TargetPane.test.tsx` 통과, 판정 방법이 바뀌면 test-ledger
+- [X] T059 [US2] `frontend/src/ui/ToggleGroup.tsx` 를 shadcn `toggle-group`·`toggle` 이식으로 — `type="single"`, `appearance`: `segmented`(정본 `.segmented`) · `filter`(목록 거르기 · 고른 것 채움) · `chip`(그룹 칩) · `card`(정본 `.pick`)
+- [X] T060 [US2] `frontend/src/components/PacingControl.tsx` 를 `ToggleGroup appearance="segmented"` 로 — `data-testid="pacing-*"` 유지. `PacingControl.test.tsx`·`RunnerPacing.test.tsx` 의 `aria-pressed` 를 `role="radio"`·`aria-checked` 로 바꾸고 test-ledger 에 적는다 (T059 의존)
+- [X] T061 [US2] (정렬 「최근 실행 순」은 하나를 고르는 묶음이 아니라 누를 때마다 순서를 바꾸는 단추라 `Button` 으로 두었다 · 그룹 칩의 고른 표시 N-06) `frontend/src/pages/TestList.tsx` 거르기·정렬 · `frontend/src/components/TestGroupBar.tsx` 그룹 칩 · `frontend/src/components/workbench/WorkArea.tsx` 만드는 방법 카드 · `frontend/src/components/workbench/InsertStepForm.tsx` 가짜 라디오 2곳을 `ToggleGroup` 으로 — `data-compose-mode`·`data-group-chip` 유지. `TestListFilters`·`TestGroups`·`ComposePhase`·`StepInsert` 통과 (T059 의존)
+- [X] T062 [US2] `frontend/src/ui/Table.tsx` 에서 `Tabs`·`Segmented` 를 지운다 — 참조 0 확인 (T058·T060·T061 의존)
 
 ### 4-F. 툴팁과 펼침
 

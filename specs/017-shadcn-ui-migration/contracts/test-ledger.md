@@ -20,8 +20,8 @@
 | `RowMenuVisible.test.tsx` | 행 메뉴가 표에 잘리지 않고 보이며, 다시 누르면 닫힌다 | `.click()` → `userEvent.click()` 으로 연다. 위치 인라인 스타일 읽기 → 메뉴 내용이 문서에 있고 표 컨테이너 밖(포털)에 있음을 확인 | 같음 (4 검사 · 판정 대상만 옮김) | ✅ T056 — **실제 변경**: 포인터 누름(`userEvent.click`)으로 연다. 「문서 바닥에 붙는다」·「창 기준 고정 배치」를 메뉴 자신이 아니라 Radix 가 자리 잡는 감싸개(`data-radix-popper-content-wrapper`)에서 본다. 「닫으면 사라진다」는 다시 누르기 대신 **Esc** 로 닫는다 — 모달 메뉴가 열린 동안 뒤쪽(여는 단추 포함)은 포인터를 받지 않아 jsdom 에서 다시 누를 수 없다. 실제 브라우저에서 다시 누르면 바깥 누름으로 닫힌다. 여는 법의 키보드 경로는 `MenuKeyboard` 가 본다 |
 | `TestListActions.test.tsx` | 행 메뉴에서 편집·이름 바꾸기·삭제에 닿는다 | 메뉴 열기를 `userEvent` 로 | 같음 | ✅ T056 — 열기를 `userEvent.click` 으로. 「이름」 항목을 역할 `button` 이 아니라 `menuitem` 으로 찾는다 — 보조기술이 듣는 역할이 실제로 바뀌었다 |
 | `EditEntryPoints.test.tsx` | 행 메뉴의 「편집」이 편집 국면으로 간다 | 같음 | 같음 | ✅ T056 — 열기 2곳을 `userEvent.click` 으로 |
-| `PacingControl.test.tsx` | 고른 실행 속도가 남는다 | `aria-pressed` → `role="radio"` + `aria-checked` | `ToggleGroup type="single"` 은 배타 선택을 라디오로 알린다 (FR-013) | 4→4 | ⬜ |
-| `RunnerPacing.test.tsx` | 실행 중에 바꾼 속도가 남는다 | 같음 | 같음 | | ⬜ |
+| `PacingControl.test.tsx` | 고른 실행 속도가 남는다 | `aria-pressed` → `role="radio"` + `aria-checked` | `ToggleGroup type="single"` 은 배타 선택을 라디오로 알린다 (FR-013) | 4→4 | ✅ T060 — `aria-pressed` 4곳 → `aria-checked`. 누르기는 `fireEvent.click` 그대로 통과(토글 항목은 클릭으로 고른다) |
+| `RunnerPacing.test.tsx` | 실행 중에 바꾼 속도가 남는다 | 같음 | 1→1 | ✅ T060 — `aria-pressed` 1곳 → `aria-checked` · 머리주석의 같은 문장 |
 | `NoticesAreToasts.test.tsx` | 목록의 알림이 내용을 밀어내지 않고 한 층에 뜬다 | 진행 중 세션 경우 — 토스트가 아니라 **흐름 안 띠 하나**가 그 사실을 말함을 확인한다 | B-02 · FR-018b. 같은 사실을 두 자리가 말했다 | 2→5 (세션 경우) | ✅ T023 |
 | `ListLiveState.test.tsx` · `RecheckPhase12.test.tsx` | 실행 중·끝난 세션이 있을 때 목록에서 **실행 화면으로 돌아갈 수단이 있다** (005 FR-168) | 복귀 조작을 토스트의 「실행 화면 보기」가 아니라 띠의 「이어서 보기」로 찾는다 | B-02 — 같은 `onResumeSession` 을 부르는 조작이 한 화면에 둘이었다. 008 이 적은 「복귀 조작은 화면에 하나뿐」(`TestList.tsx:1368`)을 되살린다. 문구는 바꾸지 않는다 (spec Assumptions) | 1→1 · 1→1 | ✅ T023 |
 | `ToastPlacement.test.tsx` | 알림 층이 한 자리(오른쪽 위)에 뜬다 | **더한다**: 층 클래스가 띠 조건 셋을 서로 배제하는 형태로 갖는다 | B-01. `top` 을 고정하는 테스트가 없어 회귀가 들어왔다 | 5→16 | ✅ T019 |
@@ -36,7 +36,12 @@
 | `ImportPreview.test.tsx` · `InlineSecret.test.tsx` · `TestGroups.test.tsx` | 선택칸으로 고른 값이 반영된다 | **변경 없음 예상** — `NativeSelect` 는 실제 `<select>` 다 | 같음 | 불필요 (T038·T045·T047) — 예상대로 그대로 통과 |
 | `StepRowActions.test.tsx` · `RerecordStart.test.tsx` · `DeleteOutcome.test.tsx` | 체크박스로 고른 Step | **변경 없음 예상** — `Checkbox` 는 실제 `<input type=checkbox>` 다 | 같음 | 체크박스는 불필요(예상대로). **`DeleteOutcome` 은 행 메뉴 때문에 바뀌었다** (T056) — 메뉴를 `userEvent.click` 으로 열고, 메뉴의 「삭제」를 `menuitem` 으로 찾는다. 두 「삭제」(메뉴 항목 · 행 안 확인 단추)가 이제 역할로 갈린다 |
 | 확인 대화상자를 여는 화면 테스트 (`SaveNamePrompt` · `RunTrigger` · `RunFinished` · `PauseTransition` 등) | 확인 후의 동작 | 대화상자가 열린 동안 뒤쪽 요소를 `getByRole` 로 찾던 순서를 **닫은 뒤**로 | 같음 | 불필요 (T050·T051) — 확인 창을 누르는 `SaveNamePrompt`·`TestDefinition` 이 `document.querySelector` 로 찾아 포털·`aria-hidden` 의 영향을 받지 않았다 |
-| `BeforeAfterParity.test.ts` | 전환 전후 화면이 같다 | 보고서 갱신 · `INTENDED` 추가 | 매 단계 | | ⬜ |
+| `BeforeAfterParity.test.ts` | 전환 전후 화면이 같다 | 보고서 갱신 · `INTENDED` 추가 | 그대로 | ✅ 매 단계 — 4-B 에서 의도된 차이 106건(버튼 `.btn` 배치 · B-08) 등록. L2 단계 누르기가 전환 뒤의 `radio` 도 누르도록 넓혔다 (T061) |
+| `TestListFilters.test.tsx` | 결말 필터 넷이 있고 누르면 목록이 걸러지며 개수는 거르기 전 전체다 | 필터 항목을 역할 `button` → `radio` 로, 묶음을 `group` → `radiogroup` 으로 찾는다. 정렬 단추는 그대로 | 넷 중 하나를 고르는 묶음이라는 사실이 보조기술에 들린다 (FR-013) | 같음 | ✅ T061 |
+| `TestGroups.test.tsx` | 그룹 칩으로 거르고 그룹 조작이 고른 상태에서만 나온다 | 칩 12곳을 역할 `radio` 로 찾는다. 「+ 그룹」·「이름 바꾸기」·「그룹 없애기」는 그대로 `button` | 같음 | 같음 | ✅ T061 |
+| `TestListSelection.test.tsx` · `ListLiveState.test.tsx` | 걸러 보기와 선택 · 실행 중 행 | 필터 항목을 역할 `radio` 로 (2곳 · 1곳) | 같음 | 같음 | ✅ T061 |
+| `AiRecord.test.tsx` | 만들기 국면에서 AI 로 만들기를 고르면 지시문 자리가 나온다 | 「AI로 만들기」 카드를 역할 `radio` 로 | 둘 중 하나를 고르는 카드 묶음 | 같음 | ✅ T061 |
+| `InteractionStates.test.tsx` | 비활성 탭(S-11)이 활성과 구별된다 | 찾는 곳 `ui/Table`(`[&>button:disabled]`) → `ui/Tabs`(`disabled:border-solid`·`disabled:text-ink-3`). **더한다**: `ui/ToggleGroup` 분절 띠의 비활성 표시(S-12)와 「고른 색은 쓸 수 있을 때만」 | 탭·분절 띠가 부모 규칙에서 자기 부품으로 옮겨졌다 | 1→4 | ✅ T062 |
 
 **환경 보완 (T056)** — `tests/setup/dom.ts` 가 jsdom 의 `el.matches(':popover-open')`·`el.matches(':modal')` 에 바로 거짓을 돌려준다. jsdom 이 이 둘에 한 번 약 150ms 를 써 Radix 메뉴·툴팁을 여는 검사가 2~10초씩 걸리고 5초 제한을 넘었다(floating-ui 가 조상마다 묻는다). jsdom 에는 최상위 층이 없어 **같은 답을 빨리 낸다** — 판정을 바꾸거나 제한을 늘리지 않았다 (research S3 원인 판명).
 
@@ -65,6 +70,7 @@
 | US2 4-A·4-B 끝 (2026-09-15) | 113 | **2203** (+6) | 640 (±0) | 0 | G-B 가 조립 조합의 한 낱말짜리 값을 읽는지 자체 점검(+1 · T029) · 템플릿 구멍 판정 자체 점검 4 + 전수 1(+5 · N-04). 화면 전환(원시 요소 77 → 부품)에서 **바꾼 단언은 없다** — 테스트가 역할·이름·`data-*` 로 찾으므로 부품이 감싸도 그대로 통과했다 |
 | US2 4-C 끝 (2026-09-15) | 116 | **2236** (+33) | 640 (±0) | 0 | 새 동작 테스트 `DialogFocus`(7 검사) · `ToastOverModal`(4) · `MirrorInputWithDialog`(2) · `ImplementationCount` 이름 단위 퇴역(+5). 새 파일의 첫 판에 무른 단언 7개(`toBeDefined` · `not.toBeNull`)가 있었다 — `data-state`·`aria-live`·`role` 의 **구체 값**으로 바꿔 무른 단언을 늘리지 않았다. 대화상자 전환에서 **바꾼 기존 단언은 없다** — 확인 창을 누르는 두 파일(`SaveNamePrompt`·`TestDefinition`)이 `document.querySelector` 로 찾아 포털과 `aria-hidden` 의 영향을 받지 않았다 |
 | US2 4-D 끝 (2026-09-15) | 117 | **2252** (+16) | **639** (−1) | 0 | 새 동작 테스트 `MenuKeyboard`(7 검사 — Enter·Space·↓ 로 열기 · 화살표 · Esc 복귀 · 항목 선택 · 실제 행 단추의 `aria-haspopup`·`aria-expanded`). 무른 단언 −1 은 `RowMenuVisible` 의 「메뉴가 열렸다」를 `not.toBeNull()` 에서 `data-state` 값으로 바꾼 것 |
+| US2 4-E 끝 (2026-09-15) | 117 | **2255** (+3) | 639 (±0) | 0 | `InteractionStates` 의 탭 비활성 검사가 `ui/Tabs` 로 옮겨지며 분절 띠(S-12) 검사를 더했다(1→4). 고르기 단추의 역할이 `radio` 가 되며 **판정 방법만** 바뀐 파일 8개(PacingControl·RunnerPacing·TestListFilters·TestGroups·TestListSelection·ListLiveState·AiRecord·ComposePhase 는 그대로 통과)는 단언 수가 같다 |
 
 ## 새로 더하는 테스트
 

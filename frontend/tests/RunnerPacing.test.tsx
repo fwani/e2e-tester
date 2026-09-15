@@ -92,7 +92,7 @@ describe("간격 중 진행 표시 (FR-107)", () => {
     **가장 쓸모 있는 자리**였다: 실행 종료 화면에는 「처음부터 실행」이 있고, 여기서 고른
     값이 그 실행의 속도가 된다 (004 FR-109).
 
-    「무엇을 골랐는지 남는다」는 그대로 지킨다 — `aria-pressed` 가 그것을 말한다.
+    「무엇을 골랐는지 남는다」는 그대로 지킨다 — `aria-checked` 가 그것을 말한다 (017 T060 — 속도 고르기가 라디오가 되며 `aria-pressed` 에서 바뀌었다).
   */
   it("실행이 끝나도 속도를 바꿀 수 있고, 무엇을 골랐는지도 남는다", () => {
     const onPacingChange = vi.fn();
@@ -111,7 +111,7 @@ describe("간격 중 진행 표시 (FR-107)", () => {
     );
     const slow = screen.getByTestId("pacing-slow") as HTMLButtonElement;
     expect(slow.disabled).toBe(false);
-    expect(slow.getAttribute("aria-pressed")).toBe("true");
+    expect(slow.getAttribute("aria-checked")).toBe("true");
 
     // 다음 실행의 속도를 여기서 정한다 (FR-109).
     fireEvent.click(screen.getByTestId("pacing-fast"));

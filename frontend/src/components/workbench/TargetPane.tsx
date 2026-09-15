@@ -30,6 +30,7 @@ import type { SlotSize } from "../../lib/layout";
 import { openBrowserAtStepLabel, OPEN_BROWSER_AT_END } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 import type { EmptyReason, TargetView } from "./model";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/Tabs";
 /** 확정 디자인의 산출물 탭. 순서와 문구를 그대로 옮겼다 (`RunResult.dc.html`). */
 const ARTIFACT_TABS: { kind: ArtifactKind; label: string }[] = [
   { kind: "screenshot", label: "SCREENSHOT" },
@@ -139,6 +140,12 @@ export function TargetPane({
       )}
 
       {target.kind === "artifacts" && (
+        /*
+          017 T058 — 탭 줄이 `ui/Tabs` 다. 017 전에는 정본 `.tabs` 의 클래스를 이 자리에 **복사해** 원시 단추를
+          칠했고, 보조기술에는 눌린 단추 넷으로 들렸다. 이제 탭 목록·탭(`aria-selected`)·탭 내용이고 ←·→ 로 오간다.
+          뿌리는 이 판 자체다(`asChild`) — 판 안의 세로 배치를 한 겹 멀게 하지 않는다.
+        */
+        <Tabs asChild value={target.selected} onValueChange={(next) => onSelectArtifact?.(next as ArtifactKind)}>
         <div
           className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col"
         >
@@ -147,30 +154,27 @@ export function TargetPane({
             종류는 비활성으로 남기고 이유를 붙인다 — 확정 디자인에 있는 것을 빼지 않는다
             (DC-007). `TRACE` 는 서버가 501 을 준다 (001 의 알려진 차이).
           */}
-          <div
+          <TabsList
             /* 산출물 고르기의 자리 (`artifact.select`). */
             data-action="artifact.select"
-            className="bg-sunken border-b border-hair-2 [&>button]:border-0 [&>button]:border-r [&>button]:border-hair-2 [&>button]:rounded-none [&>button]:bg-transparent [&>button]:shadow-none [&>button]:text-ink-2 [&>button]:font-mono [&>button]:text-[11px] [&>button]:font-semibold [&>button]:leading-none [&>button]:tracking-[0.1em] [&>button[aria-pressed=true]]:bg-panel [&>button[aria-pressed=true]]:text-ink [&>button:disabled]:border-solid [&>button:disabled]:text-ink-3 flex-[0_0_36px] flex items-stretch"
+            aria-label="산출물"
+            layout="flex-[0_0_36px]"
           >
             {ARTIFACT_TABS.map((t) => {
               const usable = target.available.includes(t.kind);
-              const active = target.selected === t.kind;
               return (
-                <button
+                <TabsTrigger
                   key={t.kind}
-                  type="button"
+                  value={t.kind}
                   data-artifact-tab={t.kind}
                   disabled={!usable}
-                  aria-pressed={active}
                   title={usable ? undefined : EMPTY_MESSAGE.not_supported}
-                  onClick={usable ? () => onSelectArtifact?.(t.kind) : undefined}
-                  className={`px-s4 ${usable ? "cursor-pointer" : "cursor-not-allowed"}`}
                 >
                   {t.label}
-                </button>
+                </TabsTrigger>
               );
             })}
-          </div>
+          </TabsList>
           {/*
             005 FR-172 (U-22) — **비활성인 이유를 화면에도 남긴다.** `title` 은 마우스를
             올려야 보이고, 그러면 왜 못 누르는지 알아내는 데 한 번 더 시도가 필요하다.
@@ -187,10 +191,11 @@ export function TargetPane({
               는 이 실행에 남지 않았습니다 (MVP 미지원).
             </div>
           )}
-          <div className="flex-1 min-h-0 overflow-auto p-s4">
+          <TabsContent value={target.selected} layout="flex-1 min-h-0 overflow-auto p-s4">
             {target.body}
-          </div>
+          </TabsContent>
         </div>
+        </Tabs>
       )}
 
       {target.kind === "open_browser" && (

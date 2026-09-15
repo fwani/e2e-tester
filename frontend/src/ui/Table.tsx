@@ -7,8 +7,8 @@
  * `text-sm`·`[&:has([role=checkbox])]` 는 남지 않는다 — 정본 표에는 hover 강조가 없다.
  *
  * 015 의 손으로 만든 표 부품(`Table`·`TableHead`(thead)·`TableFoot`·`GridHead`·`TableRow`)은 **화면이 하나도 쓰지 않아**
- * 같은 자리에서 교체했다. 화면이 쓰는 `Row`·`Spacer`·`rowClasses`·`Segmented`·`Tabs` 는 그대로다
- * (`Segmented`·`Tabs` 는 017 T058~T062 에서 `ToggleGroup`·`Tabs` 부품으로 옮기며 지운다).
+ * 같은 자리에서 교체했다. 화면이 쓰는 `Row`·`Spacer`·`rowClasses` 는 그대로다. 여기 있던 `Segmented`·`Tabs`(부모가
+ * `[&>button]` 로 자식 단추를 칠하던 형태)는 017 T062 에서 `ui/ToggleGroup`·`ui/Tabs` 로 옮기며 지웠다.
  *
  * ## 표는 세 밀도다
  *
@@ -232,52 +232,4 @@ export function Row({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"d
 /** 정본 `.spacer` — 남는 자리를 먹는다. `Row` 안에서 다음 것을 오른쪽으로 민다. */
 export function Spacer({ layout, ...rest }: Omit<ComponentPropsWithRef<"span">, "className"> & { layout?: string }) {
   return <span className={cn("flex-1", layout)} {...rest} />;
-}
-
-/**
- * 정본 `.segmented` — 분절 선택 띠 (실행 속도 고르기 등). **017 T060 에서 `ToggleGroup` 으로 옮기며 지운다.**
- *
- * 정본이 `> button` 으로 정하던 것을 그대로 옮겼다: 테두리는 왼쪽만(첫째는 없음), 배경 없음, 글자 `--ink-2`·500,
- * 고른 것은 `--sunken` 바탕에 `--ink`·700, 못 누르는 것은 실선 테두리에 `--ink-3` (S-12).
- */
-export function Segmented({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"div">, "className"> & LayoutProps) {
-  const cls = cn(
-    "inline-flex border border-hair-2 rounded-base overflow-hidden " +
-      "[&>button]:border-0 [&>button]:border-l [&>button]:border-hair-2 [&>button]:rounded-none " +
-      "[&>button]:bg-transparent [&>button]:shadow-none [&>button]:text-ink-2 [&>button]:font-medium " +
-      "[&>button:first-child]:border-l-0 " +
-      "[&>button[aria-pressed=true]]:bg-sunken [&>button[aria-pressed=true]]:text-ink [&>button[aria-pressed=true]]:font-bold " +
-      "[&>button:disabled]:bg-transparent [&>button:disabled]:border-solid [&>button:disabled]:text-ink-3",
-    layout,
-  );
-  return (
-    <div className={cls} {...rest}>
-      {children}
-    </div>
-  );
-}
-
-/**
- * 정본 `.tabs` — 분절된 탭 띠. **017 T058 에서 `ui/Tabs` 부품으로 옮기며 지운다.**
- *
- * 안쪽 버튼의 형태를 여기서 정한다 (정본 `.tabs > button`). **S-11 을 함께 옮겼다** — 비활성 탭은 실선 테두리에
- * 흐린 글자다. 빠뜨리면 활성과 구별되지 않는다.
- */
-export function Tabs({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"div">, "className"> & LayoutProps) {
-  const cls = cn(
-    "bg-sunken border-b border-hair-2 " +
-      "[&>button]:border-0 [&>button]:border-r [&>button]:border-hair-2 [&>button]:rounded-none " +
-      "[&>button]:bg-transparent [&>button]:shadow-none [&>button]:text-ink-2 " +
-      "[&>button]:font-mono [&>button]:text-[11px] [&>button]:font-semibold [&>button]:leading-none " +
-      "[&>button]:tracking-[0.1em] " +
-      "[&>button[aria-pressed=true]]:bg-panel [&>button[aria-pressed=true]]:text-ink " +
-      // S-11 — 비활성 탭.
-      "[&>button:disabled]:border-solid [&>button:disabled]:text-ink-3",
-    layout,
-  );
-  return (
-    <div className={cls} {...rest}>
-      {children}
-    </div>
-  );
 }

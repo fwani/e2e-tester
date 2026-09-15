@@ -79,6 +79,7 @@ import { Checkbox } from "../ui/Checkbox";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "../ui/DropdownMenu";
 import { Input } from "../ui/Input";
 import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
+import { ToggleGroup, ToggleGroupItem } from "../ui/ToggleGroup";
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
 const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
@@ -604,15 +605,15 @@ export function TestList({
                 거르지 못했다. 개수는 **거르기 전 전체**를 세므로 필터가 자기 자신을
                 0으로 만들어 돌아올 길을 없애지 않는다.
               */}
- <div className="flex items-center gap-[6px]" role="group" aria-label="결말로 거르기">
+              {/* 017 T061 — 넷 중 하나를 고른다. 고른 결말을 라디오로 알리고 화살표로 오간다. 모양은 017 전과 같다(고른 것만 채움). */}
+              <ToggleGroup
+                appearance="filter"
+                aria-label="결말로 거르기"
+                value={filter}
+                onValueChange={(next) => setFilter(next as typeof filter)}
+              >
                 {(["all", "pass", "fail", "none"] as const).map((key) => (
-                  <Button
-                    key={key}
-                    size="sm"
-                    variant={filter === key ? "primary" : "default"}
-                    aria-pressed={filter === key}
-                    onClick={() => setFilter(key)}
-                  >
+                  <ToggleGroupItem key={key} value={key}>
                     {FILTER_LABEL[key]}
                     {/*
                       정본 `.num`(mono 12px · ink-3). **결말별 색을 주지 않는다** —
@@ -623,9 +624,9 @@ export function TestList({
                     <span className="font-mono text-[12px] leading-none font-normal text-ink-3 ml-auto">
                       {counts[key]}
                     </span>
-                  </Button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
 
               <div className="flex-1" />
 

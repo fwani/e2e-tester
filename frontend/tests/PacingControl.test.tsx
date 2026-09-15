@@ -21,8 +21,10 @@ describe("PacingControl", () => {
 
   it("현재 속도를 눌린 상태로 표시한다", () => {
     render(<PacingControl value="slow" onChange={vi.fn()} />);
-    expect(screen.getByTestId("pacing-slow").getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByTestId("pacing-fast").getAttribute("aria-pressed")).toBe("false");
+    // 017 T060 — 고른 속도를 **라디오로** 알린다(`role="radio"`·`aria-checked`). 017 전의 `aria-pressed` 는 「눌린
+    // 단추 넷」으로 들려 하나만 고른다는 사실이 없었다. 묻는 것은 그대로다 — 무엇이 골라져 있는가.
+    expect(screen.getByTestId("pacing-slow").getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByTestId("pacing-fast").getAttribute("aria-checked")).toBe("false");
   });
 
   it("다른 속도를 고르면 알린다 (FR-103)", () => {
@@ -51,14 +53,14 @@ describe("PacingControl", () => {
     // 컨트롤이 사라지면 자기가 고른 속도가 무엇이었는지도 확인할 수 없다.
     const slow = screen.getByTestId("pacing-slow") as HTMLButtonElement;
     expect(slow.disabled).toBe(true);
-    expect(slow.getAttribute("aria-pressed")).toBe("true");
+    expect(slow.getAttribute("aria-checked")).toBe("true");
   });
 
   it("취향을 남기지 못하면 그 사실만 알리고 실행을 막지 않는다", () => {
     render(<PacingControl value="slow" onChange={vi.fn()} preferenceSaved={false} />);
     expect(screen.getByRole("status").textContent).toContain("다음 실행에는 유지되지 않습니다");
     // 속도 자체는 바뀌었으므로 컨트롤은 그대로 눌린다.
-    expect(screen.getByTestId("pacing-slow").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("pacing-slow").getAttribute("aria-checked")).toBe("true");
   });
 
   it("정상 저장되면 경고를 띄우지 않는다", () => {

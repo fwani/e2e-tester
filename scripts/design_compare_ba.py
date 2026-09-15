@@ -459,7 +459,12 @@ def measure(page_url: str, backend: str, pw, scenarios: list[dict]) -> dict[str,
             # **역할로 집는다.** 글자로 집으면 그 글자를 품은 바깥 요소가 잡혀 눌러도
             # 아무 일이 없고, 검사는 「조작했다」고 믿은 채 같은 화면을 잰다. 1회차에
             # 화면 다섯이 전부 같은 32개 요소로 나온 원인이 그것이었다.
-            loc = page.get_by_role("button", name=step["button"], exact=bool(step.get("exact"))).first
+            exact = bool(step.get("exact"))
+            # 017 T061 — 결말 거르기가 `ToggleGroup` 이 되며 역할이 button 에서 radio 로 바뀌었다. 전환 전 코드(button)와
+            # 전환 뒤 코드(radio)를 **같은 단계**로 누른다 — 누르는 대상은 같은 글자의 같은 조작이다.
+            loc = page.get_by_role("button", name=step["button"], exact=exact).or_(
+                page.get_by_role("radio", name=step["button"], exact=exact)
+            ).first
             try:
                 loc.click(timeout=5000)
             except Exception as exc:  # noqa: BLE001

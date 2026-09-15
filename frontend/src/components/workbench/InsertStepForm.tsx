@@ -35,6 +35,7 @@ import type { CapabilityState } from "../../lib/capabilities";
 
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
+import { ToggleGroup, ToggleGroupItem } from "../../ui/ToggleGroup";
 
 /** 넣을 수 있는 종류의 순서. 자주 쓰는 것부터다. */
 const KINDS: InsertableKind[] = ["navigate", "assert_url", "assert_text", "close_tab"];
@@ -91,21 +92,24 @@ export function InsertStepForm({
       )}
 
       {/* 종류 — 넣을 수 있는 넷 */}
-      <div role="radiogroup" aria-label="넣을 Step 종류" className="flex flex-wrap gap-[6px]">
+      {/*
+        017 T061 — 017 전에는 단추에 역할(radio)과 선택 상태를 손으로 붙인 **가짜 라디오**였다. 역할은 있었지만
+        화살표로 오갈 수 없었고 묶음이 Tab 한 번이 아니었다. `ToggleGroup` 이 그 둘을 준다.
+      */}
+      <ToggleGroup
+        appearance="filter"
+        aria-label="넣을 Step 종류"
+        value={kind}
+        onValueChange={(next) => setKind(next as typeof kind)}
+        disabled={!usable}
+        layout="flex-wrap"
+      >
         {KINDS.map((k) => (
-          <Button
-            key={k}
-            role="radio"
-            aria-checked={kind === k}
-            disabled={!usable}
-            size="sm"
-            variant={kind === k ? "primary" : "default"}
-            onClick={() => setKind(k)}
-          >
+          <ToggleGroupItem key={k} value={k}>
             {INSERTABLE_KIND_LABEL[k]}
-          </Button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
 
       {/* 종류마다 필요한 값만 그린다 */}
       {(kind === "navigate" || kind === "assert_url") && (
@@ -152,21 +156,19 @@ export function InsertStepForm({
       )}
 
       {(kind === "assert_url" || kind === "assert_text") && (
-        <div role="radiogroup" aria-label="일치 방식" className="flex gap-[6px]">
+        <ToggleGroup
+          appearance="filter"
+          aria-label="일치 방식"
+          value={match}
+          onValueChange={(next) => setMatch(next as MatchMode)}
+          disabled={!usable}
+        >
           {(["equals", "contains"] as MatchMode[]).map((m) => (
-            <Button
-              key={m}
-              role="radio"
-              aria-checked={match === m}
-              disabled={!usable}
-              size="sm"
-              variant={match === m ? "primary" : "default"}
-              onClick={() => setMatch(m)}
-            >
+            <ToggleGroupItem key={m} value={m}>
               {m === "equals" ? "정확히 일치" : "포함"}
-            </Button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       )}
 
       {/* 무엇이 들어가는지 미리 보여준다 — 목록에 어떤 이름으로 뜰지가 여기서 정해진다 */}

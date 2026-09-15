@@ -203,6 +203,9 @@ const RETIRED_SYMBOLS: { path: string; pattern: RegExp; what: string }[] = [
   { path: "components/workbench/StepDetail.tsx", pattern: /role="dialog"/, what: "StepDetail 의 수제 대화상자 판" },
   // T056 — 떠 있는 메뉴도 같다. 포털과 좌표 계산을 손으로 하던 행 메뉴가 `ui/DropdownMenu` 로 옮겨졌다.
   { path: "pages/TestList.tsx", pattern: /\bMENU_Z\b|\bcreatePortal\(/, what: "TestList 의 수제 행 메뉴(포털·좌표 계산)" },
+  // T062 — 부모가 `[&>button]` 로 자식 원시 단추를 칠하던 고르기 띠·탭 줄과, 그 탭 줄의 클래스 복사본.
+  { path: "ui/Table.tsx", pattern: /\bexport function (?:Segmented|Tabs)\b/, what: "ui/Table 의 Segmented·Tabs" },
+  { path: "components/workbench/TargetPane.tsx", pattern: /\[&>button\[aria-pressed=true\]\]/, what: "TargetPane 의 탭 줄 클래스 복사본" },
 ];
 
 describe("017 — 대화상자·겹침 판의 구현은 부품 한 벌이다 (T054)", () => {
