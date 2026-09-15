@@ -71,6 +71,7 @@
 | US2 4-C 끝 (2026-09-15) | 116 | **2236** (+33) | 640 (±0) | 0 | 새 동작 테스트 `DialogFocus`(7 검사) · `ToastOverModal`(4) · `MirrorInputWithDialog`(2) · `ImplementationCount` 이름 단위 퇴역(+5). 새 파일의 첫 판에 무른 단언 7개(`toBeDefined` · `not.toBeNull`)가 있었다 — `data-state`·`aria-live`·`role` 의 **구체 값**으로 바꿔 무른 단언을 늘리지 않았다. 대화상자 전환에서 **바꾼 기존 단언은 없다** — 확인 창을 누르는 두 파일(`SaveNamePrompt`·`TestDefinition`)이 `document.querySelector` 로 찾아 포털과 `aria-hidden` 의 영향을 받지 않았다 |
 | US2 4-D 끝 (2026-09-15) | 117 | **2252** (+16) | **639** (−1) | 0 | 새 동작 테스트 `MenuKeyboard`(7 검사 — Enter·Space·↓ 로 열기 · 화살표 · Esc 복귀 · 항목 선택 · 실제 행 단추의 `aria-haspopup`·`aria-expanded`). 무른 단언 −1 은 `RowMenuVisible` 의 「메뉴가 열렸다」를 `not.toBeNull()` 에서 `data-state` 값으로 바꾼 것 |
 | US2 4-E 끝 (2026-09-15) | 117 | **2255** (+3) | 639 (±0) | 0 | `InteractionStates` 의 탭 비활성 검사가 `ui/Tabs` 로 옮겨지며 분절 띠(S-12) 검사를 더했다(1→4). 고르기 단추의 역할이 `radio` 가 되며 **판정 방법만** 바뀐 파일 8개(PacingControl·RunnerPacing·TestListFilters·TestGroups·TestListSelection·ListLiveState·AiRecord·ComposePhase 는 그대로 통과)는 단언 수가 같다 |
+| US2 4-F·4-G 끝 (2026-09-15) | 118 | **2270** (+15) | 639 (±0) | 0 | 새 `TooltipDisclosure`(6 검사 · 14 단언) · `ImplementationCount` 이름 단위 퇴역에 수제 펼침 토글(+1). 툴팁·펼침 전환과 클래스 잇기(`cn`) 전환에서 **바꾼 기존 단언은 없다** — 알림 `×` 는 글자 `×` 와 이름 「알림 닫기」를 그대로 지켰다 (`ToastDismiss`) |
 
 ## 새로 더하는 테스트
 
@@ -83,3 +84,4 @@
 | `MenuKeyboard.test.tsx` | 행 메뉴 키보드 열기·화살표·Esc | FR-012 |
 | `ToastOverModal.test.tsx` | 모달이 열린 동안 알림 층이 `aria-hidden` 이 아니고 눌린다 | research R6 ③④ |
 | `MirrorInputWithDialog.test.tsx` | 대화상자가 열린 동안 미러로 가는 입력 0, 닫힌 뒤 한글 조합 입력 경로 유지 | FR-016 · SC-013 |
+| `TooltipDisclosure.test.tsx` | 툴팁이 키보드 초점·포인터에 뜨고 Esc 로 닫힌다 · 잘린 글자만 초점을 받고 전체 문구를 보인다 · 네이티브 요약 줄이 펼침을 바꾸고 표식 글자는 낭독에서 빠진다 | FR-019 · ui-parts §4 (T063·T065 · 계획에 없던 파일 — 부품 테스트) |

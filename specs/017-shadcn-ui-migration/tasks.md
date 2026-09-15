@@ -175,16 +175,16 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 
 ### 4-F. 툴팁과 펼침
 
-- [ ] T063 [US2] `frontend/src/ui/Tooltip.tsx` 를 shadcn `tooltip` 이식으로 — `TooltipProvider`(`frontend/src/App.tsx` 뿌리에 한 번) · `Tooltip` · `Truncate`(넘칠 때만 hover·**초점**에 전체 문구). z 50, 움직임 없음, 화살표 없음 가능. **비활성 조작에는 쓰지 않는다** — 사유의 `title` 유지 (research R2)
-- [ ] T064 [US2] 아이콘 단추에 툴팁 — `frontend/src/pages/TestList.tsx` 행 메뉴 `⋮` · `frontend/src/components/Toast.tsx` `×` · `frontend/src/components/workbench/StepDetail.tsx` 닫기 (T063 의존)
-- [ ] T065 [US2] `frontend/src/ui/Disclosure.tsx`(네이티브 `<details>` · 정본 요약 줄 형태)를 만들고 `frontend/src/components/workbench/StepDetail.tsx` ▸/▾ 수제 토글 3곳과 `<details>` 10곳(`frontend/src/components/TestBulkConfirm.tsx`·`frontend/src/pages/ImportPreview.tsx`·`frontend/src/pages/TestList.tsx`)을 옮긴다 — `data-header-row-picker`·`data-column-mapping` 등 속성 유지. `ImportPreview`·`TestBulkConfirm` 관련 테스트 통과
+- [X] T063 [US2] (공급자는 앱 뿌리가 아니라 **툴팁마다** — shadcn 원본의 형태이며 화면을 낱개로 렌더하는 검사가 공급자 밖 예외로 멈추지 않는다 · z 는 알림 위 70 으로 L1 표를 고쳤다) `frontend/src/ui/Tooltip.tsx` 를 shadcn `tooltip` 이식으로 — `TooltipProvider`(`frontend/src/App.tsx` 뿌리에 한 번) · `Tooltip` · `Truncate`(넘칠 때만 hover·**초점**에 전체 문구). z 50, 움직임 없음, 화살표 없음 가능. **비활성 조작에는 쓰지 않는다** — 사유의 `title` 유지 (research R2)
+- [X] T064 [US2] (Step 상세 판은 열릴 때 초점을 닫기가 아니라 **판 자체**에 둔다 — 닫기에 두면 그 툴팁이 판을 열 때마다 뜬다) 아이콘 단추에 툴팁 — `frontend/src/pages/TestList.tsx` 행 메뉴 `⋮` · `frontend/src/components/Toast.tsx` `×` · `frontend/src/components/workbench/StepDetail.tsx` 닫기 (T063 의존)
+- [X] T065 [US2] `frontend/src/ui/Disclosure.tsx`(네이티브 `<details>` · 정본 요약 줄 형태)를 만들고 `frontend/src/components/workbench/StepDetail.tsx` ▸/▾ 수제 토글 3곳과 `<details>` 10곳(`frontend/src/components/TestBulkConfirm.tsx`·`frontend/src/pages/ImportPreview.tsx`·`frontend/src/pages/TestList.tsx`)을 옮긴다 — `data-header-row-picker`·`data-column-mapping` 등 속성 유지. `ImportPreview`·`TestBulkConfirm` 관련 테스트 통과
 
 ### 4-G. 부품 층 마감
 
-- [ ] T066 [US2] `frontend/src/ui/Notice.tsx` · `Surface.tsx` · `StepRow.tsx` 의 `[…].filter(Boolean).join(" ")` 을 `cn`·`cva` 로 옮기고 출처 줄을 갱신한다. `ClassConflict` 자체 점검 하한 통과 (T012 의존)
-- [ ] T067 [US2] (부분 — `SessionScreen` 입력 1·버튼 3 · `EditView` 버튼 1 · `ChatPanel` 여러 줄 1 은 4-B 에서 앞당겨 옮겼다. 남은 원시 요소 5 는 T058·T060·T061 의 고르기 단추) 남은 원시 요소를 정리한다 — `frontend/src/pages/SessionScreen.tsx` 입력 1 · `frontend/src/pages/EditView.tsx` 버튼 2 · 그 밖 G-G 가 지목하는 자리. **`REMAINING_BUDGET` = 등록된 `raw-element` 예외 수** 에 도달한다 (SC-005)
-- [ ] T068 [US2] [contracts/ui-parts.md](contracts/ui-parts.md) §1 `상태` 칸을 전부 ✅ 로 갱신하고, 이식 중 대응표 §2 에 더한 줄을 확인한다. `grep -rn "ui/Modal\|OverlayPane\b\|navLinkClasses\|filter(Boolean).join" frontend/src` 결과 0
-- [ ] T069 [US2] 순회 · L2 를 돌려 `frontend/tests/sweep-report.json` · `frontend/tests/l2-report.json` 을 갱신한다 — 부품 전환에서 생긴 구조 차이(`NativeSelect` 감싸개 · 표 부품 · 포털)를 사유와 함께 `scripts/design_compare_ba.py` `INTENDED` 에 등록하고, 순회에서 부품 층으로 해결된 B-07·B-08·B-09 를 알려진 깨짐 등록부에서 지운다(사라졌을 때만)
+- [X] T066 [US2] `frontend/src/ui/Notice.tsx` · `Surface.tsx` · `StepRow.tsx` 의 `[…].filter(Boolean).join(" ")` 을 `cn`·`cva` 로 옮기고 출처 줄을 갱신한다. `ClassConflict` 자체 점검 하한 통과 (T012 의존)
+- [X] T067 [US2] (완료 — 4-B 에서 앞당겨 옮긴 뒤 4-E 로 남은 5 를 옮겨 `REMAINING_BUDGET` 0 · 등록된 원시 요소 예외는 미러 한글 조합 칸 1. 이전 메모: `SessionScreen` 입력 1·버튼 3 · `EditView` 버튼 1 · `ChatPanel` 여러 줄 1 은 4-B 에서 앞당겨 옮겼다. 남은 원시 요소 5 는 T058·T060·T061 의 고르기 단추) 남은 원시 요소를 정리한다 — `frontend/src/pages/SessionScreen.tsx` 입력 1 · `frontend/src/pages/EditView.tsx` 버튼 2 · 그 밖 G-G 가 지목하는 자리. **`REMAINING_BUDGET` = 등록된 `raw-element` 예외 수** 에 도달한다 (SC-005)
+- [X] T068 [US2] (grep 결과: **코드 참조 0** — 남은 줄은 전부 주석 속 이력(`Button` 의 `navLinkClasses()` 언급 · `Surface`·`OverlayPane` 머리주석) · `filter(Boolean).join` 은 `ui/cn.ts` 의 구현 한 줄뿐 · `OverlayPane\b` 는 계약이 정한 **파일 이름** `ui/OverlayPane`(DetailPanel) 의 가져오기 경로 — 옛 `ui/Surface` 의 `OverlayPane` 함수는 없다) [contracts/ui-parts.md](contracts/ui-parts.md) §1 `상태` 칸을 전부 ✅ 로 갱신하고, 이식 중 대응표 §2 에 더한 줄을 확인한다. `grep -rn "ui/Modal\|OverlayPane\b\|navLinkClasses\|filter(Boolean).join" frontend/src` 결과 0
+- [X] T069 [US2] (단계마다 L2·순회를 돌려 커밋했다 — 의도된 차이 106건 등록(4-B) · B-07·B-08·B-09 등록부에서 지움 · 4-F 뒤 L2 불일치 0 · 순회 등록되지 않은 검출 0 · 알려진 깨짐 46) 순회 · L2 를 돌려 `frontend/tests/sweep-report.json` · `frontend/tests/l2-report.json` 을 갱신한다 — 부품 전환에서 생긴 구조 차이(`NativeSelect` 감싸개 · 표 부품 · 포털)를 사유와 함께 `scripts/design_compare_ba.py` `INTENDED` 에 등록하고, 순회에서 부품 층으로 해결된 B-07·B-08·B-09 를 알려진 깨짐 등록부에서 지운다(사라졌을 때만)
 
 **Checkpoint**: 부품이 한 체계에서 온다. 옛 부품·수제 대화상자·수제 메뉴가 없다. 동작 테스트 4종 통과.
 

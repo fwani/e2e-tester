@@ -31,6 +31,7 @@ import { Button } from "../ui/Button";
 import { Toast as UiToast, TOAST_LAYER_CLASSES } from "../ui/Notice";
 import type { NoticeTone } from "../ui/Notice";
 import { useToastDismiss } from "../ui/useToastDismiss";
+import { Tooltip } from "../ui/Tooltip";
 
 /** 알림의 뜻 → 정본의 옅은 바탕. `NoticeStack` 의 `TONE` 과 같은 값이다. */
 export type ToastTone = "error" | "warn" | "info" | "plain";
@@ -131,18 +132,16 @@ export function Toast({ tone = "plain", onDismiss, mark, role, children }: Toast
  *
  * **이름은 남는다.** `aria-label="알림 닫기"` 가 낭독기가 듣는 것이고, 검사도 이것으로
  * 집는다 — 모양이 글자에서 기호로 바뀌어도 「닫는 길이 있는가」라는 질문은 그대로다.
+ *
+ * **017 T064 — `title` 을 툴팁으로 바꿨다.** `title` 은 포인터를 올려야만 뜨고 키보드 초점에는 뜨지 않았다. 툴팁은
+ * 알림 층(z 60) **위**(z 70)에 뜬다 — 알림 안의 조작을 가리키는 툴팁이 그 알림에 가려지면 안 된다 (layout-contract-v3 L1).
  */
 export function DismissButton({ onClick }: { onClick: () => void }) {
   return (
-    <Button
-      size="icon"
-      variant="ghost"
-      aria-label="알림 닫기"
-      title="닫기"
-      onClick={onClick}
-      layout="shrink-0"
-    >
-      ×
-    </Button>
+    <Tooltip content="알림 닫기" side="left">
+      <Button size="icon" variant="ghost" aria-label="알림 닫기" onClick={onClick} layout="shrink-0">
+        ×
+      </Button>
+    </Tooltip>
   );
 }

@@ -1,7 +1,7 @@
 /**
  * 면 — 판·머리·층·가림막. 의미 클래스가 해체되어 온 곳. 015 T022·T023.
  *
- * 출처: 015 (손으로 만든 부품)
+ * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로
  *
  * 「무엇을 담는 자리인가」를 정하는 부품들이다. 담기는 내용은 모른다.
  *
@@ -27,6 +27,8 @@
  */
 import type { ComponentPropsWithRef, ReactNode } from "react";
 
+import { cn } from "./cn";
+
 type DivProps = Omit<ComponentPropsWithRef<"div">, "className">;
 interface SurfaceProps extends DivProps {
   /** **배치만.** 모양은 부품이 정한다. */
@@ -36,7 +38,7 @@ interface SurfaceProps extends DivProps {
 
 /** 정본 `.pane` — 테두리와 바탕을 가진 판. */
 export function Pane({ layout, children, ...rest }: SurfaceProps) {
-  const cls = ["bg-panel border border-hair rounded-base", layout].filter(Boolean).join(" ");
+  const cls = cn("bg-panel border border-hair rounded-base", layout);
   return (
     <div className={cls} {...rest}>
       {children}
@@ -50,13 +52,11 @@ export function Pane({ layout, children, ...rest }: SurfaceProps) {
  * `band` 는 정본 `.pane-hd.band` 다. 확정 디자인이 표·목록 위의 라벨 줄을 36px 로 둔다.
  */
 export function PaneHead({ band = false, layout, children, ...rest }: SurfaceProps & { band?: boolean }) {
-  const cls = [
+  const cls = cn(
     "bg-sunken border-b border-hair-2 text-ink-2",
     band ? "h-[36px] flex items-center" : "",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <div className={cls} data-band={band ? "true" : undefined} {...rest}>
       {children}
@@ -66,13 +66,11 @@ export function PaneHead({ band = false, layout, children, ...rest }: SurfacePro
 
 /** 정본 `.hdr` — 화면 맨 위 머리띠. 높이는 `--h-header`(56px) 고정. */
 export function AppHeader({ layout, children, ...rest }: SurfaceProps) {
-  const cls = [
+  const cls = cn(
     // 정본 `.hdr` 은 `flex: 0 0 56px` — 기준 크기가 56px 이다 (L2 대조).
     "grow-0 shrink-0 basis-header h-header flex items-center gap-[14px] px-s4 bg-panel border-b border-hair",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   // `data-shell` — 이 문서에 머리띠가 있다는 사실. 알림 층의 자리(017 layout-contract-v3 L2)와
   // 화면 순회(screen-sweep SW-6)가 이것을 읽는다. 모양이 아니라 **구조의 표식**이다.
   return (
@@ -95,7 +93,7 @@ export function Scrim({ strength = "soft", layout, children, ...rest }: SurfaceP
     soft: "bg-scrim",
     strong: "bg-scrim-strong",
   };
-  const cls = [TONE[strength], layout].filter(Boolean).join(" ");
+  const cls = cn(TONE[strength], layout);
   return (
     <div className={cls} data-strength={strength} {...rest}>
       {children}
@@ -105,6 +103,6 @@ export function Scrim({ strength = "soft", layout, children, ...rest }: SurfaceP
 
 /** 정본 `.divider` — 세로 구분선. */
 export function Divider({ layout, ...rest }: Omit<SurfaceProps, "children">) {
-  const cls = ["w-px h-[20px] bg-hair-2 flex-none", layout].filter(Boolean).join(" ");
+  const cls = cn("w-px h-[20px] bg-hair-2 flex-none", layout);
   return <div className={cls} {...rest} />;
 }

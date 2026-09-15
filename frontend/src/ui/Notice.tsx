@@ -1,7 +1,7 @@
 /**
  * 알림 — 의미 클래스 `.notice` 계열이 해체되어 온 곳. 015 T021.
  *
- * 출처: 015 (손으로 만든 부품)
+ * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로
  *
  * 세 가지가 한 뿌리에서 갈린다.
  *
@@ -32,6 +32,8 @@
  * 목록에 해당 줄이 없다). 옮길 것이 없다는 것을 확인했다.
  */
 import type { ComponentPropsWithRef, ReactNode } from "react";
+
+import { cn } from "./cn";
 
 /** 정본 `.tint-*` 에 대응한다. `default` 는 바탕 없음(흐름 안 알림의 기본). */
 export type NoticeTone = "default" | "pass" | "fail" | "warn" | "run" | "ai";
@@ -65,14 +67,12 @@ export interface NoticeProps extends Omit<ComponentPropsWithRef<"div">, "classNa
  * **높이를 못 박는 것이 이 부품의 성질이다** — 흐름 안에 있으므로 커지면 아래가 밀린다.
  */
 export function Notice({ tone = "default", layout, children, ...rest }: NoticeProps) {
-  const cls = [
+  const cls = cn(
     "grow-0 shrink-0 basis-notice h-notice flex items-center gap-s2 px-s4",
     "font-sans text-[12px] leading-none font-normal border-b border-hair",
     tone === "default" ? "" : TONE[tone],
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <div className={cls} data-tone={tone} {...rest}>
       {children}
@@ -90,15 +90,13 @@ export function Notice({ tone = "default", layout, children, ...rest }: NoticePr
  * 높이를 풀고 최소 높이만 지킨다 (위 사고 (2)).
  */
 export function Toast({ tone = "default", layout, children, ...rest }: NoticeProps) {
-  const cls = [
+  const cls = cn(
     "flex-none min-h-notice flex items-start gap-s2 px-s3 py-s2",
     "font-sans text-[12px] leading-none font-normal",
     "border rounded-chip shadow-e2",
     TONE[tone],
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <div className={cls} data-tone={tone} {...rest}>
       {children}
@@ -149,7 +147,7 @@ export const TOAST_LAYER_CLASSES =
   "[:root:has([data-shell=phase])_&]:max-h-[calc(100vh-var(--h-header)-var(--h-phase)-24px)]";
 
 export function ToastLayer({ layout, children, ...rest }: Omit<NoticeProps, "tone">) {
-  const cls = [TOAST_LAYER_CLASSES, layout].filter(Boolean).join(" ");
+  const cls = cn(TOAST_LAYER_CLASSES, layout);
   return (
     <div className={cls} aria-live="polite" {...rest}>
       {children}

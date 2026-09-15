@@ -44,6 +44,8 @@ import { Chip } from "../../ui/Chip";
 import { Checkbox } from "../../ui/Checkbox";
 import { Input } from "../../ui/Input";
 import { DetailPanel, DetailPanelTitle } from "../../ui/OverlayPane";
+import { Disclosure } from "../../ui/Disclosure";
+import { Tooltip } from "../../ui/Tooltip";
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
   return /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(value);
@@ -192,6 +194,8 @@ export function StepDetail({
         */}
         <DetailPanelTitle>STEP 상세</DetailPanelTitle>
         <div className="flex-1" />
+        {/* 017 T064 — 글자 없는 닫기의 이름을 포인터·초점에 보여 준다. 판이 열릴 때 초점은 판 자체로 가므로 저절로 뜨지 않는다. */}
+        <Tooltip content="닫기" side="left">
         <Button /*
             011 UC-011-10 — 닫는 조작은 **상세 안에** 있고 모든 국면에서 같은 자리다.
             표식을 두는 이유: 011 이 상세를 대상 앱 위로 옮겼으므로, 닫을 방법이 판 안에
@@ -207,6 +211,7 @@ export function StepDetail({
             <path d="M4 4l8 8M12 4l-8 8" />
           </svg>
         </Button>
+        </Tooltip>
       </div>
 
       <div className="p-s4 flex flex-col gap-s4">
@@ -291,11 +296,6 @@ export function StepDetail({
                       변수 참조입니다. 실제 값은 비밀 파일의 암호문에 있으며 화면에 표시되지
                       않습니다.
                     </p>
-                    {canMarkSensitive && (
-                      <Button variant="nav" onClick={() => setSecretOpen((v) => !v)}>
-                        {secretOpen ? "▾" : "▸"} 비밀 값 다시 넣기
-                      </Button>
-                    )}
                   </>
                 ) : (
  <label className="flex items-center gap-[6px] mt-[6px]">
@@ -313,24 +313,34 @@ export function StepDetail({
                   </label>
                 )}
 
-                {/* DR-023·SC-106 — 화면 이동 0회. 비밀 값을 이 자리에서 넣는다. */}
-                {!alreadyReference && canMarkSensitive && (
-                  <Button variant="nav" layout="mt-s1" onClick={() => setSecretOpen((v) => !v)}>
-                    {secretOpen ? "▾" : "▸"} 여기서 비밀 값 넣기
-                  </Button>
-                )}
+                {/*
+                  DR-023·SC-106 — 화면 이동 0회. 비밀 값을 이 자리에서 넣는다.
 
-                {secretOpen && (
-                  <div className="mt-s2">
-                    <InlineSecretInput
-                      currentName={alreadyReference ? referenceName(value) : null}
-                      busy={busy}
-                      onLinked={(reference) => {
-                        setValue(reference);
-                        setSecretOpen(false);
-                      }}
-                    />
-                  </div>
+                  017 T065 — 단추가 ▸/▾ 글자를 바꿔 그리던 토글(참조일 때 「다시 넣기」 · 아닐 때 「여기서 넣기」 두 벌)을
+                  `Disclosure` 하나로 모았다. 펼침 상태를 낭독기가 알고, 다른 Step 을 고르거나 봉인하면 접는다(`secretOpen`).
+                  입력 칸은 **펼쳤을 때만** 그린다 — 접힌 채로 그리면 열지도 않은 Step 마다 등록된 변수 목록을 불러온다.
+                */}
+                {canMarkSensitive && (
+                  <Disclosure
+                    tone="action"
+                    layout="mt-s1"
+                    open={secretOpen}
+                    onOpenChange={setSecretOpen}
+                    summary={alreadyReference ? "비밀 값 다시 넣기" : "여기서 비밀 값 넣기"}
+                  >
+                    {secretOpen && (
+                      <div className="mt-s2">
+                        <InlineSecretInput
+                          currentName={alreadyReference ? referenceName(value) : null}
+                          busy={busy}
+                          onLinked={(reference) => {
+                            setValue(reference);
+                            setSecretOpen(false);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </Disclosure>
                 )}
               </div>
             )}
@@ -485,16 +495,13 @@ export function StepDetail({
         )}
 
         {step !== null && (
-          <div>
-            <Button variant="nav" onClick={() => setShowDsl((v) => !v)}>
-              {showDsl ? "▾" : "▸"} 테스트 DSL 미리보기
-            </Button>
+          <Disclosure tone="action" open={showDsl} onOpenChange={setShowDsl} summary="테스트 DSL 미리보기">
             {showDsl && (
               <pre className="bg-ink text-panel rounded-base font-mono text-[11px] leading-[1.6] font-normal p-[10px] overflow-x-auto mt-[6px] mx-0 mb-0">
                 {dslPreview(step)}
               </pre>
             )}
-          </div>
+          </Disclosure>
         )}
 
         {/*

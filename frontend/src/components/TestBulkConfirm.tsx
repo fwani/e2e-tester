@@ -6,6 +6,7 @@ import {
 import type { TrashedTest } from "../api/client";
 
 import { Button } from "../ui/Button";
+import { Disclosure } from "../ui/Disclosure";
 /**
  * 테스트 복수 삭제 확인 — **목록 바로 아래에서** 묻는다 (013 FR-430 · UC-013-04).
  *
@@ -86,10 +87,7 @@ export function TrashedTestsNotice({
         기본은 **펼친 상태**다 (UC-013-05). 접어 두면 사용자가 되돌리는 방법을 못 본 채
         알림을 닫는다. 여러 개일 때 길어지므로 접을 수 있게만 해 둔다.
       */}
-      <details open className="mt-[6px]">
-        <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
-          옮긴 자리 {trashed.length}곳
-        </summary>
+      <Disclosure open layout="mt-[6px]" tone="quiet" summary={<>옮긴 자리 {trashed.length}곳</>}>
         {trashed.map((t) => (
           <div
             key={t.id}
@@ -98,7 +96,7 @@ export function TrashedTestsNotice({
             {t.trashed_to}
           </div>
         ))}
-      </details>
+      </Disclosure>
       <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
         {TESTS_RESTORE_HINT}
       </div>
@@ -247,16 +245,13 @@ export function RenumberedNotice({
           : `${changed}개의 번호를 바꿨습니다. ${result.unchanged}개는 제자리였습니다.`}
       </div>
       {changed > 0 && (
-        <details open className="mt-[6px]">
-          <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
-            바뀐 식별자 {changed}건
-          </summary>
+        <Disclosure open layout="mt-[6px]" tone="quiet" summary={<>바뀐 식별자 {changed}건</>}>
           {result.renumbered.map((m) => (
  <div key={m.from_id} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[2px]">
               {m.from_id} → {m.to_id} · {m.name}
             </div>
           ))}
-        </details>
+        </Disclosure>
       )}
       {changed > 0 && (
         <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]">

@@ -206,6 +206,8 @@ const RETIRED_SYMBOLS: { path: string; pattern: RegExp; what: string }[] = [
   // T062 — 부모가 `[&>button]` 로 자식 원시 단추를 칠하던 고르기 띠·탭 줄과, 그 탭 줄의 클래스 복사본.
   { path: "ui/Table.tsx", pattern: /\bexport function (?:Segmented|Tabs)\b/, what: "ui/Table 의 Segmented·Tabs" },
   { path: "components/workbench/TargetPane.tsx", pattern: /\[&>button\[aria-pressed=true\]\]/, what: "TargetPane 의 탭 줄 클래스 복사본" },
+  // T065 — 단추가 ▸/▾ 글자를 바꿔 그리던 수제 펼침 토글. 펼침 상태가 보조기술에 없었다.
+  { path: "components/workbench/StepDetail.tsx", pattern: /\? "▾" : "▸"/, what: "StepDetail 의 수제 펼침 토글" },
 ];
 
 describe("017 — 대화상자·겹침 판의 구현은 부품 한 벌이다 (T054)", () => {

@@ -1,7 +1,7 @@
 /**
  * Step 목록의 부품. 015 T026.
  *
- * 출처: 015 (손으로 만든 부품)
+ * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로
  *
  * ## 행 높이 52px 는 계약이다
  *
@@ -26,6 +26,8 @@
  * S-13 (`.srow-check input[type=checkbox]:disabled`) 이 `StepCheck` 로 온다.
  */
 import type { ComponentPropsWithRef, ReactNode } from "react";
+
+import { cn } from "./cn";
 
 /**
  * 정본 `.srow.{pass,fail,run}`. `none` 은 결말 없음.
@@ -66,9 +68,7 @@ type DivProps = Omit<ComponentPropsWithRef<"div">, "className">;
 
 /** 정본 `.steps` — Step 패널. 폭 460px 고정 (007 FR-218a). */
 export function StepPanel({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["flex-none basis-steps border-l border-hair-2 bg-panel flex flex-col", layout]
-    .filter(Boolean)
-    .join(" ");
+  const cls = cn("flex-none basis-steps border-l border-hair-2 bg-panel flex flex-col", layout);
   return (
     <div className={cls} {...rest}>
       {children}
@@ -78,12 +78,10 @@ export function StepPanel({ layout, children, ...rest }: DivProps & { layout?: s
 
 /** 정본 `.steps-hd` — Step 패널의 머리 띠 (36px). */
 export function StepPanelHead({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = [
+  const cls = cn(
     "grow-0 shrink-0 basis-[36px] h-[36px] flex items-center gap-s2 px-s3 bg-sunken border-b border-hair-2",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <div className={cls} {...rest}>
       {children}
@@ -98,7 +96,7 @@ export function StepPanelHead({ layout, children, ...rest }: DivProps & { layout
  * 사용자가 찾지 못한다.
  */
 export function StepPanelFoot({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["border-t border-hair-2 bg-sunken-2", layout].filter(Boolean).join(" ");
+  const cls = cn("border-t border-hair-2 bg-sunken-2", layout);
   return (
     <div className={cls} {...rest}>
       {children}
@@ -130,7 +128,7 @@ export function StepRow({
   layout?: string;
   children?: ReactNode;
 }) {
-  const cls = [
+  const cls = cn(
     "grid items-center gap-[10px] h-step pt-[6px] pr-s3 pb-[6px] pl-[9px]",
     "border-b border-hair border-l-[3px] border-solid",
     withCheck ? "grid-cols-[22px_26px_1fr_58px_20px_auto]" : "grid-cols-[26px_1fr_58px_20px_auto]",
@@ -149,9 +147,7 @@ export function StepRow({
     // 잉크를 쓰는 이유는 지목이 상태가 아니라 「지금 보고 있는 곳」이어서다.
     selected ? "shadow-[inset_0_0_0_2px_var(--ink)]" : "",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <div
       className={cls}
@@ -172,7 +168,7 @@ export function StepRow({
  * 폭 100%)을 받지 않게 크기를 명시한다. S-13(비활성 커서·투명도)을 함께 옮겼다.
  */
 export function StepCheck({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = [
+  const cls = cn(
     "flex items-center justify-center",
     "[&_input]:w-[14px] [&_input]:h-[14px] [&_input]:min-h-0 [&_input]:m-0 [&_input]:p-0",
     // 정본이 함께 정한 둘. 빠뜨리면 체크는 브라우저 기본색이 되고, 누를 수 있다는
@@ -181,9 +177,7 @@ export function StepCheck({ layout, children, ...rest }: DivProps & { layout?: s
     // S-13
     "[&_input:disabled]:cursor-default [&_input:disabled]:opacity-40",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <div className={cls} data-cell="check" {...rest}>
       {children}
@@ -197,7 +191,7 @@ export function StepCheck({ layout, children, ...rest }: DivProps & { layout?: s
  * **항상 보인다.** hover 로 드러내면 없는 조작이 된다 (009 계약 §3-2).
  */
 export function StepOps({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["flex items-center gap-s1", layout].filter(Boolean).join(" ");
+  const cls = cn("flex items-center gap-s1", layout);
   return (
     <div className={cls} {...rest}>
       {children}
@@ -216,14 +210,12 @@ const OP_TONE: Record<OpTone, string> = {
 
 /** 정본 `.srow-ops .op` — 20px 사각 조작 단추. */
 export function StepOpButton({ tone = "default", layout, children, ...rest }: Omit<ComponentPropsWithRef<"button">, "className"> & { tone?: OpTone; layout?: string; children?: ReactNode }) {
-  const cls = [
+  const cls = cn(
     "inline-flex items-center justify-center w-[20px] h-[20px] p-0",
     "border rounded-chip font-sans text-[12px] font-medium leading-none shadow-none",
     OP_TONE[tone],
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <button className={cls} data-tone={tone} {...rest}>
       {children}
@@ -233,12 +225,10 @@ export function StepOpButton({ tone = "default", layout, children, ...rest }: Om
 
 /** 정본 `.phase` — 국면 띠 (48px). */
 export function PhaseBand({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = [
+  const cls = cn(
     "grow-0 shrink-0 basis-phase h-phase flex items-center gap-s3 px-s4 bg-panel border-b border-hair-2",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <div className={cls} {...rest}>
       {children}

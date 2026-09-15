@@ -10,7 +10,7 @@
  *
  * | 동작 | 누가 |
  * |---|---|
- * | 열리면 초점이 판 안으로 간다 | Radix `FocusScope` |
+ * | 열리면 초점이 **판 자체**로 간다 | Radix `FocusScope` + `onOpenAutoFocus` — 첫 조작(닫기)에 두면 그 툴팁이 판을 열 때마다 뜬다. 판에 초점이 가면 낭독기는 판의 이름(「STEP 상세」)을 먼저 읽고, Tab 한 번이 닫기다 |
  * | Esc 로 닫힌다 | Radix `DismissableLayer` |
  * | 닫히면 연 자리로 초점이 돌아간다 | `ui/Dialog` 의 `useReturnFocus` (Radix 는 트리거로 보내는데 트리거가 없다) |
  * | 역할 `dialog` · 제목과의 연결(`aria-labelledby`) | Radix |
@@ -39,6 +39,7 @@ export function DetailPanel({
   onClose,
   layout,
   children,
+  onOpenAutoFocus,
   onCloseAutoFocus,
   ...rest
 }: Omit<ComponentPropsWithRef<typeof DialogPrimitive.Content>, "className" | "onInteractOutside"> &
@@ -62,6 +63,13 @@ export function DetailPanel({
         // 설명 문단이 따로 없다 — 제목과 내용이 판 전체다. Radix 가 설명을 찾지 않게 명시한다.
         aria-describedby={undefined}
         onInteractOutside={(event) => event.preventDefault()}
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          if (event.defaultPrevented) return;
+          // 머리주석 표 — 초점은 판 자체로. 판은 FocusScope 가 `tabIndex=-1` 을 줘 초점을 받을 수 있다.
+          event.preventDefault();
+          (event.currentTarget as HTMLElement | null)?.focus({ preventScroll: true });
+        }}
         onCloseAutoFocus={returnFocus}
         {...rest}
       >

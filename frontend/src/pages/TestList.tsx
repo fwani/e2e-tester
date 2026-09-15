@@ -80,6 +80,9 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from "../ui/DropdownMenu";
 import { Input } from "../ui/Input";
 import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
 import { ToggleGroup, ToggleGroupItem } from "../ui/ToggleGroup";
+import { Disclosure } from "../ui/Disclosure";
+import { Pane } from "../ui/Surface";
+import { Tooltip } from "../ui/Tooltip";
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
 const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
@@ -788,16 +791,13 @@ export function TestList({
               </div>
             )}
             {(exported.detail?.truncations ?? []).length > 0 && (
-              <details className="mt-[6px]" data-export-truncations>
-                <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
-                  잘린 칸 {(exported.detail?.truncations ?? []).length}건
-                </summary>
+              <Disclosure layout="mt-[6px]" data-export-truncations tone="quiet" summary={<>잘린 칸 {(exported.detail?.truncations ?? []).length}건</>}>
                 {(exported.detail?.truncations ?? []).map((t) => (
  <div key={`${t.test_id}-${t.column}`} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
                     {t.test_id} · {t.column} — {t.dropped_lines}줄 생략
                   </div>
                 ))}
-              </details>
+              </Disclosure>
             )}
             {(exported.detail?.unreadable ?? []).length > 0 && (
               <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]" data-export-unreadable>
@@ -1292,15 +1292,18 @@ function Row({
             else onCloseMenu();
           }}
         >
-          <MenuTrigger>
-            <Button size="icon" aria-label={`${row.name} 추가 동작`}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                <circle cx="6" cy="2" r="1.1" />
-                <circle cx="6" cy="6" r="1.1" />
-                <circle cx="6" cy="10" r="1.1" />
-              </svg>
-            </Button>
-          </MenuTrigger>
+          {/* 017 T064 — 글자 없는 `⋮` 의 이름. 보이는 글(「추가 동작」)이 들리는 이름(「{행 이름} 추가 동작」)에 들어 있다. */}
+          <Tooltip content="추가 동작">
+            <MenuTrigger>
+              <Button size="icon" aria-label={`${row.name} 추가 동작`}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                  <circle cx="6" cy="2" r="1.1" />
+                  <circle cx="6" cy="6" r="1.1" />
+                  <circle cx="6" cy="10" r="1.1" />
+                </svg>
+              </Button>
+            </MenuTrigger>
+          </Tooltip>
           <MenuContent data-row-menu={row.id}>
             {/*
               006 FR-175 — 「정의 보기」를 **「편집」으로 대체한다.** 보기만 하는 별도 항목을
@@ -1539,10 +1542,8 @@ function EmptyProject({
           길을 없애지는 않는다 — 파일을 더 넣는 일은 있다 (`<details>`).
         */}
         {onImportPlan !== undefined && draftCount > 0 && (
-          <details className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">
-            <summary className="font-sans text-[13.5px] font-bold leading-none cursor-pointer">
-              엑셀 파일을 더 넣기
-            </summary>
+          <Pane layout="p-[14px] w-full text-left">
+            <Disclosure tone="strong" summary={<>엑셀 파일을 더 넣기</>}>
             <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-[10px]">
               가져온 초안에 더해집니다. 같은 그룹 접두어면 같은 그룹으로 들어갑니다.
             </div>
@@ -1551,7 +1552,8 @@ function EmptyProject({
               onPlan={onImportPlan}
               onError={(err) => onError?.(err)}
             />
-          </details>
+          </Disclosure>
+          </Pane>
         )}
         {onImportPlan !== undefined && draftCount === 0 && (
           <div className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">

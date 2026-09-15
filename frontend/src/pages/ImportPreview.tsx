@@ -36,6 +36,7 @@ import { Input } from "../ui/Input";
 import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
 import { Radio } from "../ui/Radio";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/Table";
+import { Disclosure } from "../ui/Disclosure";
 /** 컬럼 7개. 순서는 서버의 `ORDER` 와 같다 — 화면이 다른 순서를 쓰면 사용자가 헷갈린다. */
 const ALL_COLUMNS = [
   "TC ID",
@@ -384,10 +385,7 @@ export function ImportPreview({
                       눈으로 짚는 편이 틀릴 여지가 적다.
                     */}
                     {isOn(sheet) && sheet.sample.length > 0 && (
-                      <details data-header-row-picker={sheet.sheet_name} open={!usable(sheet)}>
-                        <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
-                          머리글 행: {headerRowOf(sheet)}행
-                        </summary>
+                      <Disclosure data-header-row-picker={sheet.sheet_name} open={!usable(sheet)} tone="quiet" summary={<>머리글 행: {headerRowOf(sheet)}행</>}>
                         {/*
                           글자 크기는 정본이 정한다 (시각 언어 G-2). 표본 표의 글자는
                           `.why` 가 이미 작게 그리므로 인라인으로 다시 선언하지 않는다.
@@ -427,13 +425,10 @@ export function ImportPreview({
                             ))}
                           </TableBody>
                         </Table>
-                      </details>
+                      </Disclosure>
                     )}
                     {isOn(sheet) && (
-                      <details data-column-mapping={sheet.sheet_name} open={!usable(sheet)}>
-                        <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
-                          열 짝짓기
-                        </summary>
+                      <Disclosure data-column-mapping={sheet.sheet_name} open={!usable(sheet)} tone="quiet" summary={<>열 짝짓기</>}>
                         <div className="mt-[6px] grid gap-s1">
                           {ALL_COLUMNS.map((column) => (
                             <label
@@ -471,7 +466,7 @@ export function ImportPreview({
                             </label>
                           ))}
                         </div>
-                      </details>
+                      </Disclosure>
                     )}
                     {sheet.name_differs && (
                       <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" data-name-differs={sheet.sheet_name}>
@@ -480,16 +475,13 @@ export function ImportPreview({
                       </div>
                     )}
                     {sheet.renumbered.length > 0 && (
-                      <details data-renumbered={sheet.sheet_name}>
-                        <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
-                          번호가 바뀐 행 {sheet.renumbered.length}건
-                        </summary>
+                      <Disclosure data-renumbered={sheet.sheet_name} tone="quiet" summary={<>번호가 바뀐 행 {sheet.renumbered.length}건</>}>
                         {sheet.renumbered.map((r) => (
  <div key={`${r.row}-${r.from}`} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
                             {r.row}행: {r.from} → {r.to}
                           </div>
                         ))}
-                      </details>
+                      </Disclosure>
                     )}
                   </TableCell>
                 </TableRow>
@@ -505,10 +497,7 @@ export function ImportPreview({
           둔다 — 그 규모에서는 전부 읽는 것이 사용자가 하려는 일이다.
         */}
         {plan.skipped.length > 0 && (
-          <details data-skipped-rows open={plan.skipped.length <= 20}>
-            <summary className="font-sans text-[13px] font-semibold leading-none cursor-pointer">
-              건너뛸 행 {plan.skipped.length}건
-            </summary>
+          <Disclosure data-skipped-rows open={plan.skipped.length <= 20} tone="strong" summary={<>건너뛸 행 {plan.skipped.length}건</>}>
             <div className="mt-[6px]">
               {plan.skipped.map((s) => (
                 <div key={`${s.sheet_name}-${s.row}`} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
@@ -516,7 +505,7 @@ export function ImportPreview({
                 </div>
               ))}
             </div>
-          </details>
+          </Disclosure>
         )}
 
         {/*
@@ -677,29 +666,23 @@ export function ImportDoneNotice({
       )}
 
       {result.renumbered.length > 0 && (
-        <details className="mt-[6px]" data-done-renumbered>
-          <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
-            번호가 바뀐 행 {result.renumbered.length}건
-          </summary>
+        <Disclosure layout="mt-[6px]" data-done-renumbered tone="quiet" summary={<>번호가 바뀐 행 {result.renumbered.length}건</>}>
           {result.renumbered.map((r) => (
  <div key={`${r.row}-${r.from}`} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
               {r.row}행: {r.from} → {r.to}
             </div>
           ))}
-        </details>
+        </Disclosure>
       )}
 
       {result.skipped.length > 0 && (
-        <details className="mt-[6px]" data-done-skipped>
-          <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
-            건너뛴 행 {result.skipped.length}건
-          </summary>
+        <Disclosure layout="mt-[6px]" data-done-skipped tone="quiet" summary={<>건너뛴 행 {result.skipped.length}건</>}>
           {result.skipped.map((s) => (
             <div key={`${s.sheet_name}-${s.row}`} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
               {s.sheet_name} {s.row}행 — {SKIP_REASON[s.reason]}
             </div>
           ))}
-        </details>
+        </Disclosure>
       )}
 
     </Toast>
