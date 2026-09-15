@@ -52,6 +52,22 @@ npx vitest run tests/ClassExistence.test.ts tests/UiSkin.test.ts tests/ClassConf
   tests/RawElements.test.ts tests/FocusRing.test.tsx
 ```
 
+**실행 기록 (2026-09-15 · T079)** — 한 번에 하나씩 넣고 해당 가드 파일만 돌린 뒤 되돌렸다(파일 해시가 넣기 전과 같음을 확인).
+
+| 넣은 것 | 넣은 곳 | 가드 | 결과 | 실패 메시지 첫 줄 |
+|---|---|---|---|---|
+| `rounded-md` | `src/ui/Button.tsx` | G-B ClassExistence | **실패 — 잡았다** | → 이 클래스는 아무 CSS 도 만들지 않는다. 화면은 스타일 없이 렌더된다. |
+| `shadow-xs` | `src/ui/Button.tsx` | G-B ClassExistence | **실패 — 잡았다** | → 이 클래스는 아무 CSS 도 만들지 않는다. 화면은 스타일 없이 렌더된다. |
+| `disabled:opacity-50` | `src/ui/Input.tsx` | G-F UiSkin | **실패 — 잡았다** | → shadcn 원본의 기본 모습이 부품에 남아 있다. 이 클래스들은 테마와 무관하게 생성되므로 G-B 를 |
+| `focus-visible:ring-[3px]` | `src/ui/Button.tsx` | G-F UiSkin | **실패 — 잡았다** | → shadcn 원본의 기본 모습이 부품에 남아 있다. 이 클래스들은 테마와 무관하게 생성되므로 G-B 를 |
+| `import { XIcon } from "lucide-react"` | `src/ui/Dialog.tsx` | G-F UiSkin | **실패 — 잡았다** | →   src/ui/Dialog.tsx — 아이콘 묶음을 들이지 않는다 — 글자 기호를 쓴다 (FR-010): expected [ Array(1) ] to deeply equal [] |
+| `뒤에 적었는데 CSS 에서 지는 쌍 — bg-ink 뒤 bg-panel` | `src/ui/Button.tsx` | G-E ClassConflict | 통과 — 아래 설명 |  |
+| `뒤에 적었는데 CSS 에서 지는 쌍 — bg-panel 뒤 bg-ink` | `src/ui/Button.tsx` | G-E ClassConflict | **실패 — 잡았다** | → 한 요소에 같은 속성을 선언하는 유틸리티가 둘 이상 붙어 있다. |
+| `<button className="h-control">x</button>` | `src/pages/TestList.tsx` | G-G RawElements | **실패 — 잡았다** | → 원시 조작 요소가 예산보다 1개 많다 — 새로 들어온 자리를 부품으로 바꾼다. |
+| `outline-hidden` | `src/pages/TestList.tsx` | FocusRing | **실패 — 잡았다** | → 초점 링을 지우고 있다. 마우스로 쓰면 아무 차이가 없고 스크린샷도 같지만, |
+
+충돌 쌍은 **두 순서를 다 넣었다.** G-E 가 묻는 것은 「나중에 적은 클래스가 산출 CSS 에서 **지는가**」다. `bg-ink bg-panel` 은 나중에 적은 `bg-panel` 이 CSS 에서도 이겨 적은 대로 그려지므로 통과하고, 반대 순서 `bg-panel bg-ink` 는 나중에 적은 `bg-ink` 가 져서 실패한다 — 015 의 흰 버튼(적은 것과 그려진 것이 다름)이 이 가드가 막는 형태다. 한 요소에 같은 속성이 둘 붙는 것 자체는 부품 표의 설계(바탕·변종이 같은 속성을 갖지 않는다 — `ui/Button` 머리주석)가 막는다.
+
 ### 1-3. 옛 부품이 남지 않았다 (SC-006)
 
 ```bash
@@ -162,3 +178,24 @@ git diff --stat 75520ee -- backend/ | tail -1
 | H-6 | **민감값 마스킹** | 비밀 값·키 관리·민감 입력 칸 | 전환 전과 같이 가려진다 (헌법 보안 요건) |
 | H-7 | **순회가 닿지 못한 화면** | 가져오기 미리보기(엑셀 파일) · 일시정지 · AI 작성 · 사람 인수 | 1280·1440 에서 덮임·넘침·줄바꿈을 눈으로 본다 |
 | H-8 | **모달이 열린 동안의 알림** | 녹화 중 저장 확인을 연 채 연결을 끊는다 | 알림이 보이고 「닫기」를 누르면 대화상자가 닫히지 않는다 |
+
+---
+
+## 실행 기록
+
+### 2026-09-15 · 017 마감 (T085)
+
+| § | 확인 | 결과 |
+|---|---|---|
+| 1-1 | 타입 검사 · 테스트 · 단언 수 | `tsc` 통과 · **1417 / 1417 통과** (파일 118) · 단언 **2274** (기준선 2148 · +126) · 무른 단언 **639** (기준선과 같다) · 건너뜀 0 |
+| 1-2 | 가드가 실제로 잡는가 | 8가지 전부 해당 가드가 실패 (위 §1-2 실행 기록 · T079) |
+| 1-3 | 옛 부품이 남지 않았다 | `ImplementationCount`·`RawElements` 통과 · 원시 조작 요소 예산 0 (등록된 예외는 미러 한글 조합 칸 1) · grep 은 주석 속 이력과 계약이 정한 파일 이름 `ui/OverlayPane` 뿐 |
+| 1-4 | 정본 무변경 | `git diff 75520ee -- src/theme/tokens.css` 0줄 · L1 대조 725칸 불일치 0 |
+| 2 | 화면 깨짐 순회 | 18화면 × 4폭 = 72회 · **알려진 깨짐 0 · 등록되지 않은 검출 0** · 닿지 못함 0 · 허용 28(사유 있음) · `edit@1440` Step 목록 8행 |
+| 3 | L2 대조 | 8화면 × 56속성 · **등록되지 않은 차이 0** · 의도된 차이 182건 전부 사유 있음 (정본 기준 폭 1440 에서 잰다) |
+| 4 | 번들 | CSS gzip **6.69 kB** (≤ 6.78) · JS gzip **177.41 kB** (≤ 181.3) · `tailwind-merge`·`lucide-react`·`tw-animate-css`·`sonner` 없음 |
+| 5 | 원칙 II | `git diff 75520ee -- backend/` **0줄** |
+| H | 사람 판정 | 미실행 — `docs/PENDING-HUMAN-VERIFICATION.md` §17 에 기록 칸과 사용자 확인이 필요한 판단 여섯을 두었다 |
+
+순회 도중 한 번 **메모리 부족으로 작업이 멈췄다** (다른 프로그램이 함께 떠 있던 기계). 멈춘 회차는 버리고 순회를 단독으로 다시
+돌렸다 — 위 수치는 그 회차의 것이다.

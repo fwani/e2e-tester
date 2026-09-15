@@ -66,9 +66,16 @@ const MARK_LINE: Record<StepMark, string> = {
 
 type DivProps = Omit<ComponentPropsWithRef<"div">, "className">;
 
-/** 정본 `.steps` — Step 패널. 폭 460px 고정 (007 FR-218a). */
+/**
+ * 정본 `.steps` — Step 패널. 폭 460px 고정 (007 FR-218a).
+ *
+ * **`min-w-0` 이 460 을 지킨다 (017 US3).** flex 항목의 최소 폭 기본값(`auto`)은 「내용의 최소 폭」이라, 머리 줄의
+ * 이름표·고르기 조작·비활성 사유가 한 줄에 서면 패널이 기준 폭(460)을 넘어 **늘어났다** — 만들기 화면에서 517px, 머리
+ * 이름표가 줄바꿈하지 않게 고친 뒤에는 662px 까지 커지며 왼쪽 대상 앱 영역을 밀어냈다. 패널은 460 을 지키고, 줄어드는 것은
+ * 머리 줄 안의 비활성 사유다 (layout-contract-v3 L6).
+ */
 export function StepPanel({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = cn("flex-none basis-steps border-l border-hair-2 bg-panel flex flex-col", layout);
+  const cls = cn("flex-none basis-steps min-w-0 border-l border-hair-2 bg-panel flex flex-col", layout);
   return (
     <div className={cls} {...rest}>
       {children}

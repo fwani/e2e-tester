@@ -345,15 +345,10 @@ ALLOWED: list[dict] = [
 # 실패로 치지 않는다. **어떤 검출과도 맞지 않는 항목은 실패다** — 고쳐졌으면 여기서 지운다.
 # 그래야 「고쳤다」가 코드 커밋이 아니라 이 순회에서 사라진 것으로 정의된다 (data-model §9).
 KNOWN: list[dict] = [
-    # B-01 · B-02 — 017 US1 이 고쳤다 (알림 층 자리를 띠가 정한다 · 세션 토스트 삭제). 여기서 지웠으므로
-    # 다시 검출되면 「등록되지 않은 검출」로 실패한다.
-    {"id": "B-03", "where": r"^edit@", "kind": "metric", "match": r"^stepRowsVisible"},
-    {"id": "B-04", "where": r"^test-create@", "kind": "spillY", "match": r"아직 브라우저를 열지 않았습니다"},
-    {"id": "B-05", "where": r"^test-create@", "kind": "wrap", "match": r"TEST STEPS|고른 것 없음|작성"},
-    {"id": "B-06", "where": r"^test-create@", "kind": "metric", "match": r"^nlInputWidth"},
-    {"id": "B-10", "where": r"^(test-list[a-z-]*|result-[a-z]+|edit[a-z-]*|test-create|runner-[a-z]+)@(1920|2560)$",
-     "kind": "policy", "match": r"^data"},
-    {"id": "B-11", "where": r"@1280$", "kind": "shell", "match": r"header"},
+    # **비어 있다 (2026-09-15 · 017 T078).** 전환 전 실측의 B-01~B-11 을 전부 고쳐 하나씩 지웠다 —
+    # B-01·B-02(US1 · 알림 층 자리) · B-07~B-09(US2 · 선택칸 폭 · 체크박스 크기 · 표 머리) · B-03~B-06·B-10·B-11
+    # (US3 · Step 목록 8행 · 대상 앱 자리 · 머리 줄 이름표 · 자연어 입력 폭 · 넓은 창 · 머리띠).
+    # 기능은 남긴다 — 다음에 전환 전 실측을 다시 뜰 때 쓴다. 여기에 항목이 들어오면 `ScreenSweep` 이 실패한다.
 ]
 
 

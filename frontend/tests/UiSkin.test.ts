@@ -55,7 +55,7 @@ const RADIX_ALLOWED = new Set([
   "Tooltip.tsx",
 ]);
 
-/** 비활성을 **점선**으로 말해야 하는 조작 부품 (FR-006 · FR-014). 파일이 생긴 뒤부터 요구한다. */
+/** 비활성을 **점선**으로 말해야 하는 조작 부품 (FR-006 · FR-014). 파일이 없어도 요구한다 (T077). */
 const DASHED_DISABLED = ["Button.tsx", "Input.tsx", "Textarea.tsx", "NativeSelect.tsx"];
 
 interface Rule {
@@ -180,6 +180,22 @@ describe("G-F — 부품의 모습이 정본이다 (017)", () => {
     expect(bad, bad.join("\n")).toEqual([]);
   });
 
+  it("동작 층 부품이 전부 있고 `radix-ui` 에 기댄다 — 파일이 없어도 요구한다 (T077)", () => {
+    /*
+      017 전환 중에는 「파일이 생긴 뒤부터 요구한다」였다 — 부품을 하나씩 만들었기 때문이다. 전환이 끝났으므로
+      ui-parts.md §1 의 `behavior = radix` 부품은 **있어야** 하고, 실제로 `radix-ui` 를 가져와야 한다. 파일을 지우거나
+      동작 층을 손으로 다시 짜면(수제 포털 · 수제 초점 가두기) 여기서 실패한다.
+    */
+    const names = new Set(UI_FILES.map((f) => basename(f)));
+    const missing = [...RADIX_ALLOWED].filter((name) => !names.has(name));
+    expect(missing, "동작 층 부품 파일이 없다 — contracts/ui-parts.md §1").toEqual([]);
+    const handmade = [...RADIX_ALLOWED].filter((name) => {
+      const txt = withoutComments(readFileSync(join(ROOT, "src/ui", name), "utf8"));
+      return !/from\s+["']radix-ui["']/.test(txt);
+    });
+    expect(handmade, "behavior = radix 인 부품이 radix-ui 를 가져오지 않는다 — 동작을 손으로 다시 짰다").toEqual([]);
+  });
+
   it("`radix-ui` 는 동작 층 부품만 가져온다", () => {
     const bad = UI_FILES.filter((rel) => {
       const txt = withoutComments(readFileSync(join(ROOT, rel), "utf8"));
@@ -193,7 +209,10 @@ describe("G-F — 부품의 모습이 정본이다 (017)", () => {
   });
 
   it("조작 부품은 비활성을 점선으로 말한다", () => {
-    const bad = DASHED_DISABLED.filter((name) => UI_FILES.some((f) => basename(f) === name)).filter((name) => {
+    // T077 — 파일이 없어도 요구한다. 조작 부품이 사라지면 화면이 다시 원시 요소나 수제 조합으로 돌아간다.
+    const missing = DASHED_DISABLED.filter((name) => !UI_FILES.some((f) => basename(f) === name));
+    expect(missing, "조작 부품 파일이 없다").toEqual([]);
+    const bad = DASHED_DISABLED.filter((name) => {
       const txt = readFileSync(join(ROOT, "src/ui", name), "utf8");
       return !/(?:^|[\s"'`])(?:[\w-]+:)*(?:disabled|has-\[[^\]]*:disabled\]):border-dashed/.test(txt);
     });

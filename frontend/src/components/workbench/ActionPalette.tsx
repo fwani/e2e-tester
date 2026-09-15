@@ -237,14 +237,24 @@ export function ActionPalette({
       {AUTHORING_ROW.some(shown) || shown("step.addNaturalLanguage") ? (
         <div className="flex flex-col gap-s2">
           {shown("step.addNaturalLanguage") && (
-            <div className="flex gap-[10px] items-start">
+            /*
+              **모자라면 다음 줄로 내려간다** (017 N-07). 입력칸이 240px 을 지키면 460px 패널에서 옆 조작의 비활성 사유가
+              8px 로 줄어 「…」만 남았다. 줄을 접게 두면 입력칸이 한 줄을 차지하고 조작과 사유가 아래 줄에 온전히 선다 —
+              조작이 쓸 수 있을 때(사유가 없을 때)는 한 줄에 들어간다.
+            */
+            <div className="flex flex-wrap gap-[10px] items-start">
               <Input
                 aria-label="자연어로 Step 추가"
                 value={nl.value}
                 disabled={!usable("step.addNaturalLanguage")}
                 onChange={(e) => nl.onChange(e.target.value)}
                 placeholder="생성된 프로젝트가 목록에 있는지 확인해."
-                variant="ai" layout="flex-1 min-w-0"
+                variant="ai"
+                /*
+                  **입력칸이 사유 문구에 밀려 줄지 않는다** (017 B-06 · layout-contract-v3 L6). 옆 버튼이 잠겨 사유 문구(최대
+                  260px)가 붙자 입력칸이 95px 로 줄어 안내 글이 「생성된 프로젝」에서 잘렸다. 240px 를 먼저 지키고 사유가 줄어든다.
+                */
+                layout="flex-1 min-w-[240px]"
               />
               {button("step.addNaturalLanguage", () => {
                 if (nl.value.trim() === "") return;

@@ -75,6 +75,7 @@ import {
 } from "../../ui/StepRow";
 import { Button } from "../../ui/Button";
 import { Checkbox } from "../../ui/Checkbox";
+import { cn } from "../../ui/cn";
 /**
  * Step 패널의 고정 폭 (FR-218a). Step 패널을 가진 확정 디자인 3종이 공유한다.
  *
@@ -119,13 +120,18 @@ export function StepPanelHeader({
 }) {
   return (
     <StepPanelHead>
-      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">TEST STEPS</div>
+      {/*
+        이름표(제목 · 작성 표식 · 개수)는 **줄지도 꺾이지도 않는다** (017 B-05 · layout-contract-v3 L6). 460px 머리에
+        고르기 조작과 그 비활성 사유가 함께 서면 이름표가 먼저 찌그러져 「TEST STEPS」가 두 줄이 되고 칩이 머리 밖으로
+        넘쳤다. 줄어드는 것은 비활성 사유 문구다 (`ActionButton`).
+      */}
+      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 whitespace-nowrap shrink-0">TEST STEPS</div>
       <div className="flex-1" />
       {children}
-      <Chip tone={authoring === "ai" ? "ai" : "default"}>
+      <Chip tone={authoring === "ai" ? "ai" : "default"} layout="shrink-0 whitespace-nowrap">
         작성 {authoring === "ai" ? "AI" : "RECORD"}
       </Chip>
-      <div className="font-mono text-[12px] leading-none font-normal text-ink-3">{count}</div>
+      <div className="font-mono text-[12px] leading-none font-normal text-ink-3 shrink-0">{count}</div>
     </StepPanelHead>
   );
 }
@@ -313,6 +319,11 @@ export interface StepListProps {
    */
   footer?: ReactNode;
   /**
+   * 바닥의 높이 상한 — **국면이 정한다** (`lib/layout.ts` 의 `STEP_FOOTER_MAX_CLASS` · 017 B-03). 이 컴포넌트는 자기 자리
+   * 크기를 모른다 (LC-1). 주지 않으면 상한이 없다 — 목록만 그리는 검사가 쓴다.
+   */
+  footerMax?: string;
+  /**
    * 삭제 대상 고르기 (011 FR-380 · UC-011-14·15).
    *
    * **주지 않으면 체크 칸을 그리지 않는다.** 읽기 전용 국면(결과)에는 삭제 대상 선택이
@@ -349,6 +360,7 @@ export function StepList({
   band,
   emptyNotice,
   footer,
+  footerMax,
   deleteTargets,
   rerecordTargets,
 }: StepListProps) {
@@ -383,7 +395,7 @@ export function StepList({
         */}
         {deleteTargets !== undefined && isShown(deleteTargets.allCapability) && (
           <>
-            <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3" data-delete-selection-count>
+            <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 whitespace-nowrap shrink-0" data-delete-selection-count>
               {deleteSelectionCount(chosen.size)}
             </span>
             <ActionButton
@@ -469,7 +481,7 @@ export function StepList({
       {footer !== undefined && footer !== null && (
         <StepPanelFoot
           data-workbench-step-footer
-          layout="pt-s3 px-[14px] pb-[14px] max-h-[52%] overflow-y-auto"
+          layout={cn("pt-s3 px-[14px] pb-[14px] overflow-y-auto", footerMax)}
         >
           {footer}
         </StepPanelFoot>

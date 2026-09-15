@@ -190,7 +190,13 @@ export function ImportPreview({
   };
 
   return (
-    <Artboard width={1000} minHeight={700}>
+    <Artboard
+      // 017 B-10 — 데이터 화면이다. 1000 고정 폭으로 왼쪽에 붙어 넓은 창에서 시트 표 오른쪽이 비었다.
+      width={1440}
+      minHeight={700}
+      // 머리띠는 가로 스크롤 영역 밖이다 — 좁은 창에서 본문이 스크롤해도 창 폭에 선다 (017 B-11 · layout-contract-v3 L3).
+      header={
+        <>
       <HeaderBar>
         <BrandMark />
         <HeaderDivider />
@@ -198,6 +204,9 @@ export function ImportPreview({
         <div className="flex-1" />
  <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{plan.file_name}</span>
       </HeaderBar>
+        </>
+      }
+    >
 
       <div className="py-[20px] px-[28px] flex flex-col gap-s4">
         {error !== null && (

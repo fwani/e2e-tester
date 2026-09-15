@@ -156,11 +156,14 @@ describe("화면 깨짐 순회 — 조작이 덮이지 않고 넘치거나 끊�
     expect(empty, "이유 없이 허용된 검출이 있다").toEqual([]);
   });
 
-  it("남은 알려진 깨짐은 전환 전 실측의 것뿐이다 (B-01~B-11)", () => {
-    const ids = new Set((report?.pending ?? []).map((p) => p.id));
-    const unknown = [...ids].filter((id) => !/^B-(0[1-9]|1[01])$/.test(id));
-    expect(unknown, "알려진 깨짐 등록부에 전환 전 실측이 아닌 항목이 있다 — 새 깨짐은 등록부가 아니라 고칠 대상이다").toEqual([]);
-    // 진행 상황 — 실패가 아니라 기록이다. 017 이 끝나면 비어야 한다 (T078).
-    console.info(`[순회] 남은 알려진 깨짐: ${[...ids].sort().join(" ") || "없음"}`);
+  it("알려진 깨짐이 하나도 남지 않았다 — 전환 전 실측의 B-01~B-11 을 전부 고쳤다 (T078 · SC-001~SC-003)", () => {
+    /*
+      017 동안에는 「남은 것이 전환 전 실측의 것뿐인가」만 물었다 — 고치는 중이었기 때문이다. 전환이 끝났으므로 **비어 있어야
+      한다.** 등록부 기능(`scripts/screen_sweep.py` 의 KNOWN)은 남긴다: 다음에 전환 전 실측을 다시 뜨는 일이 생기면 쓴다.
+      그러나 여기에 항목이 들어오면 이 검사가 실패한다 — 새 깨짐은 등록부가 아니라 고칠 대상이다.
+    */
+    const rows = (report?.pending ?? []).map((p) => `  ${p.id} [${p.where}] ${p.kind} ${p.element}`);
+    expect(rows, "알려진 깨짐이 남아 있다:\n" + rows.join("\n")).toEqual([]);
+    expect(report?.known ?? [], "알려진 깨짐 등록부가 비어 있지 않다 — scripts/screen_sweep.py 의 KNOWN").toEqual([]);
   });
 });

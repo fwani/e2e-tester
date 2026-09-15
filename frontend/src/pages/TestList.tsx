@@ -489,7 +489,12 @@ export function TestList({
   const liveOf = (testId: string) => activeSessions.find((s) => s.test_id === testId) ?? null;
 
   return (
-    <Artboard width={1440} minHeight={900}>
+    <Artboard
+      width={1440}
+      minHeight={900}
+      // 머리띠는 가로 스크롤 영역 밖이다 — 좁은 창에서 본문이 스크롤해도 창 폭에 선다 (017 B-11 · layout-contract-v3 L3).
+      header={
+        <>
       <HeaderBar>
         <BrandMark />
         <HeaderDivider />
@@ -540,6 +545,9 @@ export function TestList({
           테스트 만들기
         </Button>
       </HeaderBar>
+        </>
+      }
+    >
 
       {/*
         005 FR-168 (U-16) — 지금 돌고 있다는 사실과 복귀 수단은 아래 **흐름 안 띠**

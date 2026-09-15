@@ -72,7 +72,9 @@ REPORT = ROOT / "frontend" / "tests" / "l2-report.json"
 BASELINE = ROOT / "frontend" / "tests" / "l2-baseline.json"
 VENV_PY = ROOT / "backend" / ".venv" / "bin" / "python"
 
-VIEWPORT = {"width": 1600, "height": 950}
+# 017 T070 — **정본 기준 폭(1440)에서 잰다.** 데이터 화면이 넓은 창을 채우게 되며(B-10) 1600 에서는 목록의 모든 폭이
+# 달라져 대조가 정책 차이로 뒤덮인다. L2 는 「기준 폭에서 같은 화면인가」를 묻고, 넓은 창의 정책은 순회가 1920·2560 에서 잰다.
+VIEWPORT = {"width": 1440, "height": 950}
 
 # ── 무엇을 재는가 ──────────────────────────────────────────────────────────
 # 시각 언어(색·타이포·모서리·그림자)와 배치(자리·크기)를 함께 본다. 015 는 둘 다
@@ -174,6 +176,58 @@ INTENDED: list[dict[str, str]] = [
             "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 "
             "밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, "
             "그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+        ),
+    },
+    # ── 017 US3 — 배치 정책 (T070~T074) ─────────────────────────────────────────────
+    {
+        "screens": ["test-list", "test-list-unrun", "test-list-passed", "test-create"],
+        "path": "BODY/DIV[0]/DIV[0]",
+        "props": ["overflow-x", "overflow-y"],
+        "reason": (
+            "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 "
+            "스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 "
+            "`data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+        ),
+    },
+    {
+        "screens": ["test-create"],
+        "path": "BODY/DIV[0]/DIV[0]/DIV[0]",
+        "props": ["min-width"],
+        "reason": (
+            "B-11 의 결과다. 작업 화면의 기준 폭(`min-width:1440px`)이 세로 배치 상자에서 그 안의 **본문 상자**로 옮겨졌다 — "
+            "머리띠는 창 폭에 서고 본문만 기준 폭을 지킨다. 본문 상자는 대조 경로에서 건너뛰므로 여기서는 상자의 값만 달라 보인다."
+        ),
+    },
+    {
+        "screens": ["test-create"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[1\]/DIV\[0\](?:/DIV\[0\])?|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[1\]/DIV\[1\]",
+        "props": ["flex-basis", "height", "min-height"],
+        "reason": (
+            "**B-04 를 고쳤다.** 만들기 국면의 대상 앱 자리가 88px 고정이었다 — 한 줄짜리 「브라우저 열기」 안내를 위해 잰 "
+            "값인데 만들기 국면은 세 줄짜리 「아직 브라우저를 열지 않았습니다」를 그려, 안내가 50px 상자에 잘려 테두리 "
+            "위·아래에 걸쳤다. 자리가 내용 높이(`content`)가 되어 안내가 온전히 들어가고, 그만큼 아래 작업 영역이 줄었다."
+        ),
+    },
+    {
+        "screens": ["test-create"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[1\](?:/.*)?",
+        "props": ["width"],
+        "reason": (
+            "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 "
+            "최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. "
+            "패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+        ),
+    },
+    {
+        "screens": ["test-create"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[2\](?:/.*)?",
+        "props": ["width", "min-width", "height", "white-space", "flex-shrink", "flex-wrap"],
+        "reason": (
+            "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 "
+            "셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 "
+            "높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 "
+            "온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 "
+            "내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
         ),
     },
 ]
@@ -407,16 +461,26 @@ def serve(directory: Path, backend: str) -> tuple[socketserver.TCPServer, str]:
 COLLECT_JS = """
 (props) => {
   const out = [];
+  // 017 T070 — 아트보드가 더한 두 겹(스크롤 영역 · 본문 상자)은 경로에서 건너뛴다. 그 자식들을 한 겹 위의 자식으로
+  // 이어 센다 — 전환 전 코드에는 이 두 겹이 없으므로 본문 요소가 같은 경로로 짝지어진다 (Chrome.tsx 머리주석).
+  const FLATTEN = new Set(["artboard-scroll", "artboard-body"]);
   const walk = (el, path) => {
     const style = getComputedStyle(el);
     const row = { path, tag: el.tagName };
     for (const p of props) row[p] = style.getPropertyValue(p);
     out.push(row);
     let i = 0;
-    for (const child of el.children) {
-      walk(child, `${path}/${child.tagName}[${i}]`);
-      i += 1;
-    }
+    const visit = (parent) => {
+      for (const child of parent.children) {
+        if (FLATTEN.has(child.getAttribute("data-slot"))) {
+          visit(child);
+          continue;
+        }
+        walk(child, `${path}/${child.tagName}[${i}]`);
+        i += 1;
+      }
+    };
+    visit(el);
   };
   walk(document.body, "BODY");
   return out;

@@ -25,12 +25,12 @@
 | `NoticesAreToasts.test.tsx` | 목록의 알림이 내용을 밀어내지 않고 한 층에 뜬다 | 진행 중 세션 경우 — 토스트가 아니라 **흐름 안 띠 하나**가 그 사실을 말함을 확인한다 | B-02 · FR-018b. 같은 사실을 두 자리가 말했다 | 2→5 (세션 경우) | ✅ T023 |
 | `ListLiveState.test.tsx` · `RecheckPhase12.test.tsx` | 실행 중·끝난 세션이 있을 때 목록에서 **실행 화면으로 돌아갈 수단이 있다** (005 FR-168) | 복귀 조작을 토스트의 「실행 화면 보기」가 아니라 띠의 「이어서 보기」로 찾는다 | B-02 — 같은 `onResumeSession` 을 부르는 조작이 한 화면에 둘이었다. 008 이 적은 「복귀 조작은 화면에 하나뿐」(`TestList.tsx:1368`)을 되살린다. 문구는 바꾸지 않는다 (spec Assumptions) | 1→1 · 1→1 | ✅ T023 |
 | `ToastPlacement.test.tsx` | 알림 층이 한 자리(오른쪽 위)에 뜬다 | **더한다**: 층 클래스가 띠 조건 셋을 서로 배제하는 형태로 갖는다 | B-01. `top` 을 고정하는 테스트가 없어 회귀가 들어왔다 | 5→16 | ✅ T019 |
-| `WorkbenchShell.test.tsx` | 작업 화면 틀이 1440 을 최소로 창을 채운다 | 틀 구조 — 머리띠가 가로 스크롤 영역 밖, 본문이 `min-width 1440 · width 100%` | B-11 · layout-contract-v3 L3 | | ⬜ |
-| `WorkbenchHeight.test.tsx` | 작업 화면이 창 높이에 맞고 Step 목록이 스크롤 영역이다 | 높이 인라인 읽기 자리 조정 (머리띠가 밖으로 나온 뒤의 요소) | 같음 | | ⬜ |
-| `VerticalSplit.test.ts` · `TargetPane.test.tsx` · `ComposePhase.test.tsx` | 국면별 대상 앱 자리의 배치 판단 | 만들기 국면의 `targetSlot` 기대값 `fixed(88)` → `content` | B-04 · v3 L5 — 판단 자체가 바뀐다. **테스트가 지키던 성질(표가 결정하고 부모가 내려준다)은 같다** | | ⬜ |
-| `StepRowLayout.test.tsx` · `SavePlacement.test.tsx` · `RerecordBandPlacement.test.tsx` | Step 패널 머리·바닥의 구성 | 바닥 상한을 배치 표에서 읽는 형태로 | B-03 · v3 L4 | | ⬜ |
+| `WorkbenchShell.test.tsx` | 작업 화면 틀이 1440 을 최소로 창을 채운다 | 틀 구조 — 머리띠가 가로 스크롤 영역 밖, 본문이 `min-width 1440 · width 100%` | 같음 | 불필요 (T070) — 머리띠를 `Artboard` 의 `header` 인자로 옮겼지만 틀 검사가 역할·표식으로 찾아 그대로 통과 |
+| `WorkbenchHeight.test.tsx` | 작업 화면이 창 높이에 맞고 Step 목록이 스크롤 영역이다 | 높이 인라인 읽기 자리 조정 (머리띠가 밖으로 나온 뒤의 요소) | 같음 | 불필요 (T070) — 창 높이에 묶는 선언(`height:100dvh`)이 세로 배치 상자에 그대로 남는다 |
+| `VerticalSplit.test.ts` · `TargetPane.test.tsx` · `ComposePhase.test.tsx` | 국면별 대상 앱 자리의 배치 판단 | 만들기 국면의 `targetSlot` 기대값 `fixed(88)` → `content` | 2→2 | ✅ T073 — **바꾼 것은 `ComposePhase` 의 두 단언뿐**(`targetSlot.kind`·`data-slot-size` 를 `fixed` → `content`). `VerticalSplit`·`TargetPane` 은 표에서 기대값을 읽으므로 그대로 통과. 판단이 바뀐 근거: 순회 `test-create` 의 세로 넘침(B-04) — 88px 는 한 줄 안내를 위해 잰 값이었고 만들기 국면은 세 줄 안내를 그린다 |
+| `StepRowLayout.test.tsx` · `SavePlacement.test.tsx` · `RerecordBandPlacement.test.tsx` | Step 패널 머리·바닥의 구성 | 바닥 상한을 배치 표에서 읽는 형태로 | 같음 | 불필요 (T072) — 바닥 상한을 `lib/layout.ts` 표에서 내려받게 바꿨지만 세 파일은 바닥의 **존재와 자리**를 보므로 그대로 통과 |
 | `DetailPlacement.test.tsx` · `DetailBlocksMirrorInput.test.tsx` | Step 상세 판의 자리·미러 입력 차단 | 판이 `DetailPanel`(비모달 Dialog) 로 그려진 뒤 같은 속성을 읽는다 | 같음 | 불필요 (T052) — 판을 `data-workbench-step-detail` 로 찾으므로 `DetailPanel` 로 그린 뒤에도 그대로 통과 |
-| `DesignTokens.test.tsx` · `InteractionStates.test.tsx` · `FocusRing.test.tsx` | 부품이 정본 치수·상태·초점을 지킨다 | 부품 파일이 `cva` 형태로 바뀐 뒤 찾는 문자열 갱신. 경로(`src/ui/*.tsx`)는 그대로 | research R1 · R5 | | ⬜ |
+| `DesignTokens.test.tsx` · `InteractionStates.test.tsx` · `FocusRing.test.tsx` | 부품이 정본 치수·상태·초점을 지킨다 | 부품 파일이 `cva` 형태로 바뀐 뒤 찾는 문자열 갱신. 경로(`src/ui/*.tsx`)는 그대로 | FocusRing 4→6 · InteractionStates 1→4 · DesignTokens 같음 | ✅ — `FocusRing` 은 넓혔고(T013 · 넓힌 가드 표), `InteractionStates` 는 탭·분절 띠 검사가 `ui/Tabs`·`ui/ToggleGroup` 으로 옮겨졌다(T062). `DesignTokens` 는 판정을 바꾸지 않고 통과 — 부품이 `cva` 가 되어도 찾는 문자열(`overflow-x-auto` · 치수 토큰)이 그대로였다 |
 | `ClassConflict.test.ts` | 나중에 적은 클래스가 진다 | 헬퍼가 `cva`·`cn` 을 읽는다 (guards H-1) | 그대로 | ✅ T012 (Foundational) |
 | `ImplementationCount.test.ts` | 구현이 또 한 벌 생기지 않는다 | `RETIRED` 에 옛 모달·수제 메뉴·옛 겹침 판 추가 | 옛 구현 삭제를 센다 | +5 | ✅ T054·T056 — `RETIRED` 는 파일 존재를 보므로 **이름 단위 퇴역 목록**을 새로 뒀다 (넓힌 가드 표) |
 | `ImportPreview.test.tsx` · `InlineSecret.test.tsx` · `TestGroups.test.tsx` | 선택칸으로 고른 값이 반영된다 | **변경 없음 예상** — `NativeSelect` 는 실제 `<select>` 다 | 같음 | 불필요 (T038·T045·T047) — 예상대로 그대로 통과 |
@@ -58,6 +58,8 @@
 | `ClassExistence.test.ts` (G-B) | 코드가 쓰는 클래스가 실제로 CSS 를 만든다 | 리터럴에 더해 **조립 조합**(`cva`·`cn`·`[…].join`)의 클래스도 실재를 확인 · 한 낱말짜리 변종 값을 읽는지 자체 점검 | `aria-invalid:border-fail` — Tailwind v4 에 없는 변종. 세 부품(`Input`·`Textarea`·`NativeSelect`)에 들어갔는데 넓히기 전에는 토큰이 여럿인 한 곳에서만 잡혔다. `aria-[invalid=true]:` 로 고치고 대응표를 바로잡았다 | 3→4 | ✅ T029 |
 | `ClassExistence.test.ts` (G-B) | 코드가 쓰는 클래스가 실제로 CSS 를 만든다 | **템플릿 구멍이 `undefined`·`null`·`false` 를 글자로 내놓지 않는다** — 조립 검사는 구멍 앞에 클래스 글자가 붙은 형태만 봤다. 판정 함수를 위반 두 형태·정상 두 형태로 먼저 자체 점검 | N-04 — 가져오기 미리보기 시트 행(015 치환 569e51e)과 **미러 조작 면**에 `undefined` 클래스. 둘 다 코드를 고쳤다 | 4→9 | ✅ T045 |
 | `ImplementationCount.test.ts` | 구현이 또 한 벌 생기지 않는다 | 파일 목록(`RETIRED`)에 더해 **다른 파일 안의 조각**을 이름·정의 형태로 센다 — `SessionScreen` 지역 `Modal` · `ui/Surface` `Modal`·`OverlayPane` · `EditView` 역할 alertdialog 판 · `StepDetail` 역할 dialog 판 | 대화상자 구현이 부품 밖에 네 벌 있었다 — 전부 `ui/Dialog`·`ui/AlertDialog`·`ui/OverlayPane` 으로 옮기고 지웠다. 계획은 `RETIRED` 에 올리는 것이었으나 그 목록은 **파일이 없음**을 보므로 파일 안의 함수를 셀 수 없었다 | +5 | ✅ T054 |
+| `UiSkin.test.ts` (G-F) | 부품의 모습이 정본이다 | **파일이 없어도 요구한다** — `behavior = radix` 부품 여섯이 있고 `radix-ui` 를 가져오는지 · 조작 부품 넷이 있는지. 전환 중에는 「파일이 생긴 뒤부터」였다 | — (전환이 끝나 조건만 굳혔다) | 6→10 | ✅ T077 |
+| `ScreenSweep.test.ts` | 순회 보고서가 낡지 않고 깨짐이 남지 않았다 | 「남은 알려진 깨짐이 전환 전 실측의 것뿐인가」(기록) → **알려진 깨짐 등록부와 남은 검출이 비어 있다**(단언) | — (B-01~B-11 을 전부 고쳐 등록부를 비웠다) | 1→2 | ✅ T078 |
 
 ## 단언 수 기록
 
@@ -72,6 +74,7 @@
 | US2 4-D 끝 (2026-09-15) | 117 | **2252** (+16) | **639** (−1) | 0 | 새 동작 테스트 `MenuKeyboard`(7 검사 — Enter·Space·↓ 로 열기 · 화살표 · Esc 복귀 · 항목 선택 · 실제 행 단추의 `aria-haspopup`·`aria-expanded`). 무른 단언 −1 은 `RowMenuVisible` 의 「메뉴가 열렸다」를 `not.toBeNull()` 에서 `data-state` 값으로 바꾼 것 |
 | US2 4-E 끝 (2026-09-15) | 117 | **2255** (+3) | 639 (±0) | 0 | `InteractionStates` 의 탭 비활성 검사가 `ui/Tabs` 로 옮겨지며 분절 띠(S-12) 검사를 더했다(1→4). 고르기 단추의 역할이 `radio` 가 되며 **판정 방법만** 바뀐 파일 8개(PacingControl·RunnerPacing·TestListFilters·TestGroups·TestListSelection·ListLiveState·AiRecord·ComposePhase 는 그대로 통과)는 단언 수가 같다 |
 | US2 4-F·4-G 끝 (2026-09-15) | 118 | **2270** (+15) | 639 (±0) | 0 | 새 `TooltipDisclosure`(6 검사 · 14 단언) · `ImplementationCount` 이름 단위 퇴역에 수제 펼침 토글(+1). 툴팁·펼침 전환과 클래스 잇기(`cn`) 전환에서 **바꾼 기존 단언은 없다** — 알림 `×` 는 글자 `×` 와 이름 「알림 닫기」를 그대로 지켰다 (`ToastDismiss`) |
+| US3·US4 끝 (2026-09-15) | 118 | **2274** (+4) | 639 (±0) | 0 | `UiSkin` 파일 존재 요구(+3) · `ScreenSweep` 등록부가 비었다는 단언(+1). 배치 수정에서 **판정 방법이 바뀐 것**은 `ComposePhase` 의 단언 둘뿐(`fixed` → `content` · B-04). 최종: 기준선 2148 대비 +126, 무른 단언은 기준선 639 와 같다 |
 
 ## 새로 더하는 테스트
 

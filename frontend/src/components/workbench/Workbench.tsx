@@ -31,7 +31,7 @@ import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard, BrandMark, Breadcrumb, HeaderBar, HeaderDivider } from "../design/Chrome";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
-import { CHAT_SLOT_CLASS, flexClassOf, splitFor } from "../../lib/layout";
+import { CHAT_SLOT_CLASS, STEP_FOOTER_MAX_CLASS, flexClassOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
 import { PhaseBar, type PhaseGroupPick, type PhaseNameEdit } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
@@ -248,7 +248,13 @@ export function Workbench({
 
       창이 기준 높이(900)보다 작으면 `minHeight` 가 이겨 종전처럼 페이지가 스크롤한다.
     */
-    <Artboard width={BASE_WIDTH} minHeight={900} grow fill>
+    <Artboard
+      width={BASE_WIDTH}
+      minHeight={900}
+      fill
+      // 머리띠는 가로 스크롤 영역 밖이다 — 좁은 창에서 본문이 스크롤해도 창 폭에 선다 (017 B-11 · layout-contract-v3 L3).
+      header={
+        <>
       {/* ─── 층① 헤더 60px ────────────────────────────────────────────────── */}
       <HeaderBar>
         <BrandMark />
@@ -271,6 +277,9 @@ export function Workbench({
         <div className="flex-1" />
         {headerActions}
       </HeaderBar>
+        </>
+      }
+    >
 
       {/* ─── 층② 국면 띠 74px ─────────────────────────────────────────────── */}
       <PhaseBar
@@ -413,6 +422,7 @@ export function Workbench({
           deleteTargets={deleteTargets}
           rerecordTargets={rerecordTargets}
           footer={stepFooter}
+          footerMax={STEP_FOOTER_MAX_CLASS[model.phase]}
         />
 
         {/*

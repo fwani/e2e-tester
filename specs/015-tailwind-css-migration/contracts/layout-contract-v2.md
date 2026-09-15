@@ -1,5 +1,7 @@
 # Contract: 배치 계약 v2 — 007/008 개정판
 
+> **개정 (2026-09-15 · 017)**: [layout-contract-v3](../../017-shadcn-ui-migration/contracts/layout-contract-v3.md) 가 L1(층위 표) ~ L6(비활성 사유가 먼저 줄어든다)을 더했다. 이 문서의 LC-1~LC-4 는 그대로 유효하다.
+
 **Feature**: 015 | **Status**: 계약 | **개정 대상**:
 `specs/008-visual-language/contracts/visual-language.md` §2 「허용되는 인라인 `style`」
 
