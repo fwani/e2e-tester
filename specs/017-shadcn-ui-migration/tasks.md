@@ -317,3 +317,11 @@ Task: "T046 KeyManagement · SecretValues · ProjectSetup"
 - 「고쳤다」는 순회 보고서에서 그 검출이 사라진 것이다 — 코드 커밋만으로는 아니다 (data-model §9)
 - 가드를 넓혀 새로 실패하는 것은 가드를 좁혀 통과시키지 않고 코드를 고친다
 - 확정 디자인(`docs/design/008-visual-language/*.dc.html`)과 정본 구획을 고치지 않는다
+
+---
+
+## Phase 8: Convergence
+
+- [ ] T087 N-02 에 판정을 남긴다 — `specs/017-shadcn-ui-migration/baseline.md` 의 「판정 보류」를 「고침」 또는 「사유가 적힌 의도된 예외」로 바꾸고 `docs/PENDING-HUMAN-VERIFICATION.md` §17 의 같은 줄을 맞춘다 per SC-002 · FR-026 (partial)
+- [ ] T088 [P] 부품이 그리는 루트 요소에 `data-slot="<부품-이름>"` 을 둔다 — `frontend/src/ui/Field.tsx`(Field·AnswerQuestion·CommitBar·FileButton) · `Label.tsx`(Lbl·FieldLabel) · `Notice.tsx`(Notice·Toast·ToastLayer) · `StepRow.tsx`(StepPanel·StepPanelHead·StepPanelFoot·StepRow·StepCheck·StepOps·StepOpButton·PhaseBand) · `Surface.tsx`(Pane·PaneHead·AppHeader·Scrim·Divider) · `Table.tsx`(Row·Spacer) per plan: contracts/ui-parts.md §0 규칙 5 (partial)
+- [ ] T089 [P] `specs/017-shadcn-ui-migration/contracts/ui-parts.md` §1 `Tooltip.tsx` 줄의 「내보내는 것」을 실제와 맞춘다 — `TooltipProvider` 는 내보내지 않고 `Tooltip` 이 툴팁마다 공급자를 감싼다 per plan: contracts/ui-parts.md §1 (partial)
