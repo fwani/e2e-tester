@@ -1,7 +1,7 @@
 /**
  * Step 목록의 부품. 015 T026.
  *
- * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로
+ * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로 · T088 — 루트에 `data-slot`
  *
  * ## 행 높이 52px 는 계약이다
  *
@@ -77,7 +77,7 @@ type DivProps = Omit<ComponentPropsWithRef<"div">, "className">;
 export function StepPanel({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
   const cls = cn("flex-none basis-steps min-w-0 border-l border-hair-2 bg-panel flex flex-col", layout);
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="step-panel" {...rest}>
       {children}
     </div>
   );
@@ -90,7 +90,7 @@ export function StepPanelHead({ layout, children, ...rest }: DivProps & { layout
     layout,
   );
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="step-panel-head" {...rest}>
       {children}
     </div>
   );
@@ -105,7 +105,7 @@ export function StepPanelHead({ layout, children, ...rest }: DivProps & { layout
 export function StepPanelFoot({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
   const cls = cn("border-t border-hair-2 bg-sunken-2", layout);
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="step-panel-foot" {...rest}>
       {children}
     </div>
   );
@@ -158,6 +158,7 @@ export function StepRow({
   return (
     <div
       className={cls}
+      data-slot="step-row"
       data-mark={mark}
       data-paused={paused ? "true" : undefined}
       data-selected={selected ? "true" : undefined}
@@ -186,7 +187,7 @@ export function StepCheck({ layout, children, ...rest }: DivProps & { layout?: s
     layout,
   );
   return (
-    <div className={cls} data-cell="check" {...rest}>
+    <div className={cls} data-slot="step-check" data-cell="check" {...rest}>
       {children}
     </div>
   );
@@ -200,7 +201,7 @@ export function StepCheck({ layout, children, ...rest }: DivProps & { layout?: s
 export function StepOps({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
   const cls = cn("flex items-center gap-s1", layout);
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="step-ops" {...rest}>
       {children}
     </div>
   );
@@ -224,7 +225,7 @@ export function StepOpButton({ tone = "default", layout, children, ...rest }: Om
     layout,
   );
   return (
-    <button className={cls} data-tone={tone} {...rest}>
+    <button className={cls} data-slot="step-op-button" data-tone={tone} {...rest}>
       {children}
     </button>
   );
@@ -237,7 +238,7 @@ export function PhaseBand({ layout, children, ...rest }: DivProps & { layout?: s
     layout,
   );
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="phase-band" {...rest}>
       {children}
     </div>
   );

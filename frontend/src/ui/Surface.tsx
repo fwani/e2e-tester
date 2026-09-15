@@ -1,7 +1,7 @@
 /**
  * 면 — 판·머리·층·가림막. 의미 클래스가 해체되어 온 곳. 015 T022·T023.
  *
- * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로
+ * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로 · T088 — 루트에 `data-slot`
  *
  * 「무엇을 담는 자리인가」를 정하는 부품들이다. 담기는 내용은 모른다.
  *
@@ -40,7 +40,7 @@ interface SurfaceProps extends DivProps {
 export function Pane({ layout, children, ...rest }: SurfaceProps) {
   const cls = cn("bg-panel border border-hair rounded-base", layout);
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="pane" {...rest}>
       {children}
     </div>
   );
@@ -58,7 +58,7 @@ export function PaneHead({ band = false, layout, children, ...rest }: SurfacePro
     layout,
   );
   return (
-    <div className={cls} data-band={band ? "true" : undefined} {...rest}>
+    <div className={cls} data-slot="pane-head" data-band={band ? "true" : undefined} {...rest}>
       {children}
     </div>
   );
@@ -74,7 +74,7 @@ export function AppHeader({ layout, children, ...rest }: SurfaceProps) {
   // `data-shell` — 이 문서에 머리띠가 있다는 사실. 알림 층의 자리(017 layout-contract-v3 L2)와
   // 화면 순회(screen-sweep SW-6)가 이것을 읽는다. 모양이 아니라 **구조의 표식**이다.
   return (
-    <header className={cls} data-shell="header" {...rest}>
+    <header className={cls} data-slot="app-header" data-shell="header" {...rest}>
       {children}
     </header>
   );
@@ -95,7 +95,7 @@ export function Scrim({ strength = "soft", layout, children, ...rest }: SurfaceP
   };
   const cls = cn(TONE[strength], layout);
   return (
-    <div className={cls} data-strength={strength} {...rest}>
+    <div className={cls} data-slot="scrim" data-strength={strength} {...rest}>
       {children}
     </div>
   );
@@ -104,5 +104,5 @@ export function Scrim({ strength = "soft", layout, children, ...rest }: SurfaceP
 /** 정본 `.divider` — 세로 구분선. */
 export function Divider({ layout, ...rest }: Omit<SurfaceProps, "children">) {
   const cls = cn("w-px h-[20px] bg-hair-2 flex-none", layout);
-  return <div className={cls} {...rest} />;
+  return <div className={cls} data-slot="divider" {...rest} />;
 }

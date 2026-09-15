@@ -223,7 +223,7 @@ export function rowClasses(mark: RowMark = "none"): string {
 /** 정본 `.row` — 가로로 늘어놓는 줄. 간격은 `--s-2`(8px). */
 export function Row({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"div">, "className"> & LayoutProps) {
   return (
-    <div className={cn("flex items-center gap-s2", layout)} {...rest}>
+    <div className={cn("flex items-center gap-s2", layout)} data-slot="row" {...rest}>
       {children}
     </div>
   );
@@ -231,5 +231,5 @@ export function Row({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"d
 
 /** 정본 `.spacer` — 남는 자리를 먹는다. `Row` 안에서 다음 것을 오른쪽으로 민다. */
 export function Spacer({ layout, ...rest }: Omit<ComponentPropsWithRef<"span">, "className"> & { layout?: string }) {
-  return <span className={cn("flex-1", layout)} {...rest} />;
+  return <span className={cn("flex-1", layout)} data-slot="spacer" {...rest} />;
 }

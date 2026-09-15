@@ -1,7 +1,7 @@
 /**
  * 폼 — 입력칸·라벨·파일 선택. 015 T024 · 017 T034.
  *
- * 출처: 015 (손으로 만든 부품)
+ * 출처: 015 (손으로 만든 부품) · 017 T088 — 루트에 `data-slot`
  *
  * ## 상태 스타일을 함께 옮겼다 — 이 군은 그것이 본체다
  *
@@ -50,7 +50,7 @@ export function Field({ off = false, layout, children, ...rest }: DivProps & { o
     layout,
   );
   return (
-    <div className={cls} data-off={off ? "true" : undefined} {...rest}>
+    <div className={cls} data-slot="field" data-off={off ? "true" : undefined} {...rest}>
       {children}
     </div>
   );
@@ -66,7 +66,7 @@ export { FieldLabel, Lbl } from "./Label";
  */
 export function AnswerQuestion({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
   return (
-    <div className={cn("font-sans text-[13px] leading-[1.4] font-normal text-ink", layout)} {...rest}>
+    <div className={cn("font-sans text-[13px] leading-[1.4] font-normal text-ink", layout)} data-slot="answer-question" {...rest}>
       {children}
     </div>
   );
@@ -80,7 +80,7 @@ export function AnswerQuestion({ layout, children, ...rest }: DivProps & { layou
  */
 export function CommitBar({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
   return (
-    <div className={cn("sticky bottom-0 z-10 bg-panel border-t border-hair-2", layout)} {...rest}>
+    <div className={cn("sticky bottom-0 z-10 bg-panel border-t border-hair-2", layout)} data-slot="commit-bar" {...rest}>
       {children}
     </div>
   );
@@ -138,7 +138,7 @@ export function FileButton({
     layout,
   );
   return (
-    <label className={cls} data-off={off ? "true" : undefined} {...rest}>
+    <label className={cls} data-slot="file-button" data-off={off ? "true" : undefined} {...rest}>
       {children}
       <input
         type="file"

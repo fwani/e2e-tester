@@ -49,7 +49,7 @@ export function Label({ layout, children, ...rest }: Omit<ComponentPropsWithRef<
 export function Lbl({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"span">, "className"> & LayoutProps) {
   const cls = cn("font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3", layout);
   return (
-    <span className={cls} {...rest}>
+    <span className={cls} data-slot="lbl" {...rest}>
       {children}
     </span>
   );
@@ -59,7 +59,7 @@ export function Lbl({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"s
 export function FieldLabel({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"div">, "className"> & LayoutProps) {
   const cls = cn("font-sans text-[12px] leading-none font-normal text-ink-3", layout);
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="field-label" {...rest}>
       {children}
     </div>
   );

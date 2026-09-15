@@ -1,7 +1,7 @@
 /**
  * 알림 — 의미 클래스 `.notice` 계열이 해체되어 온 곳. 015 T021.
  *
- * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로
+ * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로 · T088 — 루트에 `data-slot`
  *
  * 세 가지가 한 뿌리에서 갈린다.
  *
@@ -74,7 +74,7 @@ export function Notice({ tone = "default", layout, children, ...rest }: NoticePr
     layout,
   );
   return (
-    <div className={cls} data-tone={tone} {...rest}>
+    <div className={cls} data-slot="notice" data-tone={tone} {...rest}>
       {children}
     </div>
   );
@@ -98,7 +98,7 @@ export function Toast({ tone = "default", layout, children, ...rest }: NoticePro
     layout,
   );
   return (
-    <div className={cls} data-tone={tone} {...rest}>
+    <div className={cls} data-slot="toast" data-tone={tone} {...rest}>
       {children}
     </div>
   );
@@ -149,7 +149,7 @@ export const TOAST_LAYER_CLASSES =
 export function ToastLayer({ layout, children, ...rest }: Omit<NoticeProps, "tone">) {
   const cls = cn(TOAST_LAYER_CLASSES, layout);
   return (
-    <div className={cls} aria-live="polite" {...rest}>
+    <div className={cls} data-slot="toast-layer" aria-live="polite" {...rest}>
       {children}
     </div>
   );
