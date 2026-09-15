@@ -16,8 +16,13 @@
  * 관성으로 쌓여 규칙을 갉아먹는 것을 막는다.
  */
 
-/** 어느 축의 예외인가. `contracts/visual-language.md` §4 의 축 이름과 같다. */
-export type ExceptionAxis = "color" | "inline-style" | "class-name" | "token";
+/**
+ * 어느 축의 예외인가. `contracts/visual-language.md` §4 의 축 이름과 같다.
+ *
+ * `raw-element` 는 017 이 더했다 — `src/ui/` 밖에서 부품이 아닌 `<button|input|select|textarea>`
+ * 를 쓰는 자리 (017 contracts/guards.md G-G · FR-002). `pattern` 은 **태그 이름**에 맞춘다.
+ */
+export type ExceptionAxis = "color" | "inline-style" | "class-name" | "token" | "raw-element";
 
 export interface VisualLanguageException {
   /** 저장소 기준 경로. 디렉터리를 가리키면 그 아래 전부에 적용된다. */
@@ -128,6 +133,41 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
       "겹쳐 그리면 띠 높이(48px) 안에서 2px 링이 위아래로 잘린다. " +
       "015 는 이 형태를 옮길 뿐 새로 정하지 않는다 (FR-008).",
     requirement: "015 FR-008 · SC-008 · 007 FR-219",
+  },
+  {
+    file: "frontend/src/ui/Field.tsx",
+    pattern: "^\\[&_input\\]:outline-none$",
+    axis: "class-name",
+    reason:
+      "입력칸을 감싸는 상자(정본 `.field`) 안쪽의 입력이다. 테두리를 상자가 그리므로 **초점 표시도 " +
+      "상자가 그린다** — 상자의 `focus-within:outline-2 outline-run` 이 전역 `:focus-visible` 과 같은 " +
+      "링을 둘러 준다. 안쪽 입력에 링을 남기면 상자 안에서 한 번 더 그려져 두 겹이 된다. " +
+      "017 이 가드를 넓히며 찾았다(N-01): 015 까지는 안쪽 링만 지우고 상자가 링을 그리지 않아 " +
+      "검색 칸에 초점 표시가 **아예 없었다** — `FocusRing` 이 `[&_input]:` 접두를 읽지 못해 놓쳤다.",
+    requirement: "017 FR-015 · 015 SC-008",
+  },
+  {
+    file: "frontend/src/ui/StepRow.tsx",
+    pattern: "^\\[&_input:disabled\\]:opacity-40$",
+    axis: "class-name",
+    reason:
+      "Step 행 체크 칸의 비활성이다. **정본이 흐림으로 정했다** — `.srow-check input[type=\"checkbox\"]" +
+      ":disabled { cursor: default; opacity: .4 }` (015 state-styles S-13). 체크 상자는 결말 아이콘과 " +
+      "형태로 갈리는 유일한 사각형이고 점선 테두리를 가질 수 없는 네이티브 요소라, 버튼의 점선 비활성 " +
+      "문법이 적용되지 않는다. shadcn 의 `disabled:opacity-50` 과는 출처가 다르다 — 이것은 정본 값이다.",
+    requirement: "015 S-13 · 017 FR-006",
+  },
+  {
+    file: "frontend/src/components/MirrorView.tsx",
+    pattern: "^textarea$",
+    axis: "raw-element",
+    reason:
+      "미러의 한글 조합 칸이다 (정본 `.ime-capture`). **보이지 않고 포인터를 받지 않으며 조합만 " +
+      "받는다** — 미러 면(`<div>`)에는 IME 가 걸리지 않으므로 편집 가능한 요소가 하나 있어야 한다. " +
+      "부품이 주는 것(모습·비활성 점선·초점 규칙)이 전부 방해가 된다: 보이면 미러를 가리고, " +
+      "초점 표시를 그리면 미러 전체를 두르는 사각형이 뜬다. 부품으로 감쌀 이유가 없는 유일한 " +
+      "원시 조작 요소다 (010 · 017 contracts/ui-parts.md §3).",
+    requirement: "017 FR-002 · FR-016 · 010",
   },
 ];
 

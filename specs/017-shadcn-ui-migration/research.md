@@ -232,6 +232,12 @@ Tooltip 은 잘린 글자와 아이콘 단추(⋮ · ×)에만 쓴다. Radix Too
 차지한 자리(x 1004~1424, y 64~130)가 띠가 없을 때 도구 줄의 자리다. 덮지 않는 쪽을 택한다.
 사용자가 반대를 원하면 토스트 쪽으로 모으고 도구 줄을 옮기는 별도 결정이 필요하다.
 
+**구현 중 확인한 근거 하나 더** (2026-09-15): `TestList.tsx:1368` 에 008 이 적은 규칙이 있다 — 「『실행 화면
+보기』는 **화면에 하나뿐이다.** 둘 다 두면 같은 일을 하는 조작이 한 화면에 둘이 되고, 그것이 007 UC-102 가
+없앤 형태다」. 지금 목록에는 토스트의 「실행 화면 보기」와 띠의 「이어서 보기」가 **같은 `onResumeSession`** 을
+부른다. 토스트를 지우면 그 규칙도 되살아난다. 복귀 수단(005 FR-168)은 띠의 「이어서 보기」로 남는다 —
+세션이 끝나 `review` 여도 띠는 세션마다 그 조작을 그린다.
+
 **버린 대안**:
 
 | 대안 | 버린 이유 |
@@ -397,7 +403,12 @@ Tooltip 은 잘린 글자와 아이콘 단추(⋮ · ×)에만 쓴다. Radix Too
 | # | 질문 | 실패하면 |
 |---|---|---|
 | S1 | R4 의 이름공간 비우기 후 산출 CSS 가 **바뀌지 않는가** (`shadow-none`·`rounded-none`·`rounded-full`·`leading-none` 포함) | 생성되지 않는 이름만 `@theme` 에 되살린다 |
+| | **✅ 확인 (2026-09-15 · T001)** — 화면 코드(`./src/**/*.tsx`)로 만든 `@layer utilities` 가 비우기 전후 **바이트 단위로 같다**(35,005자). 정적 유틸리티 `shadow-none`·`rounded-none`·`rounded-full`·`leading-none` 과 정본 `rounded-base|chip|lg`·`shadow-e1|e2` 는 그대로 생성되고, `rounded-md|sm|xs`·`shadow-xs|sm|lg`·`text-sm|xs`·`animate-spin`·`inset-shadow-xs`·`drop-shadow-md` 는 **생성되지 않는다.** 되살릴 이름 없음 | |
 | S2 | 넓힌 G-E 헬퍼가 `cva` 한 부품(Button)의 조합 전부를 만들고, 일부러 넣은 역전을 잡는가 | `cva` 대신 015 형태(R5 버린 대안 3)로 되돌린다 |
+| | **✅ 확인 (2026-09-15 · T002)** — 시험 부품의 `primary: "bg-panel text-panel bg-ink"`(뒤에 적은 `bg-ink` 가 CSS 에서 진다)를 G-E 가 **세 경로 모두에서** 잡았다: 리터럴(`__spike_cva.tsx:10`) · `cva(spikeVariants)` 조합(`:6`) · `cn(spikeVariants(…), …)` 조합(`:22`). **덧붙여 찾은 구멍 1건**: `className={cn(xVariants({ variant: "primary" }))}` 안의 변종 **이름** `"primary"` 를 클래스 목록 헬퍼가 클래스로 읽어 G-B(「생성되지 않는 `.primary`」)·G-D(「완료된 정본 `.primary` 사용」)가 없는 위반을 보고했다. `이름({ … })` 호출의 객체 인자를 지운 뒤 리터럴을 모으도록 고쳤다 | |
 | S3 | `tests/setup/dom.ts` 를 실은 뒤 기존 1364건이 그대로 통과하는가, Radix `Dialog`·`DropdownMenu` 를 쓴 시험 부품이 jsdom 에서 열리고 닫히는가 | 폴리필 범위를 조정한다 |
+| | **✅ 확인 (2026-09-15 · T003 · React 19.2.8)** — 보완을 실은 뒤 기존 테스트 전량 통과(가드 실패는 스파이크 파일과 L2 digest 뿐). `Dialog`: 열면 초점이 안으로 · Tab 이 밖으로 나가지 않음 · Esc 닫힘 · 트리거로 초점 복귀. `DropdownMenu`: `userEvent.click` 으로 열림 · 화살표 · Esc · 트리거 복귀 (약 3초). `Tooltip`: 초점(`userEvent.tab`·`act(focus)` 뒤 한 틱)과 hover 에 뜬다. **단 jsdom 에서 한 번 여는 데 약 8초** — 기본 제한 5초에 걸려 첫 시험이 실패로 보였다. 조사 에이전트가 빠뜨린 `IntersectionObserver` 도 보완에 더했다. **결론**: 툴팁을 여는 테스트는 제한을 명시하거나, 여는 대신 트리거의 `aria-describedby`·`data-state` 를 본다 (T063) | |
 | S4 | 화면 순회가 **개발 서버**로 녹화 화면을 **실시간 연결된 채** 여는가 | 순회 계약 SW-3 을 다시 정한다 |
+| | **✅ 확인 (2026-09-15 · T004)** — `runner-record@1440` 이 「실시간 연결이 끊겼습니다」 없이 녹화 국면으로 그려지고 검출 0. **그리고 한 가지를 바꿨다**: 연결 끊김 화면(`runner-disconnected`)을 `page.route_web_socket(…, lambda ws: ws.close())` 로 만들었더니 동기 API 처리기 안의 `close()` 에서 **순회 전체가 10분간 멈췄다.** 페이지가 뜨기 전에 `WebSocket` 을 감싸 `/events` 만 닫힌 포트로 보내는 초기화 스크립트로 바꿨고, 브라우저가 실제 연결 실패를 겪어 알림이 뜬다(B-01 의 녹화 쪽 덮임이 그대로 재현됐다). 화면 셋 × 폭 하나가 34초 | |
 | S5 | `:root:has([data-shell=…])` 임의 변종 셋이 Tailwind 에서 생성되고 chromium 에서 서로 배제되는가 | 화면이 `:root` 에 `--toast-top` 을 쓰는 방식(R6 버린 대안 2)으로 |
+| | **✅ 확인 (2026-09-15 · T005)** — `[:root:has([data-shell=phase])_&]:top-[…]` 와 `[:root:has([data-shell=header]):not(:has([data-shell=phase]))_&]:top-[…]` 둘 다 생성된다. chromium 에서 한 요소에 `top-s4` 와 두 변종을 함께 걸고 띠를 바꿔 끼우면 계산된 `top` 이 **띠 없음 16px · 머리띠 64px · 머리띠+국면 띠 112px** — 서로 배제되고 산출 CSS 순서에 기대지 않는다 | |

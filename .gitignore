@@ -50,3 +50,7 @@ blob-report/
 # L2 대조가 전환 전 코드를 꺼내 두는 곳 (scripts/design_compare_ba.py)
 .l2-before/
 .l2-data/
+
+# 화면 깨짐 순회의 격리 데이터와 캡처 (scripts/screen_sweep.py · 017 screen-sweep.md SW-8)
+# 보고서(frontend/tests/sweep-report.json)는 커밋한다. 캡처와 시드 데이터는 기계마다 다르다.
+.sweep/

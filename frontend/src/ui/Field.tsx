@@ -1,6 +1,8 @@
 /**
  * 폼 — 입력칸·라벨·파일 선택. 015 T024.
  *
+ * 출처: 015 (손으로 만든 부품)
+ *
  * ## 상태 스타일을 함께 옮겼다 — 이 군은 그것이 본체다
  *
  * [state-styles.md](../../../specs/015-tailwind-css-migration/contracts/state-styles.md)
@@ -35,6 +37,10 @@ export function Field({ off = false, layout, children, ...rest }: DivProps & { o
   const cls = [
     "h-control flex items-center gap-s2 px-[10px] border rounded-base",
     off ? "border-dashed border-hair-2 bg-transparent" : "border-hair-2 bg-panel",
+    // 초점 표시는 **상자가** 그린다 — 안쪽 입력은 링을 벗는다(아래). 017 이 찾은 N-01:
+    // 015 까지는 안쪽 링만 지우고 상자가 링을 그리지 않아 검색 칸에 초점 표시가 없었다.
+    // 값은 전역 `:focus-visible` 과 같다 (`FileButton` 의 S-16 과 같은 구조).
+    "focus-within:outline focus-within:outline-2 focus-within:outline-run focus-within:outline-offset-2",
     // 안쪽 입력칸을 벗긴다 — 정본 `.field input` 을 그대로 옮겼다.
     "[&_input]:flex-1 [&_input]:min-h-auto [&_input]:p-0 [&_input]:border-0",
     "[&_input]:bg-transparent [&_input]:shadow-none [&_input]:outline-none",

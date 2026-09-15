@@ -1,7 +1,7 @@
 {
- "beforeDigest": "83517acb21fccf5a",
- "afterDigest": "4d6b5fa25dd85f01",
- "mergeBase": "c3cf6af6cb9d9ddad10a4f3a056f2988234f246a",
+ "beforeDigest": "4d6b5fa25dd85f01",
+ "afterDigest": "14c52950e37b7b22",
+ "mergeBase": "75520eed1cabdeb1c26dac0eb88632178d4035a1",
  "screens": [
   "project-list",
   "project-create",
@@ -13,14 +13,7 @@
   "test-create"
  ],
  "props": 56,
- "compared": 34272,
+ "compared": 34328,
  "mismatches": [],
- "intended": [
-  {
-   "screen": "test-create",
-   "kind": "unpaired",
-   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[0]",
-   "reason": "국면 표시가 `<div class=\"chip\">` 에서 부품 `ui/Chip` 으로 바뀌었고, 그 부품은 `<span>` 을 그린다. **계산된 스타일은 한 칸도 다르지 않다** — 요소 이름만 바뀌었고 둘 다 `inline-flex` 다. 칩은 글 안에 놓이는 표식이므로 `<span>` 이 맞는 요소이며, 검사와 실측은 클래스가 아니라 `data-phase-pill` 로 이 자리를 집는다. 사람이 보는 화면에는 차이가 없다 (SC-001)."
-  }
- ]
+ "intended": []
 }

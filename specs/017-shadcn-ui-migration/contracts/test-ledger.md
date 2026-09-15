@@ -23,6 +23,7 @@
 | `PacingControl.test.tsx` | 고른 실행 속도가 남는다 | `aria-pressed` → `role="radio"` + `aria-checked` | `ToggleGroup type="single"` 은 배타 선택을 라디오로 알린다 (FR-013) | 4→4 | ⬜ |
 | `RunnerPacing.test.tsx` | 실행 중에 바꾼 속도가 남는다 | 같음 | 같음 | | ⬜ |
 | `NoticesAreToasts.test.tsx` | 목록의 알림이 내용을 밀어내지 않고 한 층에 뜬다 | 진행 중 세션 경우 — 토스트가 아니라 **흐름 안 띠 하나**가 그 사실을 말함을 확인한다 | B-02 · FR-018b. 같은 사실을 두 자리가 말했다 | | ⬜ |
+| `ListLiveState.test.tsx` · `RecheckPhase12.test.tsx` | 실행 중·끝난 세션이 있을 때 목록에서 **실행 화면으로 돌아갈 수단이 있다** (005 FR-168) | 복귀 조작을 토스트의 「실행 화면 보기」가 아니라 띠의 「이어서 보기」로 찾는다 | B-02 — 같은 `onResumeSession` 을 부르는 조작이 한 화면에 둘이었다. 008 이 적은 「복귀 조작은 화면에 하나뿐」(`TestList.tsx:1368`)을 되살린다. 문구는 바꾸지 않는다 (spec Assumptions) | | ⬜ |
 | `ToastPlacement.test.tsx` | 알림 층이 한 자리(오른쪽 위)에 뜬다 | **더한다**: 층 클래스가 띠 조건 셋을 서로 배제하는 형태로 갖는다 | B-01. `top` 을 고정하는 테스트가 없어 회귀가 들어왔다 | 늘어남 | ⬜ |
 | `WorkbenchShell.test.tsx` | 작업 화면 틀이 1440 을 최소로 창을 채운다 | 틀 구조 — 머리띠가 가로 스크롤 영역 밖, 본문이 `min-width 1440 · width 100%` | B-11 · layout-contract-v3 L3 | | ⬜ |
 | `WorkbenchHeight.test.tsx` | 작업 화면이 창 높이에 맞고 Step 목록이 스크롤 영역이다 | 높이 인라인 읽기 자리 조정 (머리띠가 밖으로 나온 뒤의 요소) | 같음 | | ⬜ |
@@ -36,6 +37,24 @@
 | `StepRowActions.test.tsx` · `RerecordStart.test.tsx` · `DeleteOutcome.test.tsx` | 체크박스로 고른 Step | **변경 없음 예상** — `Checkbox` 는 실제 `<input type=checkbox>` 다 | research R2 | | ⬜ |
 | 확인 대화상자를 여는 화면 테스트 (`SaveNamePrompt` · `RunTrigger` · `RunFinished` · `PauseTransition` 등) | 확인 후의 동작 | 대화상자가 열린 동안 뒤쪽 요소를 `getByRole` 로 찾던 순서를 **닫은 뒤**로 | 모달이 뒤쪽에 `aria-hidden` 을 건다 — 테스트 라이브러리가 접근 불가 요소를 찾지 않는다 | | ⬜ |
 | `BeforeAfterParity.test.ts` | 전환 전후 화면이 같다 | 보고서 갱신 · `INTENDED` 추가 | 매 단계 | | ⬜ |
+
+## 넓힌 가드 — 판정 대상이 늘어난 것
+
+가드를 **좁히지 않고 넓히기만** 한다 ([guards.md](guards.md) 「가드를 바꿀 때의 규칙」). 넓혀서 새로 드러난
+위반은 가드가 아니라 코드를 고쳤다.
+
+| 파일 | verifies | 넓힌 것 | 새로 드러난 것 | 전→후 단언 | 상태 |
+|---|---|---|---|---|---|
+| `helpers/tailwind.ts` (G-B·G-C·G-E·G-F·`FocusRing` 공용) | 화면 코드의 클래스를 빠짐없이 읽는다 | 대괄호 **안에서만** `= & > ( ) , + * ~ " '` 허용 · `[` 로 시작하는 토큰 허용 (H-2). `cva(…)`·`cn(…)` 조합 읽기 (H-1). `이름({ … })` 호출의 객체 인자를 클래스로 읽지 않기 | `ui/Field` 의 `[&_input]:outline-none` (N-01) · `ui/StepRow` 의 `[&_input:disabled]:opacity-40`(정본 S-13 — 예외 등록) | 헬퍼 (단언 없음) | ✅ T011·T012 |
+| `FocusRing.test.tsx` | 초점 링을 지우지 않는다 | `outline-hidden` 추가 · 변형 접두와 무관하게 유틸리티 본체를 본다 | N-01 | 4→6 | ✅ T013 |
+| `VisualLanguage.test.tsx` G-6 | 죽은 예외가 없다 | `raw-element` 축을 태그 이름 단위로 판정 | — | 그대로 | ✅ T015 |
+
+## 단언 수 기록
+
+| 시점 | 테스트 파일 | 단언 | 무른 단언 | 건너뜀 | 증감 사유 |
+|---|---|---|---|---|---|
+| 전환 전 (baseline) | 110 | 2148 | 639 | 0 | — |
+| Foundational 끝 (2026-09-15) | 113 | **2184** (+36) | **640** (+1) | 0 | 새 가드 `UiSkin`·`RawElements`·`ScreenSweep` 과 넓힌 `FocusRing`. 무른 단언 +1 은 `ScreenSweep` 의 「보고서가 있다」(`not.toBeNull()`) — 파일이 없을 때 뒤따르는 단언들이 `undefined` 를 상대로 헷갈리는 메시지를 내지 않게 먼저 묻는 자리이며, 구체 값은 바로 다음 단언(digest 일치)이 본다 |
 
 ## 새로 더하는 테스트
 

@@ -1,6 +1,8 @@
 /**
  * 면 — 판·머리·층·가림막. 의미 클래스가 해체되어 온 곳. 015 T022·T023.
  *
+ * 출처: 015 (손으로 만든 부품)
+ *
  * 「무엇을 담는 자리인가」를 정하는 부품들이다. 담기는 내용은 모른다.
  *
  * | 부품 | 정본 | 쓰임 |
@@ -70,8 +72,10 @@ export function AppHeader({ layout, children, ...rest }: SurfaceProps) {
   ]
     .filter(Boolean)
     .join(" ");
+  // `data-shell` — 이 문서에 머리띠가 있다는 사실. 알림 층의 자리(017 layout-contract-v3 L2)와
+  // 화면 순회(screen-sweep SW-6)가 이것을 읽는다. 모양이 아니라 **구조의 표식**이다.
   return (
-    <header className={cls} {...rest}>
+    <header className={cls} data-shell="header" {...rest}>
       {children}
     </header>
   );
