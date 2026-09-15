@@ -187,3 +187,33 @@ describe("구현 개수 (T027 · SC-001)", () => {
     expect(dangling).toEqual([]);
   });
 });
+
+/**
+ * 017 T054 — **파일이 아니라 이름으로** 사라져야 하는 옛 구현.
+ *
+ * 대화상자·겹침 판은 파일 하나가 아니라 **다른 파일 안의 조각**으로 여러 벌이었다 — `SessionScreen` 의 지역
+ * `Modal`, `ui/Surface` 의 `Modal`·`OverlayPane`, `EditView` 의 역할 alertdialog 판, `StepDetail` 의 역할 dialog 판.
+ * 파일 목록(`RETIRED`)으로는 셀 수 없어 **정의의 형태**를 센다. 되살아나면 부품(`ui/Dialog`·`ui/AlertDialog`·
+ * `ui/OverlayPane`)이 또 한 벌을 얻는다 — 초점·Esc·역할을 갖지 않은 채로.
+ */
+const RETIRED_SYMBOLS: { path: string; pattern: RegExp; what: string }[] = [
+  { path: "pages/SessionScreen.tsx", pattern: /\bfunction Modal\b/, what: "SessionScreen 지역 Modal" },
+  { path: "ui/Surface.tsx", pattern: /\bexport function (?:Modal|OverlayPane)\b/, what: "ui/Surface 의 Modal·OverlayPane" },
+  { path: "pages/EditView.tsx", pattern: /role="alertdialog"/, what: "EditView 의 수제 이탈 확인 판" },
+  { path: "components/workbench/StepDetail.tsx", pattern: /role="dialog"/, what: "StepDetail 의 수제 대화상자 판" },
+];
+
+describe("017 — 대화상자·겹침 판의 구현은 부품 한 벌이다 (T054)", () => {
+  it("검사가 헛돌지 않는다 — 대상 파일을 읽는다", () => {
+    for (const r of RETIRED_SYMBOLS) {
+      expect(exists(r.path), `${r.path} 를 읽지 못했다 — 파일이 옮겨졌으면 목록을 고친다`).toBe(true);
+    }
+  });
+
+  it("옛 대화상자 구현이 남아 있지 않다", () => {
+    const left = RETIRED_SYMBOLS.filter((r) => r.pattern.test(SOURCES[`../src/${r.path}`] ?? "")).map(
+      (r) => `${r.what} (${r.path})`,
+    );
+    expect(left, "부품 밖에 대화상자 구현이 또 있다:\n  " + left.join("\n  ")).toEqual([]);
+  });
+});

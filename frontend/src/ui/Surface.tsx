@@ -10,8 +10,6 @@
  * | `Pane` | `.pane` | 테두리와 바탕을 가진 판 |
  * | `PaneHead` | `.pane-hd` (`.band` 변종) | 판의 머리 띠 |
  * | `AppHeader` | `.hdr` | 화면 맨 위 머리띠 (56px) |
- * | `OverlayPane` | `.overlay-pane` | 목록 위에 겹쳐 뜨는 상세 판 |
- * | `Modal` | `.modal` | 대화상자 |
  * | `Scrim` | `.scrim` · `.modal-scrim` | 뒤를 덮는 가림막 |
  * | `Divider` | `.divider` | 세로 구분선 |
  *
@@ -22,7 +20,10 @@
  * ## 승강은 두 값뿐이다
  *
  * `--e-1`(판) 과 `--e-2`(겹쳐 뜨는 것). **같은 층에 뜨는 것은 같은 높이**라는 규율이
- * 정본에 적혀 있다 — `OverlayPane` 과 `Toast` 가 둘 다 `shadow-e2` 인 이유다.
+ * 정본에 적혀 있다 — `ui/OverlayPane` 의 상세 판과 `Toast` 가 둘 다 `shadow-e2` 인 이유다.
+ *
+ * 017 T052 — 이 파일의 `OverlayPane`·`Modal` 은 모양만 가진 `<div>` 였다. 동작(초점·Esc·역할)을 갖는 부품
+ * `ui/OverlayPane`(`DetailPanel`)·`ui/Dialog`·`ui/AlertDialog` 로 옮기며 지웠다.
  */
 import type { ComponentPropsWithRef, ReactNode } from "react";
 
@@ -78,30 +79,6 @@ export function AppHeader({ layout, children, ...rest }: SurfaceProps) {
     <header className={cls} data-shell="header" {...rest}>
       {children}
     </header>
-  );
-}
-
-/**
- * 정본 `.overlay-pane` — 목록 위에 겹쳐 뜨는 상세 판.
- *
- * `shadow-e2` 는 `Toast` 와 같다. 같은 층에 뜨는 것은 같은 높이다.
- */
-export function OverlayPane({ layout, children, ...rest }: SurfaceProps) {
-  const cls = ["bg-panel border-l border-hair-2 shadow-e2", layout].filter(Boolean).join(" ");
-  return (
-    <div className={cls} {...rest}>
-      {children}
-    </div>
-  );
-}
-
-/** 정본 `.modal` — 대화상자. 모서리가 `--radius-lg` 로 판보다 크다. */
-export function Modal({ layout, children, ...rest }: SurfaceProps) {
-  const cls = ["bg-panel border border-hair-2 rounded-lg shadow-e2", layout].filter(Boolean).join(" ");
-  return (
-    <div className={cls} {...rest}>
-      {children}
-    </div>
   );
 }
 

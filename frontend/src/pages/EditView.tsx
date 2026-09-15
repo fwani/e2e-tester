@@ -64,6 +64,13 @@ import {
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
 import type { Test } from "../types/generated/step-dsl";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "../ui/AlertDialog";
 import { Button } from "../ui/Button";
 
 
@@ -1204,15 +1211,33 @@ export function EditView({
       />
 
       {/* ─── 이탈 확인 (006 FR-208 · ui-contract §6) ────────────────────────── */}
+      {/*
+        017 T051 — 역할 alertdialog 를 단 div 에서 `AlertDialog` 로. 초점이 창 안의 「머무르기」에서 시작하고, Esc 가
+        「머무르기」와 같으며, 바깥을 눌러도 닫히지 않고, 닫히면 연 자리로 돌아간다. 모양과 조작 줄은 실행 화면의 확인
+        창과 **같은 부품**이다 — 되돌리는 조작이 먼저, 잃는 쪽(버리고 나가기)은 위험 형태, 주 선택이 끝 (SC-010).
+      */}
       {leaving !== null && (
-        <div
-          role="alertdialog"
-          aria-label="저장하지 않은 변경 확인"
-          className="fixed inset-0 flex items-center justify-center z-[30] bg-scrim-strong"
+        <AlertDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setLeaving(null);
+          }}
         >
-          <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
-            <strong className="font-sans text-[13.5px] font-bold leading-none">{unsavedLeaveWarning(pending)}</strong>
-            <div className="flex items-center gap-s2 mt-s3">
+          <AlertDialogContent aria-describedby={undefined}>
+            <AlertDialogTitle>{unsavedLeaveWarning(pending)}</AlertDialogTitle>
+            <AlertDialogFooter>
+              <AlertDialogCancel>머무르기</AlertDialogCancel>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const next = leaving;
+                  setOps([]);
+                  setLeaving(null);
+                  next();
+                }}
+              >
+                버리고 나가기
+              </Button>
               <Button
                 onClick={() => {
                   const next = leaving;
@@ -1223,22 +1248,9 @@ export function EditView({
               >
                 저장하고 나가기
               </Button>
-              <Button
-                onClick={() => {
-                  const next = leaving;
-                  setOps([]);
-                  setLeaving(null);
-                  next();
-                }}
-              >
-                버리고 나가기
-              </Button>
-              <Button variant="ghost" onClick={() => setLeaving(null)}>
-                머무르기
-              </Button>
-            </div>
-          </div>
-        </div>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </>
   );

@@ -151,13 +151,13 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 
 ### 4-C. 대화상자
 
-- [ ] T048 [US2] `frontend/src/ui/Dialog.tsx` 와 `frontend/src/ui/AlertDialog.tsx` 를 shadcn `dialog`·`alert-dialog` 이식으로 — `radix-ui` `Dialog`·`AlertDialog`, 포털, 가림막 `bg-scrim-strong`, z 30(v3 L1), 내용 `bg-panel border-hair-2 rounded-lg shadow-e2`, 닫기 표시 `×`, **`onInteractOutside`·`onPointerDownOutside` 에서 `[data-toast-layer]`·`[data-workbench-notice-layer]` 안이면 `preventDefault`**(research R6 ④), 움직임 없음
-- [ ] T049 [P] [US2] 동작 테스트 `frontend/tests/DialogFocus.test.tsx` · `frontend/tests/ToastOverModal.test.tsx` 를 쓴다 — 열면 초점이 안으로 · Tab 이 밖으로 나가지 않음 · Esc 닫힘(확인 대화상자는 조작 미실행) · 닫으면 연 조작으로 초점 복귀 · 모달이 열린 동안 알림 층이 `aria-hidden` 이 아니고 「닫기」를 눌러도 대화상자가 닫히지 않음 (FR-011 · SC-009 · T048 의존)
-- [ ] T050 [US2] `frontend/src/pages/SessionScreen.tsx` 의 지역 `Modal` 과 닫기·재실행·떠나기 확인 3개를 `Dialog`·`AlertDialog` 로 옮긴다 (떠나기 확인의 이름 입력은 `Dialog` + `Input`, 자동 초점은 `onOpenAutoFocus`). 지역 `Modal` 을 지운다. 확인 대화상자가 열린 동안 뒤쪽을 찾던 테스트(`SaveNamePrompt`·`RunTrigger`·`RunFinished`·`PauseTransition` 등)는 **닫은 뒤 찾도록 순서만** 바꾸고 test-ledger 에 적는다 (T048 의존)
-- [ ] T051 [US2] `frontend/src/pages/EditView.tsx` 의 저장 안 한 채 떠나기 확인(`role="alertdialog"` 수제 판)을 `AlertDialog` 로 옮긴다. `EditAfterFailure`·`EditEntryPoints` 통과 (T048 의존)
-- [ ] T052 [US2] `frontend/src/ui/OverlayPane.tsx` 에 `DetailPanel` 을 만든다 — `radix-ui` `Dialog` **`modal={false}`**, 포털 없음, 초점 이동·Esc·되돌림, Step 목록(`[data-step-row]`) 안 바깥 클릭은 닫힘이 아님 (research R7). `frontend/src/components/workbench/StepDetail.tsx` 와 `Workbench.tsx` 가 이것을 쓰고 `frontend/src/ui/Surface.tsx` 의 `OverlayPane`·`Modal` 을 지운다. `DetailPlacement`·`DetailBlocksMirrorInput`·`WorkbenchShell` 통과 — 판정 방법이 바뀌면 test-ledger (T048 의존)
-- [ ] T053 [P] [US2] 동작 테스트 `frontend/tests/MirrorInputWithDialog.test.tsx` — 대화상자가 열린 동안 미러로 가는 입력 0 · 닫은 뒤 미러 키 입력·한글 조합 경로가 전환 전과 같다 (FR-016 · SC-013 · T050 의존)
-- [ ] T054 [US2] `frontend/tests/ImplementationCount.test.ts` `RETIRED` 에 `SessionScreen` 지역 `Modal` · `ui/Surface` `Modal`·`OverlayPane` 을 올린다 (T050~T052 의존)
+- [X] T048 [US2] `frontend/src/ui/Dialog.tsx` 와 `frontend/src/ui/AlertDialog.tsx` 를 shadcn `dialog`·`alert-dialog` 이식으로 — `radix-ui` `Dialog`·`AlertDialog`, 포털, 가림막 `bg-scrim-strong`, z 30(v3 L1), 내용 `bg-panel border-hair-2 rounded-lg shadow-e2`, 닫기 표시 `×`, **`onInteractOutside`·`onPointerDownOutside` 에서 `[data-toast-layer]`·`[data-workbench-notice-layer]` 안이면 `preventDefault`**(research R6 ④), 움직임 없음
+- [X] T049 [P] [US2] 동작 테스트 `frontend/tests/DialogFocus.test.tsx` · `frontend/tests/ToastOverModal.test.tsx` 를 쓴다 — 열면 초점이 안으로 · Tab 이 밖으로 나가지 않음 · Esc 닫힘(확인 대화상자는 조작 미실행) · 닫으면 연 조작으로 초점 복귀 · 모달이 열린 동안 알림 층이 `aria-hidden` 이 아니고 「닫기」를 눌러도 대화상자가 닫히지 않음 (FR-011 · SC-009 · T048 의존)
+- [X] T050 [US2] `frontend/src/pages/SessionScreen.tsx` 의 지역 `Modal` 과 닫기·재실행·떠나기 확인 3개를 `Dialog`·`AlertDialog` 로 옮긴다 (떠나기 확인의 이름 입력은 `Dialog` + `Input`, 자동 초점은 `onOpenAutoFocus`). 지역 `Modal` 을 지운다. 확인 대화상자가 열린 동안 뒤쪽을 찾던 테스트(`SaveNamePrompt`·`RunTrigger`·`RunFinished`·`PauseTransition` 등)는 **닫은 뒤 찾도록 순서만** 바꾸고 test-ledger 에 적는다 (T048 의존)
+- [X] T051 [US2] `frontend/src/pages/EditView.tsx` 의 저장 안 한 채 떠나기 확인(`role="alertdialog"` 수제 판)을 `AlertDialog` 로 옮긴다. `EditAfterFailure`·`EditEntryPoints` 통과 (T048 의존)
+- [X] T052 [US2] `frontend/src/ui/OverlayPane.tsx` 에 `DetailPanel` 을 만든다 — `radix-ui` `Dialog` **`modal={false}`**, 포털 없음, 초점 이동·Esc·되돌림, Step 목록(`[data-step-row]`) 안 바깥 클릭은 닫힘이 아님 (research R7). `frontend/src/components/workbench/StepDetail.tsx` 와 `Workbench.tsx` 가 이것을 쓰고 `frontend/src/ui/Surface.tsx` 의 `OverlayPane`·`Modal` 을 지운다. `DetailPlacement`·`DetailBlocksMirrorInput`·`WorkbenchShell` 통과 — 판정 방법이 바뀌면 test-ledger (T048 의존)
+- [X] T053 [P] [US2] 동작 테스트 `frontend/tests/MirrorInputWithDialog.test.tsx` — 대화상자가 열린 동안 미러로 가는 입력 0 · 닫은 뒤 미러 키 입력·한글 조합 경로가 전환 전과 같다 (FR-016 · SC-013 · T050 의존)
+- [X] T054 [US2] `frontend/tests/ImplementationCount.test.ts` `RETIRED` 에 `SessionScreen` 지역 `Modal` · `ui/Surface` `Modal`·`OverlayPane` 을 올린다 (T050~T052 의존)
 
 ### 4-D. 메뉴
 

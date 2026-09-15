@@ -29,9 +29,9 @@
 | `Radio.tsx` | `Radio` | native | (원본 `radio-group` 은 Radix — 쓰지 않는다) | 원시 라디오 4곳 | ✅ T033 · 화면 적용 T036·T045 |
 | `Label.tsx` | `Label` · `Lbl` · `FieldLabel` | raw | `label` (Radix `Label` 은 쓰지 않는다 — 텍스트 선택 방지뿐) | `ui/Field` 의 `Lbl`·`FieldLabel` · 전역 `label{}` 에 기대던 폼 라벨 | ✅ T028 |
 | `Field.tsx` | `Field` · `FileButton` · `CommitBar` · `AnswerQuestion` | raw | — (015 계승) | 같음. `FileButton` 이 `multiple` 을 받는다 (`BrowserPromptPanel`) | ✅ T034 — 안쪽 입력 벗기기를 지우고 `Input bare` 로 |
-| `Dialog.tsx` | `Dialog` · `DialogContent` · `DialogHeader` · `DialogTitle` · `DialogDescription` · `DialogFooter` · `DialogClose` | **radix** `Dialog` | `dialog` | `SessionScreen` 지역 `Modal` (닫기·재실행·떠나기 확인) · `ui/Modal` | ⬜ |
-| `AlertDialog.tsx` | `AlertDialog` · `AlertDialogContent` · … · `AlertDialogAction` · `AlertDialogCancel` | **radix** `AlertDialog` | `alert-dialog` | `EditView` 저장 안 한 채 떠나기 확인 | ⬜ |
-| `OverlayPane.tsx` | `DetailPanel` · `DetailPanelTitle` | **radix** `Dialog` `modal={false}` · 포털 없음 | — (research R7) | `ui/Surface` `OverlayPane` · `StepDetail` 의 `role="dialog"` 수제 판 | ⬜ |
+| `Dialog.tsx` | `Dialog` · `DialogContent` · `DialogHeader` · `DialogTitle` · `DialogDescription` · `DialogFooter` · `DialogClose` | **radix** `Dialog` | `dialog` | `SessionScreen` 지역 `Modal` (닫기·재실행·떠나기 확인) · `ui/Modal` | ✅ T048 · 화면 적용 T050 (떠나기 확인) — 가림막이 내용을 감싼다 · `useReturnFocus` |
+| `AlertDialog.tsx` | `AlertDialog` · `AlertDialogContent` · … · `AlertDialogAction` · `AlertDialogCancel` | **radix** `AlertDialog` | `alert-dialog` | `EditView` 저장 안 한 채 떠나기 확인 | ✅ T048 · 화면 적용 T050 (닫기·재실행 확인)·T051 — `AlertDialogAction` 은 들이지 않음(busy 동안 창이 남는다) |
+| `OverlayPane.tsx` | `DetailPanel` · `DetailPanelTitle` | **radix** `Dialog` `modal={false}` · 포털 없음 | — (research R7) | `ui/Surface` `OverlayPane` · `StepDetail` 의 `role="dialog"` 수제 판 | ✅ T052 — `StepDetail` · 바깥 상호작용은 닫힘이 아님 |
 | `DropdownMenu.tsx` | `Menu` · `MenuTrigger` · `MenuContent` · `MenuItem` | **radix** `DropdownMenu` | `dropdown-menu` | `TestList` 행 메뉴(수제 포털·위치 계산·스크롤 닫힘) | ⬜ |
 | `Tabs.tsx` | `Tabs` · `TabsList` · `TabsTrigger` · `TabsContent` | **radix** `Tabs` | `tabs` | `ui/Table` `Tabs` · `TargetPane` 산출물 탭(클래스 복사본) | ⬜ |
 | `ToggleGroup.tsx` | `ToggleGroup` · `ToggleGroupItem` (`appearance`: `segmented` · `filter` · `chip` · `card`) | **radix** `ToggleGroup` `type="single"` | `toggle-group` · `toggle` | `ui/Table` `Segmented` · `PacingControl` · `TestList` 거르기·정렬 · `TestGroupBar` 칩 · `WorkArea` 만드는 방법 카드 · `InsertStepForm` 가짜 라디오 2곳 | ⬜ |
@@ -39,7 +39,7 @@
 | `Disclosure.tsx` | `Disclosure` | native `<details>` | — (Radix `Collapsible` 은 쓰지 않는다) | `StepDetail` ▸/▾ 수제 토글 3곳 · 모양이 제각각인 `<details>` 10곳 | ⬜ |
 | `Table.tsx` | `Table` · `TableHeader` · `TableBody` · `TableFooter` · `TableRow` · `TableHead` · `TableCell` · `rowClasses` · `Row` · `Spacer` | raw | `table` | `ui/Table` 전부 · `DraftList` 원시 `<table>` · `LocatorPriorityTable` · `ImportPreview` 표 2곳 | ✅ T035 · 화면 적용 T044·T045 (`compact` 변종 · `align` · `muted` 추가 · N-05) |
 | `Notice.tsx` | `Notice` · `Toast` · `ToastLayer` · `TOAST_LAYER_CLASSES` | raw | — (015 계승 · research R6) | 같음 + `Workbench` 알림 층 복사본 | ⬜ |
-| `Surface.tsx` | `Pane` · `PaneHead` · `AppHeader` · `Scrim` · `Divider` | raw | — (015 계승) | 같음. `Modal`·`OverlayPane` 은 위 부품으로 옮긴다 | ⬜ |
+| `Surface.tsx` | `Pane` · `PaneHead` · `AppHeader` · `Scrim` · `Divider` | raw | — (015 계승) | 같음. `Modal`·`OverlayPane` 은 위 부품으로 옮긴다 | ✅ T052 — `Modal`·`OverlayPane` 을 지웠다 (cn 전환은 T066) |
 | `StepRow.tsx` | (015 그대로) | raw | — | 체크 칸은 `Checkbox` 를 쓴다 | ⬜ |
 | `useToastDismiss.ts` | (그대로) | — | — | — | — |
 

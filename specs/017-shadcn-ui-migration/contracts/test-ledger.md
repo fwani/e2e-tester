@@ -50,6 +50,7 @@
 | `VisualLanguage.test.tsx` G-6 | 죽은 예외가 없다 | `raw-element` 축을 태그 이름 단위로 판정 | — | 그대로 | ✅ T015 |
 | `ClassExistence.test.ts` (G-B) | 코드가 쓰는 클래스가 실제로 CSS 를 만든다 | 리터럴에 더해 **조립 조합**(`cva`·`cn`·`[…].join`)의 클래스도 실재를 확인 · 한 낱말짜리 변종 값을 읽는지 자체 점검 | `aria-invalid:border-fail` — Tailwind v4 에 없는 변종. 세 부품(`Input`·`Textarea`·`NativeSelect`)에 들어갔는데 넓히기 전에는 토큰이 여럿인 한 곳에서만 잡혔다. `aria-[invalid=true]:` 로 고치고 대응표를 바로잡았다 | 3→4 | ✅ T029 |
 | `ClassExistence.test.ts` (G-B) | 코드가 쓰는 클래스가 실제로 CSS 를 만든다 | **템플릿 구멍이 `undefined`·`null`·`false` 를 글자로 내놓지 않는다** — 조립 검사는 구멍 앞에 클래스 글자가 붙은 형태만 봤다. 판정 함수를 위반 두 형태·정상 두 형태로 먼저 자체 점검 | N-04 — 가져오기 미리보기 시트 행(015 치환 569e51e)과 **미러 조작 면**에 `undefined` 클래스. 둘 다 코드를 고쳤다 | 4→9 | ✅ T045 |
+| `ImplementationCount.test.ts` | 구현이 또 한 벌 생기지 않는다 | 파일 목록(`RETIRED`)에 더해 **다른 파일 안의 조각**을 이름·정의 형태로 센다 — `SessionScreen` 지역 `Modal` · `ui/Surface` `Modal`·`OverlayPane` · `EditView` 역할 alertdialog 판 · `StepDetail` 역할 dialog 판 | 대화상자 구현이 부품 밖에 네 벌 있었다 — 전부 `ui/Dialog`·`ui/AlertDialog`·`ui/OverlayPane` 으로 옮기고 지웠다. 계획은 `RETIRED` 에 올리는 것이었으나 그 목록은 **파일이 없음**을 보므로 파일 안의 함수를 셀 수 없었다 | +5 | ✅ T054 |
 
 ## 단언 수 기록
 
@@ -60,6 +61,7 @@
 
 | US1 끝 (2026-09-15) | 113 | **2197** (+13) | 640 (±0) | 0 | `ToastPlacement` 에 알림 층 높이·배제 조건·복사본 없음·띠 표식·`aria-live` 단언 · `NoticesAreToasts` 세션 경우를 「한 자리가 말한다 · 복귀 조작 하나」로 |
 | US2 4-A·4-B 끝 (2026-09-15) | 113 | **2203** (+6) | 640 (±0) | 0 | G-B 가 조립 조합의 한 낱말짜리 값을 읽는지 자체 점검(+1 · T029) · 템플릿 구멍 판정 자체 점검 4 + 전수 1(+5 · N-04). 화면 전환(원시 요소 77 → 부품)에서 **바꾼 단언은 없다** — 테스트가 역할·이름·`data-*` 로 찾으므로 부품이 감싸도 그대로 통과했다 |
+| US2 4-C 끝 (2026-09-15) | 116 | **2236** (+33) | 640 (±0) | 0 | 새 동작 테스트 `DialogFocus`(7 검사) · `ToastOverModal`(4) · `MirrorInputWithDialog`(2) · `ImplementationCount` 이름 단위 퇴역(+5). 새 파일의 첫 판에 무른 단언 7개(`toBeDefined` · `not.toBeNull`)가 있었다 — `data-state`·`aria-live`·`role` 의 **구체 값**으로 바꿔 무른 단언을 늘리지 않았다. 대화상자 전환에서 **바꾼 기존 단언은 없다** — 확인 창을 누르는 두 파일(`SaveNamePrompt`·`TestDefinition`)이 `document.querySelector` 로 찾아 포털과 `aria-hidden` 의 영향을 받지 않았다 |
 
 ## 새로 더하는 테스트
 

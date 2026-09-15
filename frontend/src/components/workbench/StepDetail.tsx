@@ -43,6 +43,7 @@ import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
 import { Checkbox } from "../../ui/Checkbox";
 import { Input } from "../../ui/Input";
+import { DetailPanel, DetailPanelTitle } from "../../ui/OverlayPane";
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
   return /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(value);
@@ -165,19 +166,20 @@ export function StepDetail({
   const alreadyReference = hasValueField && isReference(value);
 
   return (
-    <div
+    <DetailPanel
       data-workbench-step-detail
       /*
-        **대화상자다** — 뒤를 가리고 초점을 가둔다.
+        **대화상자다** — 역할이 dialog 이고, 열리면 초점이 판 안으로 가며, Esc 로 닫히고, 닫히면 연 자리로
+        초점이 돌아간다. **모달은 아니다** (017 research R7) — 판을 연 채 목록의 다른 행을 누를 수 있어야
+        하므로 초점을 가두지 않는다. 뒤의 미러를 막는 것은 `Workbench` 의 가림막이다 (010).
 
         2026-09-09 에 배치가 하나로 돌아오면서 `region` 갈래가 없어졌다. 인라인 배치가
         있던 동안에는 그것을 `region` 으로 두어야 했다 — 가리지 않는 것을 대화상자라고
         말하면 보조 기술이 "닫아야 뒤로 갈 수 있다" 고 잘못 안내한다.
       */
-      role="dialog"
-      aria-label="Step 상세"
+      onClose={onClose}
       // `w-detail` 은 `--w-detail`(640px) — 우측 고정 폭이며 모든 국면에서 같다 (FR-230).
-      className="bg-panel border-l border-hair-2 shadow-e2 w-detail flex flex-col overflow-y-auto"
+      layout="w-detail flex flex-col overflow-y-auto"
     >
       <div
         className="bg-sunken border-b border-hair-2 text-ink-2 flex-[0_0_44px] flex items-center gap-s3 py-0 px-s4"
@@ -188,7 +190,7 @@ export function StepDetail({
           (WorkbenchShell.test.tsx — 「배치는 껍데기만 바꾼다」). 번호와 종류는 바로
           아래 줄이 이미 말한다.
         */}
-        <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">STEP 상세</div>
+        <DetailPanelTitle>STEP 상세</DetailPanelTitle>
         <div className="flex-1" />
         <Button /*
             011 UC-011-10 — 닫는 조작은 **상세 안에** 있고 모든 국면에서 같은 자리다.
@@ -530,6 +532,6 @@ export function StepDetail({
           />
         </div>
       </div>
-    </div>
+    </DetailPanel>
   );
 }
