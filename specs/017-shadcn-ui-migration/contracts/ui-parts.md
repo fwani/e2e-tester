@@ -1,0 +1,153 @@
+# Contract: 부품 목록과 이식 대응표
+
+**Feature**: 017 | **Status**: 계약 · 살아 있는 문서 (전환하며 `상태` 칸을 갱신한다)
+
+## §0 — 규칙 요약
+
+1. 부품은 `frontend/src/ui/` 에 산다. 파일 이름은 PascalCase. 도메인을 모른다.
+2. shadcn 원본을 이식할 때 **파일 머리에 출처를 적는다** — `new-york-v4/<item> @ shadcn 4.21.0 (2026-09-15)`.
+   원본에서 무엇을 바꿨는지는 §2 대응표를 따랐다고 적고, 표에 없는 변경만 따로 적는다.
+3. 부품은 `className` 을 받지 않는다. `layout?: string` 은 배치만 (015).
+4. 변종은 `cva` 로, 파일 안에 둔다. 조합 잇기는 `ui/cn.ts`.
+5. 부품이 그리는 루트 요소에 `data-slot="<부품-이름>"` 을 둔다 (shadcn 관례 · 순회 SW-7 이 집는다).
+6. `lucide-react`·`tw-animate-css`·`tailwind-merge` 를 가져오지 않는다. 표식은 글자 기호(✓ ▾ × ⋮)나
+   이미 쓰는 인라인 SVG 로 그리고 `aria-hidden` 을 둔다.
+
+## §1 — 부품 목록
+
+`behavior`: **radix** = `radix-ui` 1.6.x 가 구조·동작 · **native** = 네이티브 요소의 동작 · **raw** = 동작 없음.
+
+| 부품 (파일) | 내보내는 것 | behavior | shadcn 원본 | 대체하는 것 | 상태 |
+|---|---|---|---|---|---|
+| `cn.ts` | `cn` | — | (로컬) | `[…].filter(Boolean).join(" ")` 37곳 | ⬜ |
+| `Button.tsx` | `Button` · `buttonVariants` | raw (+ `Slot` 로 `asChild`) | `button` | `ui/Button` · `navLinkClasses` · 밑줄 해소 링크 3곳 · 클래스 없는 원시 `<button>` 16곳 | ⬜ |
+| `Chip.tsx` | `Chip` · `chipVariants` · `Pill` | raw | `badge` | `ui/Chip` · `chipClasses` | ⬜ |
+| `Input.tsx` | `Input` | native | `input` | 원시 텍스트형 `<input>` 40곳 · `ui/Field` 안쪽 벗기기 · 국면 이름 입력 · 인라인 이름 고치기 2곳 | ⬜ |
+| `Textarea.tsx` | `Textarea` | native | `textarea` | 원시 `<textarea>` 5곳 (IME 칸 제외) | ⬜ |
+| `NativeSelect.tsx` | `NativeSelect` · `NativeSelectOption` | native | `native-select` | 원시 `<select>` 4곳 | ⬜ |
+| `Checkbox.tsx` | `Checkbox` | native | (원본 `checkbox` 은 Radix — **쓰지 않는다**, research R2) | 원시 체크박스 5곳 · `StepCheck` | ⬜ |
+| `Radio.tsx` | `Radio` | native | (원본 `radio-group` 은 Radix — 쓰지 않는다) | 원시 라디오 4곳 | ⬜ |
+| `Label.tsx` | `Label` · `Lbl` · `FieldLabel` | raw | `label` (Radix `Label` 은 쓰지 않는다 — 텍스트 선택 방지뿐) | `ui/Field` 의 `Lbl`·`FieldLabel` · 전역 `label{}` 에 기대던 폼 라벨 | ⬜ |
+| `Field.tsx` | `Field` · `FileButton` · `CommitBar` · `AnswerQuestion` | raw | — (015 계승) | 같음. `FileButton` 이 `multiple` 을 받는다 (`BrowserPromptPanel`) | ⬜ |
+| `Dialog.tsx` | `Dialog` · `DialogContent` · `DialogHeader` · `DialogTitle` · `DialogDescription` · `DialogFooter` · `DialogClose` | **radix** `Dialog` | `dialog` | `SessionScreen` 지역 `Modal` (닫기·재실행·떠나기 확인) · `ui/Modal` | ⬜ |
+| `AlertDialog.tsx` | `AlertDialog` · `AlertDialogContent` · … · `AlertDialogAction` · `AlertDialogCancel` | **radix** `AlertDialog` | `alert-dialog` | `EditView` 저장 안 한 채 떠나기 확인 | ⬜ |
+| `OverlayPane.tsx` | `DetailPanel` · `DetailPanelTitle` | **radix** `Dialog` `modal={false}` · 포털 없음 | — (research R7) | `ui/Surface` `OverlayPane` · `StepDetail` 의 `role="dialog"` 수제 판 | ⬜ |
+| `DropdownMenu.tsx` | `Menu` · `MenuTrigger` · `MenuContent` · `MenuItem` | **radix** `DropdownMenu` | `dropdown-menu` | `TestList` 행 메뉴(수제 포털·위치 계산·스크롤 닫힘) | ⬜ |
+| `Tabs.tsx` | `Tabs` · `TabsList` · `TabsTrigger` · `TabsContent` | **radix** `Tabs` | `tabs` | `ui/Table` `Tabs` · `TargetPane` 산출물 탭(클래스 복사본) | ⬜ |
+| `ToggleGroup.tsx` | `ToggleGroup` · `ToggleGroupItem` (`appearance`: `segmented` · `filter` · `chip` · `card`) | **radix** `ToggleGroup` `type="single"` | `toggle-group` · `toggle` | `ui/Table` `Segmented` · `PacingControl` · `TestList` 거르기·정렬 · `TestGroupBar` 칩 · `WorkArea` 만드는 방법 카드 · `InsertStepForm` 가짜 라디오 2곳 | ⬜ |
+| `Tooltip.tsx` | `TooltipProvider` · `Tooltip` · `Truncate` | **radix** `Tooltip` | `tooltip` | 잘린 글자·아이콘 단추의 `title` 만으로 보이던 전체 이름 (비활성 사유의 `title` 은 **유지**) | ⬜ |
+| `Disclosure.tsx` | `Disclosure` | native `<details>` | — (Radix `Collapsible` 은 쓰지 않는다) | `StepDetail` ▸/▾ 수제 토글 3곳 · 모양이 제각각인 `<details>` 10곳 | ⬜ |
+| `Table.tsx` | `Table` · `TableHeader` · `TableBody` · `TableFooter` · `TableRow` · `TableHead` · `TableCell` · `rowClasses` · `Row` · `Spacer` | raw | `table` | `ui/Table` 전부 · `DraftList` 원시 `<table>` · `LocatorPriorityTable` · `ImportPreview` 표 2곳 | ⬜ |
+| `Notice.tsx` | `Notice` · `Toast` · `ToastLayer` · `TOAST_LAYER_CLASSES` | raw | — (015 계승 · research R6) | 같음 + `Workbench` 알림 층 복사본 | ⬜ |
+| `Surface.tsx` | `Pane` · `PaneHead` · `AppHeader` · `Scrim` · `Divider` | raw | — (015 계승) | 같음. `Modal`·`OverlayPane` 은 위 부품으로 옮긴다 | ⬜ |
+| `StepRow.tsx` | (015 그대로) | raw | — | 체크 칸은 `Checkbox` 를 쓴다 | ⬜ |
+| `useToastDismiss.ts` | (그대로) | — | — | — | — |
+
+**들이지 않는 shadcn 부품**: `select`(Radix) · `checkbox`(Radix) · `radio-group` · `collapsible` · `sonner` ·
+`label`(Radix). 이유는 research R2.
+
+## §2 — 이식 대응표 (shadcn → 정본)
+
+원본 클래스를 **이 표대로** 옮긴다. 표에 없는 원본 클래스를 만나면 표에 줄을 더한 뒤 옮긴다 —
+부품마다 다른 대응을 즉석에서 고르지 않는다 (015 SC-010).
+
+### 색
+
+| shadcn | 정본 | 비고 |
+|---|---|---|
+| `bg-background` · `text-foreground` | `bg-bg` · `text-ink` | |
+| `bg-primary` · `text-primary-foreground` | `bg-ink` · `text-panel` | 주 동작은 채움으로 말한다 (FR-269) |
+| `hover:bg-primary/90` | `hover:bg-ink-2` | 015 `ui/Button` primary |
+| `bg-secondary` · `text-secondary-foreground` | `bg-panel` · `text-ink` + `border-hair-2` + `shadow-e1` | 정본 기본형 `.btn` |
+| `bg-accent` · `text-accent-foreground` (hover·지목) | `bg-sunken-2` · `text-ink` | `button:hover` |
+| `bg-muted` | `bg-sunken` | |
+| `text-muted-foreground` | `text-ink-2` (보조 글) · `text-ink-3` (흐린 글·자리 표시) | `.muted` · `.dim` |
+| `bg-destructive` · `text-white` | `bg-panel border-fail text-fail` · `hover:bg-fail-t` | **위험은 채우지 않는다** — 정본 `.btn.danger` 는 테두리형 |
+| `text-destructive` | `text-fail` | |
+| `bg-popover` · `text-popover-foreground` | `bg-panel` · `text-ink` + `border border-hair-2 shadow-e2` | 떠 있는 것은 `e2` (정본 규율) |
+| `border-border` | `border-hair` | |
+| `border-input` | `border-hair-2` | |
+| `bg-black/50` (가림막) | `bg-scrim-strong` (대화상자) · `bg-scrim` (겹침 판) | |
+| `aria-invalid:border-destructive` | `aria-invalid:border-fail` | |
+| `aria-invalid:ring-destructive/20` | **삭제** | 링을 쓰지 않는다 |
+| `placeholder:text-muted-foreground` | `placeholder:text-ink-3` | S-06 |
+| `selection:bg-primary selection:text-primary-foreground` | **삭제** | 정본에 선택 색이 없다 |
+
+### 기하
+
+| shadcn | 정본 | 비고 |
+|---|---|---|
+| `rounded-md` | `rounded-base` (3px) | |
+| `rounded-sm` · `rounded-xs` · `rounded-[4px]` · `rounded-[2px]` | `rounded-chip` (2px) | |
+| `rounded-lg` (대화상자) | `rounded-lg` (6px, 정본 `--radius-lg`) | 이름은 같고 값은 정본이다 |
+| `shadow-xs` (버튼) | `shadow-e1` | |
+| `shadow-xs` (입력칸) | **삭제** | 정본 입력칸은 그림자가 없다 |
+| `shadow-md` · `shadow-lg` | `shadow-e2` | |
+| `h-9` · `h-8` | `h-control` (32) · `h-control-sm` (26) | |
+| `size-9` (아이콘 단추) | `h-control-sm px-[7px]` | 015 `icon` 크기 |
+| `px-4 py-2` · `px-3` | `px-s3` · `px-[9px]` (sm) | |
+| `gap-2` (버튼) | `gap-[6px]` | 정본 `.btn` |
+| `text-sm` · `text-xs` | `text-[13px]` · `text-[12px]` · `text-[11px]` | |
+| `font-medium` (버튼) | `font-semibold` | 정본 `.btn` 600 |
+| `border-2` · `ring-[3px]` | **삭제** | 정본 선은 1px |
+
+### 상태
+
+| shadcn | 정본 | 비고 |
+|---|---|---|
+| `disabled:pointer-events-none disabled:opacity-50` | `disabled:bg-transparent disabled:border-dashed disabled:border-hair-2 disabled:text-ink-3 disabled:shadow-none disabled:font-medium disabled:cursor-not-allowed` | **자리를 지키는 점선.** 포인터를 막지 않는다 — 사유의 `title` 이 떠야 한다 (FR-014) |
+| `has-[select:disabled]:opacity-50` | `has-[select:disabled]:…` 위와 같은 점선 형태 | `native-select` 감싸개 |
+| `focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring` | **삭제** | 전역 `:focus-visible{outline:2px solid var(--run)}` (S-14) |
+| `outline-none` · `outline-hidden` | **삭제** | G-F · `FocusRing` 이 막는다 |
+| `data-[state=open]:bg-accent` | `data-[state=open]:bg-sunken-2` | |
+| `data-[state=active]:bg-background data-[state=active]:shadow-sm` (탭) | `data-[state=active]:bg-panel data-[state=active]:text-ink` | 정본 `.tabs > button[aria-pressed=true]` |
+| `data-[state=on]:bg-accent` (토글) | `data-[state=on]:bg-sunken data-[state=on]:text-ink data-[state=on]:font-bold` | 정본 `.segmented` |
+| `data-[disabled]:opacity-50` (메뉴 항목) | `data-[disabled]:text-ink-3 data-[disabled]:cursor-not-allowed` | |
+| `data-[variant=destructive]:text-destructive` (메뉴 항목) | `data-[variant=danger]:text-fail` | |
+
+### 움직임 · 테마 · 아이콘
+
+| shadcn | 정본 | 비고 |
+|---|---|---|
+| `animate-in` · `animate-out` · `fade-*` · `zoom-*` · `slide-in-from-*` · `transition-*` · `duration-*` | **삭제** | 정본에 움직임 언어가 없다 (FR-010) |
+| `dark:*` | **삭제** | 다크 모드 없음 |
+| `data-open:` · `data-closed:` · `data-checked:` (radix-nova 사용자 정의 변종) | `data-[state=open]:` 등 표준 형태 | 사용자 정의 변종을 등록하지 않는다 |
+| `lucide-react` `XIcon` · `CheckIcon` · `ChevronDownIcon` · `CircleIcon` | `×` · `✓` · `▾` · (없음) — `<span aria-hidden>` | |
+| `[&_svg]:size-4` · `[&_svg:not([class*='size-'])]:size-4` | **삭제** | 아이콘 묶음이 없다 |
+
+## §3 — 부품이 흡수하는 특수 자리
+
+원시 요소 예외로 두지 않고 부품의 변종으로 받는 자리다 (FR-002 의 예외를 늘리지 않는다).
+
+| 자리 | 부품 · 변종 | 이유 |
+|---|---|---|
+| 국면 띠의 테스트 이름 (`PhaseBar.tsx:206`) | `Input variant="title"` | 평소 표시처럼 보이고 hover·초점에 테두리가 드러난다 (S-08~S-10). 초점 링 대신 테두리 — `exceptions.ts` 등록 유지 |
+| 인라인 이름 고치기 (`TestGroupBar.tsx:130` · `ProjectSetup.tsx:540`) | `Input size="sm"` | Enter·Esc·blur 처리는 화면 몫 |
+| `Field` 안의 입력 (검색) | `Input variant="bare"` | 테두리는 `Field` 가 그린다 |
+| AI 지시문 | `Textarea variant="ai"` | 정본 `textarea.ai{border-color:var(--ai)}` |
+| 클릭 전파를 멈추는 행 체크박스 (`TestList.tsx:1280` · `StepList.tsx:551`) | `Checkbox` 의 `onClick` 통과 | 부품이 사건을 삼키지 않는다 |
+| 행 선택 글자 단추 (`StepList.tsx:573`) | `Button variant="bare"` | 이름 모양 그대로 누를 수 있는 요소 (정본 `.srow-name`) |
+| 브라우저 파일 선택 중계 (`BrowserPromptPanel.tsx:96`) | `FileButton multiple` | 보이지 않되 초점은 남는 015 구조 |
+| 밑줄 해소 링크 (`ActionButton:161` · `PhaseBar:256` · `ActionPalette:410`) | `Button variant="link"` | 정본 `.textlink` |
+| 버튼인데 모양이 없는 것 (`ErrorNotice` · `SessionLostBanner` · `KeyManagement` 등 16곳) | `Button` | 전역 `button{}` 에 기대던 자리 |
+
+**원시 요소 예외로 남는 것** (`theme/exceptions.ts` · `raw-element` 축):
+
+| 자리 | 이유 |
+|---|---|
+| `components/MirrorView.tsx` IME 조합 칸 `<textarea>` | 보이지 않고 포인터를 받지 않으며 한글 조합만 받는다. 부품의 모습·초점 규칙이 전부 방해가 된다 (010) |
+
+## §4 — 부품이 지켜야 할 동작
+
+| 부품 | 요구 | 확인 |
+|---|---|---|
+| `Dialog` · `AlertDialog` | 열리면 초점이 안으로, Tab 이 밖으로 나가지 않는다, Esc 로 닫힌다(`AlertDialog` 는 되돌릴 수 없는 조작을 실행하지 않고 닫는다), 닫히면 연 조작으로 초점이 돌아온다 (FR-011) | 부품 테스트 + 화면 테스트 |
+| `Dialog` · `AlertDialog` | 알림 층 안에서 시작한 바깥 상호작용은 닫힘이 아니다 (research R6 ④) | 부품 테스트 |
+| `DetailPanel` | 초점 이동·Esc·되돌림은 같고 **초점을 가두지 않는다.** Step 목록 안 클릭은 닫힘이 아니다 (R7) | `DetailPlacement` |
+| `Menu` | 트리거에 `aria-haspopup`·`aria-expanded`. 키보드로 열고 화살표로 오가고 Esc·바깥 클릭으로 닫는다. 트리거는 `aria-label` 을 유지한다(`{행 이름} 추가 동작`) (FR-012) | `RowMenuVisible` 외 |
+| `ToggleGroup` | 고른 항목을 보조기술에 알린다(`role="radio"`·`aria-checked`). 화살표로 오간다 (FR-013) | `PacingControl` 외 |
+| `Tabs` | `tablist`·`tab`·`tabpanel`, 화살표 이동 | `TargetPane` |
+| `Tooltip` | hover 와 **초점**에 뜬다. 비활성 조작에는 쓰지 않는다 | 부품 테스트 |
+| 모든 조작 | 비활성은 점선으로 자리를 지키고 포인터를 막지 않는다 (FR-014) · 초점 윤곽선을 지우지 않는다 (FR-015) | G-F · `FocusRing` · `InteractionStates` |
+| 버튼 · 칩 · 표 머리 | 한국어가 단어 중간에서 줄바꿈되지 않는다 — `whitespace-nowrap`, 줄어들 자리에 놓이면 `shrink-0` 또는 `Truncate` (FR-019) | 순회 |
+| `NativeSelect` · `Checkbox` | 정본 요소 규칙(`width:100%`·`min-height:32px`)이 번지지 않도록 크기를 명시한다 (B-07 · B-08) | 순회 |
