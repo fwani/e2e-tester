@@ -121,6 +121,18 @@ describe("TestList — 이름 변경·삭제 (FR-007)", () => {
   });
 
   /**
+   * 2026-09-15 브라우저 확인 — 「이름」을 고르면 **이름 칸이 초점을 받는다.** Radix 메뉴가 닫히며 초점을 `⋮` 로
+   * 되돌려, 키보드 사용자가 적은 글자가 칸에 들어가지 않았다. 행이 메뉴가 닫힌 뒤 칸으로 옮긴다.
+   */
+  it("「이름」을 고르면 이름 칸이 초점을 받는다", async () => {
+    await renderList();
+    act(() => screen.getByRole("menuitem", { name: "이름" }).click());
+
+    const input = screen.getByLabelText("새 이름") as HTMLInputElement;
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  /**
    * 006 T025·FR-175 — 「정의 보기」가 **「편집」으로 대체됐다.**
    *
    * 보기만 하는 별도 항목을 남기면 사용자는 다시 "고치려면 어디로 가지" 를 묻게 되고,

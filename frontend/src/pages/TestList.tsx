@@ -32,7 +32,7 @@
  * 함께 적었다 — 바닥 띠의 「전체 실행」이며, 여러 테스트를 잇달아 돌리는 것은 화면 작업이
  * 아니라 실행 기능이라 이 기능의 범위 밖이다.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ai,
@@ -1135,6 +1135,15 @@ function Row({
   const live = liveSession !== null && isRunning(liveSession.state);
   /** 열어 볼 결과가 있는가 (005 FR-130). 결말 종류와 무관하다 — U-13 이 이것이었다. */
   const hasResult = row.outcome != null || row.last_run_at != null;
+  /*
+    「이름」을 고르면 이름 칸이 초점을 받아야 한다 — 017 전에는 `autoFocus` 로 됐다.
+    Radix 메뉴는 열린 동안 초점을 가두므로 새로 연 칸의 `autoFocus` 가 들어가지 않고, 메뉴가
+    닫히며 초점이 `⋮` 로 돌아갔다. 키보드 사용자는 칸에 닿으려면 Shift+Tab 을 더 눌러야 했다
+    (2026-09-15 브라우저 확인 · 테스트는 칸이 열리는 것만 보고 초점은 보지 않았다). **메뉴가 다 닫힌 뒤에**
+    직접 옮긴다.
+  */
+  const renameInput = useRef<HTMLInputElement>(null);
+  const focusRenameOnClose = useRef(false);
 
   return (
     <div
@@ -1193,6 +1202,7 @@ function Row({
         {renaming !== null ? (
           <div className="flex items-center gap-s2 pr-s3">
             <Input
+              ref={renameInput}
               aria-label="새 이름"
               value={renaming}
               autoFocus
@@ -1312,7 +1322,15 @@ function Row({
               </Button>
             </MenuTrigger>
           </Tooltip>
-          <MenuContent data-row-menu={row.id}>
+          <MenuContent
+            data-row-menu={row.id}
+            onCloseAutoFocus={(event) => {
+              if (!focusRenameOnClose.current) return;
+              focusRenameOnClose.current = false;
+              event.preventDefault();
+              renameInput.current?.focus();
+            }}
+          >
             {/*
               006 FR-175 — 「정의 보기」를 **「편집」으로 대체한다.** 보기만 하는 별도 항목을
               남기면 사용자는 다시 "고치려면 어디로 가지" 를 묻게 되고, 그것이 006 이 없앤
@@ -1324,7 +1342,13 @@ function Row({
                 {EDIT_ENTRY_LABEL}
               </MenuItem>
             )}
-            <MenuItem data-row-menu-item onSelect={onRenameStart}>
+            <MenuItem
+              data-row-menu-item
+              onSelect={() => {
+                focusRenameOnClose.current = true;
+                onRenameStart();
+              }}
+            >
               이름
             </MenuItem>
             <MenuItem data-row-menu-item variant="danger" onSelect={onDeleteStart}>

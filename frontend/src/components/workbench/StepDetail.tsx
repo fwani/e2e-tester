@@ -444,9 +444,13 @@ export function StepDetail({
               시도한 LOCATOR (우선순위 순)
             </div>
             {detail.attempts.map((a, i) => (
+              /*
+                **머리 띠와 같은 좌우 여백을 준다** (2026-09-15 브라우저 확인). 전에는 여백이 없어 후보 이름과
+                「맞음」이 판 테두리에 붙었고, 11px 글자가 줄 사이 간격 없이 붙어 표가 아니라 겹친 글처럼 읽혔다.
+              */
               <div
                 key={`${a.candidate}-${i}`}
- className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] font-normal ${a.matched ? "text-ink-3" : "text-ink-2"}`}
+                className={`flex items-center gap-s2 min-h-[28px] py-[6px] px-s3 border-t border-hair font-sans text-[11px] leading-[1.4] font-normal ${a.matched ? "text-ink-3" : "text-ink-2"}`}
               >
                 <span className="font-bold w-[84px]">
                   {a.candidate}

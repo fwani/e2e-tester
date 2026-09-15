@@ -325,3 +325,14 @@ Task: "T046 KeyManagement · SecretValues · ProjectSetup"
 - [X] T087 (「의도된 예외 — 사용자 확인 권장」· 고치면 알림이 미러 오른쪽 위를 덮어 2026-09-10 사용자 결정의 자리가 바뀐다 · §17-1 줄 맞춤) N-02 에 판정을 남긴다 — `specs/017-shadcn-ui-migration/baseline.md` 의 「판정 보류」를 「고침」 또는 「사유가 적힌 의도된 예외」로 바꾸고 `docs/PENDING-HUMAN-VERIFICATION.md` §17 의 같은 줄을 맞춘다 per SC-002 · FR-026 (partial)
 - [X] T088 [P] (24곳 · 그 값을 고르는 CSS·클래스·스크립트 0 이라 모양 무변경 · L2 등록되지 않은 차이 0 · 순회 72회 검출 0 · 낡은 보고서 두 벌을 다시 쟀다) 부품이 그리는 루트 요소에 `data-slot="<부품-이름>"` 을 둔다 — `frontend/src/ui/Field.tsx`(Field·AnswerQuestion·CommitBar·FileButton) · `Label.tsx`(Lbl·FieldLabel) · `Notice.tsx`(Notice·Toast·ToastLayer) · `StepRow.tsx`(StepPanel·StepPanelHead·StepPanelFoot·StepRow·StepCheck·StepOps·StepOpButton·PhaseBand) · `Surface.tsx`(Pane·PaneHead·AppHeader·Scrim·Divider) · `Table.tsx`(Row·Spacer) per plan: contracts/ui-parts.md §0 규칙 5 (partial)
 - [X] T089 [P] (`Tooltip` · `Truncate` 만 내보낸다고 고쳤다) `specs/017-shadcn-ui-migration/contracts/ui-parts.md` §1 `Tooltip.tsx` 줄의 「내보내는 것」을 실제와 맞춘다 — `TooltipProvider` 는 내보내지 않고 `Tooltip` 이 툴팁마다 공급자를 감싼다 per plan: contracts/ui-parts.md §1 (partial)
+
+---
+
+## Phase 9: 브라우저 확인 (2026-09-15)
+
+격리 인스턴스(순회와 같은 시드 · `.sweep/data`)를 띄워 H-1~H-8 을 실제 브라우저로 걸었다. 찾은 깨짐 둘을 고쳤다.
+
+- [X] T090 (N-08 · 017 회귀 · 고침을 빼면 새 테스트가 실패함을 확인) 행 메뉴 「이름」 뒤 초점을 이름 칸으로 옮긴다 — `frontend/src/pages/TestList.tsx` 의 행이 `onCloseAutoFocus` 에서 칸에 초점을 준다 · `frontend/src/ui/DropdownMenu.tsx` 머리주석 정정 · 테스트 `frontend/tests/TestListActions.test.tsx`
+- [X] T091 (N-09 · 전환 전부터 있던 깨짐) 결과 Step 상세 「시도한 LOCATOR」 행에 여백을 준다 — `frontend/src/components/workbench/StepDetail.tsx`
+- [X] T092 H-1~H-8 결과를 `docs/PENDING-HUMAN-VERIFICATION.md` §17 에 적고 baseline N-08·N-09 · N-02 관찰을 보강한다
+- [X] T093 (tsc 통과 · 1418/1418 · 단언 2275 · 무른 639 · 순회 72회 검출 0 · L2 등록되지 않은 차이 0) quickstart §1~§3 을 다시 실행해(타입 검사 · 테스트 · 단언 수 · 순회 · L2) `specs/017-shadcn-ui-migration/quickstart.md` 실행 기록에 남기고, 단언 수를 `contracts/test-ledger.md` 에 적는다
