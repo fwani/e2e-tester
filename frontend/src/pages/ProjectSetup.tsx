@@ -19,7 +19,7 @@ import { Toast } from "../components/Toast";
 import { ImportDoneNotice, ImportFilePicker, ImportPreview } from "./ImportPreview";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { Button, navLinkClasses } from "../ui/Button";
+import { Button } from "../ui/Button";
 
 import {
   fs,
@@ -148,9 +148,9 @@ export function ProjectSetup({
         <BrandMark />
         <div className="flex-1" />
         {onCancel !== undefined && (
-          <button className={navLinkClasses()} onClick={onCancel}>
+          <Button variant="nav" onClick={onCancel}>
             돌아가기
-          </button>
+          </Button>
         )}
       </HeaderBar>
 
@@ -592,18 +592,18 @@ function ProjectRow({
                     <Button onClick={onOpen} disabled={locked}>
                       열기
                     </Button>
-                    <button
-                      className={navLinkClasses()}
+                    <Button
+                      variant="nav"
                       onClick={() => setMode({ kind: "editing", draft: item.name })}
                       disabled={locked}
                     >
                       이름 바꾸기
-                    </button>
+                    </Button>
                   </>
                 )}
                 {/* 삭제는 열 수 없는 줄에도 있다 (FR-418 · SC-622). */}
-                <button
-                  className={navLinkClasses()}
+                <Button
+                  variant="nav"
                   onClick={openConfirm}
                   disabled={locked}
                   title={
@@ -613,11 +613,11 @@ function ProjectRow({
                   }
                 >
                   삭제
-                </button>
+                </Button>
               </>
             )}
-            <button
-              className={navLinkClasses()}
+            <Button
+              variant="nav"
               onClick={onForget}
               disabled={locked}
               // 삭제와 결과가 다르다. 두 설명 모두 디스크의 파일이 어떻게 되는지
@@ -625,7 +625,7 @@ function ProjectRow({
               title="목록에서만 치웁니다. 디스크의 파일은 지우지 않습니다."
             >
               목록에서 치우기
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -758,9 +758,9 @@ function TrashedNotice({
           </div>
         </>
       )}
-      <button className={navLinkClasses("mt-s2")} onClick={onDismiss}>
+      <Button variant="nav" layout="mt-s2" onClick={onDismiss}>
         확인했습니다
-      </button>
+      </Button>
     </div>
   );
 }
@@ -959,11 +959,11 @@ function FolderPicker({
 
       <div className="max-h-[360px] overflow-y-auto">
         {parent !== null && (
-          <button className={navLinkClasses("w-full h-[44px] justify-start text-left py-0 px-[20px]")}
+          <Button variant="nav" layout="w-full h-[44px] justify-start text-left py-0 px-[20px]"
             onClick={() => go(parent)}
           >
             ↑ 상위 폴더
-          </button>
+          </Button>
         )}
 
         {entries === null && <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 py-s4 px-[20px]">불러오는 중…</p>}
@@ -979,11 +979,11 @@ function FolderPicker({
             key={e.path}
             className="border-t border-hair flex items-center gap-s3 py-[10px] px-[18px]"
           >
-            <button className={navLinkClasses("flex-1 justify-start text-left p-0 h-[32px]")}
+            <Button variant="nav" layout="flex-1 justify-start text-left p-0 h-[32px]"
               onClick={() => go(e.path)}
             >
               📁 {e.name}
-            </button>
+            </Button>
             {e.is_project && <Chip>프로젝트</Chip>}
             {e.is_project && (
               <Button disabled={busy} onClick={() => onPick(e.path)}>

@@ -42,7 +42,12 @@ function runTailwind(inputCss: string): Set<string> {
     const css = runTailwindRaw(inputCss);
     const out = new Set<string>();
     // 이스케이프된 형태(`.basis-\[460px\]`)를 원래 이름으로 되돌린다.
-    for (const m of css.matchAll(/\.((?:\\.|[a-zA-Z0-9_-])+)(?=[\s,{:>~+])/g)) {
+    //
+    // **이름 뒤에 속성 선택자 `[` 가 바로 붙는 형태도 받는다** (017 T029). `aria-[invalid=true]:x` 는
+    // `.aria-\[invalid\=true\]\:x[aria-invalid="true"]{…}` 로 나온다. 전에는 뒤따르는 문자를 공백·`,`·`{`·`:`
+    // ·`>`·`~`·`+` 로만 받아 이런 클래스를 전부 「생성되지 않음」으로 봤다 — 017 이 판정 문자 집합을 넓혀
+    // (H-2) 그런 클래스가 처음 검사에 들어오며 드러났다. `)` 는 `:is(.x)` 안, 끝은 파일 끝이다.
+    for (const m of css.matchAll(/\.((?:\\.|[a-zA-Z0-9_-])+)(?=[\s,{:>~+[)]|$)/g)) {
       out.add((m[1] as string).replace(/\\(.)/g, "$1"));
     }
     return out;

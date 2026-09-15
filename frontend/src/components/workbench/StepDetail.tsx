@@ -39,7 +39,7 @@ import type { Step } from "../../types/generated/step";
 import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
 
-import { Button, navLinkClasses } from "../../ui/Button";
+import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
@@ -288,9 +288,9 @@ export function StepDetail({
                       않습니다.
                     </p>
                     {canMarkSensitive && (
-                      <button className={navLinkClasses()} onClick={() => setSecretOpen((v) => !v)}>
+                      <Button variant="nav" onClick={() => setSecretOpen((v) => !v)}>
                         {secretOpen ? "▾" : "▸"} 비밀 값 다시 넣기
-                      </button>
+                      </Button>
                     )}
                   </>
                 ) : (
@@ -312,9 +312,9 @@ export function StepDetail({
 
                 {/* DR-023·SC-106 — 화면 이동 0회. 비밀 값을 이 자리에서 넣는다. */}
                 {!alreadyReference && canMarkSensitive && (
-                  <button className={navLinkClasses("mt-s1")} onClick={() => setSecretOpen((v) => !v)}>
+                  <Button variant="nav" layout="mt-s1" onClick={() => setSecretOpen((v) => !v)}>
                     {secretOpen ? "▾" : "▸"} 여기서 비밀 값 넣기
-                  </button>
+                  </Button>
                 )}
 
                 {secretOpen && (
@@ -483,9 +483,9 @@ export function StepDetail({
 
         {step !== null && (
           <div>
-            <button className={navLinkClasses()} onClick={() => setShowDsl((v) => !v)}>
+            <Button variant="nav" onClick={() => setShowDsl((v) => !v)}>
               {showDsl ? "▾" : "▸"} 테스트 DSL 미리보기
-            </button>
+            </Button>
             {showDsl && (
               <pre className="bg-ink text-panel rounded-base font-mono text-[11px] leading-[1.6] font-normal p-[10px] overflow-x-auto mt-[6px] mx-0 mb-0">
                 {dslPreview(step)}

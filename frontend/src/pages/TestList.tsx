@@ -72,7 +72,7 @@ import { EDIT_ENTRY_LABEL, outcomeChip, outcomeLabel, stepLabel } from "../lib/w
 import { chipTone, rowMark } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
-import { Button, navLinkClasses } from "../ui/Button";
+import { Button } from "../ui/Button";
 import { Chip, Pill } from "../ui/Chip";
 import { rowClasses } from "../ui/Table";
 import { Field } from "../ui/Field";
@@ -503,22 +503,22 @@ export function TestList({
             (DC-010).
           */}
           {onOpenProjects && (
-            <button className={navLinkClasses()} onClick={onOpenProjects}>
+            <Button variant="nav" onClick={onOpenProjects}>
               바꾸기
-            </button>
+            </Button>
           )}
         </div>
         <div className="flex-1" />
         {/* 확정 디자인에 없는 화면들의 진입점. 눈에 띄지 않게 둔다 (DC-010). */}
         {onOpenSecrets && (
-          <button className={navLinkClasses()} onClick={onOpenSecrets}>
+          <Button variant="nav" onClick={onOpenSecrets}>
             비밀 값
-          </button>
+          </Button>
         )}
         {onOpenKeys && (
-          <button className={navLinkClasses()} onClick={onOpenKeys}>
+          <Button variant="nav" onClick={onOpenKeys}>
             키 관리
-          </button>
+          </Button>
         )}
         <HeaderDivider />
         {/*
@@ -1400,16 +1400,16 @@ function Row({
               들어가도 안전하다.
             */}
             {onOpenDefinition && (
-              <button data-row-menu-item className={navLinkClasses("justify-start")} onClick={onOpenDefinition}>
+              <Button data-row-menu-item variant="nav" layout="justify-start" onClick={onOpenDefinition}>
                 {EDIT_ENTRY_LABEL}
-              </button>
+              </Button>
             )}
-            <button data-row-menu-item className={navLinkClasses("justify-start")} onClick={onRenameStart}>
+            <Button data-row-menu-item variant="nav" layout="justify-start" onClick={onRenameStart}>
               이름
-            </button>
-              <button data-row-menu-item className={navLinkClasses("text-fail justify-start")} onClick={onDeleteStart}>
+            </Button>
+              <Button data-row-menu-item variant="nav" layout="text-fail justify-start" onClick={onDeleteStart}>
                 삭제
-              </button>
+              </Button>
             </div>,
             document.body,
           )}

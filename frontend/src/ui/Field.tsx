@@ -57,35 +57,8 @@ export function Field({ off = false, layout, children, ...rest }: DivProps & { o
   );
 }
 
-/** 정본 `.field-label` — 칸 위의 설명. 라벨(`Lbl`)과 다르다 — 이쪽은 문장이다. */
-export function FieldLabel({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["font-sans text-[12px] leading-none font-normal text-ink-3", layout].filter(Boolean).join(" ");
-  return (
-    <div className={cls} {...rest}>
-      {children}
-    </div>
-  );
-}
-
-/**
- * 정본 `.lbl` — 구획 라벨. 11px 대문자 모노다.
- *
- * **문장을 담지 않는다.** 정본 주석이 답 칸(`.answer-q`)을 따로 둔 이유가 이것이다 —
- * 라벨 형태로 한 문장을 읽게 하면 읽히지 않는다.
- */
-export function Lbl({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"span">, "className"> & { layout?: string; children?: ReactNode }) {
-  const cls = [
-    "font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3",
-    layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    <span className={cls} {...rest}>
-      {children}
-    </span>
-  );
-}
+// 라벨 둘은 017 T028 에서 `ui/Label` 로 옮겼다. 부르는 쪽을 고치지 않도록 여기서도 내보낸다.
+export { FieldLabel, Lbl } from "./Label";
 
 /**
  * 정본 `.answer-q` — AI 가 막혔을 때 사람이 답을 적는 자리의 질문.

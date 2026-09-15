@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import type { GroupSummary } from "../api/client";
 
-import { Button, navLinkClasses } from "../ui/Button";
+import { Button } from "../ui/Button";
 import { chipClasses } from "../ui/Chip";
 
 /**
@@ -40,9 +40,9 @@ export function TestGroupBar({
   if (realGroups.length === 0 && !adding) {
     return (
       <div className="flex justify-end mb-s2">
-        <button className={navLinkClasses()} onClick={() => setAdding(true)} disabled={busy}>
+        <Button variant="nav" onClick={() => setAdding(true)} disabled={busy}>
           + 그룹
-        </button>
+        </Button>
       </div>
     );
   }
@@ -97,8 +97,8 @@ export function TestGroupBar({
         removing === null &&
         groups.some((g) => g.prefix === active && g.name !== null) && (
           <>
-            <button
-              className={navLinkClasses()}
+            <Button
+              variant="nav"
               disabled={busy}
               onClick={() =>
                 setEditing({
@@ -108,16 +108,16 @@ export function TestGroupBar({
               }
             >
               이름 바꾸기
-            </button>
-            <button
-              className={navLinkClasses()}
+            </Button>
+            <Button
+              variant="nav"
               disabled={busy}
               onClick={() =>
                 setRemoving(groups.find((g) => g.prefix === active) ?? null)
               }
             >
               그룹 없애기
-            </button>
+            </Button>
           </>
         )}
       {editing !== null && (
@@ -160,9 +160,9 @@ export function TestGroupBar({
           }}
         />
       ) : (
-        <button className={navLinkClasses()} onClick={() => setAdding(true)} disabled={busy}>
+        <Button variant="nav" onClick={() => setAdding(true)} disabled={busy}>
           + 그룹
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -227,9 +227,9 @@ function NewGroupForm({
         onClick={() => onSubmit(cleanPrefix, name.trim())} >
         만들기
       </Button>
-      <button className={navLinkClasses()} onClick={onCancel} disabled={busy}>
+      <Button variant="nav" onClick={onCancel} disabled={busy}>
         취소
-      </button>
+      </Button>
     </div>
   );
 }

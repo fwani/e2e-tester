@@ -5,7 +5,7 @@ import {
 } from "../lib/wording";
 import type { TrashedTest } from "../api/client";
 
-import { Button, navLinkClasses } from "../ui/Button";
+import { Button } from "../ui/Button";
 /**
  * 테스트 복수 삭제 확인 — **목록 바로 아래에서** 묻는다 (013 FR-430 · UC-013-04).
  *
@@ -102,9 +102,9 @@ export function TrashedTestsNotice({
       <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
         {TESTS_RESTORE_HINT}
       </div>
-      <button className={navLinkClasses("mt-[6px]")} onClick={onDismiss}>
+      <Button variant="nav" layout="mt-[6px]" onClick={onDismiss}>
         확인했습니다
-      </button>
+      </Button>
     </div>
   );
 }
@@ -144,13 +144,13 @@ export function TestSelectionBar({
         **대상은 지금 화면에 보이는 것뿐이다** (FR-428 · SC-625). 걸러진 것까지 고르면
         사용자가 보지 못한 테스트가 삭제 대상이 된다.
       */}
-      <button
-        className={navLinkClasses()}
+      <Button
+        variant="nav"
         onClick={allVisibleSelected ? onClear : onSelectAllVisible}
         disabled={busy || visibleCount === 0}
       >
         {allVisibleSelected ? "선택 해제" : `보이는 것 전부 선택 (${visibleCount})`}
-      </button>
+      </Button>
       <div className="flex-1" />
       {extra}
       {/*
@@ -259,9 +259,9 @@ export function RenumberedNotice({
           있으면 함께 고치세요.
         </div>
       )}
-      <button className={navLinkClasses("mt-[6px]")} onClick={onDismiss}>
+      <Button variant="nav" layout="mt-[6px]" onClick={onDismiss}>
         확인했습니다
-      </button>
+      </Button>
     </div>
   );
 }

@@ -147,6 +147,26 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
     requirement: "017 FR-015 · 015 SC-008",
   },
   {
+    file: "frontend/src/ui/Input.tsx",
+    pattern: "^outline-none$",
+    axis: "class-name",
+    reason:
+      "`Input variant=\"bare\"` — 테두리 상자(`ui/Field`, 정본 `.field`) 안의 입력이다. 테두리와 **초점 링을 " +
+      "상자가** `focus-within:outline-2 outline-run` 으로 그리므로 안쪽 링을 벗는다. 남기면 상자 안에서 " +
+      "링이 두 겹이 된다. `ui/Field` 의 `[&_input]:outline-none` 예외와 같은 자리를 부품으로 옮긴 것이다 (017 N-01).",
+    requirement: "017 FR-015 · 015 SC-008",
+  },
+  {
+    file: "frontend/src/ui/Input.tsx",
+    pattern: "^focus:outline-none$",
+    axis: "class-name",
+    reason:
+      "`Input variant=\"title\"` — 국면 띠의 테스트 이름 칸이다 (정본 `input.phase-name`). **초점 표시를 지우는 " +
+      "것이 아니라 바꾼다** — 초점을 받으면 투명하던 테두리와 바탕이 드러나 입력 가능한 칸임이 나타난다. " +
+      "링을 겹쳐 그리면 띠 높이(48px) 안에서 2px 링이 위아래로 잘린다. `PhaseBar` 의 같은 예외를 부품으로 옮긴 것이다.",
+    requirement: "015 FR-008 · SC-008 · 007 FR-219",
+  },
+  {
     file: "frontend/src/ui/StepRow.tsx",
     pattern: "^\\[&_input:disabled\\]:opacity-40$",
     axis: "class-name",

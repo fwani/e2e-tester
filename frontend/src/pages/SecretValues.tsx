@@ -18,7 +18,7 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { secrets, type SecretsResponse } from "../api/client";
 
-import { Button, navLinkClasses } from "../ui/Button";
+import { Button } from "../ui/Button";
 
 import { Chip } from "../ui/Chip";
 export interface SecretValuesProps {
@@ -143,8 +143,8 @@ export function SecretValues({
                 <span className="font-mono">{entry.name}</span>
                 <Chip tone="pass">보관됨</Chip>
                 <span className="flex-1" />
-                <button
-                  className={navLinkClasses()}
+                <Button
+                  variant="nav"
                   disabled={busy}
                   onClick={() => {
                     setBusy(true);
@@ -158,7 +158,7 @@ export function SecretValues({
                   }}
                 >
                   삭제
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

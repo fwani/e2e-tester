@@ -37,7 +37,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { classNameGroups, generatedClasses } from "./helpers/tailwind";
+import { classNameGroups, composedClassGroups, generatedClasses } from "./helpers/tailwind";
 
 const ROOT = join(__dirname, "..");
 
@@ -84,11 +84,23 @@ function assembledClassNames(): string[] {
 
 describe("G-B — 코드가 쓰는 클래스가 실제로 CSS 를 만든다", () => {
   const generated = generatedClasses();
-  const groups = classNameGroups();
+  /*
+    **조립된 조합도 본다 (017).** 리터럴 헬퍼는 토큰이 둘 이상인 문자열만 클래스 목록으로 치므로
+    (`variant="primary"` 같은 값을 오인하지 않으려고), `cva` 변종의 **한 낱말짜리 값**
+    (`ai: "border-ai"`)이나 `+` 로 이은 조각 하나(`"aria-invalid:border-fail"`)를 보지 못했다.
+    실제로 `aria-invalid:border-fail`(Tailwind v4 에 없는 변종)이 세 부품에 들어갔는데 G-B 는
+    토큰이 여럿인 한 곳에서만 그것을 잡았다. G-E 가 이미 쓰는 조합 헬퍼(`cva`·`cn`·`[…].join`)를 함께 읽는다.
+  */
+  const groups = [...classNameGroups(), ...composedClassGroups()];
 
   it("Tailwind 산출물과 `className` 을 읽는다 (검사가 헛돌지 않는다)", () => {
     expect(generated.size, "Tailwind 산출 CSS 에서 클래스를 하나도 읽지 못했다").toBeGreaterThan(5);
     expect(groups.length, "className 을 하나도 읽지 못했다").toBeGreaterThan(50);
+    // 한 낱말짜리 변종 값을 실제로 읽는가 — 이 가드가 017 에 놓친 자리다.
+    expect(
+      composedClassGroups().some((g) => g.file === "src/ui/Textarea.tsx" && g.names.includes("border-ai")),
+      "cva 변종의 한 낱말짜리 값을 읽지 못한다",
+    ).toBe(true);
   });
 
   it("정적 클래스가 전부 실재한다 — Tailwind 산출물에 있는 것", () => {

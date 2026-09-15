@@ -19,15 +19,15 @@
 
 | 부품 (파일) | 내보내는 것 | behavior | shadcn 원본 | 대체하는 것 | 상태 |
 |---|---|---|---|---|---|
-| `cn.ts` | `cn` | — | (로컬) | `[…].filter(Boolean).join(" ")` 37곳 | ⬜ |
-| `Button.tsx` | `Button` · `buttonVariants` | raw (+ `Slot` 로 `asChild`) | `button` | `ui/Button` · `navLinkClasses` · 밑줄 해소 링크 3곳 · 클래스 없는 원시 `<button>` 16곳 | ⬜ |
-| `Chip.tsx` | `Chip` · `chipVariants` · `Pill` | raw | `badge` | `ui/Chip` · `chipClasses` | ⬜ |
-| `Input.tsx` | `Input` | native | `input` | 원시 텍스트형 `<input>` 40곳 · `ui/Field` 안쪽 벗기기 · 국면 이름 입력 · 인라인 이름 고치기 2곳 | ⬜ |
-| `Textarea.tsx` | `Textarea` | native | `textarea` | 원시 `<textarea>` 5곳 (IME 칸 제외) | ⬜ |
-| `NativeSelect.tsx` | `NativeSelect` · `NativeSelectOption` | native | `native-select` | 원시 `<select>` 4곳 | ⬜ |
-| `Checkbox.tsx` | `Checkbox` | native | (원본 `checkbox` 은 Radix — **쓰지 않는다**, research R2) | 원시 체크박스 5곳 · `StepCheck` | ⬜ |
-| `Radio.tsx` | `Radio` | native | (원본 `radio-group` 은 Radix — 쓰지 않는다) | 원시 라디오 4곳 | ⬜ |
-| `Label.tsx` | `Label` · `Lbl` · `FieldLabel` | raw | `label` (Radix `Label` 은 쓰지 않는다 — 텍스트 선택 방지뿐) | `ui/Field` 의 `Lbl`·`FieldLabel` · 전역 `label{}` 에 기대던 폼 라벨 | ⬜ |
+| `cn.ts` | `cn` | — | (로컬) | `[…].filter(Boolean).join(" ")` 37곳 | ✅ T010 |
+| `Button.tsx` | `Button` · `buttonVariants` | raw (+ `Slot` 로 `asChild`) | `button` | `ui/Button` · `navLinkClasses` · 밑줄 해소 링크 3곳 · 클래스 없는 원시 `<button>` 16곳 | ✅ T025·T026 — `nav` 26곳 전환 |
+| `Chip.tsx` | `Chip` · `chipVariants` · `Pill` | raw | `badge` | `ui/Chip` · `chipClasses` | ✅ T027 |
+| `Input.tsx` | `Input` | native | `input` | 원시 텍스트형 `<input>` 40곳 · `ui/Field` 안쪽 벗기기 · 국면 이름 입력 · 인라인 이름 고치기 2곳 | ✅ T029 (화면 적용은 4-B) |
+| `Textarea.tsx` | `Textarea` | native | `textarea` | 원시 `<textarea>` 5곳 (IME 칸 제외) | ✅ T030 (화면 적용은 4-B) |
+| `NativeSelect.tsx` | `NativeSelect` · `NativeSelectOption` | native | `native-select` | 원시 `<select>` 4곳 | ✅ T031 (화면 적용은 4-B) |
+| `Checkbox.tsx` | `Checkbox` | native | (원본 `checkbox` 은 Radix — **쓰지 않는다**, research R2) | 원시 체크박스 5곳 · `StepCheck` | ✅ T032 (화면 적용은 4-B) |
+| `Radio.tsx` | `Radio` | native | (원본 `radio-group` 은 Radix — 쓰지 않는다) | 원시 라디오 4곳 | ✅ T033 (화면 적용은 4-B) |
+| `Label.tsx` | `Label` · `Lbl` · `FieldLabel` | raw | `label` (Radix `Label` 은 쓰지 않는다 — 텍스트 선택 방지뿐) | `ui/Field` 의 `Lbl`·`FieldLabel` · 전역 `label{}` 에 기대던 폼 라벨 | ✅ T028 |
 | `Field.tsx` | `Field` · `FileButton` · `CommitBar` · `AnswerQuestion` | raw | — (015 계승) | 같음. `FileButton` 이 `multiple` 을 받는다 (`BrowserPromptPanel`) | ⬜ |
 | `Dialog.tsx` | `Dialog` · `DialogContent` · `DialogHeader` · `DialogTitle` · `DialogDescription` · `DialogFooter` · `DialogClose` | **radix** `Dialog` | `dialog` | `SessionScreen` 지역 `Modal` (닫기·재실행·떠나기 확인) · `ui/Modal` | ⬜ |
 | `AlertDialog.tsx` | `AlertDialog` · `AlertDialogContent` · … · `AlertDialogAction` · `AlertDialogCancel` | **radix** `AlertDialog` | `alert-dialog` | `EditView` 저장 안 한 채 떠나기 확인 | ⬜ |
@@ -37,7 +37,7 @@
 | `ToggleGroup.tsx` | `ToggleGroup` · `ToggleGroupItem` (`appearance`: `segmented` · `filter` · `chip` · `card`) | **radix** `ToggleGroup` `type="single"` | `toggle-group` · `toggle` | `ui/Table` `Segmented` · `PacingControl` · `TestList` 거르기·정렬 · `TestGroupBar` 칩 · `WorkArea` 만드는 방법 카드 · `InsertStepForm` 가짜 라디오 2곳 | ⬜ |
 | `Tooltip.tsx` | `TooltipProvider` · `Tooltip` · `Truncate` | **radix** `Tooltip` | `tooltip` | 잘린 글자·아이콘 단추의 `title` 만으로 보이던 전체 이름 (비활성 사유의 `title` 은 **유지**) | ⬜ |
 | `Disclosure.tsx` | `Disclosure` | native `<details>` | — (Radix `Collapsible` 은 쓰지 않는다) | `StepDetail` ▸/▾ 수제 토글 3곳 · 모양이 제각각인 `<details>` 10곳 | ⬜ |
-| `Table.tsx` | `Table` · `TableHeader` · `TableBody` · `TableFooter` · `TableRow` · `TableHead` · `TableCell` · `rowClasses` · `Row` · `Spacer` | raw | `table` | `ui/Table` 전부 · `DraftList` 원시 `<table>` · `LocatorPriorityTable` · `ImportPreview` 표 2곳 | ⬜ |
+| `Table.tsx` | `Table` · `TableHeader` · `TableBody` · `TableFooter` · `TableRow` · `TableHead` · `TableCell` · `rowClasses` · `Row` · `Spacer` | raw | `table` | `ui/Table` 전부 · `DraftList` 원시 `<table>` · `LocatorPriorityTable` · `ImportPreview` 표 2곳 | ✅ T035 (화면 적용은 T044·T045) |
 | `Notice.tsx` | `Notice` · `Toast` · `ToastLayer` · `TOAST_LAYER_CLASSES` | raw | — (015 계승 · research R6) | 같음 + `Workbench` 알림 층 복사본 | ⬜ |
 | `Surface.tsx` | `Pane` · `PaneHead` · `AppHeader` · `Scrim` · `Divider` | raw | — (015 계승) | 같음. `Modal`·`OverlayPane` 은 위 부품으로 옮긴다 | ⬜ |
 | `StepRow.tsx` | (015 그대로) | raw | — | 체크 칸은 `Checkbox` 를 쓴다 | ⬜ |
@@ -68,7 +68,7 @@
 | `border-border` | `border-hair` | |
 | `border-input` | `border-hair-2` | |
 | `bg-black/50` (가림막) | `bg-scrim-strong` (대화상자) · `bg-scrim` (겹침 판) | |
-| `aria-invalid:border-destructive` | `aria-invalid:border-fail` | |
+| `aria-invalid:border-destructive` | `aria-[invalid=true]:border-fail` | **`aria-invalid:` 는 Tailwind v4 에 없는 변종이다** — v4 가 기본으로 주는 aria 변종은 불리언 목록(`checked`·`disabled`·`expanded` 등)뿐이다. shadcn 원본은 자기 `shadcn/tailwind.css` 가 등록한 변종에 기대고, 그 CSS 를 들이지 않는 이 저장소에서는 **아무 CSS 도 생기지 않는다.** 017 T029 에서 G-B 가 잡았다 |
 | `aria-invalid:ring-destructive/20` | **삭제** | 링을 쓰지 않는다 |
 | `placeholder:text-muted-foreground` | `placeholder:text-ink-3` | S-06 |
 | `selection:bg-primary selection:text-primary-foreground` | **삭제** | 정본에 선택 색이 없다 |

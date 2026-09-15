@@ -122,17 +122,17 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 
 ### 4-A. 기본 부품 — 원본 이식
 
-- [ ] T025 [US2] `frontend/src/ui/Button.tsx` 를 shadcn `button` 이식으로 다시 쓴다 — `buttonVariants = cva(…)`, 변종 `default·primary·danger·off·quiet·ghost·nav·link·bare`, 크기 `md·sm·icon`, `asChild`(`radix-ui` `Slot`), `data-slot`·`data-variant`·`data-size` 유지, `whitespace-nowrap`. 정본 `.navlink`·`.textlink`·`.srow-name` 형태를 `nav`·`link`·`bare` 로 흡수한다. `navLinkClasses` 는 호출부 전환(T026)까지 `buttonVariants({variant:"nav"})` 를 돌려주는 얇은 함수로 둔다. `frontend/tests/InteractionStates.test.tsx`·`DesignTokens.test.tsx` 의 찾는 문자열을 갱신하고 test-ledger 에 적는다
-- [ ] T026 [US2] `navLinkClasses` 호출부 26곳을 `<Button variant="nav">` 로 옮기고 `navLinkClasses` 를 지운다 — `frontend/src/components/TestBulkConfirm.tsx`·`TestGroupBar.tsx`·`workbench/StepDetail.tsx`·`frontend/src/pages/EditView.tsx`·`ProjectSetup.tsx`·`SecretValues.tsx`·`TestList.tsx`(행 메뉴 항목 3곳은 T046 에서). 원시 `<button>` 이 줄면 G-G 예산을 내린다 (T025 의존)
-- [ ] T027 [P] [US2] `frontend/src/ui/Chip.tsx` 를 shadcn `badge` 이식으로 — `chipVariants`(tone `default·pass·fail·warn·run·ai·off`), `Pill`, 부품 차원의 `shrink-0 whitespace-nowrap` (B-05 의 칩 넘침). `chipClasses` 는 `chipVariants` 로 대체하고 호출부(`TestGroupBar.tsx`)를 옮긴다. `Badges.test.tsx`·`OutcomeVocabulary.test.tsx` 통과
-- [ ] T028 [P] [US2] `frontend/src/ui/Label.tsx` 를 만든다 — `Label`(폼 라벨 · 정본 `label{}` 형태를 명시), `Lbl`, `FieldLabel` 을 `ui/Field.tsx` 에서 옮기고 `Field.tsx` 가 다시 내보낸다(호출부 무변경)
-- [ ] T029 [P] [US2] `frontend/src/ui/Input.tsx` 를 shadcn `input` 이식으로 — 변종 `default·bare·title`, 크기 `md·sm`, 정본 비활성 점선·`placeholder:text-ink-3`·`aria-invalid:border-fail`. `title` 은 국면 이름 입력(S-08~S-10)의 형태를 갖는다
-- [ ] T030 [P] [US2] `frontend/src/ui/Textarea.tsx` 를 shadcn `textarea` 이식으로 — 변종 `default·ai`
-- [ ] T031 [P] [US2] `frontend/src/ui/NativeSelect.tsx` 를 shadcn `native-select` 이식으로 — 실제 `<select>`, **`w-auto` 가 기본**(정본 `width:100%` 번짐 차단 · B-07), 펼침 표시 `▾`(`aria-hidden`), 감싸개 비활성 점선
-- [ ] T032 [P] [US2] `frontend/src/ui/Checkbox.tsx` 를 만든다 — **네이티브** `<input type="checkbox">` 14px 명시(`accent-color` 잉크 · B-08), `checked`·`onCheckedChange`·`onClick` 통과(전파를 삼키지 않는다). `frontend/src/ui/StepRow.tsx` `StepCheck` 가 이것을 쓴다. `StepRowActions`·`RerecordStart`·`DeleteOutcome` 무변경 통과 확인 (research R2)
-- [ ] T033 [P] [US2] `frontend/src/ui/Radio.tsx` 를 만든다 — 네이티브 `<input type="radio">`, 크기 명시
-- [ ] T034 [US2] `frontend/src/ui/Field.tsx` 를 고친다 — `Field` 안쪽 입력은 `Input variant="bare"` 를 쓴다(`[&_input]` 벗기기 제거), `FileButton` 이 `multiple` 을 받는다, `cn` 사용 (T028·T029 의존)
-- [ ] T035 [P] [US2] `frontend/src/ui/Table.tsx` 를 shadcn `table` 이식으로 — `Table·TableHeader·TableBody·TableFooter·TableRow(mark)·TableHead·TableCell`, 머리 칸은 왼쪽 정렬·정본 머리 글꼴을 부품이 정한다(B-09). `rowClasses`·`Row`·`Spacer` 유지. `Tabs`·`Segmented` 는 T052·T053 까지 남긴다
+- [X] T025 [US2] `frontend/src/ui/Button.tsx` 를 shadcn `button` 이식으로 다시 쓴다 — `buttonVariants = cva(…)`, 변종 `default·primary·danger·off·quiet·ghost·nav·link·bare`, 크기 `md·sm·icon`, `asChild`(`radix-ui` `Slot`), `data-slot`·`data-variant`·`data-size` 유지, `whitespace-nowrap`. 정본 `.navlink`·`.textlink`·`.srow-name` 형태를 `nav`·`link`·`bare` 로 흡수한다. `navLinkClasses` 는 호출부 전환(T026)까지 `buttonVariants({variant:"nav"})` 를 돌려주는 얇은 함수로 둔다. `frontend/tests/InteractionStates.test.tsx`·`DesignTokens.test.tsx` 의 찾는 문자열을 갱신하고 test-ledger 에 적는다
+- [X] T026 [US2] `navLinkClasses` 호출부 26곳을 `<Button variant="nav">` 로 옮기고 `navLinkClasses` 를 지운다 — `frontend/src/components/TestBulkConfirm.tsx`·`TestGroupBar.tsx`·`workbench/StepDetail.tsx`·`frontend/src/pages/EditView.tsx`·`ProjectSetup.tsx`·`SecretValues.tsx`·`TestList.tsx`(행 메뉴 항목 3곳은 T046 에서). 원시 `<button>` 이 줄면 G-G 예산을 내린다 (T025 의존)
+- [X] T027 [P] [US2] `frontend/src/ui/Chip.tsx` 를 shadcn `badge` 이식으로 — `chipVariants`(tone `default·pass·fail·warn·run·ai·off`), `Pill`, 부품 차원의 `shrink-0 whitespace-nowrap` (B-05 의 칩 넘침). `chipClasses` 는 `chipVariants` 로 대체하고 호출부(`TestGroupBar.tsx`)를 옮긴다. `Badges.test.tsx`·`OutcomeVocabulary.test.tsx` 통과
+- [X] T028 [P] [US2] `frontend/src/ui/Label.tsx` 를 만든다 — `Label`(폼 라벨 · 정본 `label{}` 형태를 명시), `Lbl`, `FieldLabel` 을 `ui/Field.tsx` 에서 옮기고 `Field.tsx` 가 다시 내보낸다(호출부 무변경)
+- [X] T029 [P] [US2] `frontend/src/ui/Input.tsx` 를 shadcn `input` 이식으로 — 변종 `default·bare·title`, 크기 `md·sm`, 정본 비활성 점선·`placeholder:text-ink-3`·`aria-invalid:border-fail`. `title` 은 국면 이름 입력(S-08~S-10)의 형태를 갖는다
+- [X] T030 [P] [US2] `frontend/src/ui/Textarea.tsx` 를 shadcn `textarea` 이식으로 — 변종 `default·ai`
+- [X] T031 [P] [US2] `frontend/src/ui/NativeSelect.tsx` 를 shadcn `native-select` 이식으로 — 실제 `<select>`, **`w-auto` 가 기본**(정본 `width:100%` 번짐 차단 · B-07), 펼침 표시 `▾`(`aria-hidden`), 감싸개 비활성 점선
+- [X] T032 [P] [US2] `frontend/src/ui/Checkbox.tsx` 를 만든다 — **네이티브** `<input type="checkbox">` 14px 명시(`accent-color` 잉크 · B-08), `checked`·`onCheckedChange`·`onClick` 통과(전파를 삼키지 않는다). `frontend/src/ui/StepRow.tsx` `StepCheck` 가 이것을 쓴다. `StepRowActions`·`RerecordStart`·`DeleteOutcome` 무변경 통과 확인 (research R2)
+- [X] T033 [P] [US2] `frontend/src/ui/Radio.tsx` 를 만든다 — 네이티브 `<input type="radio">`, 크기 명시
+- [ ] T034 [US2] (부분 — `Lbl`·`FieldLabel` 은 T028 에서 `ui/Label` 로 옮겼다. 안쪽 입력 벗기기 제거는 검색 칸을 `Input bare` 로 바꾸는 T047 과 함께) `frontend/src/ui/Field.tsx` 를 고친다 — `Field` 안쪽 입력은 `Input variant="bare"` 를 쓴다(`[&_input]` 벗기기 제거), `FileButton` 이 `multiple` 을 받는다, `cn` 사용 (T028·T029 의존)
+- [X] T035 [P] [US2] `frontend/src/ui/Table.tsx` 를 shadcn `table` 이식으로 — `Table·TableHeader·TableBody·TableFooter·TableRow(mark)·TableHead·TableCell`, 머리 칸은 왼쪽 정렬·정본 머리 글꼴을 부품이 정한다(B-09). `rowClasses`·`Row`·`Spacer` 유지. `Tabs`·`Segmented` 는 T052·T053 까지 남긴다
 
 ### 4-B. 화면의 원시 요소를 부품으로 (파일마다 한 커밋 · 커밋마다 G-G 예산을 내린다)
 

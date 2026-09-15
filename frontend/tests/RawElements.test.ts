@@ -42,8 +42,13 @@ const ROOT = join(__dirname, "..");
  * 017 Foundational 기준값 **108** (2026-09-15) — `<button>` 50 · `<input>` 50 · `<select>` 4 ·
  * `<textarea>` 4 (미러 IME 칸은 등록된 예외라 세지 않는다). 병렬로 진행한 커밋을 합칠 때는 줄어든
  * 수를 **합산해서** 내린다.
+ *
+ * | 단계 | 줄어든 것 | 남은 예산 |
+ * |---|---|---|
+ * | Foundational | — | 108 |
+ * | T026 `navLinkClasses` 26곳 → `Button variant="nav"` | `<button>` −26 | 82 |
  */
-const REMAINING_BUDGET = 108;
+const REMAINING_BUDGET = 82;
 
 const RAW = /<(button|input|select|textarea)\b/g;
 
