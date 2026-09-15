@@ -345,10 +345,8 @@ ALLOWED: list[dict] = [
 # 실패로 치지 않는다. **어떤 검출과도 맞지 않는 항목은 실패다** — 고쳐졌으면 여기서 지운다.
 # 그래야 「고쳤다」가 코드 커밋이 아니라 이 순회에서 사라진 것으로 정의된다 (data-model §9).
 KNOWN: list[dict] = [
-    {"id": "B-01", "where": r"^result-fail@", "kind": "covered", "match": r"처음부터 실행|Step \d+부터 실행"},
-    {"id": "B-01", "where": r"^runner-disconnected@", "kind": "covered",
-     "match": r"빠름|보통|느림|한 스텝씩|일시정지|중지|저장"},
-    {"id": "B-02", "where": r"^test-list-session@", "kind": "covered", "match": r"이어서 보기|중지하고 버리기|새로 고침"},
+    # B-01 · B-02 — 017 US1 이 고쳤다 (알림 층 자리를 띠가 정한다 · 세션 토스트 삭제). 여기서 지웠으므로
+    # 다시 검출되면 「등록되지 않은 검출」로 실패한다.
     {"id": "B-03", "where": r"^edit@", "kind": "metric", "match": r"^stepRowsVisible"},
     {"id": "B-04", "where": r"^test-create@", "kind": "spillY", "match": r"아직 브라우저를 열지 않았습니다"},
     {"id": "B-05", "where": r"^test-create@", "kind": "wrap", "match": r"TEST STEPS|고른 것 없음|작성"},

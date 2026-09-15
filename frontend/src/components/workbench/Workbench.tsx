@@ -44,6 +44,7 @@ import { Lbl } from "../../ui/Field";
 import { Scrim } from "../../ui/Surface";
 import { Row } from "../../ui/Table";
 import { Pill } from "../../ui/Chip";
+import { TOAST_LAYER_CLASSES } from "../../ui/Notice";
 
 
 /** 최소 기준 폭. 확정 디자인 6종 공통값 (research R1). */
@@ -316,9 +317,11 @@ export function Workbench({
           국면에서는 본문 위 아무 데나였다. 자리를 뷰포트에 고정하면 그 차이가 사라지고,
           「알림은 늘 같은 데서 뜬다」가 국면을 넘어 성립한다 (FR-235 와 같은 성질).
 
-          형태는 정본이 갖는다 (`tokens.css` 의 `.toast-layer`).
+          형태는 `ui/Notice` 의 `TOAST_LAYER_CLASSES` **하나**가 갖는다 (017 B-01).
+          이 자리는 전에 그 문자열을 복사해 따로 적었고, 2026-09-11 에 국면 띠 몫을 고칠 때
+          이 복사본이 빠져 결과·녹화 화면의 알림이 국면 띠를 덮었다. 복사본을 두지 않는다.
         */}
-        <div data-workbench-notice-layer className="fixed right-s4 z-[60] top-[calc(var(--h-header)+8px)] w-[min(420px,calc(100vw-32px))] max-h-[calc(100vh-var(--h-header)-24px)] overflow-y-auto flex flex-col gap-s2 pointer-events-none [&>*]:pointer-events-auto">
+        <div data-workbench-notice-layer aria-live="polite" className={TOAST_LAYER_CLASSES}>
           {noticesExtra}
           <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
         </div>

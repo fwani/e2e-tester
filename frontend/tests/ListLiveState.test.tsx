@@ -78,7 +78,9 @@ describe("실행 중인 테스트의 행 (FR-168 · U-16)", () => {
 
     await screen.findByText("실패한 테스트");
     expect(screen.getByText("RUNNING")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "실행 화면 보기" })).toBeTruthy();
+    // 017 B-02 — 복귀 수단은 세션 띠의 「이어서 보기」다. 같은 일을 하던 토스트의 「실행 화면 보기」를
+    // 지웠다 (같은 조작이 화면에 둘이었다). 묻는 것은 그대로다: 돌아갈 수단이 있는가 (FR-168).
+    expect(screen.getByRole("button", { name: "이어서 보기" })).toBeTruthy();
     // 이전 실행의 결말이 행을 대표하지 않는다 — 지금 돌고 있다는 사실이 이긴다.
     //
     // 008 — 헤더의 통계 칩이 확정 디자인의 결말 필터로 바뀌었고 그 라벨은 「실패」다

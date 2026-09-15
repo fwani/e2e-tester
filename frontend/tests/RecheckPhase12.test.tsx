@@ -351,7 +351,8 @@ describe("T119 목록 행은 세션의 상태를 본다 (FR-169 · N-02)", () =>
 
   it("끝난 세션에도 복귀 수단은 남는다 — 칩과 복귀는 다른 요구사항이다 (FR-168)", async () => {
     await renderList("review");
-    expect(screen.getByRole("button", { name: "실행 화면 보기" })).toBeTruthy();
+    // 017 B-02 — 복귀 수단은 세션 띠의 「이어서 보기」다 (같은 일을 하던 토스트를 지웠다).
+    expect(screen.getByRole("button", { name: "이어서 보기" })).toBeTruthy();
   });
 
   it("중지 후 목록에서도 결과에 도달할 수 있다 — 세션이 남았다고 감추지 않는다", async () => {

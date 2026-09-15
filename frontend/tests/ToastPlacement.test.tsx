@@ -30,6 +30,7 @@ import { SessionWorkbench } from "../src/pages/SessionScreen";
 import type { Notice } from "../src/components/workbench/model";
 import { sessionProps } from "./helpers/session";
 import { sessionView } from "./helpers/workbench";
+import { TOAST_LAYER_CLASSES } from "../src/ui/Notice";
 import { TOAST_LINGER_MS } from "../src/ui/useToastDismiss";
 
 afterEach(cleanup);
@@ -55,6 +56,59 @@ describe("알림 층의 자리 (2026-09-10)", () => {
     // 뷰포트 오른쪽 위 한 자리인가. 국면마다 다른 데서 뜨면 사용자는 그것을 찾아야 한다.
     expect(layer!.className, "알림 층이 화면에 고정되지 않았다").toContain("fixed");
     expect(layer!.className, "알림 층이 오른쪽에 붙지 않았다").toContain("right-s4");
+  });
+});
+
+/**
+ * 017 B-01 — **자리의 높이**를 못 박는다. 이 파일은 015 까지 「오른쪽 위에 고정인가」만 봤고,
+ * 그래서 알림 층이 국면 띠를 덮는 회귀가 들어왔다: 2026-09-11 수정이 국면 띠 몫을 정본 클래스
+ * (`.toast-layer`)에만 더했는데 앱은 그 규칙을 싣지 않았고, 결과·녹화 화면이 쓰는 층은
+ * `Workbench` 의 **클래스 복사본**이었다.
+ *
+ * 높이는 값 하나로 정할 수 없다 — 국면 띠가 있는 화면·머리띠만 있는 화면·띠가 없는 화면이 섞여
+ * 있다. 그래서 층이 **문서에 있는 띠**를 읽는다 (017 layout-contract-v3 L2). 실제 픽셀은 jsdom 이
+ * 계산하지 않으므로 화면 순회(chromium)가 재고, 여기서는 그 규칙의 **형태**를 본다.
+ */
+describe("알림 층의 높이는 문서에 있는 띠가 정한다 (017 B-01)", () => {
+  const classes = TOAST_LAYER_CLASSES.split(/\s+/);
+  const HEADER_ONLY = ":root:has([data-shell=header]):not(:has([data-shell=phase]))";
+  const PHASE = ":root:has([data-shell=phase])";
+
+  it("띠 조건 셋 — 없음 · 머리띠만 · 국면 띠까지 — 이 각자의 자리를 갖는다", () => {
+    expect(classes).toContain("top-s4");
+    expect(classes).toContain(`[${HEADER_ONLY}_&]:top-[calc(var(--h-header)+8px)]`);
+    expect(classes).toContain(`[${PHASE}_&]:top-[calc(var(--h-header)+var(--h-phase)+8px)]`);
+    expect(classes).toContain(`[${HEADER_ONLY}_&]:max-h-[calc(100vh-var(--h-header)-24px)]`);
+    expect(classes).toContain(`[${PHASE}_&]:max-h-[calc(100vh-var(--h-header)-var(--h-phase)-24px)]`);
+  });
+
+  it("조건이 서로 배제된다 — 승부를 산출 CSS 순서에 맡기지 않는다", () => {
+    // 국면 띠가 있는 문서에는 머리띠도 있다. 머리띠 조건이 국면 띠를 배제하지 않으면 두 규칙이
+    // 동시에 성립하고, 이기는 쪽은 Tailwind 가 정한 순서다 — 015 의 흰 버튼과 같은 형태다.
+    const headerRules = classes.filter((c) => c.includes("data-shell=header"));
+    expect(headerRules.length).toBeGreaterThan(0);
+    expect(headerRules.filter((c) => !c.includes(":not(:has([data-shell=phase]))"))).toEqual([]);
+  });
+
+  it("작업대의 알림 층은 같은 정의를 쓴다 — 복사본이 없다", () => {
+    render(<SessionWorkbench {...sessionProps({ view: sessionView({ state: "replaying" }) })} />);
+    const layer = document.querySelector("[data-workbench-notice-layer]");
+    expect(layer!.className, "작업대 알림 층이 정의를 복사해 따로 갖고 있다 — B-01 의 원인이었다").toBe(
+      TOAST_LAYER_CLASSES,
+    );
+  });
+
+  it("띠가 자기 존재를 알린다 — 층이 읽을 표식이 있다", () => {
+    render(<SessionWorkbench {...sessionProps({ view: sessionView({ state: "replaying" }) })} />);
+    expect(document.querySelectorAll('[data-shell="header"]').length).toBe(1);
+    expect(document.querySelectorAll('[data-shell="phase"]').length).toBe(1);
+  });
+
+  it("알림 층은 aria-live 다 — 모달이 뒤쪽에 aria-hidden 을 걸어도 알림은 읽힌다", () => {
+    // Radix 모달은 열릴 때 body 의 다른 자식에 aria-hidden 을 걸되 `aria-live` 요소는 건너뛴다
+    // (017 research R6 ③ 실측). 층이 aria-live 가 아니면 모달이 열린 동안 알림이 낭독되지 않는다.
+    render(<SessionWorkbench {...sessionProps({ view: sessionView({ state: "replaying" }) })} />);
+    expect(document.querySelector("[data-workbench-notice-layer]")!.getAttribute("aria-live")).toBe("polite");
   });
 });
 

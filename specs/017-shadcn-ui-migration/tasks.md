@@ -99,15 +99,15 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 
 ### Tests for User Story 1
 
-- [ ] T019 [US1] `frontend/tests/ToastPlacement.test.tsx` 에 단언을 **더한다** — `TOAST_LAYER_CLASSES` 가 띠 조건 셋(없음 · 머리띠만 · 국면 띠)을 `:has` 변종으로 갖고 머리띠 조건이 `:not(:has([data-shell=phase]))` 로 국면 띠 조건을 배제한다 · 층이 `aria-live="polite"` 를 갖는다. 먼저 실패를 확인한다 (layout-contract-v3 L2 · test-ledger)
+- [X] T019 [US1] `frontend/tests/ToastPlacement.test.tsx` 에 단언을 **더한다** — `TOAST_LAYER_CLASSES` 가 띠 조건 셋(없음 · 머리띠만 · 국면 띠)을 `:has` 변종으로 갖고 머리띠 조건이 `:not(:has([data-shell=phase]))` 로 국면 띠 조건을 배제한다 · 층이 `aria-live="polite"` 를 갖는다. 먼저 실패를 확인한다 (layout-contract-v3 L2 · test-ledger)
 
 ### Implementation for User Story 1
 
-- [ ] T020 [US1] 머리띠 부품이 `data-shell="header"` 를 내보낸다 — `frontend/src/ui/Surface.tsx` `AppHeader`, `frontend/src/components/design/Chrome.tsx` `HeaderBar`. 국면 띠가 `data-shell="phase"` 를 내보낸다 — `frontend/src/components/workbench/PhaseBar.tsx`
-- [ ] T021 [US1] `frontend/src/ui/Notice.tsx` 의 `TOAST_LAYER_CLASSES` 를 v3 L2 표대로 고친다 (서로 배제하는 `top`·`max-height` 셋) · `ToastLayer` 에 `aria-live="polite"`. 머리주석에 B-01 의 원인(09-11 수정이 앱에 실리지 않는 정본 클래스 규칙에만 들어갔다)을 적는다 (T019·T020 의존)
-- [ ] T022 [US1] `frontend/src/components/Toast.tsx` 의 포털 층에 `aria-live="polite"` 를 두고 `frontend/src/components/workbench/Workbench.tsx:321` 의 알림 층 **클래스 복사본을 지워** `TOAST_LAYER_CLASSES` 를 쓴다 (T021 의존). `NoticesAreToasts`·`ChatDoesNotCoverMirror`·`PromptDoesNotShrinkMirror` 통과 확인
-- [ ] T023 [US1] B-02 — `frontend/src/pages/TestList.tsx` 의 진행 중 세션 **토스트**(`data-open-session`, 546~579행 부근)를 지운다. 흐름 안 `ActiveSessionsBanner` 가 그 사실을 말한다. `frontend/tests/NoticesAreToasts.test.tsx` 의 진행 중 세션 경우를 「그 사실을 흐름 안 띠 **하나**가 말한다」로 바꾸고 test-ledger 에 사유(research R6 ⑤ · 09-10 사용자 결정과의 긴장)를 적는다. `ActiveSessions.test.tsx` 통과 확인. 토스트의 「실행 화면 보기」에 기대던 `ListLiveState.test.tsx:81`·`RecheckPhase12.test.tsx:354` 는 복귀 조작을 띠의 「이어서 보기」로 찾도록 바꾼다 — 검증 대상(005 FR-168 복귀 수단)은 그대로이고, 같은 조작이 둘이던 것이 008 의 「복귀 조작은 화면에 하나뿐」을 어겼다
-- [ ] T024 [US1] 순회를 다시 돌려 `sweep-report.json` 을 갱신한다 — B-01·B-02 검출이 사라졌음을 확인하고 알려진 깨짐 등록부에서 지운다. L2 `--compare` 의 알림 층 `top` 차이를 사유(B-01)와 함께 `scripts/design_compare_ba.py` `INTENDED` 에 등록한다
+- [X] T020 [US1] (Foundational T016 에서 앞당겼다 — 순회가 머리띠 표식으로 B-11 을 잰다) 머리띠 부품이 `data-shell="header"` 를 내보낸다 — `frontend/src/ui/Surface.tsx` `AppHeader`, `frontend/src/components/design/Chrome.tsx` `HeaderBar`. 국면 띠가 `data-shell="phase"` 를 내보낸다 — `frontend/src/components/workbench/PhaseBar.tsx`
+- [X] T021 [US1] `frontend/src/ui/Notice.tsx` 의 `TOAST_LAYER_CLASSES` 를 v3 L2 표대로 고친다 (서로 배제하는 `top`·`max-height` 셋) · `ToastLayer` 에 `aria-live="polite"`. 머리주석에 B-01 의 원인(09-11 수정이 앱에 실리지 않는 정본 클래스 규칙에만 들어갔다)을 적는다 (T019·T020 의존)
+- [X] T022 [US1] `frontend/src/components/Toast.tsx` 의 포털 층에 `aria-live="polite"` 를 두고 `frontend/src/components/workbench/Workbench.tsx:321` 의 알림 층 **클래스 복사본을 지워** `TOAST_LAYER_CLASSES` 를 쓴다 (T021 의존). `NoticesAreToasts`·`ChatDoesNotCoverMirror`·`PromptDoesNotShrinkMirror` 통과 확인
+- [X] T023 [US1] B-02 — `frontend/src/pages/TestList.tsx` 의 진행 중 세션 **토스트**(`data-open-session`, 546~579행 부근)를 지운다. 흐름 안 `ActiveSessionsBanner` 가 그 사실을 말한다. `frontend/tests/NoticesAreToasts.test.tsx` 의 진행 중 세션 경우를 「그 사실을 흐름 안 띠 **하나**가 말한다」로 바꾸고 test-ledger 에 사유(research R6 ⑤ · 09-10 사용자 결정과의 긴장)를 적는다. `ActiveSessions.test.tsx` 통과 확인. 토스트의 「실행 화면 보기」에 기대던 `ListLiveState.test.tsx:81`·`RecheckPhase12.test.tsx:354` 는 복귀 조작을 띠의 「이어서 보기」로 찾도록 바꾼다 — 검증 대상(005 FR-168 복귀 수단)은 그대로이고, 같은 조작이 둘이던 것이 008 의 「복귀 조작은 화면에 하나뿐」을 어겼다
+- [X] T024 [US1] 순회를 다시 돌려 `sweep-report.json` 을 갱신한다 — B-01·B-02 검출이 사라졌음을 확인하고 알려진 깨짐 등록부에서 지운다. L2 `--compare` 의 알림 층 `top` 차이를 사유(B-01)와 함께 `scripts/design_compare_ba.py` `INTENDED` 에 등록한다
 
 **Checkpoint**: 알림이 조작을 덮지 않는다. MVP — 여기서 멈춰도 사용자가 겪던 작업 차단이 풀린다.
 

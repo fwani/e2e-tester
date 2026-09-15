@@ -61,6 +61,9 @@ function toastLayer(): HTMLElement {
   // 015 T073 — 정본 `.toast-layer` 가 `ui/Notice` 로 왔다. **자리를 두 곳에서 정하지
   // 않는다** — 포털 대상은 명령형으로 만들 수밖에 없으므로 상수를 꺼내 쓴다.
   made.className = TOAST_LAYER_CLASSES;
+  // 017 — 모달(Radix)은 열릴 때 body 의 다른 자식에 aria-hidden 을 걸되 `aria-live` 요소는
+  // 건너뛴다. 이것이 없으면 대화상자가 열린 동안 뜬 알림이 낭독되지 않는다 (research R6 ③).
+  made.setAttribute("aria-live", "polite");
   document.body.appendChild(made);
   return made;
 }

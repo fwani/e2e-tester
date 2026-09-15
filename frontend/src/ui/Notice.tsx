@@ -115,17 +115,43 @@ export function Toast({ tone = "default", layout, children, ...rest }: NoticePro
  *
  * 비어 있을 때 아래를 막지 않도록 **층에서 포인터를 끄고 알림에서만 되살린다.**
  * 그것을 `[&>*]:pointer-events-auto` 로 옮겼다 — 정본 `.toast-layer > *` 와 같다.
+ *
+ * ## 높이 — 문서에 있는 띠가 정한다 (017 B-01 · layout-contract-v3 L2)
+ *
+ * 015 까지 `top` 은 `--h-header + 8px` 하나였고, **결과·녹화 화면에서 층이 국면 띠를 덮었다** —
+ * 「Step 05부터 실행」·「저장」·「중지」를 누를 수 없었다. 2026-09-11 수정이 국면 띠 몫을 정본
+ * 클래스 `.toast-layer` 에 더했지만 앱은 015 T075 부터 정본의 **클래스 규칙을 싣지 않으므로**
+ * 그 수정은 화면에 닿지 않았다. 게다가 작업대가 이 상수를 복사한 문자열을 따로 쓰고 있었다.
+ *
+ * 값 하나로는 풀리지 않는다. 국면 띠가 있는 화면(작업대 전 국면) · 머리띠만 있는 화면(목록 ·
+ * 프로젝트 · 가져오기) · 띠가 없는 화면(비밀 값 · 키 관리)이 섞여 있어, 국면 띠 몫을 고정하면
+ * 목록에서 48px 가 뜬다. 그래서 층이 `:root:has([data-shell=…])` 로 **지금 문서에 있는 띠**를 읽는다.
+ * 띠가 `data-shell` 을 내보낸다 (`AppHeader`·`HeaderBar`·`PhaseBar`).
+ *
+ * **조건은 서로 배제한다.** 국면 띠가 있는 문서에는 머리띠도 있으므로 머리띠 조건에
+ * `:not(:has([data-shell=phase]))` 를 붙인다. 두 조건이 동시에 성립하면 이기는 쪽을 산출 CSS 의
+ * 순서가 정한다 — 015 의 흰 버튼과 같은 형태다. 조건 규칙은 특이도가 `top-s4` 보다 높으므로
+ * 기본값을 늘 이긴다. chromium 실측: 16px · 64px · 112px (research S5).
+ *
+ * `aria-live` 는 층의 **속성**이라 여기 없다 — 층을 그리는 쪽(`components/Toast`·`Workbench`)이 준다.
  */
 export const TOAST_LAYER_CLASSES =
-  "fixed right-s4 z-[60] top-[calc(var(--h-header)+8px)] " +
-  "w-[min(420px,calc(100vw-32px))] max-h-[calc(100vh-var(--h-header)-24px)] " +
+  "fixed right-s4 z-[60] w-[min(420px,calc(100vw-32px))] " +
   "overflow-y-auto flex flex-col gap-s2 " +
-  "pointer-events-none [&>*]:pointer-events-auto";
+  "pointer-events-none [&>*]:pointer-events-auto " +
+  // 띠 없음
+  "top-s4 max-h-[calc(100vh-32px)] " +
+  // 머리띠만
+  "[:root:has([data-shell=header]):not(:has([data-shell=phase]))_&]:top-[calc(var(--h-header)+8px)] " +
+  "[:root:has([data-shell=header]):not(:has([data-shell=phase]))_&]:max-h-[calc(100vh-var(--h-header)-24px)] " +
+  // 머리띠 + 국면 띠
+  "[:root:has([data-shell=phase])_&]:top-[calc(var(--h-header)+var(--h-phase)+8px)] " +
+  "[:root:has([data-shell=phase])_&]:max-h-[calc(100vh-var(--h-header)-var(--h-phase)-24px)]";
 
 export function ToastLayer({ layout, children, ...rest }: Omit<NoticeProps, "tone">) {
   const cls = [TOAST_LAYER_CLASSES, layout].filter(Boolean).join(" ");
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} aria-live="polite" {...rest}>
       {children}
     </div>
   );

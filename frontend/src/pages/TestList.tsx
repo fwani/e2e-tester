@@ -480,14 +480,6 @@ export function TestList({
     data !== null && all.length === 0 && query.trim() === "" && groupFilter === null;
 
   const liveOf = (testId: string) => activeSessions.find((s) => s.test_id === testId) ?? null;
-  /**
-   * 화면 맨 위 알림이 가리키는 세션. **돌고 있는 것을 먼저** 고르되, 끝난 세션도 남긴다.
-   *
-   * 005 FR-168 은 「칩과 복귀는 다른 요구사항」이라고 못박았다 — 세션이 `review` 로 끝나
-   * 행의 표식이 결말로 돌아가도 그 작업 창으로 돌아갈 길은 남아야 한다. 그것을 running
-   * 에만 걸면 중지 직후 복귀 수단이 사라진다 (007 재점검 N-02 가 잡은 형태).
-   */
-  const openSession = activeSessions.find((s) => isRunning(s.state)) ?? activeSessions[0] ?? null;
 
   return (
     <Artboard width={1440} minHeight={900}>
@@ -543,41 +535,16 @@ export function TestList({
       </HeaderBar>
 
       {/*
-        005 FR-168 (U-16) — 지금 돌고 있다는 사실이 목록 맨 위에 온다. 실행 중 새로고침하면
-        목록으로 떨어지는데, 그 사실과 복귀 수단이 없으면 사용자는 새 실행을 시작한다.
-      */}
-      {openSession !== null && (
-        <Toast
-          mark="data-open-session"
-          tone={isRunning(openSession.state) ? "info" : "warn"}
-        >
-          {/*
-            **닫기를 주지 않는다.** 이것은 지나간 사실이 아니라 「지금 무언가가 돌고
-            있다」는 상태이고, 그 상태가 끝나면 스스로 사라진다 (`openSession` 이
-            비워진다). 닫을 수 있게 하면 복귀 수단만 사라지고 세션은 그대로 남아,
-            사용자는 돌고 있는 줄 모르고 새 실행을 시작한다 — 005 FR-168 이 막으려던
-            바로 그것이다.
-          */}
-          <div className="flex gap-s2 items-center">
-            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
-              <circle cx="8" cy="8" r="4.5" fill="currentColor" />
-            </svg>
-            <span>
-              <b>{openSession.test_id ?? "테스트"}</b> · {openSession.state_label} · Step{" "}
-              {openSession.steps.length}개
-            </span>
-          </div>
-          {onResumeSession && (
-            <Button
-              size="sm"
-              layout="mt-s2"
-              onClick={() => onResumeSession(openSession)} >
-              실행 화면 보기
-            </Button>
-          )}
-        </Toast>
-      )}
+        005 FR-168 (U-16) — 지금 돌고 있다는 사실과 복귀 수단은 아래 **흐름 안 띠**
+        (`ActiveSessionsBanner`)가 말한다.
 
+        017 B-02 — 같은 사실을 말하던 **토스트를 지웠다.** 토스트가 띠의 「이어서 보기」·
+        「중지하고 버리기」·「새로 고침」을 덮어 누를 수 없었고, 토스트의 「실행 화면 보기」와
+        띠의 「이어서 보기」가 같은 `onResumeSession` 을 불러 **복귀 조작이 화면에 둘**이었다 —
+        008 이 「화면에 하나뿐」으로 정한 것을 어긴 형태다 (아래 행 조작의 주석). 띠를 남긴 이유는
+        세션마다 조작(이어서 보기·버리기)을 갖고, 닫히지 않는 토스트로 모으면 그 토스트가 목록
+        도구 줄을 계속 덮기 때문이다 (017 research R6 ⑤).
+      */}
       <div
         className="flex-1 min-h-0 flex flex-col gap-s3 py-[14px] px-s4"
       >
