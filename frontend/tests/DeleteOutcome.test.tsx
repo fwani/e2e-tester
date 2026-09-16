@@ -82,6 +82,8 @@ function mount() {
  */
 async function deleteFirstRow(name: string) {
   await userEvent.setup().click(await screen.findByRole("button", { name: `${name} 추가 동작` }));
+  // T105 — 누름으로 여는 길은 rAF 를 한 번 거친다. 메뉴가 뜬 뒤에 항목을 고른다.
+  await screen.findByRole("menu");
   fireEvent.click(screen.getByRole("menuitem", { name: "삭제" }));
   fireEvent.click(screen.getByRole("button", { name: "삭제" }));
 }

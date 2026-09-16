@@ -213,6 +213,8 @@ describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", ()
 
     // 017 T056 — Radix 메뉴는 포인터 누름으로 열린다 (`TestListActions` 의 `openMenu` 주석).
     await userEvent.setup().click(screen.getByLabelText("로그인 추가 동작"));
+    // T105 — 누름으로 여는 길은 rAF 를 한 번 거친다.
+    await screen.findByRole("menu");
     act(() => screen.getByText("편집").click());
 
     // 도착한 화면에서 실제로 고칠 수 있다 — 저장 컨트롤이 있다.
@@ -241,6 +243,12 @@ describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", ()
 
     // 017 T056 — Radix 메뉴는 포인터 누름으로 열린다 (`TestListActions` 의 `openMenu` 주석).
     await userEvent.setup().click(screen.getByLabelText("로그인 추가 동작"));
+    /*
+      **메뉴가 뜬 뒤에 물어야 뜻이 있다** (T105). 누름으로 여는 길은 rAF 를 한 번 거치므로, 기다리지 않고
+      「없다」를 물으면 **아직 열리지 않아서** 통과한다 — 그것은 이 검사가 묻는 것(읽기 전용 도착지를 두지
+      않는다)이 아니다.
+    */
+    await screen.findByRole("menu");
     expect(screen.queryByText("정의 보기")).toBeNull();
   });
 });

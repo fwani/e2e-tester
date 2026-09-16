@@ -52,10 +52,9 @@ const UI_FILES = execFileSync("find", ["src/ui", "-name", "*.tsx"], { cwd: ROOT,
 
   T107 이 끝나면 `RADIX_PARTS` 가 비고 `radix-ui` 의존성 자체가 사라진다.
 */
-const BASE_PARTS = new Set(["Dialog.tsx", "AlertDialog.tsx", "OverlayPane.tsx"]);
+const BASE_PARTS = new Set(["Dialog.tsx", "AlertDialog.tsx", "OverlayPane.tsx", "DropdownMenu.tsx"]);
 const RADIX_PARTS = new Set([
   "Button.tsx", // `Slot`(asChild) 만 쓴다 — T106 이 `render` 로 옮긴다
-  "DropdownMenu.tsx",
   "Tabs.tsx",
   "ToggleGroup.tsx",
   "Tooltip.tsx",

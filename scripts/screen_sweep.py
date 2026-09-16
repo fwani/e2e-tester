@@ -463,8 +463,21 @@ SCAN_JS = r"""
     // 대화상자·겹침 판·가림막·**떠 있는 메뉴와 목록**이 뒤를 가리는 것은 그 부품의 목적이다 (SW-7).
     // 메뉴는 1회차 순회가 오탐으로 알려 줬다 — 열린 행 메뉴가 아래 행의 「실행」을 가린 것을 덮임으로 셌다.
     // 수제 행 메뉴(`[data-row-menu]`)는 역할이 없어 따로 적는다. Radix 로 옮기면 `[role=menu]` 가 된다.
+    //
+    // **`[data-base-ui-inert]` 는 Base UI 의 모달 가림막이다** (T105 · 갈래 교체). 역할이 `presentation` 이라
+    // 위 이름들에 걸리지 않는다. 모달 팝업일 때만 그려지고(`shouldRenderBackdrop = … && modal`), 화면 전체를
+    // 덮되 **연 트리거만 구멍을 낸다**(`cutout: triggerElement`).
+    //
+    // **새로 가리기 시작한 것이 아니라 가리는 방법이 바뀐 것이다.** 「열린 동안 뒤쪽은 포인터를 받지
+    // 않는다」는 017 전부터의 계약이다(`RowMenuVisible` 머리주석). radix 는 그것을 `body` 의
+    // `pointer-events:none` 으로 했고, 위 훑기는 `pointer-events:none` 인 요소를 **아예 건너뛰므로**
+    // 맞는 요소가 없었다. Base UI 는 실제 마디를 깔아 가리므로 `elementFromPoint` 에 잡힌다.
+    //
+    // 실측으로 확인한 것 (T105 순회): 순회가 연 「로그인이 된다 추가 동작」은 덮인 목록에 **없고**
+    // 다른 행의 `⋮` 만 들어 있다 — 구멍이 제 몫을 한다. 메뉴 항목이 덮인 건도 0 이다.
     const layer = hit.closest('[role=dialog], [role=alertdialog], [role=menu], [role=listbox], [role=tooltip], ' +
-      '[data-strength], [data-slot$=overlay], [data-row-menu], [data-radix-popper-content-wrapper]');
+      '[data-strength], [data-slot$=overlay], [data-row-menu], [data-radix-popper-content-wrapper], ' +
+      '[data-base-ui-inert]');
     if (layer && !layer.contains(el)) continue;
     F.push(['covered', desc(el), `by ${desc(hit)}`]);
   }

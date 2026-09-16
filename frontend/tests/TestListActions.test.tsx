@@ -65,6 +65,9 @@ async function renderList() {
  */
 async function openMenu() {
   await userEvent.setup().click(screen.getByRole("button", { name: "로그인 추가 동작" }));
+  // T105 — 새 갈래는 `mousedown` 에서 열되 **한 프레임 뒤**에 연다(floating-ui `useClick` 의 rAF).
+  // `userEvent` 는 마이크로태스크까지만 기다리므로 여기서 메뉴를 기다린다. 묻는 것은 그대로다.
+  await screen.findByRole("menu");
 }
 
 describe("TestList — 이름 변경·삭제 (FR-007)", () => {

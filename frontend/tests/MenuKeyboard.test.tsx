@@ -31,7 +31,7 @@ function RowActions({ onRename }: { onRename: () => void }) {
       </MenuTrigger>
       <MenuContent>
         <MenuItem>편집</MenuItem>
-        <MenuItem onSelect={onRename}>이름</MenuItem>
+        <MenuItem onClick={onRename}>이름</MenuItem>
         <MenuItem variant="danger">삭제</MenuItem>
       </MenuContent>
     </Menu>
@@ -57,7 +57,7 @@ describe("메뉴 키보드 (ui/DropdownMenu · FR-012)", () => {
 
     await user.keyboard(key);
 
-    expect((await screen.findByRole("menu")).getAttribute("data-state")).toBe("open");
+    expect((await screen.findByRole("menu")).hasAttribute("data-open"), "메뉴가 열리지 않았다").toBe(true);
     expect(trigger().getAttribute("aria-expanded")).toBe("true");
   });
 
@@ -141,7 +141,9 @@ describe("목록의 행 메뉴 단추가 이 부품이다 (017 T056)", () => {
 
     await user.click(button);
 
-    expect(button.getAttribute("aria-expanded")).toBe("true");
+    // 누름은 `mousedown` → **rAF** 로 열린다 (T105 실측) — `userEvent` 가 기다리는 마이크로태스크보다 늦다.
+    // 키보드로 여는 길은 rAF 를 거치지 않으므로 위의 검사들은 그대로다.
+    await waitFor(() => expect(button.getAttribute("aria-expanded")).toBe("true"));
     const items = screen.getAllByRole("menuitem").map((el) => el.textContent);
     expect(items).toEqual(["편집", "이름", "삭제"]);
   });

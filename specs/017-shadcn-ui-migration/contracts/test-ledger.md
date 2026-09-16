@@ -106,7 +106,7 @@ T104 에서 새 검사에 `not.toBeNull()` 을 썼다가 계수기가 640 으로
 | `InteractionStates.test.tsx` | 탭·분절 띠의 상태별 모습이 정본을 따른다 | 찾는 문자 `data-[state=active]:` → `data-[active]:` · `data-[state=on]:` → `data-[pressed]:` | 갈래가 쓰는 상태 속성 이름이 다르다 (research R2 개정 · ui-parts §2) | ⬜ |
 | `PacingControl` · `RunnerPacing` | 고른 실행 속도가 남고 보조기술에 알려진다 | `role=radio` + `aria-checked` → 단추 + `aria-pressed` | 새 갈래의 고르기 묶음은 **눌림** 의미다. 대안(라디오 유지)은 research R2 개정에 적었다 | ⬜ |
 | `TestListFilters` · `TestGroups` · `TestListSelection` · `ListLiveState` · `AiRecord` · `ComposePhase` | 거르기·그룹 칩·만드는 방법 카드가 동작하고 고른 것이 알려진다 | 같음 (`radio`/`radiogroup` → 단추/`group`) | 같음 | ⬜ |
-| `MenuKeyboard` · `RowMenuVisible` · `TestListActions` · `EditEntryPoints` · `DeleteOutcome` | 메뉴가 키보드로 열리고 항목이 골라진다 · 「이름」 뒤 초점이 칸에 간다(N-08) | 자리 감싸개 선택자(`data-radix-popper-content-wrapper`) → 새 갈래의 `Positioner` 표식 | 부품 구조가 다르다. **역할(`menuitem`)로 찾는 판정과 초점 단언은 그대로** | ⬜ |
+| `MenuKeyboard` · `RowMenuVisible` · `TestListActions` · `EditEntryPoints` · `DeleteOutcome` | 메뉴가 키보드로 열리고 항목이 골라진다 · 「이름」 뒤 초점이 칸에 간다(N-08) | ① 자리 감싸개 선택자(`data-radix-popper-content-wrapper`) → **우리 표식**(`data-slot=menu-positioner`)과 포털(`[data-base-ui-portal]`) ② 열림 표식 `data-state="open"` → **`data-open`** ③ **누른 뒤 메뉴를 기다린다**(5파일) | ①은 남의 내부 이름 대신 우리 표식으로 묻는다 — 실측 사슬 `BODY > [data-base-ui-portal] > [menu-positioner]{position:fixed} > [role=menu]`. ③은 새 갈래가 `mousedown` 에서 열되 **rAF 한 프레임 뒤**에 열기 때문이다(`useClick` 의 「Wait until focus is set on the element」). `userEvent` 는 마이크로태스크까지만 기다린다 — **키보드 길은 rAF 를 안 거쳐** 그쪽 6건이 계속 통과한 것이 단서였다. 역할(`menuitem`)로 찾는 판정과 초점 단언은 **그대로** | ✅ T105 — `EditEntryPoints` 의 「정의 보기가 없다」는 기다림이 생기며 **뜻이 살아났다**(전에는 아직 안 열려서 통과했다) |
 | `DialogFocus` | 대화상자 초점 이동·가두기·Esc·되돌림 | ① 열림 표식 `data-state="open"` → **`data-open`**(값 없는 속성) ② Tab 가두기 판정을 「팝업 안에 있는가」 → **「살아 있는 뒤쪽 조작에 앉지 않는가」** | ① 갈래가 쓰는 상태 표식이 다르다 ② 실제 브라우저는 `inert` 로 바깥을 **Tab 순서에서 뺀다**. jsdom 은 `inert` 를 구현하지 않아 그 조작이 순서에 남는다 — 실측(T104): Tab 3회 울타리 `span`(포털 안) · 4회 `body` · 5회 연 단추 → **한 틱 뒤 팝업 안으로 되돌아왔다.** 가려짐 자체는 바로 옆 검사(「뒤쪽 조작은 보조기술에서 가려진다」)가 따로 못 박는다 | ✅ T104 — `data-slot=alert-dialog-overlay` 는 **그대로 뒀다**(Backdrop 이 물려받는다) |
 | `ToastOverModal` | 모달이 열린 동안 알림이 낭독되고 눌린다 (R6 ③④) | 열림 표식 `data-state="open"` → **`data-open`** 2곳 | 같음. 그리고 **R6 ④ 의 보호 코드가 없어졌다** — 모달은 **자기 포털 안**에서 시작한 누름만 `outside-press` 로 받고, 알림 층은 body 직계라 열린 동안 `data-base-ui-inert` 를 받는다(T104 실측). `inNoticeLayer` 는 죽은 코드가 되어 지웠다 | ✅ T104 — 검사 문장은 그대로 |
 | `MirrorInputWithDialog` | 열린 동안 입력이 미러로 새지 않고, 닫으면 입력 경로가 되살아난다 | `body.style.pointerEvents === "none"` → **바깥이 `aria-hidden`+`data-base-ui-inert` 인가** | Radix 는 body 에 포인터 잠금을 걸었다. Base UI 는 그러지 않고 **스크롤 잠금 + body 직계 자식 inert** 로 막는다(T104 실측). 묻는 것은 그대로 — 열린 동안 바깥이 조작 대상이 아닌가 | ✅ T104 |
@@ -142,10 +142,10 @@ layout-contract-v3 L2(개정) · research R6(개정) · 순회 `edit-notice` 화
 | 밀어내기 손짓 만들기 | — | 움직임을 **두 번** 보낸다. 부품이 첫 움직임에서 출발점을 현재 자리로 다시 잡으므로(iOS 지연 흡수) 한 번만 보내면 이동 거리가 0 이 된다. 실제 손짓은 여러 번 온다 |
 | 「충분히 밀면 사라진다」의 **중간 상태** | 충분히 밀면 없어진다 | 「날아가는 동안은 아직 살아 있다」 단언을 **뺀다** — 그 180ms 는 손으로 만든 밀어내기(`useToastDismiss` 의 `FLY_MS`)의 값이었고, 나가는 처리는 이제 부품의 것이다. 요구(2026-09-11 사용자 결정 「밀어서 없앨 수 있다」)는 그대로 |
 
-### 가드가 잡은 것 — **검사를 고치지 않고 코드를 고친 자리 넷** (2026-09-16)
+### 가드가 잡은 것 — **검사를 고치지 않고 코드를 고친 자리 다섯** (2026-09-16)
 
-가드를 넓혀 통과시키지 않았다. 넷 다 **검사가 옳았다** — 둘은 부품이, 하나는 **내가 쓴 등록부**가,
-하나는 **내가 이식한 부품**이 틀렸다.
+가드를 넓혀 통과시키지 않았다. 다섯 다 **검사가 옳았다** — 둘은 부품이, 하나는 **내가 쓴 등록부**가,
+둘은 **내가 이식한 부품**이 틀렸다.
 
 | 검사 | 무엇을 잡았나 | 어떻게 고쳤나 |
 |---|---|---|
@@ -153,6 +153,7 @@ layout-contract-v3 L2(개정) · research R6(개정) · 순회 `edit-notice` 화
 | `NoticesAreToasts` 「층은 하나다」 · `ToastDismiss` 「닫을 길이 없으면 밀리지도 않는다」 | 알림마다 층이 생겨 둘이 됐고, 닫을 길 없는 알림이 밀려 사라졌다 | 공급자가 없을 때 쓰는 **층 하나**를 모듈이 만들고, 밀어내기는 빈 배열로 껐다. 두 검사 다 원래 문장 그대로 통과 |
 | `BeforeAfterParity` 「대조한 칸이 줄었다」 (**등록부를 잡았다**) | 작업대의 알림 층을 지우자 뒤 형제의 자리 번호가 밀려 `test-create` 의 **90 칸이 짝을 잃었고**, 나는 그것을 「의도된 차이」로 등록해 L2 를 통과시켰다. 가드가 대조 칸이 34328→29288 로 줄어든 것을 잡았다 — **「불일치 0」이 대조를 잃어서 쉬워진 것**이었다 | 등록을 지우고 **짝을 되살렸다**(`COLLECT_JS` 의 `DROP` — 없어진 층을 전환 전 나무에서도 빼 번호를 맞춘다). 대조 **34272칸**으로 돌아왔고, 되살린 90 칸에서 드러난 46 건은 전부 US3 줄들이 이미 설명하던 차이라 **자리 번호만 다시 매겼다**. 의도된 차이 307→**188** — 등록부가 줄고 대조가 늘었다 |
 | `AuthoringParity` 「지시문이 실려 나간다」 (**내 이식이 만든 회귀를 잡았다**) | 상세 판을 Base UI 로 옮기자 **옆 칸에 치던 글자를 판이 가로챘다** — 「자연어로 Step 추가」에 「장바구니에 담아」를 쳤는데 `'장'` 만 남았다. 부품의 `initialFocus` 가 팝업 참조를 **이르게** 읽어 아무 데도 두지 않다가, 렌더가 더 도는 화면(EditView)에서 **뒤늦게** 초점을 옮긴 탓이다. HEAD 에서 14/14 통과함을 스택으로 확인해 **내가 깨뜨린 것**임을 먼저 못 박았다 | 초점을 **판이 DOM 에 붙는 순간 한 번만** 주는 콜백 참조로 바꿨다(`initialFocus={false}`). 중간에 시도한 마운트 효과는 **이르러서** `panel.current` 가 `null` 이었고 `?.` 때문에 **조용히 아무 일도 하지 않았다** — 계약이 깨진 채 통과할 뻔했다. 이때 「열리면 초점이 판 자체로 간다」를 붙잡는 검사가 **하나도 없다는 것**도 드러나, `DialogFocus` 에 두 검사(판이 초점을 가져온다 · 남의 입력을 먹지 않는다)를 새로 넣었다 (단언 +2 → 2276) |
+| `TestListActions` 「「이름」을 고르면 이름 칸이 초점을 받는다」 (**내 고침을 두 번 되돌려 세웠다**) | 행 메뉴를 Base UI 로 옮기자 「이름」 뒤 초점이 칸이 아니라 `body` 에 떨어졌다 — **N-08 회귀**. 이 검사는 2026-09-15 브라우저 확인에서 생긴 회귀 감시였고, 이번에 제 몫을 했다 | 고침 **둘이 먼저 틀렸다**: ① `finalFocus` 로 칸을 가리키기 — 칸은 「이름」을 고른 **결과로** 열리므로 그 시점에 없다(`null`) ② `finalFocus:false` 로 두고 칸의 `autoFocus` 에 맡기기 — 항목을 고르는 방식에 따라 칸이 붙은 **뒤** 메뉴가 풀리며 초점이 문서로 떨어진다. 셋째로 **순서에 기대지 않는 고침**을 했다: `renaming` 이 열리는 그 렌더에서 **우리가** 칸으로 옮기고, `finalFocus` 는 「여는 단추로 되돌리지 마라」만 맡는다 |
 | `ImplementationCount` | 구현이 또 한 벌 생기지 않는다 | 이름 단위 퇴역에 `radix-ui`·`asChild`·`useToastDismiss`·`TOAST_LAYER_CLASSES` 추가 | 옛 구현이 되살아나지 않게 | ⬜ |
 | `UiSkin` (G-F) | 부품의 모습이 정본이다 | `behavior = base` 인 파일이 `@base-ui/react` 를 가져오는지 · 출처 줄에 **갈래**가 있는지 | guards 개정 | ✅ T099 — 출처 규칙을 **넓혔다**(`shadcn base/<항목>` 추가 · 옛 `new-york-v4` 형식은 그대로 받는다). 좁히지 않았다. **가드가 실제로 잡았다**: 새 알림 부품이 원본의 `outline-none` 을 들고 들어온 것을 「윤곽선 지우기」로 막았다 — 지우고 사유를 주석에 남겼다 |
 | `ScreenSweep` | 순회 보고서가 낡지 않고 검출이 0 이다 | 화면 수 기대값 +2 (알림 화면) | screen-sweep SW-5 개정 | ⬜ |

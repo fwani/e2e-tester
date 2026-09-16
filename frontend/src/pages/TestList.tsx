@@ -1141,9 +1141,29 @@ function Row({
     닫히며 초점이 `⋮` 로 돌아갔다. 키보드 사용자는 칸에 닿으려면 Shift+Tab 을 더 눌러야 했다
     (2026-09-15 브라우저 확인 · 테스트는 칸이 열리는 것만 보고 초점은 보지 않았다). **메뉴가 다 닫힌 뒤에**
     직접 옮긴다.
+
+    **T105 에서 다시 단순해졌다.** 새 갈래는 「닫힌 뒤 어디로 보낼지」를 `finalFocus` 로 받으므로,
+    되돌리는 것을 막고 다시 옮기는 대신 **되돌리지 말라고 한 번 답하면** 된다(아래 `MenuContent`).
+    그러면 칸의 `autoFocus` 가 017 전처럼 그대로 먹는다. `renameInput` 은 그 칸을 가리키는 참조로만 남는다.
   */
   const renameInput = useRef<HTMLInputElement>(null);
   const focusRenameOnClose = useRef(false);
+
+  /*
+    **칸이 열리는 순간 우리가 초점을 옮긴다** (N-08 · 2026-09-16 실측).
+
+    칸의 `autoFocus` 에 맡기면 **닫히는 순서에 따라 들쭉날쭉하다.** 메뉴 항목을 어떻게 고르느냐에 따라
+    (포인터로 고르는 길 · 검사가 쓰는 `act(() => item.click())` 같은 동기 길) 칸이 붙은 **뒤에** 메뉴가
+    풀리고, 그때 초점이 문서로 떨어져 `body` 에 남았다. 부품에게 「되돌리지 마라」고만 해서는 그 빈자리를
+    메우지 못한다.
+
+    그래서 순서에 기대지 않는다 — `renaming` 이 열린 상태가 되는 그 렌더에서 칸으로 옮긴다.
+    `finalFocus` 는 여전히 「여는 단추로 되돌리지 마라」를 맡는다(아래 `MenuContent`). 둘이 다투지 않는다.
+  */
+  const renameOpen = renaming !== null;
+  useEffect(() => {
+    if (renameOpen) renameInput.current?.focus();
+  }, [renameOpen]);
 
   return (
     <div
@@ -1324,11 +1344,23 @@ function Row({
           </Tooltip>
           <MenuContent
             data-row-menu={row.id}
-            onCloseAutoFocus={(event) => {
-              if (!focusRenameOnClose.current) return;
+            /*
+              N-08 — 「이름」을 고르면 행 안에 이름 칸이 열린다. 닫힌 뒤 초점은 **그 칸**으로 가야 한다
+              (기본값은 여는 단추다). 017 은 `onCloseAutoFocus` 로 되돌림을 막고 다시 옮기는 두 겹이었는데,
+              부품이 「닫힌 뒤 어디로 보낼지」를 직접 받으므로 한 겹이면 된다 (T105).
+              `true` 를 돌려주면 기본 자리(여는 단추)로 간다.
+            */
+            finalFocus={() => {
+              if (!focusRenameOnClose.current) return true;
               focusRenameOnClose.current = false;
-              event.preventDefault();
-              renameInput.current?.focus();
+              /*
+                **여기서 칸을 가리킬 수는 없다.** 칸은 「이름」을 고른 **결과로** 열리므로 메뉴가 닫히는
+                이 시점에는 아직 없다(`renameInput.current === null`). 그래서 「아무 데도 두지 마라」(`false`)고
+                답하고, 칸이 뜨면서 **자기 `autoFocus`** 로 받게 둔다 — 017 전에 되던 방식이다.
+                017 이 그것을 손으로 옮겨야 했던 이유는 옛 갈래가 닫히며 초점을 `⋮` 로 **되돌렸기** 때문이고,
+                되돌리지 않으면 그 수고가 필요 없다. 그 밖의 닫힘은 `true` — 여는 단추로 돌아간다(Esc 포함).
+              */
+              return false;
             }}
           >
             {/*
@@ -1338,20 +1370,20 @@ function Row({
               들어가도 안전하다.
             */}
             {onOpenDefinition && (
-              <MenuItem data-row-menu-item onSelect={onOpenDefinition}>
+              <MenuItem data-row-menu-item onClick={onOpenDefinition}>
                 {EDIT_ENTRY_LABEL}
               </MenuItem>
             )}
             <MenuItem
               data-row-menu-item
-              onSelect={() => {
+              onClick={() => {
                 focusRenameOnClose.current = true;
                 onRenameStart();
               }}
             >
               이름
             </MenuItem>
-            <MenuItem data-row-menu-item variant="danger" onSelect={onDeleteStart}>
+            <MenuItem data-row-menu-item variant="danger" onClick={onDeleteStart}>
               삭제
             </MenuItem>
           </MenuContent>
