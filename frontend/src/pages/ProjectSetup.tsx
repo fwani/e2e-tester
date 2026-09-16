@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrandMark, HeaderBar } from "../components/design/Chrome";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
-import { Toast } from "../components/Toast";
+import { Toast } from "../ui/Toast";
 import { ImportDoneNotice, ImportFilePicker, ImportPreview } from "./ImportPreview";
 import type { ErrorInfo } from "../components/ErrorNotice";
 

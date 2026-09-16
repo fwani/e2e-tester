@@ -17,11 +17,11 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Toast } from "../src/components/Toast";
+import { Toast } from "../src/ui/Toast";
 import { ImportDoneNotice } from "../src/pages/ImportPreview";
 import { TestList } from "../src/pages/TestList";
 import type { ImportResultView } from "../src/api/client";
-import { TOAST_LAYER_CLASSES } from "../src/ui/Notice";
+import { TOAST_VIEWPORT_CLASSES } from "../src/ui/Toast";
 
 const EMPTY_LISTING = { counts: { total: 0, pass: 0, fail: 0 }, groups: [], tests: [], problems: [] };
 
@@ -83,7 +83,7 @@ describe("토스트 층", () => {
 
   it("층은 정본의 자리를 쓴다", () => {
     render(<Toast>무엇이든</Toast>);
-    expect(layer()!.className, "층이 정본의 자리를 쓰지 않는다").toBe(TOAST_LAYER_CLASSES);
+    expect(layer()!.className, "층이 정본의 자리를 쓰지 않는다").toBe(TOAST_VIEWPORT_CLASSES);
   });
 
   it("오류는 낭독기에게 alert 이고 닫는 길이 있다", () => {

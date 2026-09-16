@@ -38,7 +38,7 @@ import { useState, type ComponentPropsWithRef, type ReactNode } from "react";
 import { Button } from "./Button";
 import { cn } from "./cn";
 
-/** 알림 층 — 모달이 열린 동안에도 살아 있어야 하는 자리 (`components/Toast` · `Workbench`). */
+/** 알림 층 — 모달이 열린 동안에도 살아 있어야 하는 자리 (`ui/Toast` 의 층). */
 const NOTICE_LAYER_SELECTOR = "[data-toast-layer], [data-workbench-notice-layer]";
 
 export function inNoticeLayer(target: EventTarget | null): boolean {

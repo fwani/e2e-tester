@@ -26,7 +26,7 @@ import type {
 import { ApiError, imports } from "../api/client";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
-import { Toast } from "../components/Toast";
+import { Toast } from "../ui/Toast";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { Button } from "../ui/Button";

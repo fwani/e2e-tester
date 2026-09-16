@@ -12,7 +12,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Toast } from "../src/components/Toast";
+import { Toast } from "../src/ui/Toast";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogTitle } from "../src/ui/AlertDialog";
 import { Button } from "../src/ui/Button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "../src/ui/Dialog";

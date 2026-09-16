@@ -61,7 +61,7 @@
 | `Button` | `Slot` 로 `asChild` | (동작 층 없음) | **`asChild` 제거.** 부모가 `render={<Button/>}` 로 받는다 |
 | `Dialog` | Root/Portal/Overlay/Content · `onInteractOutside` · 수제 `useReturnFocus` | Root/Portal/**Backdrop**/**Popup** | 바깥 누름은 `onOpenChange` 의 **닫힌 이유**로 · 초점은 `initialFocus`/`finalFocus` (수제 훅 삭제) |
 | `AlertDialog` | 같은 구조 | 같은 구조 | 취소 단추가 `Close render={<Button/>}` |
-| `OverlayPane` | `Dialog modal={false}` · 포털 없음 | 같음 (S6) | 바깥 누름 무시를 이유 판정으로 |
+| `OverlayPane` | `Dialog modal={false}` · 포털 없음 | `Dialog modal={false}` · **`Portal container=` 로 작업대 안에** (S6 — 포털은 뺄 수 없다) | 바깥 누름 무시를 이유 판정으로 · 자리 계약은 그대로 |
 | `DropdownMenu` | Trigger/Portal/Content 가 자리도 갖는다 | Root/Trigger/Portal/**Positioner**/Popup | 자리 속성이 `Positioner` 로 · `onCloseAutoFocus` → Popup `finalFocus`(N-08 의 「이름」 초점이 여기로) |
 | `Tabs` | Root/List/Trigger/Content · `data-state=active` | Root/List/**Tab**/**Panel** · **`data-active`** | 선택 상태 문자 · 뿌리 `asChild` → `render` |
 | `ToggleGroup` | `type="single"` → `radiogroup`/`radio` · `aria-checked` | 기본 배타 · **눌림**(`aria-pressed`·`data-pressed`) · 값이 배열 | 낭독되는 의미가 바뀐다 · **빈 값 금지를 부품이 강제**(S7) |

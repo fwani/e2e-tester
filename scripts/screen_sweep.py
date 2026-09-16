@@ -316,6 +316,27 @@ SCENARIOS: list[dict] = [
     {"name": "runner-disconnected", "phase": SESSION, "policy": "data", "cut_events": True,
      "steps": [("click_role", "button", "이어서 보기")], "wait": 2500,
      "evidence": [("text", "실시간 연결이 끊겼습니다")]},
+    # ── 알림이 떠 있는 화면 (017 Phase 10 · T097 · N-02) ───────────────────
+    #
+    # 지금까지 순회가 알림을 만나는 화면은 결과·연결 끊김 둘뿐이었고, **그 둘은 알림이 덮는
+    # 자리에 조작이 없다.** 알림에 가려지는 조작(Step 패널 머리 줄의 「전부 고르기」·행 체크 칸·
+    # 패널 바닥)은 편집·검토 국면에만 있다 — 그래서 순회가 N-02 를 놓쳤다 (screen-sweep SW-5).
+    #
+    # 알림은 5초 뒤 사라지므로 **마지막에 포인터를 올려 시간을 멈춘 뒤** 잰다(`hover`).
+    {"name": "edit-notice", "phase": OPEN, "policy": "data", "query": "?screen=definition&test=TC-001",
+     "steps": [("check", '[data-row-action="step.toggleSelection"]', 0),
+               ("click_role", "button", "고른 것 지우기"),
+               ("click_css", "[data-bulk-delete-confirm-run]"),
+               # 층은 앱 뿌리의 `[data-toast-layer]` 하나다 (017 Phase 10 — 작업대가 그리던 층을 지웠다).
+               ("hover", "[data-toast-layer] > *")],
+     "evidence": [("css", "[data-phase-pill]"), ("text", "먼저 저장해야 합니다")]},
+    # **검토 국면(녹화를 멈춘 뒤)은 순회로 잴 수 없다** (2026-09-16 · 1회차 실측). 두 가지가 막는다:
+    #   1. 순회는 녹화 세션을 **한 번** 만들어 폭 넷에 재사용한다. 「중지」가 그 세션을 끝내므로
+    #      두 번째 폭부터 단추가 없다 (1440·1920·2560 에서 조작 실패).
+    #   2. 순회는 대상 앱을 조작하지 않아 **기록된 Step 이 0개**다. 그래서 「저장되지 않았습니다」
+    #      알림이 애초에 뜨지 않는다 (1280 에서 증거 실패).
+    # 편집 국면(`edit-notice`)이 같은 것을 잰다 — 알림이 Step 패널 머리 줄의 조작을 덮는가.
+    # 검토 국면의 알림 쌓임은 사람이 본다 (quickstart H-9).
 ]
 
 # 닿지 못하는 화면 — 순회되지 않았다는 사실을 보고서에 싣는다 (SW-5).
@@ -522,6 +543,10 @@ def _reach(page, sc: dict) -> str | None:
                 page.locator(step[1]).first.click(timeout=6000)
             elif kind == "check":
                 page.locator(step[1]).nth(step[2]).check(timeout=6000)
+            elif kind == "hover":
+                # 알림 위에 포인터를 올려 **머무는 시간을 멈춘다** (017 Phase 10 · T097).
+                # 알림은 5초 뒤 사라지므로, 올리지 않으면 재는 순간에 이미 없을 수 있다.
+                page.locator(step[1]).first.hover(timeout=6000)
         except Exception as exc:  # noqa: BLE001
             return f"조작 실패 {step}: {type(exc).__name__}"
         page.wait_for_timeout(700)

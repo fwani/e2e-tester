@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
-import { Toast } from "../components/Toast";
+import { Toast } from "../ui/Toast";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { secrets, type SecretsResponse } from "../api/client";

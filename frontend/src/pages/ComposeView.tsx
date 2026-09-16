@@ -22,7 +22,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError, ai, type ProjectView } from "../api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "../components/ErrorNotice";
-import { Toast } from "../components/Toast";
+import { Toast } from "../ui/Toast";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
 import { Workbench } from "../components/workbench/Workbench";

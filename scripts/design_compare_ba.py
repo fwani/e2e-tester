@@ -200,7 +200,7 @@ INTENDED: list[dict[str, str]] = [
     },
     {
         "screens": ["test-create"],
-        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[1\]/DIV\[0\](?:/DIV\[0\])?|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[1\]/DIV\[1\]",
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[0\]/DIV\[0\](?:/DIV\[0\])?|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[0\]/DIV\[1\]",
         "props": ["flex-basis", "height", "min-height"],
         "reason": (
             "**B-04 를 고쳤다.** 만들기 국면의 대상 앱 자리가 88px 고정이었다 — 한 줄짜리 「브라우저 열기」 안내를 위해 잰 "
@@ -210,7 +210,7 @@ INTENDED: list[dict[str, str]] = [
     },
     {
         "screens": ["test-create"],
-        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[1\](?:/.*)?",
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[0\](?:/.*)?",
         "props": ["width"],
         "reason": (
             "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 "
@@ -220,7 +220,7 @@ INTENDED: list[dict[str, str]] = [
     },
     {
         "screens": ["test-create"],
-        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[2\](?:/.*)?",
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[1\](?:/.*)?",
         "props": ["width", "min-width", "height", "white-space", "flex-shrink", "flex-wrap"],
         "reason": (
             "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 "
@@ -230,6 +230,29 @@ INTENDED: list[dict[str, str]] = [
             "내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
         ),
     },
+    # ── 017 Phase 10 — 알림 층이 앱 뿌리로 모이고 자리가 왼쪽 아래로 내려갔다 (N-02) ──────────
+    {
+        "screens": ["keys", "secrets", "test-list", "test-list-unrun", "test-list-passed", "test-create"],
+        "kinds": ["structure"],
+        "reason": (
+            "알림 층이 **앱 뿌리에 하나**가 되며(`ui/Toast` 의 `<Toaster>`) 모든 화면의 `body` 에 포털과 "
+            "층 요소 **둘**이 더해진다 — 화면마다 29→31 · 23→25 · 149→151 처럼 정확히 +2 다. "
+            "빈 층은 포인터를 통과시키고 아무것도 그리지 않는다 — 사람이 보는 화면에는 차이가 없다."
+        ),
+    },
+    # **여기 있던 줄 하나를 지웠다** (2026-09-16). 작업대가 직접 그리던 알림 층을 없애자 뒤따르던 형제의
+    # 자리 번호가 밀려 `test-create` 의 90 칸이 통째로 `unpaired` 가 됐고, 나는 그것을 「의도된 차이」로
+    # 등록했다. 그러나 그 90 칸은 **설명된 차이가 아니라 잃어버린 대조**였다 — 요소는 그대로 있는데
+    # 짝을 못 지어 비교 자체가 사라진 것이다. `BeforeAfterParity` 의 「대조한 칸이 줄었다」가 그것을
+    # 잡았다 (34328 → 29288 = 90 칸 × 56 속성). 등록으로 덮는 대신 **짝을 되살렸다** — COLLECT_JS 의
+    # `DROP`. 등록부는 차이를 설명할 때 쓰는 것이지, 못 본 것을 덮을 때 쓰는 것이 아니다.
+    #
+    # **짝을 되살리자 test-create 의 자리 번호가 한 칸씩 당겨졌다.** 전환 전 작업대 본문의 자식은
+    # [0] 알림 층 · [1] 왼쪽 열 · [2] Step 패널이었고 위 US3 줄들은 그 번호로 적혀 있었다. 층을 빼면
+    # 전환 전도 [0] 왼쪽 열 · [1] Step 패널이 되어 지금 코드와 같아진다 — 그래서 이 화면의 US3 줄 셋을
+    # `DIV[2]/DIV[1]→DIV[2]/DIV[0]` · `DIV[2]/DIV[2]→DIV[2]/DIV[1]` 로 **다시 번호 매겼다.**
+    # 덮는 속성과 요소는 그대로다. 되살린 90 칸에서 나온 46 건이 전부 이 줄들이 이미 설명하던 차이였다 —
+    # 왼쪽 열 +57px(N-07) · 대상 앱 자리가 내용 높이로(B-04) · Step 패널 머리 줄과 입력칸(B-03·B-05·B-06).
 ]
 
 
@@ -239,10 +262,17 @@ def is_intended(m: dict) -> str | None:
     줄은 **좁게** 적는다 — 화면(`screen` 하나 또는 `screens` 목록) · 자리(`path` 정확히 또는 `path_re`
     정규식 전체 일치) · 속성(`prop` 하나 또는 `props` 목록, 없으면 그 자리의 모든 속성). 017 4-B 에서
     같은 부품 전환이 목록 행마다 같은 차이를 내 줄을 행 수만큼 적게 되자 정규식 자리를 더했다.
+
+    **종류(`kinds`)를 더했다** (2026-09-16 · Phase 10). 요소가 생기거나 사라지면 불일치가 속성이 아니라
+    `structure`(개수만 있고 **자리가 없다**) · `unpaired`(짝을 못 찾은 자리)로 나온다. 자리가 없으면
+    `path` 로 좁힐 수 없어, 종류로 좁히지 않는 줄은 그 화면의 **자리 없는 불일치를 전부** 삼킨다.
+    좁히는 열쇠다 — 적지 않으면 지금까지처럼 모든 종류에 걸린다.
     """
     for row in INTENDED:
         screens = row.get("screens") or [row.get("screen")]
         if m["screen"] not in screens:
+            continue
+        if "kinds" in row and m.get("kind") not in row["kinds"]:
             continue
         if "path_re" in row:
             if m.get("path") is None or re.fullmatch(row["path_re"], m["path"]) is None:
@@ -464,6 +494,12 @@ COLLECT_JS = """
   // 017 T070 — 아트보드가 더한 두 겹(스크롤 영역 · 본문 상자)은 경로에서 건너뛴다. 그 자식들을 한 겹 위의 자식으로
   // 이어 센다 — 전환 전 코드에는 이 두 겹이 없으므로 본문 요소가 같은 경로로 짝지어진다 (Chrome.tsx 머리주석).
   const FLATTEN = new Set(["artboard-scroll", "artboard-body"]);
+  // 017 Phase 10 — **FLATTEN 과 같은 이유, 반대 방향이다.** 전환 전 작업대는 알림 층을 본문의 첫 자식으로
+  // 직접 그렸고 지금은 없다(층은 앱 뿌리 하나 · layout-contract-v3 L2). 그 자식이 빠지면 **뒤따르던 형제의
+  // 자리 번호가 한 칸씩 당겨져** 같은 요소가 다른 경로로 읽힌다 — test-create 의 90 칸이 통째로 짝을 잃었다.
+  // 그래서 이 층은 **나무에서 뺀다**: 줄도 만들지 않고 자식도 보지 않으며 **자리 번호도 올리지 않는다.**
+  // 지금 코드에는 이 표식이 없으므로 규칙은 전환 전 나무에만 걸린다.
+  const DROP = (el) => el.hasAttribute("data-workbench-notice-layer");
   const walk = (el, path) => {
     const style = getComputedStyle(el);
     const row = { path, tag: el.tagName };
@@ -472,6 +508,7 @@ COLLECT_JS = """
     let i = 0;
     const visit = (parent) => {
       for (const child of parent.children) {
+        if (DROP(child)) continue;
         if (FLATTEN.has(child.getAttribute("data-slot"))) {
           visit(child);
           continue;

@@ -8,8 +8,7 @@
  * | 부품 | 정본 | 자리 |
  * |---|---|---|
  * | `Notice` | `.notice` | 문서 흐름 안. 한 줄 띠(32px) |
- * | `Toast` | `.notice.float.toast` | 흐름 밖에 겹쳐 뜬다. 여러 줄 |
- * | `ToastLayer` | `.toast-layer` | 토스트가 쌓이는 자리 (뷰포트 오른쪽 위) |
+ * | ~~`Toast`~~ · ~~`ToastLayer`~~ | — | **`ui/Toast` 로 옮겼다** (2026-09-16 · 017 Phase 10) |
  *
  * ## 정본이 기록한 사고 둘을 되풀이하지 않는다
  *
@@ -53,6 +52,14 @@ const TONE: Record<NoticeTone, string> = {
   ai: "bg-ai-t border-ai",
 };
 
+/**
+ * 뜻 → 바탕을 **알림 부품도 같은 표에서 가져간다** (017 Phase 10 · T099).
+ *
+ * 흐름 안 띠(`Notice`)와 떠 있는 알림(`ui/Toast`)은 같은 뜻을 같은 바탕으로 말한다. 표를 두 벌 두면
+ * 한쪽만 고쳐진다 — 015 가 부품을 한 곳으로 모은 이유와 같다.
+ */
+export const NOTICE_TINT = TONE;
+
 export interface NoticeProps extends Omit<ComponentPropsWithRef<"div">, "className"> {
   readonly tone?: NoticeTone;
   /** **배치만.** 모양은 `tone` 으로 정한다. */
@@ -80,77 +87,14 @@ export function Notice({ tone = "default", layout, children, ...rest }: NoticePr
   );
 }
 
-/**
- * 흐름 밖에 겹쳐 뜨는 알림. 정본 `.notice.float.toast`.
- *
- * 흐름 안에 두면 알림이 뜰 때마다 아래 전부가 내려갔다 (사용자 보고). 겹쳐 뜨면 미러
- * 위에 놓이므로 그림자 없이는 문장이 미러의 일부처럼 읽힌다 — `shadow-e2` 는 Step
- * 상세(`.overlay-pane`)와 **같은 층에 뜨는 것은 같은 높이**라는 규율에서 온다.
- *
- * 높이를 풀고 최소 높이만 지킨다 (위 사고 (2)).
- */
-export function Toast({ tone = "default", layout, children, ...rest }: NoticeProps) {
-  const cls = cn(
-    "flex-none min-h-notice flex items-start gap-s2 px-s3 py-s2",
-    "font-sans text-[12px] leading-none font-normal",
-    "border rounded-chip shadow-e2",
-    TONE[tone],
-    layout,
-  );
-  return (
-    <div className={cls} data-slot="toast" data-tone={tone} {...rest}>
-      {children}
-    </div>
-  );
-}
+/*
+  **떠 있는 알림과 그 층은 이 파일에 없다** (2026-09-16 · 017 Phase 10).
 
-/**
- * 토스트가 쌓이는 자리. 정본 `.toast-layer`.
- *
- * 뷰포트 오른쪽 위 고정 (2026-09-10 사용자 결정 — 「mac 의 알림과 같은 개념」).
- * 이전에는 좌측 아래였고, 그 자리는 화면마다 달랐다 — 미러가 없는 결과·편집 화면에서는
- * 본문 위에 떴다. 화면 밖(뷰포트 고정)으로 옮기면 그 차이가 사라진다.
- *
- * 비어 있을 때 아래를 막지 않도록 **층에서 포인터를 끄고 알림에서만 되살린다.**
- * 그것을 `[&>*]:pointer-events-auto` 로 옮겼다 — 정본 `.toast-layer > *` 와 같다.
- *
- * ## 높이 — 문서에 있는 띠가 정한다 (017 B-01 · layout-contract-v3 L2)
- *
- * 015 까지 `top` 은 `--h-header + 8px` 하나였고, **결과·녹화 화면에서 층이 국면 띠를 덮었다** —
- * 「Step 05부터 실행」·「저장」·「중지」를 누를 수 없었다. 2026-09-11 수정이 국면 띠 몫을 정본
- * 클래스 `.toast-layer` 에 더했지만 앱은 015 T075 부터 정본의 **클래스 규칙을 싣지 않으므로**
- * 그 수정은 화면에 닿지 않았다. 게다가 작업대가 이 상수를 복사한 문자열을 따로 쓰고 있었다.
- *
- * 값 하나로는 풀리지 않는다. 국면 띠가 있는 화면(작업대 전 국면) · 머리띠만 있는 화면(목록 ·
- * 프로젝트 · 가져오기) · 띠가 없는 화면(비밀 값 · 키 관리)이 섞여 있어, 국면 띠 몫을 고정하면
- * 목록에서 48px 가 뜬다. 그래서 층이 `:root:has([data-shell=…])` 로 **지금 문서에 있는 띠**를 읽는다.
- * 띠가 `data-shell` 을 내보낸다 (`AppHeader`·`HeaderBar`·`PhaseBar`).
- *
- * **조건은 서로 배제한다.** 국면 띠가 있는 문서에는 머리띠도 있으므로 머리띠 조건에
- * `:not(:has([data-shell=phase]))` 를 붙인다. 두 조건이 동시에 성립하면 이기는 쪽을 산출 CSS 의
- * 순서가 정한다 — 015 의 흰 버튼과 같은 형태다. 조건 규칙은 특이도가 `top-s4` 보다 높으므로
- * 기본값을 늘 이긴다. chromium 실측: 16px · 64px · 112px (research S5).
- *
- * `aria-live` 는 층의 **속성**이라 여기 없다 — 층을 그리는 쪽(`components/Toast`·`Workbench`)이 준다.
- */
-export const TOAST_LAYER_CLASSES =
-  "fixed right-s4 z-[60] w-[min(420px,calc(100vw-32px))] " +
-  "overflow-y-auto flex flex-col gap-s2 " +
-  "pointer-events-none [&>*]:pointer-events-auto " +
-  // 띠 없음
-  "top-s4 max-h-[calc(100vh-32px)] " +
-  // 머리띠만
-  "[:root:has([data-shell=header]):not(:has([data-shell=phase]))_&]:top-[calc(var(--h-header)+8px)] " +
-  "[:root:has([data-shell=header]):not(:has([data-shell=phase]))_&]:max-h-[calc(100vh-var(--h-header)-24px)] " +
-  // 머리띠 + 국면 띠
-  "[:root:has([data-shell=phase])_&]:top-[calc(var(--h-header)+var(--h-phase)+8px)] " +
-  "[:root:has([data-shell=phase])_&]:max-h-[calc(100vh-var(--h-header)-var(--h-phase)-24px)]";
+  `Toast`(`.notice.float.toast`)와 `ToastLayer`·`TOAST_LAYER_CLASSES`(`.toast-layer`)가 여기 있었다.
+  지금은 `ui/Toast` 가 부품 하나로 갖는다 — 모양·자리·퇴장(5초·밀어내기·`×`)·상한이 한 곳이다.
+  이 파일에는 **흐름 안 한 줄 띠**(`Notice`)만 남는다. 뜻별 바탕 표(`NOTICE_TINT`)는 둘이 함께 쓴다.
 
-export function ToastLayer({ layout, children, ...rest }: Omit<NoticeProps, "tone">) {
-  const cls = cn(TOAST_LAYER_CLASSES, layout);
-  return (
-    <div className={cls} data-slot="toast-layer" aria-live="polite" {...rest}>
-      {children}
-    </div>
-  );
-}
+  옛 층이 들고 있던 「문서에 있는 띠가 자리를 정한다」 규칙(B-01)은 자리가 화면 아래로 내려가며
+  필요 없어졌다. 그 경위는 contracts/layout-contract-v3.md L2 에 기록으로 남아 있다.
+*/
+

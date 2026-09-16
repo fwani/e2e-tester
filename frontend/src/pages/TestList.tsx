@@ -65,7 +65,7 @@ import {
 import { ErrorNotice, describeError, localError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
-import { Toast } from "../components/Toast";
+import { Toast } from "../ui/Toast";
 import { isRunning } from "../lib/sessionState";
 import { EDIT_ENTRY_LABEL, outcomeChip, outcomeLabel, stepLabel } from "../lib/wording";
 import { chipTone, rowMark } from "../theme/tone";

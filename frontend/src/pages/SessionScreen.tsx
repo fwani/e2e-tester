@@ -828,23 +828,19 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   const push = (n: Notice) => notices.push(n);
 
   /*
-    007 FR-220 (T074) — **사용자 조작 없이 국면이 바뀌면 무엇이 바뀌었는지 알린다.**
+    007 FR-220 (T074) — 사용자 조작 없이 국면이 바뀌면 무엇이 바뀌었는지 알린다.
 
-    화면이 하나가 되면서 생긴 새 위험이다. 화면이 통째로 갈리던 때는 전환이 그 자체로
-    보였지만, 지금은 같은 껍데기 안에서 국면만 바뀐다 — 알리지 않으면 사용자는 자기가
-    무엇을 눌렀는지 되짚는다. 보던 Step 과 스크롤은 그대로 둔다 (FR-239).
+    **2026-09-16 — 이 알림을 내지 않는다** (017 FR-018b 의 연장 · research R6 개정 · N-02).
+
+    화면이 이미 그 사실을 말한다. 국면 띠의 국면 표시가 새 국면으로 바뀌고, 그것이 사용자가
+    보는 자리다. 같은 사실을 알림이 되풀이하면 **알림이 쌓여 Step 패널의 조작을 가린다** —
+    브라우저 확인(2026-09-15)에서 녹화를 멈추자 이 알림을 포함해 셋이 한꺼번에 떠 Step 01·02 행의
+    체크 칸과 행 조작을 덮었다.
+
+    FR-220 의 요구(국면이 저절로 바뀌면 알 수 있어야 한다)는 국면 표시가 만족한다. `autoTransition`
+    상태는 남는다 — 무엇으로 바뀌었는지는 여전히 계산하고, 알림으로 내지 않을 뿐이다.
   */
-  if (autoTransition !== null) {
-    push({
-      id: "auto-transition",
-      tone: "info",
-      role: "status",
-      message: autoTransition,
-      nextAction: "보고 있던 Step 은 그대로 있습니다.",
-      action: null,
-      dismissible: true,
-    });
-  }
+  void autoTransition;
 
   /*
     2026-09-09 — **저장하지 않은 기록이 있으면 화면이 먼저 말한다** (사용자 보고).

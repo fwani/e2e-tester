@@ -109,7 +109,18 @@ const FORBIDDEN_IMPORT: readonly { re: RegExp; why: string }[] = [
   { re: /tw-animate-css/, why: "움직임 언어가 없다 (FR-010)" },
 ];
 
-const PROVENANCE = /^\s*\*\s*출처:\s*(?:015\b|shadcn new-york-v4\/[a-z-]+ @ shadcn \d+\.\d+\.\d+)/m;
+/*
+  출처 줄. **갈래(registry base)를 적는 형식을 받도록 넓혔다** (2026-09-16 · Phase 10).
+
+  017 은 `new-york-v4` 하나만 받았는데, 그것은 shadcn 의 **Radix 갈래** 이름이었다. shadcn 이 2026-07
+  부터 Base UI 를 기본 갈래로 쓰므로 출처에 갈래가 드러나야 한다 — 017 의 출처 줄은 갈래를 적지 않아
+  Radix 갈래를 옮긴 사실이 문서에 남지 않았다 (contracts/ui-parts.md §0-2).
+
+  **넓히기만 한다**: 옛 형식은 그대로 받는다. 아직 이식하지 않은 부품이 그 형식이고, 가드를 좁혀
+  통과시키지 않는다는 규칙(guards.md)이 이 방향이다.
+*/
+const PROVENANCE =
+  /^\s*\*\s*출처:\s*(?:015\b|shadcn (?:new-york-v4|base)\/[a-z-]+ @ shadcn \d+\.\d+\.[\dx]+)/m;
 
 function excused(file: string, name: string): boolean {
   return VISUAL_LANGUAGE_EXCEPTIONS.some(
@@ -223,7 +234,8 @@ describe("G-F — 부품의 모습이 정본이다 (017)", () => {
     const bad = UI_FILES.filter((rel) => !PROVENANCE.test(readFileSync(join(ROOT, rel), "utf8")));
     expect(
       bad,
-      "파일 머리 주석에 ` * 출처: shadcn new-york-v4/<항목> @ shadcn 4.21.0` 또는 ` * 출처: 015` 줄이 없다.\n" +
+      "파일 머리 주석에 ` * 출처: shadcn base/<항목> @ shadcn 4.21.x`(갈래를 적는다) 또는\n" +
+        "` * 출처: shadcn new-york-v4/<항목> @ shadcn 4.21.0`(옛 갈래) 또는 ` * 출처: 015` 줄이 없다.\n" +
         "원본을 되짚을 수 없으면 대응표를 따랐는지 확인할 수 없다 (contracts/ui-parts.md §0).\n" +
         bad.join("\n"),
     ).toEqual([]);

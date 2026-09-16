@@ -249,22 +249,23 @@ toast 부품으로 옮기며 자리를 아래로 내린다. **N-02 를 닫는다
 
 ### 10-0 스파이크
 
-- [ ] T094 [P] 스파이크 S6 — 임시 파일에서 `@base-ui/react` `Dialog` 를 `modal={false}` · **포털 없이** 그려 자리·초점·Esc 가 지금과 같은지, 바깥 누름을 `onOpenChange` 의 닫힌 이유로 거를 수 있는지 확인하고 research S6 에 기록한다
-- [ ] T095 [P] 스파이크 S7 — `ToggleGroup`(배타)에서 **빈 값 금지**를 부품이 강제할 수 있는지 확인한다. 안 되면 대안(라디오 묶음 + `render`)을 research R2 개정에 적고 사용자에게 알린다
-- [ ] T096 [P] 스파이크 S8 — 알림 자리 후보 둘(오른쪽 아래 · 아래 가운데)을 작업 화면에서 재서 무엇을 덮는지 `specs/017-shadcn-ui-migration/baseline.md` 에 적는다 (layout-contract-v3 L2 표를 채운다)
+- [X] T094 [P] (**전제 하나가 틀렸다** — 포털은 뺄 수 없다. 대신 `Portal container=` 로 작업대 안에 보내면 자리 계약이 그대로다. 시험 4건 통과 · research S6·R7 과 ui-parts §1-2 를 정정했다 · 시험 파일은 지웠다) 스파이크 S6 — 임시 파일에서 `@base-ui/react` `Dialog` 를 `modal={false}` · **포털 없이** 그려 자리·초점·Esc 가 지금과 같은지, 바깥 누름을 `onOpenChange` 의 닫힌 이유로 거를 수 있는지 확인하고 research S6 에 기록한다
+- [X] T095 [P] (**된다** — 부품이 값을 쥐고 빈 배열이 오면 무시한다. 상태 통로는 `aria-pressed` + `data-pressed` 로 바뀐다. 라디오 대안은 쓰지 않는다 · research S7 기록) 스파이크 S7 — `ToggleGroup`(배타)에서 **빈 값 금지**를 부품이 강제할 수 있는지 확인한다. 안 되면 대안(라디오 묶음 + `render`)을 research R2 개정에 적고 사용자에게 알린다
+- [X] T096 [P] (**따로 재지 않는다 — 순회가 판정한다.** 계약 T-2 가 「기본값부터 놓고 순회로 잰다」이고, 순회는 방금 그 판정을 실제로 해냈다(T097). 별도 실측 인스턴스를 띄우는 것보다 구현 뒤 순회 한 번이 더 믿을 만하고 같은 시간이다. 그래서 자리 결정은 T103 의 순회 결과로 확정하고 layout-contract-v3 L2 표를 그때 채운다. **2026-09-16 정정 — 「같은 시간」이 틀렸다.** 자리 하나를 고쳐 순회를 돌리는 데 6분이고, 후보 셋(오른쪽 위·오른쪽 아래·아래 가운데)이 **저마다 다른 폭에서 다른 조작을** 덮어 세 번을 돌리고도 자리를 못 정했다. 작업 화면은 네 가장자리가 모두 조작이라 「하나 고쳐 보고 재기」로는 남은 후보가 몇인지도 모른다. 뒤늦게 후보를 **한 번에** 재는 도구를 만들었다 — `scratchpad/probe_toast_spots.py`, 순회와 같은 가운데 점 판정. S8 을 미룬 것이 손해였다) 스파이크 S8 — 알림 자리 후보 둘(오른쪽 아래 · 아래 가운데) 판정
 
 ### 10-1 순회가 먼저 잡는다
 
-- [ ] T097 `scripts/screen_sweep.py` 에 알림이 떠 있는 화면 둘(`runner-review-unsaved` · `edit-notice`)과 `hover` 조작을 더한다 (SW-5 개정). **이 단계에서 순회는 실패해야 한다** — 지금 자리(오른쪽 위)가 Step 조작을 덮는 것이 검출로 나오는지 확인하고 보고서를 남긴다 (SC-016 의 증거)
+- [X] T097 (**잡았다** — 네 폭 모두에서 `covered button{전부 고르기} by div{먼저 저장해야 합니다…}`. 화면은 **하나**만 남겼다: 검토 국면은 순회로 잴 수 없다 — 세션이 한 번뿐이고 기록된 Step 이 0개라 그 알림이 뜨지 않는다. 계약 SW-5·T-8 을 그렇게 고쳤다) `scripts/screen_sweep.py` 에 알림이 떠 있는 화면(`edit-notice`)과 `hover` 조작을 더한다 (SW-5 개정). **이 단계에서 순회는 실패해야 한다** — 지금 자리(오른쪽 위)가 Step 조작을 덮는 것이 검출로 나오는지 확인한다 (SC-016 의 증거)
+  - **커밋 주의**: 이 상태는 `ScreenSweep` 이 실패한다(등록되지 않은 검출 4). 헌법 「단계 끝에 전량 통과」를 지키려고 **T099~T103 을 같은 커밋으로 묶는다** — 순회를 다시 돌려 검출이 사라진 뒤에 커밋한다
 
 ### 10-2 알림을 부품으로 · 자리를 아래로
 
-- [ ] T098 `frontend/package.json` 에 `@base-ui/react`(1.8.x)를 버전 고정으로 더한다. `radix-ui` 제거는 T106 에서 — 그때까지 둘이 함께 있다
-- [ ] T099 `frontend/src/ui/Toast.tsx` 를 만든다 — shadcn base 갈래 `toast` 이식(Provider `limit`·`timeout` · Portal · Viewport · Root/Title/Description/Close · 관리자). 클래스는 정본으로, 자리는 T096 이 정한 곳 하나. 출처 줄에 **갈래**를 적는다
-- [ ] T100 화면 13곳의 알림 통로를 관리자로 바꾸고 손으로 만든 것을 지운다 — `frontend/src/components/Toast.tsx` · `frontend/src/ui/useToastDismiss.ts` 삭제, `frontend/src/ui/Notice.tsx` 는 흐름 안 띠만 남긴다, `frontend/src/App.tsx` 에 층 하나
-- [ ] T101 되풀이 알림을 없앤다 — `frontend/src/pages/SessionScreen.tsx` 의 국면 전환·세션 종료 알림(research R6 개정 표) · `frontend/src/components/workbench/NoticeStack.tsx` 의 타이머·숨김 목록을 부품에 넘긴다
-- [ ] T102 알림 테스트 넷(`ToastPlacement`·`ToastDismiss`·`ToastOverModal`·`NoticesAreToasts`)의 **판정 방법만** 옮긴다. 자리의 실제 판정은 순회가 한다 — test-ledger 09-16 표에 `verifies` 를 먼저 적는다
-- [ ] T103 순회를 다시 돌려 T097 의 검출이 **사라졌는지** 확인한다. 사람 확인 H-9·H-10 을 브라우저로 건다
+- [X] T098 (`@base-ui/react@1.8.0` · `radix-ui` 는 T107 까지 함께 둔다) `frontend/package.json` 에 `@base-ui/react`(1.8.x)를 버전 고정으로 더한다
+- [X] T099 (**부품이 가르쳐 준 것 다섯** — ① 닫기 단추는 층이 펼쳐지거나 초점이 오기 전까지 `aria-hidden` 이라 우리 규칙(이름으로 찾는다)에 맞게 되돌렸다 ② 높은 우선순위는 보이는 알림을 `aria-hidden` 으로 덮고 **제목·설명 문자열**만 숨은 `alert` 자리에서 읽는다 — 우리 알림은 그릴 것을 싣기에 못 쓴다. 낮은 우선순위로 두고 `role` 만 우리가 얹었다 ③ 밀어내기를 끄는 것은 **빈 배열**이다. `undefined` 는 기본값(`['down','right']`)으로 되돌아간다 — 처음에 `undefined` 를 넘겼다가 닫을 길 없는 알림이 밀려 사라졌다 ④ `timeout: 0` 은 「영영 두기」다(`duration > 0` 일 때만 타이머를 건다) ⑤ 바깥 관리자는 **구독 전에 낸 알림을 버린다** — 자식 효과가 부모보다 먼저 도니 층이 비었다. 공급자 안에서 훅으로 등록한다) `frontend/src/ui/Toast.tsx` 를 만든다 — shadcn base 갈래 `toast` 이식(Provider `limit`·`timeout` · Portal · Viewport · Root/Title/Description/Close · 관리자). 클래스는 정본으로, 자리는 T096 이 정한 곳 하나. 출처 줄에 **갈래**를 적는다
+- [X] T100 (가져오는 경로만 바뀌었다 — 부품이 화면 어휘(`error`·`warn`·`info`)를 그대로 받게 해 13곳의 호출 모양을 지켰다 · `App` 뿌리에 층 하나 · 검사가 화면을 단독으로 그릴 때를 위해 **공급자가 없으면 알림이 함께 쓰는 층 하나**를 만든다 · 값 있는 표식(`data-notice="…"`)을 흘려보내는 통로를 되살렸다 — 없앴더니 `TestDefinition` 이 잡았다) 화면 13곳의 알림 통로를 관리자로 바꾸고 손으로 만든 것을 지운다 — `frontend/src/components/Toast.tsx` · `frontend/src/ui/useToastDismiss.ts` 삭제, `frontend/src/ui/Notice.tsx` 는 흐름 안 띠만 남긴다, `frontend/src/App.tsx` 에 층 하나
+- [X] T101 (**범위가 하나로 줄었다** — 국면 전환 알림만 없앤다. 「세션을 종료했습니다」는 화면이 되풀이하는 것이 아니라 **서버가 보낸 경고**(`view.recorder_warnings`)가 알림이 된 것이라, 없애려면 「서버 경고를 가린다」는 다른 판단이 필요하다. 사용자가 승인한 것은 「화면이 이미 말하는 것을 되풀이하지 않는다」이므로 거기까지만 했다 · `NoticeStack` 의 타이머·숨김 목록·밀어내기는 부품으로 넘겼다) 되풀이 알림을 없앤다 — `frontend/src/pages/SessionScreen.tsx` 의 국면 전환·세션 종료 알림(research R6 개정 표) · `frontend/src/components/workbench/NoticeStack.tsx` 의 타이머·숨김 목록을 부품에 넘긴다
+- [X] T102 (넷 30건 통과 · 판단이 바뀐 자리 둘을 원장에 적었다 — 「띠 조건 셋」은 자리가 아래로 내려가 없어졌고, 「날아가는 동안 아직 살아 있다」는 손으로 만든 180ms 의 값이었다) 알림 테스트 넷(`ToastPlacement`·`ToastDismiss`·`ToastOverModal`·`NoticesAreToasts`)의 **판정 방법만** 옮긴다. 자리의 실제 판정은 순회가 한다 — test-ledger 09-16 표에 `verifies` 를 먼저 적는다
+- [X] T103 (**검출이 사라졌다** — `edit-notice` 네 폭 모두 0 · 화면 × 폭 76 에서 등록되지 않은 검출 0 · 닿지 못함 0. **자리는 왼쪽 아래 · 바닥에서 88px 이고, 재서 정했다**: 모서리를 하나씩 고쳐 순회를 돌리던 방식이 세 번(18분) 만에 「폭마다 다른 희생자」로 끝나, 알림을 그리지 않고 사각형만 계산해 후보 전부를 한 번에 쟀다(화면 7 × 폭 4). 눈대중으로 고른 두 자리가 실측에서 가장 나빴다 — 오른쪽 아래 60 · 오른쪽 위 58 · 아래 가운데 10 · 위 가운데 7 · **왼쪽 아래 0**. 띄운 거리도 쟀다: 16~48px 는 Step 상세 판의 「저장」을 덮고 64·88·120px 가 깨끗해 **띠의 가운데**를 잡았다. 아래 가운데는 64px 한 점만 깨끗한데 1280 에서 Step 행 **사이**를 지나가는 우연이라 쓰지 않았다. **L2 가 더 세졌다** — `BeforeAfterParity` 가 「대조한 칸이 줄었다」(34328→29288)로 내 과한 등록을 잡았다. 층을 지우며 밀린 자리 번호 때문에 test-create 의 90 칸이 짝을 잃은 것을 「의도된 차이」로 등록했는데, 그것은 설명이 아니라 **잃어버린 대조**였다. 등록을 지우고 짝을 되살렸고(COLLECT_JS 의 `DROP`), 되살린 90 칸에서 나온 46 건은 전부 US3 줄들이 이미 설명하던 차이였다(자리 번호만 다시 매겼다). 대조 34272칸 · 불일치 0 · 의도된 차이 307→**188**) 순회를 다시 돌려 T097 의 검출이 **사라졌는지** 확인한다. 사람 확인 H-9·H-10 을 브라우저로 건다
 
 ### 10-3 부품 여덟을 Base UI 로
 
