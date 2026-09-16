@@ -145,11 +145,26 @@ cd frontend && npx vitest run tests/BeforeAfterParity.test.ts
 cd frontend && npx vite build 2>&1 | grep -E "index-.*\.(css|js)"
 ```
 
-**기대**: CSS gzip ≤ **6.78 kB** · JS gzip ≤ **181.3 kB**.
-*2026-09-16 개정 — 갈래 교체 뒤에는 **JS gzip ≤ 177.41 kB**(Radix 로 구현한 실측)를 함께 본다. 기반
-교체는 추가가 아니므로 늘지 않아야 한다 (research R12 개정).*
+**기대**: CSS gzip ≤ **6.78 kB** · JS gzip ≤ **210 kB**.
+
+*2026-09-16 **재개정** (T107) — 갈래 교체가 번들을 **늘렸다.** 같은 명령으로 잰 세 수치:*
+
+| 시점 | JS gzip |
+|---|---|
+| 017 마감 (radix) | 177.41 kB |
+| T104~T106 중 (radix + base 둘 다) | 189.40 kB |
+| **T107 (base 단독)** | **207.74 kB** |
+
+*`radix-ui` 를 **지웠는데 오히려 늘었다** — 중간값이 더 작았던 것은 그때 Base UI 를 절반만 쓰고 있었기
+때문이다. **research R12 의 전제(「기반 교체는 추가가 아니므로 늘지 않아야 한다」)는 실측으로 반증됐다.***
+
+***원인은 재지 않았다.** 정확히 무엇이 30 kB 인지 보려면 번들 분석기를 새로 들여야 하는데, 이 저장소는
+들이는 의존성을 규율로 막는다. **사용자 결정(2026-09-16): 이 정도 증가는 문제 삼지 않는다 — 그대로 둔다.**
+그래서 상한을 실측(207.74)에 여유를 둔 **210 kB** 로 다시 잡는다. 이 숫자는 「괜찮다고 판정된 값」이 아니라
+**「지금 이만큼이다」라는 기록**이다 — 다음에 여기서 더 늘면 그때는 이유를 물어야 한다.*
+
 넘으면 원인을 찾는다 — 들이지 않기로 한 의존성(`tailwind-merge`·`lucide-react`·`tw-animate-css`·
-`sonner`·Geist 글꼴)이 들어왔는지, 옛 갈래(`radix-ui`)가 남았는지 먼저 본다.
+`sonner`·Geist 글꼴)이 들어왔는지 먼저 본다.
 
 ```bash
 npm ls tailwind-merge lucide-react tw-animate-css sonner radix-ui 2>&1 | grep -v "empty" || true

@@ -207,11 +207,16 @@ describe("G-F — 부품의 모습이 정본이다 (017)", () => {
     expect(bad, bad.join("\n")).toEqual([]);
   });
 
-  it("동작 층 부품이 전부 있고 `radix-ui` 에 기댄다 — 파일이 없어도 요구한다 (T077)", () => {
+  it("동작 층 부품이 전부 있고 **자기 갈래**에 기댄다 — 파일이 없어도 요구한다 (T077)", () => {
     /*
       017 전환 중에는 「파일이 생긴 뒤부터 요구한다」였다 — 부품을 하나씩 만들었기 때문이다. 전환이 끝났으므로
-      ui-parts.md §1 의 `behavior = radix` 부품은 **있어야** 하고, 실제로 `radix-ui` 를 가져와야 한다. 파일을 지우거나
+      ui-parts.md §1 의 동작 층 부품은 **있어야** 하고, 실제로 그 갈래를 가져와야 한다. 파일을 지우거나
       동작 층을 손으로 다시 짜면(수제 포털 · 수제 초점 가두기) 여기서 실패한다.
+
+      **T107 에서 갈래가 하나로 모였다.** `RADIX_PARTS` 가 비었고 `radix-ui` 의존성 자체가 사라졌으므로
+      지금 이 검사는 사실상 「동작 층 부품 전부가 `@base-ui/react` 를 가져온다」를 묻는다. 목록을 둘로
+      **유지하는** 이유는 다음 갈래 이동이 또 한 파일씩 일어날 것이기 때문이다 — 그때도 옮기는 도중에
+      질문이 살아 있어야 한다.
     */
     const names = new Set(UI_FILES.map((f) => basename(f)));
     const missing = [...BEHAVIOR_PARTS].filter((name) => !names.has(name));
@@ -229,14 +234,19 @@ describe("G-F — 부품의 모습이 정본이다 (017)", () => {
     ).toEqual([]);
   });
 
-  it("`radix-ui` 는 동작 층 부품만 가져온다", () => {
+  it("`radix-ui` 를 가져오는 부품이 **하나도 없다** (T107 — 의존성을 지웠다)", () => {
+    /*
+      전에는 「radix 를 가져와도 되는 목록」이 있었고 이 검사는 그 **밖**을 막았다. T107 이 `npm rm radix-ui`
+      로 패키지를 지웠으므로 목록이 비었고, 같은 코드가 이제 「아무도 가져오지 않는다」를 묻는다.
+      되살아나면 — 패키지를 다시 깔고 부품 하나를 옛 갈래로 되돌리면 — 여기서 걸린다.
+    */
     const bad = UI_FILES.filter((rel) => {
       const txt = withoutComments(readFileSync(join(ROOT, rel), "utf8"));
       return /from\s+["']radix-ui["']/.test(txt) && !RADIX_PARTS.has(basename(rel));
     });
     expect(
       bad,
-      "이 부품은 contracts/ui-parts.md §1 에서 behavior 가 radix 가 아니다 — 네이티브로 두기로 했다 (research R2).\n" +
+      "`radix-ui` 의존성은 T107 에서 지웠다 — 가져오는 부품이 있으면 설치되지 않은 것을 부르는 셈이다.\n" +
         bad.join("\n"),
     ).toEqual([]);
   });
