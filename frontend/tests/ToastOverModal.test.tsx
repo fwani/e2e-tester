@@ -97,7 +97,8 @@ describe("모달이 열린 동안의 알림 (research R6)", () => {
 
     expect(onDismiss, "알림이 닫히지 않았다").toHaveBeenCalledTimes(1);
     expect(onClose, "알림을 닫는 조작이 대화상자를 닫았다").not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog").getAttribute("data-state"), "알림을 닫는 조작이 대화상자를 닫았다").toBe("open");
+    // 열림 표식이 `data-state="open"` → **`data-open`**(값 없는 속성)으로 바뀌었다. 판정 방법만 옮겼다 (T104).
+    expect(screen.getByRole("dialog").hasAttribute("data-open"), "알림을 닫는 조작이 대화상자를 닫았다").toBe(true);
   });
 
   it("확인 대화상자도 알림을 닫는 조작으로 닫히지 않는다", async () => {
@@ -126,6 +127,6 @@ describe("모달이 열린 동안의 알림 (research R6)", () => {
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
     expect(onOpenChange, "알림을 닫는 조작이 확인 대화상자를 닫으려 했다").not.toHaveBeenCalled();
-    expect(screen.getByRole("alertdialog").getAttribute("data-state")).toBe("open");
+    expect(screen.getByRole("alertdialog").hasAttribute("data-open")).toBe(true);
   });
 });

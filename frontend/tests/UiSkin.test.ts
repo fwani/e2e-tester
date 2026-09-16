@@ -43,17 +43,25 @@ const UI_FILES = execFileSync("find", ["src/ui", "-name", "*.tsx"], { cwd: ROOT,
   .split("\n")
   .filter((f) => f !== "" && !basename(f).startsWith("__spike"));
 
-/** `radix-ui` 를 가져와도 되는 부품 — contracts/ui-parts.md §1 의 `behavior = radix` (+ `Slot` 을 쓰는 `Button`). */
-const RADIX_ALLOWED = new Set([
-  "Button.tsx",
-  "Dialog.tsx",
-  "AlertDialog.tsx",
-  "OverlayPane.tsx",
+/*
+  동작 층 부품과 **그 갈래** — contracts/ui-parts.md §1.
+
+  017 은 전부 `radix-ui` 였다. Phase 10 이 갈래를 Base UI 로 옮기는 중이라 **한 파일씩** 건너간다.
+  그래서 목록을 둘로 두고 **파일마다 자기 갈래를 실제로 가져오는지** 본다 — 묻는 것은 그대로다:
+  「동작을 손으로 다시 짜지 않고 부품에 기대는가」. 한쪽으로 뭉뚱그리면 옮기는 동안 그 질문이 사라진다.
+
+  T107 이 끝나면 `RADIX_PARTS` 가 비고 `radix-ui` 의존성 자체가 사라진다.
+*/
+const BASE_PARTS = new Set(["Dialog.tsx", "AlertDialog.tsx", "OverlayPane.tsx"]);
+const RADIX_PARTS = new Set([
+  "Button.tsx", // `Slot`(asChild) 만 쓴다 — T106 이 `render` 로 옮긴다
   "DropdownMenu.tsx",
   "Tabs.tsx",
   "ToggleGroup.tsx",
   "Tooltip.tsx",
 ]);
+/** 동작 층 부품 전부 — 갈래와 무관하게 **있어야** 한다 (T077). */
+const BEHAVIOR_PARTS = new Set([...BASE_PARTS, ...RADIX_PARTS]);
 
 /** 비활성을 **점선**으로 말해야 하는 조작 부품 (FR-006 · FR-014). 파일이 없어도 요구한다 (T077). */
 const DASHED_DISABLED = ["Button.tsx", "Input.tsx", "Textarea.tsx", "NativeSelect.tsx"];
@@ -198,19 +206,25 @@ describe("G-F — 부품의 모습이 정본이다 (017)", () => {
       동작 층을 손으로 다시 짜면(수제 포털 · 수제 초점 가두기) 여기서 실패한다.
     */
     const names = new Set(UI_FILES.map((f) => basename(f)));
-    const missing = [...RADIX_ALLOWED].filter((name) => !names.has(name));
+    const missing = [...BEHAVIOR_PARTS].filter((name) => !names.has(name));
     expect(missing, "동작 층 부품 파일이 없다 — contracts/ui-parts.md §1").toEqual([]);
-    const handmade = [...RADIX_ALLOWED].filter((name) => {
-      const txt = withoutComments(readFileSync(join(ROOT, "src/ui", name), "utf8"));
-      return !/from\s+["']radix-ui["']/.test(txt);
+    const source = (name: string) => withoutComments(readFileSync(join(ROOT, "src/ui", name), "utf8"));
+    const handmade = [...BEHAVIOR_PARTS].filter((name) => {
+      const txt = source(name);
+      const wants = BASE_PARTS.has(name) ? /from\s+["']@base-ui\/react/ : /from\s+["']radix-ui["']/;
+      return !wants.test(txt);
     });
-    expect(handmade, "behavior = radix 인 부품이 radix-ui 를 가져오지 않는다 — 동작을 손으로 다시 짰다").toEqual([]);
+    expect(
+      handmade,
+      "동작 층 부품이 **자기 갈래**를 가져오지 않는다 — 동작을 손으로 다시 짰거나 갈래 목록이 낡았다.\n" +
+        "Base UI 로 옮겼다면 위 `BASE_PARTS` 로 옮겨 적는다 (contracts/ui-parts.md §1).",
+    ).toEqual([]);
   });
 
   it("`radix-ui` 는 동작 층 부품만 가져온다", () => {
     const bad = UI_FILES.filter((rel) => {
       const txt = withoutComments(readFileSync(join(ROOT, rel), "utf8"));
-      return /from\s+["']radix-ui["']/.test(txt) && !RADIX_ALLOWED.has(basename(rel));
+      return /from\s+["']radix-ui["']/.test(txt) && !RADIX_PARTS.has(basename(rel));
     });
     expect(
       bad,

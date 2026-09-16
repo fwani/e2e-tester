@@ -73,8 +73,17 @@ describe("대화상자와 미러 입력 (017 FR-016)", () => {
       onInput.mock.calls.map(([e]) => e.kind),
       "대화상자가 열린 동안 키가 대상 브라우저로 나갔다",
     ).toEqual([]);
-    // 포인터는 Radix 가 body 에 건 `pointer-events:none` 이 막는다 (실제 브라우저의 성질 — 여기서는 그 표시만 본다).
-    expect(document.body.style.pointerEvents).toBe("none");
+    /*
+      **막는 방식이 바뀌었다 — 판정 방법만 옮긴다** (T104 · test-ledger 09-16).
+
+      Radix 는 body 에 `pointer-events:none` 을 걸었다. Base UI 는 그러지 않고, 모달을 열 때 body 의
+      **다른 직계 자식**(= 미러가 들어 있는 쪽)에 `aria-hidden` + `data-base-ui-inert` 를 건다(T104 실측).
+      묻는 것은 그대로다: 대화상자가 열린 동안 **바깥이 조작 대상이 아닌가.**
+    */
+    expect(
+      imeOf().closest("[data-base-ui-inert]")?.getAttribute("aria-hidden"),
+      "대화상자가 열렸는데 바깥이 막히지 않았다",
+    ).toBe("true");
   });
 
   it("닫으면 초점이 미러 조합 칸으로 돌아오고, 키와 한글 조합이 전과 같이 나간다", async () => {
@@ -87,7 +96,7 @@ describe("대화상자와 미러 입력 (017 FR-016)", () => {
     rerender(<Screen confirming={false} onInput={onInput} />);
 
     await waitFor(() => expect(document.activeElement, "닫은 뒤 초점이 미러로 돌아오지 않았다").toBe(imeOf()));
-    expect(document.body.style.pointerEvents, "닫은 뒤에도 포인터가 막혀 있다").not.toBe("none");
+    expect(imeOf().closest("[data-base-ui-inert]"), "닫은 뒤에도 바깥이 막혀 있다").toBeNull();
 
     const ime = imeOf();
     fireEvent.keyDown(ime, { key: "a", code: "KeyA" });

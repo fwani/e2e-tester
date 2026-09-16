@@ -3295,9 +3295,8 @@ function LeaveConfirm({
           </>
         )}
         <DialogFooter>
-          <DialogClose asChild>
-            <Button>돌아가기</Button>
-          </DialogClose>
+          {/* `asChild`(radix) → `render`(base) — 모양은 `Button` 이, 닫는 동작은 부품이 갖는다 (T104). */}
+          <DialogClose render={<Button />}>돌아가기</DialogClose>
           <Button variant="danger" disabled={busy} onClick={onDiscard}>
             저장하지 않고 나가기
           </Button>
