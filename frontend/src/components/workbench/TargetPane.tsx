@@ -143,11 +143,13 @@ export function TargetPane({
         /*
           017 T058 — 탭 줄이 `ui/Tabs` 다. 017 전에는 정본 `.tabs` 의 클래스를 이 자리에 **복사해** 원시 단추를
           칠했고, 보조기술에는 눌린 단추 넷으로 들렸다. 이제 탭 목록·탭(`aria-selected`)·탭 내용이고 ←·→ 로 오간다.
-          뿌리는 이 판 자체다(`asChild`) — 판 안의 세로 배치를 한 겹 멀게 하지 않는다.
+          뿌리는 이 판 자체다(`render` · T106 전에는 `asChild`) — 판 안의 세로 배치를 한 겹 멀게 하지 않는다.
+          감싸던 `<div>` 는 **없앴다**: `render` 는 그 요소를 뿌리로 **그려** 주므로 자식이 곧장 안에 온다.
         */
-        <Tabs asChild value={target.selected} onValueChange={(next) => onSelectArtifact?.(next as ArtifactKind)}>
-        <div
-          className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col"
+        <Tabs
+          render={<div className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col" />}
+          value={target.selected}
+          onValueChange={(next) => onSelectArtifact?.(next as ArtifactKind)}
         >
           {/*
             산출물 종류를 고르는 조작은 **이 영역 안에** 있다 (FR-246). 지원되지 않는
@@ -194,7 +196,6 @@ export function TargetPane({
           <TabsContent value={target.selected} layout="flex-1 min-h-0 overflow-auto p-s4">
             {target.body}
           </TabsContent>
-        </div>
         </Tabs>
       )}
 

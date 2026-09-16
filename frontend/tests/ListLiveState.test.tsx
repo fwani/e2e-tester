@@ -88,7 +88,7 @@ describe("실행 중인 테스트의 행 (FR-168 · U-16)", () => {
     // 행의 결말 표식에만 나타난다. 행이 RUNNING 이면 화면에 `FAIL` 이 없어야 한다.
     expect(screen.queryAllByText("FAIL")).toHaveLength(0);
     // 017 T061 — 결말 필터 항목의 역할이 `radio` 다 (넷 중 하나를 고르는 묶음 · 017 전에는 `button`).
-    expect(screen.getByRole("radio", { name: /^실패 \d+$/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^실패 \d+$/ })).toBeTruthy();
   });
 
   it("실행 중이 아니면 이전 결말을 그대로 보여준다", async () => {

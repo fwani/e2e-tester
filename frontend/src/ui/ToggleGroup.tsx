@@ -1,11 +1,10 @@
 /**
- * 하나를 고르는 단추 묶음. 017 T059.
+ * 하나를 고르는 단추 묶음. 017 T059 · **Base UI 이식 T106**.
  *
- * 출처: shadcn new-york-v4/toggle-group @ shadcn 4.21.0 (2026-09-15) — `ToggleGroup`·`ToggleGroupItem` 의 구조, 묶음이
- * 항목에 모양을 물려주는 컨텍스트, `data-slot` 을 가져왔다. new-york-v4/toggle 의 `toggleVariants` 자리에 정본 네
- * 모양(`appearance`)을 둔다. 원본의 `data-[state=on]:bg-accent` 는 모양마다 정본 값으로(ui-parts §2), `rounded-md`·
- * `h-9`·`focus-visible:ring`·`transition-[color,box-shadow]` 은 남지 않는다. 원본의 `type="multiple"` 은 들이지
- * 않았다 — 쓰는 자리가 없다.
+ * 출처: shadcn base/toggle-group @ shadcn 4.21.x (style base-nova) · `@base-ui/react` 1.8.x — `ToggleGroup` 과
+ * `Toggle` 의 구조, 묶음이 항목에 모양을 물려주는 컨텍스트, `data-slot` 을 가져왔다. 원본 `toggle` 의
+ * `toggleVariants` 자리에 정본 네 모양(`appearance`)을 둔다. `rounded-md`·`h-9`·`focus-visible:ring`·
+ * `transition-[color,box-shadow]` 은 남지 않는다.
  *
  * ## 네 모양 — 전부 017 전 화면에 있던 것이다
  *
@@ -18,21 +17,38 @@
  *
  * `filter`·`chip` 은 버튼·칩 부품의 **같은 값**을 쓴다 (`buttonVariants`·`chipVariants`) — 같은 종류가 두 모습을 갖지 않는다.
  *
- * ## 무엇이 새로 성립하는가 (FR-013)
+ * ## 낭독되는 의미가 바뀌었다 — **접근성이 한 단계 내려간다** (T106 · 사용자 결정 2026-09-16)
  *
- * - 고른 항목을 **라디오로** 알린다 — 묶음은 `radiogroup`, 항목은 `radio`·`aria-checked`. 017 전에는 `aria-pressed`
- *   였고 「눌린 토글 단추 넷」으로 들려 하나만 고른다는 사실이 없었다.
- * - 화살표로 오가고, 묶음 전체가 Tab 한 번이다 (roving focus).
- * - **늘 하나가 골라져 있다.** Radix 는 고른 항목을 다시 누르면 선택을 비운다 — 이 부품은 빈 값을 넘기지 않는다.
+ * 017 은 이 묶음을 **라디오**로 만들었다(`radiogroup`·`radio`·`aria-checked`). 017 전에는 `aria-pressed` 라
+ * 「눌린 토글 단추 넷」으로 들려 **하나만 고른다는 사실이 전달되지 않았고**, 그것을 고친 것이 FR-013 이었다.
+ *
+ * Base UI 의 `ToggleGroup` 은 **눌림**(`aria-pressed`·`data-pressed`)이 기본이고 라디오 통로를 주지 않는다.
+ * 스파이크 S7 에서 라디오 대안(`RadioGroup` + `render`)을 검토했으나 **쓰지 않기로 했고**(research S7),
+ * 사용자가 「Base UI 기준에 맞춘다」로 정했다. 그래서 낭독은 017 전 수준으로 돌아간다:
+ *
+ * | | 낭독기가 읽는 말 |
+ * |---|---|
+ * | 017 (라디오) | 「느리게, 라디오 버튼, 선택됨, 3개 중 1번째」 |
+ * | 지금 (눌림) | 「느리게, 버튼, 눌림」 |
+ *
+ * **모습과 동작은 하나도 바뀌지 않는다** — 네 모양의 클래스 표도 그대로다. 바뀐 것은 보조기술이 듣는 말뿐이다.
+ * 사람 확인 H-10 이 「고르기 낭독」을 듣는다 (quickstart).
+ *
+ * ## 늘 하나가 골라져 있다 — 값을 우리가 쥔다 (S7)
+ *
+ * 부품의 값은 **배열**이고, 고른 항목을 다시 누르면 **빈 배열**이 온다. 이 부품의 계약은 「늘 하나」이므로
+ * 빈 배열을 무시한다 — 바깥으로는 여전히 문자열 하나를 주고받는다.
  *
  * ## 고름과 비활성이 겹칠 때 — 산출 CSS 순서에 맡기지 않는다
  *
- * 고른 색(`data-[state=on]:`)과 비활성 색(`disabled:`)은 명시도가 같아 이기는 쪽을 산출 CSS 순서가 정한다 (015 흰 버튼).
- * 고른 색은 `enabled:data-[state=on]:` 로 **쓸 수 있을 때만** 준다. 정본도 `.segmented > button:disabled` 가
- * `[aria-pressed=true]` 뒤에 와서 비활성이 이긴다.
+ * 고른 색(`data-[pressed]:`)과 비활성 색(`disabled:`)은 명시도가 같아 이기는 쪽을 산출 CSS 순서가 정한다
+ * (015 흰 버튼). 고른 색은 `enabled:data-[pressed]:` 로 **쓸 수 있을 때만** 준다 — 부품이 네이티브 `<button>` 을
+ * 그리므로(`Toggle` — "Renders a `<button>` element") `enabled:`·`disabled:` 가 그대로 산다. 정본도
+ * `.segmented > button:disabled` 가 `[aria-pressed=true]` 뒤에 와서 비활성이 이긴다.
  */
+import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
+import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
 import { cva } from "class-variance-authority";
-import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui";
 import { createContext, useContext, type ComponentPropsWithRef, type ReactNode } from "react";
 
 import { buttonVariants } from "./Button";
@@ -56,12 +72,12 @@ const groupVariants = cva("", {
 });
 
 /** 고른 칩 — 정본이 「고른 것」을 말하는 문법(`.pick.on` 의 잉크 테두리). 채우지 않는다. N-06. */
-const CHIP_ON = "data-[state=on]:border-ink data-[state=on]:text-ink";
+const CHIP_ON = "data-[pressed]:border-ink data-[pressed]:text-ink";
 
 /** 고른 거르기 — 정본 `.btn.primary`. 쓸 수 있을 때만 (머리주석 「고름과 비활성이 겹칠 때」). */
 const FILTER_ON =
-  "enabled:data-[state=on]:bg-ink enabled:data-[state=on]:border-ink enabled:data-[state=on]:text-panel " +
-  "enabled:data-[state=on]:hover:bg-ink-2";
+  "enabled:data-[pressed]:bg-ink enabled:data-[pressed]:border-ink enabled:data-[pressed]:text-panel " +
+  "enabled:data-[pressed]:hover:bg-ink-2";
 
 const itemVariants = cva("", {
   variants: {
@@ -69,15 +85,15 @@ const itemVariants = cva("", {
       // 정본 `.segmented > button` — 왼쪽 실선으로 칸을 가르고(첫 칸은 없음) 바탕·그림자를 벗는다.
       segmented:
         "px-s3 border-0 border-l border-hair-2 first:border-l-0 rounded-none bg-transparent shadow-none " +
-        "text-ink-2 font-medium cursor-pointer data-[state=on]:font-bold " +
-        "enabled:data-[state=on]:bg-sunken enabled:data-[state=on]:text-ink " +
+        "text-ink-2 font-medium cursor-pointer data-[pressed]:font-bold " +
+        "enabled:data-[pressed]:bg-sunken enabled:data-[pressed]:text-ink " +
         "disabled:bg-transparent disabled:border-solid disabled:text-ink-3 disabled:cursor-default",
       filter: "",
       chip: "",
       // 정본 `.pick` — 글이 왼쪽에 서는 카드. 높이는 내용이 정한다(요소 규칙의 32px 를 되돌린다).
       card:
         "border rounded-base text-left text-ink h-auto py-s4 px-[18px] flex flex-col gap-s2 " +
-        "data-[state=on]:border-ink data-[state=on]:shadow-e1",
+        "data-[pressed]:border-ink data-[pressed]:shadow-e1",
     },
     tone: {
       default: "",
@@ -113,11 +129,13 @@ export interface ToggleGroupProps extends Omit<ComponentPropsWithRef<"div">, "cl
 export function ToggleGroup({ appearance, value, onValueChange, disabled, layout, children, ...rest }: ToggleGroupProps) {
   return (
     <Appearance.Provider value={appearance}>
-      <ToggleGroupPrimitive.Root
-        type="single"
-        value={value}
+      <ToggleGroupPrimitive
+        // 바깥은 문자열 하나, 부품은 배열이다 (머리주석 「늘 하나가 골라져 있다」).
+        value={[value]}
         onValueChange={(next) => {
-          if (next !== "") onValueChange(next);
+          const [first] = next;
+          // 빈 배열 = 고른 것을 다시 누른 것. 이 묶음의 계약은 「늘 하나」이므로 무시한다 (S7).
+          if (first !== undefined) onValueChange(first);
         }}
         disabled={disabled}
         className={cn(groupVariants({ appearance }), layout)}
@@ -126,13 +144,12 @@ export function ToggleGroup({ appearance, value, onValueChange, disabled, layout
         {...rest}
       >
         {children}
-      </ToggleGroupPrimitive.Root>
+      </ToggleGroupPrimitive>
     </Appearance.Provider>
   );
 }
 
-export interface ToggleGroupItemProps
-  extends Omit<ComponentPropsWithRef<typeof ToggleGroupPrimitive.Item>, "className"> {
+export interface ToggleGroupItemProps extends Omit<ComponentPropsWithRef<typeof TogglePrimitive>, "className"> {
   /** 카드 모양에서만 뜻이 있다 — AI 로 만드는 쪽. */
   readonly tone?: "default" | "ai";
   /** **배치만** — 카드가 줄을 나눠 갖는 폭(`flex-1 min-w-0`) 따위. */
@@ -142,13 +159,13 @@ export interface ToggleGroupItemProps
 export function ToggleGroupItem({ tone = "default", layout, children, ...rest }: ToggleGroupItemProps) {
   const appearance = useContext(Appearance);
   return (
-    <ToggleGroupPrimitive.Item
+    <TogglePrimitive
       className={cn(BORROWED[appearance], itemVariants({ appearance, tone }), layout)}
       data-slot="toggle-group-item"
       data-appearance={appearance}
       {...rest}
     >
       {children}
-    </ToggleGroupPrimitive.Item>
+    </TogglePrimitive>
   );
 }

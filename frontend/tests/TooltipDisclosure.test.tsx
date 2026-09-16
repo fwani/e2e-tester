@@ -31,7 +31,17 @@ describe("툴팁 (ui/Tooltip)", () => {
     await user.tab();
     expect(document.activeElement?.getAttribute("aria-label")).toBe("닫기");
 
-    const tip = await screen.findByRole("tooltip");
+    /*
+      **판정 방법만 옮겼다** (T106 · test-ledger 09-16). 새 갈래의 툴팁 팝업에는 `role="tooltip"` 이 없다
+      (실측 — 팝업은 `data-open`·`data-slot=tooltip-content`, 자리 상자는 `role="presentation"`). **뜨는 것
+      자체는 그대로다.** 그래서 남의 역할 이름 대신 **우리 표식**으로 집는다. 묻는 것은 그대로다:
+      초점만으로 전체 문구가 뜨는가.
+    */
+    const tip = await waitFor(() => {
+      const el = document.querySelector("[data-slot=tooltip-content]");
+      expect(el, "툴팁이 뜨지 않았다").not.toBe(null);
+      return el as HTMLElement;
+    });
     expect(tip.textContent).toBe("닫기");
   });
 
@@ -45,10 +55,15 @@ describe("툴팁 (ui/Tooltip)", () => {
     );
     const user = userEvent.setup();
     await user.hover(screen.getByRole("button", { name: "로그인 추가 동작" }));
-    expect((await screen.findByRole("tooltip")).textContent).toBe("추가 동작");
+    const tip = await waitFor(() => {
+      const el = document.querySelector("[data-slot=tooltip-content]");
+      expect(el, "툴팁이 뜨지 않았다").not.toBe(null);
+      return el as HTMLElement;
+    });
+    expect(tip.textContent).toBe("추가 동작");
 
     await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    await waitFor(() => expect(document.querySelector("[data-slot=tooltip-content]")).toBe(null));
   });
 });
 
@@ -72,7 +87,13 @@ describe("잘린 글자 (ui/Tooltip Truncate · FR-019)", () => {
     expect(text.getAttribute("tabindex")).toBe("0");
 
     act(() => text.focus());
-    expect((await screen.findByRole("tooltip")).textContent).toBe(NAME);
+    // T106 — 팝업에 `role="tooltip"` 이 없다. 우리 표식으로 집는다 (위 주석).
+    const tip = await waitFor(() => {
+      const el = document.querySelector("[data-slot=tooltip-content]");
+      expect(el, "툴팁이 뜨지 않았다").not.toBe(null);
+      return el as HTMLElement;
+    });
+    expect(tip.textContent).toBe(NAME);
   });
 });
 

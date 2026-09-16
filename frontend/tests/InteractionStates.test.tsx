@@ -101,7 +101,9 @@ describe("상호작용 상태가 보존된다 (FR-009 · state-styles.md)", () =
     // S-12 — 017 T060 전에는 `ui/Table` 의 `Segmented` 가 가졌다. 고른 칸도 비활성이면 비활성이 이긴다(정본 순서).
     const src = readFileSync(join(ROOT, "src/ui/ToggleGroup.tsx"), "utf8");
     expect(src, "비활성 칸 표시가 없다 (S-12)").toContain("disabled:border-solid");
-    expect(src, "고른 색이 비활성보다 이긴다 (S-12)").toContain("enabled:data-[state=on]:bg-sunken");
+    // T106 — 갈래가 쓰는 눌림 표식이 `data-[state=on]` → **`data-[pressed]`** 로 바뀌었다.
+    // 묻는 것은 그대로다: 고른 색을 **쓸 수 있을 때만** 줘서 비활성이 이기게 하는가 (S-12).
+    expect(src, "고른 색이 비활성보다 이긴다 (S-12)").toContain("enabled:data-[pressed]:bg-sunken");
   });
 
   it("`ui/StepRow` 의 체크 상자가 비활성 표시를 갖는다", () => {

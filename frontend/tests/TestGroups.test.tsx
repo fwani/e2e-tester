@@ -147,7 +147,7 @@ describe("그룹이 있는 프로젝트", () => {
     const user = userEvent.setup();
 
     await user.click(
-      within(bar() as HTMLElement).getByRole("radio", { name: /사용자관리 테스트/ }),
+      within(bar() as HTMLElement).getByRole("button", { name: /사용자관리 테스트/ }),
     );
 
     await waitFor(() => expect(screen.queryByText("그룹 없는 것")).toBeNull());
@@ -162,7 +162,7 @@ describe("그룹이 있는 프로젝트", () => {
     const user = userEvent.setup();
 
     await user.click(
-      within(bar() as HTMLElement).getByRole("radio", { name: /사용자관리 테스트/ }),
+      within(bar() as HTMLElement).getByRole("button", { name: /사용자관리 테스트/ }),
     );
 
     // 소제목이 하나뿐이면 자리만 차지한다.
@@ -176,12 +176,12 @@ describe("그룹이 있는 프로젝트", () => {
     const user = userEvent.setup();
 
     await user.click(
-      within(bar() as HTMLElement).getByRole("radio", { name: /사용자관리 테스트/ }),
+      within(bar() as HTMLElement).getByRole("button", { name: /사용자관리 테스트/ }),
     );
 
     // 개수는 걸러 보기 **전** 값이다 — 그래야 그리로 갈 수 있다.
     await waitFor(() =>
-      expect(within(bar() as HTMLElement).getByRole("radio", { name: /그룹 없음/ })).toBeTruthy(),
+      expect(within(bar() as HTMLElement).getByRole("button", { name: /그룹 없음/ })).toBeTruthy(),
     );
   });
 
@@ -203,7 +203,7 @@ describe("그룹이 있는 프로젝트", () => {
 
     // 목록을 막지 않고 접두어를 그대로 쓴다.
     await waitFor(() =>
-      expect(within(bar() as HTMLElement).getByRole("radio", { name: /GHOST/ })).toBeTruthy(),
+      expect(within(bar() as HTMLElement).getByRole("button", { name: /GHOST/ })).toBeTruthy(),
     );
   });
 });
@@ -265,7 +265,7 @@ describe("그룹 만들기", () => {
 describe("그룹 정리", () => {
   const pickUser = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(
-      within(bar() as HTMLElement).getByRole("radio", { name: /사용자관리 테스트/ }),
+      within(bar() as HTMLElement).getByRole("button", { name: /사용자관리 테스트/ }),
     );
   };
 
@@ -389,7 +389,7 @@ describe("테스트가 0개인 그룹", () => {
 
     await waitFor(() =>
       expect(
-        within(bar() as HTMLElement).getByRole("radio", { name: /비어 있는 그룹/ }),
+        within(bar() as HTMLElement).getByRole("button", { name: /비어 있는 그룹/ }),
       ).toBeTruthy(),
     );
   });
@@ -404,8 +404,8 @@ describe("테스트가 0개인 그룹", () => {
     await screen.findByText("그룹 없는 것");
     const user = userEvent.setup();
 
-    await screen.findByRole("radio", { name: /비어 있는 그룹/ });
-    await user.click(screen.getByRole("radio", { name: /비어 있는 그룹/ }));
+    await screen.findByRole("button", { name: /비어 있는 그룹/ });
+    await user.click(screen.getByRole("button", { name: /비어 있는 그룹/ }));
     // 클릭 뒤 목록이 다시 오고 띠가 다시 그려진다 — 그 뒤에 조작이 나타난다.
     await waitFor(() =>
       expect(
@@ -438,13 +438,13 @@ describe("테스트가 0개인 그룹", () => {
     await screen.findByText("그룹 없는 것");
     const user = userEvent.setup();
 
-    await screen.findByRole("radio", { name: /비어 있는 그룹/ });
-    await user.click(screen.getByRole("radio", { name: /비어 있는 그룹/ }));
+    await screen.findByRole("button", { name: /비어 있는 그룹/ });
+    await user.click(screen.getByRole("button", { name: /비어 있는 그룹/ }));
 
     // 띠가 남아 있어야 돌아올 수 있다.
     await waitFor(() => expect(bar()).not.toBeNull());
     expect(
-      within(bar() as HTMLElement).getByRole("radio", { name: /^전체/ }),
+      within(bar() as HTMLElement).getByRole("button", { name: /^전체/ }),
     ).toBeTruthy();
   });
 });

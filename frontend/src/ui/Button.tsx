@@ -43,7 +43,6 @@
  * 은 배치만**이다(015 · research R5). 모양을 호출부가 덮어쓰면 같은 버튼이 화면마다 달라진다(SC-010).
  */
 import { cva } from "class-variance-authority";
-import { Slot } from "radix-ui";
 import type { ComponentPropsWithRef, ReactNode } from "react";
 
 import { cn } from "./cn";
@@ -150,22 +149,23 @@ export interface ButtonProps extends Omit<ComponentPropsWithRef<"button">, "clas
    * 계약의 원칙이다: 표시 컴포넌트는 자기 자리 크기를 모른다 (layout-contract-v2 LC-1).
    */
   readonly layout?: string;
-  /**
-   * 자식 요소를 버튼 모양으로 그린다 (shadcn `asChild` · radix `Slot`). 링크를 버튼처럼 보이게 할 때 쓴다.
-   * 자식이 하나의 요소여야 한다.
-   */
-  readonly asChild?: boolean;
   readonly children?: ReactNode;
 }
 
-export function Button({ variant = "default", size = "md", layout, asChild = false, children, ...rest }: ButtonProps) {
+export function Button({ variant = "default", size = "md", layout, children, ...rest }: ButtonProps) {
   // 클래스 이름을 조립하지 않는다 — 표에서 완성된 문자열을 꺼내 이어 붙일 뿐이다.
   // Tailwind 는 소스를 텍스트로 스캔하므로 `bg-${x}` 같은 것을 찾지 못한다 (가드 G-B).
   const shape = PLAIN.has(variant)
     ? plainButtonVariants({ variant: variant as PlainVariant })
     : buttonVariants({ variant: variant as BoxVariant, size });
   const cls = cn(shape, layout);
-  const Comp = asChild ? Slot.Root : "button";
+  /*
+    **`asChild` 를 지웠다** (T106). 원본은 자식을 버튼 모양으로 그리는 통로를 두지만, 이 저장소에서 그것을
+    쓰는 호출부가 **하나도 없었다**(전수 확인). 부품 층이 Base UI 로 옮겨 가며 `render` 가 그 몫을 하므로
+    (`MenuTrigger`·`DialogClose`·`Tooltip` 이 그렇게 쓴다) 쓰이지 않는 통로를 위해 `radix-ui` 의존만 남기지
+    않는다 — 이것이 `Button` 의 마지막 radix 참조였다 (T107 이 패키지를 지운다).
+  */
+  const Comp = "button";
   // `data-variant`·`data-size` 로 **의도**를 내보낸다. 검사가 유틸리티 조합을 읽으면 구현 세부에 묶이고,
   // 정작 「강조가 없는가」라는 질문이 사라진다. 클래스가 실제로 CSS 를 만드는지는 G-B 가 따로 본다.
   return (

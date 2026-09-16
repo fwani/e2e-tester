@@ -52,13 +52,22 @@ const UI_FILES = execFileSync("find", ["src/ui", "-name", "*.tsx"], { cwd: ROOT,
 
   T107 이 끝나면 `RADIX_PARTS` 가 비고 `radix-ui` 의존성 자체가 사라진다.
 */
-const BASE_PARTS = new Set(["Dialog.tsx", "AlertDialog.tsx", "OverlayPane.tsx", "DropdownMenu.tsx"]);
-const RADIX_PARTS = new Set([
-  "Button.tsx", // `Slot`(asChild) 만 쓴다 — T106 이 `render` 로 옮긴다
+const BASE_PARTS = new Set([
+  "Dialog.tsx",
+  "AlertDialog.tsx",
+  "OverlayPane.tsx",
+  "DropdownMenu.tsx",
   "Tabs.tsx",
   "ToggleGroup.tsx",
   "Tooltip.tsx",
 ]);
+/*
+  **비었다** (T106). 마지막 참조였던 `Button` 의 `asChild`(radix `Slot`)는 **쓰는 호출부가 하나도 없어**
+  통로째 지웠다 — `render` 가 그 몫을 한다. T107 이 `radix-ui` 패키지를 지우면 이 목록은 영영 빈다.
+  목록을 지우지 않고 **빈 채로 두는** 이유: 아래 두 검사가 「자기 갈래를 실제로 가져오는가」를 파일마다
+  묻는 구조이고, 빈 목록이면 「radix 를 가져오는 부품이 하나도 없어야 한다」가 그대로 성립하기 때문이다.
+*/
+const RADIX_PARTS = new Set<string>([]);
 /** 동작 층 부품 전부 — 갈래와 무관하게 **있어야** 한다 (T077). */
 const BEHAVIOR_PARTS = new Set([...BASE_PARTS, ...RADIX_PARTS]);
 

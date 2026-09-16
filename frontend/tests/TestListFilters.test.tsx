@@ -73,7 +73,7 @@ describe("결말 필터 (FR-272 · DC-007)", () => {
   it("확정 디자인이 정의한 넷이 있고 그 이상 늘리지 않는다", async () => {
     await renderList();
     // 017 T061 — 넷 중 하나를 고르는 묶음이라 역할이 `radiogroup` 이다 (017 전에는 이름만 붙인 `group`).
-    const group = screen.getByRole("radiogroup", { name: "결말로 거르기" });
+    const group = screen.getByRole("group", { name: "결말로 거르기" });
     const labels = Array.from(group.querySelectorAll("button")).map((b) =>
       (b.textContent ?? "").replace(/\d+$/, "").trim(),
     );
@@ -84,16 +84,16 @@ describe("결말 필터 (FR-272 · DC-007)", () => {
     await renderList();
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("radio", { name: /^통과/ }));
+    await user.click(screen.getByRole("button", { name: /^통과/ }));
     expect(visibleIds().sort()).toEqual(["TC-001", "TC-003"]);
 
-    await user.click(screen.getByRole("radio", { name: /^실패/ }));
+    await user.click(screen.getByRole("button", { name: /^실패/ }));
     expect(visibleIds()).toEqual(["TC-002"]);
 
-    await user.click(screen.getByRole("radio", { name: /^미실행/ }));
+    await user.click(screen.getByRole("button", { name: /^미실행/ }));
     expect(visibleIds()).toEqual(["TC-004"]);
 
-    await user.click(screen.getByRole("radio", { name: /^전체/ }));
+    await user.click(screen.getByRole("button", { name: /^전체/ }));
     expect(visibleIds()).toHaveLength(4);
   });
 
@@ -101,12 +101,12 @@ describe("결말 필터 (FR-272 · DC-007)", () => {
     // 거른 뒤의 수를 세면 「실패」를 고른 순간 「통과 0」이 되어 돌아갈 길이 사라진다.
     await renderList();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("radio", { name: /^실패/ }));
+    await user.click(screen.getByRole("button", { name: /^실패/ }));
 
-    expect(screen.getByRole("radio", { name: "통과 2" })).toBeTruthy();
-    expect(screen.getByRole("radio", { name: "실패 1" })).toBeTruthy();
-    expect(screen.getByRole("radio", { name: "미실행 1" })).toBeTruthy();
-    expect(screen.getByRole("radio", { name: "전체 4" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "통과 2" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "실패 1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "미실행 1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "전체 4" })).toBeTruthy();
   });
 
   it("고른 결말이 하나도 없으면 그 사실을 말한다", async () => {
@@ -114,7 +114,7 @@ describe("결말 필터 (FR-272 · DC-007)", () => {
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
     await screen.findByText("이름 TC-100");
 
-    await userEvent.setup().click(screen.getByRole("radio", { name: /^실패/ }));
+    await userEvent.setup().click(screen.getByRole("button", { name: /^실패/ }));
     expect(screen.getByText("실패인 테스트가 없습니다.")).toBeTruthy();
   });
 });
@@ -142,7 +142,7 @@ describe("백엔드를 건드리지 않는다 (research R7)", () => {
 
     const before = fetchMock.mock.calls.length;
     const user = userEvent.setup();
-    await user.click(screen.getByRole("radio", { name: /^실패/ }));
+    await user.click(screen.getByRole("button", { name: /^실패/ }));
     await user.click(screen.getByRole("button", { name: "최근 실행 순" }));
 
     expect(fetchMock.mock.calls.length, "필터·정렬이 서버를 다시 불렀다").toBe(before);

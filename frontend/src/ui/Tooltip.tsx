@@ -1,30 +1,42 @@
 /**
- * 툴팁 — 글자가 없거나 잘린 조작의 이름을 보여 준다. 017 T063.
+ * 툴팁 — 글자가 없거나 잘린 조작의 이름을 보여 준다. 017 T063 · **Base UI 이식 T106**.
  *
- * 출처: shadcn new-york-v4/tooltip @ shadcn 4.21.0 (2026-09-15) — `Tooltip`·`TooltipTrigger`·`TooltipContent` 의 구조와
- * `data-slot`, **툴팁마다 공급자를 두는 형태**(원본 `Tooltip` 이 뿌리를 `TooltipProvider` 로 감싼다)를 가져왔다. 클래스는
- * contracts/ui-parts.md §2 대응표대로 옮겼다 — `bg-foreground text-background` → `bg-ink text-panel` · `rounded-md` →
- * `rounded-base` · `px-3 py-1.5 text-xs` → `px-[8px] py-[5px] text-[12px]` · `z-50` → `z-[70]`(layout-contract-v3 L1 — 알림 층 위).
- * 원본의 `animate-in`·`fade-in-0`·`zoom-in-95`·`slide-in-from-*` 와 화살표(`TooltipPrimitive.Arrow`)는 들이지 않았다 —
- * 움직임 언어가 없고, 가리키는 조작이 바로 옆이다.
+ * 출처: shadcn base/tooltip @ shadcn 4.21.x (style base-nova) · `@base-ui/react` 1.8.x — 구조
+ * (`Provider`·`Root`·`Trigger`·`Portal`·**`Positioner`**·`Popup`)와 `data-slot`, **툴팁마다 공급자를 두는 형태**를
+ * 가져왔다. 클래스는 contracts/ui-parts.md §2 대응표대로다 — `bg-foreground text-background` → `bg-ink text-panel` ·
+ * `rounded-md` → `rounded-base` · `px-3 py-1.5 text-xs` → `px-[8px] py-[5px] text-[12px]` · `z-50` → `z-[70]`
+ * (layout-contract-v3 L1 — 알림 층 위). 원본의 `animate-in`·`fade-in-0`·`zoom-in-95`·`slide-in-from-*` 와
+ * 화살표(`Arrow`)는 들이지 않았다 — 움직임 언어가 없고, 가리키는 조작이 바로 옆이다.
  *
- * ## 공급자를 앱 뿌리에 두지 않는다 — 계획(T063)에서 바꿨다
+ * ## Radix 에서 옮기며 달라진 것 (T106)
  *
- * 계획은 `App.tsx` 뿌리에 공급자를 한 번 두는 것이었다. 그러나 화면을 낱개로 렌더하는 검사가 많아(`TestList`·`Toast`·
- * `StepDetail` 만 그리는 검사) 뿌리에만 두면 그 검사들이 「공급자 밖의 툴팁」 예외로 멈춘다. shadcn 원본처럼 툴팁마다
- * 둔다 — 대기 시간이 툴팁 사이에 공유되지 않는 것 말고 잃는 것이 없다.
+ * | 옛 형태 (radix) | 지금 (base) | 왜 |
+ * |---|---|---|
+ * | `Content` 가 자리(`side`·`sideOffset`·`collisionPadding`)와 모습을 함께 가졌다 | **`Positioner`(자리) + `Popup`(모습)** | 부품이 둘을 나눈다. **값은 그대로다** |
+ * | 트리거 `asChild` | **`render`** | 같은 뜻의 다른 이름 |
+ * | `delayDuration` | 공급자의 **`delay`** | 이름만 다르다 |
+ * | 뜨지 않게 하기를 `open={열림 && !disabled}` 로 | 뿌리의 **`disabled`** | 부품이 그 통로를 갖는다 — 상태를 손으로 누를 이유가 없다 |
+ *
+ * ## 공급자를 앱 뿌리에 두지 않는다 — 계획(T063)에서 바꿨고, T106 도 그대로 둔다
+ *
+ * 계획은 `App.tsx` 뿌리에 공급자를 한 번 두는 것이었다. 그러나 화면을 낱개로 렌더하는 검사가 많아
+ * (`TestList`·`Toast`·`StepDetail` 만 그리는 검사) 뿌리에만 두면 그 검사들이 공급자 밖의 툴팁이 된다.
+ * shadcn 원본처럼 툴팁마다 둔다 — 대기 시간이 툴팁 사이에 공유되지 않는 것 말고 잃는 것이 없다.
+ *
+ * **T106 에서 다시 확인했다**: Base UI 가 없는 부품을 알리는 오류는 `Root`·`Portal`·`Positioner` 셋뿐이고
+ * **공급자는 그 목록에 없다**(패키지 소스). 즉 공급자는 필수가 아니며, 지금처럼 툴팁마다 두는 것도 그대로 옳다.
  *
  * ## 쓰지 않는 자리 — 비활성 조작 (research R2)
  *
  * 비활성 조작의 사유는 `title` 로 남긴다. 비활성 단추는 포인터 사건을 받지 않아 툴팁이 뜨지 않고, 뜨게 하려고 감싸면
  * 초점 순서에 요소가 하나 더 생긴다. 이 부품은 **글자 없는 아이콘 조작**과 **잘린 글자**(`Truncate`)에 쓴다.
  */
-import { Tooltip as TooltipPrimitive } from "radix-ui";
-import { useLayoutEffect, useRef, useState, type ComponentPropsWithRef, type ReactNode } from "react";
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
+import { useLayoutEffect, useRef, useState, type ComponentPropsWithRef, type ReactElement, type ReactNode } from "react";
 
 import { cn } from "./cn";
 
-/** 포인터를 올린 뒤 뜨기까지. 0 이면 줄을 훑는 포인터마다 툴팁이 번쩍인다. 초점에는 기다리지 않는다(Radix). */
+/** 포인터를 올린 뒤 뜨기까지. 0 이면 줄을 훑는 포인터마다 툴팁이 번쩍인다. 초점에는 기다리지 않는다. */
 const DELAY_MS = 300;
 
 /**
@@ -39,28 +51,23 @@ export interface TooltipProps {
   /** 보여 줄 문구. 조작의 접근 가능한 이름**에 들어 있는** 글로 둔다 — 보이는 이름과 들리는 이름이 갈리지 않게. */
   readonly content: ReactNode;
   /** 트리거가 될 요소 하나. 그 요소가 초점을 받을 수 있어야 키보드로도 뜬다. */
-  readonly children: ReactNode;
+  readonly children: ReactElement;
   readonly side?: "top" | "right" | "bottom" | "left";
   /** 참이면 뜨지 않는다 — `Truncate` 가 글자가 잘리지 않았을 때 쓴다. 구조는 그대로라 트리거가 다시 그려지지 않는다. */
   readonly disabled?: boolean;
 }
 
 export function Tooltip({ content, children, side = "top", disabled = false }: TooltipProps) {
-  const [open, setOpen] = useState(false);
   return (
-    <TooltipPrimitive.Provider delayDuration={DELAY_MS}>
-      <TooltipPrimitive.Root open={open && !disabled} onOpenChange={setOpen}>
-        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+    <TooltipPrimitive.Provider delay={DELAY_MS}>
+      <TooltipPrimitive.Root disabled={disabled}>
+        <TooltipPrimitive.Trigger render={children} />
         <TooltipPrimitive.Portal>
-          <TooltipPrimitive.Content
-            side={side}
-            sideOffset={4}
-            collisionPadding={8}
-            className={CONTENT}
-            data-slot="tooltip-content"
-          >
-            {content}
-          </TooltipPrimitive.Content>
+          <TooltipPrimitive.Positioner side={side} sideOffset={4} collisionPadding={8} data-slot="tooltip-positioner">
+            <TooltipPrimitive.Popup className={CONTENT} data-slot="tooltip-content">
+              {content}
+            </TooltipPrimitive.Popup>
+          </TooltipPrimitive.Positioner>
         </TooltipPrimitive.Portal>
       </TooltipPrimitive.Root>
     </TooltipPrimitive.Provider>

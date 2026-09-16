@@ -25,7 +25,7 @@
 | 부품 (파일) | 내보내는 것 | behavior | shadcn 원본 | 대체하는 것 | 상태 |
 |---|---|---|---|---|---|
 | `cn.ts` | `cn` | — | (로컬) | `[…].filter(Boolean).join(" ")` 37곳 | ✅ T010 |
-| `Button.tsx` | `Button` · `buttonVariants` | raw (+ `Slot` 로 `asChild`) | `button` | `ui/Button` · `navLinkClasses` · 밑줄 해소 링크 3곳 · 클래스 없는 원시 `<button>` 16곳 | ✅ T025·T026 — `nav` 26곳 전환 |
+| `Button.tsx` | `Button` · `buttonVariants` | **raw** | `button` | `ui/Button` · `navLinkClasses` · 밑줄 해소 링크 3곳 · 클래스 없는 원시 `<button>` 16곳 | ✅ T025·T026 — `nav` 26곳 전환 · **T106** — `asChild`(radix `Slot`)를 **지웠다**: 넘기는 호출부가 하나도 없는 죽은 통로였고, 그 몫은 부품들의 `render` 가 한다. 이것이 `Button` 의 마지막 radix 참조였다 |
 | `Chip.tsx` | `Chip` · `chipVariants` · `Pill` | raw | `badge` | `ui/Chip` · `chipClasses` | ✅ T027 |
 | `Input.tsx` | `Input` | native | `input` | 원시 텍스트형 `<input>` 40곳 · `ui/Field` 안쪽 벗기기 · 국면 이름 입력 · 인라인 이름 고치기 2곳 | ✅ T029 · 화면 적용 T036~T047 (`ai` 변종 · `font` 축 추가) |
 | `Textarea.tsx` | `Textarea` | native | `textarea` | 원시 `<textarea>` 5곳 (IME 칸 제외) | ✅ T030 · 화면 적용 T041·T042 |
@@ -38,9 +38,9 @@
 | `AlertDialog.tsx` | `AlertDialog` · `AlertDialogContent` · … · `AlertDialogAction` · `AlertDialogCancel` | **base** `AlertDialog` | `alert-dialog` | `EditView` 저장 안 한 채 떠나기 확인 | ✅ T048 · 화면 적용 T050·T051 · **T104 Base UI 이식** — `AlertDialogAction` 은 여전히 들이지 않는다(busy 동안 창이 남는다). `Cancel` 부품이 없어 `Close render={<Button/>}` 로 그린다. 바깥 누름 무시·첫 초점 「돌아가기」는 부품이 **기본으로** 한다 |
 | `OverlayPane.tsx` | `DetailPanel` · `DetailPanelTitle` | **base** `Dialog` `modal={false}` · `Portal container=` | — (research R7) | `ui/Surface` `OverlayPane` · `StepDetail` 의 `role="dialog"` 수제 판 | ✅ T052 · **T104 Base UI 이식** — 포털은 뺄 수 없어 `container` 로 **제자리**(`display:contents` 호스트)에 보낸다. 바깥 누름·초점 이탈은 `disablePointerDismissal` 하나가 막는다. `Viewport` 는 쓰지 않는다(마디를 늘리지 않는다) |
 | `DropdownMenu.tsx` | `Menu` · `MenuTrigger` · `MenuContent` · `MenuItem` | **base** `Menu` | `dropdown-menu` | `TestList` 행 메뉴(수제 포털·위치 계산·스크롤 닫힘) | ✅ T055 · 화면 적용 T056 · **T105 Base UI 이식** — 자리는 `Positioner`(`positionMethod="fixed"`), 모습은 `Popup`. 항목은 `onClick`, 트리거는 `render`. 닫힌 뒤 초점은 `finalFocus` 한 겹이 정한다(N-08) |
-| `Tabs.tsx` | `Tabs` · `TabsList` · `TabsTrigger` · `TabsContent` | **radix** `Tabs` | `tabs` | `ui/Table` `Tabs` · `TargetPane` 산출물 탭(클래스 복사본) | ✅ T058 — `TargetPane` 산출물 탭 (뿌리 `asChild`) |
-| `ToggleGroup.tsx` | `ToggleGroup` · `ToggleGroupItem` (`appearance`: `segmented` · `filter` · `chip` · `card`) | **radix** `ToggleGroup` `type="single"` | `toggle-group` · `toggle` | `ui/Table` `Segmented` · `PacingControl` · `TestList` 거르기·정렬 · `TestGroupBar` 칩 · `WorkArea` 만드는 방법 카드 · `InsertStepForm` 가짜 라디오 2곳 | ✅ T059~T061 — 실행 속도(segmented) · 결말 거르기·Step 넣기 종류·일치 방식(filter) · 그룹 칩(chip · N-06) · 만드는 방법(card). 묶음은 `radiogroup` |
-| `Tooltip.tsx` | `Tooltip` · `Truncate` — 공급자(`TooltipProvider`)는 **내보내지 않는다.** 원본 `Tooltip` 처럼 툴팁마다 뿌리를 공급자로 감싼다 | **radix** `Tooltip` | `tooltip` | 잘린 글자·아이콘 단추의 `title` 만으로 보이던 전체 이름 (비활성 사유의 `title` 은 **유지**) | ✅ T063·T064 — 행 메뉴 `⋮` · 알림 `×` · Step 상세 닫기. `Truncate` 는 US3 T074 에서 쓴다 · T089 — 내보내는 것을 실제와 맞췄다 |
+| `Tabs.tsx` | `Tabs` · `TabsList` · `TabsTrigger` · `TabsContent` | **base** `Tabs` | `tabs` | `ui/Table` `Tabs` · `TargetPane` 산출물 탭(클래스 복사본) | ✅ T058 · **T106 Base UI 이식** — 부품 이름은 `Tab`·`Panel` 이지만 **내보내는 이름은 그대로**(`TabsTrigger`·`TabsContent`)라 화면을 건드리지 않았다. 상태 표식 `data-[state=active]`→**`data-[active]`**, 뿌리 `asChild`→**`render`**(`TargetPane` 이 판 자체를 뿌리로 쓴다 — 감싸던 `<div>` 는 없앴다) |
+| `ToggleGroup.tsx` | `ToggleGroup` · `ToggleGroupItem` (`appearance`: `segmented` · `filter` · `chip` · `card`) | **base** `ToggleGroup` + `Toggle` | `toggle-group` · `toggle` | `ui/Table` `Segmented` · `PacingControl` · `TestList` 거르기·정렬 · `TestGroupBar` 칩 · `WorkArea` 만드는 방법 카드 · `InsertStepForm` 가짜 라디오 2곳 | ✅ T059~T061 · **T106 Base UI 이식** — 네 모양의 클래스 표는 **한 줄도 바뀌지 않았다**(상태 표식만 `data-[state=on]`→**`data-[pressed]`**). 값이 **배열**이라 부품 안에서 문자열 하나로 옮기고, **빈 배열을 무시해** 「늘 하나가 골라져 있다」를 지킨다(S7). **묶음이 `radiogroup`/`radio` 가 아니라 눌림(`aria-pressed`)이 된다 — 낭독되는 의미가 내려간다** (아래 §4) |
+| `Tooltip.tsx` | `Tooltip` · `Truncate` — 공급자(`TooltipProvider`)는 **내보내지 않는다.** 원본 `Tooltip` 처럼 툴팁마다 뿌리를 공급자로 감싼다 (T106 재확인: 없는 부품을 알리는 오류는 `Root`·`Portal`·`Positioner` 셋뿐이라 **공급자는 필수가 아니다** — 지금 형태가 그대로 옳다) | **base** `Tooltip` | `tooltip` | 잘린 글자·아이콘 단추의 `title` 만으로 보이던 전체 이름 (비활성 사유의 `title` 은 **유지**) | ✅ T063·T064 — 행 메뉴 `⋮` · 알림 `×` · Step 상세 닫기. `Truncate` 는 US3 T074 에서 쓴다 · T089 — 내보내는 것을 실제와 맞췄다 |
 | `Disclosure.tsx` | `Disclosure` | native `<details>` | — (Radix `Collapsible` 은 쓰지 않는다) | `StepDetail` ▸/▾ 수제 토글 3곳 · 모양이 제각각인 `<details>` 10곳 | ✅ T065 — `<details>` 10곳 · Step 상세 수제 토글 3곳 (요약 줄 세 모양 · 표식 ▸/▾ 하나) |
 | `Table.tsx` | `Table` · `TableHeader` · `TableBody` · `TableFooter` · `TableRow` · `TableHead` · `TableCell` · `rowClasses` · `Row` · `Spacer` | raw | `table` | `ui/Table` 전부 · `DraftList` 원시 `<table>` · `LocatorPriorityTable` · `ImportPreview` 표 2곳 | ✅ T035 · 화면 적용 T044·T045 (`compact` 변종 · `align` · `muted` 추가 · N-05) |
 | `Notice.tsx` | `Notice` · `Toast` · `ToastLayer` · `TOAST_LAYER_CLASSES` | raw | — (015 계승 · research R6) | 같음 + `Workbench` 알림 층 복사본 | ✅ T021(US1)·T066 — 층 클래스 하나 · 클래스 잇기 `cn` |
@@ -172,9 +172,26 @@
 | `Dialog` · `AlertDialog` | 알림 층 안에서 시작한 바깥 상호작용은 닫힘이 아니다 (research R6 ④) | 부품 테스트 |
 | `DetailPanel` | 초점 이동·Esc·되돌림은 같고 **초점을 가두지 않는다.** Step 목록 안 클릭은 닫힘이 아니다 (R7) | `DetailPlacement` |
 | `Menu` | 트리거에 `aria-haspopup`·`aria-expanded`. 키보드로 열고 화살표로 오가고 Esc·바깥 클릭으로 닫는다. 트리거는 `aria-label` 을 유지한다(`{행 이름} 추가 동작`) (FR-012) | `RowMenuVisible` 외 |
-| `ToggleGroup` | 고른 항목을 보조기술에 알린다(`role="radio"`·`aria-checked`). 화살표로 오간다 (FR-013) | `PacingControl` 외 |
+| `ToggleGroup` | 고른 항목을 보조기술에 알린다(**`aria-pressed`** · 묶음은 `role="group"`). 화살표로 오간다 (FR-013) | `PacingControl` 외 |
 | `Tabs` | `tablist`·`tab`·`tabpanel`, 화살표 이동 | `TargetPane` |
 | `Tooltip` | hover 와 **초점**에 뜬다. 비활성 조작에는 쓰지 않는다 | 부품 테스트 |
+
+**T106 — 고르기 묶음과 툴팁에서 보조기술이 듣는 말이 내려갔다. 둘 다 기록해 둔다.**
+
+| | 017 (radix) | T106 (base) | 무엇을 잃었나 |
+|---|---|---|---|
+| 고르기 묶음 | `role="radio"` · `aria-checked` · 묶음 `radiogroup` | **`aria-pressed`** · 묶음 `role="group"` | 「셋 중 하나」라는 뜻. 「느리게, 라디오 버튼, 선택됨, 3개 중 1번째」 → 「느리게, 버튼, 눌림」 |
+| 툴팁 | 팝업 `role="tooltip"` · 트리거 `aria-describedby` | **둘 다 없다**(실측 — 트리거 `aria-describedby=null`, 팝업 `id=null`) | 트리거와 툴팁 글의 **프로그램적 연결** |
+
+**툴팁 쪽이 지금 비용 0 인 이유, 그리고 그것이 왜 조건부인가**: 이 저장소는 툴팁 문구를 **조작의 접근
+가능한 이름 안에 있는 글**로 두기로 이미 정해 두었다(`ui/Tooltip` 머리주석 — 「보이는 이름과 들리는
+이름이 갈리지 않게」). 아이콘 단추는 `aria-label` 이 같은 말을 이미 하고, `Truncate` 는 잘린 글자의
+**전체 문자열을 그대로 텍스트로** 담는다(자르는 것은 CSS 다). 그래서 지금 쓰임에서는 잃는 것이 없다.
+**다만 그 전제가 이제 떠받치는 기둥이 됐다** — 접근 가능한 이름에 없는 문구를 툴팁에만 넣으면 그 글은
+보조기술에 **전달되지 않는다.** 전에는 `aria-describedby` 가 받쳐 주었다.
+
+둘 다 사용자 결정(2026-09-16 「Base UI 기준에 맞춘다」)에 따른 것이고, 사람 확인 **H-10**(「고르기 낭독」)이
+실제 낭독기로 듣는다.
 | 모든 조작 | 비활성은 점선으로 자리를 지키고 포인터를 막지 않는다 (FR-014) · 초점 윤곽선을 지우지 않는다 (FR-015) | G-F · `FocusRing` · `InteractionStates` |
 | 버튼 · 칩 · 표 머리 | 한국어가 단어 중간에서 줄바꿈되지 않는다 — `whitespace-nowrap`, 줄어들 자리에 놓이면 `shrink-0` 또는 `Truncate` (FR-019) | 순회 |
 | `NativeSelect` · `Checkbox` | 정본 요소 규칙(`width:100%`·`min-height:32px`)이 번지지 않도록 크기를 명시한다 (B-07 · B-08) | 순회 |
