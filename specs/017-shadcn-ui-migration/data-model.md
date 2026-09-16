@@ -23,7 +23,7 @@
         │         shadcn 원본 (레지스트리)    │
         │               │ 이식 대응표 (ui-parts §2)
         ▼               ▼                  │
-   부품 (src/ui/*) ── 동작 층: Radix | 네이티브 | 원시
+   부품 (src/ui/*) ── 동작 층: Base UI | 네이티브 | 원시
         │  변종 표 (cva)  ◄── G-E · G-F      │
         │                                  │
         ▼                                  │
@@ -70,7 +70,7 @@
 | 속성 | 뜻 |
 |---|---|
 | `kind` | 버튼 · 칩 · 입력 · 선택 · 체크박스 · 라디오 · 라벨 · 대화상자 · 메뉴 · 탭 · 분절 선택 · 툴팁 · 펼침 · 표 · 알림 · 면 |
-| `behavior` | `radix` (구조·동작을 `radix-ui` 에서) · `native` (네이티브 요소의 동작) · `raw` (동작 없음) |
+| `behavior` | `base` (구조·동작을 `@base-ui/react` 에서 · 09-16 개정 전 이름은 `radix`) · `native` (네이티브 요소의 동작) · `raw` (동작 없음) |
 | `source` | shadcn 레지스트리 항목과 버전 (`new-york-v4/button @ shadcn 4.21.0`) 또는 `015` (기존 부품 계승) |
 | `variants` | 변종 표 — §4 |
 | `slots` | `data-slot` 이름 (shadcn 관례). 순회·테스트가 부품을 집는 통로 |
@@ -80,7 +80,7 @@
 
 - 종류마다 부품 정의는 **하나** (FR-003 · SC-006). 옛 부품을 남긴 채 새 부품을 두지 않는다.
 - 부품은 `className` 을 받지 않는다. **`layout` 은 배치만** (015 규율 · research R5).
-- `behavior` 가 `radix` 인 부품만 포털·초점 관리를 갖는다. 목록은 [ui-parts.md](contracts/ui-parts.md) §1.
+- `behavior` 가 `base` 인 부품만 포털·초점 관리를 갖는다. 목록은 [ui-parts.md](contracts/ui-parts.md) §1·§1-2.
 
 ## 4. 변종 표 (Variant Table)
 

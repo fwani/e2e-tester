@@ -89,3 +89,21 @@
 | `ToastOverModal.test.tsx` | 모달이 열린 동안 알림 층이 `aria-hidden` 이 아니고 눌린다 | research R6 ③④ |
 | `MirrorInputWithDialog.test.tsx` | 대화상자가 열린 동안 미러로 가는 입력 0, 닫힌 뒤 한글 조합 입력 경로 유지 | FR-016 · SC-013 |
 | `TooltipDisclosure.test.tsx` | 툴팁이 키보드 초점·포인터에 뜨고 Esc 로 닫힌다 · 잘린 글자만 초점을 받고 전체 문구를 보인다 · 네이티브 요약 줄이 펼침을 바꾸고 표식 글자는 낭독에서 빠진다 | FR-019 · ui-parts §4 (T063·T065 · 계획에 없던 파일 — 부품 테스트) |
+
+## 예상되는 변경 — 2026-09-16 갈래 교체 (Radix → Base UI)
+
+**「예상」은 확정이 아니다.** 실제로 고치게 되면 `상태` 를 채우고, 고치지 않아도 통과하면 `불필요` 로 적는다.
+**단언 수 기준선은 2275**(무른 단언 639 · 건너뜀 0 · 118 파일 · 1418 건)이며 여기서 줄지 않는다.
+
+| 파일 | verifies (바뀌면 안 되는 것) | change (판정 방법) | why | 상태 |
+|---|---|---|---|---|
+| `InteractionStates.test.tsx` | 탭·분절 띠의 상태별 모습이 정본을 따른다 | 찾는 문자 `data-[state=active]:` → `data-[active]:` · `data-[state=on]:` → `data-[pressed]:` | 갈래가 쓰는 상태 속성 이름이 다르다 (research R2 개정 · ui-parts §2) | ⬜ |
+| `PacingControl` · `RunnerPacing` | 고른 실행 속도가 남고 보조기술에 알려진다 | `role=radio` + `aria-checked` → 단추 + `aria-pressed` | 새 갈래의 고르기 묶음은 **눌림** 의미다. 대안(라디오 유지)은 research R2 개정에 적었다 | ⬜ |
+| `TestListFilters` · `TestGroups` · `TestListSelection` · `ListLiveState` · `AiRecord` · `ComposePhase` | 거르기·그룹 칩·만드는 방법 카드가 동작하고 고른 것이 알려진다 | 같음 (`radio`/`radiogroup` → 단추/`group`) | 같음 | ⬜ |
+| `MenuKeyboard` · `RowMenuVisible` · `TestListActions` · `EditEntryPoints` · `DeleteOutcome` | 메뉴가 키보드로 열리고 항목이 골라진다 · 「이름」 뒤 초점이 칸에 간다(N-08) | 자리 감싸개 선택자(`data-radix-popper-content-wrapper`) → 새 갈래의 `Positioner` 표식 | 부품 구조가 다르다. **역할(`menuitem`)로 찾는 판정과 초점 단언은 그대로** | ⬜ |
+| `DialogFocus` | 대화상자 초점 이동·가두기·Esc·되돌림 | `data-slot=alert-dialog-overlay` → Backdrop 의 표식 | 구조가 Overlay → Backdrop/Popup | ⬜ |
+| `TooltipDisclosure` | 툴팁이 뜨고 Esc 로 닫힌다 | 렌더 껍데기에 공급자 하나를 두른다 | 공급자가 툴팁마다 → 앱 뿌리 하나 | ⬜ |
+| `ToastPlacement` · `ToastDismiss` · `ToastOverModal` · `NoticesAreToasts` | 알림이 한 층에 뜨고 · 흐름을 밀지 않고 · 대화상자 위에서 눌리고 · 퇴장 셋을 갖는다 | 층 클래스(`TOAST_LAYER_CLASSES`) 읽기 → 부품의 층 표식과 관리자 통로. **자리의 실제 판정은 순회가 한다** | 알림이 부품으로 바뀐다 (research R6 개정). 요구는 그대로 | ⬜ |
+| `ImplementationCount` | 구현이 또 한 벌 생기지 않는다 | 이름 단위 퇴역에 `radix-ui`·`asChild`·`useToastDismiss`·`TOAST_LAYER_CLASSES` 추가 | 옛 구현이 되살아나지 않게 | ⬜ |
+| `UiSkin` (G-F) | 부품의 모습이 정본이다 | `behavior = base` 인 파일이 `@base-ui/react` 를 가져오는지 · 출처 줄에 **갈래**가 있는지 | guards 개정 | ⬜ |
+| `ScreenSweep` | 순회 보고서가 낡지 않고 검출이 0 이다 | 화면 수 기대값 +2 (알림 화면) | screen-sweep SW-5 개정 | ⬜ |

@@ -5,7 +5,10 @@
 ## §0 — 규칙 요약
 
 1. 부품은 `frontend/src/ui/` 에 산다. 파일 이름은 PascalCase. 도메인을 모른다.
-2. shadcn 원본을 이식할 때 **파일 머리에 출처를 적는다** — `new-york-v4/<item> @ shadcn 4.21.0 (2026-09-15)`.
+2. shadcn 원본을 이식할 때 **파일 머리에 출처를 적는다** — 갈래까지 적는다:
+   `shadcn base/<item> @ shadcn 4.21.x (style base-nova) · @base-ui/react 1.8.x`.
+   *2026-09-16 개정: 017 의 출처 줄은 갈래를 적지 않아 **Radix 갈래를 옮긴 사실이 문서에 드러나지
+   않았다.** 갈래는 출처의 일부다.*
    원본에서 무엇을 바꿨는지는 §2 대응표를 따랐다고 적고, 표에 없는 변경만 따로 적는다.
 3. 부품은 `className` 을 받지 않는다. `layout?: string` 은 배치만 (015).
 4. 변종은 `cva` 로, 파일 안에 둔다. 조합 잇기는 `ui/cn.ts`.
@@ -15,7 +18,9 @@
 
 ## §1 — 부품 목록
 
-`behavior`: **radix** = `radix-ui` 1.6.x 가 구조·동작 · **native** = 네이티브 요소의 동작 · **raw** = 동작 없음.
+`behavior`: **base** = `@base-ui/react` 1.8.x 가 구조·동작 · **native** = 네이티브 요소의 동작 ·
+**raw** = 동작 없음. *2026-09-16 개정 전에는 **radix** = `radix-ui` 1.6.x 였다 — 아래 §1-2 가 부품별로
+무엇이 달라지는지 적는다.*
 
 | 부품 (파일) | 내보내는 것 | behavior | shadcn 원본 | 대체하는 것 | 상태 |
 |---|---|---|---|---|---|
@@ -43,8 +48,25 @@
 | `StepRow.tsx` | (015 그대로) | raw | — | 체크 칸은 `Checkbox` 를 쓴다 | ✅ T066 — 클래스 잇기 `cn` (체크 칸의 입력은 `Checkbox` 로 T042) |
 | `useToastDismiss.ts` | (그대로) | — | — | — | — |
 
-**들이지 않는 shadcn 부품**: `select`(Radix) · `checkbox`(Radix) · `radio-group` · `collapsible` · `sonner` ·
-`label`(Radix). 이유는 research R2.
+**들이지 않는 shadcn 부품**: `select` · `checkbox` · `radio-group` · `collapsible` · `sonner` · `label`.
+이유는 research R2 — 네이티브가 모습과 동작을 이미 갖는다.
+
+## §1-2 — 갈래를 Base UI 로 (2026-09-16 개정)
+
+위 표의 `behavior = radix` 부품 여덟을 **같은 자리에서** Base UI 로 옮긴다. 화면 코드는 바뀌지
+않는다 — 부품이 감싸기 때문이다.
+
+| 부품 | 지금 (Radix) | Base UI | 바뀌는 것 |
+|---|---|---|---|
+| `Button` | `Slot` 로 `asChild` | (동작 층 없음) | **`asChild` 제거.** 부모가 `render={<Button/>}` 로 받는다 |
+| `Dialog` | Root/Portal/Overlay/Content · `onInteractOutside` · 수제 `useReturnFocus` | Root/Portal/**Backdrop**/**Popup** | 바깥 누름은 `onOpenChange` 의 **닫힌 이유**로 · 초점은 `initialFocus`/`finalFocus` (수제 훅 삭제) |
+| `AlertDialog` | 같은 구조 | 같은 구조 | 취소 단추가 `Close render={<Button/>}` |
+| `OverlayPane` | `Dialog modal={false}` · 포털 없음 | 같음 (S6) | 바깥 누름 무시를 이유 판정으로 |
+| `DropdownMenu` | Trigger/Portal/Content 가 자리도 갖는다 | Root/Trigger/Portal/**Positioner**/Popup | 자리 속성이 `Positioner` 로 · `onCloseAutoFocus` → Popup `finalFocus`(N-08 의 「이름」 초점이 여기로) |
+| `Tabs` | Root/List/Trigger/Content · `data-state=active` | Root/List/**Tab**/**Panel** · **`data-active`** | 선택 상태 문자 · 뿌리 `asChild` → `render` |
+| `ToggleGroup` | `type="single"` → `radiogroup`/`radio` · `aria-checked` | 기본 배타 · **눌림**(`aria-pressed`·`data-pressed`) · 값이 배열 | 낭독되는 의미가 바뀐다 · **빈 값 금지를 부품이 강제**(S7) |
+| `Tooltip` | 툴팁마다 공급자 | **앱 뿌리에 공급자 하나** · Positioner/Popup | `delayDuration` → 공급자의 `delay` |
+| `Toast` (신규) | `ui/Notice` + `components/Toast` + `useToastDismiss` + `NoticeStack` 타이머 | Provider/Portal/Viewport/Root + 관리자 | 화면은 **뜻과 문구만** 넘긴다 · 자리는 Viewport 한 곳 (layout-contract-v3 L2 개정) |
 
 ## §2 — 이식 대응표 (shadcn → 정본)
 
@@ -111,7 +133,9 @@
 |---|---|---|
 | `animate-in` · `animate-out` · `fade-*` · `zoom-*` · `slide-in-from-*` · `transition-*` · `duration-*` | **삭제** | 정본에 움직임 언어가 없다 (FR-010) |
 | `dark:*` | **삭제** | 다크 모드 없음 |
-| `data-open:` · `data-closed:` · `data-checked:` (radix-nova 사용자 정의 변종) | `data-[state=open]:` 등 표준 형태 | 사용자 정의 변종을 등록하지 않는다 |
+| `data-open:` · `data-closed:` · `data-checked:` (레지스트리의 사용자 정의 변종) | `data-[state=open]:` · `data-[active]:` · `data-[pressed]:` 등 표준 형태 | 사용자 정의 변종을 등록하지 않는다 |
+| **(09-16)** 탭 선택 상태 `data-[state=active]:` | `data-[active]:` | 갈래가 쓰는 속성 이름이 다르다 |
+| **(09-16)** 고르기 상태 `data-[state=on]:` | `data-[pressed]:` | 같음 |
 | `lucide-react` `XIcon` · `CheckIcon` · `ChevronDownIcon` · `CircleIcon` | `×` · `✓` · `▾` · (없음) — `<span aria-hidden>` | |
 | `[&_svg]:size-4` · `[&_svg:not([class*='size-'])]:size-4` | **삭제** | 아이콘 묶음이 없다 |
 

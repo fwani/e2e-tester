@@ -236,6 +236,49 @@ Web app 구조. `frontend/src/` · `frontend/tests/` · 저장소 루트 `script
 
 ---
 
+## Phase 10: 기반 교체와 알림 (2026-09-16 사용자 결정)
+
+동작 층의 갈래를 `radix-ui` → **Base UI**(shadcn 기본 갈래)로 바꾸고, 손으로 만든 알림 체계를 shadcn
+toast 부품으로 옮기며 자리를 아래로 내린다. **N-02 를 닫는다.**
+근거: spec 「2026-09-16 사용자 결정」 · FR-032~FR-035 · SC-014~SC-016 · research R2·R6·R7·R12 개정 ·
+[layout-contract-v3 L2](contracts/layout-contract-v3.md) · [screen-sweep SW-5](contracts/screen-sweep.md) ·
+[ui-parts §1-2](contracts/ui-parts.md) · [test-ledger 09-16 표](contracts/test-ledger.md).
+
+**순서가 중요하다**: 순회가 N-02 를 **잡는 것을 먼저 확인**하고(10-1), 그다음 고친다(10-2). 그래야
+「고쳤다」가 코드 커밋이 아니라 검출이 사라진 것으로 정의된다 (data-model §9).
+
+### 10-0 스파이크
+
+- [ ] T094 [P] 스파이크 S6 — 임시 파일에서 `@base-ui/react` `Dialog` 를 `modal={false}` · **포털 없이** 그려 자리·초점·Esc 가 지금과 같은지, 바깥 누름을 `onOpenChange` 의 닫힌 이유로 거를 수 있는지 확인하고 research S6 에 기록한다
+- [ ] T095 [P] 스파이크 S7 — `ToggleGroup`(배타)에서 **빈 값 금지**를 부품이 강제할 수 있는지 확인한다. 안 되면 대안(라디오 묶음 + `render`)을 research R2 개정에 적고 사용자에게 알린다
+- [ ] T096 [P] 스파이크 S8 — 알림 자리 후보 둘(오른쪽 아래 · 아래 가운데)을 작업 화면에서 재서 무엇을 덮는지 `specs/017-shadcn-ui-migration/baseline.md` 에 적는다 (layout-contract-v3 L2 표를 채운다)
+
+### 10-1 순회가 먼저 잡는다
+
+- [ ] T097 `scripts/screen_sweep.py` 에 알림이 떠 있는 화면 둘(`runner-review-unsaved` · `edit-notice`)과 `hover` 조작을 더한다 (SW-5 개정). **이 단계에서 순회는 실패해야 한다** — 지금 자리(오른쪽 위)가 Step 조작을 덮는 것이 검출로 나오는지 확인하고 보고서를 남긴다 (SC-016 의 증거)
+
+### 10-2 알림을 부품으로 · 자리를 아래로
+
+- [ ] T098 `frontend/package.json` 에 `@base-ui/react`(1.8.x)를 버전 고정으로 더한다. `radix-ui` 제거는 T106 에서 — 그때까지 둘이 함께 있다
+- [ ] T099 `frontend/src/ui/Toast.tsx` 를 만든다 — shadcn base 갈래 `toast` 이식(Provider `limit`·`timeout` · Portal · Viewport · Root/Title/Description/Close · 관리자). 클래스는 정본으로, 자리는 T096 이 정한 곳 하나. 출처 줄에 **갈래**를 적는다
+- [ ] T100 화면 13곳의 알림 통로를 관리자로 바꾸고 손으로 만든 것을 지운다 — `frontend/src/components/Toast.tsx` · `frontend/src/ui/useToastDismiss.ts` 삭제, `frontend/src/ui/Notice.tsx` 는 흐름 안 띠만 남긴다, `frontend/src/App.tsx` 에 층 하나
+- [ ] T101 되풀이 알림을 없앤다 — `frontend/src/pages/SessionScreen.tsx` 의 국면 전환·세션 종료 알림(research R6 개정 표) · `frontend/src/components/workbench/NoticeStack.tsx` 의 타이머·숨김 목록을 부품에 넘긴다
+- [ ] T102 알림 테스트 넷(`ToastPlacement`·`ToastDismiss`·`ToastOverModal`·`NoticesAreToasts`)의 **판정 방법만** 옮긴다. 자리의 실제 판정은 순회가 한다 — test-ledger 09-16 표에 `verifies` 를 먼저 적는다
+- [ ] T103 순회를 다시 돌려 T097 의 검출이 **사라졌는지** 확인한다. 사람 확인 H-9·H-10 을 브라우저로 건다
+
+### 10-3 부품 여덟을 Base UI 로
+
+- [ ] T104 `frontend/src/ui/Dialog.tsx` · `AlertDialog.tsx` · `OverlayPane.tsx` 를 이식한다 — Backdrop/Popup · `initialFocus`/`finalFocus`(수제 `useReturnFocus` 삭제) · 바깥 누름은 닫힌 이유로 · 취소 단추는 `render`
+- [ ] T105 `frontend/src/ui/DropdownMenu.tsx` 를 이식한다 — Positioner 로 자리, Popup `finalFocus` 로 「이름」 칸 초점(N-08 유지). `frontend/src/pages/TestList.tsx` 의 트리거를 `render` 로
+- [ ] T106 `frontend/src/ui/Tabs.tsx` · `ToggleGroup.tsx` · `Tooltip.tsx` · `Button.tsx` 를 이식한다 — `data-active`·`data-pressed` · 빈 값 금지(T095) · 뿌리 공급자 하나 · `asChild` 제거. 관련 테스트 판정을 ledger 대로 옮긴다
+- [ ] T107 `radix-ui` 를 지운다 — `npm rm radix-ui` · 소스·테스트에 남은 참조 0 · 가드(`UiSkin`·`ImplementationCount`)와 [guards.md](contracts/guards.md) 요구를 갈래 이름으로 맞춘다
+
+### 10-4 대조와 기록
+
+- [ ] T108 quickstart §1~§5 를 다시 실행한다 — 타입·테스트·단언 수(2275 이상) · 순회(알림 화면 포함 검출 0) · L2(등록되지 않은 차이 0) · 번들(**JS gzip ≤ 177.41 kB**) · 정본 무변경 · backend 0. 결과를 quickstart 실행 기록과 test-ledger 에 남기고, **알림 자리를 옛 자리로 되돌리면 순회가 실패하는지**(SC-016) 확인한 뒤 되돌린다
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

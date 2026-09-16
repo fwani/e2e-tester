@@ -145,11 +145,16 @@ cd frontend && npx vitest run tests/BeforeAfterParity.test.ts
 cd frontend && npx vite build 2>&1 | grep -E "index-.*\.(css|js)"
 ```
 
-**기대**: CSS gzip ≤ **6.78 kB** · JS gzip ≤ **181.3 kB**. 넘으면 원인을 찾는다 — 들이지 않기로 한 의존성
-(`tailwind-merge`·`lucide-react`·`tw-animate-css`·Radix `Select`·`Checkbox`)이 들어왔는지 먼저 본다.
+**기대**: CSS gzip ≤ **6.78 kB** · JS gzip ≤ **181.3 kB**.
+*2026-09-16 개정 — 갈래 교체 뒤에는 **JS gzip ≤ 177.41 kB**(Radix 로 구현한 실측)를 함께 본다. 기반
+교체는 추가가 아니므로 늘지 않아야 한다 (research R12 개정).*
+넘으면 원인을 찾는다 — 들이지 않기로 한 의존성(`tailwind-merge`·`lucide-react`·`tw-animate-css`·
+`sonner`·Geist 글꼴)이 들어왔는지, 옛 갈래(`radix-ui`)가 남았는지 먼저 본다.
 
 ```bash
-npm ls tailwind-merge lucide-react tw-animate-css sonner 2>&1 | grep -v "empty" || true
+npm ls tailwind-merge lucide-react tw-animate-css sonner radix-ui 2>&1 | grep -v "empty" || true
+npm ls @base-ui/react                      # 09-16 — 이것만 있어야 한다
+grep -rn "radix" src tests | grep -vi "개정\|이력\|09-16" | head   # 0 이어야 한다
 ```
 
 ---
@@ -178,6 +183,8 @@ git diff --stat 75520ee -- backend/ | tail -1
 | H-6 | **민감값 마스킹** | 비밀 값·키 관리·민감 입력 칸 | 전환 전과 같이 가려진다 (헌법 보안 요건) |
 | H-7 | **순회가 닿지 못한 화면** | 가져오기 미리보기(엑셀 파일) · 일시정지 · AI 작성 · 사람 인수 | 1280·1440 에서 덮임·넘침·줄바꿈을 눈으로 본다 |
 | H-8 | **모달이 열린 동안의 알림** | 녹화 중 저장 확인을 연 채 연결을 끊는다 | 알림이 보이고 「닫기」를 누르면 대화상자가 닫히지 않는다 |
+| H-9 **(09-16)** | **알림이 가리지 않는다** | 녹화 → 조작 몇 개 → 「중지」. 검토 국면에서 알림이 떠 있는 동안 Step 목록의 행과 패널 바닥 조작을 눌러 본다 | 가려서 못 누르는 조작 0 · 알림은 5초 뒤 사라지고 포인터를 올리면 멈춘다 (N-02 닫힘) |
+| H-10 **(09-16)** | **되풀이가 사라졌다 · 고르기 낭독** | 같은 절차에서 뜨는 알림을 센다. 실행 속도·거르기를 화면 낭독기로 듣는다 | 국면 전환·세션 종료 알림이 뜨지 않는다(저장 안 됨만) · 고른 항목이 무엇인지 들린다 (라디오 → 눌림으로 바뀐 것을 확인) |
 
 ---
 

@@ -64,13 +64,15 @@ SVG 경로(`"M4 4l4-4…"`)를 클래스로 오인하지 않던 성질을 지킨
 | `dark:` | 다크 모드 없음 |
 | `data-open:` · `data-closed:` · `data-checked:` · `data-active:` 류 사용자 정의 변종 | 등록하지 않은 변종 |
 | `from "lucide-react"` · `from "tailwind-merge"` · `from "cn"` · `tw-animate-css` | 들이지 않는 의존성 (research R2 · R5) |
+| **(09-16)** `from "radix-ui"` · `@radix-ui/*` | 갈래를 Base UI 로 바꾼 뒤 남으면 안 되는 것 (research R2 개정) |
 
 **요구**:
 
 - 조작 부품(`Button` · `Input` · `Textarea` · `NativeSelect` · `Checkbox` · `Radio`)의 변종 표에
   `disabled:border-dashed` 가 있다.
-- `radix-ui` 가져오기는 [ui-parts.md](ui-parts.md) §1 에서 `behavior = radix` 인 파일에만 있다.
-- 부품 파일 머리에 출처 줄(`shadcn` 원본이면 `new-york-v4/<item> @ shadcn 4.21.0`, 아니면 `015`)이 있다.
+- `@base-ui/react` 가져오기는 [ui-parts.md](ui-parts.md) §1 에서 `behavior = base` 인 파일에만 있다
+  *(09-16 개정 전: `radix-ui` · `behavior = radix`)*.
+- 부품 파일 머리에 출처 줄(`shadcn` 원본이면 **갈래까지** — `base/<item> @ shadcn 4.21.x`, 아니면 `015`)이 있다.
 
 **확인 (SC-010)**: 부품 하나에 `rounded-md` 를 넣으면 G-B 가, `disabled:opacity-50` 을 넣으면 G-F 가
 실패한다. 둘 다 되돌린다.
