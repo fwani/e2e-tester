@@ -43,7 +43,7 @@
  * 은 배치만**이다(015 · research R5). 모양을 호출부가 덮어쓰면 같은 버튼이 화면마다 달라진다(SC-010).
  */
 import { cva } from "class-variance-authority";
-import type { ComponentPropsWithRef, ReactNode } from "react";
+import type { ComponentPropsWithRef, MouseEvent, ReactNode } from "react";
 
 import { cn } from "./cn";
 
@@ -135,6 +135,18 @@ export const plainButtonVariants = cva("", {
 
 const PLAIN: ReadonlySet<ButtonVariant> = new Set<ButtonVariant>(["nav", "link", "bare"]);
 
+/**
+ * 변종 이름으로 표를 고른다. `Button` 과 `ButtonLink` 가 **같은 모양**을 얻는 유일한 통로다 (018 §4).
+ *
+ * 클래스 이름을 조립하지 않는다 — 표에서 완성된 문자열을 꺼낼 뿐이다.
+ * Tailwind 는 소스를 텍스트로 스캔하므로 `bg-${x}` 같은 것을 찾지 못한다 (가드 G-B).
+ */
+function shapeOf(variant: ButtonVariant, size: ButtonSize): string {
+  return PLAIN.has(variant)
+    ? plainButtonVariants({ variant: variant as PlainVariant })
+    : buttonVariants({ variant: variant as BoxVariant, size });
+}
+
 // React 19 는 함수 컴포넌트가 `ref` 를 일반 prop 으로 받는다. `ComponentPropsWithRef` 를 쓰면
 // 호출부가 하던 `ref` 전달이 그대로 이어진다.
 export interface ButtonProps extends Omit<ComponentPropsWithRef<"button">, "className"> {
@@ -153,12 +165,7 @@ export interface ButtonProps extends Omit<ComponentPropsWithRef<"button">, "clas
 }
 
 export function Button({ variant = "default", size = "md", layout, children, ...rest }: ButtonProps) {
-  // 클래스 이름을 조립하지 않는다 — 표에서 완성된 문자열을 꺼내 이어 붙일 뿐이다.
-  // Tailwind 는 소스를 텍스트로 스캔하므로 `bg-${x}` 같은 것을 찾지 못한다 (가드 G-B).
-  const shape = PLAIN.has(variant)
-    ? plainButtonVariants({ variant: variant as PlainVariant })
-    : buttonVariants({ variant: variant as BoxVariant, size });
-  const cls = cn(shape, layout);
+  const cls = cn(shapeOf(variant, size), layout);
   /*
     **`asChild` 를 지웠다** (T106). 원본은 자식을 버튼 모양으로 그리는 통로를 두지만, 이 저장소에서 그것을
     쓰는 호출부가 **하나도 없었다**(전수 확인). 부품 층이 Base UI 로 옮겨 가며 `render` 가 그 몫을 하므로
@@ -172,5 +179,74 @@ export function Button({ variant = "default", size = "md", layout, children, ...
     <Comp className={cls} data-slot="button" data-variant={variant} data-size={size} {...rest}>
       {children}
     </Comp>
+  );
+}
+
+/**
+ * 새 탭·새 창·다른 단추가 아닌 **보통 클릭**인가 (018 §4).
+ *
+ * 링크 부품은 이때만 앱 안에서 옮긴다. 나머지는 브라우저가 한다 — 사용자가 Cmd 를 누르고 눌렀다면
+ * 원하는 것은 새 탭이다. 가운데 클릭은 `click` 이 아니라 `auxclick` 으로 오므로 여기까지 오지 않는다.
+ */
+export function isPlainClick(
+  event: Pick<MouseEvent, "button" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey">,
+): boolean {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+}
+
+export interface ButtonLinkProps extends Omit<ComponentPropsWithRef<"a">, "className" | "href"> {
+  readonly href: string;
+  /**
+   * 보통 클릭일 때 부른다 — 라우트 어댑터가 `navigate()` 로 채운다.
+   *
+   * **없으면 평범한 링크다.** 루트 오류 화면처럼 앱 상태를 믿을 수 없는 자리는 문서를 새로 여는 것이 맞다.
+   */
+  readonly onNavigate?: () => void;
+  readonly variant?: ButtonVariant;
+  readonly size?: ButtonSize;
+  /** `Button` 과 같다 — 배치만. */
+  readonly layout?: string;
+  readonly children?: ReactNode;
+}
+
+/**
+ * 버튼 모양의 링크 (018 §4).
+ *
+ * **순수 이동만** 이것으로 그린다 — 누르면 다른 화면으로 가고 그 밖의 일은 하지 않는 조작. 실행·녹화처럼
+ * 부수효과가 있거나, 이동 전에 확인을 거치는 조작은 `Button` 이다. 링크는 비활성이 없으므로
+ * 비활성 사유를 보여야 하는 조작에도 쓰지 않는다 (FR-014).
+ *
+ * `react-router` 의 `<Link>` 를 쓰지 않는다 — 라우터 밖에서 예외를 던지고, 화면은 라우터 없이도 그려진다.
+ *
+ * `box-border`: 전역 `button{}` 규칙과 브라우저 기본값이 버튼에는 `border-box` 를 주지만 `<a>` 는
+ * `content-box` 다. 빠뜨리면 32px 상자가 테두리만큼 34px 가 된다. 모양 값이 아니라 상자 계산 방식이다.
+ */
+export function ButtonLink({
+  href,
+  onNavigate,
+  onClick,
+  variant = "default",
+  size = "md",
+  layout,
+  children,
+  ...rest
+}: ButtonLinkProps) {
+  return (
+    <a
+      href={href}
+      className={cn(shapeOf(variant, size), "box-border", layout)}
+      data-slot="button-link"
+      data-variant={variant}
+      data-size={size}
+      onClick={(event) => {
+        onClick?.(event);
+        if (onNavigate === undefined || event.defaultPrevented || !isPlainClick(event)) return;
+        event.preventDefault();
+        onNavigate();
+      }}
+      {...rest}
+    >
+      {children}
+    </a>
   );
 }
