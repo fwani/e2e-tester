@@ -181,6 +181,19 @@ describe("실행 화면의 도착 정보 (§3.3)", () => {
     expect(fromEdit.router.state.location.pathname).toBe("/sessions/s-new");
   });
 
+  it("결과로 자동 이동한 뒤 뒤로 가면 목록으로 간다 — 세션으로 되튕기지 않는다", async () => {
+    stubServer({ session: { state: "completed" } });
+    const { router } = renderApp("/");
+    expect(await screen.findByText("로그인")).toBeTruthy();
+    await act(() => router.navigate("/sessions/s-new"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/tests/TC-001/result"));
+    // 자동 이동은 세션 기록을 **교체**한다 — 밀어 넣으면 뒤로가기가 세션 주소로 돌아가고,
+    // loader 가 세션을 다시 읽어 자동 이동이 또 일어나 뒤로가기가 통째로 막힌다.
+    expect(router.state.historyAction).toBe("REPLACE");
+    await act(() => router.navigate(-1));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+  });
+
   it("세션을 찾지 못하면 오류 없이 목록으로 교체된다 (옛 `openSession` 의 실패와 같다)", async () => {
     stubServer({ missingSessions: ["s-gone"] });
     const { router } = renderApp("/sessions/s-gone");

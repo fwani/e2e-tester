@@ -15,13 +15,27 @@ import { useAppStore } from "./appStore";
 import { arrivalState } from "./arrival";
 
 export interface AppActions {
-  /** 실행 요청이 진행 중인 테스트 ID (005 FR-127·FR-129). `null` 이 아니면 어느 실행 버튼도 눌리지 않는다. */
+  /**
+   * 실행 요청이 진행 중인 테스트 ID (005 FR-127·FR-129).
+   *
+   * `null` 이 아니면 어느 실행 버튼도 눌리지 않는다. 브라우저를 띄우는 데 약 1초가 걸리는데 그 동안
+   * 화면이 아무 말도 하지 않아 사용자가 다시 눌렀고(U-11), 그것이 세션 중복으로 직결됐다(U-06).
+   */
   readonly pendingRun: string | null;
   startRun(testId: string, fromStepIndex?: number): void;
   openBrowserAt(testId: string, stepIndex: number, stepId: string | null, instruction: string | null): void;
   openRerecord(testId: string, stepIds: string[]): void;
   openSession(sessionId: string): void;
-  /** 만들기 국면이 세션을 만드는 중인가 — 옛 `composePending` (005 U-06 과 같은 결함). */
+  /**
+   * 만들기 국면이 세션을 만드는 중인가 (005 U-06 과 같은 결함).
+   *
+   * `pendingRun` 이 **저장된 테스트의 실행**을 막는 것과 같은 일을, 아직 테스트가 없는 만들기
+   * 국면에서 한다. 여기에는 막을 테스트 ID 가 없으므로 별도의 플래그다.
+   *
+   * 없는 동안 사용자 보고 — 「녹화 시작 준비가 오래 걸리는데 버튼이 계속 눌려서 중복이 난다」.
+   * 브라우저를 띄우는 데 1초 남짓 걸리고, 그 사이의 클릭이 그대로 세션 생성 요청이 됐다. 표의
+   * O2(`busy`)가 막을 조건인데 이 화면이 사실을 넘기지 않았다.
+   */
   readonly composeBusy: boolean;
   /** 만들기 잠금을 건다. 이미 걸려 있으면 `false` — 그 요청은 버린다. */
   lockCompose(): boolean;
@@ -171,6 +185,10 @@ export function AppActionsProvider({ children }: { children: ReactNode }) {
 
     /**
      * 거절 안내가 가리킨 세션으로 이동한다 (005 T024 · FR-126).
+     *
+     * 거절은 목록에서도 결과 화면에서도 날 수 있고 배너는 두 화면 **위**에 있다. 그래서
+     * 이동 수단도 여기 한 곳에 둔다 — 화면마다 두면 한쪽이 빠지고, 빠진 화면에서는 안내가
+     * 다시 "화면에 없는 조작" 을 지시하게 된다.
      *
      * 세션 조회는 실행 화면의 loader 가 한다. 그 사이에 끝났다면 loader 가 목록으로 옮긴다 (018 §5).
      */

@@ -58,11 +58,23 @@ function SessionBody({ session }: { session: SessionView }) {
       /*
         006 FR-204 — 편집 화면에서 출발한 세션은 그 화면으로 돌아온다. 편집 화면은 마운트마다
         `GET /definition` 을 다시 읽으므로 세션에서 저장한 내용이 반영된 상태로 보인다.
+
+        **세션 화면을 벗어나는 이동은 모두 교체(`replace`)다.** 실행 화면은 거쳐 가는 자리다 — 옛 `App`
+        도 이 주소를 되살리지 못해 결과·목록·편집에서 뒤로 가면 세션이 아니라 그 전 화면(목록·편집)으로
+        갔다. **밀어 넣으면(push) 안 되는 이유**: 뒤로가기가 세션 주소로 돌아오고, loader 가 세션을
+        다시 읽어(여전히 끝난 상태) `SessionScreen` 의 `jumpedToResult` 가 새로 시작해 결과로 다시
+        튕긴다 — 뒤로가기가 통째로 막힌다(리뷰 재현). 새 세션을 여는 이동(`actions.openBrowserAt`)은
+        예외다 — 그것은 세션 화면을 **벗어나는** 것이 아니라 다음 세션으로 **들어가는** 것이다.
       */
       onFinished={() =>
-        void navigate(fromEdit && session.test_id ? paths.edit(session.test_id, backStep) : paths.list())
+        void navigate(
+          fromEdit && session.test_id ? paths.edit(session.test_id, backStep) : paths.list(),
+          { replace: true },
+        )
       }
-      onShowResult={(testId, stepId) => void navigate(paths.result(testId, stepId ?? null))}
+      onShowResult={(testId, stepId) =>
+        void navigate(paths.result(testId, stepId ?? null), { replace: true })
+      }
       /*
         2026-09-10 사용자 결정 — 실행이 끝나면 결과 국면으로 스스로 넘어간다.
 
@@ -95,7 +107,8 @@ function SessionBody({ session }: { session: SessionView }) {
       */
       onEditStep={(testId, stepId, stepIndex) => {
         if (stepIndex < 0) {
-          void navigate(paths.edit(testId, stepId));
+          // 같은 이유로 교체 — 편집으로 곧장 가는 것도 세션 화면을 벗어나는 이동이다.
+          void navigate(paths.edit(testId, stepId), { replace: true });
           return;
         }
         actions.openBrowserAt(testId, stepIndex, stepId, null);
