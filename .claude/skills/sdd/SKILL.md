@@ -140,14 +140,36 @@ git 저장소이고 **기본 브랜치(`main`·`master`)에 있으면** 5단계 
    git switch -c sdd/ralph-$(date +%Y%m%d-%H%M%S)
    git add -A && git commit -m "chore: ralph 루프 시작 전 스냅샷" --allow-empty
    ```
-2. **반복 상한 확정** — `--max-iterations` 는 **항상** 붙인다. 기본 10, 사용자가 올려도 **20을 넘기지 않는다**. 무제한(`0`)은 어떤 경우에도 쓰지 않는다.
+2. **반복 상한 확정** — `--max-iterations` 는 **항상** 붙인다. 값은 **대화에서 사용자가 말한 수를 그대로 쓴다.** 임의로 깎지 않는다.
+   - 사용자가 수를 말하지 않았으면 기본 **10**.
+   - 상한선은 두지 않는다. `40` 이라고 하면 40으로 건다.
+   - 무제한(`0`)만 예외 — 완료 약속이 오판되면 멈출 장치가 하나도 남지 않으므로, 사용자가 명시적으로 요청했을 때만 쓰고 걸기 직전에 한 줄로 확인한다.
+     > 무제한으로 겁니다. 멈추는 방법은 `rm .claude/ralph-loop.local.md` 뿐입니다. 진행할까요?
 3. **완료 약속 확정** — `--completion-promise "SDD_CONVERGED"` 를 항상 설정한다. 약속 없이 시작하면 상한에 걸릴 때까지 무조건 돈다.
 4. **중단 방법 고지** — 루프 시작 직전에 아래를 그대로 출력한다.
    ```
    중단: 다른 터미널에서 rm .claude/ralph-loop.local.md
+   상한 변경: Esc 로 끊고 "상한 40으로" 라고 말하거나,
+             다른 터미널에서 sed -i '' 's/^max_iterations: .*/max_iterations: 40/' .claude/ralph-loop.local.md
    되돌리기: git switch <원래 브랜치> (작업은 sdd/ralph-* 브랜치에 격리됨)
    진행 확인: head -8 .claude/ralph-loop.local.md
    ```
+
+### 진행 중인 루프의 상한 바꾸기
+
+루프가 도는 중에 사용자가 `상한 40으로`·`제한 풀어`·`조금만 더 돌려` 라고 하면,
+스킬을 다시 부르지 말고 **상태 파일의 `max_iterations` 만 고친다.** Stop 훅이 매 회차 이 파일을 다시 읽으므로 다음 회차부터 바로 먹는다.
+
+```bash
+sed -i '' 's/^max_iterations: .*/max_iterations: <새 값>/' .claude/ralph-loop.local.md
+head -6 .claude/ralph-loop.local.md   # 반영 확인
+```
+
+지키는 것:
+
+- **frontmatter 의 그 한 줄만 건드린다.** 값이 정수가 아니거나 `---` 아래 프롬프트 본문이 망가지면 훅이 손상으로 판단해 상태 파일을 지우고 루프를 끝낸다.
+- **이미 끝난 뒤면 파일이 없다.** `iteration >= max_iterations` 가 되는 순간 훅이 상태 파일을 지우므로, 그때는 상한 수정이 아니라 **같은 프롬프트로 재시작**한다. 작업물은 파일과 git 에 남아 있어 이어서 진행된다.
+- 바꾼 뒤 `상한 10 → 40 (현재 7회차)` 처럼 한 줄만 보고한다.
 
 ## 3단계: 순서대로 실행
 
@@ -196,13 +218,16 @@ constitution → specify → clarify → plan → checklist → tasks → analyz
 3. `Skill(skill: "speckit-converge")`
 4. 결과가 **Converged** 면 종료
 5. 아니면 converge가 `tasks.md` 에 추가한 잔여 작업을 대상으로 1번으로 돌아간다
-6. **최대 3회** 반복. 3회 후에도 미수렴이면 멈추고, 남은 작업과 반복해도 줄지 않는 항목을 보고한다
+6. **기본 3회** 반복. 대화에서 사용자가 회차를 말했으면 (`수렴 6회까지`, `될 때까지` 등) 그 값을 쓴다 — 상한선은 두지 않는다. 정한 회차 후에도 미수렴이면 멈추고, 남은 작업과 반복해도 줄지 않는 항목을 보고한다
 
 회차마다 커밋하는 이유는 되돌릴 지점을 남기는 것이다. 3회차가 2회차보다 나빠졌을 때
 2회차로 돌아갈 수 없으면 수렴 루프는 개선 도구가 아니라 도박이 된다.
 
-반복 사이에 승인을 묻지 않는다. 2회차부터는 `[수렴 2회차] 잔여 작업 4건` 처럼 한 줄 남긴다.
-직전 회차 대비 미완료 작업 수가 **줄지 않으면** 3회를 채우지 않고 즉시 멈추고 보고한다.
+반복 사이에 승인을 묻지 않는다. 2회차부터는 `[수렴 2회차/6] 잔여 작업 4건` 처럼 한 줄 남긴다.
+직전 회차 대비 미완료 작업 수가 **줄지 않으면** 정한 회차를 채우지 않고 즉시 멈추고 보고한다.
+
+**정해진 회차를 다 쓰고 멈춘 뒤** 사용자가 `더 돌려`·`3회 더` 라고 하면, 되묻지 말고 그 지점부터 이어서 돈다.
+잔여 작업은 `tasks.md` 에 남아 있으므로 처음부터 다시 시작하지 않는다.
 
 ### 4-B. ralph 자율 루프
 
@@ -216,7 +241,7 @@ constitution → specify → clarify → plan → checklist → tasks → analyz
 호출:
 
 ```
-Skill(skill: "ralph-loop:ralph-loop", args: "<아래 프롬프트> --max-iterations 10 --completion-promise SDD_CONVERGED")
+Skill(skill: "ralph-loop:ralph-loop", args: "<아래 프롬프트> --max-iterations <확정한 값> --completion-promise SDD_CONVERGED")
 ```
 
 Skill 호출이 거부되거나 동작하지 않으면 Bash 폴백을 쓴다. (플러그인 명령에 `hide-from-slash-command-tool: true` 가 걸려 있어 호출이 막힐 수 있다.)
@@ -225,7 +250,7 @@ Skill 호출이 거부되거나 동작하지 않으면 Bash 폴백을 쓴다. (�
 # 버전 디렉터리는 고정하지 말고 찾아서 쓴다
 SETUP=$(find "$HOME/.claude/plugins/cache" -path '*ralph-loop*/scripts/setup-ralph-loop.sh' 2>/dev/null | sort -V | tail -1)
 [ -x "$SETUP" ] || { echo "ralph-loop 플러그인을 찾을 수 없습니다"; exit 1; }
-"$SETUP" "<프롬프트>" --max-iterations 10 --completion-promise "SDD_CONVERGED"
+"$SETUP" "<프롬프트>" --max-iterations <확정한 값> --completion-promise "SDD_CONVERGED"
 ```
 
 폴백도 실패하면 ralph 모드를 포기하고 **4-A 자체 수렴 루프로 전환**한다. 사용자에게 전환 사실을 한 줄로 알린다.
