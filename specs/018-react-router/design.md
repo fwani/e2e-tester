@@ -78,11 +78,14 @@ root  (미들웨어: 프로젝트 조회 1회 → setExpectedProjectRoot · erro
 
 | 파일 | 하는 일 |
 |------|---------|
-| `paths.ts` | 경로 빌더(`paths.result(testId, stepId)` 등)와 옛 `?screen=` → 새 경로 변환. **순수 함수만.** |
 | `router.tsx` | 라우트 표(`routes`). `createBrowserRouter` 에 넘기고, 테스트는 같은 표를 `createMemoryRouter` 에 넘긴다. |
 | `AppShell.tsx` | 레이아웃 라우트. `Toaster` · 오류 토스트 · 가져오기 완료 알림 · `<Outlet />`. |
 | `actions.tsx` | 세션을 여는 **유일한 경로**(`startRun`·`openBrowserAt`·`openRerecord`·`openSession`)와 `pendingRun`·만들기 잠금을 context 로 낸다. |
 | `routes/*.tsx` | 라우트별 얇은 어댑터. URL 파라미터·loader 데이터를 **기존 페이지 prop 으로 옮기기만** 한다. |
+
+**`paths.ts` 는 `src/lib/` 에 둔다** (구현 중 결정). 화면(`pages/*`)이 링크의 `href` 를 이것으로 얻는데,
+화면이 `app/` 을 가져오면 `app → pages → app` 으로 층이 거꾸로 선다. `react-router` 도 가져오지 않는
+순수 함수라 `lib/` 이 맞는 자리다.
 
 **바뀐다**
 
