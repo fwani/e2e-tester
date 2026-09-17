@@ -257,6 +257,7 @@ INTENDED: list[dict[str, str]] = [
     {
         "screens": ["test-list", "test-list-unrun", "test-list-passed", "secrets", "keys"],
         "kinds": ["tag"],
+        "tags": ["BUTTON", "A"],
         "reason": (
             "누르면 다른 화면으로 가기만 하는 조작(목록 머리띠의 「바꾸기」·「비밀 값」·「키 관리」·「테스트 만들기」, "
             "행의 「결과 보기」, 비밀 값의 「키 관리」·「닫기」, 키 관리의 「닫기」)이 `<button>` 에서 `ui/Button` 의 "
@@ -285,12 +286,19 @@ def is_intended(m: dict) -> str | None:
     등록하려는 것이다(목록 머리띠·행의 버튼→링크 전환). 자리가 있는데도 `row.get("path")`(없으면 `None`)를
     `m["path"]` 와 비교하면 항상 어긋나 이 줄이 아무것도 못 삼킨다 — 그래서 `path` 키가 아예 없을 때는
     비교 자체를 하지 않는다. `kinds` 로 좁히지 않은 줄에서만 위험하다.
+
+    **`tags` 를 더했다** (2026-09-17 · 018 최종 검토 F7). `kind: "tag"` 줄은 자리(`path`)가 행마다
+    달라 `path`/`path_re` 로 좁히지 못하는데, 등록한 사유는 **BUTTON→A 전환 하나만** 설명한다.
+    `tags` 없이 두면 그 화면에서 일어나는 다른 요소 이름 변화(회귀일 수 있다)까지 전부 삼킨다 —
+    `{before, after}` 가 `tags` 의 두 값과 정확히 같을 때만 이 줄로 인정한다.
     """
     for row in INTENDED:
         screens = row.get("screens") or [row.get("screen")]
         if m["screen"] not in screens:
             continue
         if "kinds" in row and m.get("kind") not in row["kinds"]:
+            continue
+        if "tags" in row and {m.get("before"), m.get("after")} != set(row["tags"]):
             continue
         if "path_re" in row:
             if m.get("path") is None or re.fullmatch(row["path_re"], m["path"]) is None:

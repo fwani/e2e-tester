@@ -74,7 +74,12 @@ export function ComposeRoute() {
             draft_id: draft?.draft_id ?? null,
           })
           // 저장 이름·그룹의 기본값은 세션 응답의 `draft` 가 나른다 (018 §3.3).
-          .then((session) => navigate(paths.session(session.session_id)))
+          /*
+            세션이 생기면 만들기는 지나간 자리다 — 실행 화면에서 나가는 이동이 기록을 교체하는 것
+            (`SessionRoute`)과 같은 이유. 교체하지 않으면 저장으로 초안이 지워진 뒤 뒤로 가기가
+            없는 초안을 다시 읽어 오류를 띄운다.
+          */
+          .then((session) => navigate(paths.session(session.session_id), { replace: true }))
           .catch(fail);
       }}
       onStartAi={(startUrl, aiInstruction) => {
@@ -94,8 +99,16 @@ export function ComposeRoute() {
             */
             draft_id: draft?.draft_id ?? null,
           })
+          /*
+            세션이 생기면 만들기는 지나간 자리다 — 실행 화면에서 나가는 이동이 기록을 교체하는 것
+            (`SessionRoute`)과 같은 이유. 교체하지 않으면 저장으로 초안이 지워진 뒤 뒤로 가기가
+            없는 초안을 다시 읽어 오류를 띄운다.
+          */
           .then((session) =>
-            navigate(paths.session(session.session_id), { state: arrivalState({ aiInstruction }) }),
+            navigate(paths.session(session.session_id), {
+              replace: true,
+              state: arrivalState({ aiInstruction }),
+            }),
           )
           .catch(fail);
       }}

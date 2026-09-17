@@ -198,8 +198,7 @@ Data 모드는 부모와 자식의 loader 를 **동시에** 돌린다. 그대로
 - **버튼으로 남는 것**
   - 부수효과가 있는 조작 — 실행 · 녹화 시작 · 세션 열기
   - 이동 전에 확인을 거치는 것 — 편집 화면의 `guard(...)`(저장 안 한 변경)를 지나는 이동
-- 후보는 구현 중 조작 하나하나를 확인해 확정한다. 행 메뉴(`MenuItem`)를 링크로 그릴 수 있는지는
-  그때 Base UI API 로 확인하고, 안 되면 메뉴 항목은 버튼으로 남긴다.
+- 행 메뉴의 「편집」은 Base UI `Menu.LinkItem` 으로 링크 항목이 됐다(`MenuLinkItem`).
 - `RawElements` 가드는 `button·input·select·textarea` 만 보므로 `<a>` 는 막히지 않는다.
   다만 화면 파일에 원시 `<a>`/`<Link>` 를 직접 쓰지 않고 `ButtonLink` 를 지난다(017 부품 층 규율).
 - `<a>` 와 `<button>` 은 계산 스타일이 다르다. L2(`design_compare_ba.py`)에서 나는 차이는

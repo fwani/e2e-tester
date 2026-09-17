@@ -211,6 +211,42 @@ describe("만들기의 초안 (§3.4 · §5)", () => {
     expect(router.state.location.pathname).toBe("/");
     expect(screen.queryByLabelText("시작 URL")).toBeNull();
   });
+
+  /**
+   * 최종 검토 F1 — 초안으로 세션을 시작하면 만들기 자리는 기록에서 **교체**된다.
+   *
+   * 교체하지 않으면 기록은 `[/, /tests/new?draft=D, /sessions/S]` 다. 저장은 서버의
+   * 초안을 지우고(§3.4), 세션 화면을 나가는 이동은 기록을 교체한다(`SessionRoute`) —
+   * 그런데 만들기 자리는 그대로 남아 있어, 뒤로 가면 loader(`loadDraft`)가 지워진
+   * 초안을 다시 읽어 404 로 「찾을 수 없습니다」를 띄우고 목록으로 다시 교체한다. 옛
+   * 앱은 그냥 목록으로 갔다 — 오류가 남지 않았다.
+   */
+  it("초안에서 세션으로 가면 기록을 교체한다 — 저장 뒤 뒤로 가도 지워진 초안을 다시 읽지 않는다", async () => {
+    const drafts: Record<string, unknown> = {
+      "D-0001": {
+        draft_id: "D-0001",
+        name: "초안",
+        group_prefix: "TC",
+        suggested_instruction: "로그인한다",
+      },
+    };
+    stubServer({ drafts });
+    const { router } = renderApp("/");
+    expect(await screen.findByText("로그인")).toBeTruthy();
+    await act(() => router.navigate("/tests/new?draft=D-0001"));
+    const textarea = (await screen.findByLabelText("자연어 지시")) as HTMLTextAreaElement;
+    await waitFor(() => expect(textarea.value).toBe("로그인한다"));
+    // 초안에서 왔으므로 방법은 이미 AI 다 (`ComposeView` — `fromDraft` 는 `mode` 를 미리 고른다).
+    act(() => action("ai.start")!.click());
+    await waitFor(() => expect(router.state.location.pathname).toBe("/sessions/s-new"));
+    expect(router.state.historyAction).toBe("REPLACE");
+
+    // 저장이 초안을 지운 것과 같다 — 가짜 서버는 요청마다 이 객체를 다시 읽는다 (`fakeServer.ts`).
+    delete drafts["D-0001"];
+    await act(() => router.navigate(-1));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(document.querySelector("[data-app-notice]")).toBeNull();
+  });
 });
 
 describe("가져오기 미리보기 (§3.4)", () => {

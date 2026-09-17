@@ -143,6 +143,7 @@ export function createRoutes(store: AppStore): RouteObject[] {
               loader: () => {
                 throw replace(paths.list());
               },
+              element: null,
             },
           ],
         },
