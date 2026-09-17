@@ -134,6 +134,7 @@ describe("지시문 작성 (만들기 국면)", () => {
     );
 
   /** 지시문 자리는 「AI로 만들기」를 고른 뒤에 펼쳐진다 — 1회차에는 별도 화면이었다 */
+  // 017 T061 — 만드는 방법 카드는 둘 중 하나를 고르는 묶음이라 역할이 `radio` 다 (017 전에는 `aria-pressed` 단추).
   const pickAi = () => fireEvent.click(screen.getByRole("button", { name: /AI로 만들기/ }));
 
   it("지시문을 쓰는 자리가 있다", () => {

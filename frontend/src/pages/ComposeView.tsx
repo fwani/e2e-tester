@@ -22,7 +22,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError, ai, type ProjectView } from "../api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "../components/ErrorNotice";
-import { Toast } from "../components/Toast";
+import { Toast } from "../ui/Toast";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
 import { Workbench } from "../components/workbench/Workbench";
@@ -127,7 +127,7 @@ export function ComposeView({
     },
     /*
       ③-a 대상 앱 슬롯 — **자리는 있고 왜 비었는지 말한다** (FR-244·FR-245).
-      배분은 `fixed 118` 이다 (`layout.ts` 의 `composing.targetSlot`).
+      배분은 `content` 다 — 세 줄 안내의 높이만큼 선다 (`layout.ts` 의 `composing.targetSlot` · 017 B-04).
     */
     target: { kind: "empty", reason: "not_started" },
     /* ③-b 국면 작업 영역 — 이 국면에서 실제로 하는 일 (FR-257·FR-258) */

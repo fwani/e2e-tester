@@ -18,7 +18,7 @@ import {
   type SessionView,
 } from "./api/client";
 import { ErrorNotice, describeError, type ErrorInfo } from "./components/ErrorNotice";
-import { Toast } from "./components/Toast";
+import { Toast, Toaster } from "./ui/Toast";
 import { ComposeView } from "./pages/ComposeView";
 import { ImportDoneNotice, ImportPreview } from "./pages/ImportPreview";
 import { KeyManagement } from "./pages/KeyManagement";
@@ -464,9 +464,13 @@ export function App() {
   }
 
   return (
-    <>
+    /*
+      알림 층은 **앱 뿌리에 하나**다 (017 Phase 10 · T100). 그래야 알림이 한 자리에 모이고 동시에
+      보이는 수의 상한이 한 번만 적용된다. 화면은 층을 모르고 `<Toast>` 만 조건부로 그린다.
+    */
+    <Toaster>
       {/*
-        2026-09-10 사용자 결정 — **토스트는 오른쪽 위 한 자리다.**
+        2026-09-10 사용자 결정 — **토스트는 한 자리다.** (자리는 2026-09-16 에 아래로 옮겼다 — N-02)
 
         이 배너는 화면 맨 위 문서 흐름 안에 있었고, 그래서 뜰 때마다 아래 화면 전부를
         밀어 내렸다 (2026-09-09 에 `Workbench` 의 알림이 고친 것과 **같은 결함**이 여기
@@ -786,6 +790,6 @@ export function App() {
           onBack={() => setScreen({ name: "list" })}
         />
       )}
-    </>
+    </Toaster>
   );
 }

@@ -211,7 +211,14 @@ describe("RunResult", () => {
 
     const trace = (await screen.findByText("TRACE")).closest("button");
     expect(trace).not.toBeNull();
-    expect((trace as HTMLButtonElement).disabled).toBe(true);
+    /*
+      **판정 방법만 옮겼다** (T106 · test-ledger 09-16). 새 갈래의 탭은 네이티브 `disabled` 를 걸지 않고
+      `aria-disabled="true"` + `data-disabled` + `tabindex="-1"` 로 말한다 — 조작을 **초점에서 빼지 않아**
+      사유를 읽을 수 있게 두는 방식이고, 이 저장소의 규칙(FR-006·FR-014 — 비활성은 포인터를 막지 않고
+      사유를 보여 준다)과 같은 방향이다. **누름은 실제로 막힌다**(실측: 눌러도 `onValueChange` 0회).
+      묻는 것은 그대로다: 지원되지 않는 산출물을 **감추지 않고 비활성으로** 남기는가 (FR-246 · DC-007).
+    */
+    expect((trace as HTMLButtonElement).getAttribute("aria-disabled"), "TRACE 탭이 비활성이 아니다").toBe("true");
   });
 
   it("실패한 Step부터 / 처음부터 두 갈래로 재실행한다 (FR-055)", async () => {

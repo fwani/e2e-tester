@@ -21,6 +21,19 @@ describe("PacingControl", () => {
 
   it("현재 속도를 눌린 상태로 표시한다", () => {
     render(<PacingControl value="slow" onChange={vi.fn()} />);
+    /*
+      **T106 에서 되돌아갔다 — 낭독되는 의미가 내려간다.**
+
+      017 은 고른 속도를 **라디오로** 알렸다(`role="radio"`·`aria-checked`). 017 전의 `aria-pressed` 는
+      「눌린 단추 셋」으로 들려 **하나만 고른다는 사실이 전달되지 않았고**, 그것을 고친 것이 T060 이었다.
+      Base UI 의 `ToggleGroup`·`Toggle` 은 **눌림**(`aria-pressed`)만 주고 라디오 통로가 없다 — 사용자 결정
+      (2026-09-16 「Base UI 기준에 맞춘다」)으로 그 기준을 따랐다.
+
+      **묻는 것은 그대로다: 무엇을 골랐는지가 보조기술에 남는가.** 다만 「셋 중 하나」라는 뜻은 잃었다.
+      그 손실은 test-ledger 와 사람 확인 H-10(「고르기 낭독」)에 적혀 있다.
+    */
+    // (아래 주석은 T060 당시의 것 — 017 전의 `aria-pressed` 는 「눌린
+    // 단추 넷」으로 들려 하나만 고른다는 사실이 없었다. 묻는 것은 그대로다 — 무엇이 골라져 있는가.
     expect(screen.getByTestId("pacing-slow").getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("pacing-fast").getAttribute("aria-pressed")).toBe("false");
   });

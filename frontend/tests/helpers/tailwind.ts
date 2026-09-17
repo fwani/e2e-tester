@@ -42,7 +42,12 @@ function runTailwind(inputCss: string): Set<string> {
     const css = runTailwindRaw(inputCss);
     const out = new Set<string>();
     // 이스케이프된 형태(`.basis-\[460px\]`)를 원래 이름으로 되돌린다.
-    for (const m of css.matchAll(/\.((?:\\.|[a-zA-Z0-9_-])+)(?=[\s,{:>~+])/g)) {
+    //
+    // **이름 뒤에 속성 선택자 `[` 가 바로 붙는 형태도 받는다** (017 T029). `aria-[invalid=true]:x` 는
+    // `.aria-\[invalid\=true\]\:x[aria-invalid="true"]{…}` 로 나온다. 전에는 뒤따르는 문자를 공백·`,`·`{`·`:`
+    // ·`>`·`~`·`+` 로만 받아 이런 클래스를 전부 「생성되지 않음」으로 봤다 — 017 이 판정 문자 집합을 넓혀
+    // (H-2) 그런 클래스가 처음 검사에 들어오며 드러났다. `)` 는 `:is(.x)` 안, 끝은 파일 끝이다.
+    for (const m of css.matchAll(/\.((?:\\.|[a-zA-Z0-9_-])+)(?=[\s,{:>~+[)]|$)/g)) {
       out.add((m[1] as string).replace(/\\(.)/g, "$1"));
     }
     return out;
@@ -150,6 +155,44 @@ export function withoutComments(t: string): string {
 }
 
 /**
+ * 이 토큰이 **클래스 이름의 모양**인가. 017 T011 (guards H-2).
+ *
+ * ## 대괄호 안에서만 문자 집합을 넓힌다
+ *
+ * 015 의 판정은 토큰마다 `[a-zA-Z0-9_:./[\]#%!-]` 만 받고 **글자로 시작**할 것을 요구했다.
+ * 그래서 두 형태가 통째로 보이지 않았다.
+ *
+ *     data-[state=open]:bg-sunken          `=` 가 없어서
+ *     [&>button[aria-pressed=true]]:…      `[` 로 시작하고 `& > =` 가 있어서
+ *
+ * 그리고 리터럴의 **모든** 토큰이 맞아야 클래스 목록으로 치므로, 그런 토큰이 하나 섞이면
+ * **옆의 멀쩡한 클래스까지** G-B·G-C·G-E 에서 사라졌다. `ui/Table.tsx` 의 `Tabs`·`Segmented`
+ * 가 그 상태였고, 017 이 들이는 Radix 부품은 상태를 `data-[state=…]` 로 말하므로 앞으로 그런
+ * 리터럴이 흔해진다.
+ *
+ * 대괄호 **밖**은 지금과 같다 — SVG 경로(`"M4 4l4-4…"`)나 문장을 클래스로 오인하지 않던
+ * 성질을 지킨다. 넓혀서 새로 보이게 된 클래스가 가드에 걸리면 그것은 **전부터 있던 문제**다.
+ */
+function isClassToken(token: string): boolean {
+  let depth = 0;
+  let outside = "";
+  for (const ch of token) {
+    if (ch === "[") {
+      depth += 1;
+      outside += ch;
+    } else if (ch === "]") {
+      depth -= 1;
+      if (depth < 0) return false;
+      outside += ch;
+    } else if (depth > 0) {
+      if (!/[a-zA-Z0-9_:./#%!@=&>(),+*~"'-]/.test(ch)) return false;
+    } else outside += ch;
+  }
+  if (depth !== 0) return false;
+  return /^(?:[a-zA-Z]|\[)[a-zA-Z0-9_:./[\]#%!-]*$/.test(outside);
+}
+
+/**
  * `.tsx` 가 실제로 화면에 붙이는 클래스 덩어리.
  *
  * ## `className=` 만 보면 부품을 놓친다
@@ -182,7 +225,7 @@ export function classNameGroups(): { names: string[]; file: string; line: number
     // 한계: 클래스 하나만 담은 상수는 여기서 놓친다. 그런 상수는 드물고(부품 상수는
     // 대개 여러 클래스를 잇는다), prop 값을 클래스로 오인하는 쪽이 더 자주 틀린다.
     if (names.length < 2) return false;
-    if (!names.every((n) => /^[a-zA-Z][a-zA-Z0-9_:./[\]#%!-]*$/.test(n))) return false;
+    if (!names.every(isClassToken)) return false;
     return names.some((n) => known.has(n));
   };
   for (const rel of files) {
@@ -221,10 +264,15 @@ export function classNameGroups(): { names: string[]; file: string; line: number
           }
         }
       }
-      for (const lit of literalsIn(txt.slice(start + 1, end))) {
+      // **변종 함수에 넘기는 객체는 클래스가 아니다** (017). `cn(buttonVariants({ variant:
+      // "primary" }))` 의 `"primary"` 는 변종의 이름이고, 그것을 클래스로 읽으면 정본
+      // `.primary` 를 쓴 것으로 오인해 G-B·G-D 가 없는 위반을 보고한다 (스파이크 S2 에서 겪었다).
+      // `이름({ … })` 호출의 객체 인자를 지운 뒤 리터럴을 모은다.
+      const hole = txt.slice(start + 1, end).replace(/[A-Za-z_$][\w$]*\(\s*\{[^{}]*\}\s*\)/g, " ");
+      for (const lit of literalsIn(hole)) {
         // **클래스 모양의 토큰만 받는다.** 홀 안에는 비교값(`x === "manipulation"`)이
         // 섞여 있어, 거르지 않으면 가드가 관계없는 문자열을 위반으로 보고한다.
-        const tokens = lit.split(/\s+/).filter((t) => /^[a-zA-Z][a-zA-Z0-9_:./[\]#%!-]*$/.test(t));
+        const tokens = lit.split(/\s+/).filter(isClassToken);
         if (tokens.length > 0) add(tokens.join(" "), start);
       }
     }
@@ -420,8 +468,269 @@ export function composedClassGroups(): { names: string[]; file: string; line: nu
         if (names.length > 1) out.push({ names, file: rel, line, via });
       }
     }
+    // ── cva · cn (017 T012 · guards H-1) ────────────────────────────────────
+    // shadcn 방식의 부품은 조립을 `[…].filter(Boolean).join` 대신 `cva(base, {variants})`
+    // 와 `cn(…)` 으로 한다. 015 의 조립 38곳 중 37곳이 `src/ui` 에 있었으므로, 이것을 읽지
+    // 못하면 부품을 옮기는 순간 G-E 가 **부품을 하나도 보지 않게** 된다 — 흰 버튼이
+    // 들어왔던 그 자리다.
+    const cvaByName = new Map<string, string[][]>();
+    for (const call of callsOf(txt, "cva")) {
+      const combos = cvaCombos(call.args, consts);
+      const line = txt.slice(0, call.start).split("\n").length;
+      const decl = /const\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*$/.exec(txt.slice(Math.max(0, call.start - 120), call.start));
+      if (decl !== null) cvaByName.set(decl[1] as string, combos);
+      for (const names of combos) {
+        if (names.length > 1) out.push({ names, file: rel, line, via: `cva(${decl?.[1] ?? "…"})` });
+      }
+    }
+    for (const call of callsOf(txt, "cn")) {
+      const line = txt.slice(0, call.start).split("\n").length;
+      let combos: string[][] = [[]];
+      for (const raw of call.args) {
+        const slot = raw.trim();
+        const fn = /^([A-Za-z_][A-Za-z0-9_]*)\s*\(/.exec(slot);
+        let choices: string[];
+        if (fn !== null && cvaByName.has(fn[1] as string)) {
+          choices = (cvaByName.get(fn[1] as string) as string[][]).map((n) => n.join(" "));
+        } else {
+          const and = /&&\s*(?:"([^"]*)"|`([^`$]*)`)\s*$/.exec(slot);
+          choices = and !== null ? ["", (and[1] ?? and[2] ?? "") as string] : resolveSlot(slot, consts, records);
+        }
+        const next: string[][] = [];
+        for (const acc of combos) for (const c of choices) next.push(c === "" ? acc : [...acc, ...c.split(/\s+/)]);
+        combos = next.slice(0, 64);
+      }
+      for (const names of combos) {
+        if (names.length > 1) out.push({ names, file: rel, line, via: "cn(…)" });
+      }
+    }
   }
   return out;
+}
+
+/** `name(` 호출의 인자(최상위 쉼표로 가른 원문)와 시작 위치. 따옴표 안의 괄호는 세지 않는다. */
+function callsOf(txt: string, name: string): { start: number; args: string[] }[] {
+  const out: { start: number; args: string[] }[] = [];
+  const re = new RegExp(`(?<![A-Za-z0-9_$.])${name}\\(`, "g");
+  for (const m of txt.matchAll(re)) {
+    const open = (m.index ?? 0) + m[0].length - 1;
+    const args: string[] = [];
+    let depth = 0;
+    let acc = "";
+    let quote: string | null = null;
+    let end = -1;
+    for (let i = open; i < txt.length; i += 1) {
+      const ch = txt[i] as string;
+      if (quote !== null) {
+        acc += ch;
+        if (ch === "\\") {
+          acc += txt[i + 1] ?? "";
+          i += 1;
+        } else if (ch === quote) quote = null;
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === "`") {
+        quote = ch;
+        acc += ch;
+        continue;
+      }
+      if ("([{".includes(ch)) {
+        depth += 1;
+        if (depth === 1) continue;
+      } else if (")]}".includes(ch)) {
+        depth -= 1;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      } else if (ch === "," && depth === 1) {
+        args.push(acc);
+        acc = "";
+        continue;
+      }
+      acc += ch;
+    }
+    if (end < 0) continue;
+    if (acc.trim() !== "") args.push(acc);
+    out.push({ start: m.index ?? 0, args });
+  }
+  return out;
+}
+
+/** 문자열·객체·배열 리터럴만 이해하는 작은 값. 나머지는 `other` 로 남긴다. */
+type Lit =
+  | { kind: "str"; value: string }
+  | { kind: "obj"; entries: [string, Lit][] }
+  | { kind: "arr"; items: Lit[] }
+  | { kind: "other"; text: string };
+
+function parseLiteral(src: string): Lit {
+  let i = 0;
+  const ws = (): void => {
+    while (i < src.length && /\s/.test(src[i] as string)) i += 1;
+  };
+  const str = (): string => {
+    const q = src[i] as string;
+    i += 1;
+    let out = "";
+    while (i < src.length && src[i] !== q) {
+      if (src[i] === "\\") {
+        out += src[i + 1] ?? "";
+        i += 2;
+        continue;
+      }
+      if (q === "`" && src[i] === "$" && src[i + 1] === "{") {
+        // 템플릿의 구멍은 알 수 없는 값이다 — 비워 둔다 (`layout` 과 같은 취급).
+        let d = 1;
+        i += 2;
+        while (i < src.length && d > 0) {
+          if (src[i] === "{") d += 1;
+          else if (src[i] === "}") d -= 1;
+          i += 1;
+        }
+        out += " ";
+        continue;
+      }
+      out += src[i];
+      i += 1;
+    }
+    i += 1;
+    return out;
+  };
+  const value = (): Lit => {
+    ws();
+    const c = src[i];
+    if (c === '"' || c === "'" || c === "`") {
+      let s = str();
+      ws();
+      while (src[i] === "+") {
+        i += 1;
+        ws();
+        if (src[i] === '"' || src[i] === "'" || src[i] === "`") {
+          s += ` ${str()}`;
+          ws();
+        } else break;
+      }
+      return { kind: "str", value: s };
+    }
+    if (c === "{") {
+      i += 1;
+      const entries: [string, Lit][] = [];
+      while (i < src.length) {
+        ws();
+        if (src[i] === "}") {
+          i += 1;
+          break;
+        }
+        let key: string;
+        if (src[i] === '"' || src[i] === "'") key = str();
+        else {
+          const m = /^[A-Za-z0-9_$-]+/.exec(src.slice(i));
+          key = m?.[0] ?? "";
+          if (key === "") {
+            i += 1;
+            continue;
+          }
+          i += key.length;
+        }
+        ws();
+        if (src[i] === ":") {
+          i += 1;
+          entries.push([key, value()]);
+        } else entries.push([key, { kind: "other", text: key }]);
+        ws();
+        if (src[i] === ",") i += 1;
+      }
+      return { kind: "obj", entries };
+    }
+    if (c === "[") {
+      i += 1;
+      const items: Lit[] = [];
+      while (i < src.length) {
+        ws();
+        if (src[i] === "]") {
+          i += 1;
+          break;
+        }
+        items.push(value());
+        ws();
+        if (src[i] === ",") i += 1;
+      }
+      return { kind: "arr", items };
+    }
+    const start = i;
+    let d = 0;
+    while (i < src.length) {
+      const ch = src[i] as string;
+      if (ch === '"' || ch === "'" || ch === "`") {
+        str();
+        continue;
+      }
+      if ("([{".includes(ch)) d += 1;
+      else if (")]}".includes(ch)) {
+        if (d === 0) break;
+        d -= 1;
+      } else if (ch === "," && d === 0) break;
+      i += 1;
+    }
+    return { kind: "other", text: src.slice(start, i).trim() };
+  };
+  return value();
+}
+
+function textOf(lit: Lit | undefined, consts: Map<string, string>): string {
+  if (lit === undefined) return "";
+  if (lit.kind === "str") return lit.value;
+  if (lit.kind === "arr") return lit.items.map((x) => textOf(x, consts)).join(" ");
+  if (lit.kind === "other") return consts.get(lit.text) ?? "";
+  return "";
+}
+
+function entryOf(lit: Lit | undefined, key: string): Lit | undefined {
+  return lit?.kind === "obj" ? lit.entries.find(([k]) => k === key)?.[1] : undefined;
+}
+
+/**
+ * `cva(base, { variants, compoundVariants })` 가 만들 수 있는 조합 전부.
+ *
+ * 조합 = base × 축마다 값 하나. **축 안의 값끼리는 조합하지 않는다** — `primary` 와 `danger`
+ * 는 동시에 붙지 않는다 (015 의 `Record` 표와 같은 규칙). `compoundVariants` 는 조건 축이
+ * 맞는 조합에만 덧붙인다.
+ */
+function cvaCombos(args: string[], consts: Map<string, string>): string[][] {
+  const split = (s: string): string[] => s.split(/\s+/).filter(Boolean);
+  const base = split(textOf(parseLiteral(args[0] ?? '""'), consts));
+  const cfg = args[1] !== undefined ? parseLiteral(args[1]) : undefined;
+  const variants = entryOf(cfg, "variants");
+  let combos: { picks: Record<string, string>; names: string[] }[] = [{ picks: {}, names: base }];
+  if (variants?.kind === "obj") {
+    for (const [axis, table] of variants.entries) {
+      if (table.kind !== "obj") continue;
+      const next: typeof combos = [];
+      for (const acc of combos) {
+        for (const [key, cls] of table.entries) {
+          next.push({ picks: { ...acc.picks, [axis]: key }, names: [...acc.names, ...split(textOf(cls, consts))] });
+        }
+      }
+      combos = next.slice(0, 256);
+    }
+  }
+  const compound = entryOf(cfg, "compoundVariants");
+  if (compound?.kind === "arr") {
+    for (const item of compound.items) {
+      if (item.kind !== "obj") continue;
+      let cls: string[] = [];
+      const conds: [string, string[]][] = [];
+      for (const [k, v] of item.entries) {
+        if (k === "class" || k === "className") cls = split(textOf(v, consts));
+        else conds.push([k, v.kind === "arr" ? v.items.map((x) => textOf(x, consts)) : [textOf(v, consts)]]);
+      }
+      for (const c of combos) {
+        if (conds.every(([k, vs]) => vs.includes(c.picks[k] ?? ""))) c.names = [...c.names, ...cls];
+      }
+    }
+  }
+  return combos.map((c) => c.names);
 }
 
 /**

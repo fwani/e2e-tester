@@ -16,8 +16,13 @@
  * 관성으로 쌓여 규칙을 갉아먹는 것을 막는다.
  */
 
-/** 어느 축의 예외인가. `contracts/visual-language.md` §4 의 축 이름과 같다. */
-export type ExceptionAxis = "color" | "inline-style" | "class-name" | "token";
+/**
+ * 어느 축의 예외인가. `contracts/visual-language.md` §4 의 축 이름과 같다.
+ *
+ * `raw-element` 는 017 이 더했다 — `src/ui/` 밖에서 부품이 아닌 `<button|input|select|textarea>`
+ * 를 쓰는 자리 (017 contracts/guards.md G-G · FR-002). `pattern` 은 **태그 이름**에 맞춘다.
+ */
+export type ExceptionAxis = "color" | "inline-style" | "class-name" | "token" | "raw-element";
 
 export interface VisualLanguageException {
   /** 저장소 기준 경로. 디렉터리를 가리키면 그 아래 전부에 적용된다. */
@@ -69,27 +74,15 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
   {
     file: "frontend/src/pages/TestList.tsx",
     pattern:
-      "^(gridTemplateColumns|position|top|left|zIndex|visibility|display|flexDirection|gap|padding|width|minWidth|height|minHeight|paddingTop|paddingBottom)$",
+      "^(gridTemplateColumns|display|gap|padding|width|height|minHeight|paddingTop|paddingBottom)$",
     axis: "inline-style",
     reason:
-      "세 자리가 **렌더 시점에야 값이 정해진다.** (1) 행 메뉴는 누른 행의 화면 좌표에 " +
-      "맞춰 뜬다 — `menuPos` 는 `getBoundingClientRect()` 로 잰 값이고, 자리를 재기 " +
-      "전에는 그리지 않는다(그리면 왼쪽 위에서 제자리로 튄다). (2) 표 머리와 행의 " +
-      "격자 열은 **같은 상수**를 써야 하고(FR-273 · V-08) 두 곳에 적으면 어긋난다 — " +
-      "값을 복제하지 않으려고 상수 참조를 남긴다. (3) 행은 이름 변경·삭제 확인이 " +
-      "**안에서 펼쳐질 때만** 높이를 늘린다 — 펼침 여부는 렌더 시점의 상태다.",
+      "두 자리가 **렌더 시점에야 값이 정해진다.** (1) 표 머리와 행의 격자 열은 **같은 " +
+      "상수**를 써야 하고(FR-273 · V-08) 두 곳에 적으면 어긋난다 — 값을 복제하지 않으려고 " +
+      "상수 참조를 남긴다. (2) 행은 이름 변경·삭제 확인이 **안에서 펼쳐질 때만** 높이를 " +
+      "늘린다 — 펼침 여부는 렌더 시점의 상태다. 행 메뉴의 화면 좌표(`menuPos`)는 017 T056 에서 " +
+      "`ui/DropdownMenu` 로 옮기며 지웠다.",
     requirement: "015 FR-005 · FR-273 · 013 UC-013-01",
-  },
-  {
-    file: "frontend/src/components/workbench/ActionPalette.tsx",
-    pattern: "^(minHeight|height)$",
-    axis: "inline-style",
-    reason:
-      "공통 입력 속성(`common.style`)을 펼친 위에 높이만 덧쓴다. 여러 줄 입력은 48px, " +
-      "한 줄은 40px 이며 나머지 속성은 `common` 이 정한다. 펼침(`...common.style`)을 " +
-      "클래스로 바꾸려면 `common` 을 쓰는 모든 자리를 함께 옮겨야 하고, 그것은 이 " +
-      "기능의 범위를 넘는 구조 변경이다.",
-    requirement: "015 FR-005",
   },
   {
     file: "frontend/src/components/design/Chrome.tsx",
@@ -117,17 +110,47 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
     requirement: "015 FR-010 · SC-008",
   },
   {
-    file: "frontend/src/components/workbench/PhaseBar.tsx",
+    file: "frontend/src/ui/Input.tsx",
+    pattern: "^outline-none$",
+    axis: "class-name",
+    reason:
+      "`Input variant=\"bare\"` — 테두리 상자(`ui/Field`, 정본 `.field`) 안의 입력이다. 테두리와 **초점 링을 " +
+      "상자가** `focus-within:outline-2 outline-run` 으로 그리므로 안쪽 링을 벗는다. 남기면 상자 안에서 " +
+      "링이 두 겹이 된다. `ui/Field` 가 `[&_input]:outline-none` 으로 안쪽을 벗기던 자리를 부품으로 옮겼다 — 그 예외는 017 T034 에서 지웠다 (017 N-01).",
+    requirement: "017 FR-015 · 015 SC-008",
+  },
+  {
+    file: "frontend/src/ui/Input.tsx",
     pattern: "^focus:outline-none$",
     axis: "class-name",
     reason:
-      "국면 띠의 테스트 이름 칸이다. **초점 표시를 지우는 것이 아니라 바꾼다** — " +
-      "정본 `input.phase-name:focus` 가 `outline:none` 과 함께 `border-color:var(--hair-2)` " +
-      "와 `background:var(--panel)` 를 준다. 평소에는 테두리가 투명해 제목처럼 보이다가 " +
-      "초점을 받으면 테두리와 바탕이 드러나 **입력 가능한 칸임이 나타난다.** 링을 " +
-      "겹쳐 그리면 띠 높이(48px) 안에서 2px 링이 위아래로 잘린다. " +
-      "015 는 이 형태를 옮길 뿐 새로 정하지 않는다 (FR-008).",
+      "`Input variant=\"title\"` — 국면 띠의 테스트 이름 칸이다 (정본 `input.phase-name`). **초점 표시를 지우는 " +
+      "것이 아니라 바꾼다** — 초점을 받으면 투명하던 테두리와 바탕이 드러나 입력 가능한 칸임이 나타난다. " +
+      "링을 겹쳐 그리면 띠 높이(48px) 안에서 2px 링이 위아래로 잘린다. `PhaseBar` 에 있던 같은 예외를 부품으로 옮겼다 — 그 예외는 017 T042 에서 지웠다.",
     requirement: "015 FR-008 · SC-008 · 007 FR-219",
+  },
+  {
+    file: "frontend/src/ui/StepRow.tsx",
+    pattern: "^\\[&_input:disabled\\]:opacity-40$",
+    axis: "class-name",
+    reason:
+      "Step 행 체크 칸의 비활성이다. **정본이 흐림으로 정했다** — `.srow-check input[type=\"checkbox\"]" +
+      ":disabled { cursor: default; opacity: .4 }` (015 state-styles S-13). 체크 상자는 결말 아이콘과 " +
+      "형태로 갈리는 유일한 사각형이고 점선 테두리를 가질 수 없는 네이티브 요소라, 버튼의 점선 비활성 " +
+      "문법이 적용되지 않는다. shadcn 의 `disabled:opacity-50` 과는 출처가 다르다 — 이것은 정본 값이다.",
+    requirement: "015 S-13 · 017 FR-006",
+  },
+  {
+    file: "frontend/src/components/MirrorView.tsx",
+    pattern: "^textarea$",
+    axis: "raw-element",
+    reason:
+      "미러의 한글 조합 칸이다 (정본 `.ime-capture`). **보이지 않고 포인터를 받지 않으며 조합만 " +
+      "받는다** — 미러 면(`<div>`)에는 IME 가 걸리지 않으므로 편집 가능한 요소가 하나 있어야 한다. " +
+      "부품이 주는 것(모습·비활성 점선·초점 규칙)이 전부 방해가 된다: 보이면 미러를 가리고, " +
+      "초점 표시를 그리면 미러 전체를 두르는 사각형이 뜬다. 부품으로 감쌀 이유가 없는 유일한 " +
+      "원시 조작 요소다 (010 · 017 contracts/ui-parts.md §3).",
+    requirement: "017 FR-002 · FR-016 · 010",
   },
 ];
 

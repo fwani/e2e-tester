@@ -185,9 +185,20 @@ describe("산출물 고르기는 이 영역 안에 있다 (T078 · FR-246 · DC-
     show(artifacts);
     const trace = el("[data-artifact-tab='trace']") as HTMLButtonElement;
     expect(trace, "확정 디자인에 있는 탭을 뺐다 (DC-007)").not.toBeNull();
-    expect(trace.disabled).toBe(true);
-    // 고를 수 있는 것은 그대로 눌린다.
-    expect((el("[data-artifact-tab='console']") as HTMLButtonElement).disabled).toBe(false);
+    /*
+      **판정 방법만 옮겼다** (T106 · test-ledger 09-16). 새 갈래의 탭은 네이티브 `disabled` 를 걸지 않고
+      `aria-disabled="true"` + `data-disabled` + `tabindex="-1"` 로 말한다 — 조작을 **초점에서 빼지 않아**
+      사유를 읽을 수 있게 두는 방식이고, 이 저장소의 규칙(FR-006·FR-014 — 비활성은 포인터를 막지 않고
+      사유를 보여 준다)과 같은 방향이다. **누름은 실제로 막힌다**(실측: 눌러도 `onValueChange` 0회).
+      묻는 것은 그대로다: 지원되지 않는 산출물을 **감추지 않고 비활성으로** 남기는가 (FR-246 · DC-007).
+    */
+    expect(trace.getAttribute("aria-disabled"), "TRACE 탭이 비활성이 아니다").toBe("true");
+    // 고를 수 있는 것은 그대로 눌린다 — **여기도 같은 통로로 물어야** 헛되이 통과하지 않는다
+    // (네이티브 `.disabled` 는 이제 비활성 탭에서도 `false` 라 그것으로는 아무것도 가려내지 못한다).
+    expect(
+      (el("[data-artifact-tab='console']") as HTMLButtonElement).getAttribute("aria-disabled"),
+      "고를 수 있는 탭까지 비활성이 됐다",
+    ).toBe("false");
   });
 
   it("왜 못 고르는지 화면에도 적는다 — `title` 만 두지 않는다 (005 FR-172)", () => {

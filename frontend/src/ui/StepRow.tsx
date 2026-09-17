@@ -1,6 +1,8 @@
 /**
  * Step 목록의 부품. 015 T026.
  *
+ * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로 · T088 — 루트에 `data-slot`
+ *
  * ## 행 높이 52px 는 계약이다
  *
  * v1 「브루탈리스트」에서 125px 였다. 900px 창에서 5행밖에 보이지 않았고, 실무 테스트는
@@ -24,6 +26,8 @@
  * S-13 (`.srow-check input[type=checkbox]:disabled`) 이 `StepCheck` 로 온다.
  */
 import type { ComponentPropsWithRef, ReactNode } from "react";
+
+import { cn } from "./cn";
 
 /**
  * 정본 `.srow.{pass,fail,run}`. `none` 은 결말 없음.
@@ -62,13 +66,18 @@ const MARK_LINE: Record<StepMark, string> = {
 
 type DivProps = Omit<ComponentPropsWithRef<"div">, "className">;
 
-/** 정본 `.steps` — Step 패널. 폭 460px 고정 (007 FR-218a). */
+/**
+ * 정본 `.steps` — Step 패널. 폭 460px 고정 (007 FR-218a).
+ *
+ * **`min-w-0` 이 460 을 지킨다 (017 US3).** flex 항목의 최소 폭 기본값(`auto`)은 「내용의 최소 폭」이라, 머리 줄의
+ * 이름표·고르기 조작·비활성 사유가 한 줄에 서면 패널이 기준 폭(460)을 넘어 **늘어났다** — 만들기 화면에서 517px, 머리
+ * 이름표가 줄바꿈하지 않게 고친 뒤에는 662px 까지 커지며 왼쪽 대상 앱 영역을 밀어냈다. 패널은 460 을 지키고, 줄어드는 것은
+ * 머리 줄 안의 비활성 사유다 (layout-contract-v3 L6).
+ */
 export function StepPanel({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["flex-none basis-steps border-l border-hair-2 bg-panel flex flex-col", layout]
-    .filter(Boolean)
-    .join(" ");
+  const cls = cn("flex-none basis-steps min-w-0 border-l border-hair-2 bg-panel flex flex-col", layout);
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="step-panel" {...rest}>
       {children}
     </div>
   );
@@ -76,14 +85,12 @@ export function StepPanel({ layout, children, ...rest }: DivProps & { layout?: s
 
 /** 정본 `.steps-hd` — Step 패널의 머리 띠 (36px). */
 export function StepPanelHead({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = [
+  const cls = cn(
     "grow-0 shrink-0 basis-[36px] h-[36px] flex items-center gap-s2 px-s3 bg-sunken border-b border-hair-2",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="step-panel-head" {...rest}>
       {children}
     </div>
   );
@@ -96,9 +103,9 @@ export function StepPanelHead({ layout, children, ...rest }: DivProps & { layout
  * 사용자가 찾지 못한다.
  */
 export function StepPanelFoot({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["border-t border-hair-2 bg-sunken-2", layout].filter(Boolean).join(" ");
+  const cls = cn("border-t border-hair-2 bg-sunken-2", layout);
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="step-panel-foot" {...rest}>
       {children}
     </div>
   );
@@ -128,7 +135,7 @@ export function StepRow({
   layout?: string;
   children?: ReactNode;
 }) {
-  const cls = [
+  const cls = cn(
     "grid items-center gap-[10px] h-step pt-[6px] pr-s3 pb-[6px] pl-[9px]",
     "border-b border-hair border-l-[3px] border-solid",
     withCheck ? "grid-cols-[22px_26px_1fr_58px_20px_auto]" : "grid-cols-[26px_1fr_58px_20px_auto]",
@@ -147,12 +154,11 @@ export function StepRow({
     // 잉크를 쓰는 이유는 지목이 상태가 아니라 「지금 보고 있는 곳」이어서다.
     selected ? "shadow-[inset_0_0_0_2px_var(--ink)]" : "",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
     <div
       className={cls}
+      data-slot="step-row"
       data-mark={mark}
       data-paused={paused ? "true" : undefined}
       data-selected={selected ? "true" : undefined}
@@ -170,7 +176,7 @@ export function StepRow({
  * 폭 100%)을 받지 않게 크기를 명시한다. S-13(비활성 커서·투명도)을 함께 옮겼다.
  */
 export function StepCheck({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = [
+  const cls = cn(
     "flex items-center justify-center",
     "[&_input]:w-[14px] [&_input]:h-[14px] [&_input]:min-h-0 [&_input]:m-0 [&_input]:p-0",
     // 정본이 함께 정한 둘. 빠뜨리면 체크는 브라우저 기본색이 되고, 누를 수 있다는
@@ -179,11 +185,9 @@ export function StepCheck({ layout, children, ...rest }: DivProps & { layout?: s
     // S-13
     "[&_input:disabled]:cursor-default [&_input:disabled]:opacity-40",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
-    <div className={cls} data-cell="check" {...rest}>
+    <div className={cls} data-slot="step-check" data-cell="check" {...rest}>
       {children}
     </div>
   );
@@ -195,9 +199,9 @@ export function StepCheck({ layout, children, ...rest }: DivProps & { layout?: s
  * **항상 보인다.** hover 로 드러내면 없는 조작이 된다 (009 계약 §3-2).
  */
 export function StepOps({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = ["flex items-center gap-s1", layout].filter(Boolean).join(" ");
+  const cls = cn("flex items-center gap-s1", layout);
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="step-ops" {...rest}>
       {children}
     </div>
   );
@@ -214,16 +218,14 @@ const OP_TONE: Record<OpTone, string> = {
 
 /** 정본 `.srow-ops .op` — 20px 사각 조작 단추. */
 export function StepOpButton({ tone = "default", layout, children, ...rest }: Omit<ComponentPropsWithRef<"button">, "className"> & { tone?: OpTone; layout?: string; children?: ReactNode }) {
-  const cls = [
+  const cls = cn(
     "inline-flex items-center justify-center w-[20px] h-[20px] p-0",
     "border rounded-chip font-sans text-[12px] font-medium leading-none shadow-none",
     OP_TONE[tone],
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
-    <button className={cls} data-tone={tone} {...rest}>
+    <button className={cls} data-slot="step-op-button" data-tone={tone} {...rest}>
       {children}
     </button>
   );
@@ -231,14 +233,12 @@ export function StepOpButton({ tone = "default", layout, children, ...rest }: Om
 
 /** 정본 `.phase` — 국면 띠 (48px). */
 export function PhaseBand({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = [
+  const cls = cn(
     "grow-0 shrink-0 basis-phase h-phase flex items-center gap-s3 px-s4 bg-panel border-b border-hair-2",
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
-    <div className={cls} {...rest}>
+    <div className={cls} data-slot="phase-band" {...rest}>
       {children}
     </div>
   );

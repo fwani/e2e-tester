@@ -177,11 +177,11 @@ describe("직접 입력으로 Step 추가 — 브라우저 없이 (US1)", () => 
     expect(screen.getByLabelText("주소")).toBeTruthy();
     expect(screen.queryByLabelText("기대 텍스트")).toBeNull();
 
-    act(() => screen.getByRole("radio", { name: "화면 텍스트 검증" }).click());
+    act(() => screen.getByRole("button", { name: "화면 텍스트 검증" }).click());
     expect(screen.getByLabelText("기대 텍스트")).toBeTruthy();
     expect(screen.queryByLabelText("주소")).toBeNull();
 
-    act(() => screen.getByRole("radio", { name: "탭 닫기" }).click());
+    act(() => screen.getByRole("button", { name: "탭 닫기" }).click());
     expect(screen.getByLabelText("탭 번호")).toBeTruthy();
     expect(screen.queryByLabelText("일치 방식")).toBeNull();
   });

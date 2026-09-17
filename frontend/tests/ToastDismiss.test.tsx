@@ -6,13 +6,13 @@
  *
  * 재발을 막으려는 결함은 **닫는 길을 화면마다 정하는 것**이다. 11개 화면이 `onDismiss`
  * 만 주고 시간은 아무도 주지 않아 오류 토스트가 영영 떠 있었다. 그래서 여기서 재는
- * 것은 개별 화면이 아니라 통로(`components/Toast`) 하나다 — 그것이 퇴장을 소유한다.
+ * 것은 개별 화면이 아니라 부품(`ui/Toast`) 하나다 — 그것이 퇴장을 소유한다 (2026-09-16 · 옛 통로
+ * `components/Toast`·`useToastDismiss` 를 대신한다).
  */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Toast } from "../src/components/Toast";
-import { TOAST_LINGER_MS } from "../src/ui/useToastDismiss";
+import { Toast, TOAST_LINGER_MS } from "../src/ui/Toast";
 
 afterEach(() => {
   cleanup();
@@ -33,8 +33,17 @@ function pointer(el: HTMLElement, type: string, clientX: number) {
   fireEvent(el, new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX }));
 }
 
+/**
+ * **첫 움직임은 출발점을 다시 잡는다.**
+ *
+ * 부품은 `pointerdown` 과 첫 `pointermove` 사이의 지연(iOS)을 흡수하려고 **첫 움직임에서 출발점을
+ * 현재 자리로 옮긴다**(`isFirstPointerMoveRef`). 그래서 움직임을 한 번만 보내면 이동 거리가 0 이 되어
+ * 어떤 거리를 밀어도 판정에 닿지 않는다. 실제 손짓은 움직임을 여러 번 보내므로, 여기서도 **두 번**
+ * 보낸다 — 하나는 출발점, 하나는 이동. 재는 것은 그대로다: 충분히 밀면 사라지는가.
+ */
 function swipe(el: HTMLElement, to: number) {
   pointer(el, "pointerdown", 0);
+  pointer(el, "pointermove", 0);
   pointer(el, "pointermove", to);
   pointer(el, "pointerup", to);
 }
@@ -117,8 +126,13 @@ describe("손 — 좌→우 밀어내기", () => {
     );
 
     swipe(at("data-sw")!, 140);
-    // 날아가는 동안은 아직 살아 있다 — 사라지는 것이 보여야 한다.
-    expect(onDismiss).not.toHaveBeenCalled();
+    /*
+      **나가는 동안의 중간 상태는 더 이상 재지 않는다** (2026-09-16).
+
+      전에는 손으로 만든 밀어내기가 180ms 동안 날려 보낸 뒤에 `onDismiss` 를 불렀고, 이 자리에서
+      「날아가는 동안은 아직 살아 있다」를 확인했다. 그 시간은 우리 구현의 값이었고, 이제 나가는
+      처리는 부품이 갖는다. **재는 것은 그대로다**: 충분히 밀면 없어지는가 (2026-09-11 사용자 결정).
+    */
     act(() => void vi.advanceTimersByTime(300));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });

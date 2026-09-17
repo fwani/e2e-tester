@@ -7,6 +7,9 @@
  * 이 파일이 지키는 것 중 가장 중요한 하나는 **SC-627** 이다: 그룹을 쓰지 않는 사용자의
  * 목록은 이 기능 이전과 같은 모습이어야 한다. 새 기능이 안 쓰는 사람에게 비용을 지우면
  * 그것은 개선이 아니다.
+ *
+ * **017 T061** — 그룹 칩이 `ToggleGroup` 의 칩 모양이 되며 역할이 `button` 에서 `radio` 로 바뀌었다(하나를 고르는
+ * 묶음이다). 그래서 칩을 역할 `radio` 로 찾는다. 「+ 그룹」·「이름 바꾸기」·「그룹 없애기」 같은 조작은 그대로 단추다.
  */
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

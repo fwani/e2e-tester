@@ -32,7 +32,7 @@ import { describe, expect, it } from "vitest";
 import { VISUAL_LANGUAGE_EXCEPTIONS } from "../src/theme/exceptions";
 import tokensCss from "../src/theme/tokens.css?raw";
 
-import { classNameGroups, withoutComments } from "./helpers/tailwind";
+import { classNameGroups, splitVariant, withoutComments } from "./helpers/tailwind";
 
 const ROOT = join(__dirname, "..");
 
@@ -42,8 +42,25 @@ const ROOT = join(__dirname, "..");
  * Tailwind 의 `outline-none`·`focus:outline-none`·`focus-visible:outline-none`, 그리고
  * 임의값으로 같은 일을 하는 `outline-0` 을 함께 본다. 표기를 바꿔 빠져나갈 수 없어야
  * 한다 — 008 이 색 리터럴에서 겪은 교훈이다.
+ *
+ * **017 이 `outline-hidden` 을 더했다.** Tailwind v4 에서 `outline-none` 의 뜻이 바뀌며
+ * 「윤곽선을 보이지 않게」가 `outline-hidden` 이라는 이름을 얻었고, shadcn v4 원본이 그 이름을
+ * 쓴다(`focus-visible:outline-hidden` 류). 원본을 이식하는 기능에서 이 이름을 막지 않으면
+ * 이 가드는 가장 흔한 우회로를 비워 둔다.
  */
-const KILLS_RING = /^(?:[a-z-]+:)*outline-(?:none|0)$/;
+const KILLS_RING = /^outline-(?:none|0|hidden)$/;
+
+/**
+ * 변형 접두와 **무관하게** 유틸리티 본체를 본다 (017).
+ *
+ * 전에는 접두를 `[a-z-]+:` 로만 받아 `[&_input]:outline-none` 같은 임의 변형을 놓쳤다 —
+ * `ui/Field` 의 검색 칸이 그 형태로 초점 링을 지우고 있었고, 상자도 링을 그리지 않아 초점
+ * 표시가 **아예 없었다** (017 N-01). 017 이 들이는 부품은 `data-[state=open]:`·`[&_svg]:` 같은
+ * 임의 변형을 흔히 쓰므로, 접두를 규칙으로 좁히는 방식은 계속 새 구멍을 만든다.
+ */
+function killsRing(name: string): boolean {
+  return KILLS_RING.test(splitVariant(name).utility);
+}
 
 /** 등록된 예외인가. 디렉터리를 가리키는 등록도 받는다. */
 function excused(rel: string, what: string): boolean {
@@ -64,7 +81,7 @@ function ringKillers(): string[] {
   const out: string[] = [];
   for (const g of classNameGroups()) {
     for (const name of g.names) {
-      if (KILLS_RING.test(name) && !excused(g.file, name)) out.push(`  ${g.file}:${g.line}  ${name}`);
+      if (killsRing(name) && !excused(g.file, name)) out.push(`  ${g.file}:${g.line}  ${name}`);
     }
   }
   // 인라인으로 같은 일을 하는 경우 — 유틸리티만 막으면 우회로가 남는다.
@@ -109,9 +126,12 @@ describe("초점 링을 지우지 않는다 (SC-008)", () => {
       .trim()
       .split("\n");
     expect(files.length, ".tsx 를 하나도 찾지 못했다").toBeGreaterThan(30);
-    expect(KILLS_RING.test("focus:outline-none"), "패턴이 대표 표기를 잡지 못한다").toBe(true);
-    expect(KILLS_RING.test("outline-0"), "패턴이 outline-0 을 잡지 못한다").toBe(true);
-    expect(KILLS_RING.test("outline-hair"), "패턴이 정상 유틸리티를 잘못 잡는다").toBe(false);
+    expect(killsRing("focus:outline-none"), "패턴이 대표 표기를 잡지 못한다").toBe(true);
+    expect(killsRing("outline-0"), "패턴이 outline-0 을 잡지 못한다").toBe(true);
+    expect(killsRing("focus-visible:outline-hidden"), "패턴이 shadcn v4 표기를 잡지 못한다").toBe(true);
+    expect(killsRing("[&_input]:outline-none"), "패턴이 임의 변형 접두를 잡지 못한다").toBe(true);
+    expect(killsRing("outline-hair"), "패턴이 정상 유틸리티를 잘못 잡는다").toBe(false);
+    expect(killsRing("focus-within:outline-2"), "패턴이 링을 그리는 유틸리티를 잘못 잡는다").toBe(false);
     // 부품 상수까지 보는가 — 이 가드가 1회차에 놓친 자리다.
     expect(
       classNameGroups().some((g) => g.file.startsWith("src/ui/")),

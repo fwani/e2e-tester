@@ -10,7 +10,7 @@
  * 필요하면 `pacing_changed` 이벤트가 실어 보낸 `delay_ms` 를 쓴다.
  */
 import { PACING_LABEL, PACING_ORDER, type RunPacing } from "../api/client";
-import { Segmented } from "../ui/Table";
+import { ToggleGroup, ToggleGroupItem } from "../ui/ToggleGroup";
 
 export interface PacingControlProps {
   value: RunPacing;
@@ -52,26 +52,23 @@ export function PacingControl({
   return (
     <div className="flex items-center gap-s2">
       <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
-      <Segmented role="group" aria-label="실행 속도">
-        {PACING_ORDER.map((pacing) => {
-          const active = pacing === value;
-          return (
-            <button
-              key={pacing}
-              type="button"
-              aria-pressed={active}
-              data-testid={`pacing-${pacing}`}
-              disabled={busy || disabled}
-              onClick={() => {
-                if (!active) onChange(pacing);
-              }}
-              className={`px-s3 ${busy || disabled ? "cursor-default" : "cursor-pointer"}`}
-            >
-              {PACING_LABEL[pacing]}
-            </button>
-          );
-        })}
-      </Segmented>
+      {/*
+        017 T060 — 정본 `.segmented` 를 `ToggleGroup` 으로. 고른 속도를 **라디오로** 알리고(017 전에는 눌린 단추 넷),
+        화살표로 오간다. 고른 것을 다시 눌러도 선택이 비지 않는다 — 속도는 늘 하나다.
+      */}
+      <ToggleGroup
+        appearance="segmented"
+        aria-label="실행 속도"
+        value={value}
+        onValueChange={(next) => onChange(next as RunPacing)}
+        disabled={busy || disabled}
+      >
+        {PACING_ORDER.map((pacing) => (
+          <ToggleGroupItem key={pacing} value={pacing} data-testid={`pacing-${pacing}`}>
+            {PACING_LABEL[pacing]}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
       {!preferenceSaved && (
         <span
           role="status"

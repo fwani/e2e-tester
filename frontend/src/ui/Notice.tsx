@@ -1,13 +1,14 @@
 /**
  * 알림 — 의미 클래스 `.notice` 계열이 해체되어 온 곳. 015 T021.
  *
+ * 출처: 015 (손으로 만든 부품) · 017 T066 — 클래스 잇기를 `ui/cn` 으로 · T088 — 루트에 `data-slot`
+ *
  * 세 가지가 한 뿌리에서 갈린다.
  *
  * | 부품 | 정본 | 자리 |
  * |---|---|---|
  * | `Notice` | `.notice` | 문서 흐름 안. 한 줄 띠(32px) |
- * | `Toast` | `.notice.float.toast` | 흐름 밖에 겹쳐 뜬다. 여러 줄 |
- * | `ToastLayer` | `.toast-layer` | 토스트가 쌓이는 자리 (뷰포트 오른쪽 위) |
+ * | ~~`Toast`~~ · ~~`ToastLayer`~~ | — | **`ui/Toast` 로 옮겼다** (2026-09-16 · 017 Phase 10) |
  *
  * ## 정본이 기록한 사고 둘을 되풀이하지 않는다
  *
@@ -31,6 +32,8 @@
  */
 import type { ComponentPropsWithRef, ReactNode } from "react";
 
+import { cn } from "./cn";
+
 /** 정본 `.tint-*` 에 대응한다. `default` 는 바탕 없음(흐름 안 알림의 기본). */
 export type NoticeTone = "default" | "pass" | "fail" | "warn" | "run" | "ai";
 
@@ -49,6 +52,14 @@ const TONE: Record<NoticeTone, string> = {
   ai: "bg-ai-t border-ai",
 };
 
+/**
+ * 뜻 → 바탕을 **알림 부품도 같은 표에서 가져간다** (017 Phase 10 · T099).
+ *
+ * 흐름 안 띠(`Notice`)와 떠 있는 알림(`ui/Toast`)은 같은 뜻을 같은 바탕으로 말한다. 표를 두 벌 두면
+ * 한쪽만 고쳐진다 — 015 가 부품을 한 곳으로 모은 이유와 같다.
+ */
+export const NOTICE_TINT = TONE;
+
 export interface NoticeProps extends Omit<ComponentPropsWithRef<"div">, "className"> {
   readonly tone?: NoticeTone;
   /** **배치만.** 모양은 `tone` 으로 정한다. */
@@ -63,68 +74,27 @@ export interface NoticeProps extends Omit<ComponentPropsWithRef<"div">, "classNa
  * **높이를 못 박는 것이 이 부품의 성질이다** — 흐름 안에 있으므로 커지면 아래가 밀린다.
  */
 export function Notice({ tone = "default", layout, children, ...rest }: NoticeProps) {
-  const cls = [
+  const cls = cn(
     "grow-0 shrink-0 basis-notice h-notice flex items-center gap-s2 px-s4",
     "font-sans text-[12px] leading-none font-normal border-b border-hair",
     tone === "default" ? "" : TONE[tone],
     layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  );
   return (
-    <div className={cls} data-tone={tone} {...rest}>
+    <div className={cls} data-slot="notice" data-tone={tone} {...rest}>
       {children}
     </div>
   );
 }
 
-/**
- * 흐름 밖에 겹쳐 뜨는 알림. 정본 `.notice.float.toast`.
- *
- * 흐름 안에 두면 알림이 뜰 때마다 아래 전부가 내려갔다 (사용자 보고). 겹쳐 뜨면 미러
- * 위에 놓이므로 그림자 없이는 문장이 미러의 일부처럼 읽힌다 — `shadow-e2` 는 Step
- * 상세(`.overlay-pane`)와 **같은 층에 뜨는 것은 같은 높이**라는 규율에서 온다.
- *
- * 높이를 풀고 최소 높이만 지킨다 (위 사고 (2)).
- */
-export function Toast({ tone = "default", layout, children, ...rest }: NoticeProps) {
-  const cls = [
-    "flex-none min-h-notice flex items-start gap-s2 px-s3 py-s2",
-    "font-sans text-[12px] leading-none font-normal",
-    "border rounded-chip shadow-e2",
-    TONE[tone],
-    layout,
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    <div className={cls} data-tone={tone} {...rest}>
-      {children}
-    </div>
-  );
-}
+/*
+  **떠 있는 알림과 그 층은 이 파일에 없다** (2026-09-16 · 017 Phase 10).
 
-/**
- * 토스트가 쌓이는 자리. 정본 `.toast-layer`.
- *
- * 뷰포트 오른쪽 위 고정 (2026-09-10 사용자 결정 — 「mac 의 알림과 같은 개념」).
- * 이전에는 좌측 아래였고, 그 자리는 화면마다 달랐다 — 미러가 없는 결과·편집 화면에서는
- * 본문 위에 떴다. 화면 밖(뷰포트 고정)으로 옮기면 그 차이가 사라진다.
- *
- * 비어 있을 때 아래를 막지 않도록 **층에서 포인터를 끄고 알림에서만 되살린다.**
- * 그것을 `[&>*]:pointer-events-auto` 로 옮겼다 — 정본 `.toast-layer > *` 와 같다.
- */
-export const TOAST_LAYER_CLASSES =
-  "fixed right-s4 z-[60] top-[calc(var(--h-header)+8px)] " +
-  "w-[min(420px,calc(100vw-32px))] max-h-[calc(100vh-var(--h-header)-24px)] " +
-  "overflow-y-auto flex flex-col gap-s2 " +
-  "pointer-events-none [&>*]:pointer-events-auto";
+  `Toast`(`.notice.float.toast`)와 `ToastLayer`·`TOAST_LAYER_CLASSES`(`.toast-layer`)가 여기 있었다.
+  지금은 `ui/Toast` 가 부품 하나로 갖는다 — 모양·자리·퇴장(5초·밀어내기·`×`)·상한이 한 곳이다.
+  이 파일에는 **흐름 안 한 줄 띠**(`Notice`)만 남는다. 뜻별 바탕 표(`NOTICE_TINT`)는 둘이 함께 쓴다.
 
-export function ToastLayer({ layout, children, ...rest }: Omit<NoticeProps, "tone">) {
-  const cls = [TOAST_LAYER_CLASSES, layout].filter(Boolean).join(" ");
-  return (
-    <div className={cls} {...rest}>
-      {children}
-    </div>
-  );
-}
+  옛 층이 들고 있던 「문서에 있는 띠가 자리를 정한다」 규칙(B-01)은 자리가 화면 아래로 내려가며
+  필요 없어졌다. 그 경위는 contracts/layout-contract-v3.md L2 에 기록으로 남아 있다.
+*/
+

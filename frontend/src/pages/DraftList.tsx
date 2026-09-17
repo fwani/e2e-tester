@@ -16,6 +16,7 @@ import { describeError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { Button } from "../ui/Button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/Table";
 
 export function DraftSection({
   drafts,
@@ -70,23 +71,26 @@ export function DraftSection({
         </div>
       )}
 
-      <table className="w-full border-collapse">
+      <Table>
         {/* `scope` 가 없으면 낭독기가 칸을 읽을 때 어느 열인지 말할 수 없다. */}
-        <thead className="bg-sunken border-b border-hair-2">
-          <tr>
-            <th scope="col" className="py-[6px] px-s2 w-[110px]">희망 번호</th>
-            <th scope="col" className="py-[6px] px-s2">대상기능</th>
-            <th scope="col" className="py-[6px] px-s2 w-[110px]">수행자</th>
-            <th scope="col" className="py-[6px] px-s2">출처</th>
-            <th scope="col" className="py-[6px] px-s2 w-[190px]">
-              <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">할 수 있는 일</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+        {/*
+          머리 칸의 모양은 TableHead 가 정한다 (017 B-09). 015 전환 뒤 이 머리는 옅은 바탕만 받아 브라우저
+          기본값(가운데 정렬·굵게)이 드러났다 — 머리는 가운데, 본문은 왼쪽에 섰고 마지막 머리만 모노 대문자였다.
+          오른쪽에 서는 마지막 열은 머리와 본문이 같은 쪽에 선다.
+        */}
+        <TableHeader>
+          <TableRow>
+            <TableHead scope="col" layout="w-[110px]">희망 번호</TableHead>
+            <TableHead scope="col">대상기능</TableHead>
+            <TableHead scope="col" layout="w-[110px]">수행자</TableHead>
+            <TableHead scope="col">출처</TableHead>
+            <TableHead scope="col" align="right" layout="w-[190px]">할 수 있는 일</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {drafts.map((draft) => (
-            <tr key={draft.draft_id} data-draft-row={draft.draft_id}>
-              <td className="py-[6px] px-s2">
+            <TableRow key={draft.draft_id} data-draft-row={draft.draft_id}>
+              <TableCell>
                 <span className="font-mono">{draft.desired_test_id ?? "—"}</span>
                 {draft.desired_test_id !== null && !draft.desired_id_available && (
                   /*
@@ -97,18 +101,18 @@ export function DraftSection({
                     이 번호는 이미 쓰입니다. 저장할 때 다른 번호를 받습니다.
                   </div>
                 )}
-              </td>
-              <td className="py-[6px] px-s2">
+              </TableCell>
+              <TableCell>
                 <div id={`draft-name-${draft.draft_id}`}>{draft.name}</div>
                 {draft.description !== null && <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{draft.description}</div>}
-              </td>
-              <td className="py-[6px] px-s2">{draft.actor ?? "—"}</td>
-              <td className="py-[6px] px-s2">
+              </TableCell>
+              <TableCell>{draft.actor ?? "—"}</TableCell>
+              <TableCell>
                 <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
                   {draft.source.file_name} · {draft.source.sheet_name} {draft.source.row}행
                 </span>
-              </td>
-              <td className="py-[6px] px-s2 text-right">
+              </TableCell>
+              <TableCell align="right">
                 {/*
                   **어느 초안인지 조작에 붙인다.** 행이 스무 개면 「녹화 시작」이 스무
                   개고, 낭독기로 도는 사용자에게는 전부 같은 조작으로 들린다.
@@ -163,11 +167,11 @@ export function DraftSection({
                     </Button>
                   </span>
                 )}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </section>
   );
 }

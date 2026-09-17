@@ -1,7 +1,7 @@
 {
- "beforeDigest": "83517acb21fccf5a",
- "afterDigest": "4d6b5fa25dd85f01",
- "mergeBase": "c3cf6af6cb9d9ddad10a4f3a056f2988234f246a",
+ "beforeDigest": "4d6b5fa25dd85f01",
+ "afterDigest": "5795e558f47267c7",
+ "mergeBase": "75520eed1cabdeb1c26dac0eb88632178d4035a1",
  "screens": [
   "project-list",
   "project-create",
@@ -17,10 +17,1866 @@
  "mismatches": [],
  "intended": [
   {
+   "screen": "keys",
+   "kind": "structure",
+   "before": 29,
+   "after": 31,
+   "reason": "알림 층이 **앱 뿌리에 하나**가 되며(`ui/Toast` 의 `<Toaster>`) 모든 화면의 `body` 에 포털과 층 요소 **둘**이 더해진다 — 화면마다 29→31 · 23→25 · 149→151 처럼 정확히 +2 다. 빈 층은 포인터를 통과시키고 아무것도 그리지 않는다 — 사람이 보는 화면에는 차이가 없다."
+  },
+  {
+   "screen": "keys",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/MAIN[0]/SECTION[2]/DIV[5]/BUTTON[0]",
+   "tag": "BUTTON",
+   "prop": "white-space",
+   "before": "normal",
+   "after": "nowrap",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "keys",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/MAIN[0]/SECTION[2]/DIV[5]/BUTTON[0]",
+   "tag": "BUTTON",
+   "prop": "display",
+   "before": "inline-block",
+   "after": "inline-flex",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "keys",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/MAIN[0]/SECTION[2]/DIV[5]/BUTTON[0]",
+   "tag": "BUTTON",
+   "prop": "align-items",
+   "before": "normal",
+   "after": "center",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "keys",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/MAIN[0]/SECTION[2]/DIV[5]/BUTTON[0]",
+   "tag": "BUTTON",
+   "prop": "gap",
+   "before": "normal",
+   "after": "6px",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "project-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/MAIN[1]/DIV[1]/DIV[10]/BUTTON[1]",
+   "tag": "BUTTON",
+   "prop": "white-space",
+   "before": "normal",
+   "after": "nowrap",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "project-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/MAIN[1]/DIV[1]/DIV[10]/BUTTON[1]",
+   "tag": "BUTTON",
+   "prop": "display",
+   "before": "block",
+   "after": "flex",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "project-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/MAIN[1]/DIV[1]/DIV[10]/BUTTON[1]",
+   "tag": "BUTTON",
+   "prop": "align-items",
+   "before": "normal",
+   "after": "center",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "project-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/MAIN[1]/DIV[1]/DIV[10]/BUTTON[1]",
+   "tag": "BUTTON",
+   "prop": "gap",
+   "before": "normal",
+   "after": "6px",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "secrets",
+   "kind": "structure",
+   "before": 23,
+   "after": 25,
+   "reason": "알림 층이 **앱 뿌리에 하나**가 되며(`ui/Toast` 의 `<Toaster>`) 모든 화면의 `body` 에 포털과 층 요소 **둘**이 더해진다 — 화면마다 29→31 · 23→25 · 149→151 처럼 정확히 +2 다. 빈 층은 포인터를 통과시키고 아무것도 그리지 않는다 — 사람이 보는 화면에는 차이가 없다."
+  },
+  {
+   "screen": "secrets",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/MAIN[0]/SECTION[2]/DIV[6]/BUTTON[0]",
+   "tag": "BUTTON",
+   "prop": "white-space",
+   "before": "normal",
+   "after": "nowrap",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "secrets",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/MAIN[0]/SECTION[2]/DIV[6]/BUTTON[0]",
+   "tag": "BUTTON",
+   "prop": "display",
+   "before": "inline-block",
+   "after": "inline-flex",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "secrets",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/MAIN[0]/SECTION[2]/DIV[6]/BUTTON[0]",
+   "tag": "BUTTON",
+   "prop": "align-items",
+   "before": "normal",
+   "after": "center",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
+   "screen": "secrets",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/MAIN[0]/SECTION[2]/DIV[6]/BUTTON[0]",
+   "tag": "BUTTON",
+   "prop": "gap",
+   "before": "normal",
+   "after": "6px",
+   "reason": "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+  },
+  {
    "screen": "test-create",
-   "kind": "unpaired",
-   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[0]",
-   "reason": "국면 표시가 `<div class=\"chip\">` 에서 부품 `ui/Chip` 으로 바뀌었고, 그 부품은 `<span>` 을 그린다. **계산된 스타일은 한 칸도 다르지 않다** — 요소 이름만 바뀌었고 둘 다 `inline-flex` 다. 칩은 글 안에 놓이는 표식이므로 `<span>` 이 맞는 요소이며, 검사와 실측은 클래스가 아니라 `data-phase-pill` 로 이 자리를 집는다. 사람이 보는 화면에는 차이가 없다 (SC-001)."
+   "kind": "structure",
+   "before": 132,
+   "after": 134,
+   "reason": "알림 층이 **앱 뿌리에 하나**가 되며(`ui/Toast` 의 `<Toaster>`) 모든 화면의 `body` 에 포털과 층 요소 **둘**이 더해진다 — 화면마다 29→31 · 23→25 · 149→151 처럼 정확히 +2 다. 빈 층은 포인터를 통과시키고 아무것도 그리지 않는다 — 사람이 보는 화면에는 차이가 없다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "overflow-x",
+   "before": "auto",
+   "after": "visible",
+   "reason": "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 `data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "overflow-y",
+   "before": "auto",
+   "after": "visible",
+   "reason": "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 `data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "min-width",
+   "before": "1440px",
+   "after": "0px",
+   "reason": "B-11 의 결과다. 작업 화면의 기준 폭(`min-width:1440px`)이 세로 배치 상자에서 그 안의 **본문 상자**로 옮겨졌다 — 머리띠는 창 폭에 서고 본문만 기준 폭을 지킨다. 본문 상자는 대조 경로에서 건너뛰므로 여기서는 상자의 값만 달라 보인다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "922.609px",
+   "after": "980px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "flex-basis",
+   "before": "88px",
+   "after": "auto",
+   "reason": "**B-04 를 고쳤다.** 만들기 국면의 대상 앱 자리가 88px 고정이었다 — 한 줄짜리 「브라우저 열기」 안내를 위해 잰 값인데 만들기 국면은 세 줄짜리 「아직 브라우저를 열지 않았습니다」를 그려, 안내가 50px 상자에 잘려 테두리 위·아래에 걸쳤다. 자리가 내용 높이(`content`)가 되어 안내가 온전히 들어가고, 그만큼 아래 작업 영역이 줄었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "922.609px",
+   "after": "980px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "88px",
+   "after": "158.812px",
+   "reason": "**B-04 를 고쳤다.** 만들기 국면의 대상 앱 자리가 88px 고정이었다 — 한 줄짜리 「브라우저 열기」 안내를 위해 잰 값인데 만들기 국면은 세 줄짜리 「아직 브라우저를 열지 않았습니다」를 그려, 안내가 50px 상자에 잘려 테두리 위·아래에 걸쳤다. 자리가 내용 높이(`content`)가 되어 안내가 온전히 들어가고, 그만큼 아래 작업 영역이 줄었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "min-height",
+   "before": "88px",
+   "after": "32px",
+   "reason": "**B-04 를 고쳤다.** 만들기 국면의 대상 앱 자리가 88px 고정이었다 — 한 줄짜리 「브라우저 열기」 안내를 위해 잰 값인데 만들기 국면은 세 줄짜리 「아직 브라우저를 열지 않았습니다」를 그려, 안내가 50px 상자에 잘려 테두리 위·아래에 걸쳤다. 자리가 내용 높이(`content`)가 되어 안내가 온전히 들어가고, 그만큼 아래 작업 영역이 줄었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "882.609px",
+   "after": "940px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "50px",
+   "after": "118.812px",
+   "reason": "**B-04 를 고쳤다.** 만들기 국면의 대상 앱 자리가 88px 고정이었다 — 한 줄짜리 「브라우저 열기」 안내를 위해 잰 값인데 만들기 국면은 세 줄짜리 「아직 브라우저를 열지 않았습니다」를 그려, 안내가 50px 상자에 잘려 테두리 위·아래에 걸쳤다. 자리가 내용 높이(`content`)가 되어 안내가 온전히 들어가고, 그만큼 아래 작업 영역이 줄었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "922.609px",
+   "after": "980px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "758px",
+   "after": "687.188px",
+   "reason": "**B-04 를 고쳤다.** 만들기 국면의 대상 앱 자리가 88px 고정이었다 — 한 줄짜리 「브라우저 열기」 안내를 위해 잰 값인데 만들기 국면은 세 줄짜리 「아직 브라우저를 열지 않았습니다」를 그려, 안내가 50px 상자에 잘려 테두리 위·아래에 걸쳤다. 자리가 내용 높이(`content`)가 되어 안내가 온전히 들어가고, 그만큼 아래 작업 영역이 줄었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[0]/INPUT[1]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[0]",
+   "tag": "BUTTON",
+   "prop": "width",
+   "before": "438.297px",
+   "after": "467px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[0]/SPAN[0]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.297px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[0]/SPAN[1]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.297px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[0]/SPAN[2]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.297px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[0]/SPAN[2]/SPAN[0]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.297px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[0]/SPAN[2]/SPAN[1]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.297px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[1]",
+   "tag": "BUTTON",
+   "prop": "width",
+   "before": "438.312px",
+   "after": "467px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[1]/SPAN[0]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.312px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[1]/SPAN[1]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.312px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[1]/SPAN[2]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.312px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[1]/SPAN[2]/SPAN[0]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.312px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[1]/DIV[1]/BUTTON[1]/SPAN[2]/SPAN[1]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "400.312px",
+   "after": "429px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[2]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[2]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[2]/TEXTAREA[1]",
+   "tag": "TEXTAREA",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[2]/SPAN[2]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[0]/DIV[1]/DIV[2]/P[3]",
+   "tag": "P",
+   "prop": "width",
+   "before": "890.609px",
+   "after": "948px",
+   "reason": "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. 패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "517.391px",
+   "after": "460px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]",
+   "tag": "DIV",
+   "prop": "min-width",
+   "before": "auto",
+   "after": "0px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "516.391px",
+   "after": "459px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "white-space",
+   "before": "normal",
+   "after": "nowrap",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "flex-shrink",
+   "before": "1",
+   "after": "0",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "59.9375px",
+   "after": "74.8125px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "22px",
+   "after": "11px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[2]",
+   "tag": "SPAN",
+   "prop": "white-space",
+   "before": "normal",
+   "after": "nowrap",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[2]",
+   "tag": "SPAN",
+   "prop": "flex-shrink",
+   "before": "1",
+   "after": "0",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[2]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "43.4844px",
+   "after": "54.2656px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[2]",
+   "tag": "SPAN",
+   "prop": "height",
+   "before": "30.7812px",
+   "after": "15.3906px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[3]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "275.906px",
+   "after": "180px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[3]/SPAN[1]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "191.547px",
+   "after": "95.6406px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[3]/SPAN[1]/SPAN[0]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "141.891px",
+   "after": "45.9844px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[4]",
+   "tag": "SPAN",
+   "prop": "white-space",
+   "before": "normal",
+   "after": "nowrap",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[4]",
+   "tag": "SPAN",
+   "prop": "flex-shrink",
+   "before": "1",
+   "after": "0",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/SPAN[4]",
+   "tag": "SPAN",
+   "prop": "width",
+   "before": "65.8594px",
+   "after": "78.7188px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[0]/DIV[5]",
+   "tag": "DIV",
+   "prop": "flex-shrink",
+   "before": "1",
+   "after": "0",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[1]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "516.391px",
+   "after": "459px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[1]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "412.609px",
+   "after": "416px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[1]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "516.391px",
+   "after": "459px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "516.391px",
+   "after": "459px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "397.391px",
+   "after": "394px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "488.391px",
+   "after": "431px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "370.391px",
+   "after": "406.391px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "488.391px",
+   "after": "431px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[1]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "488.391px",
+   "after": "431px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[1]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "66px",
+   "after": "102px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[1]/DIV[0]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "488.391px",
+   "after": "431px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[1]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "32px",
+   "after": "68px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "95.2344px",
+   "after": "431px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-width",
+   "before": "0px",
+   "after": "240px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[1]/DIV[1]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "488.391px",
+   "after": "431px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[2]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "488.391px",
+   "after": "431px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-create",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[2]/DIV[1]/DIV[2]/DIV[0]/DIV[3]",
+   "tag": "DIV",
+   "prop": "width",
+   "before": "488.391px",
+   "after": "431px",
+   "reason": "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "structure",
+   "before": 149,
+   "after": 151,
+   "reason": "알림 층이 **앱 뿌리에 하나**가 되며(`ui/Toast` 의 `<Toaster>`) 모든 화면의 `body` 에 포털과 층 요소 **둘**이 더해진다 — 화면마다 29→31 · 23→25 · 149→151 처럼 정확히 +2 다. 빈 층은 포인터를 통과시키고 아무것도 그리지 않는다 — 사람이 보는 화면에는 차이가 없다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "overflow-x",
+   "before": "auto",
+   "after": "visible",
+   "reason": "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 `data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "overflow-y",
+   "before": "auto",
+   "after": "visible",
+   "reason": "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 `data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "41.5px",
+   "after": "34px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "40.5px",
+   "after": "19.5px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "28px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "640.5px",
+   "after": "648px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "38px",
+   "after": "14px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "21px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "38px",
+   "after": "14px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "21px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "38px",
+   "after": "14px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "21px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "38px",
+   "after": "14px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "21px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "structure",
+   "before": 66,
+   "after": 68,
+   "reason": "알림 층이 **앱 뿌리에 하나**가 되며(`ui/Toast` 의 `<Toaster>`) 모든 화면의 `body` 에 포털과 층 요소 **둘**이 더해진다 — 화면마다 29→31 · 23→25 · 149→151 처럼 정확히 +2 다. 빈 층은 포인터를 통과시키고 아무것도 그리지 않는다 — 사람이 보는 화면에는 차이가 없다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "overflow-x",
+   "before": "auto",
+   "after": "visible",
+   "reason": "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 `data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "overflow-y",
+   "before": "auto",
+   "after": "visible",
+   "reason": "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 `data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "41.5px",
+   "after": "34px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "40.5px",
+   "after": "19.5px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "28px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-passed",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "640.5px",
+   "after": "648px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "structure",
+   "before": 149,
+   "after": 151,
+   "reason": "알림 층이 **앱 뿌리에 하나**가 되며(`ui/Toast` 의 `<Toaster>`) 모든 화면의 `body` 에 포털과 층 요소 **둘**이 더해진다 — 화면마다 29→31 · 23→25 · 149→151 처럼 정확히 +2 다. 빈 층은 포인터를 통과시키고 아무것도 그리지 않는다 — 사람이 보는 화면에는 차이가 없다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "overflow-x",
+   "before": "auto",
+   "after": "visible",
+   "reason": "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 `data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "overflow-y",
+   "before": "auto",
+   "after": "visible",
+   "reason": "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 `data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "41.5px",
+   "after": "34px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "40.5px",
+   "after": "19.5px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "28px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "640.5px",
+   "after": "648px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "38px",
+   "after": "14px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "21px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[0]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "38px",
+   "after": "14px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "21px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[1]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "38px",
+   "after": "14px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "21px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[2]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]",
+   "tag": "DIV",
+   "prop": "height",
+   "before": "38px",
+   "after": "14px",
+   "reason": "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, 그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "width",
+   "before": "21px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "height",
+   "before": "32px",
+   "after": "14px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "min-height",
+   "before": "32px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-top",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-right",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-bottom",
+   "before": "3px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+  },
+  {
+   "screen": "test-list-unrun",
+   "kind": "prop",
+   "path": "BODY/DIV[0]/DIV[0]/DIV[0]/DIV[1]/DIV[2]/DIV[1]/DIV[0]/DIV[3]/DIV[0]/INPUT[0]",
+   "tag": "INPUT",
+   "prop": "margin-left",
+   "before": "4px",
+   "after": "0px",
+   "reason": "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
   }
  ]
 }

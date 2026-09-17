@@ -39,8 +39,13 @@ import type { Step } from "../../types/generated/step";
 import { ActionButton } from "./ActionButton";
 import type { StepDetail as StepDetailModel } from "./model";
 
-import { Button, navLinkClasses } from "../../ui/Button";
+import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
+import { Checkbox } from "../../ui/Checkbox";
+import { Input } from "../../ui/Input";
+import { DetailPanel, DetailPanelTitle } from "../../ui/OverlayPane";
+import { Disclosure } from "../../ui/Disclosure";
+import { Tooltip } from "../../ui/Tooltip";
 /** 값이 `{{변수명}}` 참조인가. 민감 값은 참조로만 저장된다 (FR-082). */
 function isReference(value: string): boolean {
   return /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(value);
@@ -163,19 +168,20 @@ export function StepDetail({
   const alreadyReference = hasValueField && isReference(value);
 
   return (
-    <div
+    <DetailPanel
       data-workbench-step-detail
       /*
-        **대화상자다** — 뒤를 가리고 초점을 가둔다.
+        **대화상자다** — 역할이 dialog 이고, 열리면 초점이 판 안으로 가며, Esc 로 닫히고, 닫히면 연 자리로
+        초점이 돌아간다. **모달은 아니다** (017 research R7) — 판을 연 채 목록의 다른 행을 누를 수 있어야
+        하므로 초점을 가두지 않는다. 뒤의 미러를 막는 것은 `Workbench` 의 가림막이다 (010).
 
         2026-09-09 에 배치가 하나로 돌아오면서 `region` 갈래가 없어졌다. 인라인 배치가
         있던 동안에는 그것을 `region` 으로 두어야 했다 — 가리지 않는 것을 대화상자라고
         말하면 보조 기술이 "닫아야 뒤로 갈 수 있다" 고 잘못 안내한다.
       */
-      role="dialog"
-      aria-label="Step 상세"
+      onClose={onClose}
       // `w-detail` 은 `--w-detail`(640px) — 우측 고정 폭이며 모든 국면에서 같다 (FR-230).
-      className="bg-panel border-l border-hair-2 shadow-e2 w-detail flex flex-col overflow-y-auto"
+      layout="w-detail flex flex-col overflow-y-auto"
     >
       <div
         className="bg-sunken border-b border-hair-2 text-ink-2 flex-[0_0_44px] flex items-center gap-s3 py-0 px-s4"
@@ -186,8 +192,10 @@ export function StepDetail({
           (WorkbenchShell.test.tsx — 「배치는 껍데기만 바꾼다」). 번호와 종류는 바로
           아래 줄이 이미 말한다.
         */}
-        <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">STEP 상세</div>
+        <DetailPanelTitle>STEP 상세</DetailPanelTitle>
         <div className="flex-1" />
+        {/* 017 T064 — 글자 없는 닫기의 이름을 포인터·초점에 보여 준다. 판이 열릴 때 초점은 판 자체로 가므로 저절로 뜨지 않는다. */}
+        <Tooltip content="닫기" side="left">
         <Button /*
             011 UC-011-10 — 닫는 조작은 **상세 안에** 있고 모든 국면에서 같은 자리다.
             표식을 두는 이유: 011 이 상세를 대상 앱 위로 옮겼으므로, 닫을 방법이 판 안에
@@ -203,6 +211,7 @@ export function StepDetail({
             <path d="M4 4l8 8M12 4l-8 8" />
           </svg>
         </Button>
+        </Tooltip>
       </div>
 
       <div className="p-s4 flex flex-col gap-s4">
@@ -263,7 +272,7 @@ export function StepDetail({
             {ownFields && (
             <div>
               <label htmlFor="detail-label">표시 이름</label>
-              <input
+              <Input
                 id="detail-label"
                 value={label}
                 disabled={!canEdit}
@@ -275,7 +284,7 @@ export function StepDetail({
             {ownFields && hasValueField && (
               <div>
                 <label htmlFor="detail-value">입력값</label>
-                <input
+                <Input
                   id="detail-value"
                   value={value}
                   disabled={!canEdit || alreadyReference}
@@ -287,16 +296,10 @@ export function StepDetail({
                       변수 참조입니다. 실제 값은 비밀 파일의 암호문에 있으며 화면에 표시되지
                       않습니다.
                     </p>
-                    {canMarkSensitive && (
-                      <button className={navLinkClasses()} onClick={() => setSecretOpen((v) => !v)}>
-                        {secretOpen ? "▾" : "▸"} 비밀 값 다시 넣기
-                      </button>
-                    )}
                   </>
                 ) : (
  <label className="flex items-center gap-[6px] mt-[6px]">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       data-action="step.markSensitive"
                       aria-describedby={canMarkSensitive ? undefined : "reason-step-sensitive"}
                       checked={sensitive}
@@ -310,24 +313,34 @@ export function StepDetail({
                   </label>
                 )}
 
-                {/* DR-023·SC-106 — 화면 이동 0회. 비밀 값을 이 자리에서 넣는다. */}
-                {!alreadyReference && canMarkSensitive && (
-                  <button className={navLinkClasses("mt-s1")} onClick={() => setSecretOpen((v) => !v)}>
-                    {secretOpen ? "▾" : "▸"} 여기서 비밀 값 넣기
-                  </button>
-                )}
+                {/*
+                  DR-023·SC-106 — 화면 이동 0회. 비밀 값을 이 자리에서 넣는다.
 
-                {secretOpen && (
-                  <div className="mt-s2">
-                    <InlineSecretInput
-                      currentName={alreadyReference ? referenceName(value) : null}
-                      busy={busy}
-                      onLinked={(reference) => {
-                        setValue(reference);
-                        setSecretOpen(false);
-                      }}
-                    />
-                  </div>
+                  017 T065 — 단추가 ▸/▾ 글자를 바꿔 그리던 토글(참조일 때 「다시 넣기」 · 아닐 때 「여기서 넣기」 두 벌)을
+                  `Disclosure` 하나로 모았다. 펼침 상태를 낭독기가 알고, 다른 Step 을 고르거나 봉인하면 접는다(`secretOpen`).
+                  입력 칸은 **펼쳤을 때만** 그린다 — 접힌 채로 그리면 열지도 않은 Step 마다 등록된 변수 목록을 불러온다.
+                */}
+                {canMarkSensitive && (
+                  <Disclosure
+                    tone="action"
+                    layout="mt-s1"
+                    open={secretOpen}
+                    onOpenChange={setSecretOpen}
+                    summary={alreadyReference ? "비밀 값 다시 넣기" : "여기서 비밀 값 넣기"}
+                  >
+                    {secretOpen && (
+                      <div className="mt-s2">
+                        <InlineSecretInput
+                          currentName={alreadyReference ? referenceName(value) : null}
+                          busy={busy}
+                          onLinked={(reference) => {
+                            setValue(reference);
+                            setSecretOpen(false);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </Disclosure>
                 )}
               </div>
             )}
@@ -343,7 +356,7 @@ export function StepDetail({
             {ownFields && hasFileField && (
               <div>
                 <label htmlFor="detail-file-name">올릴 파일 이름</label>
-                <input
+                <Input
                   id="detail-file-name"
                   value={fileName}
                   disabled={!canEdit}
@@ -360,7 +373,7 @@ export function StepDetail({
             {ownFields && (
             <div>
               <label htmlFor="detail-timeout">대기 시간 (ms)</label>
-              <input
+              <Input
                 id="detail-timeout"
                 type="number"
                 min={1}
@@ -431,9 +444,13 @@ export function StepDetail({
               시도한 LOCATOR (우선순위 순)
             </div>
             {detail.attempts.map((a, i) => (
+              /*
+                **머리 띠와 같은 좌우 여백을 준다** (2026-09-15 브라우저 확인). 전에는 여백이 없어 후보 이름과
+                「맞음」이 판 테두리에 붙었고, 11px 글자가 줄 사이 간격 없이 붙어 표가 아니라 겹친 글처럼 읽혔다.
+              */
               <div
                 key={`${a.candidate}-${i}`}
- className={`flex items-center gap-s2 border-t border-hair font-sans text-[11px] leading-[1.4] font-normal ${a.matched ? "text-ink-3" : "text-ink-2"}`}
+                className={`flex items-center gap-s2 min-h-[28px] py-[6px] px-s3 border-t border-hair font-sans text-[11px] leading-[1.4] font-normal ${a.matched ? "text-ink-3" : "text-ink-2"}`}
               >
                 <span className="font-bold w-[84px]">
                   {a.candidate}
@@ -482,16 +499,13 @@ export function StepDetail({
         )}
 
         {step !== null && (
-          <div>
-            <button className={navLinkClasses()} onClick={() => setShowDsl((v) => !v)}>
-              {showDsl ? "▾" : "▸"} 테스트 DSL 미리보기
-            </button>
+          <Disclosure tone="action" open={showDsl} onOpenChange={setShowDsl} summary="테스트 DSL 미리보기">
             {showDsl && (
               <pre className="bg-ink text-panel rounded-base font-mono text-[11px] leading-[1.6] font-normal p-[10px] overflow-x-auto mt-[6px] mx-0 mb-0">
                 {dslPreview(step)}
               </pre>
             )}
-          </div>
+          </Disclosure>
         )}
 
         {/*
@@ -529,6 +543,6 @@ export function StepDetail({
           />
         </div>
       </div>
-    </div>
+    </DetailPanel>
   );
 }

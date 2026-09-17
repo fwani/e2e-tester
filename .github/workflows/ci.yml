@@ -122,7 +122,11 @@ jobs:
     needs: constitution-boundaries
     runs-on: ubuntu-latest
     steps:
+      # L2 보고서 가드(`tests/BeforeAfterParity.test.ts`)가 보고서의 기준 커밋이 HEAD 의
+      # 조상인지 git 이력으로 확인한다. 기본값(depth 1)으로는 그 커밋이 없어 늘 실패한다.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

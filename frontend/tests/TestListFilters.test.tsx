@@ -8,6 +8,10 @@
  * 둘 다 화면 안에서 계산한다. 백엔드 `list_tests` 는 `q` 만 받고(research R7) 응답 행이
  * 이미 `outcome`·`last_run_at` 을 담는다. 이 검사는 **그 계산이 실제로 목록을 바꾸는지**
  * 를 본다 — 조작이 있는데 아무 일도 하지 않으면 없는 것보다 나쁘다.
+ *
+ * **017 T061** — 결말 필터가 `ToggleGroup` 이 되며 항목의 역할이 `button` 에서 `radio` 로 바뀌었다(넷 중 하나를
+ * 고른다는 사실을 보조기술이 듣는다). 그래서 필터 항목을 역할 `radio` 로 찾는다. 정렬(「최근 실행 순」)은 하나를
+ * 고르는 묶음이 아니라 누를 때마다 순서를 바꾸는 단추라 그대로 `button` 이다. 묻는 것은 같다 — 누르면 목록이 바뀌는가.
  */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -68,6 +72,7 @@ function visibleIds(): string[] {
 describe("결말 필터 (FR-272 · DC-007)", () => {
   it("확정 디자인이 정의한 넷이 있고 그 이상 늘리지 않는다", async () => {
     await renderList();
+    // 017 T061 — 넷 중 하나를 고르는 묶음이라 역할이 `radiogroup` 이다 (017 전에는 이름만 붙인 `group`).
     const group = screen.getByRole("group", { name: "결말로 거르기" });
     const labels = Array.from(group.querySelectorAll("button")).map((b) =>
       (b.textContent ?? "").replace(/\d+$/, "").trim(),

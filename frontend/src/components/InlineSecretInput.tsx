@@ -17,6 +17,9 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { ApiError, secrets, type SecretsResponse } from "../api/client";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
+import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
 
 /** 서버의 변수 이름 규칙과 같다 (`VARIABLE_NAME_PATTERN`). */
 const NAME_RULE = /^[A-Z][A-Z0-9_]*$/;
@@ -105,9 +108,9 @@ export function InlineSecretInput({
           <div className="font-sans text-[13px] leading-[1.4] font-normal mb-s2">
             공개키가 없어 값을 봉인할 수 없습니다. 여기서 바로 만들 수 있습니다.
           </div>
-          <button disabled={disabled} onClick={makeKey}>
+          <Button disabled={disabled} onClick={makeKey}>
             키 쌍 만들기
-          </button>
+          </Button>
         </div>
       )}
 
@@ -115,7 +118,7 @@ export function InlineSecretInput({
       {known !== null && known.names.length > 0 && (
         <div>
           <label htmlFor="inline-secret-existing">등록된 변수</label>
-          <select
+          <NativeSelect width="fill"
             id="inline-secret-existing"
             value={NAME_RULE.test(name) && known.names.some((n) => n.name === name) ? name : ""}
             onChange={(e) => {
@@ -126,20 +129,20 @@ export function InlineSecretInput({
               setNotice(`${picked} 을 연결했습니다. 값은 이미 봉인돼 있습니다.`);
             }}
           >
-            <option value="">직접 입력</option>
+            <NativeSelectOption value="">직접 입력</NativeSelectOption>
             {known.names.map((n) => (
-              <option key={n.name} value={n.name}>
+              <NativeSelectOption key={n.name} value={n.name}>
                 {n.name}
                 {n.present ? "" : " (값 없음)"}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
       )}
 
       <div>
         <label htmlFor="inline-secret-name">변수 이름</label>
-        <input
+        <Input
           id="inline-secret-name"
           value={name}
           onChange={(e) => setName(e.target.value.toUpperCase())}
@@ -154,7 +157,7 @@ export function InlineSecretInput({
 
       <div>
         <label htmlFor="inline-secret-value">값</label>
-        <input
+        <Input
           id="inline-secret-value"
           type="password"
           value={value}
@@ -180,9 +183,9 @@ export function InlineSecretInput({
         <code>{"{{변수명}}"}</code> 참조만 남습니다.
       </p>
 
-      <button disabled={disabled || !ready} onClick={seal}>
+      <Button disabled={disabled || !ready} onClick={seal}>
         봉인하고 연결
-      </button>
+      </Button>
     </div>
   );
 }

@@ -85,9 +85,11 @@ describe("세로 배분 — 작업 영역이 주 자리다 (FR-256·FR-257)", ()
     show();
     const split = splitFor("composing");
     expect(split.workArea.kind).toBe("fill");
-    expect(split.targetSlot.kind).toBe("fixed");
+    // 017 T073 · B-04 — 만들기 국면의 ③-a 는 **내용 높이**다. 88px(한 줄 안내를 위해 잰 값)에 세 줄 안내가 잘렸다.
+    // 묻는 것은 같다 — 자리가 **없어지지 않고**(fill 이 아니고) 편집면이 주 작업이다.
+    expect(split.targetSlot.kind).toBe("content");
     expect(el("[data-workbench-work]")!.dataset.slotSize).toBe("fill");
-    expect(el("[data-workbench-target]")!.dataset.slotSize).toBe("fixed");
+    expect(el("[data-workbench-target]")!.dataset.slotSize).toBe("content");
   });
 
   it("대상 앱 슬롯이 사라지지 않고 왜 비었는지 말한다 (FR-244·FR-245·FR-261)", () => {

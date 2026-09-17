@@ -31,7 +31,7 @@ import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard, BrandMark, Breadcrumb, HeaderBar, HeaderDivider } from "../design/Chrome";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
-import { CHAT_SLOT_CLASS, flexClassOf, splitFor } from "../../lib/layout";
+import { CHAT_SLOT_CLASS, STEP_FOOTER_MAX_CLASS, flexClassOf, splitFor } from "../../lib/layout";
 import { NoticeStack } from "./NoticeStack";
 import { PhaseBar, type PhaseGroupPick, type PhaseNameEdit } from "./PhaseBar";
 import { StepDetail } from "./StepDetail";
@@ -247,7 +247,13 @@ export function Workbench({
 
       창이 기준 높이(900)보다 작으면 `minHeight` 가 이겨 종전처럼 페이지가 스크롤한다.
     */
-    <Artboard width={BASE_WIDTH} minHeight={900} grow fill>
+    <Artboard
+      width={BASE_WIDTH}
+      minHeight={900}
+      fill
+      // 머리띠는 가로 스크롤 영역 밖이다 — 좁은 창에서 본문이 스크롤해도 창 폭에 선다 (017 B-11 · layout-contract-v3 L3).
+      header={
+        <>
       {/* ─── 층① 헤더 60px ────────────────────────────────────────────────── */}
       <HeaderBar>
         <BrandMark />
@@ -270,6 +276,9 @@ export function Workbench({
         <div className="flex-1" />
         {headerActions}
       </HeaderBar>
+        </>
+      }
+    >
 
       {/* ─── 층② 국면 띠 74px ─────────────────────────────────────────────── */}
       <PhaseBar
@@ -316,12 +325,26 @@ export function Workbench({
           국면에서는 본문 위 아무 데나였다. 자리를 뷰포트에 고정하면 그 차이가 사라지고,
           「알림은 늘 같은 데서 뜬다」가 국면을 넘어 성립한다 (FR-235 와 같은 성질).
 
-          형태는 정본이 갖는다 (`tokens.css` 의 `.toast-layer`).
+          형태는 `ui/Toast` 의 `TOAST_VIEWPORT_CLASSES` **하나**가 갖는다 (017 B-01 · Phase 10).
+          이 자리는 전에 그 문자열을 복사해 따로 적었고, 2026-09-11 에 국면 띠 몫을 고칠 때
+          이 복사본이 빠져 결과·녹화 화면의 알림이 국면 띠를 덮었다. 복사본을 두지 않는다.
         */}
-        <div data-workbench-notice-layer className="fixed right-s4 z-[60] top-[calc(var(--h-header)+8px)] w-[min(420px,calc(100vw-32px))] max-h-[calc(100vh-var(--h-header)-24px)] overflow-y-auto flex flex-col gap-s2 pointer-events-none [&>*]:pointer-events-auto">
-          {noticesExtra}
-          <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
-        </div>
+        {/*
+          **알림 층을 여기서 그리지 않는다** (2026-09-16 · 017 Phase 10).
+
+          층은 앱 뿌리(`ui/Toast` 의 `<Toaster>`)에 하나뿐이고, 자리는 화면 아래다 — 오른쪽 위에
+          두었던 것이 Step 패널의 머리 줄과 첫 행들을 가렸다(N-02). `NoticeStack` 은 이제 자리를
+          모르고 알림을 부품에 넘기기만 한다.
+
+          `noticesExtra` 는 **알림이 아니라 흐름 안 띠**다(실시간 연결 끊김 · 초안에서 시작).
+          층에 얹혀 있었을 뿐이므로 본문 맨 위 제자리에 둔다 — 띄우지 않고, 자리를 차지한다.
+        */}
+        <NoticeStack notices={model.notices} onAct={onAction} onDismiss={onDismissNotice} />
+        {noticesExtra !== undefined && noticesExtra !== null && (
+          <div data-workbench-notice-band className="absolute top-0 left-0 right-0 z-10 p-s3 flex flex-col gap-s2">
+            {noticesExtra}
+          </div>
+        )}
 
         {/*
           좌 — ③-a 대상 앱 슬롯 + ③-b 국면 작업 영역. 남는 **폭**을 가져간다 (FR-218a).
@@ -410,6 +433,7 @@ export function Workbench({
           deleteTargets={deleteTargets}
           rerecordTargets={rerecordTargets}
           footer={stepFooter}
+          footerMax={STEP_FOOTER_MAX_CLASS[model.phase]}
         />
 
         {/*

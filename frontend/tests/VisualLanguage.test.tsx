@@ -410,6 +410,10 @@ describe("L2 — 화면 코드가 정본만 소비하는가", () => {
           return [...text.matchAll(/"([^"\n]*)"|`([^`\n]*)`/g)]
             .flatMap((m) => ((m[1] ?? m[2] ?? "") as string).split(/\s+/))
             .some((tok) => tok !== "" && re.test(tok));
+        if (e.axis === "raw-element")
+          // 017 G-G — 패턴은 **태그 이름**에 건다 (`^textarea$`). 파일 전체 텍스트에 걸면
+          // 앵커 때문에 영원히 맞지 않아 살아 있는 예외가 죽은 것으로 보고된다 (위 class-name 과 같은 함정).
+          return [...text.matchAll(/<(button|input|select|textarea)\b/g)].some((m) => re.test(m[1] as string));
         return re.test(text);
       });
     });

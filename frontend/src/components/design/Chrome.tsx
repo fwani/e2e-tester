@@ -52,41 +52,52 @@ export function HeaderDivider() {
 export function HeaderBar({ children }: { children: ReactNode }) {
   // 정본 `.hdr` 은 `flex: 0 0 56px` — 기준 크기가 56px 이다. `flex-none`(=`0 0 auto`)
   // 은 기준을 내용에서 가져오므로 같은 뜻이 아니다 (L2 대조가 잡았다).
+  // `data-shell` — 이 문서에 머리띠가 있다는 사실 (017 layout-contract-v3 L2 · screen-sweep SW-6).
   return (
-    <div className="grow-0 shrink-0 basis-header h-header flex items-center gap-[14px] px-s4 bg-panel border-b border-hair">
+    <div
+      data-shell="header"
+      className="grow-0 shrink-0 basis-header h-header flex items-center gap-[14px] px-s4 bg-panel border-b border-hair"
+    >
       {children}
     </div>
   );
 }
 
 /**
- * 아트보드 껍데기.
+ * 아트보드 껍데기 — **데이터 화면의 정책** (017 layout-contract-v3 L3 · B-10 · B-11).
  *
- * 확정 디자인은 고정 폭(1440px)이다. 창이 그보다 좁으면 **기준 폭을 유지하고 스크롤한다**
- * — 임의로 재배치하지 않는다 (DC-011).
+ * 확정 디자인은 기준 폭(1440px)이다. 017 전에는 두 갈래였다 — 목록·가져오기는 고정 폭으로 **왼쪽에 붙어** 넓은 창에서
+ * 오른쪽이 비었고(B-10), 작업 화면만 `grow` 로 늘어났다. 그리고 머리띠가 가로 스크롤 영역 **안**에 있어, 1280 창에서
+ * 오른쪽 끝 조작에 자동 초점이 가 스크롤이 160px 움직이면 머리띠가 창 밖으로 밀려났다(B-11).
  *
- * 배경을 여기서 칠하지 않는다. 정본의 `body` 가 이미 `var(--bg)` 를 갖고, 아트보드는
- * 그것을 그대로 보인다 — 같은 값을 두 곳에 두지 않는다 (C-1).
+ * 이제 정책이 하나다 (2026-09-14 사용자 결정 「창 폭을 채운다」).
+ *
+ * | 창 | 본문 | 머리띠 |
+ * |---|---|---|
+ * | 기준 폭보다 넓다 | 창 폭을 채운다 — 늘어난 폭은 가변 칸(목록 이름 칸 · 대상 앱 영역)이 가져간다 | 창 폭 |
+ * | 기준 폭보다 좁다 | 기준 폭을 지키고 **본문만** 가로로 스크롤한다 (DC-011 — 임의로 재배치하지 않는다) | 창 폭 · 스크롤 영역 밖 |
+ *
+ * 폼 화면(프로젝트 · 비밀 값 · 키 관리)은 이것을 쓰지 않는다 — 읽기 폭으로 가운데 서는 `main` 이 그 화면들의 정책이다
+ * (L3 `form` · 순회 SW-6 이 가운데를 잰다).
+ *
+ * ## 요소 구조 — 바깥 두 겹은 017 전과 같은 자리다
+ *
+ * 뿌리와 세로 배치 상자는 전과 같고, 그 안에 스크롤 영역과 본문 상자가 한 겹씩 더해졌다. 더해진 둘에 `data-slot` 을
+ * 둔다 — L2 대조(`scripts/design_compare_ba.py`)가 이 둘을 경로에서 **건너뛰어** 본문 요소가 전환 전 경로로 짝지어진다.
+ * 표시가 없으면 화면 전체가 「짝 없음」이 되어 대조가 아무것도 재지 못한다.
+ *
+ * 배경을 여기서 칠하지 않는다. 정본의 `body` 가 이미 `var(--bg)` 를 갖고, 아트보드는 그것을 그대로 보인다 (C-1).
  */
 export function Artboard({
   width,
   minHeight,
-  height,
-  grow = false,
   fill = false,
+  header,
   children,
 }: {
+  /** 기준 폭. 창이 이보다 좁으면 본문이 이 폭을 지키고 가로로 스크롤한다. */
   width: number;
   minHeight?: number;
-  height?: number;
-  /**
-   * 창이 기준 폭보다 **넓을 때** 늘어나는가 (007 FR-218a).
-   *
-   * 확정 디자인은 고정 폭이고 그것이 DC-011 의 전제다. 007 의 통합 화면만 이 값을 켠다 —
-   * 껍데기(헤더 구성·영역 배치·최소 기준 폭)는 고정하고 **좌측 대상 앱 영역만** 남는 폭을
-   * 가져간다. 좁은 창 정책은 그대로다: 재배치하지 않고 스크롤한다.
-   */
-  grow?: boolean;
   /**
    * 창 높이에 **맞춘다** — 내용이 늘어도 아트보드가 늘어나지 않는다.
    *
@@ -102,27 +113,42 @@ export function Artboard({
    * 둘은 다른 상황을 맡는다. 창이 기준 높이보다 **크면** `height` 가 이겨 아트보드가
    * 창에 맞고 안쪽이 스크롤한다. 창이 기준보다 **작으면** `minHeight` 가 이겨 아트보드가
    * 기준 높이를 지키고 페이지가 스크롤한다 — 좁은 창에서 재배치하지 않고 스크롤한다는
-   * 기존 정책(위 `grow` 주석)과 같은 판단이다. 층이 눌려 읽을 수 없게 되는 것보다
-   * 스크롤이 낫다.
+   * 기존 정책과 같은 판단이다. 층이 눌려 읽을 수 없게 되는 것보다 스크롤이 낫다.
    *
    * `100dvh` 는 주소 표시줄이 접히는 브라우저에서 창의 **실제** 높이다.
    */
   fill?: boolean;
+  /** 머리띠(`HeaderBar`). **가로 스크롤 영역 밖**에 서서 늘 창 폭에 맞는다 (B-11). */
+  header?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto min-h-[100vh]">
+    <div className="min-h-[100vh]" data-slot="artboard">
       <div
         style={{
-          ...(grow ? { minWidth: `${width}px`, width: "100%" } : { width: `${width}px` }),
-          ...(height !== undefined ? { height: `${height}px` } : {}),
           ...(fill ? { height: "100dvh" } : {}),
           ...(minHeight !== undefined ? { minHeight: `${minHeight}px` } : {}),
           display: "flex",
           flexDirection: "column",
         }}
       >
-        {children}
+        {header}
+        {/*
+          본문만 가로로 스크롤한다. 창 높이에 맞추는 화면(`fill`)은 이 영역이 남은 높이로 묶여야 안쪽 목록이
+          스크롤하고, 그렇지 않은 화면은 내용 높이를 그대로 가져가 페이지가 스크롤한다.
+        */}
+        <div
+          data-slot="artboard-scroll"
+          className={fill ? "overflow-x-auto flex-1 min-h-0 flex flex-col" : "overflow-x-auto flex-auto flex flex-col"}
+        >
+          <div
+            data-slot="artboard-body"
+            className={fill ? "flex-1 min-h-0" : "flex-auto"}
+            style={{ minWidth: `${width}px`, width: "100%", display: "flex", flexDirection: "column" }}
+          >
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

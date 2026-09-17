@@ -44,6 +44,7 @@ import type { ChatTurn } from "../../api/client";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityState } from "../../lib/capabilities";
 import { Notice } from "../../ui/Notice";
+import { Textarea } from "../../ui/Textarea";
 import { ActionButton } from "./ActionButton";
 
 /** 지시문과 **같은 상한**이다 (FR-010). 두 입구가 다르면 사용자가 외워야 한다. */
@@ -184,7 +185,7 @@ export function ChatPanel({
         <label className="sr-only" htmlFor="ai-chat-input">
           AI 에게 할 말
         </label>
-        <textarea
+        <Textarea
           id="ai-chat-input"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

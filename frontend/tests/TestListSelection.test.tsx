@@ -148,6 +148,7 @@ describe("걸러 보기와 선택 (SC-625)", () => {
     );
 
     // 「미실행」으로 걸러도 셋 다 미실행이라 남는다. 대신 「통과」로 거르면 0개가 된다.
+    // 017 T061 — 결말 필터는 넷 중 하나를 고르는 묶음이라 항목의 역할이 `radio` 다 (017 전에는 `button`).
     await user.click(screen.getByRole("button", { name: /^통과/ }));
 
     await waitFor(() => expect(bar()).toBeNull(), { timeout: 2000 });

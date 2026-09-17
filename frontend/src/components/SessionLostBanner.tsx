@@ -67,9 +67,9 @@ export function SessionLostBanner({
 
       <div className="flex items-center gap-s2">
         {hasSteps && onSave && (
-          <button disabled={busy} onClick={onSave}>
+          <Button disabled={busy} onClick={onSave}>
             지금까지 저장
-          </button>
+          </Button>
         )}
         {onRunFromStart && (
           <Button disabled={busy} onClick={onRunFromStart}>

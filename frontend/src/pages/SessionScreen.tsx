@@ -118,7 +118,17 @@ import {
 import type { Step } from "../types/generated/step";
 import type { Outcome, StepOutcome as RunStepOutcome } from "../types/generated/run-result";
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "../ui/AlertDialog";
 import { Button } from "../ui/Button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "../ui/Dialog";
+import { Input } from "../ui/Input";
 
 export type { AiBlockedState } from "../components/workbench/model";
 
@@ -818,23 +828,19 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   const push = (n: Notice) => notices.push(n);
 
   /*
-    007 FR-220 (T074) — **사용자 조작 없이 국면이 바뀌면 무엇이 바뀌었는지 알린다.**
+    007 FR-220 (T074) — 사용자 조작 없이 국면이 바뀌면 무엇이 바뀌었는지 알린다.
 
-    화면이 하나가 되면서 생긴 새 위험이다. 화면이 통째로 갈리던 때는 전환이 그 자체로
-    보였지만, 지금은 같은 껍데기 안에서 국면만 바뀐다 — 알리지 않으면 사용자는 자기가
-    무엇을 눌렀는지 되짚는다. 보던 Step 과 스크롤은 그대로 둔다 (FR-239).
+    **2026-09-16 — 이 알림을 내지 않는다** (017 FR-018b 의 연장 · research R6 개정 · N-02).
+
+    화면이 이미 그 사실을 말한다. 국면 띠의 국면 표시가 새 국면으로 바뀌고, 그것이 사용자가
+    보는 자리다. 같은 사실을 알림이 되풀이하면 **알림이 쌓여 Step 패널의 조작을 가린다** —
+    브라우저 확인(2026-09-15)에서 녹화를 멈추자 이 알림을 포함해 셋이 한꺼번에 떠 Step 01·02 행의
+    체크 칸과 행 조작을 덮었다.
+
+    FR-220 의 요구(국면이 저절로 바뀌면 알 수 있어야 한다)는 국면 표시가 만족한다. `autoTransition`
+    상태는 남는다 — 무엇으로 바뀌었는지는 여전히 계산하고, 알림으로 내지 않을 뿐이다.
   */
-  if (autoTransition !== null) {
-    push({
-      id: "auto-transition",
-      tone: "info",
-      role: "status",
-      message: autoTransition,
-      nextAction: "보고 있던 Step 은 그대로 있습니다.",
-      action: null,
-      dismissible: true,
-    });
-  }
+  void autoTransition;
 
   /*
     2026-09-09 — **저장하지 않은 기록이 있으면 화면이 먼저 말한다** (사용자 보고).
@@ -3151,32 +3157,30 @@ export function SessionScreen({
 
 // ─── 확정 디자인이 정의하지 않은 조각들 (DC-009) ────────────────────────────
 
-function Modal({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div
-      role="dialog"
-      aria-label={label}
-      className="fixed inset-0 flex items-center justify-center z-[30] bg-scrim-strong"
-    >
-      <div className="bg-panel border border-hair-2 rounded-lg shadow-e2 w-[520px] p-s5">
-        {children}
-      </div>
-    </div>
-  );
-}
+/*
+  017 T050 — 지역 `Modal`(역할 dialog 를 단 div)을 지웠다. 보조기술에는 대화상자라고 말했지만 초점은 뒤쪽에 남고,
+  Tab 은 가림막 뒤의 조작으로 나갔으며, Esc 는 아무 일도 하지 않았다. 되돌릴 수 없는 선택 앞의 확인 창은
+  `AlertDialog`(바깥을 눌러도 닫히지 않고 초점이 「돌아가기」에서 시작한다), 이름을 받는 창은 `Dialog` 다.
+  세 창의 모양은 부품이 정한다 — 제목·설명·조작 줄이 같은 값이다.
+*/
 
 function CloseConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
   return (
-    <Modal label="실행 화면 닫기 확인">
-      <div className="font-sans text-[20px] font-bold leading-[1.3]">실행 화면을 닫습니다</div>
-      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</p>
-      <div className="flex justify-end gap-[10px] mt-[18px]">
-        <Button onClick={onCancel}>
-          돌아가기
-        </Button>
-        <button onClick={onConfirm}>닫기</button>
-      </div>
-    </Modal>
+    <AlertDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogTitle>실행 화면을 닫습니다</AlertDialogTitle>
+        <AlertDialogDescription>결과는 목록의 「결과 보기」에서 다시 볼 수 있습니다.</AlertDialogDescription>
+        <AlertDialogFooter>
+          <AlertDialogCancel>돌아가기</AlertDialogCancel>
+          <Button onClick={onConfirm}>닫기</Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -3218,26 +3222,30 @@ function RerunConfirm({
 }) {
   const scope = fromStepIndex === null ? "처음부터" : `${stepLabel(fromStepIndex)}부터`;
   return (
-    <Modal label="저장하지 않고 다시 실행 확인">
-      <div className="font-sans text-[20px] font-bold leading-[1.3]">저장하지 않은 기록이 있습니다</div>
-      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
-        기록된 Step {stepCount}개 중 저장하지 않은 변경이 있습니다. {scope} 실행하면 지금
-        세션을 버리고 <strong>저장된 정의</strong>를 재생하므로, 저장하지 않은 기록은
-        사라집니다.
-      </p>
-
-      <div className="flex justify-end gap-[10px] mt-[18px]">
-        <Button onClick={onCancel}>
-          돌아가기
-        </Button>
-        <Button variant="danger" disabled={busy} onClick={onDiscardAndRun}>
-          버리고 실행
-        </Button>
-        <button disabled={busy || saveName.trim() === ""} onClick={onSaveAndRun}>
-          저장하고 실행
-        </button>
-      </div>
-    </Modal>
+    <AlertDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogTitle>저장하지 않은 기록이 있습니다</AlertDialogTitle>
+        <AlertDialogDescription>
+          기록된 Step {stepCount}개 중 저장하지 않은 변경이 있습니다. {scope} 실행하면 지금
+          세션을 버리고 <strong>저장된 정의</strong>를 재생하므로, 저장하지 않은 기록은
+          사라집니다.
+        </AlertDialogDescription>
+        <AlertDialogFooter>
+          <AlertDialogCancel>돌아가기</AlertDialogCancel>
+          <Button variant="danger" disabled={busy} onClick={onDiscardAndRun}>
+            버리고 실행
+          </Button>
+          <Button disabled={busy || saveName.trim() === ""} onClick={onSaveAndRun}>
+            저장하고 실행
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -3262,34 +3270,41 @@ function LeaveConfirm({
   onCancel: () => void;
 }) {
   return (
-    <Modal label="저장하지 않고 나가기 확인">
-      <div className="font-sans text-[20px] font-bold leading-[1.3]">저장하지 않은 기록이 있습니다</div>
-      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
-        기록된 Step {stepCount}개가 있습니다. 저장하지 않고 나가면 사라집니다.
-      </p>
-      {askName && (
-        <>
-          <label htmlFor="leave-save-name">테스트 이름</label>
-          <input
-            id="leave-save-name"
-            value={saveName}
-            autoFocus
-            onChange={(e) => onSaveNameChange(e.target.value)}
-            placeholder="프로젝트 생성"
-          />
-        </>
-      )}
-      <div className="flex justify-end gap-[10px] mt-[18px]">
-        <Button onClick={onCancel}>
-          돌아가기
-        </Button>
-        <Button variant="danger" disabled={busy} onClick={onDiscard}>
-          저장하지 않고 나가기
-        </Button>
-        <button disabled={busy || saveName.trim() === ""} onClick={onSave}>
-          저장하고 나가기
-        </button>
-      </div>
-    </Modal>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
+    >
+      <DialogContent>
+        <DialogTitle>저장하지 않은 기록이 있습니다</DialogTitle>
+        <DialogDescription>기록된 Step {stepCount}개가 있습니다. 저장하지 않고 나가면 사라집니다.</DialogDescription>
+        {askName && (
+          /*
+            이름을 물을 때는 이 칸이 창에서 **처음 초점을 받는 요소**다 — 대화상자가 열리며 초점을 거기 둔다.
+            017 전의 `autoFocus` 는 대화상자가 초점을 옮기는 순서와 다투므로 지웠다.
+          */
+          <>
+            <label htmlFor="leave-save-name">테스트 이름</label>
+            <Input
+              id="leave-save-name"
+              value={saveName}
+              onChange={(e) => onSaveNameChange(e.target.value)}
+              placeholder="프로젝트 생성"
+            />
+          </>
+        )}
+        <DialogFooter>
+          {/* `asChild`(radix) → `render`(base) — 모양은 `Button` 이, 닫는 동작은 부품이 갖는다 (T104). */}
+          <DialogClose render={<Button />}>돌아가기</DialogClose>
+          <Button variant="danger" disabled={busy} onClick={onDiscard}>
+            저장하지 않고 나가기
+          </Button>
+          <Button disabled={busy || saveName.trim() === ""} onClick={onSave}>
+            저장하고 나가기
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

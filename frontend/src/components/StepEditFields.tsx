@@ -13,6 +13,7 @@
  */
 import type { Step } from "../types/generated/step";
 import { SENSITIVE_VALUE_NOTICE } from "../lib/wording";
+import { Input } from "../ui/Input";
 
 /** 이 Step 이 값을 갖는가. 생성된 타입의 판별자를 그대로 쓴다. */
 function hasValue(step: Step): step is Extract<Step, { value: string }> {
@@ -65,7 +66,7 @@ export function StepEditFields({
         <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
           표시 이름
         </span>
-        <input
+        <Input
           aria-label="Step 표시 이름"
           value={step.label}
           disabled={!editable}
@@ -80,9 +81,9 @@ export function StepEditFields({
             <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
               입력값
             </span>
-            <input
+            <Input
               aria-label="Step 입력값"
-              className="font-mono"
+              font="mono"
               value={value}
               disabled={!editable || valueIsSecret}
               maxLength={4000}
@@ -102,9 +103,9 @@ export function StepEditFields({
           <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
             주소
           </span>
-          <input
+          <Input
             aria-label="Step 주소"
-            className="font-mono"
+            font="mono"
             value={step.url}
             disabled={!editable}
             maxLength={2000}
@@ -118,9 +119,9 @@ export function StepEditFields({
           <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
             기대값
           </span>
-          <input
+          <Input
             aria-label="검증 기대값"
-            className="font-mono"
+            font="mono"
             value={step.assertion.value ?? ""}
             disabled={!editable}
             maxLength={4000}
@@ -134,14 +135,14 @@ export function StepEditFields({
           대기 시간
         </span>
  <span className="flex items-center gap-[6px]">
-          <input
+          <Input
             aria-label="Step 대기 시간 (ms)"
             type="number"
             min={1}
             max={60000}
             value={step.timeout_ms}
             disabled={!editable}
-            className="w-[110px]"
+            layout="w-[110px]"
             onChange={(e) => {
               const next = Number(e.target.value);
               if (Number.isFinite(next) && next >= 1 && next <= 60000) {
@@ -159,13 +160,13 @@ export function StepEditFields({
         <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
           대상 탭
         </span>
-        <input
+        <Input
           aria-label="Step 대상 탭"
           type="number"
           min={0}
           value={step.tab}
           disabled={!editable}
-          className="w-[110px]"
+          layout="w-[110px]"
           onChange={(e) => {
             const next = Number(e.target.value);
             if (Number.isInteger(next) && next >= 0) onChange({ tab: next });

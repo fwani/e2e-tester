@@ -17,11 +17,11 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Toast } from "../src/components/Toast";
+import { Toast } from "../src/ui/Toast";
 import { ImportDoneNotice } from "../src/pages/ImportPreview";
 import { TestList } from "../src/pages/TestList";
 import type { ImportResultView } from "../src/api/client";
-import { TOAST_LAYER_CLASSES } from "../src/ui/Notice";
+import { TOAST_VIEWPORT_CLASSES } from "../src/ui/Toast";
 
 const EMPTY_LISTING = { counts: { total: 0, pass: 0, fail: 0 }, groups: [], tests: [], problems: [] };
 
@@ -83,7 +83,7 @@ describe("토스트 층", () => {
 
   it("층은 정본의 자리를 쓴다", () => {
     render(<Toast>무엇이든</Toast>);
-    expect(layer()!.className, "층이 정본의 자리를 쓰지 않는다").toBe(TOAST_LAYER_CLASSES);
+    expect(layer()!.className, "층이 정본의 자리를 쓰지 않는다").toBe(TOAST_VIEWPORT_CLASSES);
   });
 
   it("오류는 낭독기에게 alert 이고 닫는 길이 있다", () => {
@@ -109,9 +109,19 @@ describe("토스트 층", () => {
 });
 
 describe("실제 알림들이 토스트다", () => {
-  it("진행 중 세션 알림 — 목록을 밀어내지 않는다", async () => {
+  /*
+    017 B-02 — **판정 방법을 바꿨다.** 이 자리는 「진행 중 세션 알림이 토스트 층에 있고 목록 안에
+    없다」를 봤다. 그 토스트가 흐름 안 세션 띠(`ActiveSessionsBanner`, UX U-05)와 **같은 사실**을
+    말하며 띠의 조작을 덮었고, 두 곳이 같은 복귀 조작을 가졌다. 017 이 토스트를 지우고 띠를 남겼다
+    (research R6 ⑤ · 2026-09-10 「모든 알림은 토스트」 결정과의 긴장을 거기 적었다).
+
+    그래서 묻는 것은 이렇게 바뀐다: 진행 중 세션이라는 사실을 **한 자리가** 말하고, 복귀 조작이
+    **하나**다. 「토스트 층에 사실이 되풀이되지 않는다」를 함께 본다. 이 경우를 지우지 않고 남기는
+    이유는, 토스트가 다시 들어오면 B-02 가 되살아나기 때문이다.
+  */
+  it("진행 중 세션은 흐름 안 띠 하나가 말한다 — 같은 사실의 토스트와 복귀 조작 둘이 없다 (017 B-02)", async () => {
     stubFetch();
-    const { container } = render(
+    render(
       <TestList
         projectName="통합"
         onCreate={() => {}}
@@ -131,10 +141,11 @@ describe("실제 알림들이 토스트다", () => {
       />,
     );
 
-    await waitFor(() => expect(document.querySelector("[data-open-session]")).not.toBeNull());
-    const notice = document.querySelector("[data-open-session]")!;
-    expect(layer()!.contains(notice)).toBe(true);
-    expect(container.contains(notice), "알림이 목록 안에 있어 아래를 밀어낸다").toBe(false);
+    await waitFor(() => expect(document.querySelector("[data-active-sessions]")).not.toBeNull());
+    expect(document.querySelector("[data-open-session]"), "같은 사실을 말하는 세션 토스트가 되살아났다").toBeNull();
+    expect(layer()?.textContent ?? "", "토스트 층이 진행 중 세션을 되풀이한다").not.toContain("USER-001");
+    expect(screen.getAllByRole("button", { name: "이어서 보기" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "실행 화면 보기" }), "복귀 조작이 화면에 둘이다").toBeNull();
   });
 
   it("가져오기 완료 알림", () => {

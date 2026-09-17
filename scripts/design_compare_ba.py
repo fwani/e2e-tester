@@ -72,7 +72,9 @@ REPORT = ROOT / "frontend" / "tests" / "l2-report.json"
 BASELINE = ROOT / "frontend" / "tests" / "l2-baseline.json"
 VENV_PY = ROOT / "backend" / ".venv" / "bin" / "python"
 
-VIEWPORT = {"width": 1600, "height": 950}
+# 017 T070 — **정본 기준 폭(1440)에서 잰다.** 데이터 화면이 넓은 창을 채우게 되며(B-10) 1600 에서는 목록의 모든 폭이
+# 달라져 대조가 정책 차이로 뒤덮인다. L2 는 「기준 폭에서 같은 화면인가」를 묻고, 넓은 창의 정책은 순회가 1920·2560 에서 잰다.
+VIEWPORT = {"width": 1440, "height": 950}
 
 # ── 무엇을 재는가 ──────────────────────────────────────────────────────────
 # 시각 언어(색·타이포·모서리·그림자)와 배치(자리·크기)를 함께 본다. 015 는 둘 다
@@ -143,14 +145,143 @@ INTENDED: list[dict[str, str]] = [
             "집는다. 사람이 보는 화면에는 차이가 없다 (SC-001)."
         ),
     },
+    # ── 017 4-B — 원시 조작 요소를 부품으로 (T036~T047) ────────────────────────────
+    {
+        "screens": ["keys", "secrets", "project-create"],
+        "path_re": r"BODY/DIV\[0\]/(?:DIV\[0\]/)?MAIN\[\d\]/(?:SECTION|DIV)\[\d+\]/DIV\[\d+\]/BUTTON\[\d\]",
+        "props": ["display", "white-space", "align-items", "gap"],
+        "reason": (
+            "클래스 없는 원시 `<button>`(키 관리 「키 쌍 만들기」 · 비밀 값 「봉인해 저장」 · 프로젝트 만들기 "
+            "「만들기 →」)이 `ui/Button` 이 됐다. 전역 요소 규칙 `button{}` 은 상자 모양만 주고 **배치는 "
+            "브라우저 기본값**(inline-block · 줄바꿈 허용)에 맡겼는데, 정본 `.btn` 은 `inline-flex · "
+            "align-items:center · gap:6px · white-space:nowrap` 이다. 017 이 모든 버튼을 한 부품으로 모으며 "
+            "원시 버튼이 다른 버튼과 같은 배치를 얻었다. 크기·색·테두리·글자는 한 칸도 다르지 않다 (SC-010)."
+        ),
+    },
+    {
+        "screens": ["test-list", "test-list-unrun", "test-list-passed"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[0\]/DIV\[0\]/INPUT\[0\]|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[1\]/DIV\[0\]/DIV\[\d+\]/DIV\[0\]/INPUT\[0\]",
+        "props": ["width", "height", "min-height", "margin-top", "margin-right", "margin-bottom", "margin-left"],
+        "reason": (
+            "**B-08 을 고쳤다.** 테스트 목록의 체크박스가 전역 `input{width:100%;min-height:32px}` 을 받아 머리의 "
+            "전체 선택은 28×32px, 행의 체크박스는 flex 안에서 줄어 21×32px 로 그려졌다 — 같은 표의 두 체크박스가 "
+            "크기가 달랐다. `ui/Checkbox` 가 정본 `.srow-check input` 의 14×14px · 여백 0 을 명시한다."
+        ),
+    },
+    {
+        "screens": ["test-list", "test-list-unrun", "test-list-passed"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[0\]|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[0\]/DIV\[0\]|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[1\]|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[1\]/DIV\[2\]/DIV\[1\]/DIV\[0\]/DIV\[\d+\]/DIV\[0\]",
+        "props": ["height"],
+        "reason": (
+            "B-08 의 결과다. 32px 체크박스(여백 포함 38px)가 34px 로 정한 표 머리(`flex-[0_0_34px]`)를 41.5px 로 "
+            "밀어냈고 체크 칸이 38~40.5px 로 부풀었다. 체크박스가 14px 가 되며 머리가 **설계한 34px** 로 돌아오고, "
+            "그만큼 목록 영역이 늘었다(640.5 → 648px). 행 높이(44px)는 그대로다."
+        ),
+    },
+    # ── 017 US3 — 배치 정책 (T070~T074) ─────────────────────────────────────────────
+    {
+        "screens": ["test-list", "test-list-unrun", "test-list-passed", "test-create"],
+        "path": "BODY/DIV[0]/DIV[0]",
+        "props": ["overflow-x", "overflow-y"],
+        "reason": (
+            "**B-11 을 고쳤다.** 아트보드 뿌리가 가로 스크롤 영역이었고 머리띠가 그 안에 있어, 좁은 창에서 자동 초점이 "
+            "스크롤을 옮기면 머리띠가 창 밖으로 밀려났다. 스크롤은 이제 머리띠 **아래** 본문 영역이 하고(그 영역은 "
+            "`data-slot=artboard-scroll` 로 표시돼 대조 경로에서 건너뛴다) 뿌리는 스크롤하지 않는다 (layout-contract-v3 L3)."
+        ),
+    },
+    {
+        "screens": ["test-create"],
+        "path": "BODY/DIV[0]/DIV[0]/DIV[0]",
+        "props": ["min-width"],
+        "reason": (
+            "B-11 의 결과다. 작업 화면의 기준 폭(`min-width:1440px`)이 세로 배치 상자에서 그 안의 **본문 상자**로 옮겨졌다 — "
+            "머리띠는 창 폭에 서고 본문만 기준 폭을 지킨다. 본문 상자는 대조 경로에서 건너뛰므로 여기서는 상자의 값만 달라 보인다."
+        ),
+    },
+    {
+        "screens": ["test-create"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[0\]/DIV\[0\](?:/DIV\[0\])?|BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[0\]/DIV\[1\]",
+        "props": ["flex-basis", "height", "min-height"],
+        "reason": (
+            "**B-04 를 고쳤다.** 만들기 국면의 대상 앱 자리가 88px 고정이었다 — 한 줄짜리 「브라우저 열기」 안내를 위해 잰 "
+            "값인데 만들기 국면은 세 줄짜리 「아직 브라우저를 열지 않았습니다」를 그려, 안내가 50px 상자에 잘려 테두리 "
+            "위·아래에 걸쳤다. 자리가 내용 높이(`content`)가 되어 안내가 온전히 들어가고, 그만큼 아래 작업 영역이 줄었다."
+        ),
+    },
+    {
+        "screens": ["test-create"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[0\](?:/.*)?",
+        "props": ["width"],
+        "reason": (
+            "**N-07 을 고쳤다 — 왼쪽 대상 앱·작업 영역이 넓어졌다.** Step 패널은 460px 고정(007 FR-218a)인데 flex 항목의 "
+            "최소 폭 기본값이 「내용의 최소 폭」이라, 머리 줄(이름표·고르기 조작·비활성 사유)에 밀려 517px 로 늘어나 있었다. "
+            "패널이 460 을 지키게 되자(`min-w-0`) 그만큼(57px) 왼쪽 열이 넓어졌고, 그 안의 입력칸·카드·안내 폭이 함께 늘었다."
+        ),
+    },
+    {
+        "screens": ["test-create"],
+        "path_re": r"BODY/DIV\[0\]/DIV\[0\]/DIV\[0\]/DIV\[2\]/DIV\[1\](?:/.*)?",
+        "props": ["width", "min-width", "height", "white-space", "flex-shrink", "flex-wrap"],
+        "reason": (
+            "**Step 패널 — B-03·B-05·B-06·N-07 을 고쳤다.** (1) 패널이 460 을 지킨다(`min-w-0` · N-07). (2) 머리 줄의 이름표 "
+            "셋(「TEST STEPS」·고른 개수·작성 표식)이 줄바꿈하지도 줄지도 않아(`whitespace-nowrap shrink-0` · B-05) 두 줄이던 "
+            "높이가 한 줄이 되고, 줄어드는 것은 비활성 사유 문구다. (3) 목록이 8행(416px)을 지키도록 바닥 상한이 국면 표에서 "
+            "온다(B-03). (4) 자연어 입력칸이 240px 을 지키고(B-06 · 95px 에 안내가 잘렸다) 옆 조작과 사유는 모자라면 다음 줄로 "
+            "내려간다. 폭 · 높이 · 줄바꿈 · 줄어듦만 달라졌고 색·글꼴·테두리는 같다."
+        ),
+    },
+    # ── 017 Phase 10 — 알림 층이 앱 뿌리로 모이고 자리가 왼쪽 아래로 내려갔다 (N-02) ──────────
+    {
+        "screens": ["keys", "secrets", "test-list", "test-list-unrun", "test-list-passed", "test-create"],
+        "kinds": ["structure"],
+        "reason": (
+            "알림 층이 **앱 뿌리에 하나**가 되며(`ui/Toast` 의 `<Toaster>`) 모든 화면의 `body` 에 포털과 "
+            "층 요소 **둘**이 더해진다 — 화면마다 29→31 · 23→25 · 149→151 처럼 정확히 +2 다. "
+            "빈 층은 포인터를 통과시키고 아무것도 그리지 않는다 — 사람이 보는 화면에는 차이가 없다."
+        ),
+    },
+    # **여기 있던 줄 하나를 지웠다** (2026-09-16). 작업대가 직접 그리던 알림 층을 없애자 뒤따르던 형제의
+    # 자리 번호가 밀려 `test-create` 의 90 칸이 통째로 `unpaired` 가 됐고, 나는 그것을 「의도된 차이」로
+    # 등록했다. 그러나 그 90 칸은 **설명된 차이가 아니라 잃어버린 대조**였다 — 요소는 그대로 있는데
+    # 짝을 못 지어 비교 자체가 사라진 것이다. `BeforeAfterParity` 의 「대조한 칸이 줄었다」가 그것을
+    # 잡았다 (34328 → 29288 = 90 칸 × 56 속성). 등록으로 덮는 대신 **짝을 되살렸다** — COLLECT_JS 의
+    # `DROP`. 등록부는 차이를 설명할 때 쓰는 것이지, 못 본 것을 덮을 때 쓰는 것이 아니다.
+    #
+    # **짝을 되살리자 test-create 의 자리 번호가 한 칸씩 당겨졌다.** 전환 전 작업대 본문의 자식은
+    # [0] 알림 층 · [1] 왼쪽 열 · [2] Step 패널이었고 위 US3 줄들은 그 번호로 적혀 있었다. 층을 빼면
+    # 전환 전도 [0] 왼쪽 열 · [1] Step 패널이 되어 지금 코드와 같아진다 — 그래서 이 화면의 US3 줄 셋을
+    # `DIV[2]/DIV[1]→DIV[2]/DIV[0]` · `DIV[2]/DIV[2]→DIV[2]/DIV[1]` 로 **다시 번호 매겼다.**
+    # 덮는 속성과 요소는 그대로다. 되살린 90 칸에서 나온 46 건이 전부 이 줄들이 이미 설명하던 차이였다 —
+    # 왼쪽 열 +57px(N-07) · 대상 앱 자리가 내용 높이로(B-04) · Step 패널 머리 줄과 입력칸(B-03·B-05·B-06).
 ]
 
 
 def is_intended(m: dict) -> str | None:
+    """등록부의 한 줄이 이 불일치를 설명하는가.
+
+    줄은 **좁게** 적는다 — 화면(`screen` 하나 또는 `screens` 목록) · 자리(`path` 정확히 또는 `path_re`
+    정규식 전체 일치) · 속성(`prop` 하나 또는 `props` 목록, 없으면 그 자리의 모든 속성). 017 4-B 에서
+    같은 부품 전환이 목록 행마다 같은 차이를 내 줄을 행 수만큼 적게 되자 정규식 자리를 더했다.
+
+    **종류(`kinds`)를 더했다** (2026-09-16 · Phase 10). 요소가 생기거나 사라지면 불일치가 속성이 아니라
+    `structure`(개수만 있고 **자리가 없다**) · `unpaired`(짝을 못 찾은 자리)로 나온다. 자리가 없으면
+    `path` 로 좁힐 수 없어, 종류로 좁히지 않는 줄은 그 화면의 **자리 없는 불일치를 전부** 삼킨다.
+    좁히는 열쇠다 — 적지 않으면 지금까지처럼 모든 종류에 걸린다.
+    """
     for row in INTENDED:
-        if row["screen"] == m["screen"] and row.get("path") == m.get("path"):
-            if "prop" not in row or row.get("prop") == m.get("prop"):
-                return row["reason"]
+        screens = row.get("screens") or [row.get("screen")]
+        if m["screen"] not in screens:
+            continue
+        if "kinds" in row and m.get("kind") not in row["kinds"]:
+            continue
+        if "path_re" in row:
+            if m.get("path") is None or re.fullmatch(row["path_re"], m["path"]) is None:
+                continue
+        elif row.get("path") != m.get("path"):
+            continue
+        props = row.get("props") or ([row["prop"]] if "prop" in row else None)
+        if props is None or m.get("prop") in props:
+            return row["reason"]
     return None
 
 
@@ -360,16 +491,33 @@ def serve(directory: Path, backend: str) -> tuple[socketserver.TCPServer, str]:
 COLLECT_JS = """
 (props) => {
   const out = [];
+  // 017 T070 — 아트보드가 더한 두 겹(스크롤 영역 · 본문 상자)은 경로에서 건너뛴다. 그 자식들을 한 겹 위의 자식으로
+  // 이어 센다 — 전환 전 코드에는 이 두 겹이 없으므로 본문 요소가 같은 경로로 짝지어진다 (Chrome.tsx 머리주석).
+  const FLATTEN = new Set(["artboard-scroll", "artboard-body"]);
+  // 017 Phase 10 — **FLATTEN 과 같은 이유, 반대 방향이다.** 전환 전 작업대는 알림 층을 본문의 첫 자식으로
+  // 직접 그렸고 지금은 없다(층은 앱 뿌리 하나 · layout-contract-v3 L2). 그 자식이 빠지면 **뒤따르던 형제의
+  // 자리 번호가 한 칸씩 당겨져** 같은 요소가 다른 경로로 읽힌다 — test-create 의 90 칸이 통째로 짝을 잃었다.
+  // 그래서 이 층은 **나무에서 뺀다**: 줄도 만들지 않고 자식도 보지 않으며 **자리 번호도 올리지 않는다.**
+  // 지금 코드에는 이 표식이 없으므로 규칙은 전환 전 나무에만 걸린다.
+  const DROP = (el) => el.hasAttribute("data-workbench-notice-layer");
   const walk = (el, path) => {
     const style = getComputedStyle(el);
     const row = { path, tag: el.tagName };
     for (const p of props) row[p] = style.getPropertyValue(p);
     out.push(row);
     let i = 0;
-    for (const child of el.children) {
-      walk(child, `${path}/${child.tagName}[${i}]`);
-      i += 1;
-    }
+    const visit = (parent) => {
+      for (const child of parent.children) {
+        if (DROP(child)) continue;
+        if (FLATTEN.has(child.getAttribute("data-slot"))) {
+          visit(child);
+          continue;
+        }
+        walk(child, `${path}/${child.tagName}[${i}]`);
+        i += 1;
+      }
+    };
+    visit(el);
   };
   walk(document.body, "BODY");
   return out;
@@ -412,7 +560,12 @@ def measure(page_url: str, backend: str, pw, scenarios: list[dict]) -> dict[str,
             # **역할로 집는다.** 글자로 집으면 그 글자를 품은 바깥 요소가 잡혀 눌러도
             # 아무 일이 없고, 검사는 「조작했다」고 믿은 채 같은 화면을 잰다. 1회차에
             # 화면 다섯이 전부 같은 32개 요소로 나온 원인이 그것이었다.
-            loc = page.get_by_role("button", name=step["button"], exact=bool(step.get("exact"))).first
+            exact = bool(step.get("exact"))
+            # 017 T061 — 결말 거르기가 `ToggleGroup` 이 되며 역할이 button 에서 radio 로 바뀌었다. 전환 전 코드(button)와
+            # 전환 뒤 코드(radio)를 **같은 단계**로 누른다 — 누르는 대상은 같은 글자의 같은 조작이다.
+            loc = page.get_by_role("button", name=step["button"], exact=exact).or_(
+                page.get_by_role("radio", name=step["button"], exact=exact)
+            ).first
             try:
                 loc.click(timeout=5000)
             except Exception as exc:  # noqa: BLE001

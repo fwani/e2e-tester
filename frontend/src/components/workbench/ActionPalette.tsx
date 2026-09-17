@@ -45,6 +45,9 @@ import type { ActionId } from "../../lib/actions";
 import { isShown, type CapabilityMap, type CapabilityState } from "../../lib/capabilities";
 import { ACTION_LABEL } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+import { Textarea } from "../../ui/Textarea";
 
 /**
  * 버튼 줄의 **고정 순서**. 국면이 이 순서를 바꾸지 않는다.
@@ -234,14 +237,24 @@ export function ActionPalette({
       {AUTHORING_ROW.some(shown) || shown("step.addNaturalLanguage") ? (
         <div className="flex flex-col gap-s2">
           {shown("step.addNaturalLanguage") && (
-            <div className="flex gap-[10px] items-start">
-              <input
+            /*
+              **모자라면 다음 줄로 내려간다** (017 N-07). 입력칸이 240px 을 지키면 460px 패널에서 옆 조작의 비활성 사유가
+              8px 로 줄어 「…」만 남았다. 줄을 접게 두면 입력칸이 한 줄을 차지하고 조작과 사유가 아래 줄에 온전히 선다 —
+              조작이 쓸 수 있을 때(사유가 없을 때)는 한 줄에 들어간다.
+            */
+            <div className="flex flex-wrap gap-[10px] items-start">
+              <Input
                 aria-label="자연어로 Step 추가"
                 value={nl.value}
                 disabled={!usable("step.addNaturalLanguage")}
                 onChange={(e) => nl.onChange(e.target.value)}
                 placeholder="생성된 프로젝트가 목록에 있는지 확인해."
-                className="border-ai flex-1 min-w-0"
+                variant="ai"
+                /*
+                  **입력칸이 사유 문구에 밀려 줄지 않는다** (017 B-06 · layout-contract-v3 L6). 옆 버튼이 잠겨 사유 문구(최대
+                  260px)가 붙자 입력칸이 95px 로 줄어 안내 글이 「생성된 프로젝」에서 잘렸다. 240px 를 먼저 지키고 사유가 줄어든다.
+                */
+                layout="flex-1 min-w-[240px]"
               />
               {button("step.addNaturalLanguage", () => {
                 if (nl.value.trim() === "") return;
@@ -381,8 +394,6 @@ function Field({
     maxLength,
     "aria-describedby": disabled ? reasonId : undefined,
     onChange: (e: { target: { value: string } }) => onChange(e.target.value),
-    className: mono ? "mono" : undefined,
-    style: { flex: 1, minWidth: 0 } as const,
   };
 
   return (
@@ -391,10 +402,16 @@ function Field({
         <span className="font-sans text-[12px] leading-none font-normal text-ink-3 w-[76px]">
           {label}
         </span>
+        {/*
+          폭은 남은 자리를 채우고(`flex-1 min-w-0`) 높이만 둘이 다르다 — 여러 줄은 48px, 한 줄은 40px.
+          017 전에는 인라인 `style` 을 펼쳐 덧쓰고 글꼴을 정본 클래스 이름 `mono` 로 넘겼다. 그 이름은
+          015 가 정본 클래스를 번들에서 뺀 뒤 **아무 CSS 도 만들지 않았다** — 셀렉터 칸이 모노 글꼴이
+          아니었다 (017 N-03).
+        */}
         {multiline ? (
-          <textarea {...common} rows={2} style={{ ...common.style, minHeight: 48 }} />
+          <Textarea {...common} rows={2} layout="flex-1 min-w-0 min-h-[48px]" />
         ) : (
-          <input {...common} style={{ ...common.style, height: 40, minHeight: 40 }} />
+          <Input {...common} font={mono ? "mono" : "sans"} layout="flex-1 min-w-0 h-[40px] min-h-[40px]" />
         )}
       </div>
       {disabled && (
@@ -407,14 +424,14 @@ function Field({
           {capability.remedy !== null && (
             <>
               {" "}
-              <button
+              <Button
                 type="button"
                 data-remedy-for={action}
-                className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-sans text-[12px] font-semibold leading-[1.4] underline cursor-pointer"
+                variant="link"
                 onClick={() => onRemedy(capability.remedy!.action)}
               >
                 {ACTION_LABEL[capability.remedy.action]}
-              </button>
+              </Button>
             </>
           )}
         </span>

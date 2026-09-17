@@ -32,8 +32,7 @@
  * 함께 적었다 — 바닥 띠의 「전체 실행」이며, 여러 테스트를 잇달아 돌리는 것은 화면 작업이
  * 아니라 실행 기능이라 이 기능의 범위 밖이다.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ai,
@@ -66,16 +65,24 @@ import {
 import { ErrorNotice, describeError, localError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
-import { Toast } from "../components/Toast";
+import { Toast } from "../ui/Toast";
 import { isRunning } from "../lib/sessionState";
 import { EDIT_ENTRY_LABEL, outcomeChip, outcomeLabel, stepLabel } from "../lib/wording";
 import { chipTone, rowMark } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
-import { Button, navLinkClasses } from "../ui/Button";
+import { Button } from "../ui/Button";
 import { Chip, Pill } from "../ui/Chip";
 import { rowClasses } from "../ui/Table";
 import { Field } from "../ui/Field";
+import { Checkbox } from "../ui/Checkbox";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "../ui/DropdownMenu";
+import { Input } from "../ui/Input";
+import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
+import { ToggleGroup, ToggleGroupItem } from "../ui/ToggleGroup";
+import { Disclosure } from "../ui/Disclosure";
+import { Pane } from "../ui/Surface";
+import { Tooltip } from "../ui/Tooltip";
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
 const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
@@ -480,17 +487,14 @@ export function TestList({
     data !== null && all.length === 0 && query.trim() === "" && groupFilter === null;
 
   const liveOf = (testId: string) => activeSessions.find((s) => s.test_id === testId) ?? null;
-  /**
-   * 화면 맨 위 알림이 가리키는 세션. **돌고 있는 것을 먼저** 고르되, 끝난 세션도 남긴다.
-   *
-   * 005 FR-168 은 「칩과 복귀는 다른 요구사항」이라고 못박았다 — 세션이 `review` 로 끝나
-   * 행의 표식이 결말로 돌아가도 그 작업 창으로 돌아갈 길은 남아야 한다. 그것을 running
-   * 에만 걸면 중지 직후 복귀 수단이 사라진다 (007 재점검 N-02 가 잡은 형태).
-   */
-  const openSession = activeSessions.find((s) => isRunning(s.state)) ?? activeSessions[0] ?? null;
 
   return (
-    <Artboard width={1440} minHeight={900}>
+    <Artboard
+      width={1440}
+      minHeight={900}
+      // 머리띠는 가로 스크롤 영역 밖이다 — 좁은 창에서 본문이 스크롤해도 창 폭에 선다 (017 B-11 · layout-contract-v3 L3).
+      header={
+        <>
       <HeaderBar>
         <BrandMark />
         <HeaderDivider />
@@ -511,22 +515,22 @@ export function TestList({
             (DC-010).
           */}
           {onOpenProjects && (
-            <button className={navLinkClasses()} onClick={onOpenProjects}>
+            <Button variant="nav" onClick={onOpenProjects}>
               바꾸기
-            </button>
+            </Button>
           )}
         </div>
         <div className="flex-1" />
         {/* 확정 디자인에 없는 화면들의 진입점. 눈에 띄지 않게 둔다 (DC-010). */}
         {onOpenSecrets && (
-          <button className={navLinkClasses()} onClick={onOpenSecrets}>
+          <Button variant="nav" onClick={onOpenSecrets}>
             비밀 값
-          </button>
+          </Button>
         )}
         {onOpenKeys && (
-          <button className={navLinkClasses()} onClick={onOpenKeys}>
+          <Button variant="nav" onClick={onOpenKeys}>
             키 관리
-          </button>
+          </Button>
         )}
         <HeaderDivider />
         {/*
@@ -541,43 +545,21 @@ export function TestList({
           테스트 만들기
         </Button>
       </HeaderBar>
+        </>
+      }
+    >
 
       {/*
-        005 FR-168 (U-16) — 지금 돌고 있다는 사실이 목록 맨 위에 온다. 실행 중 새로고침하면
-        목록으로 떨어지는데, 그 사실과 복귀 수단이 없으면 사용자는 새 실행을 시작한다.
-      */}
-      {openSession !== null && (
-        <Toast
-          mark="data-open-session"
-          tone={isRunning(openSession.state) ? "info" : "warn"}
-        >
-          {/*
-            **닫기를 주지 않는다.** 이것은 지나간 사실이 아니라 「지금 무언가가 돌고
-            있다」는 상태이고, 그 상태가 끝나면 스스로 사라진다 (`openSession` 이
-            비워진다). 닫을 수 있게 하면 복귀 수단만 사라지고 세션은 그대로 남아,
-            사용자는 돌고 있는 줄 모르고 새 실행을 시작한다 — 005 FR-168 이 막으려던
-            바로 그것이다.
-          */}
-          <div className="flex gap-s2 items-center">
-            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
-              <circle cx="8" cy="8" r="4.5" fill="currentColor" />
-            </svg>
-            <span>
-              <b>{openSession.test_id ?? "테스트"}</b> · {openSession.state_label} · Step{" "}
-              {openSession.steps.length}개
-            </span>
-          </div>
-          {onResumeSession && (
-            <Button
-              size="sm"
-              layout="mt-s2"
-              onClick={() => onResumeSession(openSession)} >
-              실행 화면 보기
-            </Button>
-          )}
-        </Toast>
-      )}
+        005 FR-168 (U-16) — 지금 돌고 있다는 사실과 복귀 수단은 아래 **흐름 안 띠**
+        (`ActiveSessionsBanner`)가 말한다.
 
+        017 B-02 — 같은 사실을 말하던 **토스트를 지웠다.** 토스트가 띠의 「이어서 보기」·
+        「중지하고 버리기」·「새로 고침」을 덮어 누를 수 없었고, 토스트의 「실행 화면 보기」와
+        띠의 「이어서 보기」가 같은 `onResumeSession` 을 불러 **복귀 조작이 화면에 둘**이었다 —
+        008 이 「화면에 하나뿐」으로 정한 것을 어긴 형태다 (아래 행 조작의 주석). 띠를 남긴 이유는
+        세션마다 조작(이어서 보기·버리기)을 갖고, 닫히지 않는 토스트로 모으면 그 토스트가 목록
+        도구 줄을 계속 덮기 때문이다 (017 research R6 ⑤).
+      */}
       <div
         className="flex-1 min-h-0 flex flex-col gap-s3 py-[14px] px-s4"
       >
@@ -616,7 +598,7 @@ export function TestList({
               <circle cx="7" cy="7" r="4.6" />
               <path d="M10.6 10.6L14 14" />
             </svg>
-            <input
+            <Input variant="bare"
               aria-label="테스트 검색"
               placeholder={
                 isEmptyProject ? "검색할 테스트가 아직 없습니다" : "이름 · ID · Step 안의 locator 로 검색"
@@ -634,15 +616,15 @@ export function TestList({
                 거르지 못했다. 개수는 **거르기 전 전체**를 세므로 필터가 자기 자신을
                 0으로 만들어 돌아올 길을 없애지 않는다.
               */}
- <div className="flex items-center gap-[6px]" role="group" aria-label="결말로 거르기">
+              {/* 017 T061 — 넷 중 하나를 고른다. 고른 결말을 라디오로 알리고 화살표로 오간다. 모양은 017 전과 같다(고른 것만 채움). */}
+              <ToggleGroup
+                appearance="filter"
+                aria-label="결말로 거르기"
+                value={filter}
+                onValueChange={(next) => setFilter(next as typeof filter)}
+              >
                 {(["all", "pass", "fail", "none"] as const).map((key) => (
-                  <Button
-                    key={key}
-                    size="sm"
-                    variant={filter === key ? "primary" : "default"}
-                    aria-pressed={filter === key}
-                    onClick={() => setFilter(key)}
-                  >
+                  <ToggleGroupItem key={key} value={key}>
                     {FILTER_LABEL[key]}
                     {/*
                       정본 `.num`(mono 12px · ink-3). **결말별 색을 주지 않는다** —
@@ -653,9 +635,9 @@ export function TestList({
                     <span className="font-mono text-[12px] leading-none font-normal text-ink-3 ml-auto">
                       {counts[key]}
                     </span>
-                  </Button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
 
               <div className="flex-1" />
 
@@ -817,16 +799,13 @@ export function TestList({
               </div>
             )}
             {(exported.detail?.truncations ?? []).length > 0 && (
-              <details className="mt-[6px]" data-export-truncations>
-                <summary className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 cursor-pointer">
-                  잘린 칸 {(exported.detail?.truncations ?? []).length}건
-                </summary>
+              <Disclosure layout="mt-[6px]" data-export-truncations tone="quiet" summary={<>잘린 칸 {(exported.detail?.truncations ?? []).length}건</>}>
                 {(exported.detail?.truncations ?? []).map((t) => (
  <div key={`${t.test_id}-${t.column}`} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
                     {t.test_id} · {t.column} — {t.dropped_lines}줄 생략
                   </div>
                 ))}
-              </details>
+              </Disclosure>
             )}
             {(exported.detail?.unreadable ?? []).length > 0 && (
               <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]" data-export-unreadable>
@@ -857,7 +836,7 @@ export function TestList({
             extra={
               // 그룹이 하나도 없으면 옮길 곳이 없다 — 그리지 않는다 (SC-627).
               (data?.groups ?? []).some((g) => g.prefix !== "TC") ? (
-                <select
+                <NativeSelect
                   aria-label="그룹으로 옮기기"
                   disabled={busy}
                   value=""
@@ -868,18 +847,22 @@ export function TestList({
                       setSelected(new Set()),
                     );
                   }}
-                  className="m-0"
+                  /*
+                    닫힌 선택칸은 늘 「그룹으로 옮기기…」만 보인다(값이 늘 빈 문자열이다). 폭을 내용에 맡기면
+                    **보이지 않는 가장 긴 그룹 이름**이 폭을 정해 띠를 차지한다 — 최대 폭을 둔다 (017 B-07).
+                  */
+                  layout="m-0 max-w-[240px]"
                 >
-                  <option value="">그룹으로 옮기기…</option>
+                  <NativeSelectOption value="">그룹으로 옮기기…</NativeSelectOption>
                   {(data?.groups ?? [])
                     .filter((g) => g.name !== null)
                     .map((g) => (
-                      <option key={g.prefix} value={g.prefix}>
+                      <NativeSelectOption key={g.prefix} value={g.prefix}>
                         {g.name}
-                      </option>
+                      </NativeSelectOption>
                     ))}
-                  <option value="TC">그룹에서 빼기</option>
-                </select>
+                  <NativeSelectOption value="TC">그룹에서 빼기</NativeSelectOption>
+                </NativeSelect>
               ) : undefined
             }
           />
@@ -929,8 +912,7 @@ export function TestList({
               style={{ gridTemplateColumns: GRID }}
             >
               <div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   aria-label="보이는 테스트 전부 선택"
                   checked={allVisibleSelected}
                   disabled={busy || rows.length === 0}
@@ -1095,19 +1077,6 @@ export function TestList({
     </Artboard>
   );
 }
-/** 떠 있는 행 메뉴의 치수. 여는 자리를 계산할 때 쓴다. */
-const MENU_MIN_WIDTH = 160;
-/** 단추와 메뉴 사이. 붙여 놓으면 어느 쪽을 눌렀는지 눈으로 갈리지 않는다. */
-const MENU_GAP = 2;
-/** 창 가장자리와의 최소 간격. 0 이면 메뉴가 화면 끝에 물린다. */
-const MENU_EDGE = 8;
-/**
- * 떠 있는 메뉴의 겹침 순서.
- *
- * 이 화면에서 가장 높다. 목록 위에 겹치는 것이 메뉴뿐이므로 다른 값과 겨루지 않는다 —
- * 겹침이 문제였던 적은 없고, 문제는 잘림이었다 (`Row` 의 `menuPos` 주석).
- */
-const MENU_Z = 40;
 // ─── 행 ─────────────────────────────────────────────────────────────────────
 
 function Row({
@@ -1166,85 +1135,35 @@ function Row({
   const live = liveSession !== null && isRunning(liveSession.state);
   /** 열어 볼 결과가 있는가 (005 FR-130). 결말 종류와 무관하다 — U-13 이 이것이었다. */
   const hasResult = row.outcome != null || row.last_run_at != null;
+  /*
+    「이름」을 고르면 이름 칸이 초점을 받아야 한다 — 017 전에는 `autoFocus` 로 됐다.
+    Radix 메뉴는 열린 동안 초점을 가두므로 새로 연 칸의 `autoFocus` 가 들어가지 않고, 메뉴가
+    닫히며 초점이 `⋮` 로 돌아갔다. 키보드 사용자는 칸에 닿으려면 Shift+Tab 을 더 눌러야 했다
+    (2026-09-15 브라우저 확인 · 테스트는 칸이 열리는 것만 보고 초점은 보지 않았다). **메뉴가 다 닫힌 뒤에**
+    직접 옮긴다.
 
-  const menuAnchor = useRef<HTMLButtonElement | null>(null);
-  const menuBox = useRef<HTMLDivElement | null>(null);
-  /**
-   * 떠 있는 메뉴의 화면 좌표 (사용자 보고 · 2026-09-09 — 「메뉴가 안 보임」).
-   *
-   * ## 왜 목록 밖으로 내보내는가
-   *
-   * 메뉴는 행 안에 `position: absolute` 로 있었다. **그 위로 조상 셋이 잘라 낸다** —
-   * 목록 스크롤 상자(`overflow: auto`)와 그것을 감싼 `.pane`(`overflow: hidden`), 그리고
-   * 바깥 아트보드다. `overflow` 가 `visible` 이 아닌 조상은 자식을 잘라 내고, **`z-index`
-   * 로는 거기서 빠져나갈 수 없다.**
-   *
-   * 실측(1440×900, 40행, 목록을 끝까지 내린 상태): 마지막 행의 메뉴는 `top=844
-   * bottom=942` 인데 스크롤 상자가 845 에서 잘라, 그 자리에서 실제로 잡히는 것은 바닥
-   * 띠의 「Playwright 로 내보내기」였다. 보고된 화면이 정확히 그것이다.
-   *
-   * 그래서 `document.body` 로 내보내고 `position: fixed` 로 붙인다. 잘라 낼 조상이
-   * 없으므로 어느 행에서 열어도 온전히 보인다.
-   *
-   * ## 대신 감당하는 것
-   *
-   * 떠 있으므로 목록이 스크롤해도 따라오지 않는다 — 그때는 **닫는다** (`onCloseMenu`).
-   * 행에서 떨어진 채 떠 있는 메뉴는 어느 행의 것인지 말할 수 없다.
-   */
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-  /**
-   * 자리를 잴 때의 단추 위치. 스크롤이 **실제로 행을 움직였는지** 판정하는 기준이다.
-   *
-   * 스크롤 사건 하나만 보고 닫으면 **메뉴가 열리자마자 닫힌다.** 화면에 반쯤 걸친 행의
-   * 단추를 누르면 브라우저가 그것을 보이게 하려고 스스로 스크롤하고, 그 사건이 곧바로
-   * 도착하기 때문이다 — 실측에서 마지막 행의 메뉴가 그렇게 사라졌다.
-   *
-   * 그 스크롤은 자리를 재기 **전에** 끝나 있다. 그래서 「사건이 왔는가」가 아니라
-   * 「기준보다 움직였는가」를 묻는다.
-   */
-  const anchorTop = useRef(0);
+    **T105 에서 다시 단순해졌다.** 새 갈래는 「닫힌 뒤 어디로 보낼지」를 `finalFocus` 로 받으므로,
+    되돌리는 것을 막고 다시 옮기는 대신 **되돌리지 말라고 한 번 답하면** 된다(아래 `MenuContent`).
+    그러면 칸의 `autoFocus` 가 017 전처럼 그대로 먹는다. `renameInput` 은 그 칸을 가리키는 참조로만 남는다.
+  */
+  const renameInput = useRef<HTMLInputElement>(null);
+  const focusRenameOnClose = useRef(false);
 
-  useLayoutEffect(() => {
-    if (!menuOpen) {
-      setMenuPos(null);
-      return;
-    }
-    const anchor = menuAnchor.current;
-    if (anchor === null) return;
-    const a = anchor.getBoundingClientRect();
-    anchorTop.current = a.top;
-    const box = menuBox.current;
-    const h = box?.offsetHeight ?? 0;
-    const w = box?.offsetWidth ?? MENU_MIN_WIDTH;
-    // 아래에 자리가 모자라면 **위로 연다.** 창 밖으로 나가면 잘리던 것과 같은 결과다.
-    const below = a.bottom + MENU_GAP;
-    const flip = h > 0 && below + h + MENU_EDGE > window.innerHeight;
-    setMenuPos({
-      top: flip ? Math.max(MENU_EDGE, a.top - MENU_GAP - h) : below,
-      // 오른쪽 정렬. 창 왼쪽으로 넘어가지 않게 막는다.
-      left: Math.max(MENU_EDGE, a.right - w),
-    });
-  }, [menuOpen, onOpenDefinition]);
+  /*
+    **칸이 열리는 순간 우리가 초점을 옮긴다** (N-08 · 2026-09-16 실측).
 
+    칸의 `autoFocus` 에 맡기면 **닫히는 순서에 따라 들쭉날쭉하다.** 메뉴 항목을 어떻게 고르느냐에 따라
+    (포인터로 고르는 길 · 검사가 쓰는 `act(() => item.click())` 같은 동기 길) 칸이 붙은 **뒤에** 메뉴가
+    풀리고, 그때 초점이 문서로 떨어져 `body` 에 남았다. 부품에게 「되돌리지 마라」고만 해서는 그 빈자리를
+    메우지 못한다.
+
+    그래서 순서에 기대지 않는다 — `renaming` 이 열린 상태가 되는 그 렌더에서 칸으로 옮긴다.
+    `finalFocus` 는 여전히 「여는 단추로 되돌리지 마라」를 맡는다(아래 `MenuContent`). 둘이 다투지 않는다.
+  */
+  const renameOpen = renaming !== null;
   useEffect(() => {
-    if (!menuOpen) return;
-    // 목록이 스크롤하거나 창이 바뀌면 메뉴는 제 행에서 떨어진다. 따라가게 만드는 것보다
-    // 닫는 편이 낫다 — 따라가더라도 그 행이 스크롤 밖으로 나가면 가리킬 대상이 없다.
-    const closeIfMoved = () => {
-      const a = menuAnchor.current?.getBoundingClientRect();
-      if (a === undefined) return onCloseMenu();
-      if (Math.abs(a.top - anchorTop.current) > 1) onCloseMenu();
-    };
-    const close = () => onCloseMenu();
-    // `capture` 여야 목록 **안쪽** 스크롤 상자의 스크롤도 잡는다. 스크롤 사건은 위로
-    // 올라오지 않는다.
-    window.addEventListener("scroll", closeIfMoved, true);
-    window.addEventListener("resize", close);
-    return () => {
-      window.removeEventListener("scroll", closeIfMoved, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [menuOpen, onCloseMenu]);
+    if (renameOpen) renameInput.current?.focus();
+  }, [renameOpen]);
 
   return (
     <div
@@ -1277,8 +1196,7 @@ function Row({
         함께 일어나면 갈라 둔 뜻이 없다.
       */}
       <div onClick={(e) => e.stopPropagation()} className="flex items-center">
-        <input
-          type="checkbox"
+        <Checkbox
           aria-label={`${row.name} 선택`}
           data-test-select={row.id}
           checked={selected}
@@ -1303,7 +1221,8 @@ function Row({
       <div className="min-w-0 flex flex-col gap-[3px]">
         {renaming !== null ? (
           <div className="flex items-center gap-s2 pr-s3">
-            <input
+            <Input
+              ref={renameInput}
               aria-label="새 이름"
               value={renaming}
               autoFocus
@@ -1393,39 +1312,57 @@ function Row({
           {runPending ? "준비 중…" : "실행"}
         </Button>
 
-        <Button
-          ref={menuAnchor}
-          size="icon"
-          aria-label={`${row.name} 추가 동작`}
-          onClick={onToggleMenu}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-            <circle cx="6" cy="2" r="1.1" />
-            <circle cx="6" cy="6" r="1.1" />
-            <circle cx="6" cy="10" r="1.1" />
-          </svg>
-        </Button>
+        {/*
+          행 메뉴 (사용자 보고 · 2026-09-09 「메뉴가 안 보임」 · 017 T056).
 
-        {menuOpen &&
-          createPortal(
-            <div
-              ref={menuBox}
-              className="bg-panel border border-hair rounded-base"
-              data-row-menu={row.id}
-              style={{
-                position: "fixed",
-                top: menuPos?.top ?? 0,
-                left: menuPos?.left ?? 0,
-                zIndex: MENU_Z,
-                // 자리를 재기 전에는 그리지 않는다 — 그리면 왼쪽 위에서 제자리로 튄다.
-                visibility: menuPos === null ? "hidden" : "visible",
-                display: "flex",
-                flexDirection: "column",
-                minWidth: `${MENU_MIN_WIDTH}px`,
-                padding: "4px",
-                gap: "2px",
-              }}
-            >
+          메뉴는 행 안에 절대 배치로 있었고 조상 셋(목록 스크롤 상자 · 판 · 아트보드)이 잘라 냈다 — z-index 로는
+          거기서 빠져나갈 수 없다. 2026-09-09 에 문서 바닥으로 내보내고 누른 단추의 좌표를 재어 고정 배치로 붙였고,
+          떠 있으므로 목록이 스크롤하면 닫았다 (마지막 행은 위로 열었다).
+
+          017 에서 그 일을 `ui/DropdownMenu`(Radix)가 한다 — 포털 · 단추 기준 자리 · 모자라면 위로 뒤집기 · 창
+          가장자리 여백 · 열린 동안 뒤쪽 스크롤 잠금. 손으로 만든 판에 없던 키보드(Enter·↓ 로 열기 · 화살표 ·
+          Esc 로 닫고 단추로 초점 복귀)와 `aria-haspopup`·`aria-expanded` 가 함께 왔다 (FR-012).
+        */}
+        <Menu
+          open={menuOpen}
+          onOpenChange={(open) => {
+            if (open) onToggleMenu();
+            else onCloseMenu();
+          }}
+        >
+          {/* 017 T064 — 글자 없는 `⋮` 의 이름. 보이는 글(「추가 동작」)이 들리는 이름(「{행 이름} 추가 동작」)에 들어 있다. */}
+          <Tooltip content="추가 동작">
+            <MenuTrigger>
+              <Button size="icon" aria-label={`${row.name} 추가 동작`}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                  <circle cx="6" cy="2" r="1.1" />
+                  <circle cx="6" cy="6" r="1.1" />
+                  <circle cx="6" cy="10" r="1.1" />
+                </svg>
+              </Button>
+            </MenuTrigger>
+          </Tooltip>
+          <MenuContent
+            data-row-menu={row.id}
+            /*
+              N-08 — 「이름」을 고르면 행 안에 이름 칸이 열린다. 닫힌 뒤 초점은 **그 칸**으로 가야 한다
+              (기본값은 여는 단추다). 017 은 `onCloseAutoFocus` 로 되돌림을 막고 다시 옮기는 두 겹이었는데,
+              부품이 「닫힌 뒤 어디로 보낼지」를 직접 받으므로 한 겹이면 된다 (T105).
+              `true` 를 돌려주면 기본 자리(여는 단추)로 간다.
+            */
+            finalFocus={() => {
+              if (!focusRenameOnClose.current) return true;
+              focusRenameOnClose.current = false;
+              /*
+                **여기서 칸을 가리킬 수는 없다.** 칸은 「이름」을 고른 **결과로** 열리므로 메뉴가 닫히는
+                이 시점에는 아직 없다(`renameInput.current === null`). 그래서 「아무 데도 두지 마라」(`false`)고
+                답하고, 칸이 뜨면서 **자기 `autoFocus`** 로 받게 둔다 — 017 전에 되던 방식이다.
+                017 이 그것을 손으로 옮겨야 했던 이유는 옛 갈래가 닫히며 초점을 `⋮` 로 **되돌렸기** 때문이고,
+                되돌리지 않으면 그 수고가 필요 없다. 그 밖의 닫힘은 `true` — 여는 단추로 돌아간다(Esc 포함).
+              */
+              return false;
+            }}
+          >
             {/*
               006 FR-175 — 「정의 보기」를 **「편집」으로 대체한다.** 보기만 하는 별도 항목을
               남기면 사용자는 다시 "고치려면 어디로 가지" 를 묻게 되고, 그것이 006 이 없앤
@@ -1433,19 +1370,24 @@ function Row({
               들어가도 안전하다.
             */}
             {onOpenDefinition && (
-              <button data-row-menu-item className={navLinkClasses("justify-start")} onClick={onOpenDefinition}>
+              <MenuItem data-row-menu-item onClick={onOpenDefinition}>
                 {EDIT_ENTRY_LABEL}
-              </button>
+              </MenuItem>
             )}
-            <button data-row-menu-item className={navLinkClasses("justify-start")} onClick={onRenameStart}>
+            <MenuItem
+              data-row-menu-item
+              onClick={() => {
+                focusRenameOnClose.current = true;
+                onRenameStart();
+              }}
+            >
               이름
-            </button>
-              <button data-row-menu-item className={navLinkClasses("text-fail justify-start")} onClick={onDeleteStart}>
-                삭제
-              </button>
-            </div>,
-            document.body,
-          )}
+            </MenuItem>
+            <MenuItem data-row-menu-item variant="danger" onClick={onDeleteStart}>
+              삭제
+            </MenuItem>
+          </MenuContent>
+        </Menu>
       </div>
     </div>
   );
@@ -1664,10 +1606,8 @@ function EmptyProject({
           길을 없애지는 않는다 — 파일을 더 넣는 일은 있다 (`<details>`).
         */}
         {onImportPlan !== undefined && draftCount > 0 && (
-          <details className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">
-            <summary className="font-sans text-[13.5px] font-bold leading-none cursor-pointer">
-              엑셀 파일을 더 넣기
-            </summary>
+          <Pane layout="p-[14px] w-full text-left">
+            <Disclosure tone="strong" summary={<>엑셀 파일을 더 넣기</>}>
             <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-[10px]">
               가져온 초안에 더해집니다. 같은 그룹 접두어면 같은 그룹으로 들어갑니다.
             </div>
@@ -1676,7 +1616,8 @@ function EmptyProject({
               onPlan={onImportPlan}
               onError={(err) => onError?.(err)}
             />
-          </details>
+          </Disclosure>
+          </Pane>
         )}
         {onImportPlan !== undefined && draftCount === 0 && (
           <div className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">

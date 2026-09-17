@@ -13,14 +13,15 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { ErrorNotice, describeError } from "../components/ErrorNotice";
-import { Toast } from "../components/Toast";
+import { Toast } from "../ui/Toast";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { secrets, type SecretsResponse } from "../api/client";
 
-import { Button, navLinkClasses } from "../ui/Button";
+import { Button } from "../ui/Button";
 
 import { Chip } from "../ui/Chip";
+import { Input } from "../ui/Input";
 export interface SecretValuesProps {
   /** 테스트 정의가 참조하는 민감 변수 이름들. 아직 값이 없는 것을 보여 주기 위한 것이다. */
   requiredNames?: string[];
@@ -143,8 +144,8 @@ export function SecretValues({
                 <span className="font-mono">{entry.name}</span>
                 <Chip tone="pass">보관됨</Chip>
                 <span className="flex-1" />
-                <button
-                  className={navLinkClasses()}
+                <Button
+                  variant="nav"
                   disabled={busy}
                   onClick={() => {
                     setBusy(true);
@@ -158,7 +159,7 @@ export function SecretValues({
                   }}
                 >
                   삭제
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -174,15 +175,15 @@ export function SecretValues({
       >
         <strong>값 입력·재입력</strong>
         <label htmlFor="secret-name">변수 이름</label>
-        <input
+        <Input
           id="secret-name"
           value={name}
           onChange={(e) => setName(e.target.value.toUpperCase())}
           placeholder="LOGIN_PASSWORD"
-          className="font-mono"
+          font="mono"
         />
         <label htmlFor="secret-value">값</label>
-        <input
+        <Input
           id="secret-value"
           type="password"
           value={value}
@@ -194,9 +195,9 @@ export function SecretValues({
           같은 이름으로 다시 넣으면 이전 값을 대체합니다.
         </p>
         <div>
-          <button disabled={busy || !ready} onClick={submit}>
+          <Button disabled={busy || !ready} onClick={submit}>
             봉인해 저장
-          </button>
+          </Button>
         </div>
       </section>
     </main>

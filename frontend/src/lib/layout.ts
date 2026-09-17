@@ -98,8 +98,13 @@ const fixed = (px: number): SlotSize => ({ kind: "fixed", px });
  * 것이 이 배치의 값이다 (research R9).
  */
 export const VERTICAL_SPLIT: Record<Phase, VerticalSplit> = {
-  /** 아직 열지 않았다는 사실만 필요하다. 하는 일은 시작 조건 입력이다 (FR-258) */
-  composing: { targetSlot: fixed(TARGET_SLOT_MIN_PX), workArea: FILL },
+  /**
+   * 아직 열지 않았다는 사실만 필요하다. 하는 일은 시작 조건 입력이다 (FR-258).
+   *
+   * 017 B-04 — ③-a 는 **내용 높이**다. 88px 는 한 줄짜리 「브라우저 열기」 안내(편집 국면)를 위해 잰 값이었고, 만들기
+   * 국면은 세 줄짜리 「아직 열지 않았습니다」 안내를 그린다 — 88px 에 잘려 글이 상자 테두리 위·아래에 걸쳤다.
+   */
+  composing: { targetSlot: CONTENT, workArea: FILL },
   /** 미러를 보면서 조작한다. ③-b 는 42px 안내 띠 (B9) */
   recording: { targetSlot: FILL, workArea: CONTENT },
   /** 미러 + 지시문·진행·차단. 차단 시 내용이 늘어난다 (B10) */
@@ -316,3 +321,30 @@ export function flexClassOf(size: SlotSize): string {
   }
   return KIND_CLASS[size.kind];
 }
+
+/**
+ * Step 패널 바닥(조작 · 시작 주소 · AI 지시문)의 **높이 상한** — 국면별 (017 layout-contract-v3 L4 · B-03).
+ *
+ * 017 전에는 `StepList` 안의 리터럴 `max-h-[52%]` 하나였다(표 밖의 배치 결정 · LC-1 위반). 편집 국면에서 바닥이 조작
+ * 여러 줄로 차면 52% 까지 자라, 1440×900 창에서 Step 목록이 6.5행만 보였다 — 고치러 들어온 화면에서 고칠 대상이
+ * 가장 적게 보였다.
+ *
+ * **편집·만들기는 목록 8행을 지킨다**(SC-004): 패널 높이에서 머리(36px)와 8행을 뺀 만큼이 바닥의 상한이다. 바닥은
+ * 상한 안에서 스스로 스크롤하므로 시작 주소·AI 지시문은 바닥 스크롤로 닿는다 (FR-023). 그 밖의 국면은 전환 전 값을
+ * 옮기기만 한다 — 미러를 보며 하는 일이라 목록 행 수가 주 작업이 아니다.
+ *
+ * `Record<Phase, …>` 이므로 국면이 늘면 값을 빠뜨린 채 컴파일되지 않는다 (v2 LC-2). **완성된 문자열로 적는다** —
+ * Tailwind 는 소스를 글자로 읽으므로 조립한 이름은 CSS 가 되지 않는다 (G-B).
+ */
+export const STEP_FOOTER_MAX_CLASS: Record<Phase, string> = {
+  composing: "max-h-[calc(100%-36px-8*var(--h-step))]",
+  editing: "max-h-[calc(100%-36px-8*var(--h-step))]",
+  recording: "max-h-[52%]",
+  ai_authoring: "max-h-[52%]",
+  takeover: "max-h-[52%]",
+  running: "max-h-[52%]",
+  paused: "max-h-[52%]",
+  review: "max-h-[52%]",
+  finished: "max-h-[52%]",
+  result: "max-h-[52%]",
+};

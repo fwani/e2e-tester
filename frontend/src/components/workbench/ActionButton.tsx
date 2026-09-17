@@ -46,6 +46,7 @@ import { ACTION_LABEL } from "../../lib/wording";
 
 
 import { Button, type ButtonVariant } from "../../ui/Button";
+import { Truncate } from "../../ui/Tooltip";
 export interface ActionButtonProps {
   action: ActionId;
   capability: CapabilityState;
@@ -150,22 +151,22 @@ export function ActionButton({
         data-disabled-reason={action}
         className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
       >
-        <span
-          data-disabled-reason-text
-          title={capability.reason}
-          className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
-        >
+        {/*
+          017 T074 · layout-contract-v3 L6 — 말줄임한 사유는 **잘렸을 때만** 포인터·키보드 초점에 전문을 보인다(`Truncate`).
+          `title` 은 남긴다 — 017 전부터 마우스로 전문을 읽던 길이다. 사유 전문은 여전히 `aria-describedby` 로 버튼에 묶인다.
+        */}
+        <Truncate data-disabled-reason-text title={capability.reason}>
           {capability.reason}
-        </span>
+        </Truncate>
         {capability.remedy !== null && onRemedy !== undefined && (
-          <button
+          <Button
             type="button"
             data-remedy-for={action}
-            className="border-0 p-0 h-auto bg-transparent shadow-none text-run font-sans text-[12px] font-semibold leading-[1.4] underline cursor-pointer flex-none"
+            variant="link" layout="flex-none"
             onClick={() => onRemedy(capability.remedy!.action)}
           >
             {ACTION_LABEL[capability.remedy.action]}
-          </button>
+          </Button>
         )}
       </span>
     </span>
