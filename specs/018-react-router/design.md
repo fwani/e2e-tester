@@ -82,6 +82,10 @@ root  (미들웨어: 프로젝트 조회 1회 → setExpectedProjectRoot · erro
 | `AppShell.tsx` | 레이아웃 라우트. `Toaster` · 오류 토스트 · 가져오기 완료 알림 · `<Outlet />`. |
 | `actions.tsx` | 세션을 여는 **유일한 경로**(`startRun`·`openBrowserAt`·`openRerecord`·`openSession`)와 `pendingRun`·만들기 잠금을 context 로 낸다. |
 | `routes/*.tsx` | 라우트별 얇은 어댑터. URL 파라미터·loader 데이터를 **기존 페이지 prop 으로 옮기기만** 한다. |
+| `appStore.ts` | 화면을 넘어 사는 상태 |
+| `arrival.ts` | 실행 화면의 도착 정보 |
+| `RouteStatus.tsx` | 첫 로딩 · 루트 오류 화면 |
+| `AppRoot.tsx` | 저장소와 라우터를 잇는 뿌리 |
 
 **`paths.ts` 는 `src/lib/` 에 둔다** (구현 중 결정). 화면(`pages/*`)이 링크의 `href` 를 이것으로 얻는데,
 화면이 `app/` 을 가져오면 `app → pages → app` 으로 층이 거꾸로 선다. `react-router` 도 가져오지 않는
@@ -89,10 +93,11 @@ root  (미들웨어: 프로젝트 조회 1회 → setExpectedProjectRoot · erro
 
 **바뀐다**
 
-- `main.tsx` — `<App />` 은 그대로 그린다.
-- `App.tsx` — 800줄 본문을 지우고 **마운트 시점에** 브라우저 라우터를 만들어 `RouterProvider` 로
-  그린다(`useState(() => createBrowserRouter(routes))`). import 시점에 만들면, 주소를
-  `replaceState` 로 바꾼 **뒤에** `<App />` 을 그리는 기존 테스트가 옛 주소를 읽는다.
+- `main.tsx` — 시작할 때 `createBrowserApp()` 로 저장소와 브라우저 라우터를 **한 번** 만들어 `AppRoot` 에 넘긴다.
+- `App.tsx` — **지운다** (구현 중 결정). 뿌리는 `app/AppRoot.tsx` 다. 라우터를 컴포넌트 안에서 만들면
+  StrictMode 의 이중 마운트가 두 벌을 만들고, 버리는 시점도 애매하다. 검사는 같은 `createRoutes` 로
+  메모리 라우터를 만들어 `AppRoot` 에 넘긴다 (`tests/helpers/app.tsx`) — 주소를 `replaceState` 로 바꾸고
+  `<App />` 을 그리던 검사는 시작 주소를 직접 넘긴다.
 - `hooks/useScreenUrl.ts` — 삭제. 옛 주소 호환은 `paths.ts` 가 물려받는다.
 - `pages/*` — prop 구조를 거의 유지한다. 순수 이동만 링크로 바꾼다(§4).
 

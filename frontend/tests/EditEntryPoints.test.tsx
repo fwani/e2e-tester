@@ -5,25 +5,24 @@
  * 결과 화면의 「Step 06 고치기」가 **읽기 전용 화면**으로 데려갔다 (E-04). 이름이 「고치기」인
  * 컨트롤이 고칠 수 없는 곳으로 가는 것은 단순한 불편이 아니라 거짓 안내다.
  *
- * 화면 하나를 렌더해 문구를 보는 것으로는 이것을 잡을 수 없다. 그래서 `App` 을 통째로
+ * 화면 하나를 렌더해 문구를 보는 것으로는 이것을 잡을 수 없다. 그래서 앱을 통째로
  * 렌더해 **진입점 → 도착 화면**을 실제로 걷는다.
  */
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { App } from "../src/App";
+import { renderApp } from "./helpers/app";
 import { stubServer } from "./helpers/fakeServer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  window.history.replaceState({}, "", "/");
 });
 
 describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", () => {
   it("목록 행 메뉴의 「편집」이 편집 가능한 화면으로 데려간다 (FR-175·FR-178)", async () => {
     stubServer();
-    render(<App />);
+    renderApp("/");
     await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
 
     // 017 T056 — Radix 메뉴는 포인터 누름으로 열린다 (`TestListActions` 의 `openMenu` 주석).
@@ -39,21 +38,24 @@ describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", ()
 
   it("결과 화면의 「Step 02 고치기」가 그 Step 이 펼쳐진 편집 화면으로 간다 (FR-176·FR-180)", async () => {
     stubServer();
-    window.history.replaceState({}, "", "/?screen=result&test=TC-001");
-    render(<App />);
+    const { router } = renderApp("/tests/TC-001/result");
 
     await waitFor(() => expect(screen.getByText("Step 02 고치기")).toBeTruthy());
     act(() => screen.getByText("Step 02 고치기").click());
 
     // 편집 가능한 화면이고, Step 02 가 지목·펼쳐져 있다.
     await waitFor(() => expect(screen.getByText("변경 저장")).toBeTruthy());
-    expect(screen.getByText("dashboard-open")).toBeTruthy();
+    // 펼침은 정의를 읽은 뒤에 그려진다 — 기다려서 본다 (전체 실행 부하에서 한 박자 늦던 간헐 실패).
+    expect(await screen.findByText("dashboard-open")).toBeTruthy();
     expect(screen.getByLabelText("Step 대기 시간 (ms)")).toBeTruthy();
+    // 006 FR-181 — 지목이 주소에 실린다. 새로 고쳐도 고치러 온 Step 을 잃지 않는다.
+    expect(router.state.location.pathname).toBe("/tests/TC-001/edit");
+    expect(router.state.location.search).toBe("?step=step-02");
   });
 
   it("편집 화면에 「정의 보기」 같은 읽기 전용 도착지가 없다 (FR-177)", async () => {
     stubServer();
-    render(<App />);
+    renderApp("/");
     await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
 
     // 017 T056 — Radix 메뉴는 포인터 누름으로 열린다 (`TestListActions` 의 `openMenu` 주석).
@@ -71,8 +73,7 @@ describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", ()
 describe("편집 → 저장 → 재실행 한 바퀴 (US2 · SC-303)", () => {
   it("고쳐 저장한 뒤 그 자리에서 「Step 02부터 실행」을 건다", async () => {
     const calls = stubServer();
-    window.history.replaceState({}, "", "/?screen=result&test=TC-001");
-    render(<App />);
+    renderApp("/tests/TC-001/result");
 
     await waitFor(() => expect(screen.getByText("Step 02 고치기")).toBeTruthy());
     act(() => screen.getByText("Step 02 고치기").click());
@@ -102,8 +103,7 @@ describe("편집 → 저장 → 재실행 한 바퀴 (US2 · SC-303)", () => {
 describe("브라우저 편집 세션 (US3 · FR-200·FR-201 · SC-305)", () => {
   it("「브라우저 열어 Step 02 에서 멈추기」가 pause_before_index 로 세션을 만든다", async () => {
     const calls = stubServer();
-    window.history.replaceState({}, "", "/?screen=definition&test=TC-001&step=step-02");
-    render(<App />);
+    renderApp("/tests/TC-001/edit?step=step-02");
 
     await waitFor(() =>
       expect(screen.getByText("브라우저 열어 Step 02 에서 멈추기")).toBeTruthy(),
@@ -125,8 +125,7 @@ describe("브라우저 편집 세션 (US3 · FR-200·FR-201 · SC-305)", () => {
 
   it("주소가 지목한 Step 을 새로고침 뒤에도 펼친다 (FR-181)", async () => {
     stubServer();
-    window.history.replaceState({}, "", "/?screen=definition&test=TC-001&step=step-02");
-    render(<App />);
+    renderApp("/tests/TC-001/edit?step=step-02");
 
     await waitFor(() => expect(screen.getByText("dashboard-open")).toBeTruthy());
   });
