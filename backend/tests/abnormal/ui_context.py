@@ -315,6 +315,28 @@ class UiContext:
     async def click(self, page: Page, name: str, timeout_ms: int = ACT_TIMEOUT_MS) -> None:
         await page.get_by_role("button", name=name, exact=False).first.click(timeout=timeout_ms)
 
+    async def follow(self, page: Page, name: str, timeout_ms: int = ACT_TIMEOUT_MS) -> None:
+        """링크를 따라간다 (018 — 순수 이동은 `<a href>` 다).
+
+        역할이 `button` 이 아니라 `link` 다. `click` 으로 찾으면 없는 버튼을 기다리다
+        시간이 다 간다.
+        """
+        await page.get_by_role("link", name=name, exact=False).first.click(timeout=timeout_ms)
+
+    async def follow_if_present(self, page: Page, name: str, role: str = "link") -> bool:
+        """`click_if_present` 의 링크판. 행 메뉴의 링크 항목은 `role="menuitem"` 으로 찾는다.
+
+        예외로 끝내지 않는 이유는 `click_if_present` 와 같다 — 누르지 못한 것은 관측이다.
+        """
+        target = page.get_by_role(role, name=name, exact=False).first
+        if await target.count() == 0:
+            return False
+        try:
+            await target.click(timeout=3_000)
+        except PlaywrightTimeout:
+            return False
+        return True
+
     async def fill(self, page: Page, label: str, value: str) -> None:
         await page.get_by_label(label, exact=False).first.fill(value, timeout=ACT_TIMEOUT_MS)
 
@@ -526,18 +548,20 @@ class UiContext:
         (006 FR-175). 보기 전용 항목을 남기면 사용자는 다시 "고치려면 어디로 가지" 를
         묻게 되고, 그것이 006 이 없앤 E-01·E-03 이다. 편집 화면은 저장하지 않으면 아무것도
         바꾸지 않으므로 이 드라이버가 정의를 건드릴 위험은 없다.
+
+        018 부터 「편집」은 링크 항목(`<a role="menuitem">`)이다.
         """
         menu = page.get_by_role("button", name=f"{name} 추가 동작", exact=False).first
         if await menu.count() == 0:
             return False
         await menu.click(timeout=ACT_TIMEOUT_MS)
-        opened = await self.click_if_present(page, "편집")
+        opened = await self.follow_if_present(page, "편집", role="menuitem")
         await self.settle(page, ms=800)
         return opened
 
     async def open_result(self, page: Page) -> bool:
         """실패한 테스트의 결과 화면으로 들어간다. 버튼이 없으면 그 사실을 돌려준다."""
-        return await self.click_if_present(page, "결과 보기")
+        return await self.follow_if_present(page, "결과 보기")
 
     async def delete_from_list(self, page: Page, name: str) -> bool:
         """목록에서 그 테스트를 지운다. ⋮ 메뉴 → 삭제 → 확인.
@@ -559,10 +583,10 @@ class UiContext:
     async def start_session_from_ui(self, page: Page, start_url: str) -> str:
         """화면에서 녹화 세션을 시작하고 그 식별자를 얻는다.
 
-        화면에는 주소가 없다 — 상태로 화면을 고르므로 세션 화면에 URL 로 들어갈 수
-        없다. 그래서 **화면이 실제로 만든** 세션의 식별자를 응답에서 읽는다.
+        018 부터 세션 화면에도 주소가 있지만(`/sessions/:id`), 식별자는 여전히 **화면이
+        실제로 만든** 세션의 응답에서 읽는다.
         """
-        await self.click(page, "테스트 만들기")
+        await self.follow(page, "테스트 만들기")
         await self.fill(page, "시작 URL", start_url)
         async with page.expect_response(
             lambda r: r.url.rstrip("/").endswith("/api/sessions") and r.request.method == "POST",

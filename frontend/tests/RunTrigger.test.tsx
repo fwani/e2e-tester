@@ -227,7 +227,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
 
     await screen.findByText("실패한 테스트");
     expect(screen.getByRole("button", { name: "실행" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "결과 보기" })).toBeTruthy();
   });
 
   it("통과한 행에서도 「결과 보기」에 도달한다 (U-13)", async () => {
@@ -235,7 +235,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
 
     await screen.findByText("실패한 테스트");
-    expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "결과 보기" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "실행" })).toBeTruthy();
   });
 
@@ -244,7 +244,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
       vi.stubGlobal("fetch", listFetch([{ ...baseRow, outcome }]));
       const view = render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
       await screen.findByText("실패한 테스트");
-      expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: "결과 보기" })).toBeTruthy();
       expect(screen.getByRole("button", { name: "실행" })).toBeTruthy();
       view.unmount();
     }
@@ -258,7 +258,7 @@ describe("목록 행의 실행·결과 도달 (US1 · FR-130)", () => {
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
 
     await screen.findByText("실패한 테스트");
-    expect(screen.queryByRole("button", { name: "결과 보기" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "결과 보기" })).toBeNull();
   });
 
   it("실행 요청 중인 행은 「준비 중…」으로 잠긴다 (FR-129·U-11)", async () => {

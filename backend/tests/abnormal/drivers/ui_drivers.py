@@ -96,7 +96,7 @@ async def _store_a_secret_under_a_very_long_name(ctx: Any) -> Attempt:
     ctx.ensure_project()
     page = await ctx.open()
 
-    await ctx.click(page, "비밀 값")
+    await ctx.follow(page, "비밀 값")
     await ctx.fill(page, "변수 이름", LONG_NAME)
     await ctx.fill(page, "값", "무언가")
     await ctx.click(page, "봉인해 저장")
@@ -122,7 +122,7 @@ async def _generate_a_key_with_a_passphrase_the_screen_rejects(ctx: Any) -> Atte
     ctx.ensure_project()
     page = await ctx.open()
 
-    await ctx.click(page, "키 관리")
+    await ctx.follow(page, "키 관리")
     await ctx.fill(page, "암호구", "짧다")
 
     blocked = await ctx.is_disabled(page, "키 쌍 만들기")
@@ -158,7 +158,7 @@ async def _ask_the_ai_without_what_it_needs(ctx: Any) -> Attempt:
     ctx.ensure_project()
     page = await ctx.open()
 
-    await ctx.click(page, "테스트 만들기")
+    await ctx.follow(page, "테스트 만들기")
     await ctx.fill(page, "시작 URL", ctx.fixture("/login.html"))
     # 방법을 고르면 지시문 자리가 열린다 — 화면을 갈아타지 않는다 (FR-259)
     await ctx.click(page, "AI로 만들기")
@@ -406,7 +406,7 @@ async def _replace_a_key_when_there_is_none(ctx: Any) -> Attempt:
     ctx.drop_keys()
     page = await ctx.open()
 
-    await ctx.click(page, "키 관리")
+    await ctx.follow(page, "키 관리")
     await ctx.settle(page)
 
     offered = await ctx.has_button(page, "키 교체")
@@ -436,7 +436,7 @@ async def _look_at_the_screen_when_the_ai_cannot_run(ctx: Any) -> Attempt:
     ctx.ensure_project()
     page = await ctx.open()
 
-    await ctx.click(page, "테스트 만들기")
+    await ctx.follow(page, "테스트 만들기")
     await ctx.fill(page, "시작 URL", ctx.fixture("/login.html"))
     await ctx.settle(page, ms=1_500)
 
@@ -566,7 +566,7 @@ async def _leave_the_screen_before_the_save_finishes(ctx: Any) -> Attempt:
     ctx.ensure_keys()
     page = await ctx.open()
 
-    await ctx.click(page, "비밀 값")
+    await ctx.follow(page, "비밀 값")
     await ctx.fill(page, "변수 이름", "LEAVING_EARLY")
     await ctx.fill(page, "값", "떠나기 전 값")
     await ctx.click(page, "봉인해 저장")

@@ -356,12 +356,12 @@ describe("T119 목록 행은 세션의 상태를 본다 (FR-169 · N-02)", () =>
 
   it("중지 후 목록에서도 결과에 도달할 수 있다 — 세션이 남았다고 감추지 않는다", async () => {
     await renderList("review");
-    expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "결과 보기" })).toBeTruthy();
   });
 
   it("돌고 있는 동안에는 결과 버튼을 감춘다 — 낡은 결과를 지금 결과로 읽는다", async () => {
     await renderList("replaying");
-    expect(screen.queryByRole("button", { name: "결과 보기" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "결과 보기" })).toBeNull();
   });
 
   it("일시정지는 실행 중이 아니다 — 기다리면 끝난다고 읽히면 안 된다", () => {
