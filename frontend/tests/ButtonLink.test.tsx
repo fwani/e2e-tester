@@ -58,7 +58,7 @@ describe("ButtonLink — 모양은 버튼, 요소는 링크 (018 §4)", () => {
     );
     const button = screen.getByRole("button", { name: "버튼" }).className;
     const link = screen.getByRole("link", { name: "링크" }).className;
-    expect(link).toBe(`${button} box-border`);
+    expect(link).toBe(`${button} box-border text-center`);
   });
 
   it("보통 클릭은 앱 안에서 옮긴다 — 문서를 새로 열지 않는다", () => {

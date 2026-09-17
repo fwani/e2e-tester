@@ -24,7 +24,7 @@
 
 from __future__ import annotations
 
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 from tests.abnormal.ui_context import UiContext
 
@@ -64,13 +64,10 @@ async def test_result_screen_survives_a_reload(ui_context: UiContext) -> None:
     await ui_context.settle(page)
 
     # 주소가 화면을 실었는가. 이것이 없으면 새로고침이 복원할 근거 자체가 없다.
+    # 018 — 주소가 경로형이 됐다 (`/tests/{id}/result`).
     before = urlparse(page.url)
-    params_before = parse_qs(before.query)
-    assert params_before.get("screen") == ["result"], (
+    assert before.path == f"/tests/{test_id}/result", (
         f"결과 화면인데 주소가 그것을 말하지 않는다: {page.url}"
-    )
-    assert params_before.get("test") == [test_id], (
-        f"주소가 어느 테스트인지 말하지 않는다: {page.url}"
     )
 
     await page.reload(wait_until="domcontentloaded")
@@ -78,12 +75,8 @@ async def test_result_screen_survives_a_reload(ui_context: UiContext) -> None:
 
     # 1. 주소가 유지된다. `/` 로 초기화되던 것이 N-01 의 절반이다.
     after = urlparse(page.url)
-    params_after = parse_qs(after.query)
-    assert params_after.get("screen") == ["result"], (
+    assert after.path == before.path, (
         f"새로고침이 주소를 잃었다: {page.url} (이전: {before.geturl()})"
-    )
-    assert params_after.get("test") == [test_id], (
-        f"새로고침이 어느 테스트인지 잃었다: {page.url}"
     )
 
     # 2. **화면도** 유지된다. 주소만 맞고 목록이 그려지면 사용자에게는 여전히 잃은 것이다.
@@ -98,9 +91,9 @@ async def test_result_screen_survives_a_reload(ui_context: UiContext) -> None:
 
 
 async def test_reload_on_the_list_stays_on_the_list(ui_context: UiContext) -> None:
-    """목록에서 새로고침하면 목록이다 — 기본 화면에 파라미터를 남기지 않는다.
+    """목록에서 새로고침하면 목록이다 — 기본 화면에 아무것도 남기지 않는다.
 
-    복원을 넣다가 **주소에 무엇이든 남기는** 쪽으로 가면 목록이 `?screen=list` 가 되고,
+    복원을 넣다가 **주소에 무엇이든 남기는** 쪽으로 가면 목록이 `/` 가 아니게 되고,
     그때부터 사용자의 북마크와 히스토리가 지저분해진다. 이 단정이 그 방향을 막는다.
     """
     ui_context.ensure_project()
@@ -111,8 +104,9 @@ async def test_reload_on_the_list_stays_on_the_list(ui_context: UiContext) -> No
     await page.reload(wait_until="domcontentloaded")
     await ui_context.settle(page)
 
-    assert not parse_qs(urlparse(page.url).query).get("screen"), (
-        f"목록인데 주소에 화면 파라미터가 있다: {page.url}"
+    here = urlparse(page.url)
+    assert here.path == "/" and not here.query, (
+        f"목록인데 주소에 무엇이 남았다: {page.url}"
     )
     assert "테스트 만들기" in await ui_context.visible_text(page)
 
@@ -144,3 +138,30 @@ async def test_going_back_from_the_result_screen_stays_in_the_app(
     assert "테스트 만들기" in await ui_context.visible_text(page), (
         "뒤로가기 후 앱 화면이 그려지지 않았다"
     )
+
+
+async def test_an_old_screen_address_still_opens_its_screen(ui_context: UiContext) -> None:
+    """005 의 옛 주소로 열어 둔 탭이 018 뒤에도 같은 화면에 닿는다 (018 §6).
+
+    `?screen=result&test=…` 는 005~017 이 주소창에 남긴 모양이다. 사용자의 북마크와 열어 둔
+    탭에 그대로 있다. 새 주소로 **교체**되므로 뒤로 가면 옛 주소가 아니라 그 전 화면이다.
+    """
+    ui_context.ensure_project()
+    test_id = only_test(ui_context, "옛 주소로 연다")
+    page = await ui_context.open()
+    await ui_context.settle(page)
+
+    old_url = f"{ui_context.ui.base_url}/?screen=result&test={test_id}"
+    await page.goto(old_url, wait_until="domcontentloaded")
+    await ui_context.settle(page)
+
+    assert urlparse(page.url).path == f"/tests/{test_id}/result", (
+        f"옛 주소가 새 주소로 옮겨지지 않았다: {page.url}"
+    )
+    assert "SCREENSHOT" in await ui_context.visible_text(page), (
+        "옛 주소로 결과 화면이 열리지 않았다"
+    )
+
+    await page.go_back(wait_until="domcontentloaded")
+    await ui_context.settle(page)
+    assert "screen=" not in page.url, f"옛 주소가 기록에 남았다: {page.url}"

@@ -220,6 +220,10 @@ export interface ButtonLinkProps extends Omit<ComponentPropsWithRef<"a">, "class
  *
  * `box-border`: 전역 `button{}` 규칙과 브라우저 기본값이 버튼에는 `border-box` 를 주지만 `<a>` 는
  * `content-box` 다. 빠뜨리면 32px 상자가 테두리만큼 34px 가 된다. 모양 값이 아니라 상자 계산 방식이다.
+ *
+ * `text-center`: 브라우저 기본값이 `<button>` 에는 `text-align:center` 를 주지만 `<a>` 는 물려받은 값
+ * (`start`)을 쓴다. L2 대조가 찾았다 — 짧은 글자는 눈에 띄지 않지만 계산된 스타일은 다르다. 이것도 상자
+ * 계산 방식이지 새 모양 값이 아니다.
  */
 export function ButtonLink({
   href,
@@ -234,7 +238,7 @@ export function ButtonLink({
   return (
     <a
       href={href}
-      className={cn(shapeOf(variant, size), "box-border", layout)}
+      className={cn(shapeOf(variant, size), "box-border text-center", layout)}
       data-slot="button-link"
       data-variant={variant}
       data-size={size}

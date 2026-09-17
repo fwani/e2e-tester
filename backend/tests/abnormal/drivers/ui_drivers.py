@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
+from urllib.parse import urlparse
 
 from tests.abnormal.catalogue import Attempt, driver
 
@@ -309,6 +310,9 @@ async def _leave_the_session_screen_and_come_back_after_it_ended(ctx: Any) -> At
     """세션 화면을 벗어났다가 세션이 끝난 뒤 돌아온다 (AP-023·AS-026).
 
     거부할 일이 아니다. **옛 상태로 멈춰 있지 않고 지금 상태를 보여 주어야** 한다.
+
+    018 부터 새로 고침이 세션 화면을 주소로 되살리므로 그 화면 자체가 돌아갈 길이다;
+    「녹화 중지」 단추가 「녹화 중」 부분 문자열에 걸리지 않도록 국면 표식으로 본다.
     """
     ctx.ensure_project()
     page = await ctx.open()
@@ -324,9 +328,18 @@ async def _leave_the_session_screen_and_come_back_after_it_ended(ctx: Any) -> At
     # 기록이 아직 읽히는가. 그리고 화면이 **그 세션으로 돌아갈 길**을 주는가 —
     # 돌아갈 길이 없으면 기록은 서버에만 남고 사용자에게는 사라진 것과 같다.
     steps_kept = ctx.step_count(session_id) >= 0
-    way_back = "이어서 보기" in text or "진행 중인 세션" in text
-    # 끝난 세션인데 "녹화 중" 으로 보이면 옛 상태에 멈춘 것이다.
-    stale = "녹화 중" in text
+    # 018 — 새로 고침이 `/sessions/{id}` 자체를 되살리므로, 그 화면에 있는 것 자체가
+    # 돌아갈 길이다. 옛 목록 배너(005~017)는 지금은 뜨지 않는다 (design §3.3).
+    on_session = urlparse(page.url).path == f"/sessions/{session_id}"
+    way_back = on_session or "이어서 보기" in text or "진행 중인 세션" in text
+    if on_session:
+        # 국면 표식으로 본다 — 화면 전체 문자열에는 「녹화 중지」 단추 라벨이 섞여 있어
+        # "녹화 중" 부분 문자열이 그 단추에도 걸린다.
+        pill = (await page.locator("[data-phase-pill]").first.inner_text()).strip()
+        stale = pill == "녹화 중"
+    else:
+        # 끝난 세션인데 목록 배너 문구 근처에 "녹화 중" 으로 보이면 옛 상태에 멈춘 것이다.
+        stale = "녹화 중" in text
     return await ctx.from_screen(
         page,
         rejected=False,

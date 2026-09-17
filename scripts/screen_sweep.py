@@ -288,24 +288,24 @@ SCENARIOS: list[dict] = [
      "steps": [("click_role", "button", "로그인이 된다 추가 동작")],
      "evidence": [("css", "[data-row-menu-item]")]},
     {"name": "test-create", "phase": OPEN, "policy": "data",
-     "steps": [("click_role", "button", "테스트 만들기")], "evidence": [("css", "[data-phase-pill]")],
+     "steps": [("click_role", "link", "테스트 만들기")], "evidence": [("css", "[data-phase-pill]")],
      "measure": "compose", "expect": {"nlInputWidth": (">=", 240)}},
     {"name": "secrets", "phase": OPEN, "policy": "form",
-     "steps": [("click_role", "button", "비밀 값")], "evidence": [("url", "screen=secrets")]},
+     "steps": [("click_role", "link", "비밀 값")], "evidence": [("url", "/secrets")]},
     {"name": "keys", "phase": OPEN, "policy": "form",
-     "steps": [("click_role", "button", "키 관리")], "evidence": [("url", "screen=keys")]},
-    {"name": "result-pass", "phase": OPEN, "policy": "data", "query": "?screen=result&test=TC-001",
+     "steps": [("click_role", "link", "키 관리")], "evidence": [("url", "/keys")]},
+    {"name": "result-pass", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/result",
      "evidence": [("css", "[data-phase-pill]")]},
-    {"name": "result-fail", "phase": OPEN, "policy": "data", "query": "?screen=result&test=TC-003",
+    {"name": "result-fail", "phase": OPEN, "policy": "data", "path": "/tests/TC-003/result",
      "evidence": [("css", "[data-phase-pill]"), ("text", "요소를 찾을 수 없습니다")]},
-    {"name": "edit", "phase": OPEN, "policy": "data", "query": "?screen=definition&test=TC-001",
+    {"name": "edit", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/edit",
      "evidence": [("css", "[data-phase-pill]"), ("count", "[data-step-row]", 17)],
      "measure": "stepRows", "expect": {"stepRowsVisible": (">=", 8)}},
-    {"name": "edit-long-name", "phase": OPEN, "policy": "data", "query": "?screen=definition&test=TC-002",
+    {"name": "edit-long-name", "phase": OPEN, "policy": "data", "path": "/tests/TC-002/edit",
      "evidence": [("css", "[data-phase-pill]")]},
     {"name": "edit-step-detail", "phase": OPEN, "policy": "data",
-     "query": "?screen=definition&test=TC-001&step=step-02", "evidence": [("css", "[data-detail-close]")]},
-    {"name": "edit-delete-confirm", "phase": OPEN, "policy": "data", "query": "?screen=definition&test=TC-001",
+     "path": "/tests/TC-001/edit?step=step-02", "evidence": [("css", "[data-detail-close]")]},
+    {"name": "edit-delete-confirm", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/edit",
      "steps": [("check", '[data-row-action="step.toggleSelection"]', 0), ("click_role", "button", "고른 것 지우기")],
      "evidence": [("css", "[data-bulk-delete-confirm]")]},
     {"name": "test-list-session", "phase": SESSION, "policy": "data",
@@ -323,7 +323,7 @@ SCENARIOS: list[dict] = [
     # 패널 바닥)은 편집·검토 국면에만 있다 — 그래서 순회가 N-02 를 놓쳤다 (screen-sweep SW-5).
     #
     # 알림은 5초 뒤 사라지므로 **마지막에 포인터를 올려 시간을 멈춘 뒤** 잰다(`hover`).
-    {"name": "edit-notice", "phase": OPEN, "policy": "data", "query": "?screen=definition&test=TC-001",
+    {"name": "edit-notice", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/edit",
      "steps": [("check", '[data-row-action="step.toggleSelection"]', 0),
                ("click_role", "button", "고른 것 지우기"),
                ("click_css", "[data-bulk-delete-confirm-run]"),
@@ -611,7 +611,7 @@ def capture(pw, ui: str, scenarios: list[dict], viewports: list[tuple[int, int]]
                         "  constructor(url, protocols) {"
                         "   super(String(url).endsWith('/events') ? 'ws://127.0.0.1:9/events' : url, protocols); } }; })();"
                     )
-                page.goto(ui + sc.get("query", "/"), wait_until="networkidle")
+                page.goto(ui + sc.get("path", "/"), wait_until="networkidle")
                 page.wait_for_timeout(900)
                 failed = _reach(page, sc)
                 SHOTS.mkdir(parents=True, exist_ok=True)
