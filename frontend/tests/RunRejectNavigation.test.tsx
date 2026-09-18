@@ -82,21 +82,25 @@ describe("안내가 지시한 조작이 같은 자리에 있다 (FR-126 · U-01)
 
 // ─── 배선 ──────────────────────────────────────────────────────────────────
 
-const APP_SOURCE = (
-  import.meta.glob("../src/App.tsx", { query: "?raw", import: "default", eager: true }) as Record<
-    string,
-    string
-  >
-)["../src/App.tsx"];
+const raw = (path: string) =>
+  (import.meta.glob(["../src/app/AppShell.tsx", "../src/app/actions.tsx", "../src/app/router.tsx"], {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>)[path];
+
+const SHELL_SOURCE = raw("../src/app/AppShell.tsx");
+const ACTIONS_SOURCE = raw("../src/app/actions.tsx");
+const ROUTER_SOURCE = raw("../src/app/router.tsx");
 
 describe("배너가 실제로 그 버튼을 받는다", () => {
-  it("`App` 이 `error.sessionId` 로 이동 액션을 만든다", () => {
-    expect(APP_SOURCE).toContain("error.sessionId");
-    expect(APP_SOURCE).toContain("실행 중인 세션 보기");
+  it("셸이 `error.sessionId` 로 이동 액션을 만든다", () => {
+    expect(SHELL_SOURCE).toContain("error.sessionId");
+    expect(SHELL_SOURCE).toContain("실행 중인 세션 보기");
   });
 
-  it("이동은 세션을 조회해 실행 화면으로 간다 — 목록으로 튕기지 않는다", () => {
-    expect(APP_SOURCE).toMatch(/sessions\s*\n?\s*\.get\(sessionId\)/);
-    expect(APP_SOURCE).toContain('setScreen({ name: "runner", session })');
+  it("이동은 실행 화면 주소로 가고, 그 주소가 세션을 조회한다 — 목록으로 튕기지 않는다 (018 §3.5)", () => {
+    expect(ACTIONS_SOURCE).toContain("navigate(paths.session(sessionId))");
+    expect(ROUTER_SOURCE).toMatch(/sessions\.get\(/);
   });
 });

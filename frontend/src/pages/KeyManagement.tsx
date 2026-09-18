@@ -21,7 +21,8 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 
 import { DESTROY_CONFIRM, secrets, type KeyStatus } from "../api/client";
 
-import { Button } from "../ui/Button";
+import { Button, ButtonLink } from "../ui/Button";
+import { paths } from "../lib/paths";
 
 import { Chip } from "../ui/Chip";
 import { Input } from "../ui/Input";
@@ -151,9 +152,9 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         <h1 className="font-sans text-[20px] font-bold leading-[1.3] m-0">키 관리</h1>
         <span className="flex-1" />
         {onClose && (
-          <Button onClick={onClose}>
+          <ButtonLink href={paths.list()} onNavigate={onClose}>
             닫기
-          </Button>
+          </ButtonLink>
         )}
       </div>
 

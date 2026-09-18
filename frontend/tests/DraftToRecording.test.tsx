@@ -244,20 +244,20 @@ describe("요청 본문", () => {
     ]);
   });
 
-  it("App 의 AI 시작 경로가 초안 식별자를 넘긴다", async () => {
+  it("만들기 라우트의 AI 시작 경로가 초안 식별자를 넘긴다", async () => {
     /*
       **이것이 T085 를 잡는 검증이다.**
 
-      화면을 통째로 띄우는 대신 `App.tsx` 의 소스를 본다 — 초안에서 세션을 만드는 경로는
+      화면을 통째로 띄우는 대신 `만들기 라우트` 의 소스를 본다 — 초안에서 세션을 만드는 경로는
       프로젝트 열기·AI 자격 확인·세션 목록까지 엮여 있어 통합 렌더로 이 한 줄을 지키려면
       검증이 그 전부에 묶인다. 지키려는 사실은 하나다: **AI 세션 생성 본문에 초안
       식별자가 실린다.**
 
       exporter 가 `itb.secrets` 를 임포트하지 않는지 확인하는 백엔드 검증과 같은 방식이다.
     */
-    const source = await import("../src/App.tsx?raw").then((m) => m.default as string);
+    const source = await import("../src/app/routes/ComposeRoute.tsx?raw").then((m) => m.default as string);
     const aiCreate = /\.create\(\{[^}]*mode:\s*"ai"[\s\S]*?\}\)/.exec(source);
-    expect(aiCreate, "App 에 AI 세션 생성 경로가 없다").toBeTruthy();
+    expect(aiCreate, "만들기 라우트에 AI 세션 생성 경로가 없다").toBeTruthy();
     expect(aiCreate?.[0]).toContain("draft_id");
   });
 });
@@ -270,16 +270,17 @@ describe("요청 본문", () => {
  * 한다.**
  */
 describe("저장 준비", () => {
-  it("App 이 초안을 실행 화면까지 나른다", async () => {
+  it("실행 화면이 초안을 받는다 — 세션 응답이 나른다 (018 §3.3)", async () => {
     // 이름·그룹의 기본값이 되려면 SessionScreen 이 초안을 알아야 한다.
-    const source = await import("../src/App.tsx?raw").then((m) => m.default as string);
-    expect(source).toContain("draft={screen.draft ?? null}");
+    // 018 전에는 App 이 만들기 화면에서 들고 왔고, 이제는 새로 고쳐도 남는 세션 응답이 나른다.
+    const source = await import("../src/app/routes/SessionRoute.tsx?raw").then((m) => m.default as string);
+    expect(source).toContain("draft={session.draft ?? null}");
   });
 
-  it("초안의 그룹까지 함께 나른다", async () => {
+  it("세션 응답의 초안은 그룹까지 갖는다", async () => {
     // 그룹이 빠지면 저장할 때 「그룹 없음」으로 떨어진다.
-    const source = await import("../src/App.tsx?raw").then((m) => m.default as string);
-    expect(source).toContain("group_prefix: screen.draft.group_prefix");
+    const source = await import("../src/api/client.ts?raw").then((m) => m.default as string);
+    expect(source).toContain("draft?: { draft_id: string; name: string; group_prefix: string } | null;");
   });
 
   it("저장 이름이 초안 제목으로 채워진다", async () => {

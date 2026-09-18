@@ -17,12 +17,9 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  initialLocation,
-  locationToSearch,
-  searchToLocation,
-  type WorkbenchLocation,
-} from "../src/hooks/useScreenUrl";
+import { matchPath } from "react-router";
+
+import { PATTERNS, legacyPath, paths } from "../src/lib/paths";
 import { ResultView } from "../src/pages/ResultView";
 import { EditView } from "../src/pages/EditView";
 import { SessionWorkbench } from "../src/pages/SessionScreen";
@@ -145,25 +142,29 @@ describe("지목한 Step 이 사라졌을 때 (FR-243)", () => {
   });
 });
 
-describe("새로 고침이 위치를 되찾는다 (SC-006 · FR-240)", () => {
-  const ROUND_TRIP: WorkbenchLocation[] = [
-    { name: "result", testId: "TC-001", sessionId: null, stepId: STEP },
-    { name: "definition", testId: "TC-001", sessionId: null, stepId: STEP },
-    { name: "result", testId: "TC-001", sessionId: null, stepId: null },
-    { name: "definition", testId: "TC-002", sessionId: null, stepId: "st-9" },
-    { name: "runner", testId: null, sessionId: "s-1", stepId: null },
+describe("새로 고침이 위치를 되찾는다 (SC-006 · FR-240 · 018)", () => {
+  /**
+   * 018 이 주소를 경로형으로 바꿨다. 묻는 것은 그대로다 — 어느 테스트의 어느 국면에서 어느 Step 을
+   * 보고 있었나를 주소가 싣고, 되읽으면 그대로 나오는가. 되읽기는 라우트 표가 쓰는 `matchPath` 다.
+   */
+  const ROUND_TRIP: [pattern: string, url: string, params: Record<string, string>, step: string | null][] = [
+    [PATTERNS.result, paths.result("TC-001", STEP), { testId: "TC-001" }, STEP],
+    [PATTERNS.edit, paths.edit("TC-001", STEP), { testId: "TC-001" }, STEP],
+    [PATTERNS.result, paths.result("TC-001"), { testId: "TC-001" }, null],
+    [PATTERNS.edit, paths.edit("TC-002", "st-9"), { testId: "TC-002" }, "st-9"],
+    [PATTERNS.session, paths.session("s-1"), { sessionId: "s-1" }, null],
   ];
 
   it("10번 중 10번 되찾는다 — 국면·테스트·Step 이 그대로다", () => {
     let restored = 0;
     for (let i = 0; i < 10; i += 1) {
-      const at = ROUND_TRIP[i % ROUND_TRIP.length]!;
-      const back = searchToLocation(locationToSearch(at));
+      const [pattern, url, params, step] = ROUND_TRIP[i % ROUND_TRIP.length]!;
+      const at = new URL(url, "http://localhost");
+      const matched = matchPath(pattern, at.pathname);
       if (
-        back.name === at.name &&
-        (back.testId ?? null) === (at.testId ?? null) &&
-        (back.sessionId ?? null) === (at.sessionId ?? null) &&
-        (back.stepId ?? null) === (at.stepId ?? null)
+        matched !== null &&
+        JSON.stringify(matched.params) === JSON.stringify(params) &&
+        at.searchParams.get("step") === step
       ) {
         restored += 1;
       }
@@ -172,20 +173,12 @@ describe("새로 고침이 위치를 되찾는다 (SC-006 · FR-240)", () => {
   });
 
   it("결과 국면의 지목도 주소에 실린다 — 007 이 넓힌 자리다", () => {
-    expect(locationToSearch({ name: "result", testId: "TC-001", stepId: STEP })).toBe(
-      `?screen=result&test=TC-001&step=${STEP}`,
-    );
+    expect(paths.result("TC-001", STEP)).toBe(`/tests/TC-001/result?step=${STEP}`);
   });
 
-  it("최초 로드가 주소의 위치를 읽는다", () => {
-    const url = `${window.location.pathname}?screen=result&test=TC-001&step=${STEP}`;
-    window.history.replaceState({}, "", url);
-    expect(initialLocation()).toEqual({
-      name: "result",
-      testId: "TC-001",
-      sessionId: null,
-      stepId: STEP,
-    });
-    window.history.replaceState({}, "", window.location.pathname);
+  it("옛 주소로 열어 둔 탭도 같은 위치로 간다", () => {
+    expect(legacyPath(`?screen=result&test=TC-001&step=${STEP}`)).toBe(
+      `/tests/TC-001/result?step=${STEP}`,
+    );
   });
 });

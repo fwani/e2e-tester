@@ -68,15 +68,16 @@ import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/des
 import { Toast } from "../ui/Toast";
 import { isRunning } from "../lib/sessionState";
 import { EDIT_ENTRY_LABEL, outcomeChip, outcomeLabel, stepLabel } from "../lib/wording";
+import { paths } from "../lib/paths";
 import { chipTone, rowMark } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
-import { Button } from "../ui/Button";
+import { Button, ButtonLink } from "../ui/Button";
 import { Chip, Pill } from "../ui/Chip";
 import { rowClasses } from "../ui/Table";
 import { Field } from "../ui/Field";
 import { Checkbox } from "../ui/Checkbox";
-import { Menu, MenuContent, MenuItem, MenuTrigger } from "../ui/DropdownMenu";
+import { Menu, MenuContent, MenuItem, MenuLinkItem, MenuTrigger } from "../ui/DropdownMenu";
 import { Input } from "../ui/Input";
 import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
 import { ToggleGroup, ToggleGroupItem } from "../ui/ToggleGroup";
@@ -515,22 +516,22 @@ export function TestList({
             (DC-010).
           */}
           {onOpenProjects && (
-            <Button variant="nav" onClick={onOpenProjects}>
+            <ButtonLink variant="nav" href={paths.projects()} onNavigate={onOpenProjects}>
               바꾸기
-            </Button>
+            </ButtonLink>
           )}
         </div>
         <div className="flex-1" />
         {/* 확정 디자인에 없는 화면들의 진입점. 눈에 띄지 않게 둔다 (DC-010). */}
         {onOpenSecrets && (
-          <Button variant="nav" onClick={onOpenSecrets}>
+          <ButtonLink variant="nav" href={paths.secrets()} onNavigate={onOpenSecrets}>
             비밀 값
-          </Button>
+          </ButtonLink>
         )}
         {onOpenKeys && (
-          <Button variant="nav" onClick={onOpenKeys}>
+          <ButtonLink variant="nav" href={paths.keys()} onNavigate={onOpenKeys}>
             키 관리
-          </Button>
+          </ButtonLink>
         )}
         <HeaderDivider />
         {/*
@@ -538,12 +539,12 @@ export function TestList({
           「결과 보기」·「실행 화면 보기」가 전부 잉크로 채워져 있어서 무엇이 주 동작인지
           화면이 말하지 못했다. 채움은 여기 하나이고 나머지는 중립이다.
         */}
-        <Button variant="primary" onClick={onCreate}>
+        <ButtonLink variant="primary" href={paths.compose()} onNavigate={onCreate}>
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9">
             <path d="M7 2.4v9.2M2.4 7h9.2" />
           </svg>
           테스트 만들기
-        </Button>
+        </ButtonLink>
       </HeaderBar>
         </>
       }
@@ -1297,9 +1298,9 @@ function Row({
           방금 남은 결과에 도달할 길이 없었다 (U-13 의 재발).
         */}
         {hasResult && !live && (
-          <Button size="sm" onClick={onOpenResult}>
+          <ButtonLink size="sm" href={paths.result(row.id)} onNavigate={onOpenResult}>
             결과 보기
-          </Button>
+          </ButtonLink>
         )}
         <Button size="sm" variant={runPending ? "off" : "default"} onClick={onRun} disabled={runPending}>
           {!runPending && (
@@ -1370,9 +1371,9 @@ function Row({
               들어가도 안전하다.
             */}
             {onOpenDefinition && (
-              <MenuItem data-row-menu-item onClick={onOpenDefinition}>
+              <MenuLinkItem data-row-menu-item href={paths.edit(row.id)} onNavigate={onOpenDefinition}>
                 {EDIT_ENTRY_LABEL}
-              </MenuItem>
+              </MenuLinkItem>
             )}
             <MenuItem
               data-row-menu-item
