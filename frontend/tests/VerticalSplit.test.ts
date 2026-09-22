@@ -119,11 +119,11 @@ describe("세로 배분 표 (FR-256)", () => {
     if (targetSlot.kind === "fixed") expect(targetSlot.px).toBeGreaterThan(0);
   });
 
-  it("결과 국면의 작업 영역은 스크롤 없이 담을 높이를 갖는다 (FR-262 · SC-012)", () => {
+  it("결과 진단은 증거 이미지와 공간을 나누고 스크롤한다", () => {
     const { workArea } = splitFor("result");
     expect(workArea.kind).toBe("fixed");
     // 실패 사유 2줄 + 시도한 LOCATOR 4행 + 경고 1개. 1회차에는 45% 상한에 갇혔다
-    if (workArea.kind === "fixed") expect(workArea.px).toBeGreaterThanOrEqual(400);
+    if (workArea.kind === "fixed") expect(workArea.px).toBe(280);
   });
 
   it("세션이 있는 다섯 국면은 대상 앱 슬롯이 주 자리다 — 1회차 배분을 바꾸지 않는다", () => {

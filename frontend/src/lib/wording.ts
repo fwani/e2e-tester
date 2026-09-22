@@ -37,19 +37,19 @@ export function outcomeLabel(outcome: Outcome | null | undefined): string {
   }
 }
 
-/** 칩에 쓰는 기술 라벨. 확정 디자인이 대문자 칩을 쓰므로 유지한다 (ui-contract §1-2). */
+/** 목록·결과의 배지는 같은 한국어 상태를 사용한다 (2026-09 가시성 개선). */
 export function outcomeChip(outcome: Outcome | null | undefined): string {
   switch (outcome) {
     case "pass":
-      return "PASS";
+      return "통과";
     case "fail":
-      return "FAIL";
+      return "실패";
     case "stopped":
-      return "STOPPED";
+      return "중지";
     case "partial_pass":
-      return "PARTIAL";
+      return "부분 성공";
     default:
-      return outcome == null ? "—" : "FAIL";
+      return outcome == null ? "—" : "실패";
   }
 }
 

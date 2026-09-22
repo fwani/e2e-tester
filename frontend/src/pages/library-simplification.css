@@ -1,0 +1,27 @@
+/* One working surface: search, narrow the list, then act on a test. */
+.test-library.library-simple { display: flex; flex-direction: column; gap: 22px; }
+.library-simple .library-heading { padding-bottom: 0; margin: 0; min-height: 38px; align-items: center; border: 0; }
+.library-simple .library-content { flex: 1; min-height: 0; gap: 16px; }
+.library-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.library-search { flex: 1 1 240px; min-width: 220px; max-width: 400px; }
+.library-group-control { display: flex; align-items: center; gap: 4px; }
+.library-group-control [data-slot="native-select"] { max-width: 200px; height: 34px; margin: 0; text-overflow: ellipsis; }
+.library-group-panel p { margin: 0; font-size: var(--type-label); color: var(--ink-3); }
+.library-group-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.library-group-panel [data-group-disband-confirm] { flex-wrap: wrap; line-height: 1.6; }
+.library-group-panel [data-group-disband-confirm] > span { flex: 1 0 100%; line-height: 1.6; }
+.library-simple .library-content [aria-label="결말로 거르기"] { order: 0; flex: none; padding: 0; border: 0; gap: 0; margin-left: auto; }
+.library-simple .library-content [aria-label="결말로 거르기"] [data-slot="toggle-group-item"] { min-width: 60px; min-height: 34px; padding-inline: 8px; gap: 8px; }
+.library-simple [data-test-row] { min-height: 70px; }
+.library-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--ink-3); font-size: var(--type-meta); line-height: 1.5; }
+.library-row-meta > span + span::before { content: "·"; margin-right: 10px; }
+.library-row-result { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.library-row-result > span:not([data-slot="chip"]) { color: var(--ink-3); font-size: var(--type-meta); line-height: 1.5; }
+@media (max-width: 1399px) {
+  .library-simple .library-content [aria-label="결말로 거르기"] { margin-left: 0; }
+  .library-search { max-width: none; }
+}
+.library-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; flex: 1; min-height: 280px; padding: 40px 24px; text-align: center; }
+.library-empty h2 { margin: 0; font-size: var(--type-view); font-weight: 500; }
+.library-empty p { margin: 0; font-size: var(--type-body); line-height: 1.6; color: var(--ink-2); }
+.library-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }

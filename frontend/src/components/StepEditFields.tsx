@@ -91,7 +91,7 @@ export function StepEditFields({
             />
           </label>
           {valueIsSecret && (
-            <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1 mr-0 mb-0 ml-[100px]">
+            <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mr-0 mb-0 ml-[100px]">
               {SENSITIVE_VALUE_NOTICE}
             </p>
           )}
@@ -150,7 +150,7 @@ export function StepEditFields({
               }
             }}
           />
-          <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
+          <span className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">
             ms
           </span>
         </span>

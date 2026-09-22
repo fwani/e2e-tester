@@ -164,7 +164,7 @@ export function ErrorNotice({
     >
       {!compact && (
         <div
-          className={`font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase ${tone.ink}`}
+          className={`font-mono text-[12px] font-semibold leading-none tracking-[.08em] uppercase ${tone.ink}`}
         >
           {tone.label}
         </div>
@@ -173,13 +173,13 @@ export function ErrorNotice({
         data-error-message
         // `.notice-body` + 줄바꿈 보존. 아주 긴 입력이 그대로 되돌아와도 화면을
         // 밀어내지 않는다 (AP-015) — `break-anywhere` 가 그 몫이다.
-        className="font-sans text-[13px] font-semibold leading-[1.5] whitespace-pre-wrap [overflow-wrap:anywhere]"
+        className="font-sans text-[14px] font-semibold leading-[1.5] whitespace-pre-wrap [overflow-wrap:anywhere]"
       >
         {error.message}
       </div>
       <div
         data-error-next-action
-        className="font-sans text-[13px] leading-[1.4] font-normal text-ink-2 [overflow-wrap:anywhere]"
+        className="font-sans text-[14px] leading-[1.4] font-normal text-ink-2 [overflow-wrap:anywhere]"
       >
         {error.nextAction}
       </div>

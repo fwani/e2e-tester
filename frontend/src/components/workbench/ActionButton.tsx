@@ -149,7 +149,7 @@ export function ActionButton({
       <span
         id={reasonId}
         data-disabled-reason={action}
-        className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
+        className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
       >
         {/*
           017 T074 · layout-contract-v3 L6 — 말줄임한 사유는 **잘렸을 때만** 포인터·키보드 초점에 전문을 보인다(`Truncate`).

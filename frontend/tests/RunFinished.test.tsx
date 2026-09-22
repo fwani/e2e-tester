@@ -51,6 +51,7 @@ describe("실행 종료 표시", () => {
   it("실행 중에는 결과로 가는 길이 아직 열리지 않는다", () => {
     render(<SessionWorkbench {...props()} />);
     // 감추지 않고 **비활성으로 남긴다** — 감추면 사용자는 그런 길이 없는 줄 안다.
+    fireEvent.click(screen.getByRole("button", { name: "화면 메뉴" }));
     expect(button("결과 자세히 보기").disabled).toBe(true);
     expect(document.querySelector("[data-disabled-reason='result.show']")).not.toBeNull();
   });
@@ -79,8 +80,10 @@ describe("실행 종료 표시", () => {
     // 이유가 있어야 한다 — 빨간 ✕ 만으로는 "1분 안에 원인 파악" 이 성립하지 않는다.
     expect(screen.getByText(/민감 변수를 복호화할 수 없습니다/)).toBeTruthy();
 
+    fireEvent.click(screen.getByRole("button", { name: "화면 메뉴" }));
     fireEvent.click(button("결과 자세히 보기"));
     fireEvent.click(button("Step 01부터 실행"));
+    fireEvent.click(screen.getByRole("button", { name: "화면 메뉴" }));
     fireEvent.click(button("목록으로"));
     expect(onShowResult).toHaveBeenCalledTimes(1);
     expect(onRerunFrom).toHaveBeenCalledWith(0);

@@ -61,8 +61,8 @@ describe("앱이 들이는 정본 (T075 · SC-007)", () => {
 
   it("화면이 서려면 있어야 하는 것이 들어 있다", () => {
     // 변수가 없으면 Tailwind 테마가 통째로 빈다.
-    expect(app, "정본 변수가 없다").toMatch(/--ink:\s*#14171C/);
-    expect(app, "치수 토큰이 없다").toMatch(/--h-control:\s*32px/);
+    expect(app, "정본 변수가 없다").toMatch(/--ink:\s*#162C38/);
+    expect(app, "치수 토큰이 없다").toMatch(/--h-control:\s*36px/);
     // 요소 규칙 — 맨 `<button>` 과 입력칸의 모양이 여기서 온다.
     expect(app, "button 요소 규칙이 없다").toMatch(/\bbutton\s*\{/);
     expect(app, "입력칸 요소 규칙이 없다").toMatch(/input,\s*select,\s*textarea\s*\{/);

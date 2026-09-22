@@ -63,7 +63,7 @@ export const tableVariants = cva("border-collapse", {
       grid: "w-full [&_th]:py-[6px] [&_th]:px-s2 [&_td]:py-[6px] [&_td]:px-s2",
       // 정본 `.why{font:400 11px/1.4 sans;color:--ink-3}` 글자의 작은 표본. 폭은 내용만큼이다 — 칸 안에 놓인다.
       compact:
-        "[&_td]:py-[2px] [&_td]:px-[6px] [&_td]:font-sans [&_td]:text-[11px] [&_td]:leading-[1.4] [&_td]:text-ink-3",
+        "[&_td]:py-[2px] [&_td]:px-[6px] [&_td]:font-sans [&_td]:text-[12px] [&_td]:leading-[1.4] [&_td]:text-ink-3",
     },
   },
   defaultVariants: { variant: "grid" },
@@ -148,7 +148,7 @@ export type TableAlign = "left" | "right";
  * 여백은 표의 `variant` 가 정한다.
  */
 export const tableHeadVariants = cva(
-  "align-middle font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 whitespace-nowrap",
+  "align-middle font-sans text-[12px] font-semibold leading-[1.4] text-ink-2 whitespace-nowrap",
   {
     variants: { align: { left: "text-left", right: "text-right" } },
     defaultVariants: { align: "left" },
@@ -205,6 +205,7 @@ const MARK: Record<RowMark, string> = {
 };
 
 /**
+ * 2026-09 가시성 개선: 테스트 행은 최소 64px, 이름과 실패 요약 두 줄을 수용한다.
  * 격자 행 껍데기의 클래스 — 테스트 목록의 행은 `<div>` 격자다 (열 폭을 `grid-template-columns` 로 정하므로 표
  * 요소를 쓸 수 없다). 그 행이 자기 힘으로 같은 모양을 조립하면 같은 종류의 행이 두 모습을 갖는다 (SC-010).
  *
@@ -215,7 +216,7 @@ export function rowClasses(mark: RowMark = "none"): string {
   // **위·오른쪽 폭을 0 으로 못 박는다.** `border-solid` 는 네 변 전부에 선 종류를 주는데, 폭을 지정하지 않은
   // 변은 초기값 `medium`(3px)을 받는다 — 이것을 빠뜨리면 모든 행이 위·오른쪽에 3px 회색 선을 얻는다 (015 L2).
   return (
-    "h-[44px] items-center border-b border-hair border-solid border-t-0 border-r-0 " +
+    "min-h-[64px] items-center border-b border-hair border-solid border-t-0 border-r-0 " +
     `border-l-[length:var(--mark)] ${MARK[mark]}`
   );
 }

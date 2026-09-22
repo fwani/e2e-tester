@@ -99,7 +99,7 @@ describe("선택 화면에서 되돌아갈 수 있다", () => {
 
   it("첫 화면에는 돌아가는 길이 없다 — 돌아갈 곳이 없다", async () => {
     render(<ProjectSetup onOpened={noop} />);
-    await waitFor(() => expect(screen.getByText("프로젝트")).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "프로젝트 선택" })).toBeTruthy());
     expect(screen.queryByRole("button", { name: "돌아가기" })).toBeNull();
   });
 });

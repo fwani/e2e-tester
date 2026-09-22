@@ -125,6 +125,7 @@ describe("ProjectSetup — 접근 불가 항목 (DR-009)", () => {
     vi.stubGlobal("fetch", stubFetch({ "/api/project/list": { projects: [gone], warning: null } }));
     render(<ProjectSetup onOpened={() => {}} />);
 
+    fireEvent.click(await screen.findByText("관리", { selector: "button" }));
     const button = await screen.findByText("목록에서 치우기");
     expect(button.getAttribute("title")).toContain("디스크의 파일은 지우지 않습니다");
   });

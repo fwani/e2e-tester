@@ -108,7 +108,7 @@ async function renderPhase(phase: Phase) {
       />,
     );
     await waitFor(() =>
-      expect(document.querySelector("[data-workbench-step-panel]")).not.toBeNull(),
+      expect(document.querySelector("[data-compose-start]")).not.toBeNull(),
     );
     return;
   }

@@ -1,3 +1,4 @@
+import { revealTool } from "./helpers/toolPanel";
 /**
  * 011 T037 — **녹화와 지시문이 대등하다** (UC-011-23·24·25 · FR-374~FR-379).
  *
@@ -145,6 +146,7 @@ describe("UC-011-24 — 기존 「저장하고 열기」가 그대로 걸린다"
 
     // 이름을 고쳐 저장하지 않은 변경을 만든다.
     const name = document.querySelector('[data-action="test.rename"]') as HTMLInputElement;
+    await revealTool(name);
     await user.type(name, "!");
 
     await waitFor(() => {
@@ -156,7 +158,9 @@ describe("UC-011-24 — 기존 「저장하고 열기」가 그대로 걸린다"
     const user = userEvent.setup();
     await renderEdit();
     const name = document.querySelector('[data-action="test.rename"]') as HTMLInputElement;
+    await revealTool(name);
     await user.type(name, "!");
+    await revealTool(btn("step.recordStart")!);
     await user.click(btn("step.recordStart")!);
     /*
       기존 경로는 **먼저 저장한 뒤** 연다 (006 FR-203). 확인을 겹침 대화상자로 다시 묻지
@@ -196,6 +200,7 @@ describe("FR-386 — 편집의 복수 삭제는 되돌릴 수 있다", () => {
       'button[data-action="step.deleteSelected"]',
     ) as HTMLButtonElement;
     await waitFor(() => expect(del.disabled).toBe(false));
+    await revealTool(del);
     await user.click(del);
 
     await waitFor(() =>
@@ -217,7 +222,9 @@ describe("FR-374a·FR-375 — 지시문이 목표 자리와 함께 실려 나간
     await renderEdit({ onOpenBrowserAt });
 
     const nlInput = screen.getByLabelText("자연어로 Step 추가");
+    await revealTool(nlInput);
     await user.type(nlInput, "장바구니에 담아");
+    await revealTool(btn("step.addNaturalLanguage")!);
     await user.click(btn("step.addNaturalLanguage")!);
 
     await waitFor(() => expect(onOpenBrowserAt).toHaveBeenCalled());
@@ -240,7 +247,10 @@ describe("FR-374a·FR-375 — 지시문이 목표 자리와 함께 실려 나간
     const onOpenBrowserAt = vi.fn();
     await renderEdit({ onOpenBrowserAt });
 
+    await revealTool(screen.getByLabelText("자연어로 Step 추가"));
+
     await user.type(screen.getByLabelText("자연어로 Step 추가"), "장바구니에 담아");
+    await revealTool(btn("step.addNaturalLanguage")!);
     await user.click(btn("step.addNaturalLanguage")!);
 
     await waitFor(() => expect(onOpenBrowserAt).toHaveBeenCalled());
@@ -257,6 +267,8 @@ describe("FR-374a·FR-375 — 지시문이 목표 자리와 함께 실려 나간
     const user = userEvent.setup();
     const onOpenBrowserAt = vi.fn();
     await renderEdit({ onOpenBrowserAt });
+
+    await revealTool(btn("step.recordStart")!);
 
     await user.click(btn("step.recordStart")!);
     await waitFor(() => expect(onOpenBrowserAt).toHaveBeenCalled());
@@ -308,9 +320,12 @@ describe("FR-374a·FR-375 — 지시문이 목표 자리와 함께 실려 나간
 
     // 저장하지 않은 변경을 만든 뒤 지시문으로 더하기를 누른다.
     const name = document.querySelector('[data-action="test.rename"]') as HTMLInputElement;
+    await revealTool(name);
     await user.type(name, "!");
     const nlInput = screen.getByLabelText("자연어로 Step 추가");
+    await revealTool(nlInput);
     await user.type(nlInput, "장바구니에 담아");
+    await revealTool(btn("step.addNaturalLanguage")!);
     await user.click(btn("step.addNaturalLanguage")!);
 
     await waitFor(() => expect(document.body.textContent).toContain("저장 실패"));
@@ -321,6 +336,8 @@ describe("FR-374a·FR-375 — 지시문이 목표 자리와 함께 실려 나간
     const user = userEvent.setup();
     const onOpenBrowserAt = vi.fn();
     await renderEdit({ onOpenBrowserAt });
+
+    await revealTool(btn("step.addNaturalLanguage")!);
 
     await user.click(btn("step.addNaturalLanguage")!);
     expect(onOpenBrowserAt, "빈 지시문으로 브라우저를 열었다").not.toHaveBeenCalled();

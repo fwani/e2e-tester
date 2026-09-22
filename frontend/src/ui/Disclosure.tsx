@@ -35,9 +35,9 @@ export const disclosureSummaryVariants = cva(
   {
     variants: {
       tone: {
-        quiet: "font-sans text-[11px] leading-[1.4] font-normal text-ink-3",
-        strong: "font-sans text-[13px] font-semibold leading-none text-ink",
-        action: "h-[28px] px-[10px] rounded-base font-sans text-[13px] font-medium leading-none text-ink-2 hover:bg-sunken",
+        quiet: "font-sans text-[12px] leading-[1.4] font-normal text-ink-3",
+        strong: "font-sans text-[14px] font-semibold leading-none text-ink",
+        action: "h-[28px] px-[10px] rounded-base font-sans text-[14px] font-medium leading-none text-ink-2 hover:bg-sunken",
       },
     },
     defaultVariants: { tone: "quiet" },

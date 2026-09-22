@@ -9,7 +9,7 @@
  *
  * 1. 네 내용(미러·산출물·브라우저 열기·빈 상태)이 **같은 자리**를 쓴다
  * 2. 비어 있으면 **왜 비었는지** 넷을 구별해 말한다 (FR-245 · 005 U-22)
- * 3. 고를 수 없는 산출물을 **감추지 않고** 이유를 붙여 남긴다 (FR-246 · DC-007)
+ * 3. 실제 제공되는 산출물만 노출하고, 지원되는 종류의 전환 동작을 보존한다
  * 4. **자리는 국면과 무관하게 같고, 높이만 국면이 정한다** (2회차 · FR-256·FR-218c)
  *
  * ## 4번이 2회차에 바뀐 것이다
@@ -21,6 +21,7 @@
  * 국면별 차이를 나눠 센다.
  */
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Workbench } from "../src/components/workbench/Workbench";
@@ -121,11 +122,11 @@ describe("네 내용이 같은 자리를 쓴다 (FR-244 · S-11 해소)", () => 
     view.unmount();
   });
 
-  it("Step 패널보다 앞에 온다 — 좌우 배치가 국면과 무관하다", () => {
+  it("Step 패널 뒤에 온다 — 좌우 배치가 국면과 무관하다", () => {
     show(ALL_TARGETS[1]!);
     const pane = el("[data-workbench-target]")!;
     const panel = el("[data-workbench-step-panel]")!;
-    expect(pane.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(panel.compareDocumentPosition(pane) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 
@@ -181,35 +182,27 @@ describe("산출물 고르기는 이 영역 안에 있다 (T078 · FR-246 · DC-
     expect(pane.contains(picker)).toBe(true);
   });
 
-  it("지원되지 않는 종류를 감추지 않고 비활성으로 남긴다", () => {
+  it("제공되는 산출물만 노출하고 불필요한 미지원 안내를 만들지 않는다", () => {
     show(artifacts);
-    const trace = el("[data-artifact-tab='trace']") as HTMLButtonElement;
-    expect(trace, "확정 디자인에 있는 탭을 뺐다 (DC-007)").not.toBeNull();
-    /*
-      **판정 방법만 옮겼다** (T106 · test-ledger 09-16). 새 갈래의 탭은 네이티브 `disabled` 를 걸지 않고
-      `aria-disabled="true"` + `data-disabled` + `tabindex="-1"` 로 말한다 — 조작을 **초점에서 빼지 않아**
-      사유를 읽을 수 있게 두는 방식이고, 이 저장소의 규칙(FR-006·FR-014 — 비활성은 포인터를 막지 않고
-      사유를 보여 준다)과 같은 방향이다. **누름은 실제로 막힌다**(실측: 눌러도 `onValueChange` 0회).
-      묻는 것은 그대로다: 지원되지 않는 산출물을 **감추지 않고 비활성으로** 남기는가 (FR-246 · DC-007).
-    */
-    expect(trace.getAttribute("aria-disabled"), "TRACE 탭이 비활성이 아니다").toBe("true");
-    // 고를 수 있는 것은 그대로 눌린다 — **여기도 같은 통로로 물어야** 헛되이 통과하지 않는다
-    // (네이티브 `.disabled` 는 이제 비활성 탭에서도 `false` 라 그것으로는 아무것도 가려내지 못한다).
-    expect(
-      (el("[data-artifact-tab='console']") as HTMLButtonElement).getAttribute("aria-disabled"),
-      "고를 수 있는 탭까지 비활성이 됐다",
-    ).toBe("false");
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "SCREENSHOT", "CONSOLE", "NETWORK",
+    ]);
+    expect(el("[data-artifact-tab='trace']")).toBeNull();
+    expect(el("[data-disabled-reason='artifact.select']")).toBeNull();
   });
 
-  it("왜 못 고르는지 화면에도 적는다 — `title` 만 두지 않는다 (005 FR-172)", () => {
-    show(artifacts);
-    const reason = el("[data-disabled-reason='artifact.select']");
-    expect(reason, "이유가 마우스를 올려야만 보인다").not.toBeNull();
-    expect(reason!.textContent).toContain("TRACE");
+  it("제공되는 산출물로 전환하면 해당 종류를 전달한다", async () => {
+    const onSelectArtifact = vi.fn();
+    render(<Workbench model={workbenchModel("result", { target: artifacts })}
+      phaseActions={null} onSelectStep={vi.fn()} onCloseDetail={vi.fn()}
+      onSelectArtifact={onSelectArtifact} />);
+    await userEvent.click(screen.getByRole("tab", { name: "CONSOLE" }));
+    expect(onSelectArtifact).toHaveBeenCalledWith("console");
   });
 
-  it("전부 고를 수 있으면 이유를 쓰지 않는다 — 없는 문제를 말하지 않는다", () => {
+  it("TRACE도 실제로 제공되면 선택 목록에 포함한다", () => {
     show({ ...artifacts, available: ["screenshot", "console", "network", "trace"] });
+    expect(screen.getByRole("tab", { name: "TRACE" })).toBeTruthy();
     expect(el("[data-disabled-reason='artifact.select']")).toBeNull();
   });
 });
@@ -223,9 +216,9 @@ describe("브라우저를 여는 자리 (T079 · FR-244)", () => {
     expect(button.textContent).toContain("Step 02");
   });
 
-  it("무엇은 브라우저 없이 되는지 함께 말한다 — 회색 버튼만 두지 않는다", () => {
+  it("브라우저에서 가능한 작업을 짧게 안내한다", () => {
     show({ kind: "open_browser", stepIndex: 0 }, "editing");
-    expect(screen.getByText(/값·순서·삭제는 브라우저 없이 고칠 수 있습니다/)).toBeTruthy();
+    expect(screen.getByText("브라우저에서 확인하거나 Step을 추가할 수 있습니다.")).toBeTruthy();
   });
 });
 

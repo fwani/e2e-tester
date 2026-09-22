@@ -118,22 +118,22 @@ describe("테스트 0개 · 초안 있음", () => {
 });
 
 describe("테스트 0개 · 초안 없음 — 맨 처음 온 사용자", () => {
-  it("원래 문구가 그대로다", async () => {
+  it("첫 행동을 한 문장으로 안내한다", async () => {
     stub([]);
     mount();
-    expect(await screen.findByText(/브라우저를 직접 조작하거나, 할 일을 말로 적으면 됩니다/)).toBeTruthy();
+    expect(await screen.findByText(/테스트를 만들거나 기존 엑셀 파일을 가져오세요/)).toBeTruthy();
   });
 
   it("「엑셀에서 가져오기」 갈래가 펼쳐져 있다", async () => {
     stub([]);
     mount();
-    expect(await screen.findByText("이미 쓰던 설계서가 있나요?")).toBeTruthy();
+    expect(await screen.findByText("엑셀에서 가져오기")).toBeTruthy();
   });
 
   it("초안 구획을 그리지 않는다 — 없는 것에 자리를 주지 않는다", async () => {
     stub([]);
     mount();
-    await screen.findByText("이미 쓰던 설계서가 있나요?");
+    await screen.findByText("엑셀에서 가져오기");
     expect(document.querySelector("[data-draft-section]")).toBeNull();
   });
 });

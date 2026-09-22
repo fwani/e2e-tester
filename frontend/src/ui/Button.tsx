@@ -8,7 +8,7 @@
  *
  * ## 이 부품이 값을 갖는 이유 (015 에서 이어짐)
  *
- * 015 는 「값은 정본 한 곳에만」을 지킨다. 아래의 `gap-[6px]` · `text-[13px]` · `px-[9px]` 는
+ * 015 는 「값은 정본 한 곳에만」을 지킨다. 아래의 `gap-[6px]` · `text-[14px]` · `px-[9px]` 는
  * **정본에도 토큰이 아니라 리터럴로 있었다** (`.btn{gap:6px;font:600 13px/1 …}` ·
  * `.btn.sm{height:26px;padding:0 9px;font-size:12px}`). 화면 코드로 흩어지면 008 이 고친 문제(값
  * 리터럴 338개)의 재발이므로 부품이 안고 있다. 토큰이 있는 값은 토큰을 쓴다 — `h-control` ·
@@ -85,7 +85,7 @@ export const buttonVariants = cva(
         ghost: "bg-transparent border-transparent text-ink-2 shadow-none font-semibold hover:bg-sunken",
       },
       size: {
-        md: "h-control px-s3 text-[13px]",
+        md: "h-control px-s3 text-[14px]",
         sm: "h-control-sm px-[9px] text-[12px]",
         /*
           아이콘만 담는 작은 단추 — 정본에서 `.btn.sm` 에 `padding: 0 7px` 를 인라인으로 더하던 자리
@@ -115,7 +115,7 @@ export const plainButtonVariants = cva("", {
       */
       nav:
         "h-[28px] inline-flex items-center px-[10px] border-0 rounded-base bg-transparent text-ink-2 " +
-        "font-sans text-[13px] font-medium leading-none shadow-none hover:bg-sunken",
+        "font-sans text-[14px] font-medium leading-none shadow-none hover:bg-sunken",
       /*
         정본 `.textlink` — 글 안의 조작. 비활성 사유 옆의 해소 수단이 이것이다. 상자를 만들지 않는다.
       */
@@ -128,7 +128,7 @@ export const plainButtonVariants = cva("", {
       */
       bare:
         "border-0 p-0 h-[18px] bg-transparent shadow-none text-left text-ink cursor-pointer font-sans " +
-        "text-[13px] font-semibold leading-[1.25] whitespace-nowrap overflow-hidden text-ellipsis",
+        "text-[14px] font-semibold leading-[1.25] whitespace-nowrap overflow-hidden text-ellipsis",
     },
   },
 });

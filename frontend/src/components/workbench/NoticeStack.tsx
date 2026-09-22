@@ -49,9 +49,9 @@ export function NoticeStack({ notices, onAct, onDismiss }: NoticeStackProps) {
         >
           <div className="flex items-start gap-s3">
             <div className="flex-1 min-w-0">
-              <div className="font-sans text-[13px] font-semibold leading-none">{n.message}</div>
+              <div className="font-sans text-[14px] font-semibold leading-none">{n.message}</div>
               {n.nextAction !== null && (
-                <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
+                <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1">
                   {n.nextAction}
                 </div>
               )}

@@ -35,7 +35,7 @@ describe("알 수 없는 결말 (T106)", () => {
   });
 
   it("칩은 FAIL 이다", () => {
-    expect(outcomeChip(FUTURE)).toBe("FAIL");
+    expect(outcomeChip(FUTURE)).toBe("실패");
   });
 
   it("색 역할은 danger 다 — 문장과 색이 어긋나면 어느 쪽을 믿을지 알 수 없다", () => {
@@ -75,10 +75,10 @@ describe("값이 없는 것과 모르는 것은 다르다", () => {
 
 describe("아는 네 값은 그대로다", () => {
   const KNOWN: Array<[Outcome, string, string]> = [
-    ["pass", "통과", "PASS"],
-    ["fail", "실패", "FAIL"],
-    ["stopped", "중지", "STOPPED"],
-    ["partial_pass", "부분 성공", "PARTIAL"],
+    ["pass", "통과", "통과"],
+    ["fail", "실패", "실패"],
+    ["stopped", "중지", "중지"],
+    ["partial_pass", "부분 성공", "부분 성공"],
   ];
 
   it.each(KNOWN)("%s → %s / %s", (outcome, label, chip) => {

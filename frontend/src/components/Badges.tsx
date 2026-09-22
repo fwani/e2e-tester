@@ -24,6 +24,13 @@ import { Chip } from "../ui/Chip";
  * 라벨과 색 역할은 `lib/wording` 이 정한다. 배지가 문구를 직접 만들면 화면마다 다른
  * 말이 다시 생긴다 (U-20).
  */
+const OUTCOME_ICON: Record<Outcome, string> = {
+  pass: "m3 8 3 3 7-7",
+  fail: "m4 4 8 8m0-8-8 8",
+  stopped: "M4 4h8v8H4z",
+  partial_pass: "M8 2v7m0 3v2",
+};
+
 export function OutcomeBadge({ outcome }: { outcome: Outcome | null }) {
   if (outcome === null) {
     return <Chip tone={chipTone(null)}>미실행</Chip>;
@@ -32,6 +39,9 @@ export function OutcomeBadge({ outcome }: { outcome: Outcome | null }) {
   // 한국어 문장을 준다.
   return (
     <Chip tone={chipTone(outcome)} title={outcomeLabel(outcome)}>
+      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d={OUTCOME_ICON[outcome] ?? OUTCOME_ICON.fail} />
+      </svg>
       {outcomeChip(outcome)}
     </Chip>
   );

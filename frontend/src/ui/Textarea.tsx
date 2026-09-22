@@ -32,7 +32,7 @@ export type TextareaVariant = "default" | "ai";
  * 유일한 자리다. **테두리 색만 다르다** — 두 값이 각자 온전히 갖는다 (같은 속성을 덮어쓰지 않는다).
  */
 export const textareaVariants = cva(
-  "py-[8px] px-[10px] border rounded-base font-sans text-[13px] font-normal leading-[1.5] " +
+  "py-[8px] px-[10px] border rounded-base font-sans text-[14px] font-normal leading-[1.5] " +
     "bg-panel text-ink placeholder:text-ink-3 " +
     // 커서는 바꾸지 않는다 — 정본 `textarea:disabled` 가 정하지 않았다 (L2 대조가 같은 값을 요구한다).
     "disabled:bg-transparent disabled:border-dashed disabled:text-ink-3 " +

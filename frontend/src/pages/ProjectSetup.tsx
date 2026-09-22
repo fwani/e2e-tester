@@ -1,9 +1,9 @@
+import { ToolPanel } from "../ui/ToolPanel";
 /**
  * 프로젝트 선택 화면. DR-001 ~ DR-009.
  *
- * **확정 디자인에 대응 화면이 없다** — 8종 artboard 어디에도 프로젝트 선택이 없다.
- * 따라서 1:1 대조 의무가 적용되지 않고(DC-010), 대신 8화면의 시각 언어를 따른다:
- * 직각 모서리, 3px 잉크 테두리, 하드 오프셋 그림자, `#F2F4F7` 배경.
+ * 프로젝트 열기와 만들기를 중심으로 한 단일 목록·양식 흐름.
+ * 부가 관리와 가져오기는 필요할 때 펼친다.
  *
  * **경로를 타이핑하는 입력란이 없다** (DR-001·SC-102). 이전 판은 절대 경로를 손으로
  * 넣게 했는데, 서버가 어느 경로에서 실행 중인지 사용자는 알 방법이 없어 사실상 아무도
@@ -37,6 +37,7 @@ import {
 
 import { Chip } from "../ui/Chip";
 import { Input } from "../ui/Input";
+import "../theme/settings-simplification.css";
 type Mode =
   | { kind: "list" }
   | { kind: "create" }
@@ -64,11 +65,6 @@ type Mode =
       plan: ImportPlanView;
       form: { name: string; default_start_url: string; test_id_attribute: string };
     };
-/** 구획 라벨 — 정본의 `.lbl` 이다. 이름만 확정 디자인의 관용어를 쓴다. */
-function Eyebrow({ children }: { children: React.ReactNode }) {
-  return <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{children}</div>;
-}
-
 export function ProjectSetup({
   onOpened,
   onCancel,
@@ -143,7 +139,7 @@ export function ProjectSetup({
   };
 
   return (
-    <div className="min-h-[100vh] flex flex-col">
+    <div className="project-lobby project-lobby-simple">
       {/* 제품의 **첫 화면**이다. 껍데기는 다른 화면과 같아야 한다 (FR-217). */}
       <HeaderBar>
         <BrandMark />
@@ -155,11 +151,10 @@ export function ProjectSetup({
         )}
       </HeaderBar>
 
-      <main className="flex-1 pt-s5 px-s6 pb-s6 max-w-[960px] w-full my-0 mx-auto">
-        <div className="flex flex-col gap-s2 mb-[20px]">
-          <Eyebrow>PROJECT</Eyebrow>
-          <div className="font-sans text-[20px] font-bold leading-[1.3]">프로젝트</div>
-        </div>
+      <main data-project-mode={mode.kind} className="flex-1 pt-s5 px-s6 pb-s6 max-w-[960px] w-full my-0 mx-auto">
+        {mode.kind !== "list" && <div className="flex flex-col gap-s2 mb-[20px]">
+          <h1 className="font-sans text-[24px] font-bold leading-[1.3] m-0">{mode.kind === "browse" ? "기존 프로젝트 열기" : mode.kind === "created" ? "프로젝트 생성 완료" : "새 프로젝트"}</h1>
+        </div>}
 
         {warning !== null && <Notice tone="warn">{warning}</Notice>}
         {error !== null && (
@@ -237,11 +232,11 @@ export function ProjectSetup({
               <div className="bg-run-t border border-run rounded-base py-[10px] px-s3 mt-[10px]"
                 data-import-note
               >
-                <div className="font-sans text-[13px] font-semibold leading-none">
+                <div className="font-sans text-[14px] font-semibold leading-none">
                   {mode.plan.file_name} 에서 그룹 {mode.plan.group_count}개, 테스트 초안{" "}
                   {mode.plan.draft_count}건을 함께 만듭니다.
                 </div>
-                <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
+                <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1">
                   초안은 아직 테스트가 아닙니다. 만든 뒤 하나씩 녹화하면 테스트가 됩니다.
                 </div>
               </div>
@@ -343,39 +338,31 @@ function ProjectList({
 }) {
   if (projects === null) {
     // 확정 디자인이 로딩 상태를 정의하지 않는다 — undefined-states.md 에 기록했다.
-    return <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">프로젝트를 찾는 중…</p>;
+    return <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">프로젝트를 찾는 중…</p>;
   }
 
   return (
     <>
-      <div className="flex gap-s3 mb-[22px]">
-        <Button variant="primary" onClick={onCreate} disabled={busy}>
-          + 새 프로젝트 만들기
-        </Button>
-        <Button onClick={onBrowse} disabled={busy}>
-          기존 프로젝트 열기
-        </Button>
-        {/* 세 번째 길 — 이미 쓰던 설계서에서 시작한다 (014 US2). */}
-        <ImportFilePicker
-          label="엑셀에서 새 프로젝트"
-          disabled={busy}
-          onPlan={onImportPlan}
-          onError={onError}
-        />
+      <header className="project-selection-heading">
+        <div><h1>프로젝트 선택</h1><p>테스트를 작성하거나 실행할 프로젝트를 선택하세요.</p></div>
+        <Button variant="primary" onClick={onCreate} disabled={busy}>+ 새 프로젝트 만들기</Button>
+      </header>
+      <div className="project-list-actions">
+        <Button onClick={onBrowse} disabled={busy}>기존 프로젝트 열기</Button>
+        <ImportFilePicker label="엑셀에서 새 프로젝트" disabled={busy} onPlan={onImportPlan} onError={onError} />
       </div>
 
       {projects.length === 0 ? (
         <div
           className="bg-panel border border-hair rounded-base p-[28px] flex flex-col gap-s2"
         >
-          <div className="font-sans text-[13.5px] font-bold leading-none">아직 프로젝트가 없습니다</div>
-          <div className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
-            새 프로젝트를 만들면 이 도구가 관리하는 위치에 저장되고, 다음에 열 때 여기 목록에
-            바로 나타납니다. 다른 곳에 있는 프로젝트는 「기존 프로젝트 열기」로 찾아 여세요.
+          <div className="font-sans text-[14px] font-bold leading-none">아직 프로젝트가 없습니다</div>
+          <div className="font-sans text-[14px] leading-[1.7] font-normal text-ink-2">
+            새로 만들거나 기존 프로젝트 폴더를 열어 시작하세요.
           </div>
         </div>
       ) : (
-        <div className="bg-panel border border-hair rounded-base">
+        <div className="project-list-table">
           {projects.map((p, i) => (
             <ProjectRow
               key={p.root}
@@ -553,24 +540,24 @@ function ProjectRow({
                 layout="m-0 max-w-[320px]"
               />
             ) : (
-              <span className="font-sans text-[13.5px] font-bold leading-none">{item.name}</span>
+              <span className="font-sans text-[14px] font-bold leading-none">{item.name}</span>
             )}
             {item.origin === "external" && <Chip>외부 위치</Chip>}
             {!item.accessible && <Chip tone="fail">열 수 없음</Chip>}
           </div>
           {nameProblem !== null && (
-            <div className="font-sans text-[13px] leading-[1.4] font-normal text-fail mt-s1" role="alert">
+            <div className="font-sans text-[14px] leading-[1.4] font-normal text-fail mt-s1" role="alert">
               {nameProblem}
             </div>
           )}
           <div
- className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 overflow-hidden text-ellipsis whitespace-nowrap"
+ className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 overflow-hidden text-ellipsis whitespace-nowrap"
             title={item.root}
           >
             {item.root}
           </div>
           {!item.accessible && item.unavailable_reason !== null && (
-            <div className="font-sans text-[13px] leading-[1.4] font-normal text-fail mt-s1">
+            <div className="font-sans text-[14px] leading-[1.4] font-normal text-fail mt-s1">
               {item.unavailable_reason}
             </div>
           )}
@@ -578,55 +565,38 @@ function ProjectRow({
             // 왜 이 줄에 이름 변경이 없는지 말한다 (FR-406). 조작을 그냥 빼면 사용자는
             // 자기가 잘못 본 줄 안다. **삭제는 있다** — 없애는 길까지 막으면 이 줄은
             // 목록에서 사라지지 않는다 (FR-418 · SC-622).
-            <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
+            <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1">
               열 수 없는 상태여서 이름을 바꿀 수 없습니다. 삭제하거나 목록에서 치울 수 있습니다.
             </div>
           )}
         </div>
 
-        {mode.kind !== "confirming" && (
-          <div className="flex items-center gap-[10px]">
-            {mode.kind === "idle" && (
-              <>
+        {mode.kind === "idle" && (
+          <div className="project-row-actions">
+            {item.accessible && <Button onClick={onOpen} disabled={locked}>열기</Button>}
+            <ToolPanel label="관리" accessibleLabel={`${item.name} 관리`}>
+              <div>
                 {item.accessible && (
-                  <>
-                    <Button onClick={onOpen} disabled={locked}>
-                      열기
-                    </Button>
-                    <Button
-                      variant="nav"
-                      onClick={() => setMode({ kind: "editing", draft: item.name })}
-                      disabled={locked}
-                    >
-                      이름 바꾸기
-                    </Button>
-                  </>
+                  <Button variant="nav" onClick={() => setMode({ kind: "editing", draft: item.name })} disabled={locked}>
+                    이름 바꾸기
+                  </Button>
                 )}
-                {/* 삭제는 열 수 없는 줄에도 있다 (FR-418 · SC-622). */}
                 <Button
                   variant="nav"
                   onClick={openConfirm}
                   disabled={locked}
-                  title={
-                    item.accessible
-                      ? "프로젝트 폴더를 휴지통으로 옮깁니다. 파일은 지워지지 않고 되돌릴 수 있습니다."
-                      : "폴더가 남아 있으면 휴지통으로 옮기고, 이미 없으면 목록에서만 뺍니다."
-                  }
-                >
-                  삭제
-                </Button>
-              </>
-            )}
-            <Button
-              variant="nav"
-              onClick={onForget}
-              disabled={locked}
-              // 삭제와 결과가 다르다. 두 설명 모두 디스크의 파일이 어떻게 되는지
-              // 말한다 (FR-423 · UC-012-07).
-              title="목록에서만 치웁니다. 디스크의 파일은 지우지 않습니다."
-            >
-              목록에서 치우기
-            </Button>
+                  title={item.accessible
+                    ? "프로젝트 폴더를 휴지통으로 옮깁니다. 파일은 지워지지 않고 되돌릴 수 있습니다."
+                    : "폴더가 남아 있으면 휴지통으로 옮기고, 이미 없으면 목록에서만 뺍니다."}
+                >삭제</Button>
+                <Button
+                  variant="nav"
+                  onClick={onForget}
+                  disabled={locked}
+                  title="목록에서만 치웁니다. 디스크의 파일은 지우지 않습니다."
+                >목록에서 치우기</Button>
+              </div>
+            </ToolPanel>
           </div>
         )}
       </div>
@@ -671,31 +641,31 @@ function ConfirmTrash({
 }) {
   return (
     <div className="bg-warn-t border border-warn-line rounded-base py-s3 px-[14px]" role="group" aria-label="삭제 확인">
-      <div className="font-sans text-[13.5px] font-bold leading-none">「{item.name}」을(를) 휴지통으로 옮길까요?</div>
- <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
+      <div className="font-sans text-[14px] font-bold leading-none">「{item.name}」을(를) 휴지통으로 옮길까요?</div>
+ <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1">
         {item.root}
       </div>
       {summary !== null && (
-        <div className="font-sans text-[13px] leading-[1.4] font-normal mt-[6px]">
+        <div className="font-sans text-[14px] leading-[1.4] font-normal mt-[6px]">
           저장된 테스트 {summary.test_count}개가 함께 옮겨집니다.
         </div>
       )}
       {item.origin === "external" && (
         // 도구가 만든 자리가 아니다. 사용자가 다른 용도로 쓰고 있을 수 있으므로
         // 그 사실을 알고 결정하게 한다 (FR-424).
-        <div className="font-sans text-[13px] leading-[1.4] font-normal mt-[6px]">
+        <div className="font-sans text-[14px] leading-[1.4] font-normal mt-[6px]">
           이 폴더는 도구 바깥에서 만들어진 위치입니다.
         </div>
       )}
       {!item.accessible && (
         // 무슨 일이 일어날지 미리 말한다 (UC-012-03). 열 수 없는 줄에서는 옮길 것이
         // 없을 수 있고, 그때 결과는 「목록에서 뺐다」다 — 놀라게 하지 않는다.
-        <div className="font-sans text-[13px] leading-[1.4] font-normal mt-[6px]">
+        <div className="font-sans text-[14px] leading-[1.4] font-normal mt-[6px]">
           지금 열 수 없는 상태입니다. 폴더가 남아 있으면 휴지통으로 옮기고, 이미 없으면
           목록에서만 뺍니다.
         </div>
       )}
-      <div className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2 mt-[6px]">
+      <div className="font-sans text-[14px] leading-[1.7] font-normal text-ink-2 mt-[6px]">
         지우지 않고 휴지통으로 옮깁니다. 옮긴 위치를 알려 드리므로 되돌릴 수 있습니다.
       </div>
       <div className="flex gap-[10px] mt-[10px]">
@@ -727,33 +697,33 @@ function TrashedNotice({
     <div className="bg-warn-t border border-warn-line rounded-base py-s3 px-s4 mb-[18px]" role="status">
       {result.trashed_to === null ? (
         <>
-          <div className="font-sans text-[13.5px] font-bold leading-none">「{result.name}」을(를) 목록에서 뺐습니다.</div>
-          <div className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2 mt-s1">
+          <div className="font-sans text-[14px] font-bold leading-none">「{result.name}」을(를) 목록에서 뺐습니다.</div>
+          <div className="font-sans text-[14px] leading-[1.7] font-normal text-ink-2 mt-s1">
             폴더가 이미 없어서 옮길 것이 없었습니다.
           </div>
         </>
       ) : (
         <>
-          <div className="font-sans text-[13.5px] font-bold leading-none">「{result.name}」을(를) 휴지통으로 옮겼습니다.</div>
+          <div className="font-sans text-[14px] font-bold leading-none">「{result.name}」을(를) 휴지통으로 옮겼습니다.</div>
           {/*
             **출발지와 도착지를 둘 다 남긴다** (SC-616 · converge T050). 되돌리기는 두
             경로가 있어야 성립하는데, 도착지만 보여 주면 "원래 자리" 를 사용자가 알아야
             한다. 관리 위치라면 짐작할 수 있지만 외부 위치 프로젝트는 사용자가 직접 고른
             경로여서 추측이 불가능하다.
           */}
-          <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 mt-s2">
+          <div className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2 mt-s2">
             옮긴 곳
           </div>
- <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[2px] break-all">
+ <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[2px] break-all">
             {result.trashed_to}
           </div>
-          <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 mt-s2">
+          <div className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2 mt-s2">
             원래 자리
           </div>
- <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[2px] break-all">
+ <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[2px] break-all">
             {result.root}
           </div>
-          <div className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2 mt-s2">
+          <div className="font-sans text-[14px] leading-[1.7] font-normal text-ink-2 mt-s2">
             되돌리려면 「옮긴 곳」의 폴더를 「원래 자리」로 옮기세요. 도구는 휴지통을 자동으로
             비우지 않습니다.
           </div>
@@ -800,16 +770,8 @@ function CreateForm({
   ];
 
   return (
-    <div className="bg-panel border border-hair rounded-base p-s5">
-      <Eyebrow>NEW PROJECT</Eyebrow>
-
+    <div className="project-create-form">
       {importNote}
-
-      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2 mt-[10px]">
-        저장 위치는 도구가 정합니다. 만들고 나면 어디에 만들어졌는지 알려 드립니다. 테스트
-        정의는 그 안의 <code>tests/</code> 에 평문 YAML 로 저장되어 그대로 버전 관리에 넣을 수
-        있습니다.
-      </p>
 
       <label htmlFor="name">프로젝트 이름</label>
       <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
@@ -822,18 +784,18 @@ function CreateForm({
         placeholder="https://example.internal/login"
       />
       {startUrl.trim() !== "" && !urlLooksValid && (
-        <p className="font-sans text-[13px] leading-[1.4] font-normal text-fail mt-[6px]">
+        <p className="font-sans text-[14px] leading-[1.4] font-normal text-fail mt-[6px]">
           http:// 또는 https:// 로 시작해야 합니다.
         </p>
       )}
 
-      <label htmlFor="attr">testId 속성명</label>
-      <Input id="attr" value={testIdAttr} onChange={(e) => setTestIdAttr(e.target.value)} />
-      <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
-        대상 앱이 쓰는 속성명입니다. <code>data-test</code>, <code>data-cy</code> 를 쓰는 앱도
-        흔합니다. 요소를 찾는 최우선 기준이 됩니다.
-      </p>
-
+      <div className="project-extra-settings">
+        <label htmlFor="attr">testId 속성명</label>
+        <Input id="attr" value={testIdAttr} onChange={(e) => setTestIdAttr(e.target.value)} />
+        <p className="settings-help">
+          요소를 찾을 때 우선 사용할 속성입니다. 대상 앱에 맞춰 data-testid, data-test, data-cy 등을 지정하세요.
+        </p>
+      </div>
       {/*
         003 AP-003 — **왜 지금 안 되는지 말한다.** 이 안내가 없어서 「만들기」가 눌리지
         않는 이유가 화면에 없었고, 사용자는 무엇이 빠졌는지 눌러 봐도 알 수 없었다.
@@ -846,7 +808,7 @@ function CreateForm({
           상자 모양(flex-col · gap · padding)이 여기 얹혀 **한 줄 안내가 상자가 됐다** —
           L2 대조가 잡았다. 정본이 주던 것만 남긴다.
         */
-        className={`font-sans text-[11px] leading-[1.4] font-normal ${ready ? "text-ink-3" : "text-fail"} mt-s4 mx-0 mb-0`}
+        className={`font-sans text-[12px] leading-[1.4] font-normal ${ready ? "text-ink-3" : "text-fail"} mt-s4 mx-0 mb-0`}
       >
         {ready
           ? "만들 준비가 되었습니다."
@@ -858,6 +820,7 @@ function CreateForm({
           취소
         </Button>
         <Button
+          variant="primary"
           aria-describedby="create-blockers"
           disabled={busy || !ready}
           onClick={() =>
@@ -884,28 +847,24 @@ function CreatedNotice({
   onContinue: () => void;
 }) {
   return (
-    <div className="bg-panel border border-hair rounded-base p-s5">
-      <Eyebrow>PROJECT CREATED</Eyebrow>
+    <div className="project-created">
 
       <div className="font-sans text-[20px] font-bold leading-[1.3] mt-[10px]">
         {p.name}
       </div>
 
-      <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2 mt-s3">
-        아래 위치에 만들었습니다. 다음에 도구를 열면 이 프로젝트가 목록에 바로 나타납니다.
-      </p>
+      <p className="settings-help">아래 위치에 저장했습니다. 다음에도 프로젝트 목록에서 열 수 있습니다.</p>
 
       <div className="font-mono text-[12px] leading-[1.6] font-normal whitespace-pre-wrap bg-sunken-2 py-[10px] px-s3 mt-[10px] break-all">
         {p.root}
       </div>
 
-      <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[10px]">
-        테스트 정의는 이 폴더의 <code>tests/</code> 에 평문 YAML 로 저장됩니다. 비밀 값과 실행
-        산출물은 <code>.gitignore</code> 로 제외됩니다.
-      </p>
+      <ToolPanel label="저장 파일 안내">
+        <p className="settings-help">테스트는 <code>tests/</code>의 YAML 파일로 저장됩니다. 비밀 값과 실행 산출물은 <code>.gitignore</code>로 제외됩니다.</p>
+      </ToolPanel>
 
       <div className="flex justify-end mt-[20px]">
-        <Button onClick={onContinue}>시작하기 →</Button>
+        <Button variant="primary" onClick={onContinue}>시작하기 →</Button>
       </div>
     </div>
   );
@@ -946,7 +905,6 @@ function FolderPicker({
   return (
     <div className="bg-panel border border-hair rounded-base">
       <div className="border-b border-hair py-s4 px-[18px]">
-        <Eyebrow>OPEN EXISTING</Eyebrow>
         <div className="font-mono text-[12px] leading-[1.6] font-normal whitespace-pre-wrap text-ink-2 mt-s2 break-all">
           {here ?? "…"}
         </div>
@@ -967,10 +925,10 @@ function FolderPicker({
           </Button>
         )}
 
-        {entries === null && <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 py-s4 px-[20px]">불러오는 중…</p>}
+        {entries === null && <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 py-s4 px-[20px]">불러오는 중…</p>}
 
         {entries !== null && entries.length === 0 && (
-          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 py-s4 px-[20px]">
+          <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 py-s4 px-[20px]">
             이 폴더에는 하위 폴더가 없습니다.
           </p>
         )}
@@ -998,7 +956,7 @@ function FolderPicker({
       <div
         className="border-t border-hair flex justify-between items-center gap-s3 py-s4 px-[18px]"
       >
-        <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
+        <span className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">
           「프로젝트」 표시가 붙은 폴더만 열 수 있습니다.
         </span>
         <div className="flex gap-s3">

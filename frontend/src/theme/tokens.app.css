@@ -10,15 +10,15 @@
  */
 
 :root {
-  --bg:#F2F4F7; --panel:#FFFFFF; --sunken:#EAEDF2; --sunken-2:#F7F8FA;
-  --ink:#14171C; --ink-2:#4A515C; --ink-3:#6E757F;
-  --hair:#E3E6EB; --hair-2:#CBD0D8;
+  --bg:#F4F6F8; --panel:#FFFFFF; --sunken:#E8EEF1; --sunken-2:#F7F8FA;
+  --ink:#162C38; --ink-2:#465B66; --ink-3:#627580;
+  --hair:#DCE4E8; --hair-2:#BCCBD2;
   --pass:#1A7F45; --pass-t:#E8F5ED;
   --fail:#C8371D; --fail-t:#FCEDE9;
   --warn:#8F5A00; --warn-t:#FBF3E2;
   --run:#0B6BCB;  --run-t:#E8F1FB;
   --ai:#6B3FD4;   --ai-t:#F0EBFB;
-  --radius:3px; --radius-chip:2px; --radius-lg:6px;
+  --radius:7px; --radius-chip:5px; --radius-lg:12px;
   --e-1:0 1px 2px rgba(20,23,28,.07);
   --e-2:0 16px 40px rgba(20,23,28,.18);
   --font-sans:"IBM Plex Sans KR",system-ui,sans-serif;
@@ -29,7 +29,7 @@
 }
 
 body {margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);
-     font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;
+     font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
      font-variant-numeric:tabular-nums;
 }
 
@@ -51,10 +51,10 @@ a:hover {color:#08529E;
   --h-header: 56px;
   --h-phase: 48px;
   --h-notice: 32px;
-  --h-control: 32px;
-  --h-control-sm: 26px;
+  --h-control: 36px;
+  --h-control-sm: 30px;
   --h-step: 52px;            
-  --w-steps: 460px;          
+  --w-steps: 400px;
   --w-detail: 640px;         
   --w-min: 1440px;           
 
@@ -74,7 +74,7 @@ a:hover {color:#08529E;
 }
 
 button {
-  font: 600 13px/1 var(--font-sans);
+  font: 600 14px/1 var(--font-sans);
   cursor: pointer;
   height: var(--h-control);
   padding: 0 12px;
@@ -102,7 +102,7 @@ button:disabled {
 }
 
 input, select, textarea {
-  font: 400 13px/1.4 var(--font-sans);
+  font: 400 14px/1.5 var(--font-sans);
   width: 100%;
   min-height: var(--h-control);
   padding: 0 10px;
@@ -139,4 +139,10 @@ code { font-family: var(--font-mono); font-size: 12px;
 :root {
   --scrim: rgba(20, 23, 28, 0.28);
   --scrim-strong: rgba(20, 23, 28, 0.45);
+}
+
+::selection { background: var(--run-t); color: var(--ink);
+}
+
+input, textarea { caret-color: var(--run);
 }

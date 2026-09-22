@@ -9,6 +9,8 @@
  * 상태를 **색과 형태로 함께** 말한다. 정본 주석이 「색만으로 구분하지 않는다」고 적었고, 그것이
  * 접근성 요건이다 — 칩 안의 글자가 상태를 말하고 색은 거든다.
  *
+ * 2026-09 가시성 개선: 높이 24px, 본문용 글꼴 12px, 좌우 여백 8px.
+ *
  * ## 값이 부품에 있는 이유 (015 에서 이어짐)
  *
  * `gap:5px` · `height:19px` · `padding:0 6px` · `10px` 글자 · `letter-spacing:.06em` 은 정본에도
@@ -28,6 +30,7 @@ export type ChipTone = "default" | "pass" | "fail" | "warn" | "run" | "ai" | "of
 
 export interface ChipProps extends Omit<ComponentPropsWithRef<"span">, "className"> {
   readonly tone?: ChipTone;
+  readonly size?: "md" | "sm";
   /** **배치만.** 모양은 `tone` 으로 정한다 (`ui/Button` 의 `layout` 과 같은 규율). */
   readonly layout?: string;
   readonly children?: ReactNode;
@@ -41,10 +44,11 @@ export interface ChipProps extends Omit<ComponentPropsWithRef<"span">, "classNam
  * 있었다 (2026-09-11). 가드 G-E 가 `cva` 조합 전부를 산출 CSS 순서와 대조한다.
  */
 export const chipVariants = cva(
-  "inline-flex items-center gap-[5px] h-[19px] px-[6px] border rounded-chip " +
-    "font-mono text-[10px] font-semibold leading-none tracking-[.06em]",
+  "inline-flex items-center gap-[5px] px-[8px] border rounded-chip " +
+    "font-sans text-[12px] font-semibold leading-none",
   {
     variants: {
+      size: { md: "h-[24px]", sm: "h-[20px]" },
       tone: {
         default: "border-hair-2 text-ink-2 bg-sunken-2",
         pass: "border-pass text-pass bg-pass-t",
@@ -57,7 +61,7 @@ export const chipVariants = cva(
         off: "border-dashed border-hair-2 text-ink-3 bg-transparent",
       },
     },
-    defaultVariants: { tone: "default" },
+    defaultVariants: { tone: "default", size: "md" },
   },
 );
 
@@ -65,8 +69,8 @@ export const chipVariants = cva(
  * 칩의 클래스. 누를 수 있는 그룹 거르기 칩은 017 T061 에서 `ui/ToggleGroup` 의 `chip` 모양이 됐고, 그 모양은
  * `chipVariants` 를 직접 잇는다 — 같은 종류의 표식이 두 모습을 갖지 않는다 (SC-010).
  */
-export function chipClasses(tone: ChipTone = "default", layout?: string): string {
-  return cn(chipVariants({ tone }), layout);
+export function chipClasses(tone: ChipTone = "default", layout?: string, size: "md" | "sm" = "md"): string {
+  return cn(chipVariants({ tone, size }), layout);
 }
 
 /**
@@ -90,8 +94,8 @@ export function Pill({
   );
 }
 
-export function Chip({ tone = "default", layout, children, ...rest }: ChipProps) {
-  const cls = chipClasses(tone, layout);
+export function Chip({ tone = "default", size = "md", layout, children, ...rest }: ChipProps) {
+  const cls = chipClasses(tone, layout, size);
   // `data-tone` 으로 의도를 내보낸다. 검사가 유틸리티 조합 대신 이것을 읽으면 「이 칩이 실패를 말하는가」
   // 라는 질문이 살아남는다 (LC-4 ②).
   return (

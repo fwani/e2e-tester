@@ -189,6 +189,6 @@ describe("표 머리와 행이 같은 격자를 쓴다 (FR-273 · V-08)", () => 
     // `TestList.dc.html` 11곳을 함께 고쳤고, 「그 모양이 좋은가」는 사람이 판정한다
     // (docs/PENDING-HUMAN-VERIFICATION.md §13-1). 이 검사가 지키는 것은 여전히
     // **정본과 화면이 한 값을 쓴다**는 것이다.
-    expect([...shapes][0]).toBe("28px 96px 82px 1fr 64px 92px 150px 168px");
+    expect([...shapes][0]).toBe("28px minmax(240px, 1fr) 148px 188px");
   });
 });

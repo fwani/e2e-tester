@@ -1,7 +1,7 @@
 /**
  * 결과 국면 화면 테스트 (T089 · 007 이행 5).
  *
- * 요약 3항목·Step 결과·실패 상세·재실행 두 갈래·`TRACE` 비활성을 고정한다
+ * 요약 3항목·Step 결과·실패 상세·재실행 두 갈래·지원 산출물 선택을 검증한다
  * (FR-050~FR-058, spec 디자인 차이 1).
  *
  * `fetch` 를 대신 세워 REST 계약 형태만 흉내 낸다 — 화면이 무엇을 읽고 어떻게 그리는지가
@@ -171,7 +171,10 @@ describe("RunResult", () => {
     );
 
     expect(await screen.findByText('"저장" 버튼을 찾을 수 없습니다.')).toBeDefined();
-    expect(screen.getByText("시도한 LOCATOR (우선순위 순)")).toBeDefined();
+    const disclosure = screen.getByRole("button", { name: "상세 실행 기록" });
+    expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+    await userEvent.click(screen.getByRole("button", { name: "상세 실행 기록" }));
+    expect(disclosure.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByText("testId=save-dataset")).toBeDefined();
     expect(screen.getByText('role=button name="저장"')).toBeDefined();
     // 004 — "timeout" 이 아니라 **실제로 기다린 시간**이다. 예전 표기는 후보별 대기
@@ -203,22 +206,14 @@ describe("RunResult", () => {
     expect(screen.queryByText(/실행 속도를 '느림'으로 낮춰/)).toBeNull();
   });
 
-  it("TRACE 탭은 비활성이다 (spec 디자인 차이 1)", async () => {
+  it("수집되지 않는 TRACE 대신 제공되는 산출물만 표시한다", async () => {
     vi.stubGlobal("fetch", stubFetch(failedResult()));
-    render(
-      <ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />,
-    );
-
-    const trace = (await screen.findByText("TRACE")).closest("button");
-    expect(trace).not.toBeNull();
-    /*
-      **판정 방법만 옮겼다** (T106 · test-ledger 09-16). 새 갈래의 탭은 네이티브 `disabled` 를 걸지 않고
-      `aria-disabled="true"` + `data-disabled` + `tabindex="-1"` 로 말한다 — 조작을 **초점에서 빼지 않아**
-      사유를 읽을 수 있게 두는 방식이고, 이 저장소의 규칙(FR-006·FR-014 — 비활성은 포인터를 막지 않고
-      사유를 보여 준다)과 같은 방향이다. **누름은 실제로 막힌다**(실측: 눌러도 `onValueChange` 0회).
-      묻는 것은 그대로다: 지원되지 않는 산출물을 **감추지 않고 비활성으로** 남기는가 (FR-246 · DC-007).
-    */
-    expect((trace as HTMLButtonElement).getAttribute("aria-disabled"), "TRACE 탭이 비활성이 아니다").toBe("true");
+    render(<ResultView testId="TC-003" onRunAll={noop} onRunFrom={noop} onBack={noop} />);
+    await screen.findByRole("tab", { name: "SCREENSHOT" });
+    expect(screen.queryByRole("tab", { name: "TRACE" })).toBeNull();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "SCREENSHOT", "CONSOLE", "NETWORK",
+    ]);
   });
 
   it("실패한 Step부터 / 처음부터 두 갈래로 재실행한다 (FR-055)", async () => {
@@ -257,7 +252,8 @@ describe("RunResult", () => {
       />,
     );
 
-    await userEvent.click(await screen.findByText("Step 05 고치기"));
+    await userEvent.click(await screen.findByRole("button", { name: "화면 메뉴" }));
+    await userEvent.click(screen.getByRole("button", { name: "Step 05 고치기" }));
     expect(onEditStep).toHaveBeenCalledWith("TC-003", "step-05");
   });
 

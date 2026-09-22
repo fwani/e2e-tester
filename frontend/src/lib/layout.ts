@@ -80,7 +80,7 @@ export const TARGET_SLOT_MIN_PX = 88;
  *
  * 실패 사유 2줄 + 시도한 LOCATOR 4행 + 경고 1개가 스크롤 없이 들어가는 높이.
  */
-export const RESULT_WORK_PX = 424;
+export const RESULT_WORK_PX = 280;
 
 const FILL: SlotSize = { kind: "fill" };
 const CONTENT: SlotSize = { kind: "content" };
@@ -249,7 +249,7 @@ export type FixedSlotPx = typeof TARGET_SLOT_MIN_PX | typeof RESULT_WORK_PX;
  */
 const FIXED_CLASS: Record<FixedSlotPx, string> = {
   [TARGET_SLOT_MIN_PX]: "flex-[0_0_88px] min-h-[88px] overflow-y-auto",
-  [RESULT_WORK_PX]: "flex-[0_0_424px] min-h-[424px] overflow-y-auto",
+  [RESULT_WORK_PX]: "flex-[0_0_280px] min-h-[280px] overflow-y-auto",
 };
 
 /** 배분 종류 → 클래스. `Record<SlotSize["kind"], …>` 가 종류 누락을 막는다. */
@@ -337,8 +337,8 @@ export function flexClassOf(size: SlotSize): string {
  * Tailwind 는 소스를 글자로 읽으므로 조립한 이름은 CSS 가 되지 않는다 (G-B).
  */
 export const STEP_FOOTER_MAX_CLASS: Record<Phase, string> = {
-  composing: "max-h-[calc(100%-36px-8*var(--h-step))]",
-  editing: "max-h-[calc(100%-36px-8*var(--h-step))]",
+  composing: "max-h-[calc(100%-84px-8*var(--h-step))]",
+  editing: "max-h-[calc(100%-84px-8*var(--h-step))]",
   recording: "max-h-[52%]",
   ai_authoring: "max-h-[52%]",
   takeover: "max-h-[52%]",

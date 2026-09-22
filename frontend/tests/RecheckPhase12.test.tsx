@@ -337,15 +337,15 @@ function renderList(state: SessionState) {
 describe("T119 목록 행은 세션의 상태를 본다 (FR-169 · N-02)", () => {
   it("실행이 끝난 세션이 열려 있어도 행은 저장된 결말을 말한다", async () => {
     await renderList("failed");
-    expect(screen.queryByText("RUNNING")).toBeNull();
+    expect(screen.queryByText("실행 중")).toBeNull();
     // 배너는 「실패」로 갱신되고 행은 `FAIL` 을 말한다 — 둘이 같은 사실을 가리킨다.
-    expect(screen.getAllByText("FAIL").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("실패", { selector: '[data-slot="chip"]' }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/실패/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("돌고 있으면 RUNNING 이다 — FR-168 을 되돌리지 않는다", async () => {
     await renderList("replaying");
-    expect(screen.getByText("RUNNING")).toBeTruthy();
+    expect(screen.getByText("실행 중", { selector: '[data-slot="chip"]' })).toBeTruthy();
   });
 
   it("끝난 세션에도 복귀 수단은 남는다 — 칩과 복귀는 다른 요구사항이다 (FR-168)", async () => {

@@ -132,12 +132,12 @@ describe("작업 화면의 높이 (사용자 보고 2026-09-09)", () => {
     ).toBe(true);
   });
 
-  it("**창이 기준보다 작으면 최소 높이를 지킨다** — 층이 눌리지 않는다", () => {
+  it("작은 창에서도 작업대를 뷰포트 높이에 맞춘다", () => {
     /*
       좁은 창에서 재배치하지 않고 스크롤한다는 기존 정책과 같은 판단이다 (007 FR-218a).
       `minHeight` 를 지우면 작은 창에서 헤더·국면 띠·미러가 눌려 읽을 수 없게 된다.
     */
     render(<SessionWorkbench {...sessionProps({ view: sessionView({ steps: manySteps(60) }) })} />);
-    expect(boundedBox()?.style.minHeight).toBe("900px");
+    expect(boundedBox()?.style.minHeight).toBe("min(900px, 100dvh)");
   });
 });

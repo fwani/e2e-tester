@@ -87,11 +87,12 @@ export interface PhaseBarProps {
   group?: PhaseGroupPick;
   /** 그 국면의 주요 조작. 오른쪽에 온다 */
   actions: ReactNode;
+  testId?: string | null;
 }
 
-export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProps) {
+export function PhaseBar({ bar, testName, rename, group, actions, testId }: PhaseBarProps) {
   return (
- <div data-workbench-phase-bar data-shell="phase" className="h-phase flex items-center gap-s3 px-s4 bg-panel border-b border-hair-2 flex-[0_0_48px]">
+ <div data-workbench-phase-bar data-shell="phase" className="workbench-heading">
       {/*
         국면 표시. **화면에 하나뿐이다** (FR-219). 색만으로 국면을 알리지 않으므로 라벨이
         항상 텍스트로 있다 (ui-contract §7). 어느 변형인지는 `theme/tone.ts` 가 정한다 —
@@ -102,6 +103,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
       </Chip>
 
       <PhaseTestName testName={testName} rename={rename} />
+      {testId && <span className="workbench-test-id">{testId}</span>}
 
       {/*
         013 FR-443 — 그룹을 이름 옆에서 고른다. **그룹이 하나도 없으면 그리지 않는다**
@@ -141,7 +143,7 @@ export function PhaseBar({ bar, testName, rename, group, actions }: PhaseBarProp
       {bar.runSummary !== null && (
         <div
           data-run-summary
-          className="font-sans text-[13px] leading-[1.4] font-normal flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis"
+          className="font-sans text-[14px] leading-[1.4] font-normal flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis"
           title={typeof bar.runSummary === "string" ? bar.runSummary : undefined}
         >
           {bar.runSummary}
@@ -246,7 +248,7 @@ function PhaseTestName({
         <span
           id={reasonId}
           data-disabled-reason="test.rename"
-          className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
+          className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 inline-flex items-center gap-s1 flex-initial min-w-0 max-w-[260px]"
         >
           <span
             data-disabled-reason-text

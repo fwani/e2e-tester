@@ -1,3 +1,4 @@
+import { revealTool } from "./helpers/toolPanel";
 /**
  * 016 T034b — 편집 화면에서 재녹화를 시작한다 (US1 · FR-015·FR-016·FR-022).
  *
@@ -113,6 +114,7 @@ describe("구간 지정 (FR-015)", () => {
 
     await check("st-2");
     await check("st-3");
+    await revealTool(rerecordButton() as HTMLButtonElement);
     await userEvent.click(rerecordButton() as HTMLButtonElement);
 
     expect(onRerecordRange).toHaveBeenCalledWith("TC-001", ["st-2", "st-3"]);
@@ -124,6 +126,7 @@ describe("구간 지정 (FR-015)", () => {
 
     await check("st-3");
     await check("st-2");
+    await revealTool(rerecordButton() as HTMLButtonElement);
     await userEvent.click(rerecordButton() as HTMLButtonElement);
 
     // 화면의 체크 순서는 사용자가 누른 순서다. 구간은 목록 순서로 정규화한다.
@@ -135,6 +138,7 @@ describe("구간 지정 (FR-015)", () => {
     await renderEdit({ onRerecordRange });
 
     await check("st-3");
+    await revealTool(rerecordButton() as HTMLButtonElement);
     await userEvent.click(rerecordButton() as HTMLButtonElement);
 
     expect(onRerecordRange).toHaveBeenCalledWith("TC-001", ["st-3"]);
@@ -148,6 +152,7 @@ describe("불연속은 시작하지 않는다 (FR-016)", () => {
 
     await check("st-1");
     await check("st-3");
+    await revealTool(rerecordButton() as HTMLButtonElement);
     await userEvent.click(rerecordButton() as HTMLButtonElement);
 
     expect(onRerecordRange).not.toHaveBeenCalled();
@@ -161,7 +166,7 @@ describe("불연속은 시작하지 않는다 (FR-016)", () => {
     await renderEdit({ onRerecordRange });
 
     const button = rerecordButton();
-    if (button !== null && !button.disabled) await userEvent.click(button);
+    if (button !== null && !button.disabled) { await revealTool(button); await userEvent.click(button); }
     expect(onRerecordRange).not.toHaveBeenCalled();
   });
 });
@@ -186,9 +191,11 @@ describe("저장하지 않은 편집 (FR-022 · 006 FR-203)", () => {
       expect(true).toBe(true);
       return;
     }
+    await revealTool(name);
     await userEvent.type(name, "!");
 
     await check("st-2");
+    await revealTool(rerecordButton() as HTMLButtonElement);
     await userEvent.click(rerecordButton() as HTMLButtonElement);
 
     await waitFor(() => expect(saved).toHaveBeenCalled());
@@ -212,7 +219,7 @@ describe("다른 세션이 잡고 있으면 (FR-017)", () => {
     expect(button?.disabled).toBe(true);
 
     // 눌러도 아무 일이 없다.
-    if (button !== null) await userEvent.click(button);
+    if (button !== null) { await revealTool(button); await userEvent.click(button); }
     expect(onRerecordRange).not.toHaveBeenCalled();
   });
 

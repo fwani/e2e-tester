@@ -31,7 +31,7 @@ type LayoutProps = { layout?: string; children?: ReactNode };
 /** 입력칸 위의 이름. 정본 `label{}` 을 그대로 옮겼다. */
 export function Label({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"label">, "className"> & LayoutProps) {
   const cls = cn(
-    "block font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 mt-s3 mb-[6px] mx-0",
+    "block font-sans text-[12px] font-semibold leading-[1.4] text-ink-2 mt-s3 mb-[6px] mx-0",
     layout,
   );
   return (
@@ -47,7 +47,7 @@ export function Label({ layout, children, ...rest }: Omit<ComponentPropsWithRef<
  * **문장을 담지 않는다** (머리주석 「셋이 다른 이유」).
  */
 export function Lbl({ layout, children, ...rest }: Omit<ComponentPropsWithRef<"span">, "className"> & LayoutProps) {
-  const cls = cn("font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3", layout);
+  const cls = cn("font-sans text-[12px] font-semibold leading-[1.4] text-ink-2", layout);
   return (
     <span className={cls} data-slot="lbl" {...rest}>
       {children}

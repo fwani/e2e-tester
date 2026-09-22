@@ -69,15 +69,15 @@
    근거: ui-ux-pro-max style=data-dense-dashboard, color=light neutral + status chips.
    한글 때문에 DB 가 권한 Fira Sans 대신 IBM Plex Sans KR 을 쓴다 (각색). */
 :root {
-  --bg:#F2F4F7; --panel:#FFFFFF; --sunken:#EAEDF2; --sunken-2:#F7F8FA;
-  --ink:#14171C; --ink-2:#4A515C; --ink-3:#6E757F;
-  --hair:#E3E6EB; --hair-2:#CBD0D8;
+  --bg:#F4F6F8; --panel:#FFFFFF; --sunken:#E8EEF1; --sunken-2:#F7F8FA;
+  --ink:#162C38; --ink-2:#465B66; --ink-3:#627580;
+  --hair:#DCE4E8; --hair-2:#BCCBD2;
   --pass:#1A7F45; --pass-t:#E8F5ED;
   --fail:#C8371D; --fail-t:#FCEDE9;
   --warn:#8F5A00; --warn-t:#FBF3E2;
   --run:#0B6BCB;  --run-t:#E8F1FB;
   --ai:#6B3FD4;   --ai-t:#F0EBFB;
-  --radius:3px; --radius-chip:2px; --radius-lg:6px;
+  --radius:7px; --radius-chip:5px; --radius-lg:12px;
   --e-1:0 1px 2px rgba(20,23,28,.07);
   --e-2:0 16px 40px rgba(20,23,28,.18);
   --font-sans:"IBM Plex Sans KR",system-ui,sans-serif;
@@ -85,7 +85,7 @@
 }
 *,*::before,*::after{box-sizing:border-box;}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);
-     font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;
+     font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
      font-variant-numeric:tabular-nums;}
 a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
 
@@ -253,10 +253,10 @@ a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
   --h-header: 56px;
   --h-phase: 48px;
   --h-notice: 32px;
-  --h-control: 32px;
-  --h-control-sm: 26px;
+  --h-control: 36px;
+  --h-control-sm: 30px;
   --h-step: 52px;            /* Step 행. v1 은 125px 였다 */
-  --w-steps: 460px;          /* Step 패널 */
+  --w-steps: 400px;
   --w-detail: 640px;         /* Step 상세 겹침 */
   --w-min: 1440px;           /* 최소 기준 폭 */
 
@@ -282,7 +282,7 @@ a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
    `var()` 참조이며 리터럴 값을 새로 만들지 않는다. */
 
 button {
-  font: 600 13px/1 var(--font-sans);
+  font: 600 14px/1 var(--font-sans);
   cursor: pointer;
   height: var(--h-control);
   padding: 0 12px;
@@ -324,7 +324,7 @@ button:disabled {
 }
 
 input, select, textarea {
-  font: 400 13px/1.4 var(--font-sans);
+  font: 400 14px/1.5 var(--font-sans);
   width: 100%;
   min-height: var(--h-control);
   padding: 0 10px;
@@ -484,7 +484,7 @@ code { font-family: var(--font-mono); font-size: 12px; }
 /* 작은 제목 — 카드·구획의 머리 (`font:700 13.5px/1`). */
 .subtitle { font: 700 13.5px/1 var(--font-sans); }
 /* 굵은 한 줄 — 알림의 첫 문장 (`font:600 13px/1`). */
-.strong-sm { font: 600 13px/1 var(--font-sans); }
+.strong-sm { font: 600 14px/1 var(--font-sans); }
 /* 목록 항목의 이름. 한 줄로 자른다 — 감싸면 행 높이가 성립하지 않는다. */
 .name {
   font: 500 13px/1 var(--font-sans);
@@ -499,7 +499,7 @@ code { font-family: var(--font-mono); font-size: 12px; }
 /* 여러 줄 설명 (`font:400 13.5px/1.7 · ink-2`). */
 .note { font: 400 13.5px/1.7 var(--font-sans); color: var(--ink-2); }
 /* 본문 한 줄 (`font:400 13px/1.4`). */
-.line { font: 400 13px/1.4 var(--font-sans); }
+.line { font: 400 14px/1.5 var(--font-sans); }
 /* 헤더의 제품 이름 (`font:700 15px/1 · letter-spacing -.01em`). */
 .brand-name { font: 700 15px/1 var(--font-sans); letter-spacing: -0.01em; }
 
@@ -587,7 +587,7 @@ input.phase-name:disabled { border-color: transparent; color: var(--ink-2); }
    Tailwind 설정으로 옮겨 가고, 그것이 정본을 둘로 만든다 (FR-001). 새 값이 아니라
    여기 있던 값에 이름을 붙인 것이며, 파생 구획의 목적이 바로 그것이다.
 
-   `--ink`(#14171C = rgb(20,23,28))를 투명도로 낮춘 것이고 다른 색을 섞지 않았다.
+   `--ink`(#162C38 = rgb(20,23,28))를 투명도로 낮춘 것이고 다른 색을 섞지 않았다.
    0.28 은 겹침 640, 0.45 는 화면 전체를 덮는 확인 판이다 — 덮는 면적이 클수록
    짙게 한다 (DC-009). */
 :root {
@@ -803,7 +803,7 @@ input.ai, textarea.ai { border-color: var(--ai); }
    AI 가 막혔을 때 사람이 한 문장을 적어 돌려주는 자리. **질문은 라벨이 아니다** —
    `.lbl` 은 11px 대문자 모노이고 한 문장을 읽는 형태가 아니다. 질문은 본문
    (`.line`)으로 읽고, 라벨은 짧은 이름표로 남는다. */
-.answer-q { font: 400 13px/1.4 var(--font-sans); color: var(--ink); }
+.answer-q { font: 400 14px/1.5 var(--font-sans); color: var(--ink); }
 
 /* 힌트가 조건부로 나타나면 그 줄만큼 아래가 밀린다. 자리를 고정한다. */
 .hint-line { min-height: 16px; }
@@ -823,3 +823,7 @@ input.ai, textarea.ai { border-color: var(--ai); }
   background: var(--panel);
   border-top: 1px solid var(--hair-2);
 }
+
+/* 2026-09 visibility refresh: native reading and editing affordances. */
+::selection { background: var(--run-t); color: var(--ink); }
+input, textarea { caret-color: var(--run); }

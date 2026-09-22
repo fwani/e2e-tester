@@ -1,3 +1,4 @@
+import { ToolPanel } from "../ui/ToolPanel";
 /**
  * 테스트 목록. **`docs/design/008-visual-language/TestList.dc.html`·`EmptyList.dc.html`
  * (1440×900) 기준.** DC-001~DC-009.
@@ -35,14 +36,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  ai,
-  ApiError,
   drafts as draftsApi,
   excel,
   groups as groupsApi,
   saveBlob,
   tests,
-  type AiAvailability,
   type SessionView,
   type TestListRow,
   type TestGroup,
@@ -67,12 +65,13 @@ import type { ErrorInfo } from "../components/ErrorNotice";
 import { Artboard, BrandMark, HeaderBar, HeaderDivider } from "../components/design/Chrome";
 import { Toast } from "../ui/Toast";
 import { isRunning } from "../lib/sessionState";
-import { EDIT_ENTRY_LABEL, outcomeChip, outcomeLabel, stepLabel } from "../lib/wording";
+import { EDIT_ENTRY_LABEL, stepLabel } from "../lib/wording";
 import { paths } from "../lib/paths";
-import { chipTone, rowMark } from "../theme/tone";
+import { rowMark } from "../theme/tone";
 import type { Outcome } from "../types/generated/run-result";
 
 import { Button, ButtonLink } from "../ui/Button";
+import { OutcomeBadge } from "../components/Badges";
 import { Chip, Pill } from "../ui/Chip";
 import { rowClasses } from "../ui/Table";
 import { Field } from "../ui/Field";
@@ -82,10 +81,10 @@ import { Input } from "../ui/Input";
 import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
 import { ToggleGroup, ToggleGroupItem } from "../ui/ToggleGroup";
 import { Disclosure } from "../ui/Disclosure";
-import { Pane } from "../ui/Surface";
 import { Tooltip } from "../ui/Tooltip";
+import "./library-simplification.css";
 /** 목록 격자. 표 머리와 행이 **같은 값을 쓴다** — 다르면 정렬이 값에 따라 흔들린다 (FR-273). */
-const GRID = "28px 96px 82px 1fr 64px 92px 150px 168px";
+const GRID = "28px minmax(240px, 1fr) 148px 188px";
 /** 맨 앞 28px 이 체크 칸이다 (013 FR-426 · UC-013-01).
 
     **행 누름(열기)과 갈라 둔다.** 두 동작을 한 자리에 두면 열려던 사용자가 삭제 대상을
@@ -395,42 +394,6 @@ export function TestList({
   );
   const allVisibleSelected =
     rows.length > 0 && rows.every((r) => selected.has(r.id));
-  /**
-   * 목록을 **그룹별로 묶는다** (013 FR-440 · UC-013-06).
-   *
-   * 한 그룹만 골라 본 상태에서는 묶지 않는다 — 소제목이 하나뿐이면 자리만 차지한다.
-   * 그룹이 아예 없는 프로젝트에서도 묶지 않는다: **이 기능 이전과 같은 모습이어야
-   * 한다** (SC-627).
-   *
-   * 「그룹 없음」은 **마지막에 온다.** 이름이 있는 묶음을 먼저 보여주는 것이 목록을
-   * 훑는 순서에 맞는다.
-   */
-  const grouped = useMemo(() => {
-    const definedGroups = (data?.groups ?? []).filter((g) => g.prefix !== "TC");
-    if (definedGroups.length === 0 || groupFilter !== null) return null;
-
-    const byPrefix = new Map<string, TestListRow[]>();
-    for (const r of rows) {
-      const bucket = byPrefix.get(r.group_prefix);
-      if (bucket) bucket.push(r);
-      else byPrefix.set(r.group_prefix, [r]);
-    }
-    const nameOf = new Map((data?.groups ?? []).map((g) => [g.prefix, g.name]));
-    const sections = [...byPrefix.entries()]
-      .map(([prefix, items]) => ({
-        prefix,
-        // 정의가 없는 접두어는 이름을 지어내지 않는다 — 접두어가 곧 이름이다.
-        label: nameOf.get(prefix) ?? (prefix === "TC" ? "그룹 없음" : prefix),
-        items,
-      }))
-      .sort((a, b) => {
-        if (a.prefix === "TC") return 1;
-        if (b.prefix === "TC") return -1;
-        return a.label.localeCompare(b.label, "ko");
-      });
-    return sections;
-  }, [rows, data, groupFilter]);
-
   const mergedGroups = useMemo(() => {
     const fromList = data?.groups ?? [];
     const seen = new Set(fromList.map((g) => g.prefix));
@@ -445,7 +408,6 @@ export function TestList({
     });
   }, [data, definedGroups]);
 
-  const totalSteps = useMemo(() => all.reduce((s, t) => s + t.step_count, 0), [all]);
   /** 고른 것들을 휴지통으로 (013 FR-432). 확인을 거친 뒤에만 부른다. */
   const runBulkDelete = () => {
     const ids = effectiveSelection;
@@ -471,11 +433,6 @@ export function TestList({
       })
       .finally(() => setBusy(false));
   };
-  const lastRun = useMemo(() => {
-    const times = all.map((t) => t.last_run_at).filter((t): t is string => t !== null);
-    if (times.length === 0) return null;
-    return times.reduce((a, b) => (new Date(a).getTime() > new Date(b).getTime() ? a : b));
-  }, [all]);
   /**
    * 테스트가 하나도 없는 첫 사용자 화면 — `EmptyList.dc.html` 이 기준이다.
    *
@@ -500,7 +457,7 @@ export function TestList({
         <BrandMark />
         <HeaderDivider />
         <div className="flex items-center gap-s2">
-          <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">프로젝트</span>
+          <span className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2">프로젝트</span>
           <Pill>{projectName}</Pill>
           {/*
             **프로젝트 목록으로 가는 길** (사용자 보고 · 2026-09-09 — 「프로젝트 목록으로
@@ -562,8 +519,14 @@ export function TestList({
         도구 줄을 계속 덮기 때문이다 (017 research R6 ⑤).
       */}
       <div
-        className="flex-1 min-h-0 flex flex-col gap-s3 py-[14px] px-s4"
+        className="test-library library-simple"
       >
+        <div className="library-heading">
+          <div>
+            <h1 className="font-sans text-[24px] font-bold leading-[1.3] m-0">테스트 라이브러리</h1>
+          </div>
+        </div>
+        <section className="library-content" aria-label="테스트 목록">
         {activeSessions.length > 0 && (
           <ActiveSessionsBanner
             sessions={activeSessions}
@@ -593,8 +556,8 @@ export function TestList({
         )}
 
         {/* ─── 조작 줄 — 검색 · 결말 필터 · 정렬 ─────────────────────────── */}
- <div className="flex items-center gap-[10px]">
-          <Field off={isEmptyProject} layout="flex-1 max-w-[520px]">
+ {!isEmptyProject && <div className="library-toolbar">
+          <Field off={isEmptyProject} layout="library-search">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7">
               <circle cx="7" cy="7" r="4.6" />
               <path d="M10.6 10.6L14 14" />
@@ -602,13 +565,41 @@ export function TestList({
             <Input variant="bare"
               aria-label="테스트 검색"
               placeholder={
-                isEmptyProject ? "검색할 테스트가 아직 없습니다" : "이름 · ID · Step 안의 locator 로 검색"
+                isEmptyProject ? "검색할 테스트가 아직 없습니다" : "이름, ID, locator 검색"
               }
               value={query}
               disabled={isEmptyProject}
               onChange={(e) => setQuery(e.target.value)}
             />
           </Field>
+
+        {!isEmptyProject && (
+          <TestGroupBar
+            /*
+              **정의된 그룹 ∪ 실제로 테스트가 있는 접두어.** 앞쪽이 빈 그룹을 살리고,
+              뒤쪽이 「그룹 없음」과 정의가 없는 접두어를 살린다. 어느 한쪽만으로는
+              띠에서 사라지는 것이 생긴다.
+            */
+            groups={mergedGroups}
+            active={groupFilter}
+            busy={busy}
+            onPick={(prefix) => {
+              // 걸러 보기가 바뀌면 보이지 않게 된 것은 선택에서도 빠진다 (FR-429).
+              // 선택은 `effectiveSelection` 이 읽을 때 거르므로 여기서 비우지 않는다.
+              setGroupFilter(prefix);
+            }}
+            onCreate={(prefix, name) =>
+              void act(() => groupsApi.create(prefix, name))
+            }
+            onRename={(prefix, name) => void act(() => groupsApi.rename(prefix, name))}
+            onRemove={(prefix) =>
+              void act(() => groupsApi.remove(prefix)).then(() => {
+                // 없어진 그룹을 계속 보고 있으면 빈 목록이 그려진다.
+                if (groupFilter === prefix) setGroupFilter(null);
+              })
+            }
+          />
+        )}
 
           {!isEmptyProject && (
             <>
@@ -633,22 +624,22 @@ export function TestList({
                       **전환 전에도 색이 덮이지 않았다.** 시각 동일성이 요건이므로
                       (FR-008) 여기서 색을 새로 만들지 않는다.
                     */}
-                    <span className="font-mono text-[12px] leading-none font-normal text-ink-3 ml-auto">
+                    <span className="font-mono text-[12px] leading-none font-normal text-inherit ml-auto">
                       {counts[key]}
                     </span>
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
 
-              <div className="flex-1" />
-
               <Button
+                variant="nav"
                 size="sm"
                 aria-pressed={recentFirst}
                 onClick={() => setRecentFirst((v) => !v)} >
                 {recentFirst ? "최근 실행 순" : "저장된 순"}
               </Button>
 
+              <ToolPanel label="목록 관리"><div>
               {/*
                 번호 정리 (2026-09-10 사용자 보고 2번 — 「번호를 일괄적으로 맞추거나
                 재조정하는 방법이 있으면 좋겠다」).
@@ -718,38 +709,10 @@ export function TestList({
                   onError={setError}
                 />
               )}
+              </div></ToolPanel>
             </>
           )}
-        </div>
-
-        {/* ─── 그룹 띠 (013 UC-013-06) ──────────────────────────────────── */}
-        {!isEmptyProject && (
-          <TestGroupBar
-            /*
-              **정의된 그룹 ∪ 실제로 테스트가 있는 접두어.** 앞쪽이 빈 그룹을 살리고,
-              뒤쪽이 「그룹 없음」과 정의가 없는 접두어를 살린다. 어느 한쪽만으로는
-              띠에서 사라지는 것이 생긴다.
-            */
-            groups={mergedGroups}
-            active={groupFilter}
-            busy={busy}
-            onPick={(prefix) => {
-              // 걸러 보기가 바뀌면 보이지 않게 된 것은 선택에서도 빠진다 (FR-429).
-              // 선택은 `effectiveSelection` 이 읽을 때 거르므로 여기서 비우지 않는다.
-              setGroupFilter(prefix);
-            }}
-            onCreate={(prefix, name) =>
-              void act(() => groupsApi.create(prefix, name))
-            }
-            onRename={(prefix, name) => void act(() => groupsApi.rename(prefix, name))}
-            onRemove={(prefix) =>
-              void act(() => groupsApi.remove(prefix)).then(() => {
-                // 없어진 그룹을 계속 보고 있으면 빈 목록이 그려진다.
-                if (groupFilter === prefix) setGroupFilter(null);
-              })
-            }
-          />
-        )}
+        </div>}
 
         {/* ─── 선택·확인·완료 (013 UC-013-02·04·05) ─────────────────────── */}
         {!isEmptyProject && trashed !== null && (
@@ -779,9 +742,9 @@ export function TestList({
             tone={exported.warnings > 0 ? "warn" : "info"}
             onDismiss={() => setExported(null)}
           >
-            <div className="font-sans text-[13px] font-semibold leading-none">{exported.filename} 을 내려받았습니다.</div>
+            <div className="font-sans text-[14px] font-semibold leading-none">{exported.filename} 을 내려받았습니다.</div>
             {exported.warnings > 0 && (
-              <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1">
+              <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1">
                 시트 이름이 바뀌었거나 긴 칸이 잘린 곳이 {exported.warnings}건 있습니다.
               </div>
             )}
@@ -793,7 +756,7 @@ export function TestList({
             {(exported.detail?.sheet_renames ?? []).length > 0 && (
               <div className="mt-[6px]" data-export-renames>
                 {(exported.detail?.sheet_renames ?? []).map((r) => (
-                  <div key={r.group_name} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
+                  <div key={r.group_name} className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">
                     그룹 「{r.group_name}」은 「{r.sheet_name}」 시트가 됐습니다.
                   </div>
                 ))}
@@ -802,14 +765,14 @@ export function TestList({
             {(exported.detail?.truncations ?? []).length > 0 && (
               <Disclosure layout="mt-[6px]" data-export-truncations tone="quiet" summary={<>잘린 칸 {(exported.detail?.truncations ?? []).length}건</>}>
                 {(exported.detail?.truncations ?? []).map((t) => (
- <div key={`${t.test_id}-${t.column}`} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
+ <div key={`${t.test_id}-${t.column}`} className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">
                     {t.test_id} · {t.column} — {t.dropped_lines}줄 생략
                   </div>
                 ))}
               </Disclosure>
             )}
             {(exported.detail?.unreadable ?? []).length > 0 && (
-              <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]" data-export-unreadable>
+              <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[6px]" data-export-unreadable>
                 읽지 못해 빠진 정의 {(exported.detail?.unreadable ?? []).length}건이 있습니다.
               </div>
             )}
@@ -895,7 +858,6 @@ export function TestList({
         {isEmptyProject ? (
           <EmptyProject
             onCreate={onCreate}
-            onOpenKeys={onOpenKeys}
             onImportPlan={onImportPlan}
             onError={setError}
             draftCount={draftRows.length}
@@ -904,7 +866,7 @@ export function TestList({
           <div className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-col overflow-hidden">
             <div
               data-test-head
-              className="bg-sunken border-b border-hair-2 flex-[0_0_34px] grid gap-s3 items-center pt-0 pr-[14px] pb-0 pl-[17px]"
+              className="bg-sunken-2 border-b border-hair-2 flex-[0_0_44px] grid gap-s3 items-center pt-0 pr-[14px] pb-0 pl-[17px]"
               /*
                 격자 열만 인라인으로 남는다 — 표 머리와 행이 **같은 상수**를 써야 하고
                 (FR-273 · V-08), 그 값을 두 곳에 적으면 어긋난다. 열 정의가 한 상수에서
@@ -924,14 +886,8 @@ export function TestList({
                   }
                 />
               </div>
-              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">마지막 결과</div>
-              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">ID</div>
-              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">이름</div>
-              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 text-right">
-                STEP
-              </div>
-              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">작성</div>
-              <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">마지막 실행</div>
+              <div className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2">테스트 / ID</div>
+              <div className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2">최근 실행</div>
               <div />
             </div>
 
@@ -939,7 +895,7 @@ export function TestList({
               {/* 확정 디자인은 행이 있는 상태만 그린다. 아래 둘은 undefined-states.md 에
                   기록했고 정본의 형태만으로 그린다 (DC-009). */}
               {data === null && (
-                <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 py-s5 px-[17px]">
+                <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 py-s5 px-[17px]">
                   불러오는 중…
                 </div>
               )}
@@ -952,22 +908,7 @@ export function TestList({
                 </div>
               )}
 
-              {/*
-                그룹이 있으면 소제목으로 묶고, 없으면 지금까지처럼 평평하게 그린다
-                (013 FR-440 · SC-627). **행을 그리는 코드는 하나다** — 두 벌로 두면
-                묶은 쪽에만 새 조작이 붙는 일이 생긴다.
-              */}
-              {(grouped ?? [{ prefix: "", label: "", items: rows }]).map((section) => (
-                <div key={section.prefix || "__flat__"}>
-                  {grouped !== null && (
-                    <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 pt-[10px] px-[17px] pb-s1"
-                      data-group-heading={section.prefix}
-                    >
-                      {section.label} {section.items.length}
-                    </div>
-                  )}
-                  {section.items.map((row) => (
-
+              {rows.map((row) => (
                     <Row
                       key={row.id}
                       row={row}
@@ -1026,29 +967,9 @@ export function TestList({
                       onOpenResult={() => onOpenResult(row.id)}
                       onOpenDefinition={onOpenDefinition ? () => onOpenDefinition(row.id) : undefined}
                     />
-                  ))}
-                </div>
               ))}
             </div>
 
-            {/* 바닥 띠 — 프로젝트 전체의 규모와 마지막 실행. */}
-            <div
-              className="bg-sunken-2 border-t border-hair flex-[0_0_40px] flex items-center gap-[14px] py-0 px-[14px]"
-            >
-              <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
-                테스트 {counts.all}개 · Step {totalSteps}개 · 마지막 전체 실행{" "}
-                {lastRun === null ? "없음" : relativeTime(lastRun)}
-              </span>
-              <div className="flex-1" />
-              {/*
-                헌법 V — 내보내기는 출시 전까지 갖춰야 하는 약속이고 MVP 에는 없다.
-                **감추지 않고 비활성으로 두고 이유를 붙인다** (006 ui-contract §2).
-              */}
-              <Button size="sm" variant="off" disabled>
-                Playwright 로 내보내기
-              </Button>
-              <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">MVP 미지원</span>
-            </div>
           </div>
         )}
 
@@ -1074,6 +995,7 @@ export function TestList({
             onError={setError}
           />
         )}
+        </section>
       </div>
     </Artboard>
   );
@@ -1177,15 +1099,16 @@ function Row({
         어느 표식인지는 `theme/tone.ts` 가 결말 넷 전부에서 정한다 — 화면이
         `outcome === "pass" ? …` 로 가르면 중지가 실패로 보인다 (U-03).
       */
-      className={rowClasses(rowMark(row.outcome, live))}
+      className={`${rowClasses(rowMark(row.outcome, live))} ${selected ? "shadow-[inset_0_0_0_2px_var(--run)]" : ""}`}
       data-test-row={row.id}
+      data-selected={selected ? "true" : undefined}
       style={{
         display: "grid",
         gridTemplateColumns: GRID,
         gap: "12px",
         padding: "0 14px",
         // 이름 변경·삭제 확인은 행 안에서 펼쳐지므로 그때만 높이를 늘린다.
-        ...(renaming !== null || confirming ? { height: "auto", minHeight: "44px", paddingTop: 8, paddingBottom: 8 } : {}),
+        ...(renaming !== null || confirming ? { height: "auto", minHeight: "64px", paddingTop: 8, paddingBottom: 8 } : {}),
       }}
     >
       {/*
@@ -1205,19 +1128,6 @@ function Row({
           onChange={onToggleSelected}
         />
       </div>
-
-      <div>
-        {/*
-          005 FR-169 (재점검 N-02) — 표식은 세션의 **상태**를 본다.
-
-          이전에는 세션의 **존재**를 봤다(`liveSession !== null`). 실행이 끝나도 세션은
-          `failed`·`review` 로 등록에 남으므로 행은 영원히 「실행 중」이었고, 같은 화면의
-          배너는 「실패」로 갱신됐다 — 배너와 행이 다른 말을 했다.
-        */}
-        <OutcomeChip outcome={row.outcome} running={live} />
-      </div>
-
-      <div className="font-mono text-[12px] leading-none font-normal text-ink-3">{row.id}</div>
 
       <div className="min-w-0 flex flex-col gap-[3px]">
         {renaming !== null ? (
@@ -1240,12 +1150,17 @@ function Row({
             </Button>
           </div>
         ) : (
-          <div className="font-sans text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis">{row.name}</div>
+          <div className="font-sans text-[15px] font-semibold leading-[1.4] whitespace-nowrap overflow-hidden text-ellipsis" title={row.name}>{row.name}</div>
         )}
 
+        <div className="library-row-meta">
+          <span className="font-mono">{row.id}</span>
+          <span>{row.step_count} Steps</span>
+          <span>{row.authoring_mode === "ai" ? "AI" : "RECORD"}</span>
+        </div>
         {/* FR-005 — 실패한 테스트는 실패 Step 번호와 메시지 요약을 인라인으로 보여준다. */}
         {row.failure_summary !== null && (
- <div className="font-mono text-[11.5px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
+ <div className="font-sans text-[12px] leading-[1.5] font-normal text-fail whitespace-nowrap overflow-hidden text-ellipsis" title={row.failure_summary.message}>
             {stepLabel(row.failure_summary.step_index)} · {row.failure_summary.message}
           </div>
         )}
@@ -1265,15 +1180,10 @@ function Row({
         )}
       </div>
 
-      <div className="font-mono text-[12px] leading-none font-normal text-ink-3 text-right">
-        {row.step_count}
+      <div className="library-row-result">
+        <OutcomeChip outcome={row.outcome} running={live} />
+        {row.last_run_at !== null && !live && <span>{relativeTime(row.last_run_at)}</span>}
       </div>
-
-      <div>
-        <AuthoringChip mode={row.authoring_mode} />
-      </div>
-
-      <div className="font-mono text-[11.5px] leading-none font-normal text-ink-3">{live ? "실행 중" : relativeTime(row.last_run_at)}</div>
 
       {/*
         005 FR-130 — 「실행」은 **항상** 두고, 결과가 있으면 「결과 보기」도 함께 둔다
@@ -1298,11 +1208,11 @@ function Row({
           방금 남은 결과에 도달할 길이 없었다 (U-13 의 재발).
         */}
         {hasResult && !live && (
-          <ButtonLink size="sm" href={paths.result(row.id)} onNavigate={onOpenResult}>
+          <ButtonLink variant="nav" href={paths.result(row.id)} onNavigate={onOpenResult}>
             결과 보기
           </ButtonLink>
         )}
-        <Button size="sm" variant={runPending ? "off" : "default"} onClick={onRun} disabled={runPending}>
+        <Button size="sm" variant={runPending ? "off" : "ghost"} onClick={onRun} disabled={runPending}>
           {!runPending && (
             <svg width="11" height="11" viewBox="0 0 16 16">
               <path d="M4 2l10 6-10 6z" fill="currentColor" />
@@ -1334,7 +1244,7 @@ function Row({
           {/* 017 T064 — 글자 없는 `⋮` 의 이름. 보이는 글(「추가 동작」)이 들리는 이름(「{행 이름} 추가 동작」)에 들어 있다. */}
           <Tooltip content="추가 동작">
             <MenuTrigger>
-              <Button size="icon" aria-label={`${row.name} 추가 동작`}>
+              <Button size="icon" variant="ghost" aria-label={`${row.name} 추가 동작`}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                   <circle cx="6" cy="2" r="1.1" />
                   <circle cx="6" cy="6" r="1.1" />
@@ -1405,236 +1315,59 @@ function Row({
  */
 function OutcomeChip({ outcome, running = false }: { outcome: Outcome | null; running?: boolean }) {
   if (running) {
-    /*
-      문구는 `RUNNING` 그대로다. 확정 디자인은 이 표식을 「실행 중」으로 그리지만, 목록
-      표식의 어휘는 005 FR-140·U-20 이 `PASS`/`FAIL` 계열로 통일해 둔 것이고 그것을 이
-      화면에서만 바꾸면 화면마다 다른 말이 다시 생긴다. 디자인과의 차이는 대조 기록에
-      L3-1 로 남기고 어휘 계약과 함께 판정한다 (T070).
-    */
     return (
       <Chip tone="run">
         <svg width="10" height="10" viewBox="0 0 16 16">
           <circle cx="8" cy="8" r="5" fill="currentColor" />
         </svg>
-        RUNNING
+        실행 중
       </Chip>
     );
   }
-  if (outcome === null) {
-    /*
-      008 — 「미실행」이라고 **말한다.**
-
-      v1 은 여기에 `—` 를 그렸다. 한 번도 돌리지 않은 테스트가 기본 상태인데, 목록의 첫
-      칸이 빈 칸이면 사용자가 처음 보는 것이 "아무것도 없음" 이 된다. 점선 표식은
-      「아직 결과가 없다」는 사실 자체를 상태로 보여준다 (Language.dc.html §04).
-    */
-    return <Chip tone={chipTone(null)}>미실행</Chip>;
-  }
-  return (
-    // 색만으로 구분하지 않는다 — 표식에는 항상 글자가 있고, 스크린리더에는 한국어 문장을 준다.
-    <Chip tone={chipTone(outcome)} title={outcomeLabel(outcome)}>
-      {outcomeChip(outcome)}
-    </Chip>
-  );
+  return <OutcomeBadge outcome={outcome} />;
 }
 
-function AuthoringChip({ mode }: { mode: "record" | "ai" }) {
-  // FR-002a — 테스트를 시작한 방식으로 고정한다. AI 로 시작해 사람이 이어받아도 AI 다.
-  if (mode === "ai") return <Chip tone="ai">AI</Chip>;
-  return <Chip>RECORD</Chip>;
-}
-// ─── 확정 디자인이 정의하지 않은 상태 (DC-009) ────────────────────────────
-/**
- * 테스트가 하나도 없는 프로젝트 — `EmptyList.dc.html`.
- *
- * 008 이 처음 정의한 화면이다. 이전에는 목록 표 안에 한 줄짜리 안내를 뒀는데, **첫
- * 사용자가 실제로 보는 화면**이 그것이었다. 여기서 두 갈래(녹화·AI)를 나란히 보여주고
- * 각각 무엇이 필요한지 말한다.
- *
- * ## AI 쪽 상태는 **확인해서** 말한다 (001 DR-021)
- *
- * 008 판은 「키 필요」 표식과 「언어모델 키 등록하기」 버튼을 **고정 문구로** 뒀다.
- * 그래서 자격 증명이 이미 있는 환경(`/api/ai/availability` 가 `available: true`)에서도
- * 화면은 키가 없다고 말하고, 이 화면에서 AI 로 시작하는 길이 아예 없었다 — 첫 사용자가
- * 보는 화면이 사실과 반대되는 상태다. `ComposeView` 는 처음부터 이 점검을 했으므로
- * 같은 사실을 두 화면이 다르게 말하고 있었다.
- *
- * 확인 전에는 「키 필요」도 「사용 가능」도 말하지 않는다 — 아직 모르는 것을 단정하면
- * 고정 문구와 같은 결함이 된다.
- */
+/** 시작 방식과 AI 준비 상태는 시작 화면에서 한 번만 묻는다. */
 function EmptyProject({
   onCreate,
-  onOpenKeys,
   onImportPlan,
   onError,
   draftCount = 0,
 }: {
   onCreate: () => void;
-  onOpenKeys?: () => void;
-  /**
-   * 녹화하지 않은 초안 수.
-   *
-   * **0 이 아니면 이 화면의 문구가 거짓말이 된다.** 「아직 테스트가 없습니다 · 브라우저를
-   * 직접 조작하거나 할 일을 말로 적으면 됩니다」는 맨 처음 온 사용자를 위한 문장이고,
-   * 설계서에서 스무 건을 들여온 사용자에게는 다음에 할 일이 이미 정해져 있다 — 초안
-   * 하나를 녹화하는 것이다. 그 사용자에게는 문구가 위의 초안 구획을 가리켜야 한다.
-   */
   draftCount?: number;
-  /**
-   * 엑셀에서 가져오기 (014 US2).
-   *
-   * **이 화면에 있어야 한다.** 테스트가 0개인 프로젝트는 설계서를 들여오기에 가장
-   * 좋은 상태이고, 목록 조작 띠는 이 화면에서 그려지지 않는다 — 거기에만 두면 가장
-   * 필요한 순간에 길이 없다.
-   */
   onImportPlan?: (plan: ImportPlanView) => void;
   onError?: (error: ErrorInfo) => void;
 }) {
-  const [aiReady, setAiReady] = useState<AiAvailability | null>(null);
-
-  useEffect(() => {
-    void ai
-      .availability()
-      .then(setAiReady)
-      .catch((exc: unknown) =>
-        setAiReady({
-          available: false,
-          reason: exc instanceof ApiError ? exc.message : String(exc),
-        }),
-      );
-  }, []);
-
   return (
-    <div
-      className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex items-center justify-center p-s6"
-    >
-      <div
-        className="max-w-[720px] flex flex-col items-center gap-[22px] text-center"
-      >
-        <svg width="52" height="52" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-ink-3">
-          <rect x="4" y="7" width="32" height="7" rx="1.5" />
-          <rect x="4" y="17" width="32" height="7" rx="1.5" strokeDasharray="3.4 3" />
-          <rect x="4" y="27" width="32" height="7" rx="1.5" strokeDasharray="3.4 3" />
-        </svg>
-
-        <div className="flex flex-col gap-s2">
-          <h2 className="font-sans text-[20px] font-bold leading-[1.3] m-0">
-            아직 테스트가 없습니다
-          </h2>
-          <div className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
-            {draftCount > 0 ? (
-              <span data-empty-with-drafts>
-                위의 초안 {draftCount}건을 녹화하면 테스트가 됩니다.
-                <br />
-                초안과 무관하게 새로 만들 수도 있습니다 — 어느 쪽으로 만들어도 같은 Step
-                모델로 저장됩니다.
-              </span>
-            ) : (
-              <>
-                브라우저를 직접 조작하거나, 할 일을 말로 적으면 됩니다.
-                <br />
-                어느 쪽으로 만들어도 같은 Step 모델로 저장되고, 다시 돌릴 때는 Playwright 가
-                실행합니다.
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-[1fr_1fr] gap-s3 w-full text-left">
-          <div className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[9px]">
-            <div className="flex items-center gap-s2">
-              <svg width="14" height="14" viewBox="0 0 16 16" className="text-fail">
-                <circle cx="8" cy="8" r="5" fill="currentColor" />
-              </svg>
-              <div className="font-sans text-[13.5px] font-bold leading-none">직접 녹화</div>
-            </div>
-            <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">브라우저를 직접 조작해서 만듭니다. 키가 필요 없습니다.</div>
-            <Button variant="primary" onClick={onCreate} layout="justify-center">
-              녹화로 시작하기
-            </Button>
-          </div>
-
-          <div className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[9px]">
-            <div className="flex items-center gap-s2">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-ai">
-                <path d="M8 2v3M8 11v3M2 8h3M11 8h3M4.2 4.2l2 2M9.8 9.8l2 2M11.8 4.2l-2 2M6.2 9.8l-2 2" />
-              </svg>
-              <div className="font-sans text-[13.5px] font-bold leading-none text-ai">AI 로 만들기</div>
-              {/* 확인이 끝난 뒤에만 표식을 붙인다 (DR-021) */}
-              {aiReady !== null && (
-                <Chip
-                  tone={aiReady.available ? "ai" : "warn"}
-                  data-ai-ready={aiReady.available ? "yes" : "no"}
-                >
-                  {aiReady.available ? "사용 가능" : "키 필요"}
-                </Chip>
-              )}
-            </div>
-            <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">할 일을 말로 적으면 AI 가 브라우저에서 해봅니다.</div>
-            {/*
-              쓸 수 없는 조작을 감추지 않는다 (006 ui-contract §2). 쓸 수 있으면
-              **막지도 않는다** — 키가 있는데 키 등록으로 보내면 갈 곳이 없다.
-            */}
-            {aiReady?.available === true ? (
-              <Button variant="primary" onClick={onCreate} layout="justify-center">
-                AI 로 시작하기
-              </Button>
-            ) : (
-              <>
-                {/* 왜 못 쓰는지 백엔드가 준 문구를 그대로 보여준다 (DR-016) */}
-                {aiReady !== null && aiReady.reason !== null && (
-                  <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 whitespace-pre-wrap">
-                    {aiReady.reason}
-                  </div>
-                )}
-                <Button
-                  variant="off"
-                  onClick={onOpenKeys}
-                  disabled={aiReady === null || onOpenKeys === undefined}
-                  layout="justify-center" >
-                  {aiReady === null ? "확인 중…" : "언어모델 키 등록하기"}
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/*
-          세 번째 갈래 — 이미 쓰던 설계서가 있는 사용자 (014 US2).
-
-          **이미 들여온 사용자에게는 접는다.** 초안이 있다는 것은 이 갈래를 이미 지났다는
-          뜻이고, 그때 같은 권유를 크게 펴 두면 다음에 할 일(초안 녹화)과 경쟁한다.
-          길을 없애지는 않는다 — 파일을 더 넣는 일은 있다 (`<details>`).
-        */}
-        {onImportPlan !== undefined && draftCount > 0 && (
-          <Pane layout="p-[14px] w-full text-left">
-            <Disclosure tone="strong" summary={<>엑셀 파일을 더 넣기</>}>
-            <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-[10px]">
-              가져온 초안에 더해집니다. 같은 그룹 접두어면 같은 그룹으로 들어갑니다.
-            </div>
-            <ImportFilePicker
-              label="엑셀에서 가져오기"
-              onPlan={onImportPlan}
-              onError={(err) => onError?.(err)}
-            />
-          </Disclosure>
-          </Pane>
-        )}
+    <div className="library-empty">
+      <h2>아직 테스트가 없습니다</h2>
+      <p>
+        {draftCount > 0 ? (
+          <span data-empty-with-drafts>위의 초안 {draftCount}건을 녹화하면 테스트가 됩니다.</span>
+        ) : "테스트를 만들거나 기존 엑셀 파일을 가져오세요."}
+      </p>
+      <div className="library-empty-actions">
+        <Button variant={draftCount > 0 ? "ghost" : "primary"} onClick={onCreate}>
+          {draftCount > 0 ? "새 테스트 만들기" : "첫 테스트 만들기"}
+        </Button>
         {onImportPlan !== undefined && draftCount === 0 && (
-          <div className="bg-panel border border-hair rounded-base p-[14px] w-full text-left">
-            <div className="font-sans text-[13.5px] font-bold leading-none">이미 쓰던 설계서가 있나요?</div>
-            <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-[10px]">
-              엑셀 파일을 넣으면 그룹과 테스트 초안을 만듭니다. 초안은 하나씩 녹화하면
-              테스트가 됩니다.
-            </div>
-            <ImportFilePicker
-              label="엑셀에서 가져오기"
-              onPlan={onImportPlan}
-              onError={(err) => onError?.(err)}
-            />
-          </div>
+          <ImportFilePicker
+            label="엑셀에서 가져오기"
+            onPlan={onImportPlan}
+            onError={(err) => onError?.(err)}
+          />
         )}
       </div>
+      {onImportPlan !== undefined && draftCount > 0 && (
+        <Disclosure tone="quiet" summary={<>엑셀 파일을 더 넣기</>}>
+          <ImportFilePicker
+            label="엑셀에서 가져오기"
+            onPlan={onImportPlan}
+            onError={(err) => onError?.(err)}
+          />
+        </Disclosure>
+      )}
     </div>
   );
 }
@@ -1665,7 +1398,7 @@ function ActiveSessionsBanner({
       className="bg-warn-t border border-warn-line rounded-base py-s3 px-[14px] flex flex-col gap-[10px]"
     >
       <div className="flex items-center gap-s2">
-        <strong className="font-sans text-[13px] font-semibold leading-none">진행 중인 세션이 있습니다</strong>
+        <strong className="font-sans text-[14px] font-semibold leading-none">진행 중인 세션이 있습니다</strong>
         <div className="flex-1" />
         {/*
           005 FR-169 (U-17) — 배너가 실제 상태를 따라간다.
@@ -1713,7 +1446,7 @@ function ActiveSessionsBanner({
             data-session-id={s.session_id}
             className="flex items-center gap-s2 gap-s3 flex-wrap"
           >
-            <span className="font-sans text-[13px] leading-[1.4] font-normal flex-1">{label}</span>
+            <span className="font-sans text-[14px] leading-[1.4] font-normal flex-1">{label}</span>
             {asking ? (
               <>
                 <span className={saved ? "text-ink-2" : "text-fail"}>

@@ -104,7 +104,7 @@ export function MenuContent({
  * hover 와 키보드가 같은 표시(`data-[highlighted]`)로 말한다.
  */
 export const menuItemVariants = cva(
-  "h-[28px] flex items-center px-[10px] rounded-base font-sans text-[13px] font-medium leading-none " +
+  "h-[28px] flex items-center px-[10px] rounded-base font-sans text-[14px] font-medium leading-none " +
     "cursor-pointer select-none data-[highlighted]:bg-sunken data-[disabled]:text-ink-3 data-[disabled]:cursor-not-allowed",
   {
     variants: {

@@ -124,7 +124,7 @@ async function renderPhase(phase: Phase) {
     );
   }
   await waitFor(() =>
-    expect(document.querySelector("[data-workbench-step-panel]")).not.toBeNull(),
+    expect(document.querySelector(phase === "composing" ? "[data-compose-start]" : "[data-workbench-step-panel]")).not.toBeNull(),
   );
 }
 
@@ -145,6 +145,10 @@ describe("UC-011-1 — 저장·되돌리기·이름은 국면 띠에 있다", ()
   it.each(PHASES)("%s — 그 국면에 있어야 하는 것은 국면 띠 안에 있다", async (phase) => {
     await renderPhase(phase);
     for (const action of MOVED_TO_PHASE_BAR) {
+      if (phase === "composing") {
+        expect(elementsFor(action)).toHaveLength(0); // No saved test or Steps yet.
+        continue;
+      }
       if (!alwaysPresent(phase, action)) continue;
       const els = elementsFor(action);
       expect(els.length, `${phase} × ${action} 이 화면에 없다`).toBeGreaterThan(0);

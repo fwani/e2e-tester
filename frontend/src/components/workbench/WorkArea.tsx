@@ -1,3 +1,4 @@
+import { ToolPanel } from "../../ui/ToolPanel";
 /**
  * 층③-b 국면 작업 영역 (007 T024·T101·T103 · FR-218e·FR-218e-1·FR-218f·FR-256).
  *
@@ -97,6 +98,7 @@ export function WorkArea({
           <Section title="시작 URL">
             <Input
               id="start-url"
+              disabled={busy}
               data-action="test.setStartUrl"
               aria-label="시작 URL"
               value={work.startUrl}
@@ -107,27 +109,15 @@ export function WorkArea({
           </Section>
 
           <Section title="만드는 방법">
-            <ToggleGroup
-              appearance="card"
-              aria-label="만드는 방법"
-              // 아직 고르지 않았으면(null) 어느 카드도 골라지지 않은 채로 그린다.
-              value={work.mode ?? ""}
-              onValueChange={(next) => work.onModeChange(next as ComposeMode)}
-            >
-              <ModeCard
-                mode="record"
-                title="직접 녹화"
-                summary="브라우저를 직접 조작해서 테스트를 만듭니다."
-                bullets={["클릭 · 입력 · 선택 · 화면 이동을 그대로 기록", "기록 중 언제든 멈추고 고칠 수 있음"]}
-              />
-              <ModeCard
-                mode="ai"
-                title="AI로 만들기"
-                summary="할 일을 문장으로 쓰면 AI 가 조작하고 Step 을 만듭니다."
-                bullets={["성공한 동작만 Step으로 기록", "다시 돌릴 때는 AI를 쓰지 않음"]}
-                ai
-              />
+            <ToggleGroup appearance="segmented" aria-label="만드는 방법"
+              value={work.mode} disabled={busy}
+              onValueChange={(next) => work.onModeChange(next as ComposeMode)}>
+              <ToggleGroupItem value="record" data-compose-mode="record">직접 녹화</ToggleGroupItem>
+              <ToggleGroupItem value="ai" data-compose-mode="ai">AI로 만들기</ToggleGroupItem>
             </ToggleGroup>
+            <p className="compose-method-hint">
+              {work.mode === "ai" ? "할 일을 문장으로 쓰면 AI가 테스트를 만듭니다." : "브라우저에서 직접 조작한 내용을 기록합니다."}
+            </p>
           </Section>
 
           {/*
@@ -137,45 +127,22 @@ export function WorkArea({
           {work.mode === "ai" && work.aiReady !== null && !work.aiReady.available && (
             <div
               role="status"
-              className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal py-[10px] px-s3 whitespace-pre-wrap"
+              className="bg-warn-t border border-warn-line rounded-base font-sans text-[14px] leading-[1.4] font-normal py-[10px] px-s3 whitespace-pre-wrap"
             >
               {work.aiReady.reason ?? "AI 를 사용할 수 없습니다."}
             </div>
           )}
 
-          {/*
-            `ai.compose` 의 자리 — **방법을 고르기 전에도 있다** (FR-234 · 조건 C15).
-
-            고른 뒤에만 나타나게 하면 「AI 로 만들 때 지시문을 쓴다」는 사실을 고른
-            뒤에야 알게 된다. S-15(목록이 0개면 자리도 없다)와 같은 종류의 결함이다.
-          */}
-          <Section title="자연어 지시">
-            <Textarea
-                id="ai-instruction"
-                data-action="ai.compose"
-                aria-label="자연어 지시"
-                disabled={work.mode !== "ai"}
-                rows={6}
-                value={work.instruction}
+          {work.mode === "ai" && (
+            <Section title="자연어 지시">
+              <Textarea id="ai-instruction" data-action="ai.compose" aria-label="자연어 지시"
+                disabled={busy} rows={4} value={work.instruction}
                 onChange={(e) => work.onInstructionChange(e.target.value)}
-                placeholder={
-                  "로그인한 다음 프로젝트 메뉴로 이동해서\nTEST라는 프로젝트를 생성하고\n프로젝트 목록에 TEST가 있는지 확인해."
-                }
-                variant="ai" layout="min-h-auto"
-              />
-            {work.composeReason !== null && (
-              <span
-                data-disabled-reason="ai.compose"
-                className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
-              >
-                {work.composeReason}
-              </span>
-            )}
-            {/* 001 FR-064 — 지시문은 기록이며 저장 대상이 아니다. 그 사실을 미리 말한다 */}
-            <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
-              지시문은 테스트로 저장되지 않습니다. 만들어진 Step 만 저장됩니다.
-            </p>
-          </Section>
+                placeholder="예: 로그인한 뒤 프로젝트를 만들고 목록에 표시되는지 확인해."
+                layout="min-h-auto" />
+              <p className="compose-method-hint">지시문은 저장되지 않고, 만들어진 Step만 저장됩니다.</p>
+            </Section>
+          )}
 
           {/* 실패는 조건 없이 그린다 (FR-218f · 001 R2) */}
           {work.error !== null && <ErrorNotice error={work.error} />}
@@ -201,11 +168,11 @@ export function WorkArea({
 
           <Section title="진행">
             {work.messages.length === 0 ? (
- <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
+ <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0">
                 아직 기록이 없습니다.
               </p>
             ) : (
-              <ol className="font-mono font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0 pl-[18px]">
+              <ol className="font-mono font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0 pl-[18px]">
                 {work.messages.map((m, i) => (
                   <li key={`${i}-${m}`}>{m}</li>
                 ))}
@@ -219,7 +186,7 @@ export function WorkArea({
         <>
           <div
             role="status"
-            className={`${work.recording ? "bg-fail-t border border-fail-line rounded-base" : "bg-warn-t border border-warn-line rounded-base"} font-sans text-[13px] font-semibold leading-none flex items-center gap-[10px] min-h-notice px-s3`}
+            className={`${work.recording ? "bg-fail-t border border-fail-line rounded-base" : "bg-warn-t border border-warn-line rounded-base"} font-sans text-[14px] font-semibold leading-none flex items-center gap-[10px] min-h-notice px-s3`}
           >
             {work.recording
               ? "사람이 조작하는 중입니다 — 지금 하는 조작이 Step 으로 기록됩니다."
@@ -240,7 +207,7 @@ export function WorkArea({
       {work.kind === "failure_detail" && (
         <>
           <Section title={`실패 — ${work.step.label}`}>
-            <p className="font-sans text-[13px] leading-[1.4] font-normal text-fail m-0">
+            <p className="font-sans text-[14px] leading-[1.4] font-normal text-fail m-0">
               {work.step.error_message ?? "실패 이유가 기록되지 않았습니다."}
             </p>
           </Section>
@@ -252,12 +219,12 @@ export function WorkArea({
             원인 파악이 늦어진다 (SC-009).
           */}
           {work.step.locator_attempts.length > 0 && (
-            <Section title="시도한 LOCATOR (우선순위 순)">
+            <ToolPanel label="상세 실행 기록">
               <div className="flex flex-col gap-[6px]">
                 {work.step.locator_attempts.map((a) => (
                   <div
                     key={`${a.candidate}-${a.expression}`}
-                    className="flex items-center gap-s2 font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
+                    className="flex items-center gap-s2 font-sans text-[12px] leading-[1.4] font-normal text-ink-3"
                   >
                     <span className={a.matched ? "text-pass" : "text-fail"}>
                       {a.matched ? "✓" : "×"}
@@ -271,11 +238,11 @@ export function WorkArea({
                   004 FR-121 — **실제로 기다린 시간**이다. 예전에는 후보별 대기 중
                   최댓값을 "timeout" 이라 불렀는데, 그것은 설정값도 실측값도 아니었다.
                 */}
- <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 pl-[20px]">
+ <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 pl-[20px]">
                   {`요소를 ${work.step.element_wait_ms} ms 기다렸습니다`}
                 </div>
               </div>
-            </Section>
+            </ToolPanel>
           )}
           {/*
             004 FR-122·FR-123 — 진단은 **`code` 로 분기한다.** 문구를 파싱하지 않는다.
@@ -284,7 +251,7 @@ export function WorkArea({
           {work.diagnosis !== null && (
             <div
               role="note"
-              className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal py-s3 px-[14px]"
+              className="bg-warn-t border border-warn-line rounded-base font-sans text-[14px] leading-[1.4] font-normal py-s3 px-[14px]"
             >
               {work.diagnosis}
             </div>
@@ -294,8 +261,8 @@ export function WorkArea({
 
       {work.kind === "edit_fields" && (
         <>
-          <div
-            className="font-sans text-[13px] font-semibold leading-none flex items-center gap-s3 min-h-notice"
+          {(work.pendingCount > 0 || work.savedName !== null) && <div
+            className="font-sans text-[14px] font-semibold leading-none flex items-center gap-s3 min-h-notice"
           >
             <span data-pending-edits>
               {work.pendingCount === 0
@@ -303,15 +270,15 @@ export function WorkArea({
                 : `저장할 변경 ${work.pendingCount}건`}
             </span>
             {work.savedName !== null && (
-              <span role="status" className="font-sans text-[13px] font-semibold leading-none text-pass">
+              <span role="status" className="font-sans text-[14px] font-semibold leading-none text-pass">
                 ✓ {editSavedNotice(work.savedName)}
               </span>
             )}
-          </div>
+          </div>}
 
           {/* FR-216 — 저장을 막지 않는 것들. 경고로만 알린다. */}
           {work.warnings.length > 0 && (
-            <ul className="text-warn font-sans text-[13px] leading-[1.4] font-normal m-0 pl-[18px]">
+            <ul className="text-warn font-sans text-[14px] leading-[1.4] font-normal m-0 pl-[18px]">
               {work.warnings.map((w) => (
                 <li key={w}>{w}</li>
               ))}
@@ -326,10 +293,10 @@ export function WorkArea({
               role="alert"
               className="bg-warn-t border border-warn-line rounded-base p-[14px]"
             >
-              <strong className="font-sans text-[13px] font-semibold leading-none">
+              <strong className="font-sans text-[14px] font-semibold leading-none">
                 ⚠ 이 테스트의 정의 파일이 편집을 시작한 뒤에 바뀌었습니다.
               </strong>
-              <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-[10px]">
+              <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-[10px]">
                 파일 밖에서 고친 내용이 있습니다. 어떻게 할지 고르세요.
               </p>
               {/* 무엇을 버리는지 라벨에 적는다 (006 FR-209 · ui-contract §7). */}
@@ -359,53 +326,10 @@ export function WorkArea({
     </div>
   );
 }
-/**
- * 만드는 방법 카드 (2회차 · FR-258 · 승인 대상 B7).
- *
- * `CreateTest.dc.html` 의 카드 두 장을 국면 작업 영역 폭에 맞춰 옮겼다. 고른 것은 정본 `.pick.on` 의
- * 잉크 테두리와 승강으로 말한다 — `ui/ToggleGroup` 의 `card` 모양이다 (017 T061). 둘 중 하나를 고르는 자리이므로
- * 라디오로 알리고 화살표로 오간다.
- */
-function ModeCard({
-  mode,
-  title,
-  summary,
-  bullets,
-  ai = false,
-}: {
-  mode: ComposeMode;
-  title: string;
-  summary: string;
-  bullets: string[];
-  /** AI 로 만드는 쪽인가. 사람 작성과 구분하는 유일한 색이다 (`--ai`). */
-  ai?: boolean;
-}) {
-  return (
-    <ToggleGroupItem
-      value={mode}
-      data-compose-mode={mode}
-      tone={ai ? "ai" : "default"}
-      // 줄을 나눠 갖는 폭만 여기서 준다. 높이·여백·세로 배치는 카드 모양이 갖는다 — 015 L2 대조가 「배치를 빠뜨리면
-      // 카드가 32px 짜리 단추가 된다」를 잡았던 값(height:auto · padding:16px 18px · column · gap:8px)이 거기 있다.
-      layout="flex-1 min-w-0"
-    >
-      <span className="font-sans text-[13.5px] font-bold leading-none">{title}</span>
-      <span className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">{summary}</span>
-      <span className="flex flex-col gap-[5px]">
-        {bullets.map((b) => (
- <span key={b} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
-            {b}
-          </span>
-        ))}
-      </span>
-    </ToggleGroupItem>
-  );
-}
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-[6px]">
-      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{title}</div>
+      <div className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2">{title}</div>
       {children}
     </div>
   );
@@ -439,7 +363,7 @@ function AlwaysVisibleFailure({
       <span
         data-action="ai.chooseBlocked"
         data-disabled-reason="ai.chooseBlocked"
-        className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
+        className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3"
       >
         {choose.reason}
       </span>
@@ -453,13 +377,13 @@ function AlwaysVisibleFailure({
           role="alert"
           className="bg-fail-t border border-fail-line rounded-base py-s3 px-[14px]"
         >
-          <strong className="font-sans text-[13px] font-semibold leading-none text-fail">AI 가 막혔습니다</strong>
+          <strong className="font-sans text-[14px] font-semibold leading-none text-fail">AI 가 막혔습니다</strong>
           {blocked.attempted !== null && (
- <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-0">
+ <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-0">
               시도: {blocked.attempted}
             </p>
           )}
-          <p className="font-sans text-[13px] leading-[1.4] font-normal mt-[6px] mx-0 mb-[10px]">
+          <p className="font-sans text-[14px] leading-[1.4] font-normal mt-[6px] mx-0 mb-[10px]">
             {blocked.reason}
           </p>
           {/*
@@ -566,11 +490,11 @@ function BlockedAnswer({
         아니다 — AI 의 질문이 그 형태로 그려지면 사용자는 자기가 무엇을 답해야 하는지
         읽기 어렵다. 이름표는 짧게 두고 질문은 본문으로 읽는다.
       */}
-      <label className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3" htmlFor="blocked-answer">
+      <label className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2" htmlFor="blocked-answer">
         {question !== null ? "AI 의 질문" : "AI 에게 알려 주기"}
       </label>
       {question !== null && (
-        <p className="font-sans text-[13px] leading-[1.4] font-normal text-ink m-0" data-blocked-question>
+        <p className="font-sans text-[14px] leading-[1.4] font-normal text-ink m-0" data-blocked-question>
           {question}
         </p>
       )}
@@ -612,7 +536,7 @@ function BlockedAnswer({
           힌트를 조건부로 그리면 첫 글자를 치는 순간 그 줄이 사라지고 아래가 위로
           튄다. 자리를 고정하고 문구만 바꾼다 (`.hint-line`).
         */}
-        <span data-hint-line className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 min-h-[16px]">
+        <span data-hint-line className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 min-h-[16px]">
           {ready
             ? "Cmd/Ctrl + Enter 로도 보냅니다. 이미 만든 Step 은 그대로입니다."
             : "답을 적으면 AI 가 같은 대화에 이어서 진행합니다. 이미 만든 Step 은 그대로입니다."}

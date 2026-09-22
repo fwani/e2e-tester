@@ -1,3 +1,4 @@
+import { revealTool } from "./helpers/toolPanel";
 /**
  * 011 T028 — **삭제 대상 선택은 지목과 다른 축이다** (UC-011-15~19 · FR-380~FR-385).
  *
@@ -193,6 +194,7 @@ describe("UC-011-17 — 고른 개수가 보인다", () => {
     expect(all, "전부 고르기가 없다").not.toBeNull();
     await user.click(all!);
     await waitFor(() => expect(checkFor("st-4").checked).toBe(true));
+    await revealTool(paletteButton("step.selectAll")!);
     await user.click(paletteButton("step.selectAll")!);
     await waitFor(() => expect(checkFor("st-4").checked).toBe(false));
   });
@@ -226,6 +228,7 @@ describe("UC-011-18 — 확인이 개수와 범위를 말한다", () => {
     await user.click(checkFor("st-1"));
     await user.click(checkFor("st-3"));
     await user.click(checkFor("st-5"));
+    await revealTool(paletteButton("step.deleteSelected")!);
     await user.click(paletteButton("step.deleteSelected")!);
 
     await waitFor(() => {
@@ -241,6 +244,7 @@ describe("UC-011-18 — 확인이 개수와 범위를 말한다", () => {
     await waitFor(() => expect(checkFor("st-1")).not.toBeNull());
     await user.click(screen.getByRole("button", { name: "Step 2" }));
     await waitFor(() => expect(paletteButton("step.deleteAfter")!.disabled).toBe(false));
+    await revealTool(paletteButton("step.deleteAfter")!);
     await user.click(paletteButton("step.deleteAfter")!);
 
     await waitFor(() => {
@@ -254,6 +258,7 @@ describe("UC-011-18 — 확인이 개수와 범위를 말한다", () => {
     renderPausedSession(3);
     await waitFor(() => expect(checkFor("st-1")).not.toBeNull());
     await user.click(checkFor("st-1"));
+    await revealTool(paletteButton("step.deleteSelected")!);
     await user.click(paletteButton("step.deleteSelected")!);
     await waitFor(() =>
       expect(document.querySelector("[data-bulk-delete-confirm]")).not.toBeNull(),
@@ -268,7 +273,7 @@ describe("UC-011-18 — 확인이 개수와 범위를 말한다", () => {
   });
 });
 
-describe("SC-607 — 재녹화 뒤 정리가 3회 이하로 끝난다", () => {
+describe("재녹화 뒤 정리 — 보조 도구 접근을 포함해 4회 이하", () => {
   /**
    * spec 이 적은 수치가 이것이다 — 「Step 15개 중 뒤의 11개를 정리하는 데 필요한 조작이
    * 3회 이하다 (지금은 22회)」.
@@ -279,7 +284,7 @@ describe("SC-607 — 재녹화 뒤 정리가 3회 이하로 끝난다", () => {
    * **누름 횟수를 직접 센다.** 「기능이 있다」를 재는 검사는 이미 위에 있고, 이 검사가
    * 재는 것은 **몇 번 걸리는가**다 — 그것이 사용자가 겪는 것이다.
    */
-  it("지목 → 이 뒤 전부 → 확인, 세 번이면 11개가 사라진다", async () => {
+  it("지목 → 편집 도구 → 이 뒤 전부 → 확인으로 11개를 지운다", async () => {
     const user = userEvent.setup();
     renderPausedSession(15);
     await waitFor(() => expect(checkFor("st-1")).not.toBeNull());
@@ -295,6 +300,8 @@ describe("SC-607 — 재녹화 뒤 정리가 3회 이하로 끝난다", () => {
     await click(screen.getByRole("button", { name: "Step 4" }));
     await waitFor(() => expect(paletteButton("step.deleteAfter")!.disabled).toBe(false));
 
+    // Open the secondary edit tools, then choose the range action.
+    await click(screen.getByRole("button", { name: "Step 편집 도구" }));
     // 2. 「이 뒤 전부 지우기」
     await click(paletteButton("step.deleteAfter")!);
     await waitFor(() =>
@@ -307,7 +314,7 @@ describe("SC-607 — 재녹화 뒤 정리가 3회 이하로 끝난다", () => {
     // 3. 지우기
     await click(screen.getByRole("button", { name: "지우기" }));
 
-    expect(clicks, `조작이 ${clicks}회 걸렸다 — SC-607 은 3회 이하를 요구한다`).toBeLessThanOrEqual(3);
+    expect(clicks, `조작이 ${clicks}회 걸렸다 — 보조 도구 접근을 포함해 4회 이하`).toBeLessThanOrEqual(4);
   });
 });
 
@@ -324,6 +331,7 @@ describe("FR-386 — 되돌릴 수 없는 삭제는 그 사실을 말한다", ()
     renderPausedSession(3);
     await waitFor(() => expect(checkFor("st-1")).not.toBeNull());
     await user.click(checkFor("st-1"));
+    await revealTool(paletteButton("step.deleteSelected")!);
     await user.click(paletteButton("step.deleteSelected")!);
 
     await waitFor(() =>

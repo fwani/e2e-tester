@@ -1,14 +1,9 @@
 /**
- * 007 T025 — 통합 화면 껍데기 (SC-003 · FR-217·FR-218·FR-218a~f).
- *
- * **이 파일이 지키는 것은 껍데기의 동일성이다.** 지금은 편집 국면만 껍데기 자체가 다르다 —
- * 다른 화면은 기준 폭 1440 아트보드 + 56px 헤더인데 편집 화면은 최대 폭 1080 의 가운데
- * 정렬 본문이고 헤더·경로·상태 표시가 없다 (S-06).
- *
- * 치수는 디자인에서 온 값이다 (008) — 56px·48px 는 국면 공통, 460px 는
- * Step 패널을 가진 3종 공통. **007 이 새로 정한 값이 아니다.**
+ * Simplified workbench shell: one toolbar, a persistent Step list, and a primary work area.
+ * Editing uses the shared Step detail inline; live/result views retain the temporary inspector.
  */
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { Workbench } from "../src/components/workbench/Workbench";
@@ -32,43 +27,34 @@ function renderShell(model: WorkbenchModel) {
 
 const el = (selector: string) => document.querySelector<HTMLElement>(selector)!;
 
-describe("3층 구조 (T018 · FR-218c)", () => {
-  it("층의 구성과 순서가 고정이다 — 헤더 → 국면 띠 → 본문", () => {
+describe("단일 도구 모음과 작업 영역", () => {
+  it("제목과 주요 조작은 하나의 도구 모음에 있고 본문보다 앞선다", () => {
     renderShell(workbenchModel("running"));
     const bar = el("[data-workbench-phase-bar]");
+    expect(document.querySelectorAll("[data-shell=header]")).toHaveLength(1);
+    expect(el("[data-shell=header]").contains(bar)).toBe(true);
     const target = el("[data-workbench-target]");
     const panel = el("[data-workbench-step-panel]");
     // 문서 순서가 곧 층의 순서다.
     expect(bar.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(target.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(panel.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("국면 띠는 48px 이다 — 008 「계기판」 값 (v1 은 74px 였다)", () => {
+  it("국면 제목은 새 작업 공간 헤더를 쓴다", () => {
     renderShell(workbenchModel("running"));
-    // 015 — 배치가 클래스로 바뀌었다. `h-phase` 는 `--h-phase`(48px)다.
-    // 묻는 것은 그대로: 국면 띠가 008 「계기판」 값 48px 인가 (v1 은 74px 였다).
-    //
-    // **기댓값을 `0 0 auto` 로 완화했던 것을 되돌린다 (2026-09-11).** 전환 전 인라인은
-    // `flex: "0 0 48px"` 였는데, 전환이 `flex-none`(=`0 0 auto`)과 `flex-[0_0_48px]` 를
-    // **둘 다** 붙였고 `.flex-none` 이 산출 CSS 에서 뒤에 와 48px 가 졌다. 그때 검사를
-    // 고쳐 통과시킨 것이 이 줄이다 — 회귀를 잡는 대신 회귀에 맞춘 것이며 헌법
-    // Quality Gate 4 가 금지하는 형태다. `flex-none` 을 지우고 기댓값을 되돌렸다.
-    expect(flexOf(el("[data-workbench-phase-bar]")), "국면 띠가 줄어든다").toBe("0 0 48px");
-    expect(el("[data-workbench-phase-bar]").className, "국면 띠 높이가 48px 이 아니다").toContain(
-      "h-phase",
-    );
+    expect(el("[data-workbench-phase-bar]").className).toBe("workbench-heading");
   });
 
-  it("Step 패널은 460px 고정이다 — 확정 디자인 3종 공통값", () => {
+  it("Step 패널은 공통 고정 폭 토큰을 쓴다", () => {
     renderShell(workbenchModel("running"));
-    expect(el("[data-workbench-step-panel]").className, "Step 패널이 460px 고정이 아니다").toContain("basis-steps");
+    expect(el("[data-workbench-step-panel]").className, "Step 패널이 고정 폭 토큰을 쓰지 않는다").toContain("basis-steps");
   });
 
   it("최소 기준 폭이 1440px 이고 넓으면 늘어난다 (FR-218·FR-218a)", () => {
     renderShell(workbenchModel("running"));
     // 아트보드 내부 컨테이너가 최소 폭을 갖고 100% 로 늘어난다.
-    const frame = el("[data-workbench-phase-bar]").parentElement!;
-    expect(frame.style.minWidth).toBe("1440px");
+    const frame = el("[data-slot=artboard-body]");
+    expect(frame.style.minWidth).toBe("min(1440px, 100%)");
     expect(frame.style.width).toBe("100%");
   });
 
@@ -95,9 +81,10 @@ describe("일곱 국면이 같은 껍데기를 쓴다 (SC-003 · FR-217)", () =>
       expect(el("[data-workbench-phase-bar]"), phase).not.toBeNull();
       expect(el("[data-workbench-target]"), phase).not.toBeNull();
       expect(el("[data-workbench-step-panel]"), phase).not.toBeNull();
-      // 008 — 확정 디자인이 제품 표시를 「ITB」로 그린다. 헤더가 56px 로 내려온 만큼
-      // 표시도 줄었다. 단언 대상은 그대로다 — 모든 국면에 제품 표시가 있는가.
-      expect(screen.getByText("ITB"), phase).toBeTruthy();
+      const toolbar = el("[data-shell=header]");
+      expect(toolbar.contains(el("[data-workbench-phase-bar]")), phase).toBe(true);
+      expect(within(toolbar).getByText("TC-001"), phase).toBeTruthy();
+      expect(within(toolbar).getByRole("button", { name: "화면 메뉴" }), phase).toBeTruthy();
       view.unmount();
     }
   });
@@ -126,11 +113,30 @@ describe("일곱 국면이 같은 껍데기를 쓴다 (SC-003 · FR-217)", () =>
     }
   });
 
-  it("테스트 식별자가 없는 작성 세션도 경로 자리를 비우지 않는다", () => {
+  it("저장 전 세션은 가짜 식별자 없이 이름과 국면을 표시한다", () => {
     renderShell(workbenchModel("recording", { testId: null }));
-    // 008 — 경로 표시가 확정 디자인의 형태(`.lbl` + `.pill`)로 나뉘었다. 자리를
-    // 비우지 않는다는 요구는 그대로다 (FR-217).
-    expect(screen.getByText("초안")).toBeTruthy();
+    expect(el("[data-phase-test-name]").textContent).not.toBe("");
+    expect(el("[data-phase-pill]").textContent).toBe(PHASE_LABEL.recording);
+    expect(document.querySelector(".workbench-test-id")).toBeNull();
+  });
+
+  it("보조 이동은 화면 메뉴를 열어 실행하고 주요 조작은 밖에 유지한다", async () => {
+    const onBack = vi.fn();
+    const onRun = vi.fn();
+    render(<Workbench model={workbenchModel("running")}
+      phaseActions={<button onClick={onRun}>실행</button>}
+      headerActions={<button onClick={onBack}>목록으로</button>}
+      onSelectStep={vi.fn()} onCloseDetail={vi.fn()} />);
+    const menu = screen.getByRole("button", { name: "화면 메뉴" });
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    const run = screen.getByRole("button", { name: "실행" });
+    expect(menu.contains(run)).toBe(false);
+    await userEvent.click(run);
+    expect(onRun).toHaveBeenCalledOnce();
+    await userEvent.click(screen.getByRole("button", { name: "화면 메뉴" }));
+    expect(menu.getAttribute("aria-expanded")).toBe("true");
+    await userEvent.click(screen.getByRole("button", { name: "목록으로" }));
+    expect(onBack).toHaveBeenCalledOnce();
   });
 });
 
@@ -326,7 +332,7 @@ describe("대상 앱 영역 (FR-244·FR-245)", () => {
     );
   });
 
-  it("지원되지 않는 산출물은 감추지 않고 비활성으로 남는다 (FR-246 · DC-007)", () => {
+  it("제공되는 산출물만 선택할 수 있다", () => {
     renderShell(
       workbenchModel("result", {
         target: {
@@ -337,16 +343,10 @@ describe("대상 앱 영역 (FR-244·FR-245)", () => {
         },
       }),
     );
-    const trace = el("[data-artifact-tab='trace']") as HTMLButtonElement;
-    expect(trace).not.toBeNull();
-    /*
-      **판정 방법만 옮겼다** (T106 · test-ledger 09-16). 새 갈래의 탭은 네이티브 `disabled` 를 걸지 않고
-      `aria-disabled="true"` + `data-disabled` + `tabindex="-1"` 로 말한다 — 조작을 **초점에서 빼지 않아**
-      사유를 읽을 수 있게 두는 방식이고, 이 저장소의 규칙(FR-006·FR-014 — 비활성은 포인터를 막지 않고
-      사유를 보여 준다)과 같은 방향이다. **누름은 실제로 막힌다**(실측: 눌러도 `onValueChange` 0회).
-      묻는 것은 그대로다: 지원되지 않는 산출물을 **감추지 않고 비활성으로** 남기는가 (FR-246 · DC-007).
-    */
-    expect(trace.getAttribute("aria-disabled"), "TRACE 탭이 비활성이 아니다").toBe("true");
+    expect(el("[data-artifact-tab='trace']")).toBeNull();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "SCREENSHOT", "CONSOLE", "NETWORK",
+    ]);
   });
 });
 
@@ -372,7 +372,7 @@ const DETAIL_FIXTURE = {
  * 그래서 지키는 것을 바꾼다 — **구현이 한 벌인가**, **자리를 표가 정하는가**,
  * **항목이 두 배치에서 같은가**. 셋이 지켜지면 S-05 는 재발할 수 없다.
  */
-describe("Step 상세 — 구현도 하나, 자리도 하나다 (FR-229·FR-230·FR-231)", () => {
+describe("Step 상세는 하나의 구현을 작업 목적에 맞게 배치한다", () => {
   it("모든 국면에서 정확히 한 벌만 그려진다 (SC-001)", () => {
     for (const phase of PHASES) {
       const view = renderShell(
@@ -386,51 +386,24 @@ describe("Step 상세 — 구현도 하나, 자리도 하나다 (FR-229·FR-230�
     }
   });
 
-  it("자리가 모든 국면에서 같다 — 우측 겹침 하나다 (FR-230 · 2026-09-09)", () => {
-    /*
-      **008 의 표가 없어졌다.** 그 라운드는 자리를 국면별 표(`DETAIL_PLACEMENT`)로 빼고
-      편집 국면만 ③-b 인라인으로 걸었다. 근거는 「편집 국면에는 미러가 없어 가릴 것이
-      없다」였고 그 자체로는 옳았다.
-
-      사용자가 그 배치를 문제로 보고했다 (2026-09-09): 「step 상세 보는 위치는 오른쪽에
-      뜨고, 편집하기하면 왼쪽 아래에 뜨는데, 한쪽에 뜨도록 해야함」. 같은 것을 보는 자리가
-      두 곳이면 사용자는 매번 어디를 볼지 판단해야 한다 — 007 이 FR-230 으로 정한 성질이
-      실제로 필요한 것이었다.
-
-      그래서 이 검사는 표와 대조하지 않고 **자리가 하나임을** 센다. 표와 대조하는 검사는
-      표가 없어졌으므로 있을 수 없고, 있으면 그것이 표를 되살리라는 압력이 된다.
-    */
+  it("편집 상세는 주 작업 영역에, 실행과 결과 상세는 임시 검사 창에 놓인다", () => {
     for (const phase of PHASES) {
       const view = renderShell(
         workbenchModel(phase, { focusedStepId: "st-1", detail: { ...DETAIL_FIXTURE } }),
       );
       const detail = el("[data-workbench-step-detail]");
-      // 015 — `w-detail` 은 `--w-detail`(640px)이다. 묻는 것은 그대로:
-      // 상세의 폭이 모든 국면에서 같은가 (FR-230).
-      expect(detail.className, `국면 ${phase} 의 상세 폭이 다르다`).toContain("w-detail");
-      expect(detail.getAttribute("role"), `국면 ${phase}`).toBe("dialog");
-      // ③-b 안에 상세가 걸린 국면이 없다 — 인라인 자리는 사라졌다.
-      expect(
-        document.querySelector('[data-workbench-work="step_detail"]'),
-        `국면 ${phase}`,
-      ).toBeNull();
+      const layer = el("[data-workbench-detail-layer]");
+      expect(layer.contains(detail), phase).toBe(true);
+      if (phase === "editing") {
+        expect(el("[data-workbench-left-column]").contains(layer)).toBe(true);
+        expect(layer.hasAttribute("data-edit-detail-inline")).toBe(true);
+        expect(detail.closest('[data-slot="scrim"]')).toBeNull();
+      } else {
+        expect(detail.closest('[data-slot="scrim"]')).toBe(layer);
+      }
       view.unmount();
     }
   });
 
-  /*
-    ─── 「배치는 껍데기만 바꾼다」 검사가 없어졌다 (2026-09-09) ───────────────────
 
-    008 판은 같은 입력을 주고 `placement` 만 바꿔 두 껍데기의 본문 텍스트가 **같은지**
-    봤다. FR-231 이 요구한 「항목이 두 배치에서 같다」를 그대로 센 검사였다.
-
-    배치가 하나로 돌아왔으므로 **비교할 두 번째 배치가 없다.** 대신 국면끼리 비교해
-    보았고, 그것은 성립하지 않는다는 것을 곧 확인했다 — 같은 입력이어도 국면마다 접히는
-    조작이 다르므로 본문이 다르다 (편집 국면에는 「다시 집기」가 없고 일시정지에는 있다).
-    그 차이는 결함이 아니라 이 라운드가 만든 정상 동작이다.
-
-    남은 성질은 위 두 검사가 센다 — **구현이 한 벌**(「정확히 한 벌만 그려진다」)이고
-    **자리가 하나**(「우측 겹침 하나다」)라는 것. FR-231 이 막으려던 S-05 의 원인은
-    구현이 둘이라 갈라진 것이었고, 그 원인은 첫 번째 검사가 계속 지킨다.
-  */
 });

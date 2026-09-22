@@ -127,7 +127,7 @@ export function Artboard({
       <div
         style={{
           ...(fill ? { height: "100dvh" } : {}),
-          ...(minHeight !== undefined ? { minHeight: `${minHeight}px` } : {}),
+          ...(minHeight !== undefined ? { minHeight: `min(${minHeight}px, 100dvh)` } : {}),
           display: "flex",
           flexDirection: "column",
         }}
@@ -144,7 +144,7 @@ export function Artboard({
           <div
             data-slot="artboard-body"
             className={fill ? "flex-1 min-h-0" : "flex-auto"}
-            style={{ minWidth: `${width}px`, width: "100%", display: "flex", flexDirection: "column" }}
+            style={{ minWidth: `min(${width}px, 100%)`, width: "100%", display: "flex", flexDirection: "column" }}
           >
             {children}
           </div>
@@ -158,7 +158,7 @@ export function Artboard({
 export function Breadcrumb({ testId }: { testId: string }) {
   return (
     <div className="flex items-center text-ink-2 gap-s2">
-      <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">테스트</span>
+      <span className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2">테스트</span>
       <Pill>{testId}</Pill>
     </div>
   );

@@ -55,8 +55,8 @@ export function TabsList({ layout, children, ...rest }: Omit<ComponentPropsWithR
  */
 const TRIGGER =
   "border-0 border-r border-hair-2 rounded-none bg-transparent shadow-none px-s4 " +
-  "font-mono text-[11px] font-semibold leading-none tracking-[0.1em] text-ink-2 cursor-pointer " +
-  "data-[active]:bg-panel data-[active]:text-ink " +
+  "font-sans text-[12px] font-semibold leading-none text-ink-2 cursor-pointer " +
+  "data-[active]:bg-panel data-[active]:text-run data-[active]:shadow-[inset_0_-2px_0_var(--run)] " +
   "disabled:border-solid disabled:text-ink-3 disabled:cursor-not-allowed";
 
 export function TabsTrigger({ layout, children, ...rest }: Omit<ComponentPropsWithRef<typeof TabsPrimitive.Tab>, "className"> & LayoutProps) {

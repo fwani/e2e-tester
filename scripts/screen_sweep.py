@@ -277,6 +277,9 @@ SCENARIOS: list[dict] = [
     {"name": "test-list", "phase": OPEN, "policy": "data",
      "evidence": [("count", "[data-test-select]", 6)],
      "measure": "checkboxSizes", "expect": {"checkboxSizes": ("==", 1)}},
+    {"name": "test-list-tools", "phase": OPEN, "policy": "data",
+     "steps": [("click_css", '[data-tool-name="목록 관리"] > button')],
+     "evidence": [("css", '[data-tool-name="목록 관리"] [role="dialog"]'), ("text", "엑셀로 내보내기")]},
     {"name": "test-list-selected", "phase": OPEN, "policy": "data",
      "steps": [("check", "[data-test-select]", 0), ("check", "[data-test-select]", 1)],
      "evidence": [("css", "[data-test-selection-bar]")],
@@ -287,9 +290,14 @@ SCENARIOS: list[dict] = [
     {"name": "test-list-row-menu", "phase": OPEN, "policy": "data",
      "steps": [("click_role", "button", "로그인이 된다 추가 동작")],
      "evidence": [("css", "[data-row-menu-item]")]},
-    {"name": "test-create", "phase": OPEN, "policy": "data",
-     "steps": [("click_role", "link", "테스트 만들기")], "evidence": [("css", "[data-phase-pill]")],
+    {"name": "test-create", "phase": OPEN, "policy": "form",
+     "steps": [("click_role", "link", "테스트 만들기")], "evidence": [("css", "[data-compose-start]"), ("absent_text", "자연어 지시")]},
+    {"name": "test-create-ai", "phase": OPEN, "policy": "form",
+     "steps": [("click_role", "link", "테스트 만들기"), ("click_css", '[data-compose-mode="ai"]')],
+     "evidence": [("css", "#ai-instruction")],
      "measure": "compose", "expect": {"nlInputWidth": (">=", 240)}},
+    {"name": "test-list-groups", "phase": OPEN, "policy": "data",
+     "steps": [("click_css", '[data-tool-name="그룹 관리"] > button')], "evidence": [("css", ".library-group-panel")]},
     {"name": "secrets", "phase": OPEN, "policy": "form",
      "steps": [("click_role", "link", "비밀 값")], "evidence": [("url", "/secrets")]},
     {"name": "keys", "phase": OPEN, "policy": "form",
@@ -301,12 +309,19 @@ SCENARIOS: list[dict] = [
     {"name": "edit", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/edit",
      "evidence": [("css", "[data-phase-pill]"), ("count", "[data-step-row]", 17)],
      "measure": "stepRows", "expect": {"stepRowsVisible": (">=", 8)}},
+    {"name": "edit-add", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/edit",
+     "steps": [("click_css", '[data-tool-name="Step 추가"] > button')],
+     "evidence": [("css", 'input[aria-label="자연어로 Step 추가"]')]},
+    {"name": "edit-chat", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/edit",
+     "steps": [("click_css", '.chat-panel-heading button')], "evidence": [("css", '#ai-chat-input')]},
+    {"name": "edit-options", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/edit",
+     "steps": [("click_css", '[data-tool-name="편집 옵션"] > button')], "evidence": [("css", '[data-tool-name="편집 옵션"] [role="dialog"]')]},
     {"name": "edit-long-name", "phase": OPEN, "policy": "data", "path": "/tests/TC-002/edit",
      "evidence": [("css", "[data-phase-pill]")]},
     {"name": "edit-step-detail", "phase": OPEN, "policy": "data",
      "path": "/tests/TC-001/edit?step=step-02", "evidence": [("css", "[data-detail-close]")]},
     {"name": "edit-delete-confirm", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/edit",
-     "steps": [("check", '[data-row-action="step.toggleSelection"]', 0), ("click_role", "button", "고른 것 지우기")],
+     "steps": [("check", '[data-row-action="step.toggleSelection"]', 0), ("click_css", '[data-tool-name="Step 편집 도구"] > button'), ("click_role", "button", "고른 것 지우기")],
      "evidence": [("css", "[data-bulk-delete-confirm]")]},
     {"name": "test-list-session", "phase": SESSION, "policy": "data",
      "evidence": [("text", "진행 중인 세션이 있습니다")]},
@@ -325,7 +340,7 @@ SCENARIOS: list[dict] = [
     # 알림은 5초 뒤 사라지므로 **마지막에 포인터를 올려 시간을 멈춘 뒤** 잰다(`hover`).
     {"name": "edit-notice", "phase": OPEN, "policy": "data", "path": "/tests/TC-001/edit",
      "steps": [("check", '[data-row-action="step.toggleSelection"]', 0),
-               ("click_role", "button", "고른 것 지우기"),
+               ("click_css", '[data-tool-name="Step 편집 도구"] > button'), ("click_role", "button", "고른 것 지우기"),
                ("click_css", "[data-bulk-delete-confirm-run]"),
                # 층은 앱 뿌리의 `[data-toast-layer]` 하나다 (017 Phase 10 — 작업대가 그리던 층을 지웠다).
                ("hover", "[data-toast-layer] > *")],
@@ -356,8 +371,8 @@ ALLOWED: list[dict] = [
      "match": r"404 .*/api/tests/TC-002/result$|status of 404",
      "reason": "결과가 없는 테스트의 결과 조회가 404 다 — 같은 이유로 범위 밖"},
     {"where": r"^runner-disconnected@", "kind": "console",
-     "match": r"^WebSocket connection to 'ws://127\.0\.0\.1:9/events' failed",
-     "reason": "이 화면은 이벤트 소켓을 일부러 닫힌 포트로 보내 연결 끊김을 만든다 — 그 연결 실패가 콘솔에 찍히는 것은 재려는 상황 자체다"},
+     "match": r"^WebSocket connection to 'ws://127\.0\.0\.1:9/(events|control)' failed",
+     "reason": "이 화면은 이벤트·조작 소켓을 일부러 닫힌 포트로 보내 연결 끊김을 만든다 — 그 연결 실패가 콘솔에 찍히는 것은 재려는 상황 자체다"},
 ]
 
 
@@ -390,20 +405,28 @@ SCAN_JS = r"""
     return `${el.tagName.toLowerCase()}${data}{${t}}`;
   };
   const shown = (el) => {
+    // Closed native disclosures can retain descendant geometry even though they are not painted.
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      if (p.tagName === 'DETAILS' && !p.open) {
+        const summary = [...p.children].find((c) => c.tagName === 'SUMMARY');
+        if (!summary?.contains(el)) return false;
+      }
+    }
     const cs = getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden' || cs.display === 'contents') return false;
     const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0;
   };
-  const clippedAt = (el, x, y) => {
+  const visibleCenter = (el) => {
+    const r = el.getBoundingClientRect();
+    let left = Math.max(0, r.left), right = Math.min(vw, r.right);
+    let top = Math.max(0, r.top), bottom = Math.min(vh, r.bottom);
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-      const cs = getComputedStyle(p);
-      if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
-        const pr = p.getBoundingClientRect();
-        if (x < pr.left || x > pr.right || y < pr.top || y > pr.bottom) return true;
-      }
+      const cs = getComputedStyle(p), pr = p.getBoundingClientRect();
+      if (cs.overflowX !== 'visible') { left = Math.max(left, pr.left); right = Math.min(right, pr.right); }
+      if (cs.overflowY !== 'visible') { top = Math.max(top, pr.top); bottom = Math.min(bottom, pr.bottom); }
     }
-    return false;
+    return right - left > 1 && bottom - top > 1 ? [(left + right) / 2, (top + bottom) / 2] : null;
   };
   const lines = (el) => {
     // 글자 조각 사각형을 **세로로 절반 이상 겹치는 것끼리** 한 줄로 묶는다 — 크기가 다른
@@ -453,8 +476,11 @@ SCAN_JS = r"""
     if (cs.opacity === '0' || cs.pointerEvents === 'none') continue;
     const r = el.getBoundingClientRect();
     if (r.width <= 1 || r.height <= 1) continue;
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    if (cx < 0 || cy < 0 || cx >= vw || cy >= vh || clippedAt(el, cx, cy)) continue;
+    // Sample the visible part, including rows partially clipped by a scroll container.
+    // The full element center can land on the adjacent panel's rounded pixel boundary.
+    const center = visibleCenter(el);
+    if (!center) continue;
+    const [cx, cy] = center;
     const hit = document.elementFromPoint(cx, cy);
     if (!hit || hit === el || el.contains(hit) || hit.contains(el)) continue;
     const label = hit.closest('label');
@@ -477,7 +503,7 @@ SCAN_JS = r"""
     // 다른 행의 `⋮` 만 들어 있다 — 구멍이 제 몫을 한다. 메뉴 항목이 덮인 건도 0 이다.
     const layer = hit.closest('[role=dialog], [role=alertdialog], [role=menu], [role=listbox], [role=tooltip], ' +
       '[data-strength], [data-slot$=overlay], [data-row-menu], [data-radix-popper-content-wrapper], ' +
-      '[data-base-ui-inert]');
+      '[data-base-ui-inert], .admin-tools[open] > div, .workbench-menu[open] > div, .library-group-panel');
     if (layer && !layer.contains(el)) continue;
     F.push(['covered', desc(el), `by ${desc(hit)}`]);
   }
@@ -504,13 +530,16 @@ SCAN_JS = r"""
   let L = 1e9, R = -1e9;
   for (const el of all) {
     const cs = getComputedStyle(el);
-    if (cs.position === 'fixed' || !shown(el) || el.closest('[data-shell]')) continue;
+    if (cs.position === 'fixed' || !shown(el) || el.closest('[data-shell], .workspace-navigation, .project-intro')) continue;
     const bearing = el.matches('button, input, select, textarea') || [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (!bearing) continue;
     const r = el.getBoundingClientRect();
     L = Math.min(L, r.left); R = Math.max(R, r.right);
   }
-  return { vw, vh, docW: document.documentElement.scrollWidth, findings: F, extent: { left: L, right: R } };
+  const content = document.querySelector('.workspace-main');
+  const intro = document.querySelector('.project-intro');
+  const contentLeft = content ? content.getBoundingClientRect().left : intro ? intro.getBoundingClientRect().right : 0;
+  return { contentLeft, vw, vh, docW: document.documentElement.scrollWidth, findings: F, extent: { left: L, right: R } };
 }
 """
 
@@ -527,7 +556,7 @@ MEASURE_JS = {
 }""",
     "compose": r"""
 () => {
-  const el = document.querySelector('input[aria-label="자연어로 Step 추가"], textarea[aria-label="자연어로 Step 추가"]');
+  const el = document.querySelector('#ai-instruction');
   return { nlInputWidth: el ? Math.round(el.getBoundingClientRect().width) : -1 };
 }""",
     "selectionBar": r"""
@@ -603,13 +632,14 @@ def capture(pw, ui: str, scenarios: list[dict], viewports: list[tuple[int, int]]
                     #
                     # `page.route_web_socket(…, lambda ws: ws.close())` 로 먼저 했는데, 동기 API 의
                     # 처리기 안에서 `close()` 를 부르자 **순회 전체가 멈췄다**(1회차 · 10분 무응답).
-                    # 여기서는 페이지가 뜨기 전에 `WebSocket` 을 감싸 `/events` 만 닫힌 포트로 보낸다.
+                    # 여기서는 페이지가 뜨기 전에 `WebSocket` 을 감싸 이벤트·조작 연결을 닫힌 포트로 보낸다.
+                    # 실제 네트워크 단절처럼 두 연결을 함께 끊어, 앞 장면의 조작 채널 해제 타이밍에 의존하지 않는다.
                     # 브라우저가 실제로 연결 실패를 겪으므로 화면이 받는 사건은 진짜 끊김과 같다.
                     page.add_init_script(
                         "(() => { const Real = window.WebSocket;"
                         " window.WebSocket = class extends Real {"
                         "  constructor(url, protocols) {"
-                        "   super(String(url).endsWith('/events') ? 'ws://127.0.0.1:9/events' : url, protocols); } }; })();"
+                        "   super(/\\/(events|control)$/.test(String(url)) ? 'ws://127.0.0.1:9/' + String(url).split('/').pop() : url, protocols); } }; })();"
                     )
                 page.goto(ui + sc.get("path", "/"), wait_until="networkidle")
                 page.wait_for_timeout(900)
@@ -628,7 +658,7 @@ def capture(pw, ui: str, scenarios: list[dict], viewports: list[tuple[int, int]]
                     left, right = scan["extent"]["left"], scan["extent"]["right"]
                     if sc["policy"] == "data" and right < w - 60:
                         findings.append({"kind": "policy", "element": "data", "detail": f"내용이 {round(right)}px 에서 끝난다 (창 {w})"})
-                    if sc["policy"] == "form" and abs(left - (w - right)) > 40:
+                    if sc["policy"] == "form" and abs((left - scan.get("contentLeft", 0)) - (w - right)) > 40:
                         findings.append({"kind": "policy", "element": "form", "detail": f"좌 {round(left)} · 우 {round(w - right)} — 가운데가 아니다"})
                 findings += [{"kind": "console", "element": c, "detail": ""} for c in dict.fromkeys(console)]
                 uniq = {json.dumps(f, ensure_ascii=False, sort_keys=True): f for f in findings}

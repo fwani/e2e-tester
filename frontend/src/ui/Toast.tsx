@@ -127,6 +127,7 @@ type ToastObject = ComponentProps<typeof ToastPrimitive.Root>["toast"];
  * 저장소에 바로 쓰므로 구독 시점과 무관하다.
  */
 const InToaster = createContext(false);
+const DockedToasts = createContext(false);
 
 /**
  * 알림 하나를 관리자에 **등록**하고, 사라질 때 거둔다.
@@ -255,11 +256,11 @@ function ToastCard({ toast }: { toast: ToastObject }) {
  * `aria-live` 는 층이 갖는다 — 대화상자가 뒤쪽에 거는 `aria-hidden` 이 `aria-live` 요소를 건너뛴다
  * (017 research R6 ③). 그래서 대화상자가 열린 동안 뜬 알림도 낭독된다.
  */
-export function Toaster({ children }: { children?: ReactNode }) {
+export function Toaster({ children, docked = false }: { children?: ReactNode; docked?: boolean }) {
   return (
     <ToastPrimitive.Provider timeout={TOAST_LINGER_MS} limit={TOAST_LIMIT}>
-      <InToaster.Provider value>{children}</InToaster.Provider>
-      <ToastPrimitive.Portal>
+      <DockedToasts.Provider value={docked}><InToaster.Provider value>{children}</InToaster.Provider></DockedToasts.Provider>
+      {!docked && <ToastPrimitive.Portal>
         <ToastPrimitive.Viewport
           className={TOAST_VIEWPORT_CLASSES}
           data-slot="toast-viewport"
@@ -268,9 +269,16 @@ export function Toaster({ children }: { children?: ReactNode }) {
         >
           <ToastList />
         </ToastPrimitive.Viewport>
-      </ToastPrimitive.Portal>
+      </ToastPrimitive.Portal>}
     </ToastPrimitive.Provider>
   );
+}
+
+/** Workbench notices occupy a dedicated row so they cannot cover Step tools or evidence. */
+export function ToastDock() {
+  const docked = useContext(DockedToasts);
+  if (!docked) return null;
+  return <ToastPrimitive.Viewport className="workspace-notice-dock" data-slot="toast-viewport" data-toast-layer="" aria-live="polite"><ToastList /></ToastPrimitive.Viewport>;
 }
 
 export interface ToastProps {
