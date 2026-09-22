@@ -167,6 +167,7 @@ describe("일시정지 전이 (FR-142~FR-145 · U-04)", () => {
       />,
     );
     expect(screen.getByText(/요소를 찾을 수 없습니다: #submit/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "화면 메뉴" }));
     fireEvent.click(button("결과 자세히 보기"));
     expect(onShowResult).toHaveBeenCalledTimes(1);
   });

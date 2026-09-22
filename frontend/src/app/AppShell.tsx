@@ -5,7 +5,8 @@
  * 상한이 한 번만 적용된다. 화면은 층을 모르고 `<Toast>` 만 조건부로 그린다. 프로젝트 선택 화면은 이 밖에
  * 있다 — 옛 `App.tsx` 에서도 그 화면은 알림 층 밖에서 그려졌다.
  */
-import { Outlet } from "react-router";
+import { WorkspaceNavigation } from "./WorkspaceNavigation";
+import { Outlet, useLocation } from "react-router";
 
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Toast, Toaster } from "../ui/Toast";
@@ -13,11 +14,12 @@ import { AppActionsProvider, useAppActions } from "./actions";
 import { useAppState, useAppStore } from "./appStore";
 
 export function AppShell() {
+  const workbench = /^\/(tests|sessions)\//.test(useLocation().pathname);
   return (
     <AppActionsProvider>
-      <Toaster>
+      <Toaster docked={workbench}>
         <ShellError />
-        <Outlet />
+        <div className="workspace-shell"><WorkspaceNavigation /><div className="workspace-main"><Outlet /></div></div>
       </Toaster>
     </AppActionsProvider>
   );

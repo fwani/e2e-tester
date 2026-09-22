@@ -37,7 +37,7 @@ export function SessionLostBanner({
       className="bg-fail-t border border-fail-line rounded-base p-[14px] flex flex-col gap-[10px]"
     >
       <div className="flex items-center gap-s2">
-        <strong className="font-sans text-[13px] font-semibold leading-none text-fail">브라우저 세션이 유실됐습니다</strong>
+        <strong className="font-sans text-[14px] font-semibold leading-none text-fail">브라우저 세션이 유실됐습니다</strong>
         <span className="flex-1" />
         {onClose && (
           <Button size="sm" variant="quiet" onClick={onClose}>
@@ -46,11 +46,11 @@ export function SessionLostBanner({
         )}
       </div>
 
-      <p className="font-sans text-[13px] leading-[1.4] font-normal m-0 whitespace-pre-wrap">
+      <p className="font-sans text-[14px] leading-[1.4] font-normal m-0 whitespace-pre-wrap">
         {reason}
       </p>
 
-      <p className="font-sans text-[13px] leading-[1.4] font-normal m-0">
+      <p className="font-sans text-[14px] leading-[1.4] font-normal m-0">
         {hasSteps ? (
           <>
             기록된 Step <strong>{stepCount}개</strong>는 보존됐습니다. 저장하거나 처음부터
@@ -61,7 +61,7 @@ export function SessionLostBanner({
         )}
       </p>
 
-      <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
+      <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0">
         이어서 실행과 Step 편집은 브라우저가 없어 할 수 없습니다.
       </p>
 

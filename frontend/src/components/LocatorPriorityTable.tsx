@@ -127,7 +127,7 @@ export function LocatorPriorityTable({
   return (
     <div className="flex flex-col gap-[6px]">
       <div className="flex items-center gap-s2">
-        <strong className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{title}</strong>
+        <strong className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2">{title}</strong>
         <Chip tone={usable >= 2 ? "pass" : "warn"} layout="break-all">
           사용 가능 후보 {usable}
         </Chip>
@@ -140,7 +140,7 @@ export function LocatorPriorityTable({
       </div>
 
       {repicking && (
-        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
+        <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0">
           실제 브라우저 창에서 대상 요소를 클릭하세요. 그 클릭은 Step 으로 기록되지
           않습니다.
         </p>
@@ -179,7 +179,7 @@ export function LocatorPriorityTable({
                   <span className="font-mono text-[12px] leading-none font-normal text-ink-3">{i + 1}</span>
                 </TableCell>
                 <TableCell>
-                  <span className={missing ? "text-ink-3" : "font-sans text-[13px] font-semibold leading-none"}>
+                  <span className={missing ? "text-ink-3" : "font-sans text-[14px] font-semibold leading-none"}>
                     {row.label}
                   </span>
                 </TableCell>

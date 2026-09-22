@@ -38,12 +38,12 @@ export function TestBulkConfirm({
     <div
       data-test-bulk-confirm
       role="status"
-      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[14px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
-      <span className="font-sans text-[13px] font-semibold leading-none">{deleteTestsConfirm(names)}</span>
+      <span className="font-sans text-[14px] font-semibold leading-none">{deleteTestsConfirm(names)}</span>
       {/* 012 가 프로젝트 삭제에서 정한 것과 같다 — 되돌릴 수 있다는 사실을 확인 시점에
           말한다. 011 의 `BULK_DELETE_IRREVERSIBLE` 과 정반대 자리다. */}
-      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{TESTS_DELETE_REVERTIBLE}</span>
+      <span className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">{TESTS_DELETE_REVERTIBLE}</span>
       <div className="flex-1" />
       {/* 돌아가기가 기본이다 — 포커스를 여기에 둔다. */}
       <Button size="sm" onClick={onCancel} disabled={busy} autoFocus>
@@ -78,7 +78,7 @@ export function TrashedTestsNotice({
       role="status"
       className="bg-warn-t border border-warn-line rounded-base py-[10px] px-s3 mb-[10px]"
     >
-      <div className="font-sans text-[13px] font-semibold leading-none">
+      <div className="font-sans text-[14px] font-semibold leading-none">
         {trashed.length === 1
           ? `「${trashed[0]!.name}」을(를) 휴지통으로 옮겼습니다.`
           : `${trashed.length}개를 휴지통으로 옮겼습니다.`}
@@ -91,13 +91,13 @@ export function TrashedTestsNotice({
         {trashed.map((t) => (
           <div
             key={t.id}
- className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[2px] break-all"
+ className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[2px] break-all"
           >
             {t.trashed_to}
           </div>
         ))}
       </Disclosure>
-      <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
+      <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
         {TESTS_RESTORE_HINT}
       </div>
       <Button variant="nav" layout="mt-[6px]" onClick={onDismiss}>
@@ -135,13 +135,13 @@ export function TestSelectionBar({
   return (
     <div
       data-test-selection-bar
-      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[14px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
       {/*
         **이 둘은 줄바꿈하지도 줄어들지도 않는다** (017 B-07). 선택칸이 남은 폭을 전부 가져가던 때
         좁은 창에서 「3개 선택됨」이 두 줄로 꺾이고 「보이는 것 전부 선택」이 잘렸다.
       */}
-      <span className="font-sans text-[13px] font-semibold leading-none whitespace-nowrap shrink-0">{selectedCount}개 선택됨</span>
+      <span className="font-sans text-[14px] font-semibold leading-none whitespace-nowrap shrink-0">{selectedCount}개 선택됨</span>
       {/*
         **대상은 지금 화면에 보이는 것뿐이다** (FR-428 · SC-625). 걸러진 것까지 고르면
         사용자가 보지 못한 테스트가 삭제 대상이 된다.
@@ -194,12 +194,12 @@ export function RenumberConfirm({
     <div
       data-renumber-confirm
       role="status"
-      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[14px] leading-[1.4] font-normal flex items-center gap-[10px] py-s2 px-s3 mb-[10px]"
     >
-      <span className="font-sans text-[13px] font-semibold leading-none">
+      <span className="font-sans text-[14px] font-semibold leading-none">
         테스트 {total}개의 번호를 001부터 다시 붙일까요?
       </span>
-      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">
+      <span className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">
         그룹 접두어와 순서는 그대로입니다. 지금 보이는 것만이 아니라 프로젝트 전체가
         대상이며, 되돌리는 조작은 없습니다.
       </span>
@@ -239,7 +239,7 @@ export function RenumberedNotice({
       role="status"
       className={`${changed === 0 ? "bg-warn-t border border-warn-line rounded-base" : "bg-run-t border border-run rounded-base"} py-[10px] px-s3 mb-[10px]`}
     >
-      <div className="font-sans text-[13px] font-semibold leading-none">
+      <div className="font-sans text-[14px] font-semibold leading-none">
         {changed === 0
           ? `번호는 이미 정리되어 있었습니다 (${result.unchanged}개).`
           : `${changed}개의 번호를 바꿨습니다. ${result.unchanged}개는 제자리였습니다.`}
@@ -247,14 +247,14 @@ export function RenumberedNotice({
       {changed > 0 && (
         <Disclosure open layout="mt-[6px]" tone="quiet" summary={<>바뀐 식별자 {changed}건</>}>
           {result.renumbered.map((m) => (
- <div key={m.from_id} className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[2px]">
+ <div key={m.from_id} className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[2px]">
               {m.from_id} → {m.to_id} · {m.name}
             </div>
           ))}
         </Disclosure>
       )}
       {changed > 0 && (
-        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
+        <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[6px]">
           정의 파일과 실행 산출물이 함께 옮겨졌습니다. 저장소에 옛 식별자를 적어 둔 곳이
           있으면 함께 고치세요.
         </div>

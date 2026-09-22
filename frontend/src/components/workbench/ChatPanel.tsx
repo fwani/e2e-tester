@@ -43,6 +43,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { ChatTurn } from "../../api/client";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityState } from "../../lib/capabilities";
+import { Button } from "../../ui/Button";
 import { Notice } from "../../ui/Notice";
 import { Textarea } from "../../ui/Textarea";
 import { ActionButton } from "./ActionButton";
@@ -81,6 +82,8 @@ export function ChatPanel({
   onRemedy,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
+  const [expanded, setExpanded] = useState(busy || turns.length > 0);
+  useEffect(() => { if (busy || turns.length > 0 || progress.length > 0) setExpanded(true); }, [busy, turns.length, progress.length]);
   const tail = useRef<HTMLDivElement | null>(null);
 
   /*
@@ -107,10 +110,11 @@ export function ChatPanel({
   };
 
   return (
-    <section className="flex flex-col gap-s3 min-h-0" aria-label="AI 와 대화">
-      <div className="shrink-0 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">
-        AI 와 대화
+    <div className="workbench-chat" data-chat-panel data-expanded={expanded}>
+      <div className="chat-panel-heading"><span>AI 도우미{busy ? " · 수행 중" : ""}</span>
+        <Button variant="ghost" size="sm" aria-expanded={expanded} aria-controls="ai-chat-body" onClick={() => setExpanded(!expanded)}>{expanded ? "대화 닫기" : "대화 열기"}</Button>
       </div>
+      <section id="ai-chat-body" hidden={!expanded} className="flex flex-col gap-s3 min-h-0" aria-label="AI 와 대화">
 
       {/*
         **언어모델을 쓸 수 없을 때** (FR-012).
@@ -157,7 +161,7 @@ export function ChatPanel({
         */}
         {busy && (
           <div className="flex flex-col gap-[2px]" role="status" aria-live="polite">
-            <span className="font-mono text-[11px] uppercase tracking-[.08em] text-ink-3">
+            <span className="font-mono text-[12px] uppercase tracking-[.08em] text-ink-3">
               수행 중
             </span>
             {progress.length === 0 ? (
@@ -210,7 +214,8 @@ export function ChatPanel({
           />
         </div>
       </form>
-    </section>
+      </section>
+    </div>
   );
 }
 
@@ -218,7 +223,7 @@ function ChatBubble({ turn }: { turn: ChatTurn }) {
   const mine = turn.role === "user";
   return (
     <div className="flex flex-col gap-[2px]">
-      <span className="font-mono text-[11px] uppercase tracking-[.08em] text-ink-3">
+      <span className="font-mono text-[12px] uppercase tracking-[.08em] text-ink-3">
         {mine ? "나" : "AI"}
       </span>
       <p className="whitespace-pre-wrap">{turn.text}</p>

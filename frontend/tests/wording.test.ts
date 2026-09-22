@@ -57,7 +57,7 @@ describe("결말 어휘 (FR-141)", () => {
     const labels = ALL_OUTCOMES.map(outcomeLabel);
     const chips = ALL_OUTCOMES.map(outcomeChip);
     expect(labels).toEqual(["통과", "실패", "중지", "부분 성공"]);
-    expect(chips).toEqual(["PASS", "FAIL", "STOPPED", "PARTIAL"]);
+    expect(chips).toEqual(["통과", "실패", "중지", "부분 성공"]);
     // 한 결말이 두 이름을 갖지 않는다.
     expect(new Set(labels).size).toBe(labels.length);
     expect(new Set(chips).size).toBe(chips.length);
@@ -74,7 +74,7 @@ describe("결말 어휘 (FR-141)", () => {
     // 보수적 기본값 — 결말이 늘 때 화면이 조용히 성공을 말하지 않게 한다.
     const unknown = "brand_new" as Outcome;
     expect(outcomeLabel(unknown)).toBe("실패");
-    expect(outcomeChip(unknown)).toBe("FAIL");
+    expect(outcomeChip(unknown)).toBe("실패");
     expect(outcomeTone(unknown)).toBe("danger");
   });
 

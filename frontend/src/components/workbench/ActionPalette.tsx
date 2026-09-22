@@ -1,3 +1,4 @@
+import { ToolPanel } from "../../ui/ToolPanel";
 /**
  * Step 패널 바닥의 **공통 조작 팔레트** (007 T058~T062 · FR-234·FR-235).
  *
@@ -219,7 +220,12 @@ export function ActionPalette({
 
   return (
     <div className="flex flex-col gap-s3">
-      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">지금 할 수 있는 것</div>
+      {shown("step.recordStop") && button("step.recordStop", () => onRun("step.recordStop"))}
+      {PALETTE_ACTIONS.some(shown) && <ToolPanel label="Step 편집 도구">
+        <div className="flex flex-wrap gap-[10px] items-start">
+          {PALETTE_ACTIONS.filter(shown).map((action) => button(action, () => onRun(action)))}
+        </div>
+      </ToolPanel>}
 
       {/*
         ─── Step 을 더하는 두 길 (011 FR-374 · UC-011-23) ──────────────────────
@@ -235,7 +241,8 @@ export function ActionPalette({
         쓸 수 없으면 입력칸을 잠그고 이유는 버튼이 말한다 (FR-234).
       */}
       {AUTHORING_ROW.some(shown) || shown("step.addNaturalLanguage") ? (
-        <div className="flex flex-col gap-s2">
+        <ToolPanel label="Step 추가" active={usable("step.recordStop")}>
+          <div className="flex flex-col gap-s2">
           {shown("step.addNaturalLanguage") && (
             /*
               **모자라면 다음 줄로 내려간다** (017 N-07). 입력칸이 240px 을 지키면 460px 패널에서 옆 조작의 비활성 사유가
@@ -263,14 +270,13 @@ export function ActionPalette({
             </div>
           )}
           <div className="flex flex-wrap gap-[10px] items-start">
-            {AUTHORING_ROW.filter(shown).map((action) => button(action, () => onRun(action)))}
+            {AUTHORING_ROW.filter((action) => shown(action) && action !== "step.recordStop").map((action) => button(action, () => onRun(action)))}
           </div>
-        </div>
+          </div>
+        </ToolPanel>
       ) : null}
 
-      <div className="flex flex-wrap gap-[10px] items-start">
-        {PALETTE_ACTIONS.filter(shown).map((action) => button(action, () => onRun(action)))}
-      </div>
+
 
       {/*
         009 — 삽입 입력면. **닫혀 있으면 자리를 차지하지 않는다** (008 FR-218e 와 같은
@@ -285,40 +291,17 @@ export function ActionPalette({
         여기에도 입력칸이 있어 같은 값에 자리가 둘이었다. 011 이 표시와 편집을 국면 띠
         하나로 합쳤다 (UC-011-2).
       */}
-      {shown("test.setStartUrl") && (
-        <div
-          className="border-t border-hair flex flex-col gap-s2 pt-s3"
-        >
-          {shown("test.setStartUrl") && (
-            <Field
-              action="test.setStartUrl"
-              label="시작 주소"
-              capability={capabilityOf("test.setStartUrl")}
-              value={startUrl}
-              onChange={onStartUrlChange}
-              maxLength={2000}
-              mono
-              onRemedy={onRemedy}
-            />
-          )}
-        </div>
-      )}
-
-      {/*
-        AI 지시문 (001 FR-063·FR-064). **수행 중에는 고칠 수 없고 기록으로 계속 보인다.**
-        보이지 않으면 사용자는 자기가 무엇을 시켰는지 잃는다 (UX U-07).
-      */}
-      {shown("ai.compose") && (
-        <Field
-          action="ai.compose"
-          label="AI 지시문"
-          capability={capabilityOf("ai.compose")}
-          value={instruction ?? ""}
-          onChange={(v) => onInstructionChange?.(v)}
-          maxLength={4000}
-          multiline
-          onRemedy={onRemedy}
-        />
+      {(shown("test.setStartUrl") || shown("ai.compose")) && (
+        <ToolPanel label="테스트 설정">
+          <div className="flex flex-col gap-s3">
+            {shown("test.setStartUrl") && <Field action="test.setStartUrl" label="시작 주소"
+              capability={capabilityOf("test.setStartUrl")} value={startUrl} onChange={onStartUrlChange}
+              maxLength={2000} mono onRemedy={onRemedy} />}
+            {shown("ai.compose") && <Field action="ai.compose" label="AI 지시문"
+              capability={capabilityOf("ai.compose")} value={instruction ?? ""}
+              onChange={(v) => onInstructionChange?.(v)} maxLength={4000} multiline onRemedy={onRemedy} />}
+          </div>
+        </ToolPanel>
       )}
 
       {/*
@@ -338,7 +321,7 @@ export function ActionPalette({
       {saveNotice}
 
       {stepCount === 0 && emptyHint !== undefined && (
-        <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">{emptyHint}</div>
+        <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">{emptyHint}</div>
       )}
     </div>
   );
@@ -418,7 +401,7 @@ function Field({
         <span
           id={reasonId}
           data-disabled-reason={action}
-          className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 pl-[84px]"
+          className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 pl-[84px]"
         >
           {capability.reason}
           {capability.remedy !== null && (

@@ -63,7 +63,7 @@ function runTailwind(inputCss: string): Set<string> {
  */
 export function generatedClasses(): Set<string> {
   if (cache !== null) return cache;
-  cache = runTailwind(`@import "../src/theme/tailwind.css";\n`);
+  cache = runTailwind(`@import "../src/theme/tailwind.css";\n@import "../src/theme/workspace.css";\n@import "../src/theme/settings-simplification.css";\n@import "../src/pages/library-simplification.css";\n`);
   return cache;
 }
 

@@ -78,6 +78,10 @@ function stub(routes: Record<string, { status?: number; body: unknown }>) {
   return calls;
 }
 
+async function openRowActions() {
+  fireEvent.click(await screen.findByText("관리", { selector: "button" }));
+}
+
 const listing = (projects: ProjectListItem[]) => ({ body: { projects, warning: null } });
 
 const summaryOf = (item: ProjectListItem, count = 3) => ({
@@ -92,11 +96,15 @@ afterEach(() => {
 // ─── UC-012-01 · 줄의 상태가 조작을 정한다 ─────────────────────────────────
 
 describe("줄 상태 × 조작 (data-model §3)", () => {
-  it("접근 가능한 줄에는 열기·이름 바꾸기·삭제·목록에서 치우기가 모두 있다", async () => {
+  it("열기는 바로 보이고 관리에서 이름 바꾸기·삭제·목록에서 치우기를 연다", async () => {
     stub({ "/api/project/list": listing([managed]) });
     render(<ProjectSetup onOpened={() => {}} />);
-
     await screen.findByText("결제");
+    const menu = screen.getByRole("button", { name: "결제 관리" });
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("button", { name: "열기" })).toBeTruthy();
+    await openRowActions();
+    expect(menu.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("button", { name: "열기" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "이름 바꾸기" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "삭제" })).toBeTruthy();
@@ -109,6 +117,7 @@ describe("줄 상태 × 조작 (data-model §3)", () => {
     // 빼도 스캔에 다시 걸려 돌아온다.
     stub({ "/api/project/list": listing([gone]) });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     await screen.findByText("옮겨진 것");
     expect(screen.getByRole("button", { name: "삭제" })).toBeTruthy();
@@ -121,6 +130,7 @@ describe("줄 상태 × 조작 (data-model §3)", () => {
   it("열 수 없는 줄은 왜 이름을 못 바꾸는지 말한다 (FR-406)", async () => {
     stub({ "/api/project/list": listing([gone]) });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     await screen.findByText(/열 수 없는 상태여서 이름을 바꿀 수 없습니다/);
   });
@@ -128,6 +138,7 @@ describe("줄 상태 × 조작 (data-model §3)", () => {
   it("열 수 없는 줄의 확인 단계는 무슨 일이 일어날지 미리 말한다 (UC-012-03)", async () => {
     stub({ "/api/project/list": listing([gone]) });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
 
@@ -143,6 +154,7 @@ describe("줄 상태 × 조작 (data-model §3)", () => {
       },
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
     fireEvent.click(await screen.findByRole("button", { name: "휴지통으로 옮기기" }));
@@ -153,6 +165,7 @@ describe("줄 상태 × 조작 (data-model §3)", () => {
   it("두 조작의 설명이 디스크의 파일이 어떻게 되는지 각각 말한다 (FR-423 · SC-620)", async () => {
     stub({ "/api/project/list": listing([managed]) });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     await screen.findByText("결제");
     expect(screen.getByRole("button", { name: "삭제" }).getAttribute("title")).toContain(
@@ -173,6 +186,7 @@ describe("이름 인라인 편집 (US1)", () => {
       "/api/project/name": { body: { ...managed, name: "결제 회귀" } },
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "이름 바꾸기" }));
     const input = screen.getByLabelText("프로젝트 이름") as HTMLInputElement;
@@ -195,6 +209,7 @@ describe("이름 인라인 편집 (US1)", () => {
     });
     const renamed = vi.fn();
     render(<ProjectSetup onOpened={() => {}} onProjectRenamed={renamed} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "이름 바꾸기" }));
     const input = screen.getByLabelText("프로젝트 이름");
@@ -207,6 +222,7 @@ describe("이름 인라인 편집 (US1)", () => {
   it("빈 이름은 요청을 만들지 않고 그 자리에서 사유를 말한다 (FR-403)", async () => {
     const calls = stub({ "/api/project/list": listing([managed]) });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "이름 바꾸기" }));
     const input = screen.getByLabelText("프로젝트 이름");
@@ -222,6 +238,7 @@ describe("이름 인라인 편집 (US1)", () => {
   it("Esc 는 원래 이름으로 되돌리고 요청하지 않는다", async () => {
     const calls = stub({ "/api/project/list": listing([managed]) });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "이름 바꾸기" }));
     const input = screen.getByLabelText("프로젝트 이름");
@@ -242,6 +259,7 @@ describe("삭제 = 휴지통 이동 (US2)", () => {
       "/api/project/summary": summaryOf(managed),
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
 
@@ -255,6 +273,7 @@ describe("삭제 = 휴지통 이동 (US2)", () => {
       "/api/project/summary": summaryOf(managed, 7),
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
 
@@ -269,6 +288,7 @@ describe("삭제 = 휴지통 이동 (US2)", () => {
       "/api/project/summary": summaryOf(external),
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
 
@@ -281,10 +301,12 @@ describe("삭제 = 휴지통 이동 (US2)", () => {
       "/api/project/summary": summaryOf(managed),
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
     fireEvent.click(await screen.findByRole("button", { name: "취소" }));
 
+    await openRowActions();
     await screen.findByRole("button", { name: "삭제" });
     expect(calls.filter((c) => c.url.includes("/api/project/trash"))).toHaveLength(0);
   });
@@ -299,6 +321,7 @@ describe("삭제 = 휴지통 이동 (US2)", () => {
       },
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
     fireEvent.click(await screen.findByRole("button", { name: "휴지통으로 옮기기" }));
@@ -321,6 +344,7 @@ describe("삭제 = 휴지통 이동 (US2)", () => {
       },
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
     fireEvent.click(await screen.findByRole("button", { name: "휴지통으로 옮기기" }));
@@ -338,6 +362,7 @@ describe("삭제 = 휴지통 이동 (US2)", () => {
     });
     const closed = vi.fn();
     render(<ProjectSetup onOpened={() => {}} onProjectClosed={closed} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
     fireEvent.click(await screen.findByRole("button", { name: "휴지통으로 옮기기" }));
@@ -367,6 +392,7 @@ describe("거절·실패 표시", () => {
       },
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
     fireEvent.click(await screen.findByRole("button", { name: "휴지통으로 옮기기" }));
@@ -394,6 +420,7 @@ describe("거절·실패 표시", () => {
       },
     });
     render(<ProjectSetup onOpened={() => {}} />);
+    await openRowActions();
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
     fireEvent.click(await screen.findByRole("button", { name: "휴지통으로 옮기기" }));

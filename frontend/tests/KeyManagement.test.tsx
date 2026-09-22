@@ -250,7 +250,7 @@ describe("KeyManagement — 잠금 해제 (FR-089e-3)", () => {
     vi.stubGlobal("fetch", stub({ "GET /api/keys/status": { status: 200, body: WITH_KEYS } }));
     render(<KeyManagement />);
 
-    await screen.findByText("키 교체·삭제");
+    await screen.findByRole("button", { name: "키 교체·삭제" });
     expect(screen.queryByText(/비밀키가 잠겨 있습니다/)).toBeNull();
     expect(screen.queryByText(/비밀키가 열려 있습니다/)).toBeNull();
   });
@@ -265,7 +265,8 @@ describe("KeyManagement — 교체·삭제 (DR-031)", () => {
   it("확인 문구 전에는 두 버튼 모두 잠겨 있다", async () => {
     vi.stubGlobal("fetch", withKeys());
     render(<KeyManagement />);
-    await screen.findByText("키 교체·삭제");
+    fireEvent.click(await screen.findByText("키 교체·삭제", { selector: "button" }));
+    await screen.findByRole("button", { name: "키 교체·삭제" });
 
     expect(button("키 교체").disabled).toBe(true);
     expect(button("키 삭제").disabled).toBe(true);
@@ -274,6 +275,7 @@ describe("KeyManagement — 교체·삭제 (DR-031)", () => {
   it("틀린 확인 문구는 열어 주지 않는다", async () => {
     vi.stubGlobal("fetch", withKeys());
     render(<KeyManagement />);
+    fireEvent.click(await screen.findByText("키 교체·삭제", { selector: "button" }));
     const input = await screen.findByLabelText(/확인 문구/);
 
     fireEvent.change(input, { target: { value: "delete" } });
@@ -285,6 +287,7 @@ describe("KeyManagement — 교체·삭제 (DR-031)", () => {
   it("정확한 확인 문구를 넣으면 열린다", async () => {
     vi.stubGlobal("fetch", withKeys());
     render(<KeyManagement />);
+    fireEvent.click(await screen.findByText("키 교체·삭제", { selector: "button" }));
     const input = await screen.findByLabelText(/확인 문구/);
 
     fireEvent.change(input, { target: { value: "DELETE" } });
@@ -308,6 +311,7 @@ describe("KeyManagement — 교체·삭제 (DR-031)", () => {
       }),
     );
     render(<KeyManagement />);
+    fireEvent.click(await screen.findByText("키 교체·삭제", { selector: "button" }));
     fireEvent.change(await screen.findByLabelText(/확인 문구/), {
       target: { value: "DELETE" },
     });
@@ -329,6 +333,7 @@ describe("KeyManagement — 교체·삭제 (DR-031)", () => {
       }),
     );
     render(<KeyManagement />);
+    fireEvent.click(await screen.findByText("키 교체·삭제", { selector: "button" }));
     fireEvent.change(await screen.findByLabelText(/확인 문구/), {
       target: { value: "DELETE" },
     });
@@ -352,6 +357,7 @@ describe("KeyManagement — 교체·삭제 (DR-031)", () => {
       }),
     );
     render(<KeyManagement />);
+    fireEvent.click(await screen.findByText("키 교체·삭제", { selector: "button" }));
     fireEvent.change(await screen.findByLabelText(/확인 문구/), {
       target: { value: "DELETE" },
     });
@@ -365,6 +371,7 @@ describe("KeyManagement — 교체·삭제 (DR-031)", () => {
   it("짧은 새 암호구로는 교체를 막는다 — 서버 왕복 없이 사유를 말한다", async () => {
     vi.stubGlobal("fetch", withKeys());
     render(<KeyManagement />);
+    fireEvent.click(await screen.findByText("키 교체·삭제", { selector: "button" }));
     fireEvent.change(await screen.findByLabelText(/확인 문구/), {
       target: { value: "DELETE" },
     });

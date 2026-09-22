@@ -124,6 +124,7 @@ describe("그룹이 없는 프로젝트", () => {
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
     await screen.findByText("로그인");
 
+    await userEvent.setup().click(screen.getByRole("button", { name: "그룹 관리" }));
     expect(screen.getByRole("button", { name: "+ 그룹" })).toBeTruthy();
   });
 });
@@ -131,24 +132,24 @@ describe("그룹이 없는 프로젝트", () => {
 // ─── UC-013-06 · 묶어 보기·걸러 보기 ──────────────────────────────────────
 
 describe("그룹이 있는 프로젝트", () => {
-  it("그룹별로 묶이고 「그룹 없음」이 마지막에 온다 (FR-440)", async () => {
+  it("그룹 소제목 없이 한 목록으로 읽고 그룹은 선택칸에서 구분한다", async () => {
     stub(GROUPED_ROWS, GROUPS);
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
     await screen.findByText("로그인");
 
-    // 이름이 있는 묶음을 먼저 보여주는 것이 목록을 훑는 순서에 맞는다.
-    await waitFor(() => expect(headings()).toEqual(["USER", "TC"]));
+    expect(headings()).toEqual([]);
+    const select = screen.getByRole("combobox", { name: "그룹으로 거르기" });
+    expect(within(select).getByRole("option", { name: "사용자관리 테스트 · 2" })).toBeTruthy();
+    expect(within(select).getByRole("option", { name: "그룹 없음 · 1" })).toBeTruthy();
   });
 
-  it("칩이 그룹만 남긴다 (FR-441)", async () => {
+  it("선택칸이 그룹만 남긴다 (FR-441)", async () => {
     const calls = stub(GROUPED_ROWS, GROUPS);
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
     await screen.findByText("로그인");
     const user = userEvent.setup();
 
-    await user.click(
-      within(bar() as HTMLElement).getByRole("button", { name: /사용자관리 테스트/ }),
-    );
+    await user.selectOptions(screen.getByRole("combobox", { name: "그룹으로 거르기" }), "USER");
 
     await waitFor(() => expect(screen.queryByText("그룹 없는 것")).toBeNull());
     // **서버에서 거른다** — 화면에서 거르면 그룹 개수와 목록이 갈린다.
@@ -161,9 +162,7 @@ describe("그룹이 있는 프로젝트", () => {
     await screen.findByText("로그인");
     const user = userEvent.setup();
 
-    await user.click(
-      within(bar() as HTMLElement).getByRole("button", { name: /사용자관리 테스트/ }),
-    );
+    await user.selectOptions(screen.getByRole("combobox", { name: "그룹으로 거르기" }), "USER");
 
     // 소제목이 하나뿐이면 자리만 차지한다.
     await waitFor(() => expect(headings()).toEqual([]));
@@ -175,13 +174,11 @@ describe("그룹이 있는 프로젝트", () => {
     await screen.findByText("로그인");
     const user = userEvent.setup();
 
-    await user.click(
-      within(bar() as HTMLElement).getByRole("button", { name: /사용자관리 테스트/ }),
-    );
+    await user.selectOptions(screen.getByRole("combobox", { name: "그룹으로 거르기" }), "USER");
 
     // 개수는 걸러 보기 **전** 값이다 — 그래야 그리로 갈 수 있다.
     await waitFor(() =>
-      expect(within(bar() as HTMLElement).getByRole("button", { name: /그룹 없음/ })).toBeTruthy(),
+      expect(within(bar() as HTMLElement).getByRole("option", { name: /그룹 없음/ })).toBeTruthy(),
     );
   });
 
@@ -203,7 +200,7 @@ describe("그룹이 있는 프로젝트", () => {
 
     // 목록을 막지 않고 접두어를 그대로 쓴다.
     await waitFor(() =>
-      expect(within(bar() as HTMLElement).getByRole("button", { name: /GHOST/ })).toBeTruthy(),
+      expect(within(bar() as HTMLElement).getByRole("option", { name: /GHOST/ })).toBeTruthy(),
     );
   });
 });
@@ -217,6 +214,7 @@ describe("그룹 만들기", () => {
     await screen.findByText("로그인");
     const user = userEvent.setup();
 
+    await user.click(screen.getByRole("button", { name: "그룹 관리" }));
     await user.click(screen.getByRole("button", { name: "+ 그룹" }));
 
     expect(screen.getByLabelText("그룹 이름")).toBeTruthy();
@@ -231,6 +229,7 @@ describe("그룹 만들기", () => {
     await screen.findByText("로그인");
     const user = userEvent.setup();
 
+    await user.click(screen.getByRole("button", { name: "그룹 관리" }));
     await user.click(screen.getByRole("button", { name: "+ 그룹" }));
     await user.type(screen.getByLabelText("그룹 이름"), "가로채기");
     await user.type(screen.getByLabelText("그룹 접두어"), "TC");
@@ -248,6 +247,7 @@ describe("그룹 만들기", () => {
     await screen.findByText("로그인");
     const user = userEvent.setup();
 
+    await user.click(screen.getByRole("button", { name: "그룹 관리" }));
     await user.click(screen.getByRole("button", { name: "+ 그룹" }));
     await user.type(screen.getByLabelText("그룹 이름"), "결제 테스트");
     await user.type(screen.getByLabelText("그룹 접두어"), "pay");
@@ -264,9 +264,8 @@ describe("그룹 만들기", () => {
 
 describe("그룹 정리", () => {
   const pickUser = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(
-      within(bar() as HTMLElement).getByRole("button", { name: /사용자관리 테스트/ }),
-    );
+    await user.selectOptions(screen.getByRole("combobox", { name: "그룹으로 거르기" }), "USER");
+    await user.click(screen.getByRole("button", { name: "그룹 관리" }));
   };
 
   it("조작은 그 그룹을 고른 상태에서만 나온다", async () => {
@@ -389,7 +388,7 @@ describe("테스트가 0개인 그룹", () => {
 
     await waitFor(() =>
       expect(
-        within(bar() as HTMLElement).getByRole("button", { name: /비어 있는 그룹/ }),
+        within(bar() as HTMLElement).getByRole("option", { name: /비어 있는 그룹/ }),
       ).toBeTruthy(),
     );
   });
@@ -404,8 +403,9 @@ describe("테스트가 0개인 그룹", () => {
     await screen.findByText("그룹 없는 것");
     const user = userEvent.setup();
 
-    await screen.findByRole("button", { name: /비어 있는 그룹/ });
-    await user.click(screen.getByRole("button", { name: /비어 있는 그룹/ }));
+    await screen.findByRole("option", { name: /비어 있는 그룹/ });
+    await user.selectOptions(screen.getByRole("combobox", { name: "그룹으로 거르기" }), "EMPTY");
+    await user.click(screen.getByRole("button", { name: "그룹 관리" }));
     // 클릭 뒤 목록이 다시 오고 띠가 다시 그려진다 — 그 뒤에 조작이 나타난다.
     await waitFor(() =>
       expect(
@@ -438,13 +438,14 @@ describe("테스트가 0개인 그룹", () => {
     await screen.findByText("그룹 없는 것");
     const user = userEvent.setup();
 
-    await screen.findByRole("button", { name: /비어 있는 그룹/ });
-    await user.click(screen.getByRole("button", { name: /비어 있는 그룹/ }));
+    await screen.findByRole("option", { name: /비어 있는 그룹/ });
+    await user.selectOptions(screen.getByRole("combobox", { name: "그룹으로 거르기" }), "EMPTY");
+    await user.click(screen.getByRole("button", { name: "그룹 관리" }));
 
     // 띠가 남아 있어야 돌아올 수 있다.
     await waitFor(() => expect(bar()).not.toBeNull());
     expect(
-      within(bar() as HTMLElement).getByRole("button", { name: /^전체/ }),
+      within(bar() as HTMLElement).getByRole("option", { name: /^모든 그룹/ }),
     ).toBeTruthy();
   });
 });

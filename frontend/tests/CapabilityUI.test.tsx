@@ -59,6 +59,8 @@ import type { SessionState } from "../src/api/client";
  * 판정은 `capabilities.ts` 의 `alwaysPresent` 가 한다 — 검사가 사본을 들면 표와 갈린다.
  */
 function required(phase: Phase): ActionId[] {
+  // Start screen deliberately exposes the selected method only; ComposePhase covers switching.
+  if (phase === "composing") return ["test.setStartUrl", "record.start", "nav.back"];
   return ACTION_IDS.filter((a) => alwaysPresent(phase, a));
 }
 
@@ -202,7 +204,7 @@ async function renderPhase(phase: Phase) {
       />,
     );
     await waitFor(() =>
-      expect(document.querySelector("[data-workbench-step-panel]")).not.toBeNull(),
+      expect(document.querySelector("[data-compose-start]")).not.toBeNull(),
     );
     return;
   }
@@ -328,10 +330,10 @@ describe("예외 목록은 비어 있어야 한다", () => {
    * 그래서 둘을 나눠 센다: 모든 국면에서 **Step 패널의 자리**가 있고, Step 이 있는
    * 국면에서는 그 행이 같은 방식으로 지목된다.
    */
-  it("Step 목록의 자리는 모든 국면에 있다 (FR-260 · S-15)", async () => {
+  it("시작은 폼이고 세션·편집 국면에는 Step 목록이 있다", async () => {
     for (const phase of PHASES) {
       await renderPhase(phase);
-      expect(document.querySelector("[data-workbench-step-panel]"), phase).not.toBeNull();
+      expect(document.querySelector(phase === "composing" ? "[data-compose-start]" : "[data-workbench-step-panel]"), phase).not.toBeNull();
       cleanup();
     }
   });
@@ -345,11 +347,12 @@ describe("예외 목록은 비어 있어야 한다", () => {
     }
   });
 
-  it("만들기 국면은 목록이 비었음과 어디에 쌓이는지를 그 자리에서 말한다 (FR-260)", async () => {
+  it("시작 화면은 빈 목록 대신 시작 주소를 보여 준다", async () => {
     await renderPhase("composing");
     expect(document.querySelector("[data-step-row]")).toBeNull();
-    // 자리를 감추면 「조작이 어디에 쌓이는지」를 시작 전에 보여 줄 수 없다 (S-15)
-    expect(screen.getByText(/시작하면 조작 하나가 행 하나로 여기 쌓입니다/)).toBeTruthy();
+    // Before a session exists, only setup controls are relevant.
+    expect(document.querySelector("[data-workbench-step-panel]")).toBeNull();
+    expect(screen.getByLabelText("시작 URL")).toBeTruthy();
   });
 
   it("검사가 실제로 무언가를 세고 있다", () => {
@@ -382,9 +385,9 @@ describe("결말 요약은 화면에 하나뿐이다 (T063 · FR-218d)", () => {
 });
 
 describe("국면 표시도 하나뿐이다 (FR-219)", () => {
-  it.each(PHASES)("%s — `data-phase-pill` 이 정확히 하나다", async (phase) => {
+  it.each(PHASES)("%s — 시작 화면을 제외한 작업대에 국면 표시가 하나다", async (phase) => {
     await renderPhase(phase);
-    expect(document.querySelectorAll("[data-phase-pill]").length).toBe(1);
+    expect(document.querySelectorAll("[data-phase-pill]").length).toBe(phase === "composing" ? 0 : 1);
     expect(screen.getAllByText(/./).length).toBeGreaterThan(0);
   });
 });

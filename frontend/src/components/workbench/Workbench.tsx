@@ -1,3 +1,4 @@
+import { ToolPanel } from "../../ui/ToolPanel";
 /**
  * 통합 작업 화면의 껍데기 (007 T018 · FR-217·FR-218·FR-218c).
  *
@@ -25,10 +26,11 @@
  * 최소 기준 폭 1440px. 그보다 좁으면 재배치하지 않고 스크롤한다 (DC-011 유지). 넓으면
  * **좌측 대상 앱 영역만** 늘어나고 Step 패널 460px 은 고정이다 (FR-218a).
  */
+import { ToastDock } from "../../ui/Toast";
 import type { ReactNode } from "react";
 
 import type { ArtifactKind, RepickSlot } from "../../api/client";
-import { Artboard, BrandMark, Breadcrumb, HeaderBar, HeaderDivider } from "../design/Chrome";
+import { Artboard } from "../design/Chrome";
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap } from "../../lib/capabilities";
 import { CHAT_SLOT_CLASS, STEP_FOOTER_MAX_CLASS, flexClassOf, splitFor } from "../../lib/layout";
@@ -40,10 +42,7 @@ import { TargetPane } from "./TargetPane";
 import { WorkArea } from "./WorkArea";
 import type { WorkbenchModel } from "./model";
 
-import { Lbl } from "../../ui/Field";
 import { Scrim } from "../../ui/Surface";
-import { Row } from "../../ui/Table";
-import { Pill } from "../../ui/Chip";
 
 
 /** 최소 기준 폭. 확정 디자인 6종 공통값 (research R1). */
@@ -253,41 +252,14 @@ export function Workbench({
       fill
       // 머리띠는 가로 스크롤 영역 밖이다 — 좁은 창에서 본문이 스크롤해도 창 폭에 선다 (017 B-11 · layout-contract-v3 L3).
       header={
-        <>
-      {/* ─── 층① 헤더 60px ────────────────────────────────────────────────── */}
-      <HeaderBar>
-        <BrandMark />
-        <HeaderDivider />
-        {/*
-          경로. 저장되지 않은 작성 세션은 테스트 식별자가 없다 — 그때도 자리를 비우지
-          않고 「초안」을 쓴다. 자리가 사라지면 헤더 구성이 국면에 따라 달라진다
-          (FR-217).
-        */}
-        {/* 정본 `.row.muted` — `.muted` 는 `--ink-2` 다 (`--ink-3` 는 `.dim`). */}
-        {model.testId !== null ? (
-          <Breadcrumb testId={model.testId} />
-        ) : (
-          <Row layout="text-ink-2">
-            <Lbl>테스트</Lbl>
-            {/* 정본 `.pill mono` — `.pill` 이 `.mono` 보다 뒤에 정의돼 **글꼴은 sans 였다.** */}
-            <Pill>초안</Pill>
-          </Row>
-        )}
-        <div className="flex-1" />
-        {headerActions}
-      </HeaderBar>
-        </>
+        <div data-shell="header" className="workbench-toolbar">
+          <PhaseBar bar={model.phaseBar} testName={model.testName} rename={phaseName} group={phaseGroup}
+            testId={model.testId}
+            actions={<>{phaseActions}<ToolPanel label="화면 메뉴"><div>{headerActions}</div></ToolPanel></>} />
+        </div>
       }
     >
-
-      {/* ─── 층② 국면 띠 74px ─────────────────────────────────────────────── */}
-      <PhaseBar
-        bar={model.phaseBar}
-        testName={model.testName}
-        rename={phaseName}
-        group={phaseGroup}
-        actions={phaseActions}
-      />
+      <ToastDock />
 
       {/* ─── 층③ 본문 ──────────────────────────────────────────────────────── */}
       {/*
@@ -358,7 +330,21 @@ export function Workbench({
           겹치므로(밀어내지 않으므로), 「상세를 열고 닫아도 이 열의 폭 선언이 같은가」를
           검사가 셀 수 있어야 한다 (UC-011-8).
         */}
-        <div data-workbench-left-column className="flex-1 min-w-0 flex flex-col">
+        <StepList
+          steps={model.steps}
+          authoring={model.authoring}
+          focusedStepId={model.focusedStepId}
+          onSelect={onSelectStep}
+          rowActions={rowActions}
+          headerExtra={stepHeaderExtra}
+          band={stepBand}
+          emptyNotice={stepEmptyNotice}
+          deleteTargets={deleteTargets}
+          rerecordTargets={rerecordTargets}
+          footer={stepFooter}
+          footerMax={STEP_FOOTER_MAX_CLASS[model.phase]}
+        />
+        <div data-workbench-left-column data-workbench-phase={model.phase} className="flex-1 min-w-0 flex flex-col">
           <TargetPane
             target={model.target}
             sizeClass={targetClass}
@@ -373,6 +359,9 @@ export function Workbench({
             자리가 바뀌어서는 안 된다 (FR-218e) — 배분표가 그 국면에서 ③-a 를 `fill` 로
             정하므로 아래가 없어지면 위가 그만큼 늘어난다. 영역의 순서·개수는 그대로다.
           */}
+          {model.phase === "editing" && model.detail !== null && (
+            <div data-workbench-detail-layer data-edit-detail-inline>{detailNode}</div>
+          )}
           {model.work !== null && (
             <WorkArea
               work={model.work}
@@ -421,20 +410,7 @@ export function Workbench({
         </div>
 
         {/* 우 — Step 목록 460px 고정 */}
-        <StepList
-          steps={model.steps}
-          authoring={model.authoring}
-          focusedStepId={model.focusedStepId}
-          onSelect={onSelectStep}
-          rowActions={rowActions}
-          headerExtra={stepHeaderExtra}
-          band={stepBand}
-          emptyNotice={stepEmptyNotice}
-          deleteTargets={deleteTargets}
-          rerecordTargets={rerecordTargets}
-          footer={stepFooter}
-          footerMax={STEP_FOOTER_MAX_CLASS[model.phase]}
-        />
+
 
         {/*
           Step 상세 — **모든 국면에서 이 자리다** (FR-230 · 2026-09-09 사용자 보고).
@@ -461,7 +437,7 @@ export function Workbench({
           판 옆의 빈 자리에서 클릭이 그 아래 미러에 닿는다 — 010 이 미러 조작을 만들었으므로
           사용자가 보이지 않는 곳을 실제로 조작하게 된다. 층이 그 영역을 덮어 삼킨다.
         */}
-        {model.detail !== null && (
+        {model.detail !== null && model.phase !== "editing" && (
           <Scrim
             data-workbench-detail-layer
             strength="soft"
@@ -473,7 +449,7 @@ export function Workbench({
               채 스크롤한다.** 겹침이 절대 배치라 페이지 스크롤이 닿지 않으므로 가로
               스크롤을 여기서 준다. 없으면 좁은 창에서 판이 잘린 채 접근할 수 없다.
             */
-            layout="absolute top-0 left-0 right-steps bottom-0 flex justify-end z-20 overflow-x-auto overflow-y-auto"
+            layout="absolute top-0 left-steps right-0 bottom-0 flex justify-end z-20 overflow-x-auto overflow-y-auto"
           >
             {detailNode}
           </Scrim>

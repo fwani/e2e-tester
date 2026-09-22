@@ -1,28 +1,7 @@
-/**
- * 만들기 국면 (007 T120 · US6 · FR-258·FR-258a·FR-259·FR-260 · SC-011).
- *
- * 1회차는 만들기를 통합 대상에서 뺐다 (FR-217a). 그 결과 한 번의 「테스트를 만든다」
- * 안에서 껍데기가 두 번 바뀌었다 — `CreateTest`(1000px 가운데 정렬) → `AiCompose`(1440
- * 이지만 3층 구조 아님) → 통합 화면 (spec S-14). 그리고 Step 목록의 자리가 없어서
- * 조작이 어디에 쌓이는지는 시작한 뒤에야 보였다 (S-15).
- *
- * 여기서 재는 것은 넷이다.
- *
- * 1. 껍데기가 다른 국면과 같다 (FR-258)
- * 2. Step 이 0개여도 목록의 자리가 있다 (FR-260 · S-15)
- * 3. 방법 2택이 있고 **테스트 이름과 「빈 테스트」는 없다** (FR-258a)
- * 4. 시작을 거는 조작이 비활성일 때 이유가 붙는다 (FR-234 · 조건 C14·C15)
- *
- * 3번이 회귀 방지의 요점이다. 설계 초안이 「테스트 이름」과 「빈 테스트」를 그렸고, 둘
- * 다 지금 제품에 없는 조작이다 (research R11). 초안을 근거로 만들면 이 기능이 「새 조작을
- * 만들지 않는다」를 어긴다.
- */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ComposeView } from "../src/pages/ComposeView";
-import { BASE_WIDTH } from "../src/components/workbench/Workbench";
-import { splitFor } from "../src/lib/layout";
 
 const el = (selector: string) => document.querySelector<HTMLElement>(selector);
 
@@ -53,139 +32,40 @@ const act = (id: string) => el(`[data-action="${id}"]`)! as HTMLButtonElement;
 
 afterEach(cleanup);
 
-describe("껍데기가 다른 국면과 같다 (FR-258 · SC-011)", () => {
-  it("3층 구조를 쓴다 — 헤더 · 국면 띠 · 본문", () => {
+describe("시작 화면은 선택한 작성 방식에 필요한 기능만 보인다", () => {
+  it("빈 작업대와 시작 전 저장·편집 조작을 표시하지 않는다", () => {
     show();
-    expect(el("[data-phase-pill]"), "국면 표시").not.toBeNull();
-    expect(el("[data-workbench-target]"), "③-a 대상 앱 슬롯").not.toBeNull();
-    expect(el("[data-workbench-work]"), "③-b 국면 작업 영역").not.toBeNull();
-    expect(el("[data-workbench-step-panel]"), "Step 목록").not.toBeNull();
+    expect(screen.getByRole("heading", { name: "새 테스트" })).toBeTruthy();
+    expect(el("[data-workbench-target]")).toBeNull();
+    expect(el("[data-workbench-step-panel]")).toBeNull();
+    expect(el('[data-action="save"]')).toBeNull();
+    expect(screen.queryByLabelText("테스트 이름")).toBeNull();
   });
-
-  it("기준 폭이 다른 국면과 같다 — 1000px 가운데 정렬 본문이 사라졌다 (S-14)", () => {
+  it("직접 녹화가 기본이고 시작 조작은 하나다", () => {
     show();
-    // `Workbench` 의 `Artboard` 를 지나므로 폭이 국면마다 다를 수 없다
-    expect(BASE_WIDTH).toBe(1440);
-    expect(document.body.innerHTML).not.toContain("1000px");
+    expect(el('[data-compose-mode="record"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(act("record.start")).toBeTruthy();
+    expect(el('[data-action="ai.start"]')).toBeNull();
+    expect(screen.queryByLabelText("자연어 지시")).toBeNull();
   });
-
-  it("국면 표시는 하나뿐이다 (FR-219)", () => {
-    show();
-    expect(document.querySelectorAll("[data-phase-pill]")).toHaveLength(1);
-  });
-
-  it("결말 요약 자리는 비어 있다 — 없는 결말을 지어내지 않는다", () => {
-    show();
-    expect(document.querySelectorAll("[data-run-summary]").length).toBeLessThanOrEqual(1);
-  });
-});
-
-describe("세로 배분 — 작업 영역이 주 자리다 (FR-256·FR-257)", () => {
-  it("③-b 가 남는 높이 전부를 갖고 ③-a 는 최소 높이만 갖는다", () => {
-    show();
-    const split = splitFor("composing");
-    expect(split.workArea.kind).toBe("fill");
-    // 017 T073 · B-04 — 만들기 국면의 ③-a 는 **내용 높이**다. 88px(한 줄 안내를 위해 잰 값)에 세 줄 안내가 잘렸다.
-    // 묻는 것은 같다 — 자리가 **없어지지 않고**(fill 이 아니고) 편집면이 주 작업이다.
-    expect(split.targetSlot.kind).toBe("content");
-    expect(el("[data-workbench-work]")!.dataset.slotSize).toBe("fill");
-    expect(el("[data-workbench-target]")!.dataset.slotSize).toBe("content");
-  });
-
-  it("대상 앱 슬롯이 사라지지 않고 왜 비었는지 말한다 (FR-244·FR-245·FR-261)", () => {
-    show();
-    const slot = el("[data-workbench-target]")!;
-    expect(slot).not.toBeNull();
-    // 「아직 시작하지 않음」과 「수집되지 않음」은 다른 다음 행동을 요구한다 (005 FR-173)
-    expect(el('[data-target-empty="not_started"]')).not.toBeNull();
-  });
-});
-
-describe("Step 목록은 0개여도 자리를 지킨다 (FR-260 · S-15)", () => {
-  it("목록의 자리가 있고 행은 없다", () => {
-    show();
-    expect(el("[data-workbench-step-panel]")).not.toBeNull();
-    expect(el("[data-step-row]")).toBeNull();
-  });
-
-  it("조작이 어디에 쌓이는지 시작하기 전에 말한다", () => {
-    show();
-    expect(screen.getByText(/시작하면 조작 하나가 행 하나로 여기 쌓입니다/)).toBeTruthy();
-  });
-
-  it("Step 패널 바닥의 조작 블록이 같은 자리에 있다 (FR-235)", () => {
-    show();
-    // 여덟 국면에서 같은 자리다. 쓸 수 있는 것이 없어도 자리는 남는다 (FR-234)
-    expect(el("[data-workbench-step-footer]")).not.toBeNull();
-  });
-});
-
-describe("조작을 더하지 않는다 (FR-258a · research R11)", () => {
-  it("방법은 둘이다 — 직접 녹화 · AI로 만들기", () => {
-    show();
-    expect(document.querySelectorAll("[data-compose-mode]")).toHaveLength(2);
-    expect(el('[data-compose-mode="record"]')).not.toBeNull();
-    expect(el('[data-compose-mode="ai"]')).not.toBeNull();
-  });
-
-  /**
-   * **설계 초안이 그린 두 조작이 구현에 들어오지 않았는지 센다** (research R11).
-   *
-   * 초안은 「테스트 이름」 입력과 「빈 테스트」 방법 카드를 그렸다. 둘 다 지금 제품에
-   * 없고, 열면 이 기능이 「새 조작을 만들지 않는다」를 어긴다.
-   *
-   * 이름 칸은 **있고 잠겨 있다.** 감추지 않는 것이 FR-234 이고, 이름을 이 국면에서
-   * 정할 수 있게 만들지 않는 것이 FR-258a 다. 둘은 함께 성립한다 —
-   * 「자리는 남기고 이유를 붙인다」.
-   *
-   * 감추면 「만들기에는 이름이 없는 것」으로 읽히고, 열면 새 조작이 된다.
-   */
-  it("테스트 이름은 자리만 있고 잠겨 있다 — 이유가 붙는다", () => {
-    show();
-    const name = screen.getByLabelText("테스트 이름") as HTMLInputElement;
-    expect(name.disabled).toBe(true);
-    expect(screen.getByText(/저장할 때 이름을 정합니다/)).toBeTruthy();
-  });
-
-  it("「빈 테스트」 방법이 없다", () => {
-    show();
-    expect(screen.queryByText(/빈 테스트/)).toBeNull();
-    expect(el('[data-compose-mode="empty"]')).toBeNull();
-  });
-
-  it("시작 URL 은 하나의 자리를 갖는다 (FR-235)", () => {
-    show();
-    expect(document.querySelectorAll('[data-action="test.setStartUrl"]')).toHaveLength(1);
-  });
-});
-
-describe("쓸 수 없는 조작에 이유가 붙는다 (FR-234)", () => {
-  it("방법을 고르기 전에도 지시문 자리가 있고 이유가 붙는다 (조건 C15)", () => {
-    show();
-    const box = screen.getByLabelText("자연어 지시") as HTMLTextAreaElement;
-    // 감추면 「AI 로 만들 때 지시문을 쓴다」를 고른 뒤에야 알게 된다
-    expect(box).toBeTruthy();
-    expect(box.disabled).toBe(true);
-    expect(screen.getByText(/「AI로 만들기」를 고르면 쓸 수 있습니다/)).toBeTruthy();
-  });
-
-  it("AI 를 고르면 지시문을 쓸 수 있다", () => {
-    show();
-    pickAi();
-    expect((screen.getByLabelText("자연어 지시") as HTMLTextAreaElement).disabled).toBe(false);
-  });
-
-  it("지시문이 비면 AI 시작이 잠기고 이유가 붙는다 (조건 C14)", () => {
-    show();
-    pickAi();
+  it("AI를 선택하면 지시문과 AI 시작으로 전환한다", () => {
+    show(); pickAi();
+    expect(screen.getByLabelText("자연어 지시")).toBeTruthy();
     expect(act("ai.start").disabled).toBe(true);
     expect(screen.getByText(/지시문을 쓰면 시작할 수 있습니다/)).toBeTruthy();
+    expect(el('[data-action="record.start"]')).toBeNull();
   });
-
-  it("Step 조작은 감추지 않고 이유와 해소 방법을 갖는다 (FR-260)", () => {
-    show();
-    expect(el('[data-disabled-reason="step.addAssertion"]')).not.toBeNull();
-    expect(screen.getAllByText(/아직 시작하지 않았습니다/).length).toBeGreaterThan(0);
+  it("방식을 전환해도 작성한 URL과 지시문을 보존한다", () => {
+    show(); pickAi();
+    fireEvent.change(screen.getByLabelText("시작 URL"), { target: { value: "https://test.local" } });
+    fireEvent.change(screen.getByLabelText("자연어 지시"), { target: { value: "로그인 확인" } });
+    pickRecord(); pickAi();
+    expect((screen.getByLabelText("자연어 지시") as HTMLTextAreaElement).value).toBe("로그인 확인");
+    expect((screen.getByLabelText("시작 URL") as HTMLInputElement).value).toBe("https://test.local");
+  });
+  it("목록으로 돌아갈 수 있다", () => {
+    const onCancel = vi.fn(); show({ onCancel });
+    fireEvent.click(act("nav.back")); expect(onCancel).toHaveBeenCalledOnce();
   });
 });
 

@@ -1,3 +1,4 @@
+import { ToolPanel } from "../ui/ToolPanel";
 /**
  * 키 관리 (T145). FR-089a·FR-089e-1·DR-031. **확정 디자인에 없는 화면**이므로 8화면의
  * 시각 언어를 따른다 (spec 디자인 차이 3).
@@ -26,6 +27,7 @@ import { paths } from "../lib/paths";
 
 import { Chip } from "../ui/Chip";
 import { Input } from "../ui/Input";
+import "../theme/settings-simplification.css";
 const PASSPHRASE_ENV = "ITB_KEY_PASSPHRASE";
 
 export interface KeyManagementProps {
@@ -147,12 +149,12 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
   const confirmed = confirm === DESTROY_CONFIRM;
 
   return (
-    <main className="max-w-[720px] my-s6 mx-auto py-0 px-s4">
+    <main className="settings-page">
       <div className="flex items-center gap-s2 mb-s4">
         <h1 className="font-sans text-[20px] font-bold leading-[1.3] m-0">키 관리</h1>
         <span className="flex-1" />
         {onClose && (
-          <ButtonLink href={paths.list()} onNavigate={onClose}>
+          <ButtonLink variant="nav" href={paths.list()} onNavigate={onClose}>
             닫기
           </ButtonLink>
         )}
@@ -182,15 +184,13 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         </p>
       )}
 
-      <section
-        className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-[10px]"
-      >
+      <section className="settings-section">
         <div className="flex items-center gap-s2">
           <strong>키 상태</strong>
           <Chip tone={hasKeys ? "pass" : "warn"} layout="m-0">
             {hasKeys ? "준비됨" : "없음"}
           </Chip>
-          {protectedKey && <Chip>암호구 보호</Chip>}
+          {protectedKey && <span className="settings-help">암호구 보호</span>}
           {/* 보호 여부와 **지금 열려 있는지**는 다른 정보다. 둘 다 보여야 한다. */}
           {protectedKey && (
             <Chip tone={unlocked ? "pass" : "warn"} layout="m-0">
@@ -199,23 +199,15 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           )}
         </div>
 
-        <dl className="m-0 grid grid-cols-[auto_1fr] gap-[6px]">
-          <dt className="text-ink-2">비밀키</dt>
-          <dd className="m-0">{status?.private_key_present ? "있음" : "없음"}</dd>
-          <dt className="text-ink-2">공개키</dt>
-          <dd className="m-0">{status?.public_key_present ? "있음" : "없음"}</dd>
-          <dt className="text-ink-2">공개키 지문</dt>
-          <dd className="font-mono m-0 break-all">
-            {status?.public_key_fingerprint ?? "—"}
-          </dd>
-        </dl>
-
-        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
-          키는 프로젝트 밖(
-          <span className="font-mono">{status?.key_dir ?? "…"}</span>
-          )에 있습니다. 이 장비의 모든 ITB 프로젝트가 이 키 하나를 씁니다. 테스트 정의에는
-          민감 값이 들어가지 않으며, 암호문은 각 프로젝트의 비밀 파일에만 있습니다.
-        </p>
+        <ToolPanel label="키 정보 및 저장 위치">
+          <dl className="settings-definition">
+            <dt>비밀키</dt><dd>{status?.private_key_present ? "있음" : "없음"}</dd>
+            <dt>공개키</dt><dd>{status?.public_key_present ? "있음" : "없음"}</dd>
+            <dt>공개키 지문</dt><dd className="font-mono">{status?.public_key_fingerprint ?? "—"}</dd>
+            <dt>저장 위치</dt><dd className="font-mono">{status?.key_dir ?? "…"}</dd>
+          </dl>
+          <p className="settings-help">이 장비의 모든 ITB 프로젝트가 같은 키를 사용합니다. 암호화된 값은 각 프로젝트에 따로 저장됩니다.</p>
+        </ToolPanel>
       </section>
 
       {/*
@@ -228,13 +220,11 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       {needsUnlock && (
         <section
           role="note"
-          className="bg-warn-t border border-warn-line rounded-base p-[14px] mt-s4 flex flex-col gap-[10px]"
+          className="settings-section"
         >
           <strong>비밀키가 잠겨 있습니다</strong>
-          <p className="font-sans text-[13px] leading-[1.4] font-normal m-0">
-            비밀 값을 저장하는 데에는 문제가 없지만, <b>재실행과 AI 작성은 비밀키를 열어야
-            합니다.</b> 암호구를 입력해 잠금을 해제하세요. 해제하지 않으면 민감 변수를 쓰는
-            Step 이 사유와 함께 실패합니다.
+          <p className="font-sans text-[14px] leading-[1.4] font-normal m-0">
+            민감 변수를 쓰는 재실행과 AI 작성에는 잠금 해제가 필요합니다. 비밀 값 저장은 잠긴 상태에서도 가능합니다.
           </p>
           <label htmlFor="unlock-passphrase">암호구</label>
           <Input
@@ -253,27 +243,24 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           />
           <p
             id="unlock-rule"
-            className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0"
+            className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0"
           >
             {unlockTooShort
               ? `암호구는 8자 이상입니다. 지금 ${unlockPassphrase.length}자입니다.`
-              : "암호구는 이 백엔드 프로세스의 메모리에만 보관됩니다. 디스크에 쓰지 않으며, " +
-                "백엔드를 다시 띄우면 다시 잠깁니다."}
+              : "암호구는 메모리에만 보관됩니다. 백엔드를 다시 띄우면 다시 잠깁니다."}
           </p>
           <div>
             <Button
+              variant="primary"
               disabled={busy || unlockPassphrase === "" || unlockTooShort}
               onClick={unlock}
             >
               잠금 해제
             </Button>
           </div>
-          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
-            사람이 없는 실행(CI 등)에서는 백엔드 프로세스에 환경 변수{" "}
-            <span className="font-mono">{PASSPHRASE_ENV}</span> 로 공급할 수도 있습니다. 암호구
-            자체를 없애려면 아래에서 키를 교체하세요 — 교체하면 보관된 민감 값은 다시
-            입력해야 합니다.
-          </p>
+          <ToolPanel label="자동 실행 환경에서 잠금 해제">
+            <p className="settings-help">CI 등에서는 백엔드 환경 변수 <span className="font-mono">{PASSPHRASE_ENV}</span>로 암호구를 공급할 수 있습니다. 암호구를 없애려면 키를 교체하고 민감 값을 다시 입력해야 합니다.</p>
+          </ToolPanel>
         </section>
       )}
 
@@ -281,7 +268,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
       {protectedKey && unlocked && (
         <section
           role="note"
-          className="bg-panel border border-hair rounded-base bg-sunken-2 p-[14px] mt-s4"
+          className="settings-section"
         >
           <div className="flex gap-s2 items-center">
             <strong>비밀키가 열려 있습니다</strong>
@@ -290,17 +277,15 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
               다시 잠그기
             </Button>
           </div>
-          <p className="font-sans text-[13px] leading-[1.4] font-normal mt-s2 mx-0 mb-0">
-            암호구로 보호된 키이며, 이 백엔드 프로세스가 암호구를 들고 있습니다. 민감
-            변수를 쓰는 재실행과 AI 작성이 가능합니다. <b>백엔드를 다시 띄우면 다시
-            잠깁니다.</b>
+          <p className="font-sans text-[14px] leading-[1.4] font-normal mt-s2 mx-0 mb-0">
+            민감 변수를 쓰는 재실행과 AI 작성이 가능합니다. 백엔드를 다시 띄우면 다시 잠깁니다.
           </p>
         </section>
       )}
 
       {!hasKeys && (
         <section
-          className="bg-panel border border-hair rounded-base bg-sunken-2 p-[14px] mt-s4 flex flex-col gap-[10px]"
+          className="settings-section"
         >
           <strong>키 쌍 만들기</strong>
           <label htmlFor="passphrase">암호구 (선택)</label>
@@ -318,20 +303,18 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           */}
           <p
             id="passphrase-rule"
-            className={`font-sans text-[11px] leading-[1.4] font-normal ${tooShort ? "text-fail" : "text-ink-3"} m-0`}
+            className={`font-sans text-[12px] leading-[1.4] font-normal ${tooShort ? "text-fail" : "text-ink-3"} m-0`}
           >
             {tooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${passphrase.length}자입니다.`
               : "암호구를 걸려면 8자 이상 200자 이하로 적으세요."}
           </p>
-          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
-            암호구를 걸면 비밀키 <b>파일</b>이 잠깁니다. 잊으면 보관된 값을 읽을 수 없고,
-            제품이 복구해 줄 방법은 없습니다. 만든 직후에는 바로 실행할 수 있고, 백엔드를
-            다시 띄운 뒤에는 이 화면에서 잠금을 해제하면 됩니다.
+          <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0">
+            암호구를 잊으면 보관된 값을 복구할 수 없습니다. 백엔드를 다시 띄운 뒤에는 이 화면에서 잠금을 해제하세요.
           </p>
           <div>
             {/* 제약에 맞지 않으면 제출 자체를 막는다 — 실패를 겪게 할 이유가 없다. */}
-            <Button disabled={busy || tooShort} onClick={generate}>
+            <Button variant="primary" disabled={busy || tooShort} onClick={generate}>
               키 쌍 만들기
             </Button>
           </div>
@@ -344,18 +327,16 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
         지문은 남아 새 값 저장까지 막히는 상태가 된다 — 그 편이 더 위험하다.
       */}
       {hasKeys && (
-        <section
- className="bg-panel border rounded-base border-fail p-[14px] mt-s4 flex flex-col gap-[10px]"
-        >
-          <strong className="text-fail">키 교체·삭제</strong>
-          <p className="font-sans text-[13px] leading-[1.4] font-normal m-0">
+        <ToolPanel label="키 교체·삭제">
+          <div className="settings-danger-content">
+          <p className="font-sans text-[14px] leading-[1.4] font-normal m-0">
             <b>되돌릴 수 없습니다.</b> 키는 장비에 하나이므로 <b>이 장비의 모든 ITB 프로젝트</b>
             에서 지금 키로 봉인된 민감 값이 전부 못 읽게 됩니다. 열려 있는 프로젝트의 암호문은
             함께 비우고, 다른 프로젝트의 암호문은 그 프로젝트를 열 때 재입력을 안내합니다.
           </p>
           {/* 영향 범위를 숫자와 이름으로 보인다 — "이 프로젝트" 라고만 말하면 나머지가
               조용히 깨진다 (UX U-09). */}
-          <p className="font-sans text-[13px] leading-[1.4] font-normal m-0" data-sealed-projects>
+          <p className="font-sans text-[14px] leading-[1.4] font-normal m-0" data-sealed-projects>
             {status === null ? (
               "영향받는 프로젝트를 확인하는 중…"
             ) : status.sealed_projects.length === 0 ? (
@@ -379,7 +360,7 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
           />
           <p
             id="regen-passphrase-rule"
-            className={`font-sans text-[11px] leading-[1.4] font-normal ${newTooShort ? "text-fail" : "text-ink-3"} m-0`}
+            className={`font-sans text-[12px] leading-[1.4] font-normal ${newTooShort ? "text-fail" : "text-ink-3"} m-0`}
           >
             {newTooShort
               ? `암호구는 8자 이상이어야 합니다. 지금 ${newPassphrase.length}자입니다.`
@@ -406,11 +387,12 @@ export function KeyManagement({ onClose }: KeyManagementProps) {
               키 삭제
             </Button>
           </div>
-          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
+          <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0">
             <b>교체</b>는 지우고 새 키를 바로 만듭니다. <b>삭제</b>는 지우기만 합니다 — 키가
             없으면 민감 값을 새로 저장할 수도, 기존 값을 읽을 수도 없습니다.
           </p>
-        </section>
+          </div>
+        </ToolPanel>
       )}
     </main>
   );

@@ -120,9 +120,10 @@ describe("결과 국면 ③-b 가 스크롤 없이 담을 자리를 갖는다 (S
     expect(style.minHeight).toBe(RESULT_WORK_PX);
   });
 
-  it("실패 사유 2줄 + LOCATOR 4행 + 경고 1개가 들어가는 높이다", () => {
+  it("증거 이미지에 공간을 양보하고 진단 내용은 스크롤한다", () => {
     // 사유 블록 ≈96 + 표 머리 36 + 4행 ×34 + 경고 ≈64 + 여백 ≈92 = 424
-    expect(RESULT_WORK_PX).toBeGreaterThanOrEqual(400);
+    expect(RESULT_WORK_PX).toBe(280);
+    expect(flexOf(splitFor("result").workArea).overflowY).toBe("auto");
   });
 
   it("작업 영역이 그 배분으로 실제로 그려진다", async () => {

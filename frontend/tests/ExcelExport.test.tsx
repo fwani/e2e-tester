@@ -122,22 +122,28 @@ afterEach(() => {
 });
 
 const clickExport = async () => {
+  fireEvent.click(await screen.findByRole("button", { name: "목록 관리" }));
   const button = await screen.findByRole("button", { name: "엑셀로 내보내기" });
   fireEvent.click(button);
 };
 
 describe("엑셀로 내보내기", () => {
-  it("버튼이 목록 조작 띠에 있다", async () => {
+  it("목록 관리를 열면 내보내기 조작에 접근할 수 있다", async () => {
     stub({});
     mount();
-    expect(await screen.findByRole("button", { name: "엑셀로 내보내기" })).toBeTruthy();
+    const trigger = await screen.findByRole("button", { name: "목록 관리" });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "엑셀로 내보내기" })).toBeTruthy();
   });
 
   it("잉크 채움을 쓰지 않는다", async () => {
     // 이 화면의 primary 는 「테스트 만들기」 하나뿐이다.
     stub({});
     mount();
-    const button = await screen.findByRole("button", { name: "엑셀로 내보내기" });
+    fireEvent.click(await screen.findByRole("button", { name: "목록 관리" }));
+  const button = await screen.findByRole("button", { name: "엑셀로 내보내기" });
     expect(button.className).not.toContain("primary");
   });
 

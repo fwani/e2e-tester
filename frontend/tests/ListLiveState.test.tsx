@@ -77,7 +77,7 @@ describe("실행 중인 테스트의 행 (FR-168 · U-16)", () => {
     );
 
     await screen.findByText("실패한 테스트");
-    expect(screen.getByText("RUNNING")).toBeTruthy();
+    expect(screen.getByText("실행 중", { selector: '[data-slot="chip"]' })).toBeTruthy();
     // 017 B-02 — 복귀 수단은 세션 띠의 「이어서 보기」다. 같은 일을 하던 토스트의 「실행 화면 보기」를
     // 지웠다 (같은 조작이 화면에 둘이었다). 묻는 것은 그대로다: 돌아갈 수단이 있는가 (FR-168).
     expect(screen.getByRole("button", { name: "이어서 보기" })).toBeTruthy();
@@ -86,7 +86,7 @@ describe("실행 중인 테스트의 행 (FR-168 · U-16)", () => {
     // 008 — 헤더의 통계 칩이 확정 디자인의 결말 필터로 바뀌었고 그 라벨은 「실패」다
     // (개수를 보여주는 데서 실제로 거르는 데로 바뀌었다 · FR-272). 그래서 `FAIL` 은
     // 행의 결말 표식에만 나타난다. 행이 RUNNING 이면 화면에 `FAIL` 이 없어야 한다.
-    expect(screen.queryAllByText("FAIL")).toHaveLength(0);
+    expect(screen.queryAllByText("실패", { selector: '[data-slot="chip"]' })).toHaveLength(0);
     // 017 T061 — 결말 필터 항목의 역할이 `radio` 다 (넷 중 하나를 고르는 묶음 · 017 전에는 `button`).
     expect(screen.getByRole("button", { name: /^실패 \d+$/ })).toBeTruthy();
   });
@@ -97,14 +97,14 @@ describe("실행 중인 테스트의 행 (FR-168 · U-16)", () => {
 
     await screen.findByText("실패한 테스트");
     // 008 — 행의 결말 표식 하나. 헤더 쪽은 「실패」 필터가 대신한다 (위 주석 참고).
-    expect(screen.getAllByText("FAIL")).toHaveLength(1);
-    expect(screen.queryByText("RUNNING")).toBeNull();
+    expect(screen.getAllByText("실패", { selector: '[data-slot="chip"]' })).toHaveLength(1);
+    expect(screen.queryByText("실행 중")).toBeNull();
   });
 
   it("중지·부분 성공 결말도 칩으로 구분된다 (FR-141)", async () => {
     for (const [outcome, chip] of [
-      ["stopped", "STOPPED"],
-      ["partial_pass", "PARTIAL"],
+      ["stopped", "중지"],
+      ["partial_pass", "부분 성공"],
     ] as const) {
       vi.stubGlobal("fetch", listFetch([row({ outcome })]));
       const view = render(

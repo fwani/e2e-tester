@@ -146,7 +146,7 @@ describe("지시문 작성 (만들기 국면)", () => {
   it("지시문이 저장되지 않는다는 것을 알린다 (FR-064)", () => {
     compose();
     pickAi();
-    expect(screen.getByText(/지시문은 테스트로 저장되지 않습니다/)).toBeTruthy();
+    expect(screen.getByText(/지시문은 저장되지 않고/)).toBeTruthy();
   });
 
   it("지시문이 비면 시작할 수 없고 이유가 붙는다 (조건 C14)", () => {

@@ -47,7 +47,7 @@ export const DIALOG_CONTENT_CLASSES = "relative w-[520px] max-w-full bg-panel bo
 export const DIALOG_TITLE_CLASSES = "m-0 font-sans text-[20px] font-bold leading-[1.3] text-ink";
 
 /** 설명 — `<p>`. 제목과 조작 사이의 간격은 문단의 기본 여백이 만든다 (017 전 대화상자와 같다). */
-export const DIALOG_DESCRIPTION_CLASSES = "font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2";
+export const DIALOG_DESCRIPTION_CLASSES = "font-sans text-[14px] leading-[1.7] font-normal text-ink-2";
 
 /** 조작 줄 — 오른쪽 끝에 모은다. 되돌리는 조작이 먼저, 주 선택이 끝에 온다. */
 export const DIALOG_FOOTER_CLASSES = "flex justify-end gap-[10px] mt-[18px]";

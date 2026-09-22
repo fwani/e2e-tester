@@ -162,7 +162,7 @@ export function ResultView({
         {error !== null ? (
           <ErrorNotice error={error} />
         ) : (
-          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">결과를 불러오는 중…</p>
+          <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">결과를 불러오는 중…</p>
         )}
       </main>
     );
@@ -569,12 +569,14 @@ function artifactBody({
 }) {
   if (artifactError !== null) {
     return (
-      <p className="font-sans text-[13px] leading-[1.4] font-normal text-fail">{artifactError.message}</p>
+      <p className="font-sans text-[14px] leading-[1.4] font-normal text-fail">{artifactError.message}</p>
     );
   }
-  if (artifact === null) return <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">불러오는 중…</p>;
+  if (artifact === null) return <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">불러오는 중…</p>;
   if (tab === "screenshot" && artifact.src !== undefined) {
     return (
+      <div>
+      <a href={artifact.src} target="_blank" rel="noreferrer" className="evidence-original">원본 이미지 열기</a>
       <img
         src={artifact.src}
         alt={`${stepLabel(failedIndex)} 실패 시점`}
@@ -582,6 +584,7 @@ function artifactBody({
         // 깨진 이미지 아이콘을 남기지 않는다 — 무엇이 없는지 말한다.
         onError={onImageError}
       />
+      </div>
     );
   }
   return (

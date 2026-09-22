@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-22T03:03:45.386104+00:00",
+  "title": "Design System: ITB Quality Workbench",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Deep teal"
+      },
+      "nav": {
+        "role": "neutral",
+        "displayName": "Light neutral navigation"
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Cool workspace canvas"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Lobby display",
+        "purpose": "Project introduction only."
+      },
+      "headline": {
+        "displayName": "Library headline",
+        "purpose": "Test collection title."
+      },
+      "title": {
+        "displayName": "Workbench title",
+        "purpose": "Current test identity."
+      }
+    },
+    "shadows": [
+      {
+        "name": "e-1",
+        "value": "0 1px 2px rgba(20,23,28,.07)",
+        "purpose": "Subtle boxed control elevation."
+      },
+      {
+        "name": "e-2",
+        "value": "0 16px 40px rgba(20,23,28,.18)",
+        "purpose": "Dialogs and Step detail overlay."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "horizontal-groups",
+        "value": "1399px"
+      },
+      {
+        "name": "compact-navigation",
+        "value": "900px"
+      }
+    ],
+    "quietAdminRefinement": {
+      "navigation": {
+        "background": "#F7F9FA",
+        "text": "#263B45",
+        "secondary": "#536974",
+        "selected": "#E7EEF1"
+      },
+      "fontWeights": {
+        "heading": 600,
+        "identity": 500,
+        "control": 400
+      },
+      "disclosures": [
+        "목록 관리",
+        "Step 편집 도구"
+      ],
+      "rowActions": "Visible on hover, keyboard focus, selection; always visible without hover support."
+    },
+    "typeRoles": {
+      "page": {
+        "size": "1.5rem",
+        "lineHeight": 1.35
+      },
+      "view": {
+        "size": "1.25rem",
+        "lineHeight": 1.4
+      },
+      "section": {
+        "size": "1rem",
+        "lineHeight": 1.5
+      },
+      "body": {
+        "size": ".875rem",
+        "lineHeight": 1.5
+      },
+      "label": {
+        "size": ".8125rem",
+        "lineHeight": 1.5
+      },
+      "metadata": {
+        "size": ".75rem",
+        "lineHeight": 1.35
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "변경 저장",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Shared primary action.",
+      "html": "<button class=\"ds-button-primary\">변경 저장</button>",
+      "css": ".ds-button-primary{font-family:var(--font-sans);font-size:14px;font-weight:400;border-radius:var(--radius);height:36px;padding:0 12px;border:1px solid var(--hair-2);cursor:pointer;background:var(--accent);color:var(--panel);border-color:var(--accent);box-shadow:var(--e-1)}.ds-button-primary:hover{background:var(--accent-hover)}.ds-button-primary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.ds-button-primary:active{box-shadow:none}.ds-button-primary:disabled{background:transparent;border:1px dashed var(--hair-2);color:var(--ink-3);box-shadow:none;cursor:not-allowed}"
+    },
+    {
+      "name": "목록으로",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Shared default action.",
+      "html": "<button class=\"ds-button-default\">목록으로</button>",
+      "css": ".ds-button-default{font-family:var(--font-sans);font-size:14px;font-weight:400;border-radius:var(--radius);height:36px;padding:0 12px;border:1px solid var(--hair-2);cursor:pointer;background:var(--panel);color:var(--ink);border-color:var(--hair-2);box-shadow:var(--e-1)}.ds-button-default:hover{background:var(--sunken-2)}.ds-button-default:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.ds-button-default:active{box-shadow:none}.ds-button-default:disabled{background:transparent;border:1px dashed var(--hair-2);color:var(--ink-3);box-shadow:none;cursor:not-allowed}"
+    },
+    {
+      "name": "삭제",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Shared danger action.",
+      "html": "<button class=\"ds-button-danger\">삭제</button>",
+      "css": ".ds-button-danger{font-family:var(--font-sans);font-size:14px;font-weight:400;border-radius:var(--radius);height:36px;padding:0 12px;border:1px solid var(--hair-2);cursor:pointer;background:var(--panel);color:var(--fail);border-color:var(--fail);box-shadow:var(--e-1)}.ds-button-danger:hover{background:var(--fail-t)}.ds-button-danger:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.ds-button-danger:active{box-shadow:none}.ds-button-danger:disabled{background:transparent;border:1px dashed var(--hair-2);color:var(--ink-3);box-shadow:none;cursor:not-allowed}"
+    },
+    {
+      "name": "Test name input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Korean form field with visible focus and invalid state.",
+      "html": "<input class=\"ds-input\" aria-label=\"테스트 이름\" placeholder=\"테스트 이름\" />",
+      "css": ".ds-input{font:400 14px/1.4 var(--font-sans);min-height:36px;padding:0 10px;border:1px solid var(--hair-2);border-radius:var(--radius);background:var(--panel);color:var(--ink);caret-color:var(--accent)}.ds-input:hover{border-color:var(--ink-3)}.ds-input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.ds-input[aria-invalid=\"true\"]{border-color:var(--fail)}"
+    },
+    {
+      "name": "Workspace navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Light neutral navigation with a quiet selected background.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"주 메뉴\"><a href=\"#tests\" aria-current=\"page\">테스트 라이브러리</a><a href=\"#create\">테스트 작성</a></nav>",
+      "css": ".ds-nav{width:180px;padding:14px;background:var(--nav);font:400 13px/1.5 var(--font-sans)}.ds-nav a{display:block;padding:12px 10px;color:var(--nav-muted);text-decoration:none;border-radius:7px}.ds-nav a:hover,.ds-nav a[aria-current]{background:var(--nav-hover);color:var(--nav-ink)}.ds-nav a[aria-current]{box-shadow:inset 0 0 0 1px var(--nav-muted)}.ds-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}"
+    },
+    {
+      "name": "Failed outcome",
+      "kind": "chip",
+      "description": "Outcome combines an icon, text, border and tint.",
+      "html": "<span class=\"ds-chip\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 12 12\" aria-hidden=\"true\"><path d=\"M3 3l6 6M9 3L3 9\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg>실패</span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:5px;padding:0 6px;height:19px;border:1px solid var(--fail);border-radius:var(--radius-chip);background:var(--fail-t);color:var(--fail);font:600 10px/1 var(--font-mono);letter-spacing:.06em}"
+    },
+    {
+      "name": "Workspace panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Flat content surface separated with a subtle border.",
+      "html": "<section class=\"ds-panel\"><strong>저장할 변경 1건</strong><p>저장하지 않은 변경</p></section>",
+      "css": ".ds-panel{padding:16px;background:var(--panel);border:1px solid var(--hair);border-radius:var(--radius);color:var(--ink);font:400 14px/1.5 var(--font-sans)}.ds-panel p{color:var(--ink-2)}"
+    },
+    {
+      "name": "Workbench notice",
+      "kind": "custom",
+      "description": "In-flow notice in the dock below the workbench heading.",
+      "html": "<div class=\"ds-notice\" role=\"status\"><span>먼저 저장해야 합니다. 저장한 내용으로 브라우저를 엽니다.</span><button aria-label=\"알림 닫기\">×</button></div>",
+      "css": ".ds-notice{display:flex;align-items:flex-start;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--run);background:var(--run-t);color:var(--ink);font:600 13px/1.5 var(--font-sans);box-shadow:none}.ds-notice span{flex:1}.ds-notice button{border:0;background:transparent;color:var(--ink-2);cursor:pointer}.ds-notice button:hover{color:var(--ink)}.ds-notice button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Quality Workbench",
+    "overview": "Dark persistent project navigation anchors a light Korean test workspace. Steps, browser evidence, and selected details occupy distinct regions. The September 2026 redesign supersedes the historical 008 compositions.",
+    "keyCharacteristics": [
+      "Persistent project context",
+      "Separate test identity and outcome",
+      "Korean interface with technical monospace metadata",
+      "Inspectable execution evidence"
+    ],
+    "rules": [
+      {
+        "name": "The State Rule",
+        "body": "Preserve distinct labeled outcomes; color alone never carries state.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do keep workbench notices in flow below the phase heading.",
+      "Do retain keyboard operation and disabled-action explanations.",
+      "Do keep result evidence readable with a full-size image link."
+    ],
+    "donts": [
+      "Do not treat historical 008 geometry as the redesigned layout.",
+      "Do not overlay Step controls with notices.",
+      "Do not invent dashboard metrics."
+    ]
+  }
+}

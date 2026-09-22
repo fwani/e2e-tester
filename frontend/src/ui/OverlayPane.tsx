@@ -97,7 +97,7 @@ export function DetailPanel({
           if (!open) onClose();
         }}
       >
-        <DialogPrimitive.Portal container={host}>
+        <DialogPrimitive.Portal container={host} className="contents">
           <DialogPrimitive.Popup
             ref={attachPanel}
             // 초점은 **붙는 순간 위에서** 한 번만 준다 — 부품에게 맡기면 늦게 옮겨져 옆 칸의 입력을 가로챈다.
@@ -125,7 +125,7 @@ export function DetailPanelTitle({
 }: Omit<ComponentPropsWithRef<typeof DialogPrimitive.Title>, "className"> & LayoutProps) {
   return (
     <DialogPrimitive.Title
-      className={cn("m-0 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3", layout)}
+      className={cn("m-0 font-sans text-[12px] font-semibold leading-[1.4] text-ink-2", layout)}
       data-slot="detail-panel-title"
       {...rest}
     >

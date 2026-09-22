@@ -1,30 +1,11 @@
 /**
- * 011 T017 — **Step 상세는 Step 목록 왼쪽에서 겹친다** (UC-011-7·8·10 · FR-368~FR-373).
- *
- * ## 사용자 보고
- *
- * > 「STEP 상세 는 오버레이로 오른쪽으로 뜨고있는데 스텝리스트 왼쪽으로 수정한다」
- *
- * ## 무엇이 문제였나
- *
- * 상세는 우측에서 겹쳤고 **Step 목록도 우측에 있다.** 그래서 상세가 목록을 덮었다 —
- * 방금 고른 행을 보면서 상세를 읽을 수 없고, 무엇을 골랐는지 확인하려면 상세를 닫아야
- * 했다.
- *
- * ## 011 이 고른 답 (clarify 결정 1)
- *
- * **겹침은 유지하고 자리만 옮긴다.** 대상 앱을 밀어 나란히 놓으면 최소 기준 폭에서
- * 미러가 **상시로** 좁아지는데, 상세가 닫혀 있는 시간이 열려 있는 시간보다 길다. 볼 때만
- * 가리는 쪽이 총비용이 작다.
- *
- * 그래서 이 파일이 재는 것은 셋이다 — 자리가 목록 왼쪽인가, 목록을 덮지 않는가, 대상 앱의
- * **폭을 바꾸지 않는가**. 마지막이 겹침의 정의다: 밀어내면 폭이 변한다.
+ * Step details keep the list available: inline in editing, temporary inspector for live/results.
+ * The shared detail implementation remains reachable without changing the browser column width.
  */
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { STEP_PANEL_WIDTH } from "../src/components/workbench/StepList";
 import { PHASES, type Phase } from "../src/lib/phase";
 import { SessionWorkbench } from "../src/pages/SessionScreen";
 import { ResultView } from "../src/pages/ResultView";
@@ -111,7 +92,7 @@ async function renderPhaseWithDetail(phase: Phase) {
     );
   }
   await waitFor(() =>
-    expect(document.querySelector("[data-workbench-step-panel]")).not.toBeNull(),
+    expect(document.querySelector(phase === "composing" ? "[data-compose-start]" : "[data-workbench-step-panel]")).not.toBeNull(),
   );
 }
 
@@ -149,42 +130,29 @@ function placement(el: HTMLElement): { position: string; right: string; top: str
   return { position, right: pick("right"), top: pick("top"), bottom: pick("bottom") };
 }
 
-describe("UC-011-7 — 상세의 자리는 Step 목록 왼쪽이고 국면마다 같다", () => {
-  it.each(PHASES)("%s — 상세가 열리면 목록 왼쪽에 붙는다", async (phase) => {
+describe("Step 상세는 작업 목적에 맞게 배치하고 목록을 가리지 않는다", () => {
+  it.each(PHASES)("%s — 편집은 본문에, 실행과 결과는 검사 창에 표시한다", async (phase) => {
     await renderPhaseWithDetail(phase);
     const layer = detailLayer();
-    if (layer === null) return; // 그 국면에서 상세가 열리지 않으면 잴 것이 없다
-
-    /*
-      **오른쪽 끝이 Step 패널 왼쪽 가장자리다.** 0 이면 목록을 덮는다 (011 이전 상태).
-
-      015 T030 — 배치가 클래스로 바뀌었다. `right-steps` 는 `--w-steps`(460px)이고
-      그것이 `STEP_PANEL_WIDTH` 와 같은 값이다. 좌표를 직접 적지 않고 **토큰 이름으로**
-      대조한다 — 패널 폭이 바뀌면 정본 한 곳만 고치면 된다.
-    */
-    expect(placement(layer).right, `${phase} — 상세가 아직 목록을 덮는 자리에 있다`).toBe(
-      "steps",
-    );
-    expect(placement(layer).position).toBe("absolute");
-    // `right-steps` 가 가리키는 값과 코드 상수가 어긋나면 층이 목록을 덮거나 뜬다.
-    // 이름으로 대조한 위 단언이 그 값까지 보증하지는 못하므로 여기서 못 박는다.
-    expect(STEP_PANEL_WIDTH, "STEP_PANEL_WIDTH 가 --w-steps(460px) 와 어긋났다").toBe(460);
-  });
-
-  it("자리가 모든 국면에서 같다 (FR-369)", async () => {
-    const seen = new Map<string, Phase[]>();
-    for (const phase of PHASES) {
-      await renderPhaseWithDetail(phase);
-      const layer = detailLayer();
-      if (layer !== null) {
-        const p = placement(layer);
-        const key = `${p.position}|${p.right}|${p.top}|${p.bottom}`;
-        seen.set(key, [...(seen.get(key) ?? []), phase]);
-      }
-      cleanup();
-      vi.unstubAllGlobals();
+    if (phase === "composing") {
+      expect(layer).toBeNull();
+      return;
     }
-    expect(seen.size, `자리가 ${seen.size}가지다: ${[...seen.keys()].join(" / ")}`).toBe(1);
+    expect(layer, `${phase} 상세가 열리지 않았다`).not.toBeNull();
+    const panel = document.querySelector("[data-workbench-step-panel]")!;
+    expect(panel.contains(layer)).toBe(false);
+    expect(layer!.contains(panel)).toBe(false);
+    if (phase === "editing") {
+      expect(layer!.hasAttribute("data-edit-detail-inline")).toBe(true);
+      expect(document.querySelector("[data-workbench-left-column]")!.contains(layer)).toBe(true);
+      expect(layer!.closest('[data-slot="scrim"]')).toBeNull();
+      expect(placement(layer!).position).not.toBe("absolute");
+    } else {
+      expect(layer!.getAttribute("data-slot")).toBe("scrim");
+      expect(placement(layer!).position).toBe("absolute");
+      expect(placement(layer!).right).toBe("0");
+      expect(layer!.className).toContain("left-steps");
+    }
   });
 });
 

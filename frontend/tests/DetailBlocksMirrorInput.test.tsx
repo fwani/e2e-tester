@@ -63,13 +63,13 @@ describe("UC-011-9 — 상세 층이 그 아래 미러를 가로막는다", () =
     */
     // 015 T030 — 배치가 클래스로 바뀌었다. **묻는 것은 그대로다**: 층이 Step 목록을
     // 덮지 않고 그 왼쪽까지만 오는가. `right-steps` 는 `--w-steps`(= STEP_PANEL_WIDTH)다.
-    expect(el.className, "층이 왼쪽 끝까지 덮지 않는다").toContain("left-0");
-    expect(el.className, "층이 Step 목록을 덮는다").toContain("right-steps");
+    expect(el.className, "층이 왼쪽 끝까지 덮지 않는다").toContain("left-steps");
+    expect(el.className, "층이 Step 목록을 덮는다").toContain("right-0");
     expect(el.className).toContain("top-0");
     expect(el.className).toContain("bottom-0");
     // 클래스 이름이 실제로 그 폭을 그리는지는 정본 토큰이 보증한다 — 값이 어긋나면
     // L1 대조가 잡는다. 여기서 다시 재면 같은 값을 두 곳에 적는 것이 된다.
-    expect(STEP_PANEL_WIDTH, "STEP_PANEL_WIDTH 가 --w-steps 와 어긋났다").toBe(460);
+    expect(STEP_PANEL_WIDTH, "STEP_PANEL_WIDTH 가 --w-steps 와 어긋났다").toBe(400);
   });
 
   it("층이 포인터를 통과시키지 않는다", async () => {

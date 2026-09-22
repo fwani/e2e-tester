@@ -36,7 +36,7 @@ export type NativeSelectWidth = "content" | "fill";
  * 높이는 정본 요소 규칙(`min-height:32px`)에 맡긴다. 커서는 바꾸지 않는다 — 정본이 정하지 않았다.
  */
 export const nativeSelectVariants = cva(
-  "px-[10px] border border-hair-2 rounded-base font-sans text-[13px] font-normal leading-[1.4] bg-panel text-ink " +
+  "px-[10px] border border-hair-2 rounded-base font-sans text-[14px] font-normal leading-[1.4] bg-panel text-ink " +
     "disabled:bg-transparent disabled:border-dashed disabled:text-ink-3 " +
     // `aria-invalid:` 는 Tailwind v4 에 없는 변종이다 — `ui/Input` 주석 참조.
     "aria-[invalid=true]:border-fail",

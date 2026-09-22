@@ -7,9 +7,9 @@ import { AuthoringBadge, OutcomeBadge, TabBadge } from "../src/components/Badges
 describe("배지", () => {
   it("실행 결과를 PASS/FAIL/미실행 으로 표기한다", () => {
     const { rerender } = render(<OutcomeBadge outcome="pass" />);
-    expect(screen.getByText("PASS")).toBeDefined();
+    expect(screen.getByText("통과")).toBeDefined();
     rerender(<OutcomeBadge outcome="fail" />);
-    expect(screen.getByText("FAIL")).toBeDefined();
+    expect(screen.getByText("실패")).toBeDefined();
     rerender(<OutcomeBadge outcome={null} />);
     expect(screen.getByText("미실행")).toBeDefined();
   });

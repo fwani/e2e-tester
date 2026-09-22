@@ -51,7 +51,7 @@ export function PacingControl({
 }: PacingControlProps) {
   return (
     <div className="flex items-center gap-s2">
-      <span className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
+      <span className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2">{manipulationPhase ? "다음 실행 속도" : "속도"}</span>
       {/*
         017 T060 — 정본 `.segmented` 를 `ToggleGroup` 으로. 고른 속도를 **라디오로** 알리고(017 전에는 눌린 단추 넷),
         화살표로 오간다. 고른 것을 다시 눌러도 선택이 비지 않는다 — 속도는 늘 하나다.
@@ -72,7 +72,7 @@ export function PacingControl({
       {!preferenceSaved && (
         <span
           role="status"
-          className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 text-warn max-w-[180px]"
+          className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 text-warn max-w-[180px]"
         >
           설정을 저장하지 못해 다음 실행에는 유지되지 않습니다.
         </span>

@@ -1,21 +1,13 @@
+import { ToolPanel } from "../ui/ToolPanel";
 import { useState } from "react";
 
 import type { GroupSummary } from "../api/client";
 
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
-import { ToggleGroup, ToggleGroupItem } from "../ui/ToggleGroup";
+import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
 
-/**
- * 목록 위 그룹 띠 (013 FR-440·FR-441 · UC-013-06).
- *
- * **그룹이 하나도 없으면 그리지 않는다** (SC-627). 그룹을 쓰지 않는 사용자의 목록은 이
- * 기능 이전과 같은 모습이어야 한다 — 새 구획을 강요하지 않는다.
- *
- * 개수는 **걸러 보기 전** 값이다. 한 그룹만 보고 있어도 다른 그룹의 개수를 보고 그리로
- * 갈 수 있어야 한다 (contracts/api-contract.md §1).
- */
-/** 「전체」 칩의 값. 그룹 접두어는 대문자라 겹치지 않는다 — 고르기 묶음은 빈 값을 「고른 것 없음」으로 쓴다. */
+/** 그룹 선택은 한 칸으로, 생성·변경·해체는 필요할 때 펼친다. */
 const ALL = "__all__";
 
 export function TestGroupBar({
@@ -39,129 +31,88 @@ export function TestGroupBar({
   const [editing, setEditing] = useState<{ prefix: string; name: string } | null>(null);
   const [removing, setRemoving] = useState<GroupSummary | null>(null);
 
-  // 그룹이 하나도 없고 만드는 중도 아니면 자리를 차지하지 않는다.
   const realGroups = groups.filter((g) => g.prefix !== "TC");
-  if (realGroups.length === 0 && !adding) {
-    return (
-      <div className="flex justify-end mb-s2">
-        <Button variant="nav" onClick={() => setAdding(true)} disabled={busy}>
-          + 그룹
-        </Button>
-      </div>
-    );
-  }
-
   const total = groups.reduce((n, g) => n + g.count, 0);
+  const picked = groups.find((g) => g.prefix === active);
 
   return (
-    <ToggleGroup
-      appearance="chip"
-      data-test-group-bar
-      aria-label="그룹으로 거르기"
-      value={active ?? ALL}
-      onValueChange={(next) => onPick(next === ALL ? null : next)}
-      layout="mb-s2 flex-wrap"
-    >
-      {/*
-        **고른 그룹이 보인다 (017 N-06 · T061).** 015 는 정본에 없는 `.chip.sel` 을 떼며 「고른 그룹이 시각적으로
-        구별되지 않는 상태이며 그것을 말하는 것은 `aria-pressed` 뿐」이라고 적고 판단을 미뤘다 — 목록이 걸러져
-        있는데 어느 그룹으로 걸렀는지 칩 줄에서 읽을 수 없었다. 이제 고른 칩이 잉크 테두리·글자를 갖는다. 새 모양이
-        아니라 정본이 「고른 것」을 말하는 문법(`.pick.on` 의 잉크 테두리)이며 채우지 않는다. 고른 상태는 라디오로 알린다.
-      */}
-      <ToggleGroupItem value={ALL} disabled={busy}>
-        전체 {total}
-      </ToggleGroupItem>
-      {groups.map((g) => (
-        <ToggleGroupItem
-          key={g.prefix}
-          value={g.prefix}
-          data-group-chip={g.prefix}
+    <div className="library-group-control" data-test-group-bar={realGroups.length > 0 ? "" : undefined}>
+      {realGroups.length > 0 && (
+        <NativeSelect
+          aria-label="그룹으로 거르기"
+          value={active ?? ALL}
           disabled={busy}
-          // 정의가 없는 접두어는 이름을 지어내지 않는다 — 접두어가 곧 이름이다.
-          title={g.name ?? `${g.prefix} — 그룹 정의가 없습니다`}
-        >
-          {g.name ?? (g.prefix === "TC" ? "그룹 없음" : g.prefix)} {g.count}
-        </ToggleGroupItem>
-      ))}
-      {/*
-        그룹 조작은 **그 그룹을 고른 상태에서만** 나온다. 칩마다 조작을 달면 띠가
-        빽빽해지고, 사용자가 어느 그룹을 건드리는지도 흐려진다. 정의가 없는 접두어와
-        「그룹 없음」에는 고칠 대상이 없으므로 그리지 않는다.
-      */}
-      {active !== null &&
-        active !== "TC" &&
-        editing === null &&
-        removing === null &&
-        groups.some((g) => g.prefix === active && g.name !== null) && (
-          <>
-            <Button
-              variant="nav"
-              disabled={busy}
-              onClick={() =>
-                setEditing({
-                  prefix: active,
-                  name: groups.find((g) => g.prefix === active)?.name ?? "",
-                })
-              }
-            >
-              이름 바꾸기
-            </Button>
-            <Button
-              variant="nav"
-              disabled={busy}
-              onClick={() =>
-                setRemoving(groups.find((g) => g.prefix === active) ?? null)
-              }
-            >
-              그룹 없애기
-            </Button>
-          </>
-        )}
-      {editing !== null && (
-        <Input
-          aria-label="그룹 이름 바꾸기"
-          value={editing.name}
-          autoFocus
-          disabled={busy}
-          onChange={(e) => setEditing({ prefix: editing.prefix, name: e.target.value })}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && editing.name.trim() !== "") {
-              onRename(editing.prefix, editing.name.trim());
-              setEditing(null);
-            }
-            if (e.key === "Escape") setEditing(null);
-          }}
-          onBlur={() => setEditing(null)}
-          layout="m-0 w-[180px]"
-        />
-      )}
-      <div className="flex-1" />
-      {removing !== null && (
-        <ConfirmDisband
-          group={removing}
-          busy={busy}
-          onCancel={() => setRemoving(null)}
-          onConfirm={() => {
-            onRemove(removing.prefix);
+          onChange={(event) => {
+            const next = event.target.value;
+            onPick(next === ALL ? null : next);
+            setEditing(null);
             setRemoving(null);
           }}
-        />
+        >
+          <NativeSelectOption value={ALL}>모든 그룹 · {total}</NativeSelectOption>
+          {groups.map((g) => (
+            <NativeSelectOption key={g.prefix} value={g.prefix}>
+              {g.name ?? (g.prefix === "TC" ? "그룹 없음" : g.prefix)} · {g.count}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
       )}
-      {adding ? (
-        <NewGroupForm
-          busy={busy}
-          onCancel={() => setAdding(false)}
-          onSubmit={(prefix, name) => {
-            onCreate(prefix, name);
-            setAdding(false);
-          }}
-        />
-      ) : (
-        <Button variant="nav" onClick={() => setAdding(true)} disabled={busy}>
-          + 그룹
-        </Button>
-      )}
-    </ToggleGroup>
+      <ToolPanel label="그룹 관리">
+        <div className="library-group-panel">
+          <div className="library-group-actions">
+            <Button variant="nav" onClick={() => { setAdding(true); setEditing(null); setRemoving(null); }} disabled={busy}>
+              + 그룹
+            </Button>
+            {picked !== undefined && picked.prefix !== "TC" && picked.name !== null && (
+              <>
+                <Button variant="nav" disabled={busy} onClick={() => { setEditing({ prefix: picked.prefix, name: picked.name ?? "" }); setAdding(false); setRemoving(null); }}>
+                  이름 바꾸기
+                </Button>
+                <Button variant="nav" disabled={busy} onClick={() => { setRemoving(picked); setAdding(false); setEditing(null); }}>
+                  그룹 없애기
+                </Button>
+              </>
+            )}
+          </div>
+          {active === null && realGroups.length > 0 && !adding && (
+            <p>그룹을 선택하면 이름을 바꾸거나 없앨 수 있습니다.</p>
+          )}
+          {editing !== null && (
+            <Input
+              aria-label="그룹 이름 바꾸기"
+              value={editing.name}
+              autoFocus
+              disabled={busy}
+              onChange={(e) => setEditing({ prefix: editing.prefix, name: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && editing.name.trim() !== "") {
+                  onRename(editing.prefix, editing.name.trim());
+                  setEditing(null);
+                }
+                if (e.key === "Escape") setEditing(null);
+              }}
+              onBlur={() => setEditing(null)}
+              layout="m-0 w-[180px]"
+            />
+          )}
+          {removing !== null && (
+            <ConfirmDisband
+              group={removing}
+              busy={busy}
+              onCancel={() => setRemoving(null)}
+              onConfirm={() => { onRemove(removing.prefix); setRemoving(null); }}
+            />
+          )}
+          {adding && (
+            <NewGroupForm
+              busy={busy}
+              onCancel={() => setAdding(false)}
+              onSubmit={(prefix, name) => { onCreate(prefix, name); setAdding(false); }}
+            />
+          )}
+        </div>
+      </ToolPanel>
+    </div>
   );
 }
 
@@ -210,9 +161,9 @@ function NewGroupForm({
         onChange={(e) => setPrefix(e.target.value)}
         layout="m-0 w-[90px]"
       />
-      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
+      <span className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">테스트 식별자에 들어갑니다 (예: {cleanPrefix || "USER"}-001)</span>
       {prefix.trim() !== "" && !prefixOk && (
-        <span className="font-sans text-[13px] leading-[1.4] font-normal text-fail">
+        <span className="font-sans text-[14px] leading-[1.4] font-normal text-fail">
           {cleanPrefix === "TC"
             ? "TC 는 그룹 없는 테스트가 씁니다."
             : "영문 대문자·숫자 1~8자, 첫 글자는 영문입니다."}
@@ -257,9 +208,9 @@ function ConfirmDisband({
     <span
       data-group-disband-confirm
       role="status"
-      className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal inline-flex items-center gap-s2 py-s1 px-s2"
+      className="bg-warn-t border border-warn-line rounded-base font-sans text-[14px] leading-[1.4] font-normal inline-flex items-center gap-s2 py-s1 px-s2"
     >
-      <span className="font-sans text-[13px] font-semibold leading-none">
+      <span className="font-sans text-[14px] font-semibold leading-none">
         「{group.name ?? group.prefix}」을(를) 없앨까요? 테스트 {group.count}개가 그룹 없음으로
         돌아가고 식별자가 TC-### 로 바뀝니다 · 지워지지 않습니다
       </span>

@@ -16,10 +16,8 @@
  *
  * 국면이 이 순서를 바꾸지 않는다. 자리가 흔들리면 근육 기억이 서지 않는다.
  *
- * ## hover 로 드러내지 않는다
- *
- * 항상 보인다. 보이지 않는 조작은 없는 조작이다 (FR-234) — `rowActions` 자리가 이미
- * 열려 있는데도 아무도 쓰지 않은 것(M-08)이 그 증거다.
+ * 2026-09-22 admin 간소화: 포인터 기기에서는 hover·키보드 초점·행 선택 시 드러낸다.
+ * 터치 기기에서는 항상 보인다. workspace.css가 표시를 제어하며 키보드 접근과 동작은 유지한다.
  */
 import type { ActionId } from "../../lib/actions";
 import type { CapabilityMap, CapabilityState } from "../../lib/capabilities";
@@ -134,7 +132,7 @@ export function ConfirmDelete({
 }) {
   return (
     <>
-      <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 whitespace-nowrap" role="status">
+      <span className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 whitespace-nowrap" role="status">
         지울까요?
       </span>
       <StepOpButton

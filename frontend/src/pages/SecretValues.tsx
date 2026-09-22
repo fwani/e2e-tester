@@ -21,8 +21,8 @@ import { secrets, type SecretsResponse } from "../api/client";
 import { Button, ButtonLink } from "../ui/Button";
 import { paths } from "../lib/paths";
 
-import { Chip } from "../ui/Chip";
 import { Input } from "../ui/Input";
+import "../theme/settings-simplification.css";
 export interface SecretValuesProps {
   /** 테스트 정의가 참조하는 민감 변수 이름들. 아직 값이 없는 것을 보여 주기 위한 것이다. */
   requiredNames?: string[];
@@ -78,17 +78,17 @@ export function SecretValues({
   const ready = name.trim() !== "" && value !== "";
 
   return (
-    <main className="max-w-[720px] my-s6 mx-auto py-0 px-s4">
+    <main className="settings-page">
       <div className="flex items-center gap-s2 mb-s4">
         <h1 className="font-sans text-[20px] font-bold leading-[1.3] m-0">비밀 값</h1>
         <span className="flex-1" />
         {onManageKeys && (
-          <ButtonLink href={paths.keys()} onNavigate={onManageKeys}>
+          <ButtonLink variant="nav" href={paths.keys()} onNavigate={onManageKeys}>
             키 관리
           </ButtonLink>
         )}
         {onClose && (
-          <ButtonLink href={paths.list()} onNavigate={onClose}>
+          <ButtonLink variant="nav" href={paths.list()} onNavigate={onClose}>
             닫기
           </ButtonLink>
         )}
@@ -99,8 +99,7 @@ export function SecretValues({
           role="alert"
           className="bg-fail-t border border-fail-line rounded-base text-fail py-s2 px-[10px]"
         >
-          공개키가 교체되었습니다. 기존 암호문은 새 키로 읽을 수 없으므로 **모든 값을 다시
-          입력**해야 합니다.
+          공개키가 교체되었습니다. 기존 값은 새 키로 읽을 수 없으므로 <strong>모든 값을 다시 입력</strong>해야 합니다.
         </p>
       )}
 
@@ -120,30 +119,27 @@ export function SecretValues({
       )}
 
       {missing.length > 0 && (
-        <p className="font-sans text-[13px] leading-[1.4] font-normal text-ink-2">
+        <p className="font-sans text-[14px] leading-[1.4] font-normal text-ink-2">
           아직 값이 없는 변수: <span className="font-mono">{missing.join(", ")}</span>. 값이
           없으면 해당 Step 이 사유와 함께 실패합니다.
         </p>
       )}
 
-      <section
-        className="bg-panel border border-hair rounded-base p-[14px] flex flex-col gap-s2"
-      >
+      <section className="settings-section">
         <div className="flex items-center gap-s2">
           <strong>보관된 변수</strong>
-          <Chip>{data?.names.length ?? 0}</Chip>
+          <span className="settings-help">{data?.names.length ?? 0}개</span>
         </div>
 
         {(data?.names.length ?? 0) === 0 ? (
-          <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
+          <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0">
             보관된 값이 없습니다.
           </p>
         ) : (
-          <ul className="font-sans text-[13px] leading-[1.4] font-normal m-0 pl-[18px]">
+          <ul className="settings-secret-list">
             {data?.names.map((entry) => (
               <li key={entry.name} className="flex items-center gap-s2">
                 <span className="font-mono">{entry.name}</span>
-                <Chip tone="pass">보관됨</Chip>
                 <span className="flex-1" />
                 <Button
                   variant="nav"
@@ -166,14 +162,12 @@ export function SecretValues({
           </ul>
         )}
 
-        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
-          값은 어떤 화면에도 표시되지 않습니다. 서버에 값을 돌려주는 경로가 없습니다.
+        <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0">
+          저장한 값은 표시되지 않습니다. 변경하려면 같은 이름으로 다시 입력하세요.
         </p>
       </section>
 
-      <section
-        className="bg-panel border border-hair rounded-base bg-sunken-2 p-[14px] mt-s4 flex flex-col gap-s2"
-      >
+      <section className="settings-section">
         <strong>값 입력·재입력</strong>
         <label htmlFor="secret-name">변수 이름</label>
         <Input
@@ -191,12 +185,11 @@ export function SecretValues({
           onChange={(e) => setValue(e.target.value)}
           autoComplete="off"
         />
-        <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
-          입력한 값은 공개키로 즉시 봉인되어 저장됩니다. 비밀키는 필요하지 않습니다.
-          같은 이름으로 다시 넣으면 이전 값을 대체합니다.
+        <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 m-0">
+          공개키로 암호화해 저장합니다. 같은 이름의 기존 값은 대체됩니다.
         </p>
         <div>
-          <Button disabled={busy || !ready} onClick={submit}>
+          <Button variant="primary" disabled={busy || !ready} onClick={submit}>
             봉인해 저장
           </Button>
         </div>

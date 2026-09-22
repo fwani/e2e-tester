@@ -75,7 +75,7 @@ type DivProps = Omit<ComponentPropsWithRef<"div">, "className">;
  * 머리 줄 안의 비활성 사유다 (layout-contract-v3 L6).
  */
 export function StepPanel({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
-  const cls = cn("flex-none basis-steps min-w-0 border-l border-hair-2 bg-panel flex flex-col", layout);
+  const cls = cn("flex-none basis-steps min-w-0 border-r border-hair-2 bg-panel flex flex-col", layout);
   return (
     <div className={cls} data-slot="step-panel" {...rest}>
       {children}
@@ -136,8 +136,8 @@ export function StepRow({
   children?: ReactNode;
 }) {
   const cls = cn(
-    "grid items-center gap-[10px] h-step pt-[6px] pr-s3 pb-[6px] pl-[9px]",
-    "border-b border-hair border-l-[3px] border-solid",
+    "grid items-center gap-[10px] h-step pt-s1 pr-s3 pb-s1 pl-[9px]",
+    "border-b border-hair border-l-[3px] border-solid border-t-0 border-r-0",
     withCheck ? "grid-cols-[22px_26px_1fr_58px_20px_auto]" : "grid-cols-[26px_1fr_58px_20px_auto]",
     /*
       **바탕을 두 번 내보내지 않는다.** `bg-fail-t` 와 `bg-warn-t` 가 한 요소에 함께

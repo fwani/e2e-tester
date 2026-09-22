@@ -60,6 +60,11 @@ export interface VisualLanguageException {
  */
 export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
   {
+    file: "frontend/src/theme/tokens.css", pattern: "^400px$", axis: "token",
+    reason: "2026-09-22 사용자 요청 전면 리디자인: 왼쪽 Step 패널은 400px이며 과거 008의 오른쪽 460px 패널을 대체한다. DESIGN.md 참고.",
+    requirement: "2026-09-22 workspace redesign",
+  },
+  {
     file: "frontend/src/theme/tokens.css",
     pattern: "^rgba\\(20, 23, 28, 0\\.(28|45)\\)$",
     axis: "token",

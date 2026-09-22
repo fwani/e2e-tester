@@ -66,7 +66,7 @@ export { FieldLabel, Lbl } from "./Label";
  */
 export function AnswerQuestion({ layout, children, ...rest }: DivProps & { layout?: string; children?: ReactNode }) {
   return (
-    <div className={cn("font-sans text-[13px] leading-[1.4] font-normal text-ink", layout)} data-slot="answer-question" {...rest}>
+    <div className={cn("font-sans text-[14px] leading-[1.4] font-normal text-ink", layout)} data-slot="answer-question" {...rest}>
       {children}
     </div>
   );
@@ -127,7 +127,7 @@ export function FileButton({
     "relative inline-flex items-center gap-[6px] border rounded-base",
     "font-sans leading-none whitespace-nowrap",
     "m-0 tracking-normal normal-case",
-    small ? "h-control-sm px-[9px] text-[12px]" : "h-control px-s3 text-[13px]",
+    small ? "h-control-sm px-[9px] text-[12px]" : "h-control px-s3 text-[14px]",
     off
       ? "bg-transparent border-dashed border-hair-2 text-ink-3 shadow-none font-medium cursor-not-allowed"
       : "bg-panel border-hair-2 text-ink shadow-e1 font-semibold cursor-pointer hover:bg-sunken-2",

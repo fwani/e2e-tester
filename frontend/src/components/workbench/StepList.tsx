@@ -86,7 +86,7 @@ import { cn } from "../../ui/cn";
  * 숫자로 박혀 있었고, 011 이 Step 상세를 목록 왼쪽에 붙이면서 **세 번째 자리**가
  * 필요해졌다 (상세 층의 `right`). 셋이 갈리면 상세가 목록을 덮거나 사이가 벌어진다.
  */
-export const STEP_PANEL_WIDTH = 460;
+export const STEP_PANEL_WIDTH = 400;
 /**
  * 행 왼쪽 3px 결말 표식 — 결말 → 정본의 `.srow` 변형 (008「계기판」).
  *
@@ -125,9 +125,9 @@ export function StepPanelHeader({
         고르기 조작과 그 비활성 사유가 함께 서면 이름표가 먼저 찌그러져 「TEST STEPS」가 두 줄이 되고 칩이 머리 밖으로
         넘쳤다. 줄어드는 것은 비활성 사유 문구다 (`ActionButton`).
       */}
-      <div className="font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 whitespace-nowrap shrink-0">TEST STEPS</div>
+      <div className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2 whitespace-nowrap shrink-0">TEST STEPS</div>
       <div className="flex-1" />
-      {children}
+      <div className="step-selection-tools">{children}</div>
       <Chip tone={authoring === "ai" ? "ai" : "default"} layout="shrink-0 whitespace-nowrap">
         작성 {authoring === "ai" ? "AI" : "RECORD"}
       </Chip>
@@ -395,7 +395,7 @@ export function StepList({
         */}
         {deleteTargets !== undefined && isShown(deleteTargets.allCapability) && (
           <>
-            <span className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 whitespace-nowrap shrink-0" data-delete-selection-count>
+            <span className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 whitespace-nowrap shrink-0" data-delete-selection-count>
               {deleteSelectionCount(chosen.size)}
             </span>
             <ActionButton
@@ -447,13 +447,13 @@ export function StepList({
           자기가 보던 것이 그것이라고 믿고, 빈 화면을 주면 목록을 잃는다.
         */}
         {focusedStepId !== null && !steps.some((s) => s.id === focusedStepId) && (
-          <div role="status" data-focus-missing className="bg-warn-t border border-warn-line rounded-base font-sans text-[13px] leading-[1.4] font-normal py-s3 px-[14px]">
+          <div role="status" data-focus-missing className="bg-warn-t border border-warn-line rounded-base font-sans text-[14px] leading-[1.4] font-normal py-s3 px-[14px]">
             보고 있던 Step 이 이 목록에 없습니다. 그 사이에 지워졌거나 순서가 바뀌었을 수
             있습니다.
           </div>
         )}
         {steps.length === 0 && (
-          <div className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 p-[18px]">
+          <div className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 p-[18px]">
             {emptyNotice ?? "아직 Step 이 없습니다."}
           </div>
         )}
@@ -592,7 +592,7 @@ function StepRow({
           {step.label}
         </Button>
 
-        <div data-cell="detail" className="flex items-center gap-[6px] min-w-0 flex-nowrap overflow-hidden h-[17px]">
+        <div data-cell="detail" className="flex items-center gap-[6px] min-w-0 flex-nowrap overflow-hidden h-[20px]">
           {/*
             결과 국면에서 정의와 매칭되지 않은 행은 이 칸들이 **빈다.** 다른 칸을 그
             자리로 당기지 않는다 (FR-223 · research R3).
@@ -601,7 +601,7 @@ function StepRow({
             <>
               {/* `flex-[0_0_auto]` — 칩은 줄지 않는다. 이웃 칩들과 같은 규칙이고,
                   빠지면 `flex-nowrap` 줄에서 이것만 눌려 글자가 잘린다. */}
-              <Chip data-cell="type" tone={dsl.author === "ai" ? "ai" : "default"} layout="flex-[0_0_auto]">
+              <Chip size="sm" data-cell="type" tone={dsl.author === "ai" ? "ai" : "default"} layout="flex-[0_0_auto]">
                 {dsl.type.toUpperCase()}
               </Chip>
 
@@ -610,7 +610,7 @@ function StepRow({
                 만들지 않는다.** 주의 계열인 이유: 지금 목록에 보이지만 파일에는 없다.
               */}
               {step.isUnsaved === true && (
-                <Chip data-cell="unsaved" tone="warn" layout="flex-[0_0_auto]">
+                <Chip size="sm" data-cell="unsaved" tone="warn" layout="flex-[0_0_auto]">
                   미저장
                 </Chip>
               )}
@@ -621,19 +621,19 @@ function StepRow({
                 사용자가 AI 에게 다시 만들라고 했기 때문이다.
               */}
               {replacing && (
-                <Chip data-cell="rerecord-target" tone="ai" layout="flex-[0_0_auto]">
+                <Chip size="sm" data-cell="rerecord-target" tone="ai" layout="flex-[0_0_auto]">
                   교체 대상
                 </Chip>
               )}
 
               {/* FR-030a — 최초 탭이 아닌 Step 은 어느 탭에서 일어나는지 보여야 한다 */}
               {dsl.tab > 0 && (
-                <Chip data-cell="tab" layout="flex-[0_0_auto]">
+                <Chip size="sm" data-cell="tab" layout="flex-[0_0_auto]">
                   탭 {dsl.tab}
                 </Chip>
               )}
 
-              <div data-cell="locator" className="font-mono text-[11px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
+              <div data-cell="locator" className="font-mono text-[12px] leading-none font-normal text-ink-3 whitespace-nowrap overflow-hidden text-ellipsis">
                 {locatorSummary(dsl)}
               </div>
 
@@ -644,7 +644,7 @@ function StepRow({
                   /* 값은 **AI 잉크**다 (정본 `.loc.ai-ink` — `.ai-ink` 가 뒤에 있어
                      `.loc` 의 `--ink-3` 를 이긴다). 015 전환에서 `ai-ink` 만 떨어져
                      값이 다른 회색 글자와 구별되지 않았다. */
-                  className="font-mono text-[11px] leading-none font-normal text-ai whitespace-nowrap overflow-hidden text-ellipsis flex-[0_0_auto]"
+                  className="font-mono text-[12px] leading-none font-normal text-ai whitespace-nowrap overflow-hidden text-ellipsis flex-[0_0_auto]"
                 >
                   {value}
                 </div>
@@ -655,7 +655,7 @@ function StepRow({
       </div>
 
       {/* 칸 3 — 소요 시간. 없으면 자리를 비운다 (FR-223) */}
-      <div data-cell="duration" className="font-mono text-[11px] leading-none font-normal text-ink-3 text-right">
+      <div data-cell="duration" className="font-mono text-[12px] leading-none font-normal text-ink-3 text-right">
         {step.durationMs !== null ? `${step.durationMs} ms` : ""}
       </div>
 

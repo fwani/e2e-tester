@@ -136,13 +136,11 @@ export type WorkAreaView =
   | {
       kind: "compose_form";
       startUrl: string;
-      /** 고른 방법. 아직 안 골랐으면 `null` */
-      mode: ComposeMode | null;
+      /** Direct recording is selected by default; draft entry selects AI. */
+      mode: ComposeMode;
       instruction: string;
       /** AI 사용 가능 여부. 눌러 봐야 아는 것은 늦다 (001 DR-021) */
       aiReady: { available: boolean; reason: string | null } | null;
-      /** `ai.compose` 가 비활성인 이유. 자리는 늘 있고 이유가 붙는다 (FR-234 · 조건 C15) */
-      composeReason: string | null;
       error: ErrorInfo | null;
       onStartUrlChange: (next: string) => void;
       onModeChange: (next: ComposeMode) => void;

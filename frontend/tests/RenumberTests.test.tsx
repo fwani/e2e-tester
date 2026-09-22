@@ -88,6 +88,7 @@ describe("번호 정리", () => {
     mount();
     await screen.findByText("하나");
 
+    fireEvent.click(screen.getByRole("button", { name: "목록 관리" }));
     fireEvent.click(screen.getByRole("button", { name: "번호 정리" }));
 
     expect(document.querySelector("[data-renumber-confirm]")).not.toBeNull();
@@ -101,6 +102,7 @@ describe("번호 정리", () => {
     });
     mount();
     await screen.findByText("하나");
+    fireEvent.click(screen.getByRole("button", { name: "목록 관리" }));
     fireEvent.click(screen.getByRole("button", { name: "번호 정리" }));
 
     fireEvent.click(screen.getByRole("button", { name: "돌아가기" }));
@@ -120,6 +122,7 @@ describe("번호 정리", () => {
     });
     mount();
     await screen.findByText("하나");
+    fireEvent.click(screen.getByRole("button", { name: "목록 관리" }));
     fireEvent.click(screen.getByRole("button", { name: "번호 정리" }));
 
     fireEvent.click(
@@ -141,6 +144,7 @@ describe("번호 정리", () => {
     });
     mount();
     await screen.findByText("하나");
+    fireEvent.click(screen.getByRole("button", { name: "목록 관리" }));
     fireEvent.click(screen.getByRole("button", { name: "번호 정리" }));
     fireEvent.click(
       document.querySelector("[data-renumber-confirm-run]") as HTMLButtonElement,

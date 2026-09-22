@@ -43,10 +43,10 @@ import stepRowUi from "../src/ui/StepRow.tsx?raw";
 const declarations = tokens.replace(/\/\*[\s\S]*?\*\//g, "");
 
 describe("디자인 토큰 — 008「계기판」 준수", () => {
-  it("모서리 토큰 셋을 제공한다 — 칩 2 · 조작 3 · 겹침 6", () => {
-    expect(declarations).toMatch(/--radius-chip:\s*2px/);
-    expect(declarations).toMatch(/--radius:\s*3px/);
-    expect(declarations).toMatch(/--radius-lg:\s*6px/);
+  it("모서리 토큰 셋을 제공한다 — 칩 5 · 조작 7 · 겹침 12", () => {
+    expect(declarations).toMatch(/--radius-chip:\s*5px/);
+    expect(declarations).toMatch(/--radius:\s*7px/);
+    expect(declarations).toMatch(/--radius-lg:\s*12px/);
   });
 
   it("v1 의 3px·2px 테두리 토큰이 없다 — 그 문법을 버렸다", () => {
@@ -68,8 +68,8 @@ describe("디자인 토큰 — 008「계기판」 준수", () => {
     expect(declarations).toMatch(/--e-2:\s*0 16px 40px rgba\(\s*20\s*,\s*23\s*,\s*28\s*,\s*0?\.18\s*\)/);
   });
 
-  it("화면 배경이 #F2F4F7 이다 (v1 의 #EFEBE0 이 아니다)", () => {
-    expect(declarations).toMatch(/--bg:\s*#f2f4f7/i);
+  it("화면 배경이 #F4F6F8 이다 (v1 의 #EFEBE0 이 아니다)", () => {
+    expect(declarations).toMatch(/--bg:\s*#f4f6f8/i);
     expect(declarations).toMatch(/body\s*\{[^}]*background:\s*var\(--bg\)/);
     expect(declarations.toLowerCase()).not.toContain("#efebe0");
   });
@@ -82,14 +82,14 @@ describe("디자인 토큰 — 008「계기판」 준수", () => {
     expect(declarations).toMatch(/--font-mono:\s*"IBM Plex Mono"\s*,\s*ui-monospace/);
   });
 
-  it("008 의 팔레트를 유지한다", () => {
+  it("작업 공간 팔레트와 의미 상태색을 제공한다", () => {
     // `scripts/design_baseline.py --json` 이 18종에서 뽑은 값들이다.
     for (const color of [
-      "#14171c", // ink
+      "#162c38", // ink
       "#ffffff", // panel
-      "#f2f4f7", // bg
-      "#4a515c", // ink-2
-      "#6e757f", // ink-3
+      "#f4f6f8", // bg
+      "#465b66", // ink-2
+      "#627580", // ink-3
       "#1a7f45", // pass
       "#c8371d", // fail
       "#8f5a00", // warn
@@ -146,11 +146,11 @@ describe("밀도 — 이 개편이 실제로 사는 곳", () => {
     expect(declarations).toMatch(/--h-header:\s*56px/);
     expect(declarations).toMatch(/--h-phase:\s*48px/);
     expect(declarations).toMatch(/--h-notice:\s*32px/);
-    expect(declarations).toMatch(/--h-control:\s*32px/);
+    expect(declarations).toMatch(/--h-control:\s*36px/);
   });
 
-  it("폭 셋은 바뀌지 않았다 — 고친 것은 세로다", () => {
-    expect(declarations).toMatch(/--w-steps:\s*460px/);
+  it("작업 공간의 Step 패널과 상세 폭을 제공한다", () => {
+    expect(declarations).toMatch(/--w-steps:\s*400px/);
     expect(declarations).toMatch(/--w-detail:\s*640px/);
     expect(declarations).toMatch(/--w-min:\s*1440px/);
   });
@@ -205,17 +205,9 @@ describe("DC-011 — 기준 폭을 유지한 채 스크롤한다", () => {
   });
 
   it("고정 폭 화면이 맨몸으로 놓이지 않는다", () => {
-    /*
-      1회차 converge 2회차가 잡은 것: 8화면 중 둘만 `Artboard` 없이 고정 폭을 두고
-      있었고, 만들기 화면은 `<Artboard width={1000}>` 으로 감쌌다.
-
-      **2회차에 그 화면이 사라졌다.** 만들기가 통합 국면이 되면서 껍데기를 스스로 갖지
-      않고 `Workbench` 의 1440 `Artboard` 를 지난다 (FR-258·FR-259). 그러므로 이 검사가
-      세는 것은 「1000px 아트보드가 있는가」가 아니라 **「스스로 껍데기를 만들지 않는가」**
-      다 — 자기 `Artboard` 를 가지면 껍데기가 다시 둘이 된다 (SC-011).
-    */
+    // Start is now a responsive form; the active session retains the workbench.
     expect(compose).not.toMatch(/<Artboard/);
-    expect(compose).toMatch(/<Workbench/);
+    expect(compose).toMatch(/className="compose-start"/);
   });
 
   it("Step 상세 겹침에 가로 스크롤이 있다", () => {

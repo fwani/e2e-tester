@@ -1,3 +1,4 @@
+import { ToolPanel } from "../ui/ToolPanel";
 /**
  * 세션 국면의 **어댑터**. 다섯 국면(녹화·AI 작성·사람이 직접 조작·실행 중·일시정지)이
  * 하나의 `Workbench` 껍데기를 쓴다 (007 T032~T046 · FR-217).
@@ -1303,7 +1304,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         「실행이 이미 끝났습니다」를 달고 국면 띠에 남았다. 돌릴 것이 없는 자리에서
         고르라고 내놓는 컨트롤이었다.
       */}
-      {isShown(capabilities["run.pacing"]) && (
+      {isShown(capabilities["run.pacing"]) && <ToolPanel label="실행 옵션"><div>
         <span
           data-action="run.pacing"
           /*
@@ -1331,13 +1332,13 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           {capabilities["run.pacing"].kind === "disabled" && (
             <span
               data-disabled-reason="run.pacing"
-              className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
+              className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3"
             >
               {capabilities["run.pacing"].reason}
             </span>
           )}
         </span>
-      )}
+      </div></ToolPanel>}
       {/* `step.recordStop` 의 집은 조작 팔레트다 (FR-235). 여기 두면 자리가 둘이 된다. */}
       {action("run.resume", { emphasis: true })}
       {action("run.resumeSkipFailure")}
@@ -1393,7 +1394,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           쓸 수 있다 — 확인줄이 id 를 말하면 사용자는 방금 저장한 것이 무엇인지 그 문장
           에서 알 수 없다.
         */}
-        <span className="font-sans text-[13px] font-semibold leading-none">{editSavedNotice(displayName || title)}</span>
+        <span className="font-sans text-[14px] font-semibold leading-none">{editSavedNotice(displayName || title)}</span>
         <div className="flex-1" />
         {onShowList && (
           <Button size="sm" onClick={onShowList} disabled={busy}>

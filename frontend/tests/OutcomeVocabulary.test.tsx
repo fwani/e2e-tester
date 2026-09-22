@@ -99,7 +99,7 @@ describe("결말 하나에 문장 하나·칩 하나 (FR-141)", () => {
   });
 
   it("중지는 어디서도 FAIL 로 불리지 않는다 (FR-131·U-03)", () => {
-    expect(outcomeChip("stopped")).not.toBe("FAIL");
+    expect(outcomeChip("stopped")).not.toBe("실패");
     expect(outcomeLabel("stopped")).not.toBe("실패");
     const summary = runSummary({
       outcome: "stopped",

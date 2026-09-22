@@ -93,7 +93,7 @@ function Unavailable({
   return (
     <span
       data-disabled-reason={action}
-      className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
+      className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3"
     >
       {state.reason}
     </span>
@@ -162,7 +162,7 @@ export function TargetPane({
             aria-label="산출물"
             layout="flex-[0_0_36px]"
           >
-            {ARTIFACT_TABS.map((t) => {
+            {ARTIFACT_TABS.filter((t) => target.available.includes(t.kind)).map((t) => {
               const usable = target.available.includes(t.kind);
               return (
                 <TabsTrigger
@@ -182,17 +182,6 @@ export function TargetPane({
             올려야 보이고, 그러면 왜 못 누르는지 알아내는 데 한 번 더 시도가 필요하다.
             확정 디자인에 있는 탭을 빼지 않는 대신(DC-007) 이유를 붙여 남긴다.
           */}
-          {target.available.length < ARTIFACT_TABS.length && (
-            <div
-              data-disabled-reason="artifact.select"
-              className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 border-b border-hair py-[6px] px-s4"
-            >
-              {ARTIFACT_TABS.filter((t) => !target.available.includes(t.kind))
-                .map((t) => t.label)
-                .join(" · ")}{" "}
-              는 이 실행에 남지 않았습니다 (MVP 미지원).
-            </div>
-          )}
           <TabsContent value={target.selected} layout="flex-1 min-h-0 overflow-auto p-s4">
             {target.body}
           </TabsContent>
@@ -205,15 +194,9 @@ export function TargetPane({
             008 — **가로 한 줄이다.** v1 은 제목 · 설명 · 버튼을 세로로 쌓아 166px 를
             썼고, 그 자리가 118px 로 정해지면서 내용이 잘렸다. 담는 것은 그대로다.
           */
-          className="bg-panel border border-hair rounded-base flex-1 min-h-0 flex flex-row items-center gap-s4 py-0 px-[14px]"
+          className="workbench-browser-action flex-1 min-h-0 flex items-center gap-s3"
         >
-          <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
-            <div className="font-sans text-[13px] font-semibold leading-none">브라우저가 열려 있지 않습니다</div>
-            <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 m-0">
-              값·순서·삭제는 브라우저 없이 고칠 수 있습니다. 요소를 다시 집거나 직접
-              조작으로 Step 을 더하려면 브라우저가 필요합니다.
-            </p>
-          </div>
+          <p className="workbench-browser-hint">브라우저에서 확인하거나 Step을 추가할 수 있습니다.</p>
           <ActionButton
             action="browser.openAt"
             capability={capabilities["browser.openAt"]}
@@ -228,7 +211,7 @@ export function TargetPane({
                   */
                   OPEN_BROWSER_AT_END)
             }
-            emphasis
+            compact
             onRun={onOpenBrowser}
             onRemedy={onRemedy}
           />
@@ -243,7 +226,7 @@ export function TargetPane({
         <div
           data-target-empty={target.reason}
           role="status"
-          className="bg-panel border border-hair rounded-base font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2 flex-1 min-h-0 flex items-center justify-center p-s5 whitespace-pre-wrap text-center"
+          className="bg-panel border border-hair rounded-base font-sans text-[14px] leading-[1.7] font-normal text-ink-2 flex-1 min-h-0 flex items-center justify-center p-s5 whitespace-pre-wrap text-center"
         >
           {EMPTY_MESSAGE[target.reason]}
         </div>

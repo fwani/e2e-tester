@@ -167,7 +167,8 @@ describe("초안에서 들어오면", () => {
         fromDraft={{ draft_id: "D-0001", name: "로그인" }}
       />,
     );
-    expect(container.querySelector('[data-action="record.start"]')).toBeTruthy();
+    expect(container.querySelector('[data-compose-mode="record"]')).toBeTruthy();
+    expect(container.querySelector('[data-action="record.start"]')).toBeNull();
     expect(container.querySelector('[data-action="ai.start"]')).toBeTruthy();
   });
 });

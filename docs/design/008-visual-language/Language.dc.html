@@ -14,15 +14,15 @@
        근거: ui-ux-pro-max style=data-dense-dashboard, color=light neutral + status chips.
        한글 때문에 DB 가 권한 Fira Sans 대신 IBM Plex Sans KR 을 쓴다 (각색). */
     :root {
-      --bg:#F2F4F7; --surface:#FFFFFF; --sunken:#EAEDF2; --sunken-2:#F7F8FA;
-      --ink:#14171C; --ink-2:#4A515C; --ink-3:#6E757F;
-      --hair:#E3E6EB; --hair-2:#CBD0D8;
+      --bg:#F4F6F8; --surface:#FFFFFF; --sunken:#E8EEF1; --sunken-2:#F7F8FA;
+      --ink:#162C38; --ink-2:#465B66; --ink-3:#627580;
+      --hair:#DCE4E8; --hair-2:#BCCBD2;
       --pass:#1A7F45; --pass-t:#E8F5ED;
       --fail:#C8371D; --fail-t:#FCEDE9;
       --warn:#8F5A00; --warn-t:#FBF3E2;
       --run:#0B6BCB;  --run-t:#E8F1FB;
       --ai:#6B3FD4;   --ai-t:#F0EBFB;
-      --r:3px; --r-chip:2px; --r-lg:6px;
+      --r:7px; --r-chip:5px; --r-lg:12px;
       --e-1:0 1px 2px rgba(20,23,28,.07);
       --e-2:0 16px 40px rgba(20,23,28,.18);
       --sans:"IBM Plex Sans KR",system-ui,sans-serif;
@@ -30,7 +30,7 @@
     }
     *,*::before,*::after{box-sizing:border-box;}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
-         font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;
+         font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
          font-variant-numeric:tabular-nums;}
     a{color:var(--run);text-decoration:none;} a:hover{color:#08529E;}
 
@@ -120,15 +120,15 @@
       <div class="lbl">01 · 팔레트</div>
       <div class="why" style="margin-top:-4px;">종이는 차갑게 중립. 색은 오직 상태에만 쓴다 — 주 동작조차 색이 아니라 잉크 채움이다.</div>
       <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:2px;">
-        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#F2F4F7;border:1px solid var(--hair-2);border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">bg F2F4F7</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#F4F6F8;border:1px solid var(--hair-2);border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">bg F2F4F7</div></div>
         <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#FFFFFF;border:1px solid var(--hair-2);border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">surface FFF</div></div>
-        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#EAEDF2;border:1px solid var(--hair-2);border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">sunken EAEDF2</div></div>
-        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#E3E6EB;border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">hair E3E6EB</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#E8EEF1;border:1px solid var(--hair-2);border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">sunken EAEDF2</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#DCE4E8;border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">hair E3E6EB</div></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
-        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#14171C;border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">ink 14171C · 17:1</div></div>
-        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#4A515C;border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">ink-2 4A515C · 7.9:1</div></div>
-        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#6E757F;border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">ink-3 6E757F · 4.6:1</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#162C38;border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">ink 14171C · 17:1</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#465B66;border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">ink-2 4A515C · 7.9:1</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;"><div style="height:34px;background:#627580;border-radius:var(--r);"></div><div class="mono" style="font-size:10px;color:var(--ink-3);">ink-3 6E757F · 4.6:1</div></div>
       </div>
       <div style="height:1px;background:var(--hair);margin:2px 0;"></div>
       <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;">
@@ -207,11 +207,11 @@
           <div class="why">X + 3px 마커 + 행 배경 tint</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;padding:10px;background:var(--sunken-2);border-radius:var(--r);">
-          <div style="display:flex;align-items:center;gap:7px;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#6E757F" stroke-width="2"><path d="M4 4l4 4-4 4M9 4l4 4-4 4"></path></svg><span style="font:600 12px/1 var(--sans);color:var(--ink-3);">건너뜀</span></div>
+          <div style="display:flex;align-items:center;gap:7px;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#627580" stroke-width="2"><path d="M4 4l4 4-4 4M9 4l4 4-4 4"></path></svg><span style="font:600 12px/1 var(--sans);color:var(--ink-3);">건너뜀</span></div>
           <div class="why">이중 화살표 · 마커 없음</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;padding:10px;background:var(--sunken-2);border-radius:var(--r);">
-          <div style="display:flex;align-items:center;gap:7px;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#CBD0D8" stroke-width="2" stroke-dasharray="2.6 2.4"><circle cx="8" cy="8" r="5"></circle></svg><span style="font:600 12px/1 var(--sans);color:var(--ink-3);">미실행</span></div>
+          <div style="display:flex;align-items:center;gap:7px;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#BCCBD2" stroke-width="2" stroke-dasharray="2.6 2.4"><circle cx="8" cy="8" r="5"></circle></svg><span style="font:600 12px/1 var(--sans);color:var(--ink-3);">미실행</span></div>
           <div class="why">점선 원</div>
         </div>
       </div>

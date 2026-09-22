@@ -50,7 +50,7 @@ export const inputVariants = cva("", {
       ai: "border-ai",
       bare:
         "flex-1 min-h-auto p-0 border-0 bg-transparent shadow-none outline-none " +
-        "text-[13px] leading-none placeholder:text-ink-3",
+        "text-[14px] leading-none placeholder:text-ink-3",
       title:
         "w-auto min-h-[26px] px-[6px] border border-transparent bg-transparent text-ink " +
         "text-[17px] font-bold leading-none whitespace-nowrap overflow-hidden text-ellipsis " +
@@ -66,7 +66,7 @@ export const inputVariants = cva("", {
     {
       variant: ["default", "ai"],
       class:
-        "px-[10px] border rounded-base text-[13px] font-normal leading-[1.4] " +
+        "px-[10px] border rounded-base text-[14px] font-normal leading-[1.4] " +
         "bg-panel text-ink placeholder:text-ink-3 " +
         // `aria-invalid:` 는 Tailwind v4 에 **없는** 변종이다(불리언 aria 변종 목록에 invalid 가 없다) — 쓰면 아무 CSS 도
         // 생기지 않는다. 가드 G-B 가 잡았다. 표준 형태 `aria-[invalid=true]:` 를 쓴다.

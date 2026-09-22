@@ -240,7 +240,7 @@ export function StepDetail({
         {detail.failure !== null && (
           <div
             role="note"
-            className="bg-fail-t border border-fail-line rounded-base font-sans text-[13px] leading-[1.4] font-normal text-fail py-s3 px-[14px]"
+            className="bg-fail-t border border-fail-line rounded-base font-sans text-[14px] leading-[1.4] font-normal text-fail py-s3 px-[14px]"
           >
             {detail.failure.message ?? "실패 이유가 기록되지 않았습니다."}
           </div>
@@ -256,14 +256,14 @@ export function StepDetail({
             id="reason-step-sensitive"
             data-action="step.markSensitive"
             data-disabled-reason="step.markSensitive"
-            className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3"
+            className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3"
           >
             {SENSITIVE_NO_VALUE}
           </span>
         )}
 
         {step === null ? (
-          <p className="font-sans text-[13.5px] leading-[1.7] font-normal text-ink-2">
+          <p className="font-sans text-[14px] leading-[1.7] font-normal text-ink-2">
             이 실행에는 있었지만 지금 정의에는 없는 Step 입니다. 결말과 소요 시간은 그때의
             기록이고, 동작 종류·대상 요약·값은 보여줄 수 없습니다.
           </p>
@@ -292,7 +292,7 @@ export function StepDetail({
                 />
                 {alreadyReference ? (
                   <>
-                    <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
+                    <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
                       변수 참조입니다. 실제 값은 비밀 파일의 암호문에 있으며 화면에 표시되지
                       않습니다.
                     </p>
@@ -362,7 +362,7 @@ export function StepDetail({
                   disabled={!canEdit}
                   onChange={(e) => setFileName(e.target.value)}
                 />
-                <p className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
+                <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
                   {uploadFileNote(fileName)}
                 </p>
               </div>
@@ -402,7 +402,7 @@ export function StepDetail({
         */}
         {shot !== undefined && (
           <div className="bg-panel border border-hair rounded-base" data-step-shot>
-            <div className="bg-sunken border-b border-hair-2 text-ink-2 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 h-[36px] flex items-center py-0 px-s3">
+            <div className="bg-sunken border-b border-hair-2 text-ink-2 font-sans text-[12px] font-semibold leading-[1.4] text-ink-2 h-[36px] flex items-center py-0 px-s3">
               이 STEP 이 끝난 화면
             </div>
             {shot.url !== null && !shotBroken ? (
@@ -426,7 +426,7 @@ export function StepDetail({
             ) : (
               <div
                 data-step-shot-missing
-                className="font-sans text-[11px] leading-[1.4] font-normal text-ink-3 p-s3"
+                className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 p-s3"
               >
                 {shotBroken ? MISSING_SHOT_REASON.superseded : shot.note}
               </div>
@@ -440,7 +440,7 @@ export function StepDetail({
         */}
         {detail.attempts !== null && detail.attempts.length > 0 && (
           <div className="bg-panel border border-hair rounded-base">
-            <div className="bg-sunken border-b border-hair-2 text-ink-2 font-mono text-[11px] font-semibold leading-none tracking-[.08em] uppercase text-ink-3 h-[36px] flex items-center py-0 px-s3">
+            <div className="bg-sunken border-b border-hair-2 text-ink-2 font-sans text-[12px] font-semibold leading-[1.4] text-ink-2 h-[36px] flex items-center py-0 px-s3">
               시도한 LOCATOR (우선순위 순)
             </div>
             {detail.attempts.map((a, i) => (
@@ -450,7 +450,7 @@ export function StepDetail({
               */
               <div
                 key={`${a.candidate}-${i}`}
-                className={`flex items-center gap-s2 min-h-[28px] py-[6px] px-s3 border-t border-hair font-sans text-[11px] leading-[1.4] font-normal ${a.matched ? "text-ink-3" : "text-ink-2"}`}
+                className={`flex items-center gap-s2 min-h-[28px] py-[6px] px-s3 border-t border-hair font-sans text-[12px] leading-[1.4] font-normal ${a.matched ? "text-ink-3" : "text-ink-2"}`}
               >
                 <span className="font-bold w-[84px]">
                   {a.candidate}
@@ -501,7 +501,7 @@ export function StepDetail({
         {step !== null && (
           <Disclosure tone="action" open={showDsl} onOpenChange={setShowDsl} summary="테스트 DSL 미리보기">
             {showDsl && (
-              <pre className="bg-ink text-panel rounded-base font-mono text-[11px] leading-[1.6] font-normal p-[10px] overflow-x-auto mt-[6px] mx-0 mb-0">
+              <pre className="bg-ink text-panel rounded-base font-mono text-[12px] leading-[1.6] font-normal p-[10px] overflow-x-auto mt-[6px] mx-0 mb-0">
                 {dslPreview(step)}
               </pre>
             )}
