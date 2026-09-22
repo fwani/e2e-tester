@@ -253,6 +253,19 @@ INTENDED: list[dict[str, str]] = [
     # `DIV[2]/DIV[1]→DIV[2]/DIV[0]` · `DIV[2]/DIV[2]→DIV[2]/DIV[1]` 로 **다시 번호 매겼다.**
     # 덮는 속성과 요소는 그대로다. 되살린 90 칸에서 나온 46 건이 전부 이 줄들이 이미 설명하던 차이였다 —
     # 왼쪽 열 +57px(N-07) · 대상 앱 자리가 내용 높이로(B-04) · Step 패널 머리 줄과 입력칸(B-03·B-05·B-06).
+    # ── 018 — 순수 이동이 링크가 됐다 (design §4) ───────────────────────────────────
+    {
+        "screens": ["test-list", "test-list-unrun", "test-list-passed", "secrets", "keys"],
+        "kinds": ["tag"],
+        "tags": ["BUTTON", "A"],
+        "reason": (
+            "누르면 다른 화면으로 가기만 하는 조작(목록 머리띠의 「바꾸기」·「비밀 값」·「키 관리」·「테스트 만들기」, "
+            "행의 「결과 보기」, 비밀 값의 「키 관리」·「닫기」, 키 관리의 「닫기」)이 `<button>` 에서 `ui/Button` 의 "
+            "`ButtonLink`(`<a href>`)가 됐다. Cmd·가운데 클릭으로 새 탭을 열고 주소를 복사할 수 있게 하려는 것이다. "
+            "**요소 이름만 등록한다** — 대조는 같은 자리의 링크와 짝지어 모습을 계속 재므로, 계산 스타일이 하나라도 "
+            "달라지면 `prop` 불일치로 따로 나온다."
+        ),
+    },
 ]
 
 
@@ -267,6 +280,17 @@ def is_intended(m: dict) -> str | None:
     `structure`(개수만 있고 **자리가 없다**) · `unpaired`(짝을 못 찾은 자리)로 나온다. 자리가 없으면
     `path` 로 좁힐 수 없어, 종류로 좁히지 않는 줄은 그 화면의 **자리 없는 불일치를 전부** 삼킨다.
     좁히는 열쇠다 — 적지 않으면 지금까지처럼 모든 종류에 걸린다.
+
+    **`path`·`path_re` 를 둘 다 적지 않으면 자리를 묻지 않는다** (2026-09-17 · 018). `tag` 처럼 자리를
+    **가진** 불일치도 있다 — 행마다 자리가 달라 `path` 하나로 좁힐 수 없고 그 화면 전체의 같은 종류를
+    등록하려는 것이다(목록 머리띠·행의 버튼→링크 전환). 자리가 있는데도 `row.get("path")`(없으면 `None`)를
+    `m["path"]` 와 비교하면 항상 어긋나 이 줄이 아무것도 못 삼킨다 — 그래서 `path` 키가 아예 없을 때는
+    비교 자체를 하지 않는다. `kinds` 로 좁히지 않은 줄에서만 위험하다.
+
+    **`tags` 를 더했다** (2026-09-17 · 018 최종 검토 F7). `kind: "tag"` 줄은 자리(`path`)가 행마다
+    달라 `path`/`path_re` 로 좁히지 못하는데, 등록한 사유는 **BUTTON→A 전환 하나만** 설명한다.
+    `tags` 없이 두면 그 화면에서 일어나는 다른 요소 이름 변화(회귀일 수 있다)까지 전부 삼킨다 —
+    `{before, after}` 가 `tags` 의 두 값과 정확히 같을 때만 이 줄로 인정한다.
     """
     for row in INTENDED:
         screens = row.get("screens") or [row.get("screen")]
@@ -274,10 +298,12 @@ def is_intended(m: dict) -> str | None:
             continue
         if "kinds" in row and m.get("kind") not in row["kinds"]:
             continue
+        if "tags" in row and {m.get("before"), m.get("after")} != set(row["tags"]):
+            continue
         if "path_re" in row:
             if m.get("path") is None or re.fullmatch(row["path_re"], m["path"]) is None:
                 continue
-        elif row.get("path") != m.get("path"):
+        elif "path" in row and row["path"] != m.get("path"):
             continue
         props = row.get("props") or ([row["prop"]] if "prop" in row else None)
         if props is None or m.get("prop") in props:
@@ -563,9 +589,13 @@ def measure(page_url: str, backend: str, pw, scenarios: list[dict]) -> dict[str,
             exact = bool(step.get("exact"))
             # 017 T061 — 결말 거르기가 `ToggleGroup` 이 되며 역할이 button 에서 radio 로 바뀌었다. 전환 전 코드(button)와
             # 전환 뒤 코드(radio)를 **같은 단계**로 누른다 — 누르는 대상은 같은 글자의 같은 조작이다.
-            loc = page.get_by_role("button", name=step["button"], exact=exact).or_(
-                page.get_by_role("radio", name=step["button"], exact=exact)
-            ).first
+            # 018 — 순수 이동이 `<a href>` 가 됐다. 전환 전 코드(button)와 뒤 코드(link)를 **같은 단계**로 누른다.
+            loc = (
+                page.get_by_role("button", name=step["button"], exact=exact)
+                .or_(page.get_by_role("radio", name=step["button"], exact=exact))
+                .or_(page.get_by_role("link", name=step["button"], exact=exact))
+                .first
+            )
             try:
                 loc.click(timeout=5000)
             except Exception as exc:  # noqa: BLE001
@@ -652,6 +682,11 @@ def compare(before: dict, after: dict) -> tuple[list[dict], int]:
         for row in b:
             other = by_path.get(row["path"])
             if other is None:
+                # 018 — 순수 이동이 `<button>` 에서 `<a>` 가 됐다. 자리 번호는 같고 요소 이름만 다르므로 **같은 자리의
+                # 링크와 짝짓는다.** 짝을 잃게 두면 그 조작과 안의 요소가 통째로 대조에서 빠진다 — 2026-09-16 에
+                # 등록부로 덮었다가 되살린 90 칸(`INTENDED` 끝 주석)과 같은 종류의 손실이다.
+                other = by_path.get(re.sub(r"BUTTON\[(\d+)\]", r"A[\1]", row["path"]))
+            if other is None:
                 mismatches.append({"screen": name, "kind": "unpaired", "path": row["path"]})
                 continue
             if other["tag"] != row["tag"]:
@@ -659,7 +694,9 @@ def compare(before: dict, after: dict) -> tuple[list[dict], int]:
                     {"screen": name, "kind": "tag", "path": row["path"],
                      "before": row["tag"], "after": other["tag"]}
                 )
-                continue
+                # 버튼 → 링크는 **모습을 계속 잰다** — 요소가 바뀌어도 사람이 보는 것은 같아야 한다.
+                if {row["tag"], other["tag"]} != {"BUTTON", "A"}:
+                    continue
             for p in PROPS:
                 compared += 1
                 if normalize(p, row.get(p, ""), row) != normalize(p, other.get(p, ""), other):

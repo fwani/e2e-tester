@@ -37,6 +37,7 @@ import { cva } from "class-variance-authority";
 import type { ComponentPropsWithRef, ReactElement, ReactNode } from "react";
 
 import { cn } from "./cn";
+import { isPlainClick } from "./Button";
 
 type LayoutProps = { layout?: string; children?: ReactNode };
 
@@ -132,5 +133,43 @@ export function MenuItem({
     >
       {children}
     </MenuPrimitive.Item>
+  );
+}
+
+/**
+ * 링크인 메뉴 항목 (018 §4) — Base UI `Menu.LinkItem` 이 `<a role="menuitem">` 을 그린다.
+ *
+ * 모습은 `MenuItem` 의 기본 변종 그대로다. 행 메뉴의 「편집」처럼 **다른 화면으로 가기만 하는** 항목에
+ * 쓴다 — 가운데 클릭으로 새 탭에서 열 수 있다. 보통 클릭은 `ButtonLink` 와 같은 규칙으로 가로챈다.
+ *
+ * `closeOnClick`: 링크 항목의 기본값은 「닫지 않는다」다. 앱 안에서 옮기면 메뉴가 그 자리에 남아
+ * 다음 화면을 덮을 수 있으므로 닫는다.
+ */
+export function MenuLinkItem({
+  href,
+  onNavigate,
+  onClick,
+  layout,
+  children,
+  ...rest
+}: Omit<ComponentPropsWithRef<typeof MenuPrimitive.LinkItem>, "className" | "href"> &
+  LayoutProps & { href: string; onNavigate: () => void }) {
+  return (
+    <MenuPrimitive.LinkItem
+      href={href}
+      closeOnClick
+      className={cn(menuItemVariants({ variant: "default" }), layout)}
+      data-slot="menu-item"
+      data-variant="default"
+      onClick={(event) => {
+        onClick?.(event);
+        if (!isPlainClick(event)) return;
+        event.preventDefault();
+        onNavigate();
+      }}
+      {...rest}
+    >
+      {children}
+    </MenuPrimitive.LinkItem>
   );
 }

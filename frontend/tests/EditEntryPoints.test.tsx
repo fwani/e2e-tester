@@ -5,210 +5,24 @@
  * 결과 화면의 「Step 06 고치기」가 **읽기 전용 화면**으로 데려갔다 (E-04). 이름이 「고치기」인
  * 컨트롤이 고칠 수 없는 곳으로 가는 것은 단순한 불편이 아니라 거짓 안내다.
  *
- * 화면 하나를 렌더해 문구를 보는 것으로는 이것을 잡을 수 없다. 그래서 `App` 을 통째로
+ * 화면 하나를 렌더해 문구를 보는 것으로는 이것을 잡을 수 없다. 그래서 앱을 통째로
  * 렌더해 **진입점 → 도착 화면**을 실제로 걷는다.
  */
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { App } from "../src/App";
-import type { SessionView } from "../src/api/client";
-import { sessionView } from "./helpers/workbench";
-
-const PROJECT = { name: "P", root: "/tmp/p", default_start_url: "http://t/" };
-
-const verified = (value: string) => ({ value, status: "verified" });
-
-const STEP_01 = {
-  id: "step-01",
-  type: "navigate",
-  label: "로그인 화면",
-  author: "human",
-  tab: 0,
-  timeout_ms: 5000,
-  frame_url: null,
-  url: "http://t/login.html",
-};
-
-const STEP_02 = {
-  id: "step-02",
-  type: "click",
-  label: "대시보드 열기",
-  author: "human",
-  tab: 0,
-  timeout_ms: 20000,
-  frame_url: null,
-  target: {
-    tag: "button",
-    test_id: verified("dashboard-open"),
-    role: null,
-    accessible_name: null,
-    role_status: null,
-    label: null,
-    text: null,
-    stable_attr: null,
-    css: verified("#open"),
-  },
-};
-
-const TEST = {
-  dsl_version: 1,
-  id: "TC-001",
-  name: "로그인",
-  authoring_mode: "record",
-  start_url: "http://t/login.html",
-  browser: "chromium",
-  ai_instruction: null,
-  variables: [],
-  steps: [STEP_01, STEP_02],
-  created_at: "2026-09-07T00:00:00Z",
-  updated_at: "2026-09-07T00:00:00Z",
-};
-
-const LIST = {
-  counts: { total: 1, pass: 0, fail: 1 },
-  tests: [
-    {
-      id: "TC-001",
-      name: "로그인",
-      step_count: 2,
-      authoring_mode: "record",
-      outcome: "fail",
-      last_run_at: "2026-09-07T00:00:00Z",
-      failure_summary: { step_index: 1, message: "요소를 찾을 수 없습니다" },
-    },
-  ],
-  problems: [],
-};
-
-const RESULT = {
-  test_id: "TC-001",
-  outcome: "fail",
-  scope: "full",
-  started_at: "2026-09-07T00:00:00Z",
-  finished_at: "2026-09-07T00:00:02Z",
-  duration_ms: 2000,
-  total_steps: 2,
-  passed_steps: 1,
-  failed_step_index: 1,
-  stopped_step_index: null,
-  start_index: 0,
-  steps: [
-    {
-      step_id: "step-01",
-      index: 0,
-      outcome: "pass",
-      duration_ms: 500,
-      error: null,
-      locator_attempts: [],
-    },
-    {
-      step_id: "step-02",
-      index: 1,
-      outcome: "fail",
-      duration_ms: 1500,
-      locator_attempts: [],
-      error: {
-        code: "ELEMENT_NOT_READY",
-        category: "blocked",
-        message: "기다렸지만 요소가 나타나지 않았습니다.",
-        next_action: "대기 시간을 늘리세요.",
-        detail: {},
-      },
-    },
-  ],
-  artifacts: [],
-  last_full_run: null,
-};
-
-const DEFINITION_VIEW = {
-  test: TEST,
-  revision: "rev-1",
-  editable: true,
-  blocked_by: null,
-  blocking_session_id: null,
-  locked_fields: [
-    { field: "steps[].target", reason: "live_browser_required" },
-    { field: "steps[].type", reason: "delete_and_insert_instead" },
-  ],
-  warnings: [],
-};
-
-/** 이 라운드가 부르는 모든 경로를 아는 가짜 서버. 세션 생성 요청을 기록한다. */
-function stubServer() {
-  const calls: { url: string; method: string; body: unknown }[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string, init?: RequestInit) => {
-      const u = String(url);
-      const method = init?.method ?? "GET";
-      calls.push({
-        url: u,
-        method,
-        body: init?.body ? JSON.parse(String(init.body)) : null,
-      });
-      const json = (body: unknown, status = 200) =>
-        new Response(JSON.stringify(body), { status });
-
-      if (u === "/api/project") return json(PROJECT);
-      if (u.startsWith("/api/tests/TC-001/definition")) return json(DEFINITION_VIEW);
-      if (u.startsWith("/api/tests/TC-001/result")) return json(RESULT);
-      if (u.startsWith("/api/tests")) return json(LIST);
-      if (u === "/api/sessions") {
-        if (method === "POST") {
-          // 007 T004 — 손으로 조립하지 않고 팩토리를 쓴다. 이전에는 여기서
-          // `recorder_warnings` 등이 빠져 `SessionScreen` 이 렌더 중에 터졌고, 그
-          // 오류가 **테스트가 통과하는 채로** 콘솔로만 흘러나왔다
-          // (design-conformance/baseline.md 의 미처리 오류 2건).
-          return json(
-            sessionView({
-              session_id: "s-new",
-              state: "paused",
-              state_label: "일시정지",
-              test_id: "TC-001",
-              authoring_mode: "record",
-              steps: [STEP_01, STEP_02] as unknown as SessionView["steps"],
-              current_step_index: 1,
-            }),
-            201,
-          );
-        }
-        return json({ sessions: [] });
-      }
-      // 007 T004 — 세션 하위 경로도 세션 뷰를 돌려준다. 이전에는 `run-from` 이
-      // 아래 `{ ok: true }` 로 떨어져 `SessionScreen` 이 세션 아닌 것을 받았고,
-      // 그것이 baseline.md 의 미처리 오류 나머지 1건이었다.
-      if (u.startsWith("/api/sessions/")) {
-        return json(
-          sessionView({
-            session_id: "s-new",
-            state: "replaying",
-            state_label: "실행 중",
-            test_id: "TC-001",
-            steps: [STEP_01, STEP_02] as unknown as SessionView["steps"],
-            current_step_index: 1,
-            run_scope: "partial",
-            run_start_index: 1,
-          }),
-        );
-      }
-      if (u.startsWith("/api/preferences")) return json({ run_pacing: "normal" });
-      return json({ ok: true });
-    }),
-  );
-  return calls;
-}
+import { renderApp } from "./helpers/app";
+import { stubServer } from "./helpers/fakeServer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  window.history.replaceState({}, "", "/");
 });
 
 describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", () => {
   it("목록 행 메뉴의 「편집」이 편집 가능한 화면으로 데려간다 (FR-175·FR-178)", async () => {
     stubServer();
-    render(<App />);
+    renderApp("/");
     await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
 
     // 017 T056 — Radix 메뉴는 포인터 누름으로 열린다 (`TestListActions` 의 `openMenu` 주석).
@@ -224,21 +38,24 @@ describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", ()
 
   it("결과 화면의 「Step 02 고치기」가 그 Step 이 펼쳐진 편집 화면으로 간다 (FR-176·FR-180)", async () => {
     stubServer();
-    window.history.replaceState({}, "", "/?screen=result&test=TC-001");
-    render(<App />);
+    const { router } = renderApp("/tests/TC-001/result");
 
     await waitFor(() => expect(screen.getByText("Step 02 고치기")).toBeTruthy());
     act(() => screen.getByText("Step 02 고치기").click());
 
     // 편집 가능한 화면이고, Step 02 가 지목·펼쳐져 있다.
     await waitFor(() => expect(screen.getByText("변경 저장")).toBeTruthy());
-    expect(screen.getByText("dashboard-open")).toBeTruthy();
+    // 펼침은 정의를 읽은 뒤에 그려진다 — 기다려서 본다 (전체 실행 부하에서 한 박자 늦던 간헐 실패).
+    expect(await screen.findByText("dashboard-open")).toBeTruthy();
     expect(screen.getByLabelText("Step 대기 시간 (ms)")).toBeTruthy();
+    // 006 FR-181 — 지목이 주소에 실린다. 새로 고쳐도 고치러 온 Step 을 잃지 않는다.
+    expect(router.state.location.pathname).toBe("/tests/TC-001/edit");
+    expect(router.state.location.search).toBe("?step=step-02");
   });
 
   it("편집 화면에 「정의 보기」 같은 읽기 전용 도착지가 없다 (FR-177)", async () => {
     stubServer();
-    render(<App />);
+    renderApp("/");
     await waitFor(() => expect(screen.getByText("로그인")).toBeTruthy());
 
     // 017 T056 — Radix 메뉴는 포인터 누름으로 열린다 (`TestListActions` 의 `openMenu` 주석).
@@ -256,8 +73,7 @@ describe("편집 진입점 — 이름과 도착지가 일치한다 (SC-304)", ()
 describe("편집 → 저장 → 재실행 한 바퀴 (US2 · SC-303)", () => {
   it("고쳐 저장한 뒤 그 자리에서 「Step 02부터 실행」을 건다", async () => {
     const calls = stubServer();
-    window.history.replaceState({}, "", "/?screen=result&test=TC-001");
-    render(<App />);
+    renderApp("/tests/TC-001/result");
 
     await waitFor(() => expect(screen.getByText("Step 02 고치기")).toBeTruthy());
     act(() => screen.getByText("Step 02 고치기").click());
@@ -287,8 +103,7 @@ describe("편집 → 저장 → 재실행 한 바퀴 (US2 · SC-303)", () => {
 describe("브라우저 편집 세션 (US3 · FR-200·FR-201 · SC-305)", () => {
   it("「브라우저 열어 Step 02 에서 멈추기」가 pause_before_index 로 세션을 만든다", async () => {
     const calls = stubServer();
-    window.history.replaceState({}, "", "/?screen=definition&test=TC-001&step=step-02");
-    render(<App />);
+    renderApp("/tests/TC-001/edit?step=step-02");
 
     await waitFor(() =>
       expect(screen.getByText("브라우저 열어 Step 02 에서 멈추기")).toBeTruthy(),
@@ -310,8 +125,7 @@ describe("브라우저 편집 세션 (US3 · FR-200·FR-201 · SC-305)", () => {
 
   it("주소가 지목한 Step 을 새로고침 뒤에도 펼친다 (FR-181)", async () => {
     stubServer();
-    window.history.replaceState({}, "", "/?screen=definition&test=TC-001&step=step-02");
-    render(<App />);
+    renderApp("/tests/TC-001/edit?step=step-02");
 
     await waitFor(() => expect(screen.getByText("dashboard-open")).toBeTruthy());
   });
