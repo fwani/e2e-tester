@@ -64,7 +64,7 @@ describe("목록 화면에서 프로젝트를 바꿀 수 있다", () => {
     );
     await waitFor(() => expect(screen.getByText("픽스처 프로젝트")).toBeTruthy());
 
-    const link = screen.getByRole("button", { name: "바꾸기" });
+    const link = screen.getByRole("link", { name: "바꾸기" });
     act(() => link.click());
     expect(onOpenProjects).toHaveBeenCalledOnce();
   });
@@ -81,7 +81,7 @@ describe("목록 화면에서 프로젝트를 바꿀 수 있다", () => {
     );
     await waitFor(() => expect(screen.getByText("픽스처 프로젝트")).toBeTruthy());
     const name = screen.getByText("픽스처 프로젝트");
-    expect(name.parentElement?.contains(screen.getByRole("button", { name: "바꾸기" }))).toBe(
+    expect(name.parentElement?.contains(screen.getByRole("link", { name: "바꾸기" }))).toBe(
       true,
     );
   });

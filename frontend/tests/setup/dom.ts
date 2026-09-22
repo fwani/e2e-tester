@@ -15,6 +15,7 @@
  * | `has/set/releasePointerCapture` | 누르고 끄는 조작 | 호출 즉시 `is not a function` |
  * | `scrollIntoView` | 메뉴·목록이 고른 항목을 보이게 한다 | 키보드 이동 시 예외 |
  * | `matches(':popover-open')`·`matches(':modal')` | 떠 있는 내용의 자리 계산(floating-ui `isTopLayer`) | **예외가 아니라 느려진다** — 아래 절 |
+ * | `Request` 의 `signal` | React Router Data 라우터의 모든 이동 | 첫 이동에서 `RequestInit: Expected signal` 예외 — 파일 끝 절 |
  *
  * **이미 있는 것은 덮지 않는다.** 모든 줄이 「없을 때만」 심는다. 테스트가 요소 하나에
  * 따로 심은 대역(`MirrorView.test.tsx` 의 포인터 캡처 등)은 인스턴스 속성이라 그대로 이긴다.
@@ -105,4 +106,34 @@ if (typeof window !== "undefined") {
     matches.__topLayerShortcut = true;
     Element.prototype.matches = matches;
   }
+}
+
+/*
+  ## Data 라우터의 요청 신호 — jsdom 과 Node 의 `AbortSignal` 이 다르다 (018 · 사전 실측)
+
+  vitest 의 jsdom 환경은 `AbortController` 를 jsdom 것으로 바꾸지만 `Request` 는 Node(undici) 것을 남긴다.
+  React Router 의 Data 라우터는 이동마다 `new Request(url, { signal })` 를 만들고, undici 는 jsdom 의 신호를
+  받지 않는다 — `RequestInit: Expected signal … to be an instance of AbortSignal` 로 라우터가 첫 이동에서 죽는다.
+
+  **흉내가 아니라 잇기다.** jsdom 신호가 끊기면 Node 신호도 같은 이유로 끊긴다. 라우터는 요청의 신호로
+  「중간에 버려진 이동」을 판정하므로 신호를 떼어 버리면 안 된다. Node 의 컨트롤러는 전역이 덮였으므로
+  `node:util` 의 `transferableAbortController()`(Node 컨트롤러를 돌려준다)로 얻는다.
+*/
+import { transferableAbortController } from "node:util";
+
+if (typeof globalThis.Request !== "undefined") {
+  const NodeRequest = globalThis.Request;
+  class BridgedRequest extends NodeRequest {
+    constructor(input: RequestInfo | URL, init?: RequestInit) {
+      const signal = init?.signal;
+      if (signal) {
+        const bridge = transferableAbortController();
+        if (signal.aborted) bridge.abort(signal.reason);
+        else signal.addEventListener("abort", () => bridge.abort(signal.reason), { once: true });
+        init = { ...init, signal: bridge.signal };
+      }
+      super(input, init);
+    }
+  }
+  globalThis.Request = BridgedRequest as typeof Request;
 }

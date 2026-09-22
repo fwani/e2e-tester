@@ -236,6 +236,10 @@ tasks 에 남긴다).
 
 ## R8. 화면 상태의 URL 반영 — 라우터를 새로 넣지 않는다
 
+> **018 에서 뒤집혔다 (2026-09-17).** 경로형 주소 · 모든 화면의 딥링크 · 링크 기반 이동이 요구되어
+> React Router(Data 모드)를 들였다. 옛 `?screen=` 주소는 새 주소로 교체 이동한다 —
+> [`specs/018-react-router/design.md`](../018-react-router/design.md).
+
 **결정**: 라우팅 라이브러리를 **추가하지 않는다.** `App.tsx` 의 `Screen` 상태를
 `history.pushState` / `popstate` 와 양방향으로 잇는 얇은 훅 하나(`useScreenUrl`)를 만든다.
 

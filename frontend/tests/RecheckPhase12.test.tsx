@@ -10,7 +10,7 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MirrorView } from "../src/components/MirrorView";
 import { SessionWorkbench } from "../src/pages/SessionScreen";
@@ -21,7 +21,8 @@ import { isRunning } from "../src/lib/sessionState";
 import { pausedAfterLabel, sessionTitle } from "../src/lib/wording";
 import type { SessionState, SessionView } from "../src/api/client";
 import type { Step } from "../src/types/generated/step";
-import { initialLocation, locationToSearch } from "../src/hooks/useScreenUrl";
+import { renderApp } from "./helpers/app";
+import { stubServer } from "./helpers/fakeServer";
 
 const noop = () => undefined;
 
@@ -254,23 +255,21 @@ describe("T116 미리보기 안내가 실제 상태와 같은 말을 한다 (U-0
 
 describe("T118 새로고침이 화면 상태를 잃지 않는다 (FR-166 · N-01)", () => {
   /**
-   * 변환 함수 테스트(`ScreenUrl.test.ts`)는 이 결함을 잡지 못했다 — 변환은 처음부터
-   * 옳았고, 화면이 아직 `loading` 인 첫 렌더에서 주소를 지운 것이 원인이었다.
-   * 그래서 이 파일은 **그 국면의 질의 문자열**을 직접 고정한다.
+   * 005 의 원인은 아직 화면을 정하지 못한 첫 렌더(`loading`)가 주소를 지운 것이었다 — 변환 함수는 처음부터
+   * 옳았고, 틀린 것은 **그 국면**이었다. 018 은 그 국면을 라우터에 맡긴다. 여기서는 앱 전체를 그려
+   * 「첫 조회를 기다리는 동안에도 주소가 그대로인가」를 본다.
    */
-  it("아직 화면을 정하지 못한 상태(loading)는 주소에 아무것도 쓰지 않는다", () => {
-    expect(locationToSearch({ name: "loading" })).toBe("");
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it("주소가 결과 화면을 가리키면 최초 로드가 그것을 읽는다", () => {
-    window.history.replaceState({}, "", "/?screen=result&test=TC-001");
-    expect(initialLocation()).toEqual({
-      name: "result",
-      testId: "TC-001",
-      sessionId: null,
-      stepId: null,
-    });
-    window.history.replaceState({}, "", "/");
+  it("프로젝트 조회를 기다리는 동안에도 주소가 그대로이고, 끝나면 그 화면이다", async () => {
+    stubServer({ projectDelayMs: 50 });
+    const { router } = renderApp("/tests/TC-001/result");
+    expect(screen.getByText("불러오는 중…")).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/tests/TC-001/result");
+    expect(await screen.findByText("Step 02 고치기")).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/tests/TC-001/result");
   });
 });
 
@@ -357,12 +356,12 @@ describe("T119 목록 행은 세션의 상태를 본다 (FR-169 · N-02)", () =>
 
   it("중지 후 목록에서도 결과에 도달할 수 있다 — 세션이 남았다고 감추지 않는다", async () => {
     await renderList("review");
-    expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "결과 보기" })).toBeTruthy();
   });
 
   it("돌고 있는 동안에는 결과 버튼을 감춘다 — 낡은 결과를 지금 결과로 읽는다", async () => {
     await renderList("replaying");
-    expect(screen.queryByRole("button", { name: "결과 보기" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "결과 보기" })).toBeNull();
   });
 
   it("일시정지는 실행 중이 아니다 — 기다리면 끝난다고 읽히면 안 된다", () => {
