@@ -445,6 +445,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   } = props;
 
   const phase = phaseOfSession(view);
+  const aiAuthoringSidebar = view.authoring_mode === "ai" && ["ai_authoring", "takeover", "review"].includes(phase);
   const testId = view.test_id;
   const title = testId ?? "새 테스트";
 
@@ -1304,7 +1305,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         「실행이 이미 끝났습니다」를 달고 국면 띠에 남았다. 돌릴 것이 없는 자리에서
         고르라고 내놓는 컨트롤이었다.
       */}
-      {isShown(capabilities["run.pacing"]) && <ToolPanel label="실행 옵션"><div>
+      {isShown(capabilities["run.pacing"]) && <ToolPanel label="실행 옵션" triggerSize="md" icon="options"><div>
         <span
           data-action="run.pacing"
           /*
@@ -1364,7 +1365,6 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           action="save"
           capability={saveCapability}
           label={sessionSaveLabel(hasName)}
-          compact
           emphasis
           onRun={() => runAction("save")}
           onRemedy={onRemedy}
@@ -1465,6 +1465,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   return (
     <Workbench
       model={model}
+      aiAuthoringSidebar={aiAuthoringSidebar}
+      authoringMessages={aiMessages}
       phaseActions={phaseActions}
       /*
         011 UC-011-2 — 이름을 국면 띠 그 자리에서 고친다. 세션에서 이 값은 **저장 이름을
@@ -1572,6 +1574,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       */
       leftExtra={
         <ChatPanel
+          sidebar={aiAuthoringSidebar}
           turns={chatTurns}
           capability={capabilities["ai.chat"]}
           busy={view.state === "ai_running"}

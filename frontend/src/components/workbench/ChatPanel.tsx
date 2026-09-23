@@ -53,6 +53,7 @@ export const CHAT_MAX_CHARS = 8000;
 
 export interface ChatPanelProps {
   turns: ChatTurn[];
+  sidebar?: boolean;
   capability: CapabilityState;
   /** 지금 AI 가 도는 중인가. */
   busy?: boolean;
@@ -74,6 +75,7 @@ export interface ChatPanelProps {
 
 export function ChatPanel({
   turns,
+  sidebar = false,
   capability,
   busy = false,
   progress = [],
@@ -84,6 +86,10 @@ export function ChatPanel({
   const [draft, setDraft] = useState("");
   const [expanded, setExpanded] = useState(busy || turns.length > 0);
   useEffect(() => { if (busy || turns.length > 0 || progress.length > 0) setExpanded(true); }, [busy, turns.length, progress.length]);
+  const history = useRef<HTMLDivElement | null>(null);
+  const following = useRef(true);
+  const [hasNew, setHasNew] = useState(false);
+  const visibleProgressCount = sidebar ? 0 : progress.length;
   const tail = useRef<HTMLDivElement | null>(null);
 
   /*
@@ -95,8 +101,11 @@ export function ChatPanel({
     없는 환경에서 화면이 죽지 않는 것이 옳기도 하다.
   */
   useEffect(() => {
-    tail.current?.scrollIntoView?.({ block: "end" });
-  }, [turns.length, progress.length]);
+    if (sidebar) {
+      if (following.current && history.current) history.current.scrollTop = history.current.scrollHeight;
+      else setHasNew(true);
+    } else tail.current?.scrollIntoView?.({ block: "end" });
+  }, [turns.length, visibleProgressCount, sidebar]);
 
   const enabled = capability.kind === "enabled" && !busy && unavailableReason === null;
   const tooLong = draft.length > CHAT_MAX_CHARS;
@@ -110,11 +119,11 @@ export function ChatPanel({
   };
 
   return (
-    <div className="workbench-chat" data-chat-panel data-expanded={expanded}>
-      <div className="chat-panel-heading"><span>AI 도우미{busy ? " · 수행 중" : ""}</span>
-        <Button variant="ghost" size="sm" aria-expanded={expanded} aria-controls="ai-chat-body" onClick={() => setExpanded(!expanded)}>{expanded ? "대화 닫기" : "대화 열기"}</Button>
+    <div className="workbench-chat" data-chat-panel data-expanded={sidebar || expanded}>
+      <div className="chat-panel-heading"><span>{sidebar ? "AI와 대화" : "AI 도우미"}{busy && !sidebar ? " · 수행 중" : ""}</span>
+        {!sidebar && <Button variant="ghost" size="sm" aria-expanded={expanded} aria-controls="ai-chat-body" onClick={() => setExpanded(!expanded)}>{expanded ? "대화 닫기" : "대화 열기"}</Button>}
       </div>
-      <section id="ai-chat-body" hidden={!expanded} className="flex flex-col gap-s3 min-h-0" aria-label="AI 와 대화">
+      <section id="ai-chat-body" hidden={!sidebar && !expanded} className="flex flex-col gap-s3 min-h-0" aria-label="AI 와 대화">
 
       {/*
         **언어모델을 쓸 수 없을 때** (FR-012).
@@ -137,6 +146,8 @@ export function ChatPanel({
       */}
       <div
         className="flex flex-col gap-s2 min-h-0 overflow-y-auto"
+        ref={history}
+        onScroll={() => { const el = history.current; if (el) { following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 32; if (following.current) setHasNew(false); } }}
         role="log"
         aria-live="polite"
         aria-label="대화 기록"
@@ -159,7 +170,7 @@ export function ChatPanel({
           턴이 끝나면 사라진다 — 남은 기록은 AI 의 답(대화 차례)이다. 둘을 함께
           쌓으면 「무엇을 했는가」와 「무엇을 하는 중인가」가 섞인다.
         */}
-        {busy && (
+        {busy && !sidebar && (
           <div className="flex flex-col gap-[2px]" role="status" aria-live="polite">
             <span className="font-mono text-[12px] uppercase tracking-[.08em] text-ink-3">
               수행 중
@@ -185,6 +196,7 @@ export function ChatPanel({
         <div ref={tail} />
       </div>
 
+      {sidebar && hasNew && <Button size="sm" variant="ghost" onClick={() => { following.current = true; setHasNew(false); if (history.current) history.current.scrollTop = history.current.scrollHeight; }}>최신 대화 보기</Button>}
       <form onSubmit={submit} className="shrink-0 flex flex-col gap-s2">
         <label className="sr-only" htmlFor="ai-chat-input">
           AI 에게 할 말

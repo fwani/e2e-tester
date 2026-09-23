@@ -147,6 +147,11 @@ describe("Step 상세는 작업 목적에 맞게 배치하고 목록을 가리�
       expect(document.querySelector("[data-workbench-left-column]")!.contains(layer)).toBe(true);
       expect(layer!.closest('[data-slot="scrim"]')).toBeNull();
       expect(placement(layer!).position).not.toBe("absolute");
+    } else if (phase === "ai_authoring" || phase === "takeover") {
+      expect(layer!.tagName).toBe("ASIDE");
+      expect(layer!.closest('[data-slot="scrim"]')).toBeNull();
+      expect(placement(layer!).position).not.toBe("absolute");
+      expect(document.querySelector<HTMLElement>("#ai-authoring-sidebar")!.hidden).toBe(true);
     } else {
       expect(layer!.getAttribute("data-slot")).toBe("scrim");
       expect(placement(layer!).position).toBe("absolute");
