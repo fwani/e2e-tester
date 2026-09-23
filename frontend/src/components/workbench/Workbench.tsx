@@ -1,3 +1,4 @@
+import { IconButton } from "../../ui/IconButton";
 import { ToolPanel } from "../../ui/ToolPanel";
 /**
  * 통합 작업 화면의 껍데기 (007 T018 · FR-217·FR-218·FR-218c).
@@ -27,7 +28,10 @@ import { ToolPanel } from "../../ui/ToolPanel";
  * **좌측 대상 앱 영역만** 늘어나고 Step 패널 460px 은 고정이다 (FR-218a).
  */
 import { ToastDock } from "../../ui/Toast";
-import type { ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+import { AiAuthoringPanel } from "./AiAuthoringPanel";
 
 import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard } from "../design/Chrome";
@@ -96,6 +100,9 @@ export interface WorkbenchProps {
    * 차지하지 않는다.**
    */
   leftExtra?: ReactNode;
+  /** AI 작성 흐름에서만 진행과 대화를 독립 사이드바에 둔다. */
+  aiAuthoringSidebar?: boolean;
+  authoringMessages?: string[];
   /** Step 이 0개일 때의 안내. 국면마다 다르다 */
   stepEmptyNotice?: ReactNode;
   /**
@@ -161,6 +168,8 @@ export function Workbench({
   stepHeaderExtra,
   stepBand,
   leftExtra,
+  aiAuthoringSidebar = false,
+  authoringMessages = [],
   stepEmptyNotice,
   deleteTargets,
   rerecordTargets,
@@ -180,6 +189,12 @@ export function Workbench({
   onAction,
   busy = false,
 }: WorkbenchProps) {
+  const [aiOpen, setAiOpen] = useState(true);
+  const [asideWidth, setAsideWidth] = useState(340);
+  const showAi = aiOpen && model.detail === null;
+  const aiAttention = model.work?.kind === "ai_progress" || model.work?.kind === "takeover_guide"
+    ? model.work.blocked !== null ? "답변 대기" : model.work.error !== null ? "오류 확인 필요" : null
+    : null;
   const capabilities: CapabilityMap = model.capabilities;
 
   /**
@@ -255,7 +270,7 @@ export function Workbench({
         <div data-shell="header" className="workbench-toolbar">
           <PhaseBar bar={model.phaseBar} testName={model.testName} rename={phaseName} group={phaseGroup}
             testId={model.testId}
-            actions={<>{phaseActions}<ToolPanel label="화면 메뉴"><div>{headerActions}</div></ToolPanel></>} />
+            actions={<>{phaseActions}{aiAuthoringSidebar && <Button layout="ai-steps-switch" onClick={() => { onCloseDetail(); setAiOpen(false); }}>Steps 보기</Button>}{aiAuthoringSidebar && <Button aria-expanded={showAi} aria-controls="ai-authoring-sidebar" onClick={() => { onCloseDetail(); setAiOpen(!showAi); }}>{aiAttention ?? "AI 작성 현황"} · {showAi ? "접기" : "열기"}</Button>}<ToolPanel label="화면 메뉴" triggerSize="md" icon="more"><div>{headerActions}</div></ToolPanel></>} />
         </div>
       }
     >
@@ -267,7 +282,7 @@ export function Workbench({
         않고 여기서 기준을 잡는다 — `Artboard` 는 확정 디자인 8종이 공유하는 껍데기이므로
         007 이 그 안쪽 배치를 바꾸지 않는다.
       */}
-      <div className="flex-1 min-h-0 flex relative">
+      <div className="flex-1 min-h-0 flex relative" data-ai-layout={aiAuthoringSidebar || undefined} data-ai-open={showAi} data-ai-detail={model.detail !== null} style={{ "--ai-aside-width": `${asideWidth}px` } as CSSProperties}>
         {/*
           알림 — **한 자리이고, 화면을 밀어내지 않는다** (2026-09-09 사용자 보고).
 
@@ -362,7 +377,7 @@ export function Workbench({
           {model.phase === "editing" && model.detail !== null && (
             <div data-workbench-detail-layer data-edit-detail-inline>{detailNode}</div>
           )}
-          {model.work !== null && (
+          {model.work !== null && (!aiAuthoringSidebar || !["ai_progress", "takeover_guide"].includes(model.work.kind)) && (
             <WorkArea
               work={model.work}
               sizeClass={workClass}
@@ -399,7 +414,7 @@ export function Workbench({
             달리 「자리」로 읽히지 않고, 미러 아래로 흘러나온 것처럼 보인다. 새 값을
             만들지 않는다: 셋째 자리도 좌측 열의 자리이므로 같은 문법을 받는다.
           */}
-          {leftExtra != null && leftExtra !== false && (
+          {!aiAuthoringSidebar && leftExtra != null && leftExtra !== false && (
             <div
               data-workbench-left-extra
               className={`border-t border-hair-2 bg-sunken-2 ${CHAT_SLOT_CLASS} py-s3 px-s4`}
@@ -408,6 +423,25 @@ export function Workbench({
             </div>
           )}
         </div>
+
+        {aiAuthoringSidebar && (
+          <aside id="ai-authoring-sidebar" className="ai-authoring-sidebar" hidden={!showAi} aria-label="AI 작성 현황">
+            <div className="ai-sidebar-heading">
+              <h2>AI 작성 현황</h2>
+              <IconButton label="AI 작성 현황 접기" icon="collapse" variant="ghost" onClick={() => setAiOpen(false)} />
+            </div>
+            <label className="ai-sidebar-width">패널 너비
+              <Input aria-label="AI 작성 패널 너비" type="range" min="300" max="440" step="20" value={asideWidth} onChange={(event) => setAsideWidth(Number(event.target.value))} />
+            </label>
+            <AiAuthoringPanel messages={authoringMessages} work={model.work} status={aiAttention ?? model.phaseBar.phaseLabel}
+              chooseBlocked={capabilities["ai.chooseBlocked"]} onChooseBlocked={onChooseBlocked} busy={busy}>
+              {leftExtra}
+            </AiAuthoringPanel>
+          </aside>
+        )}
+        {aiAuthoringSidebar && model.detail !== null && (
+          <aside data-workbench-detail-layer className="ai-step-detail" aria-label="Step 상세">{detailNode}</aside>
+        )}
 
         {/* 우 — Step 목록 460px 고정 */}
 
@@ -437,7 +471,7 @@ export function Workbench({
           판 옆의 빈 자리에서 클릭이 그 아래 미러에 닿는다 — 010 이 미러 조작을 만들었으므로
           사용자가 보이지 않는 곳을 실제로 조작하게 된다. 층이 그 영역을 덮어 삼킨다.
         */}
-        {model.detail !== null && model.phase !== "editing" && (
+        {model.detail !== null && model.phase !== "editing" && !aiAuthoringSidebar && (
           <Scrim
             data-workbench-detail-layer
             strength="soft"

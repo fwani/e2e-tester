@@ -36,7 +36,7 @@ import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../
 import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
 import type { SlotSize } from "../../lib/layout";
 
-import { Button } from "../../ui/Button";
+import { Button, type ButtonSize } from "../../ui/Button";
 import { Input } from "../../ui/Input";
 import { Textarea } from "../../ui/Textarea";
 import { ToggleGroup, ToggleGroupItem } from "../../ui/ToggleGroup";
@@ -340,18 +340,20 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  * 이 컴포넌트가 국면·세션 상태를 인자로 받지 않는 것이 요점이다. 받으면 언젠가 그것으로
  * 분기하게 되고, 그 분기가 실패를 숨긴다.
  */
-function AlwaysVisibleFailure({
+export function AlwaysVisibleFailure({
   error,
   blocked,
   choose,
   onChoose,
   busy,
+  buttonSize = "sm",
 }: {
   error: import("../ErrorNotice").ErrorInfo | null;
   blocked: AiBlockedState | null;
   choose?: WorkAreaProps["chooseBlocked"];
   onChoose?: (choice: string, answer?: string) => void;
   busy: boolean;
+  buttonSize?: ButtonSize;
 }) {
   /*
     **선택지 조작의 자리는 여기다** (`ai.chooseBlocked` · ui-contract §4-1). 고를 것이
@@ -401,10 +403,11 @@ function AlwaysVisibleFailure({
             그때도 사람은 무엇이 문제인지 알 수 있다.
           */}
           {blocked.choices.includes("answer") && (
-            <BlockedAnswer
-              question={blocked.question}
-              busy={busy}
-              onSubmit={(text) => onChoose?.("answer", text)}
+              <BlockedAnswer
+                question={blocked.question}
+                busy={busy}
+                buttonSize={buttonSize}
+                onSubmit={(text) => onChoose?.("answer", text)}
             />
           )}
           <div className="flex items-center gap-s2 flex-wrap" data-action="ai.chooseBlocked">
@@ -413,7 +416,7 @@ function AlwaysVisibleFailure({
               // 것인지 확인하느라 멈춘다 (FR-235).
               .filter((c) => c !== "answer")
               .map((c) => (
-                <Button key={c} size="sm" disabled={busy} onClick={() => onChoose?.(c)}>
+                <Button key={c} size={buttonSize} disabled={busy} onClick={() => onChoose?.(c)}>
                   {AI_CHOICE_LABEL[c] ?? c}
                 </Button>
               ))}
@@ -451,10 +454,12 @@ const AI_CHOICE_LABEL: Record<string, string> = {
 function BlockedAnswer({
   question,
   busy,
+  buttonSize,
   onSubmit,
 }: {
   question: string | null;
   busy: boolean;
+  buttonSize: ButtonSize;
   onSubmit: (text: string) => void;
 }) {
   const [text, setText] = useState("");
@@ -526,7 +531,7 @@ function BlockedAnswer({
       />
       <div className="flex items-center gap-s2">
         <Button
-          size="sm" variant="primary"
+          size={buttonSize} variant="primary"
           data-blocked-answer-send
           disabled={busy || !ready}
           onClick={send} >

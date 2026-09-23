@@ -136,7 +136,7 @@ const FORBIDDEN_IMPORT: readonly { re: RegExp; why: string }[] = [
   통과시키지 않는다는 규칙(guards.md)이 이 방향이다.
 */
 const PROVENANCE =
-  /^\s*\*\s*출처:\s*(?:@base-ui\/react\/popover 1\.8\.x|015\b|shadcn (?:new-york-v4|base)\/[a-z-]+ @ shadcn \d+\.\d+\.[\dx]+)/m;
+  /^\s*\*\s*출처:\s*(?:@base-ui\/react\/(?:popover|tooltip) 1\.8\.x|Application-owned SVG —|015\b|shadcn (?:new-york-v4|base)\/[a-z-]+ @ shadcn \d+\.\d+\.[\dx]+)/m;
 
 function excused(file: string, name: string): boolean {
   return VISUAL_LANGUAGE_EXCEPTIONS.some(
