@@ -11,7 +11,7 @@
  *    막힐 때까지 무엇이 빠졌는지 모른다.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ShareImport } from "../src/pages/ShareImport";
 

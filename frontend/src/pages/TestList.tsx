@@ -1192,6 +1192,22 @@ function Row({
           <span>{row.step_count} Steps</span>
           <span>{row.authoring_mode === "ai" ? "AI" : "RECORD"}</span>
         </div>
+        {/*
+          019 FR-044 — 값이 없어 실행할 수 없는 테스트를 **누르기 전에** 알린다.
+
+          공유받은 테스트는 비밀번호가 비어 있는 채로 들어온다. 이것이 없으면 사용자는
+          실행을 눌러 409 를 받고서야 안다 — 그때는 이미 기대를 갖고 누른 뒤다.
+        */}
+        {(row.missing_secrets?.length ?? 0) > 0 && (
+          <div
+            className="font-sans text-[12px] leading-[1.5] font-normal text-fail whitespace-nowrap overflow-hidden text-ellipsis"
+            data-testid={`needs-values-${row.id}`}
+            title={`값이 필요합니다: ${(row.missing_secrets ?? []).join(", ")}`}
+          >
+            값 필요 · {(row.missing_secrets ?? []).join(", ")}
+          </div>
+        )}
+
         {/* FR-005 — 실패한 테스트는 실패 Step 번호와 메시지 요약을 인라인으로 보여준다. */}
         {row.failure_summary !== null && (
  <div className="font-sans text-[12px] leading-[1.5] font-normal text-fail whitespace-nowrap overflow-hidden text-ellipsis" title={row.failure_summary.message}>

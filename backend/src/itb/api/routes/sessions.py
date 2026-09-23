@@ -78,6 +78,7 @@ from itb.mirror.tab_switch import MirrorController
 from itb.recording.inline_record import InlineRecording
 from itb.recording.recorder import Recorder
 from itb.secrets.keys import load_private_or_reason, load_public_or_none
+from itb.secrets.readiness import assess
 from itb.secrets.resolver import VariableResolver
 from itb.secrets.store import SecretStore
 from itb.storage import preferences
@@ -969,6 +970,38 @@ def _secret_store(repo: ProjectRepository) -> SecretStore:
     return SecretStore(repo.paths.secrets_file)
 
 
+def _require_secret_values(
+    test: Test, repo: ProjectRepository, state: AppState
+) -> None:
+    """민감 값이 비어 있으면 **브라우저를 띄우기 전에** 막는다 (019 FR-044).
+
+    예전에는 그 스텝에 도달해서야 실패했다 — 브라우저가 뜨고, 로그인 화면까지 가고,
+    거기서 멈춘다. 공유받은 테스트를 처음 돌리는 사람은 자기 환경 문제인지 테스트 문제인지
+    구분할 수 없었다.
+
+    **`replay` 와 `rerecord` 에만 건다.** `rerecord` 도 앞 스텝을 재생하므로 같은 값이
+    필요하다 — 여기를 빠뜨리면 차단이 한쪽에만 걸린다. `record`·AI 작성은 값을 **만드는**
+    중이므로 없는 것이 정상이다.
+
+    판정은 :func:`itb.secrets.readiness.assess` 하나가 한다. 목록이 누르기 전에 보여 주는
+    상태와 같은 규칙이어야, 화면이 「실행 가능」이라고 한 것이 여기서 막히지 않는다.
+    """
+    ready = assess(
+        test,
+        SecretStore(repo.paths.secrets_file),
+        key_available=load_public_or_none(state.key_paths) is not None,
+    )
+    if ready.runnable:
+        return
+    raise conflict(
+        ErrorCode.SECRET_VALUE_MISSING,
+        "값이 필요한 민감 변수가 있습니다. 값을 채운 뒤 실행하세요.",
+        missing=ready.missing_secrets,
+        test_id=test.id,
+        key_available=ready.key_available,
+    )
+
+
 @router.post("", status_code=201)
 async def create_session(body: CreateSessionRequest, state: State) -> SessionView:
     repo = state.require_repository()
@@ -985,6 +1018,8 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
             existing_test = repo.read_test(body.test_id)
         except ProjectError as exc:
             raise not_found(ErrorCode.TEST_NOT_FOUND, str(exc)) from exc
+
+        _require_secret_values(existing_test, repo, state)
 
     # 014 FR-030 — 초안에서 시작한다. **기존 AI 작성 경로 그대로다.**
     draft: Draft | None = None

@@ -132,9 +132,9 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 - [X] T055 [P] [US2] `frontend/src/api/client.ts` 에 `planShareImport(file, target)`, `getSharePlan(id)`, `commitShareImport(body)` 를 더한다
 - [X] T056 [US2] `frontend/src/pages/ShareImport.tsx` 를 만든다 — 파일 선택 → 계획 요약(프로젝트 이름, 테스트 목록, 그룹, 필요 민감 변수, notices) → 확정 → 결과. `blocking` 이 비어 있지 않으면 확정 버튼을 잠근다
 - [X] T057 [US2] `frontend/src/app/routes/ShareImportRoute.tsx` 를 만들고 라우터에 등록한다
-- [ ] T058 [US2] `frontend/src/app/routes/ProjectsRoute.tsx` 에 「공유 파일에서 가져오기」 진입점을 더한다
-- [ ] T059 [US2] 확정 화면에서 `default_start_url` 을 바꿀 수 있게 한다 — 받는 쪽 환경이 다른 경우다 (spec Edge Cases, contracts §5)
-- [ ] T060 [P] [US2] `frontend/src/pages/__tests__/ShareImport.test.tsx` — `blocking` 이 있으면 확정이 막히고, `SHARE_PLAN_STALE` 응답이 오면 새 계획으로 갈아 끼우는지
+- [X] T058 [US2] `frontend/src/app/routes/ProjectsRoute.tsx` 에 「공유 파일에서 가져오기」 진입점을 더한다
+- [X] T059 [US2] 확정 화면에서 `default_start_url` 을 바꿀 수 있게 한다 — 받는 쪽 환경이 다른 경우다 (spec Edge Cases, contracts §5)
+- [X] T060 [P] [US2] `frontend/src/pages/__tests__/ShareImport.test.tsx` — `blocking` 이 있으면 확정이 막히고, `SHARE_PLAN_STALE` 응답이 오면 새 계획으로 갈아 끼우는지
 
 **Checkpoint**: 공유가 성립한다. 다만 받은 테스트는 아직 민감 값이 비어 실행할 수 없다.
 
@@ -150,19 +150,19 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 ### Tests
 
-- [ ] T061 [P] [US3] `backend/tests/unit/test_sharing_readiness.py` — 민감 변수에 암호문이 없으면 `missing_secrets` 에 들어가고, **C9** 같은 이름 환경 변수가 있으면 들어가지 않는지 (research R10). **복호화를 시도하지 않는지**도 확인한다 (잠긴 키에서도 판정이 돌아야 한다)
-- [ ] T062 [P] [US3] `backend/tests/contract/test_sharing_readiness.py` — **C8** 값이 빈 테스트로 `POST /api/sessions` 하면 409 `SECRET_VALUE_MISSING` 이고 **세션이 만들어지지 않는지** (FR-044)
-- [ ] T063 [P] [US3] `backend/tests/contract/test_sharing_values.py` — **C12** `variable_values` 에 민감 변수 이름을 넣으면 400 으로 거절되는지(봉인 경로는 하나뿐이다), **C13** 값이 빈 비민감 변수만 있는 테스트는 `POST /api/sessions` 가 막지 않는지 (FR-044)
-- [ ] T064 [P] [US3] `backend/tests/integration/test_sharing_secret_handover.py` — 가져오기 → 값 채우기 → 실행 통과까지, 그리고 채운 평문이 `tests/*.yaml`·API 응답·로그 어디에도 나타나지 않는지 (FR-043)
+- [X] T061 [P] [US3] `backend/tests/unit/test_sharing_readiness.py` — 민감 변수에 암호문이 없으면 `missing_secrets` 에 들어가고, **C9** 같은 이름 환경 변수가 있으면 들어가지 않는지 (research R10). **복호화를 시도하지 않는지**도 확인한다 (잠긴 키에서도 판정이 돌아야 한다)
+- [X] T062 [P] [US3] `backend/tests/contract/test_sharing_readiness.py` — **C8** 값이 빈 테스트로 `POST /api/sessions` 하면 409 `SECRET_VALUE_MISSING` 이고 **세션이 만들어지지 않는지** (FR-044)
+- [X] T063 [P] [US3] `backend/tests/contract/test_sharing_values.py` — **C12** `variable_values` 에 민감 변수 이름을 넣으면 400 으로 거절되는지(봉인 경로는 하나뿐이다), **C13** 값이 빈 비민감 변수만 있는 테스트는 `POST /api/sessions` 가 막지 않는지 (FR-044)
+- [X] T064 [P] [US3] `backend/tests/integration/test_sharing_secret_handover.py` — 가져오기 → 값 채우기 → 실행 통과까지, 그리고 채운 평문이 `tests/*.yaml`·API 응답·로그 어디에도 나타나지 않는지 (FR-043)
 
 ### Implementation
 
-- [ ] T065 [US3] `backend/src/itb/api/routes/tests.py` 에 `GET /api/tests/{test_id}/readiness` 를 구현한다 — `runnable`, `missing_secrets`, `empty_variables`, `key_available`. **`empty_variables` 는 실행을 막지 않는다** (FR-044, contracts §6)
-- [ ] T066 [US3] 판정은 `VariableResolver` 와 **같은 해석 순서**를 따르되 값을 읽지 않고 존재만 본다 — 환경 변수 → `SecretStore.has`. 판정하려고 복호화하면 잠긴 키에서 실패한다 (research R10)
-- [ ] T067 [US3] `backend/src/itb/api/routes/sessions.py` 의 `POST /api/sessions` 에 선행 검사를 넣는다. **`mode in ("replay", "rerecord")` 에 건다** — `rerecord` 도 앞 스텝을 재생하므로 같은 값이 필요하다. `record`·AI 작성 세션은 값을 만드는 중이므로 걸지 않는다 (contracts §7)
-- [ ] T068 [US3] 409 응답의 `detail` 에 빠진 이름 목록과 `test_id` 를 싣는다. 브라우저를 띄우기 **전에** 막는다
-- [ ] T069 [US3] `frontend/src/pages/ShareImport.tsx` 의 결과 화면에 「필요한 값 채우기」를 붙인다. **민감·비민감을 한 목록**에 두되 저장 위치가 다름을 구분해 보여 주고, 각 항목을 **이름 + 어느 테스트의 어느 스텝** 과 함께 보여 준다. `declared: false` 인 것은 「선언이 없어 보충했다」로 표시한다 (FR-040·FR-047·FR-048)
-- [ ] T070 [US3] 값 입력은 `frontend/src/pages/SecretValues.tsx` 의 입력 구성요소를 **재사용**하고, 저장은 기존 `PUT /api/secrets/{name}` 으로 한다. 봉인 경로를 두 벌로 만들지 않는다 (research R13, contracts §8)
+- [X] T065 [US3] `backend/src/itb/api/routes/tests.py` 에 `GET /api/tests/{test_id}/readiness` 를 구현한다 — `runnable`, `missing_secrets`, `empty_variables`, `key_available`. **`empty_variables` 는 실행을 막지 않는다** (FR-044, contracts §6)
+- [X] T066 [US3] 판정은 `VariableResolver` 와 **같은 해석 순서**를 따르되 값을 읽지 않고 존재만 본다 — 환경 변수 → `SecretStore.has`. 판정하려고 복호화하면 잠긴 키에서 실패한다 (research R10)
+- [X] T067 [US3] `backend/src/itb/api/routes/sessions.py` 의 `POST /api/sessions` 에 선행 검사를 넣는다. **`mode in ("replay", "rerecord")` 에 건다** — `rerecord` 도 앞 스텝을 재생하므로 같은 값이 필요하다. `record`·AI 작성 세션은 값을 만드는 중이므로 걸지 않는다 (contracts §7)
+- [X] T068 [US3] 409 응답의 `detail` 에 빠진 이름 목록과 `test_id` 를 싣는다. 브라우저를 띄우기 **전에** 막는다
+- [X] T069 [US3] `frontend/src/pages/ShareImport.tsx` 의 결과 화면에 「필요한 값 채우기」를 붙인다. **민감·비민감을 한 목록**에 두되 저장 위치가 다름을 구분해 보여 주고, 각 항목을 **이름 + 어느 테스트의 어느 스텝** 과 함께 보여 준다. `declared: false` 인 것은 「선언이 없어 보충했다」로 표시한다 (FR-040·FR-047·FR-048)
+- [X] T070 [US3] 값 입력은 `frontend/src/pages/SecretValues.tsx` 의 입력 구성요소를 **재사용**하고, 저장은 기존 `PUT /api/secrets/{name}` 으로 한다. 봉인 경로를 두 벌로 만들지 않는다 (research R13, contracts §8)
 - [ ] T071 [US3] `POST /api/share/import/commit` 의 `variable_values` 를 구현한다 — **비민감** 변수 값만 받아 테스트 정의에 기록한다. 민감 변수 이름이 오면 400 으로 거절한다 (FR-048, contracts §5)
 - [ ] T072 [US3] 키가 없을 때 키 생성 안내와 키 관리 화면 경로를 보여 준다. **가져오기 자체는 키 없이도 완료된다** — 막히는 것은 값 입력 시점이다 (FR-045). 나중에 채우는 경로(민감 → `SecretsRoute`, 비민감 → 테스트 편집 화면)도 결과에 안내한다 (FR-041)
 - [ ] T073 [US3] 값 입력 화면에서 민감 항목은 `PUT /api/secrets/{name}`(봉인), 비민감 항목은 테스트 정의 기록으로 **경로를 갈라** 저장하고, 화면이 어느 쪽인지 구분해 보여 주게 한다 (FR-048)

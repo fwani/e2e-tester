@@ -309,6 +309,13 @@ export interface TestListRow {
    * **식별자에서 유도한 값이다.** 저장된 필드가 아니다 (013 data-model §3).
    */
   group_prefix: string;
+  /**
+   * 값이 없어 **실행할 수 없는** 민감 변수 (019 FR-044).
+   *
+   * 목록이 누르기 전에 보여 주기 위한 것이다. 공유받은 테스트를 처음 여는 사람에게는
+   * 「눌렀더니 막혔다」와 「누르기 전에 보였다」의 차이가 크다.
+   */
+  missing_secrets?: string[];
 }
 
 /** 목록 위 그룹 띠가 그릴 것 (013 FR-440). */
@@ -1657,4 +1664,22 @@ export const shareImport = {
     get<SharePlanView>(`/api/share/import/plan/${encodeURIComponent(planId)}`),
 
   commit: (body: ShareCommitBody) => post<ShareReportView>("/api/share/import/commit", body),
+};
+
+/**
+ * 지금 실행할 수 있는가 (019 FR-044).
+ *
+ * `missing_secrets` 만 실행을 막는다. `empty_variables` 는 경고다 — 빈 문자열이 유효한
+ * 입력일 수 있고, 이것은 제품이 이미 쓰는 판정이다.
+ */
+export interface ReadinessView {
+  runnable: boolean;
+  missing_secrets: string[];
+  empty_variables: string[];
+  key_available: boolean;
+}
+
+export const readiness = {
+  get: (testId: string) =>
+    get<ReadinessView>(`/api/tests/${encodeURIComponent(testId)}/readiness`),
 };
