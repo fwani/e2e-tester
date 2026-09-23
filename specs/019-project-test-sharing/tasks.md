@@ -32,11 +32,11 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 **Purpose**: 새 패키지의 자리를 만들고, 이 기능의 **불변식을 강제하는 장치를 먼저 건다.**
 
-- [ ] T001 `backend/src/itb/sharing/__init__.py` 를 만들어 빈 패키지를 둔다. 모듈 목록과 각 모듈의 책임을 docstring 에 적는다 (plan.md Source Code 트리 기준)
-- [ ] T002 `backend/src/itb/sharing/limits.py` 에 이 기능 고유 상한을 둔다 — `MAX_BUNDLE_BYTES`(20MB), `MAX_BUNDLE_TESTS`(2000), `MAX_BUNDLE_GROUPS`(100), `SHARE_PLAN_TTL_SECONDS`(1800), `MAX_SHARE_PLANS`(8), `BUNDLE_MEDIA_TYPE`, `BUNDLE_SUFFIX`. **그룹당 999 는 두지 않고** `itb.domain.test_case.MAX_TEST_NUMBER` 를 참조한다는 사실을 docstring 에 적는다 (research R12)
-- [ ] T003 `backend/.importlinter` 에 계약 2건을 추가한다 — ① `execution-no-llm` 의 `source_modules` 에 `itb.sharing` 추가 (헌법 원칙 II) ② 신규 계약 `sharing-cannot-reach-secrets`: `itb.sharing` 이 `itb.secrets` 를 임포트하지 못하게 한다 (research R3)
-- [ ] T004 `backend/src/itb/api/errors.py` 의 `ErrorCode` 에 data-model.md §7 의 코드 11개를 추가한다 — `SHARE_EXPORT_EMPTY`, `SHARE_BUNDLE_TOO_LARGE`, `SHARE_BUNDLE_MALFORMED`, `SHARE_BUNDLE_UNSUPPORTED_VERSION`, `SHARE_BUNDLE_INVALID_TEST`, `SHARE_PLAN_NOT_FOUND`, `SHARE_PLAN_STALE`, `SHARE_IMPORT_BLOCKED`, `SHARE_IMPORT_FAILED`, `SHARE_IMPORT_PARTIAL`, `SECRET_VALUE_MISSING`
-- [ ] T005 `uv run lint-imports` 를 돌려 T003 의 두 계약이 **현재 상태에서 통과**하는지 확인한다. 통과하지 않으면 나머지 작업의 전제가 깨진 것이므로 여기서 멈추고 원인을 밝힌다
+- [X] T001 `backend/src/itb/sharing/__init__.py` 를 만들어 빈 패키지를 둔다. 모듈 목록과 각 모듈의 책임을 docstring 에 적는다 (plan.md Source Code 트리 기준)
+- [X] T002 `backend/src/itb/sharing/limits.py` 에 이 기능 고유 상한을 둔다 — `MAX_BUNDLE_BYTES`(20MB), `MAX_BUNDLE_TESTS`(2000), `MAX_BUNDLE_GROUPS`(100), `SHARE_PLAN_TTL_SECONDS`(1800), `MAX_SHARE_PLANS`(8), `BUNDLE_MEDIA_TYPE`, `BUNDLE_SUFFIX`. **그룹당 999 는 두지 않고** `itb.domain.test_case.MAX_TEST_NUMBER` 를 참조한다는 사실을 docstring 에 적는다 (research R12)
+- [X] T003 `backend/.importlinter` 에 계약 2건을 추가한다 — ① `execution-no-llm` 의 `source_modules` 에 `itb.sharing` 추가 (헌법 원칙 II) ② 신규 계약 `sharing-cannot-reach-secrets`: `itb.sharing` 이 `itb.secrets` 를 임포트하지 못하게 한다 (research R3)
+- [X] T004 `backend/src/itb/api/errors.py` 의 `ErrorCode` 에 data-model.md §7 의 코드 11개를 추가한다 — `SHARE_EXPORT_EMPTY`, `SHARE_BUNDLE_TOO_LARGE`, `SHARE_BUNDLE_MALFORMED`, `SHARE_BUNDLE_UNSUPPORTED_VERSION`, `SHARE_BUNDLE_INVALID_TEST`, `SHARE_PLAN_NOT_FOUND`, `SHARE_PLAN_STALE`, `SHARE_IMPORT_BLOCKED`, `SHARE_IMPORT_FAILED`, `SHARE_IMPORT_PARTIAL`, `SECRET_VALUE_MISSING`
+- [X] T005 `uv run lint-imports` 를 돌려 T003 의 두 계약이 **현재 상태에서 통과**하는지 확인한다. 통과하지 않으면 나머지 작업의 전제가 깨진 것이므로 여기서 멈추고 원인을 밝힌다
 
 **Checkpoint**: 계약이 걸렸다. 이후 누가 `itb.sharing` 에서 `itb.secrets` 를 끌어오면 빌드가 실패한다.
 

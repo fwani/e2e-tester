@@ -18,11 +18,27 @@ source_modules =
     itb.mirror
     itb.recording
     itb.portability
+    itb.sharing
 forbidden_modules =
     itb.llm
     itb.authoring
     anthropic
     claude_agent_sdk
+
+# ─── 019 — 공유 묶음에 민감 값이 들어갈 경로 자체를 없앤다 ──────────────────
+# 「담지 않기로 했다」는 약속은 리팩터링 한 번에 깨진다. 묶음을 만드는 코드가 암호문
+# 보관소에 닿을 수 없으면, 담고 싶어도 담을 수단이 없다. 누군가 편의를 위해 SecretStore 를
+# 끌어오는 순간 빌드가 실패한다 (019 research R3).
+#
+# 「이 변수에 이미 값이 있는가」 같은 교차 조회는 라우터가 맡는다 — itb.api 는 양쪽을 다
+# 임포트할 수 있고, itb.sharing 은 이름만 다루고 값에 닿지 않는다.
+[importlinter:contract:sharing-cannot-reach-secrets]
+name = sharing must not reach the secret store (019 FR-004)
+type = forbidden
+source_modules =
+    itb.sharing
+forbidden_modules =
+    itb.secrets
 
 # ─── 헌법 원칙 I — domain 은 순수해야 한다 ──────────────────────────────────
 # 도메인 모델이 무엇도 임포트하지 않으므로 단일 Step 모델이 다른 계층에 오염되지 않는다.

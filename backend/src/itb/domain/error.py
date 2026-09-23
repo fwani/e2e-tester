@@ -271,6 +271,98 @@ class ErrorCode(StrEnum):
     초안은 저장되는 순간 사라지므로(FR-033), 오래된 화면이 남은 식별자를 보내면 여기로 온다.
     """
 
+    # 공유 묶음 (019) — 내보내기·가져오기·값 인계
+    #
+    # **엑셀 통로(014)의 코드를 재사용하지 않는다.** 두 통로는 만들어 내는 것이 다르고
+    # (초안 vs 실행 가능한 테스트) 실패했을 때 사용자가 할 일도 다르다. 한 코드로 뭉치면
+    # 화면이 "무엇이 실패했는지" 를 구별하지 못한다.
+    SHARE_EXPORT_EMPTY = "SHARE_EXPORT_EMPTY"
+    """내보낼 테스트가 하나도 없다 (019 FR-009).
+
+    빈 프로젝트이거나, 고른 테스트가 전부 읽을 수 없는 경우다. **파일을 만들지 않는다** —
+    비어 있는 묶음을 건네면 받는 쪽이 "가져왔는데 아무것도 없다" 를 겪는다.
+    """
+
+    SHARE_BUNDLE_TOO_LARGE = "SHARE_BUNDLE_TOO_LARGE"
+    """묶음이 상한을 넘었다 (019 research R12).
+
+    바이트·테스트 수·그룹 수 중 무엇인지 ``detail.kind`` 가 말한다. 바이트는 **해석을
+    시작하기 전에** 판정한다 — 막는 시점이 늦으면 막지 않은 것과 같다.
+    """
+
+    SHARE_BUNDLE_MALFORMED = "SHARE_BUNDLE_MALFORMED"
+    """묶음을 해석할 수 없다 (019 FR-030).
+
+    YAML 파싱 실패, 최상위가 매핑이 아님, **YAML 별칭 사용**. 별칭을 거절하는 이유는
+    별칭 폭탄(billion laughs)이 수백 바이트로 수 GB 를 전개할 수 있기 때문이다 — 정상적인
+    묶음은 별칭을 쓰지 않으므로 잃는 것이 없다 (019 research R4).
+    """
+
+    SHARE_BUNDLE_UNSUPPORTED_VERSION = "SHARE_BUNDLE_UNSUPPORTED_VERSION"
+    """이 도구가 읽을 수 없는 묶음 형식 버전이다 (019 FR-030 · US2 AS5).
+
+    **부분 복원을 시도하지 않는다.** 모르는 필드를 버리고 억지로 복원하면 실행되지 않는
+    테스트가 조용히 만들어진다.
+    """
+
+    SHARE_BUNDLE_INVALID_TEST = "SHARE_BUNDLE_INVALID_TEST"
+    """묶음 안 테스트 정의가 검증을 통과하지 못했다 (019 FR-023).
+
+    ``detail.problems`` 가 **어느 테스트의 무엇이** 문제인지 전부 싣는다. 한 건이라도
+    실패하면 가져오기 전체를 거부한다 — 일부만 살려 들이면 "가져왔는데 왜 3개뿐이지" 를
+    사용자가 추적할 수 없다.
+
+    **선언 없는 변수 참조는 여기 오지 않는다.** 그것은 거부가 아니라 보충 대상이다
+    (019 FR-047).
+    """
+
+    SHARE_PLAN_NOT_FOUND = "SHARE_PLAN_NOT_FOUND"
+    """가져오기 계획이 만료됐거나 없다 (019 contracts §4).
+
+    계획은 서버 메모리에 30분만 있다. 디스크에 쓰지 않는 이유는 확정 전에 아무것도 만들지
+    않아야 하는데 디스크에 쓰면 그 자체가 만든 것이 되기 때문이다.
+    """
+
+    SHARE_PLAN_STALE = "SHARE_PLAN_STALE"
+    """확정하려는 계획이 지금의 대상 프로젝트와 맞지 않는다 (019 contracts §5).
+
+    미리보기를 본 뒤 다른 창에서 테스트를 만들었을 수 있다. ``detail.plan`` 에 **다시 세운
+    계획**을 실어 보내므로 화면은 그것으로 갈아 끼우면 된다. 조용히 옛 계획대로 만들면
+    사용자가 본 적 없는 결과가 나온다.
+    """
+
+    SHARE_IMPORT_BLOCKED = "SHARE_IMPORT_BLOCKED"
+    """확정할 수 없는 계획이다 (019 FR-024).
+
+    그룹 용량 부족, 접두어 확보 실패 등 ``blocking`` 이 비어 있지 않다. 계획 단계에서 이미
+    보여 준 사실이므로, 여기까지 온 것은 화면이 잠금을 걸지 않았거나 그 사이 상황이 바뀐
+    것이다.
+    """
+
+    SHARE_IMPORT_FAILED = "SHARE_IMPORT_FAILED"
+    """가져오기가 실패했고 **이미 한 것을 전부 되돌렸다** (019 FR-024).
+
+    대상 프로젝트는 요청 전과 같다. 호출자는 이것을 「아무 일도 일어나지 않았다」로 다뤄야
+    한다. :class:`itb.storage.test_moves.AllOrNothingError` 와 같은 판단이다.
+    """
+
+    SHARE_IMPORT_PARTIAL = "SHARE_IMPORT_PARTIAL"
+    """가져오기가 실패했고 **되돌리지도 못했다** (019 FR-024).
+
+    ``detail.stranded`` 가 무엇이 남았는지 말한다. :data:`SHARE_IMPORT_FAILED` 와 뭉치면
+    사용자는 「다시 시도하면 되는가」에 답할 수 없다.
+    """
+
+    SECRET_VALUE_MISSING = "SECRET_VALUE_MISSING"
+    """실행에 필요한 민감 값이 없다 (019 FR-044).
+
+    **브라우저를 띄우기 전에** 막는다. 예전에는 그 스텝에 도달해서야 실패했고, 공유받은
+    테스트를 처음 돌리는 사람은 자기 환경 문제인지 테스트 문제인지 구분할 수 없었다.
+
+    ``detail.missing`` 이 어느 변수인지 말한다. **값이 빈 비민감 변수는 여기 오지 않는다** —
+    빈 문자열이 유효한 입력일 수 있어 막지 않고 경고한다.
+    """
+
     # 미지원
     NOT_SUPPORTED = "NOT_SUPPORTED"
 
@@ -365,6 +457,19 @@ CATEGORY: dict[ErrorCode, Category] = {
     ErrorCode.IMPORT_CAPACITY_EXCEEDED: Category.BLOCKED,
     ErrorCode.IMPORT_FAILED: Category.BLOCKED,
     ErrorCode.IMPORT_PARTIAL: Category.BLOCKED,
+    # 공유 묶음 (019) — 전부 blocked 다. 실패해도 자산은 원래 자리 아니면 새 자리에 있고,
+    # 어디 있는지 말해 주므로 사용자가 할 일이 있다.
+    ErrorCode.SHARE_EXPORT_EMPTY: Category.BLOCKED,
+    ErrorCode.SHARE_BUNDLE_TOO_LARGE: Category.BLOCKED,
+    ErrorCode.SHARE_BUNDLE_MALFORMED: Category.BLOCKED,
+    ErrorCode.SHARE_BUNDLE_UNSUPPORTED_VERSION: Category.BLOCKED,
+    ErrorCode.SHARE_BUNDLE_INVALID_TEST: Category.BLOCKED,
+    ErrorCode.SHARE_PLAN_NOT_FOUND: Category.BLOCKED,
+    ErrorCode.SHARE_PLAN_STALE: Category.BLOCKED,
+    ErrorCode.SHARE_IMPORT_BLOCKED: Category.BLOCKED,
+    ErrorCode.SHARE_IMPORT_FAILED: Category.BLOCKED,
+    ErrorCode.SHARE_IMPORT_PARTIAL: Category.BLOCKED,
+    ErrorCode.SECRET_VALUE_MISSING: Category.BLOCKED,
     ErrorCode.DRAFT_NOT_FOUND: Category.BLOCKED,
     # 미지원 — 다른 방법을 쓰면 된다
     ErrorCode.NOT_SUPPORTED: Category.BLOCKED,
@@ -470,6 +575,30 @@ NEXT_ACTION: dict[ErrorCode, str] = {
     ),
     ErrorCode.IMPORT_FAILED: "아무것도 만들어지지 않았습니다. 원인을 고친 뒤 다시 시도하세요.",
     ErrorCode.IMPORT_PARTIAL: "표시된 항목이 어디 있는지 확인한 뒤 손으로 정리하세요.",
+    # 공유 묶음 (019)
+    ErrorCode.SHARE_EXPORT_EMPTY: "내보낼 테스트를 먼저 만들거나 고르세요.",
+    ErrorCode.SHARE_BUNDLE_TOO_LARGE: (
+        "테스트를 나눠서 여러 번에 걸쳐 공유하세요."
+    ),
+    ErrorCode.SHARE_BUNDLE_MALFORMED: (
+        "보낸 분에게 파일을 다시 받으세요. 전송 중 손상됐을 수 있습니다."
+    ),
+    ErrorCode.SHARE_BUNDLE_UNSUPPORTED_VERSION: (
+        "이 도구를 최신 버전으로 올린 뒤 다시 시도하세요."
+    ),
+    ErrorCode.SHARE_BUNDLE_INVALID_TEST: (
+        "표시된 테스트를 보낸 분에게 확인하세요. 아무것도 만들어지지 않았습니다."
+    ),
+    ErrorCode.SHARE_PLAN_NOT_FOUND: "미리보기가 만료됐습니다. 파일을 다시 고르세요.",
+    ErrorCode.SHARE_PLAN_STALE: "바뀐 내용을 확인한 뒤 다시 확정하세요.",
+    ErrorCode.SHARE_IMPORT_BLOCKED: (
+        "막고 있는 항목을 해결한 뒤 다시 시도하세요."
+    ),
+    ErrorCode.SHARE_IMPORT_FAILED: (
+        "아무것도 만들어지지 않았습니다. 원인을 고친 뒤 다시 시도하세요."
+    ),
+    ErrorCode.SHARE_IMPORT_PARTIAL: "표시된 항목이 어디 있는지 확인한 뒤 손으로 정리하세요.",
+    ErrorCode.SECRET_VALUE_MISSING: "표시된 변수의 값을 채운 뒤 실행하세요.",
     ErrorCode.DRAFT_NOT_FOUND: "목록을 새로 고친 뒤 다시 시도하세요.",
     ErrorCode.NOT_SUPPORTED: "지원되는 다른 방법을 쓰세요.",
     ErrorCode.INTERNAL_ERROR: (
