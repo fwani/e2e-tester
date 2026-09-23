@@ -190,12 +190,12 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 ### Implementation
 
-- [ ] T080 [US4] `backend/src/itb/sharing/builder.py` 에 `review_export(project, tests, unreadable) -> ExportReview` 를 구현한다 — `test_count`, `group_count`, `start_urls`, `plaintext_values`, `required_values`, `unreadable` (contracts §1)
-- [ ] T081 [US4] `plaintext_values` 는 **마스킹하지 않는다.** 가려 놓으면 사번이 섞여 있어도 발견할 수 없다 — 이 화면의 목적이 값을 보여 주는 것이다. 판단 근거를 코드 주석에 남긴다 (research R11)
-- [ ] T082 [US4] `backend/src/itb/api/routes/sharing.py` 에 `GET /api/share/export/preview` 를 구현한다. `test_ids` 쿼리를 받는다 (contracts §1)
-- [ ] T083 [US4] `frontend/src/pages/ShareExport.tsx` 에 확인 단계를 넣는다 — 요약을 본 뒤에만 내려받기가 활성화된다. 취소하면 파일이 만들어지지 않는다 (US4 AS2)
-- [ ] T084 [US4] 시작 URL 을 「함께 나가는 정보」로 표시한다 (US4 AS3)
-- [ ] T085 [P] [US4] `frontend/src/pages/__tests__/ShareExportPreview.test.tsx` — 확인 전에는 내려받기가 막히고, 평문 값이 가려지지 않은 채 나열되는지
+- [X] T080 [US4] `backend/src/itb/sharing/builder.py` 에 `review_export(project, tests, unreadable) -> ExportReview` 를 구현한다 — `test_count`, `group_count`, `start_urls`, `plaintext_values`, `required_values`, `unreadable` (contracts §1)
+- [X] T081 [US4] `plaintext_values` 는 **마스킹하지 않는다.** 가려 놓으면 사번이 섞여 있어도 발견할 수 없다 — 이 화면의 목적이 값을 보여 주는 것이다. 판단 근거를 코드 주석에 남긴다 (research R11)
+- [X] T082 [US4] `backend/src/itb/api/routes/sharing.py` 에 `GET /api/share/export/preview` 를 구현한다. `test_ids` 쿼리를 받는다 (contracts §1)
+- [X] T083 [US4] `frontend/src/pages/ShareExport.tsx` 에 확인 단계를 넣는다 — 요약을 본 뒤에만 내려받기가 활성화된다. 취소하면 파일이 만들어지지 않는다 (US4 AS2)
+- [X] T084 [US4] 시작 URL 을 「함께 나가는 정보」로 표시한다 (US4 AS3)
+- [X] T085 [P] [US4] `frontend/src/pages/__tests__/ShareExportPreview.test.tsx` — 확인 전에는 내려받기가 막히고, 평문 값이 가려지지 않은 채 나열되는지
 
 **Checkpoint**: 실수로 내보내는 경로가 닫혔다.
 
@@ -210,10 +210,10 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 ### Tests
 
-- [ ] T086 [P] [US5] `backend/tests/integration/test_sharing_merge.py` — **C6** `TC-001` 충돌 시 둘 다 남고 `renumbered` 에 `TC-001 → TC-00N` 이 보고되는지 (FR-025, SC-005)
-- [ ] T087 [P] [US5] `backend/tests/unit/test_sharing_group_mapping.py` — research R6 의 표 4행 각각 — 같은 이름 재사용, 신규 생성, 접두어 충돌 시 대체 접두어, 확보 실패 시 건너뜀 — 을 확인한다
-- [ ] T088 [P] [US5] `backend/tests/unit/test_sharing_capacity.py` — 그룹 999 가 찼을 때 **계획 단계에서** `blocking` 에 잡히고 확정 중 바닥나는 상태가 생기지 않는지 (research R6)
-- [ ] T089 [P] [US5] `backend/tests/abnormal/test_sharing_merge_failure.py` — 병합 도중 실패 시 새 파일이 하나도 남지 않는지 (US5 AS4)
+- [X] T086 [P] [US5] `backend/tests/integration/test_sharing_merge.py` — **C6** `TC-001` 충돌 시 둘 다 남고 `renumbered` 에 `TC-001 → TC-00N` 이 보고되는지 (FR-025, SC-005)
+- [X] T087 [P] [US5] `backend/tests/unit/test_sharing_group_mapping.py` — research R6 의 표 4행 각각 — 같은 이름 재사용, 신규 생성, 접두어 충돌 시 대체 접두어, 확보 실패 시 건너뜀 — 을 확인한다
+- [X] T088 [P] [US5] `backend/tests/unit/test_sharing_capacity.py` — 그룹 999 가 찼을 때 **계획 단계에서** `blocking` 에 잡히고 확정 중 바닥나는 상태가 생기지 않는지 (research R6)
+- [X] T089 [P] [US5] `backend/tests/abnormal/test_sharing_merge_failure.py` — 병합 도중 실패 시 새 파일이 하나도 남지 않는지 (US5 AS4)
 
 ### Implementation
 
