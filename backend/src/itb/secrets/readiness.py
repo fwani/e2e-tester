@@ -18,7 +18,11 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from itb.domain.test_case import Test, undefined_variable_references
+from itb.domain.test_case import (
+    Test,
+    referenced_variable_names,
+    undefined_variable_references,
+)
 from itb.secrets.store import SecretStore
 
 
@@ -61,9 +65,15 @@ def assess(
     """
     environ = os.environ if env is None else env
 
+    # **참조하는** 민감 변수만 본다 (FR-044 의 문구 그대로).
+    #
+    # 선언만 있고 어느 스텝도 쓰지 않는 민감 변수로 실행을 막으면, 사용자는 채울 목록에도
+    # 없는 것 때문에 막힌다 — 「채워야 할 것」을 만드는 `collect_required_values` 는
+    # 쓰이는 자리가 없는 변수를 담지 않기 때문이다. 두 판정이 어긋나면 안내 없는 차단이 된다.
+    referenced = referenced_variable_names(test.steps)
     missing = [
         name
-        for name in sorted(test.sensitive_variable_names())
+        for name in sorted(test.sensitive_variable_names() & referenced)
         if environ.get(name) is None and not (store is not None and store.has(name))
     ]
 

@@ -19,6 +19,8 @@ import pathlib
 import shutil
 from dataclasses import dataclass, field
 
+from pydantic import ValidationError
+
 from itb.domain.test_case import ImportProvenance, Project, Test, TestGroup
 from itb.sharing.planner import PlannedValue, SharePlan
 from itb.storage import registry
@@ -92,7 +94,17 @@ def _prepared_tests(
     `PUT /api/secrets/{name}` 하나뿐이다.
     """
     by_source = {t.source_id: t for t in plan.tests if t.status == "create"}
-    filled = variable_values or {}
+    fillable = {v.name for v in plan.required_values if not v.sensitive}
+    filled = {
+        name: value for name, value in (variable_values or {}).items() if name in fillable
+    }
+    """**채울 목록에 오른 비민감 변수만** 받는다.
+
+    두 가지를 막는다. ① 클라이언트가 임의의 이름을 보내 값이 있던 변수를 갈아 끼우는 것
+    ② 민감 변수가 평문으로 정의에 들어가는 것 — 라우터가 앞에서 거절하지만, 여기서도
+    자리를 막아 두 곳 중 하나만 고쳐지는 날을 없앤다.
+    """
+
     stamp = dt.datetime.now(dt.UTC)
 
     out: list[tuple[Test, str]] = []
@@ -101,9 +113,12 @@ def _prepared_tests(
         if entry is None:
             continue
 
+        # **값이 비어 있는 변수에만 채운다.** 같은 이름이 다른 테스트에서 값을 갖고 있을 수
+        # 있고(그래서 채울 목록에는 올랐다), 그 값을 이 입력으로 갈아 끼우면 사용자가 손댄
+        # 적 없는 테스트가 조용히 바뀐다.
         variables = [
             var.model_copy(update={"value": filled[var.name]})
-            if not var.sensitive and var.name in filled
+            if not var.sensitive and not var.value and var.name in filled
             else var
             for var in test.variables
         ]
@@ -119,8 +134,21 @@ def _prepared_tests(
                 "updated_at": stamp,
             }
         )
+        # `model_copy` 는 검증을 다시 돌리지 않는다. 검증 없이 저장하면 **읽을 수 없는
+        # 정의 파일**이 만들어지고(예: 상한을 넘는 값), 가져오기는 성공을 보고한다.
+        try:
+            prepared = Test.model_validate(prepared.model_dump(mode="json"))
+        except ValidationError as exc:
+            msg = f"{test.id} 의 값을 저장할 수 없습니다: {_first_message(exc)}"
+            raise ApplyError(msg) from exc
         out.append((prepared, entry.group_prefix))
     return out
+
+
+def _first_message(exc: ValidationError) -> str:
+    first = exc.errors()[0]
+    where = ".".join(str(p) for p in first.get("loc", ()))
+    return f"{where}: {first.get('msg', '')}" if where else str(first.get("msg", ""))
 
 
 def _report(
@@ -213,8 +241,12 @@ def apply_new_project(
         prepared = _prepared_tests(plan, variable_values=variable_values)
         for test, _prefix in prepared:
             repo.write_test(test)
-    except (ProjectError, OSError) as exc:
+    except Exception as exc:  # noqa: BLE001 — 무엇이든 임시 자리를 치우고 사유를 나른다
+        # **무엇이 터지든 임시 자리를 치운다.** 좁게 잡으면 예상 못 한 예외에서
+        # `.<이름>.importing` 이 남고, 다음 가져오기의 이름 충돌 계산에까지 끼어든다.
         shutil.rmtree(staging, ignore_errors=True)
+        if isinstance(exc, ApplyError):
+            raise
         msg = f"프로젝트를 만들지 못했습니다: {exc}. 아무것도 만들어지지 않았습니다."
         raise ApplyError(msg) from exc
 
@@ -225,12 +257,22 @@ def apply_new_project(
         msg = f"프로젝트를 제자리에 놓지 못했습니다: {exc}. 아무것도 만들어지지 않았습니다."
         raise ApplyError(msg) from exc
 
-    moved = ProjectRepository.open(final)
     # **여기서 등록한다.** 옮기기가 끝난 뒤여야 목록과 디스크가 어긋나지 않는다.
     with contextlib.suppress(OSError):
         registry.remember(final, project_name, origin="managed")
 
-    return _report(plan, moved, prepared, project.groups)
+    try:
+        moved = ProjectRepository.open(final)
+        return _report(plan, moved, prepared, project.groups)
+    except Exception as exc:  # noqa: BLE001 — 자산은 이미 제자리에 있다
+        # **여기서는 되돌리지 않는다.** `os.replace` 가 끝났으므로 프로젝트는 완성된 채
+        # 제자리에 있고, 지우면 방금 만든 사용자 자산을 파괴하는 것이 된다. 「만들어졌지만
+        # 결과를 읽지 못했다」를 그대로 말한다 — 사용자는 목록에서 그것을 열면 된다.
+        msg = (
+            f"프로젝트를 만들었지만 결과를 읽지 못했습니다: {exc} "
+            "목록에서 확인하세요."
+        )
+        raise ApplyPartialError(msg, [str(final)]) from exc
 
 
 # ─── 기존 프로젝트 (US5) ────────────────────────────────────────────────────

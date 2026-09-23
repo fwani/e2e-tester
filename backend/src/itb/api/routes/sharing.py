@@ -357,7 +357,10 @@ def _repaired_view(item: reader.RepairedVariable) -> RepairedVariableView:
 class CommitRequest(BaseModel):
     model_config = _VIEW_CONFIG
     plan_id: str = Field(min_length=1, max_length=64)
-    project_name: Annotated[str | None, StringConstraints(strip_whitespace=True)] = None
+    project_name: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, max_length=100)
+    ] = None
+    """`Project.name` 과 같은 상한이다. 여기서 막지 않으면 저장 시점에 터져 500 이 된다."""
     default_start_url: str | None = Field(default=None, pattern=r"^https?://", max_length=2000)
     variable_values: dict[str, str] = Field(default_factory=dict)
     """**비민감** 변수의 값만 받는다 (FR-048).
@@ -488,19 +491,19 @@ def _build_plan(
 
     if target == "current" and repo is not None and project is not None:
         groups = list(project.groups)
-        existing_tests, _problems = repo.list_tests()
-        # **파일 이름에서 읽은 접두어까지 센다.** 그룹 목록에 없는 접두어를 가진 테스트가
-        # 있을 수 있고(손으로 옮긴 경우), 그것을 빠뜨리면 번호가 겹친다.
+        # **파일 이름에서 읽는다.** `list_tests` 는 읽을 수 있는 정의만 주므로, 깨진
+        # 파일만 쓰고 있는 접두어를 빠뜨린다 — 그러면 그 번호를 새로 배정했다가 확정
+        # 직전 검증에서 「이미 있는 식별자」로 전체가 실패한다.
         prefixes = {RESERVED_PREFIX}
         prefixes |= {g.prefix for g in project.groups}
-        prefixes |= {t.id.split("-", 1)[0] for t in existing_tests}
+        prefixes |= {p.name.split("-", 1)[0] for p in repo.list_test_paths()}
         used = {prefix: repo.used_numbers(prefix) for prefix in prefixes}
 
     # 표시 이름과 디렉터리 이름은 다른 것이다 — 디렉터리 충돌은
     # `allocate_workspace_path` 가 확정 시점에 따로 감당한다 (applier).
     reserved = _free_project_name(read.bundle.project.name) if target == "new" else None
 
-    return planner.plan_import(
+    plan = planner.plan_import(
         read,
         target=target,  # type: ignore[arg-type]
         file_name=file_name,
@@ -510,6 +513,9 @@ def _build_plan(
         reserved_project_name=reserved,
         reimported_tests=_reimported(repo if target == "current" else None, file_name),
     )
+    # 어느 프로젝트를 보고 세운 계획인지 남긴다 (B1). 확정 때 그것이 바뀌었으면 멈춘다.
+    plan.target_root = _root_of(repo if target == "current" else None)
+    return plan
 
 
 def _free_project_name(wanted: str) -> str:
@@ -595,13 +601,15 @@ async def commit_import_route(body: CommitRequest, state: State) -> ShareReportV
     fresh = _build_plan(
         stored.bundle, target=stored.target, file_name=stored.file_name, state=state
     )
-    if _differs(stored, fresh):
+    target_repo = state.repository if fresh.target == "current" else None
+    if _differs(stored, fresh) or stored.target_root != _root_of(target_repo):
+        state.share_plans.drop(body.plan_id)
         state.share_plans.put(fresh)
         raise ApiError(
             409,
             ErrorCode.SHARE_PLAN_STALE,
             "그 사이 프로젝트가 바뀌어 가져올 내용이 달라졌습니다. 다시 확인하세요.",
-            {"plan": _plan_view(fresh, state.repository).model_dump(mode="json")},
+            {"plan": _plan_view(fresh, target_repo).model_dump(mode="json")},
         )
 
     if fresh.blocking:
@@ -658,8 +666,17 @@ def _reject_sensitive_values(plan: planner.SharePlan, values: dict[str, str]) ->
         )
 
 
+def _root_of(repo: ProjectRepository | None) -> str | None:
+    return str(repo.paths.root) if repo is not None else None
+
+
 def _differs(before: planner.SharePlan, after: planner.SharePlan) -> bool:
-    """예고와 지금이 다른가. **만들어질 것**만 본다 — 시각·계획 ID 는 언제나 다르다."""
+    """예고와 지금이 다른가. **만들어질 것**만 본다 — 시각·계획 ID 는 언제나 다르다.
+
+    **대상 프로젝트가 바뀐 경우는 이 함수가 보지 않는다.** 배치 모양이 우연히 같을 수 있기
+    때문이다(양쪽 다 그 접두어에 테스트가 없는 경우). 호출부가 `target_root` 를 따로
+    비교한다 — 미리보기를 본 뒤 다른 프로젝트를 열었다면 그것은 「같은 계획」이 아니다.
+    """
     def shape(plan: planner.SharePlan) -> object:
         return (
             [(t.source_id, t.target_id, t.status) for t in plan.tests],

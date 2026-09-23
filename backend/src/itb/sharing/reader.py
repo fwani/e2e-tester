@@ -209,10 +209,13 @@ def _repair_variables(raw_tests: list[object]) -> list[RepairedVariable]:
         if not isinstance(steps, list):
             continue
 
+        declared_raw = entry.get("variables")
+        if declared_raw is not None and not isinstance(declared_raw, list):
+            # 형식이 이상하면 손대지 않는다. 사전이나 문자열을 `list()` 로 감싸면 키나
+            # 글자가 변수처럼 들어가고, 그 뒤 검증 오류가 실제 원인과 무관해진다.
+            continue
         declared = {
-            v.get("name")
-            for v in (entry.get("variables") or [])
-            if isinstance(v, dict)
+            v.get("name") for v in (declared_raw or []) if isinstance(v, dict)
         }
         referenced = referenced_variable_names(
             [_LooseStep(s) for s in steps if isinstance(s, dict)]  # type: ignore[arg-type]
@@ -222,7 +225,7 @@ def _repair_variables(raw_tests: list[object]) -> list[RepairedVariable]:
         if not missing:
             continue
 
-        variables = list(entry.get("variables") or [])
+        variables = list(declared_raw or [])
         test_id = str(entry.get("id", "?"))
         for name in missing:
             sensitive = name.startswith(SENSITIVE_VARIABLE_PREFIX)
@@ -272,6 +275,7 @@ def read_bundle(data: bytes) -> ReadBundle:
         raise BundleMalformedError(msg) from exc
 
     _check_dsl_versions(bundle)
+    _check_unique_ids(bundle)
 
     # 매니페스트의 요약을 **믿지 않는다.** 파일이 손으로 편집될 수 있으므로 정의에서
     # 다시 계산하고, 보충한 것은 `declared=False` 로 표시한다 (research R7).
@@ -289,6 +293,24 @@ def read_bundle(data: bytes) -> ReadBundle:
     ]
 
     return ReadBundle(bundle=bundle, repaired=repaired)
+
+
+def _check_unique_ids(bundle: ShareBundle) -> None:
+    """묶음 안에서 테스트 식별자가 겹치면 거절한다.
+
+    **겹치면 하나가 조용히 사라진다.** 계획과 확정이 `source_id` 를 키로 쓰는 사전을
+    만들기 때문이다 — 뒤 항목이 앞 항목을 덮고, 계획은 2건을 예고했는데 1건만 만들어지며
+    결과는 2건을 만들었다고 말한다. 두 묶음을 손으로 이어 붙이면 실제로 이 모양이 된다.
+
+    `Test` 모델은 자기 자신만 검증하므로 여기서 본다. 사용자가 할 수 있는 일은 「보낸
+    분에게 다시 받으세요」이고, 그것은 손상된 파일과 같은 처지다.
+    """
+    seen: set[str] = set()
+    duplicated = sorted({t.id for t in bundle.tests if t.id in seen or seen.add(t.id)})
+    if duplicated:
+        raise InvalidTestError(
+            [f"{tid}: 묶음 안에 같은 식별자가 둘 이상 있습니다" for tid in duplicated]
+        )
 
 
 def _check_dsl_versions(bundle: ShareBundle) -> None:

@@ -115,6 +115,13 @@ class SharePlan:
     bundle: ReadBundle
     target_project_name: str | None = None
     project_renamed_from: str | None = None
+    target_root: str | None = None
+    """어느 프로젝트를 보고 세운 계획인가 (`target="current"` 일 때만).
+
+    확정은 이것이 그대로인지 확인한다. 미리보기를 본 뒤 사용자가 다른 프로젝트를 열면
+    배치 모양이 우연히 같을 수 있고, 그러면 **미리보기와 다른 프로젝트에** 가져오기가
+    적용된다. 라우터가 채운다 — 이 모듈은 저장소를 알지 못한다.
+    """
     groups: list[GroupPlan] = field(default_factory=list)
     tests: list[TestPlan] = field(default_factory=list)
     required_values: list[PlannedValue] = field(default_factory=list)

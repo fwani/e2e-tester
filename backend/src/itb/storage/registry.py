@@ -254,6 +254,14 @@ def scan_workspace(root: pathlib.Path | None = None) -> list[ProjectEntry]:
 
     found: list[ProjectEntry] = []
     for child in sorted(base.iterdir()):
+        # **숨김 디렉터리는 프로젝트가 아니다** (019).
+        #
+        # 가져오기는 임시 자리(`.<이름>.importing`)에 프로젝트를 완성한 뒤 옮긴다. 그
+        # 임시 자리에도 `itb-project.yaml` 이 있으므로, 옮기기 전에 서버가 죽으면 반쯤
+        # 만들어진 것이 **목록에 유령으로 뜬다.** 사용자는 그것을 열 수 있고, 열면 테스트가
+        # 몇 개 빠져 있다.
+        if child.name.startswith("."):
+            continue
         if not (child / PROJECT_FILE).exists():
             continue
         # 레지스트리에 없는 항목의 정렬 기준. 실제로 연 시각은 아니다.

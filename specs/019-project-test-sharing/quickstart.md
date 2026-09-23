@@ -357,17 +357,18 @@ curl -s -X POST localhost:8001/api/share/import/plan -F 'file=@/tmp/huge.yaml' -
 
 ## 7. 완료 판정
 
-아래가 전부 참이어야 한다.
+아래가 전부 참이어야 한다. **2026-09-23 구현 시점의 판정을 함께 적는다** — 「전부 통과」만
+적힌 기록은 다음 사람이 무엇을 걸었는지 알 수 없게 한다.
 
-- [ ] 1장의 자동 검사가 모두 통과한다 (특히 `lint-imports`)
-- [ ] 2-3 에서 암호문·평문 비밀값이 **0건** 발견된다 (SC-004)
-- [ ] 3-3 에서 스텝이 로케이터 후보까지 완전히 일치한다
-- [ ] 3-5 의 세 가지 나쁜 파일 모두에서 디스크가 그대로다 (SC-006)
-- [ ] 4-1 에서 브라우저가 뜨지 않고 막힌다 (FR-044) — **민감 변수만**. 빈 비민감 변수는 막지 않는다
-- [ ] 3-4-1 에서 선언 없는 참조가 거부되지 않고 채울 목록에 나타난다 (FR-047)
-- [ ] 4-4 에서 원본과 실행 결과가 일치한다 (SC-003)
-- [ ] 5장에서 기존 테스트가 하나도 사라지지 않는다 (SC-005)
-- [ ] 6장에서 50건 규모가 10초 안에 끝나고 화면이 멈추지 않는다 (SC-008)
-- [ ] SC-007(원인 파악 가능성)은 **수동 확인 항목**이다 — 자동 검증이 불가능하므로 결과를 적어 둔다
-- [ ] 2-1 → 2-2 를 화면에서 3회 조작 이내·1분 이내로 끝낼 수 있다 (SC-001)
-- [ ] 3-1 → 4-3 을 화면에서 5분 이내로 끝낼 수 있다 (SC-002)
+- [X] 1장의 자동 검사가 모두 통과한다 (특히 `lint-imports`) — 계약 4건 KEPT, ruff 통과, 스키마 드리프트 없음
+- [X] 2-3 에서 암호문·평문 비밀값이 **0건** 발견된다 (SC-004) — `test_sharing_export.py::ShareExportSecretLeakTests`
+- [X] 3-3 에서 스텝이 로케이터 후보까지 완전히 일치한다 — `test_sharing_roundtrip.py`, `test_share_roundtrip.py`
+- [X] 3-5 의 세 가지 나쁜 파일 모두에서 디스크가 그대로다 (SC-006) — `test_sharing_bad_bundle.py` 14건
+- [X] 4-1 에서 브라우저가 뜨지 않고 막힌다 (FR-044) — `test_sharing_readiness.py::SessionGuardTests` (세션이 늘지 않음을 확인)
+- [X] 3-4-1 에서 선언 없는 참조가 거부되지 않고 채울 목록에 나타난다 (FR-047) — `test_sharing_repair.py` 8건
+- [X] 4-4 에서 원본과 실행 결과가 일치한다 (SC-003) — `test_share_roundtrip.py` (실제 녹화 → 재실행 pass)
+- [X] 5장에서 기존 테스트가 하나도 사라지지 않는다 (SC-005) — `test_sharing_merge.py` 11건
+- [X] 6장에서 50건 규모가 10초 안에 끝난다 (SC-008) — `test_sharing_performance.py`. **화면이 멈추지 않는가는 사람 판정이다** (아래 S-2)
+- [ ] SC-007 — **미검증(사람 판정 필요)**. [docs/PENDING-HUMAN-VERIFICATION.md](../../docs/PENDING-HUMAN-VERIFICATION.md) §22 S-3
+- [ ] SC-001 — **미검증(사람 판정 필요)**. PENDING-HUMAN-VERIFICATION §22 S-1
+- [ ] SC-002 — **미검증(사람 판정 필요)**. PENDING-HUMAN-VERIFICATION §22 S-2

@@ -158,7 +158,10 @@ def _plaintext_values(tests: list[Test]) -> list[PlaintextValue]:
                 text = step_field_text(step, name)
                 if not text:
                     continue
-                if VARIABLE_REFERENCE_PATTERN.fullmatch(text.strip()):
+                # 참조를 걷어내고도 남는 것이 있어야 평문이다. `fullmatch` 로는
+                # `{{A}}{{B}}` 처럼 참조가 둘 이상인 값을 평문으로 잘못 세고, 그러면
+                # 목록이 시끄러워져 **진짜 새는 값의 발견율이 떨어진다.**
+                if not VARIABLE_REFERENCE_PATTERN.sub("", text).strip():
                     continue
                 shown = text[:MAX_PLAINTEXT_PREVIEW_CHARS]
                 out.append(
