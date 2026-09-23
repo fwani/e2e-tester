@@ -163,12 +163,12 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 - [X] T068 [US3] 409 응답의 `detail` 에 빠진 이름 목록과 `test_id` 를 싣는다. 브라우저를 띄우기 **전에** 막는다
 - [X] T069 [US3] `frontend/src/pages/ShareImport.tsx` 의 결과 화면에 「필요한 값 채우기」를 붙인다. **민감·비민감을 한 목록**에 두되 저장 위치가 다름을 구분해 보여 주고, 각 항목을 **이름 + 어느 테스트의 어느 스텝** 과 함께 보여 준다. `declared: false` 인 것은 「선언이 없어 보충했다」로 표시한다 (FR-040·FR-047·FR-048)
 - [X] T070 [US3] 값 입력은 `frontend/src/pages/SecretValues.tsx` 의 입력 구성요소를 **재사용**하고, 저장은 기존 `PUT /api/secrets/{name}` 으로 한다. 봉인 경로를 두 벌로 만들지 않는다 (research R13, contracts §8)
-- [ ] T071 [US3] `POST /api/share/import/commit` 의 `variable_values` 를 구현한다 — **비민감** 변수 값만 받아 테스트 정의에 기록한다. 민감 변수 이름이 오면 400 으로 거절한다 (FR-048, contracts §5)
-- [ ] T072 [US3] 키가 없을 때 키 생성 안내와 키 관리 화면 경로를 보여 준다. **가져오기 자체는 키 없이도 완료된다** — 막히는 것은 값 입력 시점이다 (FR-045). 나중에 채우는 경로(민감 → `SecretsRoute`, 비민감 → 테스트 편집 화면)도 결과에 안내한다 (FR-041)
-- [ ] T073 [US3] 값 입력 화면에서 민감 항목은 `PUT /api/secrets/{name}`(봉인), 비민감 항목은 테스트 정의 기록으로 **경로를 갈라** 저장하고, 화면이 어느 쪽인지 구분해 보여 주게 한다 (FR-048)
-- [ ] T074 [US3] `already_stored: true` 인 변수는 기존 값 유지 / 다시 입력을 고르게 한다. 조용히 덮어쓰지 않는다 (FR-046)
-- [ ] T075 [US3] `frontend/src/pages/TestList.tsx` 에 테스트별 「값 필요」 표시를 붙인다. 누르기 전에 보여야 한다 (FR-044)
-- [ ] T076 [P] [US3] `frontend/src/pages/__tests__/ShareImportSecrets.test.tsx` — 사용 위치가 보이는지, `already_stored` 일 때 선택지가 나오는지, 입력값이 화면에 평문으로 되돌아오지 않는지
+- [X] T071 [US3] `POST /api/share/import/commit` 의 `variable_values` 를 구현한다 — **비민감** 변수 값만 받아 테스트 정의에 기록한다. 민감 변수 이름이 오면 400 으로 거절한다 (FR-048, contracts §5)
+- [X] T072 [US3] 키가 없을 때 키 생성 안내와 키 관리 화면 경로를 보여 준다. **가져오기 자체는 키 없이도 완료된다** — 막히는 것은 값 입력 시점이다 (FR-045). 나중에 채우는 경로(민감 → `SecretsRoute`, 비민감 → 테스트 편집 화면)도 결과에 안내한다 (FR-041)
+- [X] T073 [US3] 값 입력 화면에서 민감 항목은 `PUT /api/secrets/{name}`(봉인), 비민감 항목은 테스트 정의 기록으로 **경로를 갈라** 저장하고, 화면이 어느 쪽인지 구분해 보여 주게 한다 (FR-048)
+- [X] T074 [US3] `already_stored: true` 인 변수는 기존 값 유지 / 다시 입력을 고르게 한다. 조용히 덮어쓰지 않는다 (FR-046)
+- [X] T075 [US3] `frontend/src/pages/TestList.tsx` 에 테스트별 「값 필요」 표시를 붙인다. 누르기 전에 보여야 한다 (FR-044)
+- [X] T076 [P] [US3] `frontend/src/pages/__tests__/ShareImportSecrets.test.tsx` — 사용 위치가 보이는지, `already_stored` 일 때 선택지가 나오는지, 입력값이 화면에 평문으로 되돌아오지 않는지
 
 **Checkpoint**: 받은 사람이 테스트를 실행할 수 있다. **여기까지가 이 기능의 핵심 가치다.**
 
@@ -184,9 +184,9 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 ### Tests
 
-- [ ] T077 [P] [US4] `backend/tests/contract/test_sharing_preview.py` — `plaintext_values` 에 스텝의 평문 입력값이 위치와 함께 나오고 `{{VAR}}` 참조는 제외되는지, 120자 초과가 `truncated: true` 로 잘리는지 (contracts §1)
-- [ ] T078 [P] [US4] `backend/tests/contract/test_sharing_preview.py` — 미리보기가 **파일을 만들지 않고 프로젝트를 바꾸지 않는지** (FR-008). 호출 전후 프로젝트 디렉터리의 mtime 비교
-- [ ] T079 [P] [US4] `backend/tests/unit/test_sharing_preview.py` — 읽을 수 없는 테스트가 `unreadable` 에 잡히되 미리보기를 실패시키지 않는지 (research R11)
+- [X] T077 [P] [US4] `backend/tests/contract/test_sharing_preview.py` — `plaintext_values` 에 스텝의 평문 입력값이 위치와 함께 나오고 `{{VAR}}` 참조는 제외되는지, 120자 초과가 `truncated: true` 로 잘리는지 (contracts §1)
+- [X] T078 [P] [US4] `backend/tests/contract/test_sharing_preview.py` — 미리보기가 **파일을 만들지 않고 프로젝트를 바꾸지 않는지** (FR-008). 호출 전후 프로젝트 디렉터리의 mtime 비교
+- [X] T079 [P] [US4] `backend/tests/unit/test_sharing_preview.py` — 읽을 수 없는 테스트가 `unreadable` 에 잡히되 미리보기를 실패시키지 않는지 (research R11)
 
 ### Implementation
 
