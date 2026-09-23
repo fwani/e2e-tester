@@ -102,36 +102,36 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 ### Tests
 
-- [ ] T031 [P] [US2] `backend/tests/unit/test_sharing_reader.py` — 정상 묶음 해석, 바이트 상한 초과 거부(파싱 전), `bundle_version` 불일치 거부, 최상위 비매핑 거부
-- [ ] T032 [P] [US2] `backend/tests/abnormal/test_sharing_bad_bundle.py` — **C5** YAML 별칭 폭탄이 전개 없이 즉시 `SHARE_BUNDLE_MALFORMED` 로 거부되는지 (research R4). 처리 시간이 상한 안인지도 함께 본다
-- [ ] T033 [P] [US2] `backend/tests/abnormal/test_sharing_bad_bundle.py` — **C3·C4** 손상 파일과 `bundle_version: 99` 가 거부되고, **그 뒤 대상 프로젝트의 파일 수가 그대로**인지 (FR-023·FR-030)
-- [ ] T034 [P] [US2] `backend/tests/unit/test_sharing_repair.py` — **C11** 선언 없는 `{{VAR}}` 참조가 **거부되지 않고** 보충되는지. `SECRET_` 접두사는 민감으로, 그 외는 값이 빈 비민감으로 보충되고 `repaired_variables` 에 남는지 (FR-047)
-- [ ] T035 [P] [US2] `backend/tests/unit/test_sharing_planner.py` — 새 프로젝트 이름 충돌 시 비껴 만들기(US2 AS3), 그룹 `action` 판정, `capacity` 산출
-- [ ] T036 [P] [US2] `backend/tests/contract/test_sharing_import.py` — plan → commit 흐름, 계획 단계에서 **디스크가 그대로**인지(014 FR-016 과 같은 성질), 만료된 `plan_id` 가 `SHARE_PLAN_NOT_FOUND`
-- [ ] T037 [P] [US2] `backend/tests/integration/test_sharing_roundtrip.py` — **C2** 내보낸 묶음을 그대로 가져오면 스텝이 **로케이터 후보까지** 완전히 같은지 (SC-003, 헌법 원칙 IV·게이트 2)
-- [ ] T038 [P] [US2] `backend/tests/abnormal/test_sharing_commit_failure.py` — **C7** 쓰기 실패 시 만들어진 파일이 하나도 남지 않고 `SHARE_IMPORT_FAILED`, 되돌리기까지 실패하면 `SHARE_IMPORT_PARTIAL` 인지 (FR-024)
+- [X] T031 [P] [US2] `backend/tests/unit/test_sharing_reader.py` — 정상 묶음 해석, 바이트 상한 초과 거부(파싱 전), `bundle_version` 불일치 거부, 최상위 비매핑 거부
+- [X] T032 [P] [US2] `backend/tests/abnormal/test_sharing_bad_bundle.py` — **C5** YAML 별칭 폭탄이 전개 없이 즉시 `SHARE_BUNDLE_MALFORMED` 로 거부되는지 (research R4). 처리 시간이 상한 안인지도 함께 본다
+- [X] T033 [P] [US2] `backend/tests/abnormal/test_sharing_bad_bundle.py` — **C3·C4** 손상 파일과 `bundle_version: 99` 가 거부되고, **그 뒤 대상 프로젝트의 파일 수가 그대로**인지 (FR-023·FR-030)
+- [X] T034 [P] [US2] `backend/tests/unit/test_sharing_repair.py` — **C11** 선언 없는 `{{VAR}}` 참조가 **거부되지 않고** 보충되는지. `SECRET_` 접두사는 민감으로, 그 외는 값이 빈 비민감으로 보충되고 `repaired_variables` 에 남는지 (FR-047)
+- [X] T035 [P] [US2] `backend/tests/unit/test_sharing_planner.py` — 새 프로젝트 이름 충돌 시 비껴 만들기(US2 AS3), 그룹 `action` 판정, `capacity` 산출
+- [X] T036 [P] [US2] `backend/tests/contract/test_sharing_import.py` — plan → commit 흐름, 계획 단계에서 **디스크가 그대로**인지(014 FR-016 과 같은 성질), 만료된 `plan_id` 가 `SHARE_PLAN_NOT_FOUND`
+- [X] T037 [P] [US2] `backend/tests/integration/test_sharing_roundtrip.py` — **C2** 내보낸 묶음을 그대로 가져오면 스텝이 **로케이터 후보까지** 완전히 같은지 (SC-003, 헌법 원칙 IV·게이트 2)
+- [X] T038 [P] [US2] `backend/tests/abnormal/test_sharing_commit_failure.py` — **C7** 쓰기 실패 시 만들어진 파일이 하나도 남지 않고 `SHARE_IMPORT_FAILED`, 되돌리기까지 실패하면 `SHARE_IMPORT_PARTIAL` 인지 (FR-024)
 
 ### Implementation
 
-- [ ] T039 [US2] `backend/src/itb/sharing/reader.py` 에 별칭 금지 로더를 구현한다 — `yaml.SafeLoader` 를 상속해 `compose_node` 에서 별칭을 만나면 오류. 정상 묶음은 별칭을 쓰지 않으므로 잃는 것이 없다 (research R4)
-- [ ] T040 [US2] `backend/src/itb/sharing/reader.py` 에 `read_bundle(data: bytes) -> ShareBundle` 를 구현한다. **다섯 겹을 순서대로** 통과시킨다 — 바이트 상한 → YAML → `ShareBundle` → **선언 보충** → 각 `Test` 도메인 검증. 앞 겹을 통과 못 하면 뒤를 시도하지 않는다 (data-model §6)
-- [ ] T041 [US2] `backend/src/itb/sharing/reader.py` 에 선언 보충 단계를 구현한다 — 참조는 있는데 선언이 없는 변수를 `SENSITIVE_VARIABLE_PREFIX` 로 갈라 채워 넣고 `repaired_variables` 에 기록한다. **도메인 검증보다 먼저** 돈다. 없는 값을 지어내는 것이 아니라 빈 자리를 드러내는 것이다 (FR-047, data-model §6)
-- [ ] T042 [US2] 테스트 정의 검증 실패는 **전부 모아 한 번에** 보고한다. 한 건이라도 실패하면 가져오기 전체를 거부한다 (FR-023·FR-024, data-model §6)
-- [ ] T043 [US2] `backend/src/itb/sharing/plan_store.py` 에 `SharePlanStore` 를 구현한다. 메모리에만 두고 TTL 30분, 상한 8개, 넘으면 오래된 것부터 버린다. `AppState` 에 하나 둔다 (data-model §3)
-- [ ] T044 [US2] `backend/src/itb/sharing/planner.py` 에 `plan_import(bundle, *, target, existing_project, existing_test_ids) -> SharePlan` 를 구현한다. 이 단계에서는 `already_stored`/`env_provided` 를 `None` 으로 둔다 — `itb.sharing` 은 `itb.secrets` 에 닿을 수 없다 (research R3)
-- [ ] T045 [US2] `planner.py` 에 새 프로젝트 이름 충돌 회피를 구현한다. `allocate_workspace_path` 를 재사용하고 `project_renamed_from` 을 남긴다 (US2 AS3)
-- [ ] T046 [US2] `planner.py` 에 `notices` 산출을 구현한다 — `START_URL_CHECK`(항상), `REIMPORT`(대상에 같은 `imported_from.source_file` 이 있을 때), `NAME_SANITIZED`(파일시스템이 허용하지 않는 문자를 바꿨을 때)
-- [ ] T047 [US2] `backend/src/itb/sharing/applier.py` 에 `apply_new_project(plan, ...) -> ShareReport` 를 구현한다. **임시 디렉터리에 완성한 뒤 `os.replace`**, 레지스트리 등록은 옮기기가 성공한 **뒤**에 한다 (research R5)
-- [ ] T048 [US2] `applier.py` 에서 `itb-project.yaml` 의 `groups` 를 테스트 파일보다 **먼저** 쓴다. 실패 시 프로젝트 파일도 되돌린다 (research R5)
-- [ ] T049 [US2] `applier.py` 가 각 테스트에 `imported_from`(`source_file`, `imported_at`, `original_id`)을 채워 저장하게 한다 (FR-028, research R9)
-- [ ] T050 [US2] `backend/src/itb/api/routes/sharing.py` 에 `POST /api/share/import/plan` 을 구현한다. 업로드 상한은 **상한 + 1 바이트만 읽어** 판정한다. 파일 표시 이름은 `sanitize_display_name` 으로 정규화한다 (contracts §3)
-- [ ] T051 [US2] 라우터에서 `already_stored`(`SecretStore.has`)와 `env_provided`(`os.environ`)를 채운다. **교차 참조는 라우터가 맡는다** (research R3, data-model §3.3)
-- [ ] T052 [US2] `GET /api/share/import/plan/{plan_id}` 를 구현한다 (contracts §4)
-- [ ] T053 [US2] `POST /api/share/import/commit` 을 구현한다. **확정은 계획을 다시 세운다** — 결과가 예고와 달라졌으면 `SHARE_PLAN_STALE`(409) 과 함께 새 계획을 돌려준다 (contracts §5)
-- [ ] T054 [US2] `target=new` 확정 후 새 프로젝트를 서버가 열고, 응답의 `project_root` 로 화면이 상태를 맞출 수 있게 한다 (contracts §5)
-- [ ] T055 [P] [US2] `frontend/src/api/client.ts` 에 `planShareImport(file, target)`, `getSharePlan(id)`, `commitShareImport(body)` 를 더한다
-- [ ] T056 [US2] `frontend/src/pages/ShareImport.tsx` 를 만든다 — 파일 선택 → 계획 요약(프로젝트 이름, 테스트 목록, 그룹, 필요 민감 변수, notices) → 확정 → 결과. `blocking` 이 비어 있지 않으면 확정 버튼을 잠근다
-- [ ] T057 [US2] `frontend/src/app/routes/ShareImportRoute.tsx` 를 만들고 라우터에 등록한다
+- [X] T039 [US2] `backend/src/itb/sharing/reader.py` 에 별칭 금지 로더를 구현한다 — `yaml.SafeLoader` 를 상속해 `compose_node` 에서 별칭을 만나면 오류. 정상 묶음은 별칭을 쓰지 않으므로 잃는 것이 없다 (research R4)
+- [X] T040 [US2] `backend/src/itb/sharing/reader.py` 에 `read_bundle(data: bytes) -> ShareBundle` 를 구현한다. **다섯 겹을 순서대로** 통과시킨다 — 바이트 상한 → YAML → `ShareBundle` → **선언 보충** → 각 `Test` 도메인 검증. 앞 겹을 통과 못 하면 뒤를 시도하지 않는다 (data-model §6)
+- [X] T041 [US2] `backend/src/itb/sharing/reader.py` 에 선언 보충 단계를 구현한다 — 참조는 있는데 선언이 없는 변수를 `SENSITIVE_VARIABLE_PREFIX` 로 갈라 채워 넣고 `repaired_variables` 에 기록한다. **도메인 검증보다 먼저** 돈다. 없는 값을 지어내는 것이 아니라 빈 자리를 드러내는 것이다 (FR-047, data-model §6)
+- [X] T042 [US2] 테스트 정의 검증 실패는 **전부 모아 한 번에** 보고한다. 한 건이라도 실패하면 가져오기 전체를 거부한다 (FR-023·FR-024, data-model §6)
+- [X] T043 [US2] `backend/src/itb/sharing/plan_store.py` 에 `SharePlanStore` 를 구현한다. 메모리에만 두고 TTL 30분, 상한 8개, 넘으면 오래된 것부터 버린다. `AppState` 에 하나 둔다 (data-model §3)
+- [X] T044 [US2] `backend/src/itb/sharing/planner.py` 에 `plan_import(bundle, *, target, existing_project, existing_test_ids) -> SharePlan` 를 구현한다. 이 단계에서는 `already_stored`/`env_provided` 를 `None` 으로 둔다 — `itb.sharing` 은 `itb.secrets` 에 닿을 수 없다 (research R3)
+- [X] T045 [US2] `planner.py` 에 새 프로젝트 이름 충돌 회피를 구현한다. `allocate_workspace_path` 를 재사용하고 `project_renamed_from` 을 남긴다 (US2 AS3)
+- [X] T046 [US2] `planner.py` 에 `notices` 산출을 구현한다 — `START_URL_CHECK`(항상), `REIMPORT`(대상에 같은 `imported_from.source_file` 이 있을 때), `NAME_SANITIZED`(파일시스템이 허용하지 않는 문자를 바꿨을 때)
+- [X] T047 [US2] `backend/src/itb/sharing/applier.py` 에 `apply_new_project(plan, ...) -> ShareReport` 를 구현한다. **임시 디렉터리에 완성한 뒤 `os.replace`**, 레지스트리 등록은 옮기기가 성공한 **뒤**에 한다 (research R5)
+- [X] T048 [US2] `applier.py` 에서 `itb-project.yaml` 의 `groups` 를 테스트 파일보다 **먼저** 쓴다. 실패 시 프로젝트 파일도 되돌린다 (research R5)
+- [X] T049 [US2] `applier.py` 가 각 테스트에 `imported_from`(`source_file`, `imported_at`, `original_id`)을 채워 저장하게 한다 (FR-028, research R9)
+- [X] T050 [US2] `backend/src/itb/api/routes/sharing.py` 에 `POST /api/share/import/plan` 을 구현한다. 업로드 상한은 **상한 + 1 바이트만 읽어** 판정한다. 파일 표시 이름은 `sanitize_display_name` 으로 정규화한다 (contracts §3)
+- [X] T051 [US2] 라우터에서 `already_stored`(`SecretStore.has`)와 `env_provided`(`os.environ`)를 채운다. **교차 참조는 라우터가 맡는다** (research R3, data-model §3.3)
+- [X] T052 [US2] `GET /api/share/import/plan/{plan_id}` 를 구현한다 (contracts §4)
+- [X] T053 [US2] `POST /api/share/import/commit` 을 구현한다. **확정은 계획을 다시 세운다** — 결과가 예고와 달라졌으면 `SHARE_PLAN_STALE`(409) 과 함께 새 계획을 돌려준다 (contracts §5)
+- [X] T054 [US2] `target=new` 확정 후 새 프로젝트를 서버가 열고, 응답의 `project_root` 로 화면이 상태를 맞출 수 있게 한다 (contracts §5)
+- [X] T055 [P] [US2] `frontend/src/api/client.ts` 에 `planShareImport(file, target)`, `getSharePlan(id)`, `commitShareImport(body)` 를 더한다
+- [X] T056 [US2] `frontend/src/pages/ShareImport.tsx` 를 만든다 — 파일 선택 → 계획 요약(프로젝트 이름, 테스트 목록, 그룹, 필요 민감 변수, notices) → 확정 → 결과. `blocking` 이 비어 있지 않으면 확정 버튼을 잠근다
+- [X] T057 [US2] `frontend/src/app/routes/ShareImportRoute.tsx` 를 만들고 라우터에 등록한다
 - [ ] T058 [US2] `frontend/src/app/routes/ProjectsRoute.tsx` 에 「공유 파일에서 가져오기」 진입점을 더한다
 - [ ] T059 [US2] 확정 화면에서 `default_start_url` 을 바꿀 수 있게 한다 — 받는 쪽 환경이 다른 경우다 (spec Edge Cases, contracts §5)
 - [ ] T060 [P] [US2] `frontend/src/pages/__tests__/ShareImport.test.tsx` — `blocking` 이 있으면 확정이 막히고, `SHARE_PLAN_STALE` 응답이 오면 새 계획으로 갈아 끼우는지

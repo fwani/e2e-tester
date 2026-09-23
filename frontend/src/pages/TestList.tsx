@@ -719,6 +719,20 @@ export function TestList({
                 {selected.size > 0 ? `공유용 내보내기 (${selected.size})` : "공유용 내보내기"}
               </ButtonLink>
 
+              {/*
+                공유 파일에서 이 프로젝트로 가져오기 (019 US5 · FR-021).
+
+                식별자가 겹쳐도 기존 테스트는 사라지지 않는다 — 들어오는 쪽이 새 번호를
+                받고, 바뀐 것은 결과에 전부 표시된다.
+              */}
+              <ButtonLink
+                size="sm"
+                data-action="tests.import-share"
+                href={paths.shareImport()}
+              >
+                공유 파일에서 가져오기
+              </ButtonLink>
+
               {/* 엑셀에서 가져오기 (014 US2). 내보내기 옆에 두어 두 방향이 한자리에 있다. */}
               {onImportPlan !== undefined && (
                 <ImportFilePicker

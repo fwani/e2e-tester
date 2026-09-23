@@ -19,6 +19,7 @@ export const PATTERNS = {
   session: "/sessions/:sessionId",
   importPreview: "/import/:planId",
   shareExport: "/share/export",
+  shareImport: "/share/import",
   keys: "/keys",
   secrets: "/secrets",
 } as const;
@@ -62,6 +63,8 @@ export const paths = {
    */
   shareExport: (testIds?: readonly string[] | null) =>
     withQuery(PATTERNS.shareExport, { tests: testIds && testIds.length > 0 ? testIds.join(",") : null }),
+  /** 공유 파일에서 가져오기 (019 US2). 열린 프로젝트가 없어도 닿을 수 있어야 한다. */
+  shareImport: () => PATTERNS.shareImport,
   keys: () => PATTERNS.keys,
   secrets: () => PATTERNS.secrets,
 };
