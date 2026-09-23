@@ -1,5 +1,5 @@
 {
- "digest": "3fd6c52900ae67aa",
+ "digest": "573dde59fe9e46b5",
  "viewports": [
   "1280x800",
   "1440x900",
@@ -46,20 +46,45 @@
  "counts": {
   "allowed": 32,
   "pending": 0,
-  "unallowed": 0,
+  "unallowed": 4,
   "unreachedRuns": 0,
   "staleKnown": 0
  },
  "known": [],
  "staleKnown": [],
  "unreachedRuns": {},
- "unallowed": [],
+ "unallowed": [
+  {
+   "where": "runner-record@1280",
+   "kind": "console",
+   "element": "WebSocket connection to 'ws://127.0.0.1:52880/api/sessions/75af11cd44ef47daa04aef326b47867c/control' failed: Error during WebSocket handshake: Unexpected response code: 403",
+   "detail": ""
+  },
+  {
+   "where": "runner-record@1440",
+   "kind": "console",
+   "element": "WebSocket connection to 'ws://127.0.0.1:52880/api/sessions/75af11cd44ef47daa04aef326b47867c/control' failed: Error during WebSocket handshake: Unexpected response code: 403",
+   "detail": ""
+  },
+  {
+   "where": "runner-record@1920",
+   "kind": "console",
+   "element": "WebSocket connection to 'ws://127.0.0.1:52880/api/sessions/75af11cd44ef47daa04aef326b47867c/control' failed: Error during WebSocket handshake: Unexpected response code: 403",
+   "detail": ""
+  },
+  {
+   "where": "runner-record@2560",
+   "kind": "console",
+   "element": "WebSocket connection to 'ws://127.0.0.1:52880/api/sessions/75af11cd44ef47daa04aef326b47867c/control' failed: Error during WebSocket handshake: Unexpected response code: 403",
+   "detail": ""
+  }
+ ],
  "pending": [],
  "allowed": [
   {
    "where": "edit-long-name@1280",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/tests/TC-002/result",
+   "element": "404 http://127.0.0.1:52880/api/tests/TC-002/result",
    "detail": "",
    "reason": "결과가 없는 테스트의 결과 조회가 404 다 — 같은 이유로 범위 밖"
   },
@@ -73,7 +98,7 @@
   {
    "where": "edit-long-name@1440",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/tests/TC-002/result",
+   "element": "404 http://127.0.0.1:52880/api/tests/TC-002/result",
    "detail": "",
    "reason": "결과가 없는 테스트의 결과 조회가 404 다 — 같은 이유로 범위 밖"
   },
@@ -87,7 +112,7 @@
   {
    "where": "edit-long-name@1920",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/tests/TC-002/result",
+   "element": "404 http://127.0.0.1:52880/api/tests/TC-002/result",
    "detail": "",
    "reason": "결과가 없는 테스트의 결과 조회가 404 다 — 같은 이유로 범위 밖"
   },
@@ -101,7 +126,7 @@
   {
    "where": "edit-long-name@2560",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/tests/TC-002/result",
+   "element": "404 http://127.0.0.1:52880/api/tests/TC-002/result",
    "detail": "",
    "reason": "결과가 없는 테스트의 결과 조회가 404 다 — 같은 이유로 범위 밖"
   },
@@ -115,7 +140,7 @@
   {
    "where": "project-create@1280",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/project",
+   "element": "404 http://127.0.0.1:52880/api/project",
    "detail": "",
    "reason": "프로젝트를 열지 않은 첫 화면이 「열린 프로젝트 없음」을 404 로 받는다 — 요청 계약의 문제로 017 범위 밖 (spec Assumptions)"
   },
@@ -129,7 +154,7 @@
   {
    "where": "project-create@1440",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/project",
+   "element": "404 http://127.0.0.1:52880/api/project",
    "detail": "",
    "reason": "프로젝트를 열지 않은 첫 화면이 「열린 프로젝트 없음」을 404 로 받는다 — 요청 계약의 문제로 017 범위 밖 (spec Assumptions)"
   },
@@ -143,7 +168,7 @@
   {
    "where": "project-create@1920",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/project",
+   "element": "404 http://127.0.0.1:52880/api/project",
    "detail": "",
    "reason": "프로젝트를 열지 않은 첫 화면이 「열린 프로젝트 없음」을 404 로 받는다 — 요청 계약의 문제로 017 범위 밖 (spec Assumptions)"
   },
@@ -157,7 +182,7 @@
   {
    "where": "project-create@2560",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/project",
+   "element": "404 http://127.0.0.1:52880/api/project",
    "detail": "",
    "reason": "프로젝트를 열지 않은 첫 화면이 「열린 프로젝트 없음」을 404 로 받는다 — 요청 계약의 문제로 017 범위 밖 (spec Assumptions)"
   },
@@ -171,7 +196,7 @@
   {
    "where": "project-list@1280",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/project",
+   "element": "404 http://127.0.0.1:52880/api/project",
    "detail": "",
    "reason": "프로젝트를 열지 않은 첫 화면이 「열린 프로젝트 없음」을 404 로 받는다 — 요청 계약의 문제로 017 범위 밖 (spec Assumptions)"
   },
@@ -185,7 +210,7 @@
   {
    "where": "project-list@1440",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/project",
+   "element": "404 http://127.0.0.1:52880/api/project",
    "detail": "",
    "reason": "프로젝트를 열지 않은 첫 화면이 「열린 프로젝트 없음」을 404 로 받는다 — 요청 계약의 문제로 017 범위 밖 (spec Assumptions)"
   },
@@ -199,7 +224,7 @@
   {
    "where": "project-list@1920",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/project",
+   "element": "404 http://127.0.0.1:52880/api/project",
    "detail": "",
    "reason": "프로젝트를 열지 않은 첫 화면이 「열린 프로젝트 없음」을 404 로 받는다 — 요청 계약의 문제로 017 범위 밖 (spec Assumptions)"
   },
@@ -213,7 +238,7 @@
   {
    "where": "project-list@2560",
    "kind": "console",
-   "element": "404 http://127.0.0.1:50907/api/project",
+   "element": "404 http://127.0.0.1:52880/api/project",
    "detail": "",
    "reason": "프로젝트를 열지 않은 첫 화면이 「열린 프로젝트 없음」을 404 로 받는다 — 요청 계약의 문제로 017 범위 밖 (spec Assumptions)"
   },
