@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
-import urllib.parse
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Annotated
@@ -16,6 +15,7 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from itb.api.errors import ApiError, ErrorCode, bad_request, conflict, not_found
+from itb.api.routes._download import content_disposition
 from itb.api.state import AppState, get_state
 from itb.domain.draft import Draft, DraftSource
 from itb.domain.run_result import Outcome
@@ -114,15 +114,12 @@ def _collect(repo: ProjectRepository) -> tuple[list, exporter.ExportReport]:
 
 
 def _content_disposition(filename: str) -> str:
-    """ASCII 대체 이름과 RFC 5987 이름을 함께 싣는다 (research R9).
+    """내려받기 헤더. **만드는 곳은 하나다** (019 T016).
 
-    HTTP 헤더는 ASCII 로 제한되는데 프로젝트 이름은 한글일 수 있다. 이 저장소는 같은 함정을
-    `X-ITB-Project-Root` 에서 이미 겪었다. 두 이름을 함께 보내면 ``filename*`` 을 이해하는
-    브라우저는 한글 이름을, 아닌 쪽은 ASCII 이름을 쓴다.
+    같은 수법을 공유 묶음(019)도 필요로 해서 :mod:`itb.api.routes._download` 로 옮겼다.
+    이 얇은 감싸개는 엑셀 통로의 대체 이름을 고정해 둘 뿐이다.
     """
-    ascii_name = filename.encode("ascii", "ignore").decode("ascii") or "itb-export.xlsx"
-    quoted = urllib.parse.quote(filename, safe="")
-    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quoted}"
+    return content_disposition(filename, fallback="itb-export.xlsx")
 
 
 @router.get("/export")

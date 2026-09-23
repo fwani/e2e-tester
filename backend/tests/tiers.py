@@ -34,6 +34,8 @@ TIMING_MODULES = frozenset(
         "tests/integration/test_performance.py",
         # 내보내기 성능 (014 SC-002 · T094)
         "tests/integration/test_export_performance.py",
+        # 019 — 공유 묶음 내보내기·가져오기 규모 (SC-008 · T091)
+        "tests/integration/test_sharing_performance.py",
         # 중지·속도 변경이 **얼마나 빨리** 반영되는가 (INTERRUPT_LIMIT_S)
         "tests/integration/test_pacing_interrupt.py",
         # 늦게 나타나는 요소를 기다리는 시간과 즉시 있는 요소의 비용

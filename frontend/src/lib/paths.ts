@@ -18,6 +18,8 @@ export const PATTERNS = {
   result: "/tests/:testId/result",
   session: "/sessions/:sessionId",
   importPreview: "/import/:planId",
+  shareExport: "/share/export",
+  shareImport: "/share/import",
   keys: "/keys",
   secrets: "/secrets",
 } as const;
@@ -54,6 +56,15 @@ export const paths = {
   session: (sessionId: string, back?: { stepId: string | null } | null) =>
     withQuery(`/sessions/${segment(sessionId)}`, back ? { from: "edit", step: back.stepId } : {}),
   importPreview: (planId: string) => `/import/${segment(planId)}`,
+  /**
+   * 공유용 내보내기 (019 US1). 고른 테스트를 **주소에** 싣는다 — 새로 고쳐도 대상이
+   * 유지되어야 한다. 확인 화면을 읽는 동안 새로 고친 사용자가 프로젝트 전체를 내보내게
+   * 되면 안 된다.
+   */
+  shareExport: (testIds?: readonly string[] | null) =>
+    withQuery(PATTERNS.shareExport, { tests: testIds && testIds.length > 0 ? testIds.join(",") : null }),
+  /** 공유 파일에서 가져오기 (019 US2). 열린 프로젝트가 없어도 닿을 수 있어야 한다. */
+  shareImport: () => PATTERNS.shareImport,
   keys: () => PATTERNS.keys,
   secrets: () => PATTERNS.secrets,
 };

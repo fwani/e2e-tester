@@ -19,7 +19,8 @@ import { Toast } from "../ui/Toast";
 import { ImportDoneNotice, ImportFilePicker, ImportPreview } from "./ImportPreview";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
-import { Button } from "../ui/Button";
+import { Button, ButtonLink } from "../ui/Button";
+import { paths } from "../lib/paths";
 
 import {
   fs,
@@ -350,6 +351,16 @@ function ProjectList({
       <div className="project-list-actions">
         <Button onClick={onBrowse} disabled={busy}>기존 프로젝트 열기</Button>
         <ImportFilePicker label="엑셀에서 새 프로젝트" disabled={busy} onPlan={onImportPlan} onError={onError} />
+        {/*
+          공유 파일에서 가져오기 (019 US2). 엑셀 옆에 두어 두 통로가 한자리에 있다.
+
+          **엑셀과 다른 것**이다 — 엑셀은 초안을 만들고 녹화가 필요하지만, 이쪽은 동료가
+          만든 테스트를 스텝까지 그대로 복원한다. 이름이 섞이지 않게 「공유 파일에서」를
+          앞에 둔다.
+        */}
+        <ButtonLink data-action="projects.import-share" href={paths.shareImport()}>
+          공유 파일에서 가져오기
+        </ButtonLink>
       </div>
 
       {projects.length === 0 ? (

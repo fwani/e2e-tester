@@ -699,6 +699,40 @@ export function TestList({
                 {exporting ? "내보내는 중…" : "엑셀로 내보내기"}
               </Button>
 
+              {/*
+                공유용 내보내기 (019 US1 · FR-001·FR-002).
+
+                「엑셀로 내보내기」와 **다른 것**이다. 엑셀은 사람이 읽는 설계서이고 스텝을
+                복원하지 못한다. 이쪽은 스텝·로케이터 후보까지 그대로 옮겨 **받는 사람이
+                실행할 수 있는** 파일을 만든다. 이름이 섞이지 않게 「공유용」을 앞에 둔다.
+
+                바로 내려받지 않고 확인 화면으로 간다 — 내보내기는 되돌릴 수 없고, 나가기
+                전에 보이는 것이 유일한 방어선이다 (US4).
+
+                **고른 것이 있으면 그것만** 보낸다. 선택이 없으면 프로젝트 전체다.
+              */}
+              <ButtonLink
+                size="sm"
+                data-action="tests.export-share"
+                href={paths.shareExport(selected.size > 0 ? [...selected] : null)}
+              >
+                {selected.size > 0 ? `공유용 내보내기 (${selected.size})` : "공유용 내보내기"}
+              </ButtonLink>
+
+              {/*
+                공유 파일에서 이 프로젝트로 가져오기 (019 US5 · FR-021).
+
+                식별자가 겹쳐도 기존 테스트는 사라지지 않는다 — 들어오는 쪽이 새 번호를
+                받고, 바뀐 것은 결과에 전부 표시된다.
+              */}
+              <ButtonLink
+                size="sm"
+                data-action="tests.import-share"
+                href={paths.shareImport()}
+              >
+                공유 파일에서 가져오기
+              </ButtonLink>
+
               {/* 엑셀에서 가져오기 (014 US2). 내보내기 옆에 두어 두 방향이 한자리에 있다. */}
               {onImportPlan !== undefined && (
                 <ImportFilePicker
@@ -1158,6 +1192,22 @@ function Row({
           <span>{row.step_count} Steps</span>
           <span>{row.authoring_mode === "ai" ? "AI" : "RECORD"}</span>
         </div>
+        {/*
+          019 FR-044 — 값이 없어 실행할 수 없는 테스트를 **누르기 전에** 알린다.
+
+          공유받은 테스트는 비밀번호가 비어 있는 채로 들어온다. 이것이 없으면 사용자는
+          실행을 눌러 409 를 받고서야 안다 — 그때는 이미 기대를 갖고 누른 뒤다.
+        */}
+        {(row.missing_secrets?.length ?? 0) > 0 && (
+          <div
+            className="font-sans text-[12px] leading-[1.5] font-normal text-fail whitespace-nowrap overflow-hidden text-ellipsis"
+            data-testid={`needs-values-${row.id}`}
+            title={`값이 필요합니다: ${(row.missing_secrets ?? []).join(", ")}`}
+          >
+            값 필요 · {(row.missing_secrets ?? []).join(", ")}
+          </div>
+        )}
+
         {/* FR-005 — 실패한 테스트는 실패 Step 번호와 메시지 요약을 인라인으로 보여준다. */}
         {row.failure_summary !== null && (
  <div className="font-sans text-[12px] leading-[1.5] font-normal text-fail whitespace-nowrap overflow-hidden text-ellipsis" title={row.failure_summary.message}>

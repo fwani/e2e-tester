@@ -23,6 +23,7 @@ from itb.domain.manual_step import ManualStepSpec
 from itb.domain.run_result import RunResult
 from itb.domain.step import Step
 from itb.domain.test_case import Project, Test
+from itb.sharing.bundle import ShareBundle
 
 # backend/schema/ — pyproject 와 같은 층
 DEFAULT_OUT = pathlib.Path(__file__).resolve().parents[3] / "schema"
@@ -39,6 +40,10 @@ MODELS: dict[str, TypeAdapter] = {
     # 아직 녹화되지 않은 테스트의 의도 (014). Test 와 **다른 모양**이어야 하며, 그 사실이
     # 스키마에도 드러난다 — steps 필드가 없다.
     "draft": TypeAdapter(Draft),
+    # 공유 묶음 (019). 전달 파일의 정본 형식이며, 이 스키마가 그 형식의 문서다 —
+    # 헌법 원칙 V 가 요구하는 "문서화된 평문 형식" 을 이것이 받는다. Test 를 그대로
+    # 품으므로 스텝의 두 번째 표현이 생기지 않는다는 사실도 스키마에 드러난다.
+    "share-bundle": TypeAdapter(ShareBundle),
 }
 
 

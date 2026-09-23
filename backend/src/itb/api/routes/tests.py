@@ -51,6 +51,9 @@ from itb.execution.step_edits import (
     reorder_steps,
     update_step,
 )
+from itb.secrets.keys import load_public_or_none
+from itb.secrets.readiness import assess
+from itb.secrets.store import SecretStore
 from itb.storage import test_moves, trash
 from itb.storage.repository import (
     ProjectError,
@@ -89,6 +92,17 @@ class TestListRow(BaseModel):
     **식별자에서 유도한다. 저장된 필드가 아니다** (013 data-model §3) — 소속을 별도
     필드로도 저장하면 접두어와 어긋날 수 있고, 어긋났을 때 어느 쪽이 맞는지 정할 근거가
     없다. 그룹 없는 테스트는 `TC` 다.
+    """
+
+    missing_secrets: list[str] = Field(default_factory=list)
+    """값이 없어 **실행할 수 없는** 민감 변수 (019 FR-044).
+
+    목록이 **누르기 전에** 보여 주기 위한 것이다. 누른 뒤에도 세션 생성이 같은 판정으로
+    막지만, 그때는 사용자가 이미 기대를 갖고 눌렀다 — 공유받은 테스트를 처음 여는 사람에게
+    그 차이가 크다.
+
+    **행마다 조회를 따로 보내지 않는다.** 테스트 50건이면 요청이 51개가 되고, 목록이
+    그리기도 전에 깜빡인다. 어차피 정의를 읽고 있으므로 여기서 함께 판정한다.
     """
 
 
@@ -228,6 +242,10 @@ async def list_tests(
     tests, problems = repo.list_tests()
     defined = {g.prefix: g.name for g in repo.read_project().groups}
 
+    # 판정에 쓸 재료를 **한 번만** 읽는다. 행마다 열면 파일을 N 번 읽는다.
+    secrets = SecretStore(repo.paths.secrets_file)
+    key_present = load_public_or_none(state.key_paths) is not None
+
     rows: list[TestListRow] = []
     passed = failed = 0
     for t in tests:
@@ -261,6 +279,7 @@ async def list_tests(
                 last_run_at=result.finished_at.isoformat() if result else None,
                 failure_summary=summary,
                 group_prefix=prefix_of(t.id),
+                missing_secrets=assess(t, secrets, key_available=key_present).missing_secrets,
             )
         )
 
@@ -1240,3 +1259,53 @@ async def save_definition(
         ) from exc
 
     return _view_of(updated, repo.definition_revision(test_id), None, warnings)
+
+
+# ─── 실행 준비 상태 (019 FR-044 · contracts §6) ─────────────────────────────
+
+
+class ReadinessView(BaseModel):
+    """지금 실행할 수 있는가.
+
+    목록이 **누르기 전에** 보여 주기 위한 것이다. 같은 판정을 세션 생성이 다시 쓰므로
+    (`itb.secrets.readiness.assess`), 화면이 「실행 가능」이라고 한 것이 서버에서 막히는
+    일이 생기지 않는다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    runnable: bool
+    missing_secrets: list[str] = Field(default_factory=list)
+    """값이 없는 민감 변수. **이것만 실행을 막는다** (FR-044)."""
+
+    empty_variables: list[str] = Field(default_factory=list)
+    """값이 빈 비민감 변수. 막지 않고 경고한다 — 빈 문자열이 유효한 입력일 수 있다."""
+
+    key_available: bool
+    """이 설치에 키가 있는가 (FR-045). 없으면 민감 값을 채울 수 없다."""
+
+
+@router.get("/{test_id}/readiness")
+async def test_readiness(test_id: str, state: State) -> ReadinessView:
+    """실행 전에 무엇이 비어 있는지 알린다 (019 FR-044).
+
+    **복호화하지 않는다.** 있는지만 본다 — 판정하려고 열면 잠긴 키에서 실패하고,
+    「잠겨 있다」와 「값이 없다」는 사용자가 할 일이 다른 별개의 사실이다.
+    """
+    repo = state.require_repository()
+    try:
+        test = repo.read_test(test_id)
+    except ProjectError as exc:
+        raise not_found(ErrorCode.TEST_NOT_FOUND, str(exc)) from exc
+
+    state_of = assess(
+        test,
+        SecretStore(repo.paths.secrets_file),
+        key_available=load_public_or_none(state.key_paths) is not None,
+    )
+    return ReadinessView(
+        runnable=state_of.runnable,
+        missing_secrets=state_of.missing_secrets,
+        empty_variables=state_of.empty_variables,
+        key_available=state_of.key_available,
+    )

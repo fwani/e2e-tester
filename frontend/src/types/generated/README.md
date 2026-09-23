@@ -19,5 +19,6 @@ cd ../frontend && npm run gen:types
 - `manual-step.d.ts`
 - `project.d.ts`
 - `run-result.d.ts`
+- `share-bundle.d.ts`
 - `step-dsl.d.ts`
 - `step.d.ts`

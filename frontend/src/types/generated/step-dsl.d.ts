@@ -16,6 +16,9 @@ export type CreatedAt = string;
 export type Description = string | null;
 export type DslVersion = number;
 export type Id = string;
+export type ImportedAt = string;
+export type OriginalId = string;
+export type SourceFile = string;
 export type Name = string;
 export type StartUrl = string;
 /**
@@ -125,11 +128,30 @@ export interface Test {
   description: Description;
   dsl_version: DslVersion;
   id: Id;
+  imported_from: ImportProvenance | null;
   name: Name;
   start_url: StartUrl;
   steps: Steps;
   updated_at: UpdatedAt;
   variables: Variables;
+}
+/**
+ * 이 테스트가 공유 묶음에서 왔다는 표시 (019 FR-028).
+ *
+ * **실행에 관여하지 않는다.** 헌법 원칙 I 은 provenance 를 메타데이터로 기록하는 것을
+ * 명시적으로 허용하되, 그것이 Step 의 실행 방식을 바꾸지 못하게 한다. 이 모델은 그
+ * 경계 안에 있다 — 러너도 생성기도 이 값을 읽지 않는다.
+ *
+ * **묶음에 실을 때는 비운다** (019 R9). A→B→C 로 전달될 때 B 의 가져오기 기록이 C 에게
+ * 갈 이유가 없고, 파일 이름이 사내 경로를 흘릴 수 있다.
+ *
+ * 사이드카 파일로 빼지 않는 이유는 **묶음이 사라진 뒤에도 알아야** 하기 때문이다.
+ * 반년 뒤 "이 테스트 어디서 왔지" 의 답은 테스트 파일 안에 있어야 한다.
+ */
+export interface ImportProvenance {
+  imported_at: ImportedAt;
+  original_id: OriginalId;
+  source_file: SourceFile;
 }
 export interface ClickStep {
   author: Author;
