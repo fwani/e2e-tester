@@ -35,16 +35,24 @@ XDG_DATA_HOME=/tmp/itb-b XDG_CONFIG_HOME=/tmp/itb-b-cfg uv run uvicorn itb.api.a
 
 ```bash
 cd backend
-uv run ruff check . && uv run ruff format --check .
+uv run ruff check .                        # 저장소 전체가 통과해야 한다
 uv run lint-imports                        # itb.sharing 의 두 계약 포함
 uv run python -m itb.schema.export --check # share-bundle.schema.json 과 모델 일치
 uv run pytest tests/unit tests/contract tests/integration tests/abnormal -q
-uv run pytest tests/e2e -q                 # 왕복 시나리오 (느리다)
+uv run pytest tests/e2e -q                 # 왕복 시나리오 (느리다 · 브라우저를 띄운다)
 
 cd ../frontend
 npm run typecheck && npm test -- --run
 npm run gen:types && git diff --exit-code src/types/generated  # 생성물이 최신인가
 ```
+
+**`ruff format --check .` 은 넣지 않는다.** 이 저장소는 포맷터를 강제하지 않으며, 저장소
+전체에 걸면 019 와 무관한 파일 145개가 걸린다. 새로 쓴 파일만 보려면 경로를 좁힌다:
+`uv run ruff format --check src/itb/sharing src/itb/secrets/readiness.py`.
+
+**타이밍 계층은 `-n 0` 이 필요하다.** 시간을 재는 검증이 프로세스 분할에서 실패하므로
+`backend/scripts/test-backend.sh` 가 두 계층을 나눠 돈다. 위 명령만으로는 그 계층이
+`ERROR` 로 표시되는데, 그것은 실패가 아니라 "이렇게 돌리지 말라" 는 표시다.
 
 **`lint-imports` 가 이 기능의 핵심 게이트다.** 두 계약이 걸린다.
 
@@ -360,5 +368,6 @@ curl -s -X POST localhost:8001/api/share/import/plan -F 'file=@/tmp/huge.yaml' -
 - [ ] 4-4 에서 원본과 실행 결과가 일치한다 (SC-003)
 - [ ] 5장에서 기존 테스트가 하나도 사라지지 않는다 (SC-005)
 - [ ] 6장에서 50건 규모가 10초 안에 끝나고 화면이 멈추지 않는다 (SC-008)
+- [ ] SC-007(원인 파악 가능성)은 **수동 확인 항목**이다 — 자동 검증이 불가능하므로 결과를 적어 둔다
 - [ ] 2-1 → 2-2 를 화면에서 3회 조작 이내·1분 이내로 끝낼 수 있다 (SC-001)
 - [ ] 3-1 → 4-3 을 화면에서 5분 이내로 끝낼 수 있다 (SC-002)

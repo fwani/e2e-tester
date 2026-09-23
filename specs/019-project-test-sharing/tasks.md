@@ -217,12 +217,12 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 ### Implementation
 
-- [ ] T090 [US5] `backend/src/itb/sharing/planner.py` 에 `target="current"` 경로를 구현한다. 식별자 재부여는 `repository.allocate_test_id` 의 규칙(그룹마다 1번부터, 빈 번호 채움)을 따른다 (research R6)
-- [ ] T091 [US5] `planner.py` 에 그룹 대응 규칙을 구현한다 — 이름 기준 재사용, 접두어 충돌 시 대체 접두어(`USER` → `USER2`, 8자 상한 안), 확보 실패 시 그 그룹 건너뜀 + 사유 (research R6 표)
-- [ ] T092 [US5] `planner.py` 에 그룹별 `capacity` 를 산출해 계획에 싣는다. 부족하면 `blocking` 에 넣는다
-- [ ] T093 [US5] `backend/src/itb/sharing/applier.py` 에 `apply_current_project(plan, ...) -> ShareReport` 를 구현한다. `itb.storage.test_moves.run_all(validate, do, undo)` 를 쓴다 — `AllOrNothingError` / `PartialFailureError` 를 각각 `SHARE_IMPORT_FAILED` / `SHARE_IMPORT_PARTIAL` 로 옮긴다 (research R5, data-model §7)
-- [ ] T094 [US5] `frontend/src/pages/TestList.tsx` 에 「이 프로젝트로 가져오기」 진입점을 더한다
-- [ ] T095 [US5] `ShareImport.tsx` 가 `target=current` 계획에서 **바뀔 식별자를 강조**해 보여 주게 한다. 확정 후에도 `renumbered` 를 결과에 남긴다 (US5 AS2)
+- [X] T090 [US5] `backend/src/itb/sharing/planner.py` 에 `target="current"` 경로를 구현한다. 식별자 재부여는 `repository.allocate_test_id` 의 규칙(그룹마다 1번부터, 빈 번호 채움)을 따른다 (research R6)
+- [X] T091 [US5] `planner.py` 에 그룹 대응 규칙을 구현한다 — 이름 기준 재사용, 접두어 충돌 시 대체 접두어(`USER` → `USER2`, 8자 상한 안), 확보 실패 시 그 그룹 건너뜀 + 사유 (research R6 표)
+- [X] T092 [US5] `planner.py` 에 그룹별 `capacity` 를 산출해 계획에 싣는다. 부족하면 `blocking` 에 넣는다
+- [X] T093 [US5] `backend/src/itb/sharing/applier.py` 에 `apply_current_project(plan, ...) -> ShareReport` 를 구현한다. `itb.storage.test_moves.run_all(validate, do, undo)` 를 쓴다 — `AllOrNothingError` / `PartialFailureError` 를 각각 `SHARE_IMPORT_FAILED` / `SHARE_IMPORT_PARTIAL` 로 옮긴다 (research R5, data-model §7)
+- [X] T094 [US5] `frontend/src/pages/TestList.tsx` 에 「이 프로젝트로 가져오기」 진입점을 더한다
+- [X] T095 [US5] `ShareImport.tsx` 가 `target=current` 계획에서 **바뀔 식별자를 강조**해 보여 주게 한다. 확정 후에도 `renumbered` 를 결과에 남긴다 (US5 AS2)
 
 **Checkpoint**: 다섯 스토리 전부 동작한다.
 
@@ -230,14 +230,14 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 ## Phase 8: Polish & 교차 관심사
 
-- [ ] T096 [P] `backend/tests/e2e/test_share_roundtrip.py` — 헌법 게이트 2(왕복 무결성). `record → store → export → import → replay` 를 **작업 공간을 갈라** 끝까지 돌리고 실행 결과가 일치하는지 (SC-003, quickstart §3-3·§4-4)
-- [ ] T097 [P] 규모 확인 — 테스트 50건으로 내보내기·가져오기가 각각 10초 이내이고 화면이 멈추지 않는지 (SC-008, quickstart §6). 넘으면 어디서 시간이 드는지 기록한다
-- [ ] T098 [P] `backend/tests/abnormal/test_sharing_limits.py` — 20MB 초과 파일이 **파싱 없이** `SHARE_BUNDLE_TOO_LARGE` 로 거부되는지 (research R12)
-- [ ] T099 [P] `backend/tests/contract/test_sharing_guard.py` — **C10** `/api/share/*` 가 어긋난 `X-ITB-Project-Root` 에서 `PROJECT_MISMATCH` 로 거절되는지 (contracts §머리말)
-- [ ] T100 [P] 진행 상황 표시 — 내보내기·가져오기 중 화면에 진행이 보이게 한다 (spec Edge Cases, SC-008)
-- [ ] T101 [P] `docs/` 에 묶음 형식을 문서화한다 — 최상위 키, 버전 정책, **민감 값이 들어가지 않는 이유**. 헌법 원칙 V 의 "문서화된 평문 형식" 의무를 이 파일이 받는다
-- [ ] T102 [P] 모르는 스텝 종류를 만났을 때의 처리를 확인한다 — 조용히 빠뜨리지 않고 결과에 명시하는지 (spec Edge Cases). 현재 `Test` 검증이 거부하므로 그 사유가 사용자에게 읽히는 말로 나오는지 본다
-- [ ] T103 [P] `frontend/` 에서 `npm run gen:types` 후 `git diff --exit-code src/types/generated` 가 깨끗한지 CI 관점에서 확인한다 (quickstart §1)
+- [X] T096 [P] `backend/tests/e2e/test_share_roundtrip.py` — 헌법 게이트 2(왕복 무결성). `record → store → export → import → replay` 를 **작업 공간을 갈라** 끝까지 돌리고 실행 결과가 일치하는지 (SC-003, quickstart §3-3·§4-4)
+- [X] T097 [P] 규모 확인 — 테스트 50건으로 내보내기·가져오기가 각각 10초 이내이고 화면이 멈추지 않는지 (SC-008, quickstart §6). 넘으면 어디서 시간이 드는지 기록한다
+- [X] T098 [P] `backend/tests/abnormal/test_sharing_limits.py` — 20MB 초과 파일이 **파싱 없이** `SHARE_BUNDLE_TOO_LARGE` 로 거부되는지 (research R12)
+- [X] T099 [P] `backend/tests/contract/test_sharing_guard.py` — **C10** `/api/share/*` 가 어긋난 `X-ITB-Project-Root` 에서 `PROJECT_MISMATCH` 로 거절되는지 (contracts §머리말)
+- [X] T100 [P] 진행 상황 표시 — 내보내기·가져오기 중 화면에 진행이 보이게 한다 (spec Edge Cases, SC-008)
+- [X] T101 [P] `docs/` 에 묶음 형식을 문서화한다 — 최상위 키, 버전 정책, **민감 값이 들어가지 않는 이유**. 헌법 원칙 V 의 "문서화된 평문 형식" 의무를 이 파일이 받는다
+- [X] T102 [P] 모르는 스텝 종류를 만났을 때의 처리를 확인한다 — 조용히 빠뜨리지 않고 결과에 명시하는지 (spec Edge Cases). 현재 `Test` 검증이 거부하므로 그 사유가 사용자에게 읽히는 말로 나오는지 본다
+- [X] T103 [P] `frontend/` 에서 `npm run gen:types` 후 `git diff --exit-code src/types/generated` 가 깨끗한지 CI 관점에서 확인한다 (quickstart §1)
 - [ ] T104 [quickstart.md](quickstart.md) 7장 완료 판정 항목을 **실제로 돌려** 전부 통과시킨다. SC-007(원인 파악 가능성)은 자동 검증이 불가능하므로 **수동 확인 항목**으로 남기고 결과를 적는다. 통과하지 못한 항목은 사유와 함께 남긴다 — 통과한 것처럼 보고하지 않는다
 
 ---
