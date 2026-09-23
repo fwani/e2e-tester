@@ -699,6 +699,26 @@ export function TestList({
                 {exporting ? "내보내는 중…" : "엑셀로 내보내기"}
               </Button>
 
+              {/*
+                공유용 내보내기 (019 US1 · FR-001·FR-002).
+
+                「엑셀로 내보내기」와 **다른 것**이다. 엑셀은 사람이 읽는 설계서이고 스텝을
+                복원하지 못한다. 이쪽은 스텝·로케이터 후보까지 그대로 옮겨 **받는 사람이
+                실행할 수 있는** 파일을 만든다. 이름이 섞이지 않게 「공유용」을 앞에 둔다.
+
+                바로 내려받지 않고 확인 화면으로 간다 — 내보내기는 되돌릴 수 없고, 나가기
+                전에 보이는 것이 유일한 방어선이다 (US4).
+
+                **고른 것이 있으면 그것만** 보낸다. 선택이 없으면 프로젝트 전체다.
+              */}
+              <ButtonLink
+                size="sm"
+                data-action="tests.export-share"
+                href={paths.shareExport(selected.size > 0 ? [...selected] : null)}
+              >
+                {selected.size > 0 ? `공유용 내보내기 (${selected.size})` : "공유용 내보내기"}
+              </ButtonLink>
+
               {/* 엑셀에서 가져오기 (014 US2). 내보내기 옆에 두어 두 방향이 한자리에 있다. */}
               {onImportPlan !== undefined && (
                 <ImportFilePicker

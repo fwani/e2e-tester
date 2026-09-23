@@ -27,6 +27,7 @@ import { ProjectsRoute } from "./routes/ProjectsRoute";
 import { ResultRoute } from "./routes/ResultRoute";
 import { SecretsRoute } from "./routes/SecretsRoute";
 import { SessionRoute } from "./routes/SessionRoute";
+import { ShareExportRoute } from "./routes/ShareExportRoute";
 
 /**
  * 새로 고친 미리보기 (§3.4 · 사용자 결정). 계획은 서버 메모리에만 있고 만료되며 조회 API 가 없다 —
@@ -135,6 +136,7 @@ export function createRoutes(store: AppStore): RouteObject[] {
               },
               element: <ImportRoute />,
             },
+            { path: PATTERNS.shareExport, element: <ShareExportRoute /> },
             { path: PATTERNS.keys, element: <KeysRoute /> },
             { path: PATTERNS.secrets, element: <SecretsRoute /> },
             // 모르는 주소는 목록이다 — 005 가 「알 수 없는 값은 목록」으로 정한 것과 같다.

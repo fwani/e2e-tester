@@ -1454,3 +1454,92 @@ export interface SavedTestView extends Test {
    */
   desired_id_taken?: { wanted: string; assigned: string } | null;
 }
+
+/* ─── 공유 묶음 (019) ────────────────────────────────────────────────────── */
+
+/**
+ * 받는 사람이 **채워야 실행되는 것** 하나 (019 FR-040).
+ *
+ * 민감한 것과 그렇지 않은 것이 한 목록에 있다. 받는 사람에게는 둘 다 "비어 있어서 채워야
+ * 하는 것" 이고, 다른 것은 저장 위치뿐이다 — 민감한 것은 봉인 저장소로, 그렇지 않은 것은
+ * 테스트 정의로 간다 (FR-048).
+ */
+export interface ShareValueUsage {
+  test_id: string;
+  step_id: string;
+  step_label: string | null;
+  field: string;
+}
+
+export interface ShareRequiredValue {
+  name: string;
+  sensitive: boolean;
+  /** 묶음에 선언이 있었는가. 거짓이면 참조만 있어 **보충한 것**이다 (FR-047). */
+  declared: boolean;
+  usages: ShareValueUsage[];
+}
+
+export interface ShareStartUrl {
+  scope: "project" | "test";
+  test_id: string | null;
+  url: string;
+}
+
+/**
+ * 묶음에 **그대로 들어갈** 평문 입력값 하나 (019 FR-006).
+ *
+ * 화면은 이것을 **가리지 않는다.** 이 목록의 목적이 값을 보여 주는 것이고, 가려 놓으면
+ * 사번이나 사내 계정이 섞여 있어도 발견할 수 없다 (research R11).
+ */
+export interface SharePlaintextValue {
+  test_id: string;
+  step_id: string;
+  step_label: string | null;
+  field: string;
+  value: string;
+  truncated: boolean;
+}
+
+export interface ShareExportPreview {
+  project_name: string;
+  test_count: number;
+  group_count: number;
+  start_urls: ShareStartUrl[];
+  plaintext_values: SharePlaintextValue[];
+  required_values: ShareRequiredValue[];
+  unreadable: string[];
+}
+
+export const share = {
+  /**
+   * 내보내면 **무엇이 나가는지** 미리 본다. 파일을 만들지 않는다 (FR-006).
+   *
+   * 되돌릴 수 없는 조작 앞의 유일한 방어선이다 — 파일이 나간 뒤에는 회수할 방법이 없다.
+   */
+  exportPreview: (testIds?: string[] | null) =>
+    get<ShareExportPreview>(
+      testIds && testIds.length > 0
+        ? `/api/share/export/preview?test_ids=${encodeURIComponent(testIds.join(","))}`
+        : "/api/share/export/preview",
+    ),
+
+  /** 묶음 파일을 내려받는다. 파일 이름은 서버가 정한다. */
+  exportBundle: async (
+    testIds?: string[] | null,
+  ): Promise<{ blob: Blob; filename: string; testCount: number; unreadable: number }> => {
+    const resp = await send("/api/share/export", {
+      method: "POST",
+      body: JSON.stringify({ test_ids: testIds ?? null }),
+    });
+    if (!resp.ok) throw apiErrorFromBody(resp.status, await resp.text());
+    return {
+      blob: await resp.blob(),
+      filename: filenameFromDisposition(
+        resp.headers.get("Content-Disposition"),
+        "itb-share.itbshare.yaml",
+      ),
+      testCount: Number(resp.headers.get("X-ITB-Share-Test-Count") ?? 0),
+      unreadable: Number(resp.headers.get("X-ITB-Share-Unreadable") ?? 0),
+    };
+  },
+};

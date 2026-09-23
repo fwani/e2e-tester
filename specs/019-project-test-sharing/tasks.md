@@ -71,23 +71,23 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 ### Tests (구현 전에 쓴다 — 헌법 게이트 3)
 
-- [ ] T017 [P] [US1] `backend/tests/contract/test_sharing_export.py` — `POST /api/share/export` 가 200 과 `Content-Disposition`·`X-ITB-Share-Test-Count` 를 주고, 본문이 `bundle_version: 1` 로 시작하는 YAML 인지 (contracts §2)
-- [ ] T018 [P] [US1] `backend/tests/contract/test_sharing_export.py` 에 **C1** 를 추가한다 — 응답 바이트에 `secrets.local.yaml` 의 어떤 암호문도, 알려진 평문 비밀값도 나타나지 않는다 (SC-004). 이것이 이 기능의 유일한 절대 조건이다
-- [ ] T019 [P] [US1] `backend/tests/unit/test_sharing_builder.py` — 고른 테스트만 담기(US1 AS2), 민감 변수는 이름만(US1 AS3), 실행 산출물 미포함(FR-005), `imported_from` 이 `None` 으로 비워짐(research R9)
-- [ ] T020 [P] [US1] `backend/tests/contract/test_sharing_export.py` — `POST /api/share/export` 호출 **전후로 프로젝트 디렉터리가 바뀌지 않는지**(파일 목록·mtime) 확인한다. 미리보기만이 아니라 내보내기 자체에 FR-008 이 걸린다
-- [ ] T021 [P] [US1] `backend/tests/abnormal/test_sharing_export_empty.py` — 테스트가 없는 프로젝트에서 `SHARE_EXPORT_EMPTY`(400) 이고 파일이 만들어지지 않는다 (US1 AS4)
+- [X] T017 [P] [US1] `backend/tests/contract/test_sharing_export.py` — `POST /api/share/export` 가 200 과 `Content-Disposition`·`X-ITB-Share-Test-Count` 를 주고, 본문이 `bundle_version: 1` 로 시작하는 YAML 인지 (contracts §2)
+- [X] T018 [P] [US1] `backend/tests/contract/test_sharing_export.py` 에 **C1** 를 추가한다 — 응답 바이트에 `secrets.local.yaml` 의 어떤 암호문도, 알려진 평문 비밀값도 나타나지 않는다 (SC-004). 이것이 이 기능의 유일한 절대 조건이다
+- [X] T019 [P] [US1] `backend/tests/unit/test_sharing_builder.py` — 고른 테스트만 담기(US1 AS2), 민감 변수는 이름만(US1 AS3), 실행 산출물 미포함(FR-005), `imported_from` 이 `None` 으로 비워짐(research R9)
+- [X] T020 [P] [US1] `backend/tests/contract/test_sharing_export.py` — `POST /api/share/export` 호출 **전후로 프로젝트 디렉터리가 바뀌지 않는지**(파일 목록·mtime) 확인한다. 미리보기만이 아니라 내보내기 자체에 FR-008 이 걸린다
+- [X] T021 [P] [US1] `backend/tests/abnormal/test_sharing_export_empty.py` — 테스트가 없는 프로젝트에서 `SHARE_EXPORT_EMPTY`(400) 이고 파일이 만들어지지 않는다 (US1 AS4)
 
 ### Implementation
 
-- [ ] T022 [US1] `backend/src/itb/sharing/builder.py` 에 `build_bundle(project, tests, *, generator) -> ShareBundle` 를 구현한다. `Test` 를 그대로 싣되 `imported_from` 만 비운다. 고른 테스트만 내보낼 때는 **그 테스트가 쓰는 접두어의 그룹만** 담는다 (data-model §2.2)
-- [ ] T023 [US1] `backend/src/itb/sharing/builder.py` 에 `dump_bundle(bundle) -> bytes` 를 구현한다. 파일 머리에 "민감 값이 들어 있지 않습니다" 주석을 넣고, `yaml.safe_dump(sort_keys=False, allow_unicode=True, default_flow_style=False)` 로 키 순서를 고정한다 (data-model §2)
-- [ ] T024 [US1] `backend/src/itb/api/routes/sharing.py` 에 `POST /api/share/export` 를 구현한다. `test_ids` 가 없거나 `null` 이면 전체. 읽을 수 없는 테스트는 빠지되 `X-ITB-Share-Unreadable` 로 알린다. 파일명은 `<slug>-<YYYYMMDD-HHMMSS>.itbshare.yaml` (contracts §2)
-- [ ] T025 [US1] 묶음은 **메모리에서 완성된 뒤에야** 응답 본문이 되게 한다. 실패는 언제나 "파일이 없다" 여야지 "파일이 이상하다" 가 되면 안 된다 (014 `export_project` 와 같은 성질)
-- [ ] T026 [P] [US1] `frontend/src/api/client.ts` 에 `exportShareBundle(testIds)` 를 더한다. blob 으로 받아 `Content-Disposition` 의 파일명으로 저장한다 — 014 의 엑셀 내려받기 처리를 따른다
-- [ ] T027 [US1] `frontend/src/pages/ShareExport.tsx` 를 만든다. 대상(전체/고른 것) 표시 → 내려받기. 확인 요약은 US4 에서 붙인다
-- [ ] T028 [US1] `frontend/src/app/routes/ShareExportRoute.tsx` 를 만들고 라우터에 등록한다
-- [ ] T029 [US1] `frontend/src/pages/TestList.tsx` 에 「공유용 내보내기」 진입점을 더한다. 엑셀 내보내기와 **이름으로 구별되게** 둔다 — 두 산출물이 전혀 다르다 (research R13)
-- [ ] T030 [P] [US1] `frontend/src/pages/__tests__/ShareExport.test.tsx` — 선택 없음이면 전체, 선택이 있으면 그 목록을 보내는지
+- [X] T022 [US1] `backend/src/itb/sharing/builder.py` 에 `build_bundle(project, tests, *, generator) -> ShareBundle` 를 구현한다. `Test` 를 그대로 싣되 `imported_from` 만 비운다. 고른 테스트만 내보낼 때는 **그 테스트가 쓰는 접두어의 그룹만** 담는다 (data-model §2.2)
+- [X] T023 [US1] `backend/src/itb/sharing/builder.py` 에 `dump_bundle(bundle) -> bytes` 를 구현한다. 파일 머리에 "민감 값이 들어 있지 않습니다" 주석을 넣고, `yaml.safe_dump(sort_keys=False, allow_unicode=True, default_flow_style=False)` 로 키 순서를 고정한다 (data-model §2)
+- [X] T024 [US1] `backend/src/itb/api/routes/sharing.py` 에 `POST /api/share/export` 를 구현한다. `test_ids` 가 없거나 `null` 이면 전체. 읽을 수 없는 테스트는 빠지되 `X-ITB-Share-Unreadable` 로 알린다. 파일명은 `<slug>-<YYYYMMDD-HHMMSS>.itbshare.yaml` (contracts §2)
+- [X] T025 [US1] 묶음은 **메모리에서 완성된 뒤에야** 응답 본문이 되게 한다. 실패는 언제나 "파일이 없다" 여야지 "파일이 이상하다" 가 되면 안 된다 (014 `export_project` 와 같은 성질)
+- [X] T026 [P] [US1] `frontend/src/api/client.ts` 에 `exportShareBundle(testIds)` 를 더한다. blob 으로 받아 `Content-Disposition` 의 파일명으로 저장한다 — 014 의 엑셀 내려받기 처리를 따른다
+- [X] T027 [US1] `frontend/src/pages/ShareExport.tsx` 를 만든다. 대상(전체/고른 것) 표시 → 내려받기. 확인 요약은 US4 에서 붙인다
+- [X] T028 [US1] `frontend/src/app/routes/ShareExportRoute.tsx` 를 만들고 라우터에 등록한다
+- [X] T029 [US1] `frontend/src/pages/TestList.tsx` 에 「공유용 내보내기」 진입점을 더한다. 엑셀 내보내기와 **이름으로 구별되게** 둔다 — 두 산출물이 전혀 다르다 (research R13)
+- [X] T030 [P] [US1] `frontend/src/pages/__tests__/ShareExport.test.tsx` — 선택 없음이면 전체, 선택이 있으면 그 목록을 보내는지
 
 **Checkpoint**: 파일이 만들어져 동료에게 보낼 수 있다. 받는 기능은 아직 없다.
 
