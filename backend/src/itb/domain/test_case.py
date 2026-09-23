@@ -124,21 +124,39 @@ VARIABLE_REFERENCE_PATTERN = re.compile(r"\{\{([A-Z][A-Z0-9_]*)\}\}")
 """`{{이름}}` 참조를 값에서 찾아내는 패턴. `variable_reference()` 의 역방향이다."""
 
 
-def referenced_variable_names(steps: Sequence[Step]) -> set[str]:
-    """Step 목록이 참조하는 변수 이름 (006 T005).
+VARIABLE_VALUE_FIELDS = ("value", "assertion.value", "url")
+"""변수 참조가 나타날 수 있는 Step 의 자리 (019 R7).
 
-    값을 가질 수 있는 자리를 **모두** 본다 — 입력값, 검증 기대값, `navigate` 주소.
-    한 자리를 빠뜨리면 그 자리의 참조가 변수 정의에 반영되지 않고, 실행 시 빈 값이
-    채워진다 (조용한 실패다).
+입력값, 검증 기대값, `navigate` 주소 — 값을 가질 수 있는 자리 전부다. 한 자리를 빠뜨리면
+그 자리의 참조가 변수 정의에 반영되지 않고 실행 시 빈 값이 채워진다 (조용한 실패다).
+
+**이 목록이 유일한 출처다.** 참조하는 *이름*을 찾는 :func:`referenced_variable_names` 와
+참조하는 *자리*를 세는 :mod:`itb.sharing.bundle` 이 같은 것을 봐야 한다. 세 자리를 두 곳에
+베껴 두면 네 번째 자리가 생기는 날 한쪽만 바뀌고, 참조는 찾는데 자리는 못 찾는 상태가 된다.
+"""
+
+
+def step_field_text(step: Step, field: str) -> str | None:
+    """`VARIABLE_VALUE_FIELDS` 의 한 자리를 읽는다. 문자열이 아니면 `None`.
+
+    `"assertion.value"` 처럼 점으로 파고드는 경로를 다룬다. 중간이 비어 있으면 `None` 이며,
+    **예외를 올리지 않는다** — Step 종류마다 있는 자리가 다른 것은 정상이다.
     """
+    current: object | None = step
+    for part in field.split("."):
+        if current is None:
+            return None
+        current = getattr(current, part, None)
+    return current if isinstance(current, str) else None
+
+
+def referenced_variable_names(steps: Sequence[Step]) -> set[str]:
+    """Step 목록이 참조하는 변수 이름 (006 T005 · 019 R7)."""
     found: set[str] = set()
     for step in steps:
-        for text in (
-            getattr(step, "value", None),
-            getattr(getattr(step, "assertion", None), "value", None),
-            getattr(step, "url", None),
-        ):
-            if isinstance(text, str):
+        for field in VARIABLE_VALUE_FIELDS:
+            text = step_field_text(step, field)
+            if text is not None:
                 found.update(VARIABLE_REFERENCE_PATTERN.findall(text))
     return found
 
@@ -238,6 +256,30 @@ class Variable(BaseModel):
             )
             raise ValueError(msg)
         return self
+
+
+class ImportProvenance(BaseModel):
+    """이 테스트가 공유 묶음에서 왔다는 표시 (019 FR-028).
+
+    **실행에 관여하지 않는다.** 헌법 원칙 I 은 provenance 를 메타데이터로 기록하는 것을
+    명시적으로 허용하되, 그것이 Step 의 실행 방식을 바꾸지 못하게 한다. 이 모델은 그
+    경계 안에 있다 — 러너도 생성기도 이 값을 읽지 않는다.
+
+    **묶음에 실을 때는 비운다** (019 R9). A→B→C 로 전달될 때 B 의 가져오기 기록이 C 에게
+    갈 이유가 없고, 파일 이름이 사내 경로를 흘릴 수 있다.
+
+    사이드카 파일로 빼지 않는 이유는 **묶음이 사라진 뒤에도 알아야** 하기 때문이다.
+    반년 뒤 "이 테스트 어디서 왔지" 의 답은 테스트 파일 안에 있어야 한다.
+    """
+
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
+
+    source_file: str = Field(min_length=1, max_length=200)
+    """올린 묶음 파일의 **표시 이름**. 경로가 아니다 — 보낸 쪽의 디렉터리 구조를 남기지 않는다."""
+
+    imported_at: datetime
+    original_id: str = Field(pattern=TEST_ID_PATTERN)
+    """묶음 안에서의 식별자. 재부여됐다면 지금의 `id` 와 다르다."""
 
 
 class TestGroup(BaseModel):
@@ -348,6 +390,15 @@ class Test(BaseModel):
     ai_instruction: str | None = Field(default=None, max_length=MAX_INSTRUCTION_CHARS)
     """자연어 지시문 원문. **실행 대상이 아니다** (FR-063). 작성 의도의 기록일 뿐이다."""
 
+    imported_from: ImportProvenance | None = None
+    """공유 묶음에서 가져온 테스트라는 표시 (019 FR-028).
+
+    **기본값이 None 이어야 기존 테스트 파일이 그대로 읽힌다.** 019 이전에 저장된
+    `tests/*.yaml` 에는 이 키가 없다. 같은 이유로 `dsl_version` 을 올리지 않는다 —
+    올리면 :meth:`_check_refs` 가 기존 파일을 전부 거절한다 (014 가 `description` 을
+    추가할 때 이미 확인한 함정이다).
+    """
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
@@ -380,20 +431,13 @@ class Test(BaseModel):
         return self
 
     def referenced_variables(self) -> set[str]:
-        """Step 값과 검증 조건에서 참조하는 ``{{변수명}}`` 이름 집합."""
-        import re
+        """Step 값과 검증 조건에서 참조하는 ``{{변수명}}`` 이름 집합.
 
-        pat = re.compile(r"\{\{([A-Z][A-Z0-9_]*)\}\}")
-        found: set[str] = set()
-        for st in self.steps:
-            for text in (
-                getattr(st, "value", None),
-                getattr(getattr(st, "assertion", None), "value", None),
-                getattr(st, "url", None),
-            ):
-                if isinstance(text, str):
-                    found.update(pat.findall(text))
-        return found
+        **모듈 함수에 위임한다** (019 T006). 예전에는 여기에 같은 정규식과 같은 자리 목록이
+        한 벌 더 있었다 — 두 벌이면 한쪽만 바뀌는 날이 오고, 저장은 되는데 실행이 빈 값을
+        채우는 상태가 된다.
+        """
+        return referenced_variable_names(self.steps)
 
     def sensitive_variable_names(self) -> set[str]:
         return {v.name for v in self.variables if v.sensitive}

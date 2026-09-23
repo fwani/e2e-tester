@@ -42,6 +42,7 @@ from itb.api.routes import (
     secrets_routes,
     session_files,
     sessions,
+    sharing,
     steps,
     tabs,
     tests,
@@ -83,6 +84,8 @@ ROUTERS = (
     # 014 엑셀 통로 — 내보내기·가져오기와 초안
     excel.router,
     drafts.router,
+    # 019 공유 묶음 — 실행 가능한 테스트 자체를 주고받는다. 014 와 다른 통로다.
+    sharing.router,
 )
 
 

@@ -46,17 +46,17 @@ description: "Task list for 019 프로젝트·테스트 공유용 내보내기·
 
 **Purpose**: 모든 스토리가 딛고 서는 도메인·모델·스키마. **⚠️ 이 단계가 끝나기 전에는 어떤 스토리도 시작할 수 없다.**
 
-- [ ] T006 `backend/src/itb/domain/test_case.py` 에 `VARIABLE_VALUE_FIELDS = ("value", "assertion.value", "url")` 상수를 추가하고, `referenced_variable_names` 와 `Test.referenced_variables` 가 **그 상수를 돌도록** 고친다. 자리 목록이 세 곳에 흩어져 있던 것을 하나로 모은다 (research R7, data-model §5.1)
-- [ ] T007 `backend/src/itb/domain/test_case.py` 에 `ImportProvenance` 모델(`source_file`, `imported_at`, `original_id`)을 추가하고 `Test.imported_from: ImportProvenance | None = None` 필드를 더한다. **`dsl_version` 을 올리지 않는다** (data-model §5)
-- [ ] T008 [P] `backend/tests/unit/test_domain_provenance.py` — 019 이전 형식의 `tests/*.yaml`(키 없음)이 그대로 읽히고 `imported_from` 이 `None` 이 되는지, `imported_from` 이 있는 테스트가 실행 의미에 영향을 주지 않는지 확인한다 (헌법 원칙 I)
-- [ ] T009 [P] `backend/tests/unit/test_domain_variable_fields.py` — `VARIABLE_VALUE_FIELDS` 의 세 자리 각각에 `{{VAR}}` 를 넣었을 때 `referenced_variable_names` 가 전부 찾아내는지 확인한다
-- [ ] T010 `backend/src/itb/sharing/bundle.py` 에 묶음 모델을 정의한다 — `ShareBundle`(`bundle_version`, `generator`, `created_at`, `project`, `required_values`, `tests`), `BundleProject`(`next_test_number` 제외), `RequiredValue`(`sensitive`·`declared` 포함), `ValueUsage`. 상한은 `limits.py` 에서 온다 (data-model §2)
-- [ ] T011 `backend/src/itb/sharing/bundle.py` 에 `collect_required_values(tests) -> list[RequiredValue]` 를 둔다. `VARIABLE_VALUE_FIELDS` 를 돌며 `(test_id, step_id, step_label, field)` 를 모은다. **민감 변수는 전부**, **비민감 변수는 값이 빈 것만** 담는다. 각 항목에 `sensitive`·`declared` 를 싣는다 (data-model §2.3, FR-040)
-- [ ] T012 [P] `backend/tests/unit/test_sharing_bundle.py` — `collect_required_values` 가 세 자리 모두에서 자리를 찾고, 값이 **있는** 비민감 변수는 담지 않으며, 값이 **빈** 비민감 변수는 담고, 참조가 없는 민감 변수는 `usages` 가 비어 제외되는지 확인한다
-- [ ] T013 `backend/schema/share-bundle.schema.json` 을 `itb.schema.export` 에 등록해 `ShareBundle` 에서 생성되게 한다. `uv run python -m itb.schema.export --check` 가 통과하는지 확인한다 (헌법 §교차 언어 스키마 의무)
-- [ ] T014 `frontend/` 에서 `npm run gen:types` 를 돌려 `frontend/src/types/generated/share-bundle.d.ts` 를 만든다. 생성물이 커밋에 포함되는지 확인한다
-- [ ] T015 `backend/src/itb/api/routes/sharing.py` 라우터 뼈대를 만들고(`APIRouter(prefix="/api/share", tags=["sharing"])`) `backend/src/itb/api/app.py` 에 등록한다. **`/api/project` 아래에 두지 않는 이유**를 라우터 docstring 에 적는다 (contracts §머리말)
-- [ ] T016 `_content_disposition`(ASCII 대체 이름 + RFC 5987)을 `backend/src/itb/api/routes/excel.py` 에서 공용 위치(`backend/src/itb/api/routes/__init__.py` 또는 신규 `_download.py`)로 옮기고 양쪽이 **한 곳을 쓰게** 한다. 엑셀 쪽 기존 테스트가 그대로 통과하는지 확인한다
+- [X] T006 `backend/src/itb/domain/test_case.py` 에 `VARIABLE_VALUE_FIELDS = ("value", "assertion.value", "url")` 상수를 추가하고, `referenced_variable_names` 와 `Test.referenced_variables` 가 **그 상수를 돌도록** 고친다. 자리 목록이 세 곳에 흩어져 있던 것을 하나로 모은다 (research R7, data-model §5.1)
+- [X] T007 `backend/src/itb/domain/test_case.py` 에 `ImportProvenance` 모델(`source_file`, `imported_at`, `original_id`)을 추가하고 `Test.imported_from: ImportProvenance | None = None` 필드를 더한다. **`dsl_version` 을 올리지 않는다** (data-model §5)
+- [X] T008 [P] `backend/tests/unit/test_domain_provenance.py` — 019 이전 형식의 `tests/*.yaml`(키 없음)이 그대로 읽히고 `imported_from` 이 `None` 이 되는지, `imported_from` 이 있는 테스트가 실행 의미에 영향을 주지 않는지 확인한다 (헌법 원칙 I)
+- [X] T009 [P] `backend/tests/unit/test_domain_variable_fields.py` — `VARIABLE_VALUE_FIELDS` 의 세 자리 각각에 `{{VAR}}` 를 넣었을 때 `referenced_variable_names` 가 전부 찾아내는지 확인한다
+- [X] T010 `backend/src/itb/sharing/bundle.py` 에 묶음 모델을 정의한다 — `ShareBundle`(`bundle_version`, `generator`, `created_at`, `project`, `required_values`, `tests`), `BundleProject`(`next_test_number` 제외), `RequiredValue`(`sensitive`·`declared` 포함), `ValueUsage`. 상한은 `limits.py` 에서 온다 (data-model §2)
+- [X] T011 `backend/src/itb/sharing/bundle.py` 에 `collect_required_values(tests) -> list[RequiredValue]` 를 둔다. `VARIABLE_VALUE_FIELDS` 를 돌며 `(test_id, step_id, step_label, field)` 를 모은다. **민감 변수는 전부**, **비민감 변수는 값이 빈 것만** 담는다. 각 항목에 `sensitive`·`declared` 를 싣는다 (data-model §2.3, FR-040)
+- [X] T012 [P] `backend/tests/unit/test_sharing_bundle.py` — `collect_required_values` 가 세 자리 모두에서 자리를 찾고, 값이 **있는** 비민감 변수는 담지 않으며, 값이 **빈** 비민감 변수는 담고, 참조가 없는 민감 변수는 `usages` 가 비어 제외되는지 확인한다
+- [X] T013 `backend/schema/share-bundle.schema.json` 을 `itb.schema.export` 에 등록해 `ShareBundle` 에서 생성되게 한다. `uv run python -m itb.schema.export --check` 가 통과하는지 확인한다 (헌법 §교차 언어 스키마 의무)
+- [X] T014 `frontend/` 에서 `npm run gen:types` 를 돌려 `frontend/src/types/generated/share-bundle.d.ts` 를 만든다. 생성물이 커밋에 포함되는지 확인한다
+- [X] T015 `backend/src/itb/api/routes/sharing.py` 라우터 뼈대를 만들고(`APIRouter(prefix="/api/share", tags=["sharing"])`) `backend/src/itb/api/app.py` 에 등록한다. **`/api/project` 아래에 두지 않는 이유**를 라우터 docstring 에 적는다 (contracts §머리말)
+- [X] T016 `_content_disposition`(ASCII 대체 이름 + RFC 5987)을 `backend/src/itb/api/routes/excel.py` 에서 공용 위치(`backend/src/itb/api/routes/__init__.py` 또는 신규 `_download.py`)로 옮기고 양쪽이 **한 곳을 쓰게** 한다. 엑셀 쪽 기존 테스트가 그대로 통과하는지 확인한다
 
 **Checkpoint**: 묶음 모델·스키마·도메인 변경이 끝났다. 여기서부터 스토리들이 갈라진다.
 

@@ -5,21 +5,52 @@
  * 재생성: cd backend && uv run python -m itb.schema.export && cd ../frontend && npm run gen:types
  */
 
+export type BundleVersion = number;
+export type CreatedAt = string;
+export type Generator = string;
+export type BrowserKind = "chromium";
+export type DefaultStartUrl = string;
+export type Name = string;
+export type Prefix = string;
+/**
+ * @maxItems 100
+ */
+export type Groups = TestGroup[];
+export type MaxTabs = number;
+export type Name1 = string;
+export type TestIdAttribute = string;
+export type Declared = boolean;
+export type Name2 = string;
+export type Sensitive = boolean;
+/**
+ * @minItems 1
+ */
+export type Usages = [ValueUsage, ...ValueUsage[]];
+export type Field = string;
+export type StepId = string;
+export type StepLabel = string | null;
+export type TestId = string;
+export type RequiredValues = RequiredValue[];
+/**
+ * @minItems 1
+ * @maxItems 2000
+ */
+export type Tests = [Test, ...Test[]];
 export type Actor = string | null;
 export type AiInstruction = string | null;
 /**
  * 작성 방식. **테스트를 시작한 방식**으로 결정하며 이후 바뀌지 않는다 (FR-002a).
  */
 export type AuthoringMode = "record" | "ai";
-export type BrowserKind = "chromium";
-export type CreatedAt = string;
+export type BrowserKind1 = "chromium";
+export type CreatedAt1 = string;
 export type Description = string | null;
 export type DslVersion = number;
 export type Id = string;
 export type ImportedAt = string;
 export type OriginalId = string;
 export type SourceFile = string;
-export type Name = string;
+export type Name3 = string;
 export type StartUrl = string;
 /**
  * @minItems 1
@@ -42,7 +73,7 @@ export type AccessibleName = string | null;
 export type CandidateStatus = "verified" | "ambiguous" | "unverified" | "not_collected";
 export type Value = string;
 export type Role = string | null;
-export type Name1 = string;
+export type Name4 = string;
 export type Value1 = string;
 export type Tag = string | null;
 export type TimeoutMs = number;
@@ -111,11 +142,78 @@ export type Tab8 = number;
 export type TimeoutMs8 = number;
 export type Type8 = "upload";
 export type UpdatedAt = string;
-export type Name2 = string;
-export type Sensitive = boolean;
+export type Name5 = string;
+export type Sensitive1 = boolean;
 export type Value5 = string | null;
 export type Variables = Variable[];
 
+/**
+ * 전달 가능한 파일 하나의 내용 전체.
+ */
+export interface ShareBundle {
+  bundle_version: BundleVersion;
+  created_at: CreatedAt;
+  generator: Generator;
+  project: BundleProject;
+  required_values: RequiredValues;
+  tests: Tests;
+}
+/**
+ * 묶음이 나르는 프로젝트 설정 (data-model §2.2).
+ *
+ * :class:`itb.domain.test_case.Project` 에서 ``next_test_number`` 를 뺀 것이다. 그 필드는
+ * 이미 쓰이지 않는 하위 호환 잔재이며(도메인 주석), 묶음에 실으면 새 형식이 옛 잔재를
+ * 물려받는다.
+ */
+export interface BundleProject {
+  browser: BrowserKind;
+  default_start_url: DefaultStartUrl;
+  groups: Groups;
+  max_tabs: MaxTabs;
+  name: Name1;
+  test_id_attribute: TestIdAttribute;
+}
+/**
+ * 한 프로젝트 안에서 테스트를 묶는 것 (013 FR-438·FR-444d).
+ *
+ * **보이는 이름과 식별자 접두어를 따로 갖는다.** 이름은 사람이 읽는 것이고
+ * (「사용자관리 테스트」), 접두어는 식별자에 들어가는 짧은 값이다 (`USER`). 이름에서
+ * 접두어를 자동으로 뽑지 않는 이유는 이름이 한글일 수 있기 때문이다 — 그대로 쓰면
+ * 식별자가 `사용자관리-001` 로 길어지고, 로마자로 바꾸면 사용자가 예측하지 못하는 값이
+ * 나온다 (013 clarify).
+ *
+ * **소속을 테스트에 저장하지 않는다.** 식별자의 접두어가 곧 소속이다 — 둘을 다 저장하면
+ * 어긋날 수 있고, 어긋났을 때 어느 쪽이 맞는지 정할 근거가 없다 (013 data-model §3).
+ */
+export interface TestGroup {
+  name: Name;
+  prefix: Prefix;
+}
+/**
+ * 받는 사람이 **채워야 실행되는 것** 하나 (FR-040 · data-model §2.3).
+ *
+ * 민감한 것과 그렇지 않은 것을 한 모델에 둔다. 받는 사람에게는 둘 다 "비어 있어서 채워야
+ * 하는 것" 이고, 다른 것은 저장 위치뿐이다 — 민감한 것은 봉인 저장소로, 그렇지 않은 것은
+ * 테스트 정의로 간다 (FR-048).
+ */
+export interface RequiredValue {
+  declared: Declared;
+  name: Name2;
+  sensitive: Sensitive;
+  usages: Usages;
+}
+/**
+ * 어떤 변수가 **어디서** 쓰이는지 (FR-040).
+ *
+ * 이름만 보여 주면 받는 사람은 무엇을 넣을지 모른다. 「TC-001 의 '비밀번호 입력' 스텝」
+ * 까지 보여야 자기 계정의 어떤 값인지 판단할 수 있다.
+ */
+export interface ValueUsage {
+  field: Field;
+  step_id: StepId;
+  step_label: StepLabel;
+  test_id: TestId;
+}
 /**
  * 하나의 테스트 시나리오. `tests/` 아래 YAML 파일 하나에 대응한다.
  */
@@ -123,13 +221,13 @@ export interface Test {
   actor: Actor;
   ai_instruction: AiInstruction;
   authoring_mode: AuthoringMode;
-  browser: BrowserKind;
-  created_at: CreatedAt;
+  browser: BrowserKind1;
+  created_at: CreatedAt1;
   description: Description;
   dsl_version: DslVersion;
   id: Id;
   imported_from: ImportProvenance | null;
-  name: Name;
+  name: Name3;
   start_url: StartUrl;
   steps: Steps;
   updated_at: UpdatedAt;
@@ -191,7 +289,7 @@ export interface Candidate {
  * `[name="value"]` 형태로 쓰는 안정적 속성.
  */
 export interface StableAttr {
-  name: Name1;
+  name: Name4;
   status: CandidateStatus;
   value: Value1;
 }
@@ -325,7 +423,7 @@ export interface UploadStep {
  * 테스트 안에서 값을 대신하는 이름.
  */
 export interface Variable {
-  name: Name2;
-  sensitive: Sensitive;
+  name: Name5;
+  sensitive: Sensitive1;
   value: Value5;
 }
