@@ -69,7 +69,7 @@ curl -s localhost:8000/api/share/export/preview | python3 -m json.tool
 **기대**:
 
 - `plaintext_values` 에 스텝의 평문 입력값이 **가려지지 않은 채** 나온다 (US4 AS1)
-- `required_secrets` 에 민감 변수 이름과 쓰이는 스텝이 나온다
+- `required_values` 에 민감 변수와 값이 빈 비민감 변수가 이름·`sensitive`·쓰이는 스텝과 함께 나온다
 - `start_urls` 에 프로젝트 기본값과 테스트별 URL 이 나온다 (US4 AS3)
 
 화면에서도 같은 것을 본다: 테스트 목록 → 「공유용 내보내기」 → 확인 화면. 취소하면 파일이
@@ -86,7 +86,7 @@ head -20 /tmp/bundle.itbshare.yaml
 ```
 
 **기대**: 파일 머리에 "민감 값이 들어 있지 않습니다" 주석, `bundle_version: 1`,
-`required_secrets` 에 이름만.
+`required_values` 에 이름만 (값은 어디에도 없다).
 
 ### 2-3. 민감 값이 없음을 직접 확인한다 (SC-004)
 
@@ -131,7 +131,7 @@ curl -s -X POST localhost:8001/api/share/import/plan \
   -F 'file=@/tmp/bundle.itbshare.yaml' -F 'target=new' | python3 -m json.tool
 ```
 
-**기대** (US2 AS1): `tests` 에 들어올 테스트, `required_secrets` 에 채워야 할 변수
+**기대** (US2 AS1): `tests` 에 들어올 테스트, `required_values` 에 채워야 할 값
 (`already_stored: false`), `notices` 에 시작 URL 확인, `blocking: []`.
 
 **이 시점에 디스크가 그대로인지 확인한다** — 확정 전에는 아무것도 만들지 않는다.
@@ -171,6 +171,24 @@ PY
 같은 파일을 한 번 더 `target=new` 로 가져온다. 기존 프로젝트가 덮어써지지 않고 구분되는
 이름으로 만들어지며, `project_renamed_from` 이 응답에 있고 `notices` 에 `REIMPORT` 가 붙는다.
 
+### 3-4-1. 선언 없는 참조 (FR-047)
+
+```bash
+# 변수 선언 줄만 지운다 — 참조는 남는다
+python3 - <<'PY'
+import pathlib, re
+t = pathlib.Path("/tmp/bundle.itbshare.yaml").read_text()
+t = re.sub(r"\n    variables:\n(?:    - .*\n|      .*\n)+", "\n    variables: []\n", t, count=1)
+pathlib.Path("/tmp/undeclared.yaml").write_text(t)
+PY
+curl -s -X POST localhost:8001/api/share/import/plan \
+  -F 'file=@/tmp/undeclared.yaml' -F 'target=new' | python3 -m json.tool
+```
+
+**기대**: **거부되지 않는다.** `required_values` 에 그 변수가 `declared: false` 로 나타나고
+`repaired_variables` 에도 같은 사실이 있다. `SECRET_` 로 시작하는 이름은 `sensitive: true`,
+그 외는 `sensitive: false` 로 보충된다.
+
 ### 3-5. 나쁜 파일 (US2 AS4·AS5)
 
 ```bash
@@ -194,7 +212,7 @@ time curl -s -X POST localhost:8001/api/share/import/plan -F 'file=@/tmp/bomb.ya
 
 ---
 
-## 4. 민감 값 인계 (US3 / FR-040~FR-046)
+## 4. 값 인계 (US3 / FR-040~FR-048)
 
 ### 4-1. 값 없이 실행하면 막힌다 (US3 AS2 / FR-044)
 
@@ -245,6 +263,19 @@ curl -s localhost:8001/api/secrets                                    # 이름�
 
 같은 변수 이름을 쓰는 다른 묶음을 가져온다. 계획의 `already_stored: true` 가 나오고, 기존 값을
 조용히 덮어쓰지 않으며 유지/재입력을 고를 수 있다.
+
+### 4-5-1. 비민감 변수 값 채우기 (FR-048)
+
+```bash
+curl -s localhost:8001/api/tests/TC-001/readiness | python3 -m json.tool
+# → empty_variables: ["LOGIN_ID"] 이지만 runnable 은 막히지 않는다
+
+# 확정 시점에 함께 넣을 수도 있다
+# POST /api/share/import/commit  body: {"plan_id":"...", "variable_values":{"LOGIN_ID":"platform-b"}}
+grep -A3 'name: LOGIN_ID' /tmp/itb-b/itb/projects/<B>/tests/TC-001-*.yaml   # value 가 기록돼 있다
+```
+
+**민감 변수 이름을 `variable_values` 에 넣으면 400 이어야 한다** — 봉인 경로는 하나뿐이다.
 
 ### 4-6. 환경 변수로 공급 (R10)
 
@@ -324,7 +355,8 @@ curl -s -X POST localhost:8001/api/share/import/plan -F 'file=@/tmp/huge.yaml' -
 - [ ] 2-3 에서 암호문·평문 비밀값이 **0건** 발견된다 (SC-004)
 - [ ] 3-3 에서 스텝이 로케이터 후보까지 완전히 일치한다
 - [ ] 3-5 의 세 가지 나쁜 파일 모두에서 디스크가 그대로다 (SC-006)
-- [ ] 4-1 에서 브라우저가 뜨지 않고 막힌다 (FR-044)
+- [ ] 4-1 에서 브라우저가 뜨지 않고 막힌다 (FR-044) — **민감 변수만**. 빈 비민감 변수는 막지 않는다
+- [ ] 3-4-1 에서 선언 없는 참조가 거부되지 않고 채울 목록에 나타난다 (FR-047)
 - [ ] 4-4 에서 원본과 실행 결과가 일치한다 (SC-003)
 - [ ] 5장에서 기존 테스트가 하나도 사라지지 않는다 (SC-005)
 - [ ] 6장에서 50건 규모가 10초 안에 끝나고 화면이 멈추지 않는다 (SC-008)

@@ -18,6 +18,7 @@
 | 가져온 테스트 | `<프로젝트>/tests/*.yaml` | 사용자 자산 |
 | 가져오기 출처 표시 | 각 테스트 파일 안 (`imported_from`) | 테스트와 함께 |
 | 채워 넣은 민감 값 | `<프로젝트>/secrets.local.yaml` (암호문) | 사용자 자산, 커밋 제외 |
+| 채워 넣은 비민감 값 | 해당 `tests/*.yaml` 의 `variables[].value` | 사용자 자산, 커밋 대상 |
 
 **묶음 파일을 도구가 보관하지 않는 것이 중요하다.** 보관하면 그 자체가 관리 대상이 되고,
 "어느 묶음에서 왔는지" 를 파일 경로로 기억하게 되며, 사용자가 지운 파일을 도구가 붙잡고 있게
@@ -31,7 +32,7 @@ YAML 문서 하나. 최상위 키 순서는 사람이 읽기 좋게 고정한다
 
 ```yaml
 # 이 파일에는 비밀번호·API 키 등 민감 값이 들어 있지 않습니다.
-# 가져온 뒤 필요한 값은 받는 분이 직접 입력합니다. (required_secrets 참고)
+# 가져온 뒤 필요한 값은 받는 분이 직접 입력합니다. (required_values 참고)
 bundle_version: 1
 generator: itb 0.19.0
 created_at: 2026-09-23T04:12:00Z
@@ -44,12 +45,22 @@ project:
   groups:
     - prefix: USER
       name: 사용자관리
-required_secrets:
+required_values:
   - name: SECRET_INPUT_LOGIN_PW
+    sensitive: true
+    declared: true
     usages:
       - test_id: TC-001
         step_id: step-02
         step_label: 비밀번호 입력
+        field: value
+  - name: LOGIN_ID
+    sensitive: false
+    declared: true
+    usages:
+      - test_id: TC-001
+        step_id: step-01
+        step_label: 아이디 입력
         field: value
 tests:
   - dsl_version: 1
@@ -66,7 +77,7 @@ tests:
 | `generator` | str | 만든 도구 이름·버전. 표시·진단용이며 판정에 쓰지 않는다. 최대 100자. |
 | `created_at` | datetime (UTC) | 만든 시각. |
 | `project` | BundleProject | 아래 2.2. |
-| `required_secrets` | list[RequiredSecret] | 아래 2.3. **참고용 요약이며 정본이 아니다** (R7). |
+| `required_values` | list[RequiredValue] | 아래 2.3. **참고용 요약이며 정본이 아니다** (R7). |
 | `tests` | list[Test] | `itb.domain.test_case.Test` 그대로. 1개 이상, `MAX_BUNDLE_TESTS` 이하. |
 
 ### 2.2 BundleProject
@@ -81,14 +92,22 @@ tests:
 쪽에 테스트 없는 그룹이 생긴다 — 전체 프로젝트를 내보낼 때는 빈 그룹도 프로젝트 구성이므로
 담고, 고른 테스트만 내보낼 때는 담지 않는다.
 
-### 2.3 RequiredSecret
+### 2.3 RequiredValue
+
+받는 사람이 **채워야 실행되는 것**의 목록이다. 민감한 것과 그렇지 않은 것을 한 목록에 둔다 —
+받는 사람에게는 둘 다 "비어 있어서 채워야 하는 것" 이고, 다른 것은 저장 위치뿐이다 (FR-040).
 
 | 필드 | 형 | 설명 |
 |---|---|---|
-| `name` | str (`VARIABLE_NAME_PATTERN`) | 민감 변수 이름. |
-| `usages` | list[SecretUsage] | 1개 이상. 비면 그 변수를 담지 않는다. |
+| `name` | str (`VARIABLE_NAME_PATTERN`) | 변수 이름. |
+| `sensitive` | bool | 참이면 봉인 대상, 거짓이면 테스트 정의에 기록된다 (FR-048). |
+| `declared` | bool | 묶음에 변수 선언이 있었는가. 거짓이면 참조만 있어 **보충한 것**이다 (FR-047). |
+| `usages` | list[ValueUsage] | 1개 이상. 비면 그 변수를 담지 않는다. |
 
-**SecretUsage**: `test_id`, `step_id`, `step_label`(없으면 `null`), `field` ∈
+**담는 기준**: 민감 변수는 **전부** 담는다(정의에 값을 가질 수 없으므로 언제나 비어 있다).
+비민감 변수는 **값이 비어 있는 것만** 담는다 — 값이 있으면 채울 것이 없다.
+
+**ValueUsage**: `test_id`, `step_id`, `step_label`(없으면 `null`), `field` ∈
 {`value`, `assertion.value`, `url`}.
 
 `field` 의 목록은 `itb.domain.test_case.VARIABLE_VALUE_FIELDS` 하나에서 온다 — 참조를 찾는
@@ -117,7 +136,7 @@ tests:
 | `target_project_name` | str \| None | `new` 일 때 만들어질 이름 (충돌 회피 후). |
 | `groups` | list[GroupPlan] | 아래 3.1. |
 | `tests` | list[TestPlan] | 아래 3.2. |
-| `required_secrets` | list[PlannedSecret] | 아래 3.3. |
+| `required_values` | list[PlannedValue] | 아래 3.3. |
 | `capacity` | list[GroupCapacity] | 그룹별 여유 (`prefix`, `needed`, `available`, `ok`). |
 | `notices` | list[Notice] | 확인이 필요한 것 — 시작 URL, 이름 변경, 빠진 테스트, 재가져오기 등. |
 | `blocking` | list[str] | 비어 있어야 확정할 수 있다. 용량 부족·접두어 확보 실패 등. |
@@ -149,19 +168,21 @@ tests:
 | `status` | `create` \| `skip` |
 | `reason` | `skip` 사유 (그룹 건너뜀, 용량 부족, 정의 검증 실패). |
 
-### 3.3 PlannedSecret
+### 3.3 PlannedValue
 
-`RequiredSecret` + 대상 쪽 사정.
+`RequiredValue` + 대상 쪽 사정.
 
 | 필드 | 설명 |
 |---|---|
-| `name` | 변수 이름. |
+| `name` / `sensitive` / `declared` | `RequiredValue` 와 같다. |
 | `usages` | 자리 목록. **`target_id` 기준으로 고쳐 쓴다** — 재부여된 식별자를 보여 줘야 사용자가 찾을 수 있다. |
-| `already_stored` | 대상 프로젝트의 `secrets.local.yaml` 에 같은 이름의 암호문이 있는가 (FR-046). |
+| `already_stored` | 민감 변수일 때, 대상 프로젝트의 `secrets.local.yaml` 에 같은 이름의 암호문이 있는가 (FR-046). 비민감이면 `null`. |
 | `env_provided` | 같은 이름의 환경 변수가 있는가. 있으면 값을 채우지 않아도 실행된다 (R10). |
+| `blocks_run` | 값이 없을 때 실행이 막히는가. **민감 변수만 참이다** (FR-044). |
 
-**이 필드들만 `itb.secrets` 를 필요로 한다.** `itb.sharing.planner` 는 `already_stored` 를
-`None` 으로 두고 만들고, 라우터가 `SecretStore.has(name)` 로 채운다 (R3).
+**`already_stored` 와 `env_provided` 만 `itb.secrets`·환경을 필요로 한다.**
+`itb.sharing.planner` 는 그 둘을 `None` 으로 두고 만들고, 라우터가 `SecretStore.has(name)` 와
+`os.environ` 으로 채운다 (R3).
 
 ---
 
@@ -178,7 +199,8 @@ tests:
 | `renumbered` | `[{from, to}]` — `created_tests` 의 부분집합을 따로 뽑은 것. 화면이 이것만 강조한다. |
 | `created_groups` | `[{prefix, name}]` |
 | `skipped` | `[{source_id, reason}]` |
-| `required_secrets` | `PlannedSecret` 목록 — 이제 **해야 할 일**이다. |
+| `repaired_variables` | `[{test_id, name, sensitive}]` — 선언이 없어 보충한 변수 (FR-047). |
+| `required_values` | `PlannedValue` 목록 — 이제 **해야 할 일**이다. |
 | `notices` | 시작 URL 확인 등. |
 
 ---
@@ -230,10 +252,18 @@ VARIABLE_VALUE_FIELDS = ("value", "assertion.value", "url")
 1. **바이트** — `MAX_BUNDLE_BYTES` 초과면 읽지 않는다. 상한 + 1 바이트만 읽어 판정한다.
 2. **YAML** — 별칭 금지 로더로 파싱. 최상위가 매핑이 아니면 거부.
 3. **묶음 모델** — `ShareBundle` Pydantic 검증. `bundle_version`, 건수·그룹 수 상한.
-4. **도메인** — 각 `Test` 를 `Test` 모델로 검증. 스텝 id 중복, 변수 선언·참조 일치,
+4. **선언 보충** — 참조는 있는데 선언이 없는 변수를 채워 넣는다 (FR-047). 이름이
+   `SENSITIVE_VARIABLE_PREFIX`(`SECRET_`)로 시작하면 `sensitive=True, value=None`,
+   아니면 `sensitive=False, value=""`. 보충한 것은 `repaired_variables` 에 기록한다.
+5. **도메인** — 각 `Test` 를 `Test` 모델로 검증. 스텝 id 중복, 변수 선언·참조 일치,
    `dsl_version`, 로케이터 구조까지 기존 검증이 전부 돈다.
 
-4번에서 한 건이라도 실패하면 **가져오기 전체를 거부한다** (FR-023·FR-024). 일부만 살려
+**4번이 5번 앞에 있는 이유**: `Test._check_refs` 는 선언 없는 참조를 거부한다. 보충하지 않고
+검증에 넘기면 손으로 편집된 묶음이 통째로 거부되고, 사용자는 "무엇을 고쳐야 하는지" 대신
+"읽을 수 없다" 만 받는다. 보충은 **없는 값을 지어내는 것이 아니라 빈 자리를 드러내는 것**이다 —
+채우는 것은 사용자이며, 민감 변수라면 채우기 전까지 실행이 막힌다 (FR-044).
+
+5번에서 한 건이라도 실패하면 **가져오기 전체를 거부한다** (FR-023·FR-024). 일부만 살려
 들이면 "가져왔는데 왜 3개뿐이지" 를 사용자가 추적할 수 없다. 어느 테스트의 무엇이 문제인지
 전부 모아 한 번에 보고한다.
 

@@ -37,8 +37,8 @@
     { "test_id": "TC-001", "step_id": "step-01", "step_label": "아이디 입력",
       "field": "value", "value": "platform1", "truncated": false }
   ],
-  "required_secrets": [
-    { "name": "SECRET_INPUT_LOGIN_PW",
+  "required_values": [
+    { "name": "SECRET_INPUT_LOGIN_PW", "sensitive": true, "declared": true,
       "usages": [{ "test_id": "TC-001", "step_id": "step-02",
                    "step_label": "비밀번호 입력", "field": "value" }] }
   ],
@@ -121,13 +121,17 @@
       "renumbered": false, "group_prefix": "TC", "status": "create", "reason": null }
   ],
   "capacity": [{ "prefix": "TC", "needed": 3, "available": 996, "ok": true }],
-  "required_secrets": [
-    { "name": "SECRET_INPUT_LOGIN_PW",
+  "required_values": [
+    { "name": "SECRET_INPUT_LOGIN_PW", "sensitive": true, "declared": true,
       "usages": [{ "test_id": "TC-001", "step_id": "step-02",
                    "step_label": "비밀번호 입력", "field": "value" }],
-      "already_stored": false,
-      "env_provided": false }
+      "already_stored": false, "env_provided": false, "blocks_run": true },
+    { "name": "LOGIN_ID", "sensitive": false, "declared": false,
+      "usages": [{ "test_id": "TC-001", "step_id": "step-01",
+                   "step_label": "아이디 입력", "field": "value" }],
+      "already_stored": null, "env_provided": false, "blocks_run": false }
   ],
+  "repaired_variables": [{ "test_id": "TC-001", "name": "LOGIN_ID", "sensitive": false }],
   "notices": [
     { "code": "START_URL_CHECK", "message": "시작 URL 이 https://example.internal 입니다. 이 환경에 접근할 수 있는지 확인하세요.", "detail": null },
     { "code": "REIMPORT", "message": "같은 묶음을 이미 가져온 적이 있습니다.", "detail": {"matched_tests": 3} }
@@ -136,14 +140,22 @@
 }
 ```
 
-- `required_secrets[].usages[].test_id` 는 **`target_id` 기준**이다. 재부여된 번호로 보여 줘야
+- `required_values[].usages[].test_id` 는 **`target_id` 기준**이다. 재부여된 번호로 보여 줘야
   사용자가 찾을 수 있다.
+- `required_values` 에는 **민감 변수 전부**와 **값이 비어 있는 비민감 변수**가 함께 들어간다
+  (FR-040). `blocks_run` 이 참인 것만 실행을 막는다 (FR-044).
+- `declared: false` 는 묶음에 선언이 없어 **보충한** 변수다 (FR-047). `repaired_variables` 에도
+  같은 사실이 있다 — 거부하지 않고 채울 수 있게 드러낸다.
 - `blocking` 이 비어 있지 않으면 확정할 수 없다. 화면은 확정 버튼을 잠근다.
 - `REIMPORT` 판정은 대상 프로젝트에 `imported_from.source_file` 이 같은 테스트가 있는지로 본다.
 
 **오류**: `SHARE_BUNDLE_TOO_LARGE`(413), `SHARE_BUNDLE_MALFORMED`(400),
 `SHARE_BUNDLE_UNSUPPORTED_VERSION`(400), `SHARE_BUNDLE_INVALID_TEST`(400 — 어느 테스트의
 무엇이 문제인지 `detail` 에 전부), `PROJECT_NOT_OPEN`(404, `target=current` 일 때만).
+
+**선언 없는 `{{VAR}}` 참조는 오류가 아니다.** 선언을 보충하고 `required_values` 에 넣는다
+(FR-047, data-model §6 4단계). 거부하면 사용자는 "무엇을 고쳐야 하는지" 대신 "읽을 수 없다" 만
+받는다.
 
 ---
 
@@ -165,7 +177,8 @@
 {
   "plan_id": "a1b2c3...",
   "project_name": "dev-graphio (2)",
-  "default_start_url": "https://staging.example.internal"
+  "default_start_url": "https://staging.example.internal",
+  "variable_values": { "LOGIN_ID": "platform-b" }
 }
 ```
 
@@ -174,6 +187,7 @@
 | `plan_id` | ✓ | |
 | `project_name` | `target=new` 일 때만 | 비면 계획의 `target_project_name`. 다시 충돌하면 서버가 또 비껴 만들고 결과에 알린다. |
 | `default_start_url` | 선택 | 받는 쪽 환경이 다를 때 여기서 바꾼다 (Edge Case). 없으면 묶음의 값. |
+| `variable_values` | 선택 | **비민감** 변수의 값. 테스트 정의에 기록된다 (FR-048). **민감 변수 이름이 오면 400 으로 거절한다** — 민감 값은 이 경로로 받지 않는다. 봉인은 `PUT /api/secrets/{name}` 하나뿐이다 (contracts §8). |
 
 **확정은 계획을 다시 세운다.** 서버가 들고 있는 묶음으로 현재 대상 프로젝트를 다시 보고,
 결과가 예고와 달라졌으면 `SHARE_PLAN_STALE`(409) 과 함께 **새 계획**을 돌려준다. 사용자가
@@ -192,7 +206,8 @@
   "renumbered": [{ "from": "TC-001", "to": "TC-007" }],
   "created_groups": [{ "prefix": "USER", "name": "사용자관리" }],
   "skipped": [{ "source_id": "TC-004", "reason": "그룹 USER 의 번호가 모두 찼습니다." }],
-  "required_secrets": [ /* 3번과 같은 모양, already_stored 갱신됨 */ ],
+  "repaired_variables": [{ "test_id": "TC-007", "name": "LOGIN_ID", "sensitive": false }],
+  "required_values": [ /* 3번과 같은 모양, already_stored 갱신됨 */ ],
   "notices": [ /* 3번과 같은 모양 */ ]
 }
 ```
@@ -216,15 +231,16 @@
 {
   "runnable": false,
   "missing_secrets": ["SECRET_INPUT_LOGIN_PW"],
-  "undefined_variables": [],
+  "empty_variables": ["LOGIN_ID"],
   "key_available": true
 }
 ```
 
 - `missing_secrets` — 민감 변수인데 `secrets.local.yaml` 에 암호문이 없고 동일 이름 환경
   변수도 없는 것. **복호화하지 않고 존재만 본다** (research R10).
-- `undefined_variables` — 기존 `undefined_variable_references` 의 결과 (비민감·빈 값).
-  실행을 막지는 않는다.
+- `empty_variables` — 기존 `undefined_variable_references` 의 결과 (비민감·빈 값). **실행을
+  막지 않는다** (FR-044) — 빈 문자열이 유효한 입력일 수 있고, 이것은 제품이 이미 쓰는 판정이다.
+  화면은 경고로 보여 준다.
 - `key_available` — 이 설치에 키가 있는가 (FR-045).
 - `runnable` 은 `missing_secrets` 가 비었는지로 정한다.
 
@@ -232,8 +248,9 @@
 
 ## 7. `POST /api/sessions` 변경 — 실행 전 차단
 
-기존 엔드포인트에 **선행 검사**를 더한다. 저장된 테스트를 재생하려는 요청에서
-`missing_secrets` 가 비어 있지 않으면 세션을 만들지 않고 거절한다.
+기존 엔드포인트에 **선행 검사**를 더한다. `mode` 가 **`replay` 또는 `rerecord`** 인 요청에서
+`missing_secrets` 가 비어 있지 않으면 세션을 만들지 않고 거절한다. `rerecord` 도 앞 스텝을
+재생하므로 같은 값이 필요하다 — 여기를 빠뜨리면 차단이 한쪽에만 걸린다.
 
 **409 응답**
 
@@ -250,7 +267,7 @@
 **브라우저를 띄우기 전에 막는다.** 지금은 그 스텝에 도달해서야 실패하므로 받은 사람이 자기
 환경 문제인지 테스트 문제인지 구분할 수 없다.
 
-**AI 작성·녹화 세션에는 걸지 않는다.** 그 경로는 값을 **만드는** 중이므로 없는 것이 정상이다.
+**`record`·AI 작성 세션에는 걸지 않는다.** 그 경로는 값을 **만드는** 중이므로 없는 것이 정상이다.
 
 ---
 
@@ -264,6 +281,7 @@
 | 값 채우기 (봉인) | `PUT /api/secrets/{name}` |
 | 값 지우기 | `DELETE /api/secrets/{name}` |
 | 키 상태·생성·잠금 해제 | `GET /api/keys/status`, `POST /api/keys/generate`, `POST /api/keys/unlock` |
+| **비민감** 변수 값 채우기 (나중에) | `PUT /api/tests/{id}/definition` — 테스트 정의에 기록된다 (FR-048) |
 
 **봉인 경로가 하나여야 한다.** 두 벌이 되면 마스킹·오류 처리가 갈리고, 한쪽에서 평문이 샌다
 (research R13).
@@ -284,3 +302,6 @@
 | C8 | 민감 값이 빈 테스트로 `POST /api/sessions` 를 하면 409 `SECRET_VALUE_MISSING` 이고 세션이 만들어지지 않는다. |
 | C9 | 같은 이름 환경 변수가 있으면 `missing_secrets` 에 들어가지 않는다. |
 | C10 | `/api/share/*` 가 `X-ITB-Project-Root` 가 어긋난 요청에서 `PROJECT_MISMATCH` 로 거절된다. |
+| C11 | 선언 없는 `{{VAR}}` 를 참조하는 묶음이 **거부되지 않고** `required_values` 에 `declared: false` 로 나타난다 (FR-047). |
+| C12 | `variable_values` 에 민감 변수 이름을 넣으면 400 으로 거절된다 — 봉인 경로는 하나뿐이다. |
+| C13 | 값이 빈 **비민감** 변수만 있는 테스트는 `POST /api/sessions` 가 막지 않는다 (FR-044). |
