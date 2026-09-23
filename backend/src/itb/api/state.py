@@ -18,6 +18,7 @@ from itb.execution.session import SessionManager
 from itb.portability.plan_store import ImportPlanStore
 from itb.secrets.keys import KeyPaths
 from itb.secrets.unlock import KeyUnlock
+from itb.sharing.plan_store import SharePlanStore
 from itb.storage.repository import ProjectRepository
 from itb.storage.session_files import SessionFileRegistry
 
@@ -55,6 +56,14 @@ class AppState:
     **디스크에 쓰지 않는다.** 확정 전에는 아무것도 만들지 않아야 하는데(FR-016), 디스크에
     쓰면 그 자체가 "만든 것"이 된다. 앱 수명에 두는 이유는 세션과 무관하기 때문이다 —
     새 프로젝트를 만들며 가져오는 경로에는 열린 프로젝트조차 없다.
+    """
+
+    share_plans: SharePlanStore = field(default_factory=SharePlanStore)
+    """공유 묶음 가져오기 계획 (019 · data-model §3).
+
+    **014 의 `import_plans` 와 나란히, 합치지 않는다.** 담는 것이 다르고(엑셀 워크북 vs
+    공유 묶음) 만들어 내는 것도 다르다 — 그쪽은 초안, 이쪽은 실행 가능한 테스트다
+    (019 research R8).
     """
 
     control: ControlChannelRegistry = field(default_factory=ControlChannelRegistry)

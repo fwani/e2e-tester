@@ -1543,3 +1543,118 @@ export const share = {
     };
   },
 };
+
+export interface ShareGroupPlan {
+  source_prefix: string;
+  source_name: string;
+  target_prefix: string;
+  target_name: string;
+  action: "reuse" | "create" | "create_renamed_prefix" | "skip";
+  reason: string | null;
+}
+
+export interface ShareTestPlan {
+  source_id: string;
+  target_id: string;
+  name: string;
+  group_prefix: string;
+  status: "create" | "skip";
+  reason: string | null;
+  renumbered: boolean;
+}
+
+export interface ShareGroupCapacity {
+  prefix: string;
+  needed: number;
+  available: number;
+  ok: boolean;
+}
+
+export interface ShareNotice {
+  code: string;
+  message: string;
+  detail: Record<string, unknown> | null;
+}
+
+export interface ShareRepairedVariable {
+  test_id: string;
+  name: string;
+  sensitive: boolean;
+}
+
+/**
+ * 받는 사람이 채워야 할 것 + 대상 쪽 사정 (019 FR-040·FR-046).
+ *
+ * `blocks_run` 이 참인 것만 실행을 막는다 — 빈 비민감 값은 막지 않는다 (FR-044).
+ */
+export interface SharePlannedValue extends ShareRequiredValue {
+  already_stored: boolean | null;
+  env_provided: boolean | null;
+  blocks_run: boolean;
+}
+
+export interface SharePlanView {
+  plan_id: string;
+  file_name: string;
+  expires_at: string;
+  target: "new" | "current";
+  target_project_name: string | null;
+  project_renamed_from: string | null;
+  generator: string;
+  created_at: string;
+  groups: ShareGroupPlan[];
+  tests: ShareTestPlan[];
+  capacity: ShareGroupCapacity[];
+  required_values: SharePlannedValue[];
+  repaired_variables: ShareRepairedVariable[];
+  notices: ShareNotice[];
+  /** 비어 있어야 확정할 수 있다. 화면은 이것이 있으면 확정을 잠근다. */
+  blocking: string[];
+}
+
+export interface ShareReportView {
+  project_root: string;
+  project_name: string;
+  project_renamed_from: string | null;
+  created_tests: { target_id: string; source_id: string; name: string; group_prefix: string }[];
+  renumbered: { from: string; to: string }[];
+  created_groups: { prefix: string; name: string }[];
+  skipped: { source_id: string; reason: string }[];
+  required_values: SharePlannedValue[];
+  repaired_variables: ShareRepairedVariable[];
+  notices: ShareNotice[];
+}
+
+export interface ShareCommitBody {
+  plan_id: string;
+  project_name?: string | null;
+  default_start_url?: string | null;
+  /**
+   * **비민감** 변수의 값만 보낸다 (FR-048). 민감 값을 여기 실으면 서버가 400 으로 거절한다 —
+   * 봉인 경로는 `PUT /api/secrets/{name}` 하나뿐이다.
+   */
+  variable_values?: Record<string, string>;
+}
+
+export const shareImport = {
+  /** 파일을 올려 계획을 만든다. **확정 전에는 아무것도 만들어지지 않는다.** */
+  plan: async (file: File, target: "new" | "current"): Promise<SharePlanView> => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("target", target);
+    // FormData 는 브라우저가 경계 문자열을 붙여야 하므로 Content-Type 을 지운다.
+    const resp = await send("/api/share/import/plan", {
+      method: "POST",
+      body: form,
+      headers: { "Content-Type": "" },
+    });
+    const text = await resp.text();
+    if (!resp.ok) throw apiErrorFromBody(resp.status, text);
+    return JSON.parse(text) as SharePlanView;
+  },
+
+  get: (planId: string) =>
+    get<SharePlanView>(`/api/share/import/plan/${encodeURIComponent(planId)}`),
+
+  commit: (body: ShareCommitBody) => post<ShareReportView>("/api/share/import/commit", body),
+};

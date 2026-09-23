@@ -9,6 +9,7 @@ from __future__ import annotations
 import datetime as dt
 
 import yaml
+from sharing_support import click, fill, make_test
 
 from itb.domain.test_case import (
     ImportProvenance,
@@ -19,7 +20,6 @@ from itb.domain.test_case import (
 )
 from itb.sharing.builder import build_bundle, dump_bundle
 from itb.sharing.limits import BUNDLE_VERSION
-from sharing_support import click, fill, make_test
 
 
 def _project(groups: list[TestGroup] | None = None) -> Project:
@@ -131,11 +131,13 @@ def test_dump_keeps_key_order_stable() -> None:
     bundle = build_bundle(_project(), [make_test("TC-001", "가")])
     first = dump_bundle(bundle)
     assert dump_bundle(bundle) == first
-    keys = [line.split(":")[0] for line in first.decode("utf-8").splitlines() if line and line[0].isalpha()]
+    lines = first.decode("utf-8").splitlines()
+    keys = [line.split(":")[0] for line in lines if line and line[0].isalpha()]
     assert keys[:5] == ["bundle_version", "generator", "created_at", "project", "required_values"]
 
 
 def test_dump_keeps_korean_readable() -> None:
     """이스케이프된 유니코드는 사람이 읽을 수 없다 — 열어 볼 수 있다는 것이 설계 근거다."""
-    text = dump_bundle(build_bundle(_project(), [make_test("TC-001", "로그인 확인")])).decode("utf-8")
+    bundle = build_bundle(_project(), [make_test("TC-001", "로그인 확인")])
+    text = dump_bundle(bundle).decode("utf-8")
     assert "로그인 확인" in text

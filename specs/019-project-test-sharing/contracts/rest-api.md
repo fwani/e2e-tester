@@ -92,12 +92,16 @@
 
 묶음 파일을 올려 **계획**을 만든다. 디스크에 아무것도 쓰지 않는다 (FR-022·FR-023).
 
-**Request**: `multipart/form-data`
+**Request**: `multipart/form-data` 본문에 `file` 하나, `target` 은 **질의 파라미터**.
 
-| 필드 | 형 | 설명 |
-|---|---|---|
-| `file` | file | 묶음 파일. `MAX_BUNDLE_BYTES` 초과면 읽지 않고 거부. |
-| `target` | str | `new` \| `current`. 기본 `new`. |
+| 자리 | 이름 | 형 | 설명 |
+|---|---|---|---|
+| 본문 | `file` | file | 묶음 파일. `MAX_BUNDLE_BYTES` 초과면 읽지 않고 거부. |
+| 질의 | `target` | str | `new` \| `current`. 기본 `new`. |
+
+**`target` 이 질의에 있는 이유**: 화면이 014 가 만든 공용 업로드 도우미(`postFile`)를 그대로
+쓴다. 그것이 multipart 경계 문자열 처리와 프로젝트 대조 헤더를 함께 다루므로, 필드 하나
+때문에 그 둘을 다시 만들면 한쪽만 고쳐지는 날이 온다.
 
 **201 응답**
 

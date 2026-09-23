@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-
 from sharing_support import (
     EXPORT,
     KNOWN_PASSWORD,
