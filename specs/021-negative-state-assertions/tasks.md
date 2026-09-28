@@ -229,3 +229,13 @@ Task: "부정 검증 실행 검증 in backend/tests/integration/test_negative_as
 - **테스트를 지우거나 비활성화해서 통과시키지 않는다** (헌법 품질 게이트 4)
 - T019 와 T042 의 기준선 비교를 건너뛰지 않는다 — 이 기능은 기존 동작을 하나 바꾸므로,
   무엇이 바뀌었는지 모르는 채로 끝내면 나중에 원인을 찾을 수 없다
+
+---
+
+## Phase 7: Convergence
+
+명세·계획 대비 남은 일. `/speckit-converge` 가 코드를 실제로 훑어 찾은 것이다.
+
+- [X] T045 Step 상세에 검증 조건 요약을 넣는다 (`frontend/src/components/workbench/StepDetail.tsx`) per FR-023 (partial) — **HIGH**. 지금 상세는 기대값 편집 칸만 보이고 **종류와 비교 방식을 어디에도 표시하지 않는다.** 목록에서 「텍스트가 `오류` 를 포함하지 않음」을 읽고 상세를 열면 그 정보가 사라진다 — 편집하려고 연 화면에서 무엇을 편집하는지 모르는 상태다. `wording.assertionSummary` 를 쓴다 (새 문구를 만들지 않는다)
+- [X] T046 상태 검증의 대기를 세운다 per FR-013 · US2/AC3 (missing) — **MEDIUM**. `fixtures/sample-app/locked-controls.html` 에 **0.5초 뒤 잠기는 버튼**을 더하고, `backend/tests/integration/test_state_assertion.py` 에 「제한 시간 안에서 상태가 참이 되기를 기다려 통과한다」를 넣는다. 지금은 상태 검증이 기다리는지를 아무것도 확인하지 않는다 — 즉시 판정으로 바뀌어도 전량 검증이 초록이다
+- [X] T047 새 어휘의 어긋남 기록을 `backend/tests/unit/test_authoring_mismatch.py` 에 세운다 per FR-024 (partial) — **MEDIUM**. T039 은 두 파일을 지목했는데 `test_classify_assertion.py` 만 했다. 부정 비교와 상태 검증에서도 **Step 이 남고 관찰값이 적히는지**를 확인한다. 020 이 만든 「어긋나도 버리지 않는다」가 새 종류에서 깨지면, 사용자는 부정 검증이 실패할 때 Step 자체를 잃는다

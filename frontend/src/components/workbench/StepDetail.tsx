@@ -38,6 +38,7 @@ import {
   OBSERVED_LABEL,
   OBSERVED_TRUNCATED,
   SENSITIVE_NO_VALUE,
+  assertionSummary,
   stepNumber,
   uploadFileNote,
 } from "../../lib/wording";
@@ -193,6 +194,8 @@ export function StepDetail({
    * 규칙), 020 이전 서버가 보낸 Step 에는 칸 자체가 없다 — 그때 값은 `null` 이 아니라
    * `undefined` 이고, `!== null` 만 보면 없는 기록을 그리려다 터진다.
    */
+  const condition =
+    step !== null && step.type === "assertion" ? step.assertion : null;
   const mismatch =
     step !== null && step.type === "assertion" ? (step.mismatch ?? null) : null;
   const expectedValue =
@@ -396,6 +399,28 @@ export function StepDetail({
                 <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
                   {uploadFileNote(fileName)}
                 </p>
+              </div>
+            )}
+
+            {/*
+              021 FR-023 — **무엇을 검증하는지 먼저 말한다.**
+
+              021 이전 상세는 기대값 편집 칸만 보였다. 목록에서 「텍스트가 `오류` 를
+              포함하지 않음」을 읽고 상세를 열면 그 정보가 사라져, 편집하려고 연
+              화면에서 무엇을 편집하는지 알 수 없었다.
+
+              문구는 목록과 **같은 함수**에서 받는다. 상세가 자기 문구를 만들면 같은
+              검증이 두 화면에서 다르게 불린다.
+            */}
+            {condition !== null && (
+              <div data-field="assertion-condition">
+                <label htmlFor="detail-condition">검증 조건</label>
+                <Input
+                  id="detail-condition"
+                  value={assertionSummary(condition)}
+                  disabled
+                  readOnly
+                />
               </div>
             )}
 

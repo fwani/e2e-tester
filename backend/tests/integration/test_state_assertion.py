@@ -41,6 +41,12 @@ LOCKED = "[data-testid='delete-auto']"
 UNLOCKED = "[data-testid='delete-manual']"
 """직접 추가한 리소스의 삭제 버튼 — 누를 수 있다."""
 
+PENDING = "[data-testid='delete-pending']"
+"""**0.5초 뒤에 잠기는** 삭제 버튼. 상태 검증이 기다리는지를 가른다."""
+
+PENDING_LOCK_MS = 500
+"""픽스처가 그 버튼을 잠그기까지의 시간. `locked-controls.html` 과 같아야 한다."""
+
 
 def _resolver() -> VariableResolver:
     return VariableResolver(SimpleNamespace(variables=[]))
@@ -168,5 +174,47 @@ def test_hidden_still_passes_on_a_missing_target(
                 _step(AssertionKind.HIDDEN, "[data-testid='there-is-no-such-button']", 1200)
             ),
         )
+    finally:
+        stop_quietly(project_client, sid)
+
+
+# ─── FR-013 — 상태가 참이 되기를 기다린다 ───────────────────────────────────
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_a_button_that_locks_late_is_waited_for(
+    project_client: TestClient, fixture_app: str
+) -> None:
+    """**처음부터 잠긴 버튼만으로는 이것을 알 수 없다.**
+
+    즉시 판정하는 구현도 `LOCKED` 는 통과시킨다. 0.5초 뒤에 잠기는 버튼이 「기다렸는가」
+    와 「운 좋게 맞았는가」를 가른다.
+
+    사용자 쪽에서 이 성질이 필요한 이유는, 화면이 준비되는 데 시간이 걸리는 제품에서
+    「저장을 누르면 버튼이 잠긴다」 같은 검증을 쓸 수 없게 되기 때문이다.
+    """
+    sid, session = _open(project_client, fixture_app)
+    executor = StepExecutor(session, _resolver())
+    try:
+        step = _step(AssertionKind.DISABLED, PENDING, timeout_ms=PENDING_LOCK_MS * 6)
+        _call(project_client, lambda: executor.execute(step))
+    finally:
+        stop_quietly(project_client, sid)
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_the_wait_is_bounded_by_the_timeout(
+    project_client: TestClient, fixture_app: str
+) -> None:
+    """**무한정 기다리지 않는다.** 제한 시간이 잠기기 전에 끝나면 실패한다.
+
+    앞 검증만 두면 「항상 기다리는」 구현도 통과한다 — 예산을 지키는지를 함께 본다.
+    """
+    sid, session = _open(project_client, fixture_app)
+    executor = StepExecutor(session, _resolver())
+    try:
+        step = _step(AssertionKind.DISABLED, PENDING, timeout_ms=150)
+        with pytest.raises(StepFailure):
+            _call(project_client, lambda: executor.execute(step))
     finally:
         stop_quietly(project_client, sid)

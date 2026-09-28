@@ -17,6 +17,7 @@ from itb.domain.assertion import (
     Assertion,
     AssertionKind,
     AuthoringMismatch,
+    MatchMode,
 )
 from itb.domain.locator import Candidate, CandidateStatus, TargetLocator
 from itb.domain.step import (
@@ -173,3 +174,80 @@ def test_other_step_types_reject_a_mismatch_argument() -> None:
             target=_target(),
             mismatch=AuthoringMismatch(observed="x", recorded_at=NOW),
         )
+
+
+# ─── 021 — 새 어휘도 어긋남을 기록한다 (T047 · FR-024) ──────────────────────
+#
+# 020 이 만든 「어긋나도 Step 을 버리지 않는다」가 새 종류에서 깨지면, 사용자는 부정
+# 검증이 실패할 때 **Step 자체를 잃는다.** 그러면 021 이 채운 빈칸(시나리오 문장을
+# 정의로 옮기는 것)이 부정형에서만 다시 비어 버린다.
+#
+# 필드가 `AssertionStep` 에 있으므로 종류와 무관하게 실린다 — 구조상 그렇다. 여기서
+# 세우는 것은 **그 구조가 유지된다**는 것이다.
+
+
+def _state_target() -> TargetLocator:
+    return TargetLocator(
+        tag="button",
+        test_id=Candidate(value="delete-auto", status=CandidateStatus.VERIFIED),
+        css=Candidate(value="#delete-auto", status=CandidateStatus.VERIFIED),
+    )
+
+
+NEW_VOCABULARY: list[tuple[str, Assertion]] = [
+    (
+        "부정 텍스트",
+        Assertion(kind=AssertionKind.TEXT, value="오류", match=MatchMode.NOT_CONTAINS),
+    ),
+    (
+        "부정 주소",
+        Assertion(kind=AssertionKind.URL, value="/login", match=MatchMode.NOT_EQUALS),
+    ),
+    ("조작 불가", Assertion(kind=AssertionKind.DISABLED, target=_state_target())),
+    ("조작 가능", Assertion(kind=AssertionKind.ENABLED, target=_state_target())),
+]
+
+
+@pytest.mark.parametrize(("name", "assertion"), NEW_VOCABULARY)
+def test_new_kinds_carry_a_mismatch(name: str, assertion: Assertion) -> None:
+    step = AssertionStep(
+        id="step-01",
+        label=name,
+        assertion=assertion,
+        mismatch=AuthoringMismatch(observed="작성 시점 관찰값", recorded_at=NOW),
+    )
+    assert step.mismatch is not None
+    assert step.mismatch.observed == "작성 시점 관찰값"
+
+
+@pytest.mark.parametrize(("name", "assertion"), NEW_VOCABULARY)
+def test_new_kinds_survive_a_serialization_round_trip(
+    name: str, assertion: Assertion
+) -> None:
+    """정의 파일에 실려 나갔다 들어와도 기록이 남는다.
+
+    **여기가 깨지면 증상이 나중에 나타난다** — 만들 때는 보이고 다시 열면 사라진다.
+    """
+    step = AssertionStep(
+        id="step-01",
+        label=name,
+        assertion=assertion,
+        mismatch=AuthoringMismatch(observed="관찰값", recorded_at=NOW, truncated=True),
+    )
+    again = AssertionStep.model_validate(step.model_dump(mode="json"))
+    assert again.mismatch is not None
+    assert again.mismatch.observed == "관찰값"
+    assert again.mismatch.truncated is True
+    assert again.assertion == assertion
+
+
+@pytest.mark.parametrize(("name", "assertion"), NEW_VOCABULARY)
+def test_the_expected_value_is_still_not_duplicated(name: str, assertion: Assertion) -> None:
+    """기대값의 유일한 출처는 조건이다 — 새 종류에서도 그렇다.
+
+    어긋남 기록에 값을 복제해 두면 조건을 편집했을 때 둘이 갈리고, 그때 어느 쪽이
+    맞는지 아무도 모른다.
+    """
+    mismatch = AuthoringMismatch(observed="관찰값", recorded_at=NOW)
+    assert not hasattr(mismatch, "expected")
+    assert "expected" not in mismatch.model_dump()
