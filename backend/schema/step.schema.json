@@ -50,7 +50,9 @@
         "visible",
         "hidden",
         "text",
-        "url"
+        "url",
+        "enabled",
+        "disabled"
       ],
       "title": "AssertionKind",
       "type": "string"
@@ -550,7 +552,9 @@
     "MatchMode": {
       "enum": [
         "equals",
-        "contains"
+        "contains",
+        "not_equals",
+        "not_contains"
       ],
       "title": "MatchMode",
       "type": "string"

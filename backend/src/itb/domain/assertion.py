@@ -1,6 +1,8 @@
-"""검증 조건. FR-013a 의 4종만 지원한다.
+"""검증 조건. 6종을 지원한다 (001 FR-013a + 021).
 
-요소 갯수 검증과 입력 필드 현재값 검증은 MVP 범위가 아니다 (FR-013c).
+요소 갯수 검증과 입력 필드 현재값 검증은 범위가 아니다 (001 FR-013c). 체크 상태와
+읽기 전용도 범위 밖이다 (021) — 조작 가능 여부로 대부분 대체되고, 필요해지면 같은
+축에 값을 더하는 형태가 된다.
 """
 
 from __future__ import annotations
@@ -27,10 +29,52 @@ class AssertionKind(StrEnum):
     URL = "url"
     """현재 화면 주소 일치 또는 포함. 요소 탐색을 하지 않는다."""
 
+    ENABLED = "enabled"
+    """요소를 조작할 수 있다 (021).
+
+    ``VISIBLE`` 과 다르다 — 보이는 것과 누를 수 있는 것은 별개다. `disabled` 가 붙은
+    버튼은 보이면서 눌리지 않고, 그 상태를 기존 네 종류로는 표현할 수 없었다.
+    """
+
+    DISABLED = "disabled"
+    """요소를 조작할 수 없다 (021).
+
+    **``HIDDEN`` 과 갈리는 지점은 대상이 없을 때다.** ``HIDDEN`` 은 없어도 통과하지만
+    이 검증은 **실패한다.** 「없다」와 「있는데 잠겼다」는 다른 사실이고, 한 검증이 둘을
+    함께 통과시키면 결과를 보고 어느 쪽이었는지 알 수 없다 (021 FR-012).
+    """
+
 
 class MatchMode(StrEnum):
     EQUALS = "equals"
     CONTAINS = "contains"
+
+    NOT_EQUALS = "not_equals"
+    """같지 않다 (021)."""
+
+    NOT_CONTAINS = "not_contains"
+    """포함하지 않는다 (021).
+
+    ## 부정을 종류가 아니라 비교 방식에 둔 이유 (021 research R1)
+
+    ``kind`` 는 「무엇을 보는가」이고 ``match`` 는 「어떻게 비교하는가」다. 부정은 비교
+    방법이지 관찰 대상이 아니다. ``value`` 와 ``match`` 를 쓰는 종류는 ``TEXT``·``URL``
+    둘뿐이고 부정형이 필요한 것도 정확히 그 둘이라, 새 값이 이미 있는 축에 그대로 얹힌다.
+
+    ``negate`` 플래그를 두지 않은 이유는 ``equals`` + negate 와 ``not_equals`` 가 같은
+    뜻이 되기 때문이다 — 저장된 정의에 두 표현이 공존하면 두 정의가 같은지 비교할 수
+    없다 (`UploadStep` 이 확장자를 별도 필드로 두지 않은 것과 같은 판단).
+    """
+
+
+NEGATED_MATCHES = frozenset({MatchMode.NOT_EQUALS, MatchMode.NOT_CONTAINS})
+"""부정 비교. **값을 비교하는 종류에서만 쓸 수 있다** (021 FR-002)."""
+
+VALUE_COMPARING_KINDS = frozenset({AssertionKind.TEXT, AssertionKind.URL})
+"""비교 값을 갖는 종류. 부정 비교가 허용되는 것도 이 둘뿐이다."""
+
+STATE_KINDS = frozenset({AssertionKind.ENABLED, AssertionKind.DISABLED})
+"""요소의 조작 가능 여부를 보는 종류 (021). 대상이 필수이고 비교 값을 갖지 않는다."""
 
 
 class Assertion(BaseModel):
@@ -46,7 +90,25 @@ class Assertion(BaseModel):
 
     @model_validator(mode="after")
     def _check_shape(self) -> Self:
-        if self.kind in (AssertionKind.VISIBLE, AssertionKind.HIDDEN):
+        """형태 규칙. **021 data-model.md §2 의 표가 권위다.**
+
+        ## 기존 두 비교 방식의 허용 범위를 넓히지도 좁히지도 않는다
+
+        ``visible`` + ``contains`` 처럼 뜻이 없는 조합이 이미 저장된 정의에 있을 수 있다
+        (지금 무시된다). 여기서 거절하면 예전 정의가 열리지 않으므로, **검사 대상은 021
+        이 새로 더한 부정 비교뿐이다.** 하위 호환은 이 경계가 만든다.
+        """
+        self._check_negation()
+        if self.kind in STATE_KINDS:
+            if self.target is None:
+                msg = f"{self.kind} 검증은 target 이 필요하다"
+                raise ValueError(msg)
+            if self.value is not None:
+                # 새 종류는 처음부터 닫는다. `visible`·`hidden` 이 value 를 열어 둔 것은
+                # 표시 이름 생성이 실제로 그것을 읽기 때문이고, 나중에 닫을 수는 없다.
+                msg = f"{self.kind} 검증은 비교 값을 갖지 않는다"
+                raise ValueError(msg)
+        elif self.kind in (AssertionKind.VISIBLE, AssertionKind.HIDDEN):
             if self.target is None:
                 msg = f"{self.kind} 검증은 target 이 필요하다"
                 raise ValueError(msg)
@@ -61,6 +123,28 @@ class Assertion(BaseModel):
             msg = "text 검증은 비교 값이 필요하다"
             raise ValueError(msg)
         return self
+
+    def _check_negation(self) -> None:
+        """부정 비교는 값을 비교하는 종류에서만, 그리고 값이 있어야 쓸 수 있다 (021)."""
+        if self.match not in NEGATED_MATCHES:
+            return
+        if self.kind not in VALUE_COMPARING_KINDS:
+            # 조용히 무시하면 사용자의 오해가 정의 파일에 남는다. 요소가 보이지 않음을
+            # 뜻하려던 것이라면 `hidden` 이 그 자리다.
+            msg = (
+                f"{self.kind} 검증은 값을 비교하지 않으므로 {self.match} 를 쓸 수 없다. "
+                "요소가 없거나 보이지 않음은 hidden 검증이다"
+            )
+            raise ValueError(msg)
+        if not self.value:
+            # 빈 문자열을 포함하지 않는 화면은 없다 — 통과할 수 없는 검증이 된다.
+            msg = f"{self.match} 비교는 비어 있지 않은 값이 필요하다"
+            raise ValueError(msg)
+
+    @property
+    def negated(self) -> bool:
+        """이 조건이 부정형인가. 화면 문구와 실패 설명이 함께 읽는다."""
+        return self.match in NEGATED_MATCHES
 
 
 MAX_OBSERVED_CHARS = 4000

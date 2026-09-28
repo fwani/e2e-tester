@@ -218,10 +218,60 @@ def test_ai_and_human_steps_have_identical_shape(tmp_path: pathlib.Path) -> None
     assert set(ai_step.model_dump()) == set(human_step.model_dump())
 
 
+NEGATED_AND_STATE = """
+dsl_version: 1
+id: TC-021
+name: 잠긴 조작과 없어야 하는 문구
+authoring_mode: record
+start_url: https://example.internal/locked-controls
+browser: chromium
+variables: []
+steps:
+  - type: assertion
+    id: step-01
+    label: "화면 텍스트가 '오류' 를 포함하지 않음"
+    assertion:
+      kind: text
+      match: not_contains
+      value: 오류
+  - type: assertion
+    id: step-02
+    label: "주소가 '/login' 과 같지 않음"
+    assertion:
+      kind: url
+      match: not_equals
+      value: /login
+  - type: assertion
+    id: step-03
+    label: 삭제 버튼을 조작할 수 없음
+    assertion:
+      kind: disabled
+      target:
+        css:
+          value: "[data-testid='delete-auto']"
+          status: verified
+  - type: assertion
+    id: step-04
+    label: 삭제 버튼을 조작할 수 있음
+    assertion:
+      kind: enabled
+      target:
+        css:
+          value: "[data-testid='delete-manual']"
+          status: verified
+"""
+"""021 — 부정 비교와 상태 검증이 든 정의.
+
+**`dsl_version` 이 1 그대로다.** 열거형에 값을 더하는 것은 기존 파일을 깨지 않으므로
+버전을 올리지 않았고, 올렸다면 공유 묶음 읽기가 이미 배포된 묶음을 전부 거부한다
+(021 research R4). 이 예제가 그 판단을 왕복으로 확인한다.
+"""
+
+
 # ─── 왕복 (저장 → 적재 → 저장) ─────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("body", [SINGLE_TAB, MULTI_TAB, AI_AUTHORED])
+@pytest.mark.parametrize("body", [SINGLE_TAB, MULTI_TAB, AI_AUTHORED, NEGATED_AND_STATE])
 def test_roundtrip_is_stable(body: str, tmp_path: pathlib.Path) -> None:
     """적재 → 저장 → 재적재가 같은 결과를 낸다.
 
@@ -457,3 +507,16 @@ def test_duplicate_group_prefixes_are_rejected(tmp_path: pathlib.Path) -> None:
 
     with pytest.raises(DefinitionError):
         load_model(bad, Project)
+
+
+def test_negated_and_state_assertions_keep_dsl_version_one(tmp_path: pathlib.Path) -> None:
+    """021 이 정의 형식의 버전을 올리지 않았다 (research R4).
+
+    버전을 올리면 공유 묶음 읽기가 `dsl_version` 을 엄격히 비교하므로 **이미 배포된
+    묶음이 전부 거부된다.** 값 추가는 기존 파일을 깨지 않으니 올릴 이유가 없다.
+    """
+    test = load_model(_write(tmp_path, NEGATED_AND_STATE), Test)
+    assert test.dsl_version == 1
+    kinds = [s.assertion.kind.value for s in test.steps]
+    assert kinds == ["text", "url", "disabled", "enabled"]
+    assert [s.assertion.match.value for s in test.steps[:2]] == ["not_contains", "not_equals"]

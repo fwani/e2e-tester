@@ -44,11 +44,11 @@ description: "Task list template for feature implementation"
 **⚠️ CRITICAL**: 이 단계가 끝나기 전에는 어느 사용자 스토리도 시작할 수 없다. 헌법이
 요구하는 순서다 — 스키마가 먼저 바뀌고 소비자가 따라온다 (원칙 I).
 
-- [ ] T004 `AssertionKind` 에 `ENABLED = "enabled"` · `DISABLED = "disabled"` 를, `MatchMode` 에 `NOT_EQUALS = "not_equals"` · `NOT_CONTAINS = "not_contains"` 를 `backend/src/itb/domain/assertion.py` 에 추가한다. 각 값에 **무엇을 뜻하는지와 `hidden` 과 무엇이 다른지**를 docstring 으로 남긴다 ([data-model.md §1](./data-model.md))
-- [ ] T005 `Assertion._check_shape` 를 [data-model.md §2](./data-model.md) 의 표대로 확장한다 — (a) `not_*` 는 `text`·`url` 에서만 허용, (b) `not_*` 에는 비어 있지 않은 `value` 필수, (c) `enabled`·`disabled` 는 `target` 필수·`value` 금지. **기존 `equals`·`contains` 의 허용 범위는 건드리지 않는다** — `visible` + `contains` 가 실린 예전 정의가 거절되면 하위 호환이 깨진다. T004 에 의존
-- [ ] T006 스키마와 타입을 재생성한다 — `cd backend && uv run python -m itb.schema.export` 후 `cd ../frontend && npm run gen:types`. `backend/schema/step-dsl.schema.json` 과 `frontend/src/types/generated/step-dsl.d.ts` 에 새 값 넷이 실렸는지 확인한다. T004·T005 에 의존
-- [ ] T007 [P] 형태 규칙 단위 검증을 `backend/tests/unit/test_domain_invariants.py` 에 추가한다 — 허용 조합과 거절 조합을 모두 세운다. 특히 **`visible` + `contains` 가 여전히 통과**하고 **`visible` + `not_contains` 는 거절**되는 두 경우를 함께 세워, 하위 호환과 새 규칙이 같은 표에서 나왔음을 못 박는다. T005 에 의존
-- [ ] T008 [P] `dsl_version` 을 올리지 않았음을 `backend/tests/contract/test_dsl_roundtrip.py` 에서 확인한다 — 새 종류가 든 정의가 공유 묶음 왕복을 통과해야 한다 ([research.md R4](./research.md))
+- [X] T004 `AssertionKind` 에 `ENABLED = "enabled"` · `DISABLED = "disabled"` 를, `MatchMode` 에 `NOT_EQUALS = "not_equals"` · `NOT_CONTAINS = "not_contains"` 를 `backend/src/itb/domain/assertion.py` 에 추가한다. 각 값에 **무엇을 뜻하는지와 `hidden` 과 무엇이 다른지**를 docstring 으로 남긴다 ([data-model.md §1](./data-model.md))
+- [X] T005 `Assertion._check_shape` 를 [data-model.md §2](./data-model.md) 의 표대로 확장한다 — (a) `not_*` 는 `text`·`url` 에서만 허용, (b) `not_*` 에는 비어 있지 않은 `value` 필수, (c) `enabled`·`disabled` 는 `target` 필수·`value` 금지. **기존 `equals`·`contains` 의 허용 범위는 건드리지 않는다** — `visible` + `contains` 가 실린 예전 정의가 거절되면 하위 호환이 깨진다. T004 에 의존
+- [X] T006 스키마와 타입을 재생성한다 — `cd backend && uv run python -m itb.schema.export` 후 `cd ../frontend && npm run gen:types`. `backend/schema/step-dsl.schema.json` 과 `frontend/src/types/generated/step-dsl.d.ts` 에 새 값 넷이 실렸는지 확인한다. T004·T005 에 의존
+- [X] T007 [P] 형태 규칙 단위 검증을 `backend/tests/unit/test_domain_invariants.py` 에 추가한다 — 허용 조합과 거절 조합을 모두 세운다. 특히 **`visible` + `contains` 가 여전히 통과**하고 **`visible` + `not_contains` 는 거절**되는 두 경우를 함께 세워, 하위 호환과 새 규칙이 같은 표에서 나왔음을 못 박는다. T005 에 의존
+- [X] T008 [P] `dsl_version` 을 올리지 않았음을 `backend/tests/contract/test_dsl_roundtrip.py` 에서 확인한다 — 새 종류가 든 정의가 공유 묶음 왕복을 통과해야 한다 ([research.md R4](./research.md))
 
 **Checkpoint**: 도메인 어휘가 확정됐다. 사용자 스토리를 시작할 수 있다.
 

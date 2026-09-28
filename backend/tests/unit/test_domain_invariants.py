@@ -118,6 +118,80 @@ def test_text_assertion_works_without_target() -> None:
     assert a.target is None
 
 
+# ─── 부정 비교와 상태 검증 (021 T007 · FR-002·FR-007·FR-011) ────────────────
+#
+# 아래 두 무리는 **같은 표에서 나왔다** (021 data-model.md §2). 허용되는 것과 거절되는
+# 것을 나란히 두는 이유는, 하위 호환(기존 두 비교 방식은 어디서도 거절하지 않는다)과
+# 새 규칙(부정 비교는 값을 비교하는 종류에만)이 서로를 침범하지 않음을 한자리에서
+# 보이기 위해서다. 한쪽만 세우면 다른 쪽을 고쳤을 때 알아차리지 못한다.
+
+
+@pytest.mark.parametrize("match", [MatchMode.NOT_EQUALS, MatchMode.NOT_CONTAINS])
+@pytest.mark.parametrize(
+    ("kind", "extra"),
+    [
+        (AssertionKind.TEXT, {}),
+        (AssertionKind.TEXT, {"target": TargetLocator(**VERIFIED_CSS)}),
+        (AssertionKind.URL, {}),
+    ],
+)
+def test_negated_match_is_allowed_on_value_comparing_kinds(
+    kind: AssertionKind, extra: dict, match: MatchMode
+) -> None:
+    a = Assertion(kind=kind, value="오류", match=match, **extra)
+    assert a.negated is True
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [AssertionKind.VISIBLE, AssertionKind.HIDDEN, AssertionKind.ENABLED, AssertionKind.DISABLED],
+)
+@pytest.mark.parametrize("match", [MatchMode.NOT_EQUALS, MatchMode.NOT_CONTAINS])
+def test_negated_match_is_refused_on_kinds_without_a_value(
+    kind: AssertionKind, match: MatchMode
+) -> None:
+    """조용히 무시하면 사용자의 오해가 정의 파일에 남는다. 거절하고 hidden 을 가리킨다."""
+    with pytest.raises(ValidationError, match="hidden"):
+        Assertion(kind=kind, target=TargetLocator(**VERIFIED_CSS), match=match)
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [AssertionKind.VISIBLE, AssertionKind.HIDDEN],
+)
+@pytest.mark.parametrize("match", [MatchMode.EQUALS, MatchMode.CONTAINS])
+def test_existing_match_modes_stay_allowed_everywhere(
+    kind: AssertionKind, match: MatchMode
+) -> None:
+    """**하위 호환의 경계다.**
+
+    `visible` + `contains` 는 뜻이 없지만 이미 저장된 정의에 있을 수 있다. 021 이
+    부정 비교를 거절하게 되었다고 해서 기존 두 값까지 좁히면 예전 정의가 열리지 않는다.
+    """
+    assert Assertion(kind=kind, target=TargetLocator(**VERIFIED_CSS), match=match).negated is False
+
+
+@pytest.mark.parametrize("match", [MatchMode.NOT_EQUALS, MatchMode.NOT_CONTAINS])
+def test_negated_match_needs_a_non_empty_value(match: MatchMode) -> None:
+    """빈 문자열을 포함하지 않는 화면은 없다 — 통과할 수 없는 검증을 만들게 둘 수 없다."""
+    with pytest.raises(ValidationError, match="비어 있지 않은 값"):
+        Assertion(kind=AssertionKind.TEXT, value="", match=match)
+
+
+@pytest.mark.parametrize("kind", [AssertionKind.ENABLED, AssertionKind.DISABLED])
+def test_state_assertion_requires_a_target(kind: AssertionKind) -> None:
+    """**`hidden` 과 갈리는 지점이다.** 없는 것은 비활성이 아니다 (FR-012)."""
+    with pytest.raises(ValidationError, match="target 이 필요"):
+        Assertion(kind=kind)
+
+
+@pytest.mark.parametrize("kind", [AssertionKind.ENABLED, AssertionKind.DISABLED])
+def test_state_assertion_refuses_a_value(kind: AssertionKind) -> None:
+    """새 종류는 처음부터 닫는다. 나중에 닫을 수는 없다."""
+    with pytest.raises(ValidationError, match="비교 값을 갖지 않는다"):
+        Assertion(kind=kind, target=TargetLocator(**VERIFIED_CSS), value="무엇이든")
+
+
 # ─── Step (FR-010, FR-012, FR-013, FR-030a) ─────────────────────────────────
 
 
