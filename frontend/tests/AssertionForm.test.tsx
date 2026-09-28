@@ -28,6 +28,22 @@ describe("여섯 종류를 고를 수 있다 (FR-020)", () => {
     expect(screen.getByText(ASSERTION_KIND_LABEL.disabled)).toBeTruthy();
   });
 
+  it("어휘에 있는 종류가 하나도 빠지지 않는다", () => {
+    /*
+      폼의 종류 목록은 **표시 순서를 정하려고 손으로 적은 배열**이다. 그래서 도메인에
+      종류를 더해도 컴파일러는 아무 말도 하지 않고, 폼에서만 조용히 빠진다 — 새 검증을
+      만들 수 있는데 화면에서 고를 수 없는 상태다.
+
+      `ASSERTION_KIND_LABEL` 은 `Record<AssertionKind, string>` 이라 컴파일러가 완전성을
+      강제한다. 그 키 전부가 화면에 보이는지를 여기서 세워, 순서 배열과 어휘가 갈리는
+      것을 막는다.
+    */
+    setup();
+    for (const label of Object.values(ASSERTION_KIND_LABEL)) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+  });
+
   it("범위 외 기능을 비활성 항목으로 보여 주지 않는다", () => {
     // 없는 기능을 회색으로 보여 주는 것은 「곧 생긴다」는 약속처럼 읽힌다.
     setup();
