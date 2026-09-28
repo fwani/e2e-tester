@@ -33,7 +33,7 @@ description: "Task list template for feature implementation"
 **Purpose**: 이 기능을 확인할 수 있는 대상과, 무엇이 깨질지에 대한 목록을 먼저 만든다.
 
 - [ ] T001 결함이 있는 고정 대상을 `fixtures/sample-app/defective-save.html` 로 추가하고 `fixtures/sample-app/serve.py` 에 경로를 붙인다 — 저장 시 `저장되었습니다` 가 아니라 `처리 완료` 가 뜨는 폼. 기존 고정 대상 파일은 고치지 않는다
-- [ ] T002 [P] 「검증 실패가 실행을 멈춘다」를 전제로 짜인 기존 검증을 전수 조사해 `specs/020-expected-first-assertions/baseline.md` 에 목록으로 남긴다 — 최소한 `backend/tests/us5_support.py`(중간 Step 에서 반드시 실패하는 테스트)와 그것을 쓰는 통합 검증이 포함된다. **이 목록이 T019 의 작업 범위다**
+- [ ] T002 [P] 「검증 실패가 실행을 멈춘다」를 전제로 짜인 기존 검증을 전수 조사해 `specs/020-expected-first-assertions/baseline.md` 에 목록으로 남긴다 — 최소한 `backend/tests/us5_support.py`(중간 Step 에서 반드시 실패하는 테스트)와 그것을 쓰는 통합 검증이 포함된다. **이 목록이 T024 의 작업 범위다**
 - [ ] T003 [P] `backend/scripts/test-backend.sh` 와 `cd frontend && npm run typecheck && npm test` 를 지금 상태에서 돌려 **기준선을 기록**한다. 이후 실패가 이 기능 때문인지 원래 그랬는지 가릴 근거다
 
 ---
@@ -46,7 +46,7 @@ description: "Task list template for feature implementation"
 
 - [ ] T004 [P] `AuthoringMismatch` 모델을 `backend/src/itb/domain/assertion.py` 에 추가한다 — `observed`(1~4000자, 비어 있을 수 없음) · `truncated`(bool) · `recorded_at`(datetime). `model_config` 는 같은 파일의 `Assertion` 과 동일하게 (`extra="forbid"`, `json_schema_serialization_defaults_required=True`). data-model.md §1
 - [ ] T005 `AssertionStep.mismatch: AuthoringMismatch | None = None` 을 `backend/src/itb/domain/step.py` 에 추가하고, **왜 `_StepBase` 가 아니라 여기인지**를 docstring 에 남긴다 (research.md R1). T004 에 의존
-- [ ] T006 [P] `AssertionClass` StrEnum(`known_defect`·`regression`·`resolved`)과 `StepResult.assertion_class: AssertionClass | None = None` 을 `backend/src/itb/domain/run_result.py` 에 추가한다. **`Outcome` enum 과 `decide_outcome()` 은 건드리지 않는다** (FR-021)
+- [ ] T006 [P] `AssertionClass` StrEnum(`known_defect`·`regression`·`resolved`)과 `StepResult.assertion_class: AssertionClass | None = None` 을 `backend/src/itb/domain/run_result.py` 에 추가한다. **`Outcome` enum 은 건드리지 않는다** (FR-021). `decide_outcome()` 도 이 작업에서는 손대지 않는다 — 그 함수의 변경은 T058 이 소유한다
 - [ ] T007 [P] `BlockedKind` StrEnum(`needs_input`·`product_mismatch`)을 `backend/src/itb/authoring/blocked.py` 에 추가한다. data-model.md §4
 - [ ] T008 [P] 도메인 단위 검증을 `backend/tests/unit/test_authoring_mismatch.py` 에 작성한다 — 빈 `observed` 거부, 4000자 경계, `mismatch` 없는 옛 정의의 재검증 통과, `AssertionStep` 이외의 Step 종류에 `mismatch` 가 없음
 - [ ] T009 스키마를 재생성한다: `cd backend && uv run python -m itb.schema.export` 후 `cd frontend && npm run gen:types`. `backend/schema/{step,run-result}.schema.json` 과 `frontend/src/types/generated/{step,run-result}.d.ts` 가 새 필드를 담아야 한다. T005·T006 에 의존
@@ -69,7 +69,9 @@ description: "Task list template for feature implementation"
 - [ ] T010 [P] [US1] `AttemptLimits.record_mismatch` 단위 검증을 `backend/tests/unit/test_attempt_limits_mismatch.py` 에 작성한다 — 연속 실패 계수가 오르지 않음, `last_failed_element` 가 바뀌지 않음, **앞선 실패의 연속성이 초기화되지도 않음**, 총 호출 상한에는 걸림 (contracts/tool-surface.md C-4·C-5)
 - [ ] T011 [P] [US1] 도구 반환 계약 검증을 `backend/tests/contract/test_assert_condition_mismatch.py` 에 작성한다 — 어긋남이면 `{"ok": true, "assertion_failed": true, ...}` 이고 Step 이 기록됨, 참조 해석 실패면 `{"error": ...}` 이고 Step 이 기록되지 않음 (FR-007)
 - [ ] T012 [P] [US1] 불변식 검사를 `backend/tests/unit/test_mismatch_isolation.py` 에 작성한다 — `itb/execution/step_executor.py` 와 `itb/generator/playwright_gen.py` 소스에 `mismatch` 참조가 없음 (contracts/tool-surface.md C-2·C-3 · 헌법 원칙 I·V)
-- [ ] T013 [P] [US1] AI 작성 통합 검증을 `backend/tests/integration/test_expected_value_kept.py` 에 작성한다 — 드라이버를 갈아 끼워(`backend/tests/us4_support.py` 방식) 자격 증명 없이 돌린다. 기대값이 지시문의 값으로 남는지, 어긋남 후에도 작성이 계속되는지 (US1 AS-1·AS-2·AS-3)
+- [ ] T013 [P] [US1] AI 작성 통합 검증을 `backend/tests/integration/test_expected_value_kept.py` 에 작성한다 — 드라이버를 갈아 끼워(`backend/tests/us4_support.py` 방식) 자격 증명 없이 돌린다. 기대값이 지시문의 값으로 남는지(AS-1), 어긋남 후에도 작성이 계속되는지(AS-2), 막힘으로 끝나지 않는지(AS-3), **기대값이 없는 요구에 값 비교를 지어내지 않는지**(AS-4 · FR-004)
+- [ ] T060 [P] [US1] 우회 금지 검증을 `backend/tests/integration/test_no_alternate_route.py` 에 작성한다 — 지시문이 요구한 요소가 없고 **같은 결과를 내는 다른 요소가 있는** 고정 대상에서, AI 가 그 요소로 Step 을 만들지 않고 `product_mismatch` 로 막히는지 (FR-031 · SC-010 · US1 AS-6). 정합성 점검 F2 가 잡은 누락 — 이 요구에는 지침 외의 방어가 없으므로 검증이 유일한 그물이다
+- [ ] T061 [P] [US1] 동작 Step 기록 규칙의 회귀 검증을 `backend/tests/unit/test_action_steps_still_require_success.py` 에 작성한다 — `click`·`fill`·`select`·`navigate`·`hover`·`drag`·`upload`·`close_tab` **8종 전부**에 대해, 실패 시 Step 이 기록되지 않음을 확인한다 (FR-006). 정합성 점검 F3 이 잡은 누락 — T015 가 고치는 `_execute` 는 이 8종이 함께 지나는 곳이고, 기본값이 새면 실패한 클릭이 조용히 기록된다
 
 ### Implementation for User Story 1
 
@@ -102,6 +104,8 @@ description: "Task list template for feature implementation"
 ### Implementation for User Story 6
 
 - [ ] T023 [US6] `Runner.run_step()` 의 `StepFailure` 경로를 `backend/src/itb/execution/runner.py` 에서 가른다 — `AssertionStep` 이면 `True`(계속)를 돌려주고 **`failed_index` 와 `_failure_tab` 을 설정하지 않는다.** 그 이유(멈춘 자리 ≠ 실패한 Step)를 주석으로 남긴다 (research.md R8)
+- [ ] T058 [US6] `decide_outcome()` 의 건너뛰기 규칙에 조건을 더한다 (`backend/src/itb/domain/run_result.py`) — **건너뛰지 않은 실패가 하나라도 남아 있으면 `PARTIAL_PASS` 로 가지 않는다** (FR-039). 우선순위의 **순서는 바꾸지 않고** 3번이 걸리는 조건만 좁힌다. 부분 실행의 앞선 Step 도 `SKIPPED` 라는 함정을 피해야 한다 (그 함수의 docstring 이 이미 경고한다). `Outcome` enum 은 그대로. research.md R13
+- [ ] T059 [P] [US6] `decide_outcome` 판정 검증을 `backend/tests/unit/test_decide_outcome_partial_pass.py` 에 보강한다 — contracts/execution.md §2 의 판정 예 네 줄 전부. 특히 **「검증 1건 실패(회귀) + 동작 1건 실패를 건너뜀」이 `FAIL`** 임을 고정한다. 순수한 건너뛰기 실행이 여전히 `PARTIAL_PASS` 인 것도 함께 (005 의 U-05 를 되돌리지 않는다)
 - [ ] T024 [US6] T002 가 만든 목록의 기존 검증을 새 기대로 고친다 — **지우거나 건너뛰지 않는다**(헌법 품질 게이트 4). 각 수정에 「020 FR-033 으로 기대가 바뀌었다」를 적는다
 
 **Checkpoint**: 저장된 스텝이 끝까지 돈다. 결과는 아직 알려진 결함과 회귀를 구분하지 않는다
@@ -213,8 +217,8 @@ description: "Task list template for feature implementation"
 **Purpose**: 여러 스토리에 걸친 보증과 문서.
 
 - [ ] T050 [P] `docs/prd.md` 의 Replay Success Rate 정의에 판정 단위 문장을 더한다 — 「판정은 Step 단위다. 작성 시점에 어긋남으로 기록된 검증 Step 은 분모에서 제외하고, 같은 테스트의 나머지 Step 은 분모에 남는다」. **목표치(≥95%)는 바꾸지 않는다** (research.md R11 · FR-030)
-- [ ] T051 [P] 공유 왕복 검증을 `backend/tests/integration/test_share_preserves_mismatch.py` 에 작성한다 — 내보내기·가져오기 후 `mismatch` 가 동일하고, 020 이전 번들은 `None` 으로 읽힌다 (FR-017)
-- [ ] T052 [P] Playwright 내보내기 검증을 `backend/tests/integration/test_export_keeps_assertion.py` 에 작성한다 — 어긋난 검증이 통상의 검증과 **동일하게** 생성되고, 제품 내 실행과 같은 결과를 낸다 (FR-016 · SC-007 · 헌법 원칙 V)
+- [ ] T051 [P] 공유 왕복 검증을 `backend/tests/integration/test_share_preserves_mismatch.py` 에 작성한다 — 내보내기·가져오기 후 `mismatch` 가 동일하고, 020 이전 번들은 `None` 으로 읽힌다 (FR-017). **고정 데이터는 사람이 만든 검증 Step 으로 잡는다** — 원칙 I(FR-011)이 AI 경로 밖에서도 성립하는지 확인하는 자리다 (정합성 점검 F5)
+- [ ] T052 [P] Playwright 내보내기 검증을 `backend/tests/integration/test_export_keeps_assertion.py` 에 작성한다 — 어긋난 검증이 통상의 검증과 **동일하게** 생성되고, 제품 내 실행과 같은 결과를 낸다 (FR-016 · SC-007 · 헌법 원칙 V). 여기서도 고정 데이터를 사람이 만든 검증으로 잡는다 (정합성 점검 F5)
 - [ ] T053 [P] 라운드트립 무결성 검증 — `record → store → replay → export → run` 이 일관된 결과를 내는지 확인한다 (헌법 품질 게이트 2). Step DSL 을 바꿨으므로 필수다
 - [ ] T054 [P] 재실행 경로에 LLM 호출이 없음을 재확인한다 — 기존 `backend/tests/integration/test_replay_no_llm.py` 가 계속 통과해야 한다 (헌법 원칙 II)
 - [ ] T055 [quickstart.md](./quickstart.md) 의 §2·§3·§6 을 사람이 손으로 수행하고 결과를 기록한다
@@ -318,6 +322,22 @@ Task: "FR-037 실행 제어 8종 회귀 검증"
    - 개발자 B: US6 → US3 → US5
    - 개발자 C: US4 → Phase 9 의 검증 작업
 3. Phase 9 는 모두가 끝난 뒤 함께
+
+---
+
+## 2026-09-28 정합성 점검(analyze) 보완
+
+`/speckit-analyze` 가 구현 전에 잡은 것을 반영했다. **번호는 뒤에 붙였지만 위치는 해당
+단계 안이다** — 57건을 다시 매기면 이미 참조된 ID 가 어긋난다.
+
+| 점검 ID | 문제 | 반영 |
+|---|---|---|
+| F1 (CRITICAL) | `PARTIAL_PASS` 가 건너뛰지 않은 실패까지 삼킨다 | FR-039 신설 · **T058·T059** |
+| F2 (HIGH) | 우회 금지(FR-031·SC-010)에 작업 0건 | **T060** |
+| F3 (HIGH) | 동작 Step 기록 규칙(FR-006)에 작업 0건 | **T061** |
+| F4 (MEDIUM) | 기대값 없는 검증 요구(FR-004)에 검증 없음 | T013 범위 확대 |
+| F5 (MEDIUM) | 사람이 만든 검증의 원칙 I 보증이 모델 수준뿐 | T051·T052 의 고정 데이터 지정 |
+| F6 (MEDIUM) | 건너뛰기가 검증 Step 에도 적용되는지 불명확 | FR-037 표 문면 수정 |
 
 ---
 
