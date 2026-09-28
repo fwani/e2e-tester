@@ -89,13 +89,22 @@ class StepResult(BaseModel):
 **집계** (순수 함수 `counts_by_class(steps)`): 분류별 건수를 돌려준다. **저장하지 않는다** —
 파생값을 저장하면 원본과 어긋날 자리가 생긴다 (R7, `attempted_of` 와 같은 판단).
 
-**`Outcome` 은 값을 늘리지 않는다** (FR-021). `decide_outcome` 은 변경되지 않는다.
+**`Outcome` 은 값을 늘리지 않는다** (FR-021).
+
+> **2026-09-28 구현 중 정정.** 「`decide_outcome` 은 변경되지 않는다」는 틀렸다 —
+> 정합성 점검 F1 이 3번 규칙의 조건을 좁히게 했다 (FR-039). **우선순위의 순서는
+> 그대로**이고 값도 늘지 않는다. 자세한 것은 §8.
 
 ---
 
 ## 4. `BlockedKind` — 막힘 사유 종류 (신규)
 
-**위치**: `backend/src/itb/authoring/blocked.py`
+**위치**: `backend/src/itb/authoring/tools.py`
+
+> **2026-09-28 구현 중 정정.** 계획은 `blocked.py` 였다(`AiChoice` 옆이 자연스럽다).
+> **임포트 방향이 그것을 막는다** — `blocked` → `agent` → `tools` 이므로 `tools` 가
+> `blocked` 를 가져오면 순환이 된다. 값이 **만들어지는 곳**이 `report_blocked` 라는
+> 점에서 `tools.py` 도 맞는 자리다. `blocked.py` 는 그것을 화면으로 나르기만 한다.
 
 ```
 class BlockedKind(StrEnum):
@@ -110,14 +119,23 @@ report_blocked(reason, question, kind)
   → BrowserToolbox.blocked_kind
   → AgentOutcome.blocked_kind
   → ai_blocked 이벤트의 kind 필드
+  → BlockedView.kind (세션 뷰)          ← 구현 중 추가
   → 화면: PRODUCT_MISMATCH 이면 답변 칸을 열지 않는다
 ```
+
+> **2026-09-28 구현 중 추가 — 세션 뷰에도 실어야 한다.** 이벤트에만 두면 새로고침
+> 뒤에 사라지고, 그러면 답할 수 없는 질문에 대해 답변 칸이 **다시 열린다.**
+> `BlockedView` 가 존재하는 이유(이벤트는 그 순간 붙어 있던 화면에게만 간다)가
+> 여기에도 그대로 걸린다.
 
 **불변식**:
 
 - **I-5**: `kind == PRODUCT_MISMATCH` 이면 `question` 은 버려진다 (FR-024). 도구 쪽에서
   버린다 — 모델이 규칙을 어겨도 화면에 답변 칸이 열리지 않아야 한다.
 - **I-6**: 기본값이 `NEEDS_INPUT` 이므로 기존 막힘 보고의 동작이 변하지 않는다 (FR-025).
+- **I-7**: 인식하지 못한 값은 `NEEDS_INPUT` 으로 떨어진다. 오타가 조용히 답변 칸을
+  막으면 사용자는 이유를 모른 채 이어갈 방법을 잃는다 — 반대 방향의 오작동(질문이
+  필요 없는데 칸이 열림)이 덜 해롭다.
 
 ---
 
@@ -166,3 +184,43 @@ mismatch=None  mismatch 기록
 
 **생성 스키마** (R10): `backend/schema/step.schema.json`, `backend/schema/run-result.schema.json`
 재생성 → `frontend/src/types/generated/{step,run-result}.d.ts`.
+
+
+---
+
+## 7. 구현 중 드러난 것 — `null` 과 `undefined` (2026-09-28)
+
+**화면 쪽에서 둘을 같게 다뤄야 한다.**
+
+생성된 TypeScript 는 새 필드를 **필수**로 표기한다 (`json_schema_serialization_defaults_required=True`
+의 결과). 그런데 020 이전 서버가 보낸 Step 과 옛 결과 파일에는 칸 자체가 없고, 그때
+값은 `null` 이 아니라 `undefined` 다. `!== null` 만 보는 코드는 **없는 기록을 그리려다
+터진다.**
+
+실제로 `InsertViaBrowser` 검증 2건이 그렇게 깨져서 잡혔다 — 타입이 필수라고 말하는데
+런타임 값은 없는, 타입 검사가 잡지 못하는 종류의 어긋남이다.
+
+| 자리 | 규칙 |
+|---|---|
+| `StepDetail` · `StepList` | `step.mismatch ?? null` 로 좁힌다 |
+| `countAssertionClasses` | `!= null` (느슨한 비교)로 둘 다 거른다 |
+| `ClassifiedStepResult` | 칸을 **선택**으로 선언한다 — 옛 데이터의 모양이 그렇다 |
+
+옛 모양을 재현하는 회귀 검증이 백엔드(`test_share_preserves_mismatch.py` 의 파일에서
+칸 지우기)와 프론트엔드(`MismatchDisplay.test.tsx` · `AssertionMismatch.test.tsx`)
+양쪽에 있다.
+
+## 8. 구현 중 넓어진 것 — 건너뛰기와 재개 가드 (2026-09-28)
+
+`decide_outcome` 한 곳을 고치면 될 줄 알았던 FR-039 가 **셋**이 됐다. 근거는
+[baseline.md](./baseline.md) 에 있다 — `clear_failed_steps` 가 결과의 **모든** `FAIL` 을
+`SKIPPED` 로 바꾸므로, 결말 판정에 닿기도 전에 회귀의 증거가 지워진다.
+
+| 고친 것 | 020 이전 | 020 이후 |
+|---|---|---|
+| `clear_failed_steps` → `skip_blocking_failure` | 모든 `FAIL` 을 건너뜀으로 | **멈춘 자리 하나만** |
+| 재개 가드 (`has_failed_step`) → `blocking_failure_index` | 「실패가 있는가」 | **「멈춘 자리가 있는가」** |
+| `decide_outcome` | 건너뛰기면 무조건 `PARTIAL_PASS` | 건너뛰지 않은 실패가 남으면 `FAIL` |
+
+앞의 둘은 **020 이전 동작을 정확히 보존한다.** 그때는 `FAIL` 이 하나뿐이었고 그것이 곧
+멈춘 자리였으므로, 「멈춘 자리 하나」와 「모든 `FAIL`」이 같은 것을 가리켰다.

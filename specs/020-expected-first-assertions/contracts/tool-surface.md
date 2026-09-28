@@ -76,6 +76,10 @@ report_blocked(reason: str, question: str = "", kind: str = "needs_input")
 | `needs_input` | `question` 을 그대로 | 답변 칸이 열린다 — 현행 |
 | `product_mismatch` | **`None` 으로 버린다** (FR-024) | 답변 칸이 열리지 않는다 |
 
+> **2026-09-28 구현 중 정정** — `BlockedKind` 는 `blocked.py` 가 아니라 `tools.py` 에
+> 있다. `blocked` → `agent` → `tools` 이므로 반대 방향 임포트는 순환이 된다.
+> 값이 만들어지는 곳이 `report_blocked` 라는 점에서 그 자리도 맞다.
+
 ### 도구 설명 문구 (개발용 드라이버의 `TOOL_SCHEMAS`)
 
 > 지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다.
@@ -144,6 +148,9 @@ report_blocked(reason: str, question: str = "", kind: str = "needs_input")
 
 `kind` 는 **항상 싣는다.** 기존 소비자가 모르는 필드를 무시하므로 안전하고, 항상 있으면
 화면이 「없으면 needs_input」이라는 규칙을 따로 들고 있지 않아도 된다.
+
+**세션 뷰(`BlockedView`)에도 같은 칸이 있다** (구현 중 추가). 이벤트에만 두면 새로고침
+뒤에 사라지고, 그러면 답할 수 없는 질문에 대해 답변 칸이 다시 열린다.
 
 ### `step_failed` — 변화 없음
 
