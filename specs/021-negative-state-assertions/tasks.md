@@ -31,9 +31,9 @@ description: "Task list template for feature implementation"
 
 **Purpose**: 이 기능을 확인할 대상 화면과, 무엇이 깨질지에 대한 기준선을 먼저 만든다.
 
-- [ ] T001 고정 대상을 `fixtures/sample-app/locked-controls.html` 로 추가하고 `fixtures/sample-app/serve.py` 에 경로를 붙인다 — 네 가지가 한 화면에 있어야 한다: (a) `disabled` 인 삭제 버튼, (b) 같은 모양의 활성 버튼, (c) 누르면 **0.8초 뒤에** `오류가 발생했습니다` 를 띄우는 버튼, (d) 조작 가능 여부를 가질 수 없는 설명용 `<div>`. 기존 고정 대상 파일은 고치지 않는다
-- [ ] T002 [P] `backend/scripts/test-backend.sh` 와 `cd frontend && npm run typecheck && npm test` 를 지금 상태에서 돌려 **기준선을 기록**한다 — 통과/실패 건수뿐 아니라 **소요 시간**도 적는다. 대기 규칙 통일(T012)이 느리게 만드는 테스트를 이 값과 비교해 가린다. 결과는 `specs/021-negative-state-assertions/baseline.md`
-- [ ] T003 [P] 텍스트 검증의 **실패**를 기대하는 기존 검증을 전수 조사해 `specs/021-negative-state-assertions/baseline.md` 에 목록으로 남긴다 — 이들이 T012 이후 제한 시간만큼 느려진다. **이 목록이 T019 의 작업 범위다**
+- [X] T001 고정 대상을 `fixtures/sample-app/locked-controls.html` 로 추가하고 `fixtures/sample-app/serve.py` 에 경로를 붙인다 — 네 가지가 한 화면에 있어야 한다: (a) `disabled` 인 삭제 버튼, (b) 같은 모양의 활성 버튼, (c) 누르면 **0.8초 뒤에** `오류가 발생했습니다` 를 띄우는 버튼, (d) 조작 가능 여부를 가질 수 없는 설명용 `<div>`. 기존 고정 대상 파일은 고치지 않는다
+- [X] T002 [P] `backend/scripts/test-backend.sh` 와 `cd frontend && npm run typecheck && npm test` 를 지금 상태에서 돌려 **기준선을 기록**한다 — 통과/실패 건수뿐 아니라 **소요 시간**도 적는다. 대기 규칙 통일(T012)이 느리게 만드는 테스트를 이 값과 비교해 가린다. 결과는 `specs/021-negative-state-assertions/baseline.md`
+- [X] T003 [P] 텍스트 검증의 **실패**를 기대하는 기존 검증을 전수 조사해 `specs/021-negative-state-assertions/baseline.md` 에 목록으로 남긴다 — 이들이 T012 이후 제한 시간만큼 느려진다. **이 목록이 T019 의 작업 범위다**
 
 ---
 
