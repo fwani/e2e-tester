@@ -59,14 +59,7 @@ import type { ReactNode } from "react";
 
 import type { ActionId } from "../../lib/actions";
 import { isShown, type CapabilityState } from "../../lib/capabilities";
-import {
-  ACTION_LABEL,
-  MISMATCH_CHIP,
-  MISMATCH_HINT,
-  deleteSelectionCount,
-  displayOutcomeLabel,
-  stepNumber,
-} from "../../lib/wording";
+import { ACTION_LABEL, MISMATCH_CHIP, MISMATCH_HINT, assertionSummary, deleteSelectionCount, displayOutcomeLabel, stepNumber } from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 import type { Step, TargetLocator } from "../../types/generated/step";
 import type { StepOutcome, WorkbenchStep } from "./model";
@@ -260,8 +253,14 @@ export function locatorSummary(step: Step): string {
   if (step.type === "navigate") return step.url;
   if (step.type === "close_tab") return `탭 ${step.tab}`;
   if (step.type === "assertion") {
-    const a = step.assertion;
-    return a.value ? `${a.kind} ${a.value}` : a.kind;
+    /*
+      **비교 방식이 반드시 들어간다** (021 FR-023).
+
+      021 이전에는 종류를 영문 원문으로 찍고 비교 방식을 보이지 않았다. 그래서
+      「`오류` 가 있어야 한다」와 「`오류` 가 없어야 한다」가 이 줄에서 똑같이
+      보였다 — 정반대 뜻의 두 Step 을 구별할 수 없는 것은 표시 문제가 아니라 결함이다.
+    */
+    return assertionSummary(step.assertion);
   }
   if (step.type === "drag") {
     // 끄는 대상만 보여주면 어디로 놓는지 알 수 없다 — 두 요소를 함께 요약한다.

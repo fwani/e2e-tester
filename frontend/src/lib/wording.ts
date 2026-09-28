@@ -13,7 +13,7 @@
  * 그래서 화면은 문구를 직접 만들지 않고 여기서 받는다.
  */
 
-import type { InsertableKind, ManualStepSpec } from "../api/client";
+import type { AssertionKind, InsertableKind, ManualStepSpec, MatchMode } from "../api/client";
 import type {
   AssertionClass,
   Outcome,
@@ -1373,6 +1373,83 @@ export const OBSERVED_TRUNCATED = "(길어서 뒷부분을 잘랐습니다)";
 export const CLEAR_MISMATCH_LABEL = "결함 후보 표시 걷어내기";
 export const CLEAR_MISMATCH_HINT =
   "이후 이 검증이 실패하면 회귀로 분류됩니다. 기록도 함께 사라집니다.";
+
+/**
+ * 검증 종류와 비교 방식의 한국어 문구 (021 FR-023).
+ *
+ * ## 왜 여기 모으는가
+ *
+ * 021 이전 Step 목록은 종류를 **영문 원문으로 찍고 비교 방식을 아예 보이지 않았다.**
+ * 그래서 「`오류` 가 있어야 한다」와 「`오류` 가 없어야 한다」가 목록에서 **똑같이
+ * 보였다.** 정반대 뜻의 두 Step 을 구별할 수 없는 것은 표시 문제가 아니라 결함이다.
+ *
+ * 폼·목록·상세가 각자 문구를 만들면 같은 검증이 화면마다 다르게 불린다 — 이 파일이
+ * 처음부터 막으려던 것이 그것이다.
+ */
+export const ASSERTION_KIND_LABEL: Record<AssertionKind, string> = {
+  visible: "요소가 보인다",
+  hidden: "요소가 없거나 보이지 않는다",
+  enabled: "요소를 조작할 수 있다",
+  disabled: "요소를 조작할 수 없다",
+  text: "텍스트",
+  url: "주소",
+};
+
+/** 검증 종류를 고를 때 읽는 짧은 설명. */
+export const ASSERTION_KIND_HINT: Record<AssertionKind, string> = {
+  visible: "대기 시간 안에 나타나고 보이면 통과",
+  hidden: "처음부터 없던 경우와 사라진 경우 모두 통과",
+  enabled: "누르거나 입력할 수 있으면 통과. 대상이 없으면 실패한다",
+  disabled: "잠겨 있으면 통과. 대상이 없으면 실패한다 — 없는 것은 비활성이 아니다",
+  text: "대상을 비우면 화면 전체가 대상",
+  url: "요소를 찾지 않는다",
+};
+
+/** 비교 방식 (021 — 부정 둘이 늘었다). */
+export const MATCH_MODE_LABEL: Record<MatchMode, string> = {
+  equals: "같다",
+  contains: "포함한다",
+  not_equals: "같지 않다",
+  not_contains: "포함하지 않는다",
+};
+
+/** 부정 비교인가. 화면 여러 곳이 같은 판단을 해야 한다. */
+export function isNegatedMatch(match: MatchMode): boolean {
+  return match === "not_equals" || match === "not_contains";
+}
+
+/** 값을 비교하는 종류인가 — 비교 방식을 고를 수 있는 것도 이 둘뿐이다. */
+export function comparesValue(kind: AssertionKind): boolean {
+  return kind === "text" || kind === "url";
+}
+
+/**
+ * 부정 비교를 고른 사람이 읽어야 할 것 (021 FR-026).
+ *
+ * 제한 시간의 뜻이 긍정과 다르다 — 상한이 아니라 **관찰 기간**이다. 그 사실을 모르면
+ * 두 가지를 오해한다: 왜 이 검증만 오래 걸리는지, 그리고 기간 뒤에 나타나는 것은 왜
+ * 잡히지 않는지.
+ */
+export const NEGATED_MATCH_NOTE =
+  "제한 시간 동안 이 조건이 유지되는지 지켜봅니다. 그래서 통과할 때도 제한 시간을 " +
+  "모두 씁니다. 기간이 끝난 뒤에 나타나는 것은 잡지 못하므로, 화면이 준비되었는지 " +
+  "확인하는 검증을 앞에 두면 좋습니다.";
+
+/**
+ * 검증 조건 한 줄 요약. 목록·상세·폼이 같은 문장을 쓴다.
+ *
+ * **비교 방식이 반드시 들어간다.** 그것이 빠지면 긍정과 부정이 같아 보인다.
+ */
+export function assertionSummary(assertion: {
+  kind: AssertionKind;
+  match: MatchMode;
+  value?: string | null;
+}): string {
+  if (!comparesValue(assertion.kind)) return ASSERTION_KIND_LABEL[assertion.kind];
+  const subject = assertion.kind === "text" ? "텍스트" : "주소";
+  const value = assertion.value ?? "";
+  return `${subject}가 ${JSON.stringify(value)}를 ${MATCH_MODE_LABEL[assertion.match]}`;
+}
 
 /** 실행 결과의 검증 분류 (FR-018). */
 export function assertionClassLabel(

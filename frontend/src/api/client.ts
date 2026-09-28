@@ -20,7 +20,7 @@ export interface RunResultView extends RunResult {
   last_full_run?: RunResult | null;
 }
 import type { Step } from "../types/generated/step";
-import type { Test } from "../types/generated/step-dsl";
+import type { AssertionKind, MatchMode, Test } from "../types/generated/step-dsl";
 
 // ErrorCode·Category 는 backend/src/itb/domain/error.py 에서 생성된다. 손으로 쓰지 않는다.
 export type { Category, ErrorBody, ErrorCode } from "../types/generated/error-response";
@@ -831,9 +831,14 @@ export interface StepsResponse {
   current_step_index: number;
 }
 
-/** 검증 조건 4종 (FR-013a). 요소 갯수·입력값 검증은 범위 외 (FR-013c). */
-export type AssertionKind = "visible" | "hidden" | "text" | "url";
-export type MatchMode = "equals" | "contains";
+/**
+ * 검증 조건 6종 (001 FR-013a + 021). 요소 갯수·입력값 검증은 범위 외 (FR-013c).
+ *
+ * **생성 타입을 다시 적지 않고 재수출한다** (021). 손으로 적어 두면 백엔드 열거형에
+ * 값을 더했을 때 화면만 뒤처지고, 그때 컴파일러는 아무 말도 하지 않는다 — 원칙 I 이
+ * 금지하는 「두 벌로 손수 유지하는 스키마」가 정확히 이 형태였다.
+ */
+export type { AssertionKind, MatchMode };
 
 export interface AddAssertionBody {
   kind: AssertionKind;

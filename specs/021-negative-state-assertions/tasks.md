@@ -119,20 +119,20 @@ description: "Task list template for feature implementation"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T028 [P] [US3] 도구 표면 검증을 `backend/tests/unit/test_tool_surface.py` 에서 확장한다 — **도구 개수가 늘지 않았음**(`TOOL_NAMES` 16종 · `STEP_PRODUCING_TOOLS` 9종)과 검증 도구의 종류 열거가 도메인 열거형과 일치함을 함께 세운다. 손으로 옮겨 적은 목록이 도메인과 갈리는 것을 막는다
-- [ ] T029 [P] [US3] 세 작성 경로의 산출물이 같은지를 `backend/tests/integration/test_authoring_parity_negative.py` 로 새로 만든다 — 화면 API·수동 삽입·작성 도구가 만든 정의가 표시 이름과 식별자를 빼고 동일해야 한다 (원칙 I)
-- [ ] T030 [P] [US3] 목록 요약 검증을 `frontend/tests/AssertionSummary.test.tsx` 로 새로 만든다 — **같은 값의 긍정·부정 두 검증이 서로 다른 문자열로 요약**되어야 하고, 종류가 영문 원문으로 나오지 않아야 한다 ([research.md R6](./research.md))
+- [X] T028 [P] [US3] 도구 표면 검증을 `backend/tests/unit/test_tool_surface.py` 에서 확장한다 — **도구 개수가 늘지 않았음**(`TOOL_NAMES` 16종 · `STEP_PRODUCING_TOOLS` 9종)과 검증 도구의 종류 열거가 도메인 열거형과 일치함을 함께 세운다. 손으로 옮겨 적은 목록이 도메인과 갈리는 것을 막는다
+- [X] T029 [P] [US3] 세 작성 경로의 산출물이 같은지를 `backend/tests/integration/test_authoring_parity_negative.py` 로 새로 만든다 — 화면 API·수동 삽입·작성 도구가 만든 정의가 표시 이름과 식별자를 빼고 동일해야 한다 (원칙 I)
+- [X] T030 [P] [US3] 목록 요약 검증을 `frontend/tests/AssertionSummary.test.tsx` 로 새로 만든다 — **같은 값의 긍정·부정 두 검증이 서로 다른 문자열로 요약**되어야 하고, 종류가 영문 원문으로 나오지 않아야 한다 ([research.md R6](./research.md))
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] 검증 도구의 인자 스키마와 설명을 넓힌다 (`backend/src/itb/authoring/tools.py`) — 종류 열거 6종, 비교 방식 4종, 그리고 값을 쓰지 않는 종류에 부정 비교를 줄 수 없다는 제약. **도구를 늘리지 않는다**. 지원하지 않는 값에 대한 오류 문구도 새 목록으로 갱신한다 (지금 「visible / hidden / text / url 중 하나」로 하드코딩되어 있다)
-- [ ] T032 [US3] 작성 지침에 한 문단을 더한다 (`backend/src/itb/authoring/agent.py`) — 「부정 검증이 통과하지 않는다고 조건을 긍정형으로 뒤집지 마라」. 020 이 같은 자리에 넣은 문장과 같은 취지이며, 없으면 모델에게는 뒤집는 것이 가장 쉬운 길이다 ([contracts/assertion-surface.md §3](./contracts/assertion-surface.md))
-- [ ] T033 [US3] 검증 추가 API 가 새 값을 그대로 받는지 확인하고, 형태 규칙 위반의 오류 문구를 점검한다 (`backend/src/itb/api/routes/steps.py`) — 요청 모델이 도메인 열거형을 참조하므로 **손으로 옮겨 적은 목록이 없어야 한다**. 있으면 지운다
-- [ ] T034 [US3] 검증 종류와 비교 방식의 한국어 문구를 `frontend/src/lib/wording.ts` 한곳에 모은다 — 폼·목록·상세가 같은 출처를 읽는다. 세 곳이 각자 만들면 같은 검증이 화면마다 다르게 불린다
-- [ ] T035 [US3] Step 목록 요약을 고친다 (`frontend/src/components/workbench/StepList.tsx` 의 `locatorSummary`) — 종류를 한국어로, **비교 방식을 함께** 보인다. R6 의 선결 조건이다. T034 에 의존
-- [ ] T036 [US3] 검증 추가 폼을 넓힌다 (`frontend/src/components/AssertionForm.tsx`) — 종류 6개(`KINDS`), 비교 방식 4개, `NEEDS_TARGET` 에 새 두 종류 추가, 상태 검증을 고르면 비교 값 칸을 숨긴다. **범위 외 기능을 비활성 항목으로 넣지 않는다**. T034 에 의존
-- [ ] T037 [US3] 부정 비교를 고른 자리에 **한계 안내**를 보인다 (`frontend/src/components/AssertionForm.tsx`) — 조건이 참이 되면 즉시 통과하므로 늦게 나타나는 것을 놓칠 수 있고, 먼저 화면이 안정되었음을 확인하는 검증을 앞에 두는 것이 좋다 (FR-026). 경고가 아니라 **조언**의 문체로 쓴다. T036 에 의존
-- [ ] T038 [P] [US3] 폼 검증을 `frontend/tests/AssertionForm.test.tsx` 에 추가하거나 새로 만든다 — 상태 검증 선택 시 값 칸이 사라지는지, 부정 비교 선택 시 안내가 나타나는지. T036·T037 에 의존
+- [X] T031 [US3] 검증 도구의 인자 스키마와 설명을 넓힌다 (`backend/src/itb/authoring/tools.py`) — 종류 열거 6종, 비교 방식 4종, 그리고 값을 쓰지 않는 종류에 부정 비교를 줄 수 없다는 제약. **도구를 늘리지 않는다**. 지원하지 않는 값에 대한 오류 문구도 새 목록으로 갱신한다 (지금 「visible / hidden / text / url 중 하나」로 하드코딩되어 있다)
+- [X] T032 [US3] 작성 지침에 한 문단을 더한다 (`backend/src/itb/authoring/agent.py`) — 「부정 검증이 통과하지 않는다고 조건을 긍정형으로 뒤집지 마라」. 020 이 같은 자리에 넣은 문장과 같은 취지이며, 없으면 모델에게는 뒤집는 것이 가장 쉬운 길이다 ([contracts/assertion-surface.md §3](./contracts/assertion-surface.md))
+- [X] T033 [US3] 검증 추가 API 가 새 값을 그대로 받는지 확인하고, 형태 규칙 위반의 오류 문구를 점검한다 (`backend/src/itb/api/routes/steps.py`) — 요청 모델이 도메인 열거형을 참조하므로 **손으로 옮겨 적은 목록이 없어야 한다**. 있으면 지운다
+- [X] T034 [US3] 검증 종류와 비교 방식의 한국어 문구를 `frontend/src/lib/wording.ts` 한곳에 모은다 — 폼·목록·상세가 같은 출처를 읽는다. 세 곳이 각자 만들면 같은 검증이 화면마다 다르게 불린다
+- [X] T035 [US3] Step 목록 요약을 고친다 (`frontend/src/components/workbench/StepList.tsx` 의 `locatorSummary`) — 종류를 한국어로, **비교 방식을 함께** 보인다. R6 의 선결 조건이다. T034 에 의존
+- [X] T036 [US3] 검증 추가 폼을 넓힌다 (`frontend/src/components/AssertionForm.tsx`) — 종류 6개(`KINDS`), 비교 방식 4개, `NEEDS_TARGET` 에 새 두 종류 추가, 상태 검증을 고르면 비교 값 칸을 숨긴다. **범위 외 기능을 비활성 항목으로 넣지 않는다**. T034 에 의존
+- [X] T037 [US3] 부정 비교를 고른 자리에 **한계 안내**를 보인다 (`frontend/src/components/AssertionForm.tsx`) — 조건이 참이 되면 즉시 통과하므로 늦게 나타나는 것을 놓칠 수 있고, 먼저 화면이 안정되었음을 확인하는 검증을 앞에 두는 것이 좋다 (FR-026). 경고가 아니라 **조언**의 문체로 쓴다. T036 에 의존
+- [X] T038 [P] [US3] 폼 검증을 `frontend/tests/AssertionForm.test.tsx` 에 추가하거나 새로 만든다 — 상태 검증 선택 시 값 칸이 사라지는지, 부정 비교 선택 시 안내가 나타나는지. T036·T037 에 의존
 
 **Checkpoint**: 세 경로에서 새 어휘를 쓸 수 있고 목록에서 구별된다.
 

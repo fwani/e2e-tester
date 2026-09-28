@@ -1,32 +1,38 @@
 /**
- * 검증 조건 구성 (T105). FR-013a·FR-013b.
+ * 검증 조건 구성 (T105). FR-013a·FR-013b · 021.
  *
- * 4종만 있다. 요소 갯수·입력값 검증은 범위 외다 (FR-013c) — 목록에 넣어 두고 비활성으로
- * 보여 주지 않는다. 없는 기능을 회색으로 보여 주는 것은 "곧 생긴다"는 약속처럼 읽힌다.
+ * 6종이다. 요소 갯수·입력값 검증과 체크 상태·읽기 전용은 범위 외다 (FR-013c · 021) —
+ * 목록에 넣어 두고 비활성으로 보여 주지 않는다. 없는 기능을 회색으로 보여 주는 것은
+ * "곧 생긴다"는 약속처럼 읽힌다.
  *
  * **대상 요소는 셀렉터로만 지정한다.** 후보 수집·검증은 서버가 한다 (원칙 IV) — 여기서
  * 후보 묶음을 만들면 녹화가 만드는 것과 다른 형태가 생긴다.
+ *
+ * **문구를 직접 만들지 않는다.** 종류·비교 방식의 한국어는 `lib/wording` 이 소유한다
+ * (021 FR-023) — 폼과 목록이 각자 만들면 같은 검증이 화면마다 다르게 불린다.
  */
 import { useState } from "react";
 
 import type { AddAssertionBody, AssertionKind, MatchMode } from "../api/client";
+import {
+  ASSERTION_KIND_HINT,
+  ASSERTION_KIND_LABEL,
+  MATCH_MODE_LABEL,
+  NEGATED_MATCH_NOTE,
+  comparesValue,
+  isNegatedMatch,
+} from "../lib/wording";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Radio } from "../ui/Radio";
 
-const KINDS: { kind: AssertionKind; label: string; hint: string }[] = [
-  { kind: "visible", label: "요소가 보인다", hint: "대기 시간 안에 나타나고 보이면 통과" },
-  {
-    kind: "hidden",
-    label: "요소가 없거나 보이지 않는다",
-    hint: "처음부터 없던 경우와 사라진 경우 모두 통과",
-  },
-  { kind: "text", label: "텍스트 일치·포함", hint: "대상을 비우면 화면 전체가 대상" },
-  { kind: "url", label: "주소 일치·포함", hint: "요소를 찾지 않는다" },
-];
+const KINDS: AssertionKind[] = ["visible", "hidden", "enabled", "disabled", "text", "url"];
+/** 요소에 대한 검증 넷을 앞에, 값을 비교하는 둘을 뒤에 둔다 — 고르는 사람의 순서다. */
 
-/** 대상 요소가 반드시 필요한 종류 (data-model §5). */
-const NEEDS_TARGET = new Set<AssertionKind>(["visible", "hidden"]);
+const MATCHES: MatchMode[] = ["equals", "contains", "not_equals", "not_contains"];
+
+/** 대상 요소가 반드시 필요한 종류 (data-model §2). */
+const NEEDS_TARGET = new Set<AssertionKind>(["visible", "hidden", "enabled", "disabled"]);
 /** 비교 값이 반드시 필요한 종류. */
 const NEEDS_VALUE = new Set<AssertionKind>(["text", "url"]);
 
@@ -47,6 +53,12 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
 
   const targetAllowed = kind !== "url";
   const targetRequired = NEEDS_TARGET.has(kind);
+  /*
+    값 칸을 숨기는 것은 **새 종류 둘뿐이다.** `visible`·`hidden` 은 서버가 표시 이름을
+    만들 때 이 값을 읽으므로(`assertion_builder.default_label`) 칸을 없애면 기존 기능을
+    잃는다 — 021 data-model §2 가 그 둘의 값을 「열려 있음(호환)」으로 둔 이유다.
+  */
+  const valueAllowed = kind !== "enabled" && kind !== "disabled";
   const valueRequired = NEEDS_VALUE.has(kind);
   const ready =
     (!targetRequired || selector.trim() !== "") && (!valueRequired || value.trim() !== "");
@@ -55,8 +67,11 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
     onSubmit({
       kind,
       target_selector: targetAllowed && selector.trim() !== "" ? selector.trim() : null,
-      value: value.trim() !== "" ? value.trim() : null,
-      match,
+      // 값을 쓰지 않는 종류에는 값도 부정 비교도 보내지 않는다 — 서버가 거절한다
+      // (021 data-model §2). 화면이 거절당할 것을 보내면 사용자는 자기가 무엇을
+      // 잘못했는지 모른다.
+      value: valueAllowed && value.trim() !== "" ? value.trim() : null,
+      match: comparesValue(kind) ? match : "equals",
       label: label.trim() !== "" ? label.trim() : null,
       tab: tab ?? null,
     });
@@ -73,18 +88,18 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
           조건
         </legend>
         {KINDS.map((k) => (
-          <label key={k.kind} className="flex items-center gap-s2 items-start">
+          <label key={k} className="flex items-center gap-s2 items-start">
             <Radio
               name="assertion-kind"
-              value={k.kind}
-              checked={kind === k.kind}
-              onChange={() => setKind(k.kind)}
+              value={k}
+              checked={kind === k}
+              onChange={() => setKind(k)}
             />
             <span>
-              {k.label}
+              {ASSERTION_KIND_LABEL[k]}
               <br />
               <span className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3">
-                {k.hint}
+                {ASSERTION_KIND_HINT[k]}
               </span>
             </span>
           </label>
@@ -105,41 +120,59 @@ export function AssertionForm({ onSubmit, onCancel, busy = false, tab }: Asserti
         </div>
       )}
 
-      <div>
-        <label htmlFor="assertion-value">
-          비교 값{valueRequired ? " — 필수" : " (선택)"}
-        </label>
-        <Input
-          id="assertion-value"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="{{PROJECT_NAME}}"
-        />
-        <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
-          {"{{변수명}}"} 으로 변수를 참조할 수 있습니다 (FR-013b). 민감 변수의 실제 값은
-          화면에 표시되지 않습니다.
-        </p>
-      </div>
-
-      {(kind === "text" || kind === "url") && (
-        <div className="flex items-center gap-s2 gap-s3">
- <label className="flex items-center gap-[6px]">
-            <Radio
-              name="assertion-match"
-              checked={match === "equals"}
-              onChange={() => setMatch("equals")}
-            />
-            일치
+      {/*
+        값을 쓰지 않는 종류에서는 이 칸을 **숨긴다** (021). 비워 두면 「적어도 되는가」를
+        사용자가 다시 판단해야 하고, 상태 검증은 값을 받으면 거절된다.
+      */}
+      {valueAllowed && (
+        <div>
+          <label htmlFor="assertion-value">
+            비교 값{valueRequired ? " — 필수" : " (선택)"}
           </label>
- <label className="flex items-center gap-[6px]">
-            <Radio
-              name="assertion-match"
-              checked={match === "contains"}
-              onChange={() => setMatch("contains")}
-            />
-            포함
-          </label>
+          <Input
+            id="assertion-value"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="{{PROJECT_NAME}}"
+          />
+          <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
+            {"{{변수명}}"} 으로 변수를 참조할 수 있습니다 (FR-013b). 민감 변수의 실제 값은
+            화면에 표시되지 않습니다.
+          </p>
         </div>
+      )}
+
+      {comparesValue(kind) && (
+        <fieldset className="border-0 p-0 m-0 grid gap-[6px]">
+          <legend className="font-sans text-[12px] font-semibold leading-[1.4] text-ink-2 p-0">
+            비교 방식
+          </legend>
+          <div className="flex items-center gap-s3 flex-wrap">
+            {MATCHES.map((m) => (
+              <label key={m} className="flex items-center gap-[6px]">
+                <Radio
+                  name="assertion-match"
+                  checked={match === m}
+                  onChange={() => setMatch(m)}
+                />
+                {MATCH_MODE_LABEL[m]}
+              </label>
+            ))}
+          </div>
+          {/*
+            부정 비교에서 제한 시간의 뜻이 달라진다 — 상한이 아니라 관찰 기간이다
+            (021 FR-026). 말하지 않으면 왜 이 검증만 오래 걸리는지, 기간 뒤에 나타나는
+            것은 왜 잡히지 않는지를 오해한다. 경고가 아니라 조언의 문체로 쓴다.
+          */}
+          {isNegatedMatch(match) && (
+            <p
+              data-testid="negated-match-note"
+              className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0"
+            >
+              {NEGATED_MATCH_NOTE}
+            </p>
+          )}
+        </fieldset>
       )}
 
       <div>

@@ -177,3 +177,50 @@ def test_build_tools_returns_the_whole_surface() -> None:
     source = inspect.getsource(tools_mod.build_tools)
     for name in TOOL_NAMES:
         assert f"async def {name}(" in source, f"build_tools 에 {name} 이 없다"
+
+
+# ─── 021 — 어휘가 늘어도 도구 표면은 그대로다 ──────────────────────────────
+
+
+def test_new_assertion_vocabulary_did_not_grow_the_surface() -> None:
+    """**검증 종류가 늘었다고 도구가 늘면 안 된다** (021 contracts/assertion-surface §3).
+
+    도구 표면은 계약이고 Step 종류와 1:1 이다. 새 어휘는 기존 검증 도구의 **인자 값**
+    으로 들어간다. 위쪽 `test_the_four_classes_cover_the_surface_exactly` 가 16종을
+    이미 세우지만, 여기서 다시 말하는 이유는 **어휘 추가와 도구 추가를 가르는 경계**를
+    이 파일에 남겨 두기 위해서다.
+    """
+    from itb.authoring.tools import STEP_PRODUCING_TOOLS
+
+    assert len(TOOL_NAMES) == 16
+    assert len(STEP_PRODUCING_TOOLS) == 9
+    assert "assert_condition" in TOOL_NAMES
+    assert not [n for n in TOOL_NAMES if n.startswith("assert_") and n != "assert_condition"]
+
+
+def test_the_assertion_tool_enum_matches_the_domain() -> None:
+    """도구 스키마의 종류·비교 목록이 도메인 열거형과 같다.
+
+    손으로 옮겨 적으면 도메인에 값을 더했을 때 도구만 뒤처지고, 모델은 쓸 수 있는
+    어휘를 모른 채 작성한다. **목록을 베끼지 않고 도메인에서 읽는지**를 본다.
+    """
+    from itb.authoring.tools import TOOL_SCHEMAS
+    from itb.domain.assertion import AssertionKind, MatchMode
+
+    _, schema = TOOL_SCHEMAS["assert_condition"]
+    props = schema["properties"]
+    assert set(props["kind"]["enum"]) == {k.value for k in AssertionKind}
+    assert set(props["match"]["enum"]) == {m.value for m in MatchMode}
+
+
+def test_the_authoring_guidance_tells_the_model_not_to_flip_a_negated_check() -> None:
+    """020 이 「값을 바꾸지 마라」를 넣은 자리에 부정형 판이 있어야 한다.
+
+    없으면 020 이 막은 일이 부정형에서 되풀이된다 — 모델에게는 조건을 뒤집어
+    통과시키는 것이 가장 쉬운 길이다.
+    """
+    from itb.authoring.agent import SYSTEM_PROMPT
+
+    assert "뒤집지 마세요" in SYSTEM_PROMPT
+    assert "not_contains" in SYSTEM_PROMPT
+    assert "눌러 보고" in SYSTEM_PROMPT, "비활성 버튼을 눌러 확인하지 말라는 말이 없다"
