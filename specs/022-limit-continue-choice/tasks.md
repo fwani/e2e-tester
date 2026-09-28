@@ -31,7 +31,7 @@ description: "Task list template for feature implementation"
 
 **Purpose**: 새 구조를 만들지 않는다. 시작 상태를 고정하는 것이 전부다.
 
-- [ ] T001 시작 시점의 기존 실패를 기록한다 — `cd backend && bash scripts/test-backend.sh` 와 `.venv/bin/python -m ruff check src tests` 를 돌려, 이 기능과 무관한 실패 목록을 [quickstart.md](./quickstart.md) 「자동 검증」 절과 대조한다. **새 실패를 기존 실패와 섞지 않기 위한 기준선**이다 (021 작업분: `test_ui_surface.py` AS-009·025·037·046, ruff 4건)
+- [X] T001 시작 시점의 기존 실패를 기록한다 — `cd backend && bash scripts/test-backend.sh` 와 `.venv/bin/python -m ruff check src tests` 를 돌려, 이 기능과 무관한 실패 목록을 [quickstart.md](./quickstart.md) 「자동 검증」 절과 대조한다. **새 실패를 기존 실패와 섞지 않기 위한 기준선**이다 (021 작업분: `test_ui_surface.py` AS-009·025·037·046, ruff 4건)
 
 ---
 
@@ -41,17 +41,17 @@ description: "Task list template for feature implementation"
 
 **⚠️ CRITICAL**: 이 단계가 끝나기 전에는 US1~US3 작업을 시작하지 않는다
 
-- [ ] T002 `backend/src/itb/authoring/tools.py` 의 `BlockedKind` 에 `BUDGET_EXHAUSTED = "budget_exhausted"` 를 더한다. docstring 에 **`product_mismatch` 와 묶지 않는 이유**를 적는다 — 둘 다 「사람이 알려 줄 것이 없다」지만 이어가기의 의미가 정반대다(제품 불일치는 이어가도 같은 결과, 예산 소진은 진행된다). `DEFAULT_BLOCKED_KIND` 는 그대로 `NEEDS_INPUT` ([data-model.md](./data-model.md) §1)
+- [X] T002 `backend/src/itb/authoring/tools.py` 의 `BlockedKind` 에 `BUDGET_EXHAUSTED = "budget_exhausted"` 를 더한다. docstring 에 **`product_mismatch` 와 묶지 않는 이유**를 적는다 — 둘 다 「사람이 알려 줄 것이 없다」지만 이어가기의 의미가 정반대다(제품 불일치는 이어가도 같은 결과, 예산 소진은 진행된다). `DEFAULT_BLOCKED_KIND` 는 그대로 `NEEDS_INPUT` ([data-model.md](./data-model.md) §1)
 
-- [ ] T003 `backend/src/itb/authoring/tools.py` 의 `AttemptLimits` 에 `total_calls: int = 0` 과 `steps_at_attempt_start: int | None = None` 을 더한다. `record_call()` 이 `calls` 와 `total_calls` 를 **함께** 올린다 — 같은 자리에서 세므로 어긋날 수 없다는 근거를 docstring 에 적는다 ([research.md](./research.md) R2)
+- [X] T003 `backend/src/itb/authoring/tools.py` 의 `AttemptLimits` 에 `total_calls: int = 0` 과 `steps_at_attempt_start: int | None = None` 을 더한다. `record_call()` 이 `calls` 와 `total_calls` 를 **함께** 올린다 — 같은 자리에서 세므로 어긋날 수 없다는 근거를 docstring 에 적는다 ([research.md](./research.md) R2)
 
-- [ ] T004 `backend/src/itb/authoring/tools.py` 의 `reset()` 을 `reset_attempt(step_count: int | None = None)` 으로 바꾼다. **`total_calls` 를 지우지 않는다.** `step_count` 를 받으면 `steps_at_attempt_start` 에 넣는다 — `AttemptLimits` 는 Step 을 세지 않으므로 아는 쪽이 넘겨야 한다. docstring 에 하는 일이 「전부 되돌린다」에서 「이번 시도의 예산만 되돌린다」로 좁아졌음을 적는다
+- [X] T004 `backend/src/itb/authoring/tools.py` 의 `reset()` 을 `reset_attempt(step_count: int | None = None)` 으로 바꾼다. **`total_calls` 를 지우지 않는다.** `step_count` 를 받으면 `steps_at_attempt_start` 에 넣는다 — `AttemptLimits` 는 Step 을 세지 않으므로 아는 쪽이 넘겨야 한다. docstring 에 하는 일이 「전부 되돌린다」에서 「이번 시도의 예산만 되돌린다」로 좁아졌음을 적는다
 
-- [ ] T005 `reset()` 호출부 네 곳을 `reset_attempt(...)` 로 바꾸고 현재 Step 수를 넘긴다 — 예산이 새로 주어지는 자리다 (FR-008) — `backend/src/itb/authoring/agent.py` 의 `chat`·`resume_with_answer`·`resume_after_takeover`(`self._count()` 를 넘긴다), `backend/src/itb/api/routes/sessions.py` 의 `_start_agent_note`(`w.compiler` 에서 얻는다). T004 의존
+- [X] T005 `reset()` 호출부 네 곳을 `reset_attempt(...)` 로 바꾸고 현재 Step 수를 넘긴다 — 예산이 새로 주어지는 자리다 (FR-008) — `backend/src/itb/authoring/agent.py` 의 `chat`·`resume_with_answer`·`resume_after_takeover`(`self._count()` 를 넘긴다), `backend/src/itb/api/routes/sessions.py` 의 `_start_agent_note`(`w.compiler` 에서 얻는다). T004 의존
 
-- [ ] T006 `backend/src/itb/authoring/agent.py` 의 `AgentOutcome` 에 `total_tool_calls: int = 0` 과 `made_progress: bool | None = None` 을 더한다. docstring 에 **판정 시점의 값을 싣는 것이지 상태를 소유하는 것이 아니**라고 적는다 — `step_count`·`tool_calls` 가 이미 그렇다 ([data-model.md](./data-model.md) §3)
+- [X] T006 `backend/src/itb/authoring/agent.py` 의 `AgentOutcome` 에 `total_tool_calls: int = 0` 과 `made_progress: bool | None = None` 을 더한다. docstring 에 **판정 시점의 값을 싣는 것이지 상태를 소유하는 것이 아니**라고 적는다 — `step_count`·`tool_calls` 가 이미 그렇다 ([data-model.md](./data-model.md) §3)
 
-- [ ] T007 [P] `backend/tests/unit/test_attempt_limits.py` 를 넓힌다 — `total_calls` 가 `reset_attempt()` 를 **건너 남는가**, `calls` 는 0 이 되는가, `steps_at_attempt_start` 가 넘긴 값으로 갱신되는가, `MAX_TOOL_CALLS == 40` 은 그대로인가. **세 번 연속 `reset_attempt()` 해도 막히지 않는지**도 본다 (FR-010) — 「횟수 제한을 두지 않는다」는 아무것도 하지 않음으로 지켜지므로, 나중에 누가 제한을 넣어도 울릴 것이 없다. T003·T004 의존
+- [X] T007 [P] `backend/tests/unit/test_attempt_limits.py` 를 넓힌다 — `total_calls` 가 `reset_attempt()` 를 **건너 남는가**, `calls` 는 0 이 되는가, `steps_at_attempt_start` 가 넘긴 값으로 갱신되는가, `MAX_TOOL_CALLS == 40` 은 그대로인가. **세 번 연속 `reset_attempt()` 해도 막히지 않는지**도 본다 (FR-010) — 「횟수 제한을 두지 않는다」는 아무것도 하지 않음으로 지켜지므로, 나중에 누가 제한을 넣어도 울릴 것이 없다. T003·T004 의존
 
 **Checkpoint**: 자료구조가 준비됐다. 아직 아무 동작도 바뀌지 않았다 — 기존 테스트가 모두 통과해야 한다
 
@@ -69,21 +69,21 @@ description: "Task list template for feature implementation"
 
 > 먼저 쓰고, **실패하는 것을 확인한 뒤** 구현한다
 
-- [ ] T008 [P] [US1] `backend/tests/unit/test_budget_exhausted_kind.py` 를 만든다 — 도구 호출 상한 도달과 `DriverTurnLimitError` 가 **둘 다** `budget_exhausted` 로 판정되고(FR-001·FR-004), 같은 요소 연속 실패는 **아니며**(FR-002), 모델이 `report_blocked` 로 어떤 문구를 신고하든 아니다(FR-003)
+- [X] T008 [P] [US1] `backend/tests/unit/test_budget_exhausted_kind.py` 를 만든다 — 도구 호출 상한 도달과 `DriverTurnLimitError` 가 **둘 다** `budget_exhausted` 로 판정되고(FR-001·FR-004), 같은 요소 연속 실패는 **아니며**(FR-002), 모델이 `report_blocked` 로 어떤 문구를 신고하든 아니다(FR-003)
 
-- [ ] T009 [P] [US1] `backend/tests/integration/test_budget_resume_instruction.py` 를 만든다 — `budget_exhausted` 막힘에서 `retry` 를 고르면 에이전트가 받는 지시에 **「이어서」**가 들어 있고 **「다시 시도」가 없으며**, 예산 소진이 **아닌** 막힘에서는 **지금 그대로**인지 (FR-006·FR-007 · US1 시나리오 3). **이어가기 전후 Step 수가 같은지도 함께 본다** (FR-009·SC-003) — `reset_attempt` 개명이 바로 이 자리를 지나가므로 회귀 위험이 실재한다. 도구 호출이 반복되지 않는지는 대본 드라이버로 확인한다 (SC-001)
+- [X] T009 [P] [US1] `backend/tests/integration/test_budget_resume_instruction.py` 를 만든다 — `budget_exhausted` 막힘에서 `retry` 를 고르면 에이전트가 받는 지시에 **「이어서」**가 들어 있고 **「다시 시도」가 없으며**, 예산 소진이 **아닌** 막힘에서는 **지금 그대로**인지 (FR-006·FR-007 · US1 시나리오 3). **이어가기 전후 Step 수가 같은지도 함께 본다** (FR-009·SC-003) — `reset_attempt` 개명이 바로 이 자리를 지나가므로 회귀 위험이 실재한다. 도구 호출이 반복되지 않는지는 대본 드라이버로 확인한다 (SC-001)
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] `backend/src/itb/authoring/tools.py` 의 `record_call()` 이 상한 도달로 `exceeded_reason` 을 세울 때, 그것이 **예산 소진임을 남긴다.** `record_failure()` 의 연속 실패는 남기지 않는다 — 둘은 같은 필드(`exceeded_reason`)를 쓰지만 종류가 다르다 (FR-002)
+- [X] T010 [US1] `backend/src/itb/authoring/tools.py` 의 `record_call()` 이 상한 도달로 `exceeded_reason` 을 세울 때, 그것이 **예산 소진임을 남긴다.** `record_failure()` 의 연속 실패는 남기지 않는다 — 둘은 같은 필드(`exceeded_reason`)를 쓰지만 종류가 다르다 (FR-002)
 
-- [ ] T011 [US1] `backend/src/itb/authoring/agent.py` 의 `_drive` 가 막힘 결말을 만들 때 `blocked_kind` 를 정한다 — 예산 소진이면 `BUDGET_EXHAUSTED`, 모델이 신고한 막힘이면 `toolbox.blocked_kind` 를 그대로. **제품이 센 값이 모델의 말을 이긴다** (FR-003). T010 의존
+- [X] T011 [US1] `backend/src/itb/authoring/agent.py` 의 `_drive` 가 막힘 결말을 만들 때 `blocked_kind` 를 정한다 — 예산 소진이면 `BUDGET_EXHAUSTED`, 모델이 신고한 막힘이면 `toolbox.blocked_kind` 를 그대로. **제품이 센 값이 모델의 말을 이긴다** (FR-003). T010 의존
 
-- [ ] T012 [US1] `backend/src/itb/authoring/agent.py` 의 `DriverTurnLimitError` 처리부(커밋 `24dcef9` 가 만든 자리)도 `BUDGET_EXHAUSTED` 로 보낸다 — 두 상한이 사용자에게 같게 보여야 한다 (FR-004)
+- [X] T012 [US1] `backend/src/itb/authoring/agent.py` 의 `DriverTurnLimitError` 처리부(커밋 `24dcef9` 가 만든 자리)도 `BUDGET_EXHAUSTED` 로 보낸다 — 두 상한이 사용자에게 같게 보여야 한다 (FR-004)
 
-- [ ] T013 [US1] `backend/src/itb/api/routes/sessions.py` 의 `ai_choice` 에서 `retry` 의 지시를 막힘 종류로 가른다. 종류는 `w.last_blocked` 에서 읽는다 — `_blocked_view` 가 이미 같은 자리를 읽고 있으므로 **새 저장소를 만들지 않는다**. 예산 소진이면 「남은 지시를 이어서 수행하세요. 이미 끝낸 동작은 다시 하지 마세요.」, 그 밖이면 지금 문장 그대로 ([contracts/blocked-view.md](./contracts/blocked-view.md) §5). T011 의존
+- [X] T013 [US1] `backend/src/itb/api/routes/sessions.py` 의 `ai_choice` 에서 `retry` 의 지시를 막힘 종류로 가른다. 종류는 `w.last_blocked` 에서 읽는다 — `_blocked_view` 가 이미 같은 자리를 읽고 있으므로 **새 저장소를 만들지 않는다**. 예산 소진이면 「남은 지시를 이어서 수행하세요. 이미 끝낸 동작은 다시 하지 마세요.」, 그 밖이면 지금 문장 그대로 ([contracts/blocked-view.md](./contracts/blocked-view.md) §5). T011 의존
 
-- [ ] T014 [US1] `backend/tests/unit/test_budget_exhausted_kind.py` 와 `backend/tests/integration/test_budget_resume_instruction.py` 가 통과하는지 확인하고, 통과하지 않으면 구현을 고친다
+- [X] T014 [US1] `backend/tests/unit/test_budget_exhausted_kind.py` 와 `backend/tests/integration/test_budget_resume_instruction.py` 가 통과하는지 확인하고, 통과하지 않으면 구현을 고친다
 
 **Checkpoint**: 이어가기가 올바른 일을 시킨다. 화면은 아직 지금과 같다 — 백엔드만으로 SC-001 이 지켜진다
 
@@ -132,15 +132,15 @@ description: "Task list template for feature implementation"
 
 - [ ] T023 [P] [US3] `backend/tests/integration/test_budget_cumulative.py` 를 만든다 — 이어가기를 거쳐 `total_tool_calls` 가 **누적되고**(FR-018), 새 지시문에서 **0 으로 돌아가며**, 화면을 새로 고쳐 얻는 `BlockedView` 에도 같은 값이 실리는지(FR-022)
 
-- [ ] T024 [P] [US3] `backend/tests/unit/test_progress_detection.py` 를 만든다 — Step 이 늘었으면 `made_progress is True`, 늘지 않았으면 `False`, **첫 시도면 `None`**(판정 불가와 진전 없음은 다른 사실). [data-model.md](./data-model.md) §2
+- [X] T024 [P] [US3] `backend/tests/unit/test_progress_detection.py` 를 만든다 — Step 이 늘었으면 `made_progress is True`, 늘지 않았으면 `False`, **첫 시도면 `None`**(판정 불가와 진전 없음은 다른 사실). [data-model.md](./data-model.md) §2
 
 - [ ] T025 [P] [US3] `frontend/tests/BudgetExhaustedBlocked.test.tsx` 에 더한다 — 누적·Step 수가 보이고, `made_progress === false` 일 때만 진전 없음 안내가 뜨며(`null` 에는 뜨지 않는다), 안내가 떠도 **이어가기 버튼이 눌리는지**(FR-021)
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] `backend/src/itb/authoring/agent.py` 의 `_drive` 가 결말에 `total_tool_calls` 와 `made_progress` 를 싣는다. 진전은 `self._count() > limits.steps_at_attempt_start` 이며, 시작 값이 `None` 이면 `made_progress` 도 `None`. T006·T011 의존
+- [X] T026 [US3] `backend/src/itb/authoring/agent.py` 의 `_drive` 가 결말에 `total_tool_calls` 와 `made_progress` 를 싣는다. 진전은 `self._count() > limits.steps_at_attempt_start` 이며, 시작 값이 `None` 이면 `made_progress` 도 `None`. T006·T011 의존
 
-- [ ] T027 [US3] 새 지시문에서 누적이 0 으로 돌아가는 자리를 만든다 — `AuthoringAgent.run` 이 새 지시를 받는 자리다. `chat`·`resume_*` 은 **같은 지시의 연장**이므로 누적을 이어받는다 ([data-model.md](./data-model.md) §5)
+- [X] T027 [US3] ~~새 지시문에서 누적이 0 으로 돌아가는 자리를 만든다~~ — **코드 변경 불필요로 판정.** `run()` 은 이어가기(`_start_agent_note` → `_run_agent(instruction=note)`)도 지나므로 거기서 누적을 지우면 FR-018 이 깨진다. 새 지시문은 `_start_agent` 를 통해 **새 세션**에서 오고, 그때 `AttemptLimits` 가 새로 만들어져 누적이 이미 0 이다 ([data-model.md](./data-model.md) §5)
 
 - [ ] T028 [US3] `backend/src/itb/api/routes/sessions.py` 의 `BlockedView` 와 `backend/src/itb/authoring/blocked.py` 의 `ai_blocked` 에 `total_tool_calls`·`step_count`·`made_progress` 를 싣는다. **두 통로가 같은 값을 실어야 한다** — 한쪽만 실으면 새로 고친 화면이 수치를 잃는다. T017 의존
 

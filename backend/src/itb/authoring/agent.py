@@ -162,6 +162,24 @@ class AgentOutcome:
 
     step_count: int = 0
     tool_calls: int = 0
+    """**이번 시도**의 도구 호출 수."""
+
+    total_tool_calls: int = 0
+    """이 지시에 쓴 **누적** 호출 수 (022 FR-017·FR-018).
+
+    사용자가 「더 할지」를 정할 근거다. 한 시도의 수만 보여 주면 이어갈 때마다 작은 수가
+    다시 나와, 몇 번을 이어갔든 처음처럼 보인다.
+    """
+
+    made_progress: bool | None = None
+    """직전 시도 이후 Step 이 늘었는가 (022 FR-020).
+
+    **`None` 은 `False` 와 다르다** — 「판정할 수 없다」(첫 시도, 비교할 값이 없다)와
+    「진전이 없었다」는 다른 사실이다. 화면은 `False` 일 때만 안내를 그린다.
+
+    **상태를 소유하는 것이 아니라 판정 시점의 값을 싣는다** — `step_count`·`tool_calls`
+    가 이미 그렇다. 상태의 소유자는 `AttemptLimits` 다.
+    """
 
 
 Driver = Callable[[list[Any], list[dict[str, Any]], LlmConfig], AsyncIterator[Any]]
@@ -318,7 +336,7 @@ class AuthoringAgent:
         판단).
         """
         message = validate_instruction(text)
-        self.toolbox.limits.reset()
+        self.toolbox.limits.reset_attempt(step_count=self._count())
         self.messages.append({"role": "user", "content": self._with_summary(message)})
         return await self._drive()
 
@@ -337,7 +355,7 @@ class AuthoringAgent:
         if not text:
             msg = "답변이 비어 있습니다. 무엇을 알려 줄지 적어 주세요."
             raise ValueError(msg)
-        self.toolbox.limits.reset()
+        self.toolbox.limits.reset_attempt(step_count=self._count())
         self.messages.append(
             {
                 "role": "user",
@@ -362,7 +380,7 @@ class AuthoringAgent:
         """
         # 사람이 막힌 지점을 풀었다. 앞선 시도가 쓴 예산을 이어서 세면 재개가 곧바로
         # 상한에 닿을 수 있다 (FR-066).
-        self.toolbox.limits.reset()
+        self.toolbox.limits.reset_attempt(step_count=self._count())
         self.messages.append(
             {
                 "role": "user",
@@ -425,15 +443,20 @@ class AuthoringAgent:
             # `limits` 가 세는 도구 호출과 단위만 다를 뿐 같은 사실을 말한다 — 결말이
             # 갈리면, 드라이버를 바꿨을 뿐인데 사용자가 이어갈 수 있는지가 바뀐다.
             #
-            # `question` 은 없다. 모델이 물은 것이 아니라 예산이 떨어진 것이므로 답할
-            # 질문이 없고, 화면은 질문이 없는 막힘을 「AI 에게 알려 주기」로 연다.
+            # `question` 은 없다. 모델이 물은 것이 아니라 예산이 떨어진 것이다.
+            #
+            # 022 FR-004 — **두 상한이 사용자에게 같게 보인다.** 도구 호출 상한과
+            # 이것은 세는 주체만 다를 뿐 같은 사실이고, 어느 쪽에 닿았는지로 사용자가
+            # 할 일이 갈리지 않는다.
             return AgentOutcome(
                 AgentStatus.BLOCKED,
                 reason=str(exc),
                 attempted=self.toolbox.limits.last_failed_element,
-                blocked_kind=DEFAULT_BLOCKED_KIND,
+                blocked_kind=BlockedKind.BUDGET_EXHAUSTED,
                 step_count=self._count(),
                 tool_calls=self.toolbox.limits.calls,
+                total_tool_calls=self.toolbox.limits.total_calls,
+                made_progress=self._progress(),
             )
         except (LlmUnavailableError, RefusalError) as exc:
             return AgentOutcome(
@@ -465,20 +488,32 @@ class AuthoringAgent:
                     await close()
 
         if stopped is not None:
+            # 022 FR-003 — **제품이 센 값이 모델의 말을 이긴다.** 예산이 떨어져 멈춘
+            # 것이면 모델이 무엇을 신고했든 예산 소진이다. 반대로 하면, 모델이 「예산이
+            # 없다」고 말하는 것만으로 사용자가 다른 화면을 본다.
+            budget = self.toolbox.limits.exceeded_is_budget
             return AgentOutcome(
                 AgentStatus.BLOCKED,
                 reason=stopped,
                 attempted=self.toolbox.limits.last_failed_element,
-                question=self.toolbox.blocked_question,
-                blocked_kind=self.toolbox.blocked_kind,
+                # 예산 소진에는 물을 것이 없다. 모델이 남긴 질문이 있어도 그것은 다른
+                # 막힘의 질문이며, 예산이 떨어진 사실에 대한 답은 아니다.
+                question=None if budget else self.toolbox.blocked_question,
+                blocked_kind=(
+                    BlockedKind.BUDGET_EXHAUSTED if budget else self.toolbox.blocked_kind
+                ),
                 step_count=self._count(),
                 tool_calls=self.toolbox.limits.calls,
+                total_tool_calls=self.toolbox.limits.total_calls,
+                made_progress=self._progress(),
             )
 
         return AgentOutcome(
             AgentStatus.FINISHED,
             step_count=self._count(),
             tool_calls=self.toolbox.limits.calls,
+            total_tool_calls=self.toolbox.limits.total_calls,
+            made_progress=self._progress(),
         )
 
     async def _report(self, message: Any) -> None:
@@ -500,6 +535,22 @@ class AuthoringAgent:
             text = getattr(block, "text", None)
             if isinstance(text, str) and text.strip():
                 await self.on_progress(" ".join(text.split())[:400])
+
+    def _progress(self) -> bool | None:
+        """직전 시도 이후 Step 이 늘었는가 (022 FR-020 · FR-017 의 판단 근거).
+
+        **`None` 을 돌려주는 경우가 있다.** 기준점이 없으면(첫 시도) 진전을 판정하지
+        않는다 — 「진전이 없다」와 「비교할 것이 아직 없다」는 다른 사실이고, 둘을 묶으면
+        첫 시도에서 상한에 닿은 사용자가 근거 없는 경고를 본다.
+
+        **Step 수만 본다.** 도구 호출 성공을 함께 보면 `observe_page` 하나만 성공해도
+        참이 되어 **울리지 않는 경고**가 된다 — 헛도는데 「진전 있음」이 뜨는 쪽이
+        정당한 탐색에 경고가 뜨는 쪽보다 해롭다 (research R3).
+        """
+        start = self.toolbox.limits.steps_at_attempt_start
+        if start is None:
+            return None
+        return self._count() > start
 
     def _count(self) -> int:
         """이 세션에서 확정된 Step 수. 컴파일러가 센다.

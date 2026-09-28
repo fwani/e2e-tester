@@ -77,7 +77,7 @@ def test_reset_clears_everything_including_after_mismatches() -> None:
     limits = AttemptLimits()
     limits.record_failure("#save")
     limits.record_mismatch("assert:text")
-    limits.reset()
+    limits.reset_attempt()
     assert limits.calls == 0
     assert limits.last_failed_element is None
     assert not limits.exceeded

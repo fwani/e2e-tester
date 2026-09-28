@@ -106,6 +106,24 @@ class BlockedKind(StrEnum):
     열린다.
     """
 
+    BUDGET_EXHAUSTED = "budget_exhausted"
+    """예산이 떨어져 멈췄다 (022 FR-001).
+
+    **`PRODUCT_MISMATCH` 와 묶지 않는다.** 둘 다 「사람이 알려 줄 것이 없다」지만
+    **이어가기의 의미가 정반대**다.
+
+    | | `product_mismatch` | `budget_exhausted` |
+    |---|---|---|
+    | 이어가면 | **같은 결과** — 제품이 여전히 잘못 동작한다 | **진행된다** — 예산이 새로 생겼다 |
+
+    한 값으로 묶으면 화면이 「이어가도 소용없다」와 「이어가면 된다」를 같은 말로 하게
+    된다. 그것은 `product_mismatch` 가 만들어진 이유(사용자가 헛되이 힌트를 주며 시간을
+    쓰는 것을 없앤다)를 정확히 뒤집는다.
+
+    **판정은 제품이 센 값으로만 한다** (022 FR-003). 모델이 「예산이 없다」고 말하는 것은
+    근거가 아니다 — 모델의 말이 판정에 끼어들면, 그 한마디로 사용자가 다른 화면을 본다.
+    """
+
 
 DEFAULT_BLOCKED_KIND = BlockedKind.NEEDS_INPUT
 """인식하지 못한 값이 떨어지는 곳.
@@ -231,10 +249,39 @@ class AttemptLimits:
     max_calls: int = MAX_TOOL_CALLS
     max_element_failures: int = MAX_CONSECUTIVE_ELEMENT_FAILURES
     calls: int = 0
+    """**이번 시도**의 호출 수. 예산을 새로 줄 때 0 이 된다."""
+
+    total_calls: int = 0
+    """이 지시에 쓴 **누적** 호출 수 (022 FR-017·FR-018). 예산을 새로 줘도 남는다.
+
+    **`calls` 와 같은 자리에서 센다.** `record_call()` 이 도구 호출의 유일한 통과 지점
+    이므로, 두 계수를 여기 두면 어긋날 수 없다 — 세는 주체가 둘이면 어긋난다는 판단은
+    이 저장소에 이미 두 번 적혀 있다 (`AuthoringAgent._count`·`MAX_INSTRUCTION_CHARS`).
+    """
+
+    steps_at_attempt_start: int | None = None
+    """이번 시도를 시작할 때의 Step 수 (022 FR-020).
+
+    **`None` 은 「진전이 없다」가 아니라 「비교할 것이 아직 없다」**이다. 첫 시도에는
+    직전 값이 없으므로 진전을 판정하지 않는다 — 둘을 묶으면 첫 시도에서 상한에 닿은
+    사용자가 근거 없는 경고를 본다.
+
+    `AttemptLimits` 는 Step 을 세지 않는다. 아는 쪽(`reset_attempt` 의 호출부)이 넘긴다.
+    """
     failures_by_element: dict[str, int] = field(default_factory=dict)
     last_failed_element: str | None = None
     exceeded_reason: str | None = None
     """상한에 도달한 사유. None 이 아니면 루프를 끊어야 한다."""
+
+    exceeded_is_budget: bool = False
+    """멈춘 이유가 **예산 소진인가** (022 FR-001·FR-002).
+
+    `exceeded_reason` 하나로는 갈라낼 수 없다 — 총 호출 상한과 같은 요소 연속 실패가
+    **같은 필드**를 쓰기 때문이다. 문구를 뒤져 판정하면 문구를 고치는 날 조용히 깨진다.
+
+    연속 실패는 **예산 소진이 아니다.** 그 경로가 막힌 것이므로 사람이 알려 줄 것이
+    있고, 이어가기의 의미도 다르다 (FR-069).
+    """
 
     @property
     def exceeded(self) -> bool:
@@ -256,8 +303,11 @@ class AttemptLimits:
                 "지시가 너무 크거나 화면에서 길을 찾지 못하고 있습니다. "
                 "그때까지 성공한 동작은 Step 으로 남아 있습니다."
             )
+            # 022 FR-001 — 예산이 떨어진 것이지 길을 잃은 것이 아니다.
+            self.exceeded_is_budget = True
             return False
         self.calls += 1
+        self.total_calls += 1
         return True
 
     def record_failure(self, element: str) -> None:
@@ -271,6 +321,8 @@ class AttemptLimits:
         count = self.failures_by_element.get(element, 0) + 1
         self.failures_by_element[element] = count
         if count >= self.max_element_failures and not self.exceeded:
+            # **`exceeded_is_budget` 을 세우지 않는다** (022 FR-002). 예산은 남아 있고,
+            # 그 경로가 막힌 것이다 — 사람이 알려 주면 풀릴 수 있다.
             self.exceeded_reason = (
                 f"같은 요소에 {count}회 연속 실패해 중단했습니다: {element}. "
                 "그때까지 성공한 동작은 Step 으로 남아 있습니다."
@@ -307,16 +359,26 @@ class AttemptLimits:
             self.failures_by_element.pop(element, None)
         self.last_failed_element = None
 
-    def reset(self) -> None:
-        """재시도·건너뛰기 때 예산을 새로 준다 (FR-072·FR-073).
+    def reset_attempt(self, step_count: int | None = None) -> None:
+        """**이번 시도의 예산만** 되돌린다 (FR-072·FR-073 · 022 FR-008).
 
         앞선 시도가 쓴 호출까지 상한에 포함하면 사용자가 "다시" 를 누르는 순간 이미
         상한에 닿아 있을 수 있다.
+
+        **`total_calls` 는 지우지 않는다** (022 FR-018). 하는 일이 「전부 되돌린다」에서
+        「이번 시도의 예산만 되돌린다」로 좁아졌고, 이름이 그 사실을 말한다 — 예전 이름
+        `reset` 은 누적까지 지우는 것으로 읽혔다.
+
+        `step_count` 를 받으면 진전 판정의 기준점으로 삼는다. 넘기지 않으면 기준점이
+        갱신되지 않으므로, **이어가기 경로는 반드시 넘긴다.**
         """
         self.calls = 0
         self.failures_by_element.clear()
         self.last_failed_element = None
         self.exceeded_reason = None
+        self.exceeded_is_budget = False
+        if step_count is not None:
+            self.steps_at_attempt_start = step_count
 
 
 STOP_NOTICE = {

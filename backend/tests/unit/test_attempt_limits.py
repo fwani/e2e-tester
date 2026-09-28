@@ -99,9 +99,80 @@ def test_reset_gives_a_fresh_budget() -> None:
     limits.record_call()
     assert limits.exceeded is True
 
-    limits.reset()
+    limits.reset_attempt()
     assert limits.exceeded is False
     assert limits.record_call() is True
+
+
+# ─── 022 — 누적은 리셋을 건너 남는다 ───────────────────────────────────────
+
+
+def test_total_calls_survives_a_fresh_budget() -> None:
+    """**누적은 예산을 새로 줘도 남는다** (022 FR-018).
+
+    사용자가 「더 할지」를 정하는 근거다. 한 시도의 수만 보이면 이어갈 때마다 작은 수가
+    다시 나와, 몇 번을 이어갔든 처음처럼 보인다.
+    """
+    limits = AttemptLimits(max_calls=2)
+    limits.record_call()
+    limits.record_call()
+    assert (limits.calls, limits.total_calls) == (2, 2)
+
+    limits.reset_attempt()
+    assert limits.calls == 0, "이번 시도의 예산은 되돌아간다"
+    assert limits.total_calls == 2, "누적은 남는다"
+
+    limits.record_call()
+    assert (limits.calls, limits.total_calls) == (1, 3)
+
+
+def test_fresh_budget_moves_the_progress_baseline() -> None:
+    """진전 판정의 기준점은 이어갈 때마다 지금 Step 수로 옮긴다 (022 FR-020)."""
+    limits = AttemptLimits()
+    assert limits.steps_at_attempt_start is None, "첫 시도에는 비교할 값이 없다"
+
+    limits.reset_attempt(step_count=4)
+    assert limits.steps_at_attempt_start == 4
+
+    # 넘기지 않으면 기준점을 건드리지 않는다 — 옮길 값을 모르는 호출부가 있다.
+    limits.reset_attempt()
+    assert limits.steps_at_attempt_start == 4
+
+
+def test_only_the_call_ceiling_counts_as_budget_exhaustion() -> None:
+    """**연속 실패는 예산 소진이 아니다** (022 FR-002).
+
+    둘은 같은 필드(`exceeded_reason`)로 멈춤을 알리지만 종류가 다르다 — 예산 소진은
+    이어가면 진행되고, 연속 실패는 그 경로가 막힌 것이라 사람이 알려 줄 것이 있다.
+    """
+    budget = AttemptLimits(max_calls=1)
+    budget.record_call()
+    budget.record_call()
+    assert budget.exceeded and budget.exceeded_is_budget
+
+    blocked = AttemptLimits(max_element_failures=2)
+    blocked.record_failure("#save")
+    blocked.record_failure("#save")
+    assert blocked.exceeded, "연속 실패도 멈추게 한다"
+    assert not blocked.exceeded_is_budget, "그러나 예산 소진은 아니다"
+
+
+def test_continuing_is_not_capped_by_a_count() -> None:
+    """**이어가기 횟수에 상한을 두지 않는다** (022 FR-010).
+
+    이것은 「아무것도 하지 않음」으로 지켜지는 결정이라, 나중에 누가 제한을 넣어도
+    울릴 것이 없다. 그래서 여기서 못 박는다 — 사람이 매번 누르는 행동 자체가 통제이며,
+    정당한 긴 작업과 헛도는 반복은 횟수로 구별되지 않는다 (spec 「어려운 질문」).
+    """
+    limits = AttemptLimits(max_calls=1)
+    for _ in range(5):
+        assert limits.record_call() is True, "예산 안의 호출은 통과한다"
+        assert limits.record_call() is False, "예산을 넘긴 호출은 거절된다"
+        assert limits.exceeded
+        limits.reset_attempt()
+        assert not limits.exceeded, "몇 번을 이어가도 다시 쓸 수 있다"
+    # 거절된 호출은 세지 않으므로 라운드당 1 이다 — 카운터는 **실제로 진행한** 수다.
+    assert limits.total_calls == 5, "그래도 쓴 만큼은 누적에 남는다"
 
 
 def test_stop_notice_tells_the_model_to_stop() -> None:

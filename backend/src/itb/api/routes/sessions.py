@@ -11,7 +11,7 @@ import contextlib
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
@@ -25,6 +25,10 @@ from itb.api.errors import (
     not_found,
 )
 from itb.api.state import AppState, get_state
+
+if TYPE_CHECKING:  # pragma: no cover - 타입 검사 전용
+    # 런타임에는 지연 임포트한다 (이 모듈의 관행). 애너테이션만 여기서 안다.
+    from itb.authoring.blocked import AiChoice
 from itb.api.ws.control_channel import (
     ChannelState,
     ControlRejected,
@@ -2580,15 +2584,46 @@ async def ai_choice(session_id: str, body: AiChoiceRequest, state: State) -> Ses
 
     # retry / skip — 현재 상태에서 AI 에게 돌려준다 (FR-072·FR-073).
     await w.session.apply(command)
-    note = (
-        "같은 동작을 지금 화면 상태에서 다시 시도하세요."
-        if choice is AiChoice.RETRY
-        else (
-            "그 동작은 건너뜁니다. Step 으로 기록하지 말고 다음 지시를 이어서 수행하세요."
-        )
-    )
-    _start_agent_note(w, note)
+    _start_agent_note(w, _resume_note(w, choice))
     return view_of(w)
+
+
+def _resume_note(work: SessionWork, choice: AiChoice) -> str:
+    """이어갈 때 AI 에게 덧붙일 한 줄. **막힘의 종류가 이것을 고른다** (022 FR-006).
+
+    ## 무엇이 문제였나 (2026-09-28 사용자 보고)
+
+    예산이 떨어져 멈춘 뒤 「다시」를 누르면 「**같은 동작을 다시 시도하세요**」가 갔다.
+    그 지시는 요소를 못 찾아 막힌 경우에는 맞지만, **예산 소진에는 틀렸다** — 특정
+    동작에서 막힌 것이 아니므로 마지막 동작은 성공했을 수 있고, 그러면 이어가기가 이미
+    한 일을 반복한다. 같은 항목이 두 번 등록되거나 이미 누른 저장을 다시 누른다.
+
+    문구 문제가 아니라 **동작 문제**다 (022 SC-001).
+
+    ## 종류를 어디서 읽는가
+
+    `work.last_blocked` — `_blocked_view` 가 이미 같은 자리를 같은 방식으로 읽는다.
+    새 저장소를 만들지 않는 이유이며, 두 곳이 갈리면 화면이 보는 종류와 서버가 쓰는
+    종류가 달라진다.
+    """
+    from itb.authoring.agent import AgentOutcome  # noqa: PLC0415
+    from itb.authoring.blocked import AiChoice  # noqa: PLC0415
+    from itb.authoring.tools import BlockedKind  # noqa: PLC0415
+
+    if choice is not AiChoice.RETRY:
+        return "그 동작은 건너뜁니다. Step 으로 기록하지 말고 다음 지시를 이어서 수행하세요."
+
+    outcome = work.last_blocked
+    budget = (
+        isinstance(outcome, AgentOutcome)
+        and outcome.blocked_kind is BlockedKind.BUDGET_EXHAUSTED
+    )
+    if budget:
+        return (
+            "남은 지시를 이어서 수행하세요. 이미 끝낸 동작은 다시 하지 마세요. "
+            "지금 화면을 먼저 확인해 어디까지 됐는지 파악한 뒤 다음 것부터 진행하세요."
+        )
+    return "같은 동작을 지금 화면 상태에서 다시 시도하세요."
 
 
 def _resume_agent_with_answer(work: SessionWork, answer: str) -> None:
@@ -2615,6 +2650,7 @@ def _start_agent_note(work: SessionWork, note: str) -> None:
     처음부터 다시 한다.
     """
     from itb.authoring.agent import AuthoringAgent
+    from itb.authoring.compiler import StepCompiler
     from itb.authoring.tools import BrowserToolbox
 
     if not isinstance(work.agent, AuthoringAgent):  # pragma: no cover - ai 세션에서만 온다
@@ -2622,7 +2658,10 @@ def _start_agent_note(work: SessionWork, note: str) -> None:
     # 재시도·건너뛰기는 새 예산으로 시작한다. 앞선 시도가 쓴 호출까지 상한에 포함하면
     # 사용자가 "다시" 를 누르는 순간 이미 상한에 닿아 있을 수 있다 (FR-066).
     if isinstance(work.toolbox, BrowserToolbox):
-        work.toolbox.limits.reset()
+        # 022 — 진전 판정의 기준점을 지금 Step 수로 옮긴다. 넘기지 않으면 기준점이
+        # 첫 시도의 값에 머물러, 이어간 뒤의 진전을 재지 못한다.
+        steps = work.compiler.count if isinstance(work.compiler, StepCompiler) else None
+        work.toolbox.limits.reset_attempt(step_count=steps)
     work.agent_task = asyncio.create_task(
         _run_agent(work.session.session_id, note)
     )
