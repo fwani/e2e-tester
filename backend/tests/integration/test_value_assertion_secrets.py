@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import asyncio
+import pathlib
 from typing import Any
 
 import pytest
@@ -166,7 +167,7 @@ def test_failed_comparison_does_not_leak_the_typed_value(
 
 @pytest.mark.usefixtures("fixture_app")
 def test_saved_definition_has_no_plaintext(
-    keyed_client: TestClient, fixture_app: str
+    keyed_client: TestClient, fixture_app: str, isolated_home: pathlib.Path
 ) -> None:
     """저장된 파일 어디에도 평문이 없다 (FR-017).
 
@@ -184,10 +185,13 @@ def test_saved_definition_has_no_plaintext(
     finally:
         _stop(keyed_client, sid)
 
-    root = keyed_client.app.state.itb.project_root
+    # 002 부터 프로젝트는 도구가 관리하는 위치에 만들어진다 (`~/.local/share/itb/`).
+    # `isolated_home` 이 그 홈을 임시 경로로 돌려 두었으므로 여기를 통째로 훑는다 —
+    # **어느 파일에 남았는지 모르는 것이 이 검증의 요점이다.** 경로를 좁히면 모르는
+    # 자리에 남은 평문을 놓친다.
     offenders = [
         str(path)
-        for path in root.rglob("*")
+        for path in isolated_home.rglob("*")
         if path.is_file()
         and path.suffix in {".yaml", ".yml", ".json", ".md"}
         and TYPED_PASSWORD in path.read_text(encoding="utf-8", errors="ignore")

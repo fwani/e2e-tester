@@ -40,6 +40,7 @@ from itb.domain.step import (
     AssertionStep,
     DragStep,
     NavigateStep,
+    PressStep,
     Step,
     UploadStep,
 )
@@ -150,6 +151,10 @@ def _extra(step: Step) -> str:
         return f"{kind} {note}".strip()
     if isinstance(step, DragStep):
         return f"→ {_describe_target(step.drop_target)}"
+    if isinstance(step, PressStep):
+        # **어느 키인지가 이 Step 의 전부다** (023). 없으면 모델은 요약을 읽고도 Enter 와
+        # Escape 를 구별하지 못한다 — 그 둘은 정반대 동작이다.
+        return step.key.value
     return _value_note(step)
 
 

@@ -142,3 +142,76 @@ class DraftsAreSeparateTests:
         )
         assert [t.id for t in repo.list_tests()[0]] == ["TC-001"]
         assert len(repo.drafts.list_paths()) == 1
+
+
+# ─── 023 — 새 어휘가 옛 정의를 건드리지 않는다 (T067) ──────────────────────
+
+
+def test_definitions_without_the_new_vocabulary_still_load(
+    tmp_path: pathlib.Path,
+) -> None:
+    """023 이전 정의가 **변경 없이** 읽힌다 (FR-040).
+
+    ## 왜 손으로 쓴 YAML 인가
+
+    모델로 만들어 저장한 뒤 다시 읽으면 새 값이 이미 들어 있어, **정작 확인하려는 것**
+    (그 값이 없는 파일)을 확인하지 못한다. 014 가 같은 이유로 이 파일을 손으로 쓴다.
+
+    ## 무엇을 확인하는가
+
+    023 은 검증 종류와 Step 종류에 값을 하나씩 더했다. **값 추가는 판올림이 아니다** —
+    옛 파일에는 그 값이 없고, 없다는 것이 문제가 되지 않아야 한다. `dsl_version` 을
+    올렸다면 기존 파일이 전부 거절됐을 것이다.
+
+    입력 칸 대상 텍스트 검증이 들어 있는 것도 일부러다. 023 은 그런 정의를 **자동으로
+    고치지 않는다** (FR-041) — 뜻을 추측해 정의를 바꾸는 것이 사용자의 판단을 대신하는
+    일이기 때문이다. 여전히 `text` 여야 한다.
+    """
+    path = tmp_path / "TC-900.yaml"
+    path.write_text(
+        """\
+id: TC-900
+name: 023 이전 정의
+dsl_version: 1
+authoring_mode: record
+start_url: https://example.internal/login
+browser: chromium
+steps:
+  - id: step-01
+    type: fill
+    label: 이름 입력
+    author: human
+    tab: 0
+    timeout_ms: 5000
+    value: E2E역할테스트
+    target:
+      tag: input
+      css: {value: "#pname", status: verified}
+  - id: step-02
+    type: assertion
+    label: 텍스트 확인
+    author: human
+    tab: 0
+    timeout_ms: 5000
+    assertion:
+      kind: text
+      match: equals
+      value: E2E역할테스트
+      target:
+        tag: input
+        css: {value: "#pname", status: verified}
+created_at: 2026-09-01T10:00:00Z
+updated_at: 2026-09-01T10:00:00Z
+""",
+        encoding="utf-8",
+    )
+
+    test = load_model(path, Test)
+    assert [s.type.value for s in test.steps] == ["fill", "assertion"]
+
+    # **자동으로 고치지 않았다** — 여전히 텍스트 검증이다 (FR-041).
+    assertion_step = test.steps[1]
+    assert assertion_step.assertion.kind.value == "text", (
+        "입력 칸 대상 텍스트 검증이 자동으로 바뀌었다 — "
+        "친절하게 고쳐 주는 것이 여기서는 틀린 동작이다"
+    )
