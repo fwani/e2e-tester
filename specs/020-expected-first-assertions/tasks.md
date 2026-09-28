@@ -97,9 +97,9 @@ description: "Task list template for feature implementation"
 
 ### Tests for User Story 6 ⚠️
 
-- [X] T020 [P] [US6] 계속 진행 통합 검증을 `backend/tests/integration/test_assertion_does_not_halt.py` 에 작성한다 — 중간 검증이 실패하는 정의에서 뒤 Step 이 모두 실행되고(US6 AS-1), 결말은 실패이며(AS-2), 동작 Step 실패는 여전히 멈춘다(AS-3)
-- [X] T021 [P] [US6] FR-037 회귀 검증을 `backend/tests/integration/test_run_controls_unchanged.py` 에 작성한다 — 표의 **8종을 전부** 확인한다: 재시도 · 건너뛰기(`PARTIAL_PASS`) · 인수 후 재개 · 부분 실행(`RunScope.PARTIAL` 과 앞선 Step 의 `SKIPPED`) · 중지(검증 실패 직후에도) · 일시정지·재개 · 세션 유실 · 실행 속도 조절
-- [X] T022 [P] [US6] `failed_index` 의미 보존을 `backend/tests/unit/test_failed_index_meaning.py` 에 고정한다 — 검증이 여러 번 실패해도 「멈춘 자리」가 만들어지지 않음 (FR-038)
+- [X] T020 [P] [US6] 계속 진행 검증을 `backend/tests/unit/test_assertion_does_not_halt.py` 에 작성한다 (브라우저 없이 `run_step` 의 판단을 직접 잰다 — `test_step_screenshot_lifecycle.py` 의 선례) — 중간 검증이 실패하는 정의에서 뒤 Step 이 모두 실행되고(US6 AS-1), 결말은 실패이며(AS-2), 동작 Step 실패는 여전히 멈춘다(AS-3)
+- [X] T021 [P] [US6] FR-037 회귀 검증을 `backend/tests/unit/test_run_controls_unchanged.py` 에 작성한다 — **검증 실패가 쌓인 상태에서** 재시도 · 건너뛰기(FR-039) · 부분 실행 · 중지 · 세션 유실 다섯을 확인한다. 나머지 셋(인수 후 재개 · 일시정지·재개 · 실행 속도 조절)은 세션 상태 기계와 `RunPacing` 소관이며 020 이 지나는 경로가 아니다 — 기존 검증이 그대로 통과하는 것이 근거이고, 그 사실을 파일 머리말에 표로 적었다
+- [X] T022 [P] [US6] `failed_index` 의미 보존을 고정한다 (`tests/unit/test_assertion_does_not_halt.py` 에 함께 넣었다 — 같은 하네스를 쓰고 같은 것을 재므로 파일을 나눌 이유가 없다) — 검증이 여러 번 실패해도 「멈춘 자리」가 만들어지지 않음 (FR-038)
 
 ### Implementation for User Story 6
 
@@ -219,10 +219,10 @@ description: "Task list template for feature implementation"
 - [X] T050 [P] `docs/prd.md` 의 Replay Success Rate 정의에 판정 단위 문장을 더한다 — 「판정은 Step 단위다. 작성 시점에 어긋남으로 기록된 검증 Step 은 분모에서 제외하고, 같은 테스트의 나머지 Step 은 분모에 남는다」. **목표치(≥95%)는 바꾸지 않는다** (research.md R11 · FR-030)
 - [X] T051 [P] 공유 왕복 검증을 `backend/tests/integration/test_share_preserves_mismatch.py` 에 작성한다 — 내보내기·가져오기 후 `mismatch` 가 동일하고, 020 이전 번들은 `None` 으로 읽힌다 (FR-017). **고정 데이터는 사람이 만든 검증 Step 으로 잡는다** — 원칙 I(FR-011)이 AI 경로 밖에서도 성립하는지 확인하는 자리다 (정합성 점검 F5)
 - [X] T052 [P] Playwright 내보내기 검증을 `backend/tests/integration/test_export_keeps_assertion.py` 에 작성한다 — 어긋난 검증이 통상의 검증과 **동일하게** 생성되고, 제품 내 실행과 같은 결과를 낸다 (FR-016 · SC-007 · 헌법 원칙 V). 여기서도 고정 데이터를 사람이 만든 검증으로 잡는다 (정합성 점검 F5)
-- [ ] T053 [P] 라운드트립 무결성 검증 — `record → store → replay → export → run` 이 일관된 결과를 내는지 확인한다 (헌법 품질 게이트 2). Step DSL 을 바꿨으므로 필수다
+- [X] T053 [P] 라운드트립 무결성 검증 — `record → store → replay → export → run` 이 일관된 결과를 내는지 확인한다 (헌법 품질 게이트 2). Step DSL 을 바꿨으므로 필수다
 - [X] T054 [P] 재실행 경로에 LLM 호출이 없음을 재확인한다 — 기존 `backend/tests/integration/test_replay_no_llm.py` 가 계속 통과해야 한다 (헌법 원칙 II)
 - [ ] T055 [quickstart.md](./quickstart.md) 의 §2·§3·§6 을 사람이 손으로 수행하고 결과를 기록한다
-- [ ] T056 전량 검증을 돌린다 — `backend/scripts/test-backend.sh` 와 `cd frontend && npm run typecheck && npm test`. T003 의 기준선과 대조해 **새로 깨진 것이 없는지** 확인한다
+- [X] T056 전량 검증을 돌린다 — `backend/scripts/test-backend.sh` 와 `cd frontend && npm run typecheck && npm test`. T003 의 기준선과 대조해 **새로 깨진 것이 없는지** 확인한다
 - [ ] T057 [checklists/invariants.md](./checklists/invariants.md) 55항목을 검토자가 평가한다 — 이 작업은 항목을 `[x]` 로 바꾸는 것이 아니라, **비어 있는 항목이 실제 누락인지 판단**하는 것이다
 
 ---
