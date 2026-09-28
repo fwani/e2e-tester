@@ -217,8 +217,8 @@ description: "Task list for 023 입력 칸의 두 빈칸"
 - [X] T068 **FR-043 — 녹화 변경으로 기대값이 달라지는 기존 테스트를 고친다.** 태그 칸 계열 녹화 테스트가 있으면 결과가 「빈 값 입력 Step 하나」에서 「입력 + 키 입력 둘」로 바뀐다. **끄지 말고 새 기대값으로 고치고, 고친 것을 커밋 메시지에 남긴다** (헌법 품질 게이트 4)
 - [X] T069 [P] `backend/tests/unit/test_run_controls_unchanged.py` 계열의 기존 테스트가 그대로 통과하는지 확인한다
 - [X] T070 **재실행 경로에 LLM 도달 경로가 없음을 확인한다** (헌법 품질 게이트 1, 원칙 II). 이번에 더한 관찰 함수·마스킹·성질 판정·키 전송 중 실행 경로에 드는 것들이 대상이다
-- [ ] T071 백엔드 전량 검증 — **`cd backend && bash scripts/test-backend.sh`** · `uv run ruff check src tests` · `uv run lint-imports`. *(구현 중 정정: 초안은 `uv run pytest` 라고 적었는데, 그 명령은 `timing` 계층을 병렬에 섞어 60건을 errors 로 만든다. 표준 스크립트가 두 계층을 나눠 돈다.)*
-- [ ] T072 프론트 전량 검증 — `cd frontend && npx tsc --noEmit && npx vitest run`. *(구현 중 정정: `npm test` 는 watch 모드라 끝나지 않고, `npm run lint` 스크립트는 없다.)*
+- [X] T071 백엔드 전량 검증 — **`cd backend && bash scripts/test-backend.sh`** · `uv run ruff check src tests` · `uv run lint-imports`. *(구현 중 정정: 초안은 `uv run pytest` 라고 적었는데, 그 명령은 `timing` 계층을 병렬에 섞어 60건을 errors 로 만든다. 표준 스크립트가 두 계층을 나눠 돈다.)*
+- [X] T072 프론트 전량 검증 — `cd frontend && npx tsc --noEmit && npx vitest run`. *(구현 중 정정: `npm test` 는 watch 모드라 끝나지 않고, `npm run lint` 스크립트는 없다.)*
 - [ ] T073 **[quickstart.md](./quickstart.md) §1~§12 를 사람이 손으로 수행하고 결과를 기록한다.** 자동 검증이 덮지 못하는 것(거절 문구가 다음 행동을 알려 주는지, 목록에서 종류들이 구별되는지, 안내가 눈에 들어오는지)을 본다. **§10-3(한글 태그)과 §6(비밀번호)이 가장 중요하다.** §8 은 SC-007(AI 가 입력값 검증을 고름)의 **유일한** 검증 수단이다 *(analyze C3 — 모델의 선택은 자동 신호로 고정할 수 없다)*
 
 ---
@@ -358,6 +358,29 @@ US1 과 US2 는 독립이고 각각 지금 깨져 있는 시나리오를 하나�
 `uv run pytest` 로 돌려 `timing` 계층 60건이 errors 로 나왔다. 그 계층은 **순차로만**
 돌게 설계돼 있고(병렬에 섞이면 건너뛰지 않고 일부러 실패한다 — 헌법 품질 게이트 4),
 표준 명령 `scripts/test-backend.sh` 가 두 계층을 나눠 돈다. 순차로 돌리니 **60/60 통과.**
+
+### 최종 검증 결과 (2026-09-28)
+
+| 계층 | 결과 |
+|---|---|
+| 백엔드 병렬 | **3244 passed** · 4 failed (기존 `AS-009`·`AS-025`·`AS-037`·`AS-046` 뿐) |
+| 백엔드 순차 (`timing`) | **60 / 60** |
+| 프론트 타입 검사 | **통과** |
+| 프론트 테스트 | **1574 / 1574** (`ScreenSweep` 제외 — 기존 실패) |
+| `.importlinter` | **4 / 4 유지** |
+| ruff | 기존 2건만 (`step_executor.py:726` · `test_negative_assertion.py:126`) |
+
+**기준선과 정확히 일치한다** — 023 이 새로 깬 것은 없다.
+
+### 구현 중 내가 넣었다가 되돌린 결함 셋
+
+| 무엇 | 어떻게 드러났나 |
+|---|---|
+| `build_tools` 반환 목록에 `press` 누락 | `test_browser_tools_are_the_only_allowed_tools`. **모델이 키를 누를 수 없는 상태였다** |
+| `url` 검증 조기 반환을 `BuiltAssertion` 으로 안 감쌈 | e2e. **023 과 무관한 기존 기능(주소 검증)을 깨뜨렸다** |
+| `keydown` 이 글자마다 `describe()` 를 돌림 | 전량에서만 흔들리는 검증 둘. **테스트가 까다로운 것이 아니라 내가 느리게 만들었다** |
+
+셋 다 부분 실행에서는 보이지 않았다. **전량을 돌리기 전까지는 통과라고 말하면 안 된다.**
 
 ### 기존 실패로 확인된 것
 
