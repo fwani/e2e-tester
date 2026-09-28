@@ -214,3 +214,47 @@ def test_new_kinds_are_classified_as_a_regression_without_a_mark(
     step = _assertion_step_of(kind, **extra)
     clean = step.model_copy(update={"mismatch": None})
     assert classify_assertion(clean, _result(StepOutcome.FAIL)) is AssertionClass.REGRESSION
+
+
+# ─── 023 — 새 검증 종류도 같은 대상이다 (T049) ──────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("outcome", "had_mismatch", "expected"),
+    [
+        (StepOutcome.FAIL, True, AssertionClass.KNOWN_DEFECT),
+        (StepOutcome.FAIL, False, AssertionClass.REGRESSION),
+        (StepOutcome.PASS, True, AssertionClass.RESOLVED),
+        (StepOutcome.PASS, False, None),
+    ],
+)
+def test_value_assertion_is_classified_like_every_other_kind(
+    outcome: StepOutcome, had_mismatch: bool, expected: AssertionClass | None
+) -> None:
+    """입력값 검증도 실행 결과 분류의 대상이다 (023 FR-010).
+
+    ## 왜 이 검증이 필요한가 — 저절로 만족되기 때문이다
+
+    `classify_assertion` 은 `step.type` 과 `mismatch` 유무만 본다. 검증 종류를 보지
+    않으므로 `value` 를 더해도 **아무것도 하지 않아도 동작한다.**
+
+    그것이 문제다. **저절로 만족된다는 사실이 어디에도 적혀 있지 않으면**, 나중에 읽는
+    사람은 023 이 이 요구를 잊은 것인지 의도적으로 넘긴 것인지 알 수 없다. 이 검증이
+    그 기록이며, 누가 종류별 분기를 넣으면 여기서 깨진다.
+    """
+    step = AssertionStep(
+        id="step-01",
+        label="입력값 확인",
+        assertion=Assertion(
+            kind=AssertionKind.VALUE,
+            target=TargetLocator(css=Candidate(value="#name", status=CandidateStatus.VERIFIED)),
+            value="E2E역할테스트",
+        ),
+        mismatch=(
+            AuthoringMismatch(observed="실제: ''", recorded_at=datetime.now(UTC))
+            if had_mismatch
+            else None
+        ),
+    )
+    result = StepResult(index=0, step_id="step-01", label="입력값 확인", outcome=outcome)
+    assert classify_assertion(step, result) is expected

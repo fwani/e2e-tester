@@ -343,3 +343,25 @@ def target_of(step: object) -> TargetLocator | None:
     if assertion is not None:
         return assertion.target
     return None
+
+
+def press_label(key: PressKey) -> str:
+    """키 입력 Step 의 표시 이름 (023 FR-059).
+
+    ## 왜 도메인에 있는가
+
+    **녹화 경로와 AI 경로가 같은 문구를 써야 한다.** 각자 만들면 같은 동작이 목록에서
+    다르게 불리고, 사용자는 두 Step 이 다른 일을 한다고 읽는다 — 원칙 I 이 금지하는
+    「작성 주체가 Step 의 의미를 바꾸는」 상태의 표시 판이다.
+
+    입력 Step 의 이름은 지금 녹화기와 AI 도구가 각자 만들고 있다. 그것을 이번에 고치지는
+    않되, **새로 생기는 종류에서 같은 갈래를 만들지는 않는다.**
+
+    ## 어느 키인지가 반드시 들어간다
+
+    「키 입력」만 있으면 목록에서 Enter 와 Escape 를 구별할 수 없고, 그 둘은 정반대
+    동작이다 — 021 이 긍정·부정 검증의 이름에 대해 정한 것과 같은 규칙이다.
+
+    대상 요소는 넣지 않는다. 다른 동작 Step 과 같은 방식이며 대상은 상세에서 본다.
+    """
+    return f"{key.value} 키 입력"

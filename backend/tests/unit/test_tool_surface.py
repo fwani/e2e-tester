@@ -58,7 +58,9 @@ def test_the_four_classes_cover_the_surface_exactly() -> None:
         f"표면에 없는데 분류된 도구: {sorted(set(union) - set(TOOL_NAMES))}"
     )
     assert len(union) == len(set(union)), "두 분류에 든 도구가 있다"
-    assert len(TOOL_NAMES) == 16, f"016 이후 표면은 16종이다 (지금 {len(TOOL_NAMES)})"
+    # 023 이 `press` 를 더해 17종이 됐다. **Step 종류가 늘어서 늘어난 것**이며,
+    # 아래 1:1 대응 검사가 그 사실을 강제한다 — 종류 없이 도구만 늘면 거기서 깨진다.
+    assert len(TOOL_NAMES) == 17, f"023 이후 표면은 17종이다 (지금 {len(TOOL_NAMES)})"
 
 
 @pytest.mark.parametrize("name", TOOL_NAMES)
@@ -87,7 +89,7 @@ def test_step_producing_tools_map_one_to_one_with_step_types() -> None:
         f"{sorted(set(STEP_PRODUCING_TOOLS) - expected)} / "
         f"종류에만 있는 것: {sorted(expected - set(STEP_PRODUCING_TOOLS))}"
     )
-    assert len(STEP_PRODUCING_TOOLS) == 9
+    assert len(STEP_PRODUCING_TOOLS) == 10
 
 
 def test_editing_tools_create_no_step_type() -> None:
@@ -185,17 +187,35 @@ def test_build_tools_returns_the_whole_surface() -> None:
 def test_new_assertion_vocabulary_did_not_grow_the_surface() -> None:
     """**검증 종류가 늘었다고 도구가 늘면 안 된다** (021 contracts/assertion-surface §3).
 
-    도구 표면은 계약이고 Step 종류와 1:1 이다. 새 어휘는 기존 검증 도구의 **인자 값**
-    으로 들어간다. 위쪽 `test_the_four_classes_cover_the_surface_exactly` 가 16종을
-    이미 세우지만, 여기서 다시 말하는 이유는 **어휘 추가와 도구 추가를 가르는 경계**를
-    이 파일에 남겨 두기 위해서다.
-    """
-    from itb.authoring.tools import STEP_PRODUCING_TOOLS
+    도구 표면은 계약이고 Step 종류와 1:1 이다. 새 검증 어휘는 기존 검증 도구의 **인자
+    값**으로 들어간다. 여기서 그 경계를 따로 말하는 이유는 **어휘 추가와 도구 추가를
+    가르는 선**을 이 파일에 남겨 두기 위해서다.
 
-    assert len(TOOL_NAMES) == 16
-    assert len(STEP_PRODUCING_TOOLS) == 9
-    assert "assert_condition" in TOOL_NAMES
-    assert not [n for n in TOOL_NAMES if n.startswith("assert_") and n != "assert_condition"]
+    ## 023 에서 이 검사를 숫자에서 규칙으로 바꿨다
+
+    원래는 `len(TOOL_NAMES) == 16` 과 `len(STEP_PRODUCING_TOOLS) == 9` 로 적혀 있었다.
+    023 이 검증 종류(`value`)와 Step 종류(`press`)를 **함께** 더하자 두 숫자가 모두
+    깨졌는데, **깨진 방식이 이 검사가 막으려던 것과 무관했다** — `value` 는 도구를
+    늘리지 않았고, 늘어난 하나는 `press` 라는 Step 종류 때문이었다.
+
+    숫자로 적으면 종류가 늘 때마다 이 검사를 고쳐야 하고, 고치는 사람은 **무엇을 확인하던
+    검사였는지 모른 채** 숫자만 바꾸게 된다. 그래서 뜻을 그대로 적는다: 검증 종류가 몇
+    개든 그것을 다루는 도구는 `assert_condition` **하나**이고, 일곱 종류가 모두 그
+    하나를 지난다.
+    """
+    from itb.domain.assertion import AssertionKind
+
+    assertion_tools = [n for n in TOOL_NAMES if n.startswith("assert")]
+    assert assertion_tools == ["assert_condition"], (
+        f"검증 도구는 하나여야 한다. 지금: {assertion_tools}"
+    )
+
+    # 일곱 종류가 모두 그 하나의 인자로 들어간다 — 종류마다 도구를 만들지 않는다.
+    _, schema = TOOL_SCHEMAS["assert_condition"]
+    kinds = set(schema["properties"]["kind"]["enum"])
+    assert kinds == {k.value for k in AssertionKind}, (
+        "검증 종류가 도구 인자와 어긋났다 — 모델이 쓸 수 있는 어휘를 모른 채 작성한다"
+    )
 
 
 def test_the_assertion_tool_enum_matches_the_domain() -> None:

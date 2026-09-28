@@ -886,6 +886,12 @@ export const BROWSER_ONLY_KIND_LABEL: Record<string, string> = {
     같은 근거다 — 그 유니온에는 `target` 을 받는 종류가 하나도 없다.
   */
   upload: "파일 올리기",
+  /*
+    023 — `press` 도 여기다. 키를 보낼 요소를 지목해야 하므로 브라우저 없이는 만들 수
+    없다 (FR-051 — 포커스된 곳이 아니라 대상 요소에 보낸다). 손으로 넣는 목록에 넣지
+    않은 것도 같은 근거다.
+  */
+  press: "키 입력",
 };
 
 export const BROWSER_ONLY_KIND_REASON =
@@ -1392,6 +1398,7 @@ export const ASSERTION_KIND_LABEL: Record<AssertionKind, string> = {
   enabled: "요소를 조작할 수 있다",
   disabled: "요소를 조작할 수 없다",
   text: "텍스트",
+  value: "입력값",
   url: "주소",
 };
 
@@ -1402,6 +1409,14 @@ export const ASSERTION_KIND_HINT: Record<AssertionKind, string> = {
   enabled: "누르거나 입력할 수 있으면 통과. 대상이 없으면 실패한다",
   disabled: "잠겨 있으면 통과. 대상이 없으면 실패한다 — 없는 것은 비활성이 아니다",
   text: "대상을 비우면 화면 전체가 대상",
+  /*
+    **텍스트 검증과의 차이를 직접 말한다** (023).
+
+    「입력값을 본다」만 쓰면, 입력 칸에 텍스트 검증을 고르려던 사람이 자기가 무엇을
+    잘못 고르는지 알 수 없다. 이 기능이 고치는 실수가 정확히 그것이므로, 두 항목이
+    나란히 있는 이 자리에서 차이를 말해야 한다.
+  */
+  value: "입력 칸·선택 목록에 담긴 값. 화면에 보이는 글자가 아니다",
   url: "요소를 찾지 않는다",
 };
 
@@ -1418,10 +1433,34 @@ export function isNegatedMatch(match: MatchMode): boolean {
   return match === "not_equals" || match === "not_contains";
 }
 
-/** 값을 비교하는 종류인가 — 비교 방식을 고를 수 있는 것도 이 둘뿐이다. */
+/** 값을 비교하는 종류인가 — 비교 방식을 고를 수 있는 것도 이것들뿐이다 (023: 셋). */
 export function comparesValue(kind: AssertionKind): boolean {
-  return kind === "text" || kind === "url";
+  return kind === "text" || kind === "url" || kind === "value";
 }
+
+/**
+ * 선택 목록을 대상으로 한 입력값 검증에서 읽어야 할 것 (023 FR-033).
+ *
+ * `<select>` 의 값은 **선택된 항목의 내부 식별자**다 — 화면에 `분석` 이 보여도 값은
+ * `analysis` 다 (실측 확인, research R8a). 이것을 모르면 화면에서 읽은 글자를 적고
+ * 실패한 뒤 이유를 찾지 못한다.
+ *
+ * **경고가 아니라 조언의 문체로 쓴다.** 잘못된 것이 아니라 알아야 할 것이다 — 021 의
+ * 관찰 기간 안내와 같은 성격이다.
+ */
+export const SELECT_VALUE_NOTE =
+  "선택 목록은 화면에 보이는 항목 이름이 아니라 그 항목의 내부 식별자를 비교합니다. " +
+  "예를 들어 화면에 「분석」이 보여도 값은 analysis 일 수 있습니다.";
+
+/**
+ * 입력 칸에 텍스트 검증을 고른 사람이 읽어야 할 것 (023 FR-030).
+ *
+ * **막지 않는다** — 이미 저장된 정의에 그런 조합이 있고, 거절로 바꾸면 그 테스트가
+ * 열리지 않는다. 알리기만 한다.
+ */
+export const TEXT_ON_INPUT_NOTE =
+  "입력 칸은 텍스트로 관찰하면 값이 들어 있어도 언제나 빈 문자열입니다. " +
+  "칸에 담긴 값을 보려면 「입력값」 검증을 쓰세요.";
 
 /**
  * 부정 비교를 고른 사람이 읽어야 할 것 (021 FR-026).
@@ -1446,7 +1485,8 @@ export function assertionSummary(assertion: {
   value?: string | null;
 }): string {
   if (!comparesValue(assertion.kind)) return ASSERTION_KIND_LABEL[assertion.kind];
-  const subject = assertion.kind === "text" ? "텍스트" : "주소";
+  const subject =
+    assertion.kind === "text" ? "텍스트" : assertion.kind === "value" ? "입력값" : "주소";
   const value = assertion.value ?? "";
   return `${subject}가 ${JSON.stringify(value)}를 ${MATCH_MODE_LABEL[assertion.match]}`;
 }

@@ -1,9 +1,9 @@
 /**
  * 검증 조건 구성 (T105). FR-013a·FR-013b · 021.
  *
- * 6종이다. 요소 갯수·입력값 검증과 체크 상태·읽기 전용은 범위 외다 (FR-013c · 021) —
- * 목록에 넣어 두고 비활성으로 보여 주지 않는다. 없는 기능을 회색으로 보여 주는 것은
- * "곧 생긴다"는 약속처럼 읽힌다.
+ * 7종이다 (023 이 `value` 를 더했다). 요소 갯수 검증과 체크 상태·읽기 전용은 여전히
+ * 범위 외다 (FR-013c · 021) — 목록에 넣어 두고 비활성으로 보여 주지 않는다. 없는 기능을
+ * 회색으로 보여 주는 것은 "곧 생긴다"는 약속처럼 읽힌다.
  *
  * **대상 요소는 셀렉터로만 지정한다.** 후보 수집·검증은 서버가 한다 (원칙 IV) — 여기서
  * 후보 묶음을 만들면 녹화가 만드는 것과 다른 형태가 생긴다.
@@ -26,15 +26,38 @@ import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Radio } from "../ui/Radio";
 
-const KINDS: AssertionKind[] = ["visible", "hidden", "enabled", "disabled", "text", "url"];
-/** 요소에 대한 검증 넷을 앞에, 값을 비교하는 둘을 뒤에 둔다 — 고르는 사람의 순서다. */
+const KINDS: AssertionKind[] = [
+  "visible",
+  "hidden",
+  "enabled",
+  "disabled",
+  "text",
+  "value",
+  "url",
+];
+/**
+ * 요소에 대한 검증 넷을 앞에, 값을 비교하는 셋을 뒤에 둔다 — 고르는 사람의 순서다.
+ *
+ * **`value` 를 `text` 바로 아래 둔다** (023). 둘이 가장 헷갈리는 짝이고, 붙여 놓아야
+ * 고르는 순간 비교된다 — 입력 칸에 텍스트 검증을 고르는 실수가 이 기능의 출발점이다.
+ */
 
 const MATCHES: MatchMode[] = ["equals", "contains", "not_equals", "not_contains"];
 
 /** 대상 요소가 반드시 필요한 종류 (data-model §2). */
-const NEEDS_TARGET = new Set<AssertionKind>(["visible", "hidden", "enabled", "disabled"]);
+const NEEDS_TARGET = new Set<AssertionKind>([
+  "visible",
+  "hidden",
+  "enabled",
+  "disabled",
+  "value",
+]);
 /** 비교 값이 반드시 필요한 종류. */
-const NEEDS_VALUE = new Set<AssertionKind>(["text", "url"]);
+const NEEDS_VALUE = new Set<AssertionKind>(["text", "url", "value"]);
+/*
+  `value` 가 **두 집합에 함께 드는 첫 종류다** (023 data-model §2). 지금까지 둘은
+  겹치지 않았다 — `text` 는 대상이 선택이었고, 대상이 필수인 넷은 값을 비교하지 않았다.
+*/
 
 export interface AssertionFormProps {
   onSubmit: (body: AddAssertionBody) => void;

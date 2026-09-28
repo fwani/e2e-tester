@@ -33,6 +33,7 @@ from itb.domain.step import (
     FillStep,
     HoverStep,
     NavigateStep,
+    PressStep,
     SelectStep,
     Step,
     UploadStep,
@@ -237,6 +238,16 @@ class StepExecutor:
             case UploadStep():
                 located = await self._locate(root, step, deadline, record)
                 await self._upload(located.locator, step, deadline)
+            case PressStep():
+                # **대상 요소에** 키를 보낸다 (023 FR-051). `page.keyboard.press` 는
+                # 지금 포커스된 곳에 보내므로, 앞 Step 의 부작용에 결과가 좌우된다 —
+                # 원칙 II 가 요구하는 「같은 화면이면 같은 결과」가 성립하지 않는다.
+                # `locator.press` 는 포커스를 먼저 주고 누르므로 정의가 곧 사실이다.
+                #
+                # 결과를 판정하지 않는다. 키를 눌렀는데 화면이 안 바뀌어도 성공이다 —
+                # 「눌렀더니 태그가 생겼다」는 검증 Step 이 따로 맡는다.
+                located = await self._locate(root, step, deadline, record)
+                await located.locator.press(step.key.value, timeout=self._left(deadline))
             case DragStep():
                 await self._drag(step, root, deadline, record)
             case AssertionStep():
@@ -442,6 +453,8 @@ class StepExecutor:
                 )
             case AssertionKind.TEXT:
                 await self._assert_text(assertion, root, deadline, record)
+            case AssertionKind.VALUE:
+                await self._assert_value(assertion, root, deadline, record)
             case AssertionKind.ENABLED | AssertionKind.DISABLED:
                 await self._assert_state(assertion, root, deadline, record)
 
@@ -516,6 +529,73 @@ class StepExecutor:
             f"실제: {_clip(actual)!r}"
         )
         raise StepFailure(msg, record.attempts, record.tab_wait_ms)
+
+    async def _assert_value(
+        self,
+        assertion: Assertion,
+        root: SearchRoot,
+        deadline: float,
+        record: StepExecution,
+    ) -> None:
+        """입력 칸에 담긴 값을 본다 (023 FR-001).
+
+        ## `_assert_text` 와 무엇이 다른가 — 관찰 함수 하나뿐이다
+
+        대기(`_watch`)·비교(`_matches`)·실패 설명 조립(`_EXPECTATION_VERBS`)을 그대로
+        재사용한다. 021 이 관찰 함수를 인자로 받는 구조를 만들어 둔 덕분이며, **이 종류만의
+        대기 규칙을 새로 만들지 않는 것**이 명세 FR-005 의 요구다.
+
+        ## 왜 텍스트로는 안 되는가
+
+        ``<input>`` 의 값은 자식 텍스트 노드가 아니라 요소의 값 속성이다. 브라우저는 그것을
+        자기만의 내부 구조에 그리는데 `inner_text` 는 거기 닿지 못한다 — 칸이 가득 차 있어도
+        **언제나 빈 문자열**이 관찰된다. 023 이 이 종류를 만든 이유가 그것이다.
+
+        ## 대상은 언제나 있다
+
+        ``text`` 검증과 달리 「화면 전체」 경우가 없다 (FR-002). 그래서 분기가 없고, 대상을
+        찾지 못하면 긍정·부정 모두 실패한다 (FR-006).
+        """
+        expected = self._resolver.substitute(assertion.value or "")
+        located = await self._locate_target(assertion, root, deadline, record)
+
+        async def observe() -> str:
+            return str(await located.locator.input_value(timeout=self._left(deadline)))
+
+        ok, actual = await _watch(assertion, observe, expected, deadline)
+        if ok:
+            return
+
+        # 023 FR-016 — **비밀번호 칸의 관찰값은 스크러버와 무관하게 가린다.**
+        #
+        # 스크러버는 그 실행에서 **복호화된** 민감 값만 안다. 검증이 실패했다는 것은
+        # 관찰값이 기대값과 다르다는 뜻이고, 다르다는 것은 그 목록에 없다는 뜻이다 —
+        # 그래서 **검증이 실패할 때만 새는 구조**였다 (023 research R2).
+        #
+        # 판정은 이미 실제 값으로 끝났다. 여기서 바뀌는 것은 설명 문자열뿐이므로 원칙 II
+        # 의 결정성에 예외가 생기지 않는다.
+        shown = _MASKED if await self._is_secret_field(located.locator) else _clip(actual)
+        msg = f"입력값이 {_expectation(expected, assertion.match)}. 실제: {shown!r}"
+        raise StepFailure(msg, record.attempts, record.tab_wait_ms)
+
+    async def _is_secret_field(self, locator: Any) -> bool:
+        """이 대상이 비밀번호 칸인가 (023 FR-016).
+
+        **녹화와 같은 규칙을 쓴다** — ``type`` 속성이 ``password`` 인가. 판별 규칙을 새로
+        만들지 않는 이유는, 두 곳이 다르게 판단하면 입력 Step 에서는 가려지고 검증 Step
+        에서는 새는 상태가 생기기 때문이다.
+
+        **살아 있는 요소에서 읽는다.** 저장된 정의에 「이것은 비밀번호 칸이다」를 적지
+        않는다 — 화면이 바뀌면 옛 판단이 남는다 (023 research R1).
+
+        읽지 못하면 **가리는 쪽으로 판단한다.** 가릴 것을 안 가리는 쪽이 안 가려도 될 것을
+        가리는 쪽보다 나쁘다.
+        """
+        try:
+            kind = await locator.get_attribute("type", timeout=_ATTRIBUTE_READ_MS)
+        except Exception:  # noqa: BLE001 - 요소가 사라지는 중이면 읽을 수 없다
+            return True
+        return (kind or "").strip().lower() == "password"
 
     async def _assert_state(
         self,
@@ -708,6 +788,18 @@ _EXPECTATION_VERBS = {
 
 def _expectation(expected: str, mode: MatchMode) -> str:
     return f"{expected!r}{_EXPECTATION_VERBS[mode]}"
+
+
+_MASKED = "********"
+"""민감한 칸의 관찰값 자리에 넣는 문구 (023 FR-016).
+
+길이를 드러내지 않는 고정 길이다 — 실제 길이를 보이면 그 자체가 정보다.
+"""
+
+_ATTRIBUTE_READ_MS = 1_000
+"""대상 성질을 읽는 데 주는 시간. 짧게 잡는다 — 판정은 이미 끝났고 이것은 설명을 만드는
+중이다. 여기서 오래 매달리면 실패 보고가 느려질 뿐이다.
+"""
 
 
 def _clip(text: str, limit: int = 200) -> str:

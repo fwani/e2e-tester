@@ -30,18 +30,19 @@ from fastapi.testclient import TestClient
 
 from tests.step_wait import read_steps, wait_for_steps
 
-TAG_FIELD = "#ptags"
+TAG_FIELD = "#tags"
 
 
 def _session(client: TestClient, fixture_app: str) -> str:
-    """녹화 세션을 연다. **로그인 화면에서 시작한다.**
+    """녹화 세션을 연다. **로그인이 필요 없는 화면에서 시작한다.**
 
-    픽스처 앱은 로그인 없이 `projects.html` 에 들어가면 `login.html` 로 되돌린다.
-    정상 로그인 경로를 거쳐야 프로젝트 화면에 머문다 (`test_recording.py` 와 같다).
+    `interactions.html` 을 쓰는 이유는 재실행까지 보기 위해서다 (헌법 품질 게이트 2).
+    로그인 단계가 앞에 끼면 비밀번호가 민감 변수로 봉인되고, 재실행이 비밀키와 값을
+    요구한다 — **검증하려는 것과 무관한 마찰**이다.
     """
     resp = client.post(
         "/api/sessions",
-        json={"mode": "record", "start_url": f"{fixture_app}/login.html"},
+        json={"mode": "record", "start_url": f"{fixture_app}/interactions.html"},
     )
     assert resp.status_code == 201, resp.text
     return str(resp.json()["session_id"])
@@ -62,7 +63,8 @@ def _css(step: dict[str, Any]) -> str:
 
 
 def _tag_fills(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [s for s in steps if s["type"] == "fill" and _css(s).endswith("ptags")]
+    """태그 칸의 입력 Step 만. **다른 칸의 입력이 섞이면 판정이 흐려진다.**"""
+    return [s for s in steps if s["type"] == "fill" and _css(s).endswith(TAG_FIELD)]
 
 
 def _presses(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -88,13 +90,8 @@ _DISPATCH_KEY = """
 
 
 async def _open_modal(page: Any) -> None:
-    """로그인하고 프로젝트 생성 모달을 연다. 태그 칸이 그 안에 있다."""
-    await page.fill("#email", "tester@example.com")
-    await page.fill("#password", "pw-not-a-real-secret")
-    await page.click("[data-testid=login-submit]")
-    await page.wait_for_url("**/projects.html")
-    await asyncio.sleep(0.4)
-    await page.click("#open-create")
+    """화면이 준비되기를 기다린다. 태그 칸은 처음부터 보인다."""
+    await page.wait_for_selector(TAG_FIELD)
     await asyncio.sleep(0.3)
 
 
@@ -110,7 +107,7 @@ async def _blur_away(page: Any) -> None:
     **이 단계가 결함의 방아쇠다.** 태그 위젯이 칸을 비운 뒤, 포커스가 떠날 때 `blur` 가
     빈 값으로 발생하고 그것이 앞선 입력 Step 을 덮어쓴다 (023 research R11).
     """
-    await page.click("#pname")
+    await page.click("#memo")
     await asyncio.sleep(0.5)
 
 
@@ -286,3 +283,68 @@ def test_out_of_scope_key_is_not_recorded(
         assert not _presses(steps), f"범위 밖 키가 기록됐다: {_presses(steps)}"
     finally:
         _stop(project_client, sid)
+
+
+# ── 재실행 (T025) ───────────────────────────────────────────────────────────
+
+
+@pytest.mark.usefixtures("fixture_app")
+def test_recorded_tag_flow_replays(project_client: TestClient, fixture_app: str) -> None:
+    """녹화한 태그 흐름이 **재실행에서 같은 결과를 낸다** (헌법 품질 게이트 2).
+
+    Step 이 만들어졌다는 것과 그 Step 으로 같은 결과를 재현할 수 있다는 것은 다른
+    주장이다. 023 에서는 특히 그렇다 — 입력 Step 의 값이 보존되고 키 입력 Step 이 그것을
+    확정해야 태그가 생기므로, **둘 중 하나만 맞아도 재실행은 틀린다.**
+
+    한글로 한다. 영문으로 하면 IME 처리가 틀려도 통과한다.
+    """
+    from us2_support import replay, result_of, stop_quietly
+
+    sid = _session(project_client, fixture_app)
+    try:
+        page = _page(project_client, sid)
+
+        async def act() -> None:
+            await _open_modal(page)
+            await _type_tag(page, "테스트")
+            await page.evaluate(_DISPATCH_KEY, [TAG_FIELD, "Enter", True])
+            await asyncio.sleep(0.3)
+            await page.evaluate(_DISPATCH_KEY, [TAG_FIELD, "Enter", False])
+            await asyncio.sleep(0.4)
+            await _blur_away(page)
+
+        project_client.portal.call(act)  # type: ignore[attr-defined]
+        wait_for_steps(project_client, sid, lambda ss: len(_presses(ss)) >= 1, timeout_s=10.0)
+
+        saved = project_client.post(f"/api/sessions/{sid}/save", json={"name": "태그 추가"})
+        assert saved.status_code == 200, saved.text
+        test_id = str(saved.json()["id"])
+    finally:
+        stop_quietly(project_client, sid)
+
+    view = replay(project_client, test_id)
+    result = result_of(project_client, test_id)
+    failed = [s for s in result["steps"] if s["outcome"] not in {"pass", "not_run", "skipped"}]
+    assert result["outcome"] == "pass", (
+        f"재실행 상태={view['state']} 결과={result['outcome']}. "
+        f"실패한 Step: {[(s['label'], s.get('error_message')) for s in failed]}"
+    )
+
+    # **키 입력 Step 이 실제로 돌았다.** 통과만으로는 부족하다 — Step 이 아예 없어도
+    # 「전부 통과」가 되기 때문이다.
+    pressed = [s for s in result["steps"] if s["label"].endswith("키 입력")]
+    assert pressed, f"키 입력 Step 결과가 없다: {[s['label'] for s in result['steps']]}"
+
+
+def test_press_label_names_the_key() -> None:
+    """T031 — 네 키의 표시 이름이 서로 다르다 (FR-059).
+
+    「키 입력」만 있으면 목록에서 Enter 와 Escape 를 구별할 수 없고, 그 둘은 정반대
+    동작이다.
+    """
+    from itb.domain.step import PressKey, press_label
+
+    labels = {press_label(k) for k in PressKey}
+    assert len(labels) == len(PressKey), f"표시 이름이 겹친다: {labels}"
+    for k in PressKey:
+        assert k.value in press_label(k)

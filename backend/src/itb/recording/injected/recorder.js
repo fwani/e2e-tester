@@ -8,6 +8,15 @@
  * 중인 자모가 아니라 조합이 끝난 최종 값이 한 번에 온다. `keydown` 을 쓰면 조합
  * 완료 값을 재구성해야 한다.
  *
+ * **그런데 023 부터 `keydown` 도 듣는다 — 위 논거에 걸리지 않는다.** 그 문장은 *값*을
+ * 재구성하는 것에 대한 것이고, 023 이 잡는 것은 *키 자체*다. 「태그를 입력한 뒤 Enter 를
+ * 눌러 추가하세요」 같은 칸에서는 키가 확정 동작이라, 값만으로는 아무 일도 일어나지
+ * 않는다. 조합 완료 값을 재구성할 일은 여전히 없다.
+ *
+ * 남는 문제는 하나다 — **한글 IME 에서 Enter 는 조합 확정과 제출 두 가지로 쓰인다.**
+ * `event.isComposing` 으로 가른다. 시간 간격이나 값 변화로 추측하지 않는다: 추측은
+ * 한국어·일본어·중국어에서 각각 다르게 틀린다.
+ *
  * **실측 보강**: `change` 와 `blur` 가 둘 다 발생한다. 텍스트 입력 한 번이 이벤트 2건을
  * 만들므로 Python 측에서 같은 요소 기준 중복 제거가 필요하다 (FR-025).
  *
@@ -835,6 +844,49 @@
       if (!el) return;
       lastClickAt = Date.now();
       send({ kind: "click", phase: "click", element: describe(el) });
+    },
+    true,
+  );
+
+  /**
+   * 023 — Step 으로 남기는 키. **정해진 목록에서만 고른다** (FR-052).
+   *
+   * 자유 문자열이면 오타(`enter` 대 `Enter`)가 실행 시점까지 숨고, 검증되지 않은 문자열이
+   * 생성된 Playwright 코드로 나간다 — 헌법의 「생성된 코드는 생성 중 데이터로 다룬다」에
+   * 걸린다.
+   *
+   * 값이 표준 도구의 키 이름과 **같은 철자**다. 변환표를 두지 않기 위해서다.
+   */
+  const RECORDED_KEYS = { Enter: "Enter", " ": "Space", Tab: "Tab", Escape: "Escape" };
+
+  /*
+    키 입력 경로 (023 FR-054·FR-055).
+
+    **`isComposing` 이 이 경로의 전부다.** 한글로 `테스트` 를 치고 Enter 를 두 번 누르면
+    첫 번째는 조합 확정이고 두 번째가 제출이다. 첫 번째를 Step 으로 만들면 재실행에서
+    Enter 가 한 번 더 눌려 빈 태그가 생기거나 폼이 두 번 제출된다.
+
+    영문에서는 Enter 가 한 번뿐이라 이 구별이 없어도 동작한다 — **한글에서만 깨진다.**
+
+    `keydown` 을 쓰는 이유(`keyup`·`keypress` 가 아니라): 앱이 `keydown` 에서 확정
+    처리를 하므로, 우리가 그보다 늦으면 화면이 이미 바뀐 뒤에 후보를 수집하게 된다.
+    클릭에서 `pointerdown` 을 고른 것과 같은 판단이다.
+
+    **범위 밖 키는 그 사실을 알린다** (FR-060). 조용히 빠지면 사용자는 재실행이 왜
+    다른지 알 수 없다. 막을 수 있는 일이 아니므로 「거절」이 아니라 「기록하지 않음」이다.
+  */
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.isComposing) return; // 조합을 끝내는 키는 동작이 아니다
+      const el = targetOf(event);
+      if (!el) return;
+      const key = RECORDED_KEYS[event.key];
+      if (!key) {
+        send({ kind: "key_out_of_scope", key: String(event.key), element: describe(el) });
+        return;
+      }
+      send({ kind: "press", key, element: describe(el) });
     },
     true,
   );

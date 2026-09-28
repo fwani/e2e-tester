@@ -47,11 +47,15 @@ from itb.domain.step import (
     FillStep,
     HoverStep,
     NavigateStep,
+    PressKey,
+    PressStep,
     SelectStep,
     Step,
     UploadStep,
+    press_label,
 )
-from itb.execution.element_probe import collect_by_selector, describe_element
+from itb.execution.assertion_builder import value_target_refusal
+from itb.execution.element_probe import collect_by_selector, describe_element, probe_by_selector
 from itb.execution.session import BrowserSession, TabNotFoundError
 from itb.execution.step_edits import (
     EditResult,
@@ -712,6 +716,48 @@ class BrowserToolbox:
             ),
         )
 
+    async def press(self, element_ref: str, key: str) -> dict[str, Any]:
+        """대상 요소에 키를 누른다 (023 · `press` Step).
+
+        ## 이 도구가 없어서 작성이 중단됐다
+
+        「태그를 입력한 뒤 Enter 또는 Space를 눌러 추가하세요」 같은 칸에서는 키가 확정
+        동작이다. 값을 넣는 것만으로는 태그가 만들어지지 않고, 태그가 없으면 저장이
+        거절되고, 저장이 안 되면 그 뒤의 시나리오가 통째로 성립하지 않는다.
+
+        우회로도 없다 — 그런 칸 옆에는 「추가」 버튼이 없다.
+
+        ## 범위 밖 키는 지원 목록과 함께 거절한다
+
+        「지원하지 않습니다」로 끝내면 모델은 **다른 키를 또 시도한다.** 도구 호출 횟수를
+        소모하면서 같은 벽에 부딪히므로, 거절 문구는 **다음에 무엇을 할 수 있는지**를
+        담아야 한다.
+        """
+        try:
+            press_key = PressKey(key.strip())
+        except ValueError:
+            supported = " / ".join(k.value for k in PressKey)
+            return {
+                "error": (
+                    f"지원하지 않는 키입니다: {key!r}. "
+                    f"누를 수 있는 키는 {supported} 뿐입니다. "
+                    "글자를 입력하려면 fill 을 쓰세요."
+                )
+            }
+        return await self._act_on_element(
+            element_ref,
+            lambda step_id, target, tab: PressStep(
+                id=step_id,
+                # **녹화 경로와 같은 함수를 쓴다** (023 FR-059). 각자 만들면 같은 동작이
+                # 목록에서 다르게 불리고, 사용자는 두 Step 이 다른 일을 한다고 읽는다.
+                label=press_label(press_key),
+                author=self.author,
+                tab=tab,
+                target=target,
+                key=press_key,
+            ),
+        )
+
     async def drag(self, element_ref: str, drop_ref: str) -> dict[str, Any]:
         """끌어다 놓기. **양 끝을 모두 요구한다** (contracts/step-dsl §hover 와 drag)."""
         drop = self.refs.get(drop_ref)
@@ -819,11 +865,21 @@ class BrowserToolbox:
             if observed is None:
                 return {"error": f"요소 참조를 찾을 수 없습니다: {element_ref}."}
             tab = self._tab_of_ref(element_ref)
-            target = await collect_by_selector(
+            probed = await probe_by_selector(
                 self._tab(tab).page, observed.css, self.test_id_attribute
             )
-            if target is None:
+            if probed is None:
                 return {"error": f"검증 대상의 식별 정보를 수집하지 못했습니다: {element_ref}"}
+            target = probed.locator
+
+            # 023 — **대상 성질 판정을 화면 폼 경로와 같은 함수로 한다.**
+            #
+            # 이 경로는 `build_assertion` 을 지나지 않는다. 그래서 021 의
+            # `stateless_target_warning` 이 여기 닿지 않고 있다(research R3) — 같은
+            # 구조로 만들면 AI 가 만드는 검증만 새 규칙 밖에 남는다.
+            refusal = value_target_refusal(assertion_kind, probed, value)
+            if refusal is not None:
+                return {"error": refusal}
 
         try:
             assertion = Assertion(
@@ -1391,6 +1447,7 @@ TOOL_NAMES: tuple[str, ...] = (
         "hover",
         "drag",
         "upload",
+        "press",
         "assert_condition",
         "close_tab",
     ),
@@ -1415,6 +1472,7 @@ STEP_PRODUCING_TOOLS: tuple[str, ...] = (
     "hover",
     "drag",
     "upload",
+    "press",
     "assert_condition",
     "close_tab",
 )
@@ -1488,6 +1546,20 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         return await toolbox.upload(element_ref, file_name)
 
     @beta_async_tool
+    async def press(element_ref: str, key: str) -> dict[str, Any]:
+        """대상 요소에 키를 누른다.
+
+        **입력 후 키로 확정하는 칸에 쓴다.** 「태그를 입력한 뒤 Enter 또는 Space를 눌러
+        추가하세요」 같은 칸은 `fill` 만으로는 아무 일도 일어나지 않는다 — 값을 넣은 뒤
+        이 도구로 확정해야 태그가 만들어진다.
+
+        `key` 는 Enter / Space / Tab / Escape 중 하나다. 글자를 입력하려면 `fill` 을 쓴다.
+
+        `element_ref` 가 **필요하다** — 포커스된 곳이 아니라 그 요소에 키를 보낸다.
+        """
+        return await toolbox.press(element_ref, key)
+
+    @beta_async_tool
     async def assert_condition(
         kind: str,
         element_ref: str | None = None,
@@ -1497,9 +1569,12 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
     ) -> dict[str, Any]:
         """화면 상태를 검증한다.
 
-        `kind` 는 visible / hidden / enabled / disabled / text / url 중 하나다.
-        `visible`·`hidden`·`enabled`·`disabled` 는 `element_ref` 가 필요하고 `url` 은
-        요소를 보지 않는다.
+        `kind` 는 visible / hidden / enabled / disabled / text / url / value 중 하나다.
+        `visible`·`hidden`·`enabled`·`disabled`·`value` 는 `element_ref` 가 필요하고
+        `url` 은 요소를 보지 않는다.
+
+        **입력 칸·선택 목록에 담긴 값을 볼 때는 `text` 가 아니라 `value` 다.** 입력 칸을
+        `text` 로 보면 칸이 가득 차 있어도 언제나 빈 문자열이 관찰된다.
 
         `match` 는 equals / contains / not_equals / not_contains 중 하나이며 **텍스트와
         주소 검증에만** 쓴다. `not_` 로 시작하는 비교에서 `timeout_ms` 는 상한이 아니라
@@ -1639,6 +1714,20 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
             "type": "object",
             "properties": {"element_ref": _REF, "file_name": {"type": "string"}},
             "required": ["element_ref", "file_name"],
+        },
+    ),
+    "press": (
+        "대상 요소에 키를 누른다. **입력 후 키로 확정하는 칸에 쓴다** — "
+        "「태그를 입력한 뒤 Enter 또는 Space를 눌러 추가하세요」 같은 칸은 fill 만으로는 "
+        "아무 일도 일어나지 않는다. key 는 Enter / Space / Tab / Escape 중 하나이며, "
+        "글자를 입력하려면 fill 을 쓴다.",
+        {
+            "type": "object",
+            "properties": {
+                "element_ref": _REF,
+                "key": {"type": "string", "enum": [k.value for k in PressKey]},
+            },
+            "required": ["element_ref", "key"],
         },
     ),
     "drag": (

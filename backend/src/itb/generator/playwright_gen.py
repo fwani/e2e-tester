@@ -33,6 +33,7 @@ from itb.domain.step import (
     NavigateStep,
     SelectStep,
     Step,
+    PressStep,
     UploadStep,
     mime_type_of,
 )
@@ -219,6 +220,19 @@ def step_lines(step: Step, values: ValueRenderer) -> list[str]:
             return [
                 f"await {loc}.selectOption({values.render(step.value)}, {_timeout(step)});"
             ]
+        case PressStep():
+            # **`locator.press` 다 — `keyboard.press` 가 아니다** (023 FR-051).
+            #
+            # 후자는 지금 포커스된 곳에 키를 보내므로 앞 Step 의 부작용에 결과가
+            # 좌우된다. 제품의 재실행도 대상 요소에 보내므로, 여기서 다르게 하면 같은
+            # 정의가 두 곳에서 다른 일을 한다 (원칙 V).
+            #
+            # 키 이름을 그대로 쓴다 — 열거값이 표준 도구의 철자와 같게 정해져 있어
+            # 변환표가 필요 없다 (023 contracts/export-mapping §6). 열거형이므로 임의
+            # 문자열이 여기 도달할 수 없고, 그것이 「생성된 코드는 데이터로 다룬다」를
+            # 값의 형태로 만족시킨다.
+            loc = _locator_for(step.target, root, step.label)
+            return [f"await {loc}.press({_js(step.key.value)}, {_timeout(step)});"]
         case UploadStep():
             loc = _locator_for(step.target, root, step.label)
             """파일 업로드 (2026-09-09).
@@ -323,6 +337,44 @@ def _assertion_lines(
                     step,
                 )
             return [f"await expect({subject}).{matcher}({expected}, {options});"]
+        case AssertionKind.VALUE:
+            # 대상은 언제나 있다 (FR-002) — `text` 와 달리 「화면 전체」 경우가 없으므로
+            # 분기가 필요 없다.
+            subject = _locator_for(assertion.target, root, step.label)
+            expected = values.render(assertion.value or "")
+            match assertion.match:
+                case MatchMode.EQUALS:
+                    return [
+                        f"await expect({subject}).toHaveValue({expected}, {options});"
+                    ]
+                case MatchMode.CONTAINS:
+                    # **`toHaveValue` 에는 부분 일치가 없다.** 정규식으로 감싸지 않는
+                    # 이유는 두 가지다 — 화면에서 온 값이 패턴으로 해석되면 뜻이 달라지고
+                    # (021 이 주소 검증에서 같은 선택지를 거절했다), 비교 값이
+                    # `process.env.X` 같은 *식*으로 렌더링될 수 있어 정규식 리터럴로
+                    # 감쌀 수 없다. `expect.poll` 은 표준이고 값을 문자열로 다룬다.
+                    return [
+                        f"await expect.poll(async () => await {subject}.inputValue(), "
+                        f"{options}).toContain({expected});"
+                    ]
+                case MatchMode.NOT_EQUALS:
+                    return _watch_window(
+                        [
+                            f"await expect({subject}).not.toHaveValue("
+                            f"{expected}, {{ timeout: 1 }});"
+                        ],
+                        step,
+                    )
+                case MatchMode.NOT_CONTAINS:
+                    # 바깥 루프가 관찰 기간을 담당하므로 **안쪽에서 또 기다리지 않는다.**
+                    # 폴링하지 않는 단발 판정이라 `expect.poll` 을 쓰지 않는다.
+                    return _watch_window(
+                        [
+                            f"expect(await {subject}.inputValue())"
+                            f".not.toContain({expected});"
+                        ],
+                        step,
+                    )
         case AssertionKind.URL:
             expected = values.render(assertion.value or "")
             # 정규식으로 만들지 않는다 — 화면에서 온 값이 패턴으로 해석되면 의미가

@@ -88,31 +88,31 @@ description: "Task list for 023 입력 칸의 두 빈칸"
 
 ### 녹화 — 이번에 처음 손대는 곳이다
 
-- [ ] T016 [US1] `backend/src/itb/recording/injected/recorder.js` 에 `keydown` 경로를 더한다. **목록에 있는 넷만** 보낸다. 모듈 docstring 에 **왜 이제 `keydown` 을 듣는지**를 적는다 — 기존 주석은 「키 단위가 아니라 확정된 값을 잡는다」이고, 그 논거는 *값*에 대한 것이지 *키*에 대한 것이 아니다 ([research R10](./research.md))
-- [ ] T017 [US1] 같은 파일에서 **IME 조합 중의 키를 버린다** (FR-055). 브라우저가 주는 조합 상태로 가른다 — **시간 간격이나 값 변화로 추측하지 않는다.** 추측은 한국어·일본어·중국어에서 각각 다르게 틀린다. [contracts/key-input-surface §3](./contracts/key-input-surface.md) 이 권위다
-- [ ] T018 [US1] `backend/src/itb/recording/recorder.py` 에 `PressStep` 기록 경로를 더한다. 후보 수집은 기존 경로를 그대로 쓴다 (원칙 IV). **같은 키를 연달아 누르면 접지 않는다** (FR-057) — Enter 두 번은 Enter 한 번과 다른 동작이다
-- [ ] T019 [US1] 같은 파일에서 **키 입력 뒤의 빈 값 확정이 앞선 입력 Step 을 갱신하지 않게 한다** (FR-056). `_find_recent_fill` 의 갱신 조건에 「그 사이에 키 입력이 있었는가」를 더한다. [research R11](./research.md) 이 이 동작의 현재 모습을 적어 두었다
-- [ ] T020 [US1] 목록에 없는 키를 눌렀을 때 **기록되지 않았다는 사실을 알린다** (FR-060). 021 의 경고 통로(`add_edit_warning`)를 쓴다. 조용히 빠지면 사용자는 재실행이 왜 다른지 알 수 없다
-- [ ] T021 [P] [US1] `backend/tests/integration/test_press_recording.py` 를 만든다 — **영문**: `E2E` + Enter 가 Step 둘로 남고 입력 값이 `E2E` 로 보존됨
-- [ ] T022 [P] [US1] **한글 IME 테스트를 같은 파일에 더한다** ★ — `테스트` 입력 후 Enter 두 번(조합 확정 + 제출)에서 **키 입력 Step 이 하나만** 남는지. **영문 테스트만으로는 이 결함을 잡을 수 없다** — 영문은 Enter 가 한 번뿐이라 언제나 통과한다
-- [ ] T023 [P] [US1] 같은 파일에 FR-057(연속 키를 접지 않음)과 FR-060(범위 밖 키 안내) 시나리오를 더한다
+- [X] T016 [US1] `backend/src/itb/recording/injected/recorder.js` 에 `keydown` 경로를 더한다. **목록에 있는 넷만** 보낸다. 모듈 docstring 에 **왜 이제 `keydown` 을 듣는지**를 적는다 — 기존 주석은 「키 단위가 아니라 확정된 값을 잡는다」이고, 그 논거는 *값*에 대한 것이지 *키*에 대한 것이 아니다 ([research R10](./research.md))
+- [X] T017 [US1] 같은 파일에서 **IME 조합 중의 키를 버린다** (FR-055). 브라우저가 주는 조합 상태로 가른다 — **시간 간격이나 값 변화로 추측하지 않는다.** 추측은 한국어·일본어·중국어에서 각각 다르게 틀린다. [contracts/key-input-surface §3](./contracts/key-input-surface.md) 이 권위다
+- [X] T018 [US1] `backend/src/itb/recording/recorder.py` 에 `PressStep` 기록 경로를 더한다. 후보 수집은 기존 경로를 그대로 쓴다 (원칙 IV). **같은 키를 연달아 누르면 접지 않는다** (FR-057) — Enter 두 번은 Enter 한 번과 다른 동작이다
+- [X] T019 [US1] 같은 파일에서 **키 입력 뒤의 빈 값 확정이 앞선 입력 Step 을 갱신하지 않게 한다** (FR-056). `_find_recent_fill` 의 갱신 조건에 「그 사이에 키 입력이 있었는가」를 더한다. [research R11](./research.md) 이 이 동작의 현재 모습을 적어 두었다
+- [X] T020 [US1] 목록에 없는 키를 눌렀을 때 **기록되지 않았다는 사실을 알린다** (FR-060). 021 의 경고 통로(`add_edit_warning`)를 쓴다. 조용히 빠지면 사용자는 재실행이 왜 다른지 알 수 없다
+- [X] T021 [P] [US1] `backend/tests/integration/test_press_recording.py` 를 만든다 — **영문**: `E2E` + Enter 가 Step 둘로 남고 입력 값이 `E2E` 로 보존됨
+- [X] T022 [P] [US1] **한글 IME 테스트를 같은 파일에 더한다** ★ — `테스트` 입력 후 Enter 두 번(조합 확정 + 제출)에서 **키 입력 Step 이 하나만** 남는지. **영문 테스트만으로는 이 결함을 잡을 수 없다** — 영문은 Enter 가 한 번뿐이라 언제나 통과한다
+- [X] T023 [P] [US1] 같은 파일에 FR-057(연속 키를 접지 않음)과 FR-060(범위 밖 키 안내) 시나리오를 더한다
 
 ### 실행
 
-- [ ] T024 [US1] `backend/src/itb/execution/step_executor.py` 에 `PressStep` 실행을 더한다 — **대상 요소에** 키를 보낸다. 포커스에 보내지 않는다 (FR-051). 대상을 찾지 못하면 기존 규칙대로 실패한다
-- [ ] T025 [P] [US1] `backend/tests/integration/` 에 실행 테스트를 더한다 — 태그가 실제로 추가됨 · 대상 없으면 실패 · **키를 눌렀는데 화면이 안 바뀌어도 성공**(동작 Step 은 결과를 판정하지 않는다)
+- [X] T024 [US1] `backend/src/itb/execution/step_executor.py` 에 `PressStep` 실행을 더한다 — **대상 요소에** 키를 보낸다. 포커스에 보내지 않는다 (FR-051). 대상을 찾지 못하면 기존 규칙대로 실패한다
+- [X] T025 [P] [US1] `backend/tests/integration/` 에 실행 테스트를 더한다 — 태그가 실제로 추가됨 · 대상 없으면 실패 · **키를 눌렀는데 화면이 안 바뀌어도 성공**(동작 Step 은 결과를 판정하지 않는다)
 
 ### AI 작성
 
-- [ ] T026 [US1] `backend/src/itb/authoring/tools.py` 에 **키 입력 도구**를 더하고 `STEP_PRODUCING_TOOLS` 에 넣는다 (9 → 10). 도구 설명에 **입력 후 키로 확정하는 칸(태그 입력 등)에 쓴다**를 적는다 (FR-058). 지원하는 넷을 명시해 모델이 없는 키를 지어내지 않게 한다
-- [ ] T027 [US1] 범위 밖 키 요청을 **거절하고 지원 목록을 함께 알린다.** 「지원하지 않습니다」로 끝내면 모델이 다른 키를 또 시도한다 ([contracts/key-input-surface §5](./contracts/key-input-surface.md))
-- [ ] T028 [P] [US1] `backend/tests/unit/test_tool_surface.py` 의 기존 검사가 10:10 대응을 요구하므로 그대로 통과해야 한다. 거절 문구가 지원 목록을 담는지 확인하는 테스트를 더한다
+- [X] T026 [US1] `backend/src/itb/authoring/tools.py` 에 **키 입력 도구**를 더하고 `STEP_PRODUCING_TOOLS` 에 넣는다 (9 → 10). 도구 설명에 **입력 후 키로 확정하는 칸(태그 입력 등)에 쓴다**를 적는다 (FR-058). 지원하는 넷을 명시해 모델이 없는 키를 지어내지 않게 한다
+- [X] T027 [US1] 범위 밖 키 요청을 **거절하고 지원 목록을 함께 알린다.** 「지원하지 않습니다」로 끝내면 모델이 다른 키를 또 시도한다 ([contracts/key-input-surface §5](./contracts/key-input-surface.md))
+- [X] T028 [P] [US1] `backend/tests/unit/test_tool_surface.py` 의 기존 검사가 10:10 대응을 요구하므로 그대로 통과해야 한다. 거절 문구가 지원 목록을 담는지 확인하는 테스트를 더한다
 
 ### 표시
 
-- [ ] T029 [US1] 표시 이름에 **어느 키인지**를 넣는다 (FR-059) — `Enter 키 입력` 형태. 「키 입력」만 있으면 목록에서 Enter 와 Escape 를 구별할 수 없고 그 둘은 정반대 동작이다. 녹화 경로와 AI 경로가 **같은 문구**를 쓴다
-- [ ] T030 [US1] 프론트의 Step 종류별 표시 문구에 `press` 를 더한다 (`frontend/src/lib/wording.ts` 와 Step 목록·상세). 문구의 소유자는 `wording.ts` 다
-- [ ] T031 [P] [US1] 표시 이름 테스트를 더한다 — **네 키 모두** 이름이 다른지
+- [X] T029 [US1] 표시 이름에 **어느 키인지**를 넣는다 (FR-059) — `Enter 키 입력` 형태. 「키 입력」만 있으면 목록에서 Enter 와 Escape 를 구별할 수 없고 그 둘은 정반대 동작이다. 녹화 경로와 AI 경로가 **같은 문구**를 쓴다
+- [X] T030 [US1] 프론트의 Step 종류별 표시 문구에 `press` 를 더한다 (`frontend/src/lib/wording.ts` 와 Step 목록·상세). 문구의 소유자는 `wording.ts` 다
+- [X] T031 [P] [US1] 표시 이름 테스트를 더한다 — **네 키 모두** 이름이 다른지
 
 **Checkpoint**: 태그 칸이 녹화되고 재실행된다. **한글에서도 그렇다.**
 
@@ -127,36 +127,36 @@ description: "Task list for 023 입력 칸의 두 빈칸"
 
 ### 실행
 
-- [ ] T032 [US2] `backend/src/itb/execution/step_executor.py` 에 `_assert_value` 를 더한다. **관찰 함수만 다르게 하여** 기존 `_watch` 에 넘긴다 — 대기·비교·실패 설명 조립은 재사용한다 ([research R5](./research.md)). `_matches` 와 `_EXPECTATION_VERBS` 는 손대지 않는다
-- [ ] T033 [US2] 같은 파일의 `_assert` 분기에 `AssertionKind.VALUE` 를 연결한다. 대상을 찾지 못하면 **긍정·부정 모두 실패**한다 (FR-006)
-- [ ] T034 [P] [US2] `backend/tests/integration/test_input_value_assertion.py` 를 만든다 — 값 일치 통과 · 빈 칸 실패(관찰값 `''` 가 설명에 나옴) · 포함 통과 · 여러 줄 칸의 줄바꿈 보존(FR-008) · 늦게 채워지는 값을 기다려 통과
-- [ ] T035 [P] [US2] 같은 파일에 부정 비교 시나리오를 더한다 — `not_equals` 실패 · 021 의 관찰 기간이 값 비교에서도 같게 도는지
+- [X] T032 [US2] `backend/src/itb/execution/step_executor.py` 에 `_assert_value` 를 더한다. **관찰 함수만 다르게 하여** 기존 `_watch` 에 넘긴다 — 대기·비교·실패 설명 조립은 재사용한다 ([research R5](./research.md)). `_matches` 와 `_EXPECTATION_VERBS` 는 손대지 않는다
+- [X] T033 [US2] 같은 파일의 `_assert` 분기에 `AssertionKind.VALUE` 를 연결한다. 대상을 찾지 못하면 **긍정·부정 모두 실패**한다 (FR-006)
+- [X] T034 [P] [US2] `backend/tests/integration/test_input_value_assertion.py` 를 만든다 — 값 일치 통과 · 빈 칸 실패(관찰값 `''` 가 설명에 나옴) · 포함 통과 · 여러 줄 칸의 줄바꿈 보존(FR-008) · 늦게 채워지는 값을 기다려 통과
+- [X] T035 [P] [US2] 같은 파일에 부정 비교 시나리오를 더한다 — `not_equals` 실패 · 021 의 관찰 기간이 값 비교에서도 같게 도는지
 
 ### 작성
 
-- [ ] T036 [US2] `backend/src/itb/execution/assertion_builder.py` 의 `ELEMENT_KINDS` 에 `VALUE` 를 더한다
-- [ ] T037 [US2] 같은 파일의 `default_label` 에 `VALUE` 분기를 더한다 — `입력값이 '…'{비교} 확인`. 주어가 `텍스트` 가 아니라 `입력값` 인 것이 목록에서 두 종류를 가르는 단서다. **`# pragma: no cover - enum 이 6종을 덮는다` 주석도 함께 고친다**
-- [ ] T038 [P] [US2] `backend/tests/unit/test_definition_summary.py` 에 **7종 전부의 표시 이름** 테스트를 더한다. `default_label` 의 폴백은 조용하므로 ([data-model §5](./data-model.md)) 테스트가 유일한 방어다
-- [ ] T039 [US2] `backend/src/itb/authoring/tools.py` 의 `assert_condition` docstring 의 `kind` 목록에 `value` 를 더하고 대상이 필요함을 적는다. **기존의 「기대와 달라도 Step 으로 기록된다 — 값을 바꾸거나 조건을 뒤집어 다시 시도하면 안 된다」는 그대로 둔다** (FR-009)
-- [ ] T040 [P] [US2] `backend/tests/unit/test_tool_surface.py` 에 도구 설명이 `value` 를 담는지 확인하는 테스트를 더한다
+- [X] T036 [US2] `backend/src/itb/execution/assertion_builder.py` 의 `ELEMENT_KINDS` 에 `VALUE` 를 더한다
+- [X] T037 [US2] 같은 파일의 `default_label` 에 `VALUE` 분기를 더한다 — `입력값이 '…'{비교} 확인`. 주어가 `텍스트` 가 아니라 `입력값` 인 것이 목록에서 두 종류를 가르는 단서다. **`# pragma: no cover - enum 이 6종을 덮는다` 주석도 함께 고친다**
+- [X] T038 [P] [US2] `backend/tests/unit/test_definition_summary.py` 에 **7종 전부의 표시 이름** 테스트를 더한다. `default_label` 의 폴백은 조용하므로 ([data-model §5](./data-model.md)) 테스트가 유일한 방어다
+- [X] T039 [US2] `backend/src/itb/authoring/tools.py` 의 `assert_condition` docstring 의 `kind` 목록에 `value` 를 더하고 대상이 필요함을 적는다. **기존의 「기대와 달라도 Step 으로 기록된다 — 값을 바꾸거나 조건을 뒤집어 다시 시도하면 안 된다」는 그대로 둔다** (FR-009)
+- [X] T040 [P] [US2] `backend/tests/unit/test_tool_surface.py` 에 도구 설명이 `value` 를 담는지 확인하는 테스트를 더한다
 
 ### 화면
 
-- [ ] T041 [US2] `frontend/src/lib/wording.ts` 에 `value` 문구를 더한다 — `ASSERTION_KIND_LABEL` 은 `입력값`, `ASSERTION_KIND_HINT` 는 **텍스트 검증과의 차이를 직접 말한다**(「입력 칸·선택 목록에 담긴 값을 본다. 화면에 보이는 글자가 아니다」). `comparesValue`·`assertionSummary` 도 덮는다
-- [ ] T042 [US2] `frontend/src/components/AssertionForm.tsx` 의 `KINDS` 에 `value` 를 **텍스트 바로 아래** 넣고, `NEEDS_TARGET`·`NEEDS_VALUE` 양쪽에 더한다. 두 집합에 함께 드는 첫 종류다
-- [ ] T043 [P] [US2] 프론트 테스트에 입력값 검증 선택 시의 폼 상태를 더한다
+- [X] T041 [US2] `frontend/src/lib/wording.ts` 에 `value` 문구를 더한다 — `ASSERTION_KIND_LABEL` 은 `입력값`, `ASSERTION_KIND_HINT` 는 **텍스트 검증과의 차이를 직접 말한다**(「입력 칸·선택 목록에 담긴 값을 본다. 화면에 보이는 글자가 아니다」). `comparesValue`·`assertionSummary` 도 덮는다
+- [X] T042 [US2] `frontend/src/components/AssertionForm.tsx` 의 `KINDS` 에 `value` 를 **텍스트 바로 아래** 넣고, `NEEDS_TARGET`·`NEEDS_VALUE` 양쪽에 더한다. 두 집합에 함께 드는 첫 종류다
+- [X] T043 [P] [US2] 프론트 테스트에 입력값 검증 선택 시의 폼 상태를 더한다
 
 ### 보안 — 비밀번호 값이 남지 않는다 (FR-015~FR-017)
 
 **이 기능의 유일한 새 보안 위험이다.** 위 층이 동작한 뒤 얹는다 — 섞어 만들면 마스킹
 때문에 실패한 것인지 관찰이 틀린 것인지 가릴 수 없다.
 
-- [ ] T044 [US2] `backend/src/itb/execution/assertion_builder.py` 에 **비밀번호 대상 평문 비교 값 거절**을 더한다. 판별은 T014 서술의 `attributes.type === "password"` — 녹화(`recorder.js:889`)와 **같은 출처·같은 규칙**이다. 민감하지 않은 변수 참조도 거절한다 ([contracts/assertion-surface §3](./contracts/assertion-surface.md))
-- [ ] T045 [US2] 거절을 **두 작성 경로에 모두 연결한다** — `api/routes/steps.py` 와 `authoring/tools.py`. [research R3](./research.md): AI 경로는 `build_assertion` 을 지나지 않으므로 한쪽에만 두면 규칙이 절반만 걸린다
-- [ ] T046 [US2] `backend/src/itb/execution/step_executor.py` 에서 **대상이 비밀번호 칸이면 관찰값을 무조건 마스킹한다.** 스크러버에 기대지 않는다 — 스크러버는 복호화된 값만 알고, 검증이 실패했다는 것은 관찰값이 그 목록에 없다는 뜻이다 ([research R2](./research.md)). **판정은 실제 값으로 한다**
-- [ ] T047 [P] [US2] `backend/tests/integration/test_value_assertion_secrets.py` 를 만든다 — 평문 거절 · 비민감 변수 참조 거절 · 민감 변수 참조 허용 · **실패 시 관찰값이 설명·실행 결과·어긋남 기록 어디에도 없음** · 그런데도 판정은 정확함
-- [ ] T048 [P] [US2] 같은 파일에 **저장 후 파일 검사**를 더한다 — 테스트 정의·실행 결과·공유 묶음에 평문이 없는지 기계적으로 확인한다
-- [ ] T049 [P] [US2] **FR-009·FR-010 이 새 종류에도 성립함을 테스트로 고정한다** *(analyze C1·C2)* — `test_classify_assertion.py` 와 `test_authoring_mismatch.py` 에 `value` 사례를 더한다. `classify_assertion`(`domain/run_result.py:341`)은 종류 무관 함수라 저절로 만족되지만, **그 사실이 적혀 있지 않으면 잊은 것인지 의도한 것인지 알 수 없다**
+- [X] T044 [US2] `backend/src/itb/execution/assertion_builder.py` 에 **비밀번호 대상 평문 비교 값 거절**을 더한다. 판별은 T014 서술의 `attributes.type === "password"` — 녹화(`recorder.js:889`)와 **같은 출처·같은 규칙**이다. 민감하지 않은 변수 참조도 거절한다 ([contracts/assertion-surface §3](./contracts/assertion-surface.md))
+- [X] T045 [US2] 거절을 **두 작성 경로에 모두 연결한다** — `api/routes/steps.py` 와 `authoring/tools.py`. [research R3](./research.md): AI 경로는 `build_assertion` 을 지나지 않으므로 한쪽에만 두면 규칙이 절반만 걸린다
+- [X] T046 [US2] `backend/src/itb/execution/step_executor.py` 에서 **대상이 비밀번호 칸이면 관찰값을 무조건 마스킹한다.** 스크러버에 기대지 않는다 — 스크러버는 복호화된 값만 알고, 검증이 실패했다는 것은 관찰값이 그 목록에 없다는 뜻이다 ([research R2](./research.md)). **판정은 실제 값으로 한다**
+- [X] T047 [P] [US2] `backend/tests/integration/test_value_assertion_secrets.py` 를 만든다 — 평문 거절 · 비민감 변수 참조 거절 · 민감 변수 참조 허용 · **실패 시 관찰값이 설명·실행 결과·어긋남 기록 어디에도 없음** · 그런데도 판정은 정확함
+- [X] T048 [P] [US2] 같은 파일에 **저장 후 파일 검사**를 더한다 — 테스트 정의·실행 결과·공유 묶음에 평문이 없는지 기계적으로 확인한다
+- [X] T049 [P] [US2] **FR-009·FR-010 이 새 종류에도 성립함을 테스트로 고정한다** *(analyze C1·C2)* — `test_classify_assertion.py` 와 `test_authoring_mismatch.py` 에 `value` 사례를 더한다. `classify_assertion`(`domain/run_result.py:341`)은 종류 무관 함수라 저절로 만족되지만, **그 사실이 적혀 있지 않으면 잊은 것인지 의도한 것인지 알 수 없다**
 
 **Checkpoint**: 입력값 검증이 동작하고, 비밀번호 값은 어디에도 남지 않는다
 
@@ -174,12 +174,12 @@ description: "Task list for 023 입력 칸의 두 빈칸"
 다행이지만, 미루면 원칙 V 위반 상태가 길어진다. **둘을 함께 한다** — 생성기는 같은 파일에서
 두 종류를 다루고, 하나만 반영하면 다른 쪽 정의가 든 테스트가 여전히 깨진다.
 
-- [ ] T050 [US3] `backend/src/itb/generator/playwright_gen.py` 에 `PressStep` 분기를 더한다 — `locator.press('Enter', { timeout })`. **`keyboard.press` 가 아니다** (FR-051). 키 열거값이 표준 도구의 키 이름과 같은 철자라 변환표를 두지 않는다 ([contracts/export-mapping §6](./contracts/export-mapping.md))
-- [ ] T051 [US3] 같은 파일의 `_assertion_lines` 에 `VALUE` 긍정 비교를 더한다 — `equals` → `toHaveValue`, `contains` → `expect.poll(…).toContain(…)` ([contracts/export-mapping §2](./contracts/export-mapping.md) — 정규식으로 감싸지 않는 이유가 거기 있다)
-- [ ] T052 [US3] 같은 파일에 `VALUE` 부정 비교를 더한다 — 021 의 `_watch_window` 로 감싼다. 루프가 관찰 기간을 담당하므로 안쪽에서 또 기다리지 않는다
-- [ ] T053 [P] [US3] `backend/tests/unit/test_generator.py` 에 `press` 네 키와 `value` 네 비교 방식의 생성 결과 테스트를 더한다 — **[contracts/export-mapping.md](./contracts/export-mapping.md) 의 표와 글자 단위로 대조한다**
-- [ ] T054 [P] [US3] `backend/tests/unit/test_export_keeps_assertion.py` 에 두 종류가 내보내기에서 보존되는지, 민감 변수가 `process.env.NAME` 으로 나가는지 더한다
-- [ ] T055 [US3] **왕복 정합을 한 번 완주한다** (헌법 품질 게이트 2) — 기록 → 저장 → 제품 내 실행 → 내보내기 → 내보낸 테스트 실행. **두 종류를 함께 넣는다.** 키 입력은 녹화 경로가 바뀌므로 이 게이트가 특히 중요하다
+- [X] T050 [US3] `backend/src/itb/generator/playwright_gen.py` 에 `PressStep` 분기를 더한다 — `locator.press('Enter', { timeout })`. **`keyboard.press` 가 아니다** (FR-051). 키 열거값이 표준 도구의 키 이름과 같은 철자라 변환표를 두지 않는다 ([contracts/export-mapping §6](./contracts/export-mapping.md))
+- [X] T051 [US3] 같은 파일의 `_assertion_lines` 에 `VALUE` 긍정 비교를 더한다 — `equals` → `toHaveValue`, `contains` → `expect.poll(…).toContain(…)` ([contracts/export-mapping §2](./contracts/export-mapping.md) — 정규식으로 감싸지 않는 이유가 거기 있다)
+- [X] T052 [US3] 같은 파일에 `VALUE` 부정 비교를 더한다 — 021 의 `_watch_window` 로 감싼다. 루프가 관찰 기간을 담당하므로 안쪽에서 또 기다리지 않는다
+- [X] T053 [P] [US3] `backend/tests/unit/test_generator.py` 에 `press` 네 키와 `value` 네 비교 방식의 생성 결과 테스트를 더한다 — **[contracts/export-mapping.md](./contracts/export-mapping.md) 의 표와 글자 단위로 대조한다**
+- [X] T054 [P] [US3] `backend/tests/unit/test_export_keeps_assertion.py` 에 두 종류가 내보내기에서 보존되는지, 민감 변수가 `process.env.NAME` 으로 나가는지 더한다
+- [X] T055 [US3] **왕복 정합을 한 번 완주한다** (헌법 품질 게이트 2) — 기록 → 저장 → 제품 내 실행 → 내보내기 → 내보낸 테스트 실행. **두 종류를 함께 넣는다.** 키 입력은 녹화 경로가 바뀌므로 이 게이트가 특히 중요하다
 
 **Checkpoint**: 원칙 V 가 회복됐다
 
@@ -193,15 +193,15 @@ description: "Task list for 023 입력 칸의 두 빈칸"
 **Independent Test**: 각 오용 상황을 하나씩 만들어 보고 화면·결과·작성 도구가 그 사실을
 말하는지 확인한다.
 
-- [ ] T056 [US4] `backend/src/itb/execution/assertion_builder.py` 에 **대상 성질 판정 함수**를 더한다. 세 갈래는 [data-model §3](./data-model.md) 의 표가 권위다. **태그를 읽지 못하면 거절하지 않는다** — 판정 실패를 거절로 바꾸면 정당한 대상이 막힌다
-- [ ] T057 [US4] 거절 문구를 쓴다. **무엇을 할 수 없는지만이 아니라 무엇을 대신 할 수 있는지를 담는다** — 체크박스는 「값이 체크 여부와 무관하고 체크 상태 검증은 아직 없다」, 값 없는 태그는 **텍스트 검증을 가리킨다**(이 기능이 고치려는 실수의 반대 방향이다)
-- [ ] T058 [US4] T056 을 **두 작성 경로에 연결한다** — `steps.py`(오류 응답)와 `tools.py`(`{"error": …}`)
-- [ ] T059 [US4] 선택 목록 안내를 더한다 (FR-033) — **경고가 아니라 조언의 문체**로 쓴다. **T003 실측 결과와 문구가 일치하는지 확인한다**
-- [ ] T060 [US4] 입력 칸 대상 텍스트 검증 경고를 더한다 (FR-030) — 「이 대상에서는 언제나 빈 문자열로 관찰됩니다. 칸에 담긴 값을 보려면 입력값 검증을 쓰세요」. **막지 않는다** — 하위 호환(FR-040)과 충돌한다. `select` 는 자식 `option` 의 글자를 텍스트로 가지므로 경고하지 않는다
-- [ ] T061 [US4] `backend/src/itb/authoring/tools.py` 의 도구 설명에 **「입력 칸·선택 목록의 값을 볼 때는 `text` 가 아니라 `value`」** 를 더한다 (FR-034). 비밀번호 칸은 민감 변수 참조로만 비교한다는 것도 적는다
-- [ ] T062 [US4] `frontend/src/lib/wording.ts` 에 선택 목록 안내를 더하고 `AssertionForm.tsx` 가 대상이 선택 목록일 때 보여 준다
-- [ ] T063 [P] [US4] `backend/tests/contract/test_value_target_surface.py` 를 만든다 — 세 갈래 판정 · 거절 문구가 대안을 담는지 · **두 경로가 같은 판정을 하는지**(한쪽만 거절하면 실패)
-- [ ] T064 [P] [US4] `backend/tests/integration/` 에 오용 시나리오를 더한다 — 체크박스 거절 · 버튼 거절 · 선택 목록은 만들어지고 안내가 붙음 · 입력 칸 텍스트 검증은 경고만 뜨고 Step 은 만들어짐
+- [X] T056 [US4] `backend/src/itb/execution/assertion_builder.py` 에 **대상 성질 판정 함수**를 더한다. 세 갈래는 [data-model §3](./data-model.md) 의 표가 권위다. **태그를 읽지 못하면 거절하지 않는다** — 판정 실패를 거절로 바꾸면 정당한 대상이 막힌다
+- [X] T057 [US4] 거절 문구를 쓴다. **무엇을 할 수 없는지만이 아니라 무엇을 대신 할 수 있는지를 담는다** — 체크박스는 「값이 체크 여부와 무관하고 체크 상태 검증은 아직 없다」, 값 없는 태그는 **텍스트 검증을 가리킨다**(이 기능이 고치려는 실수의 반대 방향이다)
+- [X] T058 [US4] T056 을 **두 작성 경로에 연결한다** — `steps.py`(오류 응답)와 `tools.py`(`{"error": …}`)
+- [X] T059 [US4] 선택 목록 안내를 더한다 (FR-033) — **경고가 아니라 조언의 문체**로 쓴다. **T003 실측 결과와 문구가 일치하는지 확인한다**
+- [X] T060 [US4] 입력 칸 대상 텍스트 검증 경고를 더한다 (FR-030) — 「이 대상에서는 언제나 빈 문자열로 관찰됩니다. 칸에 담긴 값을 보려면 입력값 검증을 쓰세요」. **막지 않는다** — 하위 호환(FR-040)과 충돌한다. `select` 는 자식 `option` 의 글자를 텍스트로 가지므로 경고하지 않는다
+- [X] T061 [US4] `backend/src/itb/authoring/tools.py` 의 도구 설명에 **「입력 칸·선택 목록의 값을 볼 때는 `text` 가 아니라 `value`」** 를 더한다 (FR-034). 비밀번호 칸은 민감 변수 참조로만 비교한다는 것도 적는다
+- [X] T062 [US4] `frontend/src/lib/wording.ts` 에 선택 목록 안내를 더하고 `AssertionForm.tsx` 가 대상이 선택 목록일 때 보여 준다
+- [X] T063 [P] [US4] `backend/tests/contract/test_value_target_surface.py` 를 만든다 — 세 갈래 판정 · 거절 문구가 대안을 담는지 · **두 경로가 같은 판정을 하는지**(한쪽만 거절하면 실패)
+- [X] T064 [P] [US4] `backend/tests/integration/` 에 오용 시나리오를 더한다 — 체크박스 거절 · 버튼 거절 · 선택 목록은 만들어지고 안내가 붙음 · 입력 칸 텍스트 검증은 경고만 뜨고 Step 은 만들어짐
 
 **Checkpoint**: 네 User Story 가 모두 독립적으로 동작한다
 

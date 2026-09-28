@@ -34,10 +34,10 @@ from itb.domain.test_case import (
     variable_reference,
 )
 from itb.execution.assertion_builder import (
-    stateless_target_warning,
     AssertionTargetError,
-    build_assertion,
+    build_assertion_with_notes,
     build_step,
+    stateless_target_warning,
 )
 from itb.execution.element_probe import collect_by_selector
 from itb.execution.step_edits import (
@@ -469,7 +469,7 @@ async def add_assertion(session_id: str, body: AddAssertionRequest) -> StepsResp
         )
 
     try:
-        assertion = await build_assertion(
+        built = await build_assertion_with_notes(
             handle.page,
             body.kind,
             target_selector=body.target_selector,
@@ -477,6 +477,7 @@ async def add_assertion(session_id: str, body: AddAssertionRequest) -> StepsResp
             match=body.match,
             test_id_attribute=w.recorder.test_id_attribute,
         )
+        assertion = built.assertion
     except AssertionTargetError as exc:
         raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
     except ValueError as exc:
@@ -488,6 +489,12 @@ async def add_assertion(session_id: str, body: AddAssertionRequest) -> StepsResp
     warning = stateless_target_warning(assertion)
     if warning is not None:
         w.session.add_edit_warning(warning)
+
+    # 023 — 대상 성질에 따른 안내. **거절은 이미 `build_assertion` 안에서 끝났다** (그쪽은
+    # Step 을 만들지 않는 판단이라 조건 구성과 같은 자리에 있어야 한다). 여기 남는 것은
+    # 만들되 알려 주는 둘이다.
+    for note in built.notes:
+        w.session.add_edit_warning(note)
 
     step = build_step(
         assertion,

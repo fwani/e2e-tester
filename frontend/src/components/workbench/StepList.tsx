@@ -289,6 +289,16 @@ function stepValue(step: Step): string | null {
     「어느 Step 이 xlsx 를 올리는가」를 알 수 있어야 목록이 쓸모 있다.
   */
   if (step.type === "upload") return step.file_name;
+  /*
+    **어느 키를 눌렀는지가 이 Step 의 값이다** (023 FR-059).
+
+    「키 입력」만 보이면 목록에서 Enter 와 Escape 를 구별할 수 없고, 그 둘은 정반대
+    동작이다 — 021 이 긍정·부정 검증의 이름에 대해 정한 것과 같은 규칙이다.
+
+    표시 이름(`press_label`)에도 키가 들어가지만, 사용자가 이름을 직접 지으면 그것이
+    덮인다. 이 줄은 이름과 무관하게 언제나 사실을 보여 준다.
+  */
+  if (step.type === "press") return step.key;
   return null;
 }
 

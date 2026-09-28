@@ -36,9 +36,12 @@ from itb.domain.step import (
     FillStep,
     HoverStep,
     NavigateStep,
+    PressKey,
+    PressStep,
     SelectStep,
     Step,
     UploadStep,
+    press_label,
 )
 from itb.execution.element_probe import collect_and_verify
 from itb.execution.frame_resolver import SearchRoot
@@ -169,6 +172,17 @@ class Recorder:
     """(탭, CSS) → 그 요소의 최근 fill Step id. 중복 제거의 근거다."""
 
     _fill_values: dict[tuple[int, str], str] = field(default_factory=dict)
+
+    _keyed_fills: set[tuple[int, str]] = field(default_factory=set)
+    """키로 값이 확정된 입력 칸 (023 FR-056).
+
+    **여기 든 칸의 입력 Step 은 더 이상 갱신되지 않는다.** 태그 칸처럼 확정 후 스스로
+    비워지는 위젯에서, 그 뒤에 오는 빈 값 `change`/`blur` 가 사용자가 친 글자를 덮어쓰는
+    것을 막는다 — 그것은 사용자의 입력이 아니라 **앱이 확정 처리를 했다는 신호**다.
+
+    키 입력 Step 이 없던 시절에는 두 사건을 구별할 수단이 없었다. 그 구별을 가능하게 하는
+    것이 023 의 `press` Step 이고, 이 집합이 그 사실을 들고 있는 자리다.
+    """
     _fill_targets: dict[tuple[int, str], TargetLocator] = field(default_factory=dict)
     """(탭, CSS) → 그 요소에 대해 **가장 잘 검증된** 후보 묶음.
 
@@ -362,6 +376,7 @@ class Recorder:
         self._last_step_id = None
         self._fill_step_ids.clear()
         self._fill_values.clear()
+        self._keyed_fills.clear()
 
     def stop(self) -> None:
         self.active = False
@@ -425,6 +440,10 @@ class Recorder:
             await self._record_select(origin, element, payload)
         elif kind == "file_input":
             await self._record_upload(origin, element, payload)
+        elif kind == "press":
+            await self._record_press(origin, element, payload)
+        elif kind == "key_out_of_scope":
+            self._warn_unrecorded_key(payload)
 
     @staticmethod
     def _basis(element: dict[str, Any]) -> str:
@@ -626,6 +645,24 @@ class Recorder:
         raw_value = payload.get("value") or ""
         sensitive = bool(payload.get("sensitive"))
 
+        # 023 FR-056 — **키로 확정된 칸의 빈 값 확정은 기록하지 않는다.**
+        #
+        # 태그 칸은 Enter 를 받으면 칩을 만들고 스스로 비워진다. 그 뒤 포커스가 떠날 때
+        # 빈 값 `blur` 가 오는데, 그것은 **사용자의 입력이 아니라 앱이 확정 처리를 했다는
+        # 신호**다. 기록하면 두 가지 중 하나가 된다 — 앞선 입력 Step 을 빈 문자열로
+        # 덮어쓰거나(친 글자가 사라진다), 빈 값 입력 Step 을 새로 만들거나(재실행이
+        # 태그 칸을 지운다). 둘 다 틀렸으므로 **아무것도 만들지 않는다.**
+        #
+        # 값이 비어 있지 않으면 사용자가 다음 태그를 치기 시작한 것이다. 그때는 표시를
+        # 지우고 보통 경로로 간다 — 그 값은 다시 키로 확정되어야 하기 때문이다.
+        #
+        # 키 입력 Step 이 없던 시절에는 이 구별을 할 수단이 없었다. `press` 가 그것을
+        # 가능하게 한다 (023 research R11).
+        if key in self._keyed_fills:
+            if not raw_value:
+                return
+            self._keyed_fills.discard(key)
+
         # ★ 치환을 이벤트 발행보다 먼저 한다 (T157). 이 순서가 뒤바뀌면 평문이 프론트에 간다.
         stored_value = self._to_variable_reference(raw_value, sensitive, element, key)
 
@@ -694,6 +731,9 @@ class Recorder:
 
         값이 다르고 직전도 아니면 새 Step 을 만든다 — 필드 A 입력 → 다른 동작 →
         필드 A 를 **다른 값으로** 다시 입력한 것은 별개의 동작이다.
+
+        키로 확정된 칸의 빈 값 확정은 **여기 오기 전에 걸러진다** (`_record_fill`,
+        023 FR-056). 갱신할지 말지의 문제가 아니라 기록할지 말지의 문제이기 때문이다.
         """
         step_id = self._fill_step_ids.get(key)
         if step_id is None:
@@ -979,6 +1019,75 @@ class Recorder:
                 target=target,
                 file_name=file_name,
             )
+        )
+
+    async def _record_press(
+        self, origin: Origin, element: dict[str, Any], payload: dict[str, Any]
+    ) -> None:
+        """키 입력을 기록한다 (023 FR-054·FR-057).
+
+        ## 입력과 달리 접지 않는다
+
+        `_record_fill` 은 같은 요소의 연속 입력을 최종 값 하나로 접는다 (FR-025). 여기서는
+        그러지 않는다 — **Enter 두 번은 Enter 한 번과 다른 동작이고, 접으면 되돌릴 수
+        없다.** 같은 것이 연달아 오는 이유도 다르다: 입력은 `change` 와 `blur` 가 **한
+        동작을 두 번 보고**하는 것이지만, 키는 사람이 **두 번 누른** 것이다.
+
+        ## 조합 확정 키는 여기 오지 않는다
+
+        주입 스크립트가 `isComposing` 으로 이미 걸러 낸다 (FR-055). 판정을 브라우저가 주는
+        사실에 맡기고 Python 에서 다시 추측하지 않는다.
+        """
+        try:
+            key = PressKey(str(payload.get("key") or ""))
+        except ValueError:
+            # 주입 스크립트가 목록을 걸러 보내므로 도달하지 않는다. 그래도 조용히
+            # 버리지 않는 이유는, 여기 오는 값은 스크립트와 도메인이 어긋났다는 뜻이라
+            # 사람이 알아야 하기 때문이다.
+            self._warn(f"알 수 없는 키가 보고됐습니다: {payload.get('key')!r}")
+            return
+
+        target = await self._collect_target(origin, element)
+        if target is None:
+            return
+        elem_key = origin.key(target.css.value if target.css else "")
+        target = self._best_target(elem_key, target)
+
+        # **이 칸의 값은 키로 확정됐다** (FR-056). 뒤따르는 빈 값 확정 이벤트가 앞선 입력
+        # Step 을 덮어쓰지 못하게 한다.
+        self._keyed_fills.add(elem_key)
+        self._last_fill_key = None
+
+        # 키가 기록됐다 → 페이지가 살아 있으므로 앞선 클릭은 이동을 만들지 않았다.
+        self._nav_suppress.pop(origin.tab, None)
+
+        await self._emit(
+            PressStep(
+                id=self._next_step_id(),
+                label=press_label(key),
+                author=self.author,
+                tab=origin.tab,
+                frame_url=origin.frame_url,
+                target=target,
+                key=key,
+            )
+        )
+
+    def _warn_unrecorded_key(self, payload: dict[str, Any]) -> None:
+        """목록 밖의 키를 눌렀다는 사실을 알린다 (023 FR-060).
+
+        **막을 수 있는 일이 아니다** — 사용자는 실제 화면을 조작하고 있고 제품은 그 위에
+        얹혀 있다. 그래서 「거절」이 아니라 「기록하지 않음」이며, 조용히 빠지면 사용자는
+        재실행이 왜 다른지 알 수 없다.
+
+        같은 키를 여러 번 눌러도 문구는 하나만 남는다 (`_warn` 이 중복을 접는다) — 키를
+        연타한 사람에게 같은 문장을 여러 번 보여 줄 이유가 없다.
+        """
+        key = str(payload.get("key") or "")
+        supported = " · ".join(k.value for k in PressKey)
+        self._warn(
+            f"{key} 키는 Step 으로 기록되지 않습니다. "
+            f"기록되는 키는 {supported} 입니다."
         )
 
     def _on_navigated(self, page: Page, frame: Frame) -> None:

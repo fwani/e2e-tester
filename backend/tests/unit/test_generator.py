@@ -24,6 +24,8 @@ from itb.domain.step import (
     FillStep,
     HoverStep,
     NavigateStep,
+    PressKey,
+    PressStep,
     SelectStep,
     StepType,
     UploadStep,
@@ -160,6 +162,10 @@ def test_every_step_type_is_generated() -> None:
         # 2026-09-09 — 파일 업로드 (사용자 보고). 이 줄이 없으면 아래 열거 단언이 잡는다.
         StepType.UPLOAD: UploadStep(
             id="step-09", label="올리기", target=loc, file_name="보고서.xlsx"
+        ),
+        # 023 — 키 입력 (사용자 보고). 같은 구조로 잡힌다.
+        StepType.PRESS: PressStep(
+            id="step-10", label="Enter 키 입력", target=loc, key=PressKey.ENTER
         ),
     }
     assert set(samples) == set(StepType), "Step 종류가 늘었는데 표본이 없다"
@@ -552,3 +558,61 @@ def test_url_assertion_in_a_subframe_still_checks_the_tab() -> None:
     line = line_of(step)
     assert "frameLocator" not in line, line
     assert "await expect(page).toHaveURL" in line, line
+
+
+# ─── 023 내보내기 대응 (T053) ──────────────────────────────────────────────
+
+
+def _value_step(match: MatchMode, value: str) -> AssertionStep:
+    """입력값 검증 Step 하나. 대상은 언제나 있다 (023 FR-002)."""
+    return AssertionStep(
+        id="step-01",
+        label="입력값 확인",
+        assertion=Assertion(
+            kind=AssertionKind.VALUE,
+            target=target(test_id=cand("name")),
+            value=value,
+            match=match,
+        ),
+    )
+
+
+@pytest.mark.parametrize("key", list(PressKey))
+def test_press_uses_locator_press_with_the_same_key_name(key: PressKey) -> None:
+    """키 입력은 **대상 요소에** 보낸다 (023 FR-051 · contracts/export-mapping §6).
+
+    `keyboard.press` 는 지금 포커스된 곳에 보내므로 앞 Step 의 부작용에 결과가 좌우된다 —
+    제품 안 실행과 갈린다. 키 이름은 열거값을 **그대로** 쓴다: 변환표가 있으면 어느 쪽이
+    권위인지 매번 판단해야 하고 값을 더할 때마다 두 곳을 고쳐야 한다.
+    """
+    step = PressStep(
+        id="step-01", label=f"{key.value} 키 입력", target=target(test_id=cand("a")), key=key
+    )
+    line = line_of(step)
+    assert ".press(" in line, line
+    assert "keyboard" not in line, f"포커스에 보내면 안 된다: {line}"
+    assert f'"{key.value}"' in line or f"'{key.value}'" in line, line
+
+
+def test_value_assertion_positive_matches() -> None:
+    """긍정 비교 (023 contracts/export-mapping §1·§2).
+
+    `equals` 는 표준 matcher 가 있고, `contains` 는 없어서 값을 읽어 비교한다 —
+    정규식으로 감싸지 않는 이유는 그 문서에 있다.
+    """
+    eq = line_of(_value_step(MatchMode.EQUALS, "E2E역할테스트"))
+    assert "toHaveValue" in eq, eq
+
+    contains = line_of(_value_step(MatchMode.CONTAINS, "E2E역할테스트"))
+    assert "expect.poll" in contains and "inputValue" in contains, contains
+    assert "RegExp" not in contains, f"정규식으로 감싸면 안 된다: {contains}"
+
+
+@pytest.mark.parametrize("match", [MatchMode.NOT_EQUALS, MatchMode.NOT_CONTAINS])
+def test_value_assertion_negative_uses_the_watch_window(match: MatchMode) -> None:
+    """부정 비교는 **관찰 루프**로 감싼다 (021 의 규칙을 그대로).
+
+    `.not` 만 쓰면 첫 판정에서 즉시 통과하고 그 뒤에 값이 들어오는 것을 놓친다.
+    """
+    code = line_of(_value_step(match, "임시값"))
+    assert "Date.now()" in code, f"관찰 루프가 없다: {code}"

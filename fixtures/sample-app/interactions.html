@@ -51,10 +51,66 @@
         <div id="archived"></div>
       </div>
       <p id="drop-result" class="muted"></p>
+
+      <!--
+        023 — 키로 확정하는 태그 칸. 실제 화면(「태그를 입력한 뒤 Enter 또는 Space를 눌러
+        추가하세요」)과 같은 성질로 만든다.
+
+        **칸이 비워지는 것이 핵심이다.** 그 동작이 녹화에서 빈 값 확정 이벤트를 만들고,
+        그것이 앞선 입력 Step 을 덮어쓰는 것이 023 이 고치는 결함이다. 비우지 않으면
+        검증이 아무것도 하지 않는다.
+
+        **로그인이 필요 없는 화면에 두었다.** 태그 흐름의 재실행까지 보려면(헌법 품질
+        게이트 2) 앞에 로그인 단계가 끼지 않는 편이 낫다 — 민감 변수·비밀키 준비가
+        검증하려는 것과 무관한 마찰을 만든다.
+      -->
+      <h2>기능 태그</h2>
+      <div id="tag-chips" data-testid="tag-chips"></div>
+      <input id="tags" data-testid="tags"
+             placeholder="태그를 입력한 뒤 Enter 또는 Space를 눌러 추가하세요">
+
+      <!-- 023 — 숨겨진 입력 칸. 값을 가진 요소가 보이지 않을 때도 읽히는지 본다. -->
+      <input id="hidden-value" data-testid="hidden-value" value="숨은값" style="display:none">
+
+      <!-- 023 — 여러 줄 입력 칸. 입력값 검증이 줄바꿈을 보존하는지 본다 (FR-008). -->
+      <h2>메모</h2>
+      <textarea id="memo" data-testid="memo" rows="3"></textarea>
+
+      <!-- 023 — 선택 목록. 보이는 글자와 값이 다르다 (FR-033 안내의 재료). -->
+      <h2>유형</h2>
+      <select id="kind" data-testid="kind">
+        <option value="analysis">분석</option>
+        <option value="pipeline">파이프라인</option>
+      </select>
+
+      <!-- 023 — 체크박스. 값이 체크 여부와 무관함을 보여 준다 (FR-032 거절의 재료). -->
+      <label><input type="checkbox" id="agree" data-testid="agree"> 동의</label>
     </div>
   </main>
   <script src="app.js"></script>
   <script>
+    /*
+      023 — 태그 칸. Enter 또는 Space 로 확정하면 칩이 생기고 **칸이 비워진다.**
+
+      `isComposing` 을 보는 것은 실제 태그 위젯과 같다 — 한글 조합을 끝내는 Enter 는
+      확정이 아니다. 고정 대상이 이것을 흉내 내지 않으면 제품의 IME 처리를 검증할 수 없다.
+    */
+    (() => {
+      const input = document.getElementById('tags');
+      const chips = document.getElementById('tag-chips');
+      const tags = [];
+      input.addEventListener('keydown', (e) => {
+        if (e.isComposing) return;
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        const v = input.value.trim();
+        if (!v) return;
+        tags.push(v);
+        input.value = '';                       // ← 결함의 원인이 되는 동작
+        chips.innerHTML = tags.map((t) => '<span class="chip">' + t + '</span>').join('');
+      });
+    })();
+
     // hover 로 열린 메뉴 항목을 누르면 결과가 바뀐다 — hover 없이는 누를 수 없다.
     document.querySelectorAll('.popup [role=menuitem]').forEach((b) => {
       b.addEventListener('click', () => {
