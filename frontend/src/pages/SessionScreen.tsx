@@ -359,6 +359,14 @@ export interface SessionWorkbenchProps {
   onPacingChange?: (next: RunPacing) => void;
   onReconnect?: () => void;
   onDismissNotice?: (id: string) => void;
+  /**
+   * AI 실패 배너를 치운다 (2026-09-28 사용자 보고).
+   *
+   * > 「확인이 필요합니다 부분은, 한번 뜨면 제거가 안됨」
+   *
+   * **소유는 컨테이너다** — `aiError` 를 들고 있는 쪽이 지운다.
+   */
+  onDismissAiError?: () => void;
 }
 
 export function SessionWorkbench(props: SessionWorkbenchProps) {
@@ -460,6 +468,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     onPacingChange,
     onReconnect,
     onDismissNotice,
+    onDismissAiError,
   } = props;
 
   const phase = phaseOfSession(view);
@@ -1683,6 +1692,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       onRepick={onRepick}
       onChooseBlocked={onChooseBlocked}
       onDismissNotice={onDismissNotice}
+      onDismissAiError={onDismissAiError}
       onAction={runAction}
       busy={busy}
     />
@@ -3231,6 +3241,17 @@ export function SessionScreen({
           if (id === "notice") setNotice(null);
           if (id === "auto-transition") setAutoTransition(null);
         }}
+        /*
+          2026-09-28 사용자 보고 — **지나간 실패를 치운다.**
+
+          `aiError` 를 `null` 로 되돌리는 길이 **하나도 없었다.** 설정은 두 곳
+          (`ai_error`·`rerecord_realign_failed`)에서 하는데 해제가 없어, 한 번 뜨면
+          세션이 끝날 때까지 남았다 — 다음 턴이 성공해도 붉은 문장이 그대로였다.
+
+          **자취는 지우지 않는다.** 배너만 치우고 「실패: …」 줄은 `authoringLog` 에
+          남는다 — 무엇이 있었는지 되짚을 수 있어야 한다.
+        */
+        onDismissAiError={() => setAiError(null)}
       />
 
       {confirmingLeave && (

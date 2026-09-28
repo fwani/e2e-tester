@@ -68,7 +68,7 @@ function blocksOf(entries: AuthoringEntry[]): Block[] {
 }
 
 /** 작성 기록과 대화는 브라우저와 높이를 나누지 않는다. */
-export function AiAuthoringPanel({ work, entries, instruction, status, chooseBlocked, onChooseBlocked, busy, children }: {
+export function AiAuthoringPanel({ work, entries, instruction, status, chooseBlocked, onChooseBlocked, busy, onDismissError, children }: {
   work: WorkAreaProps["work"] | null;
   entries: AuthoringEntry[];
   /**
@@ -83,6 +83,14 @@ export function AiAuthoringPanel({ work, entries, instruction, status, chooseBlo
   chooseBlocked: WorkAreaProps["chooseBlocked"];
   onChooseBlocked: WorkAreaProps["onChooseBlocked"];
   busy: boolean;
+  /**
+   * 지나간 실패를 치운다 (2026-09-28 사용자 보고).
+   *
+   * 실패는 세션을 끝내지 않으므로(FR-067) 그 뒤로도 작성이 이어지는데, 치울 길이
+   * 없어 지나간 붉은 문장이 계속 서 있었다. **자취에는 남는다** — 위 타임라인의
+   * 「실패: …」 줄이 그것이라, 닫아도 무엇이 있었는지 되짚을 수 있다.
+   */
+  onDismissError?: (() => void) | null;
   children: ReactNode;
 }) {
   const log = useRef<HTMLDivElement>(null);
@@ -149,7 +157,7 @@ export function AiAuthoringPanel({ work, entries, instruction, status, chooseBlo
           </ol>}
       </div>
       {failure && (failure.error !== null || failure.blocked !== null) && <div className="ai-authoring-attention">
-        <AlwaysVisibleFailure error={failure.error} blocked={failure.blocked} choose={chooseBlocked} onChoose={onChooseBlocked} busy={busy} buttonSize="md" />
+        <AlwaysVisibleFailure error={failure.error} blocked={failure.blocked} choose={chooseBlocked} onChoose={onChooseBlocked} busy={busy} buttonSize="md" onDismissError={onDismissError ?? null} />
       </div>}
       <div className="ai-authoring-chat" hidden={failure?.blocked != null}>{children}</div>
     </div>

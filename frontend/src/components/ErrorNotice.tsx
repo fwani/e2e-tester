@@ -16,6 +16,7 @@
 import { ApiError } from "../api/client";
 import type { Category, ErrorBody } from "../types/generated/error-response";
 import { Button } from "../ui/Button";
+import { IconButton } from "../ui/IconButton";
 
 /** 화면이 상태에 담는 형태. 문자열 대신 이것을 담아야 다음 행동이 살아남는다. */
 export interface ErrorInfo {
@@ -139,6 +140,7 @@ export function ErrorNotice({
   error,
   compact = false,
   action = null,
+  onDismiss = null,
 }: {
   error: ErrorInfo | null;
   /** 좁은 자리에서 제목 줄을 생략한다. 다음 행동은 생략하지 않는다. */
@@ -150,6 +152,20 @@ export function ErrorNotice({
    * 있어야 한다. 없으면 사용자는 안내를 읽고도 어디로 가야 할지 모른다 (U-01).
    */
   action?: { label: string; onClick: () => void } | null;
+  /**
+   * 사용자가 **읽고 치울 수 있게** 한다 (2026-09-28 사용자 보고).
+   *
+   * > 「확인이 필요합니다 부분은, 한번 뜨면 제거가 안됨」
+   *
+   * AI 작성 중 실패는 세션을 끝내지 않으므로(FR-067) 그 뒤로도 작업이 이어지는데,
+   * 배너를 치울 길이 없어 지나간 실패가 화면에 남았다 — 다음 턴이 성공해도 붉은
+   * 문장이 그대로라 사용자는 그것이 방금 일인지 아까 일인지 판단해야 했다.
+   *
+   * **주지 않으면 X 가 없다.** 닫을 수 없어야 하는 자리 — 조작의 결과를 그 자리에서
+   * 말하는 알림 — 가 여전히 있기 때문이다. 자취(`authoringLog`)에는 남으므로 닫아도
+   * 무엇이 있었는지는 되짚을 수 있다.
+   */
+  onDismiss?: (() => void) | null;
 }) {
   if (error === null) return null;
 
@@ -162,11 +178,31 @@ export function ErrorNotice({
       data-code={error.code}
       className={`${tone.tint} flex flex-col gap-[6px] ${compact ? "py-s2 px-[10px]" : "py-s3 px-[14px]"}`}
     >
-      {!compact && (
-        <div
-          className={`font-mono text-[12px] font-semibold leading-none tracking-[.08em] uppercase ${tone.ink}`}
-        >
-          {tone.label}
+      {/*
+        제목 줄과 닫기를 **한 줄에 둔다.** `compact` 는 제목을 생략하는 모드이므로
+        그때는 닫기만 오른쪽에 선다 — 닫는 수단까지 생략하면 좁은 자리의 알림은
+        여전히 치울 수 없다.
+      */}
+      {(!compact || onDismiss !== null) && (
+        <div className="flex items-start justify-between gap-s2">
+          {!compact ? (
+            <div
+              className={`font-mono text-[12px] font-semibold leading-none tracking-[.08em] uppercase ${tone.ink}`}
+            >
+              {tone.label}
+            </div>
+          ) : (
+            <span />
+          )}
+          {onDismiss !== null && (
+            <IconButton
+              label="이 알림 닫기"
+              icon="close"
+              variant="ghost"
+              data-error-dismiss
+              onClick={onDismiss}
+            />
+          )}
         </div>
       )}
       <div

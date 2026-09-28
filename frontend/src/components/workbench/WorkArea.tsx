@@ -67,6 +67,8 @@ export interface WorkAreaProps {
   onChooseBlocked?: (choice: string, answer?: string) => void;
   onReload?: () => void;
   onOverwriteStale?: () => void;
+  /** 지나간 실패를 치운다 (2026-09-28 사용자 보고). 주지 않으면 X 가 없다 */
+  onDismissError?: (() => void) | null;
   busy?: boolean;
 }
 
@@ -78,6 +80,7 @@ export function WorkArea({
   onChooseBlocked,
   onReload,
   onOverwriteStale,
+  onDismissError = null,
   busy = false,
 }: WorkAreaProps) {
   return (
@@ -169,6 +172,7 @@ export function WorkArea({
             choose={chooseBlocked}
             onChoose={onChooseBlocked}
             busy={busy}
+            onDismissError={onDismissError}
           />
 
           <Section title="진행">
@@ -203,6 +207,7 @@ export function WorkArea({
             choose={chooseBlocked}
             onChoose={onChooseBlocked}
             busy={busy}
+            onDismissError={onDismissError}
           />
         </>
       )}
@@ -352,6 +357,7 @@ export function AlwaysVisibleFailure({
   onChoose,
   busy,
   buttonSize = "sm",
+  onDismissError,
 }: {
   error: import("../ErrorNotice").ErrorInfo | null;
   blocked: AiBlockedState | null;
@@ -359,6 +365,14 @@ export function AlwaysVisibleFailure({
   onChoose?: (choice: string, answer?: string) => void;
   busy: boolean;
   buttonSize?: ButtonSize;
+  /**
+   * 지나간 실패를 **치운다** (2026-09-28 사용자 보고).
+   *
+   * **실패에만 준다 — 막힘(`blocked`)에는 주지 않는다.** 막힘은 선택지를 고르기
+   * 전까지 세션이 그 자리에 서 있는 상태이고, 닫으면 고를 곳이 사라진다. 실패는
+   * 이미 끝난 일이므로(FR-067: Step 은 보존되고 세션은 이어진다) 읽고 치우면 된다.
+   */
+  onDismissError?: (() => void) | null;
 }) {
   /*
     **선택지 조작의 자리는 여기다** (`ai.chooseBlocked` · ui-contract §4-1). 고를 것이
@@ -378,7 +392,7 @@ export function AlwaysVisibleFailure({
   if (error === null && blocked === null) return placeholder;
   return (
     <div data-always-visible-failure className="flex flex-col gap-[10px]">
-      {error !== null && <ErrorNotice error={error} />}
+      {error !== null && <ErrorNotice error={error} onDismiss={onDismissError ?? null} />}
       {blocked !== null && (
         <div
           role="alert"

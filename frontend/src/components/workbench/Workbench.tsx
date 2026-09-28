@@ -164,6 +164,14 @@ export interface WorkbenchProps {
   onReloadDefinition?: () => void;
   onOverwriteStale?: () => void;
   onDismissNotice?: (id: string) => void;
+  /**
+   * AI 실패 배너를 **치운다** (2026-09-28 사용자 보고).
+   *
+   * > 「확인이 필요합니다 부분은, 한번 뜨면 제거가 안됨」
+   *
+   * 주지 않으면 X 가 서지 않는다 — 다른 확장 자리(`onDismissNotice`)와 같은 규율이다.
+   */
+  onDismissAiError?: () => void;
   /** 비활성 조작의 해소 방법을 눌렀을 때. 그 조작을 실제로 실행한다 */
   onAction?: (action: ActionId) => void;
   busy?: boolean;
@@ -204,6 +212,7 @@ export function Workbench({
   onReloadDefinition,
   onOverwriteStale,
   onDismissNotice,
+  onDismissAiError,
   onAction,
   busy = false,
 }: WorkbenchProps) {
@@ -409,6 +418,7 @@ export function Workbench({
               onChooseBlocked={onChooseBlocked}
               onReload={onReloadDefinition}
               onOverwriteStale={onOverwriteStale}
+              onDismissError={onDismissAiError ?? null}
               busy={busy}
             />
           )}
@@ -457,7 +467,8 @@ export function Workbench({
               <Input aria-label="AI 작성 패널 너비" type="range" min="300" max="440" step="20" value={asideWidth} onChange={(event) => setAsideWidth(Number(event.target.value))} />
             </label>
             <AiAuthoringPanel entries={authoringLog} instruction={authoringInstruction} work={model.work} status={aiAttention ?? model.phaseBar.phaseLabel}
-              chooseBlocked={capabilities["ai.chooseBlocked"]} onChooseBlocked={onChooseBlocked} busy={busy}>
+              chooseBlocked={capabilities["ai.chooseBlocked"]} onChooseBlocked={onChooseBlocked} busy={busy}
+              onDismissError={onDismissAiError ?? null}>
               {leftExtra}
             </AiAuthoringPanel>
           </aside>
