@@ -131,18 +131,28 @@ description: "Task list for 024 AI 의 손이 어디에 있는지 보인다"
 ### 백엔드 — 발행
 
 - [ ] T020 [US1] `backend/src/itb/authoring/tools.py` 의 `_execute` 에서 실행 성공 후
-  `StepExecution.rect` 를 꺼내 `on_focus` 로 알린다. `status="done"`, `label` 은 Step 의
-  이름표와 **같은 값**
+  `StepExecution.rect` 를 꺼내 `on_focus` 로 알린다. 싣는 것은 **넷 전부** —
+  `tab`·`rect`·`status="done"`·`label`. `tab` 은 Step 이 실행된 탭이고, 없으면 화면이
+  어느 화면 위에 그릴지 판정할 수 없다 (FR-004). `label` 은 Step 의 이름표와 **같은 값**
 - [ ] T021 [US1] 같은 자리에서 **`rect` 가 `None` 이면 알리지 않는다** — 「자리 없음」을
   나타내는 값을 보내지 않는다 ([contracts §1](./contracts/ai-focus.md))
 - [ ] T022 [US1] 같은 파일에서 **알림 실패가 작성을 멈추지 않게 한다** — `_announce` 와
   같은 방식으로 예외를 삼킨다 (FR-006)
-- [ ] T023 [US1] `backend/src/itb/api/routes/sessions.py` 의 AI 작성 배선 **두 곳**
-  (T112 경로와 재녹화 경로)에 `on_focus=lambda notice: work.session.emit("ai_focus", …)`
-  를 잇는다. **두 곳 다 잇는다** — 한쪽만 이으면 경로에 따라 표시가 생겼다 없어진다
+- [ ] T023 [US1] `backend/src/itb/api/routes/sessions.py` 의 **`_build_agent` 안에서만**
+  `on_focus=lambda notice: work.session.emit("ai_focus", …)` 를 잇는다.
+  **`_build_engine` 에는 잇지 않는다 — 그것은 재생 엔진이다.** 거기에 이으면 재생에서
+  `ai_focus` 가 나가고 헌법 원칙 II 를 위반한다 (FR-007 · SC-006 · T054 가 잡는다).
+  같은 함수 안에 `on_progress` 가 두 번 나오는 것은 배선이 둘이어서가 아니라
+  `BrowserToolbox` 와 `AuthoringAgent` 두 객체가 각각 받기 때문이다 — **자리를 아는 것은
+  도구뿐이므로 `on_focus` 는 `BrowserToolbox` 에만 준다**
 - [ ] T024 [P] [US1] `backend/tests/contract/test_ai_focus_event.py` 에 이벤트 모양을
   고정한다 — 필드 넷, `status` 가 `done`, 좌표가 수치. [contracts §1](./contracts/ai-focus.md) 이 권위다
 - [ ] T025 [P] [US1] 같은 파일에 **자리 없는 조작에서 이벤트가 나가지 않음**을 고정한다
+- [ ] T025a [P] [US1] 같은 파일에 **화면을 살펴보는 동안 이벤트가 나가지 않음**을
+  고정한다 (FR-011) — 지금은 `observe_page` 가 `_act_on_element` 를 지나지 않아 **우연히**
+  충족된다. 우연은 나중에 깨지고, 깨진 것을 아무도 모른다
+- [ ] T025b [P] [US1] 같은 파일에 **알림 통로가 예외를 던져도 작성이 끝까지 진행됨**을
+  고정한다 (SC-009). T019 가 고정하는 것은 **측정** 실패이며, 알림 실패는 다른 자리다
 
 ### 프론트 — 받고, 재고, 판정한다
 
@@ -271,6 +281,12 @@ description: "Task list for 024 AI 의 손이 어디에 있는지 보인다"
 
 ### 마무리
 
+- [ ] T059a [P] 기존 AI 작성 통합 검증에 **표시 유무와 무관하게 같은 Step 이
+  만들어짐**을 더한다 (FR-024 · SC-007) — `on_focus` 를 잇지 않은 경우와 이은 경우의
+  Step 목록이 같다
+- [ ] T059b [P] `frontend/tests/MirrorFocusSuppression.test.tsx` 에 **알 수 없는 이벤트를
+  무시함**을 고정한다 (FR-026) — 필수 필드가 빠진 `ai_focus` 를 받아도 화면이 깨지지 않고
+  그리지 않는다 ([contracts §5](./contracts/ai-focus.md))
 - [ ] T060 [P] `specs/024-ai-focus-overlay/quickstart.md` 를 실제로 훑고, 다른 곳이
   있으면 문서를 고친다. **§3 밀집 화면과 §4 스크롤을 반드시 본다**
 - [ ] T061 [P] `specs/001-interactive-ai-test-builder/contracts/websocket.md` 의 AI
