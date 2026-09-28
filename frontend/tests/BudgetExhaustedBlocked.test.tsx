@@ -132,6 +132,44 @@ describe("판단 근거가 보인다 (FR-017·FR-019·FR-020·FR-021)", () => {
   });
 });
 
+describe("방향을 적을 길이 남는다 (FR-011 · US2/AC5 · converge F1)", () => {
+  /*
+    막힘 중 대화 패널은 「위의 답변 칸에 알려 주세요」로 이 자리를 가리킨다. 칸만
+    닫으면 **가리키는 곳이 없는 안내**가 남고, 그것이 `BlockedView` 가 만들어진 계기와
+    같은 상황이다 — 그때 사용자에게 남은 길은 세션을 버리는 것뿐이었다.
+  */
+  const opener = () => document.querySelector("[data-blocked-direction-open]");
+
+  it("기본 상태에서는 칸이 없다 — 적어야 하는 것으로 보이지 않는다 (FR-013)", () => {
+    mount();
+    expect(answerBox()).toBeNull();
+  });
+
+  it("적고 싶으면 열 수 있는 길이 있다", () => {
+    mount();
+    expect(opener()).not.toBeNull();
+  });
+
+  it("열면 칸이 나온다 — 「적지 않아도 된다」와 「적을 수 없다」는 다르다", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    mount();
+    await userEvent.click(opener() as HTMLElement);
+    expect(answerBox()).not.toBeNull();
+  });
+
+  it("제품 동작 불일치에는 그 길도 두지 않는다 — 적을 것이 정말로 없다 (020 FR-024)", () => {
+    render(
+      <SessionWorkbench
+        {...sessionProps({
+          view: sessionView({ state: "ai_blocked", authoring_mode: "ai" }),
+          aiBlocked: { ...base, kind: "product_mismatch" },
+        })}
+      />,
+    );
+    expect(opener()).toBeNull();
+  });
+});
+
 describe("기존 막힘은 바뀌지 않는다 (FR-016 · SC-005)", () => {
   it("알려 주면 풀리는 막힘에는 답 칸과 다섯 선택지가 그대로다", () => {
     render(

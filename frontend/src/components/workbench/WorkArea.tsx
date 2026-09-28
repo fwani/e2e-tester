@@ -478,7 +478,28 @@ export function AlwaysVisibleFailure({
             >
               {budget ? BUDGET_EXHAUSTED_NOTE : PRODUCT_MISMATCH_NOTE}
             </p>
-          ) : (
+          ) : null}
+          {/*
+            022 FR-011 · US2/AC5 — **칸을 열지는 않되, 열 수 있는 길을 남긴다.**
+
+            converge 가 찾은 것(F1): 막힘 중 대화 패널은 「위의 답변 칸에 알려 주세요」로
+            이 칸을 가리키는데, 예산 소진에서 칸을 닫으면 **가리키는 곳이 없는 안내**가
+            된다. `BlockedView` 의 docstring 이 기록한 과거 실증 문제와 같은 형태이고,
+            그때 사용자에게 남은 길은 세션을 버리는 것뿐이었다.
+
+            접어 두는 것이 두 요구를 함께 지킨다 — 기본 상태에서 적어야 하는 것으로
+            보이지 않고(FR-013 의 의도), 적고 싶은 사용자에게는 길이 있다(FR-011).
+            `product_mismatch` 는 접힌 칸도 두지 않는다 — 그쪽은 적을 것이 **정말로**
+            없다 (020 FR-024).
+          */}
+          {budget && (
+            <BlockedDirection
+              busy={busy}
+              buttonSize={buttonSize}
+              onSubmit={(text) => onChoose?.("answer", text)}
+            />
+          )}
+          {blocked.kind === "product_mismatch" || budget ? null : (
             blocked.choices.includes("answer") && (
               <BlockedAnswer
                 question={blocked.question}
@@ -547,6 +568,59 @@ const BUDGET_CHOICE_LABEL: Record<string, string> = {
  * `Enter` 로 보내지 않는다. 여러 줄로 설명하는 것이 정상이고, 그 자리에서 `Enter` 가
  * 전송이면 문단을 나누다 실수로 보낸다.
  */
+/**
+ * 예산 소진에서 **방향을 적고 싶은 사용자에게만** 열리는 칸 (022 FR-011 · US2/AC5).
+ *
+ * ## 왜 접어 두는가
+ *
+ * 두 요구가 정반대로 당긴다 — FR-013 은 「알려 주기 칸을 열지 않는다」(적어야 하는
+ * 것으로 읽히면 안 된다)이고, FR-011 은 「적어 이어가는 길은 남는다」이다.
+ *
+ * 접어 두면 둘 다 지켜진다. 기본 상태에서 화면은 아무것도 요구하지 않고, 적고 싶은
+ * 사용자는 한 번 눌러 연다. **「적지 않아도 된다」와 「적을 수 없다」는 다르다.**
+ *
+ * ## 왜 필요했나 (converge F1)
+ *
+ * 막힘 중 대화 패널은 「위의 답변 칸에 알려 주세요」로 이 자리를 가리킨다
+ * (`USE_BLOCKED_ANSWER`). 예산 소진에서 칸만 닫으면 **가리키는 곳이 없는 안내**가
+ * 남고, 그것은 `BlockedView` 가 만들어진 계기와 같은 상황이다 — 실측에서 대화 패널이
+ * 답변 칸을 가리키는데 답변 칸이 없었고, 사용자에게 남은 길은 세션을 버리는 것뿐이었다.
+ */
+function BlockedDirection({
+  busy,
+  buttonSize,
+  onSubmit,
+}: {
+  busy: boolean;
+  buttonSize: ButtonSize;
+  onSubmit: (text: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!open) {
+    return (
+      <div className="mb-[10px]">
+        <Button
+          size={buttonSize}
+          variant="ghost"
+          disabled={busy}
+          data-blocked-direction-open
+          onClick={() => setOpen(true)}
+        >
+          방향을 알려 주고 이어가기
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <BlockedAnswer
+      question={null}
+      busy={busy}
+      buttonSize={buttonSize}
+      onSubmit={onSubmit}
+    />
+  );
+}
+
 function BlockedAnswer({
   question,
   busy,

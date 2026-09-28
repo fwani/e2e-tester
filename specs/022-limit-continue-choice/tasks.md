@@ -241,11 +241,11 @@ Task: "backend/tests/integration/test_budget_resume_instruction.py 를 만든다
 **Purpose**: converge 가 코드를 명세·계획 대비로 훑어 찾은 남은 일. 셋 다 US2·US3 의
 구현이 지나간 자리에 생긴 것이다.
 
-- [ ] T036 `frontend/src/components/workbench/ChatPanel.tsx` 와 `frontend/src/lib/wording.ts` — 예산 소진에서 **방향을 적을 입구가 화면에서 사라진 것**을 고친다 per FR-011 · US2/AC5 (contradicts). 막힘 중 대화 패널은 `USE_BLOCKED_ANSWER`(「위의 답변 칸에 알려 주세요」)로 답변 칸을 가리키는데, US2 가 예산 소진에서 그 칸을 닫았다 — **가리키는 곳이 없는 안내**가 됐다. 이것은 `BlockedView` 의 docstring 이 기록한 과거 실증 문제와 같은 형태이며(「대화 패널은 답변 칸을 가리키는데 답변 칸이 없었다」), 그때 사용자에게 남은 길은 세션을 버리는 것뿐이었다. 예산 소진일 때 대화 패널이 다른 말을 하게 하거나(대화로 방향을 받는다), 안내 문구가 가리킬 곳을 남긴다. **어느 쪽이든 FR-013(칸을 열지 않는다)과 충돌하지 않아야 한다** — 「적지 않아도 된다」와 「적을 수 없다」는 다르다
+- [X] T036 `frontend/src/components/workbench/ChatPanel.tsx` 와 `frontend/src/lib/wording.ts` — 예산 소진에서 **방향을 적을 입구가 화면에서 사라진 것**을 고친다 per FR-011 · US2/AC5 (contradicts). 막힘 중 대화 패널은 `USE_BLOCKED_ANSWER`(「위의 답변 칸에 알려 주세요」)로 답변 칸을 가리키는데, US2 가 예산 소진에서 그 칸을 닫았다 — **가리키는 곳이 없는 안내**가 됐다. 이것은 `BlockedView` 의 docstring 이 기록한 과거 실증 문제와 같은 형태이며(「대화 패널은 답변 칸을 가리키는데 답변 칸이 없었다」), 그때 사용자에게 남은 길은 세션을 버리는 것뿐이었다. 예산 소진일 때 대화 패널이 다른 말을 하게 하거나(대화로 방향을 받는다), 안내 문구가 가리킬 곳을 남긴다. **어느 쪽이든 FR-013(칸을 열지 않는다)과 충돌하지 않아야 한다** — 「적지 않아도 된다」와 「적을 수 없다」는 다르다
 
-- [ ] T037 `backend/tests/integration/test_budget_cumulative.py` 를 만든다 per FR-018 · FR-022 · US3/AC2 (missing). T023 이 요구했으나 만들어지지 않았고, 누적 유지는 단위 수준(`test_attempt_limits.py`)에서만 덮인다. 둘을 새로 본다 — ① 새 지시문에서 누적이 **0 으로 돌아가는지**(같은 세션의 이어가기와 다른 지시는 다른 일이다) ② 화면을 새로 고쳐 얻는 `BlockedView` 에 수치가 실려 **새로 고침을 견디는지**
+- [X] T037 `backend/tests/integration/test_budget_cumulative.py` 를 만든다 per FR-018 · FR-022 · US3/AC2 (missing). T023 이 요구했으나 만들어지지 않았고, 누적 유지는 단위 수준(`test_attempt_limits.py`)에서만 덮인다. 둘을 새로 본다 — ① 새 지시문에서 누적이 **0 으로 돌아가는지**(같은 세션의 이어가기와 다른 지시는 다른 일이다) ② 화면을 새로 고쳐 얻는 `BlockedView` 에 수치가 실려 **새로 고침을 견디는지**
 
-- [ ] T038 두 통로가 **같은 값**을 싣는지 고정한다 per contracts/blocked-view.md §4 (missing) — `ai_blocked` 이벤트(`backend/src/itb/authoring/blocked.py`)와 `BlockedView`(`backend/src/itb/api/routes/sessions.py`)가 같은 `AgentOutcome` 에서 읽으므로 지금은 갈릴 수 없지만, 한쪽에만 필드를 더하는 변경이 조용히 통과한다. 한쪽만 실으면 새로 고친 사용자가 판단 근거를 잃는다
+- [X] T038 두 통로가 **같은 값**을 싣는지 고정한다 per contracts/blocked-view.md §4 (missing) — `ai_blocked` 이벤트(`backend/src/itb/authoring/blocked.py`)와 `BlockedView`(`backend/src/itb/api/routes/sessions.py`)가 같은 `AgentOutcome` 에서 읽으므로 지금은 갈릴 수 없지만, 한쪽에만 필드를 더하는 변경이 조용히 통과한다. 한쪽만 실으면 새로 고친 사용자가 판단 근거를 잃는다
 
 **Checkpoint**: T036 이 가장 급하다 — US2 가 만든 회귀이며, 고치기 전에는 예산 소진에서
 방향을 주고 싶은 사용자에게 길이 없다
