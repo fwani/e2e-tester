@@ -2335,6 +2335,11 @@ export function SessionScreen({
               // `needs_input` 으로 본다 (기존 동작 그대로).
               kind: event.kind ?? "needs_input",
               choices: (event.choices ?? []) as AiChoice[],
+              // 022 — 뷰 경로와 **같은 값**을 읽는다. 한쪽만 읽으면 새로 고침 전후로
+              // 보이는 수치가 달라진다.
+              totalToolCalls: event.total_tool_calls ?? null,
+              stepCount: event.step_count ?? null,
+              madeProgress: event.made_progress ?? null,
             });
             void resync();
             break;
@@ -3029,6 +3034,11 @@ export function SessionScreen({
         question: view.blocked.question ?? null,
         kind: view.blocked.kind ?? "needs_input",
         choices: view.blocked.choices,
+        // 022 — **선택적으로 읽는다.** 022 이전 서버에는 없는 값이고, 없으면 화면이
+        // 그 표시를 그리지 않는다 (계약 §3).
+        totalToolCalls: view.blocked.total_tool_calls ?? null,
+        stepCount: view.blocked.step_count ?? null,
+        madeProgress: view.blocked.made_progress ?? null,
       }
     : aiBlocked;
 

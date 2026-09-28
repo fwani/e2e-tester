@@ -1575,3 +1575,47 @@ export function mismatchNotice(count: number | null | undefined): string | null 
 export const PRODUCT_MISMATCH_NOTE =
   "제품이 지시문과 다르게 동작해 막혔습니다. 알려 줄 것이 있는 막힘이 아니므로 " +
   "답변 칸을 열지 않습니다 — 직접 이어받거나 결함을 고친 뒤 다시 시도하세요.";
+
+/**
+ * 예산이 떨어져 멈췄을 때의 안내 (022 FR-012·FR-013).
+ *
+ * **「막혔다」가 아니라 「예산이 떨어졌다」로 읽혀야 한다.** AI 가 길을 잃은 것이
+ * 아니라 한 번에 할 수 있는 양을 다 쓴 것이고, 이어가면 진행된다 — 그래서
+ * `PRODUCT_MISMATCH_NOTE` 와 **정반대의 말**을 한다. 그쪽은 「이어가도 소용없다」이고
+ * 이쪽은 「이어가면 된다」이다.
+ */
+export const BUDGET_EXHAUSTED_NOTE =
+  "AI 가 한 번에 할 수 있는 양을 다 썼습니다. 막힌 것이 아니므로 이어서 계속할 수 " +
+  "있습니다 — 알려 줄 것이 없는 멈춤이라 답변 칸을 열지 않습니다.";
+
+/** 예산 소진 안내의 제목. 「AI 가 막혔습니다」를 대신한다 (022 FR-012). */
+export const BUDGET_EXHAUSTED_TITLE = "여기까지 했습니다";
+
+/**
+ * 얼마나 썼는지 (022 FR-017·FR-019).
+ *
+ * **두 수를 한 줄에 둔다.** 「87번 움직여 Step 12개」가 판단에 쓰이는 형태이고,
+ * 따로 두면 사용자가 둘을 머릿속에서 붙여야 한다.
+ */
+export function budgetUsageLine(
+  totalCalls: number | null | undefined,
+  stepCount: number | null | undefined,
+): string | null {
+  if (totalCalls == null) return null;
+  const steps = stepCount ?? 0;
+  return `지금까지 ${totalCalls}번 움직여 Step ${steps}개를 만들었습니다.`;
+}
+
+/**
+ * 이어갔는데 진전이 없었다 (022 FR-020·FR-021).
+ *
+ * **막지 않고 말만 한다.** 사실을 알리는 것이 이 문장의 전부이고, 더 할지는 사용자가
+ * 정한다 — 헛도는 것과 오래 걸리는 것을 제품이 구별할 수 없기 때문이다.
+ *
+ * `null`(판정 불가, 첫 시도)과 `true` 에는 아무 말도 하지 않는다. 「진전 있음」을
+ * 굳이 말하면 정상 진행에 잡음이 된다.
+ */
+export function stalledNotice(madeProgress: boolean | null | undefined): string | null {
+  if (madeProgress !== false) return null;
+  return "직전에 이어간 뒤로 새 Step 이 생기지 않았습니다. 같은 자리를 맴돌고 있을 수 있습니다.";
+}

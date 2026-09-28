@@ -149,8 +149,15 @@ cd backend && .venv/bin/python -m ruff check src tests
 - `tests/abnormal/test_ui_surface.py` — AS-009 · AS-025 · AS-037 · AS-046
 - ruff — `src/itb/api/routes/steps.py`, `src/itb/execution/assertion_builder.py`,
   `src/itb/execution/step_executor.py`, `tests/integration/test_negative_assertion.py`
+- `frontend/tests/ScreenSweep.test.ts` — 2건. **순회 보고서가 낡았다**(화면 코드를 고친
+  뒤 `backend/.venv/bin/python scripts/screen_sweep.py` 를 다시 돌리지 않았다). 022 의
+  변경을 stash 하고 확인해 **이 기능 이전부터 실패하던 것**임을 확인했다
 
 전부 021 작업분이며 이 기능과 무관하다.
+
+**다만 ScreenSweep 은 022 도 다시 돌려야 한다** — 이 기능이 `WorkArea.tsx` 를 고쳤으므로,
+021 이 순회를 돌려 보고서를 갱신하면 022 의 변경도 함께 반영해야 한다. 이 기능만으로는
+그 실패를 없앨 수 없다 (021 의 변경분이 섞여 있다).
 
 ---
 

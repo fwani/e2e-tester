@@ -90,4 +90,9 @@ async def enter_blocked(session: BrowserSession, outcome: AgentOutcome) -> None:
         # 들고 있지 않아도 되고, 기존 소비자는 모르는 필드를 무시한다.
         kind=outcome.blocked_kind.value,
         choices=list(CHOICES),
+        # 022 — 사용자가 「더 할지」를 정할 근거. `BlockedView` 와 **같은 값**이어야
+        # 한다 (두 통로가 같은 `AgentOutcome` 에서 읽으므로 갈릴 수 없다).
+        total_tool_calls=outcome.total_tool_calls,
+        step_count=outcome.step_count,
+        made_progress=outcome.made_progress,
     )

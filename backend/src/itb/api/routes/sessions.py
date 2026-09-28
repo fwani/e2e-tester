@@ -648,7 +648,29 @@ class BlockedView(BaseModel):
     """
 
     choices: list[str]
-    """고를 수 있는 것. **서버가 준다** — 화면이 목록을 복제하면 선택지가 늘 때 갈린다."""
+    """고를 수 있는 것. **서버가 준다** — 화면이 목록을 복제하면 선택지가 늘 때 갈린다.
+
+    **예산 소진이라고 목록을 줄이지 않는다** (022). 이 값은 「무엇을 고를 수 있는가」이고
+    「무엇을 권할 것인가」가 아니다 — 상태 기계는 여전히 모두 받을 수 있어야 하며,
+    받을 수 있는 것과 권하는 것은 다른 사실이다. 걸러내기는 화면이 한다.
+    """
+
+    total_tool_calls: int = 0
+    """이 지시에 쓴 **누적** 동작 수 (022 FR-017).
+
+    한 시도의 수가 아니다 — 그쪽은 이어갈 때마다 0 에서 다시 시작해, 몇 번을 이어갔든
+    처음처럼 보인다. 사용자가 「더 할지」를 정하는 근거이므로 누적이어야 한다.
+    """
+
+    step_count: int = 0
+    """지금까지 만들어진 Step 수 (022 FR-019)."""
+
+    made_progress: bool | None = None
+    """직전 이어가기 이후 Step 이 늘었는가 (022 FR-020).
+
+    **`None` 은 `False` 와 다르다** — 「판정할 수 없다」(첫 시도)와 「진전이 없었다」는
+    다른 사실이고, 화면은 `False` 일 때만 안내를 그린다.
+    """
 
 
 class SessionView(BaseModel):
@@ -920,6 +942,11 @@ def _blocked_view(w: SessionWork) -> BlockedView | None:
         question=outcome.question,
         kind=outcome.blocked_kind.value,
         choices=list(CHOICES),
+        # 022 — 이벤트와 **같은 값**을 싣는다. 한쪽만 실으면 화면을 새로 고친 사용자가
+        # 판단 근거를 잃고, 그것이 이 클래스가 만들어진 이유를 다시 재현한다.
+        total_tool_calls=outcome.total_tool_calls,
+        step_count=outcome.step_count,
+        made_progress=outcome.made_progress,
     )
 
 

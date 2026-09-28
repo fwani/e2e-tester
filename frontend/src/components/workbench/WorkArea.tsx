@@ -33,7 +33,11 @@ import { useEffect, useRef, useState } from "react";
 
 import { ErrorNotice } from "../ErrorNotice";
 import {
+  BUDGET_EXHAUSTED_NOTE,
+  BUDGET_EXHAUSTED_TITLE,
   PRODUCT_MISMATCH_NOTE,
+  budgetUsageLine,
+  stalledNotice,
   STALE_OVERWRITE_LABEL,
   editSavedNotice,
   staleReloadLabel,
@@ -390,6 +394,13 @@ export function AlwaysVisibleFailure({
       </span>
     ) : null;
   if (error === null && blocked === null) return placeholder;
+  /*
+    022 — **예산 소진인가를 한 자리에서 판정한다.** 제목·안내·선택지·수치가 모두 이
+    값으로 갈리므로, 각자 `kind` 를 다시 보면 한 곳을 고쳤을 때 나머지가 따라오지 않는다.
+  */
+  const budget = blocked?.kind === "budget_exhausted";
+  const usage = budget ? budgetUsageLine(blocked?.totalToolCalls, blocked?.stepCount) : null;
+  const stalled = budget ? stalledNotice(blocked?.madeProgress) : null;
   return (
     <div data-always-visible-failure className="flex flex-col gap-[10px]">
       {error !== null && <ErrorNotice error={error} onDismiss={onDismissError ?? null} />}
@@ -397,8 +408,11 @@ export function AlwaysVisibleFailure({
         <div
           role="alert"
           className="bg-fail-t border border-fail-line rounded-base py-s3 px-[14px]"
+          data-blocked-kind={blocked.kind ?? "needs_input"}
         >
-          <strong className="font-sans text-[14px] font-semibold leading-none text-fail">AI 가 막혔습니다</strong>
+          <strong className="font-sans text-[14px] font-semibold leading-none text-fail">
+            {budget ? BUDGET_EXHAUSTED_TITLE : "AI 가 막혔습니다"}
+          </strong>
           {blocked.attempted !== null && (
  <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-[6px] mx-0 mb-0">
               시도: {blocked.attempted}
@@ -431,12 +445,38 @@ export function AlwaysVisibleFailure({
             나머지 선택지(직접 수행·다시·건너뛰기·종료)는 그대로다 — 사람이 이어받아
             처리하는 길은 여전히 열려 있어야 한다 (FR-026).
           */}
-          {blocked.kind === "product_mismatch" ? (
+          {/*
+            022 FR-017·FR-019 — **얼마나 썼는지 보여 준다.** 이어가기가 횟수로 막히지
+            않으므로(FR-010) 판단 근거가 화면에 있어야 하고, 근거 없이 누르는 것은
+            「알면서 계속하는 것」이 아니다.
+          */}
+          {budget && usage !== null && (
+            <p
+              className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-0 mx-0 mb-[6px]"
+              data-blocked-usage
+            >
+              {usage}
+            </p>
+          )}
+          {/*
+            022 FR-020·FR-021 — **막지 않고 말만 한다.** 헛도는 것과 오래 걸리는 것을
+            제품이 구별할 수 없으므로, 사실을 알리고 결정은 사용자가 한다.
+          */}
+          {budget && stalled !== null && (
+            <p
+              className="font-sans text-[12px] leading-[1.4] font-normal text-warn mt-0 mx-0 mb-[10px]"
+              data-blocked-stalled
+            >
+              {stalled}
+            </p>
+          )}
+          {blocked.kind === "product_mismatch" || budget ? (
             <p
               className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-0 mx-0 mb-[10px]"
-              data-blocked-product-mismatch
+              data-blocked-product-mismatch={budget ? undefined : true}
+              data-blocked-budget-exhausted={budget ? true : undefined}
             >
-              {PRODUCT_MISMATCH_NOTE}
+              {budget ? BUDGET_EXHAUSTED_NOTE : PRODUCT_MISMATCH_NOTE}
             </p>
           ) : (
             blocked.choices.includes("answer") && (
@@ -454,9 +494,13 @@ export function AlwaysVisibleFailure({
               // 것인지 확인하느라 멈춘다 (FR-235). 제품 동작 불일치면 답변 자체가
               // 성립하지 않으므로 같은 규칙으로 빠진다 (020 FR-024).
               .filter((c) => c !== "answer")
+              // 022 FR-015 — **뜻이 없는 선택지는 보이지 않는다.** 예산 소진에는
+              // 건너뛸 특정 동작이 없다. 서버는 목록을 줄이지 않는다(받을 수 있는 것과
+              // 권하는 것은 다른 사실이다) — 걸러내기는 여기가 한다.
+              .filter((c) => !(budget && c === "skip"))
               .map((c) => (
                 <Button key={c} size={buttonSize} disabled={busy} onClick={() => onChoose?.(c)}>
-                  {AI_CHOICE_LABEL[c] ?? c}
+                  {(budget ? BUDGET_CHOICE_LABEL[c] : undefined) ?? AI_CHOICE_LABEL[c] ?? c}
                 </Button>
               ))}
           </div>
@@ -480,6 +524,19 @@ const AI_CHOICE_LABEL: Record<string, string> = {
   retry: "AI 에게 다시",
   skip: "이 동작 건너뛰기",
   abort: "AI 작성 끝내기",
+};
+/**
+ * 예산 소진일 때만 쓰는 문구 (022 FR-014).
+ *
+ * **같은 조작인데 뜻이 다르게 읽힌다.** 「AI 에게 다시」는 예산이 떨어진 상황에서
+ * 「처음부터 다시」로 읽히지만, 실제로 일어나는 일은 남은 지시를 이어서 하는 것이다
+ * (서버가 보내는 지시도 그렇게 갈린다 — `_resume_note`).
+ *
+ * 여기 없는 값은 `AI_CHOICE_LABEL` 로 떨어진다 — 상황별 문구가 필요한 것만 적는다.
+ */
+const BUDGET_CHOICE_LABEL: Record<string, string> = {
+  retry: "이어서 계속",
+  abort: "여기까지",
 };
 /**
  * AI 에게 답을 써서 돌려주는 칸 (2026-09-10 사용자 결정).

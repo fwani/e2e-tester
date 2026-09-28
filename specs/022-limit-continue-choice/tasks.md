@@ -99,23 +99,23 @@ description: "Task list template for feature implementation"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T015 [P] [US2] `frontend/tests/BudgetExhaustedBlocked.test.tsx` 를 만든다 — `kind: "budget_exhausted"` 일 때 알려 주기 칸이 **없고**(FR-013), 제목이 「막혔습니다」가 **아니며**(FR-012), 「이 동작 건너뛰기」가 **보이지 않고**(FR-015), 이어가기 버튼 글자가 「다시」가 아닌지(FR-014). `frontend/tests/ProductMismatchBlocked.test.tsx` 가 같은 구조의 선례다
+- [X] T015 [P] [US2] `frontend/tests/BudgetExhaustedBlocked.test.tsx` 를 만든다 — `kind: "budget_exhausted"` 일 때 알려 주기 칸이 **없고**(FR-013), 제목이 「막혔습니다」가 **아니며**(FR-012), 「이 동작 건너뛰기」가 **보이지 않고**(FR-015), 이어가기 버튼 글자가 「다시」가 아닌지(FR-014). `frontend/tests/ProductMismatchBlocked.test.tsx` 가 같은 구조의 선례다
 
-- [ ] T016 [P] [US2] `frontend/tests/AiBlockedAnswer.test.tsx` 에 **회귀 검증**을 더한다 — `kind` 가 `needs_input`·`product_mismatch` 일 때 화면이 **지금과 같은지** (FR-016 · SC-005)
+- [X] T016 [P] [US2] `frontend/tests/AiBlockedAnswer.test.tsx` 에 **회귀 검증**을 더한다 — `kind` 가 `needs_input`·`product_mismatch` 일 때 화면이 **지금과 같은지** (FR-016 · SC-005)
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] `backend/src/itb/api/routes/sessions.py` 의 `BlockedView` 와 `backend/src/itb/authoring/blocked.py` 의 `ai_blocked` 이벤트가 **같은 새 필드**를 싣게 한다 (FR-005 — 구별이 화면까지 전달된다). `choices` 는 **줄이지 않는다** — 받을 수 있는 것과 권하는 것은 다른 사실이며, 걸러내기는 화면이 한다 ([contracts/blocked-view.md](./contracts/blocked-view.md) §1)
+- [X] T017 [US2] `backend/src/itb/api/routes/sessions.py` 의 `BlockedView` 와 `backend/src/itb/authoring/blocked.py` 의 `ai_blocked` 이벤트가 **같은 새 필드**를 싣게 한다 (FR-005 — 구별이 화면까지 전달된다). `choices` 는 **줄이지 않는다** — 받을 수 있는 것과 권하는 것은 다른 사실이며, 걸러내기는 화면이 한다 ([contracts/blocked-view.md](./contracts/blocked-view.md) §1)
 
-- [ ] T018 [US2] `frontend/src/pages/SessionScreen.tsx` 가 `BlockedView` 의 새 필드를 화면 모델로 옮긴다. 없으면 그리지 않는 **선택적 읽기**여야 한다 — 구버전 백엔드와 섞여도 깨지지 않는다 ([contracts/blocked-view.md](./contracts/blocked-view.md) §3)
+- [X] T018 [US2] `frontend/src/pages/SessionScreen.tsx` 가 `BlockedView` 의 새 필드를 화면 모델로 옮긴다. 없으면 그리지 않는 **선택적 읽기**여야 한다 — 구버전 백엔드와 섞여도 깨지지 않는다 ([contracts/blocked-view.md](./contracts/blocked-view.md) §3)
 
-- [ ] T019 [US2] `frontend/src/components/workbench/WorkArea.tsx` 에 예산 소진 분기를 더한다. **기존 `product_mismatch` 분기를 건드리지 않는다.** 제목·사유 문구, 알려 주기 칸 닫기, 선택지 걸러내기(`skip` 제외)를 한 자리에서 판단한다. 새 부품을 만들지 않고 기존 `Button` 을 쓴다
+- [X] T019 [US2] `frontend/src/components/workbench/WorkArea.tsx` 에 예산 소진 분기를 더한다. **기존 `product_mismatch` 분기를 건드리지 않는다.** 제목·사유 문구, 알려 주기 칸 닫기, 선택지 걸러내기(`skip` 제외)를 한 자리에서 판단한다. 새 부품을 만들지 않고 기존 `Button` 을 쓴다
 
-- [ ] T020 [US2] `frontend/src/components/workbench/WorkArea.tsx` 의 `AI_CHOICE_LABEL` 을 막힘 종류에 따라 갈라 쓴다 — 예산 소진에서 `retry` 는 「이어서 계속」, `abort` 는 「여기까지」로 읽힌다 (FR-014). 사전에 없는 값이 값 그대로 보이는 **기존 안전장치를 유지한다**
+- [X] T020 [US2] `frontend/src/components/workbench/WorkArea.tsx` 의 `AI_CHOICE_LABEL` 을 막힘 종류에 따라 갈라 쓴다 — 예산 소진에서 `retry` 는 「이어서 계속」, `abort` 는 「여기까지」로 읽힌다 (FR-014). 사전에 없는 값이 값 그대로 보이는 **기존 안전장치를 유지한다**
 
 - [ ] T021 [US2] `backend/src/itb/api/routes/sessions.py` 의 `ai_choice` 에서 예산 소진 막힘에도 `answer` 경로가 살아 있는지 확인한다 (FR-011) — 화면이 칸을 열지 않을 뿐 서버가 답변을 거절해서는 안 된다
 
-- [ ] T022 [US2] `frontend/tests/BudgetExhaustedBlocked.test.tsx` 와 `frontend/tests/AiBlockedAnswer.test.tsx` 가 통과하는지 확인한다
+- [X] T022 [US2] `frontend/tests/BudgetExhaustedBlocked.test.tsx` 와 `frontend/tests/AiBlockedAnswer.test.tsx` 가 통과하는지 확인한다
 
 **Checkpoint**: 예산 소진과 기존 막힘이 화면에서 갈린다. SC-004·SC-005 가 지켜진다
 
@@ -130,11 +130,11 @@ description: "Task list template for feature implementation"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T023 [P] [US3] `backend/tests/integration/test_budget_cumulative.py` 를 만든다 — 이어가기를 거쳐 `total_tool_calls` 가 **누적되고**(FR-018), 새 지시문에서 **0 으로 돌아가며**, 화면을 새로 고쳐 얻는 `BlockedView` 에도 같은 값이 실리는지(FR-022)
+- [X] T023 [P] [US3] `backend/tests/integration/test_budget_cumulative.py` 를 만든다 — 이어가기를 거쳐 `total_tool_calls` 가 **누적되고**(FR-018), 새 지시문에서 **0 으로 돌아가며**, 화면을 새로 고쳐 얻는 `BlockedView` 에도 같은 값이 실리는지(FR-022)
 
 - [X] T024 [P] [US3] `backend/tests/unit/test_progress_detection.py` 를 만든다 — Step 이 늘었으면 `made_progress is True`, 늘지 않았으면 `False`, **첫 시도면 `None`**(판정 불가와 진전 없음은 다른 사실). [data-model.md](./data-model.md) §2
 
-- [ ] T025 [P] [US3] `frontend/tests/BudgetExhaustedBlocked.test.tsx` 에 더한다 — 누적·Step 수가 보이고, `made_progress === false` 일 때만 진전 없음 안내가 뜨며(`null` 에는 뜨지 않는다), 안내가 떠도 **이어가기 버튼이 눌리는지**(FR-021)
+- [X] T025 [P] [US3] `frontend/tests/BudgetExhaustedBlocked.test.tsx` 에 더한다 — 누적·Step 수가 보이고, `made_progress === false` 일 때만 진전 없음 안내가 뜨며(`null` 에는 뜨지 않는다), 안내가 떠도 **이어가기 버튼이 눌리는지**(FR-021)
 
 ### Implementation for User Story 3
 
@@ -142,11 +142,11 @@ description: "Task list template for feature implementation"
 
 - [X] T027 [US3] ~~새 지시문에서 누적이 0 으로 돌아가는 자리를 만든다~~ — **코드 변경 불필요로 판정.** `run()` 은 이어가기(`_start_agent_note` → `_run_agent(instruction=note)`)도 지나므로 거기서 누적을 지우면 FR-018 이 깨진다. 새 지시문은 `_start_agent` 를 통해 **새 세션**에서 오고, 그때 `AttemptLimits` 가 새로 만들어져 누적이 이미 0 이다 ([data-model.md](./data-model.md) §5)
 
-- [ ] T028 [US3] `backend/src/itb/api/routes/sessions.py` 의 `BlockedView` 와 `backend/src/itb/authoring/blocked.py` 의 `ai_blocked` 에 `total_tool_calls`·`step_count`·`made_progress` 를 싣는다. **두 통로가 같은 값을 실어야 한다** — 한쪽만 실으면 새로 고친 화면이 수치를 잃는다. T017 의존
+- [X] T028 [US3] `backend/src/itb/api/routes/sessions.py` 의 `BlockedView` 와 `backend/src/itb/authoring/blocked.py` 의 `ai_blocked` 에 `total_tool_calls`·`step_count`·`made_progress` 를 싣는다. **두 통로가 같은 값을 실어야 한다** — 한쪽만 실으면 새로 고친 화면이 수치를 잃는다. T017 의존
 
-- [ ] T029 [US3] `frontend/src/components/workbench/WorkArea.tsx` 가 누적·Step 수를 예산 소진 안내 안에 그린다 (FR-017·FR-019). 진전 없음은 `made_progress === false` 일 때만 (FR-020). 안내는 이어가기를 **막지 않는다** (FR-021)
+- [X] T029 [US3] `frontend/src/components/workbench/WorkArea.tsx` 가 누적·Step 수를 예산 소진 안내 안에 그린다 (FR-017·FR-019). 진전 없음은 `made_progress === false` 일 때만 (FR-020). 안내는 이어가기를 **막지 않는다** (FR-021)
 
-- [ ] T030 [US3] `backend/tests/integration/test_budget_cumulative.py`·`backend/tests/unit/test_progress_detection.py`·`frontend/tests/BudgetExhaustedBlocked.test.tsx` 가 통과하는지 확인한다
+- [X] T030 [US3] `backend/tests/integration/test_budget_cumulative.py`·`backend/tests/unit/test_progress_detection.py`·`frontend/tests/BudgetExhaustedBlocked.test.tsx` 가 통과하는지 확인한다
 
 **Checkpoint**: 세 이야기가 모두 동작한다
 

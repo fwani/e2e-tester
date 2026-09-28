@@ -173,9 +173,13 @@ export type SessionEvent =
        * 서버는 **항상 싣는다.** 그래도 선택으로 두는 이유는 020 이전 서버와 붙는
        * 경우가 있기 때문이고, 없으면 `needs_input` 으로 본다.
        */
-      kind?: "needs_input" | "product_mismatch" | null;
+      kind?: "needs_input" | "product_mismatch" | "budget_exhausted" | null;
       reason: string;
       choices: string[];
+      /** 022 — 사용자가 「더 할지」를 정할 근거. `BlockedView` 와 같은 값이다. */
+      total_tool_calls?: number | null;
+      step_count?: number | null;
+      made_progress?: boolean | null;
     })
   | (SessionEventBase & {
       type: "ai_finished";

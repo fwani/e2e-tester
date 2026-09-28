@@ -766,9 +766,24 @@ export interface BlockedView {
    * `product_mismatch` 면 답 칸을 열지 않는다 — 사람이 알려 줄 것이 없다 (FR-024).
    * 이벤트에만 있으면 새로고침 뒤 답할 수 없는 질문에 칸이 다시 열린다.
    */
-  kind?: "needs_input" | "product_mismatch" | null;
+  kind?: "needs_input" | "product_mismatch" | "budget_exhausted" | null;
   /** 고를 수 있는 것. **서버가 준다** — 화면이 복제하면 선택지가 늘 때 갈린다. */
   choices: string[];
+  /**
+   * 이 지시에 쓴 **누적** 동작 수 (022 FR-017). 022 이전 서버에는 없다.
+   *
+   * 한 시도의 수가 아니다 — 그쪽은 이어갈 때마다 0 에서 다시 시작한다.
+   */
+  total_tool_calls?: number | null;
+  /** 지금까지 만들어진 Step 수 (022 FR-019). */
+  step_count?: number | null;
+  /**
+   * 직전 이어가기 이후 Step 이 늘었는가 (022 FR-020).
+   *
+   * **`null` 은 `false` 와 다르다** — 「판정할 수 없다」(첫 시도)와 「진전이 없었다」는
+   * 다른 사실이고, 화면은 `false` 일 때만 안내를 그린다.
+   */
+  made_progress?: boolean | null;
 }
 
 /**

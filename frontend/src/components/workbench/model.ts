@@ -109,10 +109,35 @@ export interface AiBlockedState {
    * 알려 줄 것이 없으므로 **답 칸을 열지 않는다** (FR-024) — 답할 수 없는 질문 앞에서
    * 사용자가 시간을 쓰는 것이 020 이 없애려는 상황이다.
    *
+   * `budget_exhausted` 면 **예산이 떨어져** 멈춘 것이다 (022 FR-001). 이때도 알려 줄
+   * 것이 없으므로 답 칸을 열지 않지만, `product_mismatch` 와 **이어가기의 의미가
+   * 정반대**다 — 제품 불일치는 이어가도 같은 결과이고, 예산 소진은 이어가면 진행된다.
+   *
    * 020 이전 서버가 보낸 이벤트에는 없다. 없으면 `needs_input` 으로 본다.
    */
-  kind: "needs_input" | "product_mismatch" | null;
+  kind: "needs_input" | "product_mismatch" | "budget_exhausted" | null;
   choices: string[];
+
+  /**
+   * 이 지시에 쓴 **누적** 동작 수 (022 FR-017). 모르면 `null`.
+   *
+   * 한 시도의 수가 아니다 — 그쪽은 이어갈 때마다 0 에서 다시 시작해, 몇 번을 이어갔든
+   * 처음처럼 보인다. 사용자가 「더 할지」를 정하는 근거이므로 누적이어야 한다.
+   *
+   * **없으면 그리지 않는다.** 022 이전 서버와 섞여도 화면이 깨지지 않아야 한다.
+   */
+  totalToolCalls?: number | null;
+
+  /** 지금까지 만들어진 Step 수 (022 FR-019). 모르면 `null`. */
+  stepCount?: number | null;
+
+  /**
+   * 직전 이어가기 이후 Step 이 늘었는가 (022 FR-020).
+   *
+   * **`null` 은 `false` 와 다르다** — 「판정할 수 없다」(첫 시도, 비교할 값이 없다)와
+   * 「진전이 없었다」는 다른 사실이다. 안내는 `false` 일 때만 그린다.
+   */
+  madeProgress?: boolean | null;
 }
 
 /** 외부 변경 충돌 (006 FR-209). */
