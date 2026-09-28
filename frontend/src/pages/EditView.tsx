@@ -202,6 +202,9 @@ function preview(test: Test, ops: EditOp[]): Test {
         if (op.assertion_value !== undefined && "assertion" in s) {
           next.assertion = { ...s.assertion, value: op.assertion_value };
         }
+        // 020 FR-029 — 표시와 기록이 **함께** 사라진다. 미리보기도 저장 결과와 같아야
+        // 한다 — 다르면 사용자가 저장 전에 본 것과 저장 후가 어긋난다.
+        if (op.clear_mismatch === true && "mismatch" in s) next.mismatch = null;
         return next as unknown as Step;
       });
     } else if (op.op === "delete") {
@@ -1155,6 +1158,14 @@ export function EditView({
         */
         /* 편집면은 `stepDetailExtra` 가 갖는다 — 상세가 자기 입력을 또 그리면 중복이다 */
         stepDetailOwnFields={false}
+        /*
+          020 FR-027 — 결함 후보 표시 걷어내기. **일반 Step 편집과 같은 줄에 선다** —
+          다른 변경과 함께 쌓이고, 함께 저장되고, 함께 되돌려진다. 별도 경로를 두면
+          「이것만 즉시 반영되는」 편집이 생기고 저장 전 미리보기가 어긋난다.
+        */
+        onClearMismatch={(stepId) =>
+          apply({ op: "update", step_id: stepId, clear_mismatch: true })
+        }
         stepDetailExtra={
           current !== null ? (
             <>
@@ -1355,6 +1366,7 @@ function describeOp(op: EditOp, steps: Step[]): string {
         op.tab !== undefined ? "탭" : null,
         op.url !== undefined ? "주소" : null,
         op.assertion_value !== undefined ? "기대값" : null,
+        op.clear_mismatch === true ? "결함 후보 표시 해제" : null,
       ].filter((f): f is string => f !== null);
       return `Step ${numberOf(op.step_id)} · ${fields.join("·")} 수정`;
     }

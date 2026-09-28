@@ -80,6 +80,7 @@ function stub(kind: "result" | "definition") {
                   locator_attempts: [],
                   resolved_candidate: null,
                   candidate_disagreement: [],
+                  assertion_class: null,
                 },
               ],
             }),

@@ -83,6 +83,7 @@ function step(
     locator_attempts: [],
     error_message: null,
     candidate_disagreement: [],
+    assertion_class: null,
   };
 }
 

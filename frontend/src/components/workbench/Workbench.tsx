@@ -133,6 +133,14 @@ export interface WorkbenchProps {
    */
   stepDetailOwnFields?: boolean;
 
+  /**
+   * 결함 후보 표시를 걷어낸다 (020 FR-027).
+   *
+   * **없으면 조작이 그려지지 않는다.** 정의를 고칠 수 없는 국면(결과 화면)에서 눌리지
+   * 않는 단추를 두면 사용자가 왜 안 되는지 묻게 된다.
+   */
+  onClearMismatch?: (stepId: string) => void;
+
   onSelectStep: (stepId: string) => void;
   onCloseDetail: () => void;
   onSaveStep?: (patch: {
@@ -176,6 +184,7 @@ export function Workbench({
   stepFooter,
   stepDetailExtra,
   stepDetailOwnFields = true,
+  onClearMismatch,
   onSelectStep,
   onCloseDetail,
   onSaveStep,
@@ -247,6 +256,11 @@ export function Workbench({
         onClose={onCloseDetail}
         onRemedy={onAction}
         extraFields={stepDetailExtra}
+        onClearMismatch={
+          onClearMismatch !== undefined && model.detail.step !== null
+            ? () => onClearMismatch(model.detail!.step!.id)
+            : undefined
+        }
       />
     );
 

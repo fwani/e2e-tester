@@ -632,6 +632,17 @@ class BlockedView(BaseModel):
     question: str | None = None
     """사람에게 물을 한 문장. 없으면 사람이 먼저 말한다 (질문이 답변의 전제는 아니다)."""
 
+    kind: str = "needs_input"
+    """막힘이 **무엇 때문인가** (020 FR-023).
+
+    이벤트에만 실으면 새로고침 뒤에 사라진다 — 그러면 답할 수 없는 질문에 대해 답변
+    칸이 다시 열린다. 이 클래스가 존재하는 이유(이벤트는 그 순간 붙어 있던 화면에게만
+    간다)가 여기에도 그대로 걸린다.
+
+    사유를 모르는 복원 경로에서는 기본값이다. 모르는 것을 `product_mismatch` 로 보면
+    사람이 알려 줄 수 있는 막힘에서 답변 칸이 닫힌다 — **덜 해로운 쪽으로 떨어진다.**
+    """
+
     choices: list[str]
     """고를 수 있는 것. **서버가 준다** — 화면이 목록을 복제하면 선택지가 늘 때 갈린다."""
 
@@ -903,6 +914,7 @@ def _blocked_view(w: SessionWork) -> BlockedView | None:
         attempted=outcome.attempted,
         reason=outcome.reason or "AI 가 더 진행하지 못했습니다.",
         question=outcome.question,
+        kind=outcome.blocked_kind.value,
         choices=list(CHOICES),
     )
 

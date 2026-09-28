@@ -101,6 +101,17 @@ export interface AiBlockedState {
    * 되는가」다. 화면이 답 칸을 여는 근거는 뒤쪽이다.
    */
   question: string | null;
+
+  /**
+   * 막힘이 **무엇 때문인가** (020 FR-023).
+   *
+   * `product_mismatch` 면 제품이 지시문과 다르게 동작해 막힌 것이다. 그때는 사람이
+   * 알려 줄 것이 없으므로 **답 칸을 열지 않는다** (FR-024) — 답할 수 없는 질문 앞에서
+   * 사용자가 시간을 쓰는 것이 020 이 없애려는 상황이다.
+   *
+   * 020 이전 서버가 보낸 이벤트에는 없다. 없으면 `needs_input` 으로 본다.
+   */
+  kind: "needs_input" | "product_mismatch" | null;
   choices: string[];
 }
 

@@ -568,6 +568,14 @@ export type EditOp =
       tab?: number;
       url?: string;
       assertion_value?: string;
+      /**
+       * 결함 후보 표시를 걷어낸다 (020 FR-027).
+       *
+       * **`true` 일 때만 뜻이 있다.** 표시를 붙이는 조작은 없다 — 어긋남은 작성 시점에
+       * 실제로 관찰된 사실이며, 손으로 만들 수 있게 두면 아무 때나 「이건 원래 실패하던
+       * 거야」라고 적을 수 있다.
+       */
+      clear_mismatch?: boolean;
       /** 올릴 파일의 이름 — `upload` Step 만 갖는다 (2026-09-09) */
       file_name?: string;
     }
@@ -752,6 +760,13 @@ export interface BlockedView {
   reason: string;
   /** 사람에게 물을 한 문장. 없으면 사람이 먼저 말한다. */
   question?: string | null;
+  /**
+   * 막힘이 **무엇 때문인가** (020 FR-023).
+   *
+   * `product_mismatch` 면 답 칸을 열지 않는다 — 사람이 알려 줄 것이 없다 (FR-024).
+   * 이벤트에만 있으면 새로고침 뒤 답할 수 없는 질문에 칸이 다시 열린다.
+   */
+  kind?: "needs_input" | "product_mismatch" | null;
   /** 고를 수 있는 것. **서버가 준다** — 화면이 복제하면 선택지가 늘 때 갈린다. */
   choices: string[];
 }

@@ -40,6 +40,9 @@ import { capabilitiesFor, type CapabilityFacts } from "../lib/capabilities";
 import {
   ACTION_LABEL,
   PHASE_LABEL,
+  assertionClassHint,
+  assertionClassSummary,
+  countAssertionClasses,
   missingShotText,
   outcomeTone,
   partialRunDiagnosis,
@@ -291,6 +294,38 @@ function stepShot(
       dismissible: false,
     });
   }
+  /*
+    020 FR-019·FR-020 — 실패한 검증을 **회귀와 알려진 결함으로 갈라** 보여 준다.
+
+    결함이 안 고쳐진 채 매일 도는 테스트는 매일 빨간색이다. 그 빨간색이 「원래 알던
+    결함」인지 「오늘 새로 깨진 것」인지 구별되지 않으면 사람은 곧 빨간색을 무시하고,
+    그것은 020 이전보다 나쁜 상태다.
+
+    **알림을 결말 요약보다 먼저 세운다** — 회귀가 사용자가 가장 먼저 봐야 할 것이다.
+    0건인 분류는 실리지 않는다 (`assertionClassSummary` 가 그 규칙을 소유한다).
+  */
+  const assertionCounts = countAssertionClasses(result.steps);
+  const assertionSummary = assertionClassSummary(assertionCounts);
+  if (assertionSummary !== null) {
+    const hasRegression = (assertionCounts.regression ?? 0) > 0;
+    notices.push({
+      id: "assertion-classes",
+      // 회귀가 있으면 경고, 알려진 결함·해소됨뿐이면 알림. **색이 순서를 거든다.**
+      tone: hasRegression ? "warn" : "info",
+      role: hasRegression ? "status" : "note",
+      message: `검증 ${assertionSummary}`,
+      nextAction: assertionClassHint(
+        hasRegression
+          ? "regression"
+          : (assertionCounts.resolved ?? 0) > 0
+            ? "resolved"
+            : "known_defect",
+      ),
+      action: null,
+      dismissible: false,
+    });
+  }
+
   // T048 · FR-254 A5 — 이 결과 이후 정의가 바뀌었다.
   if (unmatched > 0) {
     notices.push({

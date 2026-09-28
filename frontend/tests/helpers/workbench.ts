@@ -184,6 +184,7 @@ export function stepResult(overrides: Partial<StepResult> = {}): StepResult {
     locator_attempts: [],
     resolved_candidate: "role=button \"로그인\"",
     candidate_disagreement: [],
+    assertion_class: null,
     ...overrides,
   };
 }

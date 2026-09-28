@@ -32,7 +32,12 @@ import { ToolPanel } from "../../ui/ToolPanel";
 import { useEffect, useRef, useState } from "react";
 
 import { ErrorNotice } from "../ErrorNotice";
-import { STALE_OVERWRITE_LABEL, editSavedNotice, staleReloadLabel } from "../../lib/wording";
+import {
+  PRODUCT_MISMATCH_NOTE,
+  STALE_OVERWRITE_LABEL,
+  editSavedNotice,
+  staleReloadLabel,
+} from "../../lib/wording";
 import type { AiBlockedState, ComposeMode, WorkAreaView } from "./model";
 import type { SlotSize } from "../../lib/layout";
 
@@ -402,18 +407,38 @@ export function AlwaysVisibleFailure({
             질문이 없어도 칸은 열린다 — 물을 것을 특정하지 못한 채 막히는 경우가 있고,
             그때도 사람은 무엇이 문제인지 알 수 있다.
           */}
-          {blocked.choices.includes("answer") && (
+          {/*
+            020 FR-024 — **제품이 지시문과 다르게 동작해 막힌 것에는 답 칸을 열지
+            않는다.** 사람이 알려 줄 것이 없기 때문이다.
+
+            지금까지 이 상황은 「요소를 찾지 못했다」로 보고됐고, 사용자는 힌트를 주며
+            시간을 쓴 뒤에야 제품 문제였음을 알았다. 칸을 닫는 것이 그 시간을 없앤다.
+
+            나머지 선택지(직접 수행·다시·건너뛰기·종료)는 그대로다 — 사람이 이어받아
+            처리하는 길은 여전히 열려 있어야 한다 (FR-026).
+          */}
+          {blocked.kind === "product_mismatch" ? (
+            <p
+              className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-0 mx-0 mb-[10px]"
+              data-blocked-product-mismatch
+            >
+              {PRODUCT_MISMATCH_NOTE}
+            </p>
+          ) : (
+            blocked.choices.includes("answer") && (
               <BlockedAnswer
                 question={blocked.question}
                 busy={busy}
                 buttonSize={buttonSize}
                 onSubmit={(text) => onChoose?.("answer", text)}
-            />
+              />
+            )
           )}
           <div className="flex items-center gap-s2 flex-wrap" data-action="ai.chooseBlocked">
             {blocked.choices
               // 답변은 위 칸이 갖는다 — 같은 조작이 두 자리에 있으면 사용자는 둘이 다른
-              // 것인지 확인하느라 멈춘다 (FR-235).
+              // 것인지 확인하느라 멈춘다 (FR-235). 제품 동작 불일치면 답변 자체가
+              // 성립하지 않으므로 같은 규칙으로 빠진다 (020 FR-024).
               .filter((c) => c !== "answer")
               .map((c) => (
                 <Button key={c} size={buttonSize} disabled={busy} onClick={() => onChoose?.(c)}>

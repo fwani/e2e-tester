@@ -14,7 +14,12 @@
  */
 
 import type { InsertableKind, ManualStepSpec } from "../api/client";
-import type { Outcome, RunScope, StepOutcome } from "../types/generated/run-result";
+import type {
+  AssertionClass,
+  Outcome,
+  RunScope,
+  StepOutcome,
+} from "../types/generated/run-result";
 import type { ActionId } from "./actions";
 import type { Phase } from "./phase";
 import type { StepOutcome as WorkbenchStepOutcome } from "../components/workbench/model";
@@ -1341,3 +1346,155 @@ export function displayOutcomeLabel(outcome: WorkbenchStepOutcome): string {
 export function meansPassed(outcome: WorkbenchStepOutcome): boolean {
   return outcome === "pass";
 }
+
+// ─── 어긋난 검증과 그 분류 (020 FR-013·FR-014·FR-019·FR-022) ─────────────────
+//
+// **화면이 이 문구를 직접 만들지 않는다.** 결말 어휘가 화면마다 갈렸던 U-20 이
+// 정확히 그렇게 생겼다 — 같은 것을 배지는 「완료」로, 요약 바는 `PASS` 로 불렀다.
+// 어긋남은 세 화면(Step 목록·Step 상세·실행 결과)에 나오므로 같은 위험이 있다.
+
+/** Step 목록 행의 결함 후보 칩 (FR-014). */
+export const MISMATCH_CHIP = "결함 후보";
+
+/**
+ * 결함 후보 칩의 설명. 「제품이 결함이다」라고 말하지 않는다.
+ *
+ * 제품은 **기대와 달랐다는 사실만** 기록한다. 그것이 제품 결함인지 지시문 오류인지는
+ * 사람이 판단한다 (spec Assumptions).
+ */
+export const MISMATCH_HINT = "작성 시점에 이 검증이 통과하지 않았습니다";
+
+/** Step 상세의 두 칸 이름. */
+export const EXPECTED_LABEL = "기대값";
+export const OBSERVED_LABEL = "작성 시점 화면";
+export const OBSERVED_TRUNCATED = "(길어서 뒷부분을 잘랐습니다)";
+
+/** 표시를 걷어내는 조작 (FR-027). */
+export const CLEAR_MISMATCH_LABEL = "결함 후보 표시 걷어내기";
+export const CLEAR_MISMATCH_HINT =
+  "이후 이 검증이 실패하면 회귀로 분류됩니다. 기록도 함께 사라집니다.";
+
+/** 실행 결과의 검증 분류 (FR-018). */
+export function assertionClassLabel(
+  klass: AssertionClass | null | undefined,
+): string | null {
+  switch (klass) {
+    case "regression":
+      return "회귀";
+    case "known_defect":
+      return "알려진 결함";
+    case "resolved":
+      return "해소됨";
+    default:
+      // **모르는 값은 표시하지 않는다.** 결말 어휘와 다른 판단이다 — 그쪽은 보수적
+      // 기본값(실패)이 안전하지만, 여기서 아무 분류나 붙이면 사용자가 없는 회귀를
+      // 찾는다.
+      return null;
+  }
+}
+
+/** 분류의 설명. 사용자가 무엇을 해야 하는지까지 말한다. */
+export function assertionClassHint(
+  klass: AssertionClass | null | undefined,
+): string | null {
+  switch (klass) {
+    case "regression":
+      return "작성 시점에는 통과했는데 지금 실패합니다";
+    case "known_defect":
+      return "작성 시점부터 실패하던 검증입니다";
+    case "resolved":
+      return "작성 시점에 어긋났는데 이번에는 통과했습니다 — 표시를 걷어낼 수 있습니다";
+    default:
+      return null;
+  }
+}
+
+/**
+ * 분류의 색 역할. **회귀가 가장 강하다** (FR-020).
+ *
+ * `해소됨` 을 `success` 로 두지 않는 이유: 그 실행에서 통과한 것은 맞지만, 사용자가
+ * 할 일(표시 걷어내기)이 남아 있다. 초록으로 칠하면 끝난 것으로 읽힌다.
+ */
+export function assertionClassTone(
+  klass: AssertionClass | null | undefined,
+): OutcomeTone {
+  switch (klass) {
+    case "regression":
+      return "danger";
+    case "known_defect":
+      return "warn";
+    case "resolved":
+      return "neutral";
+    default:
+      return "unknown";
+  }
+}
+
+/**
+ * 분류가 실린 실행 결과 행. 이 모듈이 필요로 하는 것은 그 한 칸뿐이다.
+ *
+ * **칸이 아예 없을 수 있다.** 020 이전에 저장된 결과 파일에는 이 필드가 없다 — 생성된
+ * 타입이 필수로 표기하더라도(직렬화 스키마의 규칙) 옛 파일에서 오는 값은 `undefined`
+ * 다. 그래서 여기서는 선택으로 받는다.
+ */
+export interface ClassifiedStepResult {
+  readonly assertion_class?: AssertionClass | null;
+}
+
+/**
+ * 분류별 건수. **0건인 분류는 열쇠 자체가 없다.**
+ *
+ * 백엔드의 `counts_by_class` 와 같은 규칙이다. 두 곳에 있는 이유는 화면이 결과 파일을
+ * 직접 읽기 때문이고, 두 곳이 같은 규칙을 갖도록 **세는 자리를 여기 하나로** 둔다 —
+ * 화면마다 세면 한 곳이 0건을 0으로 되살린다.
+ */
+export function countAssertionClasses(
+  results: readonly ClassifiedStepResult[] | null | undefined,
+): Partial<Record<AssertionClass, number>> {
+  const counts: Partial<Record<AssertionClass, number>> = {};
+  for (const r of results ?? []) {
+    const k = r.assertion_class;
+    if (k != null) counts[k] = (counts[k] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/**
+ * 실행 결과의 검증 요약줄 (FR-019).
+ *
+ * **0건인 분류는 싣지 않는다.** 없는 것을 0으로 표시하면 읽을 것이 늘기만 한다.
+ *
+ * 순서는 **회귀 먼저**다 (FR-020). 사용자가 먼저 봐야 할 것이 앞에 온다.
+ */
+export function assertionClassSummary(
+  counts: Partial<Record<AssertionClass, number>> | null | undefined,
+): string | null {
+  if (counts == null) return null;
+  const order: AssertionClass[] = ["regression", "known_defect", "resolved"];
+  const parts = order
+    .filter((k) => (counts[k] ?? 0) > 0)
+    .map((k) => `${assertionClassLabel(k)} ${counts[k]}`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/**
+ * 작성이 끝난 뒤의 결함 후보 안내 (FR-013).
+ *
+ * **0건이면 아무 말도 하지 않는다.** 「결함 후보 0건」은 사용자가 읽을 이유가 없는
+ * 문장이고, 그것을 띄우면 정상 완료가 경고처럼 보인다.
+ */
+export function mismatchNotice(count: number | null | undefined): string | null {
+  if (count == null || count <= 0) return null;
+  return `검증 ${count}건이 기대와 달라 결함 후보로 기록됐습니다. 목록에서 확인하세요.`;
+}
+
+/**
+ * 제품 동작 불일치로 막혔을 때의 안내 (020 FR-024).
+ *
+ * **사람이 알려 줄 것이 없다는 사실 자체를 말한다.** 「AI 가 무엇을 모른다」와
+ * 「제품이 기대와 다르게 동작한다」는 사용자가 할 일이 정반대다 — 앞은 한 문장을
+ * 쓰면 풀리고, 뒤는 제품을 고치거나 사람이 이어받아야 한다.
+ */
+export const PRODUCT_MISMATCH_NOTE =
+  "제품이 지시문과 다르게 동작해 막혔습니다. 알려 줄 것이 있는 막힘이 아니므로 " +
+  "답변 칸을 열지 않습니다 — 직접 이어받거나 결함을 고친 뒤 다시 시도하세요.";

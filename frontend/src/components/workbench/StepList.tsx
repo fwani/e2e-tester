@@ -59,7 +59,14 @@ import type { ReactNode } from "react";
 
 import type { ActionId } from "../../lib/actions";
 import { isShown, type CapabilityState } from "../../lib/capabilities";
-import { ACTION_LABEL, deleteSelectionCount, displayOutcomeLabel, stepNumber } from "../../lib/wording";
+import {
+  ACTION_LABEL,
+  MISMATCH_CHIP,
+  MISMATCH_HINT,
+  deleteSelectionCount,
+  displayOutcomeLabel,
+  stepNumber,
+} from "../../lib/wording";
 import { ActionButton } from "./ActionButton";
 import type { Step, TargetLocator } from "../../types/generated/step";
 import type { StepOutcome, WorkbenchStep } from "./model";
@@ -623,6 +630,29 @@ function StepRow({
               {replacing && (
                 <Chip size="sm" data-cell="rerecord-target" tone="ai" layout="flex-[0_0_auto]">
                   교체 대상
+                </Chip>
+              )}
+
+              {/*
+                020 FR-014 — 작성 시점에 통과하지 않은 검증. 정본의 `.chip.warn` 을
+                쓰고 **새 색을 만들지 않는다.** 주의 계열인 이유: 이 Step 은 정의에
+                있지만 제품이 아직 그렇게 동작하지 않는다.
+
+                「결함 후보」이지 「결함」이 아니다 — 제품은 기대와 달랐다는 사실만
+                기록하고, 그것이 제품 결함인지 지시문 오류인지는 사람이 판단한다.
+
+                `?? null` — 020 이전 서버가 보낸 Step 에는 칸 자체가 없다. 그때 값은
+                `null` 이 아니라 `undefined` 이므로 `!== null` 만으로는 걸러지지 않는다.
+              */}
+              {dsl.type === "assertion" && (dsl.mismatch ?? null) !== null && (
+                <Chip
+                  size="sm"
+                  data-cell="mismatch"
+                  tone="warn"
+                  layout="flex-[0_0_auto]"
+                  title={MISMATCH_HINT}
+                >
+                  {MISMATCH_CHIP}
                 </Chip>
               )}
 

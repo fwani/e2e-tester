@@ -30,7 +30,13 @@ import { InlineSecretInput, referenceName } from "../InlineSecretInput";
 import { LocatorPriorityTable } from "../LocatorPriorityTable";
 import { isShown, type CapabilityMap } from "../../lib/capabilities";
 import {
+  CLEAR_MISMATCH_HINT,
+  CLEAR_MISMATCH_LABEL,
+  EXPECTED_LABEL,
+  MISMATCH_HINT,
   MISSING_SHOT_REASON,
+  OBSERVED_LABEL,
+  OBSERVED_TRUNCATED,
   SENSITIVE_NO_VALUE,
   stepNumber,
   uploadFileNote,
@@ -118,6 +124,15 @@ export interface StepDetailProps {
    * (FR-230: 상세는 어느 국면에서나 같은 자리·같은 구성).
    */
   extraFields?: ReactNode;
+
+  /**
+   * 어긋남 표시를 걷어낸다 (020 FR-027).
+   *
+   * **없으면 조작을 그리지 않는다.** 결과 국면처럼 정의를 고칠 수 없는 자리에서는
+   * 걷어내기가 성립하지 않고, 그때 눌리지 않는 단추를 두면 사용자가 왜 안 되는지
+   * 묻게 된다 (`ownFields` 와 같은 판단).
+   */
+  onClearMismatch?: () => void;
 }
 
 export function StepDetail({
@@ -131,6 +146,7 @@ export function StepDetail({
   onClose,
   onRemedy,
   extraFields,
+  onClearMismatch,
 }: StepDetailProps) {
   const step = detail.step;
   /**
@@ -166,6 +182,21 @@ export function StepDetail({
   const hasValueField = step !== null && hasValue(step);
   const hasFileField = step !== null && hasFileName(step);
   const alreadyReference = hasValueField && isReference(value);
+
+  /**
+   * 020 — 어긋남은 **검증 Step 에만** 있다 (도메인이 그렇게 정했다).
+   *
+   * 판별 유니온을 좁혀서 읽는다. `getattr` 식으로 물으면 타입이 넓어지고, 넓어진
+   * 타입은 다른 Step 종류에 이 칸이 생길 수 있다는 잘못된 신호를 준다.
+   *
+   * **`?? null` 이 필요하다.** 생성된 타입은 이 칸을 필수로 표기하지만(직렬화 스키마의
+   * 규칙), 020 이전 서버가 보낸 Step 에는 칸 자체가 없다 — 그때 값은 `null` 이 아니라
+   * `undefined` 이고, `!== null` 만 보면 없는 기록을 그리려다 터진다.
+   */
+  const mismatch =
+    step !== null && step.type === "assertion" ? (step.mismatch ?? null) : null;
+  const expectedValue =
+    step !== null && step.type === "assertion" ? (step.assertion.value ?? "") : "";
 
   return (
     <DetailPanel
@@ -365,6 +396,48 @@ export function StepDetail({
                 <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
                   {uploadFileNote(fileName)}
                 </p>
+              </div>
+            )}
+
+            {/*
+              020 FR-015 — 어긋난 검증은 **기대값과 그때 화면을 나란히** 보여 준다.
+
+              기대값만 보여 주면 사용자는 왜 결함 후보인지 알 수 없고, 관찰값만
+              보여 주면 무엇을 요구했는지 알 수 없다. 둘이 같은 자리에 있어야
+              「이 둘이 달랐다」가 한눈에 읽힌다.
+
+              **여기서 민감값을 다시 거르지 않는다.** 관찰값은 저장 시점에 이미
+              스크러버를 지났다 — 거르는 곳이 둘이면 어느 쪽이 기준인지 말할 수 없다.
+            */}
+            {mismatch !== null && (
+              <div data-field="mismatch">
+                <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-0 mx-0 mb-s1">
+                  {MISMATCH_HINT}
+                </p>
+                <label htmlFor="detail-expected">{EXPECTED_LABEL}</label>
+                <Input id="detail-expected" value={expectedValue} disabled readOnly />
+                <label htmlFor="detail-observed">{OBSERVED_LABEL}</label>
+                <Input id="detail-observed" value={mismatch.observed} disabled readOnly />
+                {mismatch.truncated && (
+                  <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
+                    {OBSERVED_TRUNCATED}
+                  </p>
+                )}
+                {onClearMismatch !== undefined && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={!canEdit}
+                      onClick={onClearMismatch}
+                    >
+                      {CLEAR_MISMATCH_LABEL}
+                    </Button>
+                    <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
+                      {CLEAR_MISMATCH_HINT}
+                    </p>
+                  </>
+                )}
               </div>
             )}
 

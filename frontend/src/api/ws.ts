@@ -164,10 +164,30 @@ export type SessionEvent =
        * 말할 수 있으므로 답 칸은 열린다 (질문이 답변의 전제는 아니다).
        */
       question?: string | null;
+      /**
+       * 막힘이 **무엇 때문인가** (020 FR-023).
+       *
+       * `product_mismatch` 면 제품이 지시문과 다르게 동작해 막힌 것이며, 사람이
+       * 알려 줄 것이 없다 — 화면은 답 칸을 열지 않는다 (FR-024).
+       *
+       * 서버는 **항상 싣는다.** 그래도 선택으로 두는 이유는 020 이전 서버와 붙는
+       * 경우가 있기 때문이고, 없으면 `needs_input` 으로 본다.
+       */
+      kind?: "needs_input" | "product_mismatch" | null;
       reason: string;
       choices: string[];
     })
-  | (SessionEventBase & { type: "ai_finished"; step_count: number })
+  | (SessionEventBase & {
+      type: "ai_finished";
+      step_count: number;
+      /**
+       * 이번 작성이 **어긋남으로 기록한 검증** 수 (020 FR-013).
+       *
+       * **0건이면 필드가 없다.** 없는 것을 0으로 알리면 화면이 「결함 후보 0건」을
+       * 표시할지 다시 판단해야 한다.
+       */
+      mismatch_count?: number;
+    })
   /* ─── 016 구간 재녹화 (contracts/api-contract.md §4) ─── */
   | (SessionEventBase & {
       type: "chat_turn";

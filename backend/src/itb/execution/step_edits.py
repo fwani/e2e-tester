@@ -187,6 +187,7 @@ def update_step(
     url: str | None = None,
     assertion_value: str | None = None,
     file_name: str | None = None,
+    clear_mismatch: bool = False,
 ) -> EditResult:
     """표시 이름·입력값·타임아웃·탭·주소·기대값·파일 이름을 고친다 (FR-035·FR-082b·006 FR-183).
 
@@ -199,6 +200,10 @@ def update_step(
 
     **2026-09-09 이 `file_name` 을 더했다** (사용자 보고 — 파일 업로드 녹화). 같은 근거다:
     편집 핵심은 한 곳이므로 두 번째 편집 함수를 만들지 않고 인자를 여기 더한다.
+
+    **020 이 `clear_mismatch` 를 더했다** (FR-027·FR-029). 같은 근거다 — 걷어내기는
+    사람이 결함 해소를 확인한 뒤 하는 **의식적 편집**이고, 다른 Step 편집과 다르게 다룰
+    이유가 없다. 편집 핵심이 한 곳이므로 두 번째 경로를 만들지 않는다.
 
     **`target` 을 받지 않는 것은 의도다.** 요소 후보는 살아 있는 페이지에서만 수집·검증되며
     (헌법 원칙 IV), 손으로 넣은 후보는 검증 상태를 얻을 수 없다. 다시 집기는
@@ -231,6 +236,13 @@ def update_step(
         if assertion is None:
             raise FieldNotSupportedError(str(current.type), "assertion_value")
         update["assertion"] = assertion.model_copy(update={"value": assertion_value})
+    if clear_mismatch:
+        # 020 FR-027·FR-029 — 표시와 **기록을 함께** 없앤다. 기록만 남기면 정의 파일에
+        # 아무도 읽지 않는 죽은 데이터가 생기고, 「표시는 없는데 기록은 있는」 상태를
+        # 모든 소비처(화면·내보내기·공유)가 따로 해석해야 한다.
+        if not hasattr(current, "mismatch"):
+            raise FieldNotSupportedError(str(current.type), "mismatch")
+        update["mismatch"] = None
 
     updated = current.model_copy(update=update)
     new_steps = [*steps]

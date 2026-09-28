@@ -68,6 +68,7 @@ function failedResult(): RunResultData {
       locator_attempts: [],
       error_message: i === FAILED_INDEX ? "요소를 찾을 수 없습니다" : null,
       candidate_disagreement: [],
+      assertion_class: null,
     })),
   };
 }

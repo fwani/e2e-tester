@@ -825,6 +825,16 @@ class UpdateStepOp(BaseModel):
     tab: int | None = Field(default=None, ge=0)
     url: str | None = Field(default=None, min_length=1, max_length=2000)
     assertion_value: str | None = Field(default=None, max_length=4000)
+    clear_mismatch: bool = False
+    """결함 후보 표시를 걷어낸다 (020 FR-027·FR-029).
+
+    **불리언이고 `True` 일 때만 뜻이 있다.** 「표시를 붙인다」는 사람의 조작이 아니다 —
+    어긋남은 작성 시점에 실제로 관찰된 사실이며, 손으로 만들 수 있게 두면 아무 때나
+    「이건 원래 실패하던 거야」라고 적을 수 있다.
+
+    표시와 기록이 **함께** 사라진다. 그것이 사용자 결정이다 (2026-09-28).
+    """
+
     file_name: str | None = Field(default=None, min_length=1, max_length=255)
     """올릴 파일의 이름 (2026-09-09 · `upload` Step).
 
@@ -835,6 +845,10 @@ class UpdateStepOp(BaseModel):
 
     @model_validator(mode="after")
     def _at_least_one_field(self) -> Self:
+        # 020 — `clear_mismatch` 는 불리언이라 `None` 검사에 걸리지 않는다. 그것만
+        # 담긴 요청도 「고칠 것이 있는」 요청이므로 따로 본다.
+        if self.clear_mismatch:
+            return self
         if all(
             getattr(self, f) is None
             for f in (
@@ -1148,6 +1162,7 @@ def _apply_edits(test: Test, edits: list[EditOp]) -> tuple[Test, list[str]]:
                     url=op.url,
                     assertion_value=op.assertion_value,
                     file_name=op.file_name,
+                    clear_mismatch=op.clear_mismatch,
                 ).steps
             elif isinstance(op, DeleteStepOp):
                 steps = delete_step(steps, 0, op.step_id).steps

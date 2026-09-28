@@ -67,6 +67,7 @@ function resultWith(outcome: Outcome): RunResultData {
       locator_attempts: [],
       error_message: null,
       candidate_disagreement: [],
+      assertion_class: null,
     })),
   };
 }

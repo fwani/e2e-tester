@@ -115,6 +115,7 @@ import {
   NO_DELETE_SELECTION,
   NO_STEPS_AFTER,
   RUN_NEEDS_SAVE,
+  mismatchNotice,
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
 import type { Outcome, StepOutcome as RunStepOutcome } from "../types/generated/run-result";
@@ -202,6 +203,12 @@ export interface SessionWorkbenchProps {
   /** **세션 상태와 무관하게** 그린다 (FR-218f · FR-253 · 001 R2). */
   aiError?: ErrorInfo | null;
   aiBlocked?: AiBlockedState | null;
+  /**
+   * 이번 작성이 어긋남으로 기록한 검증 수 (020 FR-013).
+   *
+   * 0이면 알림이 서지 않는다 — 없는 것을 0으로 알리면 정상 완료가 경고처럼 보인다.
+   */
+  aiMismatchCount?: number;
 
   /** 끝난 실행의 결말 요약. `runSummary()` 가 만든 문장이다 (005 FR-140). */
   summary?: string | null;
@@ -377,6 +384,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     aiMessages = [],
     aiError = null,
     aiBlocked = null,
+    aiMismatchCount = 0,
     summary = null,
     failure = null,
     outcomeOf,
@@ -843,6 +851,28 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     상태는 남는다 — 무엇으로 바뀌었는지는 여전히 계산하고, 알림으로 내지 않을 뿐이다.
   */
   void autoTransition;
+
+  /*
+    020 FR-013 — 작성이 끝났고 어긋난 검증이 있다.
+
+    US1 이 만든 상태(정의에 통과하지 않는 검증이 있다)를 사람이 모르면, US1 은 「조용히
+    실패하는 테스트를 만드는 기능」이 된다.
+
+    **0건이면 `mismatchNotice` 가 `null` 을 돌려주고 알림이 서지 않는다.** 없는 것을
+    0으로 알리면 정상 완료가 경고처럼 보인다.
+  */
+  const mismatchText = mismatchNotice(aiMismatchCount);
+  if (mismatchText !== null) {
+    push({
+      id: "ai-mismatch",
+      tone: "warn",
+      role: "status",
+      message: mismatchText,
+      nextAction: null,
+      action: null,
+      dismissible: true,
+    });
+  }
 
   /*
     2026-09-09 — **저장하지 않은 기록이 있으면 화면이 먼저 말한다** (사용자 보고).
@@ -1998,6 +2028,15 @@ export function SessionScreen({
   const [turnProgress, setTurnProgress] = useState<string[]>([]);
   const [aiError, setAiError] = useState<ErrorInfo | null>(null);
   const [aiBlocked, setAiBlocked] = useState<AiBlockedState | null>(null);
+  /**
+   * 이번 작성이 어긋남으로 기록한 검증 수 (020 FR-013).
+   *
+   * **작성 직후가 사람이 맥락을 가장 많이 들고 있는 시점이다.** 여기서 알리지 않으면
+   * 나중에 훨씬 비싸게 알아낸다 — 재실행 결과를 보고 「이건 왜 실패하지」부터 시작한다.
+   *
+   * 0이면 아무 말도 하지 않는다. 서버는 0건일 때 필드 자체를 싣지 않는다.
+   */
+  const [aiMismatches, setAiMismatches] = useState(0);
   const [pacingSaved, setPacingSaved] = useState(true);
   /** 일시정지 요청을 보냈고 아직 확정되지 않았다 (005 FR-142 · U-04). */
   const [pauseRequested, setPauseRequested] = useState(false);
@@ -2221,6 +2260,9 @@ export function SessionScreen({
               attempted: event.attempted ?? null,
               reason: event.reason ?? "AI 가 더 진행하지 못했습니다.",
               question: event.question ?? null,
+              // 020 FR-023 — 020 이전 서버는 이 필드를 보내지 않는다. 없으면
+              // `needs_input` 으로 본다 (기존 동작 그대로).
+              kind: event.kind ?? "needs_input",
               choices: (event.choices ?? []) as AiChoice[],
             });
             void resync();
@@ -2239,6 +2281,8 @@ export function SessionScreen({
             break;
           case "ai_finished":
             setAiBlocked(null);
+            // 020 FR-013 — 없으면 0이다. 지난 턴의 값이 남지 않도록 **매 턴 덮는다.**
+            setAiMismatches(event.mismatch_count ?? 0);
             // 턴이 끝났다. 남는 기록은 AI 의 답(대화 차례)이다 — 자취를 함께 쌓으면
             // 「무엇을 했는가」와 「무엇을 하는 중인가」가 섞인다.
             setTurnProgress([]);
@@ -2915,6 +2959,7 @@ export function SessionScreen({
         attempted: view.blocked.attempted ?? null,
         reason: view.blocked.reason,
         question: view.blocked.question ?? null,
+        kind: view.blocked.kind ?? "needs_input",
         choices: view.blocked.choices,
       }
     : aiBlocked;
@@ -2927,6 +2972,7 @@ export function SessionScreen({
         aiMessages={aiMessages}
         aiError={aiError}
         aiBlocked={blockedNow}
+        aiMismatchCount={aiMismatches}
         summary={summary}
         failure={failure}
         outcomeOf={outcomeOf}

@@ -33,6 +33,7 @@ const blocked = {
   attempted: 'click role=button "저장"',
   reason: "AI 가 더 진행하지 못했습니다.",
   question: null,
+  kind: "needs_input" as const,
   choices: ["takeover", "answer", "retry"],
 };
 
