@@ -133,7 +133,11 @@ class AssertTextSpec(_SpecBase):
     """
 
     match: MatchMode = MatchMode.CONTAINS
-    """화면 전체 텍스트에는 ``contains`` 가 기본이다 — 전체 일치는 실무에서 거의 쓰이지 않는다."""
+    """화면 전체 텍스트에는 ``contains`` 가 기본이다 — 전체 일치는 실무에서 거의 쓰이지 않는다.
+
+    ``not_contains`` 를 주면 「그 문구가 없어야 한다」가 된다 (021 FR-022). 그때 제한 시간은
+    상한이 아니라 **관찰 기간**이다 — 그 동안 문구가 나타나면 실패한다.
+    """
 
 
 ManualStepSpec = Annotated[
@@ -145,6 +149,18 @@ ManualStepSpec = Annotated[
 ``Step`` 의 판별자가 ``type`` 인 것과 갈리는 것은 의도다 — 이것은 Step 이 아니라 Step 을
 만드는 **입력**이고, 종류 집합도 다르다(넷 대 여덟). 같은 이름을 쓰면 둘이 교환 가능한
 것처럼 읽힌다.
+"""
+
+
+_MATCH_WORDS = {
+    MatchMode.EQUALS: "일치",
+    MatchMode.CONTAINS: "포함",
+    MatchMode.NOT_EQUALS: "불일치",
+    MatchMode.NOT_CONTAINS: "미포함",
+}
+"""표시 이름에 들어갈 비교 방식 (021 FR-022·FR-023).
+
+이름이 비교 방식을 담지 않으면 정반대 뜻의 두 Step 이 목록에서 똑같이 보인다.
 """
 
 
@@ -168,9 +184,9 @@ def derive_label(spec: ManualStepSpec) -> str:
     if isinstance(spec, CloseTabSpec):
         return f"탭 {spec.tab} 닫기"
     if isinstance(spec, AssertUrlSpec):
-        prefix = "주소 검증 — "
+        prefix = f"주소 검증({_MATCH_WORDS[spec.match]}) — "
         return prefix + _clip(spec.url, LABEL_MAX - len(prefix))
-    prefix = "화면 텍스트 검증 — "
+    prefix = f"화면 텍스트 검증({_MATCH_WORDS[spec.match]}) — "
     return prefix + _clip(spec.value, LABEL_MAX - len(prefix))
 
 

@@ -140,8 +140,18 @@ def test_삽입_가능한_종류는_넷이다() -> None:
     [
         ({"kind": "navigate", "url": "/orders"}, "주소로 이동 — /orders"),
         ({"kind": "close_tab", "tab": 1}, "탭 1 닫기"),
-        ({"kind": "assert_url", "url": "/done"}, "주소 검증 — /done"),
-        ({"kind": "assert_text", "value": "완료"}, "화면 텍스트 검증 — 완료"),
+        # 021 — 이름이 비교 방식을 드러낸다 (FR-023). 그러지 않으면 정반대 뜻의 두
+        # Step 이 목록에서 똑같이 보인다.
+        ({"kind": "assert_url", "url": "/done"}, "주소 검증(일치) — /done"),
+        ({"kind": "assert_text", "value": "완료"}, "화면 텍스트 검증(포함) — 완료"),
+        (
+            {"kind": "assert_url", "url": "/login", "match": "not_equals"},
+            "주소 검증(불일치) — /login",
+        ),
+        (
+            {"kind": "assert_text", "value": "오류", "match": "not_contains"},
+            "화면 텍스트 검증(미포함) — 오류",
+        ),
     ],
 )
 def test_라벨을_서술에서_파생한다(body: dict[str, object], expected: str) -> None:

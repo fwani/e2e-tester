@@ -251,17 +251,49 @@ def test_every_broad_except_in_execution_has_a_reason_comment() -> None:
     assert not offenders, f"이유가 적히지 않은 광범위 예외 포획: {offenders}"
 
 
+OBSERVERS = {"settle", "hold"}
+"""불리언을 돌려주어도 되는 함수 (021).
+
+이 둘은 **관찰 도우미**다 — 「조건이 참인가」와 마지막 관찰값을 돌려줄 뿐이고, 그것을
+실패로 옮기는 판단은 호출자가 `raise StepFailure` 로 한다. 불리언을 돌려주는 것이
+실패를 삼키는 것과 같지 않은 유일한 자리이며, **그래서 이름으로 못 박는다** — 새 함수가
+슬그머니 같은 예외를 누리지 못하게 하려는 것이다.
+"""
+
+
 def test_step_executor_never_returns_silently_on_failure() -> None:
     """실행기의 모든 실패 경로가 `StepFailure` 를 던진다.
 
-    `None` 을 돌려주거나 조용히 통과하면 실패가 통과로 기록된다 — 테스트 도구에서 가장
-    나쁜 결함이다.
+    `None` 이나 불리언을 돌려주고 조용히 통과하면 실패가 통과로 기록된다 — 테스트
+    도구에서 가장 나쁜 결함이다.
+
+    문자열 대신 구문 트리로 보는 이유는 021 이 관찰 도우미를 더했기 때문이다. 원문
+    검사는 `return False` 가 어느 함수의 것인지 몰라, 정당한 도우미와 실패를 삼키는
+    코드를 구별하지 못했다. **검사를 느슨하게 하지 않고 정확하게 만든다.**
     """
+    import ast
+
     from itb.execution import step_executor
 
     source = inspect.getsource(step_executor)
-    # 실패를 표현하는 유일한 수단이 예외임을 확인한다.
-    assert "return False" not in source
+    offenders: list[str] = []
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        if node.name in OBSERVERS:
+            continue
+        for inner in ast.walk(node):
+            if (
+                isinstance(inner, ast.Return)
+                and isinstance(inner.value, ast.Constant)
+                and inner.value.value is False
+            ):
+                offenders.append(f"{node.name}:{inner.lineno}")
+
+    assert not offenders, (
+        "실패를 불리언으로 돌려주는 곳이 있습니다. 실행기의 실패는 `StepFailure` 로만 "
+        f"표현한다: {offenders}"
+    )
     assert source.count("raise StepFailure") >= 5
 
 

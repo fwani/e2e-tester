@@ -39,13 +39,24 @@ PAGE = "defective-save.html"
 EXPECTED = "저장되었습니다"
 OBSERVED = "처리 완료"
 
+MISMATCH_TIMEOUT_MS = 700
+"""일부러 어긋나는 검증의 제한 시간 (021 T019).
+
+021 부터 값 비교 검증이 제한 시간까지 기다리므로, 기본값(10초)으로 두면 **이 파일이
+재려는 것과 무관한 시간**이 검증마다 10초씩 붙는다. 이 파일이 보는 것은 「어긋나도 Step
+이 남는가」이지 「얼마나 기다리는가」가 아니다.
+
+제품의 대기 동작을 되돌린 것이 아니다 — 그 동작은
+`tests/integration/test_negative_assertion.py` 가 따로 본다.
+"""
+
 SAVE_SCRIPT = [
     observe(0),
     fill_named("이름", "가나다"),
     observe(0),
     click_named("저장"),
     observe(0),
-    assert_text(EXPECTED, match="contains"),
+    assert_text(EXPECTED, match="contains", timeout_ms=MISMATCH_TIMEOUT_MS),
 ]
 """지시문이 요구한 대로 한다 — **화면이 무엇을 띄우든 기대값은 지시문의 것이다.**
 
@@ -133,8 +144,8 @@ def test_repeated_mismatches_do_not_block_the_session(
     """
     script = [
         *SAVE_SCRIPT,
-        assert_text(EXPECTED, match="contains"),
-        assert_text(EXPECTED, match="contains"),
+        assert_text(EXPECTED, match="contains", timeout_ms=MISMATCH_TIMEOUT_MS),
+        assert_text(EXPECTED, match="contains", timeout_ms=MISMATCH_TIMEOUT_MS),
     ]
     install_driver(monkeypatch, script)
     sid = start_ai_session(
@@ -189,7 +200,7 @@ def test_no_mismatch_means_no_count_in_the_event(
             observe(0),
             click_named("저장"),
             observe(0),
-            assert_text(OBSERVED, match="contains"),
+            assert_text(OBSERVED, match="contains", timeout_ms=MISMATCH_TIMEOUT_MS),
         ],
     )
     sid = start_ai_session(

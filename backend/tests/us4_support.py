@@ -89,14 +89,26 @@ def assert_url_contains(value: str) -> Action:
     return action
 
 
-def assert_text(value: str, match: str = "equals", ref_name: str | None = None) -> Action:
+def assert_text(
+    value: str,
+    match: str = "equals",
+    ref_name: str | None = None,
+    timeout_ms: int | None = None,
+) -> Action:
     """텍스트 검증 (020). **기대값을 지시문에서 받은 그대로 넘긴다.**
 
     `ref_name` 을 주면 그 요소를, 주지 않으면 화면 전체를 대상으로 한다.
+
+    `timeout_ms` 는 021 이 더했다. **실패할 것을 아는 검증에 짧게 준다** — 021 부터
+    값 비교 검증이 제한 시간까지 기다리므로, 기본값(10초)으로 두면 일부러 실패시키는
+    검증 하나마다 10초가 붙는다. 제품의 대기 동작을 되돌리는 것이 아니라 검증이 재는
+    것과 무관한 시간을 없애는 것이다.
     """
 
     def action(state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         args: dict[str, Any] = {"kind": "text", "value": value, "match": match}
+        if timeout_ms is not None:
+            args["timeout_ms"] = timeout_ms
         if ref_name is not None:
             args["element_ref"] = _pick(
                 state, lambda e: (e.get("name") or "") == ref_name

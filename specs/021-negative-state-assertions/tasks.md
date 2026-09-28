@@ -66,20 +66,20 @@ description: "Task list template for feature implementation"
 
 > **먼저 쓰고, 실패하는 것을 확인한 뒤 구현한다.**
 
-- [ ] T009 [P] [US1] 공통 대기 도우미의 단위 검증을 `backend/tests/unit/test_assertion_settle.py` 로 새로 만든다 — (a) 조건이 처음부터 참이면 **즉시** 통과하고 제한 시간을 소모하지 않는다, (b) 중간에 참이 되면 그 시점에 통과한다, (c) 끝까지 거짓이면 **마지막 관찰값**으로 실패 설명을 만든다
-- [ ] T010 [P] [US1] 부정 검증의 실행 검증을 `backend/tests/integration/test_negative_assertion.py` 로 새로 만든다 — **핵심은 거짓 통과 방지다**: T001 의 「0.8초 뒤 오류」 화면에서 제한 시간 5초의 「`오류` 를 포함하지 않는다」가 **실패**해야 한다. 이 하나가 통과하지 못하면 기능 전체가 무의미하다. 함께 세울 것: 정상 경로에서 통과하고 5초를 기다리지 않는다는 것
+- [X] T009 [P] [US1] 공통 대기 도우미의 단위 검증을 `backend/tests/unit/test_assertion_settle.py` 로 새로 만든다 — (a) 조건이 처음부터 참이면 **즉시** 통과하고 제한 시간을 소모하지 않는다, (b) 중간에 참이 되면 그 시점에 통과한다, (c) 끝까지 거짓이면 **마지막 관찰값**으로 실패 설명을 만든다
+- [X] T010 [P] [US1] 부정 검증의 실행 검증을 `backend/tests/integration/test_negative_assertion.py` 로 새로 만든다 — **핵심은 거짓 통과 방지다**: T001 의 「0.8초 뒤 오류」 화면에서 제한 시간 5초의 「`오류` 를 포함하지 않는다」가 **실패**해야 한다. 이 하나가 통과하지 못하면 기능 전체가 무의미하다. 함께 세울 것: 정상 경로에서 통과하고 5초를 기다리지 않는다는 것
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] 공통 대기 도우미를 `backend/src/itb/execution/step_executor.py` 에 추가한다 — 조건 판정 함수와 제한 시간을 받아 50ms 간격으로 폴링하고, 참이 되면 즉시 끝내고, 넘기면 마지막 관찰값을 돌려준다. **`_assert_url` 의 기존 폴링을 이 도우미로 옮긴다** — 새 경로를 만들고 옛 경로를 남기면 두 대기 규칙이 공존한다
-- [ ] T012 [US1] `_assert_text` 를 대기 도우미 위로 옮긴다 (`backend/src/itb/execution/step_executor.py`) — 대상이 있으면 요소를 한 번 찾고 그 요소의 텍스트를 다시 읽으며 폴링하고, 없으면 화면 전체 텍스트를 다시 읽는다. **대상을 찾지 못하면 긍정·부정 모두 실패**한다 (FR-006). T011 에 의존
-- [ ] T013 [US1] 비교 판정 `_matches` 에 `not_equals`·`not_contains` 를 더한다 (`backend/src/itb/execution/step_executor.py`) — 긍정 판정의 부정으로 정의해 두 갈래가 갈리지 않게 한다. T004 에 의존
-- [ ] T014 [US1] 부정형 실패 설명을 `backend/src/itb/execution/step_executor.py` 에 만든다 — [data-model.md §3.3](./data-model.md) 의 문구를 따른다. **020 이 이 문자열을 `mismatch.observed` 에 그대로 싣는다** — 기대와 실제가 모두 들어 있어야 하고, 긍정형 문구와 같은 문체여야 한다
-- [ ] T015 [US1] `backend/src/itb/execution/assertion_builder.py` 의 표시 이름 생성이 **비교 방식을 드러내게** 한다 — 지금은 `텍스트 '오류' 확인` 만 만들어 긍정·부정이 구별되지 않는다. T004 에 의존
-- [ ] T016 [US1] 수동 삽입 서술(`AssertTextSpec`·`AssertUrlSpec`)이 부정 비교를 받게 한다 (`backend/src/itb/domain/manual_step.py`) — 기본값은 그대로 두고 값 범위만 넓힌다. `derive_label` 도 비교 방식을 드러내야 한다 (FR-022)
-- [ ] T017 [US1] `_assertion_lines` 에 부정형 대응을 더한다 (`backend/src/itb/generator/playwright_gen.py`) — [contracts/export-mapping.md](./contracts/export-mapping.md) 의 6개 행. `url` + `not_contains` 는 기존 판단대로 **정규식이 아니라 문자열 포함**의 부정으로 만든다
-- [ ] T018 [P] [US1] 내보내기 회귀 조합을 `backend/tests/unit/test_export_keeps_assertion.py` 에 추가한다 — 부정형 6개 조합. T017 에 의존
-- [ ] T019 [US1] T003 목록의 테스트를 실제로 돌려 **T002 기준선과 소요 시간을 비교**한다. 느려진 테스트는 그 테스트의 `timeout_ms` 를 짧게 주어 고친다 — **제품의 대기 동작을 되돌리지 않는다**. 결과가 바뀐(실패→통과) 테스트가 있으면 `specs/021-negative-state-assertions/baseline.md` 에 **어느 것이 왜 바뀌었는지** 적는다. 조용히 초록으로 넘어가면 안 된다
+- [X] T011 [US1] 공통 대기 도우미를 `backend/src/itb/execution/step_executor.py` 에 추가한다 — 조건 판정 함수와 제한 시간을 받아 50ms 간격으로 폴링하고, 참이 되면 즉시 끝내고, 넘기면 마지막 관찰값을 돌려준다. **`_assert_url` 의 기존 폴링을 이 도우미로 옮긴다** — 새 경로를 만들고 옛 경로를 남기면 두 대기 규칙이 공존한다
+- [X] T012 [US1] `_assert_text` 를 대기 도우미 위로 옮긴다 (`backend/src/itb/execution/step_executor.py`) — 대상이 있으면 요소를 한 번 찾고 그 요소의 텍스트를 다시 읽으며 폴링하고, 없으면 화면 전체 텍스트를 다시 읽는다. **대상을 찾지 못하면 긍정·부정 모두 실패**한다 (FR-006). T011 에 의존
+- [X] T013 [US1] 비교 판정 `_matches` 에 `not_equals`·`not_contains` 를 더한다 (`backend/src/itb/execution/step_executor.py`) — 긍정 판정의 부정으로 정의해 두 갈래가 갈리지 않게 한다. T004 에 의존
+- [X] T014 [US1] 부정형 실패 설명을 `backend/src/itb/execution/step_executor.py` 에 만든다 — [data-model.md §3.3](./data-model.md) 의 문구를 따른다. **020 이 이 문자열을 `mismatch.observed` 에 그대로 싣는다** — 기대와 실제가 모두 들어 있어야 하고, 긍정형 문구와 같은 문체여야 한다
+- [X] T015 [US1] `backend/src/itb/execution/assertion_builder.py` 의 표시 이름 생성이 **비교 방식을 드러내게** 한다 — 지금은 `텍스트 '오류' 확인` 만 만들어 긍정·부정이 구별되지 않는다. T004 에 의존
+- [X] T016 [US1] 수동 삽입 서술(`AssertTextSpec`·`AssertUrlSpec`)이 부정 비교를 받게 한다 (`backend/src/itb/domain/manual_step.py`) — 기본값은 그대로 두고 값 범위만 넓힌다. `derive_label` 도 비교 방식을 드러내야 한다 (FR-022)
+- [X] T017 [US1] `_assertion_lines` 에 부정형 대응을 더한다 (`backend/src/itb/generator/playwright_gen.py`) — [contracts/export-mapping.md](./contracts/export-mapping.md) 의 6개 행. `url` + `not_contains` 는 기존 판단대로 **정규식이 아니라 문자열 포함**의 부정으로 만든다
+- [X] T018 [P] [US1] 내보내기 회귀 조합을 `backend/tests/unit/test_export_keeps_assertion.py` 에 추가한다 — 부정형 6개 조합. T017 에 의존
+- [X] T019 [US1] T003 목록의 테스트를 실제로 돌려 **T002 기준선과 소요 시간을 비교**한다. 느려진 테스트는 그 테스트의 `timeout_ms` 를 짧게 주어 고친다 — **제품의 대기 동작을 되돌리지 않는다**. 결과가 바뀐(실패→통과) 테스트가 있으면 `specs/021-negative-state-assertions/baseline.md` 에 **어느 것이 왜 바뀌었는지** 적는다. 조용히 초록으로 넘어가면 안 된다
 
 **Checkpoint**: 부정 검증이 실행·내보내기 양쪽에서 동작한다. 화면 노출은 US3.
 

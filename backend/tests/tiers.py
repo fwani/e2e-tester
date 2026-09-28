@@ -48,6 +48,8 @@ TIMING_MODULES = frozenset(
         "tests/integration/test_mirror_input_latency.py",
         # 011 — Step 화면 촬영이 duration_ms 에 들어가지 않는가 (FR-395 · SC-611)
         "tests/unit/test_timeout_unaffected_by_shots.py",
+        # 021 — 부정 검증이 관찰 기간을 채우는가, 긍정 검증이 즉시 끝나는가 (FR-003a·FR-004)
+        "tests/integration/test_negative_assertion.py",
     }
 )
 """**경과 시간을 단언하는** 검증이 든 모듈. 저장소 루트 기준 경로다.

@@ -791,7 +791,9 @@ def test_정의_편집_입구도_같은_step_을_만든다(saved: TestClient) ->
     # 서버가 조립한 결과 — 라벨·작성자·검증 모양이 `manual_step.build_step` 과 같다.
     assert made["type"] == "assertion"
     assert made["author"] == "human"
-    assert made["label"] == "주소 검증 — /done"
+    # 021 FR-023 — 이름이 비교 방식을 드러낸다. 그러지 않으면 정반대 뜻의 두
+    # Step 이 목록에서 똑같이 보인다.
+    assert made["label"] == "주소 검증(포함) — /done"
     assert made["assertion"] == {
         "kind": "url",
         "target": None,

@@ -1,6 +1,6 @@
-"""검증 조건 구성. FR-037·FR-013a·FR-013b (T100).
+"""검증 조건 구성. FR-037·FR-013a·FR-013b (T100) · 021.
 
-4종(`visible`·`hidden`·`text`·`url`) 중 하나를 만든다. **요소를 대상으로 하는 검증에서는
+6종(`visible`·`hidden`·`enabled`·`disabled`·`text`·`url`) 중 하나를 만든다. **요소를 대상으로 하는 검증에서는
 제품이 후보를 수집·검증한다** — 클라이언트가 `TargetLocator` 를 손으로 만들어 보내게 하면
 녹화가 만드는 후보와 검증 Step 의 후보가 갈리고, 원칙 IV 의 단일 지점이 무너진다.
 
@@ -27,8 +27,20 @@ class AssertionTargetError(Exception):
     """
 
 
-ELEMENT_KINDS = frozenset({AssertionKind.VISIBLE, AssertionKind.HIDDEN})
-"""대상 요소가 반드시 필요한 종류 (data-model §5)."""
+ELEMENT_KINDS = frozenset(
+    {
+        AssertionKind.VISIBLE,
+        AssertionKind.HIDDEN,
+        AssertionKind.ENABLED,
+        AssertionKind.DISABLED,
+    }
+)
+"""대상 요소가 반드시 필요한 종류 (data-model §5 · 021).
+
+`enabled`·`disabled` 가 여기 있는 이유는 **대상 없이는 물을 수 없는 질문**이기
+때문이다. `hidden` 과 갈리는 지점이기도 하다 — `hidden` 은 대상이 없어도 통과하지만
+이 둘은 실패한다 (021 FR-012).
+"""
 
 
 async def build_assertion(
@@ -45,7 +57,7 @@ async def build_assertion(
     - `url` — 요소를 보지 않는다. 셀렉터를 주면 무시하지 않고 거절한다: 조용히 버리면
       사용자는 대상이 반영됐다고 오해한다.
     - `text` — 셀렉터가 있으면 그 요소, 없으면 화면 전체가 대상이다.
-    - `visible`·`hidden` — 셀렉터가 필수다.
+    - `visible`·`hidden`·`enabled`·`disabled` — 셀렉터가 필수다.
     """
     if kind is AssertionKind.URL:
         if target_selector is not None:
@@ -70,6 +82,20 @@ async def build_assertion(
     return Assertion(kind=kind, target=target, match=match, value=value)
 
 
+MATCH_PHRASES = {
+    MatchMode.EQUALS: "와 같음",
+    MatchMode.CONTAINS: "를 포함",
+    MatchMode.NOT_EQUALS: "와 다름",
+    MatchMode.NOT_CONTAINS: "를 포함하지 않음",
+}
+"""표시 이름에 들어갈 비교 방식 (021 FR-023).
+
+**긍정과 부정이 이름에서 갈려야 한다.** 021 이전 이름은 비교 방식을 담지 않아서,
+「`오류` 가 있어야 한다」와 「`오류` 가 없어야 한다」가 목록에서 똑같이 보였다 — 정반대
+뜻의 두 Step 을 구별할 수 없는 것은 표시 문제가 아니라 결함이다.
+"""
+
+
 def default_label(assertion: Assertion) -> str:
     """조건에서 표시 이름을 만든다. 사용자가 이름을 주면 그것을 쓴다."""
     value = assertion.value
@@ -78,11 +104,15 @@ def default_label(assertion: Assertion) -> str:
             return f"{value or '요소'} 표시 확인"
         case AssertionKind.HIDDEN:
             return f"{value or '요소'} 사라짐 확인"
+        case AssertionKind.ENABLED:
+            return "요소를 조작할 수 있음 확인"
+        case AssertionKind.DISABLED:
+            return "요소를 조작할 수 없음 확인"
         case AssertionKind.TEXT:
-            return f"텍스트 {value!r} 확인"
+            return f"텍스트가 {value!r}{MATCH_PHRASES[assertion.match]} 확인"
         case AssertionKind.URL:
-            return f"주소 {value!r} 확인"
-    return "검증"  # pragma: no cover - enum 이 4종을 덮는다
+            return f"주소가 {value!r}{MATCH_PHRASES[assertion.match]} 확인"
+    return "검증"  # pragma: no cover - enum 이 6종을 덮는다
 
 
 def build_step(

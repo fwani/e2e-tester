@@ -680,6 +680,7 @@ class BrowserToolbox:
         element_ref: str | None = None,
         value: str | None = None,
         match: str = "equals",
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """검증 Step 을 만들고 **즉시 확인한다** (FR-013a 의 4종만).
 
@@ -709,10 +710,12 @@ class BrowserToolbox:
             assertion_kind = AssertionKind(kind)
             match_mode = MatchMode(match)
         except ValueError:
+            kinds = " / ".join(k.value for k in AssertionKind)
+            matches = " / ".join(m.value for m in MatchMode)
             return {
                 "error": (
-                    f"지원하지 않는 검증 종류입니다: {kind}. "
-                    "visible / hidden / text / url 중 하나여야 합니다."
+                    f"지원하지 않는 검증 종류 또는 비교 방식입니다: {kind} / {match}. "
+                    f"종류는 {kinds}, 비교는 {matches} 중 하나여야 합니다."
                 )
             }
 
@@ -736,13 +739,21 @@ class BrowserToolbox:
         except ValueError as exc:
             return {"error": f"검증 조건이 올바르지 않습니다: {exc}"}
 
-        step = AssertionStep(
-            id=self.allocate_step_id(),
-            label=self._assertion_label(assertion),
-            author=self.author,
-            tab=tab,
-            assertion=assertion,
-        )
+        # 제한 시간을 생략하면 Step 이 자기 기본값을 쓴다. **부정 검증에서 이 값은
+        # 상한이 아니라 관찰 기간이다** (021 FR-003a) — 그 동안 조건이 유지되는지
+        # 지켜보므로 항상 소모된다. 짧게 주는 것이 합리적인 경우가 많다.
+        extra: dict[str, Any] = {} if timeout_ms is None else {"timeout_ms": timeout_ms}
+        try:
+            step = AssertionStep(
+                id=self.allocate_step_id(),
+                label=self._assertion_label(assertion),
+                author=self.author,
+                tab=tab,
+                assertion=assertion,
+                **extra,
+            )
+        except ValueError as exc:
+            return {"error": f"검증 Step 을 만들 수 없습니다: {exc}"}
         return await self._execute(
             step, element=element_ref or f"assert:{kind}", keep_on_failure=True
         )
@@ -1389,16 +1400,22 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         element_ref: str | None = None,
         value: str | None = None,
         match: str = "equals",
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """화면 상태를 검증한다.
 
-        `kind` 는 visible / hidden / text / url 중 하나다. `visible`·`hidden` 은
-        `element_ref` 가 필요하고 `url` 은 요소를 보지 않는다.
+        `kind` 는 visible / hidden / enabled / disabled / text / url 중 하나다.
+        `visible`·`hidden`·`enabled`·`disabled` 는 `element_ref` 가 필요하고 `url` 은
+        요소를 보지 않는다.
 
-        **기대와 달라도 Step 으로 기록된다.** 그때는 결함 후보로 표시되며, 값을 바꾸어
-        다시 시도하면 안 된다.
+        `match` 는 equals / contains / not_equals / not_contains 중 하나이며 **텍스트와
+        주소 검증에만** 쓴다. `not_` 로 시작하는 비교에서 `timeout_ms` 는 상한이 아니라
+        **그 동안 조건이 유지되는지 지켜보는 기간**이다.
+
+        **기대와 달라도 Step 으로 기록된다.** 그때는 결함 후보로 표시되며, 값을 바꾸거나
+        조건을 뒤집어 다시 시도하면 안 된다.
         """
-        return await toolbox.assert_condition(kind, element_ref, value, match)
+        return await toolbox.assert_condition(kind, element_ref, value, match, timeout_ms)
 
     @beta_async_tool
     async def close_tab(tab: int) -> dict[str, Any]:
@@ -1540,17 +1557,28 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
         },
     ),
     "assert_condition": (
-        "화면 상태를 검증한다. kind 는 visible / hidden / text / url 중 하나다. "
-        "visible·hidden 은 element_ref 가 필요하고 url 은 요소를 보지 않는다. "
+        "화면 상태를 검증한다. kind 는 visible / hidden / enabled / disabled / text / url "
+        "중 하나다. visible·hidden·enabled·disabled 는 element_ref 가 필요하고 url 은 "
+        "요소를 보지 않는다. enabled·disabled 는 value 를 쓰지 않는다. "
+        "match 는 텍스트·주소 검증에만 쓰며 not_equals·not_contains 로 부정할 수 있다. "
+        "부정 비교에서 timeout_ms 는 그 동안 조건이 유지되는지 지켜보는 기간이다. "
         "기대와 달라도 Step 으로 기록되며 결함 후보로 표시된다 — "
-        "값을 바꾸어 다시 시도하지 마라.",
+        "값을 바꾸거나 조건을 뒤집어 다시 시도하지 마라.",
         {
             "type": "object",
             "properties": {
-                "kind": {"type": "string", "enum": ["visible", "hidden", "text", "url"]},
+                "kind": {
+                    "type": "string",
+                    "enum": [k.value for k in AssertionKind],
+                },
                 "element_ref": _REF,
                 "value": {"type": "string"},
-                "match": {"type": "string", "default": "equals"},
+                "match": {
+                    "type": "string",
+                    "enum": [m.value for m in MatchMode],
+                    "default": "equals",
+                },
+                "timeout_ms": {"type": "integer", "minimum": 1, "maximum": 60000},
             },
             "required": ["kind"],
         },

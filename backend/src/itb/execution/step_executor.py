@@ -12,8 +12,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -52,7 +54,13 @@ from itb.execution.session import BrowserSession, TabNotFoundError
 from itb.execution.tab_resolver import describe_tab_failure, resolve_tab
 from itb.secrets.resolver import VariableResolutionError, VariableResolver
 
-__all__ = ["MIN_ACTION_TIMEOUT_MS", "StepExecution", "StepExecutor", "StepFailure"]
+__all__ = [
+    "MIN_ACTION_TIMEOUT_MS",
+    "StepExecution",
+    "StepExecutor",
+    "StepFailure",
+    "settle",
+]
 """`MIN_ACTION_TIMEOUT_MS` 는 `locator_runtime` 이 정의한다 — 요소 탐색이 언제 포기하고
 채택할지와 동작에 얼마를 남길지가 **같은 값**이어야 하기 때문이다 (004). 여기서 다시
 내보내는 것은 기존 임포트 경로를 깨지 않기 위해서다.
@@ -410,7 +418,7 @@ class StepExecutor:
         record.element_wait_ms += located.waited_ms
         return located
 
-    # ─── 검증 4종 (FR-013a) ────────────────────────────────────────────────
+    # ─── 검증 6종 (001 FR-013a + 021) ──────────────────────────────────────
 
     async def _assert(
         self,
@@ -439,19 +447,14 @@ class StepExecutor:
         self, assertion: Assertion, page: Page, deadline: float
     ) -> None:
         expected = self._resolver.substitute(assertion.value or "")
-        actual = page.url
-        while time.monotonic() < deadline:
-            actual = page.url
-            if _matches(actual, expected, assertion.match):
-                return
-            await page.wait_for_timeout(50)
-        if _matches(page.url, expected, assertion.match):
+
+        async def observe() -> str:
+            return page.url
+
+        ok, actual = await _watch(assertion, observe, expected, deadline)
+        if ok:
             return
-        verb = "와 같지" if assertion.match is MatchMode.EQUALS else "를 포함하지"
-        msg = (
-            f"현재 주소가 기대한 값{verb} 않습니다. "
-            f"기대: {expected!r}, 실제: {actual!r}"
-        )
+        msg = f"현재 주소가 {_expectation(expected, assertion.match)}. 실제: {actual!r}"
         raise StepFailure(msg)
 
     async def _assert_hidden(
@@ -478,20 +481,37 @@ class StepExecutor:
         deadline: float,
         record: StepExecution,
     ) -> None:
+        """**021 이전에는 기다리지 않았다.** 한 번 읽고 판정했다.
+
+        긍정형에서는 그 차이가 「가끔 실패한다」로 보이지만 부정형에서는 「항상
+        통과한다」가 된다 — 부정 조건의 기본 상태가 참이기 때문이다. 그래서 021 은
+        부정형을 더하면서 대기 규칙을 `settle` 하나로 합쳤다 (FR-003).
+
+        **대상 요소는 한 번만 찾는다.** 탐색 자체가 이미 기다리고, 매 폴마다 다시
+        찾으면 요소가 교체되는 화면에서 어느 요소를 본 것인지 알 수 없어진다.
+        """
         expected = self._resolver.substitute(assertion.value or "")
         if assertion.target is None:
-            actual = await root.inner_text("body", timeout=self._left(deadline))
             scope = "화면"
+
+            async def observe() -> str:
+                return await root.inner_text("body", timeout=self._left(deadline))
         else:
+            # 대상을 찾지 못하면 여기서 실패한다 — 긍정·부정 모두 그렇다 (FR-006).
+            # 부정형을 통과시키면 「요소가 사라져서 통과」와 「텍스트가 달라서 통과」를
+            # 결과에서 구별할 수 없다. 요소가 없을 수도 있는 상황은 `hidden` 이 맡는다.
             located = await self._locate_target(assertion, root, deadline, record)
-            actual = await located.locator.inner_text(timeout=self._left(deadline))
             scope = "요소"
-        if _matches(actual, expected, assertion.match):
+
+            async def observe() -> str:
+                return await located.locator.inner_text(timeout=self._left(deadline))
+
+        ok, actual = await _watch(assertion, observe, expected, deadline)
+        if ok:
             return
-        verb = "와 같지" if assertion.match is MatchMode.EQUALS else "를 포함하지"
         msg = (
-            f"{scope}의 텍스트가 기대한 값{verb} 않습니다. "
-            f"기대: {expected!r}, 실제: {_clip(actual)!r}"
+            f"{scope}의 텍스트가 {_expectation(expected, assertion.match)}. "
+            f"실제: {_clip(actual)!r}"
         )
         raise StepFailure(msg, record.attempts, record.tab_wait_ms)
 
@@ -524,10 +544,122 @@ class StepExecutor:
         return max(int((deadline - time.monotonic()) * 1000), MIN_ACTION_TIMEOUT_MS)
 
 
+async def settle(
+    observe: Callable[[], Awaitable[str]],
+    holds: Callable[[str], bool],
+    deadline: float,
+    poll_ms: int = 50,
+) -> tuple[bool, str]:
+    """조건이 참이 될 때까지 다시 보고, 참이면 즉시 끝낸다 (021 FR-003·FR-004).
+
+    값 비교 검증과 상태 검증이 **모두 이것을 쓴다.** 021 이전에는 주소 검증만 기다리고
+    텍스트 검증은 한 번 읽고 판정했는데, 그 위에 부정형을 얹으면 화면이 준비되기 전에
+    평가해 조용히 통과하는 검증이 대량으로 만들어진다.
+
+    돌려주는 것은 `(참이 되었는가, 마지막 관찰값)` 이다. **마지막 값이 필요한 이유**는
+    실패 설명에 「실제로는 무엇이었는가」가 들어가야 하고, 020 이 그 문자열을 그대로
+    어긋남 기록에 싣기 때문이다.
+
+    제한 시간이 이미 지났어도 **한 번은 본다.** 앞선 Step 이 예산을 다 쓴 경우에
+    그런데, 한 번도 보지 않으면 적을 관찰값이 없어 어긋남 기록이 빈 문자열을 받는다 —
+    그것은 「화면이 비어 있었다」로 읽히는 거짓 기록이다.
+
+    **부정 조건에는 이것을 쓰지 않는다.** `hold` 가 그 자리다 — 아래를 보라.
+    """
+    observed = await observe()
+    if holds(observed):
+        return True, observed
+    while time.monotonic() < deadline:
+        await asyncio.sleep(poll_ms / 1000)
+        observed = await observe()
+        if holds(observed):
+            return True, observed
+    return False, observed
+
+
+async def hold(
+    observe: Callable[[], Awaitable[str]],
+    holds: Callable[[str], bool],
+    deadline: float,
+    poll_ms: int = 50,
+) -> tuple[bool, str]:
+    """조건이 제한 시간 **동안 유지되는지** 지켜본다 (021 FR-003a).
+
+    ## 왜 부정 조건은 `settle` 과 달라야 하는가
+
+    「`오류` 가 없다」는 **기본 상태가 참**이다. 클릭 직후 화면이 비어 있는 찰나에
+    평가하면 통과한다 — 그리고 0.8초 뒤에 오류가 떠도 아무도 모른다. 결과 화면에는
+    초록색이 찍히지만 그 통과는 아무것도 검증하지 않았다.
+
+    긍정과 부정은 **시간에 대해 비대칭**이다.
+
+    | | 「X 가 나타난다」 | 「X 가 없다」 |
+    |---|---|---|
+    | 한 번 참이면 | 끝이다 — 나타났다는 사실은 변하지 않는다 | **아무것도 말하지 않는다** — 다음 순간 나타날 수 있다 |
+    | 제한 시간의 뜻 | 얼마나 기다려 줄까 (상한) | **언제까지 없어야 하나** (관찰 기간) |
+
+    그래서 부정 검증은 제한 시간을 **항상 소모한다.** 이것은 비효율이 아니라 그
+    검증이 묻는 질문의 성질이다 — 「지금 없다」를 묻는 검증은 쓸모가 없고, 사용자가
+    뜻한 것은 언제나 「이 동안 없다」다.
+
+    거짓이 되는 **즉시** 끝낸다. 그때의 관찰값이 실패 설명에 들어간다.
+    """
+    observed = await observe()
+    if not holds(observed):
+        return False, observed
+    while time.monotonic() < deadline:
+        await asyncio.sleep(poll_ms / 1000)
+        observed = await observe()
+        if not holds(observed):
+            return False, observed
+    return True, observed
+
+
+async def _watch(
+    assertion: Assertion,
+    observe: Callable[[], Awaitable[str]],
+    expected: str,
+    deadline: float,
+) -> tuple[bool, str]:
+    """값 비교 검증의 대기. **긍정이면 기다리고, 부정이면 지켜본다.**
+
+    고르는 판단을 한곳에 둔다 — 주소 검증과 텍스트 검증이 각자 고르면 둘이 갈릴 자리가
+    생기고, 그때 「부정 검증이 왜 주소에서만 즉시 통과하는가」를 설명할 말이 없다.
+    """
+    watcher = hold if assertion.negated else settle
+    return await watcher(observe, lambda v: _matches(v, expected, assertion.match), deadline)
+
+
 def _matches(actual: str, expected: str, mode: MatchMode) -> bool:
+    """비교 판정. **부정형은 긍정형의 부정으로 정의한다** (021).
+
+    따로 쓰면 두 갈래가 갈린다 — 예컨대 `equals` 만 양끝 공백을 다듬고 `not_equals` 는
+    다듬지 않는 식의 어긋남이 생기고, 그때 어느 쪽이 맞는지 판단할 근거가 없다.
+    """
     if mode is MatchMode.CONTAINS:
         return expected in actual
+    if mode is MatchMode.NOT_CONTAINS:
+        return expected not in actual
+    if mode is MatchMode.NOT_EQUALS:
+        return actual.strip() != expected.strip()
     return actual.strip() == expected.strip()
+
+
+_EXPECTATION_VERBS = {
+    MatchMode.EQUALS: "와 같아야 하는데 다릅니다",
+    MatchMode.CONTAINS: "를 포함해야 하는데 없습니다",
+    MatchMode.NOT_EQUALS: "와 달라야 하는데 같습니다",
+    MatchMode.NOT_CONTAINS: "를 포함하지 않아야 하는데 포함했습니다",
+}
+"""실패 설명의 뒷부분. **기대와 실제가 모두 읽혀야 한다** (021 FR-005).
+
+020 이 이 문자열을 그대로 어긋남 기록에 싣는다 — 긍정형과 부정형의 문체가 갈리면
+화면의 문구와 저장된 기록이 서로 다른 말을 하게 된다.
+"""
+
+
+def _expectation(expected: str, mode: MatchMode) -> str:
+    return f"{expected!r}{_EXPECTATION_VERBS[mode]}"
 
 
 def _clip(text: str, limit: int = 200) -> str:

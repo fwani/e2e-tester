@@ -247,13 +247,53 @@ def step_lines(step: Step, values: ValueRenderer) -> list[str]:
     raise UnsupportedStepError(msg)
 
 
+_TEXT_MATCHERS = {
+    MatchMode.EQUALS: "toHaveText",
+    MatchMode.CONTAINS: "toContainText",
+    MatchMode.NOT_EQUALS: "not.toHaveText",
+    MatchMode.NOT_CONTAINS: "not.toContainText",
+}
+"""텍스트 비교의 Playwright 대응 (021 contracts/export-mapping.md §2)."""
+
+
+def _watch_window(body: list[str], step: Step) -> list[str]:
+    """부정 조건을 **제한 시간 동안 지켜보는** 루프로 감싼다 (021 FR-003a).
+
+    ## 왜 `.not` 하나로 끝내지 않는가
+
+    `await expect(loc).not.toContainText(x)` 는 조건이 참이 **되면** 통과한다. 부정
+    조건의 기본 상태는 참이므로 첫 판정에서 바로 끝나고, 0.8초 뒤에 뜨는 오류를
+    놓친다 — **제품 안에서 잡은 결함을 내보낸 테스트가 놓치는 것**이고, 원칙 V 가
+    요구하는 「같은 검증」이 성립하지 않는다.
+
+    안쪽 판정은 `timeout: 1` 로 재시도를 끈다. 켜 두면 안에서 또 기다려 바깥 기간과
+    겹친다.
+
+    장황하지만 **표준 Playwright 다** — 별도 런타임도 제품 API 도 쓰지 않는다.
+    """
+    inner = [f"{INDENT}{line}" for line in body]
+    return [
+        "{",
+        f"{INDENT}const deadline = Date.now() + {step.timeout_ms};",
+        f"{INDENT}for (;;) {{",
+        *[f"{INDENT}{line}" for line in inner],
+        f"{INDENT}{INDENT}if (Date.now() >= deadline) break;",
+        f"{INDENT}{INDENT}await {_tab_var(step.tab)}.waitForTimeout(50);",
+        f"{INDENT}}}",
+        "}",
+    ]
+
+
 def _assertion_lines(
     assertion: Assertion, tab: str, root: str, values: ValueRenderer, step: Step
 ) -> list[str]:
-    """검증 4종 (FR-013a). `hidden` 은 없던 요소도 통과한다 — `toBeHidden` 과 같은 의미다.
+    """검증 6종 (001 FR-013a + 021). `hidden` 은 없던 요소도 통과한다 — `toBeHidden` 과 같다.
 
     **주소 검증만 `tab` 을 쓴다.** 하위 프레임 안의 Step 이라도 사용자가 뜻한 "현재 주소"
     는 주소창의 주소다 — 제품 내 실행도 같은 판단을 한다 (`step_executor._assert`).
+
+    **부정 비교는 `_watch_window` 로 감싼다.** 제품 내 실행이 기간 동안 지켜보므로
+    내보낸 테스트도 그래야 한다 (021 contracts/export-mapping.md §2).
     """
     options = f"{{ timeout: {step.timeout_ms} }}"
     match assertion.kind:
@@ -263,24 +303,37 @@ def _assertion_lines(
         case AssertionKind.HIDDEN:
             loc = _locator_for(assertion.target, root, step.label)
             return [f"await expect({loc}).toBeHidden({options});"]
+        case AssertionKind.ENABLED:
+            loc = _locator_for(assertion.target, root, step.label)
+            return [f"await expect({loc}).toBeEnabled({options});"]
+        case AssertionKind.DISABLED:
+            loc = _locator_for(assertion.target, root, step.label)
+            return [f"await expect({loc}).toBeDisabled({options});"]
         case AssertionKind.TEXT:
             expected = values.render(assertion.value or "")
-            matcher = (
-                "toContainText" if assertion.match is MatchMode.CONTAINS else "toHaveText"
-            )
+            matcher = _TEXT_MATCHERS[assertion.match]
             if assertion.target is None:
                 # 화면 전체가 대상이다 (data-model §5).
-                return [
-                    f"await expect({root}.locator({_js('body')}))."
-                    f"{matcher}({expected}, {options});"
-                ]
-            loc = _locator_for(assertion.target, root, step.label)
-            return [f"await expect({loc}).{matcher}({expected}, {options});"]
+                subject = f"{root}.locator({_js('body')})"
+            else:
+                subject = _locator_for(assertion.target, root, step.label)
+            if assertion.negated:
+                return _watch_window(
+                    [f"await expect({subject}).{matcher}({expected}, {{ timeout: 1 }});"],
+                    step,
+                )
+            return [f"await expect({subject}).{matcher}({expected}, {options});"]
         case AssertionKind.URL:
             expected = values.render(assertion.value or "")
+            # 정규식으로 만들지 않는다 — 화면에서 온 값이 패턴으로 해석되면 의미가
+            # 달라진다. 문자열 비교로 확인한다. 부정형에도 같은 판단을 적용한다.
+            if assertion.match is MatchMode.NOT_CONTAINS:
+                return _watch_window(
+                    [f"expect({tab}.url()).not.toContain({expected});"], step
+                )
+            if assertion.match is MatchMode.NOT_EQUALS:
+                return _watch_window([f"expect({tab}.url()).not.toBe({expected});"], step)
             if assertion.match is MatchMode.CONTAINS:
-                # 정규식으로 만들지 않는다 — 화면에서 온 값이 패턴으로 해석되면
-                # 의미가 달라진다. 문자열 포함으로 확인한다.
                 return [f"expect({tab}.url()).toContain({expected});"]
             return [f"await expect({tab}).toHaveURL({expected}, {options});"]
     msg = f"지원하지 않는 검증 종류입니다: {assertion.kind}"  # pragma: no cover
