@@ -87,8 +87,6 @@ export function ChatPanel({
   const [expanded, setExpanded] = useState(busy || turns.length > 0);
   useEffect(() => { if (busy || turns.length > 0 || progress.length > 0) setExpanded(true); }, [busy, turns.length, progress.length]);
   const history = useRef<HTMLDivElement | null>(null);
-  const following = useRef(true);
-  const [hasNew, setHasNew] = useState(false);
   const visibleProgressCount = sidebar ? 0 : progress.length;
   const tail = useRef<HTMLDivElement | null>(null);
 
@@ -101,10 +99,8 @@ export function ChatPanel({
     없는 환경에서 화면이 죽지 않는 것이 옳기도 하다.
   */
   useEffect(() => {
-    if (sidebar) {
-      if (following.current && history.current) history.current.scrollTop = history.current.scrollHeight;
-      else setHasNew(true);
-    } else tail.current?.scrollIntoView?.({ block: "end" });
+    // 사이드바에서는 기록이 위 타임라인에 있다 — 여기서 따라갈 것이 없다.
+    if (!sidebar) tail.current?.scrollIntoView?.({ block: "end" });
   }, [turns.length, visibleProgressCount, sidebar]);
 
   const enabled = capability.kind === "enabled" && !busy && unavailableReason === null;
@@ -144,10 +140,17 @@ export function ChatPanel({
         늘어나 미러를 밀어낸다. 「스크롤이 안 먹는」 가장 흔한 원인이며,
         `WorkbenchHeight.test.tsx` 가 Step 목록에서 같은 것을 센다.
       */}
+      {/*
+        **작성 현황에서는 기록을 여기 두지 않는다** (2026-09-28 사용자 요청).
+
+        사이드바에서는 바로 위 타임라인이 최초 지시문부터 이번 답까지를 한 줄기로
+        보여 준다. 같은 대화를 아래에도 쌓으면 한 화면에 같은 말이 두 번 보이고,
+        사용자는 둘이 다른 것인지 확인하느라 멈춘다 — 이 자리는 **쓰는 자리**로 남긴다.
+      */}
+      {!sidebar && (
       <div
         className="flex flex-col gap-s2 min-h-0 overflow-y-auto"
         ref={history}
-        onScroll={() => { const el = history.current; if (el) { following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 32; if (following.current) setHasNew(false); } }}
         role="log"
         aria-live="polite"
         aria-label="대화 기록"
@@ -195,8 +198,8 @@ export function ChatPanel({
         )}
         <div ref={tail} />
       </div>
+      )}
 
-      {sidebar && hasNew && <Button size="sm" variant="ghost" onClick={() => { following.current = true; setHasNew(false); if (history.current) history.current.scrollTop = history.current.scrollHeight; }}>최신 대화 보기</Button>}
       <form onSubmit={submit} className="shrink-0 flex flex-col gap-s2">
         <label className="sr-only" htmlFor="ai-chat-input">
           AI 에게 할 말

@@ -23,7 +23,7 @@ import { ToolPanel } from "../ui/ToolPanel";
  * **AI 세션 판정은 `authoring_mode` 로 한다** — `view.state` 가 아니다 (DR-020). 판정은
  * `lib/phase.ts` 가 소유한다.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { describeError, fromEvent, localError } from "../components/ErrorNotice";
 import type { ErrorInfo } from "../components/ErrorNotice";
 
@@ -47,6 +47,7 @@ import {
 } from "../api/ws";
 import { AssertionForm } from "../components/AssertionForm";
 import { ChatPanel } from "../components/workbench/ChatPanel";
+import type { AuthoringEntry } from "../components/workbench/AiAuthoringPanel";
 import { RerecordBar, rangeLabelOf } from "../components/workbench/RerecordBar";
 import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
 import {
@@ -313,6 +314,14 @@ export interface SessionWorkbenchProps {
   /** 대화 이력. 소유는 컨테이너다 — `chat_turn` 이벤트로 누적하고 새로 고침 때 되찾는다 */
   chatTurns?: ChatTurn[];
   /**
+   * AI 작성 현황에 쌓이는 **한 줄기 대화** (2026-09-28 사용자 요청).
+   *
+   * `chatTurns`·`aiMessages` 와 **같은 것을 나눠 본 것**이 아니라, 그 둘이 여기서
+   * 갈라져 나간다 — 소유는 컨테이너의 `authoringLog` 하나이고 저 둘은 거기서 뽑은
+   * 것이다. 상태를 셋으로 두면 순서가 갈리고, 갈리면 대화가 어긋난 채로 보인다.
+   */
+  authoringLog?: AuthoringEntry[];
+  /**
    * 이번 턴에 AI 가 **무엇을 하고 있는지** (FR-011 · 2026-09-11 사용자 요청).
    *
    * `ai_progress` 이벤트를 **턴 단위로 모은 것**이다. 마지막 한 줄만 넘기면 사용자는
@@ -382,6 +391,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     view,
     aiInstruction = null,
     aiMessages = [],
+    authoringLog = [],
     aiError = null,
     aiBlocked = null,
     aiMismatchCount = 0,
@@ -1496,7 +1506,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     <Workbench
       model={model}
       aiAuthoringSidebar={aiAuthoringSidebar}
-      authoringMessages={aiMessages}
+      authoringLog={authoringLog}
+      authoringInstruction={aiInstruction}
       phaseActions={phaseActions}
       /*
         011 UC-011-2 — 이름을 국면 띠 그 자리에서 고친다. 세션에서 이 값은 **저장 이름을
@@ -2002,7 +2013,34 @@ export function SessionScreen({
   const [confirmingRerun, setConfirmingRerun] = useState<{ fromStepIndex: number | null } | null>(
     null,
   );
-  const [aiMessages, setAiMessages] = useState<string[]>([]);
+  /**
+   * AI 작성 현황의 **한 줄기 대화** (2026-09-28 사용자 요청).
+   *
+   * > 「사람이 입력한 최초 프롬프트 부터 시작해서, ai 의 답변, 사람이 재입력한 내용등
+   * > 대화형태처럼 확인하면 좋겠다」
+   *
+   * 그 전에는 자취(`aiMessages`)와 대화(`chatTurns`)가 **따로 쌓였다.** 둘은 같은
+   * 통로로 오는 한 흐름인데 상태가 둘이라, 화면에서도 두 자리로 갈렸고 어느 것이
+   * 어느 차례에 딸린 것인지 알 수 없었다.
+   *
+   * 이제 상태는 이것 하나이고 **받은 순서를 그대로 지킨다.** 자취와 대화 목록은 아래에서
+   * 여기서 뽑는다 — 상태를 셋으로 두면 순서가 갈리고, 갈리면 대화가 어긋나 보인다.
+   */
+  const [authoringLog, setAuthoringLog] = useState<AuthoringEntry[]>([]);
+  const appendLog = useCallback((entry: Omit<AuthoringEntry, "at"> & { at?: string }) => {
+    setAuthoringLog((prev) => [...prev, { ...entry, at: entry.at ?? new Date().toISOString() } as AuthoringEntry]);
+  }, []);
+  /*
+    옛 두 갈래는 **여기서 뽑는다.**
+
+    `aiMessages` 는 사이드바가 아닌 국면의 진행 표시(`WorkArea` 의 `ai_progress`)가
+    그대로 쓰고, `chatTurns` 는 대화 입력칸이 쓴다. 둘 다 파생이므로 순서가 갈릴 수
+    없다.
+  */
+  const aiMessages = useMemo(
+    () => authoringLog.filter((e) => e.kind === "progress" || e.kind === "error").map((e) => e.text),
+    [authoringLog],
+  );
   /*
     016 — 대화 이력 (FR-009).
 
@@ -2010,7 +2048,14 @@ export function SessionScreen({
     뒤에는 `GET /chat` 으로 되찾는다 (아래 `useEffect`). 화면만 들고 있으면 새로
     고침에서 대화가 사라지고, 그러면 「서버에 이력을 둔다」는 설계가 뜻을 잃는다.
   */
-  const [chatTurns, setChatTurns] = useState<ChatTurn[]>([]);
+  const chatTurns = useMemo<ChatTurn[]>(
+    () =>
+      authoringLog
+        .filter((e): e is Extract<AuthoringEntry, { kind: "user" | "assistant" }> =>
+          e.kind === "user" || e.kind === "assistant")
+        .map((e) => ({ role: e.kind, text: e.text, at: e.at })),
+    [authoringLog],
+  );
   /*
     016 FR-012 — 언어모델을 쓸 수 있는가. **서버가 준 사유를 그대로 들고 있는다.**
 
@@ -2094,7 +2139,23 @@ export function SessionScreen({
     sessions
       .chatHistory(sessionId)
       .then((history) => {
-        if (alive) setChatTurns(history.turns);
+        /*
+          **이미 받은 차례는 다시 붙이지 않는다.**
+
+          새로 고침 직후에는 로그가 비어 있어 그대로 채우면 된다. 다만 이력을 읽는
+          사이에 `chat_turn` 이 도착할 수 있고, 그때 통째로 덮으면 방금 온 차례가
+          사라진다 — 되찾은 것 가운데 **없는 것만** 앞에 붙인다.
+        */
+        if (!alive) return;
+        setAuthoringLog((prev) => {
+          const seen = new Set(
+            prev.filter((e) => e.kind === "user" || e.kind === "assistant").map((e) => `${e.at}|${e.text}`),
+          );
+          const restored = (history?.turns ?? [])
+            .filter((t) => !seen.has(`${t.at}|${t.text}`))
+            .map((t): AuthoringEntry => ({ kind: t.role, text: t.text, at: t.at }));
+          return restored.length === 0 ? prev : [...restored, ...prev];
+        });
       })
       .catch(() => {
         /* 조용히 넘긴다 — 위 주석 */
@@ -2250,7 +2311,7 @@ export function SessionScreen({
             void resync();
             break;
           case "ai_progress":
-            setAiMessages((prev) => [...prev, event.message]);
+            appendLog({ kind: "progress", text: event.message });
             setTurnProgress((prev) => [...prev, event.message]);
             break;
           case "ai_blocked":
@@ -2276,7 +2337,7 @@ export function SessionScreen({
                 "다시 시도하거나, 직접 이어받아 Step을 만들 수 있습니다. 기록된 Step은 남아 있습니다.",
               ),
             );
-            setAiMessages((prev) => [...prev, `실패: ${event.reason}`]);
+            appendLog({ kind: "error", text: `실패: ${event.reason}` });
             void resync();
             break;
           case "ai_finished":
@@ -2296,10 +2357,7 @@ export function SessionScreen({
           case "chat_turn":
             // **누적만 한다.** `resync` 를 부르지 않는 이유는 대화가 Step 목록을
             // 바꾸지 않기 때문이다 — 바꿨다면 `step_added` 가 따로 온다.
-            setChatTurns((prev) => [
-              ...prev,
-              { role: event.role, text: event.text, at: event.at },
-            ]);
+            appendLog({ kind: event.role, text: event.text, at: event.at });
             break;
           case "rerecord_changed":
             void resync();
@@ -2333,7 +2391,7 @@ export function SessionScreen({
       subscription.current = null;
       sub.stop();
     };
-  }, [sessionId, resync]);
+  }, [sessionId, resync, appendLog]);
 
   /**
    * 007 FR-220 — 국면이 **사용자 조작 없이** 바뀐 순간을 잡는다.
@@ -2970,6 +3028,7 @@ export function SessionScreen({
         view={view}
         aiInstruction={aiInstruction}
         aiMessages={aiMessages}
+        authoringLog={authoringLog}
         aiError={aiError}
         aiBlocked={blockedNow}
         aiMismatchCount={aiMismatches}

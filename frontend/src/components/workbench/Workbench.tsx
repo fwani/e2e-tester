@@ -31,7 +31,7 @@ import { ToastDock } from "../../ui/Toast";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
-import { AiAuthoringPanel } from "./AiAuthoringPanel";
+import { AiAuthoringPanel, type AuthoringEntry } from "./AiAuthoringPanel";
 
 import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard } from "../design/Chrome";
@@ -102,7 +102,15 @@ export interface WorkbenchProps {
   leftExtra?: ReactNode;
   /** AI 작성 흐름에서만 진행과 대화를 독립 사이드바에 둔다. */
   aiAuthoringSidebar?: boolean;
-  authoringMessages?: string[];
+  /**
+   * 작성 현황에 쌓이는 **한 줄기 대화** (2026-09-28 사용자 요청).
+   *
+   * 사람이 쓴 것·AI 의 답·수행 자취가 **받은 순서 그대로** 들어 있다. 화면이 시각으로
+   * 다시 세우지 않는다 — 셋이 같은 통로로 오므로 받은 순서가 실제 순서다.
+   */
+  authoringLog?: AuthoringEntry[];
+  /** 세션을 열 때 사람이 준 지시문. 대화의 첫 차례로 선다 (FR-063). */
+  authoringInstruction?: string | null;
   /** Step 이 0개일 때의 안내. 국면마다 다르다 */
   stepEmptyNotice?: ReactNode;
   /**
@@ -177,7 +185,8 @@ export function Workbench({
   stepBand,
   leftExtra,
   aiAuthoringSidebar = false,
-  authoringMessages = [],
+  authoringLog = [],
+  authoringInstruction = null,
   stepEmptyNotice,
   deleteTargets,
   rerecordTargets,
@@ -447,7 +456,7 @@ export function Workbench({
             <label className="ai-sidebar-width">패널 너비
               <Input aria-label="AI 작성 패널 너비" type="range" min="300" max="440" step="20" value={asideWidth} onChange={(event) => setAsideWidth(Number(event.target.value))} />
             </label>
-            <AiAuthoringPanel messages={authoringMessages} work={model.work} status={aiAttention ?? model.phaseBar.phaseLabel}
+            <AiAuthoringPanel entries={authoringLog} instruction={authoringInstruction} work={model.work} status={aiAttention ?? model.phaseBar.phaseLabel}
               chooseBlocked={capabilities["ai.chooseBlocked"]} onChooseBlocked={onChooseBlocked} busy={busy}>
               {leftExtra}
             </AiAuthoringPanel>
