@@ -64,3 +64,80 @@ FR-020~FR-022 와 US2 가 표준 Playwright 를 명시한다. 이것은 구현 �
   무관하다.
 - **손으로 Step 을 넣는 경로는 구조적으로 지원 불가.** 그 경로가 대상 요소를 받지 않기
   때문이며, 범위 외 표에 이유와 함께 명시했다.
+
+---
+
+## 2차 검증 — 키 입력으로 범위를 넓힌 뒤 (2026-09-28)
+
+사용자가 둘째 요구(「텍스트 입력 후 엔터·스페이스를 인식하지 못해 스텝 생성이 실패한다」)를
+주었고, 023 에 합치기로 결정해 명세를 다시 썼다.
+
+### Content Quality
+
+- [x] No implementation details (languages, frameworks, APIs)
+- [x] Focused on user value and business needs
+- [x] Written for non-technical stakeholders
+- [x] All mandatory sections completed
+
+### Requirement Completeness
+
+- [x] No [NEEDS CLARIFICATION] markers remain
+- [x] Requirements are testable and unambiguous
+- [x] Success criteria are measurable
+- [x] Success criteria are technology-agnostic
+- [x] All acceptance scenarios are defined
+- [x] Edge cases are identified
+- [x] Scope is clearly bounded
+- [x] Dependencies and assumptions identified
+
+### Feature Readiness
+
+- [x] All functional requirements have clear acceptance criteria
+- [x] User scenarios cover primary flows
+- [x] Feature meets measurable outcomes defined in Success Criteria
+- [x] No implementation details leak into specification
+
+### 규모
+
+| | 1차 | 2차 |
+|---|---|---|
+| User Story | 3 | **4** |
+| 기능 요구 (FR) | 26 | **38** |
+| 성공 기준 (SC) | 8 | **12** |
+| 작업 | 50 | **73** |
+| 계약 문서 | 2 | **3** |
+
+### 범위를 넓히며 판단한 것
+
+- **디렉터리 이름을 바꾸지 않았다.** `023-input-value-assertion` 은 첫 요구만 담고 있어
+  이제 절반만 맞는 이름이다. 그러나 경로는 이미 커밋 4건에 걸쳐 있고 브랜치 이름이기도
+  하다. **문서 제목을 범위의 권위로 삼고** 그 사실을 spec 머리말에 적었다.
+- **User Story 를 앞에 끼워 넣어 번호가 밀렸다.** 키 입력이 P1 이 되면서 기존 US1~US3 이
+  US2~US4 가 됐다. 뒤에 붙이면 「나중 것이 덜 중요하다」로 읽히는데, 키 입력은 **작성이
+  중단되는** 고장이라 그렇지 않다.
+- **P1 이 둘이다.** 억지로 순위를 매기지 않았다. 둘은 서로 의존하지 않고 각각 지금 깨져
+  있는 시나리오를 하나씩 고친다. 그 이유를 spec 의 User Scenarios 머리에 적었다.
+- **FR 번호를 재사용하지 않았다.** 키 입력은 FR-050~060 의 새 블록을 쓴다. 기존 번호가
+  tasks·contracts 에서 참조되고 있어 밀면 전부 어긋난다.
+
+### 2차에서 새로 드러난 것
+
+- **녹화가 값을 잃는다** — AI 만의 문제가 아니었다. 태그 칸을 사람이 녹화하면 Enter 뒤의
+  빈 값 확정 이벤트가 앞선 입력 Step 을 덮어써서, 최종 정의는 「빈 문자열을 넣는다」 하나가
+  된다. 사용자가 보고한 것보다 넓은 결함이며 [research R11](../research.md) 에 경로를
+  적었다.
+- **한글 IME 의 Enter 가 두 번 눌린다** — 조합 확정과 제출. 가르지 못하면 이 기능은
+  한국어 사용자에게 쓸모없고, **영문 검증으로는 절대 드러나지 않는다.** 이것을 spec 의
+  「어려운 질문」과 quickstart §10-3 양쪽에 두었다.
+- **키 입력은 새 유출 경로가 아니다** — 값을 담지 않는다. 입력값 검증과 보안 성질이 다르다는
+  것을 [research R13](../research.md) 에 적어, 같은 방어층을 두 번 쌓지 않도록 했다.
+
+### 확인 필요로 남긴 것
+
+| 항목 | 어디서 해소하나 |
+|---|---|
+| 한글 IME 에서 **Space** 가 Enter 와 같게 동작하는가 | T003 계열 실측 · quickstart §10-4 |
+| `<select>` 값이 정말 내부 식별자로 관찰되는가 | T003 |
+| 숨겨진 요소의 값이 읽히는가 | T004 |
+
+셋 다 **문구나 명세 문장이 그 결과에 걸려 있어** 구현 전에 확인해야 한다.
