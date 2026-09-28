@@ -1646,6 +1646,7 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         hover,
         drag,
         upload,
+        press,
         assert_condition,
         close_tab,
         update_step,

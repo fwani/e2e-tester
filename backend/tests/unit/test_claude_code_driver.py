@@ -241,12 +241,14 @@ def test_editing_tools_are_on_the_dev_driver_surface_too() -> None:
 
 
 def test_the_dev_driver_surface_equals_the_default_one() -> None:
-    """표면 전체가 같다. 016 이후 16종."""
+    """표면 전체가 같다. 023 이후 17종 (016 의 16 + `press`)."""
     from itb.authoring.tools import MCP_SERVER_NAME, QUALIFIED_TOOL_NAMES, TOOL_NAMES
 
     expected = {f"mcp__{MCP_SERVER_NAME}__{name}" for name in TOOL_NAMES}
     assert set(QUALIFIED_TOOL_NAMES) == expected
-    assert len(QUALIFIED_TOOL_NAMES) == 16
+    # 023 이 `press` 를 더해 17종이 됐다. **Step 종류가 늘어서 늘어난 것**이며,
+    # `test_tool_surface.py` 의 10:10 대응 검사가 그 사실을 강제한다.
+    assert len(QUALIFIED_TOOL_NAMES) == 17
 
 
 def test_builtin_tools_are_still_blocked() -> None:
@@ -289,4 +291,4 @@ def test_every_tool_on_the_dev_driver_actually_builds() -> None:
     built = build_mcp_tools(toolbox)  # type: ignore[arg-type]
 
     assert {t.name for t in built} == set(TOOL_SCHEMAS)
-    assert len(built) == 16
+    assert len(built) == 17  # 023 — `press` 가 늘었다

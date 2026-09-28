@@ -211,6 +211,10 @@ ALLOWED_VALUE_READS = {
     # 열거형의 값 — Step 종류 이름("fill")과 검증 종류 이름("text").
     "step.type.value",
     "step.assertion.kind.value",
+    # 023 — 누른 키 이름("Enter"). **열거형의 값이며 사용자가 친 글자가 아니다.**
+    # `PressKey` 의 네 값 중 하나로 고정돼 있고, 모델이 요약을 읽고 Enter 와 Escape 를
+    # 구별하려면 있어야 한다 — 그 둘은 정반대 동작이다.
+    "step.key.value",
     # 검증의 기댓값 — **있는지만 본다.** `is None` 비교이며 내용은 읽지 않는다.
     # 위 `_extra` 가 이 값을 그대로 쓰면 기댓값(사용자가 적은 문자열)이 샌다.
     "step.assertion.value",

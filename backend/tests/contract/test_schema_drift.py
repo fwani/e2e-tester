@@ -51,6 +51,7 @@ def test_step_schema_keeps_discriminated_union() -> None:
         "hover",
         "upload",
         "drag",
+        "press",
     }
 
 

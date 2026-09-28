@@ -87,7 +87,13 @@ async def build_assertion_with_notes(
         if target_selector is not None:
             msg = "주소 검증은 대상 요소를 갖지 않습니다. 셀렉터를 비우세요."
             raise AssertionTargetError(msg)
-        return Assertion(kind=kind, target=None, match=match, value=value)
+        # **여기도 `BuiltAssertion` 이어야 한다.** 주소 검증은 요소를 보지 않으므로 안내가
+        # 붙을 일이 없지만, 반환 형태가 갈리면 호출자가 두 모양을 다 다뤄야 한다 —
+        # 그리고 실제로 그것을 잊어 e2e 가 깨졌다 (023 구현 중).
+        return BuiltAssertion(
+            assertion=Assertion(kind=kind, target=None, match=match, value=value),
+            notes=[],
+        )
 
     if kind in ELEMENT_KINDS and not target_selector:
         msg = f"{kind.value} 검증은 대상 요소가 필요합니다."
