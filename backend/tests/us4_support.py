@@ -89,6 +89,30 @@ def assert_url_contains(value: str) -> Action:
     return action
 
 
+def assert_text(value: str, match: str = "equals", ref_name: str | None = None) -> Action:
+    """텍스트 검증 (020). **기대값을 지시문에서 받은 그대로 넘긴다.**
+
+    `ref_name` 을 주면 그 요소를, 주지 않으면 화면 전체를 대상으로 한다.
+    """
+
+    def action(state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        args: dict[str, Any] = {"kind": "text", "value": value, "match": match}
+        if ref_name is not None:
+            args["element_ref"] = _pick(
+                state, lambda e: (e.get("name") or "") == ref_name
+            )
+        return ("assert_condition", args)
+
+    return action
+
+
+def navigate_to(url: str) -> Action:
+    def action(_state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        return ("navigate", {"url": url})
+
+    return action
+
+
 def click_missing() -> Action:
     """존재하지 않는 참조로 클릭한다. 도구 실패 경로를 만든다."""
 
@@ -99,14 +123,22 @@ def click_missing() -> Action:
 
 
 def report_blocked(
-    reason: str = "삭제 메뉴를 찾을 수 없습니다.", question: str | None = None
+    reason: str = "삭제 메뉴를 찾을 수 없습니다.",
+    question: str | None = None,
+    kind: str | None = None,
 ) -> Action:
-    """수행 불가 선언. `question` 을 주면 **사람에게 물으며** 막힌다 (2026-09-10)."""
+    """수행 불가 선언. `question` 을 주면 **사람에게 물으며** 막힌다 (2026-09-10).
+
+    `kind="product_mismatch"` 면 **제품이 지시문과 다르게 동작해** 막힌 것이다 (020
+    FR-023). 그때는 질문이 붙지 않는다.
+    """
 
     def action(_state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         args: dict[str, Any] = {"reason": reason}
         if question is not None:
             args["question"] = question
+        if kind is not None:
+            args["kind"] = kind
         return ("report_blocked", args)
 
     return action
