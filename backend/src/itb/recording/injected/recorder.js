@@ -879,13 +879,26 @@
     "keydown",
     (event) => {
       if (event.isComposing) return; // 조합을 끝내는 키는 동작이 아니다
-      const el = targetOf(event);
-      if (!el) return;
+
+      /*
+        **키를 먼저 본다.** `describe()` 보다 앞이어야 한다.
+
+        `describe()` 는 CSS 경로·접근성 이름·라벨을 계산하고 `register()` 로 참조
+        레지스트리에 요소를 넣는다. 그것을 키 판정보다 먼저 하면 **글자 하나 칠 때마다**
+        그 비용을 치른다 — 목록에 없는 키가 절대다수인데도 그렇다.
+
+        처음에는 순서가 반대였고, 미러로 타이핑하는 검증이 부하가 걸린 전량 실행에서만
+        흔들렸다 (단독으로는 통과). 기능이 아니라 **비용**이 만든 흔들림이다.
+      */
       const key = RECORDED_KEYS[event.key];
       if (!key) {
-        send({ kind: "key_out_of_scope", key: String(event.key), element: describe(el) });
+        // 범위 밖 키. **요소를 서술하지 않는다** — 받는 쪽은 키 이름만 쓴다
+        // (`_warn_unrecorded_key`). 여기서 서술을 만들면 타이핑이 그만큼 느려진다.
+        send({ kind: "key_out_of_scope", key: String(event.key) });
         return;
       }
+      const el = targetOf(event);
+      if (!el) return;
       send({ kind: "press", key, element: describe(el) });
     },
     true,
