@@ -113,7 +113,7 @@ description: "Task list template for feature implementation"
 
 - [X] T020 [US2] `frontend/src/components/workbench/WorkArea.tsx` 의 `AI_CHOICE_LABEL` 을 막힘 종류에 따라 갈라 쓴다 — 예산 소진에서 `retry` 는 「이어서 계속」, `abort` 는 「여기까지」로 읽힌다 (FR-014). 사전에 없는 값이 값 그대로 보이는 **기존 안전장치를 유지한다**
 
-- [ ] T021 [US2] `backend/src/itb/api/routes/sessions.py` 의 `ai_choice` 에서 예산 소진 막힘에도 `answer` 경로가 살아 있는지 확인한다 (FR-011) — 화면이 칸을 열지 않을 뿐 서버가 답변을 거절해서는 안 된다
+- [X] T021 [US2] `backend/src/itb/api/routes/sessions.py` 의 `ai_choice` 에서 예산 소진 막힘에도 `answer` 경로가 살아 있는지 확인한다 (FR-011) — 화면이 칸을 열지 않을 뿐 서버가 답변을 거절해서는 안 된다
 
 - [X] T022 [US2] `frontend/tests/BudgetExhaustedBlocked.test.tsx` 와 `frontend/tests/AiBlockedAnswer.test.tsx` 가 통과하는지 확인한다
 
@@ -154,15 +154,15 @@ description: "Task list template for feature implementation"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T031 [P] 020 과의 정합을 확인한다 — `product_mismatch` 막힘의 동작·화면·문구가 **하나도 바뀌지 않았는지** (`frontend/tests/ProductMismatchBlocked.test.tsx` 와 020 의 관련 백엔드 테스트)
+- [X] T031 [P] 020 과의 정합을 확인한다 — `product_mismatch` 막힘의 동작·화면·문구가 **하나도 바뀌지 않았는지** (`frontend/tests/ProductMismatchBlocked.test.tsx` 와 020 의 관련 백엔드 테스트)
 
-- [ ] T032 [P] 호환을 확인한다 — 구버전 프론트(새 `kind` 를 모르는)가 `?? "needs_input"` 와 `else` 분기로 **지금 화면**이 되는지, 구버전 백엔드(새 필드를 안 보내는)에서 프론트가 표시를 생략하는지 ([contracts/blocked-view.md](./contracts/blocked-view.md) §3)
+- [X] T032 [P] 호환을 확인한다 — 구버전 프론트(새 `kind` 를 모르는)가 `?? "needs_input"` 와 `else` 분기로 **지금 화면**이 되는지, 구버전 백엔드(새 필드를 안 보내는)에서 프론트가 표시를 생략하는지 ([contracts/blocked-view.md](./contracts/blocked-view.md) §3)
 
-- [ ] T033 전량 검증 — `cd backend && bash scripts/test-backend.sh`, `cd frontend && npm test`, `.venv/bin/lint-imports`(계약 4개 유지), `.venv/bin/python -m ruff check src tests`. **T001 의 기준선과 대조해** 새 실패가 0 인지 확인한다
+- [X] T033 전량 검증 — **새 실패 0.** 백엔드 3163 통과·순차 60 통과, 실패 4건은 전부 T001 기준선의 021 작업분(`test_ui_surface` AS-009·025·037·046). 프론트 1570 통과(신규 16 포함), ScreenSweep 2건은 기준선의 기존 실패. import-linter 4계약 유지, 변경분 ruff 통과(전체 4건은 기준선의 021 작업분)
 
 - [ ] T034 [quickstart.md](./quickstart.md) §1~§6 을 사람이 손으로 수행하고 결과를 기록한다 — 자동 검증이 덮지 못하는 것(문구가 읽히는지, 적어야 하는 것으로 보이지 않는지, 수치가 판단에 쓸 만한지)을 본다. **§2 가 가장 중요하다** (이어가기가 이미 한 일을 반복하지 않는지)
 
-- [ ] T035 상한 값을 낮춰 확인했다면 **되돌렸는지** 확인한다 — `git diff backend/src/itb/authoring/tools.py` 로 `MAX_TOOL_CALLS`·`MAX_DRIVER_TURNS` 가 원래대로인지
+- [X] T035 상한 값을 낮춰 확인했다면 **되돌렸는지** 확인한다 — `git diff backend/src/itb/authoring/tools.py` 로 `MAX_TOOL_CALLS`·`MAX_DRIVER_TURNS` 가 원래대로인지
 
 ---
 

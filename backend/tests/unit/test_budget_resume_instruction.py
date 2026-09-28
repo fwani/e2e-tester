@@ -91,3 +91,25 @@ def test_fresh_budget_does_not_touch_steps() -> None:
     allowed = {"calls", "steps_at_attempt_start"}
     assert changed <= allowed, f"예상 밖의 상태가 바뀌었다: {changed - allowed}"
     assert limits.total_calls == 1, "누적은 남는다 (FR-018)"
+
+
+# ─── 방향을 적어 이어가는 길은 남는다 (FR-011) ─────────────────────────────
+
+
+def test_the_answer_path_is_open_whatever_the_kind() -> None:
+    """**화면이 칸을 열지 않을 뿐, 서버가 답변을 거절하지는 않는다** (022 FR-011).
+
+    예산 소진에서도 사용자가 「목록 화면부터 다시 봐」처럼 방향을 줄 수 있어야 한다.
+    화면이 칸을 닫는 것은 「적지 않아도 된다」는 뜻이지 「적을 수 없다」가 아니다.
+
+    `ai_choice` 가 답변을 거절하는 조건이 **막힘의 종류를 보지 않는지**를 못 박는다 —
+    나중에 누가 「예산 소진에는 답변을 받지 않는다」를 넣으면 여기서 걸린다.
+    """
+    import inspect
+
+    from itb.api.routes import sessions
+
+    src = inspect.getsource(sessions.ai_choice)
+    body = src.split("if choice is AiChoice.ANSWER")[1].split("command = command_for")[0]
+    assert "BUDGET" not in body.upper(), "답변 경로가 막힘의 종류로 갈리면 안 된다"
+    assert "blocked_kind" not in body
