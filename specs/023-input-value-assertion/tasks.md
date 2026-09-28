@@ -35,11 +35,11 @@ description: "Task list for 023 입력 칸의 두 빈칸"
 **Purpose**: 재료를 갖추고, 문구를 쓰기 전에 사실을 확인하고, **고친 것을 나중에 증명할 수
 있도록 고장을 먼저 기록한다.**
 
-- [ ] T001 [P] `fixtures/sample-app/projects.html` 의 생성 모달에 여러 줄 입력 칸(`<textarea id="pdesc">`)을 더한다 — FR-008(줄바꿈 포함 관찰) 검증용
-- [ ] T002 [P] 같은 화면에 **키로 확정하는 태그 칸**을 더한다 — 입력 후 Enter 또는 Space 를 누르면 칩이 추가되고 **칸이 비워진다.** 마지막 성질이 이 기능이 고치는 결함의 원인이므로 빠뜨리면 검증이 아무것도 하지 않는다
-- [ ] T003 **`<select>` 의 값이 실제로 무엇으로 관찰되는지 실측한다** — `#ptype`(보이는 글자 `분석`, 값 `analysis`)에 Playwright 의 값 읽기를 걸어 확인하고 [research.md](./research.md) R8 의 미확인 항목을 해소한다. **결과를 확인하기 전에는 FR-033 문구를 쓰지 않는다** — 안내가 사실과 다르면 없느니만 못하다
-- [ ] T004 [P] **숨겨진 요소의 값이 읽히는지 실측한다** *(analyze U1)* — 명세 Edge Cases 의 「숨겨져 있어도 값은 읽힌다」는 확인되지 않은 주장이다. `display:none` 인 칸으로 확인하고, 다르면 [spec.md](./spec.md) 를 고친다
-- [ ] T005 **키 입력의 고장을 먼저 재현해 기록한다** ([quickstart §10-1](./quickstart.md)) — T002 의 태그 칸에서 `E2E` + Enter 를 녹화하고, **입력 Step 하나가 빈 값으로 남는 것**을 확인해 적는다. 이것을 보지 않으면 나중에 무엇을 고쳤는지 증명할 수 없다
+- [X] T001 [P] `fixtures/sample-app/projects.html` 의 생성 모달에 여러 줄 입력 칸(`<textarea id="pdesc">`)을 더한다 — FR-008(줄바꿈 포함 관찰) 검증용
+- [X] T002 [P] 같은 화면에 **키로 확정하는 태그 칸**을 더한다 — 입력 후 Enter 또는 Space 를 누르면 칩이 추가되고 **칸이 비워진다.** 마지막 성질이 이 기능이 고치는 결함의 원인이므로 빠뜨리면 검증이 아무것도 하지 않는다
+- [X] T003 **`<select>` 의 값이 실제로 무엇으로 관찰되는지 실측한다** — `#ptype`(보이는 글자 `분석`, 값 `analysis`)에 Playwright 의 값 읽기를 걸어 확인하고 [research.md](./research.md) R8 의 미확인 항목을 해소한다. **결과를 확인하기 전에는 FR-033 문구를 쓰지 않는다** — 안내가 사실과 다르면 없느니만 못하다
+- [X] T004 [P] **숨겨진 요소의 값이 읽히는지 실측한다** *(analyze U1)* — 명세 Edge Cases 의 「숨겨져 있어도 값은 읽힌다」는 확인되지 않은 주장이다. `display:none` 인 칸으로 확인하고, 다르면 [spec.md](./spec.md) 를 고친다
+- [X] T005 **키 입력의 고장을 먼저 재현해 기록한다** ([quickstart §10-1](./quickstart.md)) — T002 의 태그 칸에서 `E2E` + Enter 를 녹화하고, **입력 Step 하나가 빈 값으로 남는 것**을 확인해 적는다. 이것을 보지 않으면 나중에 무엇을 고쳤는지 증명할 수 없다
 
 **Checkpoint**: 재료가 갖춰졌고, 안내 문구의 근거가 확정됐고, 고장이 기록됐다
 
@@ -54,22 +54,22 @@ description: "Task list for 023 입력 칸의 두 빈칸"
 
 ### 검증 종류
 
-- [ ] T006 `backend/src/itb/domain/assertion.py` 의 `AssertionKind` 에 `VALUE = "value"` 를 더하고, 「화면에 표시된 텍스트」와의 차이를 docstring 으로 적는다
-- [ ] T007 같은 파일의 **모듈 docstring 첫머리를 정정한다** — 「입력 필드 현재값 검증은 범위가 아니다 (001 FR-013c)」가 이제 사실이 아니다. 023 이 그 판단을 뒤집었음과 그 이유를 적는다
-- [ ] T008 같은 파일에서 `VALUE_COMPARING_KINDS` 에 `VALUE` 를 더한다 — 이것만으로 부정 비교가 열린다. `_check_negation` 은 **고치지 않는다**
-- [ ] T009 같은 파일의 `_check_shape` 에 `VALUE` 규칙을 더한다 — `target` 필수, 비어 있지 않은 `value` 필수. [data-model §2](./data-model.md) 의 표가 권위다. **기존 종류의 허용 범위는 넓히지도 좁히지도 않는다**
-- [ ] T010 [P] `backend/tests/unit/test_domain_invariants.py` 에 `value` 형태 규칙 테스트를 더한다 — 대상 없음 거절 · 값 없음 거절 · 부정 비교 넷 모두 허용 · **기존 6종 동작 불변**
+- [X] T006 `backend/src/itb/domain/assertion.py` 의 `AssertionKind` 에 `VALUE = "value"` 를 더하고, 「화면에 표시된 텍스트」와의 차이를 docstring 으로 적는다
+- [X] T007 같은 파일의 **모듈 docstring 첫머리를 정정한다** — 「입력 필드 현재값 검증은 범위가 아니다 (001 FR-013c)」가 이제 사실이 아니다. 023 이 그 판단을 뒤집었음과 그 이유를 적는다
+- [X] T008 같은 파일에서 `VALUE_COMPARING_KINDS` 에 `VALUE` 를 더한다 — 이것만으로 부정 비교가 열린다. `_check_negation` 은 **고치지 않는다**
+- [X] T009 같은 파일의 `_check_shape` 에 `VALUE` 규칙을 더한다 — `target` 필수, 비어 있지 않은 `value` 필수. [data-model §2](./data-model.md) 의 표가 권위다. **기존 종류의 허용 범위는 넓히지도 좁히지도 않는다**
+- [X] T010 [P] `backend/tests/unit/test_domain_invariants.py` 에 `value` 형태 규칙 테스트를 더한다 — 대상 없음 거절 · 값 없음 거절 · 부정 비교 넷 모두 허용 · **기존 6종 동작 불변**
 
 ### Step 종류
 
-- [ ] T011 `backend/src/itb/domain/step.py` 에 `PressKey` 열거형(`Enter`·`Space`·`Tab`·`Escape`)과 `PressStep`(`target` 필수 + `key` 필수)을 더하고 `StepType`·`Step` 판별 유니온에 연결한다. [data-model §7](./data-model.md) 이 권위다. **왜 자유 문자열이 아닌지**를 docstring 에 적는다 ([research R12](./research.md))
-- [ ] T012 [P] `backend/tests/unit/test_domain_invariants.py` 에 `PressStep` 형태 테스트를 더한다 — 대상 없음 거절 · 범위 밖 키 거절 · 네 키 모두 허용 · **기존 9종 동작 불변**
+- [X] T011 `backend/src/itb/domain/step.py` 에 `PressKey` 열거형(`Enter`·`Space`·`Tab`·`Escape`)과 `PressStep`(`target` 필수 + `key` 필수)을 더하고 `StepType`·`Step` 판별 유니온에 연결한다. [data-model §7](./data-model.md) 이 권위다. **왜 자유 문자열이 아닌지**를 docstring 에 적는다 ([research R12](./research.md))
+- [X] T012 [P] `backend/tests/unit/test_domain_invariants.py` 에 `PressStep` 형태 테스트를 더한다 — 대상 없음 거절 · 범위 밖 키 거절 · 네 키 모두 허용 · **기존 9종 동작 불변**
 
 ### 공통
 
-- [ ] T013 스키마를 재생성한다 — `cd backend && uv run python -m itb.schema.export && cd ../frontend && npm run gen:types`. 생성 타입에 `"value"` 와 `press` Step 이 들어왔는지 확인한다
-- [ ] T014 `backend/src/itb/execution/element_probe.py` 에 **후보 묶음과 요소 서술(`tag`·`attributes`)을 함께 돌려주는 진입점**을 더한다. 기존 `collect_by_selector` 는 서술을 버리는데 대상 성질 판정에 `type` 이 필요하다 ([research R1](./research.md)). **Python 에 판별 규칙을 복제하지 않는다** — `__itbDescribe` 가 주는 것을 전달만 한다
-- [ ] T015 [P] `backend/tests/unit/` 에 T014 진입점의 단위 테스트를 더한다
+- [X] T013 스키마를 재생성한다 — `cd backend && uv run python -m itb.schema.export && cd ../frontend && npm run gen:types`. 생성 타입에 `"value"` 와 `press` Step 이 들어왔는지 확인한다
+- [X] T014 `backend/src/itb/execution/element_probe.py` 에 **후보 묶음과 요소 서술(`tag`·`attributes`)을 함께 돌려주는 진입점**을 더한다. 기존 `collect_by_selector` 는 서술을 버리는데 대상 성질 판정에 `type` 이 필요하다 ([research R1](./research.md)). **Python 에 판별 규칙을 복제하지 않는다** — `__itbDescribe` 가 주는 것을 전달만 한다
+- [X] T015 [P] `backend/tests/unit/` 에 T014 진입점의 단위 테스트를 더한다
 
 **Checkpoint**: 두 종류가 존재하고, 양쪽 언어가 그것을 알고, 성질을 읽을 통로가 있다
 

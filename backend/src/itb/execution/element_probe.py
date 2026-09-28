@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import Any
+from typing import Any, NamedTuple
 
 from playwright.async_api import ElementHandle
 
@@ -164,3 +164,65 @@ async def collect_by_selector(
     if element is None:
         return None
     return await collect_and_verify(root, element, test_id_attribute)
+
+
+class ProbedTarget(NamedTuple):
+    """후보 묶음과 **요소의 성질**을 함께 담는다 (023 T014).
+
+    ## 왜 후보만으로는 부족해졌는가
+
+    023 이 「대상의 성질에 따라 검증을 거절하거나 안내하는」 규칙을 더했다. 그 판정에는
+    태그와 ``type`` 속성이 필요한데, `TargetLocator` 는 둘 중 ``tag`` 만 담고 ``type`` 은
+    담지 않는다 — 후보 묶음은 「이 요소를 어떻게 찾는가」를 위한 것이지 「이 요소가
+    무엇인가」를 위한 것이 아니기 때문이다.
+
+    ## 왜 `TargetLocator` 에 `type` 을 더하지 않았는가
+
+    **성질은 저장하면 안 된다.** 오늘 텍스트 칸이던 것이 내일 선택 목록이 되면 저장된
+    성질은 거짓말이 된다. 판정이 필요한 두 시점(작성·실행) 모두 살아 있는 요소를 갖고
+    있으므로, 그때마다 읽는 것이 언제나 옳다 (023 research R1).
+
+    ## 규칙을 복제하지 않는다
+
+    ``descriptor`` 는 주입 스크립트의 `describe()` 가 만든 것을 **그대로** 전달한 것이다.
+    이 모듈은 해석하지 않는다 — 여기서 태그를 다시 읽으면 녹화가 보는 요소와 검증이 보는
+    요소가 갈릴 자리가 생긴다.
+    """
+
+    locator: TargetLocator
+    descriptor: dict[str, Any]
+    """`describe()` 의 결과. `tag` 와 `attributes` 를 담는다."""
+
+    @property
+    def tag(self) -> str:
+        """소문자 태그 이름. 읽지 못했으면 빈 문자열이다."""
+        return str(self.descriptor.get("tag") or "").lower()
+
+    @property
+    def input_type(self) -> str:
+        """``type`` 속성의 소문자 값. 없으면 빈 문자열이다.
+
+        ``<input>`` 에 ``type`` 이 없으면 브라우저는 `text` 로 다루지만, **여기서는 빈
+        문자열을 그대로 돌려준다** — 기본값을 채워 주는 판단은 이 모듈의 일이 아니다.
+        읽는 쪽이 「비어 있음」과 「명시된 text」를 구별할 수 있어야 한다.
+        """
+        attrs = self.descriptor.get("attributes")
+        if not isinstance(attrs, dict):
+            return ""
+        return str(attrs.get("type") or "").lower()
+
+
+async def probe_by_selector(
+    root: SearchRoot, selector: str, test_id_attribute: str = "data-testid"
+) -> ProbedTarget | None:
+    """셀렉터 하나로 후보 묶음 **과 요소 성질**을 함께 얻는다 (023).
+
+    `collect_by_selector` 와 같은 일을 하되 서술을 버리지 않는다. 기존 함수를 고치지 않고
+    나란히 두는 이유는, 성질이 필요 없는 호출자가 훨씬 많고 그들에게 튜플을 풀게 하는 것이
+    이득 없는 변경이기 때문이다.
+    """
+    element = await describe_element(root, selector)
+    if element is None:
+        return None
+    locator = await collect_and_verify(root, element, test_id_attribute)
+    return ProbedTarget(locator=locator, descriptor=element)

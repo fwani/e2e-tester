@@ -12,7 +12,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from itb.domain.assertion import Assertion, AssertionKind, MatchMode
 from itb.domain.locator import Candidate, CandidateStatus, StableAttr, TargetLocator
-from itb.domain.step import DEFAULT_TIMEOUT_MS, Author, Step, StepType, target_of
+from itb.domain.step import DEFAULT_TIMEOUT_MS, Author, PressKey, Step, StepType, target_of
 from itb.domain.test_case import Test, Variable
 
 STEP_ADAPTER = TypeAdapter(Step)
@@ -203,7 +203,9 @@ def test_step_union_covers_every_step_type() -> None:
 
     `hover`·`drag` 는 T161(FR-023c)에서 더했다. `upload` 는 2026-09-09 에 더했다 —
     사용자 보고(「파일업로드 녹화가 제대로 안됨」)이며, 그 종류가 없어서 파일 업로드가
-    정의에 전혀 남지 않았다.
+    정의에 전혀 남지 않았다. `press` 는 023 에서 더했다 — 같은 모양의 보고(「엔터·
+    스페이스를 인식하지 못해 스텝 생성이 실패」)이며, 그 종류가 없어서 태그 칸을 다루는
+    테스트를 사람도 AI 도 만들 수 없었다.
     """
     assert {t.value for t in StepType} == {
         "click",
@@ -215,6 +217,7 @@ def test_step_union_covers_every_step_type() -> None:
         "hover",
         "drag",
         "upload",
+        "press",
     }
 
 
@@ -513,3 +516,110 @@ def test_the_ungrouped_prefix_is_reserved() -> None:
 
     assert RESERVED_PREFIX == "TC"
     assert re.match(GROUP_PREFIX_PATTERN, RESERVED_PREFIX), "예약어도 형식은 만족해야 한다"
+
+
+# ─── 023 입력값 검증 (T010) ────────────────────────────────────────────────
+
+
+def test_value_assertion_requires_target() -> None:
+    """대상 없는 입력값 검증은 물을 수 있는 질문이 아니다 (FR-002).
+
+    `text` 검증과 갈리는 지점이다 — 그쪽은 대상을 비우면 화면 전체를 본다.
+    """
+    with pytest.raises(ValidationError):
+        Assertion(kind=AssertionKind.VALUE, value="E2E역할테스트")
+
+
+def test_value_assertion_requires_value() -> None:
+    """비교 값이 없으면 무엇과 견줄지 알 수 없다 (FR-003)."""
+    with pytest.raises(ValidationError):
+        Assertion(kind=AssertionKind.VALUE, target=TargetLocator(**VERIFIED_CSS))
+
+
+@pytest.mark.parametrize("match", list(MatchMode))
+def test_value_assertion_allows_every_match_mode(match: MatchMode) -> None:
+    """네 비교 방식을 모두 쓸 수 있다 (FR-004).
+
+    부정 비교가 열리는 것은 `VALUE_COMPARING_KINDS` 에 값을 더한 결과이며, 부정 규칙
+    자체는 021 의 것을 그대로 쓴다.
+    """
+    a = Assertion(
+        kind=AssertionKind.VALUE,
+        target=TargetLocator(**VERIFIED_CSS),
+        value="E2E역할테스트",
+        match=match,
+    )
+    assert a.negated is (match in {MatchMode.NOT_EQUALS, MatchMode.NOT_CONTAINS})
+
+
+def test_assertion_kinds_are_exactly_seven() -> None:
+    """검증 종류를 늘리는 것도 DSL 변경이다 (원칙 I).
+
+    **이 단언이 없으면 종류가 조용히 늘어난다.** 백엔드의 `match` 분기는 빠뜨려도
+    아무도 알려 주지 않기 때문이다 (023 data-model §5).
+    """
+    assert {k.value for k in AssertionKind} == {
+        "visible",
+        "hidden",
+        "text",
+        "url",
+        "value",
+        "enabled",
+        "disabled",
+    }
+
+
+# ─── 023 키 입력 (T012) ────────────────────────────────────────────────────
+
+
+def test_press_step_requires_target() -> None:
+    """포커스된 곳이 아니라 **대상 요소에** 키를 보낸다 (FR-051).
+
+    포커스에 기대면 앞 Step 의 부작용에 결과가 좌우되어 원칙 II 의 결정성이 깨진다.
+    """
+    with pytest.raises(ValidationError):
+        STEP_ADAPTER.validate_python(
+            {"type": "press", "id": "step-01", "label": "Enter 키 입력", "key": "Enter"}
+        )
+
+
+def test_press_step_refuses_unknown_key() -> None:
+    """목록에 없는 키는 정의 시점에 거절된다 (FR-052).
+
+    **오타가 실행 시점까지 숨지 않는 것**이 열거형을 택한 이유다. `enter` 와 `Enter` 가
+    갈리는 것을 자유 문자열로는 잡을 수 없다.
+    """
+    with pytest.raises(ValidationError):
+        STEP_ADAPTER.validate_python(
+            {
+                "type": "press",
+                "id": "step-01",
+                "label": "키 입력",
+                "target": VERIFIED_CSS,
+                "key": "ArrowDown",
+            }
+        )
+
+
+@pytest.mark.parametrize("key", list(PressKey))
+def test_press_step_accepts_every_listed_key(key: PressKey) -> None:
+    """초기 목록 넷이 모두 받아들여진다 (FR-053)."""
+    step = STEP_ADAPTER.validate_python(
+        {
+            "type": "press",
+            "id": "step-01",
+            "label": f"{key.value} 키 입력",
+            "target": VERIFIED_CSS,
+            "key": key.value,
+        }
+    )
+    assert step.key is key
+
+
+def test_press_key_values_match_standard_tool_spelling() -> None:
+    """키 이름이 표준 도구의 철자와 같다.
+
+    **변환표를 두지 않기 위한 불변식이다.** 표가 있으면 어느 쪽이 권위인지 매번 판단해야
+    하고, 값을 더할 때마다 두 곳을 고쳐야 한다 (023 contracts/export-mapping §6).
+    """
+    assert {k.value for k in PressKey} == {"Enter", "Space", "Tab", "Escape"}

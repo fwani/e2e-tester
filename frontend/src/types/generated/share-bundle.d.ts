@@ -56,9 +56,29 @@ export type StartUrl = string;
  * @minItems 1
  */
 export type Steps = [
-  ClickStep | FillStep | SelectStep | NavigateStep | AssertionStep | CloseTabStep | HoverStep | DragStep | UploadStep,
+  (
+    | ClickStep
+    | FillStep
+    | SelectStep
+    | NavigateStep
+    | AssertionStep
+    | CloseTabStep
+    | HoverStep
+    | DragStep
+    | UploadStep
+    | PressStep
+  ),
   ...(
-    ClickStep | FillStep | SelectStep | NavigateStep | AssertionStep | CloseTabStep | HoverStep | DragStep | UploadStep
+    | ClickStep
+    | FillStep
+    | SelectStep
+    | NavigateStep
+    | AssertionStep
+    | CloseTabStep
+    | HoverStep
+    | DragStep
+    | UploadStep
+    | PressStep
   )[]
 ];
 export type Author = "human" | "ai";
@@ -102,7 +122,7 @@ export type Tab3 = number;
 export type TimeoutMs3 = number;
 export type Type3 = "navigate";
 export type Url = string;
-export type AssertionKind = "visible" | "hidden" | "text" | "url" | "enabled" | "disabled";
+export type AssertionKind = "visible" | "hidden" | "text" | "url" | "value" | "enabled" | "disabled";
 export type MatchMode = "equals" | "contains" | "not_equals" | "not_contains";
 export type Value4 = string | null;
 export type Author4 = "human" | "ai";
@@ -144,6 +164,44 @@ export type Label8 = string;
 export type Tab8 = number;
 export type TimeoutMs8 = number;
 export type Type8 = "upload";
+export type Author9 = "human" | "ai";
+export type FrameUrl9 = string | null;
+export type Id10 = string;
+/**
+ * 키 입력 Step 이 누를 수 있는 키 (023 FR-052·FR-053).
+ *
+ * ## 왜 자유 문자열이 아닌가
+ *
+ * | | 자유 문자열 | 열거형 |
+ * |---|---|---|
+ * | 오타 (`enter` 대 `Enter`) | **실행 시점까지 숨는다** | 정의 시점에 거절 |
+ * | AI 가 없는 키를 지어내면 | 실행 시점 오류 | 도구 호출이 즉시 거절 |
+ * | 생성된 코드 | **검증 안 된 문자열이 그대로 나간다** | 목록에 있는 값만 |
+ *
+ * 세 번째 줄에서 갈렸다. 헌법의 보안 제약이 「생성된 Playwright 코드는 생성 중
+ * **데이터로 다루어야** 하며 페이지에서 온 문자열의 이스케이프되지 않은 결합으로
+ * 만들어서는 안 된다」고 못박는다. 검증되지 않은 키 이름이 생성기로 들어가는 경로를
+ * 열지 않는다 (023 research R12).
+ *
+ * ## 왜 넷뿐인가
+ *
+ * ``ENTER``·``SPACE`` 는 사용자가 요구한 것이고, ``TAB``·``ESCAPE`` 는 같은
+ * 「확정·이동·취소」 계열이면서 클릭으로 대신할 수 없다. 화살표는 선택 Step 이,
+ * Backspace 는 입력 Step 이 담당한다. 문자 키는 입력 Step 이 담당하며, 키로 쪼개면
+ * 녹화가 피해 온 IME 조합 문제가 되돌아온다.
+ *
+ * **넓히는 것은 값을 더하는 일이다.** 좁게 시작하는 것이 나중을 막지 않는다.
+ *
+ * ## 값이 표준 도구의 키 이름과 같은 철자다
+ *
+ * 변환표를 두지 않기 위해서다. 표가 있으면 어느 쪽이 권위인지 매번 판단해야 하고 값을
+ * 더할 때마다 두 곳을 고쳐야 한다 (023 contracts/export-mapping.md §6).
+ */
+export type PressKey = "Enter" | "Space" | "Tab" | "Escape";
+export type Label9 = string;
+export type Tab9 = number;
+export type TimeoutMs9 = number;
+export type Type9 = "press";
 export type UpdatedAt = string;
 export type Name5 = string;
 export type Sensitive1 = boolean;
@@ -450,6 +508,40 @@ export interface UploadStep {
   target: TargetLocator;
   timeout_ms: TimeoutMs8;
   type: Type8;
+}
+/**
+ * 키를 누르는 동작 (023 FR-050).
+ *
+ * ## ``target`` 이 필수인 이유 — 포커스에 기대지 않는다
+ *
+ * 「지금 포커스된 곳에 Enter」는 **앞 Step 의 부작용에 결과가 좌우된다.** 정의만 보고
+ * 무엇을 했는지 알 수 없고, 화면이 조금 바뀌면 엉뚱한 요소가 키를 받는다. 원칙 II 가
+ * 요구하는 「같은 화면이면 같은 결과」가 성립하지 않는다.
+ *
+ * 그래서 실행도 내보내기도 **대상 요소에 포커스를 준 뒤** 키를 보낸다 (FR-051).
+ *
+ * ## ``value`` 가 아니라 ``key`` 인 이유
+ *
+ * :class:`FillStep` 의 ``value`` 는 **사람이 친 글자**이고 민감할 수 있어 변수 참조로
+ * 저장된다. 여기의 ``key`` 는 **어느 키를 눌렀는가**이고 열거값이며 비밀이 될 수 없다.
+ * 이름을 같게 하면 민감값 처리 코드가 이 필드도 훑어야 하는지 매번 판단하게 된다.
+ *
+ * ## 이 Step 은 결과를 판정하지 않는다
+ *
+ * 「Enter 를 눌렀더니 태그가 생겼다」를 확인하려면 **검증 Step 을 따로** 둔다. 키를
+ * 눌렀는데 화면이 안 바뀌어도 이 Step 은 성공이다 — 동작과 판정을 한 Step 에 뭉치면
+ * 실패했을 때 어느 쪽이 틀렸는지 알 수 없다.
+ */
+export interface PressStep {
+  author: Author9;
+  frame_url: FrameUrl9;
+  id: Id10;
+  key: PressKey;
+  label: Label9;
+  tab: Tab9;
+  target: TargetLocator;
+  timeout_ms: TimeoutMs9;
+  type: Type9;
 }
 /**
  * 테스트 안에서 값을 대신하는 이름.

@@ -260,14 +260,57 @@ FR-041 대로 자동으로 고치지 않는다. 그 정의는 계속 실패하�
 
 ---
 
+## R8a. 값 읽기 실측 결과 (T003·T004 — 2026-09-28 구현 단계)
+
+**문구를 쓰기 전에 실제로 돌려 확인했다.** Chromium + Playwright.
+
+| 대상 | 관찰된 값 | 문서와 |
+|---|---|---|
+| `<select>` — 보이는 글자 `분석`, `value="analysis"` | **`'analysis'`** | **일치** — FR-033 안내가 맞다 |
+| `<select multiple>` — 둘 선택 | **`'a'`** (첫째만) | **일치** — R4 의 한계가 맞다 |
+| `display:none` 인 `<input value="숨은값">` | **`'숨은값'`** | **일치** — 명세 Edge Case 가 맞다 |
+| `hidden` 속성이 붙은 `<input>` | `'가려진값'` | 같음 |
+| `<textarea>` 세 줄 | `'첫줄\n둘째줄\n셋째줄'` | **일치** — FR-008 의 줄바꿈 보존 |
+| `<input type=checkbox>` **체크 안 됨** | `'on'` | **일치** |
+| 같은 체크박스 **체크됨** | **`'on'`** — 바뀌지 않는다 | **일치** — 거절 근거가 실측으로 확인됐다 |
+| `<button>` | `Node is not an <input>, <textarea> or <select> element` | **일치** — 작성 시점 거절 근거 |
+| `<div>` | 같은 오류 | 같음 |
+
+**고칠 문서가 없다.** 일곱째 줄이 특히 중요하다 — 체크박스의 값이 체크 여부와 무관하다는
+것은 추론이었는데, 이제 실측이다 (FR-032 의 근거).
+
+---
+
+## R11a. 고장 재현 기준선 (T005 — 2026-09-28 구현 단계)
+
+**고친 것을 증명하려면 고장을 먼저 봐야 한다.** 구현 전에 `test_press_recording.py` 를
+그대로 돌렸다.
+
+```
+4 failed, 1 passed
+  FAILED test_english_tag_keeps_typed_value_and_records_key
+  FAILED test_korean_composition_enter_is_not_recorded
+  FAILED test_repeated_key_is_not_collapsed
+  FAILED test_space_also_confirms
+    AssertionError: Space 가 기록돼야 한다: []
+```
+
+**모든 실패가 같은 모양이다** — 키 입력 Step 목록이 빈 배열이다. 키를 눌러도 아무것도
+기록되지 않는다.
+
+`test_out_of_scope_key_is_not_recorded` 만 통과했는데, **그것은 통과가 아니라 무의미다** —
+기록되는 키가 하나도 없으므로 「범위 밖 키가 기록되지 않았다」가 자동으로 참이 된다.
+구현 후에 이 검증이 의미를 갖는다.
+
+---
+
 ## 조사 중 확인하지 못한 것
 
 - **내보낸 프로젝트의 실제 실행 결과 비교** — 계획 단계에서는 정적으로만 확인했다. 부정
   비교의 관찰 기간 루프(`_watch_window`)가 값 비교에서도 같게 동작하는지는 `quickstart.md`
   의 수동 검증에서 실제로 돌려 확인한다.
-- **`select` 값의 실측** — 문서상 선택된 항목의 `value` 속성이다. 위 `#ptype` 으로 구현
-  단계에서 실제로 확인한다. 만약 보이는 글자가 나온다면 FR-033 의 안내 문구가 틀린 것이
-  되므로, 문구를 쓰기 전에 확인해야 한다.
+- **한글 IME 에서 Space 의 조합 상태** — R10 에 적은 미확인 항목. 키 입력 구현 단계에서
+  확인한다.
 
 ---
 ---

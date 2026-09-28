@@ -67,3 +67,13 @@ th { font-size: 12px; color: #5a6472; font-weight: 600; }
   padding: 10px 12px;
   margin: 6px 0;
 }
+
+/* 023 — 태그 칩. 확정된 태그가 눈에 보여야 사람이 녹화 결과를 판단할 수 있다. */
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  margin: 0 4px 4px 0;
+  border-radius: 10px;
+  background: #eef1f5;
+  font-size: 12px;
+}

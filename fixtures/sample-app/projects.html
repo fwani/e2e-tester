@@ -48,6 +48,31 @@
         <option value="analysis">분석</option>
         <option value="pipeline">파이프라인</option>
       </select>
+
+      <!--
+        023 T001 — 여러 줄 입력 칸. 입력값 검증이 줄바꿈을 보존하는지 확인한다 (FR-008).
+      -->
+      <label for="pdesc">설명</label>
+      <textarea id="pdesc" data-testid="project-desc" rows="3"></textarea>
+
+      <!--
+        023 T002 — 키로 확정하는 태그 칸.
+
+        **칸이 비워지는 것이 핵심이다.** 이 위젯이 고치려는 결함의 원인은 Enter 뒤에
+        오는 빈 값 확정 이벤트이고, 칸을 비우지 않으면 그 이벤트가 생기지 않아 검증이
+        아무것도 하지 않는다 (023 research R11).
+      -->
+      <label for="ptags">기능 태그</label>
+      <div id="ptag-chips" data-testid="project-tag-chips"></div>
+      <input id="ptags" data-testid="project-tags"
+             placeholder="태그를 입력한 뒤 Enter 또는 Space를 눌러 추가하세요">
+
+      <!--
+        023 T004 — 숨겨진 입력 칸. 값을 가진 요소가 화면에 보이지 않을 때 입력값 검증이
+        읽어 내는지 실측하는 데 쓴다. 명세 Edge Cases 의 전제가 여기 걸려 있다.
+      -->
+      <input id="phidden" data-testid="project-hidden" value="숨은값" style="display:none">
+
       <div class="row">
         <button class="secondary" id="cancel">취소</button>
         <button data-testid="save-project" id="save">저장</button>
@@ -114,7 +139,43 @@
       save(list);
       modal.classList.add('hidden');
       document.getElementById('pname').value = '';
+      document.getElementById('pdesc').value = '';
+      tags.length = 0;
+      renderTags();
+      tagsEl.value = '';
       render();
+    });
+
+    /*
+      023 T002 — 태그 칸. 실제 화면과 같은 성질로 만든다.
+
+      Enter 또는 Space 로 확정하면 칩이 추가되고 **칸이 비워진다.** 마지막 동작이
+      녹화에서 빈 값 확정 이벤트를 만들고, 그것이 앞선 입력 Step 을 덮어쓰는 것이
+      023 이 고치는 결함이다.
+
+      한글 IME 를 위해 `isComposing` 을 본다 — 조합을 끝내는 Enter 는 확정이 아니다.
+      실제 태그 위젯들이 하는 것과 같으며, 이 고정 대상이 그 동작을 흉내 내지 않으면
+      제품의 IME 처리를 검증할 수 없다.
+    */
+    const tagsEl = document.getElementById('ptags');
+    const chipsEl = document.getElementById('ptag-chips');
+    const tags = [];
+
+    function renderTags() {
+      chipsEl.innerHTML = tags
+        .map((t) => '<span class="chip">' + t + '</span>')
+        .join('');
+    }
+
+    tagsEl.addEventListener('keydown', (e) => {
+      if (e.isComposing) return;              // 조합 중인 키는 확정이 아니다
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      const v = tagsEl.value.trim();
+      if (!v) return;
+      tags.push(v);
+      tagsEl.value = '';                       // ← 이 줄이 결함의 원인이다
+      renderTags();
     });
 
     document.getElementById('terms-popup').addEventListener('click', (e) => {
