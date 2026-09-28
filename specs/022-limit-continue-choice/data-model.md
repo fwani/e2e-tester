@@ -145,6 +145,20 @@
 
 ---
 
+## 5b. 화면의 말과 내부 이름의 대응
+
+사용자에게 보이는 말과 코드의 이름을 **일부러 다르게** 둔다 — 화면은 「도구 호출」이라는
+내부 개념을 알 필요가 없다. 대응은 여기 하나에만 적는다.
+
+| 화면의 말 | 내부 이름 | 어디에 |
+|---|---|---|
+| 동작 수 (누적) | `total_tool_calls` | `AttemptLimits.total_calls` → `AgentOutcome` → `BlockedView` |
+| Step 수 | `step_count` | 컴파일러가 센다 |
+| 진전 | `made_progress` | `AgentOutcome` |
+| 예산이 떨어졌다 | `budget_exhausted` | `BlockedKind` |
+
+---
+
 ## 6. 저장·실행·내보내기에 대한 영향
 
 | 대상 | 영향 |

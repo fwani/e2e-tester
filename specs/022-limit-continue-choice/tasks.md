@@ -47,11 +47,11 @@ description: "Task list template for feature implementation"
 
 - [ ] T004 `backend/src/itb/authoring/tools.py` 의 `reset()` 을 `reset_attempt(step_count: int | None = None)` 으로 바꾼다. **`total_calls` 를 지우지 않는다.** `step_count` 를 받으면 `steps_at_attempt_start` 에 넣는다 — `AttemptLimits` 는 Step 을 세지 않으므로 아는 쪽이 넘겨야 한다. docstring 에 하는 일이 「전부 되돌린다」에서 「이번 시도의 예산만 되돌린다」로 좁아졌음을 적는다
 
-- [ ] T005 `reset()` 호출부 네 곳을 `reset_attempt(...)` 로 바꾸고 현재 Step 수를 넘긴다 — `backend/src/itb/authoring/agent.py` 의 `chat`·`resume_with_answer`·`resume_after_takeover`(`self._count()` 를 넘긴다), `backend/src/itb/api/routes/sessions.py` 의 `_start_agent_note`(`w.compiler` 에서 얻는다). T004 의존
+- [ ] T005 `reset()` 호출부 네 곳을 `reset_attempt(...)` 로 바꾸고 현재 Step 수를 넘긴다 — 예산이 새로 주어지는 자리다 (FR-008) — `backend/src/itb/authoring/agent.py` 의 `chat`·`resume_with_answer`·`resume_after_takeover`(`self._count()` 를 넘긴다), `backend/src/itb/api/routes/sessions.py` 의 `_start_agent_note`(`w.compiler` 에서 얻는다). T004 의존
 
 - [ ] T006 `backend/src/itb/authoring/agent.py` 의 `AgentOutcome` 에 `total_tool_calls: int = 0` 과 `made_progress: bool | None = None` 을 더한다. docstring 에 **판정 시점의 값을 싣는 것이지 상태를 소유하는 것이 아니**라고 적는다 — `step_count`·`tool_calls` 가 이미 그렇다 ([data-model.md](./data-model.md) §3)
 
-- [ ] T007 [P] `backend/tests/unit/test_attempt_limits.py` 를 넓힌다 — `total_calls` 가 `reset_attempt()` 를 **건너 남는가**, `calls` 는 0 이 되는가, `steps_at_attempt_start` 가 넘긴 값으로 갱신되는가, `MAX_TOOL_CALLS == 40` 은 그대로인가. T003·T004 의존
+- [ ] T007 [P] `backend/tests/unit/test_attempt_limits.py` 를 넓힌다 — `total_calls` 가 `reset_attempt()` 를 **건너 남는가**, `calls` 는 0 이 되는가, `steps_at_attempt_start` 가 넘긴 값으로 갱신되는가, `MAX_TOOL_CALLS == 40` 은 그대로인가. **세 번 연속 `reset_attempt()` 해도 막히지 않는지**도 본다 (FR-010) — 「횟수 제한을 두지 않는다」는 아무것도 하지 않음으로 지켜지므로, 나중에 누가 제한을 넣어도 울릴 것이 없다. T003·T004 의존
 
 **Checkpoint**: 자료구조가 준비됐다. 아직 아무 동작도 바뀌지 않았다 — 기존 테스트가 모두 통과해야 한다
 
@@ -71,7 +71,7 @@ description: "Task list template for feature implementation"
 
 - [ ] T008 [P] [US1] `backend/tests/unit/test_budget_exhausted_kind.py` 를 만든다 — 도구 호출 상한 도달과 `DriverTurnLimitError` 가 **둘 다** `budget_exhausted` 로 판정되고(FR-001·FR-004), 같은 요소 연속 실패는 **아니며**(FR-002), 모델이 `report_blocked` 로 어떤 문구를 신고하든 아니다(FR-003)
 
-- [ ] T009 [P] [US1] `backend/tests/integration/test_budget_resume_instruction.py` 를 만든다 — `budget_exhausted` 막힘에서 `retry` 를 고르면 에이전트가 받는 지시에 **「이어서」**가 들어 있고 **「다시 시도」가 없으며**, 예산 소진이 **아닌** 막힘에서는 **지금 그대로**인지 (FR-006·FR-007 · US1 시나리오 3)
+- [ ] T009 [P] [US1] `backend/tests/integration/test_budget_resume_instruction.py` 를 만든다 — `budget_exhausted` 막힘에서 `retry` 를 고르면 에이전트가 받는 지시에 **「이어서」**가 들어 있고 **「다시 시도」가 없으며**, 예산 소진이 **아닌** 막힘에서는 **지금 그대로**인지 (FR-006·FR-007 · US1 시나리오 3). **이어가기 전후 Step 수가 같은지도 함께 본다** (FR-009·SC-003) — `reset_attempt` 개명이 바로 이 자리를 지나가므로 회귀 위험이 실재한다. 도구 호출이 반복되지 않는지는 대본 드라이버로 확인한다 (SC-001)
 
 ### Implementation for User Story 1
 
@@ -105,7 +105,7 @@ description: "Task list template for feature implementation"
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] `backend/src/itb/api/routes/sessions.py` 의 `BlockedView` 와 `backend/src/itb/authoring/blocked.py` 의 `ai_blocked` 이벤트가 **같은 새 필드**를 싣게 한다. `choices` 는 **줄이지 않는다** — 받을 수 있는 것과 권하는 것은 다른 사실이며, 걸러내기는 화면이 한다 ([contracts/blocked-view.md](./contracts/blocked-view.md) §1)
+- [ ] T017 [US2] `backend/src/itb/api/routes/sessions.py` 의 `BlockedView` 와 `backend/src/itb/authoring/blocked.py` 의 `ai_blocked` 이벤트가 **같은 새 필드**를 싣게 한다 (FR-005 — 구별이 화면까지 전달된다). `choices` 는 **줄이지 않는다** — 받을 수 있는 것과 권하는 것은 다른 사실이며, 걸러내기는 화면이 한다 ([contracts/blocked-view.md](./contracts/blocked-view.md) §1)
 
 - [ ] T018 [US2] `frontend/src/pages/SessionScreen.tsx` 가 `BlockedView` 의 새 필드를 화면 모델로 옮긴다. 없으면 그리지 않는 **선택적 읽기**여야 한다 — 구버전 백엔드와 섞여도 깨지지 않는다 ([contracts/blocked-view.md](./contracts/blocked-view.md) §3)
 
@@ -144,7 +144,7 @@ description: "Task list template for feature implementation"
 
 - [ ] T028 [US3] `backend/src/itb/api/routes/sessions.py` 의 `BlockedView` 와 `backend/src/itb/authoring/blocked.py` 의 `ai_blocked` 에 `total_tool_calls`·`step_count`·`made_progress` 를 싣는다. **두 통로가 같은 값을 실어야 한다** — 한쪽만 실으면 새로 고친 화면이 수치를 잃는다. T017 의존
 
-- [ ] T029 [US3] `frontend/src/components/workbench/WorkArea.tsx` 가 누적·Step 수를 예산 소진 안내 안에 그린다. 진전 없음은 `made_progress === false` 일 때만 (FR-020). 안내는 이어가기를 **막지 않는다** (FR-021)
+- [ ] T029 [US3] `frontend/src/components/workbench/WorkArea.tsx` 가 누적·Step 수를 예산 소진 안내 안에 그린다 (FR-017·FR-019). 진전 없음은 `made_progress === false` 일 때만 (FR-020). 안내는 이어가기를 **막지 않는다** (FR-021)
 
 - [ ] T030 [US3] `backend/tests/integration/test_budget_cumulative.py`·`backend/tests/unit/test_progress_detection.py`·`frontend/tests/BudgetExhaustedBlocked.test.tsx` 가 통과하는지 확인한다
 
