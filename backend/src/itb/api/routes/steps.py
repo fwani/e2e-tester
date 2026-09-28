@@ -34,6 +34,7 @@ from itb.domain.test_case import (
     variable_reference,
 )
 from itb.execution.assertion_builder import (
+    stateless_target_warning,
     AssertionTargetError,
     build_assertion,
     build_step,
@@ -450,7 +451,7 @@ async def reorder(session_id: str, body: ReorderRequest) -> StepsResponse:
 
 @router.post("/{session_id}/assertions")
 async def add_assertion(session_id: str, body: AddAssertionRequest) -> StepsResponse:
-    """FR-013a 의 4종 중 하나를 골라 검증 Step 을 추가한다.
+    """검증 6종 중 하나를 골라 Step 을 추가한다 (001 FR-013a + 021).
 
     대상 요소를 지정하면 **그 자리에서 후보를 수집·검증한다** (FR-013a·FR-019b).
     찾지 못하면 Step 을 만들지 않는다 — 재실행에서 반드시 실패할 Step 을 만들어 두는
@@ -482,6 +483,11 @@ async def add_assertion(session_id: str, body: AddAssertionRequest) -> StepsResp
         raise bad_request(
             ErrorCode.DEFINITION_INVALID, f"검증 조건이 올바르지 않습니다: {exc}"
         ) from exc
+
+    # Step 은 만든다. 막으면 ARIA 로 잠금을 표현하는 정당한 위젯까지 막힌다 (021 FR-014).
+    warning = stateless_target_warning(assertion)
+    if warning is not None:
+        w.session.add_edit_warning(warning)
 
     step = build_step(
         assertion,

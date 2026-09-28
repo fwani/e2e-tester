@@ -442,6 +442,8 @@ class StepExecutor:
                 )
             case AssertionKind.TEXT:
                 await self._assert_text(assertion, root, deadline, record)
+            case AssertionKind.ENABLED | AssertionKind.DISABLED:
+                await self._assert_state(assertion, root, deadline, record)
 
     async def _assert_url(
         self, assertion: Assertion, page: Page, deadline: float
@@ -513,6 +515,52 @@ class StepExecutor:
             f"{scope}의 텍스트가 {_expectation(expected, assertion.match)}. "
             f"실제: {_clip(actual)!r}"
         )
+        raise StepFailure(msg, record.attempts, record.tab_wait_ms)
+
+    async def _assert_state(
+        self,
+        assertion: Assertion,
+        root: SearchRoot,
+        deadline: float,
+        record: StepExecution,
+    ) -> None:
+        """요소를 조작할 수 있는가 (021 FR-010~FR-014).
+
+        ## `hidden` 과 갈리는 지점 — 대상을 찾지 못하면 **실패한다**
+
+        `_assert_hidden` 은 탐색 실패를 조건 충족으로 옮기지만 여기서는 그러지 않는다.
+        「없다」와 「있는데 잠겼다」는 다른 사실이고, 한 검증이 둘을 함께 통과시키면
+        결과를 보고 어느 쪽이었는지 알 수 없다 (FR-012). 요소가 없을 수도 있는 상황을
+        표현하려는 것이라면 `hidden` 이 그 자리다.
+
+        ## `expect()` 를 쓰지 않는 이유
+
+        `expect(locator).to_be_disabled()` 는 자기 형식의 오류 메시지를 만든다. 020 이
+        실행기의 실패 설명을 그대로 `mismatch.observed` 에 싣기 때문에, 문체가 갈리면
+        화면의 문구와 저장된 기록이 서로 다른 말을 한다.
+
+        ## 비폼 요소의 한계 — 판정을 바꾸지 않는다
+
+        브라우저는 `<div>` 같은 요소에 대해 「조작할 수 있다」를 참으로 준다. 태그를
+        보고 판정을 뒤집으면 원칙 II 의 결정성(같은 화면이면 같은 결과)에 예외가
+        생기므로, **실행은 브라우저가 주는 값을 그대로 쓰고 작성 시점에 알린다**
+        (`assertion_builder.warn_if_stateless`).
+        """
+        located = await self._locate_target(assertion, root, deadline, record)
+        want_enabled = assertion.kind is AssertionKind.ENABLED
+
+        async def observe() -> str:
+            enabled = await located.locator.is_enabled(timeout=self._left(deadline))
+            return "enabled" if enabled else "disabled"
+
+        ok, actual = await settle(
+            observe, lambda v: (v == "enabled") is want_enabled, deadline
+        )
+        if ok:
+            return
+        expectation = "있어야" if want_enabled else "없어야"
+        happened = "있었습니다" if actual == "enabled" else "없었습니다"
+        msg = f"대상을 조작할 수 {expectation} 하는데 조작할 수 {happened}."
         raise StepFailure(msg, record.attempts, record.tab_wait_ms)
 
     async def _locate_target(

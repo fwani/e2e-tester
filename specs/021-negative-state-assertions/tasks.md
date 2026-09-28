@@ -94,17 +94,17 @@ description: "Task list template for feature implementation"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T020 [P] [US2] 상태 검증의 실행 검증을 `backend/tests/integration/test_state_assertion.py` 로 새로 만든다 — (a) 비활성 버튼에 「조작할 수 없다」가 통과, (b) 활성 버튼에 걸면 실패하고 설명이 기대·실제를 담는다, (c) **대상이 없으면 실패한다** — `hidden` 과 갈리는 지점이므로 반드시 세운다, (d) 늦게 잠기는 버튼을 제한 시간 안에서 기다려 통과한다
+- [X] T020 [P] [US2] 상태 검증의 실행 검증을 `backend/tests/integration/test_state_assertion.py` 로 새로 만든다 — (a) 비활성 버튼에 「조작할 수 없다」가 통과, (b) 활성 버튼에 걸면 실패하고 설명이 기대·실제를 담는다, (c) **대상이 없으면 실패한다** — `hidden` 과 갈리는 지점이므로 반드시 세운다, (d) 늦게 잠기는 버튼을 제한 시간 안에서 기다려 통과한다
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] `_assert` 에 `enabled`·`disabled` 분기를 더한다 (`backend/src/itb/execution/step_executor.py`) — 대상을 찾고 조작 가능 여부를 **공통 대기 도우미로 폴링**한다. `expect()` 를 쓰지 않는다 ([research.md R2](./research.md)). 대상 탐색 실패를 통과로 바꾸지 않는다. T011 에 의존
-- [ ] T022 [US2] 상태 검증의 실패 설명을 만든다 (`backend/src/itb/execution/step_executor.py`) — [data-model.md §3.3](./data-model.md) 의 두 문구
-- [ ] T023 [US2] `backend/src/itb/execution/assertion_builder.py` 의 `ELEMENT_KINDS` 에 새 두 종류를 넣어 대상을 필수로 만들고, 표시 이름을 더한다. T004 에 의존
-- [ ] T024 [US2] 조작 가능 여부를 가질 수 없는 대상에 대한 **작성 시점 경고**를 `backend/src/itb/execution/assertion_builder.py` 에 더한다 — 수집된 후보 묶음의 태그 정보로 판정한다. **Step 은 만든다**: 막으면 `contenteditable` 이나 ARIA 로 잠금을 표현하는 정당한 사용까지 막힌다 ([data-model.md §5](./data-model.md)). 새 수집을 추가하지 않는다
-- [ ] T025 [US2] `_assertion_lines` 에 `toBeEnabled`·`toBeDisabled` 를 더한다 (`backend/src/itb/generator/playwright_gen.py`)
-- [ ] T026 [P] [US2] 내보내기 회귀 조합 2개를 `backend/tests/unit/test_export_keeps_assertion.py` 에 추가한다. T025 에 의존
-- [ ] T027 [P] [US2] 작성 시점 경고의 검증을 `backend/tests/unit/test_state_assertion_warning.py` 로 새로 만든다 — 폼 요소에는 경고가 없고 설명용 요소에는 경고가 있으며, **두 경우 모두 Step 은 만들어진다**
+- [X] T021 [US2] `_assert` 에 `enabled`·`disabled` 분기를 더한다 (`backend/src/itb/execution/step_executor.py`) — 대상을 찾고 조작 가능 여부를 **공통 대기 도우미로 폴링**한다. `expect()` 를 쓰지 않는다 ([research.md R2](./research.md)). 대상 탐색 실패를 통과로 바꾸지 않는다. T011 에 의존
+- [X] T022 [US2] 상태 검증의 실패 설명을 만든다 (`backend/src/itb/execution/step_executor.py`) — [data-model.md §3.3](./data-model.md) 의 두 문구
+- [X] T023 [US2] `backend/src/itb/execution/assertion_builder.py` 의 `ELEMENT_KINDS` 에 새 두 종류를 넣어 대상을 필수로 만들고, 표시 이름을 더한다. T004 에 의존
+- [X] T024 [US2] 조작 가능 여부를 가질 수 없는 대상에 대한 **작성 시점 경고**를 `backend/src/itb/execution/assertion_builder.py` 에 더한다 — 수집된 후보 묶음의 태그 정보로 판정한다. **Step 은 만든다**: 막으면 `contenteditable` 이나 ARIA 로 잠금을 표현하는 정당한 사용까지 막힌다 ([data-model.md §5](./data-model.md)). 새 수집을 추가하지 않는다
+- [X] T025 [US2] `_assertion_lines` 에 `toBeEnabled`·`toBeDisabled` 를 더한다 (`backend/src/itb/generator/playwright_gen.py`)
+- [X] T026 [P] [US2] 내보내기 회귀 조합 2개를 `backend/tests/unit/test_export_keeps_assertion.py` 에 추가한다. T025 에 의존
+- [X] T027 [P] [US2] 작성 시점 경고의 검증을 `backend/tests/unit/test_state_assertion_warning.py` 로 새로 만든다 — 폼 요소에는 경고가 없고 설명용 요소에는 경고가 있으며, **두 경우 모두 Step 은 만들어진다**
 
 **Checkpoint**: 상태 검증이 실행·내보내기 양쪽에서 동작한다.
 

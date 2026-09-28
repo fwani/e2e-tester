@@ -82,6 +82,49 @@ async def build_assertion(
     return Assertion(kind=kind, target=target, match=match, value=value)
 
 
+STATEFUL_TAGS = frozenset(
+    {"button", "input", "select", "textarea", "option", "optgroup", "fieldset"}
+)
+"""조작 가능 여부를 실제로 가질 수 있는 태그 (021 FR-014).
+
+HTML 의 `disabled` 속성이 의미를 갖는 요소들이다. `a` 는 일부러 뺐다 — 링크에는
+`disabled` 가 없고, 브라우저는 언제나 「조작할 수 있다」로 답한다.
+"""
+
+
+def stateless_target_warning(assertion: Assertion) -> str | None:
+    """상태 검증의 대상이 조작 가능 여부를 가질 수 없으면 경고 문구를 돌려준다.
+
+    ## 왜 막지 않고 알리는가
+
+    막으면 `contenteditable` 이나 ARIA 로 잠금을 표현하는 정당한 위젯까지 막힌다.
+    그런 화면에서 사용자가 할 수 있는 일이 없어진다.
+
+    ## 왜 실행 판정을 바꾸지 않는가
+
+    브라우저는 이런 요소에 「조작할 수 있다」를 참으로 준다. 태그를 보고 판정을
+    뒤집으면 원칙 II 의 결정성(같은 화면이면 같은 결과)에 예외가 생긴다. 실행은
+    브라우저가 주는 값을 그대로 쓰고, **작성 시점에 사람에게 말한다.**
+
+    ## 왜 경고가 필요한가 — 방향이 비대칭이다
+
+    | 검증 | 이런 대상에서 | 위험 |
+    |---|---|---|
+    | 「조작할 수 없다」 | 항상 실패 | 낮다 — 사람이 알아차린다 |
+    | 「조작할 수 있다」 | 항상 통과 | **높다 — 아무것도 검증하지 않은 초록색** |
+    """
+    if assertion.kind not in (AssertionKind.ENABLED, AssertionKind.DISABLED):
+        return None
+    tag = (assertion.target.tag or "").lower() if assertion.target else ""
+    if not tag or tag in STATEFUL_TAGS:
+        return None
+    return (
+        f"<{tag}> 는 조작 가능 여부를 갖지 않는 요소라 브라우저가 언제나 "
+        "「조작할 수 있다」로 답합니다. 이 검증은 늘 같은 결과를 내므로 "
+        "버튼·입력처럼 실제로 잠길 수 있는 요소를 대상으로 삼으세요."
+    )
+
+
 MATCH_PHRASES = {
     MatchMode.EQUALS: "와 같음",
     MatchMode.CONTAINS: "를 포함",
