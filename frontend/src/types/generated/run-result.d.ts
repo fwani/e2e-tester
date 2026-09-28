@@ -35,6 +35,17 @@ export type RunScope = "full" | "partial";
 export type SessionLost = boolean;
 export type StartIndex = number;
 export type StartedAt = string;
+/**
+ * 검증 Step 하나가 이번 실행에서 갖는 분류 (020 FR-018).
+ *
+ * **결말(`Outcome`)과 다른 축이다.** 결말은 실행 전체가 어떻게 끝났는가이고, 이것은
+ * 검증 하나가 「원래 알던 것」인지 「오늘 깨진 것」인지다. 한 축에 섞으면 둘을 함께
+ * 말할 수 없다 — `Outcome` 에 값을 더하지 않는 이유다 (FR-021).
+ *
+ * 판정은 정의의 `AssertionStep.mismatch` 와 이번 실행의 `StepOutcome` **둘 다**를 봐야
+ * 나온다. `classify_assertion()` 이 그 판정을 소유한다.
+ */
+export type AssertionClass = "known_defect" | "regression" | "resolved";
 export type CandidateDisagreement = string[];
 export type DurationMs = number;
 export type ElementWaitMs = number;
@@ -149,6 +160,7 @@ export interface Artifacts {
   trace: Trace;
 }
 export interface StepResult {
+  assertion_class: AssertionClass | null;
   candidate_disagreement: CandidateDisagreement;
   duration_ms: DurationMs;
   element_wait_ms: ElementWaitMs;

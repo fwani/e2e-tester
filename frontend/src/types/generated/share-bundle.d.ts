@@ -109,6 +109,9 @@ export type Author4 = "human" | "ai";
 export type FrameUrl4 = string | null;
 export type Id5 = string;
 export type Label4 = string;
+export type Observed = string;
+export type RecordedAt = string;
+export type Truncated = boolean;
 export type Tab4 = number;
 export type TimeoutMs4 = number;
 export type Type4 = "assertion";
@@ -331,6 +334,7 @@ export interface AssertionStep {
   frame_url: FrameUrl4;
   id: Id5;
   label: Label4;
+  mismatch: AuthoringMismatch | null;
   tab: Tab4;
   timeout_ms: TimeoutMs4;
   type: Type4;
@@ -343,6 +347,34 @@ export interface Assertion {
   match: MatchMode;
   target: TargetLocator | null;
   value: Value4;
+}
+/**
+ * 작성 시점에 이 검증이 통과하지 않았다는 기록 (020 FR-005·FR-008).
+ *
+ * ## 이것이 있는 이유 — 정의는 제품 동작의 사본이 아니다
+ *
+ * 지시문이 「저장하면 `저장되었습니다` 가 뜬다」를 요구했는데 제품이 `처리 완료` 를
+ * 띄우면, 지금까지의 제품은 **검증 Step 을 만들지 않았다.** 성공한 것만 기록하는
+ * 규칙(001 FR-061)이 검증에도 걸려 있었기 때문이다. 모델에게는 통과하는 값을 찾는
+ * 것 외에 선택지가 없었고, 그래서 버그값이 정답으로 굳었다.
+ *
+ * 이 모델이 그 자리를 채운다. **기대와 달랐다는 사실을 기록하고 Step 은 남긴다.**
+ *
+ * ## 기대값은 여기에 없다
+ *
+ * 기대값의 유일한 출처는 ``AssertionStep.assertion.value`` 다. 여기에 복제해 두면
+ * Step 편집으로 조건을 고쳤을 때 둘이 갈리고, 그때 어느 쪽이 맞는지 아무도 모른다
+ * (`UploadStep` 이 확장자를 별도 필드로 두지 않는 것과 같은 판단).
+ *
+ * ## 결함이라고 판정하지 않는다
+ *
+ * 이름이 「결함」이 아니라 「어긋남」인 이유다. 기대와 관찰이 달랐다는 것은 사실이고,
+ * 그것이 제품 결함인지 지시문 오류인지는 **사람이 판단한다.**
+ */
+export interface AuthoringMismatch {
+  observed: Observed;
+  recorded_at: RecordedAt;
+  truncated: Truncated;
 }
 /**
  * 탭 닫기 (FR-030c). 대상은 공통 ``tab`` 필드가 가리킨다.

@@ -32,7 +32,13 @@ from enum import StrEnum
 from typing import Any
 
 from itb.authoring.compiler import StepCompiler
-from itb.authoring.tools import MAX_TOOL_CALLS, BrowserToolbox, build_tools
+from itb.authoring.tools import (
+    DEFAULT_BLOCKED_KIND,
+    MAX_TOOL_CALLS,
+    BlockedKind,
+    BrowserToolbox,
+    build_tools,
+)
 from itb.domain.test_case import MAX_INSTRUCTION_CHARS
 from itb.llm.client import LlmConfig, LlmUnavailableError, RefusalError, check_stop_reason
 
@@ -58,7 +64,8 @@ SYSTEM_PROMPT = """\
 - 요소에 `unique: false` 가 붙어 있으면 그 요소를 가리키는 경로가 화면에서 **유일하지
   않습니다.** 조작하면 거절됩니다 — 어느 것을 조작할지 제품이 정할 수 없기 때문입니다.
   같은 일을 할 수 있는 다른 요소를 찾고, 없으면 report_blocked 로 물으세요.
-- 한 지시를 여러 동작으로 나누어 차례로 수행하세요. 성공한 동작만 테스트로 남습니다.
+- 한 지시를 여러 동작으로 나누어 차례로 수행하세요. **화면을 조작하는 동작**은
+  성공한 것만 테스트로 남습니다 (검증은 다릅니다 — 아래 절을 보세요).
 - 지시를 완료했으면 무엇을 했는지 짧게 정리하고 끝내세요.
 - 지시를 수행할 수 없으면 report_blocked 로 **무엇이 막았는지 구체적으로** 알리세요.
   추측으로 다른 요소를 누르지 마세요. 사람이 이어받을 수 있습니다.
@@ -67,6 +74,23 @@ SYSTEM_PROMPT = """\
   적으세요. 사람이 답을 주면 그 자리에서 이어서 수행하게 됩니다.
 - 사람이 답을 주면 그 답만으로 이어 가세요. 이미 만들어진 Step 을 다시 만들지 마세요.
 - 로그인 화면을 만나면 지시문에 있는 자격 증명만 쓰세요. 값을 만들어 내지 마세요.
+
+## 검증 Step 에 대해 — 지금 화면이 아니라 사용자의 요구를 적으세요
+
+당신이 만드는 정의는 **제품이 지금 하는 일의 기록이 아니라, 사용자가 제품에 요구하는
+일의 기록**입니다. 제품에 결함이 있으면 그 결함이 정의에 들어가서는 안 됩니다.
+
+성공한 것만 남기면 저장된 정의는 작성 시점 제품 동작의 사본이 됩니다. 사본은 원본과
+같으므로 처음 돌리면 반드시 통과하고, 그 통과는 아무것도 말해 주지 않습니다.
+
+- 검증의 기대값은 **지시문에서** 가져오세요. 화면에서 읽은 값으로 바꾸지 마세요.
+- 검증이 기대와 달라도 그 Step 은 기록됩니다. **값을 바꾸어 다시 시도하지 마세요.**
+  다시 시도해서 통과시키는 것은 제품의 결함을 정답으로 만드는 일입니다.
+- 지시문이 기대값을 말하지 않으면(「결과가 뜨는지 확인」) 요소가 보이는지만 검증하세요.
+  화면에서 읽은 문구를 기대값으로 **지어내지 마세요.**
+- 지시문이 요구한 동작을 할 수 없을 때, 같은 결과를 내는 **다른 경로로 대체하지
+  마세요.** 저장된 정의는 사용자가 요구한 경로여야 합니다. report_blocked 에
+  kind="product_mismatch" 로 알리세요 — 그때는 사람에게 물을 것이 없습니다.
 
 지금 만들고 있는 테스트의 Step 목록이 사용자 메시지 앞에 `[지금 테스트]` 로 주어집니다
 (016 FR-001). 그 목록에 대해:
@@ -107,6 +131,16 @@ class AgentOutcome:
 
     `reason` 과 갈라 둔다 — 사유는 「왜 못 했는가」이고 질문은 「무엇을 알려 주면
     되는가」다. 화면은 이 값이 있을 때 답 칸을 그 질문에 대한 것으로 연다.
+    """
+
+    blocked_kind: BlockedKind = DEFAULT_BLOCKED_KIND
+    """막힘이 **무엇 때문인가** (020 FR-023).
+
+    `reason`·`question` 과 또 다른 축이다 — 사유는 「왜 못 했는가」, 질문은 「무엇을
+    알려 주면 되는가」, 이것은 「사람이 알려 줄 수 있는 종류의 문제인가」다.
+
+    기본값이 `needs_input` 이라 막힘이 아닌 결과에서도 값이 있다. 그것이 무해한 이유는
+    이 필드를 읽는 쪽이 `status is BLOCKED` 를 먼저 보기 때문이다.
     """
 
     step_count: int = 0
@@ -332,6 +366,9 @@ class AuthoringAgent:
         # 잡았다). 앞선 결과는 이미 호출자에게 보고됐으므로 여기서 들고 있을 이유가 없다.
         self.toolbox.blocked_reason = None
         self.toolbox.blocked_question = None
+        # 020 — 종류도 함께 되돌린다. 앞선 시도가 `product_mismatch` 로 끝났는데 이번
+        # 막힘이 질문이 필요한 것이면, 표시가 남아 있는 동안 답변 칸이 열리지 않는다.
+        self.toolbox.blocked_kind = DEFAULT_BLOCKED_KIND
         # 016 — 지난 턴의 응답이 이번 턴의 대화 이력에 실리면 안 된다.
         self.last_reply = ""
         try:
@@ -401,6 +438,7 @@ class AuthoringAgent:
                 reason=stopped,
                 attempted=self.toolbox.limits.last_failed_element,
                 question=self.toolbox.blocked_question,
+                blocked_kind=self.toolbox.blocked_kind,
                 step_count=self._count(),
                 tool_calls=self.toolbox.limits.calls,
             )

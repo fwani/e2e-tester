@@ -86,5 +86,8 @@ async def enter_blocked(session: BrowserSession, outcome: AgentOutcome) -> None:
         # 2026-09-10 — AI 가 **사람에게 물을 것**을 남겼으면 함께 싣는다. 없으면 `None`
         # 이고, 그때도 사람이 먼저 말할 수 있다 (질문이 답변의 전제는 아니다).
         question=outcome.question,
+        # 020 FR-023 — **항상 싣는다.** 없으면 `needs_input` 이라는 규칙을 화면이 따로
+        # 들고 있지 않아도 되고, 기존 소비자는 모르는 필드를 무시한다.
+        kind=outcome.blocked_kind.value,
         choices=list(CHOICES),
     )

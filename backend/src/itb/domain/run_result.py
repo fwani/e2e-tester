@@ -57,6 +57,31 @@ class StepOutcome(StrEnum):
     NOT_RUN = "not_run"
 
 
+class AssertionClass(StrEnum):
+    """검증 Step 하나가 이번 실행에서 갖는 분류 (020 FR-018).
+
+    **결말(`Outcome`)과 다른 축이다.** 결말은 실행 전체가 어떻게 끝났는가이고, 이것은
+    검증 하나가 「원래 알던 것」인지 「오늘 깨진 것」인지다. 한 축에 섞으면 둘을 함께
+    말할 수 없다 — `Outcome` 에 값을 더하지 않는 이유다 (FR-021).
+
+    판정은 정의의 `AssertionStep.mismatch` 와 이번 실행의 `StepOutcome` **둘 다**를 봐야
+    나온다. `classify_assertion()` 이 그 판정을 소유한다.
+    """
+
+    KNOWN_DEFECT = "known_defect"
+    """작성 시점에도 실패했고 지금도 실패한다. **이미 아는 결함이다.**"""
+
+    REGRESSION = "regression"
+    """작성 시점에는 통과했는데 지금 실패한다. **오늘 깨진 것이며 먼저 봐야 한다.**"""
+
+    RESOLVED = "resolved"
+    """작성 시점에 어긋났는데 이번에는 통과했다 (FR-022).
+
+    사용자에게 「표시를 걷어낼 수 있습니다」를 알리는 신호다. **제품이 스스로 걷어내지
+    않는다** (FR-028) — 결함이 고쳐졌는지의 판단은 사람의 것이다.
+    """
+
+
 class LocatorAttempt(BaseModel):
     """요소 탐색 시도 하나. RunResult 화면의 "시도한 LOCATOR (우선순위 순)" 에 대응한다."""
 
@@ -141,6 +166,21 @@ class StepResult(BaseModel):
     candidate_disagreement: list[str] = Field(default_factory=list)
     """후보들이 서로 다른 요소를 가리킨 경우의 기록."""
 
+    assertion_class: AssertionClass | None = None
+    """검증 Step 이라면 이번 실행에서의 분류 (020 FR-018).
+
+    **저장한다.** 분류는 정의의 `mismatch` 와 이번 결과를 함께 봐야 나오는데, 결과 파일만
+    들고 화면을 그리는 자리가 있고 정의는 그 뒤에 바뀔 수 있다. 저장하지 않으면 어제
+    실행한 결과의 분류가 오늘 정의를 고친 것 때문에 달라진다 — **결과는 그때의
+    사실이어야 한다.**
+
+    **선택 필드다** — 020 이전에 저장된 결과 파일이 그대로 읽힌다 (`screenshot` 이
+    011 에서 같은 판단으로 들어온 것과 같다).
+
+    건수 요약은 여기 없다. `counts_by_class()` 로 그때그때 센다 — 파생값을 저장하면
+    원본과 어긋날 자리가 생긴다 (`attempted_of` 와 같은 판단).
+    """
+
 
 class Artifacts(BaseModel):
     model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
@@ -214,6 +254,7 @@ def decide_outcome(
        하려는 것이다.
     2. 중지 요청 → `STOPPED`
     3. 실패 Step 을 명시적으로 건너뛰고 계속함 → `PARTIAL_PASS`
+       — **단, 건너뛰지 않은 실패가 남아 있으면 이 규칙을 건너뛴다** (020 FR-039)
     4. 실패 Step 이 남아 있음 → `FAIL`
     5. 그 외 → `PASS`
 
@@ -221,14 +262,31 @@ def decide_outcome(
     `StepOutcome.SKIPPED` 가 결과에 있는 것만으로는 알 수 없다 — 부분 실행도 앞선 Step 을
     건너뜀으로 적기 때문이다. 그 둘을 구분하지 않으면 부분 실행이 전부 `PARTIAL_PASS` 가
     된다.
+
+    ## 3번이 조건을 갖게 된 이유 (020 FR-039)
+
+    **순서는 바뀌지 않았다. 3번이 걸리는 조건만 좁혔다.**
+
+    020 이전에는 실패가 곧 중단이었으므로 결과에 `FAIL` 이 하나뿐이었고, 그 하나가 곧
+    사용자가 건너뛰기로 고른 것이었다. 020 FR-033 이 그 전제를 깬다 — 검증 실패는 실행을
+    멈추지 않으므로 `FAIL` 이 여럿 쌓인 채 뒤쪽 동작 Step 에서 멈출 수 있다. 그때
+    사용자가 건너뛰기를 고르면, 조건이 없는 3번은 **아무도 건너뛰지 않은 회귀까지 부분
+    성공으로 덮는다.**
+
+    `PARTIAL_PASS` 의 뜻은 「실패한 것들을 사용자가 알고 건너뛰었다」이지 「실패가
+    있었다」가 아니다. 조건을 좁히는 것이 그 뜻을 되찾는 일이다.
+
+    건너뛰기는 실패를 `SKIPPED` 로 바꾸므로(`Runner.skip_blocking_failure`), 여기 남아
+    있는 `FAIL` 은 정의상 **건너뛰지 않은 것**이다.
     """
     if session_lost:
         return Outcome.FAIL
     if stop_requested:
         return Outcome.STOPPED
-    if skipped_failures:
+    unskipped_failure = any(r.outcome is StepOutcome.FAIL for r in steps)
+    if skipped_failures and not unskipped_failure:
         return Outcome.PARTIAL_PASS
-    if any(r.outcome is StepOutcome.FAIL for r in steps):
+    if unskipped_failure:
         return Outcome.FAIL
     return Outcome.PASS
 
@@ -253,3 +311,54 @@ def attempted_of(steps: list[StepResult]) -> int:
 def scope_of(start_index: int) -> RunScope:
     """시작 지점에서 실행 범위를 정한다 (005 FR-152)."""
     return RunScope.FULL if start_index <= 0 else RunScope.PARTIAL
+
+
+# ─── 검증 실패의 분류 (020 T035 · FR-018~FR-022) ──────────────────────────────
+
+
+def classify_assertion(step: object, result: StepResult) -> AssertionClass | None:
+    """검증 Step 하나가 이번 실행에서 갖는 분류. **순수 함수다** (020 FR-018).
+
+    판정을 여기 한 곳에 두는 이유는 `decide_outcome` 과 같다 — 여러 곳이 각자 판정하면
+    화면과 저장된 결과가 어긋난다 (005 가 그것으로 U-03·U-05 를 겪었다).
+
+    **`step` 을 `object` 로 받는다.** `itb.domain.run_result` 가 `itb.domain.step` 을
+    임포트하면 `step` → `assertion` → … 로 도메인 안에 방향 있는 의존이 하나 더 생긴다.
+    이 함수에 필요한 것은 「검증 Step 인가」와 「`mismatch` 가 있는가」 둘뿐이고, 둘 다
+    속성으로 물을 수 있다.
+
+    판정표 (data-model.md §3):
+
+    | 검증 Step | `mismatch` | `outcome` | 분류 |
+    |---|---|---|---|
+    | 예 | 있음 | `FAIL` | `KNOWN_DEFECT` |
+    | 예 | 없음 | `FAIL` | `REGRESSION` |
+    | 예 | 있음 | `PASS` | `RESOLVED` |
+    | 예 | 없음 | `PASS` | `None` — 말할 것이 없다 |
+    | 예 | — | `SKIPPED`·`NOT_RUN` | `None` — 실행되지 않았다 |
+    | 아니오 | — | — | `None` |
+    """
+    if getattr(step, "type", None) != "assertion":
+        return None
+    had_mismatch = getattr(step, "mismatch", None) is not None
+    if result.outcome is StepOutcome.FAIL:
+        return AssertionClass.KNOWN_DEFECT if had_mismatch else AssertionClass.REGRESSION
+    if result.outcome is StepOutcome.PASS and had_mismatch:
+        return AssertionClass.RESOLVED
+    return None
+
+
+def counts_by_class(results: list[StepResult]) -> dict[AssertionClass, int]:
+    """분류별 건수. **저장하지 않고 그때그때 센다** (020 FR-019).
+
+    파생값을 저장하면 원본과 어긋날 자리가 생긴다 (`attempted_of` 와 같은 판단).
+
+    **0건인 분류는 열쇠 자체가 없다.** 화면이 「없는 것을 0으로 표시할지」를 다시
+    판단하지 않게 하려는 것이다 — 0건 분류를 싣지 않는 규칙(FR-019)이 여기서 한 번
+    정해지고, 읽는 쪽 셋이 그것을 공유한다.
+    """
+    counts: dict[AssertionClass, int] = {}
+    for result in results:
+        if result.assertion_class is not None:
+            counts[result.assertion_class] = counts.get(result.assertion_class, 0) + 1
+    return counts

@@ -12,7 +12,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from itb.domain.assertion import Assertion
+from itb.domain.assertion import Assertion, AuthoringMismatch
 from itb.domain.locator import TargetLocator
 
 STEP_ID_PATTERN = r"^step-\d{2,}$"
@@ -114,6 +114,35 @@ class NavigateStep(_StepBase):
 class AssertionStep(_StepBase):
     type: Literal[StepType.ASSERTION] = StepType.ASSERTION
     assertion: Assertion
+
+    mismatch: AuthoringMismatch | None = None
+    """작성 시점에 이 검증이 통과하지 않았다는 기록 (020 FR-005).
+
+    ``None`` 이면 작성 시점에 통과했다. **020 이전에 저장된 모든 정의가 여기 해당한다** —
+    그 정의들은 통과할 때만 기록됐기 때문이다. 그래서 마이그레이션이 필요 없다.
+
+    ## 왜 `_StepBase` 가 아니라 여기인가
+
+    「어긋난 클릭 Step」은 **원리적으로 존재할 수 없다.** 동작 Step 은 실패하면 기록되지
+    않는다 (020 FR-006). 공통 필드로 올리면 나머지 8종에 **영원히 ``None`` 인 칸**이
+    생기고, 읽는 쪽은 그 칸이 왜 비어 있는지를 매번 판단해야 한다.
+
+    ## 왜 `assertion` 안이 아닌가
+
+    :class:`~itb.domain.assertion.Assertion` 은 **조건**이다. 「그때 어땠는가」는 조건이
+    아니라 이력이고, Playwright 생성기가 `Assertion` 만 읽으므로 거기 섞으면 내보낸
+    코드에 새어 나간다.
+
+    ## 실행을 바꾸지 않는다 (헌법 원칙 I · FR-012)
+
+    ``author`` 와 같은 성질의 **부가 정보**다. 실행기는 이 필드를 읽지 않으며, 사람이
+    만든 검증도 같은 필드를 갖는다 (FR-011). 원칙이 허용하는 「MAY be recorded as
+    metadata, MUST NOT change how the Step executes」에 정확히 해당한다.
+
+    그 불변식은 문장이 아니라 검사가 지킨다 —
+    ``tests/unit/test_mismatch_isolation.py`` 가 실행기와 생성기의 소스에 이 이름이
+    나타나지 않음을 고정한다.
+    """
 
 
 class HoverStep(_StepBase):

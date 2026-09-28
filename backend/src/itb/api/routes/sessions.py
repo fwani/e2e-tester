@@ -80,6 +80,7 @@ from itb.recording.recorder import Recorder
 from itb.secrets.keys import load_private_or_reason, load_public_or_none
 from itb.secrets.readiness import assess
 from itb.secrets.resolver import VariableResolver
+from itb.secrets.scrubber import Scrubber
 from itb.secrets.store import SecretStore
 from itb.storage import preferences
 from itb.storage.drafts import DraftNotFoundError
@@ -1374,6 +1375,11 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
         on_progress=lambda message: work.session.emit("ai_progress", message=message),
         capturer=capturer,
         on_variable=resolver.declare,
+        # 020 FR-015 — 어긋남 기록은 화면 텍스트를 **디스크에 남긴다.** 진행 알림과
+        # 달리 흘러가지 않으므로 여기서 한 번 거른다. 값이 아니라 함수인 이유는
+        # 작성 도중 새 민감 변수가 해석될 수 있기 때문이다 (`Runner._scrubber` 와
+        # 같은 판단).
+        scrubber_source=lambda: Scrubber(resolver.resolved_sensitive_values()),
         test_id_attribute=work.recorder.test_id_attribute,
         # ─── 016 US3 — 편집 도구가 쓰는 통로 ────────────────────────────
         #
@@ -1555,7 +1561,11 @@ async def _settle_agent_outcome(work: SessionWork, outcome: object) -> None:
         await _hold_for_review(work)
         return
 
-    await work.session.emit("ai_finished", step_count=outcome.step_count)
+    # 020 FR-013 — 어긋난 검증이 있으면 건수를 함께 싣는다. **0건이면 싣지 않는다** —
+    # 없는 것을 0으로 알리면 화면이 「결함 후보 0건」을 표시할지 다시 판단해야 한다.
+    mismatches = work.compiler.mismatch_count if work.compiler is not None else 0
+    extra = {"mismatch_count": mismatches} if mismatches else {}
+    await work.session.emit("ai_finished", step_count=outcome.step_count, **extra)
     await _hold_for_review(work)
 
 
@@ -1989,8 +1999,14 @@ async def resume(
     # 믿고 넘어갈 수 있었다 (U-05). 결과 화면의 신뢰가 여기서 무너졌다.
     #
     # 넘기고 싶으면 `skip_failed` 로 **명시**한다. 그 경로의 결말은 `partial_pass` 다.
-    if w.engine is not None and w.engine.has_failed_step():
-        failed_index = w.engine.first_failed_index()
+    # 020 FR-038 — **멈춘 자리**를 본다. 「실패가 있는가」가 아니다.
+    #
+    # 검증 실패는 실행을 멈추지 않으므로(FR-033) 재개를 막을 이유가 없다 — 이미
+    # 계속 돌았다. `has_failed_step()` 을 그대로 두면 검증 하나가 실패한 것만으로
+    # 재개가 거절되고, 「Step 03 이 실패해 이어서 갈 수 없습니다」라며 멈춘 자리가
+    # 아닌 곳을 지목한다.
+    failed_index = w.engine.blocking_failure_index() if w.engine is not None else None
+    if failed_index is not None:
         if not skip_failed:
             raise conflict(
                 ErrorCode.CANNOT_RESUME_PAST_FAILURE,
@@ -2003,7 +2019,9 @@ async def resume(
         # 실패를 **지우지 않고** 건너뜀으로 남긴다. 지우면 결과에서 그 Step 이 왜 안
         # 돌았는지 알 수 없다.
         w.engine.note_skipped_failures()
-        w.engine.clear_failed_steps()
+        # 020 FR-039 — **멈춘 자리 하나만** 건너뛴다. 모든 실패를 건너뜀으로 바꾸면
+        # 아무도 건너뛰지 않은 회귀까지 증거가 사라진다 (baseline.md).
+        w.engine.skip_blocking_failure()
 
     _apply(w, Command.RESUME)
     if w.inline is not None:

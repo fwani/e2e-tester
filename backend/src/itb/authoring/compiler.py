@@ -48,6 +48,19 @@ class StepCompiler:
     def count(self) -> int:
         return len(self.compiled)
 
+    @property
+    def mismatch_count(self) -> int:
+        """이 세션이 **어긋남으로 기록한 검증** 수 (020 FR-013).
+
+        `count` 와 같은 자리에서 센다 — 세는 주체가 둘이면 어긋나고, 확정은 전부 여기를
+        지난다. 작성 종료 알림이 이 값을 싣는다.
+
+        Step 종류를 묻지 않고 속성으로 본다. `mismatch` 를 가질 수 있는 것은
+        `AssertionStep` 뿐이므로(도메인이 그렇게 정했다) 결과가 같고, 이 모듈이
+        Step 종류를 알 필요가 없다.
+        """
+        return sum(1 for s in self.compiled if getattr(s, "mismatch", None) is not None)
+
     def step_ids(self) -> list[str]:
         """이 지시문에서 나온 Step id 목록 (data-model §10 `produced_step_ids`)."""
         return [s.id for s in self.compiled]

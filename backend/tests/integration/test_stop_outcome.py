@@ -196,7 +196,10 @@ def test_skip_failed_resume_is_partial_pass_not_pass(
         # 건너뛰기를 **명시**하고 결말을 확인한다. 재개가 상태 기계에 막히는 경우에도
         # 결말 판정 자체는 확인할 수 있어야 한다.
         engine.note_skipped_failures()
-        engine.clear_failed_steps()
+        # 020 — `clear_failed_steps` 에서 이름이 바뀌었다. 건너뛰는 것은 **멈춘 자리
+        # 하나**이지 결과에 있는 모든 실패가 아니다 (FR-039). 이 검증의 실행은
+        # 동작 Step 하나만 실패하므로 결과는 그대로다.
+        engine.skip_blocking_failure()
         engine.finalized = False
         import asyncio
 

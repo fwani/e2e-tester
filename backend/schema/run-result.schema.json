@@ -54,6 +54,16 @@
       "title": "Artifacts",
       "type": "object"
     },
+    "AssertionClass": {
+      "description": "검증 Step 하나가 이번 실행에서 갖는 분류 (020 FR-018).\n\n**결말(`Outcome`)과 다른 축이다.** 결말은 실행 전체가 어떻게 끝났는가이고, 이것은\n검증 하나가 「원래 알던 것」인지 「오늘 깨진 것」인지다. 한 축에 섞으면 둘을 함께\n말할 수 없다 — `Outcome` 에 값을 더하지 않는 이유다 (FR-021).\n\n판정은 정의의 `AssertionStep.mismatch` 와 이번 실행의 `StepOutcome` **둘 다**를 봐야\n나온다. `classify_assertion()` 이 그 판정을 소유한다.",
+      "enum": [
+        "known_defect",
+        "regression",
+        "resolved"
+      ],
+      "title": "AssertionClass",
+      "type": "string"
+    },
     "ErrorCode": {
       "enum": [
         "PROJECT_NOT_OPEN",
@@ -195,6 +205,17 @@
     "StepResult": {
       "additionalProperties": false,
       "properties": {
+        "assertion_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssertionClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "candidate_disagreement": {
           "items": {
             "type": "string"
@@ -324,7 +345,8 @@
         "screenshot_note",
         "locator_attempts",
         "error_message",
-        "candidate_disagreement"
+        "candidate_disagreement",
+        "assertion_class"
       ],
       "title": "StepResult",
       "type": "object"

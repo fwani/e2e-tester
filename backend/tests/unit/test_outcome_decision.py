@@ -172,3 +172,66 @@ def test_decide_outcome_is_deterministic() -> None:
     first = decide_outcome(WITH_FAILURE, skipped_failures=True)
     second = decide_outcome(WITH_FAILURE, skipped_failures=True)
     assert first is second
+
+
+# ─── 건너뛰기가 삼키지 않는다 (020 T059 · FR-039) ─────────────────────────────
+#
+# 020 이전에는 실패가 곧 중단이었으므로 결과에 `FAIL` 이 하나뿐이었고, 그 하나가 곧
+# 사용자가 건너뛰기로 고른 것이었다. FR-033 이 그 전제를 깬다 — 검증 실패는 멈추지
+# 않으므로 `FAIL` 이 여럿 쌓인 채 뒤쪽 동작 Step 에서 멈출 수 있다.
+#
+# 그때 조건 없는 3번 규칙은 **아무도 건너뛰지 않은 회귀까지 부분 성공으로 덮는다.**
+
+SKIPPED_ONE_BUT_REGRESSION_REMAINS = [
+    step(0, StepOutcome.PASS),
+    step(1, StepOutcome.FAIL),  # 검증 실패 — 멈추지 않았고 아무도 건너뛰지 않았다
+    step(2, StepOutcome.SKIPPED),  # 동작 실패 — 사용자가 건너뛰기를 골랐다
+    step(3, StepOutcome.PASS),
+]
+
+
+def test_unskipped_failure_beats_skipped_failures() -> None:
+    """건너뛰지 않은 실패가 남아 있으면 부분 성공이 아니다 (020 FR-039).
+
+    이것이 무너지면 회귀가 초록색에 가깝게 보인다 — 020 이 없애려는 문제와 같은
+    종류의 거짓말이다.
+    """
+    assert (
+        decide_outcome(SKIPPED_ONE_BUT_REGRESSION_REMAINS, skipped_failures=True)
+        is Outcome.FAIL
+    )
+
+
+def test_pure_skip_is_still_partial_pass() -> None:
+    """005 의 U-05 수정을 되돌리지 않는다.
+
+    건너뛴 것 말고 실패가 없으면 부분 성공 그대로다.
+    """
+    assert decide_outcome(PARTIAL_RUN, skipped_failures=True) is Outcome.PARTIAL_PASS
+
+
+def test_stop_request_still_wins_over_everything_below() -> None:
+    """우선순위의 **순서**는 바뀌지 않았다 (FR-036). 3번의 조건만 좁혔다."""
+    assert (
+        decide_outcome(
+            SKIPPED_ONE_BUT_REGRESSION_REMAINS, skipped_failures=True, stop_requested=True
+        )
+        is Outcome.STOPPED
+    )
+
+
+def test_session_loss_still_wins_over_everything() -> None:
+    assert (
+        decide_outcome(
+            SKIPPED_ONE_BUT_REGRESSION_REMAINS, skipped_failures=True, session_lost=True
+        )
+        is Outcome.FAIL
+    )
+
+
+def test_assertion_failures_alone_are_a_failure() -> None:
+    """검증 실패로 계속 진행한 실행의 결말은 실패다 (FR-036).
+
+    계속 진행하는 것이 실패를 통과로 바꾸지 않는다.
+    """
+    assert decide_outcome([step(0, StepOutcome.FAIL), step(1, StepOutcome.PASS)]) is Outcome.FAIL

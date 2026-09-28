@@ -27,9 +27,17 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
-from itb.domain.assertion import Assertion, AssertionKind, MatchMode
+from itb.domain.assertion import (
+    MAX_OBSERVED_CHARS,
+    Assertion,
+    AssertionKind,
+    AuthoringMismatch,
+    MatchMode,
+)
 from itb.domain.step import (
     AssertionStep,
     Author,
@@ -57,6 +65,55 @@ from itb.execution.step_edits import (
 )
 from itb.execution.step_executor import StepExecutor, StepFailure
 from itb.secrets.capture import SensitiveCapturer
+from itb.secrets.scrubber import Scrubber
+
+# ─── 막힘의 종류 (020 FR-023) ────────────────────────────────────────────────
+#
+# **`blocked.py` 가 아니라 여기에 있다.** 그쪽이 자연스러운 자리로 보이지만
+# (`AiChoice` 옆), 임포트 방향이 그것을 막는다 — `blocked` → `agent` → `tools` 이므로
+# `tools` 가 `blocked` 를 가져오면 순환이 된다.
+#
+# 값이 **만들어지는 곳**이 여기라는 점에서 이 자리도 맞다. `report_blocked` 가 종류를
+# 정하고, `blocked.py` 는 그것을 화면으로 나르기만 한다.
+
+
+class BlockedKind(StrEnum):
+    """막힘이 **무엇 때문인가** (020 FR-023).
+
+    `AiChoice` 와 다른 축이다 — 그쪽은 「사람이 무엇을 할 수 있는가」이고 이것은
+    「왜 막혔는가」다.
+
+    **도구를 늘리지 않고 `report_blocked` 의 인자로 표현한다.** 전례가 그대로 있다 —
+    `question` 도 같은 판단으로 추가됐다: 「물을 것이 있다는 사실은 **막힘의 성질**이지
+    별개의 동작이 아니다」(`tools.report_blocked`). 막힘의 원인 종류도 같은 성질이다.
+    """
+
+    NEEDS_INPUT = "needs_input"
+    """사람이 알려 주면 풀린다 — 어느 계정인지, 어느 버튼인지, 어떤 값인지.
+
+    **기본값이며 020 이전의 모든 막힘이 여기다.** 그래서 기존 동작이 변하지 않는다
+    (FR-025).
+    """
+
+    PRODUCT_MISMATCH = "product_mismatch"
+    """제품이 지시문과 다르게 동작해 진행할 수 없다 (020 US4).
+
+    **사람에게 물을 것이 없는 막힘이다.** 지금까지 이 상황은 「요소를 찾지 못했다」로
+    보고됐고, 사용자는 힌트를 주며 시간을 쓴 뒤에야 제품 문제였음을 알았다.
+
+    이 종류에는 질문이 붙지 않는다 (FR-024). **도구 쪽에서 버린다** — 지침에만 적어
+    두면 모델이 규칙을 어겼을 때 막을 것이 없고, 그러면 답할 수 없는 질문에 답변 칸이
+    열린다.
+    """
+
+
+DEFAULT_BLOCKED_KIND = BlockedKind.NEEDS_INPUT
+"""인식하지 못한 값이 떨어지는 곳.
+
+오타가 조용히 답변 칸을 막으면 사용자는 이유를 모른 채 이어갈 방법을 잃는다. 반대
+방향의 오작동(질문이 필요 없는데 칸이 열림)이 덜 해롭다.
+"""
+
 
 MAX_TOOL_CALLS = 40
 """도구 호출 총 상한 (FR-066).
@@ -187,6 +244,31 @@ class AttemptLimits:
                 f"같은 요소에 {count}회 연속 실패해 중단했습니다: {element}. "
                 "그때까지 성공한 동작은 Step 으로 남아 있습니다."
             )
+
+    def record_mismatch(self, element: str) -> None:
+        """검증이 기대와 달랐다 — **성공도 실패도 아니다** (020 FR-009).
+
+        연속 실패 계수와 `last_failed_element` 를 **둘 다 건드리지 않는다.** 어긋남은
+        상한에 대해 중립이어야 한다.
+
+        ## 왜 아무것도 부르지 않는 것으로는 부족한가
+
+        그러면 앞선 실패의 `last_failed_element` 가 남아, 그 다음 실패가 **연속**으로
+        세어진다. 명시적 메서드를 두면 「어긋남은 세지 않는다」가 코드에 적힌다.
+
+        ## 왜 `record_success` 를 부르지 않는가
+
+        그것은 연속 실패를 **초기화**한다. 어긋남이 다른 요소의 실패 흐름을 지우면
+        상한이 약해진다.
+
+        ## 총 호출 상한은 그대로 걸린다
+
+        `assert_condition` 진입 시 `record_call()` 이 먼저 돌기 때문이다. 모델이 같은
+        검증을 무한히 시도해도 총 상한에서 멈춘다 (FR-009 후반부).
+
+        `element` 를 받지만 쓰지 않는다 — 호출부가 무엇에 대한 어긋남인지 적게 하려는
+        것이고, 그 기록이 필요해지면 여기가 받을 자리다.
+        """
 
     def record_success(self, element: str | None = None) -> None:
         """성공하면 연속 실패 기록을 지운다."""
@@ -330,6 +412,25 @@ class BrowserToolbox:
 
     `blocked_reason` 과 갈라 둔다. 사유는 「왜 못 했는가」이고 질문은 「무엇을 알려 주면
     되는가」다 — 뭉치면 화면이 답 칸을 무엇에 대해 여는지 말할 수 없다.
+    """
+
+    blocked_kind: BlockedKind = BlockedKind.NEEDS_INPUT
+    """막힘이 **무엇 때문인가** (020 FR-023).
+
+    사유·질문과 또 다른 축이다 — 사유는 「왜 못 했는가」, 질문은 「무엇을 알려 주면
+    되는가」, 이것은 「사람이 알려 줄 수 있는 종류의 문제인가」다.
+    """
+
+    scrubber_source: Callable[[], Scrubber] | None = None
+    """지금까지 복호화된 민감 값으로 스크러버를 만들어 주는 것 (020 FR-015).
+
+    **값이 아니라 함수다.** 작성 도중 새 민감 변수가 해석될 수 있으므로, 값으로 들고
+    있으면 나중에 복호화된 값이 마스킹되지 않는다 (`Runner._scrubber` 와 같은 판단).
+
+    어긋남 기록(`AuthoringMismatch.observed`)은 화면에서 읽은 텍스트를 **디스크에
+    남긴다.** 진행 알림과 달리 흘러가 버리지 않으므로, 여기가 거르는 유일한 자리다.
+
+    없으면 거르지 않는다 — 016 이전 경로와 검증이 이 통로 없이도 돌아야 한다.
     """
 
     # ─── 읽기 전용 도구 ────────────────────────────────────────────────────
@@ -582,8 +683,25 @@ class BrowserToolbox:
     ) -> dict[str, Any]:
         """검증 Step 을 만들고 **즉시 확인한다** (FR-013a 의 4종만).
 
-        확인하지 않고 기록하면 통과하지 않는 검증이 정의에 들어간다. 성공한 동작만
-        Step 으로 남긴다는 규칙(FR-061)이 검증에도 적용된다.
+        ## 확인 결과가 Step 의 운명을 정하지 않는다 (020 FR-005)
+
+        001 은 「성공한 동작만 Step 으로 남긴다」(FR-061)를 검증에도 적용했다. 동작
+        Step 에는 맞지만 **검증에는 정반대다** — 실패하는 검증이야말로 결함을 잡는
+        테스트이며, 그것을 버리면 저장된 정의는 작성 시점 제품 동작의 사본이 된다.
+        사본은 원본과 같으므로 처음 돌리면 반드시 통과하고, 그 통과는 정보를 담고
+        있지 않다.
+
+        그래서 검증은 `keep_on_failure` 로 실행한다. 어긋나도 Step 은 남고, 어긋났다는
+        사실이 `mismatch` 에 함께 적힌다.
+
+        ## 어긋남과 대상 없음은 다르다 (FR-007)
+
+        아래 참조 해석 단계는 **그대로 둔다.** 참조를 찾지 못하거나 식별 정보를 모으지
+        못한 것은 「무엇을 관찰했는지 적을 수 없는 상태」이고, 그것을 어긋남으로
+        기록하면 관찰값이 빈 거짓 기록이 만들어진다.
+
+        가르는 기준은 **언제 실패했는가**가 아니라 **무엇이 실패했는가**다 —
+        참조 해석 실패는 대상 없음, 검증 판정 실패는 어긋남이다.
         """
         if not self.limits.record_call():
             return dict(STOP_NOTICE)
@@ -625,10 +743,12 @@ class BrowserToolbox:
             tab=tab,
             assertion=assertion,
         )
-        return await self._execute(step, element=element_ref or f"assert:{kind}")
+        return await self._execute(
+            step, element=element_ref or f"assert:{kind}", keep_on_failure=True
+        )
 
     async def report_blocked(
-        self, reason: str, question: str | None = None
+        self, reason: str, question: str | None = None, kind: str | None = None
     ) -> dict[str, Any]:
         """수행 불가 선언 (FR-069). 루프를 끊고 사용자 선택으로 넘긴다.
 
@@ -636,12 +756,36 @@ class BrowserToolbox:
         만들지 않고 여기에 붙이는 이유는 도구 표면이 계약이기 때문이다 (`TOOL_NAMES`) —
         늘리면 Step 종류와의 1:1 이 깨진다. 물을 것이 있다는 사실은 **막힘의 성질**이지
         별개의 동작이 아니다.
+
+        `kind` 도 **같은 판단으로** 붙는다 (020 FR-023). 막힘의 원인 종류 역시 막힘의
+        성질이며, 별개의 도구가 아니다.
+
+        ## 질문은 종류가 정한다 (FR-024)
+
+        `product_mismatch` 이면 `question` 을 **버린다.** 제품이 지시문과 다르게 동작해
+        막힌 것에는 사람이 알려 줄 것이 없고, 그런데도 답변 칸이 열리면 사용자는 답할
+        수 없는 질문 앞에서 시간을 쓴다.
+
+        **지침이 아니라 여기서 버린다.** 지침에만 적어 두면 모델이 규칙을 어겼을 때
+        막을 것이 없다.
+
+        ## 모르는 값은 기본으로 떨어진다
+
+        오타가 조용히 답변 칸을 막으면 사용자는 이유를 모른 채 이어갈 방법을 잃는다.
+        반대 방향의 오작동(질문이 필요 없는데 칸이 열림)이 덜 해롭다.
         """
         self.limits.record_call()
         # **예외를 던지지 않는다.** SDK 가 도구 예외를 잡아 모델에게 돌려주므로 예외로는
         # 루프를 끊을 수 없다. 상태로 남기고 우리가 소유한 루프 본문이 끊는다.
         self.blocked_reason = reason
-        self.blocked_question = (question or "").strip() or None
+        try:
+            self.blocked_kind = BlockedKind(str(kind or "").strip())
+        except ValueError:
+            self.blocked_kind = DEFAULT_BLOCKED_KIND
+        if self.blocked_kind is BlockedKind.PRODUCT_MISMATCH:
+            self.blocked_question = None
+        else:
+            self.blocked_question = (question or "").strip() or None
         return {
             "acknowledged": True,
             "message": "수행 불가를 접수했습니다. 사용자가 이어서 처리합니다. 끝내세요.",
@@ -989,11 +1133,29 @@ class BrowserToolbox:
         step = make_step(self.allocate_step_id(), target, tab)
         return await self._execute(step, element=element_ref)
 
-    async def _execute(self, step: Step, element: str) -> dict[str, Any]:
-        """Step 을 실행하고 **성공한 경우에만** 기록한다 (FR-061).
+    async def _execute(
+        self, step: Step, element: str, *, keep_on_failure: bool = False
+    ) -> dict[str, Any]:
+        """Step 을 실행하고 기록한다. **실패 처리는 두 갈래다.**
 
         실행에 쓰는 것은 재실행과 **같은 `StepExecutor`** 다. 그래서 "AI 로 만든 테스트가
         재실행에서 통과한다" 가 별도의 보장이 아니라 같은 코드를 지난 결과가 된다.
+
+        ## `keep_on_failure` — 동작 Step 과 검증 Step 은 실패의 뜻이 다르다 (020)
+
+        | | 꺼짐 (기본 · 동작 Step 8종) | 켜짐 (`assert_condition` 하나) |
+        |---|---|---|
+        | 실패의 뜻 | **진행 불가** | **제품 결함 후보** |
+        | Step 기록 | 안 한다 (001 FR-061) | **한다** (020 FR-005) |
+        | 연속 실패 계수 | +1 | 건드리지 않는다 (FR-009) |
+        | 반환 | `{"error": ...}` | `{"ok": true, "assertion_failed": true, ...}` |
+
+        **왜 인자 하나로 가르는가**: `assert_condition` 이 이 함수를 쓰지 않고 자기
+        경로를 가지면 실행·진행 알림·새 탭 감지·상한 기록이 복제된다. 복제된 순간 두
+        경로가 조용히 갈라지고, 갈라진 것을 검사가 잡지 못한다 (research R3).
+
+        **도구 표면은 그대로다.** `TOOL_NAMES` 16종, `STEP_PRODUCING_TOOLS` 9종,
+        Step 종류와의 1:1 대응이 변하지 않는다 — 바뀌는 것은 도구 하나의 실패 처리다.
         """
         tabs_before = len(self.session.tabs)
         # **하기 전에 알린다.** 요소를 기다리는 동안 화면이 조용하면 사용자는 멈춘
@@ -1002,10 +1164,15 @@ class BrowserToolbox:
         try:
             await self.executor.execute(step)
         except StepFailure as exc:
+            if keep_on_failure:
+                return await self._keep_mismatch(step, element, str(exc))
             self.limits.record_failure(element)
             await self._announce(f"{step.label} — 실패: {exc}")
             return {"error": str(exc)}
         except TabNotFoundError as exc:
+            # **탭이 없는 것은 어긋남이 아니다.** 검증이 기대와 달랐다는 것과, 검증할
+            # 화면 자체가 사라졌다는 것은 다른 사실이다. 후자를 어긋남으로 기록하면
+            # 「그때 화면이 이랬다」가 거짓이 된다 (FR-007 과 같은 경계).
             self.limits.record_failure(element)
             await self._announce(f"{step.label} — 실패: {exc}")
             return {"error": str(exc)}
@@ -1025,6 +1192,57 @@ class BrowserToolbox:
                 "그 탭을 조작하려면 observe_page(tab) 로 먼저 관찰하세요."
             )
         return result
+
+    async def _keep_mismatch(
+        self, step: Step, element: str, failure: str
+    ) -> dict[str, Any]:
+        """검증이 기대와 달랐다 — **Step 을 남기고 그 사실을 함께 적는다** (020 FR-005).
+
+        ## 무엇을 관찰값으로 적는가
+
+        실행기가 만든 실패 설명을 그대로 쓴다. 새 관찰 로직을 만들면 **같은 상황을 두
+        곳이 서로 다르게 설명**하게 되고, 화면의 문구와 실행 결과의 문구가 갈린다
+        (research R2).
+
+        **거르는 것은 여기 한 번뿐이다** (FR-015). 이 문장은 디스크에 남으므로 진행
+        알림과 달리 흘러가지 않는다. 화면이 다시 거르지 않는다 — 거르는 곳이 둘이면
+        어느 쪽이 기준인지 말할 수 없다.
+
+        ## 모델에게 무엇을 돌려주는가
+
+        `ok` 와 `assertion_failed` 를 **함께** 싣는다. 도구 호출로서는 성공했고(Step 이
+        기록됐다), 검증 결과로서는 어긋났다 — 두 축을 한 값으로 뭉치면 모델이
+        「실패했으니 다시」로 읽는다. 이 기능 전체가 그 오독을 없애는 것이다 (FR-010).
+        """
+        scrubber = self.scrubber_source() if self.scrubber_source is not None else None
+        observed = scrubber.scrub(failure) if scrubber is not None else failure
+        truncated = len(observed) > MAX_OBSERVED_CHARS
+        recorded = step.model_copy(
+            update={
+                "mismatch": AuthoringMismatch(
+                    observed=observed[:MAX_OBSERVED_CHARS],
+                    truncated=truncated,
+                    recorded_at=datetime.now(UTC),
+                )
+            }
+        )
+
+        # **성공도 실패도 아니다.** 연속 실패 상한에 대해 중립이어야 기대값 고수가
+        # 처벌받지 않는다 (FR-009). 총 호출 상한은 진입 시 이미 세었다.
+        self.limits.record_mismatch(element)
+        await self.on_step(recorded)
+        await self._announce(f"{step.label} — 기대와 다름: {observed}")
+        return {
+            "ok": True,
+            "assertion_failed": True,
+            "step": step.label,
+            "observed": observed[:MAX_OBSERVED_CHARS],
+            "note": (
+                "검증이 기대와 다릅니다. 값을 바꾸어 다시 시도하지 마세요 — "
+                "이 Step 은 결함 후보로 이미 기록되었습니다. "
+                "남은 지시를 계속 수행하세요."
+            ),
+        }
 
 
 # ─── SDK 도구 정의 ──────────────────────────────────────────────────────────
@@ -1176,6 +1394,9 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
 
         `kind` 는 visible / hidden / text / url 중 하나다. `visible`·`hidden` 은
         `element_ref` 가 필요하고 `url` 은 요소를 보지 않는다.
+
+        **기대와 달라도 Step 으로 기록된다.** 그때는 결함 후보로 표시되며, 값을 바꾸어
+        다시 시도하면 안 된다.
         """
         return await toolbox.assert_condition(kind, element_ref, value, match)
 
@@ -1217,12 +1438,18 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         return await toolbox.repick_target(step_id, element_ref, slot)
 
     @beta_async_tool
-    async def report_blocked(reason: str, question: str = "") -> dict[str, Any]:
+    async def report_blocked(
+        reason: str, question: str = "", kind: str = "needs_input"
+    ) -> dict[str, Any]:
         """지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다.
 
-        사람이 알려 주면 풀릴 일이면 `question` 에 물어볼 한 문장을 함께 적는다.
+        사람이 알려 주면 풀릴 일이면 `question` 에 물어볼 한 문장을 함께 적고
+        `kind` 는 `needs_input` 으로 둔다.
+
+        **제품이 지시문과 다르게 동작해서 막힌 것이면** `kind` 에 `product_mismatch` 를
+        적는다. 그때는 사람에게 물을 것이 없으므로 `question` 은 무시된다.
         """
-        return await toolbox.report_blocked(reason, question or None)
+        return await toolbox.report_blocked(reason, question or None, kind)
 
     return [
         list_tabs,
@@ -1314,7 +1541,9 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "assert_condition": (
         "화면 상태를 검증한다. kind 는 visible / hidden / text / url 중 하나다. "
-        "visible·hidden 은 element_ref 가 필요하고 url 은 요소를 보지 않는다.",
+        "visible·hidden 은 element_ref 가 필요하고 url 은 요소를 보지 않는다. "
+        "기대와 달라도 Step 으로 기록되며 결함 후보로 표시된다 — "
+        "값을 바꾸어 다시 시도하지 마라.",
         {
             "type": "object",
             "properties": {
@@ -1381,10 +1610,20 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "report_blocked": (
         "지시를 수행할 수 없음을 알린다. 무엇이 막았는지 구체적으로 적는다. "
-        "사람이 알려 주면 풀릴 일이면 question 에 물어볼 한 문장을 함께 적는다.",
+        "사람이 알려 주면 풀릴 일이면 question 에 물어볼 한 문장을 함께 적는다. "
+        "제품이 지시문과 다르게 동작해서 막힌 것이면 kind 에 product_mismatch 를 "
+        "적는다 — 그때는 사람에게 물을 것이 없다.",
         {
             "type": "object",
-            "properties": {"reason": {"type": "string"}, "question": {"type": "string"}},
+            "properties": {
+                "reason": {"type": "string"},
+                "question": {"type": "string"},
+                "kind": {
+                    "type": "string",
+                    "enum": ["needs_input", "product_mismatch"],
+                    "default": "needs_input",
+                },
+            },
             "required": ["reason"],
         },
     ),

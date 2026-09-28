@@ -28,10 +28,11 @@ from itb.domain.run_result import (
     StepOutcome,
     StepResult,
     attempted_of,
+    classify_assertion,
     decide_outcome,
     scope_of,
 )
-from itb.domain.step import Step
+from itb.domain.step import AssertionStep, Step
 from itb.domain.test_case import Test
 from itb.execution.artifacts import (
     ArtifactCollector,
@@ -517,8 +518,13 @@ class ReplayEngine:
     def has_failed_step(self) -> bool:
         """지금까지의 결과에 실패한 Step 이 있는가 (005 FR-136).
 
-        재개를 거절할지 판단하는 근거다. 실패를 조용히 지나가면 화면은 「완료」라고
-        말하고 저장된 결과는 실패인 상태가 된다(U-05).
+        **재개 가드는 이제 이것을 보지 않는다** (020). 020 이전에는 실패가 곧 중단이라
+        이 질문과 「멈춘 자리가 있는가」가 같은 말이었는데, FR-033 이 그 전제를 깼다 —
+        검증 실패는 멈추지 않으므로, 이것만 보면 **멈추지도 않은 실행의 재개를
+        막는다.** 그 판단은 `blocking_failure_index()` 로 옮겼다.
+
+        이 질문 자체는 여전히 뜻이 있다 — 「이 실행에 실패가 있었는가」이며, 검증이
+        그것을 묻는다.
         """
         return any(r.outcome is StepOutcome.FAIL for r in self.results)
 
@@ -526,13 +532,42 @@ class ReplayEngine:
         """가장 앞선 실패 Step 의 인덱스 (005 FR-136 의 안내에 쓴다)."""
         return next((r.index for r in self.results if r.outcome is StepOutcome.FAIL), None)
 
-    def clear_failed_steps(self) -> None:
-        """실패 Step 을 건너뜀으로 바꾼다 (005 FR-137).
+    def blocking_failure_index(self) -> int | None:
+        """**실행이 멈춘 자리** (020 FR-038). 재개 가드와 건너뛰기가 보는 값이다.
+
+        `first_failed_index()` 와 다르다. 그쪽은 「가장 앞선 실패」이고 이것은 「멈춘
+        실패」다 — 020 이전에는 실패가 곧 중단이었으므로 둘이 같은 것을 가리켰고,
+        FR-033 이 그 전제를 깼다.
+
+        검증 실패는 멈추지 않으므로 여기 잡히지 않는다. 그래서 검증만 실패한 실행은
+        **재개를 막지 않는다** — 막을 이유가 없다. 이미 계속 돌았기 때문이다.
+        """
+        return self.failed_index
+
+    def skip_blocking_failure(self) -> None:
+        """**멈춘 자리 하나만** 건너뜀으로 바꾼다 (005 FR-137 · 020 FR-039).
 
         「실패한 Step 건너뛰고 계속」의 의미가 이것이다 — 실패를 **지우지 않고** 건너뛴
         것으로 남긴다. 지우면 결과에서 그 Step 이 왜 안 돌았는지 알 수 없다.
+
+        ## 왜 「모든 실패」가 아니라 「멈춘 자리 하나」인가 (020)
+
+        020 이전에는 둘이 같았다. 실패가 곧 중단이었으므로 결과에 `FAIL` 이 하나뿐이었고,
+        그 하나가 곧 사용자가 건너뛰기로 고른 것이었다.
+
+        FR-033 이 그 전제를 깬다. 검증 실패는 멈추지 않으므로 `FAIL` 이 여럿 쌓인 채
+        뒤쪽 동작 Step 에서 멈출 수 있고, 그때 모든 `FAIL` 을 건너뜀으로 바꾸면
+        **아무도 건너뛰지 않은 회귀까지 증거가 사라진다.** 결말 판정에 닿기도 전에
+        지워지는 것이다.
+
+        사용자가 건너뛰는 것은 **멈춘 자리**다. 검증 실패는 건너뛸 대상이 아니다 —
+        건너뛰지 않아도 이미 지나왔다.
         """
-        for result in self.results:
+        index = self.failed_index
+        if index is None:
+            return
+        if 0 <= index < len(self.results):
+            result = self.results[index]
             if result.outcome is StepOutcome.FAIL:
                 result.outcome = StepOutcome.SKIPPED
         self.failed_index = None
@@ -567,14 +602,30 @@ class ReplayEngine:
             record = await self.executor.execute(step)
         except StepFailure as exc:
             result.outcome = StepOutcome.FAIL
+            result.assertion_class = classify_assertion(step, result)
             result.duration_ms = int((time.monotonic() - started) * 1000)
             result.tab_wait_ms = exc.tab_wait_ms
             result.element_wait_ms = exc.element_wait_ms
             result.error_code = exc.code
             result.locator_attempts = exc.attempts
             result.error_message = self._scrubber().scrub(str(exc))
-            self.failed_index = index
-            self._failure_tab = step.tab
+
+            # 020 FR-033·FR-038 — **검증 실패는 실행을 멈추지 않는다.**
+            #
+            # 검증 Step 은 화면을 바꾸지 않는다. 그러므로 실패해도 뒤따르는 Step 의
+            # 전제가 그 때문에 더 깨지지는 않는다 — 전제는 이미 깨져 있었고, 뒤 Step 이
+            # 실패한다면 그것 또한 봐야 할 결과다. 앞쪽 결함 하나가 테스트의 나머지
+            # 전부를 눈멀게 하는 것이 020 이 고치는 문제다.
+            #
+            # **`failed_index` 를 설정하지 않는 것이 핵심이다.** 그 값의 뜻은 「실패한
+            # Step」이 아니라 **「실행이 멈춘 자리」**이며, 재시도·건너뛰기·인수 UI 가
+            # 그 자리를 근거로 동작한다. 검증 실패는 멈추지 않으므로 멈춘 자리가
+            # 아니다. 설정하면 여러 검증이 실패할 때 마지막 것이 「멈춘 자리」가 되어,
+            # 사용자가 거기서 재시도를 누르면 엉뚱한 곳으로 간다.
+            keep_going = isinstance(step, AssertionStep)
+            if not keep_going:
+                self.failed_index = index
+                self._failure_tab = step.tab
 
             await session.emit(
                 "step_failed",
@@ -600,9 +651,16 @@ class ReplayEngine:
                 element_wait_ms=exc.element_wait_ms,
                 resolved_candidate=None,
             )
-            return False
+            # `step_failed` 는 그대로 나갔다 — 화면은 실패를 즉시 보여야 하고, 그
+            # 이벤트가 「실행이 멈췄다」를 뜻한 적은 없다. 멈춤은 `run_finished` 와
+            # 결과의 `not_run` 이 말한다.
+            return keep_going
 
         result.outcome = StepOutcome.PASS
+        # 020 FR-018 — 통과에도 분류가 붙을 수 있다. 작성 시점에 어긋났던 검증이
+        # 이번에 통과했다면 `resolved` 이며, 그것이 「표시를 걷어낼 수 있습니다」의
+        # 근거다 (FR-022).
+        result.assertion_class = classify_assertion(step, result)
         result.duration_ms = int((time.monotonic() - started) * 1000)
         result.tab_wait_ms = record.tab_wait_ms
         result.element_wait_ms = record.element_wait_ms
