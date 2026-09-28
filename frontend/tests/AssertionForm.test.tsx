@@ -83,7 +83,7 @@ describe("서버로 보내는 것", () => {
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    const body = onSubmit.mock.calls[0][0];
+    const body = onSubmit.mock.calls[0]?.[0];
     expect(body.kind).toBe("disabled");
     expect(body.value).toBeNull();
     expect(body.match).toBe("equals");
@@ -96,7 +96,7 @@ describe("서버로 보내는 것", () => {
     fireEvent.click(screen.getByRole("radio", { name: MATCH_MODE_LABEL.not_contains }));
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
-    const body = onSubmit.mock.calls[0][0];
+    const body = onSubmit.mock.calls[0]?.[0];
     expect(body).toMatchObject({ kind: "text", value: "오류", match: "not_contains" });
   });
 });

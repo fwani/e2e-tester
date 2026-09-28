@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from itb.domain.assertion import Assertion, AssertionKind, AuthoringMismatch
+from itb.domain.assertion import Assertion, AssertionKind, AuthoringMismatch, MatchMode
 from itb.domain.locator import Candidate, CandidateStatus, TargetLocator
 from itb.domain.run_result import (
     AssertionClass,
@@ -151,3 +151,66 @@ def test_old_result_files_read_as_unclassified() -> None:
     """
     old = {"step_id": "step-01", "index": 0, "label": "a", "outcome": "fail"}
     assert StepResult.model_validate(old).assertion_class is None
+
+
+# ─── 021 — 새 어휘에서도 분류가 나온다 (T039 · FR-025) ──────────────────────
+#
+# 분류 함수는 검증의 `kind` 를 보지 않으므로 **구조상 동작한다.** 그런데 구조상
+# 그렇다는 것과 앞으로도 그렇다는 것은 다르다 — 누군가 종류별 분기를 넣으면 조용히
+# 깨지고, 그때 사용자는 부정 검증의 실패가 회귀인지 알려진 결함인지 알 수 없게 된다.
+
+
+def _assertion_step_of(kind: AssertionKind, **extra: object) -> AssertionStep:
+    from itb.domain.locator import Candidate, CandidateStatus, TargetLocator
+
+    payload = dict(extra)
+    if kind in (
+        AssertionKind.VISIBLE,
+        AssertionKind.HIDDEN,
+        AssertionKind.ENABLED,
+        AssertionKind.DISABLED,
+    ):
+        payload["target"] = TargetLocator(
+            css=Candidate(value="#x", status=CandidateStatus.VERIFIED)
+        )
+    return AssertionStep(
+        id="step-01",
+        label="검증",
+        assertion=Assertion(kind=kind, **payload),  # type: ignore[arg-type]
+        mismatch=AuthoringMismatch(observed="관찰값", recorded_at=NOW),
+    )
+
+
+NEW_VOCABULARY = [
+    (AssertionKind.DISABLED, {}),
+    (AssertionKind.ENABLED, {}),
+    (AssertionKind.TEXT, {"value": "오류", "match": MatchMode.NOT_CONTAINS}),
+    (AssertionKind.URL, {"value": "/login", "match": MatchMode.NOT_EQUALS}),
+]
+
+
+@pytest.mark.parametrize(("kind", "extra"), NEW_VOCABULARY)
+def test_new_kinds_are_classified_as_a_known_defect_when_they_keep_failing(
+    kind: AssertionKind, extra: dict
+) -> None:
+    step = _assertion_step_of(kind, **extra)
+    assert (
+        classify_assertion(step, _result(StepOutcome.FAIL)) is AssertionClass.KNOWN_DEFECT
+    )
+
+
+@pytest.mark.parametrize(("kind", "extra"), NEW_VOCABULARY)
+def test_new_kinds_are_classified_as_resolved_when_they_start_passing(
+    kind: AssertionKind, extra: dict
+) -> None:
+    step = _assertion_step_of(kind, **extra)
+    assert classify_assertion(step, _result(StepOutcome.PASS)) is AssertionClass.RESOLVED
+
+
+@pytest.mark.parametrize(("kind", "extra"), NEW_VOCABULARY)
+def test_new_kinds_are_classified_as_a_regression_without_a_mark(
+    kind: AssertionKind, extra: dict
+) -> None:
+    step = _assertion_step_of(kind, **extra)
+    clean = step.model_copy(update={"mismatch": None})
+    assert classify_assertion(clean, _result(StepOutcome.FAIL)) is AssertionClass.REGRESSION

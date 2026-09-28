@@ -140,10 +140,10 @@ description: "Task list template for feature implementation"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T039 [P] 020 과의 정합을 `backend/tests/unit/test_classify_assertion.py` 와 `backend/tests/unit/test_authoring_mismatch.py` 에서 못 박는다 — 새 종류와 부정 비교에서도 어긋남이 기록되고 분류(이미 아는 결함·오늘 깨진 것·해소됨)가 나온다. **구조상 동작한다는 것과 앞으로도 그렇다는 것은 다르다** ([data-model.md §4](./data-model.md))
-- [ ] T040 [P] 하위 호환을 `backend/tests/integration/test_legacy_project_reads.py` 에서 확인한다 — 새 값이 없는 예전 정의가 그대로 읽히고 실행된다 (FR-030)
-- [ ] T041 [P] 검증 어휘 변경을 `docs/prd.md` 의 검증 관련 절에 반영한다 — 4종·2종이던 목록을 6종·4종으로 고치고 범위 외 항목을 갱신한다
-- [ ] T042 `backend/scripts/test-backend.sh` 와 `cd frontend && npm run typecheck && npm test` 를 전량 돌려 **T002 기준선과 비교**한다. 이 기능이 깬 것이 없는지, 소요 시간이 얼마나 늘었는지 확인하고 결과를 `specs/021-negative-state-assertions/baseline.md` 에 기록한다
+- [X] T039 [P] 020 과의 정합을 `backend/tests/unit/test_classify_assertion.py` 와 `backend/tests/unit/test_authoring_mismatch.py` 에서 못 박는다 — 새 종류와 부정 비교에서도 어긋남이 기록되고 분류(이미 아는 결함·오늘 깨진 것·해소됨)가 나온다. **구조상 동작한다는 것과 앞으로도 그렇다는 것은 다르다** ([data-model.md §4](./data-model.md))
+- [X] T040 [P] 하위 호환을 `backend/tests/integration/test_legacy_project_reads.py` 에서 확인한다 — 새 값이 없는 예전 정의가 그대로 읽히고 실행된다 (FR-030)
+- [X] T041 [P] 검증 어휘 변경을 `docs/prd.md` 의 검증 관련 절에 반영한다 — 4종·2종이던 목록을 6종·4종으로 고치고 범위 외 항목을 갱신한다
+- [X] T042 `backend/scripts/test-backend.sh` 와 `cd frontend && npm run typecheck && npm test` 를 전량 돌려 **T002 기준선과 비교**한다. 이 기능이 깬 것이 없는지, 소요 시간이 얼마나 늘었는지 확인하고 결과를 `specs/021-negative-state-assertions/baseline.md` 에 기록한다
 - [ ] T043 [quickstart.md](./quickstart.md) 의 §2~§5 를 사람이 손으로 수행하고 결과를 기록한다 — 자동 검증이 덮지 못하는 것(문구가 읽히는지, 안내가 눈에 들어오는지, 목록에서 구별되는지)을 본다
 - [ ] T044 [quickstart.md](./quickstart.md) §8 내보내기를 사람이 손으로 확인한다 — 새 종류가 든 테스트를 내보내 **제품 없이** 실행했을 때 제품 안에서와 같은 결과가 나오는지 (원칙 V)
 
