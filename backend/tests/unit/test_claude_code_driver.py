@@ -132,15 +132,93 @@ async def test_failed_result_surfaces_its_reason(monkeypatch: pytest.MonkeyPatch
             is_error=True,
             num_turns=1,
             session_id="s",
-            terminal_reason="max_turns",
+            terminal_reason="api_error",
         )
 
     monkeypatch.setattr(sdk, "query", fake_query)
     monkeypatch.setattr(mod, "_deny_unknown_tools", lambda: None)
 
-    with pytest.raises(RuntimeError, match="max_turns"):
+    with pytest.raises(RuntimeError, match="api_error"):
         async for _ in mod.claude_code_driver([], [{"role": "user", "content": "x"}], LlmConfig()):
             pass
+
+
+# ─── turn 상한은 오류가 아니다 (2026-09-28 사용자 보고) ────────────────────
+
+
+@pytest.mark.parametrize(
+    ("subtype", "terminal_reason"),
+    [
+        ("error_during_execution", "max_turns"),
+        ("error_max_turns", None),
+    ],
+)
+@pytest.mark.asyncio
+async def test_turn_limit_is_not_an_unexpected_error(
+    monkeypatch: pytest.MonkeyPatch, subtype: str, terminal_reason: str | None
+) -> None:
+    """turn 상한은 `DriverTurnLimitError` 로 올라간다.
+
+    `RuntimeError` 로 올라가면 `AuthoringAgent._drive` 의 포괄 처리에 잡혀 「예상하지
+    못한 오류」가 되고, **막힘에만 열리는 이어가기 칸이 열리지 않는다.** SDK 가 같은
+    사실을 `subtype`·`terminal_reason` 어느 자리에 싣든 결과가 같아야 한다.
+    """
+    import claude_agent_sdk as sdk
+
+    from itb.authoring import claude_code_driver as mod
+    from itb.authoring.tools import DriverTurnLimitError
+    from itb.llm.client import LlmConfig
+
+    async def fake_query(*, prompt: str, options: Any) -> Any:
+        yield sdk.ResultMessage(
+            subtype=subtype,
+            duration_ms=1,
+            duration_api_ms=1,
+            is_error=True,
+            num_turns=1,
+            session_id="s",
+            terminal_reason=terminal_reason,
+        )
+
+    monkeypatch.setattr(sdk, "query", fake_query)
+    monkeypatch.setattr(mod, "_deny_unknown_tools", lambda: None)
+
+    with pytest.raises(DriverTurnLimitError, match="상한"):
+        async for _ in mod.claude_code_driver([], [{"role": "user", "content": "x"}], LlmConfig()):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_driver_turn_budget_exceeds_the_tool_call_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CLI 에 넘기는 turn 상한이 도구 호출 상한보다 **넉넉해야 한다.**
+
+    두 값이 같으면 turn 쪽이 먼저 차서 1차 방어선(`MAX_TOOL_CALLS`)이 끊을 기회를
+    얻지 못한다 — 도구를 부르지 않은 턴도 turn 으로 세기 때문이다.
+    """
+    import claude_agent_sdk as sdk
+
+    from itb.authoring import claude_code_driver as mod
+    from itb.authoring.tools import MAX_DRIVER_TURNS, MAX_TOOL_CALLS
+    from itb.llm.client import LlmConfig
+
+    assert MAX_DRIVER_TURNS > MAX_TOOL_CALLS, "turn 과 도구 호출은 단위가 다르다"
+
+    seen: dict[str, Any] = {}
+
+    async def fake_query(*, prompt: str, options: Any) -> Any:
+        seen["max_turns"] = options.max_turns
+        return
+        yield  # pragma: no cover - 제너레이터로 만들기 위한 줄
+
+    monkeypatch.setattr(sdk, "query", fake_query)
+    monkeypatch.setattr(mod, "_deny_unknown_tools", lambda: None)
+
+    async for _ in mod.claude_code_driver([], [{"role": "user", "content": "x"}], LlmConfig()):
+        pass
+
+    assert seen["max_turns"] == MAX_DRIVER_TURNS
 
 
 # ─── 016 — 편집 도구가 개발용 드라이버에도 있다 (T062) ─────────────────────

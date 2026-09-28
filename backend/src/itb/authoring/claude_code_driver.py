@@ -24,7 +24,12 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from itb.authoring.tools import MAX_TOOL_CALLS, MCP_SERVER_NAME, QUALIFIED_TOOL_NAMES
+from itb.authoring.tools import (
+    MAX_DRIVER_TURNS,
+    MCP_SERVER_NAME,
+    QUALIFIED_TOOL_NAMES,
+    DriverTurnLimitError,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - 타입 검사 전용
     from itb.llm.client import LlmConfig
@@ -118,6 +123,23 @@ def _deny_unknown_tools() -> Any:
     return gate
 
 
+TURN_LIMIT_MARKERS = frozenset({"max_turns", "error_max_turns"})
+"""CLI 가 turn 상한으로 끝났음을 알리는 값들.
+
+`subtype` 과 `terminal_reason` 을 **둘 다 본다** — 같은 사실을 SDK 버전에 따라 다른
+자리에 싣는다(`error_max_turns` 는 subtype, `max_turns` 는 terminal_reason). 한쪽만
+보면 SDK 가 자리를 옮기는 날 상한 도달이 조용히 「오류」로 되돌아간다.
+"""
+
+
+def _is_turn_limit(message: Any) -> bool:
+    """이 결말이 turn 상한 도달인가."""
+    return (
+        getattr(message, "terminal_reason", None) in TURN_LIMIT_MARKERS
+        or getattr(message, "subtype", None) in TURN_LIMIT_MARKERS
+    )
+
+
 async def claude_code_driver(
     tools: list[Any], messages: list[dict[str, Any]], config: LlmConfig
 ) -> AsyncIterator[_Message]:
@@ -125,7 +147,8 @@ async def claude_code_driver(
 
     `config` 의 모델·effort·폴백은 **쓰지 않는다.** 모델은 로그인된 Claude Code 의
     기본값을 따른다 — 여기서 `config.model` 을 강제하면 그 모델을 쓸 수 없는 요금제에서
-    무슨 일이 일어났는지 알기 어려운 실패가 된다. 상한(`max_turns`)만 옮긴다.
+    무슨 일이 일어났는지 알기 어려운 실패가 된다. 상한만 옮기되, **`MAX_TOOL_CALLS` 를
+    그대로 넘기지 않는다** — turn 과 도구 호출은 단위가 다르다 (`MAX_DRIVER_TURNS`).
     """
     from claude_agent_sdk import (  # noqa: PLC0415 - SDK 경계를 함수 안에 둔다
         AssistantMessage,
@@ -152,7 +175,7 @@ async def claude_code_driver(
         # 지시가 섞여 들어와 무엇을 보고 있는지 알 수 없게 된다.
         setting_sources=[],
         system_prompt=SYSTEM_PROMPT,
-        max_turns=MAX_TOOL_CALLS,
+        max_turns=MAX_DRIVER_TURNS,
     )
 
     stream = query(prompt=_prompt_from(messages), options=options)
@@ -168,6 +191,16 @@ async def claude_code_driver(
             elif isinstance(message, ResultMessage):
                 if message.subtype != "success":
                     reason = message.terminal_reason or message.subtype
+                    # **turn 상한은 오류가 아니다.** 여기서 갈라 두지 않으면 정상적인
+                    # 상한 도달이 「예상하지 못한 오류」로 표시되고, 막힘에만 열리는
+                    # 이어가기 칸이 열리지 않는다 (`DriverTurnLimitError`).
+                    if _is_turn_limit(message):
+                        msg = (
+                            f"대화 turn 이 상한({MAX_DRIVER_TURNS}회)에 도달해 중단했습니다. "
+                            "지시가 너무 크거나 화면에서 길을 찾지 못하고 있습니다. "
+                            "그때까지 성공한 동작은 Step 으로 남아 있습니다."
+                        )
+                        raise DriverTurnLimitError(msg)
                     msg = f"Claude Code 가 작업을 끝내지 못했습니다: {reason}"
                     raise RuntimeError(msg)
                 # **마지막으로 한 번 더 흘린다.** 상한·막힘 판정은 호출자가 매 메시지마다

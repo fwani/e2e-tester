@@ -37,6 +37,7 @@ from itb.authoring.tools import (
     MAX_TOOL_CALLS,
     BlockedKind,
     BrowserToolbox,
+    DriverTurnLimitError,
     build_tools,
 )
 from itb.domain.test_case import MAX_INSTRUCTION_CHARS
@@ -419,6 +420,21 @@ class AuthoringAgent:
         except asyncio.CancelledError:
             # 사용자가 일시정지·중지했다. 취소는 실패가 아니므로 결과로 기록하지 않는다.
             raise
+        except DriverTurnLimitError as exc:
+            # **상한 도달은 막힘이다** (FR-066·FR-069). 드라이버가 세는 turn 은
+            # `limits` 가 세는 도구 호출과 단위만 다를 뿐 같은 사실을 말한다 — 결말이
+            # 갈리면, 드라이버를 바꿨을 뿐인데 사용자가 이어갈 수 있는지가 바뀐다.
+            #
+            # `question` 은 없다. 모델이 물은 것이 아니라 예산이 떨어진 것이므로 답할
+            # 질문이 없고, 화면은 질문이 없는 막힘을 「AI 에게 알려 주기」로 연다.
+            return AgentOutcome(
+                AgentStatus.BLOCKED,
+                reason=str(exc),
+                attempted=self.toolbox.limits.last_failed_element,
+                blocked_kind=DEFAULT_BLOCKED_KIND,
+                step_count=self._count(),
+                tool_calls=self.toolbox.limits.calls,
+            )
         except (LlmUnavailableError, RefusalError) as exc:
             return AgentOutcome(
                 AgentStatus.ERROR,

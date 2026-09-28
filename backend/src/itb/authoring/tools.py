@@ -122,6 +122,37 @@ MAX_TOOL_CALLS = 40
 (task budget)는 권고적이며 이것을 대체하지 못한다.
 """
 
+MAX_DRIVER_TURNS = MAX_TOOL_CALLS * 3
+"""드라이버에 넘기는 **대화 turn** 상한. `MAX_TOOL_CALLS` 와 **단위가 다르다.**
+
+`MAX_TOOL_CALLS` 는 `record_call()` 을 지난 도구 호출만 센다. turn 은 「user 메시지 +
+assistant 응답」 한 쌍이고 **도구를 부르지 않은 턴도 센다** — 모델이 말만 한 턴, 권한
+콜백이 `interrupt=True` 로 되돌린 시도, 생각만 한 턴이 모두 여기 들어간다.
+
+**두 값을 같게 두면 turn 쪽이 먼저 찬다** (2026-09-28 사용자 보고). 이전 코드는
+`max_turns=MAX_TOOL_CALLS` 로 넘겼고, 그래서 1차 방어선이 끊기 전에 드라이버가 먼저
+끝냈다. `MAX_TOOL_CALLS` 에 적힌 40 은 도달하지 않는 숫자가 되고, 사용자는 상한을
+올려도 같은 지점에서 다시 멈추는 것을 본다 — 낭비되는 턴의 비율이 그대로이기 때문이다.
+
+**3배는 여유이지 목표가 아니다.** 실제로 끊는 것은 언제나 1차 방어선이어야 한다. 이
+값은 모델이 도구를 전혀 부르지 않고 말만 계속하는 경우를 막는 최후 안전망이며,
+`_sdk_driver` 의 `max_iterations` 와 같은 자리다.
+"""
+
+
+class DriverTurnLimitError(Exception):
+    """드라이버가 turn 상한에서 멈췄다 — **실패가 아니라 상한 도달이다.**
+
+    `AttemptLimits.exceeded_reason` 과 **같은 뜻이고 세는 주체만 다르다.** 그래서 결말도
+    같아야 한다 — 막힘(`BLOCKED`)으로 보고되고, 세션은 살아 있고, 사용자가 이어갈지
+    고른다 (FR-066·FR-069).
+
+    이 예외가 없던 동안 turn 상한은 `RuntimeError` 로 올라가 「AI 수행 중 예상하지 못한
+    오류」로 표시됐다. 정상적인 상한 도달이 버그처럼 보였고, **막힘에만 열리는 이어가기
+    칸이 열리지 않아** 사용자는 그때까지 만든 Step 을 두고 처음부터 다시 해야 했다.
+    """
+
+
 MAX_CONSECUTIVE_ELEMENT_FAILURES = 3
 """같은 요소를 연달아 실패한 횟수 상한 (FR-066).
 
@@ -129,7 +160,7 @@ MAX_CONSECUTIVE_ELEMENT_FAILURES = 3
 넘기는 것이 맞다 (FR-069).
 """
 
-OBSERVE_ELEMENT_LIMIT = 120
+OBSERVE_ELEMENT_LIMIT = 200
 """한 번에 보여 줄 요소 수 상한. 화면이 크면 컨텍스트를 다 먹는다."""
 
 DISTINGUISHING_FIELDS = ("id", "placeholder", "label", "context")
