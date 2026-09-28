@@ -35,6 +35,7 @@ description: "Task list for 023 입력값 검증"
 
 - [ ] T001 [P] `fixtures/sample-app/projects.html` 의 생성 모달에 여러 줄 입력 칸(`<textarea id="pdesc">`)을 더한다 — FR-008(줄바꿈 포함 관찰) 검증용. [research R8](./research.md) 에서 이것만 없다고 확인했다
 - [ ] T002 **`<select>` 의 값이 실제로 무엇으로 관찰되는지 실측한다** — `fixtures/sample-app/projects.html` 의 `#ptype`(보이는 글자 `분석`, 값 `analysis`)에 Playwright 의 값 읽기를 걸어 결과를 확인하고 [research.md](./research.md) R8 의 미확인 항목을 해소한다. **결과를 문서에 적기 전에는 FR-033 문구를 쓰지 않는다** — 안내가 사실과 다르면 없느니만 못하다
+- [ ] T002a **숨겨진 요소의 값이 읽히는지 실측한다** *(analyze U1)* — 명세 Edge Cases 의 「값이 있는 대상이지만 화면에서 숨겨져 있으면 값은 읽힌다」는 **조사에서 확인하지 않은 주장**이다. 값 읽기가 가시성을 요구하면 그 문장이 거짓이 된다. `display:none` 인 입력 칸에 걸어 확인하고, 다르면 [spec.md](./spec.md) 의 Edge Case 를 고친다
 
 **Checkpoint**: 재료가 갖춰졌고, 안내 문구가 근거할 사실이 확정됐다
 
@@ -97,6 +98,7 @@ description: "Task list for 023 입력값 검증"
 - [ ] T024 [US1] 거절을 **두 작성 경로에 모두 연결한다** — `backend/src/itb/api/routes/steps.py` 와 `backend/src/itb/authoring/tools.py`. [research R3](./research.md): AI 경로는 `build_assertion` 을 지나지 않으므로 한쪽에만 두면 새 규칙이 절반만 걸린다
 - [ ] T025 [US1] `backend/src/itb/execution/step_executor.py` 에서 **대상이 비밀번호 칸이면 관찰값을 무조건 마스킹한다.** 스크러버에 기대지 않는다 — 스크러버는 복호화된 값만 알고, 검증이 실패했다는 것은 관찰값이 그 목록에 없다는 뜻이다 ([research R2](./research.md)). **판정은 실제 값으로 한다** — 마스킹은 설명 문자열만 바꾼다 (원칙 II)
 - [ ] T026 [P] [US1] `backend/tests/integration/test_value_assertion_secrets.py` 를 만든다 — 평문 거절 · 비민감 변수 참조 거절 · 민감 변수 참조 허용 · **실패 시 관찰값이 설명·실행 결과·작성 시점 어긋남 어디에도 나오지 않음** · 그런데도 판정은 정확함
+- [ ] T026a [P] [US1] **FR-009·FR-010 이 새 종류에도 성립함을 테스트로 고정한다** *(analyze C1·C2)* — `backend/tests/unit/test_classify_assertion.py` 와 `backend/tests/unit/test_authoring_mismatch.py` 에 `value` 종류 사례를 더한다. `classify_assertion`(`backend/src/itb/domain/run_result.py:341`)은 `step.type` 과 `mismatch` 만 보는 **종류 무관** 함수라 저절로 만족되지만, **그 사실이 어디에도 적혀 있지 않으면 나중에 읽는 사람은 잊은 것인지 의도한 것인지 알 수 없다.** 테스트가 그 기록이다
 - [ ] T027 [P] [US1] 같은 파일에 **저장 후 파일 검사**를 더한다 — 테스트 정의·실행 결과·공유 묶음에 평문이 없는지 기계적으로 확인한다 (quickstart §6-3 의 `grep` 을 자동화)
 
 **Checkpoint**: 입력값 검증이 동작하고, 비밀번호 값은 어디에도 남지 않는다. **MVP 완성.**
@@ -110,9 +112,11 @@ description: "Task list for 023 입력값 검증"
 **Independent Test**: 같은 정의를 제품 안에서 한 번, 내보낸 프로젝트에서 한 번 실행해
 통과·실패를 비교한다.
 
-**Note**: 생성기는 모르는 종류에 `UnsupportedStepError` 를 던진다 — **Phase 2 가 끝난
-순간부터 입력값 검증이 든 테스트는 내보낼 수 없다.** 조용히 틀리지 않는 것이 다행이지만,
-이 Phase 는 미루면 미룰수록 원칙 V 위반 상태가 길어진다.
+**Note**: 생성기는 모르는 종류에 `UnsupportedStepError` 를 던진다 — **US1 이 끝나 사용자가
+입력값 검증을 만들 수 있게 되는 순간부터 그 정의는 내보낼 수 없다.** *(analyze F2 로 정정:
+초안은 「Phase 2 가 끝난 순간부터」라고 적었으나, Phase 2 는 종류 값만 더하므로 그때는 만들
+수 있는 정의가 아직 없다.)* 조용히 틀리지 않고 크게 깨지는 것이 다행이지만, 미루면 미룰수록
+원칙 V 위반 상태가 길어진다.
 
 - [ ] T028 [US2] `backend/src/itb/generator/playwright_gen.py` 의 `_assertion_lines` 에 `VALUE` 분기를 더한다. 긍정 `equals` → `toHaveValue`, 긍정 `contains` → `expect.poll(…).toContain(…)` ([contracts/export-mapping §2](./contracts/export-mapping.md) — 정규식으로 감싸지 않는 이유가 거기 있다)
 - [ ] T029 [US2] 같은 파일에 부정 비교를 더한다 — 021 의 `_watch_window` 로 감싼다. `not_equals` → `not.toHaveValue(…, { timeout: 1 })`, `not_contains` → `expect(await loc.inputValue()).not.toContain(…)`. 루프가 관찰 기간을 담당하므로 안쪽에서 또 기다리지 않는다
@@ -156,7 +160,7 @@ description: "Task list for 023 입력값 검증"
 - [ ] T045 **재실행 경로에 LLM 도달 경로가 없음을 확인한다** (헌법 품질 게이트 1, 원칙 II). 이번에 더한 관찰 함수·마스킹·성질 판정 중 실행 경로에 드는 것들이 대상이다
 - [ ] T046 백엔드 전량 검증 — `cd backend && uv run pytest` · 린트 · 타입 검사 · `.importlinter` 계약(특히 `sharing-cannot-reach-secrets`)
 - [ ] T047 프론트 전량 검증 — `cd frontend && npm run lint && npx tsc --noEmit && npm test`
-- [ ] T048 **[quickstart.md](./quickstart.md) §1~§9 를 사람이 손으로 수행하고 결과를 기록한다** — 자동 검증이 덮지 못하는 것(거절 문구가 다음 행동을 알려 주는지, 목록에서 두 종류가 구별되는지, 안내가 눈에 들어오는지)을 본다. **§6 이 가장 중요하다** (비밀번호 값이 정말 어디에도 남지 않는지)
+- [ ] T048 **[quickstart.md](./quickstart.md) §1~§9 를 사람이 손으로 수행하고 결과를 기록한다**. **§8 이 SC-007(「AI 가 텍스트가 아니라 입력값을 고른다」)의 유일한 검증 수단이다** *(analyze C3)* — 모델의 선택은 자동 신호로 고정할 수 없다. 누락이 아니라 성질이므로 여기 적어 둔다 — 자동 검증이 덮지 못하는 것(거절 문구가 다음 행동을 알려 주는지, 목록에서 두 종류가 구별되는지, 안내가 눈에 들어오는지)을 본다. **§6 이 가장 중요하다** (비밀번호 값이 정말 어디에도 남지 않는지)
 
 ---
 
