@@ -31,9 +31,9 @@ from itb.domain.step import (
     FillStep,
     HoverStep,
     NavigateStep,
+    PressStep,
     SelectStep,
     Step,
-    PressStep,
     UploadStep,
     mime_type_of,
 )
