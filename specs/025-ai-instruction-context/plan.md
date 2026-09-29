@@ -95,6 +95,7 @@ specs/025-ai-instruction-context/
 │   └── observation.md         # 관찰 범위 · actionability · find_by_text
 ├── checklists/
 │   └── requirements.md
+├── baseline.md                # T001~T003 이 남기는 시작 시점 실측
 └── tasks.md                   # /speckit-tasks 가 만든다
 ```
 
@@ -129,9 +130,13 @@ backend/
     │   └── test_tool_runner_history.py  # **R1 의 빈칸** — SDK 계약 직접 확인
     ├── integration/
     │   ├── test_resume_continuity.py  # US1 — 재개가 이어지는가
+    │   ├── test_plan_absent.py        # 계획이 없어도 도는가 — 회귀 방어선
     │   └── test_plan_progress.py      # US5 — 진척과 남은 항목
-    └── e2e/
-        └── test_actionable_elements.py  # US3 — 클릭되는 div 를 찾는가
+    ├── e2e/
+    │   └── test_actionable_elements.py  # US3 — 클릭되는 div 를 찾는가
+    └── us4_support.py                   # 수정 — 가짜 드라이버의 한계를 주석으로 명시
+
+fixtures/sample-app/                     # 수정 — 클릭되는 비의미 요소 화면 추가
 
 frontend/
 ├── src/
