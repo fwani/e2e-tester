@@ -157,7 +157,9 @@ def test_renumber_after_removal() -> None:
 
 def test_append_stops_at_the_limit() -> None:
     """상한을 넘기지 않는다 — 매 턴 주입되는 값이기 때문이다."""
-    plan = WorkPlan(items=[PlanItem(f"i{n}", n, f"할 일 {n}") for n in range(1, MAX_PLAN_ITEMS + 1)])
+    plan = WorkPlan(
+        items=[PlanItem(f"i{n}", n, f"할 일 {n}") for n in range(1, MAX_PLAN_ITEMS + 1)]
+    )
 
     with pytest.raises(PlanError, match="너무 많습니다"):
         plan.append("하나 더")

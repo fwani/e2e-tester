@@ -110,7 +110,12 @@ def test_long_plan_is_shortened_with_an_explicit_note() -> None:
     long_text = "이것은 아주 긴 할 일 설명이며 실제 지시문에서 흔한 길이다. " * 3
     plan = WorkPlan(
         items=[
-            PlanItem(f"i{n}", n, f"{n}번 {long_text}", ItemStatus.DONE if n <= 40 else ItemStatus.PENDING)
+            PlanItem(
+                f"i{n}",
+                n,
+                f"{n}번 {long_text}",
+                ItemStatus.DONE if n <= 40 else ItemStatus.PENDING,
+            )
             for n in range(1, 61)
         ]
     )
