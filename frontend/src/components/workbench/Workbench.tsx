@@ -32,6 +32,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
 import { AiAuthoringPanel, type AuthoringEntry } from "./AiAuthoringPanel";
+import type { WorkPlan } from "../../api/client";
 
 import type { ArtifactKind, RepickSlot } from "../../api/client";
 import { Artboard } from "../design/Chrome";
@@ -109,6 +110,11 @@ export interface WorkbenchProps {
    * 다시 세우지 않는다 — 셋이 같은 통로로 오므로 받은 순서가 실제 순서다.
    */
   authoringLog?: AuthoringEntry[];
+  /** 이 세션이 요구받은 것과 진척 (025 US5). 없으면 아무것도 그리지 않는다. */
+  workPlan?: WorkPlan | null;
+  onRevertPlanItem?: (itemId: string) => void;
+  /** 완료 보고와 함께 보일 남은 항목 (025 FR-028). */
+  remainingItems?: { order: number; text: string }[];
   /** 세션을 열 때 사람이 준 지시문. 대화의 첫 차례로 선다 (FR-063). */
   authoringInstruction?: string | null;
   /** Step 이 0개일 때의 안내. 국면마다 다르다 */
@@ -194,6 +200,9 @@ export function Workbench({
   leftExtra,
   aiAuthoringSidebar = false,
   authoringLog = [],
+  workPlan = null,
+  onRevertPlanItem,
+  remainingItems = [],
   authoringInstruction = null,
   stepEmptyNotice,
   deleteTargets,
@@ -468,7 +477,8 @@ export function Workbench({
             </label>
             <AiAuthoringPanel entries={authoringLog} instruction={authoringInstruction} work={model.work} status={aiAttention ?? model.phaseBar.phaseLabel}
               chooseBlocked={capabilities["ai.chooseBlocked"]} onChooseBlocked={onChooseBlocked} busy={busy}
-              onDismissError={onDismissAiError ?? null}>
+              onDismissError={onDismissAiError ?? null}
+              plan={workPlan} onRevertItem={onRevertPlanItem} remainingItems={remainingItems}>
               {leftExtra}
             </AiAuthoringPanel>
           </aside>

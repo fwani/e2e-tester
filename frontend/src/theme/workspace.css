@@ -313,3 +313,12 @@ body:has(.workspace-shell) [data-toast-layer]:not(.workspace-notice-dock) { left
 .compose-refined h2 { margin: 0; font-size: var(--type-label); font-weight: 500; }
 .compose-refined-notes { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-3); }
 .compose-refined-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ─── 025 남은 할 일 — 완료 보고가 남은 일을 덮지 않게 ───────────────────── */
+/*
+  모델이 「끝냈다」고 말하면서 구획 하나를 건너뛴 상태가 성립한다. 그 사실이 보여야
+  한다 — 제품이 센 값이 모델의 말을 이긴다 (022 FR-003).
+*/
+.ai-remaining { flex: 0 0 auto; padding: 10px 16px; border-block-start: 1px solid var(--hair); background: var(--warn-t, var(--ai-t)); }
+.ai-remaining strong { font-size: var(--type-label); font-weight: 500; }
+.ai-remaining ol { margin: 6px 0 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.5; }

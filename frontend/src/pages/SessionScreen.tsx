@@ -48,6 +48,7 @@ import {
 import { AssertionForm } from "../components/AssertionForm";
 import { ChatPanel } from "../components/workbench/ChatPanel";
 import type { AuthoringEntry } from "../components/workbench/AiAuthoringPanel";
+import type { WorkPlan } from "../api/client";
 import { RerecordBar, rangeLabelOf } from "../components/workbench/RerecordBar";
 import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
 import {
@@ -325,6 +326,11 @@ export interface SessionWorkbenchProps {
    * 것이다. 상태를 셋으로 두면 순서가 갈리고, 갈리면 대화가 어긋난 채로 보인다.
    */
   authoringLog?: AuthoringEntry[];
+  /** 이 세션이 요구받은 것과 진척 (025 US5). 없으면 아무것도 그리지 않는다 (FR-012). */
+  workPlan?: WorkPlan | null;
+  onRevertPlanItem?: (itemId: string) => void;
+  /** 완료 보고와 함께 보일 남은 항목 (025 FR-028). */
+  remainingItems?: { order: number; text: string }[];
   /**
    * 이번 턴에 AI 가 **무엇을 하고 있는지** (FR-011 · 2026-09-11 사용자 요청).
    *
@@ -404,6 +410,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     aiInstruction = null,
     aiMessages = [],
     authoringLog = [],
+    workPlan = null,
+    onRevertPlanItem,
+    remainingItems = [],
     aiError = null,
     aiBlocked = null,
     aiMismatchCount = 0,
@@ -1520,6 +1529,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       model={model}
       aiAuthoringSidebar={aiAuthoringSidebar}
       authoringLog={authoringLog}
+      workPlan={workPlan}
+      onRevertPlanItem={onRevertPlanItem}
+      remainingItems={remainingItems}
       authoringInstruction={aiInstruction}
       phaseActions={phaseActions}
       /*
@@ -2049,6 +2061,21 @@ export function SessionScreen({
    * 이제 상태는 이것 하나이고 **받은 순서를 그대로 지킨다.** 자취와 대화 목록은 아래에서
    * 여기서 뽑는다 — 상태를 셋으로 두면 순서가 갈리고, 갈리면 대화가 어긋나 보인다.
    */
+  /**
+   * 이 세션이 **요구받은 것**과 진척 (025 US5).
+   *
+   * **계획이 없는 세션이 흔하다** — 정제에 실패했거나 사용자가 원문으로 진행을 골랐거나,
+   * 구간 재녹화이거나, 녹화에서 시작해 대화로 넘어왔다. 그때 `null` 이고 `PlanPanel` 이
+   * 아무것도 그리지 않는다 (FR-012).
+   */
+  const [workPlan, setWorkPlan] = useState<WorkPlan | null>(null);
+  /**
+   * 완료 보고와 함께 보일 남은 항목 (025 FR-028).
+   *
+   * **이것이 없으면 완료 보고가 남은 일을 덮는다.** 모델은 「끝냈다」고 말하면서 구획
+   * 하나를 건너뛸 수 있고, 제품이 센 값이 모델의 말을 이긴다 (022 FR-003).
+   */
+  const [remainingItems, setRemainingItems] = useState<{ order: number; text: string }[]>([]);
   const [authoringLog, setAuthoringLog] = useState<AuthoringEntry[]>([]);
   const appendLog = useCallback((entry: Omit<AuthoringEntry, "at"> & { at?: string }) => {
     setAuthoringLog((prev) => [...prev, { ...entry, at: entry.at ?? new Date().toISOString() } as AuthoringEntry]);
@@ -2115,6 +2142,26 @@ export function SessionScreen({
   const [showOffline, setShowOffline] = useState(false);
   const subscription = useRef<SessionSubscription | null>(null);
 
+  /**
+   * 사용자가 항목을 미완료로 되돌린다 (025 US5 · data-model §2).
+   *
+   * **되돌리기는 사용자만 한다.** 모델은 `done`·`skipped` 로만 옮길 수 있다 — 자기
+   * 표시를 취소할 수 있으면 「했다」가 무엇을 뜻하는지 알 수 없기 때문이다.
+   *
+   * 서버가 돌려준 계획으로 통째로 바꾼다. 여기서는 그것이 맞다 — 사용자가 방금 낸
+   * 요청의 결과이므로 순서가 어긋날 여지가 없다 (`plan_progress` 가 항목만 고치는
+   * 것과 다른 상황이다).
+   */
+  const revertPlanItem = useCallback(
+    (itemId: string) => {
+      void sessions
+        .setPlanItem(sessionId, itemId, "pending")
+        .then((it) => setWorkPlan(it.plan))
+        .catch((exc: unknown) => setError(describeError(exc)));
+    },
+    [sessionId],
+  );
+
   const resync = useCallback(async () => {
     let fresh: SessionView;
     try {
@@ -2156,6 +2203,31 @@ export function SessionScreen({
       alive = false;
     };
   }, []);
+
+  /*
+    025 FR-028 — **작업 계획을 되찾는다.**
+
+    화면을 새로 고치면 진척이 비어 있다. 서버가 들고 있는 것을 한 번 읽어 채운다 —
+    읽지 못해도 조용히 넘긴다. 계획은 보조 정보이고, 그것 하나 때문에 붉은 배너를 띄울
+    이유가 없다 (대화 이력·탭 조회와 같은 판단).
+
+    **계획이 없는 세션이 흔하다.** 그때 `plan` 이 `null` 이고 `PlanPanel` 이 아무것도
+    그리지 않는다 (FR-012).
+  */
+  useEffect(() => {
+    let alive = true;
+    sessions
+      .plan(sessionId)
+      .then((it) => {
+        if (alive) setWorkPlan(it.plan);
+      })
+      .catch(() => {
+        // 위 주석 — 조용히 넘긴다.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [sessionId]);
 
   useEffect(() => {
     let alive = true;
@@ -2386,6 +2458,9 @@ export function SessionScreen({
             setAiBlocked(null);
             // 020 FR-013 — 없으면 0이다. 지난 턴의 값이 남지 않도록 **매 턴 덮는다.**
             setAiMismatches(event.mismatch_count ?? 0);
+            // 025 FR-028 — **없으면 빈 배열이다.** 지난 턴의 값이 남으면 이미 끝낸 일이
+            // 남은 것으로 보인다 (바로 위 `mismatch_count` 와 같은 규칙).
+            setRemainingItems(event.remaining_items ?? []);
             // 턴이 끝났다. 남는 기록은 AI 의 답(대화 차례)이다 — 자취를 함께 쌓으면
             // 「무엇을 했는가」와 「무엇을 하는 중인가」가 섞인다.
             setTurnProgress([]);
@@ -2394,6 +2469,27 @@ export function SessionScreen({
           case "step_updated":
             setRepickWaiting(null);
             void resync();
+            break;
+          /* ─── 025 작업 계획 진척 ─── */
+          case "plan_progress":
+            /*
+              **주체를 가르지 않는다.** AI 가 표시한 것과 사람이 되돌린 것이 같은 통로로
+              온다 (016 FR-039 가 편집 이벤트에서 정한 것과 같은 판단) — 통로가 둘이면
+              화면에 한쪽만 그리는 자리가 생긴다.
+
+              계획 전체를 다시 받지 않고 **그 항목만 고친다.** 다시 받으면 사용자가 방금
+              되돌린 것이 서버 응답 순서에 따라 되살아날 수 있다.
+            */
+            setWorkPlan((prev) =>
+              prev === null
+                ? prev
+                : {
+                    ...prev,
+                    items: prev.items.map((item) =>
+                      item.id === event.item_id ? { ...item, status: event.status } : item,
+                    ),
+                  },
+            );
             break;
           /* ─── 016 구간 재녹화 ─── */
           case "chat_turn":
@@ -3117,6 +3213,9 @@ export function SessionScreen({
         aiInstruction={aiInstruction}
         aiMessages={aiMessages}
         authoringLog={authoringLog}
+        workPlan={workPlan}
+        onRevertPlanItem={revertPlanItem}
+        remainingItems={remainingItems}
         aiError={aiError}
         aiBlocked={blockedNow}
         aiMismatchCount={aiMismatches}

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { IconButton } from "../../ui/IconButton";
 import { Button } from "../../ui/Button";
 import { AlwaysVisibleFailure, type WorkAreaProps } from "./WorkArea";
+import { PlanPanel } from "./PlanPanel";
+import type { WorkPlan } from "../../api/client";
 
 /**
  * 작성 현황은 **하나의 대화다** (2026-09-28 사용자 요청).
@@ -68,7 +70,7 @@ function blocksOf(entries: AuthoringEntry[]): Block[] {
 }
 
 /** 작성 기록과 대화는 브라우저와 높이를 나누지 않는다. */
-export function AiAuthoringPanel({ work, entries, instruction, status, chooseBlocked, onChooseBlocked, busy, onDismissError, children }: {
+export function AiAuthoringPanel({ work, entries, instruction, status, chooseBlocked, onChooseBlocked, busy, onDismissError, plan = null, onRevertItem, remainingItems = [], children }: {
   work: WorkAreaProps["work"] | null;
   entries: AuthoringEntry[];
   /**
@@ -91,6 +93,20 @@ export function AiAuthoringPanel({ work, entries, instruction, status, chooseBlo
    * 「실패: …」 줄이 그것이라, 닫아도 무엇이 있었는지 되짚을 수 있다.
    */
   onDismissError?: (() => void) | null;
+  /**
+   * 이 세션이 요구받은 것과 진척 (025 US5). **없을 수 있다** — 계획 없이 시작된 세션이
+   * 흔하고, 그때 아무것도 그리지 않는다 (FR-012).
+   */
+  plan?: WorkPlan | null;
+  /** 사용자가 항목을 되돌린다. 되돌리기는 **사용자만** 한다 (data-model §2). */
+  onRevertItem?: (itemId: string) => void;
+  /**
+   * 완료 보고와 함께 보일 남은 항목 (025 FR-028).
+   *
+   * **비어 있지 않은데 AI 가 「끝냈다」고 말하는 상태가 성립한다.** 그것이 사용자에게
+   * 보여야 하는 사실이다 — 완료 보고가 남은 일을 덮으면 안 된다.
+   */
+  remainingItems?: { order: number; text: string }[];
   children: ReactNode;
 }) {
   const log = useRef<HTMLDivElement>(null);
@@ -156,6 +172,19 @@ export function AiAuthoringPanel({ work, entries, instruction, status, chooseBlo
               : traceOpen && <Trace key={`t${block.index}`} entries={block.entries} />)}
           </ol>}
       </div>
+      {remainingItems.length > 0 && (
+        <div className="ai-remaining" role="status">
+          <strong>아직 하지 않은 일 {remainingItems.length}개</strong>
+          <ol>
+            {remainingItems.map((item) => (
+              <li key={item.order}>
+                {item.order}. {item.text}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      <PlanPanel plan={plan} onRevert={onRevertItem} busy={busy} />
       {failure && (failure.error !== null || failure.blocked !== null) && <div className="ai-authoring-attention">
         <AlwaysVisibleFailure error={failure.error} blocked={failure.blocked} choose={chooseBlocked} onChoose={onChooseBlocked} busy={busy} buttonSize="md" onDismissError={onDismissError ?? null} />
       </div>}

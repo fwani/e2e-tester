@@ -440,3 +440,32 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 - **기존 실패를 새 실패와 섞지 않는다.** T001 의 기준선과 대조한다
 - 전량 검증은 저장소 표준 명령으로 — `uv run pytest` 와 `npm test` 는 틀린 결과를 준다
 - 016·020·022 가 정한 판단을 뒤집지 않는다. 겹치는 자리가 많다
+
+
+---
+
+## Phase 10: Convergence
+
+**어떻게 드러났는가**: `/speckit-converge` 가 「`PlanPanel` 이 `ComposeView` 에서만
+쓰인다」를 찾았다. 컴포넌트를 만들고 정제 미리보기에 붙인 것으로 T070 을 완료 표시했는데,
+**세션 화면 배선을 하지 않았다.** US5 의 화면 절반이 통째로 빠져 있었다.
+
+백엔드는 온전하다 — 이벤트도 나가고 API 도 있다. 그것을 **아무도 읽지 않는** 상태였고,
+그래서 검증도 통과했다(백엔드 검증만 있었으므로).
+
+- [X] T084 세션 화면에 진척 패널을 붙인다 per FR-028 (missing) —
+      `frontend/src/pages/SessionScreen.tsx`. 계획이 없는 세션에서는 아무것도 그리지
+      않는다 (`PlanPanel` 이 이미 그렇게 한다). 세션을 열 때 `sessions.plan(id)` 로
+      현재 상태를 받는다 — 화면을 새로 고쳐도 진척이 보여야 한다
+- [X] T085 `plan_progress` 이벤트를 받아 진척을 갱신한다 per FR-025 (missing) —
+      `frontend/src/pages/SessionScreen.tsx`. **AI 가 표시한 것과 사람이 되돌린 것이
+      같은 통로로 온다** — 주체를 가르지 않는 것이 016 FR-039 와 같은 판단이다
+- [X] T086 `ai_finished.remaining_items` 를 완료 보고와 함께 보인다 per FR-028
+      (missing) — `frontend/src/components/workbench/AiAuthoringPanel.tsx`.
+      **이것이 없으면 완료 보고가 남은 일을 덮는다.** 모델이 「끝냈다」고 말하면서 구획
+      하나를 건너뛴 상태가 사용자에게 보이지 않는다
+- [X] T087 사용자가 항목을 되돌릴 수 있게 잇는다 per US5/AC-되돌리기 (missing) —
+      `sessions.setPlanItem` 호출. 진행 중에는 잠근다 (`PlanPanel` 의 `busy`)
+- [X] T088 위 넷을 검증한다 — `frontend/tests/PlanProgress.test.ts`.
+      이벤트 수신·남은 항목 표시·되돌리기. **계획이 없는 세션에서 아무것도 그리지
+      않는다**도 함께 (FR-012 회귀 방어선)
