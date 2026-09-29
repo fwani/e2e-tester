@@ -42,7 +42,12 @@ from itb.authoring.rerecord import (
     RerecordTransaction,
     validate_range,
 )
-from itb.authoring.summary import build_definition_summary, build_plan_summary
+from itb.authoring.summary import (
+    DEFAULT_SUMMARY_BUDGET,
+    STEPS_BUDGET_WITH_PLAN,
+    build_definition_summary,
+    build_plan_summary,
+)
 from itb.domain.draft import DRAFT_ID_PATTERN, Draft, compose_instruction
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.run_result import RunResult, RunScope, StepOutcome, scope_of
@@ -1568,6 +1573,12 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
         # 실측에서 AI 가 대상을 다시 지목하자 위치가 23 → 0 이 됐고, 「계속하기」가 이미
         # 지나온 로그인부터 다시 실행하는 상태가 됐다.
         current_index=lambda: work.current_step_index,
+        # 025 FR-024 — 계획을 **읽는 통로**. 값이 아니라 함수인 이유는 계획이 턴 중에도
+        # 바뀌기 때문이다 (사람이 되돌리거나 대화로 항목이 더해진다).
+        plan_ref=lambda: work.work_plan,
+        # 025 FR-025 — **AI 가 표시한 것과 사람이 되돌린 것이 같은 통로로 간다**
+        # (016 FR-039 와 같은 판단). 통로가 둘이면 한쪽만 그리는 자리가 생긴다.
+        on_plan_change=lambda item: _emit_plan_progress(work, item),
     )
     work.toolbox = toolbox
     work.agent = AuthoringAgent(
@@ -1590,6 +1601,14 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
             work.steps,
             range_ids=(
                 list(work.rerecord.range.step_ids) if work.rerecord is not None else []
+            ),
+            # 025 research R6 — **계획이 붙을 때만 좁힌다.** 계획이 없는 세션은 016 이
+            # 실측으로 정한 16KB 를 그대로 쓴다. 무조건 줄이면 025 와 아무 상관 없는
+            # 경로에서 016 이 피하려던 축약이 되살아난다.
+            budget=(
+                STEPS_BUDGET_WITH_PLAN
+                if work.work_plan is not None
+                else DEFAULT_SUMMARY_BUDGET
             ),
         ),
     )
@@ -1736,8 +1755,64 @@ async def _settle_agent_outcome(work: SessionWork, outcome: object) -> None:
     # 없는 것을 0으로 알리면 화면이 「결함 후보 0건」을 표시할지 다시 판단해야 한다.
     mismatches = work.compiler.mismatch_count if work.compiler is not None else 0
     extra = {"mismatch_count": mismatches} if mismatches else {}
+    # 025 FR-028 — **완료 보고가 남은 일을 덮으면 안 된다.**
+    #
+    # 모델은 「끝냈다」고 말할 수 있고 실제로 구획 하나를 건너뛰었을 수 있다. 제품이
+    # 센 값이 모델의 말을 이긴다 (022 FR-003 과 같은 판단) — 남은 항목이 있으면 그
+    # 사실을 함께 싣는다. **빈 배열은 싣지 않는다**: 없는 것을 0 으로 알리면 화면이
+    # 「남은 일 0건」을 표시할지 다시 판단해야 한다 (바로 위 `mismatch_count` 와 같다).
+    remaining = _remaining_items(work)
+    if remaining:
+        extra["remaining_items"] = remaining
     await work.session.emit("ai_finished", step_count=outcome.step_count, **extra)
     await _hold_for_review(work)
+
+
+def _append_plan_item(work: SessionWork, text: str) -> None:
+    """대화로 온 지시를 계획에 항목으로 더한다 (025 FR-029).
+
+    **실패해도 대화를 막지 않는다.** 상한에 걸리거나 계획이 없는 것은 말을 거는 일을
+    멈출 이유가 아니다 — 계획은 맥락이지 전제가 아니라는 것이 이 기능 전체의 규칙이다
+    (016 `_with_summary` 가 요약에 대해 정한 것과 같다).
+    """
+    plan = work.work_plan
+    if plan is None:
+        return
+    from itb.authoring.plan import PlanError  # noqa: PLC0415
+
+    with contextlib.suppress(PlanError):
+        plan.append(text)
+
+
+async def _emit_plan_progress(work: SessionWork, item: object) -> None:
+    """항목 상태가 바뀌었음을 알린다 (025 FR-025 · contracts/api-contract.md §5).
+
+    **주체별로 이벤트를 나누지 않는다.** AI 가 표시한 것과 사람이 되돌린 것이 같은
+    통로로 온다 — 016 FR-039 가 편집 이벤트에서 정한 것과 같은 판단이다. 통로가 둘이면
+    화면에 한쪽만 그리는 자리가 생기고, 그 자리는 한동안 아무도 모른다.
+    """
+    plan = work.work_plan
+    await work.session.emit(
+        "plan_progress",
+        item_id=getattr(item, "id", ""),
+        status=getattr(getattr(item, "status", None), "value", ""),
+        remaining=len(plan.remaining) if plan is not None else 0,
+    )
+
+
+def _remaining_items(work: SessionWork) -> list[dict[str, object]]:
+    """아직 하지 않은 할 일 (025 FR-028).
+
+    **계획이 없으면 빈 목록이다.** 그때는 남은 일을 말할 근거가 없고, 016 이전과 같이
+    완료 보고만 나간다 (FR-012).
+
+    순번과 내용만 싣는다 — 화면이 「무엇이 남았는지」를 보여 주는 데 필요한 전부이고,
+    id 를 실으면 화면이 그것으로 무언가 하려 든다.
+    """
+    plan = work.work_plan
+    if plan is None:
+        return []
+    return [{"order": i.order, "text": i.text} for i in plan.remaining]
 
 
 async def _hold_for_review(work: SessionWork) -> None:
@@ -2388,6 +2463,10 @@ async def chat(session_id: str, body: ChatRequest, state: State) -> SessionView:
     _aim_compiler(w)
 
     _record_turn(w, "user", text)
+    # 025 FR-029 — **계획에 없던 일이 생기는 것은 정상이다.** 사용자는 작성 도중에 마음을
+    # 바꾼다. 그것이 계획에 들어가지 않으면 진척이 거짓이 된다 — 남은 항목이 없는데 할
+    # 일은 남아 있는 상태가 되고, 완료 보고가 그것을 덮는다.
+    _append_plan_item(w, text)
     await w.session.apply(Command.BEGIN_AI)
     w.agent_task = asyncio.create_task(_run_chat_turn(session_id, text))
     return view_of(w)
@@ -2680,6 +2759,92 @@ class AiStepResponse(BaseModel):
     HTTP 상태로 말할 수 없다. 그렇다고 `message` 문장만 주면 받는 쪽은 "AI 가 못한 것"과
     "제품이 깨진 것"을 문구로 짐작해야 한다 — 이 라운드가 없애려는 상황이다.
     """
+
+
+class PlanItemView(BaseModel):
+    """화면이 그리는 계획 항목 (025 contracts/api-contract.md §3)."""
+
+    id: str
+    order: int
+    text: str
+    status: str
+    skip_reason: str | None = None
+
+
+class PlanView(BaseModel):
+    """계획 조회 응답. **계획이 없으면 `plan` 이 `null` 이다.**"""
+
+    plan: dict[str, object] | None
+    remaining: int
+
+
+class PlanItemPatch(BaseModel):
+    """사용자가 항목 상태를 바꾼다 (contracts/api-contract.md §4)."""
+
+    status: Literal["pending", "done", "skipped"]
+    skip_reason: str | None = Field(default=None, max_length=500)
+
+
+@router.get("/{session_id}/plan")
+async def get_plan(session_id: str) -> PlanView:
+    """지금 작업 계획과 남은 개수 (025 FR-028).
+
+    화면이 진척을 그리기 위한 것이다. **폴링하지 않게** `plan_progress` 이벤트가 함께
+    있지만, 화면을 새로 고쳤을 때 상태를 다시 받을 길은 필요하다.
+    """
+    w = work_of(session_id)
+    plan = w.work_plan
+    if plan is None:
+        return PlanView(plan=None, remaining=0)
+    return PlanView(
+        plan={
+            "items": [
+                {
+                    "id": i.id,
+                    "order": i.order,
+                    "text": i.text,
+                    "status": i.status.value,
+                    "skip_reason": i.skip_reason,
+                }
+                for i in plan.items
+            ],
+            "constraints": [
+                {"text": c.text, "scope": c.scope.value, "item_id": c.item_id}
+                for c in plan.constraints
+            ],
+            "source": plan.source.value,
+        },
+        remaining=len(plan.remaining),
+    )
+
+
+@router.patch("/{session_id}/plan/items/{item_id}")
+async def patch_plan_item(
+    session_id: str, item_id: str, body: PlanItemPatch
+) -> PlanView:
+    """사용자가 항목 상태를 바꾼다 (025 data-model §2 의 상태 전이).
+
+    **사용자는 어느 상태로든 옮길 수 있다.** 모델과 다르다 — 모델은 `done`·`skipped`
+    로만 옮길 수 있고 되돌리는 것은 사용자만 한다. 자기 표시를 취소할 수 있으면 「했다」가
+    무엇을 뜻하는지 알 수 없기 때문이다.
+    """
+    from itb.authoring.plan import ItemStatus, PlanError  # noqa: PLC0415
+
+    w = work_of(session_id)
+    plan = w.work_plan
+    if plan is None:
+        raise conflict(ErrorCode.DEFINITION_INVALID, "이 세션에는 할 일 목록이 없습니다.")
+
+    try:
+        if body.status == "pending":
+            item = plan.revert(item_id)
+        else:
+            item = plan.mark(item_id, ItemStatus(body.status), body.skip_reason)
+    except PlanError as exc:
+        raise bad_request(ErrorCode.DEFINITION_INVALID, str(exc)) from exc
+
+    await _emit_plan_progress(w, item)
+    return await get_plan(session_id)
 
 
 @router.post("/{session_id}/ai-choice")

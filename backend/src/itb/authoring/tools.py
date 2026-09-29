@@ -571,6 +571,24 @@ class BrowserToolbox:
     test_id_attribute: str = "data-testid"
     limits: AttemptLimits = field(default_factory=AttemptLimits)
 
+    plan_ref: Callable[[], Any] | None = None
+    """지금 작업 계획을 읽는 통로 (025 FR-024).
+
+    **값이 아니라 함수다** — `steps_source`·`summary_source` 와 같은 이유다. 계획은
+    사람이 되돌리거나 대화로 항목이 더해지면서 턴 중에도 바뀐다.
+
+    없으면 `mark_item` 이 「준비되지 않았다」를 돌려준다. 계획 없이 시작한 세션에서는
+    애초에 이 도구가 주어지지 않지만, 배선을 빠뜨린 경로에서도 조용히 실패하지 않아야
+    한다 (`in_scope` 가 기본값을 「아무것도 못 고침」으로 둔 것과 같은 판단).
+    """
+
+    on_plan_change: Callable[[Any], Awaitable[None]] | None = None
+    """항목 상태가 바뀌었음을 세션에 알리는 통로 (025 FR-025 · `plan_progress`).
+
+    **AI 가 표시한 것과 사람이 되돌린 것이 같은 통로로 간다** — 016 FR-039 가 편집
+    이벤트에서 정한 것과 같은 판단이다. 통로가 둘이면 한쪽만 그리는 자리가 생긴다.
+    """
+
     journal: TurnJournal = field(default_factory=TurnJournal)
     """이번 턴에 무엇을 했는가 (025 FR-001~FR-005).
 
@@ -728,6 +746,65 @@ class BrowserToolbox:
                 }
                 if truncated
                 else {}
+            ),
+        }
+
+    async def mark_item(
+        self, item_id: str, status: str, reason: str | None = None
+    ) -> dict[str, Any]:
+        """할 일 항목의 상태를 표시한다 (025 FR-024 · contracts/agent-context.md §4).
+
+        ## **예산을 쓰지 않는다** (research R9)
+
+        `record_call()` 을 지나지 않는다. 도구 호출 상한의 뜻은 「화면을 조작하며 헛돌지
+        않게」인데(FR-066), 이 도구는 화면을 건드리지 않고 브라우저와 무관하며 헛돌 수
+        있는 종류가 아니다.
+
+        예산을 쓰게 하면 **성실히 표시할수록 할 수 있는 일이 줄어든다** — 그러면 모델은
+        표시를 덜 하게 되고, 진척은 다시 비어 간다. 020 이 검증 어긋남을 「성공도 실패도
+        아니다」로 둔 것과 같은 판단이다.
+
+        ## 상태의 소유자는 제품이다 (FR-025)
+
+        표시는 입력이지 최종 판정이 아니다. 규칙에 맞지 않으면 거절하고 **사유를 모델에게
+        돌려준다** — 조용히 무시하면 모델은 표시됐다고 믿고 다음으로 넘어간다.
+
+        **이것만으로 Step 이 생기지 않는다.** Step 을 만드는 것은 조작 도구뿐이다
+        (헌법 원칙 I · FR-037).
+        """
+        from itb.authoring.plan import ItemStatus, PlanError  # noqa: PLC0415
+
+        plan = self.plan_ref() if self.plan_ref is not None else None
+        if plan is None:
+            return {"error": "이 세션에는 할 일 목록이 없습니다."}
+        try:
+            item = plan.mark(item_id, ItemStatus(status), reason)
+        except ValueError as exc:
+            # `PlanError` 도 `ValueError` 다 — 규칙 위반과 알 수 없는 상태값을 같은
+            # 자리에서 받는다. 모델에게는 둘 다 「그렇게 쓸 수 없다」이다.
+            message = str(exc) if isinstance(exc, PlanError) else (
+                f"상태는 done 또는 skipped 여야 합니다: {status}"
+            )
+            return {"error": message}
+
+        self.journal.note(
+            "할 일 표시",
+            f"{item.order}번 {item.status.value}",
+            target=item.text[:40],
+        )
+        if self.on_plan_change is not None:
+            with contextlib.suppress(Exception):
+                await self.on_plan_change(item)
+        remaining = len(plan.remaining)
+        return {
+            "ok": True,
+            "item": item.order,
+            "status": item.status.value,
+            "remaining": remaining,
+            "note": (
+                "남은 할 일이 없습니다."
+                if remaining == 0
+                else f"남은 할 일 {remaining}개. 다음 항목을 이어서 수행하세요."
             ),
         }
 
@@ -1660,7 +1737,7 @@ READ_ONLY_TOOLS: tuple[str, ...] = (
 )
 """화면을 읽기만 하는 도구. 조작하지 않으므로 Step 을 만들지 않는다."""
 
-CONTROL_TOOLS: tuple[str, ...] = ("report_blocked",)
+CONTROL_TOOLS: tuple[str, ...] = ("report_blocked", "mark_item")
 """루프의 흐름을 바꾸는 도구. Step 을 만들지 않고 **에이전트를 멈춘다** (FR-069).
 
 016 이전에는 분류가 없었다. 「`TOOL_NAMES` 는 계약이다」라는 문장이 정확히는
@@ -1752,6 +1829,17 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         CSS 셀렉터를 직접 만들어 넘기지 않는다.
         """
         return await toolbox.observe_page(tab)
+
+    @beta_async_tool
+    async def mark_item(
+        item_id: str, status: str, reason: str = ""
+    ) -> dict[str, Any]:
+        """할 일 항목 하나를 끝냈음을 표시한다. 이 호출은 예산을 쓰지 않는다.
+
+        status 는 done 또는 skipped 다. 제품에 그 기능이 없어 할 수 없으면 skipped 와
+        함께 reason 을 적는다. 다른 경로로 대체하지 않는다.
+        """
+        return await toolbox.mark_item(item_id, status, reason or None)
 
     @beta_async_tool
     async def find_by_text(text: str, tab: int = 0) -> dict[str, Any]:
@@ -1895,6 +1983,17 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
     return [
         list_tabs,
         observe_page,
+        # 025 — 읽기 전용 둘. **계획이 없어도 표면에서 빼지 않는다.**
+        #
+        # 도구 표면은 계약이고(`TOOL_NAMES`), 세션마다 달라지면 그 계약이 무엇인지 말할
+        # 수 없다. 개발용 드라이버는 `TOOL_SCHEMAS` 를 통째로 도므로 조건부로 빼는 것이
+        # 애초에 불가능하기도 하다 — 표면이 갈리면 개발 중에 본 동작이 제품 동작과
+        # 달라진다 (FR-038).
+        #
+        # 계획이 없는 세션에서 `mark_item` 은 「이 세션에는 할 일 목록이 없습니다」를
+        # 돌려준다. 모델에게는 그것이 필요한 정보다.
+        find_by_text,
+        mark_item,
         click,
         fill,
         select,
@@ -1934,6 +2033,19 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
             "type": "object",
             "properties": {"tab": {"type": "integer", "minimum": 0, "default": 0}},
             "required": [],
+        },
+    ),
+    "mark_item": (
+        "할 일 항목 하나를 끝냈음을 표시한다. 이 호출은 예산을 쓰지 않는다. "
+        "status 는 done 또는 skipped 이며, skipped 에는 reason 이 필요하다.",
+        {
+            "type": "object",
+            "properties": {
+                "item_id": {"type": "string"},
+                "status": {"type": "string", "enum": ["done", "skipped"]},
+                "reason": {"type": "string"},
+            },
+            "required": ["item_id", "status"],
         },
     ),
     "find_by_text": (

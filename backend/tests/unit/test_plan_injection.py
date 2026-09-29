@@ -28,7 +28,7 @@ from itb.authoring.summary import (
     MARK_NEXT,
     MARK_SKIPPED,
     PLAN_BUDGET,
-    STEPS_BUDGET,
+    STEPS_BUDGET_WITH_PLAN,
     build_plan_summary,
 )
 
@@ -98,7 +98,25 @@ def test_budget_is_split_not_grown() -> None:
     016 은 16KB 를 정하면서 "그보다 더 키우지 않는다 — 매 턴 붙기 때문이다" 라고 적었다.
     그 판단을 뒤집지 않는다.
     """
-    assert PLAN_BUDGET + STEPS_BUDGET == DEFAULT_SUMMARY_BUDGET
+    assert PLAN_BUDGET + STEPS_BUDGET_WITH_PLAN == DEFAULT_SUMMARY_BUDGET
+
+
+def test_step_budget_is_untouched_without_a_plan() -> None:
+    """**계획이 없으면 Step 이 16KB 를 그대로 쓴다.**
+
+    무조건 10KB 로 줄이면 025 와 아무 상관 없는 경로(계획 없는 세션·자연어 Step 추가·
+    구간 재녹화)에서도 Step 100개 근처에서 축약이 걸린다 — 016 이 실측으로 피하려던
+    상황이 되살아난다. 좁히는 것은 계획이 실제로 붙을 때뿐이다.
+    """
+    import inspect
+
+    from itb.authoring.summary import build_definition_summary
+
+    default = inspect.signature(build_definition_summary).parameters["budget"].default
+
+    assert default == DEFAULT_SUMMARY_BUDGET, (
+        "정의 요약의 기본 예산이 좁아졌다. 계획이 없는 세션까지 016 이전보다 나빠진다."
+    )
 
 
 def test_long_plan_is_shortened_with_an_explicit_note() -> None:

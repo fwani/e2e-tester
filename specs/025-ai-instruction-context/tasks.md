@@ -267,33 +267,33 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 
 ### Tests for User Story 5
 
-- [ ] T058 [P] [US5] `backend/tests/unit/test_work_plan.py` 에 **상태 전이** 검증을 더한다 —
+- [X] T058 [P] [US5] `backend/tests/unit/test_work_plan.py` 에 **상태 전이** 검증을 더한다 —
       모델은 `done`·`skipped` 로만, 되돌리기는 사용자만, 사유 없는 `skipped` 는 거절,
       같은 항목 반복 표시는 한 번만 (data-model §2)
-- [ ] T059 [P] [US5] `backend/tests/contract/test_plan_api.py` — 조회·수정·`plan_progress`
+- [X] T059 [P] [US5] `backend/tests/contract/test_plan_api.py` — 조회·수정·`plan_progress`
       이벤트 (contracts/api-contract.md §3~§5)
-- [ ] T060 [P] [US5] `backend/tests/integration/test_plan_progress.py` — 인수 후 재개에
+- [X] T060 [P] [US5] `backend/tests/integration/test_plan_progress.py` — 인수 후 재개에
       **남은 항목이 실리는지** (FR-026), 미완료가 남았는데 끝났다고 할 때 `ai_finished` 에
       `remaining_items` 가 실리는지 (FR-028)
 - [ ] T061 [P] [US5] `frontend/tests/PlanPanel.test.tsx` — 진척 목록과 되돌리기
 
 ### Implementation for User Story 5
 
-- [ ] T062 [US5] `backend/src/itb/authoring/tools.py` 에 `mark_item` 도구를 더한다.
+- [X] T062 [US5] `backend/src/itb/authoring/tools.py` 에 `mark_item` 도구를 더한다.
       **`record_call()` 을 지나지 않는다** — 예산을 쓰지 않는다 (R9 ·
       contracts/agent-context.md §4)
-- [ ] T063 [US5] `backend/src/itb/authoring/tools.py` 의 `TOOL_SCHEMAS` 에 등록한다.
+- [X] T063 [US5] `backend/src/itb/authoring/tools.py` 의 `TOOL_SCHEMAS` 에 등록한다.
       **계획이 없는 세션에는 이 도구를 주지 않는다**
-- [ ] T064 [US5] `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에 네 줄을 더한다 —
+- [X] T064 [US5] `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에 네 줄을 더한다 —
       `▶` 의 뜻, 표시 의무, `skipped` 사유, **표시 안 한 항목이 남으면 끝났다고 말하지 말 것**
       (contracts/agent-context.md §4)
-- [ ] T065 [US5] `backend/src/itb/api/routes/sessions.py` — `GET /plan`·
+- [X] T065 [US5] `backend/src/itb/api/routes/sessions.py` — `GET /plan`·
       `PATCH /plan/items/{id}` 를 더한다 (contracts/api-contract.md §3·§4)
-- [ ] T066 [US5] `backend/src/itb/api/routes/sessions.py` — `plan_progress` 이벤트를 발행한다.
+- [X] T066 [US5] `backend/src/itb/api/routes/sessions.py` — `plan_progress` 이벤트를 발행한다.
       **AI 가 표시한 것과 사람이 되돌린 것이 같은 통로로 온다** (016 FR-039 와 같은 판단)
-- [ ] T067 [US5] `backend/src/itb/api/routes/sessions.py` — `ai_finished` 에 `remaining_items`
+- [X] T067 [US5] `backend/src/itb/api/routes/sessions.py` — `ai_finished` 에 `remaining_items`
       를 싣는다 (FR-028). **모델의 완료 선언이 남은 일을 덮지 않게 하는 제품 쪽 절반**이다
-- [ ] T068 [US5] `backend/src/itb/api/routes/sessions.py` — 대화로 온 새 지시가 계획에 항목으로
+- [X] T068 [US5] `backend/src/itb/api/routes/sessions.py` — 대화로 온 새 지시가 계획에 항목으로
       더해지게 한다 (FR-029)
 - [ ] T069 [P] [US5] `frontend/src/components/workbench/PlanPanel.tsx` 를 만든다 — 진척 목록,
       되돌리기. 기존 디자인 언어(008)를 따른다

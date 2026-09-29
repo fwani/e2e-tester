@@ -211,6 +211,15 @@ ALLOWED_VALUE_READS = {
     # 열거형의 값 — Step 종류 이름("fill")과 검증 종류 이름("text").
     "step.type.value",
     "step.assertion.kind.value",
+    # 025 — 계획 항목의 **상태**("done"·"skipped"·"pending"). 열거형의 값이며 사용자가
+    # 친 글자가 아니다. `_item_line` 과 `_shorten_plan` 이 표시(✓·▶·—)를 고르는 데 쓴다.
+    #
+    # `getattr` 로 읽는 이유는 이 모듈이 `WorkPlan` 을 임포트하지 않기 때문이다 — 016 의
+    # 규칙(값을 다루는 곳을 좁게 둔다)을 지키려고 계획을 구조로 받지 않고 덕 타이핑으로
+    # 읽는다. **항목의 `text` 는 여기서 값으로 다루지 않는다**: 그것은 사용자가 쓴 지시문
+    # 조각이지만, 자격 증명 치환은 이미 정제 단계에서 끝나 있다 (025 FR-010 · research R10).
+    "getattr(status, 'value', status)",
+    "getattr(getattr(items[index], 'status', None), 'value', None)",
     # 023 — 누른 키 이름("Enter"). **열거형의 값이며 사용자가 친 글자가 아니다.**
     # `PressKey` 의 네 값 중 하나로 고정돼 있고, 모델이 요약을 읽고 Enter 와 Escape 를
     # 구별하려면 있어야 한다 — 그 둘은 정반대 동작이다.

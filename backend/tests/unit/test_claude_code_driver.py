@@ -248,7 +248,7 @@ def test_the_dev_driver_surface_equals_the_default_one() -> None:
     assert set(QUALIFIED_TOOL_NAMES) == expected
     # 023 이 `press` 를 더해 17종이 됐다. **Step 종류가 늘어서 늘어난 것**이며,
     # `test_tool_surface.py` 의 10:10 대응 검사가 그 사실을 강제한다.
-    assert len(QUALIFIED_TOOL_NAMES) == 17
+    assert len(QUALIFIED_TOOL_NAMES) == 19  # 025 — find_by_text·mark_item
 
 
 def test_builtin_tools_are_still_blocked() -> None:
@@ -291,4 +291,4 @@ def test_every_tool_on_the_dev_driver_actually_builds() -> None:
     built = build_mcp_tools(toolbox)  # type: ignore[arg-type]
 
     assert {t.name for t in built} == set(TOOL_SCHEMAS)
-    assert len(built) == 17  # 023 — `press` 가 늘었다
+    assert len(built) == 19  # 023 `press` · 025 `find_by_text`·`mark_item`

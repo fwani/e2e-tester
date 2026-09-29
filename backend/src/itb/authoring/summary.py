@@ -202,16 +202,22 @@ def _anchor(steps: list[Step], range_ids: set[str]) -> int:
     return len(steps) - 1
 
 
-STEPS_BUDGET = DEFAULT_SUMMARY_BUDGET - PLAN_BUDGET
-"""Step 목록의 몫 (10KB).
+STEPS_BUDGET_WITH_PLAN = DEFAULT_SUMMARY_BUDGET - PLAN_BUDGET
+"""**계획이 함께 붙을 때** Step 목록의 몫 (10KB · 025 research R6).
 
-016 실측에서 **긴 이름 기준 Step 100개가 13.6KB** 였다. 10KB 는 그보다 작으므로 100개
-근처에서 축약이 걸린다 — 016 이 피하려던 상황이다.
+## 기본값이 아니다
 
-**그래도 이렇게 나눈 이유**: 016 의 축약은 조용히 자르지 않는다. 교체 구간을 중심으로
-남기고 생략을 명시하므로, 잘려도 모델이 「여기 더 있다」를 안다. 반면 계획이 없으면
-모델은 **무엇을 요구받았는지 자체를 모른다.** 둘 중 하나가 잘려야 한다면 잘려도 덜
-해로운 쪽이 Step 목록이다.
+`build_definition_summary` 의 기본 예산은 016 이 정한 16KB 그대로다. 계획이 있는 세션에서만
+호출자가 이 값을 넘긴다.
+
+**그렇게 가른 이유**: 016 은 실측으로 「긴 이름 기준 Step 100개가 13.6KB」를 확인하고 16KB 를
+정했다. 그것을 무조건 10KB 로 줄이면 **계획이 없는 세션에서도** 100개 근처에서 축약이 걸린다 —
+016 이 피하려던 상황이 025 와 아무 상관 없는 경로에서 되살아난다.
+
+계획이 있는 세션에서는 Step 목록이 10KB 로 좁아진다. 그 대가를 받아들이는 이유는, 016 의
+축약이 **조용히 자르지 않기** 때문이다 — 교체 구간을 중심으로 남기고 생략을 명시하므로
+모델이 「여기 더 있다」를 안다. 반면 계획이 없으면 모델은 **무엇을 요구받았는지 자체를
+모른다.** 둘 중 하나가 좁아져야 한다면 잘려도 덜 해로운 쪽이 Step 목록이다.
 
 **확인 필요**: 실제 세션에서 어느 쪽이 먼저 축약에 걸리는지 재어 배분을 다시 본다.
 """
@@ -220,7 +226,7 @@ STEPS_BUDGET = DEFAULT_SUMMARY_BUDGET - PLAN_BUDGET
 def build_definition_summary(
     steps: list[Step],
     range_ids: list[str] | None = None,
-    budget: int = STEPS_BUDGET,
+    budget: int = DEFAULT_SUMMARY_BUDGET,
 ) -> str:
     """에이전트 컨텍스트에 실을 정의 요약을 만든다.
 
