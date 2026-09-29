@@ -47,6 +47,7 @@ JSON 을 텍스트로 받아 파싱하면 파싱 실패 처리를 새로 만들�
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -60,6 +61,8 @@ from itb.authoring.plan import (
     WorkPlan,
 )
 from itb.llm.client import LlmConfig, LlmUnavailableError, RefusalError, check_stop_reason
+
+logger = logging.getLogger(__name__)
 
 SUBMIT_TOOL = "submit_plan"
 """모델이 계획을 제출하는 도구. **이것 하나만 준다.**
@@ -206,6 +209,25 @@ class RefineResult:
     notes: list[str] = field(default_factory=list)
 
 
+MAX_FAILURE_DETAIL = 200
+"""사용자에게 보이는 실패 사유의 길이 상한.
+
+**메시지를 싣되 통째로 싣지 않는다.** 예외 메시지에 지시문 조각이 실려 올 수 있고,
+그 지시문에는 사용자가 적은 값이 들어 있다 (016 이 요약에서 값을 다루지 않는 것과 같은
+주의). 전체는 서버 로그에만 남는다.
+"""
+
+
+def _failure_note(exc: Exception) -> str:
+    """사용자가 읽을 실패 사유. **무엇이 잘못됐는지와 무엇을 할 수 있는지.**"""
+    detail = str(exc).strip().replace("\n", " ")[:MAX_FAILURE_DETAIL]
+    kind = type(exc).__name__
+    head = f"지시문을 정제하지 못했습니다 ({kind})"
+    if detail:
+        head = f"{head}: {detail}"
+    return f"{head}. 원문 그대로 진행할 수 있습니다."
+
+
 def _scrub_credentials(text: str) -> tuple[str, list[str]]:
     """평문 자격 증명을 변수 참조로 바꾼다 (FR-010).
 
@@ -252,6 +274,20 @@ def _scrub_credentials(text: str) -> tuple[str, list[str]]:
     return out, notes
 
 
+def _text_of(raw: Any) -> str:
+    """제출된 항목에서 글을 꺼낸다. **모양이 어긋나도 죽지 않는다.**
+
+    스키마는 `{"text": "…"}` 를 요구하지만 모델은 `"…"` 를 그대로 주기도 한다. 둘 다
+    받는 편이 낫다 — 받지 않으면 정제 전체가 실패하고, 사용자는 원문으로 진행할 기회를
+    잃는다 (FR-020). 알아볼 수 없는 모양이면 빈 문자열이고, 그 항목만 빠진다.
+    """
+    if isinstance(raw, str):
+        return raw.strip()
+    if isinstance(raw, dict):
+        return str(raw.get("text") or "").strip()
+    return ""
+
+
 def _plan_from_payload(payload: dict[str, Any]) -> WorkPlan:
     """모델이 제출한 것을 계획으로 옮긴다.
 
@@ -261,7 +297,10 @@ def _plan_from_payload(payload: dict[str, Any]) -> WorkPlan:
     items: list[PlanItem] = []
     extra_notes: list[str] = []
     for index, raw in enumerate(payload.get("items") or [], start=1):
-        text = str(raw.get("text") or "").strip()
+        # **모델이 스키마를 지킨다고 믿지 않는다.** `items` 를 문자열 배열로 주는 경우가
+        # 실제로 있다 — 스키마가 객체를 요구해도 그렇다. 거기서 죽으면 사용자는 원문으로
+        # 진행할 기회조차 잃는다 (FR-020).
+        text = _text_of(raw)
         if not text:
             continue
         cleaned, notes = _scrub_credentials(text)
@@ -270,8 +309,13 @@ def _plan_from_payload(payload: dict[str, Any]) -> WorkPlan:
 
     constraints: list[Constraint] = []
     for raw in payload.get("constraints") or []:
-        text = str(raw.get("text") or "").strip()
+        text = _text_of(raw)
         if not text:
+            continue
+        if not isinstance(raw, dict):
+            # 문자열로 온 제약은 **전역으로 둔다.** 어느 항목에 걸리는지 모르지만
+            # 「어기면 안 되는 것」이라는 사실은 남는다.
+            constraints.append(Constraint(text=_scrub_credentials(text)[0]))
             continue
         cleaned, notes = _scrub_credentials(text)
         extra_notes.extend(notes)
@@ -347,9 +391,19 @@ async def refine_instruction(
     except (LlmUnavailableError, RefusalError) as exc:
         return RefineResult(refined=False, notes=[str(exc)])
     except Exception as exc:  # noqa: BLE001 - 어떤 실패든 원문 진행으로 수렴한다
+        # **메시지를 버리지 않는다** (2026-09-29 사용자 보고).
+        #
+        # 초안은 `type(exc).__name__` 만 남겼고, 사용자는 「정제하지 못했습니다:
+        # TypeError」를 두 번 받았다. 그 문장으로는 무엇이 잘못됐는지 알 수 없고,
+        # 고칠 수도 없다 — **진단할 수 없는 오류 메시지는 오류를 숨기는 것과 같다**
+        # (헌법 보안 §오류는 명시적으로 처리한다, 003 이 `INTERNAL_ERROR` 를 가른 이유).
+        #
+        # 스택은 서버 로그로, 요지는 사용자에게. 로그가 진단의 자리이고 화면은
+        # 「원문으로 진행할 수 있다」를 말하는 자리다.
+        logger.exception("지시문 정제 실패")
         return RefineResult(
             refined=False,
-            notes=[f"지시문을 정제하지 못했습니다: {type(exc).__name__}"],
+            notes=[_failure_note(exc)],
         )
 
     if not submitted.get("items"):
@@ -357,7 +411,14 @@ async def refine_instruction(
             refined=False, notes=["지시문을 정제하지 못했습니다. 원문으로 진행합니다."]
         )
 
-    plan = _plan_from_payload(submitted)
+    try:
+        plan = _plan_from_payload(submitted)
+    except Exception as exc:  # noqa: BLE001 - 모델이 스키마를 어겨도 죽지 않는다
+        # **모델이 스키마를 지킨다고 믿지 않는다.** `items` 를 문자열 배열로 주는
+        # 경우가 실제로 있고, 그때 변환이 죽으면 사용자는 원문으로 진행할 기회조차
+        # 잃는다 — 정제는 관문이 아니다 (FR-020).
+        logger.exception("정제 결과를 계획으로 옮기지 못했다")
+        return RefineResult(refined=False, notes=[_failure_note(exc)])
     if plan.empty:
         return RefineResult(
             refined=False, notes=["정제 결과가 비어 있습니다. 원문으로 진행합니다."]

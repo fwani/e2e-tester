@@ -155,3 +155,57 @@ async def test_a_transport_error_is_also_a_failure(monkeypatch: pytest.MonkeyPat
 
     assert result.refined is False
     assert result.notes
+
+
+async def test_a_schema_violating_reply_is_still_usable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """**모델이 스키마를 지킨다고 믿지 않는다** (2026-09-29).
+
+    스키마는 `items: [{"text": "…"}]` 를 요구하지만 모델은 `items: ["…"]` 를 주기도
+    한다. 거기서 변환이 죽으면 사용자는 원문으로 진행할 기회조차 잃는다 — 정제는
+    관문이 아니다 (FR-020).
+    """
+
+    def handler(_request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            json=_tool_use_response(
+                {
+                    "items": ["로그인한다", "메뉴관리로 이동한다"],
+                    "constraints": ["기존 데이터는 검증에 쓰지 않는다"],
+                }
+            ),
+        )
+
+    monkeypatch.setattr("itb.llm.client.create_client", lambda: _client(handler))
+
+    result = await refine_mod.refine_instruction("로그인한다")
+
+    assert result.refined is True
+    assert result.plan is not None
+    assert [i.text for i in result.plan.items] == ["로그인한다", "메뉴관리로 이동한다"]
+    assert result.plan.constraints[0].text == "기존 데이터는 검증에 쓰지 않는다"
+
+
+async def test_a_failure_says_what_went_wrong(monkeypatch: pytest.MonkeyPatch) -> None:
+    """**실패 사유에 무엇이 잘못됐는지가 있다** (2026-09-29 사용자 보고).
+
+    초안은 `type(exc).__name__` 만 남겼고, 사용자는 「정제하지 못했습니다: TypeError」를
+    두 번 받았다. 그 문장으로는 고칠 수도, 물어볼 수도 없다 — **진단할 수 없는 오류
+    메시지는 오류를 숨기는 것과 같다.**
+    """
+
+    def handler(_request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"쓸 수 없는": "응답"})
+
+    monkeypatch.setattr("itb.llm.client.create_client", lambda: _client(handler))
+
+    result = await refine_mod.refine_instruction("로그인한다")
+
+    assert result.refined is False
+    note = result.notes[0]
+    assert "정제하지 못했습니다" in note
+    assert "원문 그대로 진행할 수 있습니다" in note, "무엇을 할 수 있는지 말해야 한다"
+    # 타입 이름만으로는 진단할 수 없다 — 괄호 안에 예외 종류가 있어야 한다.
+    assert "(" in note and ")" in note
