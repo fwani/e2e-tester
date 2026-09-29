@@ -45,6 +45,20 @@ from itb.domain.step import (
     UploadStep,
 )
 
+PLAN_BUDGET = 6144
+"""작업 계획이 매 턴 차지할 수 있는 바이트 (025 FR-013 · research R6).
+
+**총량을 늘리지 않고 나눈다.** 016 은 16KB 를 정하면서 "그보다 더 키우지 않는다 — 매 턴
+붙기 때문이다" 라고 적었고, 그 판단을 뒤집지 않는다. 6KB + 10KB = 16KB 다.
+
+6KB 로 잡은 근거: 항목 40개 × 평균 100바이트 + 제약 열 줄 + 여유. 그보다 긴 계획은
+축약이 받는다 — 완료된 항목부터 접고 **생략을 명시한다.**
+
+**확인 필요**: 실제 정제 결과의 항목 길이를 재어 다시 본다. 016 이 8KB 초안을 실측으로
+16KB 로 고친 전례가 있고, 잠정값을 실측 없이 두면 「항목 40개까지 괜찮다」가 거짓인 채로
+남는다.
+"""
+
 DEFAULT_SUMMARY_BUDGET = 16384
 """요약 문자열의 바이트 상한 (016 · T064 에서 **실측으로 정했다**).
 
@@ -188,10 +202,25 @@ def _anchor(steps: list[Step], range_ids: set[str]) -> int:
     return len(steps) - 1
 
 
+STEPS_BUDGET = DEFAULT_SUMMARY_BUDGET - PLAN_BUDGET
+"""Step 목록의 몫 (10KB).
+
+016 실측에서 **긴 이름 기준 Step 100개가 13.6KB** 였다. 10KB 는 그보다 작으므로 100개
+근처에서 축약이 걸린다 — 016 이 피하려던 상황이다.
+
+**그래도 이렇게 나눈 이유**: 016 의 축약은 조용히 자르지 않는다. 교체 구간을 중심으로
+남기고 생략을 명시하므로, 잘려도 모델이 「여기 더 있다」를 안다. 반면 계획이 없으면
+모델은 **무엇을 요구받았는지 자체를 모른다.** 둘 중 하나가 잘려야 한다면 잘려도 덜
+해로운 쪽이 Step 목록이다.
+
+**확인 필요**: 실제 세션에서 어느 쪽이 먼저 축약에 걸리는지 재어 배분을 다시 본다.
+"""
+
+
 def build_definition_summary(
     steps: list[Step],
     range_ids: list[str] | None = None,
-    budget: int = DEFAULT_SUMMARY_BUDGET,
+    budget: int = STEPS_BUDGET,
 ) -> str:
     """에이전트 컨텍스트에 실을 정의 요약을 만든다.
 
@@ -255,3 +284,125 @@ def _shorten(
     if hi < len(lines) - 1:
         out.append(f"    … (Step {hi + 2}~{len(lines)} 생략) …")
     return "\n".join(out)
+
+
+# ─── 작업 계획 주입 (025 FR-008~FR-013) ────────────────────────────────────
+#
+# **여기에 두는 이유는 규칙을 한 곳에 모으기 위해서다.** 016 이 정한 예산·축약·민감값
+# 규칙이 이 모듈에 있고, 계획 주입도 같은 규칙을 지켜야 한다. 별도 모듈로 만들면 「생략을
+# 명시한다」 같은 판단이 두 곳에 생기고, 한쪽만 고쳐진다.
+
+MARK_DONE = "✓"
+MARK_NEXT = "▶"
+MARK_SKIPPED = "—"
+"""할 일 목록의 표시 (contracts/agent-context.md §1).
+
+`▶` 가 있는 이유: 목록만 주면 모델이 어디서 이어야 하는지를 스스로 판정해야 하고, 그
+판정이 「되풀이」와 「건너뜀」이 생기는 자리다. **다음 할 일을 제품이 지목한다.**
+"""
+
+PLAN_OMITTED = "    … ({done}개 완료 항목 생략) …"
+"""접힌 구간 표시. **조용히 자르지 않는다** (FR-013 · 016 과 같은 규칙)."""
+
+
+def _constraint_lines(plan: object) -> list[str]:
+    """지켜야 할 것. **맨 앞에 온다** — 가장 자주 어겨지고, 앞머리가 가장 잘 읽힌다."""
+    constraints = getattr(plan, "constraints", None) or []
+    if not constraints:
+        return []
+    return ["[반드시 지킬 것]", *(f"- {c.text}" for c in constraints)]
+
+
+def _item_line(item: object, is_next: bool) -> str:
+    status = getattr(item, "status", None)
+    value = getattr(status, "value", status)
+    if value == "done":
+        mark = MARK_DONE
+    elif value == "skipped":
+        mark = MARK_SKIPPED
+    elif is_next:
+        mark = MARK_NEXT
+    else:
+        mark = " "
+    line = f"{getattr(item, 'order', 0):>3}. {mark} {getattr(item, 'text', '')}"
+    reason = getattr(item, "skip_reason", None)
+    if value == "skipped" and reason:
+        line = f"{line}  (건너뜀: {reason})"
+    return line
+
+
+def build_plan_summary(plan: object | None, budget: int = PLAN_BUDGET) -> str:
+    """작업 계획을 매 턴 붙일 문자열로 편다 (025 FR-008·FR-009).
+
+    ## 계획이 없으면 빈 문자열이다
+
+    정제에 실패했거나 사용자가 거절한 세션이 그렇다. 그때 붙는 것은 016 이전과 정확히
+    같이 정의 요약뿐이다 (FR-012) — **기존 경로가 그대로 돌아야 한다**는 것이 이 기능의
+    경계다.
+
+    ## 축약은 **완료된 항목부터**
+
+    남은 일이 무엇인지가 끝난 일보다 중요하다. 다만 접힌 구간에 완료가 몇 개였는지는
+    남긴다 — 「1~6 완료, 생략」. 조용히 사라지면 모델은 그것들을 다시 하려 든다.
+
+    ## 값을 다루지 않는다
+
+    계획의 항목과 제약은 **정제 단계에서 이미 자격 증명이 변수 참조로 바뀐** 문자열이다
+    (`refine.py` · FR-010). 여기서 다시 거르지 않는다 — 거르는 곳이 둘이면 어느 쪽이
+    기준인지 말할 수 없다 (016 `_keep_mismatch` 와 같은 판단).
+    """
+    if plan is None or getattr(plan, "empty", True):
+        return ""
+
+    items = list(getattr(plan, "items", None) or [])
+    next_item = getattr(plan, "next_item", None)
+    next_id = getattr(next_item, "id", None)
+
+    head = _constraint_lines(plan)
+    lines = [_item_line(i, getattr(i, "id", None) == next_id) for i in items]
+    parts = [*head, "", "[할 일]", *lines] if head else ["[할 일]", *lines]
+    full = "\n".join(parts).strip()
+    if len(full.encode()) <= budget:
+        return full
+
+    return _shorten_plan(head, items, lines, next_id, budget)
+
+
+def _shorten_plan(
+    head: list[str],
+    items: list[object],
+    lines: list[str],
+    next_id: object,
+    budget: int,
+) -> str:
+    """예산에 맞게 줄인다. **완료된 앞쪽부터 접고 생략을 명시한다.**
+
+    제약은 접지 않는다 — 그것을 잃으면 이 기능이 고치려는 문제(값을 바꾸고 금지를
+    어긴다)가 그대로 돌아온다. 제약만으로 예산을 넘는 계획은 애초에 성립하지 않는
+    지시문이고, 그때는 항목이 전부 접힌 채로 나간다.
+    """
+    kept: list[str] = []
+    used = sum(len(line.encode()) + 1 for line in head) + len("[할 일]".encode())
+    reserve = 80
+    folded = 0
+
+    for index in range(len(lines) - 1, -1, -1):
+        cost = len(lines[index].encode()) + 1
+        status = getattr(getattr(items[index], "status", None), "value", None)
+        if used + cost + reserve > budget and status == "done":
+            folded += 1
+            continue
+        if used + cost + reserve > budget:
+            # 미완료를 접어야 할 만큼 좁으면 더 담지 않는다 — 남은 일이 먼저다.
+            folded += 1
+            continue
+        kept.append(lines[index])
+        used += cost
+
+    body = list(reversed(kept))
+    out = [*head, ""] if head else []
+    out.append("[할 일]")
+    if folded:
+        out.append(PLAN_OMITTED.format(done=folded))
+    out.extend(body)
+    return "\n".join(out).strip()

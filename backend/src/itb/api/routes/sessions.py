@@ -42,7 +42,7 @@ from itb.authoring.rerecord import (
     RerecordTransaction,
     validate_range,
 )
-from itb.authoring.summary import build_definition_summary
+from itb.authoring.summary import build_definition_summary, build_plan_summary
 from itb.domain.draft import DRAFT_ID_PATTERN, Draft, compose_instruction
 from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_ms
 from itb.domain.run_result import RunResult, RunScope, StepOutcome, scope_of
@@ -218,6 +218,19 @@ class SessionWork:
     resolver: object | None = None
     last_blocked: object | None = None
     """마지막 `ai_blocked` 결과. `retry`·`skip` 이 무엇을 재시도할지의 근거다."""
+
+    work_plan: object | None = None
+    """이 세션이 **요구받은 것** (025 FR-008 · `WorkPlan`).
+
+    **세션이 소유한다.** 에이전트는 함수로 받아 읽기만 한다 — 016 이 Step 목록에 대해
+    내린 판단과 같다. 소유하면 실패 경로에서 사라질 자리가 하나 더 생긴다.
+
+    타입을 `object` 로 둔 이유는 `agent` 와 같다 — 이 모듈은 `itb.authoring` 을 지연
+    임포트해 API 계층이 언어모델 경계를 항상 끌고 오지 않게 한다.
+
+    **없을 수 있다.** 정제에 실패했거나 사용자가 거절한 세션, 구간 재녹화, 녹화에서
+    시작해 대화로 넘어온 세션이 그렇다. 그때 주입은 016 이전과 같다 (FR-012).
+    """
 
     chat_turns: list[ChatTurnView] = field(default_factory=list)
     """대화 이력 (016 FR-009·FR-014).
@@ -470,6 +483,37 @@ def require_paused(w: SessionWork) -> None:
 # ─── 요청·응답 모델 ─────────────────────────────────────────────────────────
 
 
+class PlanItemPayload(BaseModel):
+    """계획 항목 하나 (025 contracts/api-contract.md §2)."""
+
+    id: str = Field(max_length=64)
+    order: int = Field(ge=1)
+    text: str = Field(min_length=1, max_length=1000)
+    status: Literal["pending", "done", "skipped"] = "pending"
+    skip_reason: str | None = Field(default=None, max_length=500)
+
+
+class ConstraintPayload(BaseModel):
+    """지켜야 할 것 하나."""
+
+    text: str = Field(min_length=1, max_length=1000)
+    scope: Literal["global", "item"] = "global"
+    item_id: str | None = Field(default=None, max_length=64)
+
+
+class WorkPlanPayload(BaseModel):
+    """확정된 작업 계획.
+
+    **항목 수를 경계에서 막는다** (`MAX_PLAN_ITEMS`). 매 턴 주입되는 값이므로 상한 없이
+    받으면 예산 축약이 상시로 일어나 계획이 늘 부분만 보인다 — 그러면 계획을 붙이는 뜻이
+    사라진다.
+    """
+
+    items: list[PlanItemPayload] = Field(default_factory=list, max_length=200)
+    constraints: list[ConstraintPayload] = Field(default_factory=list, max_length=200)
+    source: Literal["refined", "manual"] = "refined"
+
+
 class CreateSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -493,6 +537,16 @@ class CreateSessionRequest(BaseModel):
     """
     start_url: str | None = Field(default=None, pattern=r"^https?://", max_length=2000)
     ai_instruction: str | None = Field(default=None, max_length=8000)
+
+    work_plan: WorkPlanPayload | None = None
+    """정제해 사용자가 확정한 작업 계획 (025 FR-008 · contracts/api-contract.md §2).
+
+    **선택이다.** 없으면 016 이전과 같이 동작한다 — 정제에 실패했거나 사용자가 거절한
+    경우이고, 그것이 작성을 막아서는 안 된다 (FR-012).
+
+    `ai_instruction` 은 계획이 있어도 **여전히 필수다.** 정제 기록의 절반이고(FR-022),
+    계획이 뜻을 바꿨을 때 대조할 것이 필요하다.
+    """
 
     draft_id: str | None = Field(default=None, pattern=DRAFT_ID_PATTERN)
     """초안에서 시작한다 (014 FR-030·FR-031).
@@ -1046,6 +1100,50 @@ def _require_secret_values(
     )
 
 
+def _work_plan_from(payload: WorkPlanPayload | None) -> object | None:
+    """요청의 계획을 도메인 객체로 옮긴다 (025 FR-008).
+
+    **경계에서 한 번만 옮긴다.** 라우터가 `WorkPlanPayload` 를 그대로 세션에 두면
+    작성 계층이 API 스키마를 알게 되고, 그러면 스키마를 바꿀 때마다 작성 계층이 따라
+    바뀐다 — `itb.authoring` 이 FastAPI 를 모르는 것이 이 저장소의 규칙이다.
+
+    지연 임포트하는 이유는 `agent`·`compiler` 와 같다: API 계층이 언어모델 경계를 항상
+    끌고 오지 않게 한다.
+    """
+    if payload is None:
+        return None
+    from itb.authoring.plan import (  # noqa: PLC0415 - 경계를 이 함수 안에 둔다
+        Constraint,
+        ConstraintScope,
+        ItemStatus,
+        PlanItem,
+        PlanSource,
+        WorkPlan,
+    )
+
+    plan = WorkPlan(
+        items=[
+            PlanItem(
+                id=i.id,
+                order=i.order,
+                text=i.text,
+                status=ItemStatus(i.status),
+                skip_reason=i.skip_reason,
+            )
+            for i in payload.items
+        ],
+        constraints=[
+            Constraint(text=c.text, scope=ConstraintScope(c.scope), item_id=c.item_id)
+            for c in payload.constraints
+        ],
+        source=PlanSource(payload.source),
+    )
+    # **순번을 다시 매긴다.** 화면이 항목을 지우고 보낸 계획은 번호가 끊겨 있을 수 있고,
+    # 사용자가 보는 번호와 모델에게 가는 번호가 어긋나면 「3번을 다시」가 다른 것을 집는다.
+    plan.renumber()
+    return plan
+
+
 @router.post("", status_code=201)
 async def create_session(body: CreateSessionRequest, state: State) -> SessionView:
     repo = state.require_repository()
@@ -1083,6 +1181,15 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         # 주고 고칠 수 있게 한 것이 뜻을 가지려면, 고친 값이 실제로 쓰여야 한다.
         if body.mode == "ai" and (instruction is None or not instruction.strip()):
             instruction = compose_instruction(draft)
+
+    # 025 — **조용히 무시하지 않는다** (contracts/api-contract.md §2). 무시하면 사용자는
+    # 계획이 쓰이고 있다고 믿고, 그 믿음은 AI 가 계획을 어길 때까지 깨지지 않는다.
+    if body.work_plan is not None and body.mode != "ai":
+        raise bad_request(
+            ErrorCode.DEFINITION_INVALID,
+            "작업 계획은 AI 작성에서만 쓸 수 있습니다.",
+            next_action="AI 로 만들기를 고르거나 계획 없이 시작하세요.",
+        )
 
     if body.mode == "ai":
         # FR-085 — 경계에서 검증한다. 길이·공백 규칙은 작성 계층이 갖는다.
@@ -1209,6 +1316,9 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
         draft_id=draft.draft_id if draft is not None else None,
         draft_name=draft.name if draft is not None else None,
         draft_group=draft.group_prefix if draft is not None else None,
+        # 025 FR-008 — 확정된 계획이 있으면 세션이 들고 간다. 없으면 `None` 이고,
+        # 그때 주입은 016 이전과 같다 (FR-012).
+        work_plan=_work_plan_from(body.work_plan),
     )
     if existing_test is not None:
         # 011 FR-362 — 이름을 함께 들린다. 이것이 없으면 화면이 저장할 때 이름을 다시 묻는다.
@@ -1473,6 +1583,9 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
         # **함수로 넘긴다.** 목록은 턴 사이에 바뀐다 — 에이전트가 Step 을 만들고,
         # 사람이 고치고, 확정·버리기가 구간을 옮긴다. 값으로 넘기면 5분 전 목록을
         # 근거로 답한다.
+        # 025 FR-008 — **요구받은 것도 매 턴 붙는다.** 016 이 「만든 것」에 대해 정한
+        # 것과 같은 모양이다: 값이 아니라 함수이고, 소유자는 세션이다.
+        plan_source=lambda: build_plan_summary(work.work_plan),
         summary_source=lambda: build_definition_summary(
             work.steps,
             range_ids=(

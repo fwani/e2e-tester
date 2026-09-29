@@ -175,34 +175,34 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 
 ### Tests for User Story 2
 
-- [ ] T032 [P] [US2] `backend/tests/unit/test_work_plan.py` — `WorkPlan`·`PlanItem`·`Constraint`
+- [X] T032 [P] [US2] `backend/tests/unit/test_work_plan.py` — `WorkPlan`·`PlanItem`·`Constraint`
       의 불변 조건: 순번 1부터 끊기지 않음, 빈 계획 허용, Step 을 참조하지 않음
       (data-model §1·§2)
-- [ ] T033 [P] [US2] `backend/tests/unit/test_plan_injection.py` — 주입 문자열의 모양·순서
+- [X] T033 [P] [US2] `backend/tests/unit/test_plan_injection.py` — 주입 문자열의 모양·순서
       (제약이 맨 앞), `▶` 가 가장 앞선 미완료를 가리킴 (contracts/agent-context.md §1)
-- [ ] T034 [P] [US2] 같은 파일에 **예산과 축약** 검증 — 6KB 를 넘으면 완료 항목부터 접히고
+- [X] T034 [P] [US2] 같은 파일에 **예산과 축약** 검증 — 6KB 를 넘으면 완료 항목부터 접히고
       생략이 명시됨 (FR-013 · R6)
-- [ ] T035 [P] [US2] 같은 파일에 **민감값** 검증 — 자격 증명이 값이 아니라 참조로 실림
+- [X] T035 [P] [US2] 같은 파일에 **민감값** 검증 — 자격 증명이 값이 아니라 참조로 실림
       (FR-010). 016 `test_definition_summary.py` 의 `ALLOWED_VALUE_READS` 와 같은 방식으로
       값 읽기를 전수 등록한다
-- [ ] T036 [P] [US2] `backend/tests/integration/test_plan_absent.py` — **계획이 없어도 지금과
+- [X] T036 [P] [US2] `backend/tests/integration/test_plan_absent.py` — **계획이 없어도 지금과
       같이 동작**하는지 (FR-012). 이것이 이 기능의 회귀 방어선이다
 
 ### Implementation for User Story 2
 
-- [ ] T037 [US2] `backend/src/itb/authoring/plan.py` 를 만든다 — `WorkPlan`·`PlanItem`·
+- [X] T037 [US2] `backend/src/itb/authoring/plan.py` 를 만든다 — `WorkPlan`·`PlanItem`·
       `Constraint` 와 상태 전이 규칙 (data-model §1~§3). **순수 모듈로 둔다** — 언어모델도
       브라우저도 알지 못한다
-- [ ] T038 [US2] `backend/src/itb/authoring/summary.py` 에 계획 주입 문자열 생성을 더한다.
+- [X] T038 [US2] `backend/src/itb/authoring/summary.py` 에 계획 주입 문자열 생성을 더한다.
       **016 이 정한 예산·축약·민감값 규칙을 그대로 쓴다** — 규칙이 두 곳에 있으면 한쪽만
       고쳐진다 (R5)
-- [ ] T039 [US2] `backend/src/itb/authoring/summary.py` — 예산을 16KB 에서 **나눈다**
+- [X] T039 [US2] `backend/src/itb/authoring/summary.py` — 예산을 16KB 에서 **나눈다**
       (계획 6KB · 정의 요약 10KB). 총량을 늘리지 않는다 (R6)
-- [ ] T040 [US2] `backend/src/itb/authoring/agent.py` 의 `_with_summary` 가 계획을 함께 붙이게
+- [X] T040 [US2] `backend/src/itb/authoring/agent.py` 의 `_with_summary` 가 계획을 함께 붙이게
       한다. **`plan_source` 를 함수로 받는다** — 016 `summary_source` 와 같은 모양 (R5)
-- [ ] T041 [US2] `backend/src/itb/api/routes/sessions.py` 의 `SessionWork` 에 `work_plan` 을
+- [X] T041 [US2] `backend/src/itb/api/routes/sessions.py` 의 `SessionWork` 에 `work_plan` 을
       더하고 `AuthoringAgent` 에 `plan_source` 로 주입한다
-- [ ] T042 [US2] `backend/src/itb/api/routes/sessions.py` — 세션 생성 요청이 `work_plan` 을
+- [X] T042 [US2] `backend/src/itb/api/routes/sessions.py` — 세션 생성 요청이 `work_plan` 을
       받게 한다. `mode != "ai"` 에 오면 거절, 항목 200 초과면 거절
       (contracts/api-contract.md §2)
 - [ ] T043 [US2] T003 의 기준선과 비교해 매 턴 전달 분량을 실측하고 `baseline.md` 에 적는다

@@ -284,6 +284,20 @@ class AuthoringAgent:
     compiler: StepCompiler | None = None
     """확정된 Step 을 센 주체. `ai_finished` 의 `step_count` 근거다 (FR-063)."""
 
+    plan_source: Callable[[], str] | None = None
+    """지금 작업 계획의 주입 문자열 (025 FR-008).
+
+    **값이 아니라 함수다** — 016 `summary_source` 와 같은 이유이자 더 강한 이유로.
+    계획은 턴 사이에 바뀐다: AI 가 항목을 끝내고, 사람이 되돌리고, 대화로 항목이
+    더해진다. 값으로 들고 있으면 5분 전 진척을 근거로 「다음에 할 것」을 지목한다.
+
+    **에이전트가 계획을 소유하지 않는다.** 소유하면 실패 경로에서 계획이 사라질 자리가
+    하나 더 생긴다 — 016 이 Step 목록에 대해 내린 판단과 같다 (FR-067).
+
+    없으면 아무것도 붙지 않는다. 계획 없이 시작된 세션, 자연어 Step 추가, 구간 재녹화가
+    지금과 같이 돌아야 한다 (FR-012).
+    """
+
     summary_source: Callable[[], str] | None = None
     """지금 정의의 요약을 만들어 주는 것 (016 FR-001·FR-003).
 
@@ -307,7 +321,18 @@ class AuthoringAgent:
     """
 
     def _with_summary(self, text: str) -> str:
-        """사용자 메시지 앞에 정의 요약을 붙인다 (016 FR-003).
+        """사용자 메시지 앞에 **요구받은 것**과 **만든 것**을 붙인다.
+
+        016 은 후자만 붙였다. 025 가 전자를 더한다 (FR-008·FR-011) — 둘은 다른 사실이고
+        하나가 다른 하나를 대신하지 못한다.
+
+        ## 순서가 뜻을 갖는다
+
+        제약 → 할 일 → 지금 테스트 → 사용자의 말. **제약이 맨 앞인 이유**는 그것이 가장
+        자주 어겨지고 앞머리가 가장 잘 읽히기 때문이다. 사용자의 말이 맨 뒤인 이유는
+        그것이 이번 턴에 **새로운** 유일한 것이기 때문이다.
+
+        (아래는 016 의 원래 설명이다.)
 
         **매 턴 붙인다.** 첫 메시지에만 넣으면 대화가 길어질수록 에이전트가 보는 목록이
         낡는다 — 자기가 방금 만든 Step 도 모르는 상태가 된다.
@@ -316,12 +341,19 @@ class AuthoringAgent:
         요약은 맥락이지 전제가 아니고, 016 이전 경로(US4·US6)가 그것 없이도 돌던 것이
         계속 돌아야 한다.
         """
-        if self.summary_source is None:
+        parts: list[str] = []
+        if self.plan_source is not None:
+            plan = self.plan_source()
+            if plan:
+                parts.append(plan)
+        if self.summary_source is not None:
+            summary = self.summary_source()
+            if summary:
+                parts.append(summary)
+        if not parts:
             return text
-        summary = self.summary_source()
-        if not summary:
-            return text
-        return f"{summary}\n\n[사용자] {text}"
+        parts.append(f"[사용자] {text}")
+        return "\n\n".join(parts)
 
     async def run(self, instruction: str) -> AgentOutcome:
         """지시문 하나를 수행한다.
