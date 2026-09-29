@@ -32,6 +32,7 @@ from enum import StrEnum
 from typing import Any
 
 from itb.authoring.compiler import StepCompiler
+from itb.authoring.fold import fold_stale_observations
 from itb.authoring.journal import fold_old_records
 from itb.authoring.tools import (
     DEFAULT_BLOCKED_KIND,
@@ -215,7 +216,22 @@ Driver = Callable[[list[Any], list[dict[str, Any]], LlmConfig], AsyncIterator[An
 def _sdk_driver(
     tools: list[Any], messages: list[dict[str, Any]], config: LlmConfig
 ) -> AsyncIterator[Any]:
-    """실제 SDK 루프. 이 함수만 `anthropic` 을 안다."""
+    """실제 SDK 루프. 이 함수만 `anthropic` 을 안다.
+
+    ## 낡은 화면 관찰을 접으며 돈다 (025 FR-030 · research R4)
+
+    한 턴 안에서 관찰은 하나도 버려지지 않고 쌓인다. 실측에서 관찰 한 번이 상한 근처에서
+    **66.7KB** 이고(baseline.md T002), 도구 호출 상한이 40회이므로 스무 번 관찰하면
+    1.3MB 가 쌓인다. 모델은 지금 화면과 지나간 화면을 구별해야 하고, 뒤로 갈수록 그
+    구별이 흐려진다.
+
+    **접을 수 있는 자리가 여기뿐이다.** `AuthoringAgent.messages` 에는 애초에 관찰
+    결과가 없다 (research R1) — 관찰이 존재하는 곳은 runner 안이고, 그것을 만지는 공개
+    수단이 `set_messages_params` 다.
+
+    **runner 가 접기를 되돌리지 않는다** (T005 실측). 교체한 리스트 위에 이어 붙이므로
+    접기 → 추가 → 접기 → 추가 의 순서가 성립한다.
+    """
     from itb.llm.client import create_client  # noqa: PLC0415
 
     client = create_client()
@@ -228,7 +244,21 @@ def _sdk_driver(
         max_iterations=MAX_TOOL_CALLS,
         **config.request_kwargs(),
     )
-    return runner.__aiter__()
+
+    async def folding() -> AsyncIterator[Any]:
+        async for message in runner:
+            yield message
+            # **다음 요청을 보내기 전에 접는다.** 사적 속성에 손대지 않고 공개 메서드만
+            # 쓴다 — `_params` 를 직접 만지면 SDK 가 그 이름을 바꿀 때 조용히 멈춘다.
+            with contextlib.suppress(Exception):
+                runner.set_messages_params(
+                    lambda params: {
+                        **params,
+                        "messages": fold_stale_observations(params["messages"]),
+                    }
+                )
+
+    return folding()
 
 
 DRIVER_ENV = "ITB_AI_DRIVER"

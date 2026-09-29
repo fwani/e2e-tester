@@ -205,7 +205,7 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 - [X] T042 [US2] `backend/src/itb/api/routes/sessions.py` — 세션 생성 요청이 `work_plan` 을
       받게 한다. `mode != "ai"` 에 오면 거절, 항목 200 초과면 거절
       (contracts/api-contract.md §2)
-- [ ] T043 [US2] T003 의 기준선과 비교해 매 턴 전달 분량을 실측하고 `baseline.md` 에 적는다
+- [~] T043 [US2] **자격 증명 없어 미실시** (baseline.md 참조). T003 의 기준선과 비교해 매 턴 전달 분량을 실측하고 `baseline.md` 에 적는다
       (SC-008)
 
 **Checkpoint**: 계획이 있으면 매 턴 실린다. 없으면 지금과 같이 돈다.
@@ -251,8 +251,17 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
       **기존 디자인 언어(008)를 따른다.** 새 화면을 만들지 않고 지시문 입력 자리를 넓힌다
 - [X] T056 [US4] `frontend/src/pages/ComposeView.tsx` — 「원문으로 진행」을 둔다 (FR-019).
       정제 실패 시에도 같은 길이 열린다 (FR-020)
-- [ ] T057 [US4] `backend/src/itb/api/routes/sessions.py` — 정제 기록(원문 + 계획)을 저장 시
-      의도 기록으로 남긴다 (FR-022 · data-model §5). **실행 정보가 아니다**
+- [~] T057 [US4] **이번 증분에서 뺀다.** 정제 기록(원문 + 계획)을 저장 시 의도 기록으로
+      남기려면 `Test` 모델에 필드를 더해야 하고, 그것은 저장 형식 변경이다 — 헌법 품질
+      게이트 2(왕복 무결성: 기록 → 저장 → 재실행 → 내보내기 → 실행)를 다시 확인해야 하고
+      내보내기·가져오기·프론트 타입이 함께 움직인다. 이 기능의 나머지와 무관한 범위다.
+
+      **지금 상태**: 세션이 도는 동안에는 둘 다 있다 — 원문은 `SessionWork.ai_instruction`,
+      계획은 `SessionWork.work_plan`. 저장 뒤에는 원문만 남는다 (`Test.ai_instruction`).
+
+      **FR-022 의 절반이 미충족이다.** 사용자는 작성 중에 정제 결과를 확인하고 고칠 수
+      있지만(FR-018 은 충족), 저장된 테스트를 다시 열었을 때 「그때 어떤 계획으로
+      만들었는가」는 볼 수 없다. 별도 증분으로 다룬다.
 
 **Checkpoint**: 사용자가 작성 전에 AI 가 무엇을 할지 목록으로 본다.
 
@@ -316,21 +325,21 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 
 ### Tests for User Story 6
 
-- [ ] T072 [P] [US6] `backend/tests/unit/test_observation_fold.py` — 접기 규칙: 관찰만 접히고
+- [X] T072 [P] [US6] `backend/tests/unit/test_observation_fold.py` — 접기 규칙: 관찰만 접히고
       조작·검증·막힘 신고는 접히지 않음 (FR-034), 접힘 자리에 안내가 남음 (FR-031)
-- [ ] T073 [P] [US6] 같은 파일 — 접기가 **모델에게 보내는 사본에만** 적용되고 제품이 든
+- [X] T073 [P] [US6] 같은 파일 — 접기가 **모델에게 보내는 사본에만** 적용되고 제품이 든
       기록은 그대로인지 (FR-033)
 
 ### Implementation for User Story 6
 
-- [ ] T074 [US6] `backend/src/itb/authoring/fold.py` 를 만든다 — 메시지 목록에서 지난 화면
+- [X] T074 [US6] `backend/src/itb/authoring/fold.py` 를 만든다 — 메시지 목록에서 지난 화면
       관찰 결과를 접는 순수 함수. **SDK 를 알지 못한다**
-- [ ] T075 [US6] `backend/src/itb/authoring/agent.py` 의 `_sdk_driver` 가 runner 를 들고
+- [X] T075 [US6] `backend/src/itb/authoring/agent.py` 의 `_sdk_driver` 가 runner 를 들고
       매 iteration 뒤 `set_messages_params` 로 접게 한다 (R4). 공개 메서드만 쓴다 —
       사적 속성(`_params`)에 손대지 않는다
-- [ ] T076 [US6] 온전히 남기는 개수를 **하나의 상수**로 두고 근거를 주석에 적는다 (FR-032).
+- [X] T076 [US6] 온전히 남기는 개수를 **하나의 상수**로 두고 근거를 주석에 적는다 (FR-032).
       기본값 1
-- [ ] T077 [US6] `backend/src/itb/authoring/claude_code_driver.py` 에 주석을 남긴다 —
+- [X] T077 [US6] `backend/src/itb/authoring/claude_code_driver.py` 에 주석을 남긴다 —
       이 경로는 도구 결과가 이력에 실리지 않으므로 접을 대상이 없다 (FR-038 ·
       contracts/agent-context.md §5)
 
@@ -340,23 +349,23 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 
 ## Phase 9: Polish & Cross-Cutting
 
-- [ ] T078 [P] `backend/src/itb/authoring/` 새 모듈들의 문서 문자열을 채운다 — **왜 그렇게
+- [X] T078 [P] `backend/src/itb/authoring/` 새 모듈들의 문서 문자열을 채운다 — **왜 그렇게
       했는지**를 적는다. 이 저장소의 기존 모듈과 같은 밀도로
-- [ ] T079 `uv run lint-imports` 로 헌법 원칙 II 계약이 그대로인지 확인한다 —
+- [X] T079 `uv run lint-imports` 로 헌법 원칙 II 계약이 그대로인지 확인한다 —
       `itb.execution` 이 `itb.llm`·`itb.authoring` 에 닿지 않아야 한다 (FR-035·FR-036)
-- [ ] T079a `backend/tests/unit/test_plan_makes_no_steps.py` — **헌법 원칙 I** 확인.
+- [X] T079a `backend/tests/unit/test_plan_makes_no_steps.py` — **헌법 원칙 I** 확인.
       `mark_item`·계획 수정·수행 기록 중 어느 것도 Step 을 만들거나 바꾸지 않음을 단언한다
       (FR-037). 설계는 통과하지만 확인이 없으면 다음 변경에서 조용히 깨진다
-- [ ] T079b `backend/tests/e2e/test_actionable_elements.py` 에 **헌법 원칙 IV** 확인을
+- [X] T079b `backend/tests/e2e/test_actionable_elements.py` 에 **헌법 원칙 IV** 확인을
       더한다 — `cursor` 로 발견된 요소도 경로가 하나로 좁혀지지 않으면 **지금과 같이
       거절**되는지 (FR-046). US3 가 관찰을 직접 건드리므로 회귀 위험이 실재한다
-- [ ] T080 [P] `docs/` 에 이 기능이 바꾼 것을 적는다 — 특히 **관찰 범위가 넓어졌다**는 사실.
+- [X] T080 [P] `docs/` 에 이 기능이 바꾼 것을 적는다 — 특히 **관찰 범위가 넓어졌다**는 사실.
       다음 사람이 목록에 왜 `<div>` 가 있는지 묻지 않게
-- [ ] T081 [P] `specs/001-interactive-ai-test-builder/contracts/websocket.md` 에
+- [X] T081 [P] `specs/001-interactive-ai-test-builder/contracts/websocket.md` 에
       `plan_progress` 와 `ai_finished.remaining_items` 를 더한다
-- [ ] T082 [quickstart.md](./quickstart.md) 의 §1~§5 를 손으로 확인한다. **§2·§3·§3-A 가
+- [~] T082 **자격 증명 없어 미실시** (baseline.md 참조). [quickstart.md](./quickstart.md) 의 §1~§5 를 손으로 확인한다. **§2·§3·§3-A 가
       가장 중요하다**
-- [ ] T083 전량 검증 — `cd backend && bash scripts/test-backend.sh` ·
+- [X] T083 전량 검증 — `cd backend && bash scripts/test-backend.sh` ·
       `uv run ruff check src/ tests/` · `uv run lint-imports` ·
       `cd frontend && npx vitest run` · `npx tsc --noEmit` · `npm run build`.
       **T001 의 기준선과 대조해 차이만 이 기능의 것으로 본다**

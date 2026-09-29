@@ -148,3 +148,49 @@ vitest: tests/ScreenSweep.test.ts 2건 — 순회 보고서가 019 이후 재생
 - 조상·자손 중복 제거가 동작한다 — `<div>` 와 그 안의 `<span>` 중 `<div>` 만 실린다.
 - 커서를 바꾸지 않는 설명 문구는 잡히지 않는다.
 - `find_by_text` 가 글자 요소(`<span>`)와 반응 요소(`<div>`)를 갈라 돌려준다.
+
+---
+
+## T083 — 끝 시점 전량 검증 (2026-09-29)
+
+| 대상 | 시작(T001) | 끝(T083) | 차이 |
+|---|---|---|---|
+| 백엔드 병렬 | 4 failed, 3266 passed | 4 failed, **3348 passed** | **실패 동일**, 통과 +82 |
+| 백엔드 순차 | 60 passed | 60 passed | 없음 |
+| ruff | 2 errors | 2 errors | 없음 |
+| 임포트 계약 | 4 kept, 0 broken | 4 kept, 0 broken | 없음 |
+| 프론트 테스트 | 2 failed, 1620 passed | 2 failed, **1636 passed** | **실패 동일**, 통과 +16 |
+| 프론트 타입 | 통과 | 통과 | 없음 |
+| 프론트 빌드 | — | 성공 | — |
+
+### 실패 목록 — 시작과 같다
+
+```
+FAILED tests/abnormal/test_ui_surface.py::…[AS-009]
+FAILED tests/abnormal/test_ui_surface.py::…[AS-025]
+FAILED tests/abnormal/test_ui_surface.py::…[AS-037]
+FAILED tests/abnormal/test_ui_surface.py::…[AS-046]
+ruff: step_executor.py:839, test_negative_assertion.py:126
+vitest: tests/ScreenSweep.test.ts 2건
+```
+
+**025 가 만든 새 실패는 없다.** 검증 98건이 늘었다 (백엔드 82 · 프론트 16).
+
+### 임포트 계약이 지켜졌다 — 헌법 원칙 II
+
+025 는 `itb.authoring` 에 언어모델을 부르는 자리를 하나 더했다 (`refine.py`). 그것이
+실행 계층에서 도달 가능해지면 원칙 II 위반이고, 계약이 빌드를 실패시켜야 한다.
+
+```
+execution must not reach the LLM boundary (Constitution Principle II)  KEPT
+```
+
+### 자격 증명이 필요해 하지 못한 것
+
+| 작업 | 왜 |
+|---|---|
+| T043 — 매 턴 전달 분량 실측 | SDK 내부 messages 를 보려면 모델 호출이 필요하다 |
+| T082 — quickstart 손 확인 | 실제 모델이 실제 화면을 보고 판단해야 드러나는 것들이다 |
+
+**둘 다 자격 증명이 있는 환경에서 다시 해야 한다.** 가짜 드라이버로는 「이어서 한다」를
+흉내 낼 수 없고(research R1 이 지적한 한계), 그것이 이 기능의 핵심이다.

@@ -110,8 +110,21 @@ Step 안의 `author` 필드는 배지 표시용이다 (FR-014, FR-075).
 | `ai_progress` | `{ message }` | AI가 무엇을 하는 중인지 | FR-060 |
 | `ai_focus` | `{ tab, rect: {x,y,width,height}, status: "done"\|"failed", label }` | AI가 방금 만진 요소의 **자리**. 미러 위에 테두리를 그린다. **자리를 모르면 나가지 않는다** (024 `contracts/ai-focus.md`) | 024 FR-001 |
 | `ai_blocked` | `{ attempted, reason, question, choices: ["takeover","answer","retry","skip","abort"] }` | 실패 카드 + 선택지 | FR-069, FR-070 |
-| `ai_finished` | `{ step_count }` | "테스트로 저장" 활성화 | FR-063 |
+| `ai_finished` | `{ step_count, mismatch_count?, remaining_items? }` | "테스트로 저장" 활성화 | FR-063 · 020 FR-013 · 025 FR-028 |
 | `ai_error` | `{ reason }` | 언어모델 호출 실패. Step은 보존됨 | FR-067 |
+| `plan_progress` | `{ item_id, status, remaining }` | 할 일 목록의 진척 갱신 | 025 FR-025 |
+
+`ai_finished` 의 선택 필드 둘은 **없을 때 싣지 않는다.** 없는 것을 0 이나 빈 배열로
+알리면 화면이 「결함 후보 0건」·「남은 일 0건」을 표시할지 다시 판단해야 한다.
+
+- `mismatch_count` — 어긋남으로 기록한 검증 수 (020 FR-013)
+- `remaining_items` — 아직 하지 않은 할 일 `{ order, text }` (025 FR-028).
+  **모델이 「끝냈다」고 말해도 남은 것이 있으면 실린다** — 제품이 센 값이 모델의 말을
+  이긴다 (022 FR-003 과 같은 판단).
+
+`plan_progress` 는 **주체를 가르지 않는다.** AI 가 표시한 것과 사람이 되돌린 것이 같은
+통로로 온다 (016 FR-039 가 편집 이벤트에서 정한 것과 같다) — 통로가 둘이면 화면에 한쪽만
+그리는 자리가 생긴다.
 
 ## 진단 이벤트
 
