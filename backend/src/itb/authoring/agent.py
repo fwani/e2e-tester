@@ -32,6 +32,7 @@ from enum import StrEnum
 from typing import Any
 
 from itb.authoring.compiler import StepCompiler
+from itb.authoring.journal import fold_old_records
 from itb.authoring.tools import (
     DEFAULT_BLOCKED_KIND,
     MAX_TOOL_CALLS,
@@ -347,6 +348,12 @@ class AuthoringAgent:
         전하고 이것은 「사람이 알려 줬다」를 전한다. 둘 다 같은 대화에 이어 붙는다 —
         새 지시로 시작하면 앞서 무엇을 하다 막혔는지 잊고 처음부터 다시 한다.
 
+        **025 이전에는 그 「잊는다」가 실제로 일어나고 있었다.** 이력에 이어 붙이기는
+        했지만, 이력에는 사용자 메시지밖에 없었다 — SDK 의 tool runner 가 넘겨받은
+        목록을 복사해 자기 안에서만 늘리기 때문이다 (research R1). 지금은 `_drive` 가
+        턴 끝에 수행 기록을 어시스턴트 차례로 남기므로, 「막힌 자리」가 실제로 이력에
+        있다.
+
         예산을 새로 준다. 앞선 시도가 쓴 호출을 이어서 세면, 답을 준 순간 상한에 닿아
         「답했는데 아무 일도 일어나지 않는다」가 된다 (FR-066 · `_start_agent_note` 와
         같은 판단).
@@ -377,6 +384,11 @@ class AuthoringAgent:
         **브라우저 상태를 되돌리지 않는다.** 사람이 남긴 화면이 지금 상태이며, 에이전트는
         그 상태에서 이어서 관찰하고 판단한다. 그래서 재개 지시에 "지금 화면을 다시
         확인하라" 를 명시한다 — 앞선 관찰 결과는 낡았다.
+
+        **앞선 턴에 무엇을 했는지는 이력에 남아 있다** (025 FR-001). 그래서 이 지시의
+        "이미 처리된 동작을 다시 하지 마세요" 가 근거를 갖는다 — 025 이전에는 모델이
+        무엇이 이미 처리됐는지 알 방법이 Step 목록뿐이었고, Step 이 생기지 않은 동작
+        (관찰·실패한 시도)은 거기 없었다.
         """
         # 사람이 막힌 지점을 풀었다. 앞선 시도가 쓴 예산을 이어서 세면 재개가 곧바로
         # 상한에 닿을 수 있다 (FR-066).
@@ -395,6 +407,53 @@ class AuthoringAgent:
         return await self._drive()
 
     async def _drive(self) -> AgentOutcome:
+        """한 턴을 돈다. **끝에 이번 턴의 수행 기록을 이력에 남긴다** (025 FR-001).
+
+        ## 왜 루프를 감싸는가
+
+        `_run_loop` 에는 종료 경로가 여섯이다 — 도구 준비 실패, 드라이버 상한, 모델
+        불가·거부, 예상 못한 오류, 막힘·상한, 정상 완료. **그 전부에서 기록이 남아야
+        한다.** 막혀서 끝난 턴이야말로 다음 턴이 이어받을 것이 가장 많은 턴이다.
+
+        여섯 자리에 같은 호출을 흩으면 하나가 빠지고, 빠진 것은 그 경로를 지나는 검증이
+        없을 때 드러나지 않는다. 감싸면 한 곳이다.
+
+        ## 취소는 기록하지 않는다
+
+        `CancelledError` 는 `Exception` 이 아니므로 이 함수를 그대로 통과한다 — 그것이
+        의도다. 사용자가 끊은 것은 「한 일」이 아니고, 끊긴 자리를 이어서 하라고 모델에게
+        말할 이유도 없다 (FR-065 가 취소를 결과로 기록하지 않는 것과 같은 판단).
+        """
+        outcome = await self._run_loop()
+        self._append_turn_record()
+        return outcome
+
+    def _append_turn_record(self) -> None:
+        """이번 턴에 무엇을 했는지를 **어시스턴트 차례로** 이력에 남긴다 (FR-007 · R3).
+
+        ## 왜 어시스턴트 차례인가
+
+        지금까지 이력에는 사용자 메시지만 연달아 실렸다. 모델에게 그것은 대화가 아니라
+        지시문 더미이고, 「내가 앞서 무엇을 했다」는 자리 자체가 없었다. 어시스턴트 차례를
+        세우는 것이 그 자리를 만드는 가장 곧은 방법이다.
+
+        ## 수행 기록과 모델의 답을 한 메시지로 합친다
+
+        나누면 어시스턴트 차례가 연달아 오고, 그것은 다시 「대화가 아닌 더미」다.
+
+        ## 빈 턴은 남기지 않는다
+
+        도구를 하나도 부르지 않고 답도 없는 턴이 있다 — 도구 준비에 실패한 경우다. 그때
+        빈 어시스턴트 메시지를 넣으면 이력에 뜻 없는 차례가 하나 는다.
+        """
+        content = self.toolbox.journal.render(self.last_reply)
+        if not content:
+            return
+        self.messages.append({"role": "assistant", "content": content})
+        # 025 FR-006 — 쌓인 기록이 상한을 넘으면 오래된 것부터 접는다. **생략을 명시한다.**
+        self.messages[:] = fold_old_records(self.messages)
+
+    async def _run_loop(self) -> AgentOutcome:
         """도구 루프를 돌린다. 모든 종료 경로가 `AgentOutcome` 으로 수렴한다."""
         # **막힘 표시를 지우고 시작한다.** 앞선 시도의 표시가 남아 있으면 재시도·건너뛰기·
         # 인수 후 재개가 첫 메시지에서 곧바로 다시 막힌 것으로 판정된다 (US5 통합 테스트가
@@ -406,6 +465,12 @@ class AuthoringAgent:
         self.toolbox.blocked_kind = DEFAULT_BLOCKED_KIND
         # 016 — 지난 턴의 응답이 이번 턴의 대화 이력에 실리면 안 된다.
         self.last_reply = ""
+        # 025 T014 — **저널도 함께 비운다.** 앞선 턴의 기록이 이번 턴 기록에 섞이면 같은
+        # 동작이 두 번 실린 것으로 보이고, 모델은 자기가 그 일을 두 번 했다고 읽는다.
+        #
+        # 비우는 자리가 여기인 이유는 턴의 경계를 아는 것이 루프를 소유한 쪽이기
+        # 때문이다. 도구는 자기가 몇 번째 턴에 불렸는지 모른다.
+        self.toolbox.journal.clear()
         try:
             selected, build = select_driver()
             driver = self.driver or selected

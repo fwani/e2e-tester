@@ -31,6 +31,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
+from itb.authoring.journal import UNNAMED_TARGET, TurnJournal
 from itb.domain.assertion import (
     MAX_OBSERVED_CHARS,
     Assertion,
@@ -542,6 +543,18 @@ class BrowserToolbox:
 
     test_id_attribute: str = "data-testid"
     limits: AttemptLimits = field(default_factory=AttemptLimits)
+
+    journal: TurnJournal = field(default_factory=TurnJournal)
+    """이번 턴에 무엇을 했는가 (025 FR-001~FR-005).
+
+    **진행 알림(`_announce`)과 목적이 다르다.** 그쪽은 사람이 지금 읽는 것이고 이것은
+    다음 턴의 모델이 읽는 것이다. 문구를 재활용하지 않는 이유는 둘이다 — 「수행 중」과
+    「완료」가 둘 다 쌓여 같은 일이 두 번 실리고, 이름 없는 요소의 문구에 요소 참조가
+    들어간다 (`_label` 이 그렇게 만든다). 참조는 다음 턴에 낡는다.
+
+    **에이전트가 턴마다 비운다** (`AuthoringAgent._drive`). 여기서 비우지 않는 이유는
+    턴의 경계를 아는 것이 루프를 소유한 쪽이기 때문이다.
+    """
     author: Author = Author.AI
 
     refs: dict[str, ObservedElement] = field(default_factory=dict)
@@ -610,8 +623,10 @@ class BrowserToolbox:
                 OBSERVE_ELEMENT_LIMIT,
             )
         except Exception as exc:  # noqa: BLE001 - 문서 교체 중일 수 있다
+            self.journal.note("화면 관찰", f"실패: {type(exc).__name__}")
             return {"error": f"화면을 읽을 수 없습니다: {type(exc).__name__}"}
         if not isinstance(raw, dict):
+            self.journal.note("화면 관찰", "실패: 관찰 스크립트가 주입되지 않았다")
             return {"error": "화면 관찰 스크립트가 주입되지 않았습니다."}
 
         elements: list[dict[str, Any]] = []
@@ -660,6 +675,9 @@ class BrowserToolbox:
                 row["unique"] = False
             elements.append(row)
         mark_duplicates(elements)
+        # 025 FR-003 — **요소 목록을 저널에 싣지 않는다.** 관찰했다는 사실과 어느 탭이었는지가
+        # 다음 턴에 필요한 전부다. 목록은 이 기능이 없애려는 바로 그 크기다.
+        self.journal.note("화면 관찰", f"요소 {len(elements)}개 확인", target=f"탭 {tab}")
         return {
             "tab": tab,
             "url": raw.get("url"),
@@ -989,6 +1007,14 @@ class BrowserToolbox:
             self.blocked_question = None
         else:
             self.blocked_question = (question or "").strip() or None
+        # 025 FR-002 — **제품이 정규화한 값을 적는다.** 모델이 준 원문이 아니라 위에서
+        # 종류에 따라 버려지기도 하는 그 값이다 (FR-024 가 `product_mismatch` 의 질문을
+        # 버린다). 다음 턴이 읽는 것과 사용자가 본 것이 같아야 한다.
+        self.journal.block(
+            reason=reason,
+            kind=self.blocked_kind.value,
+            question=self.blocked_question,
+        )
         return {
             "acknowledged": True,
             "message": "수행 불가를 접수했습니다. 사용자가 이어서 처리합니다. 끝내세요.",
@@ -1011,6 +1037,19 @@ class BrowserToolbox:
         조작 사이에 탭이 바뀌면 실행이 실패하고 그 사실이 도구 결과로 돌아간다.
         """
         return self.session.active_tab_index
+
+    def _target_name(self, element_ref: str) -> str:
+        """저널에 적을 **사람이 읽는 이름** (025 FR-003).
+
+        `_label` 과 갈라 둔 이유가 여기에 있다. 그쪽은 이름이 없으면 **요소 참조를 그대로
+        쓴다**(`e17 클릭`) — Step 이름으로는 그것이 낫다, 사용자가 목록에서 그 행을 지목할
+        수 있어야 하니까. 하지만 저널은 다음 턴의 모델이 읽고, 참조는 그때 낡아 있다.
+        낡은 참조를 본 모델은 관찰 없이 그것을 집어 들고, 그 시도는 거절되지만 예산을 깎는다.
+        """
+        observed = self.refs.get(element_ref)
+        if observed is None:
+            return UNNAMED_TARGET
+        return observed.name or observed.tag or UNNAMED_TARGET
 
     def _label(self, element_ref: str, suffix: str) -> str:
         observed = self.refs.get(element_ref)
@@ -1204,6 +1243,9 @@ class BrowserToolbox:
         await self._announce(f"{step_id} 의 대상을 다시 지목하는 중")
         observed = self.refs.get(element_ref)
         if observed is None:
+            # 025 — **참조 문자열을 저널에 남기지 않는다.** 다음 턴에 낡을 값이고,
+            # 그것을 본 모델이 다시 집어 들면 같은 실패를 되풀이한다.
+            self.journal.note("조작", "실패: 낡은 요소 참조를 썼다")
             return {
                 "error": (
                     f"요소 참조를 찾을 수 없습니다: {element_ref}. "
@@ -1328,6 +1370,10 @@ class BrowserToolbox:
         # 에이전트에게 돌려주고 사람에게 묻게 한다 (FR-069).
         if not observed.unique:
             self.limits.record_failure(element_ref)
+            self.journal.note(
+                "조작", "거절됨: 가리키는 자리가 하나로 좁혀지지 않는다",
+                target=observed.name or UNNAMED_TARGET,
+            )
             return {
                 "error": (
                     f"이 요소를 가리키는 경로가 화면에서 유일하지 않습니다: "
@@ -1348,6 +1394,10 @@ class BrowserToolbox:
         target = await collect_by_selector(page, observed.css, self.test_id_attribute)
         if target is None:
             self.limits.record_failure(element_ref)
+            self.journal.note(
+                "조작", "실패: 요소를 찾지 못했다 (화면이 바뀌었을 수 있다)",
+                target=observed.name or UNNAMED_TARGET,
+            )
             return {
                 "error": (
                     f"요소를 찾지 못했습니다: {observed.name or element_ref}. "
@@ -1396,6 +1446,9 @@ class BrowserToolbox:
             if keep_on_failure:
                 return await self._keep_mismatch(step, element, str(exc))
             self.limits.record_failure(element)
+            self.journal.note(
+                step.type.value, f"실패: {exc}", target=self._target_name(element)
+            )
             # **요소는 찾았는데 동작이 안 된 경우에만 자리가 있다** (024 US2). 요소를
             # 못 찾은 실패에는 `rect` 가 없고, 그러면 `_focus` 가 조용히 지나간다.
             await self._focus(exc.rect, step.tab, "failed", step.label)
@@ -1413,6 +1466,12 @@ class BrowserToolbox:
         await self.on_step(step)
         await self._focus(record.rect, step.tab, "done", step.label)
         await self._announce(f"{step.label} — 완료")
+        # 025 FR-002 — Step 이 만들어졌다는 사실을 다음 턴이 안다. **값은 싣지 않는다** —
+        # `step.label` 은 요소 이름과 동작으로 지어지고 입력값을 담지 않는다.
+        self.journal.note(
+            step.type.value, "완료", target=self._target_name(element),
+            step_label=step.label,
+        )
 
         result: dict[str, Any] = {"ok": True, "step": step.label}
         # 새 탭 열림을 도구 결과에 덧붙인다 — 에이전트가 탭 전환을 스스로 판단하려면
@@ -1465,6 +1524,12 @@ class BrowserToolbox:
         self.limits.record_mismatch(element)
         await self.on_step(recorded)
         await self._announce(f"{step.label} — 기대와 다름: {observed}")
+        # 025 — **어긋남도 「한 일」이다** (FR-004). 이것을 남기지 않으면 다음 턴이 같은
+        # 검증을 다시 만들고, 020 이 막으려 한 「값을 바꿔 통과시키기」가 되살아난다.
+        self.journal.note(
+            step.type.value, f"기대와 다름: {observed}",
+            target=self._target_name(element), step_label=step.label,
+        )
         return {
             "ok": True,
             "assertion_failed": True,

@@ -78,31 +78,31 @@ Web app 구조 — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `front
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] `backend/tests/unit/test_turn_journal.py` — 저널이 무엇을 남기고 무엇을
+- [X] T007 [P] [US1] `backend/tests/unit/test_turn_journal.py` — 저널이 무엇을 남기고 무엇을
       남기지 않는지. **요소 참조·입력값·화면 요소 목록이 실리지 않음**을 단언한다 (FR-003·R2)
-- [ ] T008 [P] [US1] `backend/tests/integration/test_resume_continuity.py` — 막힘 후 재개에서
+- [X] T008 [P] [US1] `backend/tests/integration/test_resume_continuity.py` — 막힘 후 재개에서
       이력에 지난 턴 기록이 실리고 어시스턴트 차례가 존재함을 단언한다 (FR-001·FR-007)
-- [ ] T009 [P] [US1] `backend/tests/unit/test_turn_journal.py` 에 **상한 접기** 검증을 더한다 —
+- [X] T009 [P] [US1] `backend/tests/unit/test_turn_journal.py` 에 **상한 접기** 검증을 더한다 —
       32KB 를 넘으면 오래된 턴부터 접히고 **생략이 명시**됨 (FR-006)
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] `backend/src/itb/authoring/journal.py` 를 만든다 — `ActionNote`·`BlockedNote`·
+- [X] T010 [US1] `backend/src/itb/authoring/journal.py` 를 만든다 — `ActionNote`·`BlockedNote`·
       `TurnRecord` 와, 그것을 문자열로 펴는 함수. **값을 읽는 자리를 하나로 묶는다**
       (016 `summary.py` 의 `_value_note` 와 같은 규칙)
-- [ ] T011 [US1] `backend/src/itb/authoring/tools.py` 의 `BrowserToolbox` 에 **저널 수집**을
+- [X] T011 [US1] `backend/src/itb/authoring/tools.py` 의 `BrowserToolbox` 에 **저널 수집**을
       더한다 — 각 도구가 이미 부르는 `_announce` 자리에서 `ActionNote` 를 쌓는다.
       **새 관찰 로직을 만들지 않는다**, 제품이 이미 아는 사실을 모은다 (R2)
-- [ ] T012 [US1] `backend/src/itb/authoring/tools.py` — 막힘 신고(`report_blocked`)가 저널에
+- [X] T012 [US1] `backend/src/itb/authoring/tools.py` — 막힘 신고(`report_blocked`)가 저널에
       `BlockedNote` 를 남기게 한다. 종류(`blocked_kind`)와 질문을 함께 (FR-002)
-- [ ] T013 [US1] `backend/src/itb/authoring/agent.py` 의 `_drive` 끝에서 **어시스턴트 차례를
+- [X] T013 [US1] `backend/src/itb/authoring/agent.py` 의 `_drive` 끝에서 **어시스턴트 차례를
       이력에 추가**한다 — 저널 + `last_reply` 를 한 메시지로 (FR-001·FR-007·R3).
       **모든 종료 경로에서** 남아야 한다 (막힘·오류·완료). 취소는 예외 — 사용자가 끊은 것이다
-- [ ] T014 [US1] `backend/src/itb/authoring/agent.py` — 턴 시작 시 저널을 비운다. 앞선 턴의
+- [X] T014 [US1] `backend/src/itb/authoring/agent.py` — 턴 시작 시 저널을 비운다. 앞선 턴의
       기록이 이번 턴 기록에 섞이면 같은 동작이 두 번 실린 것으로 보인다
-- [ ] T015 [US1] `backend/src/itb/authoring/agent.py` — 이력 총량이 상한을 넘으면 오래된 수행
+- [X] T015 [US1] `backend/src/itb/authoring/agent.py` — 이력 총량이 상한을 넘으면 오래된 수행
       기록부터 접는다. **생략을 명시한다** (FR-006). 사용자 메시지는 접지 않는다
-- [ ] T016 [US1] `backend/src/itb/authoring/agent.py` 의 `resume_with_answer`·
+- [X] T016 [US1] `backend/src/itb/authoring/agent.py` 의 `resume_with_answer`·
       `resume_after_takeover` 독스트링을 고친다 — 「앞서 무엇을 하다 막혔는지」가 **이제 실제로
       이력에 있다**는 사실로. 지금 문장은 구현되지 않은 의도를 서술하고 있다
 

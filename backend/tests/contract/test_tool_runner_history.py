@@ -32,6 +32,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from itb.authoring.journal import TurnJournal
+
+
 def _runner(messages: list[dict[str, Any]]) -> Any:
     """요청을 보내지 않는 runner 를 만든다.
 
@@ -90,20 +93,49 @@ def test_runner_grows_its_own_copy() -> None:
     assert runner._params["messages"] is not caller_list  # noqa: SLF001
 
 
-def test_agent_history_holds_only_user_messages() -> None:
-    """`AuthoringAgent` 쪽에서 본 같은 사실.
+def test_agent_appends_its_own_turn_record() -> None:
+    """**제품이 직접 남긴다** — SDK 가 돌려주지 않으므로 (025 FR-001·FR-007).
 
-    에이전트가 이력에 넣는 것은 사용자 메시지뿐이다. 이 검증은 **025 구현 뒤에 달라진다** —
-    턴 끝에 어시스턴트 차례가 들어가기 때문이다. 그때 이 파일의 이 검증을 고치는 것이
-    올바른 변경이고, 고치지 않아도 통과한다면 이력 추가가 동작하지 않는 것이다.
+    025 이전에는 이력에 사용자 메시지만 쌓였고, 이 자리의 검증도 그 사실을 적고 있었다.
+    지금은 `_drive` 가 턴 끝에 어시스턴트 차례를 넣는다.
+
+    **위의 두 검증과 짝이다.** 그쪽은 「SDK 가 호출자의 리스트를 건드리지 않는다」를
+    말하고, 이쪽은 「그래서 우리가 넣는다」를 말한다. 어느 한쪽이 깨지면 이력이
+    비거나(유실이 돌아온다) 겹친다(같은 턴이 두 번 실린다).
     """
     from itb.authoring.agent import AuthoringAgent  # noqa: PLC0415
+    from itb.authoring.tools import BrowserToolbox  # noqa: PLC0415
 
-    agent = AuthoringAgent(toolbox=None)  # type: ignore[arg-type]
+    agent = AuthoringAgent(toolbox=object.__new__(BrowserToolbox))
+    agent.toolbox.journal = TurnJournal()  # type: ignore[attr-defined]
     agent.messages.append({"role": "user", "content": "지시"})
 
+    agent.toolbox.journal.note("click", "완료", target="로그인")
+    agent.last_reply = "로그인했습니다."
+    agent._append_turn_record()  # noqa: SLF001 - 이 함수의 계약이 검증 대상이다
+
     roles = [m["role"] for m in agent.messages]
-    assert roles == ["user"], (
-        "이력에 사용자 메시지만 있다는 전제가 깨졌다. 025 가 어시스턴트 차례를 넣기 "
-        "시작했다면 이 검증을 그 사실에 맞게 고쳐라 — 지우지 말고."
+    assert roles == ["user", "assistant"], (
+        "턴 끝에 어시스턴트 차례가 들어가지 않았다. 한 턴의 기록이 그 턴과 함께 "
+        "버려지고 있다 — 025 가 고친 바로 그 상태로 되돌아갔다."
     )
+    assert "[내가 한 일]" in str(agent.messages[1]["content"])
+    assert "로그인했습니다." in str(agent.messages[1]["content"])
+
+
+def test_empty_turn_leaves_no_trace() -> None:
+    """한 일도 답도 없는 턴은 이력에 남지 않는다.
+
+    도구 준비에 실패한 턴이 그렇다. 빈 어시스턴트 메시지를 넣으면 이력에 뜻 없는
+    차례가 하나 늘고, 모델은 그것을 「내가 아무 말도 하지 않았다」로 읽는다.
+    """
+    from itb.authoring.agent import AuthoringAgent  # noqa: PLC0415
+    from itb.authoring.tools import BrowserToolbox  # noqa: PLC0415
+
+    agent = AuthoringAgent(toolbox=object.__new__(BrowserToolbox))
+    agent.toolbox.journal = TurnJournal()  # type: ignore[attr-defined]
+    agent.messages.append({"role": "user", "content": "지시"})
+
+    agent._append_turn_record()  # noqa: SLF001
+
+    assert [m["role"] for m in agent.messages] == ["user"]
