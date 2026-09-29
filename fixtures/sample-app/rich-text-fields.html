@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>공지사항 등록 — 글 쓰는 칸이 input 이 아닌 화면</title>
+<!--
+  **`input` 이 아닌 입력 칸**을 재현한다 (2026-09-29 사용자 보고).
+
+  리치 텍스트 편집기(Toast UI·Quill·Slate…)와 태그 입력 칸은 `contenteditable` 인
+  `div`·`span` 이다. 이 화면은 실제 제품에서 받은 DOM 구조를 그대로 옮긴 것이며,
+  AI 가 「공지사항 내용에 입력한다」를 수행하지 못한 바로 그 화면이다.
+
+  세 가지가 겹쳐 있어서 하나만 고쳐서는 통과하지 못한다.
+
+  1. 편집 영역이 `contenteditable` 이다 — 태그·속성만 보는 목록에 잡히지 않았다.
+  2. 편집기가 제 껍데기를 **열 겹** 두른다 — 라벨이 멀다.
+  3. 라벨이 `<label for>` 인데 그 `for` 가 가리키는 id 가 실재하지 않고, `<div>` 는
+     애초에 `<label for>` 로 연결되지 않는 요소다 — `el.labels` 가 늘 비어 있다.
+
+  태그 칸은 다른 길로 이름을 얻는다(`data-placeholder`). 둘을 한 화면에 둔 것은
+  **두 경로가 다 살아 있어야** 이 화면을 AI 로 만들 수 있기 때문이다.
+-->
+<style>
+  body { font-family: system-ui, sans-serif; margin: 24px; }
+  .form-item { margin-bottom: 20px; }
+  .form-label { display: block; font-weight: 600; margin-bottom: 6px; }
+  .required { color: #c00; }
+  /* ww 모드일 때 md 컨테이너는 숨는다 — 편집기가 실제로 하는 일이다. */
+  .toastui-editor-md-container { display: none; }
+  .toastui-editor-ww-container .ProseMirror {
+    min-height: 120px; border: 1px solid #ccc; padding: 8px;
+  }
+  .field-tag-input {
+    display: inline-block; min-width: 260px; border: 1px solid #ccc; padding: 6px;
+  }
+  .field-tag-input:empty::before { content: attr(data-placeholder); color: #999; }
+</style>
+</head>
+<body>
+<h1>공지사항 등록</h1>
+<form>
+
+  <div class="form-item">
+    <label for="notice-name" class="form-label">공지사항 이름 <span class="required">*</span></label>
+    <div class="form-detail">
+      <input id="notice-name" type="text" placeholder="공지사항 이름을 입력하세요.">
+    </div>
+  </div>
+
+  <div class="form-item">
+    <!-- `for` 가 가리키는 id 는 이 화면에 없다. 실제 제품이 그렇다. -->
+    <label for="notice-content-editor" class="form-label">공지사항 내용 <span class="required">*</span></label>
+    <div class="form-detail"><div class="v-group-4 w-full"><div class="notice-content-editor">
+      <div id="notice-content-editor-thptt3i" class="notice-content-editor-mount" style="height: 200px;">
+        <div class="toastui-editor-defaultUI">
+          <div class="toastui-editor-toolbar">
+            <div class="toastui-editor-defaultUI-toolbar">
+              <div class="toastui-editor-toolbar-group">
+                <button type="button" class="heading" aria-label="제목크기"></button>
+                <button type="button" class="bold" aria-label="굵게"></button>
+              </div>
+            </div>
+          </div>
+          <div class="toastui-editor-main toastui-editor-ww-mode">
+            <div class="toastui-editor-main-container">
+              <div class="toastui-editor-md-container">
+                <div class="toastui-editor md-mode active">
+                  <textarea class="toastui-editor-pseudo-clipboard"></textarea>
+                  <div contenteditable="true" translate="no" class="ProseMirror"><div><br></div></div>
+                </div>
+              </div>
+              <div class="toastui-editor-ww-container">
+                <div class="toastui-editor ww-mode">
+                  <div contenteditable="true" translate="no" class="ProseMirror toastui-editor-contents"><p><br></p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="notice-content-editor-count">0 / 20000</p>
+    </div></div></div>
+  </div>
+
+  <div class="form-item">
+    <div class="form-label">태그</div>
+    <div class="form-detail"><div class="field-tag"><div class="tag-group">
+      <span class="field-tag-input" contenteditable="true"
+            data-placeholder="태그를 입력한 뒤 Enter 또는 Space를 눌러 추가하세요."></span>
+    </div></div></div>
+  </div>
+
+  <button type="button" id="save">저장</button>
+</form>
+</body>
+</html>

@@ -102,12 +102,116 @@
       if (fromLabel) return fromLabel;
     }
 
-    const own = clean(el.textContent);
-    if (own) return own;
+    /*
+      **글을 쓰는 자리는 제 내용을 이름으로 삼지 않는다** (2026-09-29 사용자 보고).
 
-    for (const attr of ["alt", "title", "placeholder", "value"]) {
+      `contenteditable` 의 `textContent` 는 **사용자가 방금 쓴 본문**이다. 그것을 이름으로
+      쓰면 「공지사항 내용」 칸의 이름이 입력할 때마다 달라지고, 다음 관찰에서 모델은 같은
+      칸을 알아보지 못한다. 수정 시나리오(값을 바꾸고 다시 관찰)가 정확히 이 경로다.
+
+      `input` 의 `value` 를 이름으로 쓰지 않는 것과 같은 판단이며, 실제로 아래 목록에
+      `value` 가 `placeholder` 뒤에 있는 이유도 같다.
+    */
+    const writable = el.isContentEditable === true;
+    if (!writable) {
+      const own = clean(el.textContent);
+      if (own) return own;
+    }
+
+    /*
+      `aria-placeholder` 는 표준이고, `data-placeholder` 는 리치 텍스트 편집기들이 실제로
+      쓰는 관례다 (Toast UI·Quill·ProseMirror 계열). 둘 다 읽지 않으면 `contenteditable`
+      요소는 **빈 상태에서 이름이 없어**, 목록에 떠도 모델이 지목할 수 없다.
+    */
+    for (const attr of [
+      "alt",
+      "title",
+      "placeholder",
+      "aria-placeholder",
+      "data-placeholder",
+      "value",
+    ]) {
       const v = clean(el.getAttribute(attr));
       if (v) return v;
+    }
+
+    // 여기까지 와서 이름이 없는 것은 **사람은 라벨로 부르는데 표식이 없는 칸**이다.
+    return writable ? nearbyLabel(el) : null;
+  };
+
+  /** `nearbyLabel` 이 조상을 올라가는 거리.
+
+      **짧으면 닿지 않는다.** 리치 텍스트 편집기는 제 껍데기를 여러 겹 두른다 — Toast UI
+      는 편집 영역에서 라벨까지 **열 겹**이다 (2026-09-29 실측: ProseMirror → ww-mode →
+      ww-container → main-container → main → defaultUI → mount → notice-content-editor →
+      v-group → form-detail). 5와 8로는 둘 다 닿지 못했다.
+
+      멀리 올라가는 만큼 아래 `NEARBY_BOUNDARY` 로 **넘지 말아야 할 선**을 함께 둔다 —
+      거리만 늘리면 옆 칸이나 화면 제목을 집는다. */
+  const NEARBY_MAX_HOPS = 12;
+
+  /** `nearbyLabel` 이 **넘지 않는 경계**.
+
+      폼이나 구역 바깥의 글자는 이 칸의 라벨이 아니라 화면 전체에 대한 것이다. 거리
+      상한만으로는 깊이 묻힌 편집기를 살리면서 이것을 막을 수 없다 — 둘은 다른 축이다. */
+  const NEARBY_BOUNDARY = "form,fieldset,section,dialog,main,table,[role=dialog]";
+  /** 라벨로 보기에는 너무 긴 글자. 이보다 길면 설명문이나 본문이다. */
+  const NEARBY_MAX_CHARS = 40;
+
+  /**
+   * **칸 바로 앞에 놓인 글자를 이름으로 삼는다** (2026-09-29 사용자 보고).
+   *
+   * 리치 텍스트 편집기는 `aria-label` 도 `placeholder` 도 없는 경우가 흔하다. 그러면
+   * 목록에 떠도 이름이 없어 모델이 「공지사항 내용」으로 지목할 수 없다 — 보이는데 못
+   * 쓰는 상태다.
+   *
+   * 사람은 그 칸을 **바로 앞에 적힌 글자**로 부른다. 그 관계는 클래스명이 아니라 문서
+   * 순서에 있다: `<div class=form-label>공지사항 내용</div><div class=form-detail>…칸…</div>`
+   * 도, `<dt>이름</dt><dd>칸</dd>` 도, 표 안의 `<th>`/`<td>` 도 모두 같은 모양이다.
+   * 그래서 **클래스명을 보지 않고 형제 관계만 본다** — 이 제품에만 맞는 규칙이 아니다.
+   *
+   * ## 좁게 잡는다
+   *
+   * 이 값은 마지막 수단이고, 틀리면 **엉뚱한 이름이 붙은 채로 조작된다.** 그래서
+   * 세 가지로 좁힌다.
+   *
+   * 1. 이름을 얻지 못한 **글 쓰는 칸**에만 쓴다 (`accessibleName` 의 마지막 줄).
+   * 2. 조상은 `NEARBY_MAX_HOPS` 까지만 올라간다 — 더 올라가면 화면 제목을 집는다.
+   * 3. 앞 형제의 글자가 `NEARBY_MAX_CHARS` 를 넘으면 **버린다.** 그 길이는 라벨이
+   *    아니라 안내문이나 앞 문단의 본문이고, 그것을 이름으로 쓰면 목록이 읽기 어려워진다.
+   */
+  const nearbyLabel = (el) => {
+    let node = el;
+    for (let hops = 0; node && hops < NEARBY_MAX_HOPS; hops += 1) {
+      const prev = node.previousElementSibling;
+      if (prev) {
+        const text = clean(prev.textContent);
+        // 조작 요소를 품은 형제는 라벨이 아니라 **앞 칸**이다. 그것의 글자를 이름으로
+        // 쓰면 두 칸이 같은 이름을 갖게 되어 구별이 무너진다.
+        //
+        // **`<label>` 은 그 규칙의 예외다.** `ACTIONABLE` 에 `label` 이 들어 있는 것은
+        // 녹화가 「라벨 클릭」을 「칸 조작」으로 올리기 위해서인데, 이름을 찾는 여기서는
+        // 정반대다 — 라벨이야말로 찾는 것이다. 예외를 두지 않으면 라벨을 만나는 순간
+        // 버리고 지나쳐, 폼 전체에서 이름을 하나도 얻지 못한다 (2026-09-29 실측).
+        let usable = false;
+        try {
+          usable =
+            prev.matches("label") ||
+            !(prev.matches(ACTIONABLE) || prev.querySelector(ACTIONABLE) !== null);
+        } catch {
+          usable = false;
+        }
+        if (text && text.length <= NEARBY_MAX_CHARS && usable) return text;
+      }
+      node = node.parentElement;
+      if (!node || node === document.body) break;
+      // 경계에 **닿은 뒤에는** 더 올라가지 않는다. 경계 자신의 앞 형제까지는 본다 —
+      // `<h2>제목</h2><form>…</form>` 에서 그 제목은 폼 전체의 이름이지 이 칸의 것이 아니다.
+      try {
+        if (node.matches(NEARBY_BOUNDARY)) break;
+      } catch {
+        break;
+      }
     }
     return null;
   };
@@ -847,7 +951,19 @@
    * 확실히 앞이므로(사람은 수백 ms, 자동 조작도 마우스 이동이 클릭보다 먼저 디스패치된다),
    * 여기서 검증을 끝내 두면 클릭이 늦어도 확보한 후보를 쓸 수 있다.
    */
-  const INTERACTIVE = "button,a,input,select,textarea,label,[role],[tabindex],[onclick]";
+  const INTERACTIVE =
+    "button,a,input,select,textarea,label,[role],[tabindex],[onclick]," +
+    /*
+      **글을 쓰는 자리는 `input` 만이 아니다** (2026-09-29 사용자 보고).
+
+      리치 텍스트 편집기(Toast UI·Quill·Slate…)와 태그 입력 칸은 `contenteditable`
+      `div`·`span` 이다. 이것이 빠져 있던 동안 **사람이 녹화하면 잡히는데 AI 는 못
+      찾는** 상태였다 — 녹화는 `ACTIONABLE` 을 쓰고 그쪽에는 처음부터 들어 있었기
+      때문이다. 두 목록이 갈라져 있다는 사실 자체가 이 종류의 구멍을 만든다.
+
+      빈 값(`contenteditable=""`)도 참이다 — HTML 명세가 그렇게 정한다.
+    */
+    '[contenteditable="true"],[contenteditable=""]';
   const HOVER_THROTTLE_MS = 400;
   const hovered = new WeakMap();
 
