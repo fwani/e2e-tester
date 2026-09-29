@@ -53,14 +53,14 @@ Web app 구조 — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `front
 
 **⚠️ CRITICAL**: T004 없이 US1 을 구현하면, 고친 뒤에도 유실이 다시 생겼을 때 아무도 모른다.
 
-- [ ] T004 `backend/tests/contract/test_tool_runner_history.py` 에 **SDK 계약 검증**을 쓴다 —
+- [X] T004 `backend/tests/contract/test_tool_runner_history.py` 에 **SDK 계약 검증**을 쓴다 —
       `BaseToolRunner` 에 messages 리스트를 넘기고 `append_messages` 뒤 **호출자의 리스트가
       수정되지 않음**을 단언한다. research R1 의 실측을 테스트로 고정하는 것이다.
       자격 증명 없이 돈다 (runner 객체만 만든다)
-- [ ] T005 `set_messages_params` 로 접은 뒤 runner 가 그 위에 이어 붙이는지 실측하고 결과를
+- [X] T005 `set_messages_params` 로 접은 뒤 runner 가 그 위에 이어 붙이는지 실측하고 결과를
       `research.md` R4 의 「확인 필요」 자리에 적는다. **부정이면 US6(Phase 8)를 이번 증분에서
       뺀다** — 그 판단을 여기서 내린다
-- [ ] T006 [P] `backend/tests/us4_support.py` 의 가짜 드라이버에 **주석으로 한계를 명시**한다 —
+- [X] T006 [P] `backend/tests/us4_support.py` 의 가짜 드라이버에 **주석으로 한계를 명시**한다 —
       이 드라이버는 SDK 의 messages 처리를 대체하므로 이력 유실을 잡지 못한다는 사실.
       다음 사람이 같은 함정에 빠지지 않게 한다
 

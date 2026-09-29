@@ -9,6 +9,20 @@
 
 `itb.authoring.agent._sdk_driver` 를 monkeypatch 하는 이유는, API 라우터가 에이전트를
 직접 조립하기 때문이다. 라우터에 테스트용 인자를 뚫으면 그 인자가 제품 코드에 남는다.
+
+## ⚠️ 이 드라이버가 덮지 못하는 것 (025 T006)
+
+**SDK 의 `messages` 처리는 여기서 검증되지 않는다.** 이 드라이버는 `_sdk_driver` 를 통째로
+대체하므로, 실제 tool runner 가 이력을 어떻게 다루는지가 검증 범위 밖이다.
+
+그 빈칸이 실제 결함을 가렸다. SDK 의 tool runner 는 넘겨받은 `messages` 를 복사해 자기
+안에서만 늘리고 호출자의 리스트를 건드리지 않는다 — 그래서 한 턴의 관찰·동작·막힘·응답이
+턴이 끝나는 순간 버려지고 있었다. 사용자는 「대화가 거듭될수록 AI 가 딴 일을 한다」로
+겪었고, 검증은 전부 통과하고 있었다 (025 research R1).
+
+**SDK 와의 계약은 `tests/contract/test_tool_runner_history.py` 가 따로 못 박는다.** 이
+드라이버로 확인할 수 없는 성질을 여기서 확인하려 들지 말 것 — 그러면 통과하는 거짓 검증이
+하나 더 늘 뿐이다.
 """
 
 from __future__ import annotations
