@@ -242,7 +242,16 @@ async def refine_instruction(
         return RefineResult(refined=False, notes=["지시문이 비어 있습니다."])
 
     try:
-        from anthropic import beta_tool  # noqa: PLC0415 - SDK 경계를 이 함수 안에 둔다
+        # **비동기 도구여야 한다** (2026-09-29 사용자 보고).
+        #
+        # 동기 `beta_tool` 로 만든 도구를 `AsyncAnthropic` 의 tool_runner 에 넘기면
+        # 요청 본문을 만들 때 터진다:
+        #
+        #     TypeError: Object of type BetaFunctionTool is not JSON serializable
+        #
+        # 이 저장소의 작성 도구가 전부 `beta_async_tool` 인 것과 같은 이유다
+        # (`tools.build_tools`). 클라이언트가 비동기면 도구도 비동기여야 한다.
+        from anthropic import beta_async_tool  # noqa: PLC0415 - SDK 경계를 이 함수 안에
 
         from itb.llm.client import create_client  # noqa: PLC0415
     except ImportError:
@@ -250,8 +259,8 @@ async def refine_instruction(
 
     submitted: dict[str, Any] = {}
 
-    @beta_tool(name=SUBMIT_TOOL, input_schema=SUBMIT_SCHEMA)
-    def submit_plan(**payload: Any) -> str:
+    @beta_async_tool(name=SUBMIT_TOOL, input_schema=SUBMIT_SCHEMA)
+    async def submit_plan(**payload: Any) -> str:
         submitted.update(payload)
         return "접수했습니다."
 

@@ -201,6 +201,27 @@ runner 내부 messages 수: 3      (user → assistant → tool_result)
 **정제 실패의 정의**: 모델이 도구를 부르지 않거나, 부른 인자가 스키마를 통과하지 못하거나,
 호출 자체가 실패한 경우. 셋 다 FR-020 의 「원문으로 진행」으로 수렴한다.
 
+### 구현에서 걸린 자리 (2026-09-29 사용자 보고)
+
+**도구는 `beta_async_tool` 로 만들어야 한다.** 동기 `beta_tool` 로 만들면 요청 본문을
+만드는 단계에서 터진다.
+
+```
+TypeError: Object of type BetaFunctionTool is not JSON serializable
+```
+
+클라이언트가 `AsyncAnthropic` 이므로 도구도 비동기여야 한다 — 이 저장소의 작성 도구가
+전부 `beta_async_tool` 인 것과 같은 이유다 (`tools.build_tools`).
+
+**이 결함은 검증을 통과했다.** 계약 검증이 `refine_instruction` 자체를 갈아 끼우므로
+SDK 경로를 한 번도 밟지 않았고, 사용자가 실제로 돌려 보고서야 드러났다. **R1 이 지적한
+것과 같은 함정을 이 기능이 스스로 반복했다** — 그쪽은 가짜 드라이버가 SDK 의 messages
+처리를 가렸고, 이쪽은 가짜 정제 함수가 SDK 의 도구 직렬화를 가렸다.
+
+같은 해법을 쓴다: `tests/contract/test_refine_sdk_path.py` 가 **실제 SDK 를 지나되
+네트워크만 막는다** (`httpx2.MockTransport`). 요청 본문을 만드는 것도, 응답을 해석하는
+것도, 도구를 부르는 것도 전부 실제 SDK 코드가 한다. 자격 증명은 필요 없다.
+
 ---
 
 ## R9. 완료 표시 도구는 예산을 쓰는가
