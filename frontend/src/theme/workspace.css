@@ -286,27 +286,36 @@ body:has(.workspace-shell) [data-toast-layer]:not(.workspace-notice-dock) { left
 .ai-authoring-attention [data-blocked-answer] > div:last-child { flex-direction: column; align-items: stretch; }
 .ai-authoring-attention [data-blocked-answer-send] { align-self: stretch; flex-shrink: 0; }
 
-/* ─── 025 작업 계획 — 사용자와 AI 가 같은 목록을 본다 ─────────────────────── */
+/* ─── 025 작업 계획 — 사용자와 AI 가 같은 목록을 본다 ─────────────────── */
 /*
-  기존 토큰만 쓴다. 새 색·새 간격을 만들지 않는 것이 008 의 규칙이고, 그래야 이 패널이
-  다른 화면과 같은 제품으로 보인다.
+  **자리를 빼앗지 않는다** (2026-09-29 사용자 보고). 초안은 flex 값 없이 21개 항목을
+  펼쳐, `.ai-timeline`(flex: 1 1 0)이 0까지 줄고 `.ai-authoring-attention`(답변 자리)이
+  밀려났다 — 막힌 AI 를 풀 수 없게 됐다.
+
+  머리줄은 고정(0 0 auto), 펼친 목록은 높이를 제한하고 자체 스크롤을 갖는다.
+  기존 토큰만 쓴다 — 새 색·새 간격을 만들지 않는 것이 008 의 규칙이다.
 */
-.plan-panel { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; }
-.plan-constraints { padding: 10px 12px; border: 1px solid var(--hair); border-radius: 6px; background: var(--ai-t); }
+.plan-panel { flex: 0 0 auto; display: flex; flex-direction: column; border-block-start: 1px solid var(--hair); }
+.plan-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 4px 8px 4px 16px; }
+.plan-heading > strong { flex: 1; font-size: 12px; }
+.plan-next { margin: 0; padding: 0 16px 8px; font-size: var(--type-label); line-height: 1.5; color: var(--ink-2, var(--ink)); overflow-wrap: anywhere; }
+.plan-next > span { color: var(--ink-3); margin-inline-end: 4px; }
+/* 펼쳐도 **화면의 절반을 넘지 않는다.** 대화와 답변이 늘 보여야 한다. */
+.plan-body { max-height: 40vh; overflow-y: auto; overscroll-behavior: contain; padding: 0 16px 12px; }
+.plan-body[hidden] { display: none; }
+.plan-constraints { margin-block-end: 10px; padding: 8px 10px; border: 1px solid var(--hair); border-radius: 6px; background: var(--ai-t); }
 .plan-constraints h3 { margin: 0 0 6px; font-size: var(--type-label); font-weight: 500; color: var(--ink); }
 .plan-constraints ul { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px; }
-.plan-constraints li { font-size: var(--type-label); line-height: 1.5; overflow-wrap: anywhere; }
-.plan-items h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 6px; font-size: var(--type-label); font-weight: 500; }
-.plan-remaining { font-size: 12px; font-weight: 400; color: var(--ink-3); }
-.plan-items ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
-.plan-items li { display: flex; align-items: baseline; gap: 8px; padding: 4px 6px; border-radius: 4px; font-size: var(--type-label); line-height: 1.5; }
+.plan-constraints li { font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.plan-items { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.plan-items li { display: flex; align-items: baseline; gap: 8px; padding: 3px 6px; border-radius: 4px; font-size: 12px; line-height: 1.5; }
 .plan-items li[data-next="true"] { background: var(--ai-t); }
 .plan-items li[data-status="done"] .plan-text { color: var(--ink-3); }
 .plan-items li[data-status="skipped"] .plan-text { color: var(--ink-3); text-decoration: line-through; }
-.plan-mark { flex: 0 0 auto; width: 14px; text-align: center; color: var(--ink-3); }
+.plan-mark { flex: 0 0 auto; width: 12px; text-align: center; color: var(--ink-3); }
 .plan-items li[data-next="true"] .plan-mark { color: var(--ink); }
 .plan-text { flex: 1; overflow-wrap: anywhere; }
-.plan-reason { flex: 0 0 auto; font-size: 12px; color: var(--ink-3); }
+.plan-reason { flex: 0 0 auto; font-size: 11px; color: var(--ink-3); }
 
 /* ─── 025 정제 결과 확인 — 작성을 시작하기 전에 ───────────────────────────── */
 .compose-refined { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; border-top: 1px solid var(--hair); }

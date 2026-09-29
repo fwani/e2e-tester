@@ -44,17 +44,54 @@ const PLAN: WorkPlan = {
 
 afterEach(cleanup);
 
+/**
+ * 025 는 이 패널을 **접힌 채로** 그린다 (2026-09-29 사용자 보고). 목록을 보려면 먼저
+ * 펼쳐야 한다 — 그것이 이 패널의 기본 상태이고, 검증도 그 상태에서 출발한다.
+ */
+async function expand() {
+  await userEvent.click(screen.getByRole("button", { name: /할 일 목록 펼치기/ }));
+}
+
 describe("작업 계획 진척", () => {
-  it("제약을 할 일보다 먼저 보인다", () => {
+  it("접힌 채로 시작한다 — 대화와 답변 자리를 빼앗지 않는다", () => {
     render(<PlanPanel plan={PLAN} />);
+
+    const heading = document.querySelector(".plan-heading strong");
+    // 「3」은 완료 2 + 건너뜀 1 이다 — 남은 것과 대비되는 「결론이 난 것」의 수다.
+    expect(heading?.textContent).toContain("할 일 3/5");
+    expect(heading?.textContent).toContain("남은 것 2");
+    // 목록은 접혀 있다. `hidden` 이므로 DOM 에는 있지만 보이지 않는다.
+    const body = document.getElementById("plan-body");
+    expect(body?.hasAttribute("hidden")).toBe(true);
+  });
+
+  it("접혀 있어도 다음 할 일 한 줄은 보인다", () => {
+    render(<PlanPanel plan={PLAN} />);
+
+    // 「AI 가 지금 무엇을 하고 있는가」에 가장 가까운 사실이다.
+    expect(document.querySelector(".plan-next")?.textContent).toContain(
+      "새 메뉴를 등록한다",
+    );
+  });
+
+  it("막힘 답변을 기다릴 때는 숨는다 — 답변이 최우선이다", () => {
+    const { container } = render(<PlanPanel plan={PLAN} hidden />);
+
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("제약을 할 일보다 먼저 보인다", async () => {
+    render(<PlanPanel plan={PLAN} />);
+    await expand();
 
     const headings = screen.getAllByRole("heading");
     expect(headings[0]?.textContent).toContain("반드시 지킬 것");
     expect(screen.getByText("기존 등록된 데이터는 검증에 사용하지 않는다")).toBeTruthy();
   });
 
-  it("다음에 할 것을 지목한다", () => {
+  it("다음에 할 것을 지목한다", async () => {
     render(<PlanPanel plan={PLAN} />);
+    await expand();
 
     const next = screen.getByText("새 메뉴를 등록한다").closest("li");
     expect(next?.getAttribute("data-next")).toBe("true");
@@ -63,16 +100,19 @@ describe("작업 계획 진척", () => {
     expect(later?.getAttribute("data-next")).toBe("false");
   });
 
-  it("건너뛴 항목에 사유가 붙는다", () => {
+  it("건너뛴 항목에 사유가 붙는다", async () => {
     render(<PlanPanel plan={PLAN} />);
+    await expand();
 
     expect(screen.getByText(/제품에 해당 설정이 없다/)).toBeTruthy();
   });
 
-  it("남은 개수를 보인다", () => {
+  it("남은 개수를 머리줄에 보인다 — 펼치지 않아도 알 수 있다", () => {
     render(<PlanPanel plan={PLAN} />);
 
-    expect(screen.getByText("2개 남음")).toBeTruthy();
+    expect(document.querySelector(".plan-heading strong")?.textContent).toContain(
+      "남은 것 2",
+    );
   });
 
   it("계획이 없으면 아무것도 그리지 않는다", () => {
@@ -92,12 +132,14 @@ describe("작업 계획 진척", () => {
     render(<PlanPanel plan={PLAN} onRevert={vi.fn()} />);
 
     // done 2건 + skipped 1건 = 3
-    expect(screen.getAllByRole("button", { name: "되돌리기" })).toHaveLength(3);
+    const buttons = document.querySelectorAll(".plan-items button");
+    expect(buttons).toHaveLength(3);
   });
 
   it("되돌리면 어느 항목인지 알린다", async () => {
     const onRevert = vi.fn();
     render(<PlanPanel plan={PLAN} onRevert={onRevert} />);
+    await expand();
 
     const row = screen.getByText("관리자 계정으로 로그인한다").closest("li");
     const button = row?.querySelector("button");
@@ -107,10 +149,11 @@ describe("작업 계획 진척", () => {
     expect(onRevert).toHaveBeenCalledWith("i1");
   });
 
-  it("진행 중에는 되돌리기가 잠긴다 — AI 가 읽는 값을 바꾸는 조작이다", () => {
+  it("진행 중에는 되돌리기가 잠긴다 — AI 가 읽는 값을 바꾸는 조작이다", async () => {
     render(<PlanPanel plan={PLAN} onRevert={vi.fn()} busy />);
+    await expand();
 
-    for (const button of screen.getAllByRole("button", { name: "되돌리기" })) {
+    for (const button of document.querySelectorAll(".plan-items button")) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
     }
   });

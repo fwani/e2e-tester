@@ -1,4 +1,7 @@
+import { useState } from "react";
+
 import { Button } from "../../ui/Button";
+import { IconButton } from "../../ui/IconButton";
 import type { PlanItem, WorkPlan } from "../../api/client";
 
 /**
@@ -10,11 +13,23 @@ import type { PlanItem, WorkPlan } from "../../api/client";
  * 「AI 가 무엇을 하고 있는지」를 추측해야 하고, 그 추측이 이 기능 전체가 없애려는
  * 것이다.
  *
- * ## 되돌리기는 사용자만 한다
+ * ## **접힌 채로 시작한다** (2026-09-29 사용자 보고)
  *
- * 모델은 `done`·`skipped` 로만 옮길 수 있다. 자기 표시를 취소할 수 있으면 「했다」가
- * 무엇을 뜻하는지 알 수 없기 때문이다 (data-model §2). 그래서 이 패널에만 되돌리기가
- * 있다.
+ * 초안은 항상 펼쳐 두었고, 항목이 21개인 실제 계획에서 **대화 기록과 답변 자리를
+ * 밀어냈다.** 사용자가 겪은 것:
+ *
+ * > 「반드시 지킬 것, 할일 부분이 고정되어서 대화 2차례 · 자취 74줄 부분이 제대로
+ * > 안보인다. 답변 대기시 답변을 클릭할수도 없다.」
+ *
+ * 답변을 클릭할 수 없는 것이 가장 나쁘다 — 막힌 AI 를 풀 수 없다는 뜻이다.
+ *
+ * **진척의 핵심은 머리줄 한 줄이다** (「3/21 · 남은 것 18」). 목록 전체는 필요할 때
+ * 펼친다. 이 패널이 이미 자취에 같은 방식을 쓴다 (`traceOpen`).
+ *
+ * ## 막혔을 때는 숨는다
+ *
+ * 답변이 최우선이다. 같은 자리의 대화 입력칸이 이미 그렇게 한다
+ * (`hidden={failure?.blocked != null}`).
  *
  * ## 계획이 없으면 그리지 않는다
  *
@@ -26,6 +41,8 @@ export interface PlanPanelProps {
   /** 항목을 되돌린다. 진행 중이면 잠긴다 — 되돌리기는 AI 가 읽는 값을 바꾼다. */
   onRevert?: (itemId: string) => void;
   busy?: boolean;
+  /** 막힘 답변을 기다리는 중인가. 그때는 숨는다 — 답변이 최우선이다. */
+  hidden?: boolean;
 }
 
 /** 상태별 표시. AI 에게 가는 문자열(`✓`·`▶`·`—`)과 **같은 기호**를 쓴다. */
@@ -35,35 +52,63 @@ function markOf(item: PlanItem, isNext: boolean): string {
   return isNext ? "▶" : " ";
 }
 
-export function PlanPanel({ plan, onRevert, busy = false }: PlanPanelProps) {
-  if (plan === null || (plan.items.length === 0 && plan.constraints.length === 0)) {
+export function PlanPanel({
+  plan,
+  onRevert,
+  busy = false,
+  hidden = false,
+}: PlanPanelProps) {
+  const [open, setOpen] = useState(false);
+  if (
+    hidden ||
+    plan === null ||
+    (plan.items.length === 0 && plan.constraints.length === 0)
+  ) {
     return null;
   }
 
   const nextId = plan.items.find((i) => i.status === "pending")?.id ?? null;
   const remaining = plan.items.filter((i) => i.status === "pending").length;
+  const done = plan.items.length - remaining;
+  const next = plan.items.find((i) => i.id === nextId) ?? null;
 
   return (
     <section className="plan-panel" aria-label="할 일">
-      {plan.constraints.length > 0 && (
-        <div className="plan-constraints">
-          <h3>반드시 지킬 것</h3>
-          <ul>
-            {plan.constraints.map((constraint, index) => (
-              <li key={`${constraint.text}-${index}`}>{constraint.text}</li>
-            ))}
-          </ul>
-        </div>
+      <div className="plan-heading">
+        <strong>
+          할 일 {done}/{plan.items.length}
+          {remaining > 0 ? ` · 남은 것 ${remaining}` : " · 남은 것 없음"}
+        </strong>
+        <IconButton
+          label={`할 일 목록 ${open ? "접기" : "펼치기"}`}
+          icon={open ? "collapse" : "expand"}
+          variant="ghost"
+          aria-expanded={open}
+          aria-controls="plan-body"
+          onClick={() => setOpen(!open)}
+        />
+      </div>
+      {/*
+        접혀 있어도 **다음에 할 일 한 줄은 보인다.** 그것이 「AI 가 지금 무엇을 하고
+        있는가」에 가장 가까운 사실이고, 펼치지 않고 알 수 있어야 한다.
+      */}
+      {!open && next !== null && (
+        <p className="plan-next">
+          <span aria-hidden="true">▶</span> {next.text}
+        </p>
       )}
-
-      <div className="plan-items">
-        <h3>
-          할 일
-          <span className="plan-remaining">
-            {remaining === 0 ? "남은 것 없음" : `${remaining}개 남음`}
-          </span>
-        </h3>
-        <ol>
+      <div id="plan-body" className="plan-body" hidden={!open}>
+        {plan.constraints.length > 0 && (
+          <div className="plan-constraints">
+            <h3>반드시 지킬 것</h3>
+            <ul>
+              {plan.constraints.map((constraint, index) => (
+                <li key={`${constraint.text}-${index}`}>{constraint.text}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <ol className="plan-items">
           {plan.items.map((item) => (
             <li key={item.id} data-status={item.status} data-next={item.id === nextId}>
               <span className="plan-mark" aria-hidden="true">

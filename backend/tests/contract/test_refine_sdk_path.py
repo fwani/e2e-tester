@@ -240,3 +240,43 @@ async def test_missing_credentials_says_what_to_do(monkeypatch: pytest.MonkeyPat
     assert result.refined is False
     assert result.notes == [NO_CREDENTIALS]
     assert "ANTHROPIC_API_KEY" in result.notes[0], "무엇을 하면 되는지가 있어야 한다"
+
+
+async def test_the_driver_choice_is_honoured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """**`ITB_AI_DRIVER` 가 정제에도 적용된다** (2026-09-29 사용자 보고).
+
+    드라이버 선택은 「무엇으로 모델을 부르는가」이고, 모델을 부르는 **모든 자리**에
+    적용되어야 한다. 초안은 정제만 Messages API 를 직접 불러서, 개발용 드라이버로 띄운
+    서버에서 작성은 되는데 정제만 자격 증명을 요구했다.
+    """
+    from itb.authoring.agent import DRIVER_CLAUDE_CODE, DRIVER_ENV
+
+    called: list[str] = []
+
+    async def fake_dev(instruction: str) -> dict[str, Any]:
+        called.append("claude-code")
+        return {"items": [{"text": instruction}]}
+
+    async def fake_api(instruction: str, _config: Any) -> dict[str, Any]:
+        called.append("messages-api")
+        return {"items": [{"text": instruction}]}
+
+    monkeypatch.setattr(refine_mod, "_submit_via_claude_code", fake_dev)
+    monkeypatch.setattr(refine_mod, "_submit_via_messages_api", fake_api)
+
+    monkeypatch.setenv(DRIVER_ENV, DRIVER_CLAUDE_CODE)
+    await refine_mod.refine_instruction("로그인한다")
+    assert called == ["claude-code"], "개발용 드라이버를 골랐는데 기본 경로로 갔다"
+
+    called.clear()
+    monkeypatch.delenv(DRIVER_ENV, raising=False)
+    await refine_mod.refine_instruction("로그인한다")
+    assert called == ["messages-api"], "기본은 Messages API 여야 한다"
+
+    called.clear()
+    monkeypatch.setenv(DRIVER_ENV, "오타-난-값")
+    await refine_mod.refine_instruction("로그인한다")
+    assert called == ["messages-api"], (
+        "인식하지 못한 값은 기본으로 떨어져야 한다 — 오타가 조용히 개발용 경로를 켜면 "
+        "개발자는 자기가 무엇을 보고 있는지 모른다 (`select_driver` 와 같은 판단)."
+    )

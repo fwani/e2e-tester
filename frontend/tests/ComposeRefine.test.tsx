@@ -73,7 +73,12 @@ describe("정제 결과 확인", () => {
     const onStartAi = setup(async () => ({ refined: true, plan: PLAN, notes: [] }));
 
     await askToStart();
-    await waitFor(() => expect(screen.getByText("로그인한다")).toBeTruthy());
+    // 025 는 계획 패널을 접힌 채로 그린다 — 머리줄로 확인한다 (2026-09-29).
+    await waitFor(() =>
+      expect(document.querySelector(".plan-heading strong")?.textContent).toContain(
+        "할 일 0/2",
+      ),
+    );
     await userEvent.click(screen.getByRole("button", { name: "이 계획으로 시작" }));
 
     expect(onStartAi).toHaveBeenCalledWith(

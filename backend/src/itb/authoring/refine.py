@@ -48,10 +48,12 @@ JSON 을 텍스트로 받아 파싱하면 파싱 실패 처리를 새로 만들�
 from __future__ import annotations
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from itb.authoring.agent import DRIVER_CLAUDE_CODE, DRIVER_ENV
 from itb.authoring.plan import (
     MAX_PLAN_ITEMS,
     Constraint,
@@ -60,7 +62,12 @@ from itb.authoring.plan import (
     PlanSource,
     WorkPlan,
 )
-from itb.llm.client import LlmConfig, LlmUnavailableError, RefusalError, check_stop_reason
+from itb.llm.client import (
+    LlmConfig,
+    LlmUnavailableError,
+    RefusalError,
+    check_stop_reason,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +121,20 @@ _LABELED_PASSWORD = re.compile(
     r"(비밀번호|패스워드|password|pw)\s*[:：/]?\s*([^\s,、/]{4,})", re.IGNORECASE
 )
 """「비밀번호: 값」처럼 **이름표가 붙은** 자리."""
+
+_ALREADY_REFERENCE = re.compile(r"\{\{[^{}]+\}\}")
+"""이미 변수 참조로 바뀐 자리 (2026-09-29 실측).
+
+**모델이 먼저 바꿨을 수 있다.** 프롬프트가 그렇게 시켰고, 실제로 그렇게 한다 — 그러면
+제품이 또 바꿀 이유가 없다. 실측에서 모델이 고른 `{{PLATFORM1_PASSWORD}}` 를 제품이
+`{{password}}` 로 덮었다.
+
+**덮으면 두 가지를 잃는다.** 모델이 고른 이름은 어느 계정의 비밀번호인지를 말하는데
+(계정이 여럿이면 구별이 필요하다), 고정 이름으로 덮으면 그 구별이 사라진다. 그리고
+안내가 중복돼 사용자는 무엇이 일어났는지 알기 어려워진다.
+
+016 의 `_VARIABLE_REFERENCE` 와 같은 판단이다 — 이미 참조인 것은 값이 아니다.
+"""
 
 _URL_LIKE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://\S+")
 """주소처럼 보이는 조각. **자격 증명 판정에서 제외한다.**
@@ -239,6 +260,9 @@ def _scrub_credentials(text: str) -> tuple[str, list[str]]:
 
     def replace_labeled(match: re.Match[str]) -> str:
         label = match.group(1)
+        # 자리표시자가 걸린 것이면 이미 참조다 — 덮지 않는다.
+        if match.group(2).startswith("\x00REF"):
+            return match.group(0)
         notes.append(f"「{label}」 값을 변수 참조로 바꿨습니다.")
         return f"{label}: {{{{password}}}}"
 
@@ -250,9 +274,20 @@ def _scrub_credentials(text: str) -> tuple[str, list[str]]:
         secret = match.group(2) or match.group(4)
         if not secret:  # pragma: no cover - 두 갈래 중 하나는 반드시 맞는다
             return whole
+        if secret.startswith("\x00REF"):
+            return whole
         notes.append("계정 표기의 비밀번호를 변수 참조로 바꿨습니다.")
         return whole.replace(secret, "{{password}}")
 
+    # **이미 참조인 자리를 먼저 빼 둔다** (2026-09-29 실측). 모델이 먼저 바꿨으면
+    # 제품이 또 바꿀 이유가 없다 — 덮으면 모델이 고른 이름을 잃는다.
+    refs: list[str] = []
+
+    def stash_ref(match: re.Match[str]) -> str:
+        refs.append(match.group(0))
+        return f"\x00REF{len(refs) - 1}\x00"
+
+    out = _ALREADY_REFERENCE.sub(stash_ref, out)
     out = _LABELED_PASSWORD.sub(replace_labeled, out)
 
     # **주소를 먼저 빼 둔다.** 정규식에 부정 전방탐색을 겹치는 대신 이렇게 하는 이유는
@@ -271,6 +306,8 @@ def _scrub_credentials(text: str) -> tuple[str, list[str]]:
     out = _SLASH_CREDENTIAL.sub(replace_slash, out)
     for index, url in enumerate(urls):
         out = out.replace(f"\x00URL{index}\x00", url)
+    for index, ref in enumerate(refs):
+        out = out.replace(f"\x00REF{index}\x00", ref)
     return out, notes
 
 
@@ -337,36 +374,92 @@ def _plan_from_payload(payload: dict[str, Any]) -> WorkPlan:
     return plan
 
 
-async def refine_instruction(
-    instruction: str, config: LlmConfig | None = None
-) -> RefineResult:
-    """지시문을 작업 계획으로 정제한다 (FR-014).
+REFINE_MCP_SERVER = "itb-refine"
+"""정제 도구를 담는 in-process MCP 서버 이름 (개발용 드라이버 경로).
 
-    **실패는 예외가 아니다.** 어떤 이유로 실패하든 `refined=False` 로 돌아오고, 호출자는
-    원문으로 진행한다 (FR-020).
+작성 도구의 서버(`itb`)와 **가른다.** 같은 서버에 담으면 정제가 브라우저 도구를 볼 수
+있게 되고, 정제는 화면을 건드려서는 안 된다.
+"""
 
-    **작성 시점에만 불린다.** 저장된 테스트의 실행 경로에서 이 함수에 닿을 수 없다 —
-    `.importlinter` 의 `execution-no-llm` 계약이 그것을 구조로 막는다 (헌법 원칙 II).
+
+async def _submit_via_claude_code(instruction: str) -> dict[str, Any] | None:
+    """이미 로그인된 Claude Code 로 정제한다 (`ITB_AI_DRIVER=claude-code`).
+
+    ## 왜 이 경로가 필요한가
+
+    `select_driver` 가 작성 에이전트의 드라이버를 고르는데, **정제는 그것을 지나지 않고**
+    Messages API 를 직접 불렀다. 그래서 개발용 드라이버로 서버를 띄운 환경에서 작성은
+    되는데 정제만 자격 증명을 요구했다 (2026-09-29 사용자 보고).
+
+    드라이버 선택은 「무엇으로 모델을 부르는가」이고, 그 선택은 **모델을 부르는 모든
+    자리**에 적용되어야 한다.
+
+    ## `claude_code_driver` 를 재사용하지 않는 이유
+
+    그쪽은 작성용 시스템 프롬프트와 브라우저 도구 목록을 하드코딩한다. 정제는 다른 지시와
+    다른 도구 하나만 쓴다 — 공통 부분은 「in-process MCP 서버로 도구를 주고 `query` 를
+    돈다」 뿐이고, 그것을 추상화하면 두 쓰임의 차이가 매개변수로 흩어진다.
+
+    **선택 의존성이다.** 미설치 환경에서는 `None` 을 돌려주고 호출자가 기본 경로로 간다.
     """
-    text = (instruction or "").strip()
-    if not text:
-        return RefineResult(refined=False, notes=["지시문이 비어 있습니다."])
-
     try:
-        # **비동기 도구여야 한다** (2026-09-29 사용자 보고).
-        #
-        # 동기 `beta_tool` 로 만든 도구를 `AsyncAnthropic` 의 tool_runner 에 넘기면
-        # 요청 본문을 만들 때 터진다:
-        #
-        #     TypeError: Object of type BetaFunctionTool is not JSON serializable
-        #
-        # 이 저장소의 작성 도구가 전부 `beta_async_tool` 인 것과 같은 이유다
-        # (`tools.build_tools`). 클라이언트가 비동기면 도구도 비동기여야 한다.
-        from anthropic import beta_async_tool  # noqa: PLC0415 - SDK 경계를 이 함수 안에
-
-        from itb.llm.client import create_client  # noqa: PLC0415
+        from claude_agent_sdk import (  # noqa: PLC0415 - SDK 경계를 함수 안에 둔다
+            ClaudeAgentOptions,
+            create_sdk_mcp_server,
+            query,
+            tool,
+        )
     except ImportError:
-        return RefineResult(refined=False, notes=["정제를 준비할 수 없습니다."])
+        logger.warning("claude-code 드라이버가 설치되지 않았다. 기본 경로로 간다.")
+        return None
+
+    submitted: dict[str, Any] = {}
+
+    @tool(SUBMIT_TOOL, "정제한 작업 계획을 제출한다.", SUBMIT_SCHEMA)
+    async def submit_plan(args: dict[str, Any]) -> dict[str, Any]:
+        submitted.update(args)
+        return {"content": [{"type": "text", "text": "접수했습니다."}]}
+
+    server = create_sdk_mcp_server(
+        name=REFINE_MCP_SERVER, version="1.0.0", tools=[submit_plan]
+    )
+    qualified = f"mcp__{REFINE_MCP_SERVER}__{SUBMIT_TOOL}"
+    options = ClaudeAgentOptions(
+        mcp_servers={REFINE_MCP_SERVER: server},
+        allowed_tools=[qualified],
+        # **브라우저를 건드릴 수 없다.** 정제는 글을 정리하는 일이고, 내장 도구가 열려
+        # 있으면 파일을 읽거나 명령을 돌릴 수 있다.
+        disallowed_tools=["Bash", "Read", "Write", "Edit", "WebFetch", "WebSearch"],
+        permission_mode="default",
+        # 사용자의 settings·CLAUDE.md 를 읽지 않는다 — 개발자 환경마다 다른 지시가
+        # 섞이면 무엇을 보고 있는지 알 수 없다 (`claude_code_driver` 와 같은 판단).
+        setting_sources=[],
+        system_prompt=REFINE_SYSTEM,
+        max_turns=3,
+    )
+
+    async for _message in query(prompt=instruction, options=options):
+        # 결과는 도구가 채운다. 메시지 자체는 볼 것이 없다 — 도구를 부르지 않고 말만
+        # 하면 `submitted` 가 비고, 그것이 곧 정제 실패다.
+        pass
+    return submitted or None
+
+
+async def _submit_via_messages_api(
+    instruction: str, config: LlmConfig | None
+) -> dict[str, Any] | None:
+    """기본 경로 — Messages API 의 tool runner."""
+    # **비동기 도구여야 한다** (2026-09-29 사용자 보고).
+    #
+    # 동기 `beta_tool` 로 만든 도구를 `AsyncAnthropic` 의 tool_runner 에 넘기면 요청
+    # 본문을 만들 때 터진다:
+    #
+    #     TypeError: Object of type BetaFunctionTool is not JSON serializable
+    #
+    # 이 저장소의 작성 도구가 전부 `beta_async_tool` 인 것과 같은 이유다.
+    from anthropic import beta_async_tool  # noqa: PLC0415 - SDK 경계를 함수 안에 둔다
+
+    from itb.llm.client import create_client  # noqa: PLC0415
 
     submitted: dict[str, Any] = {}
 
@@ -375,38 +468,64 @@ async def refine_instruction(
         submitted.update(payload)
         return "접수했습니다."
 
+    client = create_client()
+    runner = client.beta.messages.tool_runner(
+        messages=[{"role": "user", "content": instruction}],
+        tools=[submit_plan],
+        system=REFINE_SYSTEM,
+        # 한 번 부르고 끝난다. 상한을 낮게 두는 것이 「도구를 부르지 않고 계속 말하는」
+        # 경우의 방어선이다 (`agent.py` 의 `max_iterations` 와 같은 판단).
+        max_iterations=3,
+        **(config or LlmConfig()).request_kwargs(),
+    )
+    async for message in runner:
+        check_stop_reason(getattr(message, "stop_reason", None))
+    return submitted or None
+
+
+async def refine_instruction(
+    instruction: str, config: LlmConfig | None = None
+) -> RefineResult:
+    """지시문을 작업 계획으로 정제한다 (FR-014).
+
+    **실패는 예외가 아니다.** 어떤 이유로 실패하든 `refined=False` 로 돌아오고, 호출자는
+    원문으로 진행한다 (FR-020).
+
+    **드라이버 선택을 존중한다** (2026-09-29 사용자 보고). `ITB_AI_DRIVER=claude-code` 면
+    이미 로그인된 Claude Code 를 쓴다 — 그 선택은 「무엇으로 모델을 부르는가」이고, 모델을
+    부르는 **모든 자리**에 적용되어야 한다. 초안은 이 경로를 지나지 않아, 개발용 드라이버로
+    띄운 서버에서 작성은 되는데 정제만 자격 증명을 요구했다.
+
+    **작성 시점에만 불린다.** 저장된 테스트의 실행 경로에서 이 함수에 닿을 수 없다 —
+    `.importlinter` 의 `execution-no-llm` 계약이 그것을 구조로 막는다 (헌법 원칙 II).
+    """
+    text = (instruction or "").strip()
+    if not text:
+        return RefineResult(refined=False, notes=["지시문이 비어 있습니다."])
+
+    use_dev_driver = os.environ.get(DRIVER_ENV, "").strip() == DRIVER_CLAUDE_CODE
     try:
-        client = create_client()
-        runner = client.beta.messages.tool_runner(
-            messages=[{"role": "user", "content": text}],
-            tools=[submit_plan],
-            system=REFINE_SYSTEM,
-            # 한 번 부르고 끝난다. 상한을 낮게 두는 것이 「도구를 부르지 않고 계속
-            # 말하는」 경우의 방어선이다 (`agent.py` 의 `max_iterations` 와 같은 판단).
-            max_iterations=3,
-            **(config or LlmConfig()).request_kwargs(),
+        submitted = (
+            await _submit_via_claude_code(text)
+            if use_dev_driver
+            else await _submit_via_messages_api(text, config)
         )
-        async for message in runner:
-            check_stop_reason(getattr(message, "stop_reason", None))
     except (LlmUnavailableError, RefusalError) as exc:
         return RefineResult(refined=False, notes=[str(exc)])
     except Exception as exc:  # noqa: BLE001 - 어떤 실패든 원문 진행으로 수렴한다
         # **메시지를 버리지 않는다** (2026-09-29 사용자 보고).
         #
         # 초안은 `type(exc).__name__` 만 남겼고, 사용자는 「정제하지 못했습니다:
-        # TypeError」를 두 번 받았다. 그 문장으로는 무엇이 잘못됐는지 알 수 없고,
-        # 고칠 수도 없다 — **진단할 수 없는 오류 메시지는 오류를 숨기는 것과 같다**
-        # (헌법 보안 §오류는 명시적으로 처리한다, 003 이 `INTERNAL_ERROR` 를 가른 이유).
+        # TypeError」를 두 번 받았다. 그 문장으로는 무엇이 잘못됐는지 알 수 없고, 고칠
+        # 수도 없다 — **진단할 수 없는 오류 메시지는 오류를 숨기는 것과 같다** (헌법
+        # 보안 §오류는 명시적으로 처리한다, 003 이 `INTERNAL_ERROR` 를 가른 이유).
         #
-        # 스택은 서버 로그로, 요지는 사용자에게. 로그가 진단의 자리이고 화면은
-        # 「원문으로 진행할 수 있다」를 말하는 자리다.
+        # 스택은 서버 로그로, 요지는 사용자에게. 로그가 진단의 자리이고 화면은 「원문으로
+        # 진행할 수 있다」를 말하는 자리다.
         logger.exception("지시문 정제 실패")
-        return RefineResult(
-            refined=False,
-            notes=[_failure_note(exc)],
-        )
+        return RefineResult(refined=False, notes=[_failure_note(exc)])
 
-    if not submitted.get("items"):
+    if not submitted or not submitted.get("items"):
         return RefineResult(
             refined=False, notes=["지시문을 정제하지 못했습니다. 원문으로 진행합니다."]
         )
@@ -414,11 +533,11 @@ async def refine_instruction(
     try:
         plan = _plan_from_payload(submitted)
     except Exception as exc:  # noqa: BLE001 - 모델이 스키마를 어겨도 죽지 않는다
-        # **모델이 스키마를 지킨다고 믿지 않는다.** `items` 를 문자열 배열로 주는
-        # 경우가 실제로 있고, 그때 변환이 죽으면 사용자는 원문으로 진행할 기회조차
-        # 잃는다 — 정제는 관문이 아니다 (FR-020).
+        # **모델이 스키마를 지킨다고 믿지 않는다.** 변환이 죽으면 사용자는 원문으로
+        # 진행할 기회조차 잃는다 — 정제는 관문이 아니다 (FR-020).
         logger.exception("정제 결과를 계획으로 옮기지 못했다")
         return RefineResult(refined=False, notes=[_failure_note(exc)])
+
     if plan.empty:
         return RefineResult(
             refined=False, notes=["정제 결과가 비어 있습니다. 원문으로 진행합니다."]

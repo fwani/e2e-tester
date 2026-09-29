@@ -184,7 +184,12 @@ export function AiAuthoringPanel({ work, entries, instruction, status, chooseBlo
           </ol>
         </div>
       )}
-      <PlanPanel plan={plan} onRevert={onRevertItem} busy={busy} />
+      <PlanPanel
+        plan={plan}
+        onRevert={onRevertItem}
+        busy={busy}
+        hidden={failure?.blocked != null}
+      />
       {failure && (failure.error !== null || failure.blocked !== null) && <div className="ai-authoring-attention">
         <AlwaysVisibleFailure error={failure.error} blocked={failure.blocked} choose={chooseBlocked} onChoose={onChooseBlocked} busy={busy} buttonSize="md" onDismissError={onDismissError ?? null} />
       </div>}
