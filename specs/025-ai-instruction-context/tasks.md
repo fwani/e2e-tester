@@ -221,31 +221,31 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 
 ### Tests for User Story 4
 
-- [ ] T044 [P] [US4] `backend/tests/contract/test_instruction_refine.py` — 정제 성공·실패가
+- [X] T044 [P] [US4] `backend/tests/contract/test_instruction_refine.py` — 정제 성공·실패가
       **둘 다 200** 으로 오는지 (FR-020 · contracts/api-contract.md §1). 실패가 400 이면
       화면이 오류로 다루고, 그러면 정제가 작성의 관문이 된다
-- [ ] T044a [P] [US4] 같은 파일에 **정제 1회** 검증 — 세션이 여러 턴 도는 동안 정제 호출이
+- [X] T044a [P] [US4] 같은 파일에 **정제 1회** 검증 — 세션이 여러 턴 도는 동안 정제 호출이
       한 번뿐인지 (FR-021). 매 턴 다시 정제하는 구현이 들어가도 지금은 검증이 통과한다
-- [ ] T045 [P] [US4] 같은 파일에 **구체값 보존** 검증 — 자리마다 다른 값이 각각 남는지
+- [X] T045 [P] [US4] 같은 파일에 **구체값 보존** 검증 — 자리마다 다른 값이 각각 남는지
       (FR-015). 이 기능에서 가장 위험한 실패다
-- [ ] T046 [P] [US4] 같은 파일에 **자격 증명 치환** 검증 — 평문 비밀번호가 참조로 바뀌고
+- [X] T046 [P] [US4] 같은 파일에 **자격 증명 치환** 검증 — 평문 비밀번호가 참조로 바뀌고
       그 사실이 `notes` 에 실리는지 (FR-010 · R10)
 - [ ] T047 [P] [US4] `frontend/tests/ComposeRefine.test.tsx` — 정제 결과 확인·수정·거절
 
 ### Implementation for User Story 4
 
-- [ ] T048 [US4] `backend/src/itb/authoring/refine.py` 를 만든다 — 지시문을 받아 `WorkPlan` 을
+- [X] T048 [US4] `backend/src/itb/authoring/refine.py` 를 만든다 — 지시문을 받아 `WorkPlan` 을
       돌려준다. **도구 호출로 구조를 강제한다** (R8): 모델에게 「계획을 제출하는 도구」 하나만
       주고 그것을 부르게 한다
-- [ ] T049 [US4] 같은 파일 — 정제 프롬프트를 쓴다. **줄이고 정리하는 일이지 해석하는 일이
+- [X] T049 [US4] 같은 파일 — 정제 프롬프트를 쓴다. **줄이고 정리하는 일이지 해석하는 일이
       아님**을 명시한다. 구체값·금지사항·기대 문구는 글자 그대로 (FR-015·FR-016)
-- [ ] T050 [US4] 같은 파일 — 자격 증명을 변수 참조로 바꾼다. **기존 민감값 규칙을 쓴다**,
+- [X] T050 [US4] 같은 파일 — 자격 증명을 변수 참조로 바꾼다. **기존 민감값 규칙을 쓴다**,
       새 규칙을 만들지 않는다 (R10)
-- [ ] T051 [US4] 같은 파일 — 실패 경로. 도구 미호출·스키마 불통과·호출 실패 셋 다
+- [X] T051 [US4] 같은 파일 — 실패 경로. 도구 미호출·스키마 불통과·호출 실패 셋 다
       `refined: false` 로 수렴한다 (FR-020)
-- [ ] T052 [US4] `backend/src/itb/api/routes/instruction.py` 를 만든다 —
+- [X] T052 [US4] `backend/src/itb/api/routes/instruction.py` 를 만든다 —
       `POST /api/instruction/refine` (contracts/api-contract.md §1). 세션을 만들지 않는다
-- [ ] T053 [US4] `backend/src/itb/api/app.py` 에 라우터를 등록한다
+- [X] T053 [US4] `backend/src/itb/api/app.py` 에 라우터를 등록한다
 - [ ] T054 [P] [US4] `frontend/src/api/client.ts` 에 `refineInstruction` 을 더한다
 - [ ] T055 [US4] `frontend/src/pages/ComposeView.tsx` 에 정제 결과 확인·수정 자리를 만든다.
       **기존 디자인 언어(008)를 따른다.** 새 화면을 만들지 않고 지시문 입력 자리를 넓힌다
