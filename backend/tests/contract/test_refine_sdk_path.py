@@ -209,3 +209,34 @@ async def test_a_failure_says_what_went_wrong(monkeypatch: pytest.MonkeyPatch) -
     assert "원문 그대로 진행할 수 있습니다" in note, "무엇을 할 수 있는지 말해야 한다"
     # 타입 이름만으로는 진단할 수 없다 — 괄호 안에 예외 종류가 있어야 한다.
     assert "(" in note and ")" in note
+
+
+async def test_missing_credentials_says_what_to_do(monkeypatch: pytest.MonkeyPatch) -> None:
+    """**자격 증명이 없으면 무엇을 하면 되는지 말한다** (2026-09-29 사용자 보고).
+
+    SDK 는 자격 증명이 하나도 없어도 클라이언트를 **만든다** — 실패는 첫 요청에서 난다.
+    그때 나오던 것은 SDK 내부의 영문 메시지였고, 사용자는 이것을 받았다:
+
+        지시문을 정제하지 못했습니다 (TypeError): "Could not resolve authentication
+        method. Expected one of api_key, auth_token, or credentials to be set…"
+
+    무엇을 하면 되는지가 없다. 같은 판정이 `itb.api.routes.ai` 에 있었지만 그쪽은
+    **화면이 미리 물을 때만** 쓰였고 실제 호출 경로는 지나지 않았다.
+
+    판정을 `create_client` 로 옮겼으므로 **정제도 작성 에이전트도 같은 말을 한다.**
+    """
+    from itb.llm.client import NO_CREDENTIALS
+
+    # 자격 증명이 하나도 없는 클라이언트 — SDK 가 실제로 만드는 그 상태다.
+    class _NoCreds:
+        api_key = None
+        auth_token = None
+        credentials = None
+
+    monkeypatch.setattr("anthropic.AsyncAnthropic", lambda *a, **k: _NoCreds())
+
+    result = await refine_mod.refine_instruction("로그인한다")
+
+    assert result.refined is False
+    assert result.notes == [NO_CREDENTIALS]
+    assert "ANTHROPIC_API_KEY" in result.notes[0], "무엇을 하면 되는지가 있어야 한다"

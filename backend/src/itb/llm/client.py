@@ -34,6 +34,18 @@ FALLBACK_BETA = "server-side-fallback-2026-07-01"
 """거부(`stop_reason: "refusal"`) 시 서버측 폴백. `fallbacks="default"` 와 함께 쓴다."""
 
 
+NO_CREDENTIALS = (
+    "언어모델 자격 증명을 찾을 수 없습니다. "
+    "`ANTHROPIC_API_KEY` 를 환경 변수로 주거나 `ant auth login` 으로 로그인하세요. "
+    "직접 녹화로 테스트를 만들 수 있습니다."
+)
+"""자격 증명이 없을 때 **모든 경로가 같은 말을 한다.**
+
+문구가 여러 곳에 있으면 화면이 미리 묻는 자리와 실제 실패하는 자리가 다른 말을 하고,
+사용자는 둘이 같은 문제인지 알 수 없다.
+"""
+
+
 class LlmUnavailableError(Exception):
     """언어모델을 쓸 수 없다.
 
@@ -88,14 +100,31 @@ def create_client() -> AsyncAnthropic:
         raise LlmUnavailableError(msg) from exc
 
     try:
-        return AsyncAnthropic()
+        client = AsyncAnthropic()
     except Exception as exc:  # noqa: BLE001 - 자격 증명 오류 종류가 SDK 내부 사정이다
-        msg = (
-            "언어모델 자격 증명을 찾을 수 없습니다. "
-            "`ANTHROPIC_API_KEY` 를 환경 변수로 주거나 `ant auth login` 으로 로그인하세요. "
-            "그때까지 기록된 Step 은 보존됩니다."
-        )
-        raise LlmUnavailableError(msg) from exc
+        raise LlmUnavailableError(NO_CREDENTIALS) from exc
+
+    # **여기서 판정한다** (2026-09-29 사용자 보고).
+    #
+    # SDK 는 자격 증명이 하나도 없어도 **만들어진다** — 실패는 첫 요청에서 난다. 그때
+    # 나오는 것은 SDK 내부의 영문 메시지이고, 호출자는 그것을 「예상하지 못한 오류」로
+    # 다룬다. 사용자는 이것을 받았다:
+    #
+    #     지시문을 정제하지 못했습니다 (TypeError): "Could not resolve authentication
+    #     method. Expected one of api_key, auth_token, or credentials to be set…"
+    #
+    # 무엇을 하면 되는지가 없다. 같은 판정이 `itb.api.routes.ai` 에 이미 있었지만
+    # 그쪽은 **화면이 미리 물을 때만** 쓰였고, 실제 호출 경로는 지나지 않았다.
+    #
+    # 판정을 여기로 옮기면 **모든 호출자가 같은 메시지를 받는다** — 정제도, 작성
+    # 에이전트도, 가용성 조회도.
+    if (
+        getattr(client, "api_key", None) is None
+        and getattr(client, "auth_token", None) is None
+        and getattr(client, "credentials", None) is None
+    ):
+        raise LlmUnavailableError(NO_CREDENTIALS)
+    return client
 
 
 def check_stop_reason(stop_reason: str | None) -> None:

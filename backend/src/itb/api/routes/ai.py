@@ -94,22 +94,16 @@ async def availability() -> AvailabilityResponse:
                 f"({type(exc).__name__}) 직접 녹화로 테스트를 만들 수 있습니다."
             ),
         )
-    # SDK 는 자격 증명이 하나도 없어도 **만들어진다** — 실패는 첫 요청에서 난다. 그래서
-    # 생성 성공만 보면 자격 증명 없는 환경에서 `available: true` 를 돌려주고, 사용자는
-    # 「AI 실행」을 눌러야 실패를 알게 된다 (UX U-07 에서 실제로 그랬다). 생성자가 해석한
-    # 세 갈래(정적 키·토큰·프로필/연합 자격 증명)가 전부 비어 있으면 없는 것이다.
-    if (
-        getattr(client, "api_key", None) is None
-        and getattr(client, "auth_token", None) is None
-        and getattr(client, "credentials", None) is None
-    ):
-        return AvailabilityResponse(
-            available=False,
-            reason=(
-                "언어모델 자격 증명을 찾을 수 없습니다. `ANTHROPIC_API_KEY` 를 환경 변수로 "
-                "주거나 `ant auth login` 으로 로그인하세요. 직접 녹화로 테스트를 만들 수 있습니다."
-            ),
-        )
+    # 025 — **자격 증명 판정은 `create_client` 가 한다.**
+    #
+    # 이전에는 그 판정이 여기에만 있었고, 그래서 화면이 미리 물을 때는 친절한 문구가
+    # 나오는데 **실제 호출 경로는 SDK 내부의 영문 오류로 죽었다** (2026-09-29 사용자
+    # 보고: 「지시문을 정제하지 못했습니다 (TypeError): Could not resolve
+    # authentication method…」).
+    #
+    # 판정을 경계로 옮겼으므로 위 `except LlmUnavailableError` 가 그것을 받는다.
+    # 같은 사실을 두 곳에서 판정하지 않는다.
+    _ = client
     return AvailabilityResponse(available=True, reason=None)
 
 
