@@ -463,12 +463,19 @@ export function MirrorView({
               밀린 만큼 어긋난다 — 그래서 이미지에 딱 맞는 자리를 하나 만들어 그 안에
               절대 배치한다.
 
-              **포인터 처리기는 `<img>` 에 그대로 남는다** (FR-020·SC-516). 래퍼는
-              `relative` 와 `leading-none` 만 갖는다 — `inline` 요소인 `<img>` 아래에
+              **포인터 처리기는 `<img>` 에 그대로 남는다** (FR-020·SC-516).
+
+              `leading-none` 은 **좌표를 위한 것**이다 — `inline` 요소인 `<img>` 아래에
               생기는 글줄 여백이 래퍼를 이미지보다 몇 픽셀 키우고, 그만큼 세로 좌표가
-              어긋나기 때문이다.
+              어긋난다.
+
+              `max-w-full max-h-full` 은 **축소를 위한 것**이다 (024 T064). 이미지의
+              `max-w-full` 이 이제 이 래퍼 기준으로 풀리는데, 래퍼는 콘텐츠가 크기를
+              정하므로 제약을 명시하지 않으면 프레임이 표시 영역보다 클 때 축소가 걸리지
+              않는다. **jsdom 은 레이아웃을 계산하지 않아 검증이 이 종류를 잡지 못한다** —
+              그래서 코드 쪽에서 못 박고, 실제 확인은 quickstart §3 이 맡는다.
             */}
-            <div className="relative leading-none">
+            <div className="relative leading-none max-w-full max-h-full">
             <img
               ref={imageRef}
               src={`data:image/jpeg;base64,${frame}`}

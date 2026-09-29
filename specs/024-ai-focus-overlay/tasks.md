@@ -377,3 +377,26 @@ Task: "측정 실패 흡수 — backend/tests/unit/test_step_executor_rect.py"
 - 좌표가 틀렸는지 의심되면 미러를 직접 클릭해 보라 — 클릭이 맞는 요소에 가는데 테두리만
   어긋나면 정변환 쪽이 틀렸다
 - 작업 하나 또는 논리적 묶음마다 커밋한다
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: 명세 대비 코드를 훑어 남은 자리 둘. 둘 다 **검증의 빈칸**이거나 **보이지
+않는 자리**이며, 기능이 겉으로는 동작하는 상태에서 발견됐다.
+
+- [X] T063 **US2 의 본체를 실제로 내어 고정한다** per US2/AC1 · SC-003 · FR-008 (partial) —
+  `backend/tests/contract/test_ai_focus_event.py` 의 어떤 검증도 `status: "failed"` 를
+  **실제로 만들어 내지 않는다.** 지금은 모양만 「나오면 둘 중 하나」로 단언하고, 실측하는
+  실패는 요소를 못 찾은 경우(`click_missing`)뿐이다 — 그것은 **자리가 없는** 쪽이다.
+  US2 가 겨냥하는 것은 그 반대다: **요소는 찾았는데 동작이 실패한** 경우(가려짐·비활성·
+  시간 초과). `fixtures/sample-app/overlay.html` 또는 `locked-controls.html` 로 그 경로를
+  내고, `status="failed"` 알림에 **자리가 실려 나오는지** 고정한다. 이것이 없으면
+  `StepFailure.rect` 배선이 끊겨도 아무도 모른다
+- [X] T064 **새 래퍼에 크기 제약을 건다** per FR-021 · plan「기존 동작을 바꾸지 않는다」
+  (partial) — `frontend/src/components/MirrorView.tsx` 의 `<div className="relative
+  leading-none">` 에 `max-w-full max-h-full` 을 더한다. `<img>` 의 `max-w-full` 이 이제
+  **그 래퍼** 기준으로 풀리는데 래퍼는 콘텐츠가 크기를 정하므로, 프레임이 표시 영역보다
+  클 때 축소가 걸리지 않을 수 있다. **jsdom 은 레이아웃을 계산하지 않아 기존 검증이 이
+  종류를 못 잡는다** — 그래서 코드 쪽에서 제약을 명시하고, 실제 확인은
+  [quickstart §3](./quickstart.md) 의 「창 크기를 바꿔 가며 반복한다」가 맡는다

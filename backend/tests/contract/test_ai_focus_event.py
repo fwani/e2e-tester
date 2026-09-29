@@ -165,6 +165,56 @@ def test_observing_the_page_announces_no_place(
         stop_quietly(keyed_client, sid)
 
 
+def test_a_blocked_action_reports_the_place_it_was_blocked_at(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T063 · US2/AC1 · SC-003 · FR-008 — **요소는 찾았는데 동작이 실패한 자리.**
+
+    ## 왜 이것이 US2 의 본체인가
+
+    실패에는 두 종류가 있고 자리의 유무가 갈린다.
+
+    | 실패 | 자리 | 표시 |
+    |---|---|---|
+    | 요소를 **못 찾았다** | 없다 | 하지 않는다 (FR-010) |
+    | 요소는 찾았는데 **동작이 안 됐다** | **있다** | **실패로 표시한다** |
+
+    아랫줄이 US2 가 겨냥하는 경우다 — 사용자가 이어받아야 하는 순간이 바로 그때이고,
+    필요한 것은 「어디서 막혔는지」다. 이 검증이 없으면 `StepFailure.rect` 배선이 끊겨도
+    아무도 모른다. 윗줄만 재는 검증은 **자리가 없는 쪽만** 확인하므로 그 배선을 지나지
+    않는다.
+
+    비활성 버튼을 고른 이유는 그것이 **요소를 찾는 데는 성공하는** 실패이기 때문이다 —
+    화면에 보이고 문서에도 있으며, 막히는 것은 클릭뿐이다.
+    """
+    install_driver(monkeypatch, [observe(0), click_named("삭제")])
+    sid = start_ai_session(
+        keyed_client,
+        fixture_app,
+        "삭제 버튼을 누른다",
+        page="locked-controls.html",
+    )
+    try:
+        wait_for_event(event_log, "ai_finished")
+        failed = [p for p in _focus_events(event_log) if p["status"] == "failed"]
+        assert failed, (
+            "요소는 찾았는데 동작이 실패했는데 자리 알림이 없다 — US2 의 본체가 "
+            "동작하지 않는다 (StepFailure.rect 배선을 보라)."
+        )
+        for payload in failed:
+            rect = payload["rect"]
+            assert rect["width"] > 0 and rect["height"] > 0, (
+                f"실패 알림에 그릴 자리가 없다: {rect}"
+            )
+            assert isinstance(payload["tab"], int)
+            assert payload["label"], "무엇을 하다 막혔는지가 없다 (FR-009)"
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
 def test_the_display_does_not_change_what_gets_authored(
     keyed_client: TestClient,
     fixture_app: str,
