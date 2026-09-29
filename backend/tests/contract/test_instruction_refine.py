@@ -108,8 +108,16 @@ def test_concrete_values_survive_in_their_own_places() -> None:
                 {"text": "메뉴를 수정한다"},
             ],
             "constraints": [
-                {"text": "연결 주소는 https://a.example 를 쓴다", "scope": "item", "item_index": 1},
-                {"text": "연결 주소는 https://b.example 로 바꾼다", "scope": "item", "item_index": 2},
+                {
+                    "text": "연결 주소는 https://a.example 를 쓴다",
+                    "scope": "item",
+                    "item_index": 1,
+                },
+                {
+                    "text": "연결 주소는 https://b.example 로 바꾼다",
+                    "scope": "item",
+                    "item_index": 2,
+                },
             ],
         }
     )
