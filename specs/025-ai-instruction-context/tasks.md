@@ -120,45 +120,45 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] `fixtures/sample-app/` 에 **클릭되는 비의미 요소** 화면을 더한다 —
+- [X] T017 [P] [US3] `fixtures/sample-app/` 에 **클릭되는 비의미 요소** 화면을 더한다 —
       `<div>` 트리 항목, `<td>` 행, 카드. `addEventListener` 로 붙이고 `onclick` 속성을 쓰지
       않는다 (실제 웹 앱과 같은 모양이라야 이 검증이 뜻을 갖는다)
-- [ ] T018 [P] [US3] `backend/tests/e2e/test_actionable_elements.py` — 그 화면을 관찰했을 때
+- [X] T018 [P] [US3] `backend/tests/e2e/test_actionable_elements.py` — 그 화면을 관찰했을 때
       비의미 요소가 목록에 실리고 `actionability: "cursor"` 가 붙는지 (FR-039·FR-040)
-- [ ] T019 [P] [US3] 같은 파일에 **커서 상속 중복 제거** 검증 — 조상과 자손이 둘 다 실리지
+- [X] T019 [P] [US3] 같은 파일에 **커서 상속 중복 제거** 검증 — 조상과 자손이 둘 다 실리지
       않고 **가장 바깥만** 실리는지 (R13 의 함정)
-- [ ] T020 [P] [US3] 같은 파일에 `find_by_text` 검증 — 글자를 담은 요소와 반응하는 요소가
+- [X] T020 [P] [US3] 같은 파일에 `find_by_text` 검증 — 글자를 담은 요소와 반응하는 요소가
       **갈라져** 돌아오는지 (FR-042). **같은 글자가 여럿일 때 전부 돌아오는지**도 함께 —
       제품이 고르지 않는다는 것이 이 도구의 규칙이다 (contracts/observation.md §4)
-- [ ] T021 [P] [US3] `backend/tests/e2e/test_actionable_elements.py` 에 **녹화 회귀** 검증 —
+- [X] T021 [P] [US3] `backend/tests/e2e/test_actionable_elements.py` 에 **녹화 회귀** 검증 —
       같은 화면에서 사람이 조작했을 때 지금과 같은 Step 이 만들어지는지 (FR-045)
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] `backend/src/itb/recording/injected/recorder.js` 의 `__itbObserve` 에 **2단계
+- [X] T022 [US3] `backend/src/itb/recording/injected/recorder.js` 의 `__itbObserve` 에 **2단계
       후보 수집**을 더한다 — 1단계는 지금의 `INTERACTIVE`, 2단계는 보이는 텍스트를 갖거나
       이미지·아이콘인 요소 중 computed `cursor === "pointer"` 인 것.
       **`INTERACTIVE` 상수 자체는 건드리지 않는다** (녹화가 쓴다 · FR-045)
-- [ ] T023 [US3] 같은 파일 — 2단계 후보에서 **조상 중에 같은 판정을 받은 것이 있으면 제외**한다.
+- [X] T023 [US3] 같은 파일 — 2단계 후보에서 **조상 중에 같은 판정을 받은 것이 있으면 제외**한다.
       `cursor` 는 상속 속성이므로 이 처리가 없으면 목록이 몇 배로 부푼다 (R13)
-- [ ] T024 [US3] 같은 파일 — 각 요소에 `actionability` (`semantic`·`role`·`cursor`)를 싣는다
+- [X] T024 [US3] 같은 파일 — 각 요소에 `actionability` (`semantic`·`role`·`cursor`)를 싣는다
       (FR-040)
-- [ ] T025 [US3] 같은 파일 — 상한(200)에 걸려 잘렸으면 `truncated: true` 와 안내를 싣는다
+- [X] T025 [US3] 같은 파일 — 상한(200)에 걸려 잘렸으면 `truncated: true` 와 안내를 싣는다
       (FR-044 · contracts/observation.md §3)
-- [ ] T026 [US3] `backend/src/itb/authoring/tools.py` 의 `observe_page` 가 `actionability` 와
+- [X] T026 [US3] `backend/src/itb/authoring/tools.py` 의 `observe_page` 가 `actionability` 와
       `truncated` 를 모델에게 전달하게 한다. `ObservedElement` 에 필드를 더한다
-- [ ] T027 [US3] `backend/src/itb/recording/injected/recorder.js` 에 `window.__itbFindByText`
+- [X] T027 [US3] `backend/src/itb/recording/injected/recorder.js` 에 `window.__itbFindByText`
       를 더한다 — 글자를 담은 요소를 찾고, 거기서 **눌렀을 때 반응하는 요소까지 올라가** 둘을
       함께 돌려준다 (FR-042)
-- [ ] T028 [US3] `backend/src/itb/authoring/tools.py` 에 `find_by_text` 도구를 더한다.
+- [X] T028 [US3] `backend/src/itb/authoring/tools.py` 에 `find_by_text` 도구를 더한다.
       **예산을 쓴다** (`record_call()` 을 지난다) — `observe_page` 와 같은 성격이다
       (contracts/observation.md §4)
-- [ ] T029 [US3] `backend/src/itb/authoring/tools.py` 의 `TOOL_SCHEMAS` 에 `find_by_text` 를
+- [X] T029 [US3] `backend/src/itb/authoring/tools.py` 의 `TOOL_SCHEMAS` 에 `find_by_text` 를
       등록한다. 개발용 드라이버(`build_mcp_tools`)가 여기서 자동으로 받는다
-- [ ] T030 [US3] `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에 세 줄을 더한다 —
+- [X] T030 [US3] `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에 세 줄을 더한다 —
       `cursor` 판정의 불확실성, `find_by_text` 사용, **못 찾으면 짐작하지 말고 알릴 것**
       (FR-043 · contracts/observation.md §5)
-- [ ] T031 [US3] T002 의 기준선과 비교해 관찰 크기·지연을 실측하고 `baseline.md` 에 적는다.
+- [X] T031 [US3] T002 의 기준선과 비교해 관찰 크기·지연을 실측하고 `baseline.md` 에 적는다.
       **SC-010 (2배 이내)을 넘으면 2단계 후보 조건을 좁힌다** (R13 의 「확인 필요」)
 
 **Checkpoint**: 실제 웹 앱 화면에서 AI 가 사람이 가리킨 것을 찾는다.

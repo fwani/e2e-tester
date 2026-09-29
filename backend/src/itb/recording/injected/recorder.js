@@ -432,6 +432,182 @@
    * **보이지 않는 요소는 빼지 않고 표시한다.** 목록에서 빼면 에이전트는 그 요소가 없다고
    * 판단해 다른 경로를 찾는데, 실제로는 hover 로 열리는 메뉴 안에 있을 수 있다.
    */
+  /**
+   * 태그 자체가 조작 요소인 것 (025 FR-040).
+   *
+   * `role`·`tabindex`·`onclick` 으로 걸린 것과 갈라 두는 이유는 **확실성**이다. 모델이
+   * 목록을 읽을 때 「이건 확실한 버튼」과 「커서 모양으로 짐작한 것」을 구별할 수 있어야
+   * 잘못 잡힌 것과 제대로 잡힌 것을 가릴 수 있다.
+   */
+  const SEMANTIC_TAGS = new Set(["button", "a", "input", "select", "textarea", "label"]);
+
+  /**
+   * **사람이 누를 수 있다고 인지하는 요소**를 모은다 (025 US3 · FR-039).
+   *
+   * ## 왜 커서인가
+   *
+   * `INTERACTIVE` 선택자는 `onclick` **속성**을 본다. 그런데 React·Vue 는 그 속성을 DOM 에
+   * 남기지 않는다 — 이벤트 위임과 `addEventListener` 를 쓰기 때문이다. 그래서 현대 웹 앱에서
+   * 클릭되는 `div`·`span`·`li`·`td` 가 관찰 목록에 아예 없었고, 사람이 「메뉴관리를
+   * 클릭하라」고 말해도 AI 는 그것을 찾지 못했다.
+   *
+   * 브라우저가 `cursor: pointer` 로 커서를 바꾸는 것이 사용자에게 「여기 누를 수 있다」를
+   * 알리는 표시다. 사람이 그 말을 할 때 근거로 삼는 바로 그 신호이고, 프레임워크가
+   * 무엇이든 동작한다.
+   *
+   * ## **`cursor` 는 상속된다** — 이것이 이 함수의 형태를 정했다
+   *
+   * `<div style="cursor:pointer"><span>메뉴관리</span></div>` 에서 **`span` 의 computed
+   * cursor 도 `pointer`** 다. 순진하게 거르면 조상과 자손이 모두 실려 목록이 몇 배로
+   * 부풀고, 모델은 어느 것을 눌러야 하는지 알 수 없게 된다.
+   *
+   * 그래서 **그 판정을 받은 조상이 없는 가장 바깥**만 취한다. 그것이 사람이 「그 버튼」이라고
+   * 부르는 단위이고, 아래 `actionTarget` 이 녹화에서 쓰는 개념과 같다.
+   *
+   * ## 무엇을 후보에서 빼는가
+   *
+   * 보이는 글자도 이미지도 없는 것은 뺀다 — 모델이 그것을 지목할 방법이 없고, 목록만
+   * 길어진다. 1단계에서 이미 잡힌 것도 뺀다 (같은 요소가 두 번 실리지 않게).
+   */
+  const cursorCandidates = (known) => {
+    let all;
+    try {
+      all = document.body ? document.body.querySelectorAll("*") : [];
+    } catch {
+      return [];
+    }
+    const pointer = [];
+    const pointerSet = new Set();
+    for (const el of all) {
+      if (known.has(el)) continue;
+      let style;
+      try {
+        style = window.getComputedStyle(el);
+      } catch {
+        continue;
+      }
+      if (!style || style.cursor !== "pointer") continue;
+      pointerSet.add(el);
+      pointer.push(el);
+    }
+    const out = [];
+    for (const el of pointer) {
+      // 조상 중에 같은 판정을 받은 것이 있으면 이 요소는 그 안쪽이다.
+      let parent = el.parentElement;
+      let nested = false;
+      while (parent) {
+        if (pointerSet.has(parent) || known.has(parent)) { nested = true; break; }
+        parent = parent.parentElement;
+      }
+      if (nested) continue;
+      // 지목할 근거가 있어야 목록에 둘 값이 있다.
+      const hasText = (el.innerText || "").trim().length > 0;
+      const hasImage = el.tagName === "IMG" || el.querySelector("img,svg") !== null;
+      if (!hasText && !hasImage) continue;
+      out.push(el);
+    }
+    return out;
+  };
+
+  /**
+   * **사람이 쓰는 낱말로 요소를 찾는다** (025 FR-041·FR-042).
+   *
+   * ## 왜 관찰 목록만으로는 부족한가
+   *
+   * 관찰 범위를 넓혀도 상한(200)에 걸려 잘리는 화면이 있다. 사용자가 「메뉴관리」라고
+   * 말했는데 그것이 잘려 나간 자리에 있으면 여전히 못 찾는다.
+   *
+   * ## 글자를 담은 요소와 **반응하는 요소**를 갈라 돌려준다
+   *
+   * 텍스트는 `<span>` 에 있고 핸들러는 조상 `<div>` 에 붙은 것이 흔하다. 하나로 합쳐
+   * 주면 모델은 어느 쪽을 받았는지 모른 채 조작하고, 잘못된 쪽이면 아무 일도 일어나지
+   * 않는다 — 화면은 성공한 것처럼 보이고 Step 은 남는다. 그것이 가장 나쁜 실패다.
+   *
+   * `actionable` 이 `null` 이면 그 글자가 화면에 있지만 누를 수 있는 것이 아니라는
+   * 뜻이고, 그것도 모델이 알아야 할 사실이다.
+   */
+  window.__itbFindByText = (needle, limit) => {
+    const want = String(needle || "").trim();
+    const max = typeof limit === "number" && limit > 0 ? limit : 10;
+    if (!want) return { matches: [] };
+
+    let all;
+    try {
+      all = document.body ? document.body.querySelectorAll("*") : [];
+    } catch {
+      return { matches: [] };
+    }
+
+    const matches = [];
+    for (const el of all) {
+      if (matches.length >= max) break;
+      // **가장 안쪽 요소만** 본다. 조상은 자손의 글자를 포함하므로, 걸러 내지 않으면
+      // body 부터 전부 일치한다.
+      if (el.querySelector("*") !== null) {
+        const inner = (el.innerText || "").trim();
+        const own = Array.from(el.childNodes)
+          .filter((n) => n.nodeType === 3)
+          .map((n) => n.textContent)
+          .join("")
+          .trim();
+        if (!own.includes(want)) {
+          // 자손이 글자를 갖고 있으면 그 자손이 잡힌다. 여기서는 넘어간다.
+          if (inner.includes(want)) continue;
+          continue;
+        }
+      } else if (!(el.innerText || "").trim().includes(want)) {
+        continue;
+      }
+
+      /*
+        눌렀을 때 실제로 반응하는 자리까지 올라간다.
+
+        **첫 `pointer` 에서 멈추면 안 된다** — `cursor` 는 상속되므로 글자를 담은 자손도
+        `pointer` 로 계산된다. 멈추면 `<span>` 을 돌려주게 되고, 그것은 「글자 요소와
+        반응 요소를 갈라 준다」는 이 함수의 목적을 무의미하게 만든다.
+
+        `INTERACTIVE` 에 걸리는 것은 그 자체가 조작의 의미 단위이므로 거기서 멈춘다.
+        그 밖에는 `pointer` 가 이어지는 **가장 바깥**까지 올라간다 — `cursorCandidates`
+        가 관찰에서 쓰는 규칙과 같다.
+      */
+      let actionable = null;
+      let node = el;
+      while (node && node !== document.body) {
+        if (node.matches(INTERACTIVE)) { actionable = node; break; }
+        let style = null;
+        try {
+          style = window.getComputedStyle(node);
+        } catch {
+          style = null;
+        }
+        if (style && style.cursor === "pointer") {
+          actionable = node;
+        } else if (actionable) {
+          break;
+        }
+        node = node.parentElement;
+      }
+
+      const textEl = describe(el, { register: false });
+      matches.push({
+        text_element: { tag: textEl.tag, name: textEl.accessibleName || textEl.text, css: textEl.css },
+        actionable: actionable
+          ? (() => {
+              const a = describe(actionable, { register: false });
+              return {
+                tag: a.tag,
+                name: a.accessibleName || a.label || a.text,
+                css: a.css,
+                actionability: actionable.matches(INTERACTIVE) ? "role" : "cursor",
+              };
+            })()
+          : null,
+        context: containerLabel(el),
+      });
+    }
+    return { matches };
+  };
+
   window.__itbObserve = (limit) => {
     const max = typeof limit === "number" && limit > 0 ? limit : 200;
     const out = [];
@@ -441,8 +617,13 @@
     } catch {
       return { url: location.href, title: document.title, elements: [] };
     }
-    for (const el of nodes) {
-      if (out.length >= max) break;
+    const known = new Set(nodes);
+    // 025 — 1단계(태그·속성)와 2단계(커서)를 이어 붙인다. 순서가 뜻을 갖는다: 확실한
+    // 것이 앞에 오고, 상한에 걸려 잘릴 때 짐작으로 잡은 쪽이 먼저 잘린다.
+    const scanned = [...nodes, ...cursorCandidates(known)];
+    let truncated = false;
+    for (const el of scanned) {
+      if (out.length >= max) { truncated = true; break; }
       let rect;
       try {
         rect = el.getBoundingClientRect();
@@ -458,6 +639,16 @@
         visible: rect.width > 0 && rect.height > 0,
         disabled: el.disabled === true,
         type: el.getAttribute("type"),
+        /*
+          **왜 이것이 조작 가능으로 판정됐는가** (025 FR-040).
+
+          `cursor` 로 잡힌 것은 장식일 수 있다 — 커서만 바꿔 놓고 아무 핸들러도 없는
+          화면이 실제로 있다. 그 사실을 모델이 알아야 잘못 잡힌 것과 제대로 잡힌 것을
+          구별하고, 조작이 실패했을 때 무엇을 의심할지 안다.
+        */
+        actionability: known.has(el)
+          ? (SEMANTIC_TAGS.has(described.tag) ? "semantic" : "role")
+          : "cursor",
         /*
           **이름이 같은 요소를 구별하는 사실들** (2026-09-11 사용자 보고 · `containerLabel`
           주석). 넷 다 이미 문서에 있던 것이고 새로 만든 표식이 아니다 — 사용자가 지시문에
@@ -491,6 +682,11 @@
       // 화면 전체 텍스트는 절단해서 준다 — 길이 상한이 없으면 컨텍스트를 다 먹는다.
       text: (document.body ? document.body.innerText : "").slice(0, 4000),
       elements: out,
+      /*
+        **잘렸으면 말한다** (025 FR-044). 관찰 범위가 넓어지면 상한에 걸리는 화면이 는다.
+        말하지 않으면 모델은 목록이 전부라고 믿고, 화면에 있는 것을 「없다」고 판단한다.
+      */
+      truncated,
     };
   };
 

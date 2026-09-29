@@ -186,6 +186,13 @@ MAX_CONSECUTIVE_ELEMENT_FAILURES = 3
 OBSERVE_ELEMENT_LIMIT = 200
 """한 번에 보여 줄 요소 수 상한. 화면이 크면 컨텍스트를 다 먹는다."""
 
+FIND_BY_TEXT_LIMIT = 10
+"""`find_by_text` 가 돌려주는 후보 수 상한 (025 FR-041).
+
+**작게 둔다.** 열 건을 넘는다는 것은 그 낱말이 화면에서 너무 흔하다는 뜻이고, 그때 필요한
+것은 더 많은 후보가 아니라 **더 구체적인 낱말**이다. 스무 건을 주면 모델이 그중에서
+고르려 들고, 고르는 것은 짐작이다 (`mark_duplicates` 가 막으려는 것과 같은 상황)."""
+
 DISTINGUISHING_FIELDS = ("id", "placeholder", "label", "context")
 """이름이 같은 요소를 **구별하는 사실들** (2026-09-11 사용자 보고).
 
@@ -427,6 +434,26 @@ class ObservedElement:
     지금까지와 같이 동작한다.
     """
 
+    actionability: str = "semantic"
+    """**왜 조작 가능으로 판정됐는가** (025 FR-040).
+
+    | 값 | 근거 | 확실성 |
+    |---|---|---|
+    | `semantic` | 태그 자체가 조작 요소 (`button`·`a`·`input`·…) | 높다 |
+    | `role` | `[role]`·`[tabindex]`·`[onclick]` 이 붙어 있다 | 높다 |
+    | `cursor` | 커서가 손가락으로 바뀐다 | **짐작이 섞였다** |
+
+    `cursor` 로 잡힌 것은 장식일 수 있다 — 커서만 바꿔 놓고 핸들러가 없는 화면이 실제로
+    있다. 그 사실을 모델이 알아야 조작이 실패했을 때 무엇을 의심할지 안다.
+
+    **Step 에 저장되지 않는다.** Step 이 들고 있어야 하는 것은 로케이터 후보이지 「어떻게
+    발견했는가」가 아니다. 저장하면 같은 요소가 발견 경로에 따라 다른 Step 이 되고, 그것은
+    헌법 원칙 I 위반이다.
+
+    기본값이 `semantic` 인 것은 낡은 주입 스크립트가 이 값을 싣지 않는 경우뿐이며, 그때는
+    025 이전과 같이 태그·속성으로만 잡힌 요소들이다.
+    """
+
 
 StepSink = Callable[[Step], Awaitable[None]]
 """성공한 동작을 Step 으로 확정하는 통로. `compiler` 가 구현한다."""
@@ -646,6 +673,7 @@ class BrowserToolbox:
                 disabled=bool(entry.get("disabled")),
                 # 관찰 스크립트가 싣지 않으면(낡은 주입) 지금까지와 같이 동작한다.
                 unique=bool(entry.get("unique", True)),
+                actionability=str(entry.get("actionability") or "semantic"),
             )
             self.refs[ref] = observed
             row: dict[str, Any] = {
@@ -656,6 +684,8 @@ class BrowserToolbox:
                 "visible": observed.visible,
                 "disabled": observed.disabled,
                 "type": entry.get("type"),
+                # 025 FR-040 — 모델이 확실한 것과 짐작한 것을 구별할 근거.
+                "actionability": observed.actionability,
             }
             # 이름이 같은 요소를 구별하는 사실들 (2026-09-11 사용자 보고 · `mark_duplicates`).
             # **없는 것은 싣지 않는다** — `null` 칸이 120줄 쌓이면 읽을 것이 늘어날 뿐이다.
@@ -675,6 +705,7 @@ class BrowserToolbox:
                 row["unique"] = False
             elements.append(row)
         mark_duplicates(elements)
+        truncated = bool(raw.get("truncated"))
         # 025 FR-003 — **요소 목록을 저널에 싣지 않는다.** 관찰했다는 사실과 어느 탭이었는지가
         # 다음 턴에 필요한 전부다. 목록은 이 기능이 없애려는 바로 그 크기다.
         self.journal.note("화면 관찰", f"요소 {len(elements)}개 확인", target=f"탭 {tab}")
@@ -684,6 +715,83 @@ class BrowserToolbox:
             "title": raw.get("title"),
             "text": raw.get("text"),
             "elements": elements,
+            # 025 FR-044 — **잘렸으면 말한다.** 말하지 않으면 모델은 목록이 전부라고 믿고,
+            # 화면에 있는 것을 「없다」고 판단한다.
+            "truncated": truncated,
+            **(
+                {
+                    "note": (
+                        f"조작 가능한 요소가 상한({OBSERVE_ELEMENT_LIMIT})을 넘어 "
+                        "잘렸습니다. 찾는 것이 목록에 없으면 find_by_text 로 화면의 "
+                        "글자를 직접 찾으세요."
+                    )
+                }
+                if truncated
+                else {}
+            ),
+        }
+
+    async def find_by_text(self, text: str, tab: int = 0) -> dict[str, Any]:
+        """**사람이 쓰는 낱말로 요소를 찾는다** (025 FR-041·FR-042).
+
+        ## 왜 `observe_page` 로 부족한가
+
+        관찰 범위를 넓혀도 상한(`OBSERVE_ELEMENT_LIMIT`)에 걸려 잘리는 화면이 있다.
+        사용자가 「메뉴관리」라고 말했는데 그것이 잘려 나간 자리에 있으면 여전히 못 찾는다.
+
+        ## 글자 요소와 **반응하는 요소**를 갈라 돌려준다
+
+        텍스트는 `<span>` 에 있고 핸들러는 조상 `<div>` 에 붙은 것이 흔하다. 하나로 합쳐
+        주면 모델은 어느 쪽을 받았는지 모른 채 조작하고, 잘못된 쪽이면 **아무 일도
+        일어나지 않은 채 Step 만 남는다** — 화면은 성공한 것처럼 보인다. 가장 나쁜 실패다.
+
+        ## 예산을 쓴다
+
+        `observe_page` 와 같은 성격이다 — 남용되면 헛돌 수 있다. `mark_item` 과 다른
+        판단인 이유는 그쪽이 화면을 건드리지 않고 헛돌 수도 없기 때문이다.
+
+        ## **참조를 부여하지 않는다**
+
+        돌려주는 것은 「무엇이 어디에 있는가」이지 조작 대상이 아니다. 조작하려면
+        `observe_page` 로 참조를 받아야 한다 — 후보 수집과 유일성 검증이 그 경로에만
+        있고, 여기서 참조를 주면 그 검증을 건너뛰는 길이 생긴다 (헌법 원칙 IV).
+        """
+        if not self.limits.record_call():
+            return dict(STOP_NOTICE)
+        want = (text or "").strip()
+        if not want:
+            return {"error": "찾을 글자를 적어 주세요."}
+        await self._announce(f"화면에서 「{want}」 를 찾는 중")
+        handle = self._tab(tab)
+        try:
+            raw = await handle.page.evaluate(
+                "([needle, limit]) => (typeof window.__itbFindByText === 'function'"
+                " ? window.__itbFindByText(needle, limit) : null)",
+                [want, FIND_BY_TEXT_LIMIT],
+            )
+        except Exception as exc:  # noqa: BLE001 - 문서 교체 중일 수 있다
+            self.journal.note("글자로 찾기", f"실패: {type(exc).__name__}", target=want)
+            return {"error": f"화면을 읽을 수 없습니다: {type(exc).__name__}"}
+        if not isinstance(raw, dict):
+            return {"error": "화면 관찰 스크립트가 주입되지 않았습니다."}
+
+        matches = raw.get("matches") or []
+        self.journal.note("글자로 찾기", f"{len(matches)}건 찾음", target=want)
+        if not matches:
+            return {
+                "matches": [],
+                "note": (
+                    f"화면에 「{want}」 라는 글자가 없습니다. 다른 낱말로 찾거나 "
+                    "observe_page 로 지금 화면을 다시 확인하세요."
+                ),
+            }
+        return {
+            "matches": matches,
+            "note": (
+                "조작해야 하는 것은 `actionable` 쪽입니다. 그것을 조작하려면 "
+                "observe_page 로 참조를 받으세요. `actionable` 이 null 이면 그 글자는 "
+                "화면에 있지만 누를 수 있는 것이 아닙니다."
+            ),
         }
 
     # ─── 조작 도구 — Step 과 1:1 ───────────────────────────────────────────
@@ -1548,6 +1656,7 @@ class BrowserToolbox:
 READ_ONLY_TOOLS: tuple[str, ...] = (
     "list_tabs",
     "observe_page",
+    "find_by_text",
 )
 """화면을 읽기만 하는 도구. 조작하지 않으므로 Step 을 만들지 않는다."""
 
@@ -1643,6 +1752,15 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         CSS 셀렉터를 직접 만들어 넘기지 않는다.
         """
         return await toolbox.observe_page(tab)
+
+    @beta_async_tool
+    async def find_by_text(text: str, tab: int = 0) -> dict[str, Any]:
+        """화면에 보이는 글자로 요소를 찾는다. 화면을 조작하지 않는다.
+
+        글자를 담은 요소와, 눌렀을 때 실제로 반응하는 요소를 갈라서 돌려준다.
+        조작해야 하는 것은 후자이며, 조작하려면 observe_page 로 참조를 받아야 한다.
+        """
+        return await toolbox.find_by_text(text, tab)
 
     @beta_async_tool
     async def click(element_ref: str) -> dict[str, Any]:
@@ -1816,6 +1934,18 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
             "type": "object",
             "properties": {"tab": {"type": "integer", "minimum": 0, "default": 0}},
             "required": [],
+        },
+    ),
+    "find_by_text": (
+        "화면에 보이는 글자로 요소를 찾는다. 화면을 조작하지 않는다. "
+        "글자를 담은 요소와 눌렀을 때 반응하는 요소를 갈라서 돌려준다.",
+        {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string"},
+                "tab": {"type": "integer", "minimum": 0, "default": 0},
+            },
+            "required": ["text"],
         },
     ),
     "click": (

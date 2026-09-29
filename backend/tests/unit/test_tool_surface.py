@@ -60,7 +60,12 @@ def test_the_four_classes_cover_the_surface_exactly() -> None:
     assert len(union) == len(set(union)), "두 분류에 든 도구가 있다"
     # 023 이 `press` 를 더해 17종이 됐다. **Step 종류가 늘어서 늘어난 것**이며,
     # 아래 1:1 대응 검사가 그 사실을 강제한다 — 종류 없이 도구만 늘면 거기서 깨진다.
-    assert len(TOOL_NAMES) == 17, f"023 이후 표면은 17종이다 (지금 {len(TOOL_NAMES)})"
+    #
+    # 025 가 `find_by_text` 를 더해 18종이다. **이것은 Step 을 만들지 않는다** —
+    # `observe_page` 와 같은 읽기 전용 분류이고, 그래서 아래 1:1 대응 검사는 그대로
+    # 통과한다. 늘린 이유는 관찰 목록이 상한에 걸려 잘릴 때 사람이 말한 낱말로 요소를
+    # 찾을 길이 필요했기 때문이다 (025 FR-041).
+    assert len(TOOL_NAMES) == 18, f"025 이후 표면은 18종이다 (지금 {len(TOOL_NAMES)})"
 
 
 @pytest.mark.parametrize("name", TOOL_NAMES)
