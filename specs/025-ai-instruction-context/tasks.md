@@ -33,13 +33,13 @@ Web app 구조 — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `front
 **Purpose**: 고치기 전에 지금 상태를 수치로 남긴다. 이것이 없으면 끝에서 무엇이 달라졌는지
 말할 수 없다.
 
-- [ ] T001 시작 시점 전량 검증을 돌려 기준선을 `specs/025-ai-instruction-context/baseline.md` 에
+- [X] T001 시작 시점 전량 검증을 돌려 기준선을 `specs/025-ai-instruction-context/baseline.md` 에
       기록한다 — `cd backend && bash scripts/test-backend.sh` · `uv run ruff check src/ tests/` ·
       `uv run lint-imports` · `cd frontend && npx vitest run` · `npx tsc --noEmit`.
       **기존 실패를 새 실패와 섞지 않기 위한 것이다** (022 T001 과 같은 목적)
-- [ ] T002 [P] 현행 관찰 한 번의 크기를 실측해 `baseline.md` 에 적는다 — 실제 화면에서
+- [X] T002 [P] 현행 관찰 한 번의 크기를 실측해 `baseline.md` 에 적는다 — 실제 화면에서
       `observe_page` 를 불러 요소 수·응답 바이트를 잰다. SC-008·SC-010 의 비교 기준이 된다
-- [ ] T003 [P] 한 지시를 끝까지 수행시켜 모델에게 전달된 총 분량을 실측해 `baseline.md` 에
+- [X] T003 [P] 한 지시를 끝까지 수행시켜 모델에게 전달된 총 분량을 실측해 `baseline.md` 에
       적는다. SC-008 의 「늘지 않는다」가 무엇 대비인지를 정하는 값이다
 
 **Checkpoint**: 기준선이 문서로 남았다. 이후 모든 수치는 이것과 비교한다.
