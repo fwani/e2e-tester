@@ -82,13 +82,23 @@ export function ComposeRoute() {
           .then((session) => navigate(paths.session(session.session_id), { replace: true }))
           .catch(fail);
       }}
-      onStartAi={(startUrl, aiInstruction) => {
+      onStartAi={(startUrl, aiInstruction, workPlan) => {
         if (!actions.lockCompose()) return;
         void sessions
           .create({
             mode: "ai",
             start_url: startUrl,
             ai_instruction: aiInstruction,
+            /*
+              025 FR-008 — 사용자가 확인하고 확정한 작업 계획.
+
+              **`ai_instruction` 을 대신하지 않는다.** 정제 기록의 절반이고, 계획이
+              뜻을 바꿨을 때 대조할 것이 필요하다 (FR-022).
+
+              `null` 이면 016 이전과 같이 동작한다 — 정제에 실패했거나 사용자가 원문으로
+              진행을 골랐다 (FR-012·FR-019).
+            */
+            work_plan: workPlan ?? null,
             /*
               014 FR-030 — **초안에서 왔다는 사실을 서버에 알린다.**
 

@@ -285,3 +285,31 @@ body:has(.workspace-shell) [data-toast-layer]:not(.workspace-notice-dock) { left
 @media (max-width: 1399px) { .ai-steps-switch { display: inline-flex; } }
 .ai-authoring-attention [data-blocked-answer] > div:last-child { flex-direction: column; align-items: stretch; }
 .ai-authoring-attention [data-blocked-answer-send] { align-self: stretch; flex-shrink: 0; }
+
+/* ─── 025 작업 계획 — 사용자와 AI 가 같은 목록을 본다 ─────────────────────── */
+/*
+  기존 토큰만 쓴다. 새 색·새 간격을 만들지 않는 것이 008 의 규칙이고, 그래야 이 패널이
+  다른 화면과 같은 제품으로 보인다.
+*/
+.plan-panel { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; }
+.plan-constraints { padding: 10px 12px; border: 1px solid var(--hair); border-radius: 6px; background: var(--ai-t); }
+.plan-constraints h3 { margin: 0 0 6px; font-size: var(--type-label); font-weight: 500; color: var(--ink); }
+.plan-constraints ul { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px; }
+.plan-constraints li { font-size: var(--type-label); line-height: 1.5; overflow-wrap: anywhere; }
+.plan-items h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 6px; font-size: var(--type-label); font-weight: 500; }
+.plan-remaining { font-size: 12px; font-weight: 400; color: var(--ink-3); }
+.plan-items ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.plan-items li { display: flex; align-items: baseline; gap: 8px; padding: 4px 6px; border-radius: 4px; font-size: var(--type-label); line-height: 1.5; }
+.plan-items li[data-next="true"] { background: var(--ai-t); }
+.plan-items li[data-status="done"] .plan-text { color: var(--ink-3); }
+.plan-items li[data-status="skipped"] .plan-text { color: var(--ink-3); text-decoration: line-through; }
+.plan-mark { flex: 0 0 auto; width: 14px; text-align: center; color: var(--ink-3); }
+.plan-items li[data-next="true"] .plan-mark { color: var(--ink); }
+.plan-text { flex: 1; overflow-wrap: anywhere; }
+.plan-reason { flex: 0 0 auto; font-size: 12px; color: var(--ink-3); }
+
+/* ─── 025 정제 결과 확인 — 작성을 시작하기 전에 ───────────────────────────── */
+.compose-refined { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; border-top: 1px solid var(--hair); }
+.compose-refined h2 { margin: 0; font-size: var(--type-label); font-weight: 500; }
+.compose-refined-notes { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-3); }
+.compose-refined-actions { display: flex; flex-wrap: wrap; gap: 8px; }

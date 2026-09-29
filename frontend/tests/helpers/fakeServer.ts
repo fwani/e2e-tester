@@ -188,6 +188,15 @@ export function stubServer(options: FakeServerOptions = {}): FakeCall[] {
       }
       if (u === "/api/project/list") return json({ projects: [], warning: null });
       if (u === "/api/keys/status") return json(NO_KEYS);
+      /*
+        025 — 지시문 정제. **정제하지 않았다고 답한다.**
+
+        라우팅 검증이 보는 것은 「세션이 생기면 기록이 교체되는가」이지 정제가 아니다.
+        `refined: false` 면 화면은 원문으로 진행하는 길을 열고(FR-020), 그 길을 지나면
+        기존 흐름과 같아진다.
+      */
+      if (u === "/api/ai/refine")
+        return json({ refined: false, plan: null, notes: ["정제하지 않았다"] });
       if (u === "/api/secrets") {
         return json({ public_key_fingerprint: null, fingerprint_matches_key: true, names: [] });
       }

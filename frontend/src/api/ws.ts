@@ -210,6 +210,22 @@ export type SessionEvent =
        * 표시할지 다시 판단해야 한다.
        */
       mismatch_count?: number;
+      /**
+       * 아직 하지 않은 할 일 (025 FR-028).
+       *
+       * **완료 보고가 남은 일을 덮으면 안 된다.** 모델은 「끝냈다」고 말하면서 구획
+       * 하나를 건너뛸 수 있고, 제품이 센 값이 모델의 말을 이긴다 (022 FR-003).
+       *
+       * **비어 있으면 필드가 없다** — 위 `mismatch_count` 와 같은 규칙이다.
+       */
+      remaining_items?: { order: number; text: string }[];
+    })
+  /* ─── 025 작업 계획 진척 (contracts/api-contract.md §5) ─── */
+  | (SessionEventBase & {
+      type: "plan_progress";
+      item_id: string;
+      status: "pending" | "done" | "skipped";
+      remaining: number;
     })
   /* ─── 016 구간 재녹화 (contracts/api-contract.md §4) ─── */
   | (SessionEventBase & {

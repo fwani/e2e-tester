@@ -191,10 +191,14 @@ describe("요청 본문", () => {
         if (url === "/api/sessions" && init?.method === "POST") {
           bodies.push(JSON.parse(String(init.body)));
         }
+        // 025 — 정제 응답을 따로 준다. 「가능 여부」 응답을 그대로 주면 `refined` 가
+        // 없는 채로 화면에 들어가 렌더가 터진다.
         const payload =
           url === "/api/sessions"
             ? { session_id: "s-1", state: "starting", test_id: null }
-            : { available: true, reason: null };
+            : url === "/api/ai/refine"
+              ? { refined: false, plan: null, notes: ["정제하지 않았다"] }
+              : { available: true, reason: null };
         return Promise.resolve({
           ok: true,
           status: url === "/api/sessions" ? 201 : 200,
@@ -219,6 +223,11 @@ describe("요청 본문", () => {
 
     const start = document.querySelector('[data-action="ai.start"]') as HTMLElement;
     fireEvent.click(start);
+
+    // 025 FR-018 — 시작 전에 정제 결과를 확인한다. 여기서는 정제를 흉내 내지 않았으므로
+    // 호출이 실패하고 「원문으로 진행」 길이 열린다 (FR-020). 그 길을 지나야 콜백이 온다.
+    const proceed = await screen.findByRole("button", { name: "원문으로 시작" });
+    fireEvent.click(proceed);
 
     // ComposeView 는 콜백까지가 제 몫이다. 본문을 만드는 것은 App 이므로 여기서는
     // **콜백이 불렸다**까지 확인하고, 본문은 아래 App 계약 검증이 맡는다.

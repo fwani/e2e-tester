@@ -284,8 +284,60 @@ export interface AiAvailability {
   reason: string | null;
 }
 
+// ─── 지시문 정제 (025 US4 · contracts/api-contract.md §1) ──────────────────
+//
+// **작성을 시작하기 전에 부른다.** 세션 생성 안에서 정제하면 사용자는 브라우저가 뜬 뒤에
+// 결과를 보게 되고, 고치려면 이미 시작된 일을 되돌려야 한다.
+
+/** 할 일 하나. `status` 는 작성 중에 바뀐다. */
+export interface PlanItem {
+  id: string;
+  order: number;
+  text: string;
+  status: "pending" | "done" | "skipped";
+  skip_reason?: string | null;
+}
+
+/**
+ * 지켜야 할 것 하나.
+ *
+ * **구체값도 제약이다** — 「연결 주소는 (주소 A) 를 쓴다」는 특정 항목에 걸린 제약이고,
+ * 「기존 데이터는 검증에 쓰지 않는다」는 전역 제약이다.
+ */
+export interface PlanConstraint {
+  text: string;
+  scope: "global" | "item";
+  item_id?: string | null;
+}
+
+export interface WorkPlan {
+  items: PlanItem[];
+  constraints: PlanConstraint[];
+  source: "refined" | "manual";
+}
+
+export interface RefineResponse {
+  refined: boolean;
+  plan: WorkPlan | null;
+  /**
+   * 사용자에게 알릴 것.
+   *
+   * **뜻이 바뀐 자리가 여기 온다** — 자격 증명을 변수 참조로 바꾼 것 같은. 조용히
+   * 바꾸면 사용자는 자기가 적은 값이 쓰이는 줄 안다.
+   */
+  notes: string[];
+}
+
 export const ai = {
   availability: () => get<AiAvailability>("/api/ai/availability"),
+  /**
+   * 지시문을 작업 계획으로 정제한다 (025 FR-014).
+   *
+   * **실패도 200 이다** (`refined: false`). 정제는 작성의 관문이 아니므로, 실패를 오류로
+   * 다루면 안 된다 — 원문으로 진행하는 길이 항상 열려 있어야 한다 (FR-020).
+   */
+  refine: (instruction: string) =>
+    post<RefineResponse>("/api/ai/refine", { instruction }),
 };
 
 // ─── 테스트 ─────────────────────────────────────────────────────────────────
@@ -944,8 +996,39 @@ export const sessions = {
      * 옮겨지지 않으며 초안도 사라지지 않는다 — 실제로 그런 상태였다 (수렴 T085).
      */
     draft_id?: string | null;
+    /**
+     * 사용자가 확인하고 확정한 작업 계획 (025 FR-008). `mode: "ai"` 에서만 쓴다.
+     *
+     * **선택이다.** 없으면 016 이전과 같이 동작한다 — 정제에 실패했거나 사용자가
+     * 거절한 경우이고, 그것이 작성을 막아서는 안 된다 (FR-012).
+     *
+     * `ai_instruction` 은 계획이 있어도 **여전히 보낸다.** 정제 기록의 절반이고,
+     * 계획이 뜻을 바꿨을 때 대조할 것이 필요하다.
+     */
+    work_plan?: WorkPlan | null;
   }) => post<SessionView>("/api/sessions", body),
   get: (id: string) => get<SessionView>(`/api/sessions/${id}`),
+  /** 지금 작업 계획과 남은 개수 (025 FR-028). 계획이 없으면 `plan` 이 `null` 이다. */
+  plan: (id: string) =>
+    get<{ plan: WorkPlan | null; remaining: number }>(
+      `/api/sessions/${id}/plan`,
+    ),
+  /**
+   * 사용자가 항목 상태를 바꾼다 (025 data-model §2).
+   *
+   * **사용자는 어느 상태로든 옮길 수 있다** — 모델과 다르다. 모델은 `done`·`skipped`
+   * 로만 옮길 수 있고 되돌리는 것은 사용자만 한다.
+   */
+  setPlanItem: (
+    id: string,
+    itemId: string,
+    status: PlanItem["status"],
+    skipReason?: string,
+  ) =>
+    patch<{ plan: WorkPlan | null; remaining: number }>(
+      `/api/sessions/${id}/plan/items/${itemId}`,
+      skipReason ? { status, skip_reason: skipReason } : { status },
+    ),
   /**
    * 실행 속도 변경 (FR-103). **실행 중에도 부를 수 있다** — 진행 중인 Step 을 끊지
    * 않고 다음 Step 경계부터 적용된다.

@@ -238,6 +238,10 @@ describe("만들기의 초안 (§3.4 · §5)", () => {
     await waitFor(() => expect(textarea.value).toBe("로그인한다"));
     // 초안에서 왔으므로 방법은 이미 AI 다 (`ComposeView` — `fromDraft` 는 `mode` 를 미리 고른다).
     act(() => action("ai.start")!.click());
+    // 025 FR-018 — 시작 전에 정제 결과를 확인한다. 가짜 서버는 정제하지 않았다고 답하므로
+    // 원문으로 진행하는 길이 열린다 (FR-020). 그 길을 지나면 기존 흐름과 같다.
+    const proceed = await screen.findByRole("button", { name: "원문으로 시작" });
+    await act(async () => { proceed.click(); });
     await waitFor(() => expect(router.state.location.pathname).toBe("/sessions/s-new"));
     expect(router.state.historyAction).toBe("REPLACE");
 

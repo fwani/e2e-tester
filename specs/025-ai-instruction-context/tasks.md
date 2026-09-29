@@ -230,7 +230,7 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
       (FR-015). 이 기능에서 가장 위험한 실패다
 - [X] T046 [P] [US4] 같은 파일에 **자격 증명 치환** 검증 — 평문 비밀번호가 참조로 바뀌고
       그 사실이 `notes` 에 실리는지 (FR-010 · R10)
-- [ ] T047 [P] [US4] `frontend/tests/ComposeRefine.test.tsx` — 정제 결과 확인·수정·거절
+- [X] T047 [P] [US4] `frontend/tests/ComposeRefine.test.tsx` — 정제 결과 확인·수정·거절
 
 ### Implementation for User Story 4
 
@@ -246,10 +246,10 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 - [X] T052 [US4] `backend/src/itb/api/routes/instruction.py` 를 만든다 —
       `POST /api/instruction/refine` (contracts/api-contract.md §1). 세션을 만들지 않는다
 - [X] T053 [US4] `backend/src/itb/api/app.py` 에 라우터를 등록한다
-- [ ] T054 [P] [US4] `frontend/src/api/client.ts` 에 `refineInstruction` 을 더한다
-- [ ] T055 [US4] `frontend/src/pages/ComposeView.tsx` 에 정제 결과 확인·수정 자리를 만든다.
+- [X] T054 [P] [US4] `frontend/src/api/client.ts` 에 `refineInstruction` 을 더한다
+- [X] T055 [US4] `frontend/src/pages/ComposeView.tsx` 에 정제 결과 확인·수정 자리를 만든다.
       **기존 디자인 언어(008)를 따른다.** 새 화면을 만들지 않고 지시문 입력 자리를 넓힌다
-- [ ] T056 [US4] `frontend/src/pages/ComposeView.tsx` — 「원문으로 진행」을 둔다 (FR-019).
+- [X] T056 [US4] `frontend/src/pages/ComposeView.tsx` — 「원문으로 진행」을 둔다 (FR-019).
       정제 실패 시에도 같은 길이 열린다 (FR-020)
 - [ ] T057 [US4] `backend/src/itb/api/routes/sessions.py` — 정제 기록(원문 + 계획)을 저장 시
       의도 기록으로 남긴다 (FR-022 · data-model §5). **실행 정보가 아니다**
@@ -275,7 +275,7 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
 - [X] T060 [P] [US5] `backend/tests/integration/test_plan_progress.py` — 인수 후 재개에
       **남은 항목이 실리는지** (FR-026), 미완료가 남았는데 끝났다고 할 때 `ai_finished` 에
       `remaining_items` 가 실리는지 (FR-028)
-- [ ] T061 [P] [US5] `frontend/tests/PlanPanel.test.tsx` — 진척 목록과 되돌리기
+- [X] T061 [P] [US5] `frontend/tests/PlanPanel.test.tsx` — 진척 목록과 되돌리기
 
 ### Implementation for User Story 5
 
@@ -295,11 +295,11 @@ AI 가 찾아 누르는지, 조상·자손이 중복으로 실리지 않는지 �
       를 싣는다 (FR-028). **모델의 완료 선언이 남은 일을 덮지 않게 하는 제품 쪽 절반**이다
 - [X] T068 [US5] `backend/src/itb/api/routes/sessions.py` — 대화로 온 새 지시가 계획에 항목으로
       더해지게 한다 (FR-029)
-- [ ] T069 [P] [US5] `frontend/src/components/workbench/PlanPanel.tsx` 를 만든다 — 진척 목록,
+- [X] T069 [P] [US5] `frontend/src/components/workbench/PlanPanel.tsx` 를 만든다 — 진척 목록,
       되돌리기. 기존 디자인 언어(008)를 따른다
-- [ ] T070 [US5] `frontend/src/components/workbench/AiAuthoringPanel.tsx` — 남은 항목을
+- [X] T070 [US5] `frontend/src/components/workbench/AiAuthoringPanel.tsx` — 남은 항목을
       완료 보고와 함께 보인다 (FR-028)
-- [ ] T071 [P] [US5] `frontend/src/api/ws.ts` 에 `plan_progress` 를 더한다
+- [X] T071 [P] [US5] `frontend/src/api/ws.ts` 에 `plan_progress` 를 더한다
 
 **Checkpoint**: 되풀이와 건너뜀이 멈춘다. 남은 일이 사용자에게 보인다.
 

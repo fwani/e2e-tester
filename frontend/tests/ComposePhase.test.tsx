@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ComposeView } from "../src/pages/ComposeView";
+import * as client from "../src/api/client";
 
 const el = (selector: string) => document.querySelector<HTMLElement>(selector);
 
@@ -81,8 +82,26 @@ describe("시작을 걸면 기존 경로를 그대로 쓴다 (FR-248 · 005 U-01
     expect(onRecord).toHaveBeenCalledWith("http://t/login.html");
   });
 
-  it("AI 를 고르고 지시문을 쓰면 AI 경로를 부른다 — 중간 화면이 없다 (FR-259)", () => {
+  /**
+   * 025 가 이 자리에 **정제 확인 한 단계**를 넣었다 (FR-018). 그래도 FR-259 는
+   * 지켜진다 — 확인은 **같은 화면 안의 블록**이고 라우트가 바뀌지 않는다. 005 가
+   * 없앤 것은 「지시문을 쓰러 다른 화면으로 넘어가는 것」이었다.
+   *
+   * 무엇이 달라졌는가: 시작을 누르면 `onStartAi` 가 **즉시** 불리는 대신 정제 결과가
+   * 뜨고, 사용자가 확정하거나 원문으로 진행을 고르면 그때 불린다. 확정 없이 시작되는
+   * 경로를 만들지 않는 것이 025 FR-018 의 요구다 — 브라우저가 뜬 뒤에 계획을 고치게
+   * 하면 사용자는 이미 시작된 일을 되돌려야 한다.
+   *
+   * 정제 흐름 자체는 `ComposeRefine.test.tsx` 가 본다. 여기서는 **라우트가 바뀌지
+   * 않는다**는 FR-259 의 성질만 확인한다.
+   */
+  it("AI 를 고르고 지시문을 쓰면 같은 화면에서 이어진다 — 중간 화면이 없다 (FR-259)", async () => {
     const onStartAi = vi.fn();
+    vi.spyOn(client.ai, "refine").mockResolvedValue({
+      refined: false,
+      plan: null,
+      notes: ["정제하지 못했습니다."],
+    });
     show({ onStartAi });
     fireEvent.change(screen.getByLabelText("시작 URL"), {
       target: { value: "http://t/login.html" },
@@ -92,7 +111,19 @@ describe("시작을 걸면 기존 경로를 그대로 쓴다 (FR-248 · 005 U-01
       target: { value: "로그인한 다음 프로젝트를 만들어" },
     });
     fireEvent.click(act("ai.start"));
-    expect(onStartAi).toHaveBeenCalledWith("http://t/login.html", "로그인한 다음 프로젝트를 만들어");
+
+    // 같은 화면이다 — 시작 URL 칸이 그대로 있다.
+    await waitFor(() => expect(screen.getByText("이렇게 진행합니다")).toBeTruthy());
+    expect(screen.getByLabelText("시작 URL")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "원문으로 시작" }));
+    await waitFor(() =>
+      expect(onStartAi).toHaveBeenCalledWith(
+        "http://t/login.html",
+        "로그인한 다음 프로젝트를 만들어",
+        null,
+      ),
+    );
   });
 
   /**
