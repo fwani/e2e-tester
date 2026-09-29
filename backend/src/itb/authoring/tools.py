@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -186,6 +187,35 @@ MAX_CONSECUTIVE_ELEMENT_FAILURES = 3
 OBSERVE_ELEMENT_LIMIT = 200
 """한 번에 보여 줄 요소 수 상한. 화면이 크면 컨텍스트를 다 먹는다."""
 
+OBSERVE_RESPONSE_CHAR_BUDGET = 20_000
+"""관찰 응답 하나가 쓸 수 있는 **글자 수 예산** (025 FR-048).
+
+## 개수 상한과 다른 것을 막는다
+
+`OBSERVE_ELEMENT_LIMIT` 은 「화면을 어디까지 훑는가」이고 이것은 「그 결과가 드라이버를
+통과할 수 있는가」다. 요소 200개가 다 긴 이름을 가진 화면이면 개수 상한에 걸리지 않고도
+응답이 수만 자가 된다.
+
+## 왜 제품이 먼저 잘라야 하는가 (2026-09-29 사용자 보고)
+
+Claude Code 드라이버는 MCP 도구 응답에 자체 토큰 상한을 둔다. 넘으면 **CLI 가** 응답을
+잘라 파일로 떨구고 모델에게 그 경로를 알려 주는데, 그 순간 두 가지가 한꺼번에 깨진다.
+
+1. 모델이 그 파일을 읽으려 하고, `Read` 는 막혀 있으므로(FR-086) 권한 게이트가
+   `interrupt=True` 로 **턴을 끊는다.** 작성이 통째로 멈춘다.
+2. 제품은 잘렸다는 것을 **모른다.** `truncated` 는 거짓으로 나가므로 FR-044 의 안내도
+   붙지 않고, 모델은 목록이 전부라고 믿는다.
+
+제품이 먼저 자르면 둘 다 없다 — 잘림이 `truncated` 로 표현되고, 모델은 이미 있는
+`find_by_text` 경로로 간다.
+
+## 20,000자인 이유
+
+CLI 기본 상한은 토큰 기준이고 한국어는 글자당 토큰이 영어보다 무겁다. 최악(1자 = 1토큰)을
+가정해도 기본 상한 안에 들도록 잡은 값이다. **정확한 환산을 쫓지 않는다** — 환산을 맞히려
+들면 CLI 가 상한을 바꿀 때 조용히 깨지고, 그 깨짐은 위 1번(턴이 끊김)으로만 드러난다.
+"""
+
 FIND_BY_TEXT_LIMIT = 10
 """`find_by_text` 가 돌려주는 후보 수 상한 (025 FR-041).
 
@@ -203,6 +233,32 @@ DISTINGUISHING_FIELDS = ("id", "placeholder", "label", "context")
 
 DUPLICATE_KEY_FIELDS = ("tag", "role", "name", "type")
 """이 넷이 모두 같으면 **에이전트가 구별할 수 없다** — `mark_duplicates` 의 묶음 기준."""
+
+
+def _fit_to_budget(
+    elements: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], bool]:
+    """예산을 넘지 않는 만큼만 남긴다 (025 FR-048).
+
+    **뒤에서부터 버린다.** 관찰 스크립트가 확실한 것(태그·속성으로 잡은 것)을 앞에,
+    짐작이 섞인 것(커서로 잡은 것)을 뒤에 싣기 때문이다 — 잘려야 한다면 짐작 쪽이
+    먼저 잘리는 것이 맞다. `OBSERVE_ELEMENT_LIMIT` 에 걸릴 때와 같은 순서다.
+
+    돌려주는 둘째 값은 **버린 것이 있는가**다. 호출자가 `truncated` 에 합쳐 모델에게
+    알린다 — 버렸는데 말하지 않으면 모델은 목록이 전부라고 믿는다 (FR-044).
+    """
+    budget = OBSERVE_RESPONSE_CHAR_BUDGET
+    kept: list[dict[str, Any]] = []
+    used = 0
+    for element in elements:
+        # 한 줄의 실제 크기. `ensure_ascii=False` 로 재는 이유는 드라이버가 보내는 것이
+        # 이스케이프된 `\uXXXX` 가 아니라 한글 그대로이기 때문이다 — 참으로 재면 한글
+        # 한 자를 6자로 세어 예산을 세 배 넘게 깎는다.
+        used += len(json.dumps(element, ensure_ascii=False))
+        if used > budget:
+            return kept, True
+        kept.append(element)
+    return kept, False
 
 
 def mark_duplicates(elements: list[dict[str, Any]]) -> None:
@@ -679,23 +735,9 @@ class BrowserToolbox:
             css = entry.get("css")
             if not isinstance(css, str) or not css:
                 continue
-            self._ref_seq += 1
-            ref = f"e{self._ref_seq}"
-            observed = ObservedElement(
-                ref=ref,
-                css=css,
-                tag=str(entry.get("tag") or ""),
-                role=entry.get("role"),
-                name=entry.get("name"),
-                visible=bool(entry.get("visible")),
-                disabled=bool(entry.get("disabled")),
-                # 관찰 스크립트가 싣지 않으면(낡은 주입) 지금까지와 같이 동작한다.
-                unique=bool(entry.get("unique", True)),
-                actionability=str(entry.get("actionability") or "semantic"),
-            )
-            self.refs[ref] = observed
+            observed = self._register(css, entry)
             row: dict[str, Any] = {
-                "element_ref": ref,
+                "element_ref": observed.ref,
                 "tag": observed.tag,
                 "role": observed.role,
                 "name": observed.name,
@@ -723,25 +765,31 @@ class BrowserToolbox:
                 row["unique"] = False
             elements.append(row)
         mark_duplicates(elements)
-        truncated = bool(raw.get("truncated"))
+        # **개수 상한과 크기 예산은 다른 것이다** (025 FR-048).
+        #
+        # `OBSERVE_ELEMENT_LIMIT` 은 화면을 훑는 범위이고, 이쪽은 응답이 드라이버를
+        # 통과할 수 있는 크기인가이다. 요소 200개가 다 이름이 긴 화면이면 개수 상한에
+        # 걸리지 않고도 예산을 넘는다.
+        kept, over_budget = _fit_to_budget(elements)
+        truncated = bool(raw.get("truncated")) or over_budget
         # 025 FR-003 — **요소 목록을 저널에 싣지 않는다.** 관찰했다는 사실과 어느 탭이었는지가
         # 다음 턴에 필요한 전부다. 목록은 이 기능이 없애려는 바로 그 크기다.
-        self.journal.note("화면 관찰", f"요소 {len(elements)}개 확인", target=f"탭 {tab}")
+        self.journal.note("화면 관찰", f"요소 {len(kept)}개 확인", target=f"탭 {tab}")
         return {
             "tab": tab,
             "url": raw.get("url"),
             "title": raw.get("title"),
             "text": raw.get("text"),
-            "elements": elements,
+            "elements": kept,
             # 025 FR-044 — **잘렸으면 말한다.** 말하지 않으면 모델은 목록이 전부라고 믿고,
             # 화면에 있는 것을 「없다」고 판단한다.
             "truncated": truncated,
             **(
                 {
                     "note": (
-                        f"조작 가능한 요소가 상한({OBSERVE_ELEMENT_LIMIT})을 넘어 "
-                        "잘렸습니다. 찾는 것이 목록에 없으면 find_by_text 로 화면의 "
-                        "글자를 직접 찾으세요."
+                        "조작 가능한 요소가 많아 목록이 잘렸습니다. 찾는 것이 목록에 "
+                        "없으면 find_by_text 로 화면의 글자를 직접 찾으세요 — 거기서 "
+                        "받은 element_ref 로 바로 조작할 수 있습니다."
                     )
                 }
                 if truncated
@@ -827,11 +875,21 @@ class BrowserToolbox:
         `observe_page` 와 같은 성격이다 — 남용되면 헛돌 수 있다. `mark_item` 과 다른
         판단인 이유는 그쪽이 화면을 건드리지 않고 헛돌 수도 없기 때문이다.
 
-        ## **참조를 부여하지 않는다**
+        ## **참조를 부여한다** (025 FR-047)
 
-        돌려주는 것은 「무엇이 어디에 있는가」이지 조작 대상이 아니다. 조작하려면
-        `observe_page` 로 참조를 받아야 한다 — 후보 수집과 유일성 검증이 그 경로에만
-        있고, 여기서 참조를 주면 그 검증을 건너뛰는 길이 생긴다 (헌법 원칙 IV).
+        025 최초 구현은 참조를 주지 않고 「조작하려면 `observe_page` 로 참조를 받으라」고
+        안내했다. 근거는 「후보 수집과 유일성 검증이 그 경로에만 있다」였는데, **사실이
+        아니었다.** 후보 수집은 `collect_by_selector` 가 **조작 시점에** 살아 있는 화면에서
+        하고(`_act_on_element`), 유일성 거절도 거기서 한다 — 둘 다 `observe_page` 가 아니라
+        조작 경로에 있다. 그래서 여기서 참조를 줘도 건너뛰는 검증이 없다.
+
+        그리고 그 안내는 **순환이었다.** 이 도구가 필요한 상황이 정확히 「`observe_page` 가
+        잘려 그 요소가 목록에 없는 화면」인데, 거기로 돌려보냈으니 갈 곳이 없다. 모델은
+        찾기와 관찰을 오가다 예산을 태우고, 사용자에게는 「브라우저로는 명확히 보이는데
+        AI 가 못 찾는다」로 보인다 (2026-09-29 사용자 보고).
+
+        참조를 받는 것은 `actionable` 쪽뿐이다. `text_element` 는 글자가 어디 있는지를
+        말할 뿐 조작 대상이 아니다 (FR-042).
         """
         if not self.limits.record_call():
             return dict(STOP_NOTICE)
@@ -862,12 +920,37 @@ class BrowserToolbox:
                     "observe_page 로 지금 화면을 다시 확인하세요."
                 ),
             }
+
+        # 025 FR-047 — **찾은 것을 여기서 조작할 수 있어야 한다.**
+        #
+        # 참조를 주지 않던 동안 이 도구는 막다른 길이었다. 상한에 걸려 잘린 화면에서
+        # 모델이 낱말로 요소를 찾아내도, 조작하려면 `observe_page` 로 돌아가야 했고,
+        # 그 목록에는 **바로 그 요소가 잘려 나가 있었다.** 그래서 모델은 찾기와 관찰
+        # 사이를 오가며 예산을 태우고, 사용자에게는 「화면에 분명히 보이는 것을 못
+        # 찾는다」로 보인다 (2026-09-29 사용자 보고).
+        actionable_count = 0
+        for match in matches:
+            actionable = match.get("actionable")
+            if not isinstance(actionable, dict):
+                continue
+            css = actionable.get("css")
+            if not isinstance(css, str) or not css:
+                continue
+            actionable["element_ref"] = self._register(css, actionable).ref
+            actionable_count += 1
+
         return {
             "matches": matches,
             "note": (
-                "조작해야 하는 것은 `actionable` 쪽입니다. 그것을 조작하려면 "
-                "observe_page 로 참조를 받으세요. `actionable` 이 null 이면 그 글자는 "
-                "화면에 있지만 누를 수 있는 것이 아닙니다."
+                "조작해야 하는 것은 `actionable` 쪽이고, 그 안의 `element_ref` 를 조작 "
+                "도구에 그대로 넘기면 됩니다. `actionable` 이 null 이면 그 글자는 화면에 "
+                "있지만 누를 수 있는 것이 아닙니다 — 짐작으로 다른 요소를 조작하지 말고 "
+                "report_blocked 로 알리세요."
+            )
+            if actionable_count
+            else (
+                f"「{want}」 를 담은 요소는 찾았지만 **누를 수 있는 것이 없습니다.** "
+                "짐작으로 다른 요소를 조작하지 말고 report_blocked 로 알리세요."
             ),
         }
 
@@ -1206,6 +1289,34 @@ class BrowserToolbox:
         }
 
     # ─── 내부 ───────────────────────────────────────────────────────────────
+
+    def _register(self, css: str, entry: dict[str, Any]) -> ObservedElement:
+        """관찰한 요소에 **이 세션 안에서 통하는 참조를 부여한다** (025 FR-047).
+
+        `observe_page` 와 `find_by_text` 가 **같은 자리를 쓴다.** 갈라 두면 한쪽만
+        `unique` 를 싣지 않는 식으로 어긋나고, 그 어긋남은 조작 거절 규칙(FR-046)이
+        한쪽 경로에서만 느슨해지는 형태로 드러난다 — 가장 늦게 발견되는 종류다.
+
+        참조를 부여하는 것과 **후보를 수집하는 것은 다른 일이다.** 후보 묶음은 조작
+        시점에 `collect_by_selector` 가 살아 있는 화면에서 새로 모은다(헌법 원칙 IV).
+        그래서 여기서 참조를 준다고 해서 검증을 건너뛰는 길이 생기지 않는다.
+        """
+        self._ref_seq += 1
+        ref = f"e{self._ref_seq}"
+        observed = ObservedElement(
+            ref=ref,
+            css=css,
+            tag=str(entry.get("tag") or ""),
+            role=entry.get("role"),
+            name=entry.get("name"),
+            visible=bool(entry.get("visible")),
+            disabled=bool(entry.get("disabled")),
+            # 관찰 스크립트가 싣지 않으면(낡은 주입) 지금까지와 같이 동작한다.
+            unique=bool(entry.get("unique", True)),
+            actionability=str(entry.get("actionability") or "semantic"),
+        )
+        self.refs[ref] = observed
+        return observed
 
     def _tab(self, tab: int) -> Any:
         handle = self.session.find_tab(tab)
@@ -1846,7 +1957,8 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
         """화면에 보이는 글자로 요소를 찾는다. 화면을 조작하지 않는다.
 
         글자를 담은 요소와, 눌렀을 때 실제로 반응하는 요소를 갈라서 돌려준다.
-        조작해야 하는 것은 후자이며, 조작하려면 observe_page 로 참조를 받아야 한다.
+        조작해야 하는 것은 후자(`actionable`)이고, 그 안의 `element_ref` 를 조작 도구에
+        그대로 넘기면 된다. `actionable` 이 null 이면 그 글자는 누를 수 있는 것이 아니다.
         """
         return await toolbox.find_by_text(text, tab)
 
@@ -2050,7 +2162,9 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "find_by_text": (
         "화면에 보이는 글자로 요소를 찾는다. 화면을 조작하지 않는다. "
-        "글자를 담은 요소와 눌렀을 때 반응하는 요소를 갈라서 돌려준다.",
+        "글자를 담은 요소와 눌렀을 때 반응하는 요소를 갈라서 돌려준다. "
+        "조작해야 하는 것은 actionable 쪽이고, 그 안의 element_ref 를 조작 도구에 "
+        "그대로 넘기면 된다. actionable 이 null 이면 누를 수 있는 것이 아니다.",
         {
             "type": "object",
             "properties": {

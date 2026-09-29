@@ -594,11 +594,31 @@
         actionable: actionable
           ? (() => {
               const a = describe(actionable, { register: false });
+              let rect;
+              try {
+                rect = actionable.getBoundingClientRect();
+              } catch {
+                rect = { width: 0, height: 0 };
+              }
               return {
                 tag: a.tag,
+                role: a.role,
                 name: a.accessibleName || a.label || a.text,
                 css: a.css,
                 actionability: actionable.matches(INTERACTIVE) ? "role" : "cursor",
+                /*
+                  **여기까지 실어야 Python 이 참조를 부여할 수 있다** (FR-047).
+
+                  `observe_page` 가 상한에 걸려 잘린 화면에서는 이 경로가 요소에 닿는
+                  유일한 길이다. 그런데 참조를 부여하려면 `ObservedElement` 가 요구하는
+                  사실이 다 있어야 한다 — 특히 `unique` 가 없으면 조작 거절 규칙
+                  (FR-046)이 판정할 근거를 잃고, 기본값 `true` 로 통과해 **모호한 경로를
+                  조용히 조작하게 된다.** 관찰 경로가 싣는 것과 같은 값을 같은 방식으로
+                  잰다.
+                */
+                visible: rect.width > 0 && rect.height > 0,
+                disabled: actionable.disabled === true,
+                unique: a.verified.css === "verified",
               };
             })()
           : null,

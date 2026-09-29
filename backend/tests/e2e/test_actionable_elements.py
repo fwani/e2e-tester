@@ -201,3 +201,30 @@ async def test_uniqueness_refusal_still_applies_to_cursor_elements() -> None:
     assert all(e.get("css") for e in cursor_els), (
         "커서로 발견된 요소에 경로가 없다 — 그러면 조작 단계에서 다시 찾을 수 없다"
     )
+
+
+async def test_find_by_text_carries_what_a_reference_needs() -> None:
+    """찾은 `actionable` 이 **참조를 부여받을 수 있는 상태로** 온다 (025 FR-047).
+
+    `find_by_text` 는 `observe_page` 가 상한에 걸려 잘린 화면에서 요소에 닿는 유일한
+    길이다. 그 길이 뚫려 있으려면 여기서 받은 것으로 Python 이 참조를 만들 수 있어야
+    하고, 그러려면 `ObservedElement` 가 요구하는 사실이 다 실려 와야 한다.
+
+    특히 `unique` 다. 빠지면 기본값 `True` 로 참조가 만들어져, 가리키는 경로가 하나로
+    좁혀지지 않는 요소를 `_act_on_element` 가 **거절하지 못한다** (FR-046). 관찰
+    경로에서는 막히는 조작이 이 경로에서만 조용히 통과하게 되고, 그 어긋남은 잘못된
+    요소가 조작된 뒤에야 드러난다.
+    """
+    raw = await _find("메뉴관리")
+    assert raw["matches"], "화면에 있는 글자를 찾지 못했다"
+
+    actionable = raw["matches"][0]["actionable"]
+    assert actionable is not None
+
+    for key in ("css", "tag", "role", "name", "visible", "disabled", "unique"):
+        assert key in actionable, (
+            f"`{key}` 가 실리지 않았다 — Python 이 참조를 만들 때 기본값으로 메우게 되고, "
+            "그 기본값은 조작 거절 규칙을 느슨하게 만든다"
+        )
+    assert isinstance(actionable["unique"], bool)
+    assert actionable["visible"] is True
