@@ -1,4 +1,4 @@
-# Specification Quality Checklist: 요구받은 것을 잊지 않는다 — 작업 계획을 정본으로 삼는 AI 작성
+# Specification Quality Checklist: 지난 턴이 이어진다 — 작업 계획을 정본으로 삼는 AI 작성
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-09-29
@@ -32,6 +32,12 @@
 ## Notes
 
 전 항목 통과. 검증 중 확인한 자리를 남긴다.
+
+- **원인 분석을 한 번 갈아엎었다.** 초안은 「대화 이력이 무한 누적되어 원 지시가 희석된다」로
+  썼다. SDK 의 tool runner 를 실측하니 **정반대**였다 — runner 는 넘겨받은 이력을 복사해
+  자기 안에서만 늘리므로, 한 턴이 끝나면 그 턴의 관찰·동작·응답이 **전부 사라진다**.
+  사용자가 처음에 말한 「대화가 거듭될수록 기존 컨텍스트가 사라진다」가 문자 그대로 맞았다.
+  추정으로 쓴 배경이 스펙 전체의 우선순위를 뒤집을 뻔했다.
 
 - **SC-002 의 측정 단위** — 「토큰」이 아니라 「모델에게 전달되는 분량」으로 적었다. 토큰은
   모델 구현에 딸린 단위라 기술 중립이 아니다. 같은 지시문·같은 시나리오라는 비교 조건을
