@@ -222,3 +222,54 @@ def test_refine_is_called_once_per_session(
 
     session_id = created.json()["session_id"]
     keyed_client.post(f"/api/sessions/{session_id}/stop", json={"save": False})
+
+
+def test_slash_style_credentials_are_replaced() -> None:
+    """**이름표 없이 슬래시로 나열한 자격 증명도 잡는다** (2026-09-29 사용자 지시문).
+
+    실제로 쓰이는 형식이 이것이었고, 이름표(`비밀번호:`)만 보던 초안은 **하나도 잡지
+    못했다.**
+
+        관리자 계정 platform1 / <비밀번호>로 로그인한 후 …
+
+    계획은 매 턴 다시 실리므로, 평문이 남으면 노출 표면이 턴 수만큼 늘어난다.
+    """
+    text, notes = _scrub_credentials(
+        "관리자 계정 platform1 / N0t-A-Real-Pw#$로 로그인한 후 운영 관리로 이동한다."
+    )
+
+    assert "N0t-A-Real-Pw#$" not in text
+    assert "{{password}}" in text
+    assert "platform1" in text, "계정명은 남아야 한다 — 어느 계정인지를 말하는 정보다"
+    assert "로 로그인한 후" in text, "끝의 한글 조사까지 치환하면 문장이 깨진다"
+    assert notes
+
+
+def test_login_after_the_slash_is_also_caught() -> None:
+    """「로그인」이 뒤에 오는 형식도 잡는다.
+
+    사용자가 쓰는 순서는 하나가 아니다 — 계정 낱말이 앞에 올 수도, 로그인이 뒤에 올
+    수도 있다.
+    """
+    text, _ = _scrub_credentials("tester / N0t-A-Real-Pw! 로 로그인한다")
+
+    assert "N0t-A-Real-Pw!" not in text
+    assert "{{password}}" in text
+
+
+def test_urls_are_not_mistaken_for_credentials() -> None:
+    """**URL 을 자격 증명으로 잡지 않는다.**
+
+    이 지시문에는 `연결 URL은 https://mobigen.com` 같은 문장이 실제로 있고, 그것을
+    치환하면 사용자가 요구한 값이 사라진다 — 이 기능에서 가장 해로운 실패다 (FR-015).
+    """
+    for line in (
+        "연결 URL은 https://mobigen.com 값을 입력한다",
+        "연결 URL(https://www.mobigen.com/blog)을 변경한다",
+        "운영 관리 > 메뉴관리로 이동한다",
+        "새로고침을 하여 메뉴 트리가 표시되는지 확인한다",
+        "로그인 화면의 주소는 https://example.test/login 이다",
+    ):
+        text, notes = _scrub_credentials(line)
+        assert text == line, f"치환되면 안 되는 문장이 바뀌었다: {line} → {text}"
+        assert notes == []

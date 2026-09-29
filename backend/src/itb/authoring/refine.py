@@ -107,9 +107,43 @@ REFINE_SYSTEM = """\
 `submit_plan` 도구를 **한 번** 부르세요. 다른 말은 하지 마세요.
 """
 
-_PASSWORD_HINT = re.compile(
+_LABELED_PASSWORD = re.compile(
     r"(비밀번호|패스워드|password|pw)\s*[:：/]?\s*([^\s,、/]{4,})", re.IGNORECASE
 )
+"""「비밀번호: 값」처럼 **이름표가 붙은** 자리."""
+
+_URL_LIKE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://\S+")
+"""주소처럼 보이는 조각. **자격 증명 판정에서 제외한다.**
+
+이 지시문에는 `연결 URL은 https://mobigen.com` 같은 문장이 실제로 있고, 그것을 치환하면
+사용자가 요구한 값이 사라진다 — 이 기능에서 가장 해로운 실패다 (FR-015).
+"""
+
+_SLASH_CREDENTIAL = re.compile(
+    r"(?:계정|아이디|계정명|로그인|ID)([^/\n]{0,20}?)/\s*([!-~]{6,})"
+    r"|(\S{2,})\s*/\s*([!-~]{6,})(?=[^\n]{0,12}(?:로그인|접속))",
+    re.IGNORECASE,
+)
+"""`계정 <아이디> / <비밀번호>` 처럼 **이름표 없이 슬래시로 나열한** 자리.
+
+**2026-09-29 사용자 지시문에서 찾았다.** 실제로 쓰이는 형식이 이것이었고, 이름표만
+보던 규칙은 **하나도 잡지 못했다.**
+
+    관리자 계정 platform1 / <비밀번호>로 로그인한 후 …
+
+두 갈래로 본다 — 계정 낱말이 **앞**에 오는 경우와, 「로그인」이 **뒤**에 오는 경우.
+실제 지시문은 둘 중 하나로 쓰인다.
+
+**끝의 한글 조사는 남긴다.** 대상을 ASCII 출력 문자(`[!-~]`)로 한정했으므로
+`<비밀번호>로` 에서 조사 `로` 는 잡히지 않는다 — 조사까지 치환하면 문장이 깨진다.
+
+**URL 을 잡지 않는다.** `(?<!/)` 가 `https://…` 의 두 번째 슬래시를 막고, 뒤쪽 갈래는
+「로그인」이 가까이 있을 때만 본다. `연결 URL은 https://mobigen.com` 같은 문장이 이
+지시문에 실제로 있으므로, 그것을 잡으면 사용자가 요구한 값이 사라진다 — **이 기능에서
+가장 해로운 실패**다 (FR-015).
+"""
+
+_PASSWORD_PATTERNS = (_LABELED_PASSWORD, _SLASH_CREDENTIAL)
 """지시문에서 자격 증명으로 보이는 자리 (FR-010 · research R10).
 
 **모델의 치환을 믿고 끝내지 않는다.** 모델이 규칙을 어겼을 때 막을 것이 없으면 평문이
@@ -119,6 +153,9 @@ _PASSWORD_HINT = re.compile(
 **완벽하지 않다.** 기존 포착기는 입력 필드의 유형(password)을 근거로 판정하는데 지시문에는
 그런 근거가 없다. 하한은 **지금보다 나빠지지 않는 것**이고, 못 잡은 것이 그대로 실리는
 것은 025 이전과 같은 수준이다.
+
+그러나 **실제로 쓰이는 형식은 잡아야 한다.** 초안은 이름표(`비밀번호:`)만 보았고, 사용자의
+실제 지시문은 슬래시 나열이라 하나도 잡지 못했다. 새 형식을 만나면 여기 더한다.
 """
 
 SUBMIT_SCHEMA: dict[str, Any] = {
@@ -176,13 +213,43 @@ def _scrub_credentials(text: str) -> tuple[str, list[str]]:
     조용히 바꾸면 사용자는 자기가 적은 값이 쓰이는 줄 안다.
     """
     notes: list[str] = []
+    out = text
 
-    def replace(match: re.Match[str]) -> str:
+    def replace_labeled(match: re.Match[str]) -> str:
         label = match.group(1)
         notes.append(f"「{label}」 값을 변수 참조로 바꿨습니다.")
         return f"{label}: {{{{password}}}}"
 
-    return _PASSWORD_HINT.sub(replace, text), notes
+    def replace_slash(match: re.Match[str]) -> str:
+        # 어느 갈래가 맞았는지에 따라 잡힌 조각이 다르다. **원문의 앞부분은 그대로
+        # 두고 비밀번호 자리만 바꾼다** — 계정명은 어느 계정인지를 말하는 정보이고,
+        # 사용자가 확인해야 하는 값이다.
+        whole = match.group(0)
+        secret = match.group(2) or match.group(4)
+        if not secret:  # pragma: no cover - 두 갈래 중 하나는 반드시 맞는다
+            return whole
+        notes.append("계정 표기의 비밀번호를 변수 참조로 바꿨습니다.")
+        return whole.replace(secret, "{{password}}")
+
+    out = _LABELED_PASSWORD.sub(replace_labeled, out)
+
+    # **주소를 먼저 빼 둔다.** 정규식에 부정 전방탐색을 겹치는 대신 이렇게 하는 이유는
+    # 읽을 수 있기 때문이다 — 「주소는 건드리지 않는다」가 규칙이고, 그 규칙이 정규식
+    # 안에 숨으면 다음 사람이 왜 그런지 알 수 없다.
+    #
+    # 자리표시자에 공백이 없으므로 아래 패턴의 `\S{2,}` 갈래에 걸릴 수 있지만, 그
+    # 갈래는 뒤에 「로그인」이 가까이 있을 때만 맞고 자리표시자에는 슬래시가 없다.
+    urls: list[str] = []
+
+    def stash(match: re.Match[str]) -> str:
+        urls.append(match.group(0))
+        return f"\x00URL{len(urls) - 1}\x00"
+
+    out = _URL_LIKE.sub(stash, out)
+    out = _SLASH_CREDENTIAL.sub(replace_slash, out)
+    for index, url in enumerate(urls):
+        out = out.replace(f"\x00URL{index}\x00", url)
+    return out, notes
 
 
 def _plan_from_payload(payload: dict[str, Any]) -> WorkPlan:
