@@ -90,6 +90,20 @@ export const VISUAL_LANGUAGE_EXCEPTIONS: readonly VisualLanguageException[] = [
     requirement: "015 FR-005 · FR-273 · 013 UC-013-01",
   },
   {
+    file: "frontend/src/components/mirror/FocusOverlay.tsx",
+    pattern: "^(position|left|top|width|height)$",
+    axis: "inline-style",
+    reason:
+      "AI 가 만진 요소의 **자리는 렌더 시점에야 정해진다** (024 FR-012). 값이 대상 " +
+      "화면의 좌표를 미러의 표시 배율로 옮긴 결과이고, 그 배율은 창 크기와 프레임 " +
+      "크기에 따라 매번 달라진다 — 정적 클래스로 만들 수 있는 값이 아니다 " +
+      "(`TestList.tsx` 의 격자 열·`Chrome.tsx` 의 아트보드 크기와 같은 종류다). " +
+      "**시각 언어에 해당하는 것(색·테두리·모서리)은 인라인으로 적지 않았다** — " +
+      "정본의 `outline-run`·`outline-fail`·`rounded-chip` 을 클래스로 쓴다. 여기 " +
+      "인라인으로 남는 것은 자리와 크기뿐이며 그것은 시각 언어가 아니라 좌표다.",
+    requirement: "024 FR-012 · FR-022",
+  },
+  {
     file: "frontend/src/components/design/Chrome.tsx",
     pattern: "^(width|minWidth|height|minHeight|display|flexDirection)$",
     axis: "inline-style",

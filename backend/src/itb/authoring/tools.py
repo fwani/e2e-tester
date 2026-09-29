@@ -67,7 +67,7 @@ from itb.execution.step_edits import (
     reorder_steps,
     update_step,
 )
-from itb.execution.step_executor import StepExecutor, StepFailure
+from itb.execution.step_executor import ElementRect, StepExecutor, StepFailure
 from itb.secrets.capture import SensitiveCapturer
 from itb.secrets.scrubber import Scrubber
 
@@ -434,6 +434,43 @@ ProgressSink = Callable[[str], Awaitable[None]]
 """`ai_progress` 발행 통로 (FR-060)."""
 
 
+@dataclass(frozen=True, slots=True)
+class FocusNotice:
+    """AI 가 방금 다룬 요소의 **자리** (024 FR-001 · data-model §6).
+
+    미러 위에 테두리를 그릴 근거다. 좌표계는 미러 프레임과 같다 — 주 프레임 뷰포트 기준
+    CSS 픽셀.
+    """
+
+    tab: int
+    """어느 탭의 자리인가 (FR-004). 없으면 화면이 어느 그림 위에 그릴지 판정할 수 없다."""
+
+    rect: ElementRect
+    """**필수다.** 자리를 모르면 이 알림 자체를 만들지 않는다 (FR-010)."""
+
+    status: str
+    """`"done"` 또는 `"failed"` (FR-008). 「수행 중」은 없다 — 자리는 요소가 확정된
+    뒤에야 알 수 있고, 그것을 표시하려면 추측한 자리를 써야 한다 (024 research R2)."""
+
+    label: str
+    """Step 의 이름표와 **같은 값** (FR-009). 화면이 진행 문구와 짝지어 읽는다."""
+
+
+FocusSink = Callable[[FocusNotice], Awaitable[None]]
+"""`ai_focus` 발행 통로 (024 FR-001).
+
+## 왜 `ProgressSink` 와 나누는가
+
+`_announce` 는 **자리를 모르는 자리에서도 불린다** — 화면 살펴보기, Step 편집, 막힘
+신고. 한 통로로 묶으면 그 호출마다 「자리 없음」을 넘기게 되고, 「자리를 모른다」와
+「자리가 없다」가 같은 모양이 된다.
+
+두 알림은 성질도 다르다. 진행 문구는 **쌓이는 이력**이고 자리는 **지금 하나뿐인
+상태**다 — 한 이벤트로 묶으면 화면이 매 건마다 「지난 표시를 지울 것인가」를 판단하게
+된다 (FR-005 · 024 research R4).
+"""
+
+
 EditSink = Callable[["EditResult"], Awaitable[None]]
 """편집 결과를 받는 통로 (016 US3).
 
@@ -456,6 +493,12 @@ class BrowserToolbox:
     allocate_step_id: Callable[[], str]
     on_step: StepSink
     on_progress: ProgressSink | None = None
+    on_focus: FocusSink | None = None
+    """자리 알림 통로 (024 FR-001). 없으면 알리지 않고 나머지는 지금과 같이 동작한다.
+
+    **재생에는 이 통로가 없다.** 발행 지점이 이 모듈 안에만 있고, 이 모듈은 AI 작성
+    전용이다 — 원칙 II 경계가 규칙이 아니라 구조로 지켜지는 자리다 (024 research R5).
+    """
     capturer: SensitiveCapturer | None = None
     on_variable: Callable[[str], None] | None = None
     """민감 변수가 새로 생겼음을 알리는 통로.
@@ -1231,6 +1274,28 @@ class BrowserToolbox:
         with contextlib.suppress(Exception):
             await self.on_progress(text)
 
+    async def _focus(
+        self, rect: ElementRect | None, tab: int, status: str, label: str
+    ) -> None:
+        """방금 다룬 요소의 자리를 알린다 (024 FR-001·FR-006·FR-010).
+
+        **자리를 모르면 아무것도 보내지 않는다.** 「자리 없음」을 나타내는 값을 두지
+        않는다 — 그것을 보내면 화면이 그 알림을 받고 「지난 표시를 지울 것인가」를
+        판단해야 하고, 그 판단은 표시의 수명이 이미 하고 있다 (024 research R6).
+
+        요소를 못 찾은 실패, 가리키는 자리가 하나로 좁혀지지 않아 거절한 조작이 그
+        경우다. 어느 것인지 **제품도 모르는** 상태에서 하나를 골라 그리면 거짓말이 된다.
+
+        **알리는 데 실패해도 도구를 멈추지 않는다** — `_announce` 와 같은 규칙이다.
+        표시는 곁가지이고, 그것 때문에 작성이 끊기면 안 된다.
+        """
+        if self.on_focus is None or rect is None:
+            return
+        with contextlib.suppress(Exception):
+            await self.on_focus(
+                FocusNotice(tab=tab, rect=rect, status=status, label=label)
+            )
+
     async def _act_on_element(
         self,
         element_ref: str,
@@ -1320,13 +1385,20 @@ class BrowserToolbox:
         tabs_before = len(self.session.tabs)
         # **하기 전에 알린다.** 요소를 기다리는 동안 화면이 조용하면 사용자는 멈춘
         # 것과 기다리는 것을 구별할 수 없다 (`_announce` 머리말).
+        #
+        # **자리는 여기서 알리지 못한다** (024 research R2). 요소가 아직 확정되지 않았고,
+        # 확정 전의 자리는 추측이다. 기다리는 동안의 공백은 이 문구가 메운다 — 문구는
+        # 기다림을 말하고, 테두리는 결과의 자리를 말한다.
         await self._announce(f"{step.label} — 수행 중")
         try:
-            await self.executor.execute(step)
+            record = await self.executor.execute(step)
         except StepFailure as exc:
             if keep_on_failure:
                 return await self._keep_mismatch(step, element, str(exc))
             self.limits.record_failure(element)
+            # **요소는 찾았는데 동작이 안 된 경우에만 자리가 있다** (024 US2). 요소를
+            # 못 찾은 실패에는 `rect` 가 없고, 그러면 `_focus` 가 조용히 지나간다.
+            await self._focus(exc.rect, step.tab, "failed", step.label)
             await self._announce(f"{step.label} — 실패: {exc}")
             return {"error": str(exc)}
         except TabNotFoundError as exc:
@@ -1339,6 +1411,7 @@ class BrowserToolbox:
 
         self.limits.record_success(element)
         await self.on_step(step)
+        await self._focus(record.rect, step.tab, "done", step.label)
         await self._announce(f"{step.label} — 완료")
 
         result: dict[str, Any] = {"ok": True, "step": step.label}

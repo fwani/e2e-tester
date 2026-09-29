@@ -35,12 +35,15 @@ import {
   type ControlSurface,
   type MirrorNoticePhase,
 } from "../lib/wording";
+import { FocusOverlay } from "./mirror/FocusOverlay";
 import { ImeBridge, isComposingKey } from "./mirror/ImeBridge";
-import type { FrameGeometry, InputEvent } from "./mirror/useMirrorInput";
+import type { FrameGeometry, InputEvent, TargetRect } from "./mirror/useMirrorInput";
 import {
+  boxOf,
   buttonNameOf,
   modifiersOf,
   pointerEventOf,
+  toDisplayRect,
   wheelEventOf,
 } from "./mirror/useMirrorInput";
 
@@ -92,6 +95,23 @@ export interface MirrorViewProps {
   onUseWindow?: () => void;
   /** 「실제 창에서 조작하기」의 권한표 판정 */
   useWindowCapability?: CapabilityState;
+  /**
+   * AI 가 방금 만진 요소의 자리 (024 FR-012). **대상 화면 좌표**로 받는다.
+   *
+   * ## 무엇을 바깥이 정하고 무엇을 여기가 하는가
+   *
+   * **그릴지 말지는 바깥이 정한다** — 어느 탭을 보고 있는지, 표시할 시간이 지났는지,
+   * 세션이 무슨 국면인지. `control` 을 판정 결과로 받는 것과 같은 이유다 (FR-316):
+   * 판정이 두 곳에 생기면 갈리는 날이 오고, 그때 틀린 자리가 그려진다.
+   *
+   * **좌표를 옮기는 것은 여기가 한다.** 변환에는 `<img>` 의 자연 크기와 표시 크기가
+   * 필요하고 (`boxOf`), 그 둘을 아는 곳은 이 컴포넌트뿐이다. 국면을 보는 것과 자기가
+   * 그리는 그림의 크기를 아는 것은 다른 일이다.
+   *
+   * 프레임이 없거나 좌표 근거가 없으면 변환이 `null` 을 주고 아무것도 그려지지
+   * 않는다 — 그리지 않는 조건이 그 `null` 하나로 모인다 (FR-016·FR-017·FR-019).
+   */
+  focus?: { rect: TargetRect; status: "done" | "failed"; label: string } | null;
 }
 
 export function MirrorView({
@@ -107,6 +127,7 @@ export function MirrorView({
   onBlockedAttempt,
   onUseWindow,
   useWindowCapability,
+  focus = null,
 }: MirrorViewProps) {
   const imageRef = useRef<HTMLImageElement | null>(null);
   /**
@@ -434,6 +455,20 @@ export function MirrorView({
               */
               className="absolute inset-0 w-full h-full p-0 m-0 opacity-0 border-none outline-none resize-none overflow-hidden pointer-events-none caret-transparent"
             />
+            {/*
+              024 research R7 — **이미지와 크기가 같은 래퍼.**
+
+              `<img>` 는 `max-w-full max-h-full` 이라 표시 크기가 콘텐츠에 따라 달라지고,
+              부모가 가운데 정렬한다. 오버레이를 부모 기준으로 놓으면 이미지가 가운데로
+              밀린 만큼 어긋난다 — 그래서 이미지에 딱 맞는 자리를 하나 만들어 그 안에
+              절대 배치한다.
+
+              **포인터 처리기는 `<img>` 에 그대로 남는다** (FR-020·SC-516). 래퍼는
+              `relative` 와 `leading-none` 만 갖는다 — `inline` 요소인 `<img>` 아래에
+              생기는 글줄 여백이 래퍼를 이미지보다 몇 픽셀 키우고, 그만큼 세로 좌표가
+              어긋나기 때문이다.
+            */}
+            <div className="relative leading-none">
             <img
               ref={imageRef}
               src={`data:image/jpeg;base64,${frame}`}
@@ -461,6 +496,27 @@ export function MirrorView({
               onWheel={onWheel}
               onContextMenu={(event) => event.preventDefault()}
             />
+            {/*
+              FR-021 — 프레임이 있는 분기 **안에만** 있다. 중단 사유가 나오는 분기에는
+              오버레이 자체가 존재하지 않으므로, 테두리가 안내를 덮을 자리가 없다.
+            */}
+            <FocusOverlay
+              mark={
+                focus !== null && geometry !== null && imageRef.current !== null
+                  ? (() => {
+                      const placed = toDisplayRect(
+                        focus.rect,
+                        boxOf(imageRef.current),
+                        geometry,
+                      );
+                      return placed === null
+                        ? null
+                        : { rect: placed, status: focus.status, label: focus.label };
+                    })()
+                  : null
+              }
+            />
+            </div>
           </div>
         ) : (
           <div

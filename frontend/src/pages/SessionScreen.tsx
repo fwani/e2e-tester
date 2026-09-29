@@ -55,6 +55,11 @@ import {
   type BrowserPromptState,
 } from "../components/BrowserPromptPanel";
 import { MirrorView, type MirrorPhase } from "../components/MirrorView";
+import {
+  FOCUS_MARK_TTL_MS,
+  focusToDraw as decideFocus,
+  type FocusMark,
+} from "../lib/focusMark";
 import type {
   FrameGeometry,
   InputEvent as MirrorInputEvent,
@@ -140,7 +145,6 @@ export type { AiBlockedState } from "../components/workbench/model";
  * 배너가 깜빡이기만 하고 정보를 주지 않는다.
  */
 const OFFLINE_NOTICE_DELAY_MS = 1500;
-
 
 const MANIPULATION_STATES = new Set(["recording", "takeover_recording"]);
 
@@ -1840,6 +1844,15 @@ export function SessionScreen({
   const [geometry, setGeometry] = useState<FrameGeometry | null>(null);
   /** 프레임이 지금 흐르고 있는가 (FR-346). 끊김과 정적 화면은 다르다 */
   const [mirrorLive, setMirrorLive] = useState(false);
+  /**
+   * 024 — AI 가 방금 만진 요소의 자리. **하나만 든다** (FR-014).
+   *
+   * 목록으로 쌓지 않는다. 진행 문구(`aiMessages`)는 쌓이는 이력이지만 이것은 「지금
+   * 어디」 하나이며, 쌓으면 지나간 자리들이 함께 떠서 지금을 가리키지 못한다.
+   *
+   * `at` 은 받은 시각이다 — 수명을 화면이 세기 위한 것이다 (아래 `FOCUS_MARK_TTL_MS`).
+   */
+  const [focusMark, setFocusMark] = useState<FocusMark | null>(null);
   /** 조작 통로가 붙었는가 (contracts §1 런타임 덮어쓰기) */
   const [controlOpen, setControlOpen] = useState(false);
   /** 지금 조작이 어디서 이루어지는가 (FR-350 · data-model §6) */
@@ -2195,8 +2208,22 @@ export function SessionScreen({
               frameSeq: event.frameSeq,
             });
             break;
+          case "ai_focus":
+            // 024 — 덮어쓴다. 앞의 자리는 여기서 사라진다 (FR-014).
+            setFocusMark({
+              tab: event.tab,
+              rect: event.rect,
+              status: event.status,
+              label: event.label,
+              at: Date.now(),
+            });
+            break;
           case "mirror_tab_changed":
             setMirrorTab(event.tab);
+            // **탭을 옮기면 자리를 버린다** (024 FR-018·T048). 이전 탭의 자리를 새
+            // 화면 위에 남겨 두면 엉뚱한 요소를 가리킨다 — 좌표는 그대로여도 그 아래
+            // 그림이 다른 화면이다.
+            setFocusMark(null);
             break;
           case "mirror_degraded":
             setMirrorDegraded(event.reason ?? null);
@@ -2807,6 +2834,27 @@ export function SessionScreen({
     컴포넌트 **밖에서** 그려져 props 로 들어간다. 그래서 여기서도 한 번 계산한다 —
     같은 함수·같은 사실을 지나므로 두 값이 갈릴 수 없다 (FR-316).
   */
+  /**
+   * 024 FR-015 — **자리는 스스로 사라진다.**
+   *
+   * 새 자리가 오면 `focusMark` 가 바뀌므로 이 효과가 다시 돌고 앞의 타이머는 정리된다 —
+   * 그래서 「다음 것이 오면 즉시 교체, 안 오면 시간 뒤 소멸」이 타이머 하나로 된다.
+   *
+   * 판정 쪽에서 나이를 계산하지 않는 이유: 계산만으로는 **리렌더가 일어나지 않아**
+   * 마지막 표시가 화면에 그대로 남는다. 시간이 지났다는 사실을 화면에 알리는 것은
+   * 상태를 비우는 일이어야 한다.
+   */
+  useEffect(() => {
+    if (focusMark === null) return;
+    const left = FOCUS_MARK_TTL_MS - (Date.now() - focusMark.at);
+    if (left <= 0) {
+      setFocusMark(null);
+      return;
+    }
+    const timer = window.setTimeout(() => setFocusMark(null), left);
+    return () => window.clearTimeout(timer);
+  }, [focusMark]);
+
   const mirrorPhaseOfSession = phaseOfSession(view);
   const mirrorFacts: CapabilityFacts = {
     mirrorFrameSeen: frame !== null && geometry !== null,
@@ -2817,6 +2865,25 @@ export function SessionScreen({
     liveBrowser: hasLiveBrowser(view) && lost === null,
   };
   const mirrorCaps = capabilitiesFor(mirrorPhaseOfSession, mirrorFacts);
+
+  /**
+   * 그릴 수 있는가 — 판정은 `lib/focusMark.ts` 가 소유한다 (024 research R8).
+   *
+   * 화면이 아는 사실만 넘기고 규칙은 넘기지 않는다. `mirrorCaps` 와 같은 구조이며 같은
+   * 이유다 (FR-316) — 판정이 두 곳에 생기면 갈리는 날이 온다.
+   *
+   * 좌표 근거가 없는 경우와 표시 영역 밖인 경우는 여기서 보지 않는다. 변환이 `null` 을
+   * 주므로 미러 안에서 같은 결과가 된다 (FR-017·FR-019).
+   */
+  const focusToDraw = decideFocus(
+    focusMark,
+    {
+      hasFrame: frame !== null,
+      stopped: mirrorStopped !== null,
+      viewingTab: mirrorTab ?? 0,
+    },
+    Date.now(),
+  );
 
   /**
    * 실제 창으로 갈 수 없으면 **누르기 전에** 잠근다 (010 FR-351 · FR-234).
@@ -2860,6 +2927,7 @@ export function SessionScreen({
       onInput={sendInput}
       onBlockedAttempt={setControlNotice}
       onUseWindow={useWindow}
+      focus={focusToDraw}
       />
     </>
   );

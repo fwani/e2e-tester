@@ -6,6 +6,16 @@
 **언어모델을 호출하지 않는다.** 이 모듈이 아는 것은 저장된 정의뿐이다 (FR-044·FR-045).
 임포트 계약(`execution-no-llm`)이 이를 구조로 강제한다.
 
+**아무것도 발행하지 않는다** (024 T055 · research R5). 실행 기록을 **값으로 돌려줄 뿐**
+이벤트를 내지 않는다. 024 가 요소의 화면상 자리를 여기서 읽게 되면서 그 성질이 처음으로
+시험대에 올랐다 — 자리를 알리는 통로(`on_element_resolved` 같은 콜백)를 여기 달았다면,
+재생 배선에서 그것을 잇는 **한 줄**로 헌법 원칙 II 가 깨진다. 재생도 이 실행기를 쓰기
+때문이다.
+
+값을 돌려주는 쪽을 택한 이유가 그것이다. 재생 쪽이 `ai_focus` 를 내려면 코드를 새로
+써야 한다 — **실수로는 생기지 않는다.** 발행은 AI 작성 전용 모듈(`authoring/tools.py`)
+안에만 있다.
+
 **대기 시간 상한은 Step 하나 전체에 대한 예산이다** (FR-057). 탭을 기다린 시간과 요소를
 찾은 시간이 각각 상한을 갖게 두면 한 Step 이 상한의 두 배 이상 걸릴 수 있다.
 """
@@ -13,6 +23,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 import time
 from collections.abc import Awaitable, Callable
@@ -57,6 +68,7 @@ from itb.secrets.resolver import VariableResolutionError, VariableResolver
 
 __all__ = [
     "MIN_ACTION_TIMEOUT_MS",
+    "ElementRect",
     "StepExecution",
     "StepExecutor",
     "StepFailure",
@@ -66,6 +78,54 @@ __all__ = [
 채택할지와 동작에 얼마를 남길지가 **같은 값**이어야 하기 때문이다 (004). 여기서 다시
 내보내는 것은 기존 임포트 경로를 깨지 않기 위해서다.
 """
+
+
+@dataclass(frozen=True, slots=True)
+class ElementRect:
+    """요소가 대상 화면에서 차지하는 자리 (024 FR-001 · data-model §2).
+
+    **좌표계는 미러 프레임과 같다** — 주 프레임 뷰포트 기준 CSS 픽셀. iframe 안의
+    요소여도 그렇다 (024 research R3 실측: 하위 프레임 요소의 경계 상자가 주 프레임
+    기준으로 나왔다).
+
+    **음수 좌표는 유효하다.** 스크롤 위에 있는 요소가 그렇다 — 실측에서 뷰포트 높이 800
+    인 화면의 요소가 `y=2008` 로 나왔다. 자리가 없는 것이 아니라 보이지 않는 것이며,
+    그릴지 말지는 **화면이 판정한다** (024 FR-019). 여기서 화면 안으로 밀어 넣지 않는다.
+
+    크기가 0 이하이거나 수치가 아니면 **자리가 없는 것**이다 — `of` 가 `None` 을 준다.
+    """
+
+    x: float
+    y: float
+    width: float
+    height: float
+
+    @classmethod
+    def of(cls, box: dict[str, Any] | None) -> ElementRect | None:
+        """Playwright 의 경계 상자를 자리로 바꾼다. 자리가 아니면 `None`.
+
+        **`None` 을 돌려주는 것이 정상 경로다.** 보이지 않는 요소는 경계 상자가 없고,
+        크기가 0 인 요소는 그릴 자리가 없다. 둘 다 「그리지 않는다」로 귀결되므로
+        구별하지 않는다.
+        """
+        if not isinstance(box, dict):
+            return None
+        try:
+            x, y = float(box["x"]), float(box["y"])
+            width, height = float(box["width"]), float(box["height"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        # `NaN` 은 모든 비교를 거짓으로 만들어 아래 검사를 그대로 통과한다 — 좌표가
+        # 수치가 아니면 화면이 그린 자리가 사라지거나 화면 전체를 덮는다.
+        if not all(math.isfinite(v) for v in (x, y, width, height)):
+            return None
+        if width <= 0 or height <= 0:
+            return None
+        return cls(x=x, y=y, width=width, height=height)
+
+    def as_payload(self) -> dict[str, float]:
+        """이벤트에 싣는 모양 (024 contracts/ai-focus.md §2)."""
+        return {"x": self.x, "y": self.y, "width": self.width, "height": self.height}
 
 
 class StepFailure(Exception):
@@ -84,6 +144,7 @@ class StepFailure(Exception):
         *,
         code: ErrorCode = ErrorCode.STEP_FAILED,
         element_wait_ms: int = 0,
+        rect: ElementRect | None = None,
     ) -> None:
         super().__init__(message)
         self.attempts = attempts or []
@@ -92,6 +153,13 @@ class StepFailure(Exception):
         self.element_wait_ms = element_wait_ms
         """요소를 기다린 시간 (004 FR-121). 실패 사유가 "얼마나 기다렸는지" 를 담아야
         사용자가 예산을 늘릴지 정의를 고칠지 판단할 수 있다."""
+        self.rect = rect
+        """실패한 요소의 자리 (024 FR-008 · data-model §4).
+
+        **요소는 찾았는데 동작이 실패한 경우에만 있다** — 가려짐·비활성·시간 초과가
+        그렇다. 024 US2 가 겨냥하는 것이 정확히 그 경우다. 요소 자체를 찾지 못한 실패에는
+        잴 것이 없으므로 `None` 이고, 그때는 아무것도 표시되지 않는다 (FR-010).
+        """
 
 
 @dataclass(slots=True)
@@ -112,6 +180,21 @@ class StepExecution:
     """
 
     tab: int = 0
+
+    rect: ElementRect | None = None
+    """이 Step 이 조작한 요소의 화면상 자리 (024 FR-001).
+
+    **실행기가 실제로 채택한 요소에서 읽은 값이다.** 후보 수집이 쓴 CSS 경로가 아니라
+    우선순위 전략(testId→role→…)이 고른 그 요소다 — 둘은 다를 수 있고, 다르면 표시된
+    자리와 조작된 요소가 갈린다 (024 research R1).
+
+    **`None` 이 정상 값이다.** 요소를 대상으로 하지 않는 Step(이동·탭 닫기), 보이지 않아
+    경계 상자가 없는 요소, 측정이 실패한 경우가 그렇다. 「자리를 모른다」와 「자리가
+    없다」를 구별하지 않는 이유는 둘 다 「그리지 않는다」로 귀결되기 때문이다.
+
+    **이 값을 여기서 어디로도 보내지 않는다.** 모듈 머리말을 보라 — 발행하는 순간 재생
+    경로가 원칙 II 를 어기는 자리가 된다.
+    """
 
 
 class StepExecutor:
@@ -190,11 +273,17 @@ class StepExecutor:
             # FR-089f — 값을 구하지 못하면 빈 값으로 진행하지 않고 사유를 밝히며 멈춘다.
             raise StepFailure(str(exc), record.attempts, record.tab_wait_ms) from exc
         except PlaywrightError as exc:
+            # **여기가 024 US2 가 겨냥하는 실패다** — 요소는 찾았는데 동작이 안 된 경우
+            # (가려짐·비활성·시간 초과). `record.rect` 에 그 요소의 자리가 이미 들어 있다.
+            #
+            # 위의 `ElementNotFoundError` 경로에는 싣지 않는다 — 요소를 못 찾았으므로
+            # 잴 것이 없었고, 자리를 모르면서 그리면 거짓말이 된다 (FR-010).
             raise StepFailure(
                 _humanize(exc, step),
                 record.attempts,
                 record.tab_wait_ms,
                 code=_classify(exc, step),
+                rect=record.rect,
             ) from exc
         return record
 
@@ -427,6 +516,7 @@ class StepExecutor:
         record.disagreement = [*record.disagreement, *located.disagreement]
         record.resolved_candidate = located.strategy.kind.value
         record.element_wait_ms += located.waited_ms
+        record.rect = await _measure(located)
         return located
 
     # ─── 검증 6종 (001 FR-013a + 021) ──────────────────────────────────────
@@ -658,6 +748,9 @@ class StepExecutor:
         record.disagreement = [*record.disagreement, *located.disagreement]
         record.resolved_candidate = located.strategy.kind.value
         record.element_wait_ms += located.waited_ms
+        # 검증도 요소를 지목한다 — 그 자리를 알리지 않을 이유가 없다 (024 FR-001).
+        # 「화면 전체」를 보는 검증은 여기 오지 않으므로 대상 없는 경우가 섞이지 않는다.
+        record.rect = await _measure(located)
         return located
 
     # ─── 시간 예산 ─────────────────────────────────────────────────────────
@@ -670,6 +763,26 @@ class StepExecutor:
         "무한 대기"로 해석되어 상한이 사라진다 (FR-057).
         """
         return max(int((deadline - time.monotonic()) * 1000), MIN_ACTION_TIMEOUT_MS)
+
+
+async def _measure(located: Resolution) -> ElementRect | None:
+    """채택된 요소의 자리를 잰다 (024 T007·T008).
+
+    **채택된 그 요소에서 읽는다.** 후보 수집이 쓴 CSS 경로로 다시 찾지 않는다 — 우선순위
+    전략이 고른 것과 CSS 가 가리키는 것은 다를 수 있고, 다르면 표시된 자리와 조작된
+    요소가 갈린다 (024 research R1).
+
+    **무슨 일이 있어도 실행을 멈추지 않는다** (FR-006). 표시는 곁가지이고, 그것 때문에
+    테스트가 실패하면 안 된다 — `BrowserToolbox._announce` 가 같은 규칙으로 되어 있다.
+    측정이 안 되면 자리가 없는 것으로 본다.
+
+    **여기서 기다리지 않는다.** 요소는 이미 채택됐고, 자리를 재느라 Step 의 시간 예산을
+    더 쓰면 표시가 실행을 느리게 만든다 (FR-057 의 취지).
+    """
+    try:
+        return ElementRect.of(await located.locator.bounding_box(timeout=_RECT_READ_MS))
+    except Exception:  # noqa: BLE001 - 요소가 사라지는 중일 수 있다. 자리만 잃는다
+        return None
 
 
 async def settle(
@@ -794,6 +907,11 @@ _MASKED = "********"
 """민감한 칸의 관찰값 자리에 넣는 문구 (023 FR-016).
 
 길이를 드러내지 않는 고정 길이다 — 실제 길이를 보이면 그 자체가 정보다.
+"""
+
+_RECT_READ_MS = 1_000
+"""요소의 자리를 읽는 데 주는 시간 (024). `_ATTRIBUTE_READ_MS` 와 같은 판단으로 짧다 —
+이것은 표시를 위한 것이고, 여기서 오래 매달리면 실행이 느려질 뿐이다.
 """
 
 _ATTRIBUTE_READ_MS = 1_000

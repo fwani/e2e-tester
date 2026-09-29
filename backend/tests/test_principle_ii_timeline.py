@@ -149,6 +149,46 @@ def test_a_plain_replay_never_calls_the_driver(
         stop_quietly(keyed_client, sid)
 
 
+# ─── 024 T054 — 재생에서 AI 이벤트가 한 건도 나가지 않는다 ─────────────────
+
+
+def test_a_plain_replay_emits_no_ai_events(
+    keyed_client: TestClient,
+    fixture_app: str,
+    event_log: list[tuple[str, dict]],
+) -> None:
+    """024 FR-007·SC-006 — 재생 세션에서 `ai_focus` 가 **0 건**이다.
+
+    ## 024 가 이 검사를 새로 요구한 이유
+
+    024 는 요소의 화면상 자리를 **`StepExecutor` 에서** 읽는다. 그 실행기는 재생도 쓴다 —
+    즉 원칙 II 의 경계를 지나는 코드가 하나 늘었다.
+
+    안전장치는 **실행기가 아무것도 발행하지 않는 것**이다. 자리를 값으로 돌려줄 뿐이고,
+    발행은 AI 작성 전용 모듈 안에만 있다. 실행기에 콜백을 달았다면 재생 배선에서 그것을
+    잇는 **한 줄**로 이 원칙이 깨졌을 것이다 (024 research R5).
+
+    여기서 세는 것은 그 구조가 실제로 성립하는지다. `ai_progress`·`ai_blocked` 같은 기존
+    AI 이벤트까지 함께 보는 이유는, 001 이 `ai_*` 전체에 대해 같은 규칙을 세웠기
+    때문이다 — 새 이벤트 하나만 보면 다음에 더해지는 이벤트가 같은 실수를 반복한다.
+    """
+    test_id = record_login(keyed_client, fixture_app)
+    created = keyed_client.post(
+        "/api/sessions", json={"mode": "replay", "test_id": test_id}
+    )
+    assert created.status_code == 201, created.text
+    sid = created.json()["session_id"]
+    try:
+        _wait_until_settled(keyed_client, sid)
+        leaked = sorted({kind for kind, _ in event_log if kind.startswith("ai_")})
+        assert leaked == [], (
+            f"재생 세션에서 AI 이벤트가 나갔다: {leaked} — 헌법 원칙 II 위반. "
+            "발행 지점은 AI 작성 전용 모듈 안에만 있어야 한다 (024 research R5)."
+        )
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
 # ─── T015 — 러너와 에이전트 태스크의 생존 구간이 겹치지 않는다 (불변식 6) ───
 
 

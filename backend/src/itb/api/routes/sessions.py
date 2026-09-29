@@ -1416,6 +1416,21 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
         allocate_step_id=lambda: allocate_step_id(work.steps),
         on_step=compiler.accept,
         on_progress=lambda message: work.session.emit("ai_progress", message=message),
+        # 024 FR-001 — **AI 가 만진 요소의 자리.** 미러가 그 위에 테두리를 그린다.
+        #
+        # **여기가 이 이벤트의 유일한 발행 지점이다.** `_build_engine` 은 재생이며
+        # 거기에는 이 통로가 없다 — 이으면 재생에서 `ai_focus` 가 나가고 헌법 원칙 II
+        # 가 깨진다 (`test_principle_ii_timeline` 이 잡는다).
+        #
+        # **`AuthoringAgent` 에는 주지 않는다.** 자리를 아는 것은 도구뿐이다 — 요소를
+        # 확정하는 것이 도구이고, 에이전트는 무엇을 할지만 정한다.
+        on_focus=lambda notice: work.session.emit(
+            "ai_focus",
+            tab=notice.tab,
+            rect=notice.rect.as_payload(),
+            status=notice.status,
+            label=notice.label,
+        ),
         capturer=capturer,
         on_variable=resolver.declare,
         # 020 FR-015 — 어긋남 기록은 화면 텍스트를 **디스크에 남긴다.** 진행 알림과

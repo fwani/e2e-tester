@@ -106,6 +106,81 @@ export function toTargetPoint(
   };
 }
 
+/** 이미지 표시 영역 기준의 자리 하나 (024 data-model §7). */
+export interface DisplayRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** 대상 화면 좌표의 자리 하나 (024 contracts/ai-focus.md §2). */
+export interface TargetRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * 대상 화면의 자리를 표시 좌표로 옮긴다 (024 FR-012 · research R3).
+ *
+ * **`toTargetPoint` 의 역이며, 그래서 바로 옆에 있다.** 두 식이 서로의 역이 아니게 되면
+ * 사용자가 클릭한 자리와 제품이 그린 자리가 어긋나고, 그 어긋남은 밀집 UI 에서만
+ * 드러난다 — 위 역변환이 같은 이유로 상수 1280×800 을 금지한 것과 같은 판단이다.
+ * 떨어뜨려 두면 한쪽만 고쳐지는 날이 온다.
+ *
+ * **반환 좌표는 이미지 표시 영역 기준이다** (`box.left`/`box.top` 을 더하지 않는다).
+ * 오버레이가 이미지와 크기가 같은 래퍼 안에 절대 배치되므로, 뷰포트 기준으로 주면
+ * 래퍼 위치만큼 어긋난다 (024 research R7).
+ *
+ * **화면 밖으로 나가는 자리를 잘라 내지 않는다.** 스크롤 위의 요소는 음수 좌표로
+ * 오고(실측: 뷰포트 높이 800 인 화면에서 `y=2008`), 그것을 화면 안으로 밀어 넣으면
+ * 사용자가 엉뚱한 요소를 조작 대상으로 읽는다 (FR-019). 겹치는 부분이 하나도 없으면
+ * `null` — 그 판정만 여기서 한다.
+ */
+export function toDisplayRect(
+  rect: TargetRect,
+  box: DisplayBox,
+  frame: FrameGeometry,
+): DisplayRect | null {
+  if (box.clientWidth <= 0 || box.clientHeight <= 0) return null;
+  if (box.naturalWidth <= 0 || box.naturalHeight <= 0) return null;
+  if (frame.width <= 0 || frame.height <= 0) return null;
+  // 역변환과 같은 방어다. `NaN` 은 모든 범위 비교를 거짓으로 만들어 아래 검사를 그대로
+  // 통과하고, 그러면 화면 전체를 덮거나 사라진 테두리가 그려진다.
+  if (
+    !Number.isFinite(rect.x) ||
+    !Number.isFinite(rect.y) ||
+    !Number.isFinite(rect.width) ||
+    !Number.isFinite(rect.height)
+  ) {
+    return null;
+  }
+  if (rect.width <= 0 || rect.height <= 0) return null;
+
+  // 대상 화면 → 프레임 픽셀 → 표시 크기. 역변환이 곱한 두 배율의 역수다.
+  const scaleX = (box.naturalWidth / box.clientWidth) * (frame.width / box.naturalWidth);
+  const scaleY = (box.naturalHeight / box.clientHeight) * (frame.height / box.naturalHeight);
+  if (scaleX <= 0 || scaleY <= 0) return null;
+
+  const pageScale = frame.pageScale !== undefined && frame.pageScale > 0 ? frame.pageScale : 1;
+  const offsetTop = frame.offsetTop ?? 0;
+
+  const left = (rect.x * pageScale) / scaleX;
+  const top = ((rect.y - offsetTop) * pageScale) / scaleY;
+  const width = (rect.width * pageScale) / scaleX;
+  const height = (rect.height * pageScale) / scaleY;
+
+  // **표시 영역과 겹치는 부분이 없으면 그리지 않는다** (FR-019). 스크롤 밖의 요소가
+  // 가장자리에 납작하게 눌린 테두리로 나타나면, 그것은 자리를 말하는 것이 아니라
+  // 「여기 있다」는 거짓말이 된다.
+  if (left >= box.clientWidth || top >= box.clientHeight) return null;
+  if (left + width <= 0 || top + height <= 0) return null;
+
+  return { left, top, width, height };
+}
+
 /** `<img>` 에서 `DisplayBox` 를 읽는다. */
 export function boxOf(image: HTMLImageElement): DisplayBox {
   const rect = image.getBoundingClientRect();

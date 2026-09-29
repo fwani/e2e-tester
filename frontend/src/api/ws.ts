@@ -154,6 +154,25 @@ export type SessionEvent =
   /** AI 이벤트 — **작성 세션에서만 나간다** (contracts/websocket.md §AI 이벤트).
    * `replay` 세션에서 관측되면 원칙 II 위반이며, 그것을 테스트로 고정한다 (SC-006). */
   | (SessionEventBase & { type: "ai_progress"; message: string })
+  /**
+   * AI 가 방금 다룬 요소의 **자리** (024 FR-001 · contracts/ai-focus.md).
+   *
+   * `ai_progress` 와 나란하며 어느 쪽도 다른 쪽을 대체하지 않는다 — 문구는 쌓이는
+   * 이력이고 이것은 지금 하나뿐인 상태다.
+   *
+   * **자리를 모르면 이 이벤트가 오지 않는다.** 「자리 없음」을 나타내는 값이 없다 —
+   * 요소를 못 찾은 실패, 가리키는 자리가 하나로 좁혀지지 않아 거절된 조작이 그렇다.
+   *
+   * 좌표계는 `mirror_frame` 의 `width`·`height` 와 같다 (주 프레임 뷰포트 CSS 픽셀).
+   * `x`·`y` 는 **음수일 수 있다** — 스크롤 위의 요소다. 그릴지 말지는 받는 쪽이 정한다.
+   */
+  | (SessionEventBase & {
+      type: "ai_focus";
+      tab: number;
+      rect: { x: number; y: number; width: number; height: number };
+      status: "done" | "failed";
+      label: string;
+    })
   | (SessionEventBase & {
       type: "ai_blocked";
       attempted: string | null;
