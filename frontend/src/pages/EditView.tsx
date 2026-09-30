@@ -712,6 +712,37 @@ export function EditView({
     moveStep: (direction) => {
       if (currentIndex >= 0) move(currentIndex, direction);
     },
+    // **확인 대화는 여기 남는다** — 능력은 「지운다」이고 「물어본다」는 화면의 사정이다
+    deleteSelected: () => {
+      if (deleteSelection.length > 0) setPendingBulk(deleteSelection);
+    },
+    deleteAfter: () => {
+      if (afterTargets.length > 0) setPendingBulk(afterTargets);
+    },
+    insertManual: () => setInsertOpen((v) => !v),
+    /*
+      **FR-004·FR-005 의 자리다.** 셋 다 `guard()` 를 지난다 — 저장하지 않은 편집이
+      있으면 먼저 확인하는 이 화면의 절차이고, 배선은 그것을 알지 못한다.
+    */
+    runAll: () => guard(() => onRun?.(testId)),
+    runFrom: () => {
+      if (currentIndex >= 0) guard(() => onRun?.(testId, currentIndex));
+    },
+    showResult: () => guard(() => onShowResult?.(testId, selected)),
+    goBack: () => guard(onBack),
+    save: () => save(),
+    /*
+      **FR-005 의 자리다.** 두 조작이 `openBrowser()` 를 지나고, 그 안에 「저장하지 않은
+      편집이 있으면 먼저 저장하고 연다」가 있다 (006 FR-203 · 011). 세션 화면에는 그
+      단계가 없다 — **선행 확인이 화면마다 다르고, 배선은 그것을 알지 못한다.**
+    */
+    recordStart: () => openBrowser(),
+    addNaturalLanguage: () => {
+      if (nl.trim() !== "") {
+        openBrowser(nl.trim());
+        setNl("");
+      }
+    },
   };
 
   const { run: runAction, wired } = makeRunAction(capabilities_, fallbackAction);
@@ -724,15 +755,8 @@ export function EditView({
    */
   function fallbackAction(action: ActionId) {
     switch (action) {
-      case "run.all":
-        guard(() => onRun?.(testId));
-        break;
-      case "run.from":
-        if (currentIndex >= 0) guard(() => onRun?.(testId, currentIndex));
-        break;
-      case "save":
-        save();
-        break;
+
+
       case "save.overwriteStale":
         if (stale !== null) save(stale.revision);
         break;
@@ -754,15 +778,7 @@ export function EditView({
 
         **둘 다 바꾼다.** 하나만 자동으로 열면 대등성이 다시 깨진다.
       */
-      case "step.recordStart":
-        openBrowser();
-        break;
-      case "step.addNaturalLanguage":
-        if (nl.trim() !== "") {
-          openBrowser(nl.trim());
-          setNl("");
-        }
-        break;
+
       /*
         016 FR-015·FR-016·FR-022 — 고른 구간으로 재녹화 세션을 연다.
 
@@ -799,22 +815,10 @@ export function EditView({
       case "session.open":
         if (loaded.blocking_session_id) onOpenSession?.(loaded.blocking_session_id);
         break;
-      case "result.show":
-        guard(() => onShowResult?.(testId, selected));
-        break;
-      case "nav.back":
-        guard(onBack);
-        break;
-      case "step.insertManual":
-        setInsertOpen((v) => !v);
-        break;
 
-      case "step.deleteSelected":
-        if (deleteSelection.length > 0) setPendingBulk(deleteSelection);
-        break;
-      case "step.deleteAfter":
-        if (afterTargets.length > 0) setPendingBulk(afterTargets);
-        break;
+
+
+
 
       default:
         break;

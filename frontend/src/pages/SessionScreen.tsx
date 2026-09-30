@@ -1163,6 +1163,35 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     moveStep: (direction) => {
       if (selectedIndex >= 0) moveStep(selectedIndex, direction);
     },
+    // 확인 대화는 이 화면이 세운다 (011) — 능력은 「지운다」까지다
+    deleteSelected: () => {
+      if (deleteSelection.length > 0) setPendingBulk(deleteSelection);
+    },
+    deleteAfter: () => {
+      if (afterTargets.length > 0) setPendingBulk(afterTargets);
+    },
+    insertManual: () => setInsertOpen((v) => !v),
+    addAssertion: () => setAssertOpen((v) => !v),
+    openStepDetail: () => {
+      if (focusedStepId !== null) onOpenDetail?.(focusedStepId);
+    },
+    /*
+      **FR-004 의 자리다.** 같은 조작이 화면마다 다른 일을 한다 — 여기서 「처음부터
+      실행」은 **다시 실행**이고(세션은 이미 돌았다), 편집 화면에서는 그 테스트를
+      **실행**하는 것이다. 배선은 그 차이를 알지 못한다.
+    */
+    runAll: () => onRerunAll?.(),
+    runFrom: () => onRerunFrom?.(Math.max(failedStepIndex ?? selectedIndex, 0)),
+    showResult: () => onShowResult?.(),
+    goBack: () => onShowList?.(),
+    save: () => onSave?.(),
+    recordStart: () => onRecordStart?.(),
+    addNaturalLanguage: () => {
+      if (nl.trim() !== "") {
+        onNaturalLanguage?.(nl.trim());
+        setNl("");
+      }
+    },
   };
 
   const { run: runAction, wired } = makeRunAction(screenCapabilities, fallbackAction);
@@ -1182,18 +1211,11 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       case "run.stop":
         onStop?.();
         break;
-      case "run.all":
-        onRerunAll?.();
-        break;
-      case "run.from":
-        onRerunFrom?.(Math.max(failedStepIndex ?? selectedIndex, 0));
-        break;
+
       case "run.fromHere":
         if (selectedIndex >= 0) onRunFromHere?.(selectedIndex);
         break;
-      case "step.recordStart":
-        onRecordStart?.();
-        break;
+
       case "step.recordStop":
         onRecordStop?.();
         break;
@@ -1204,45 +1226,21 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         경로가 실제로 동작한다는 보장이다.
       */
 
-      case "step.addAssertion":
-        setAssertOpen((v) => !v);
-        break;
-      case "step.insertManual":
-        setInsertOpen((v) => !v);
-        break;
-      case "step.addNaturalLanguage":
-        if (nl.trim() !== "") {
-          onNaturalLanguage?.(nl.trim());
-          setNl("");
-        }
-        break;
+
+
 
       /*
         011 — 복수 삭제. **확인은 팔레트가 아니라 이 화면이 세운다** (아래 `pendingBulk`).
         겹침 대화상자를 쓰지 않는 것은 009 FR-302 와 같은 근거다: 대상이 화면에서
         사라지면 무엇을 지우려던 것인지 다시 확인해야 한다.
       */
-      case "step.deleteSelected":
-        if (deleteSelection.length > 0) setPendingBulk(deleteSelection);
-        break;
-      case "step.deleteAfter":
-        if (afterTargets.length > 0) setPendingBulk(afterTargets);
-        break;
-      case "step.update":
-        if (focusedStepId !== null) onOpenDetail?.(focusedStepId);
-        break;
-      case "result.show":
-        onShowResult?.();
-        break;
+
+
       case "nav.editStep":
         onEditStep?.(steps[editTargetIndex]?.id ?? null, editTargetIndex);
         break;
-      case "save":
-        onSave?.();
-        break;
-      case "nav.back":
-        onShowList?.();
-        break;
+
+
       default:
         break;
     }

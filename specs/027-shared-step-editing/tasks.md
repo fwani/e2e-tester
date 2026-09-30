@@ -78,19 +78,19 @@ description: "027 Step 편집면과 조작 배선을 한 곳으로 — 작업 �
 
 ### 무리 2 — 여러 Step · 삽입 (확인 대화가 낀다)
 
-- [ ] T013 [US1] `step.deleteSelected` · `step.deleteAfter` · `step.insertManual` 을 옮긴다. **확인 대화는 화면에 남는다** — 능력은 「지운다」이고 「물어본다」는 화면의 사정이다
-- [ ] T014 [US1] 무리 2 검증 (T012 와 같은 방식)
+- [X] T013 [US1] `step.deleteSelected` · `step.deleteAfter` · `step.insertManual` 을 옮긴다. **확인 대화는 화면에 남는다** — 능력은 「지운다」이고 「물어본다」는 화면의 사정이다
+- [X] T014 [US1] 무리 2 검증 (T012 와 같은 방식)
 
 ### 무리 3 — 화면을 옮기는 일 (**FR-004 의 시험대**)
 
-- [ ] T015 [US1] `run.all` · `run.from` · `result.show` · `nav.back` 을 옮긴다. **네 조작이 화면마다 다른 일을 한다** — 능력의 구현이 다르고 배선은 같다는 것이 여기서 증명된다
-- [ ] T016 [US1] 무리 3 검증. **여기서 설계가 무너지면 되돌린다** (research R7 의 실패 정의)
+- [X] T015 [US1] `run.all` · `run.from` · `result.show` · `nav.back` 을 옮긴다. **네 조작이 화면마다 다른 일을 한다** — 능력의 구현이 다르고 배선은 같다는 것이 여기서 증명된다
+- [X] T016 [US1] 무리 3 검증. **여기서 설계가 무너지면 되돌린다** (research R7 의 실패 정의)
 
 ### 무리 4 — 선행 확인이 다른 것 (**FR-005 의 시험대**)
 
-- [ ] T017 [US1] `save` · `step.recordStart` · `step.addNaturalLanguage` 를 옮긴다. `EditView` 의 「먼저 저장하고 열기」가 **능력 구현 안에** 남아야 한다 — 배선이 그것을 알면 안 된다
-- [ ] T018 [US1] 무리 4 검증
-- [ ] T019 [US1] `ResultView` 의 조작 8종도 같은 방식으로 잇는다 — 세 번째 화면이 같은 모양을 쓰는지가 이 설계의 마지막 확인이다
+- [X] T017 [US1] `save` · `step.recordStart` · `step.addNaturalLanguage` 를 옮긴다. `EditView` 의 「먼저 저장하고 열기」가 **능력 구현 안에** 남아야 한다 — 배선이 그것을 알면 안 된다
+- [X] T018 [US1] 무리 4 검증
+- [X] T019 [US1] `ResultView` 의 조작 8종도 같은 방식으로 잇는다 — 세 번째 화면이 같은 모양을 쓰는지가 이 설계의 마지막 확인이다
 - [ ] T020 [US1] 어댑터의 `runAction` 에 남은 `case` 가 **그 화면 고유의 것뿐인지** 확인한다 (T003 의 목록과 대조)
 - [ ] T020a [US1] **화면이 자기가 아는 사실로 조작을 더 좁히는 통로가 살아 있는지** 확인하고 검사한다 (FR-007 · analyze D1) — `EditView` 의 `narrowByAiEntry`·`narrowByDeleteSelection`·`narrowByPick` 이 그것이다. 배선 통합은 **조작이 눌렸을 때 무엇을 하는가**를 옮기는 일이고, **언제 누를 수 있는가**는 건드리지 않는다. 이 통로가 끊기면 「고칠 Step 을 고르세요」 같은 잠금 사유가 사라진다 — 026 이 만든 것이 조용히 없어지는 자리다
 
