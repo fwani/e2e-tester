@@ -266,6 +266,52 @@ def delete_step(
     return EditResult(new_steps, max(0, new_index), warnings, at_index=index)
 
 
+def restore_step(
+    steps: list[Step], current_step_index: int, origin: Step, at_index: int
+) -> EditResult:
+    """Step 하나를 **시작 시점 모습**으로 되돌린다 (026 FR-020·FR-022).
+
+    ## 두 경우를 하나가 다룬다
+
+    | 상황 | 하는 일 |
+    |---|---|
+    | 대상이 목록에 있다 (고쳐졌다) | 그 자리를 `origin` 으로 **교체**한다 |
+    | 대상이 목록에 없다 (지워졌다) | `at_index` 로 클램프한 자리에 **되끼운다** |
+
+    **둘째가 이 함수의 존재 이유다.** AI 는 대상 Step 을 지울 수 있고("이건 필요 없다"는
+    정당한 수정이다), 지워진 Step 은 교체로 돌아오지 않는다. 라우터에서 `if` 로 가르면
+    되돌리기 규칙이 라우터에 살게 되고, 그것이 원칙 I 이 금지하는 두 번째 구현이다
+    (026 research R3).
+
+    ## 식별자가 유지된다 (FR-029)
+
+    `origin` 을 그대로 놓으므로 id 가 시작 시점과 같다. 고치는 것이지 갈아 끼우는 것이
+    아니므로 실행 산출물(`.runs/`)과의 대응이 끊기지 않는다 — 016 FR-030a 가 식별자를
+    다시 매기지 않기로 한 것과 같은 근거다.
+
+    ## 실행 위치
+
+    교체는 개수를 바꾸지 않으므로 위치도 바뀌지 않는다. 되끼우기는 `insert_step` 과 같은
+    규칙을 쓴다 — 앞쪽에 들어가면 하나 밀린다.
+    """
+    try:
+        index = find_index(steps, origin.id)
+    except StepNotFoundError:
+        # 지워졌던 것을 되끼운다. 그 사이 목록이 짧아졌으면 끝으로 붙는다.
+        index = _clamp(at_index, current_step_index, len(steps))
+        warnings = [already_executed_region_warning()] if index < current_step_index else []
+        new_index = (
+            current_step_index + 1 if index < current_step_index else current_step_index
+        )
+        return EditResult(
+            [*steps[:index], origin, *steps[index:]], new_index, warnings, at_index=index
+        )
+
+    warnings = [already_executed_warning(steps[index])] if index < current_step_index else []
+    new_steps = [*steps[:index], origin, *steps[index + 1 :]]
+    return EditResult(new_steps, current_step_index, warnings, at_index=index)
+
+
 class DuplicateStepIdsError(Exception):
     """같은 Step 을 두 번 지우라고 요청했다 (011 FR-388).
 

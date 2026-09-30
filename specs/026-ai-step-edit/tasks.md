@@ -42,11 +42,11 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 
 **⚠️ CRITICAL**: 이 단계가 끝나기 전에는 어떤 User Story 도 시작할 수 없다.
 
-- [ ] T003 [P] `backend/tests/test_step_edits_restore.py` 에 `restore_step()` 검사를 쓴다 — ① 대상이 목록에 있으면 그 자리를 원본으로 교체한다 ② 대상이 지워졌으면 `at_index` 에 되끼운다 ③ 목록이 짧아졌으면 클램프한다 ④ 원본을 바꾸지 않고 새 상태를 돌려준다. **구현 전에 쓰고 실패를 확인한다**
-- [ ] T004 `backend/src/itb/execution/step_edits.py` 에 `restore_step(steps, current_step_index, origin, at_index) -> EditResult` 를 더한다 (data-model §2). **기존 `_clamp()` 를 재사용한다** — 위치 계산을 새로 만들지 않는다
-- [ ] T005 [P] `backend/tests/test_step_edit_transaction.py` 에 `StepEditTransaction` 검사를 쓴다 — 불변식 A~D (data-model §1). 특히 ① `owns()` 가 `target_id` 와 `created` 에만 참 ② `can_commit()` 이 **만든 것이 없어도 참** (016 과 다른 자리) ③ 버리기 뒤 id 수열까지 동일 ④ `settled` 뒤 `owns()` 가 쓰이지 않음
-- [ ] T006 `backend/src/itb/authoring/step_edit.py` 를 신설한다 — `StepEditTransaction`(`target_id`·`origin`·`arrival_index`·`baseline_ids`·`settled`)과 `created`·`owns`·`can_commit`·`commit`·`discard`·`close`. **`discard` 는 하나의 `EditResult` 를 돌려준다** — 먼저 지우고 나중에 되돌린다 (research R7). 모듈 docstring 에 「왜 형제 모듈인가」(research R2)를 적는다
-- [ ] T007 `backend/src/itb/authoring/rerecord.py` 가 **바뀌지 않았는지** 확인한다 — `git diff` 로 빈 결과여야 한다 (FR-030)
+- [X] T003 [P] `backend/tests/test_step_edits_restore.py` 에 `restore_step()` 검사를 쓴다 — ① 대상이 목록에 있으면 그 자리를 원본으로 교체한다 ② 대상이 지워졌으면 `at_index` 에 되끼운다 ③ 목록이 짧아졌으면 클램프한다 ④ 원본을 바꾸지 않고 새 상태를 돌려준다. **구현 전에 쓰고 실패를 확인한다**
+- [X] T004 `backend/src/itb/execution/step_edits.py` 에 `restore_step(steps, current_step_index, origin, at_index) -> EditResult` 를 더한다 (data-model §2). **기존 `_clamp()` 를 재사용한다** — 위치 계산을 새로 만들지 않는다
+- [X] T005 [P] `backend/tests/test_step_edit_transaction.py` 에 `StepEditTransaction` 검사를 쓴다 — 불변식 A~D (data-model §1). 특히 ① `owns()` 가 `target_id` 와 `created` 에만 참 ② `can_commit()` 이 **만든 것이 없어도 참** (016 과 다른 자리) ③ 버리기 뒤 id 수열까지 동일 ④ `settled` 뒤 `owns()` 가 쓰이지 않음
+- [X] T006 `backend/src/itb/authoring/step_edit.py` 를 신설한다 — `StepEditTransaction`(`target_id`·`origin`·`arrival_index`·`baseline_ids`·`settled`)과 `created`·`owns`·`can_commit`·`commit`·`discard`·`close`. **`discard` 는 하나의 `EditResult` 를 돌려준다** — 먼저 지우고 나중에 되돌린다 (research R7). 모듈 docstring 에 「왜 형제 모듈인가」(research R2)를 적는다
+- [X] T007 `backend/src/itb/authoring/rerecord.py` 가 **바뀌지 않았는지** 확인한다 — `git diff` 로 빈 결과여야 한다 (FR-030)
 
 **Checkpoint**: 순수 층이 검사로 고정됐다. 세션 배선을 시작할 수 있다.
 
