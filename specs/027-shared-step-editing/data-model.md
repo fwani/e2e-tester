@@ -97,9 +97,14 @@ makeRunAction(capabilities, fallback?) → (action: ActionId) => void
 |---|---|
 | `StepDetail` 의 `ownFields` 갈래 | 편집면이 하나가 되므로 갈래가 필요 없다 |
 | `Workbench` 의 `stepDetailOwnFields` | 「공용 편집면을 끈다」가 필요 없다 |
-| `Workbench` 의 `stepDetailExtra` | 「자기 것을 끼운다」가 필요 없다 |
 
-**추상이 줄어드는 자리다** (R7).
+**`stepDetailExtra` 는 남는다** (2026-09-30 정정). 초안은 그것도 없어진다고 적었는데,
+실제로 편집 화면이 거기 넣는 것은 편집면**과** 잠긴 필드 안내(`lockedFieldNotice`)였다.
+안내는 서버가 준 `locked_fields` 를 쓰는 **국면 고유의 것**이므로 남아야 한다 (FR-018).
+
+편집면만 공용으로 옮기고 안내 자리는 그대로 둔다.
+
+**추상은 여전히 줄어든다** (R7) — props 둘 중 하나가 없어지고, 편집면 한 벌이 사라진다.
 
 ### 어떤 항목을 그릴지의 판정
 

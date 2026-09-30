@@ -17,7 +17,7 @@
  * 낡은 목록을 검사가 믿는다 (research R2).
  */
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { StepEditFields } from "../src/components/StepEditFields";
 import { StepDetail } from "../src/components/workbench/StepDetail";

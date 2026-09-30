@@ -58,8 +58,33 @@
 
 ---
 
-## §5 이행 중의 계약 (FR-022)
+## §5 `fallback` 통로 (FR-022)
 
 - 배선 표에 없는 조작은 **기존 경로로 떨어진다.**
 - 두 경로가 공존하는 동안에도 **사용자가 보는 것은 같다.**
-- 이행이 끝나면 `fallback` 통로가 비워지고, 비어 있음을 검사가 확인한다.
+
+### 이행이 끝나도 비워지지 않는다 (2026-09-30 정정)
+
+초안은 「이행이 끝나면 `fallback` 이 비워진다」고 적었고 **그것이 틀렸다.**
+
+`fallback` 에는 두 가지가 섞여 있다.
+
+| | 이행 후 |
+|---|---|
+| 아직 옮기지 않은 공통 조작 | 없어진다 |
+| **그 화면 고유의 조작** | **남는다** |
+
+이행이 끝난 뒤 각 화면에 남은 것은 후자뿐이다.
+
+```
+SessionScreen  run.pause · run.resume · run.stop · run.fromHere ·
+               run.resumeSkipFailure · step.recordStop · nav.editStep
+EditView       ai.chat · ai.rerecord · ai.stepEdit · ai.stepEditCommit ·
+               ai.stepEditDiscard · browser.openAt · edits.revert ·
+               save.overwriteStale · session.open
+ResultView     console · network · screenshot · trace · nav.editStep
+```
+
+**이것이 정상이며 오히려 이 증분이 그은 경계다** — 공통인 것은 배선이, 국면 고유의
+것은 화면이 갖는다 (FR-018). 「비어 있는지」가 아니라 **「남은 것이 그 화면 고유의
+것뿐인지」**를 확인한다.

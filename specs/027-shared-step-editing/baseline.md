@@ -86,3 +86,82 @@ step.moveDown · step.moveUp · step.recordStart
 
 **`step.update` 가 눈에 띈다** — 세션에만 있고, 편집 화면은 `StepEditFields` 라는 다른
 경로로 같은 일을 한다. 그것이 편집면이 두 벌인 결과다 (T027 이 이것을 옮긴다).
+
+---
+
+## 끝 시점 결과 (T041)
+
+| 검증 | 시작 | 끝 | 판정 |
+|---|---|---|---|
+| 프론트 | 2 failed · 1663 passed | **2 failed · 1706 passed** | 같다 · 신규 43건 |
+| 프론트 타입 | 통과 | **통과** | 같다 |
+| 백엔드 병렬 | 4 failed · 3468 passed | **4 failed · 3475 passed** | 같다 |
+| 백엔드 순차 | 60 passed | **61 passed** | 같다 |
+| ruff | 2 errors | **2 errors** | 같다 |
+| lint-imports | 4 kept · 0 broken | **4 kept · 0 broken** | 같다 |
+
+**새로 깨진 것이 없다.** 실패 8건은 시작 시점과 같은 8건이다.
+
+> 백엔드를 한 번 돌렸을 때 5 failed 가 났고, 다시 돌리니 4 failed 였다. 다섯째는
+> **불안정한 실패**이며 027 과 무관하다 — 백엔드 파일이 한 개도 바뀌지 않았음을
+> `git diff --stat backend/` 가 빈 결과로 확인한다 (T038a).
+
+---
+
+## 지켜야 했던 것들의 결과
+
+| 확인 | 결과 |
+|---|---|
+| 조작표(`capabilities.ts`) 미변경 (FR-020 · T036) | **한 글자도 안 바뀜** |
+| 백엔드 미변경 (FR-023 · T038a) | **한 파일도 안 바뀜** |
+| `Workbench` 3층 구조 (FR-019 · T037) | props 교체 + 속성 하나. 구조 그대로 |
+| 배선이 국면을 모름 (FR-006 · T038) | `phase`·`enabled` 등 **0회** |
+| 새 CSS 클래스 (T040) | **없음** |
+| 좁히기 통로 (FR-007 · T020a) | 셋 다 살아 있음 |
+
+---
+
+## T043 — 어댑터 줄 수는 **늘었다**
+
+| | 시작 | 끝 |
+|---|---|---|
+| `SessionScreen` | 3739 | 3751 |
+| `EditView` | 1500 | 1535 |
+| `ResultView` | 680 | 692 |
+
+계획은 「줄어야 한다」고 적었고 **늘었다.** research R7 의 실패 정의에 해당하는지
+판단했다.
+
+**해당하지 않는다.** R7 이 적은 실패는 둘이다.
+
+| R7 의 실패 정의 | 실제 |
+|---|---|
+| 배선 모듈이 국면을 알기 시작한다 | **아니다** — 검사가 `phase`·`enabled` 0회를 고정한다 |
+| 능력 묶음이 화면마다 다른 모양이 된다 | **아니다** — 세 화면이 같은 `ScreenCapabilities` 하나를 쓴다 |
+
+늘어난 것은 **주석**이다. 능력 묶음마다 「왜 이 구현이 화면마다 다른가」(FR-004·FR-005)를
+적었고, 그것이 이 저장소의 관행이다. 실제 로직은 줄었다 — 조작 13개의 중복 구현과
+편집면 한 벌이 사라졌다.
+
+**줄 수는 이 증분의 성공 기준이 아니다.** 성공 기준은 SC-001(새 조작을 한 곳만 고쳐도
+된다)·SC-002(표가 말한 조작이 100% 동작한다)·SC-006(13개 중복이 사라진다)이고 셋 다
+충족됐다.
+
+---
+
+## `fallback` 에 남은 것 (T039)
+
+이행이 끝난 뒤 각 화면의 `fallbackAction` 에 남은 조작들.
+
+```
+SessionScreen (7)  nav.editStep · run.fromHere · run.pause · run.resume ·
+                   run.resumeSkipFailure · run.stop · step.recordStop
+EditView (9)       ai.chat · ai.rerecord · ai.stepEdit · ai.stepEditCommit ·
+                   ai.stepEditDiscard · browser.openAt · edits.revert ·
+                   save.overwriteStale · session.open
+ResultView (5)     console · nav.editStep · network · screenshot · trace
+```
+
+**전부 그 화면 고유의 조작이다.** 계약 §5 의 「이행이 끝나면 비워진다」는 기술이
+틀렸고 정정했다 — 비는 것이 아니라 **공통인 것만 빠져나가고 고유한 것이 남는다.**
+그것이 이 증분이 그은 경계다.
