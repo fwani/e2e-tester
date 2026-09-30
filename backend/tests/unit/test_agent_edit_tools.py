@@ -168,7 +168,17 @@ def test_ai_edits_go_out_as_the_same_events_humans_do() -> None:
     emitted = emitted_event_names(ai_routes._apply_ai_edit)
 
     assert emitted, "AI 편집이 아무 이벤트도 내지 않는다"
-    step_events = {n for n in emitted if n.startswith("step")}
+
+    # **트랜잭션 상태 이벤트는 대상이 아니다.** 사람 경로에는 트랜잭션이 없으므로
+    # 대응물이 있을 수 없다 — `rerecord_changed`(016)·`step_edit_changed`(026)가
+    # 그것이고, 둘 다 「Step 이 어떻게 바뀌었나」가 아니라 「교체·수정이 지금 어떤
+    # 상태인가」를 말한다.
+    #
+    # 016 때도 같았는데 `rerecord_changed` 는 이름이 `step` 으로 시작하지 않아 아래
+    # 접두사 조건에 걸리지 않았다. 026 이 그 근사치의 한계를 드러냈으므로, 재려던
+    # 것(**Step 목록 변경**)을 이름으로 근사하지 않고 그대로 적는다.
+    transaction_events = {n for n in emitted if n.endswith("_changed")}
+    step_events = {n for n in emitted if n.startswith("step")} - transaction_events
     assert step_events, "Step 변경을 알리는 이벤트가 없다"
     for name in step_events:
         assert f'"{name}"' in human_source, (

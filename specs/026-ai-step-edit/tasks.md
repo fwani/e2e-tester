@@ -165,7 +165,7 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 - [X] T054 [US4] 두 조작의 라벨과 한 줄 설명을 정한다 (contracts/ui-contract §2) — 「고른 Step 을 **버리고** 새로 만든다」 / 「고른 Step 을 **남긴 채** 고친다」
 - [X] T055 [US4] `frontend/src/lib/capabilities.ts` 의 잠금 사유를 조작별로 다르게 쓴다 — `ai.stepEdit` 의 「둘 이상」 사유를 새로 더한다
 - [X] T056 [US4] `frontend/src/pages/EditView.tsx` 에서 두 조작을 **나란히** 놓고 설명을 함께 보인다
-- [ ] T057 [US4] 편집 국면의 `ai.chat` 해소 조작을 검토한다 — `ai.rerecord` 를 계속 가리킨다 (contracts/ui-contract §4). 바꾸지 않기로 한 결정도 주석으로 남긴다
+- [X] T057 [US4] 편집 국면의 `ai.chat` 해소 조작을 검토한다 — `ai.rerecord` 를 계속 가리킨다 (contracts/ui-contract §4). 바꾸지 않기로 한 결정도 주석으로 남긴다
 
 **Checkpoint**: 네 User Story 가 전부 동작한다.
 
@@ -173,20 +173,20 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T058 [P] 민감 값이 대화 이력·에이전트 컨텍스트에 나타나지 않는지 검사한다 (FR-041 · SC-008) — 016 의 검사 형식을 따른다
-- [ ] T058a [P] **저장 형식 동일성**을 검사한다 (FR-018 · SC-004 · 헌법 원칙 I) — AI 가 고친 Step 과 사람이 같은 편집을 한 Step 을 각각 저장해 **직렬화 결과가 같은지** 본다. 작성 주체가 저장 형식에 남지 않아야 한다. **원칙 I 은 NON-NEGOTIABLE 이므로 이 검사가 없으면 회귀를 볼 방법이 없다** (analyze D1)
-- [ ] T058b [P] 수정으로 새로 들어가는 값의 **민감 처리**를 검사한다 (FR-040) — AI 가 비밀번호 칸을 고치면 값이 아니라 변수 참조로 남는다. T058 이 보는 것(컨텍스트·대화 이력)과 **다른 경로**다 (analyze D4)
-- [ ] T058c [P] **언어모델 호출이 실패해도** 그때까지의 수정이 보존되는지 검사한다 (FR-038) — T060(도구 호출 상한)과 다른 실패 경로다 (analyze D5)
-- [ ] T058d [P] AI 가 막혔을 때 **브라우저를 닫지 않는지** 검사한다 (FR-036 · 헌법 원칙 III) — `step_edit` 세션에서도 기존 선택지가 그대로 뜬다 (analyze D6)
-- [ ] T059 [P] 세션 유실 시 확정되지 않은 수정의 운명이 명확한지 확인하고 검사한다 (FR-039)
-- [ ] T060 [P] 도구 호출 상한에 닿았을 때 그때까지의 수정이 보존되는지 검사한다 (FR-037)
-- [ ] T061 [P] `test_tool_surface.py` 가 여전히 16종을 고정하는지 확인한다 — 도구가 늘지 않았다
-- [ ] T062 `frontend/src/theme/workspace.css` 에 새 클래스가 정본으로 선언됐는지 확인한다 — `VisualLanguage.test.tsx`·`ClassExistence.test.ts` 가 잡는다
-- [ ] T063 새로 만든 프론트 컴포넌트가 **쓰이는 곳이 둘 이상인지** 확인한다 — 하나면 배선이 덜 된 것이다 (contracts/ui-contract §6)
-- [ ] T064 전량 검증을 돌리고 결과를 `baseline.md` 의 시작 시점과 비교해 적는다 — 새로 깨진 것이 없어야 한다
+- [X] T058 [P] 민감 값이 대화 이력·에이전트 컨텍스트에 나타나지 않는지 검사한다 (FR-041 · SC-008) — 016 의 검사 형식을 따른다
+- [X] T058a [P] **저장 형식 동일성**을 검사한다 (FR-018 · SC-004 · 헌법 원칙 I) — AI 가 고친 Step 과 사람이 같은 편집을 한 Step 을 각각 저장해 **직렬화 결과가 같은지** 본다. 작성 주체가 저장 형식에 남지 않아야 한다. **원칙 I 은 NON-NEGOTIABLE 이므로 이 검사가 없으면 회귀를 볼 방법이 없다** (analyze D1)
+- [X] T058b [P] 수정으로 새로 들어가는 값의 **민감 처리**를 검사한다 (FR-040) — AI 가 비밀번호 칸을 고치면 값이 아니라 변수 참조로 남는다. T058 이 보는 것(컨텍스트·대화 이력)과 **다른 경로**다 (analyze D4)
+- [X] T058c [P] **언어모델 호출이 실패해도** 그때까지의 수정이 보존되는지 검사한다 (FR-038) — T060(도구 호출 상한)과 다른 실패 경로다 (analyze D5)
+- [X] T058d [P] AI 가 막혔을 때 **브라우저를 닫지 않는지** 검사한다 (FR-036 · 헌법 원칙 III) — `step_edit` 세션에서도 기존 선택지가 그대로 뜬다 (analyze D6)
+- [X] T059 [P] 세션 유실 시 확정되지 않은 수정의 운명이 명확한지 확인하고 검사한다 (FR-039)
+- [X] T060 [P] 도구 호출 상한에 닿았을 때 그때까지의 수정이 보존되는지 검사한다 (FR-037)
+- [X] T061 [P] `test_tool_surface.py` 가 여전히 16종을 고정하는지 확인한다 — 도구가 늘지 않았다
+- [X] T062 `frontend/src/theme/workspace.css` 에 새 클래스가 정본으로 선언됐는지 확인한다 — `VisualLanguage.test.tsx`·`ClassExistence.test.ts` 가 잡는다
+- [X] T063 새로 만든 프론트 컴포넌트가 **쓰이는 곳이 둘 이상인지** 확인한다 — 하나면 배선이 덜 된 것이다 (contracts/ui-contract §6)
+- [X] T064 전량 검증을 돌리고 결과를 `baseline.md` 의 시작 시점과 비교해 적는다 — 새로 깨진 것이 없어야 한다
 - [ ] T065 `specs/026-ai-step-edit/quickstart.md` 의 §1~§4 를 실제 모델로 손으로 확인한다. **가짜 드라이버로는 대신할 수 없다** — 「모델이 권한이 넓어진 것을 아는가」는 실제 설명문을 읽을 때만 드러난다
 - [ ] T065a SC-010 을 잰다 — **이 기능을 만들지 않은 사람 5명**에게 두 조작의 라벨과 설명만 보여주고 「어느 쪽이 고른 Step 을 남기는가」를 묻는다. 4명 이상이 맞혀야 한다. 만든 사람은 답을 알고 있으므로 셀 수 없다 (analyze D7)
-- [ ] T066 [P] `README.md`·`PRODUCT.md` 에 이 조작이 설명되어 있는지 확인하고 필요하면 더한다
+- [X] T066 [P] `README.md`·`PRODUCT.md` 에 이 조작이 설명되어 있는지 확인하고 필요하면 더한다
 
 ---
 

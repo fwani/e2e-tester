@@ -79,3 +79,41 @@ frontend/src/pages/EditView.tsx · SessionScreen.tsx
 
 `RerecordBar.tsx` 가 016 의 확정·버리기 자리다 — 026 의 확정·버리기가 같은 모양이어야
 하므로 참고 대상이며, **고치지 않는다.**
+
+---
+
+## 끝 시점 결과 (T064)
+
+| 검증 | 시작 | 끝 | 판정 |
+|---|---|---|---|
+| 백엔드 병렬 | 4 failed · 3390 passed | **4 failed · 3468 passed** | 같다 · 신규 78건 |
+| 백엔드 순차 | 60 passed | **60 passed** | 같다 |
+| ruff | 2 errors | **2 errors** | 같다 |
+| lint-imports | 4 kept · 0 broken | **4 kept · 0 broken** | 같다 |
+| 프론트 | 2 failed · 1646 passed | **2 failed · 1655 passed** | 같다 · 신규 9건 |
+| 타입 | 통과 | **통과** | 같다 |
+
+**새로 깨진 것이 없다.** 실패 8건은 시작 시점과 **같은 8건**이다 —
+AS-009·AS-025·AS-037·AS-046 · ruff E501 2건 · ScreenSweep 2건.
+
+### 원칙 II 경계는 여전히 깨끗하다
+
+`execution must not reach the LLM boundary (Constitution Principle II)` = **KEPT**.
+026 이 도착점 실행과 되맞춤 실행을 건드렸고, `test_principle_ii_timeline.py` 가 두
+구간 모두에서 드라이버 호출 0회를 본다.
+
+### 016 은 그대로 돈다 (FR-030)
+
+`tests/us_rerecord` 10파일 + `test_rerecord_transaction.py` = **102건 통과**.
+`rerecord.py` 는 한 글자도 바뀌지 않았다.
+
+### 도중에 고친 기존 검사 4건 — 무엇을 왜
+
+| 검사 | 왜 고쳤나 |
+|---|---|
+| `CapabilityCoverage` | 조작 46 → 49. 026 이 셋을 더했다 |
+| `RerecordRegression` | 「016 이 아무것도 없애지 않았다」를 재는 검사인데, 뒤에 온 기능이 더한 것을 빼지 않으면 기능이 늘 때마다 숫자를 고쳐야 한다. `ADDED_LATER` 로 분리했다 |
+| `RerecordStart` | 불연속 선택이 이제 **누르기 전에** 잠긴 채 이유를 말한다. FR-016 이 원한 것의 더 이른 형태다 |
+| `test_agent_edit_tools` (FR-039) | 「Step 변경 이벤트」를 이름 접두사로 근사하고 있었다. `rerecord_changed` 도 같은 성격인데 이름이 `step` 으로 시작하지 않아 걸리지 않았을 뿐이다. 재려던 것을 그대로 적었다 |
+
+넷 다 **검사가 재려던 것은 그대로 두고 근사치만 정확하게** 만든 것이다. 약화가 아니다.
