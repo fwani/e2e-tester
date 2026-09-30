@@ -142,9 +142,14 @@ const TAKEOVER_STATES: SessionState[] = ["takeover_recording", "ai_blocked"];
  * 「세션이 아직 없다」는 위치이며 세션에서 판정할 대상이 아니다.
  *
  * **판정 순서가 있다.** `takeover_recording` 은 AI 세션의 상태이면서 사람이 조작하는
- * 국면이다. 한 세션이 두 조건을 동시에 만족하므로 순서 없이는 답이 갈린다. 아래 순서는
- * 지금 `SessionScreen` 의 분기 순서(`isPaused` → `isTakeover` → `showsAiScreen`)와
- * 같은 결론을 낸다 — 007 이 국면 판정을 옮기면서 동작을 바꾸지 않는다는 뜻이다.
+ * 국면이다. 한 세션이 두 조건을 동시에 만족하므로 순서 없이는 답이 갈린다. 007 이 이
+ * 판정을 옮길 때의 순서는 `SessionScreen` 의 옛 분기(`isPaused` → `isTakeover` →
+ * `showsAiScreen`)와 같은 결론을 내도록 맞춘 것이었다 — 옮기면서 동작을 바꾸지 않기
+ * 위해서다.
+ *
+ * **그 순서 하나가 2026-09-30 에 바뀌었다** — `recording` 이 `authoring_mode` 앞으로
+ * 왔다. 근거는 아래 본문에 있다. 옛 순서를 그대로 둔 것이 결함이었으므로, 이것은 007 의
+ * 이전을 되돌리는 것이 아니라 그때 함께 옮겨 온 결함을 고치는 것이다.
  */
 export function phaseOfSession(view: SessionView): Phase {
   /*
@@ -156,8 +161,38 @@ export function phaseOfSession(view: SessionView): Phase {
   if (FINISHED_STATES.includes(view.state)) return "finished";
   if (PAUSED_STATES.includes(view.state)) return "paused";
   if (TAKEOVER_STATES.includes(view.state)) return "takeover";
-  if (view.authoring_mode === "ai") return "ai_authoring";
+  /*
+    **`recording` 은 `authoring_mode` 를 이긴다** (2026-09-30 사용자 보고 —
+    「ai 생성중 → 직접 조작으로 스텝을 추가하다가 → 다시 ai 로 갈 방법이 없다」).
+
+    `recording` 은 **사람이 지금 브라우저를 조작하는 중**이라는 뜻이다. 상태 기계에
+    그 상태로 들어오는 길은 `BEGIN_RECORD`(녹화 세션)와 `PAUSED → RECORD_ACTIONS_START`
+    (「직접 조작으로 Step 추가」) 둘뿐이고, **AI 가 이 상태를 만드는 길은 없다**
+    (`execution/state_machine.py` 의 전이표). 그러므로 이 자리에서 `authoring_mode` 를
+    먼저 보는 것은 「누가 만든 세션인가」로 「지금 누가 조작하는가」를 답하는 것이다.
+
+    그 순서가 만든 막다른 길이 위 보고다. AI 세션에서 「직접 조작으로 Step 추가」를
+    누르면 상태는 `recording` 인데 국면은 `ai_authoring` 으로 판정됐고, 그 국면의 표는
+    **AI 가 도는 중**을 전제하므로 이렇게 됐다:
+
+    - `mirror.control` 잠김 — 「AI 가 수행하는 동안에는 할 수 없습니다」.
+      기록을 켜 놓고 조작할 수단이 없다.
+    - `step.recordStop` 없음(N2) — 켠 것을 **끄는 버튼이 화면에 없다**.
+    - `ai.chat` 잠김 + 숨김 — 돌아갈 입구가 보이지 않는다.
+
+    남은 탈출구는 「일시정지」 하나였고, 그 옆에서 화면은 「AI 가 수행 중」이라고 말했다.
+    AI 는 이미 멈춰 있었다 — 화면이 사용자에게 거짓을 말하는 상태이며, 그것이 `Phase`
+    주석이 `finished` 를 `running` 에서 갈라낼 때 든 것과 같은 종류의 결함이다.
+
+    `recording` 국면의 표는 이 상황을 이미 정확히 담고 있다 — `mirror.control` ●,
+    `step.recordStop` ●, `ai.chat` 은 「실행을 멈춘 뒤에 할 수 있습니다 → 일시정지」.
+    고칠 것은 표가 아니라 **어느 표를 보는가**였다.
+
+    **위 넷보다는 아래다.** `review`·`finished`·`paused`·`takeover` 는 조작이 이미
+    끝났거나 멈춘 자리이고, `recording` 상태와 겹치지 않는다.
+  */
   if (view.state === "recording") return "recording";
+  if (view.authoring_mode === "ai") return "ai_authoring";
   return "running";
 }
 

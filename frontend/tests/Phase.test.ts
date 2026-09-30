@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { SessionState } from "../src/api/client";
+import { capabilityOf, type CapabilityFacts } from "../src/lib/capabilities";
 import {
   PHASES,
   hasLiveBrowser,
@@ -73,6 +74,17 @@ describe("국면 판정 (T006·T007)", () => {
     { state: "replaying", authoring: "record", expected: "running", why: "저장된 테스트 재생" },
     { state: "starting", authoring: "record", expected: "running", why: "브라우저를 띄우는 중" },
     { state: "recording", authoring: "record", expected: "recording", why: "사람이 녹화" },
+    /*
+      2026-09-30 — **AI 세션이어도 `recording` 이면 녹화 국면이다.** 상태 기계에 이
+      상태로 들어오는 길은 `BEGIN_RECORD` 와 `PAUSED → RECORD_ACTIONS_START` 둘뿐이고
+      둘 다 사람이 조작한다. 아래 「직접 조작으로 Step 추가」 블록이 그 결과를 잰다.
+    */
+    {
+      state: "recording",
+      authoring: "ai",
+      expected: "recording",
+      why: "AI 세션이어도 조작하는 것은 사람이다",
+    },
     { state: "ai_running", authoring: "ai", expected: "ai_authoring", why: "AI 수행 중" },
     { state: "takeover_recording", authoring: "ai", expected: "takeover", why: "사람이 이어받아 녹화" },
     { state: "ai_blocked", authoring: "ai", expected: "takeover", why: "AI 가 막혀 선택을 기다린다" },
@@ -118,6 +130,66 @@ describe("국면 판정 (T006·T007)", () => {
     it("AI 세션이 사람에게 넘어가면 takeover 다 — ai_authoring 이 아니다", () => {
       const view = sessionView({ state: "takeover_recording", authoring_mode: "ai" });
       expect(phaseOfSession(view)).toBe("takeover");
+    });
+
+    /**
+     * **AI 세션에서 직접 조작으로 Step 을 추가하는 길** (2026-09-30 사용자 보고).
+     *
+     * > 「ai 생성중 → 직접 조작으로 스텝을 추가하다가 → 다시 ai 로 갈 방법이 없다」
+     *
+     * 이 블록은 국면 이름이 아니라 **그 국면에서 실제로 무엇을 할 수 있는가**를 잰다.
+     * 판정만 보면 「`recording` 이 나온다」로 끝나는데, 결함의 형태는 판정이 낸 국면의
+     * 표가 사용자를 가두는 것이었다. 되돌아오는 길이 실제로 있는지는 조작으로만 보인다.
+     *
+     * 왕복 전체를 한 블록에 둔다 — 세 단언이 서로 다른 파일에 흩어지면, 한 칸이 닫혀
+     * 길이 끊겨도 각 파일의 검사는 통과한다.
+     */
+    describe("AI 세션에서 직접 조작으로 Step 을 추가한다", () => {
+      /** 브라우저도 미러도 멀쩡한 상태. 여기서 막히면 국면 탓이지 런타임 탓이 아니다. */
+      const live: CapabilityFacts = {
+        liveBrowser: true,
+        recording: true,
+        hasSteps: true,
+        mirrorFrameSeen: true,
+        mirrorLive: true,
+        controlChannelOpen: true,
+        controlSurfaceIsMirror: true,
+      };
+
+      /*
+        **국면 이름을 손으로 적지 않는다.** 조작을 물을 때도 `phaseOfSession` 이 낸
+        값을 그대로 넘긴다 — 판정과 표 사이가 끊기면, 판정이 틀려도 표를 직접 찌르는
+        단언은 통과한다. 결함은 그 사이에 있었다.
+      */
+      const recording = sessionView({ state: "recording", authoring_mode: "ai" });
+      const can = (view: typeof recording, action: Parameters<typeof capabilityOf>[1]) =>
+        capabilityOf(phaseOfSession(view), action, live);
+
+      it("녹화를 켜면 녹화 국면이다 — AI 가 도는 중이 아니다", () => {
+        expect(phaseOfSession(recording)).toBe("recording");
+      });
+
+      it("미러를 조작할 수 있다 — 켜 놓고 조작할 수 없는 기록을 만들지 않는다", () => {
+        expect(can(recording, "mirror.control").kind).toBe("enabled");
+      });
+
+      it("켠 것을 끄는 버튼이 화면에 있다", () => {
+        // `not_applicable` 이면 자리 자체가 없다 — 그것이 사용자를 가뒀다.
+        expect(can(recording, "step.recordStop").kind).toBe("enabled");
+      });
+
+      it("녹화 중에도 돌아갈 방법을 말한다 — 잠기되 어디로 가야 하는지 가리킨다", () => {
+        const chat = can(recording, "ai.chat");
+        expect(chat.kind).toBe("disabled");
+        // 해소 수단이 없으면 「안 된다」로 끝나고 사용자는 다음 한 걸음을 모른다.
+        if (chat.kind === "disabled") expect(chat.remedy?.action).toBe("run.pause");
+      });
+
+      it("기록을 멈추면 AI 에게 말할 수 있다 — 돌아가는 길이 이어진다", () => {
+        const paused = sessionView({ state: "paused", authoring_mode: "ai" });
+        expect(phaseOfSession(paused)).toBe("paused");
+        expect(can(paused, "ai.chat").kind).toBe("enabled");
+      });
     });
 
     it("AI 세션 여부는 state 가 아니라 authoring_mode 가 정한다", () => {

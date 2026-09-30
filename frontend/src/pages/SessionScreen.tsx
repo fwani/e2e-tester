@@ -509,7 +509,33 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   } = props;
 
   const phase = phaseOfSession(view);
-  const aiAuthoringSidebar = view.authoring_mode === "ai" && ["ai_authoring", "takeover", "review"].includes(phase);
+  /**
+   * AI 작성 현황·대화가 **옆자리를 갖는가**.
+   *
+   * ## `paused`·`recording` 이 2026-09-30 에 들어왔다 (사용자 보고)
+   *
+   * > 「ai 생성중 → 직접 조작으로 스텝을 추가하다가 → 다시 ai 로 갈 방법이 없다」
+   *
+   * 막다른 길의 절반은 국면 오판정이었고 `lib/phase.ts` 가 그것을 고친다. 나머지
+   * 절반이 여기다 — **돌아갈 자리가 눈앞에서 사라지는 것**.
+   *
+   * AI 세션에서 직접 조작으로 Step 을 추가하려면 반드시 `paused` 를 지난다
+   * (`state_machine.py`: `PAUSED → RECORD_ACTIONS_START`). 그런데 두 국면이 이 목록
+   * 밖이라, 사용자가 그 길에 들어서는 순간 「AI 작성 현황」 패널이 통째로 사라졌다.
+   * 지시문도 대화 이력도 계획도 함께 사라진다 — 방금까지 AI 와 주고받던 자리가 없어진
+   * 화면에서 「다시 AI 로」를 찾을 근거가 남지 않는다.
+   *
+   * **대화 입구 자체는 그 전에도 있었다.** `ChatPanel` 이 `leftExtra` 로 미러 아래에
+   * 그려지고 `paused` 의 `ai.chat` 은 열려 있다. 문제는 자리가 **옮겨 다니는** 것이다 —
+   * 같은 대화가 국면에 따라 옆 패널과 미러 아래를 오가면, 사용자는 매번 그것이 같은
+   * 대화인지 확인해야 한다 (FR-235 가 「한 조작에 한 자리」로 막으려는 것).
+   *
+   * **`authoring_mode === "ai"` 가 문지기다.** 사람이 녹화로 시작한 세션은 여기 걸리지
+   * 않는다 — `recording`·`paused` 를 목록에 넣어도 그 세션의 배치는 그대로다.
+   */
+  const aiAuthoringSidebar =
+    view.authoring_mode === "ai" &&
+    ["ai_authoring", "takeover", "review", "paused", "recording"].includes(phase);
   const testId = view.test_id;
   const title = testId ?? "새 테스트";
 
