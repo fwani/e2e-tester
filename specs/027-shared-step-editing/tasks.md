@@ -44,16 +44,16 @@ description: "027 Step 편집면과 조작 배선을 한 곳으로 — 작업 �
 
 **⚠️ CRITICAL**: 이 단계가 끝나기 전에는 어떤 조작도 옮기지 않는다.
 
-- [ ] T004 `frontend/src/lib/actionWiring.ts` 를 신설한다 — `ScreenCapabilities`(전부 선택적) · `ACTION_WIRING`(조작 → 능력) · `makeRunAction(caps, fallback?)` (data-model §1~§3). **국면을 인자로 받지 않는다** (contracts/wiring-contract §2). 모듈 docstring 에 「하지 않을 것」 목록과 research R7 의 실패 정의를 적는다
-- [ ] T005 [P] `frontend/tests/ActionWiring.test.ts` 에 모듈 자체의 검사를 쓴다 — ① 능력이 없으면 그 조작이 이어지지 않는다 ② `fallback` 이 있으면 표에 없는 조작이 거기로 간다 ③ **모듈이 국면을 받지 않는다**(시그니처 고정) ④ 같은 조작이 두 능력에 이어지지 않는다
-- [ ] T006 `makeRunAction` 이 **이어 둔 조작 목록을 돌려준다** — 화면이 `data-wired-actions` 로 내보낼 값이다 (data-model §4). 화면이 손으로 적지 않는 것이 요점이다
-- [ ] T007 `frontend/tests/ActionWiringCoverage.test.tsx` 에 **표 ↔ 배선 대조** 검사를 쓴다 (FR-014~FR-016) — 각 국면 화면을 **실제로 그려** `data-wired-actions` 를 읽고, 조작표가 그 국면에서 **「해당 없음」(`na`)이 아니라고** 말하는 조작이 전부 들어 있는지 본다. **아직 이전 전이므로 실패한다** — 그 실패 목록이 곧 이전할 일감이다
+- [X] T004 `frontend/src/lib/actionWiring.ts` 를 신설한다 — `ScreenCapabilities`(전부 선택적) · `ACTION_WIRING`(조작 → 능력) · `makeRunAction(caps, fallback?)` (data-model §1~§3). **국면을 인자로 받지 않는다** (contracts/wiring-contract §2). 모듈 docstring 에 「하지 않을 것」 목록과 research R7 의 실패 정의를 적는다
+- [X] T005 [P] `frontend/tests/ActionWiring.test.ts` 에 모듈 자체의 검사를 쓴다 — ① 능력이 없으면 그 조작이 이어지지 않는다 ② `fallback` 이 있으면 표에 없는 조작이 거기로 간다 ③ **모듈이 국면을 받지 않는다**(시그니처 고정) ④ 같은 조작이 두 능력에 이어지지 않는다
+- [X] T006 `makeRunAction` 이 **이어 둔 조작 목록을 돌려준다** — 화면이 `data-wired-actions` 로 내보낼 값이다 (data-model §4). 화면이 손으로 적지 않는 것이 요점이다
+- [X] T007 `frontend/tests/ActionWiringCoverage.test.tsx` 에 **표 ↔ 배선 대조** 검사를 쓴다 (FR-014~FR-016) — 각 국면 화면을 **실제로 그려** `data-wired-actions` 를 읽고, 조작표가 그 국면에서 **「해당 없음」(`na`)이 아니라고** 말하는 조작이 전부 들어 있는지 본다. **아직 이전 전이므로 실패한다** — 그 실패 목록이 곧 이전할 일감이다
 
       > **판정 기준이 `na` 인 것이 요점이다** (analyze A1). 「활성(`enabled`)」으로 잡으면
       > 검사가 절반만 잡는다 — `cond(...)`·`off(...)` 인 조작도 **배선은 있어야 하기**
       > 때문이다. 조건이 풀리거나 사유가 해소되면 눌리고, 그때 아무 일도 일어나지 않으면
       > 그것이 바로 이 기능이 막으려는 결함이다. 「해당 없음」만이 「이을 필요가 없다」다.
-- [ ] T008 T007 의 실패 문구가 **어느 조작이 어느 화면에서 빠졌는지** 말하는지 확인한다 (FR-015). 「어딘가 잘못됐다」로 끝나면 고친다
+- [X] T008 T007 의 실패 문구가 **어느 조작이 어느 화면에서 빠졌는지** 말하는지 확인한다 (FR-015). 「어딘가 잘못됐다」로 끝나면 고친다
 
 **Checkpoint**: 배선 모듈이 있고, 무엇이 안 이어졌는지 검사가 목록으로 말해 준다.
 
