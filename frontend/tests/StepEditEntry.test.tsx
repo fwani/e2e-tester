@@ -95,6 +95,33 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("어느 패널에서 찾는가 (2026-09-30 사용자 보고)", () => {
+  /*
+    > 「계속 편집하는 스텝을 선택하라고 하는데 그런 것도 없음」
+
+    조작은 등록돼 있었고 표도 화면도 온전했는데 **「Step 추가」 패널을 열어야** 보였다.
+    Step 을 고치려는 사람이 「추가」를 열 이유가 없다.
+
+    기존 검사가 이것을 못 잡은 이유: `revealTool()` 이 **어느 패널이든** 열어 주므로
+    「있다」만 확인하고 「찾을 수 있다」는 확인하지 않았다. 자리를 검사로 고정한다.
+  */
+  it("**「Step 편집 도구」 안에 있다** — 「Step 추가」가 아니다", async () => {
+    await renderEdit({ onRerecordRange: vi.fn(), onStepEdit: vi.fn() });
+
+    const host = stepEditBtn()?.closest("[data-tool-name]");
+    expect(host?.getAttribute("data-tool-name")).toBe("Step 편집 도구");
+  });
+
+  it("같은 패널에 **다른 Step 편집 조작들과 함께** 있다", async () => {
+    await renderEdit({ onRerecordRange: vi.fn(), onStepEdit: vi.fn() });
+
+    const host = stepEditBtn()?.closest("[data-tool-name]");
+    // 고른 Step 에 대해 하는 일들이 한 자리에 모여야 사용자가 찾을 곳을 안다.
+    expect(host?.querySelector('[data-action="step.delete"]')).not.toBeNull();
+    expect(host?.querySelector('[data-action="step.moveUp"]')).not.toBeNull();
+  });
+});
+
 describe("두 입구가 나란히 있다 (FR-031)", () => {
   it("편집 화면에 **둘 다** 있다", async () => {
     await renderEdit({ onRerecordRange: vi.fn(), onStepEdit: vi.fn() });

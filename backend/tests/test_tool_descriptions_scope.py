@@ -63,6 +63,18 @@ def test_the_refusal_tells_the_model_what_to_do_instead() -> None:
     assert "어느 Step 을 고르면 되는지" in TOOL_SCHEMAS["update_step"][0]
 
 
+def test_the_system_prompt_names_where_the_human_must_go() -> None:
+    """**어디서 고르라는 것인지**를 말해야 한다 (2026-09-30 사용자 보고).
+
+    > 「계속 편집하는 스텝을 선택하라고 하는데 그런 것도 없음」
+
+    고를 자리는 **편집 화면**에만 있다. 세션 안에서 「Step 을 고르세요」라고만 하면
+    사람은 지금 화면에서 없는 조작을 찾는다 — 지시가 그 화면에서 **수행 불가능**하다.
+    """
+    assert "편집 화면" in SYSTEM_PROMPT
+    assert "AI 에게 고쳐 달라기" in SYSTEM_PROMPT
+
+
 def test_the_system_prompt_names_the_mark_the_summary_actually_writes() -> None:
     """지침이 가리키는 표시와 요약이 쓰는 표시가 **같은 문자열**이어야 한다.
 
