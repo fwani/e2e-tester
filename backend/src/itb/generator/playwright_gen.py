@@ -439,6 +439,19 @@ def generate_body(test: Test) -> list[str]:
             lines.append(f"await {var}.waitForLoadState();")
             known_tabs.add(step.tab)
 
+        # 제품의 재실행과 **같은 자리에서 같은 것을 기다린다** (원칙 IV·V, 2026-09-30).
+        #
+        # `StepExecutor._settle_transition` 이 Step 진입 전에 진행 중인 문서 전환을
+        # 기다린다. 여기에 같은 줄이 없으면 제품에서 통과한 정의가 내보낸 뒤 깨진다 —
+        # 그리고 그 차이는 앞선 Step 이 전환을 일으키는 화면에서만 나타나므로, 내보내기를
+        # 시험한 사람에게는 「가끔 깨진다」로 보인다.
+        #
+        # **탭을 닫는 동작에는 붙이지 않는다.** 실행기도 그 종류를 대기 앞에서 돌려보낸다
+        # — 없어질 탭의 로드를 기다릴 이유가 없다.
+        if not isinstance(step, CloseTabStep):
+            settle = f"await {_tab_var(step.tab)}.waitForLoadState('domcontentloaded');"
+            lines.append(settle)
+
         if opens_tab and next_step is not None:
             lines.extend(_tab_open_lines(next_step.tab, current))
             known_tabs.add(next_step.tab)

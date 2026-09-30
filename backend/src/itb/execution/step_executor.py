@@ -228,6 +228,26 @@ class StepExecutor:
 
         record = StepExecution(tab_wait_ms=tab.waited_ms, tab=step.tab)
 
+        # **앞선 Step 이 일으킨 화면 전환을 여기서 기다린다.**
+        #
+        # 2026-09-30 사용자 보고 — 「빠름으로 하면 앞선 스텝이 이루어져야 하는데 그냥
+        # 지나가버려서 작성한 테스트가 중간에 실패한다」. 실행 속도(004)는 Step 사이에
+        # 쉬는 시간일 뿐 아무것도 확인하지 않으므로(`run_pacing`), `NORMAL` 의 500ms 가
+        # 우연히 메워 주던 틈이 `FAST` 에서 그대로 드러난 것이다. 속도를 고른 것이 테스트의
+        # 성패를 가르면 그 설정은 쓸 수 없다.
+        #
+        # **`goto` 는 이미 기다린다.** Playwright 의 기본값이 `wait_until="load"` 이므로
+        # 빠져 있던 것은 화면 이동 Step 이 아니라 **클릭·submit 이 일으킨 전환**이었다.
+        # 그 대가는 전환을 일으킨 Step 이 아니라 **그 다음 Step** 이 치른다 — 그래서
+        # 고칠 자리가 여기다.
+        #
+        # **`domcontentloaded` 다 — `networkidle` 이 아니다.** 대상 화면이 WebSocket 이나
+        # 폴링을 쓰면 idle 은 영영 오지 않고, 그러면 모든 Step 이 예산을 통째로 버린다.
+        # SPA 의 부분 렌더는 이것으로 덮이지 않는다. 그 자리는 검증 Step 이 맡는다 —
+        # 여기서 화면이 「준비됐는지」를 판정하려 들면 원칙 II 가 요구하는 결정성이
+        # 시간 감각으로 바뀐다.
+        record.tab_wait_ms += await self._settle_transition(tab.page, deadline)
+
         # 하위 프레임에서 기록된 Step 은 **그 프레임 안에서** 찾아야 한다. main frame 만
         # 뒤지면 프레임 안에서 측정된 후보는 0개를 매칭하고, 사용자는 예산을 다 쓴 "요소를
         # 찾을 수 없습니다" 만 본다 (001 research 의 iframe 항목).
@@ -755,6 +775,32 @@ class StepExecutor:
 
     # ─── 시간 예산 ─────────────────────────────────────────────────────────
 
+    async def _settle_transition(self, page: Page, deadline: float) -> int:
+        """진행 중인 문서 전환이 끝나기를 기다린다. 기다린 시간(ms)을 돌려준다.
+
+        **실패시키지 않는다.** 전환이 상한 안에 끝나지 않았다는 것은 그 자체로는 판정이
+        아니다 — 화면이 아직 아니라면 이어지는 요소 탐색이 남은 예산으로 같은 사실을
+        훨씬 정확한 문장으로 알린다(「무엇을 못 찾았는가」). 여기서 던지면 사용자는
+        원인을 가리키지 않는 새 실패 유형을 하나 더 읽게 된다.
+
+        **Step 예산을 통째로 쓰지 않는다** (`_TRANSITION_WAIT_MS`). 이 대기는 보조이고,
+        판정은 뒤에 온다. 여기서 예산을 다 쓰면 정작 요소를 찾을 시간이 남지 않는다.
+
+        기다린 시간은 `tab_wait_ms` 에 더한다 — 전환이 끝나기를 기다리는 것은 **탭이
+        준비되기를 기다리는 일의 일부**이며, 프레임 대기를 `element_wait_ms` 에 넣은
+        것과 같은 판단이다. 새 칸을 만들면 읽는 쪽이 셋을 더해야 Step 이 얼마나 기다렸는지
+        알게 된다.
+        """
+        budget = min(self._left(deadline), _TRANSITION_WAIT_MS)
+        started = time.monotonic()
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=budget)
+        except PlaywrightError:
+            # 시간 초과도, 전환 중 페이지가 닫힌 경우도 여기로 온다. 둘 다 이 대기가
+            # 판정할 일이 아니다.
+            pass
+        return int((time.monotonic() - started) * 1000)
+
     @staticmethod
     def _left(deadline: float) -> int:
         """이 Step 에 남은 시간(ms).
@@ -907,6 +953,14 @@ _MASKED = "********"
 """민감한 칸의 관찰값 자리에 넣는 문구 (023 FR-016).
 
 길이를 드러내지 않는 고정 길이다 — 실제 길이를 보이면 그 자체가 정보다.
+"""
+
+_TRANSITION_WAIT_MS = 5_000
+"""앞선 Step 이 일으킨 화면 전환을 기다려 주는 상한.
+
+Step 예산(기본 10초)보다 **짧다.** 전환이 5초 안에 끝나지 않는 화면이라면 기다림이
+부족한 것이 아니라 그 화면이 느린 것이고, 그때 사용자에게 필요한 것은 조용한 대기가
+아니라 「무엇을 못 찾았는가」다. 남은 예산은 그 판정에 쓴다.
 """
 
 _RECT_READ_MS = 1_000
