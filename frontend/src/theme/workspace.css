@@ -327,7 +327,24 @@ body:has(.workspace-shell) [data-toast-layer]:not(.workspace-notice-dock) { left
 /*
   모델이 「끝냈다」고 말하면서 구획 하나를 건너뛴 상태가 성립한다. 그 사실이 보여야
   한다 — 제품이 센 값이 모델의 말을 이긴다 (022 FR-003).
+
+  **그런데 이 블록도 자리를 빼앗았다** (2026-09-30 사용자 보고: 「아직 하지 않은 일
+  24개 의 부분이 fix 되어 대화를 가린다」). 바로 위 `.plan-body` 가 하루 전에 고친 것과
+  **같은 결함이다** — 목록에 상한이 없으면 항목 수만큼 늘어나고, 이 패널에서 줄어들 수
+  있는 것은 `.ai-timeline`(flex: 1 1 0) 하나뿐이라 그것이 min-height 까지 눌린다.
+  24개면 500px 가까이 먹어 대화가 사실상 사라진다.
+
+  이 블록은 `ai_finished` 에만 뜬다 — **사용자가 다음 지시를 입력하려는 바로 그때**다.
+  그래서 가리는 대상이 하필 대화와 입력칸이 된다.
+
+  고치는 방법도 `.plan-body` 와 같게 둔다: 개수를 말하는 머리줄은 그대로 보이고, 목록만
+  상한과 자체 스크롤을 갖는다. **접기 단추를 만들지 않는 이유**는 이 블록이 경고이기
+  때문이다 — 접히면 「건너뛴 것이 있다」가 다시 한 번의 조작 뒤로 숨는다.
+
+  상한이 `.plan-body`(40vh)보다 작은 것은 둘이 함께 펼쳐질 수 있어서다. 합이 화면을
+  넘으면 구조가 옳아도 대화가 눌린다 (`ChatDoesNotCoverMirror` 의 마지막 describe 가
+  같은 산수를 잰다).
 */
-.ai-remaining { flex: 0 0 auto; padding: 10px 16px; border-block-start: 1px solid var(--hair); background: var(--warn-t, var(--ai-t)); }
-.ai-remaining strong { font-size: var(--type-label); font-weight: 500; }
-.ai-remaining ol { margin: 6px 0 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.5; }
+.ai-remaining { flex: 0 1 auto; min-height: 0; padding: 10px 16px; border-block-start: 1px solid var(--hair); background: var(--warn-t, var(--ai-t)); display: flex; flex-direction: column; }
+.ai-remaining strong { flex: 0 0 auto; font-size: var(--type-label); font-weight: 500; }
+.ai-remaining ol { margin: 6px 0 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.5; max-height: 20vh; overflow-y: auto; overscroll-behavior: contain; }
