@@ -28,8 +28,8 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 
 **Purpose**: 고치기 전 상태를 수치로 남긴다. 없으면 끝에서 무엇이 달라졌는지 말할 수 없다.
 
-- [ ] T001 시작 시점 전량 검증을 돌려 기준선을 `specs/026-ai-step-edit/baseline.md` 에 기록한다 — `cd backend && bash scripts/test-backend.sh` · `uv run ruff check src/ tests/` · `uv run lint-imports` · `cd frontend && npx vitest run` · `npx tsc --noEmit`. **기존 실패를 새 실패와 섞지 않기 위한 것이다**
-- [ ] T002 [P] 016 의 재녹화 관련 검사 파일 목록을 `baseline.md` 에 적는다 — FR-030(016 이 그대로 돈다)의 판정 근거가 될 목록이다. `grep -rln "rerecord" backend/tests/ frontend/src/` 로 찾는다
+- [X] T001 시작 시점 전량 검증을 돌려 기준선을 `specs/026-ai-step-edit/baseline.md` 에 기록한다 — `cd backend && bash scripts/test-backend.sh` · `uv run ruff check src/ tests/` · `uv run lint-imports` · `cd frontend && npx vitest run` · `npx tsc --noEmit`. **기존 실패를 새 실패와 섞지 않기 위한 것이다**
+- [X] T002 [P] 016 의 재녹화 관련 검사 파일 목록을 `baseline.md` 에 적는다 — FR-030(016 이 그대로 돈다)의 판정 근거가 될 목록이다. `grep -rln "rerecord" backend/tests/ frontend/src/` 로 찾는다
 
 **Checkpoint**: 기준선이 문서로 남았다.
 
