@@ -42,6 +42,7 @@ from itb.authoring.rerecord import (
     RerecordTransaction,
     validate_range,
 )
+from itb.authoring.step_edit import StepEditTransaction
 from itb.authoring.summary import (
     DEFAULT_SUMMARY_BUDGET,
     STEPS_BUDGET_WITH_PLAN,
@@ -254,6 +255,18 @@ class SessionWork:
 
     `agent`·`compiler` 와 달리 타입을 그대로 쓴다 — `itb.authoring.rerecord` 는
     언어모델을 알지 못하는 순수 모듈이므로 API 계층이 항상 끌고 와도 비용이 없다.
+    """
+
+    # ─── Step 수정 (026) ───────────────────────────────────────────────────
+    step_edit: StepEditTransaction | None = None
+    """진행 중인 Step 수정. 세션당 최대 하나 (026 data-model §3).
+
+    **`rerecord` 와 동시에 차 있지 않다.** 세션 모드가 하나이므로 구조적으로 그렇다 —
+    `mode="rerecord"` 는 `rerecord` 를, `mode="step_edit"` 은 이것을 만든다.
+
+    016 과 달리 **원본 사본을 들고 있다** (`origin`). 이 기능은 AI 가 기존 Step 을
+    제자리에서 고치므로 016 의 「스냅샷 없는 되돌리기」 논증이 성립하지 않는다
+    (026 research R2·R7).
     """
 
     base_variables: list[Variable] = field(default_factory=list)
@@ -522,8 +535,14 @@ class WorkPlanPayload(BaseModel):
 class CreateSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    mode: Literal["record", "replay", "ai", "rerecord"]
-    """`rerecord` 는 016 의 구간 재녹화다 (contracts/api-contract.md §1).
+    mode: Literal["record", "replay", "ai", "rerecord", "step_edit"]
+    """`rerecord` 는 016 의 구간 재녹화, `step_edit` 은 026 의 Step 수정이다.
+
+    **둘은 결과가 정반대다** — 재녹화는 고른 Step 을 버리고 새로 만들고, 수정은 고른
+    Step 을 남긴 채 고친다. 그래서 하나의 모드에 담지 않는다 (026 spec 결정 3): 선택
+    개수에 따라 파괴적 결과가 갈리는 입구는 사용자도 코드도 예측할 수 없다.
+
+    아래는 `rerecord` 에 대한 016 의 근거이며 `step_edit` 에도 그대로 해당한다.
 
     **`replay` 와 `ai` 를 합친 것이 아니다.** `authoring_mode` 가 `ai` 이면서 러너를
     도착점까지 돌린다 — 그 조합이 기존 세 모드 어디에도 없다 (research R5).
@@ -580,6 +599,16 @@ class CreateSessionRequest(BaseModel):
 
     받은 순서는 상관없다 — 화면의 체크 순서는 사용자가 누른 순서다. 목록 순서로
     정규화하고 **연속인지만** 본다 (`validate_range`).
+    """
+
+    step_edit_step_id: str | None = None
+    """고칠 Step 하나의 id (026 FR-001). `step_edit` 모드에서만 쓴다.
+
+    **배열이 아니다.** 「한 번에 한 Step」이 이 기능의 경계이고(026 spec 결정 1),
+    타입이 값 하나이면 「둘 이상」이 경계에서 **표현조차 되지 않는다.** 화면이 먼저
+    막고(FR-003) 이것이 마지막으로 막는다.
+
+    순번이 아니라 id 인 이유는 016 과 같다 — 수정 중 앞에 Step 이 끼워지면 순번이 밀린다.
     """
 
     pause_before_index: int | None = Field(default=None, ge=0)
@@ -663,6 +692,38 @@ class RerecordView(BaseModel):
 
     **서버가 판정한다.** 화면이 조건을 복제하면 서버와 갈리고, 갈리면 활성으로 그린
     버튼이 눌린 뒤 거절된다 (005 U-01 의 형태).
+    """
+
+
+class StepEditView(BaseModel):
+    """진행 중인 Step 수정 (026 · contracts/api-contract.md §4).
+
+    **`RerecordView` 를 재사용하지 않는다.** 화면이 둘을 구분해야 하기 때문이다
+    (FR-033) — 같은 모양으로 보내면 화면이 페이로드를 보고 어느 쪽인지 판정하게 되고,
+    그 판정이 곧 프론트에 생긴 두 번째 모드 구현이다.
+
+    **「무엇이 바뀌었는가」를 싣지 않는다.** 차이 계산은 표시 문제이며, 서버가 계산하면
+    「어떤 필드가 바뀐 것인가」의 정의가 서버에 생긴다. 화면이 시작 시점 모습을 받아
+    두고 비교한다 (data-model §5).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    target_step_id: str
+    """사용자가 고른 Step. AI 가 고칠 수 있는 유일한 기존 Step 이다 (FR-013)."""
+
+    target_index: int
+    """대상의 지금 순번. 앞에 Step 이 끼워지면 밀리므로 **매번 다시 센다.**"""
+
+    created_step_ids: list[str]
+    """이번 세션이 만든 Step. 버리기의 대상이며 AI 권한 범위의 나머지 절반이다."""
+
+    can_commit: bool
+    """확정할 수 있는가.
+
+    **만든 것이 없어도 참이다** (026 research R5). 016 과 갈리는 자리 — 이쪽은 옛
+    Step 을 교체하지 않으므로 「빈 것으로 바꾸는」 위험이 없고, 같은 규칙을 베끼면
+    「AI 에게 물어만 보고 그만두기」가 막힌다.
     """
 
 
@@ -875,6 +936,12 @@ class SessionView(BaseModel):
     때문이다.
     """
 
+    step_edit: StepEditView | None = None
+    """진행 중인 Step 수정 (026). 없으면 일반 세션이다.
+
+    **`rerecord` 와 동시에 차지 않는다.** 둘 다 `None` 인 것이 보통 상태다.
+    """
+
     saved_at: datetime | None = None
     """마지막 저장 시각 (005 FR-154). `None` 이면 미저장.
 
@@ -974,6 +1041,7 @@ def view_of(w: SessionWork) -> SessionView:
         run_scope=scope_of(w.engine.start_index if w.engine is not None else 0),
         run_start_index=w.engine.start_index if w.engine is not None else 0,
         rerecord=_rerecord_view(w),
+        step_edit=_step_edit_view(w),
         blocked=_blocked_view(w),
         saved_at=w.saved_at,
     )
@@ -1027,6 +1095,51 @@ def _rerecord_view(w: SessionWork) -> RerecordView | None:
         return None
     return RerecordView(
         range_step_ids=list(tx.range.step_ids),
+        created_step_ids=tx.created(w.steps),
+        can_commit=tx.can_commit(w.steps),
+    )
+
+
+def _scope_hint(w: SessionWork) -> str:
+    """AI 에게 **지금 무엇을 고칠 수 있는지** 한 문장으로 알린다 (026 FR-016).
+
+    거절만 받으면 모델은 같은 요청을 반복하거나 우회를 시도한다. 허용 범위를 함께
+    받으면 그 자리에서 방향을 바꾼다.
+
+    **여기가 허용 범위의 유일한 설명이다.** 도구가 자기 문장을 만들면 `in_scope` 와
+    갈릴 수 있고, 갈리면 모델은 「된다고 했는데 거절당하는」 상태를 만난다.
+    """
+    if w.step_edit is not None and not w.step_edit.settled:
+        return (
+            f"지금 고칠 수 있는 것은 {w.step_edit.target_id} (사용자가 고쳐 달라고 "
+            "지목한 Step) 과 이번에 당신이 만든 Step 입니다."
+        )
+    if w.rerecord is not None and not w.rerecord.settled:
+        return "지금 고칠 수 있는 것은 이번에 당신이 만든 Step 뿐입니다."
+    return "지금은 어떤 Step 도 고칠 수 없습니다."
+
+
+def _step_edit_payload(w: SessionWork) -> dict[str, object] | None:
+    """이벤트에 실을 모양. 뷰와 **같은 판정을 쓴다** (016 과 같은 규칙)."""
+    view = _step_edit_view(w)
+    return None if view is None else view.model_dump(mode="json")
+
+
+def _step_edit_view(w: SessionWork) -> StepEditView | None:
+    """진행 중인 Step 수정을 뷰로 옮긴다 (026 contracts/api-contract §4).
+
+    **끝난 트랜잭션은 `None` 이다** — 016 과 같은 이유다.
+    """
+    tx = w.step_edit
+    if tx is None or tx.settled:
+        return None
+    target_index = next(
+        (i for i, st in enumerate(w.steps) if st.id == tx.target_id),
+        tx.arrival_index,
+    )
+    return StepEditView(
+        target_step_id=tx.target_id,
+        target_index=target_index,
         created_step_ids=tx.created(w.steps),
         can_commit=tx.can_commit(w.steps),
     )
@@ -1155,7 +1268,7 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     project = repo.read_project()
 
     existing_test: Test | None = None
-    if body.mode in ("replay", "rerecord"):
+    if body.mode in ("replay", "rerecord", "step_edit"):
         if body.test_id is None:
             raise bad_request(
                 ErrorCode.DEFINITION_INVALID,
@@ -1172,8 +1285,8 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
     draft: Draft | None = None
     instruction = body.ai_instruction
     if body.draft_id is not None:
-        if body.mode in ("replay", "rerecord"):
-            # 재실행·재녹화는 이미 저장된 테스트를 다루므로 초안과 상관이 없다.
+        if body.mode in ("replay", "rerecord", "step_edit"):
+            # 재실행·재녹화·수정은 이미 저장된 테스트를 다루므로 초안과 상관이 없다.
             raise bad_request(
                 ErrorCode.DEFINITION_INVALID,
                 "초안에서 시작하는 것은 새로 만들 때만 됩니다.",
@@ -1195,6 +1308,36 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
             "작업 계획은 AI 작성에서만 쓸 수 있습니다.",
             next_action="AI 로 만들기를 고르거나 계획 없이 시작하세요.",
         )
+
+    step_edit_target: Step | None = None
+    if body.mode == "step_edit":
+        assert existing_test is not None  # noqa: S101 - 위에서 이미 거절했다
+        # 026 FR-001·FR-007 — **대상을 경계에서 검증한다.** 016 이 구간에 대해 한 것과
+        # 같은 이유다: 브라우저를 띄운 뒤 거절하면 사용자는 창이 떴다 사라지는 것을 보고,
+        # 무엇이 잘못됐는지는 그 뒤에야 안다.
+        if body.step_edit_step_id is None:
+            raise bad_request(
+                ErrorCode.DEFINITION_INVALID,
+                "고칠 Step 을 지정하세요.",
+                next_action="목록에서 Step 하나를 고르세요.",
+            )
+        if body.ai_instruction is not None:
+            # 지시는 채팅으로 온다 (026 FR-010 · 016 과 같은 규칙). 두 입구를 두면
+            # 사용자는 어느 쪽에 써야 하는지 모른다.
+            raise bad_request(
+                ErrorCode.DEFINITION_INVALID,
+                "Step 수정은 지시문 대신 대화로 진행합니다.",
+                next_action="세션을 연 뒤 대화로 지시하세요.",
+            )
+        step_edit_target = next(
+            (st for st in existing_test.steps if st.id == body.step_edit_step_id), None
+        )
+        if step_edit_target is None:
+            raise bad_request(
+                ErrorCode.DEFINITION_INVALID,
+                f"Step 을 찾을 수 없습니다: {body.step_edit_step_id}",
+                next_action="화면을 새로 고친 뒤 다시 고르세요.",
+            )
 
     if body.mode == "ai":
         # FR-085 — 경계에서 검증한다. 길이·공백 규칙은 작성 계층이 갖는다.
@@ -1418,6 +1561,34 @@ async def create_session(body: CreateSessionRequest, state: State) -> SessionVie
             baseline_ids=frozenset(st.id for st in existing_test.steps),
         )
         await _start_runner(work, start_index=0, pause_before_index=arrival)
+    elif body.mode == "step_edit":
+        # 026 (contracts/api-contract §1) — **순서가 계약이다.** 016 과 같다.
+        #
+        #   1. 러너를 도착점까지 돌린다   ← 이 구간에 에이전트 태스크는 없다
+        #   2. 러너가 멈춘다
+        #   3. 그제서야 에이전트를 만든다 (`chat` 핸들러가 첫 턴에서)
+        #
+        # 원칙 II 가 요구하는 것은 **재실행 중 언어모델 호출 금지**이고,
+        # `tests/test_principle_ii_timeline.py` 가 러너와 에이전트 태스크의 생존 구간이
+        # 겹치지 않음을 본다.
+        assert existing_test is not None  # noqa: S101 - 위에서 이미 거절했다
+        assert step_edit_target is not None  # noqa: S101 - 위에서 찾았다
+        await session.apply(Command.BEGIN_REPLAY)
+        _build_engine(work, state, existing_test)
+        arrival = next(
+            i for i, st in enumerate(existing_test.steps) if st.id == step_edit_target.id
+        )
+        work.step_edit = StepEditTransaction(
+            target_id=step_edit_target.id,
+            # **시작 시점 사본이다** (FR-020). 이 뒤 목록의 그 자리가 어떻게 바뀌어도
+            # 되돌아갈 곳은 이것 하나다 (불변식 D).
+            origin=step_edit_target.model_copy(deep=True),
+            arrival_index=arrival,
+            # 016 과 같은 방식 — 「만든 것」을 기록하지 않고 **도출한다.** 생성 경로가
+            # 늘어도 자동으로 덮인다.
+            baseline_ids=frozenset(st.id for st in existing_test.steps),
+        )
+        await _start_runner(work, start_index=0, pause_before_index=arrival)
     else:
         await session.apply(Command.BEGIN_AI)
         _build_agent(work, state)
@@ -1563,15 +1734,32 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
         # **모르는 것을 참으로 보지 않는다.** 재녹화가 아니면 AI 는 아무것도 고칠 수
         # 없다 — 일반 AI 작성에서 자기가 만든 Step 을 고치는 것은 016 의 범위 밖이고,
         # 허용하려면 「이번 세션이 만든 것」의 정의가 그쪽에도 필요하다.
+        # 026 FR-013 — **항이 하나 늘었다.** 사용자가 고른 Step 하나가 권한에 든다.
+        #
+        # **둘째 항이 거짓이면 판정이 016 과 글자 그대로 같다** (FR-014). `step_edit` 이
+        # 없는 세션 — 기존 AI 작성·자연어 Step 추가·016 재녹화 — 에서는 이 줄이 추가되기
+        # 전과 동일하게 판정하며, `tests/us_step_edit/test_scope.py` 가 그것을 고정한다.
+        #
+        # 권한은 **세션 시작 시 확정된다** (FR-017). 대화로 "4번도 고쳐 줘" 라고 해도
+        # `target_id` 가 바뀌는 경로가 없다.
         in_scope=lambda step_id: (
-            work.rerecord is not None
-            and not work.rerecord.settled
-            and work.rerecord.owns(step_id, work.steps)
+            (
+                work.rerecord is not None
+                and not work.rerecord.settled
+                and work.rerecord.owns(step_id, work.steps)
+            )
+            or (
+                work.step_edit is not None
+                and not work.step_edit.settled
+                and work.step_edit.owns(step_id, work.steps)
+            )
         ),
         # 2026-09-11 사용자 보고 — **편집 연산에 실제 실행 위치를 준다.** 도구가 0 을
         # 넘기면 편집 결과가 그 0 을 세션의 다음 실행 위치로 만든다 (`_apply_rerecord_edit`).
         # 실측에서 AI 가 대상을 다시 지목하자 위치가 23 → 0 이 됐고, 「계속하기」가 이미
         # 지나온 로그인부터 다시 실행하는 상태가 됐다.
+        # 026 FR-016 — 거절문에 실을 「지금 고칠 수 있는 것」. **세션이 만든다.**
+        scope_hint=lambda: _scope_hint(work),
         current_index=lambda: work.current_step_index,
         # 025 FR-024 — 계획을 **읽는 통로**. 값이 아니라 함수인 이유는 계획이 턴 중에도
         # 바뀌기 때문이다 (사람이 되돌리거나 대화로 항목이 더해진다).
@@ -1597,10 +1785,16 @@ def _build_agent(work: SessionWork, state: AppState) -> None:
         # 025 FR-008 — **요구받은 것도 매 턴 붙는다.** 016 이 「만든 것」에 대해 정한
         # 것과 같은 모양이다: 값이 아니라 함수이고, 소유자는 세션이다.
         plan_source=lambda: build_plan_summary(work.work_plan),
+        # 026 FR-011 — **고쳐 달라고 요구받은 Step 도 같은 통로로 표시된다.**
+        # 016 의 `range_ids` 가 「교체 대상」을 표시하던 자리이며, 새 통로를 만들지
+        # 않는다 — 경로마다 AI 가 아는 것이 다르면 사용자는 어느 경로에서 무엇을 말할
+        # 수 있는지 예측하지 못한다 (016 FR-005 가 세운 규칙).
         summary_source=lambda: build_definition_summary(
             work.steps,
             range_ids=(
-                list(work.rerecord.range.step_ids) if work.rerecord is not None else []
+                list(work.rerecord.range.step_ids)
+                if work.rerecord is not None
+                else ([work.step_edit.target_id] if work.step_edit is not None else [])
             ),
             # 025 research R6 — **계획이 붙을 때만 좁힌다.** 계획이 없는 세션은 016 이
             # 실측으로 정한 16KB 를 그대로 쓴다. 무조건 줄이면 025 와 아무 상관 없는
@@ -1649,6 +1843,9 @@ async def _apply_ai_edit(work: SessionWork, result: object) -> None:
 
     if work.rerecord is not None and not work.rerecord.settled:
         await work.session.emit("rerecord_changed", rerecord=_rerecord_payload(work))
+    if work.step_edit is not None and not work.step_edit.settled:
+        # 026 — 대상이 고쳐졌거나 새 Step 이 생기면 화면이 다시 그려야 한다 (FR-033).
+        await work.session.emit("step_edit_changed", step_edit=_step_edit_payload(work))
     await work.session.publish_edit_warnings()
 
 
@@ -1955,6 +2152,17 @@ async def _start_runner(
         if not passed and tx is not None and not tx.settled and not tx.created(work.steps):
             tx.close()
             await work.session.emit("rerecord_changed", rerecord=None)
+        # 026 — 같은 판단이다. 도착점을 만들던 실행이 깨졌으면 수정을 시작할 수 없다
+        # (FR-007). 만든 것이 있으면 그것은 도착점 구간이 아니라 대화가 만든 것이다.
+        edit_tx = work.step_edit
+        if (
+            not passed
+            and edit_tx is not None
+            and not edit_tx.settled
+            and not edit_tx.created(work.steps)
+        ):
+            edit_tx.close()
+            await work.session.emit("step_edit_changed", step_edit=None)
             await work.session.emit(
                 "rerecord_realign_failed",
                 failed_step_id=_first_failed_step_id(work),
@@ -2036,6 +2244,24 @@ def _loss_handler(state: AppState, session_id: str):  # noqa: ANN201 - LossHandl
             tx.close()
             await w.session.emit("rerecord_changed", rerecord=None)
 
+        # 026 FR-039 — **확정되지 않은 수정의 운명을 말한다.** 되돌릴 수 없는 이유는
+        # 되맞춤이 브라우저를 요구하는데 그것이 사라졌기 때문이다. 조용히 두면 사용자는
+        # 고쳐진 목록을 원본으로 착각한 채 저장한다.
+        edit_tx = w.step_edit
+        if edit_tx is not None and not edit_tx.settled:
+            await w.session.emit(
+                "step_edit_realign_failed",
+                failed_step_id=edit_tx.target_id,
+                reason=(
+                    f"세션이 유실되어 Step 수정을 끝낼 수 없습니다 ({reason}). "
+                    f"{edit_tx.target_id} 의 고쳐진 내용과 새로 만든 Step "
+                    f"{len(edit_tx.created(w.steps))}개가 목록에 남아 있습니다."
+                ),
+                definition_reverted=False,
+            )
+            edit_tx.close()
+            await w.session.emit("step_edit_changed", step_edit=None)
+
         # 010 FR-347 — 세션이 유실됐다. 남은 마지막 프레임을 클릭해도 보낼 대상이 없다.
         await _close_control_channel(state, session_id, reason)
         await _cleanup_session_extras(state, w, session_id, reason)
@@ -2073,6 +2299,10 @@ async def _accept_step(session_id: str, step: Step, index: int) -> None:
     if w.rerecord is not None and not w.rerecord.settled:
         # 016 — 만든 개수가 바뀌면 확정 가능 여부가 바뀐다 (불변식 10).
         await w.session.emit("rerecord_changed", rerecord=_rerecord_payload(w))
+    if w.step_edit is not None and not w.step_edit.settled:
+        # 026 — 만든 개수는 **버리기의 대상**이 바뀐 것이다. 확정 가능 여부는 여기서
+        # 바뀌지 않는다 (만든 것이 없어도 확정된다 — research R5).
+        await w.session.emit("step_edit_changed", step_edit=_step_edit_payload(w))
 
     # **리코더가 만든 Step 은 이미 수행된 동작이다.** 그래서 실행 위치를 그 뒤로 옮긴다 —
     # 옮기지 않으면 "계속하기" 가 사용자가 방금 손으로 한 동작을 다시 실행한다. 로그인이
@@ -2647,6 +2877,82 @@ async def rerecord_discard(session_id: str) -> SessionView:
     return view_of(w)
 
 
+# ─── Step 수정의 두 결말 (026 US2 · contracts/api-contract §2·§3) ──────────
+
+
+@router.post("/{session_id}/step-edit/commit")
+async def step_edit_commit(session_id: str) -> SessionView:
+    """확정 — **아무 Step 도 지우지 않는다** (026 FR-021·FR-023 · research R5).
+
+    016 의 확정과 정반대다. 수정은 일어나는 즉시 목록에 적용돼 있으므로, 확정이 하는
+    일은 「이제 되돌릴 수 없다」를 선언하는 것뿐이다.
+
+    **만든 것이 없어도 확정된다.** 016 은 빈 구간 교체가 조용한 삭제가 되므로 잠갔지만,
+    이쪽은 교체하지 않으므로 그 위험이 없다 — 같은 규칙을 베끼면 「AI 에게 물어만 보고
+    그만두기」가 막힌다.
+
+    **브라우저를 요구하지 않는다** (FR-023). 정의만 고치는 편집이므로 검토 국면에서도
+    할 수 있어야 한다 — 016 FR-026a 와 같은 판단이며, 요구하면 「AI 작성 끝내기」를 누른
+    사용자에게 남는 길이 「나가기」뿐이 된다.
+    """
+    w = work_of(session_id)
+    tx = _require_open_step_edit(w)
+
+    result = tx.commit(w.steps, w.current_step_index)
+    _apply_rerecord_edit(w, result)
+    tx.close()
+    await w.session.emit("step_edit_changed", step_edit=None)
+    return view_of(w)
+
+
+@router.post("/{session_id}/step-edit/discard")
+async def step_edit_discard(session_id: str) -> SessionView:
+    """버리기 — 원본으로 되돌리고 **도착점으로 되맞춘다** (FR-022·FR-025·FR-026).
+
+    ## 두 걸음이지만 정의는 한 번에 바뀐다
+
+    1. 정의를 되돌린다 — 이번에 만든 것을 지우고 대상을 원본으로 되돌린다. **하나의
+       `EditResult`** 이므로 부분 적용이 남지 않는다 (research R7). 016 과 달리
+       스냅샷이 필요한 이유는 AI 가 기존 Step 을 제자리에서 고쳤기 때문이다.
+    2. **화면을 되맞춘다** — 정의만 되돌리고 화면을 두면 「편집은 화면에 반영된다」가
+       깨진다 (원칙 III 불변식 3). 016 의 `_realign_to_arrival` 을 그대로 부른다.
+
+    ## 세션을 끝내지 않는다 (FR-026)
+
+    끝내는 조작은 기존 「중지」다 — 016 FR-031a 와 같은 근거다.
+    """
+    w = work_of(session_id)
+    tx = _require_open_step_edit(w)
+    require_paused(w)
+
+    result = tx.discard(w.steps, w.current_step_index)
+    _apply_rerecord_edit(w, result)
+    tx.close()
+    await w.session.emit("step_edit_changed", step_edit=None)
+
+    if w.session.state is SessionState.PAUSED:
+        # **되맞춤은 정의를 되돌린 뒤에 한다** — 016 과 같은 순서다. 뒤집히면 실행 도중
+        # 목록이 바뀌어 러너가 없는 Step 을 가리킨다.
+        await _realign_to_arrival(w, tx.arrival_index, event="step_edit_realign_failed")
+    return view_of(w)
+
+
+def _require_open_step_edit(w: SessionWork) -> StepEditTransaction:
+    """진행 중인 수정을 꺼낸다. 없거나 끝났으면 거절한다.
+
+    **연타 방지가 여기 있다** — 016 과 같다. 버리기의 되맞춤이 도는 중에 한 번 더
+    눌리면 실행이 겹친다.
+    """
+    tx = w.step_edit
+    if tx is None or tx.settled:
+        raise conflict(
+            ErrorCode.DEFINITION_INVALID,
+            "진행 중인 Step 수정이 없습니다.",
+            next_action="편집 화면에서 Step 을 골라 「AI 에게 고쳐 달라기」를 누르세요.",
+        )
+    return tx
+
+
 def _require_open_rerecord(w: SessionWork) -> RerecordTransaction:
     """진행 중인 교체를 꺼낸다. 없거나 끝났으면 거절한다.
 
@@ -2705,7 +3011,9 @@ async def _return_to_start(w: SessionWork) -> None:
         await tabs[0].page.goto(w.start_url)
 
 
-async def _realign_to_arrival(w: SessionWork, arrival_index: int) -> None:
+async def _realign_to_arrival(
+    w: SessionWork, arrival_index: int, event: str = "rerecord_realign_failed"
+) -> None:
     """화면을 도착점으로 되돌린다 (FR-031·FR-031b·FR-031c).
 
     **이 구간에도 에이전트는 없다** (불변식 6). 러너만 돈다 — 도착점을 처음 만들 때와
@@ -2726,8 +3034,10 @@ async def _realign_to_arrival(w: SessionWork, arrival_index: int) -> None:
         await _return_to_start(w)
         await _start_runner(w, start_index=0, pause_before_index=arrival_index)
     except Exception as exc:  # noqa: BLE001 - 어떤 실패든 사용자에게 두 사실을 알린다
+        # 026 — **이벤트 이름만 갈린다.** 하는 일도 실패의 뜻도 같으므로 함수를 나누지
+        # 않는다. 화면은 둘을 구분해야 하므로 이름은 달라야 한다 (data-model §5).
         await w.session.emit(
-            "rerecord_realign_failed",
+            event,
             failed_step_id=None,
             reason=f"{type(exc).__name__}: {exc}",
             definition_reverted=True,

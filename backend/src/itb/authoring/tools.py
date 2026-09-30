@@ -612,6 +612,16 @@ class BrowserToolbox:
     AI 가 사용자의 멀쩡한 Step 을 건드린다 — 모르는 것을 참으로 보지 않는다.
     """
 
+    scope_hint: Callable[[], str] | None = None
+    """**지금 무엇을 고칠 수 있는가**를 한 문장으로 주는 통로 (026 FR-016).
+
+    거절문이 「그건 제 권한 밖입니다」로 끝나면 모델은 같은 요청을 다시 시도하거나
+    엉뚱한 우회를 한다. 무엇이 허용되는지 함께 말하면 그 자리에서 방향을 바꾼다.
+
+    **문장을 만드는 것은 세션이다.** 도구가 만들면 허용 범위의 정의가 두 곳에 생기고,
+    그것은 `in_scope` 를 세션에 둔 이유를 무너뜨린다 (026 research R1).
+    """
+
     current_index: Callable[[], int] | None = None
     """지금 실행 위치를 읽는 통로 (2026-09-11 사용자 보고).
 
@@ -1396,10 +1406,15 @@ class BrowserToolbox:
             }
         steps = self.steps_source()
         if self.in_scope is None or not self.in_scope(step_id):
+            # 026 FR-016 — **무엇이 허용되는지 함께 말한다.** 허용 범위를 아는 것은
+            # 세션이므로 문장을 받아 싣는다 (`scope_hint`).
+            hint = self.scope_hint() if self.scope_hint is not None else ""
+            allowed = f" {hint}" if hint else ""
             return None, {
                 "error": (
-                    f"{step_id} 은 이번에 당신이 만든 Step 이 아니므로 고칠 수 없습니다. "
-                    "사람에게 말하세요 — 사람은 편집 화면에서 고칠 수 있습니다."
+                    f"{step_id} 은 지금 고칠 수 있는 범위 밖입니다.{allowed} "
+                    "사람에게 어느 Step 을 고르면 되는지 말하세요 — 사람은 편집 화면에서 "
+                    "고칠 Step 을 지목할 수 있습니다."
                 )
             }
         try:
@@ -1870,6 +1885,14 @@ STEP_EDITING_TOOLS: tuple[str, ...] = (
 
 권한은 **이번 세션이 만든 Step** 으로 한정된다 (FR-037 · 불변식 8). 그 한정이 되돌리기를
 스냅샷 없이 성립시킨다 (research R7).
+
+026 이 여기에 **하나를 더했다** — 사용자가 편집 화면에서 「이 Step 을 고쳐 달라」고
+명시적으로 지목한 Step 하나. 정의 전체를 여는 것이 아니며, 016 이 거부한 것은 그쪽이고
+그 거부는 지금도 유효하다. 넓어진 범위만큼 되돌리기가 스냅샷을 요구하게 되므로, 그
+비용은 `itb.authoring.step_edit` 이 **자기 범위 안에서만** 치른다.
+
+**판정은 여기 없다.** `in_scope` 를 주는 것은 세션이고, 이 모듈은 그것을 부를 뿐이다 —
+정책이 두 곳에 있으면 갈린다.
 """
 
 TOOL_NAMES: tuple[str, ...] = (
@@ -2050,28 +2073,36 @@ def build_tools(toolbox: BrowserToolbox) -> list[Any]:
 
     @beta_async_tool
     async def update_step(step_id: str, field: str, value: str) -> dict[str, Any]:
-        """이번에 만든 Step 의 속성 하나를 고친다.
+        """당신이 이번에 만든 Step, 또는 사용자가 고쳐 달라고 지목한 Step 의 속성 하나를
+        고친다.
 
         field 에는 label(표시 이름)·value(입력값)·timeout_ms(제한 시간) 등을 쓴다.
-        다른 Step 은 고칠 수 없다 — 사람에게 말하세요.
+        그 밖의 Step 은 고칠 수 없다 — 사람에게 어느 Step 을 고르면 되는지 말하세요.
         """
         return await toolbox.update_step(step_id, field, value)
 
     @beta_async_tool
     async def delete_step(step_id: str) -> dict[str, Any]:
-        """이번에 만든 Step 하나를 지운다. 다른 Step 은 지울 수 없다."""
+        """당신이 이번에 만든 Step, 또는 사용자가 고쳐 달라고 지목한 Step 하나를 지운다.
+
+        그 밖의 Step 은 지울 수 없다.
+        """
         return await toolbox.delete_step(step_id)
 
     @beta_async_tool
     async def move_step(step_id: str, direction: str) -> dict[str, Any]:
-        """이번에 만든 Step 을 한 칸 옮긴다. direction 은 up 또는 down 이다."""
+        """당신이 이번에 만든 Step, 또는 사용자가 고쳐 달라고 지목한 Step 을 한 칸 옮긴다.
+
+        direction 은 up 또는 down 이다.
+        """
         return await toolbox.move_step(step_id, direction)
 
     @beta_async_tool
     async def repick_target(
         step_id: str, element_ref: str, slot: str = "target"
     ) -> dict[str, Any]:
-        """이번에 만든 Step 의 대상 요소를 다시 지정한다.
+        """당신이 이번에 만든 Step, 또는 사용자가 고쳐 달라고 지목한 Step 의 대상 요소를
+        다시 지정한다.
 
         element_ref 는 observe_page 가 준 참조여야 한다. CSS 셀렉터를 직접 만들지 마라.
         slot 은 drag Step 에서만 drop_target 이 될 수 있다.
@@ -2269,8 +2300,9 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
         },
     ),
     "update_step": (
-        "이번에 만든 Step 의 속성 하나를 고친다. field 에는 label·value·timeout_ms 등을 "
-        "쓴다. 다른 Step 은 고칠 수 없다 — 사람에게 말하라.",
+        "당신이 이번에 만든 Step, 또는 사용자가 고쳐 달라고 지목한 Step 의 속성 하나를 "
+        "고친다. field 에는 label·value·timeout_ms 등을 쓴다. 그 밖의 Step 은 고칠 수 "
+        "없다 — 사람에게 어느 Step 을 고르면 되는지 말하라.",
         {
             "type": "object",
             "properties": {
@@ -2282,7 +2314,8 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
         },
     ),
     "delete_step": (
-        "이번에 만든 Step 하나를 지운다. 다른 Step 은 지울 수 없다.",
+        "당신이 이번에 만든 Step, 또는 사용자가 고쳐 달라고 지목한 Step 하나를 지운다. "
+        "그 밖의 Step 은 지울 수 없다.",
         {
             "type": "object",
             "properties": {"step_id": {"type": "string"}},
@@ -2290,7 +2323,8 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
         },
     ),
     "move_step": (
-        "이번에 만든 Step 을 한 칸 옮긴다. direction 은 up 또는 down 이다.",
+        "당신이 이번에 만든 Step, 또는 사용자가 고쳐 달라고 지목한 Step 을 한 칸 "
+        "옮긴다. direction 은 up 또는 down 이다.",
         {
             "type": "object",
             "properties": {
@@ -2301,7 +2335,8 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
         },
     ),
     "repick_target": (
-        "이번에 만든 Step 의 대상 요소를 다시 지정한다. element_ref 는 observe_page 가 "
+        "당신이 이번에 만든 Step, 또는 사용자가 고쳐 달라고 지목한 Step 의 대상 요소를 "
+        "다시 지정한다. element_ref 는 observe_page 가 "
         "준 참조여야 한다 — CSS 셀렉터를 직접 만들지 마라.",
         {
             "type": "object",

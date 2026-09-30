@@ -129,6 +129,75 @@ def test_reaching_the_arrival_point_never_calls_the_driver(
         stop_quietly(keyed_client, sid)
 
 
+def test_reaching_the_arrival_point_of_a_step_edit_never_calls_the_driver(
+    keyed_client: TestClient, fixture_app: str, ledger: DriverLedger
+) -> None:
+    """`mode=step_edit` 도 같다 (026 FR-006).
+
+    026 이 세션 생성 분기를 하나 더 늘렸으므로, 새 분기도 같은 순서를 지키는지 본다 —
+    러너가 멈춘 **뒤에** 에이전트를 만든다. 늘어난 분기가 이 검사를 받지 않으면 원칙 II
+    의 경계에 검사되지 않는 길이 생긴다.
+    """
+    test_id = record_login(keyed_client, fixture_app)
+    steps = keyed_client.get(f"/api/tests/{test_id}").json()["steps"]
+    assert len(steps) >= 2, "앞 구간이 있어야 실행이 일어난다"
+
+    created = keyed_client.post(
+        "/api/sessions",
+        json={
+            "mode": "step_edit",
+            "test_id": test_id,
+            "step_edit_step_id": steps[-1]["id"],
+        },
+    )
+    assert created.status_code == 201, created.text
+    sid = created.json()["session_id"]
+    try:
+        _wait_until_paused(keyed_client, sid)
+        assert len(ledger) == 0, (
+            f"도착점 만들기 구간에서 드라이버가 {len(ledger)}회 불렸다 — 원칙 II 위반."
+        )
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
+def test_realigning_after_a_discard_never_calls_the_driver(
+    keyed_client: TestClient, fixture_app: str, ledger: DriverLedger
+) -> None:
+    """**되맞춤 실행도 재실행이다** (026 FR-027).
+
+    버리기는 정의를 되돌린 뒤 화면을 도착점까지 다시 실행해 맞춘다. 그 구간은 저장된
+    Step 을 러너가 실행하는 구간이므로 원칙 II 가 그대로 적용된다.
+
+    이 검사가 없으면 원칙 II 의 경계가 **절반만** 검사된다 — 세션을 여는 실행은 보는데
+    되돌릴 때의 실행은 보지 않는 상태다 (analyze D2).
+    """
+    test_id = record_login(keyed_client, fixture_app)
+    steps = keyed_client.get(f"/api/tests/{test_id}").json()["steps"]
+
+    created = keyed_client.post(
+        "/api/sessions",
+        json={
+            "mode": "step_edit",
+            "test_id": test_id,
+            "step_edit_step_id": steps[-1]["id"],
+        },
+    )
+    assert created.status_code == 201, created.text
+    sid = created.json()["session_id"]
+    try:
+        _wait_until_paused(keyed_client, sid)
+        mark = time.monotonic()
+        resp = keyed_client.post(f"/api/sessions/{sid}/step-edit/discard")
+        assert resp.status_code == 200, resp.text
+        _wait_until_paused(keyed_client, sid)
+        assert ledger.since(mark) == 0, (
+            f"되맞춤 실행 중 드라이버가 {ledger.since(mark)}회 불렸다 — 원칙 II 위반."
+        )
+    finally:
+        stop_quietly(keyed_client, sid)
+
+
 def test_a_plain_replay_never_calls_the_driver(
     keyed_client: TestClient, fixture_app: str, ledger: DriverLedger
 ) -> None:

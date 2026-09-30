@@ -95,6 +95,14 @@ VALUE_PRESENT = "값 있음"
 
 RANGE_MARK = "◀ 교체 구간"
 
+STEP_EDIT_MARK = "◀ 고쳐 달라고 요구받은 Step"
+"""026 FR-011 — 016 의 표시와 **뜻이 다르므로 문구도 다르다.**
+
+「교체 구간」은 사용자가 확정하면 사라지는 Step 이고, 이것은 **남아서 고쳐지는** Step
+이다. 같은 문구를 쓰면 모델이 016 의 지침(「당신이 지우지 마세요」)을 이쪽에도 적용해
+고치기를 주저하거나, 반대로 지워도 되는 것으로 읽는다.
+"""
+
 _VARIABLE_REFERENCE = re.compile(r"^\s*\{\{[^{}]+\}\}\s*$")
 """값 **전체**가 변수 참조 하나인 경우만 참조로 본다.
 
@@ -172,7 +180,7 @@ def _extra(step: Step) -> str:
     return _value_note(step)
 
 
-def _line(index: int, step: Step, in_range: bool) -> str:
+def _line(index: int, step: Step, in_range: bool, mark: str = RANGE_MARK) -> str:
     """Step 하나를 한 줄로. 순번은 **1부터** — 사용자가 보는 번호와 같아야 한다."""
     target = getattr(step, "target", None)
     cells = [
@@ -186,7 +194,7 @@ def _line(index: int, step: Step, in_range: bool) -> str:
     if step.tab:
         cells.append(f"tab {step.tab}")
     if in_range:
-        cells.append(RANGE_MARK)
+        cells.append(mark)
     return "  ".join(c for c in cells if c)
 
 
@@ -227,19 +235,25 @@ def build_definition_summary(
     steps: list[Step],
     range_ids: list[str] | None = None,
     budget: int = DEFAULT_SUMMARY_BUDGET,
+    mark: str = RANGE_MARK,
 ) -> str:
     """에이전트 컨텍스트에 실을 정의 요약을 만든다.
 
-    ``range_ids`` 는 교체 대상 구간의 Step id 다 (016 의 구간 재녹화). 목록에 없는 id 가
-    와도 **거절하지 않는다** — 요약은 보고이지 검증이 아니고, 구간 검증은 경계
-    (`itb.authoring.rerecord.validate_range`)가 한다. 같은 규칙을 두 곳에 두지 않는다.
+    ``range_ids`` 는 **표시할 Step 의 id** 다. 016 에서는 교체 대상 구간이고, 026 에서는
+    사용자가 고쳐 달라고 지목한 Step 하나다 — 두 경로가 **같은 통로**를 쓰므로 경로마다
+    AI 가 아는 것이 달라지지 않는다 (016 FR-005 가 세운 규칙).
+
+    ``mark`` 가 그 표시 문구다. 뜻이 다르므로 문구가 달라야 한다 (:data:`STEP_EDIT_MARK`).
+
+    목록에 없는 id 가 와도 **거절하지 않는다** — 요약은 보고이지 검증이 아니고, 대상
+    검증은 경계가 한다. 같은 규칙을 두 곳에 두지 않는다.
     """
     marked = set(range_ids or ())
 
     if not steps:
         return "[지금 테스트]\n(Step 이 없습니다)"
 
-    lines = [_line(i + 1, s, s.id in marked) for i, s in enumerate(steps)]
+    lines = [_line(i + 1, s, s.id in marked, mark) for i, s in enumerate(steps)]
     head = "[지금 테스트]"
     full = "\n".join([head, *lines])
     if len(full.encode()) <= budget:

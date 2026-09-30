@@ -62,22 +62,22 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] `backend/tests/test_session_step_edit_start.py` 에 세션 시작 계약 검사를 쓴다 (contracts/api-contract §1) — ① `mode="step_edit"` + `step_edit_step_id` 로 세션이 열린다 ② id 가 없으면 `DEFINITION_INVALID` ③ 정의에 없는 id 면 거절 ④ 대상이 첫 Step 이면 실행 없이 시작 주소만 연다 ⑤ 도착점 실패 시 세션을 열지 않는다
-- [ ] T009 [P] [US1] `backend/tests/test_tool_descriptions_scope.py` 에 **`TOOL_SCHEMAS` 를 직접 보는** 검사를 쓴다 — 편집 도구 넷의 설명문에 「사용자가 고쳐 달라고 지목한 Step」이 들어 있고, 옛 문구(「다른 Step 은 고칠 수 없다 — 사람에게 말하라」)가 남아 있지 않다. **docstring 이 아니라 `TOOL_SCHEMAS` 를 본다** — 그것이 모델이 실제로 받는 것이고 선택 의존성도 필요 없다 (research R8)
-- [ ] T010 [P] [US1] `backend/tests/test_principle_ii_timeline.py` 에 `step_edit` 모드 경우를 더한다 — **도착점 실행 구간과 되맞춤 실행 구간 둘 다** 에이전트 태스크가 살아 있지 않다 (원칙 II · FR-006·FR-027 · 016 불변식 6). 되맞춤 쪽을 빠뜨리면 원칙 II 경계의 절반만 검사된다 (analyze D2)
+- [X] T008 [P] [US1] `backend/tests/test_session_step_edit_start.py` 에 세션 시작 계약 검사를 쓴다 (contracts/api-contract §1) — ① `mode="step_edit"` + `step_edit_step_id` 로 세션이 열린다 ② id 가 없으면 `DEFINITION_INVALID` ③ 정의에 없는 id 면 거절 ④ 대상이 첫 Step 이면 실행 없이 시작 주소만 연다 ⑤ 도착점 실패 시 세션을 열지 않는다
+- [X] T009 [P] [US1] `backend/tests/test_tool_descriptions_scope.py` 에 **`TOOL_SCHEMAS` 를 직접 보는** 검사를 쓴다 — 편집 도구 넷의 설명문에 「사용자가 고쳐 달라고 지목한 Step」이 들어 있고, 옛 문구(「다른 Step 은 고칠 수 없다 — 사람에게 말하라」)가 남아 있지 않다. **docstring 이 아니라 `TOOL_SCHEMAS` 를 본다** — 그것이 모델이 실제로 받는 것이고 선택 의존성도 필요 없다 (research R8)
+- [X] T010 [P] [US1] `backend/tests/test_principle_ii_timeline.py` 에 `step_edit` 모드 경우를 더한다 — **도착점 실행 구간과 되맞춤 실행 구간 둘 다** 에이전트 태스크가 살아 있지 않다 (원칙 II · FR-006·FR-027 · 016 불변식 6). 되맞춤 쪽을 빠뜨리면 원칙 II 경계의 절반만 검사된다 (analyze D2)
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] `backend/src/itb/api/routes/sessions.py` 의 `SessionWork` 에 `step_edit: StepEditTransaction | None = None` 을 더한다 (data-model §3)
-- [ ] T012 [US1] 같은 파일의 `SessionStartRequest` 에 `mode="step_edit"` 과 `step_edit_step_id: str | None` 을 더한다. **배열이 아니다** — 「둘 이상」이 경계에서 표현조차 되지 않는다 (data-model §4)
-- [ ] T013 [US1] 같은 파일의 세션 시작에 `elif body.mode == "step_edit":` 분기를 더한다 — `BEGIN_REPLAY` → `_build_engine` → 트랜잭션 생성 → `_start_runner(start_index=0, pause_before_index=arrival)`. **`rerecord` 분기와 3번만 다르다** (research R4). 순서가 계약이라는 주석을 남긴다
-- [ ] T014 [US1] 같은 파일의 `in_scope` 람다에 `step_edit` 항을 더한다 (research R1) — 둘째 항이 거짓이면 판정이 016 과 글자 그대로 같다는 사실을 주석에 적는다
-- [ ] T015 [P] [US1] `backend/src/itb/authoring/tools.py` 의 `TOOL_SCHEMAS` 에서 `update_step`·`delete_step`·`move_step`·`repick_target` 넷의 설명문을 고친다 (contracts/agent-tools §2). **여기가 원천이다**
-- [ ] T016 [P] [US1] 같은 파일의 `BrowserToolbox` 편집 메서드 docstring 과 `_editable()` 의 거절문을 고친다 — 거절문은 **무엇이 허용되는지 함께** 말한다 (FR-016)
-- [ ] T017 [P] [US1] `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에서 편집 권한 지침을 고친다. **T015~T017 셋이 같이 가야 모델 행동이 바뀐다**
-- [ ] T018 [US1] `backend/src/itb/api/routes/sessions.py` 의 `summary_source` 에 「고쳐 달라고 요구받은 Step」 표시를 넘긴다 (FR-011 · contracts/agent-tools §3) — 016 의 `range_ids` 와 **같은 통로**를 쓴다. 새 통로를 만들지 않는다
-- [ ] T019 [US1] 같은 파일에 `StepEditView` 와 `_step_edit_view()` 를 더하고 `SessionView` 에 싣는다 (contracts/api-contract §4)
-- [ ] T020 [US1] `step_edit_changed` 이벤트를 발행한다 — 편집이 반영될 때(`_apply_ai_edit` 이후)와 트랜잭션이 끝날 때. **`rerecord_changed` 를 재사용하지 않는다** (data-model §5)
+- [X] T011 [US1] `backend/src/itb/api/routes/sessions.py` 의 `SessionWork` 에 `step_edit: StepEditTransaction | None = None` 을 더한다 (data-model §3)
+- [X] T012 [US1] 같은 파일의 `SessionStartRequest` 에 `mode="step_edit"` 과 `step_edit_step_id: str | None` 을 더한다. **배열이 아니다** — 「둘 이상」이 경계에서 표현조차 되지 않는다 (data-model §4)
+- [X] T013 [US1] 같은 파일의 세션 시작에 `elif body.mode == "step_edit":` 분기를 더한다 — `BEGIN_REPLAY` → `_build_engine` → 트랜잭션 생성 → `_start_runner(start_index=0, pause_before_index=arrival)`. **`rerecord` 분기와 3번만 다르다** (research R4). 순서가 계약이라는 주석을 남긴다
+- [X] T014 [US1] 같은 파일의 `in_scope` 람다에 `step_edit` 항을 더한다 (research R1) — 둘째 항이 거짓이면 판정이 016 과 글자 그대로 같다는 사실을 주석에 적는다
+- [X] T015 [P] [US1] `backend/src/itb/authoring/tools.py` 의 `TOOL_SCHEMAS` 에서 `update_step`·`delete_step`·`move_step`·`repick_target` 넷의 설명문을 고친다 (contracts/agent-tools §2). **여기가 원천이다**
+- [X] T016 [P] [US1] 같은 파일의 `BrowserToolbox` 편집 메서드 docstring 과 `_editable()` 의 거절문을 고친다 — 거절문은 **무엇이 허용되는지 함께** 말한다 (FR-016)
+- [X] T017 [P] [US1] `backend/src/itb/authoring/agent.py` 의 `SYSTEM_PROMPT` 에서 편집 권한 지침을 고친다. **T015~T017 셋이 같이 가야 모델 행동이 바뀐다**
+- [X] T018 [US1] `backend/src/itb/api/routes/sessions.py` 의 `summary_source` 에 「고쳐 달라고 요구받은 Step」 표시를 넘긴다 (FR-011 · contracts/agent-tools §3) — 016 의 `range_ids` 와 **같은 통로**를 쓴다. 새 통로를 만들지 않는다
+- [X] T019 [US1] 같은 파일에 `StepEditView` 와 `_step_edit_view()` 를 더하고 `SessionView` 에 싣는다 (contracts/api-contract §4)
+- [X] T020 [US1] `step_edit_changed` 이벤트를 발행한다 — 편집이 반영될 때(`_apply_ai_edit` 이후)와 트랜잭션이 끝날 때. **`rerecord_changed` 를 재사용하지 않는다** (data-model §5)
 - [ ] T021 [P] [US1] `frontend/src/api/client.ts` 에 `step_edit` 모드 세션 시작과 `StepEditView` 타입을 더한다
 - [ ] T022 [P] [US1] `frontend/src/api/ws.ts` 에 `step_edit_changed` 이벤트 타입을 더한다
 - [ ] T023 [US1] `frontend/src/lib/actions.ts` 에 `ai.stepEdit` 을 등록한다 (contracts/ui-contract §1)
@@ -107,11 +107,11 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 
 ### Implementation for User Story 2
 
-- [ ] T033 [US2] `backend/src/itb/api/routes/sessions.py` 에 `POST /{session_id}/step-edit/commit` 을 더한다 — 트랜잭션을 닫고 `step_edit_changed(null)` 을 낸다. **브라우저를 요구하지 않는다** (FR-023)
-- [ ] T034 [US2] 같은 파일에 `POST /{session_id}/step-edit/discard` 를 더한다 — `discard()` 결과를 `_apply_rerecord_edit`(기존 반영 함수)으로 한 번에 적용하고 트랜잭션을 닫는다
-- [ ] T035 [US2] 버리기 뒤 `_return_to_start()` → `_realign_to_arrival()` 로 화면을 되맞춘다 (FR-025). **016 의 함수를 그대로 부른다** — 새로 만들지 않는다
-- [ ] T036 [US2] 되맞춤 실패 시 `step_edit_realign_failed` 를 낸다 — `definition_reverted: true` 와 사유를 함께 싣는다 (FR-028 · contracts/api-contract §3)
-- [ ] T037 [US2] `_require_open_step_edit()` 헬퍼를 더한다 — 016 의 `_require_open_rerecord()` 와 같은 모양
+- [X] T033 [US2] `backend/src/itb/api/routes/sessions.py` 에 `POST /{session_id}/step-edit/commit` 을 더한다 — 트랜잭션을 닫고 `step_edit_changed(null)` 을 낸다. **브라우저를 요구하지 않는다** (FR-023)
+- [X] T034 [US2] 같은 파일에 `POST /{session_id}/step-edit/discard` 를 더한다 — `discard()` 결과를 `_apply_rerecord_edit`(기존 반영 함수)으로 한 번에 적용하고 트랜잭션을 닫는다
+- [X] T035 [US2] 버리기 뒤 `_return_to_start()` → `_realign_to_arrival()` 로 화면을 되맞춘다 (FR-025). **016 의 함수를 그대로 부른다** — 새로 만들지 않는다
+- [X] T036 [US2] 되맞춤 실패 시 `step_edit_realign_failed` 를 낸다 — `definition_reverted: true` 와 사유를 함께 싣는다 (FR-028 · contracts/api-contract §3)
+- [X] T037 [US2] `_require_open_step_edit()` 헬퍼를 더한다 — 016 의 `_require_open_rerecord()` 와 같은 모양
 - [ ] T038 [P] [US2] `frontend/src/api/client.ts` 에 확정·버리기 호출을 더한다
 - [ ] T039 [P] [US2] `frontend/src/api/ws.ts` 에 `step_edit_realign_failed` 를 더한다
 - [ ] T040 [US2] `frontend/src/lib/actions.ts`·`capabilities.ts` 에 `ai.stepEditCommit`·`ai.stepEditDiscard` 를 등록하고 모든 국면의 셀을 채운다
