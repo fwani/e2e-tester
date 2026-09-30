@@ -254,3 +254,12 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 - 각 작업 또는 논리적 묶음 뒤에 커밋한다
 - 검증은 저장소 표준 명령으로 한다 — `uv run pytest`·`npm test` 는 틀린 결과를 준다
 - 기존 실패(기준선)와 새 실패를 섞지 않는다
+
+---
+
+## Phase 8: Convergence
+
+`/speckit-converge` 가 코드를 명세에 대조해 찾은 잔여 작업.
+
+- [X] T067 수정 중 **무엇이 바뀌었는지** 화면이 보이게 한다 (FR-034 · US2/AC4 · partial) — `frontend/src/pages/SessionScreen.tsx` 가 수정 세션에 들어간 시점의 대상 Step 을 기억하고, 지금 것과 비교해 바뀐 항목을 `StepEditBar` 에 넘긴다. **서버가 차이를 계산해 주지 않는다** — 차이 계산은 표시 문제이며, 서버가 하면 「어떤 필드가 바뀐 것인가」의 정의가 서버에 생긴다 (data-model §5). 지금은 「이 Step 은 확정해도 남습니다」와 새로 만든 개수만 말하고 있어, 사용자가 확정할지 버릴지를 **목록을 눈으로 훑어** 판단해야 한다
+- [X] T068 T067 의 표시를 검사로 고정한다 — `frontend/tests/` 에 ① 아무것도 안 바뀌었으면 「바뀐 것 없음」 ② 라벨만 바뀌면 그 항목만 ③ 여러 항목이 바뀌면 전부 나열. **시작 시점 모습을 화면이 들고 있는지**가 요점이다

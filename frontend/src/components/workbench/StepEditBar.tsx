@@ -33,6 +33,17 @@ export interface StepEditBarProps {
   capabilities: CapabilityMap;
   /** 대상이 목록에서 몇 번인가. 사용자가 보는 번호(1-기반)다. */
   targetLabel: string;
+  /**
+   * 026 FR-034 — **지금까지 바뀐 항목들** (사람이 읽는 이름).
+   *
+   * 무엇이 바뀌었는지 모르면 확정할지 버릴지 판단할 수 없다. 비어 있으면 아직 아무것도
+   * 바뀌지 않았다는 뜻이며, 그 사실도 말해야 한다 — 「AI 에게 물어만 보고 그만두기」가
+   * 정상 경로이기 때문이다 (research R5).
+   *
+   * **계산은 화면이 한다.** 서버가 하면 「어떤 필드가 바뀐 것인가」의 정의가 서버
+   * 계약에 굳는다 (data-model §5).
+   */
+  changed: string[];
   onCommit: () => void;
   onDiscard: () => void;
   onRemedy?: (action: ActionId) => void;
@@ -42,6 +53,7 @@ export function StepEditBar({
   stepEdit,
   capabilities,
   targetLabel,
+  changed,
   onCommit,
   onDiscard,
   onRemedy,
@@ -55,10 +67,20 @@ export function StepEditBar({
         한 낱말이 대상의 운명을 가른다 (FR-031).
       */}
       <span className="font-semibold">고치는 중 — {targetLabel}</span>
+      {/*
+        026 FR-034 — **무엇이 바뀌었는지 말한다.**
+
+        이것이 없으면 사용자는 확정할지 버릴지를 목록을 눈으로 훑어 판단해야 한다.
+        값이 아니라 **항목 이름**만 말하는 이유는, 값까지 보이면 띠가 목록이 되기
+        때문이다 — 값은 바로 아래 Step 행에 이미 그려져 있다.
+      */}
+      <span className="text-ink-3" data-cell="step-edit-changes">
+        {changed.length === 0 ? "아직 바뀐 것이 없습니다" : `바뀐 것 — ${changed.join(" · ")}`}
+      </span>
       <span className="text-ink-3">
         {made === 0
           ? "이 Step 은 확정해도 남습니다"
-          : `이 Step 을 고치면서 새로 만든 것 ${made}개`}
+          : `고치면서 새로 만든 것 ${made}개`}
       </span>
 
       <div className="ml-auto flex items-center gap-s2">

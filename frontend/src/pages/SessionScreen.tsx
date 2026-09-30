@@ -102,6 +102,7 @@ import {
   DISABLED_REASON,
   FINISHED_WHILE_PAUSING_TITLE,
   PHASE_LABEL,
+  STEP_FIELD_LABEL,
   editSavedNotice,
   pausedAfterLabel,
   pauseTargetProgress,
@@ -385,6 +386,21 @@ export interface SessionWorkbenchProps {
 }
 
 export function SessionWorkbench(props: SessionWorkbenchProps) {
+  /**
+   * 026 FR-034 — **수정 세션에 들어간 시점의 대상 Step.**
+   *
+   * 「무엇이 바뀌었는가」를 말하려면 비교 대상이 필요하다. 그것을 **화면이 들고
+   * 있는다** — 서버가 차이를 계산해 주면 「어떤 필드가 바뀐 것인가」의 정의가 서버에
+   * 생기고, 그것은 표시 문제를 서버 계약으로 굳히는 일이다 (data-model §5).
+   *
+   * `ref` 인 이유는 **처음 본 것만** 붙잡아야 하기 때문이다. 상태로 두고 매 렌더에
+   * 갱신하면 「지금 것과 지금 것」을 비교하게 되어 언제나 「바뀐 것 없음」이 된다.
+   *
+   * 대상이 바뀌거나 수정이 끝나면 비운다 — 다음 수정이 지난 세션의 모습과 비교되면
+   * 안 된다.
+   */
+  const stepEditOrigin = useRef<{ targetId: string; snapshot: string } | null>(null);
+
   /*
     검증 추가 폼이 열려 있는가.
 
@@ -729,6 +745,54 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     canCommitStepEdit: view.step_edit?.can_commit === true,
   };
   const capabilities = capabilitiesFor(phase, facts);
+
+  /**
+   * 026 FR-034 — **수정 중에 무엇이 바뀌었는가.**
+   *
+   * 세션에 들어간 시점의 대상 Step 을 붙잡아 두고(`stepEditOrigin`) 지금 것과 비교해
+   * **바뀐 항목 이름**을 모은다. 이것이 없으면 사용자는 확정할지 버릴지를 목록을 눈으로
+   * 훑어 판단해야 한다.
+   *
+   * **서버가 계산해 주지 않는다.** 차이는 표시 문제이고, 서버가 하면 「어떤 필드가
+   * 바뀐 것인가」의 정의가 서버 계약에 굳는다 (data-model §5).
+   *
+   * 렌더 중에 `ref` 를 쓰는 것이 요점이다 — 처음 본 모습만 붙잡아야 하므로 effect 로
+   * 미루면 첫 렌더가 비교할 것을 갖지 못한다. 쓰기는 **대상이 바뀔 때만** 일어나므로
+   * 렌더가 거듭돼도 값이 흔들리지 않는다.
+   */
+  const stepEditChanges = (() => {
+    const edit = view.step_edit;
+    if (edit == null) {
+      stepEditOrigin.current = null;
+      return null;
+    }
+    const now = view.steps.find((s) => s.id === edit.target_step_id) ?? null;
+    const snapshot = now === null ? "" : JSON.stringify(now);
+
+    const held = stepEditOrigin.current;
+    if (held === null || held.targetId !== edit.target_step_id) {
+      stepEditOrigin.current = { targetId: edit.target_step_id, snapshot };
+      return [];
+    }
+    if (held.snapshot === snapshot) return [];
+
+    // **어느 항목이 바뀌었는지**를 말한다. 「바뀌었습니다」만으로는 확정 여부를
+    // 판단할 수 없고, 값을 통째로 보이면 띠가 목록이 된다.
+    const before = held.snapshot === "" ? {} : (JSON.parse(held.snapshot) as Record<string, unknown>);
+    const after = snapshot === "" ? {} : (JSON.parse(snapshot) as Record<string, unknown>);
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    const changed: string[] = [];
+    for (const key of keys) {
+      // `author` 는 provenance 이고 실행을 바꾸지 않는다 (헌법 원칙 I). 사용자가
+      // 확정 여부를 판단하는 근거가 아니므로 세지 않는다.
+      if (key === "author") continue;
+      if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+        changed.push(STEP_FIELD_LABEL[key] ?? key);
+      }
+    }
+    if (snapshot === "") changed.push("이 Step 이 지워졌습니다");
+    return changed;
+  })();
 
   /* ─── 층② 국면 띠 ─────────────────────────────────────────────────────── */
 
@@ -1656,6 +1720,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
               view.step_edit.target_step_id,
               view.steps.map((s) => s.id),
             )}
+            changed={stepEditChanges ?? []}
             onCommit={() => onStepEditCommit?.()}
             onDiscard={() => onStepEditDiscard?.()}
             onRemedy={onRemedy}

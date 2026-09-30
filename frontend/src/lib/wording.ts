@@ -985,6 +985,29 @@ export const NO_STEP_EDIT_TARGET = "고칠 Step 을 고르세요";
 /** 수정 — 둘 이상 골랐다. `DISABLED_REASON.ONE_STEP_ONLY` 의 짧은 형태다 */
 export const ONE_STEP_ONLY_TITLE = "한 번에 한 Step 만 고칠 수 있습니다";
 
+/**
+ * 026 FR-034 — Step 의 항목을 사람이 읽는 이름으로.
+ *
+ * 수정 띠가 「무엇이 바뀌었는가」를 말할 때 쓴다. 값을 통째로 보이면 띠가 목록이 되고,
+ * 필드 이름 그대로 보이면 사용자가 `timeout_ms` 를 읽어야 한다.
+ *
+ * **목록에 없는 키는 그대로 보인다.** 새 필드가 생겼을 때 조용히 빠지는 것보다
+ * 낯선 이름이 보이는 쪽이 낫다 — 빠지면 사용자는 바뀐 것이 없다고 읽는다.
+ */
+export const STEP_FIELD_LABEL: Record<string, string> = {
+  label: "표시 이름",
+  target: "대상 요소",
+  drop_target: "놓을 위치",
+  value: "입력값",
+  assertion: "검증",
+  timeout_ms: "제한 시간",
+  url: "주소",
+  keys: "누를 키",
+  tab: "탭",
+  file_name: "파일 이름",
+  sensitive: "민감 표시",
+};
+
 /* ─── 013 테스트 복수 삭제 (contracts/ui-contract.md UC-013-04) ──────────── */
 
 /**
