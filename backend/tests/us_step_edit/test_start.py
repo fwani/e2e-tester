@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 from tests.us2_support import record_login, stop_quietly
 from tests.us3_support import record_login_then_two_menus
-from tests.us_step_edit.support import open_step_edit, step_edit_of
+from tests.us_step_edit.support import open_step_edit
 
 pytestmark = pytest.mark.browser
 

@@ -100,10 +100,10 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 
 ### Tests for User Story 2
 
-- [ ] T029 [P] [US2] `backend/tests/test_session_step_edit_settle.py` 에 확정·버리기 계약 검사를 쓴다 (contracts/api-contract §2·§3) — ① 확정은 **아무 Step 도 지우지 않는다** ② 만든 것이 없어도 확정된다 ③ 버리기는 만든 것을 지우고 대상을 원본으로 되돌린다 ④ 끝난 트랜잭션에 다시 걸면 `CONFLICT` ⑤ 버리기가 세션을 끝내지 않는다
-- [ ] T030 [P] [US2] 같은 파일에 **부분 적용이 남지 않는지** 검사를 쓴다 — 버리기가 하나의 `EditResult` 로 적용된다 (research R7). 중간 상태가 세션에 반영되는 경로가 없어야 한다
-- [ ] T031 [P] [US2] AI 가 **대상 Step 을 지운 뒤** 버리기를 눌렀을 때 원래 자리로 되돌아오는지 검사한다 — `restore_step` 의 둘째 경우가 실제 경로에서 쓰이는 자리다
-- [ ] T032 [P] [US2] 확정되지 않은 수정이 **디스크에 내려가지 않는지** 검사한다 (FR-024)
+- [X] T029 [P] [US2] `backend/tests/test_session_step_edit_settle.py` 에 확정·버리기 계약 검사를 쓴다 (contracts/api-contract §2·§3) — ① 확정은 **아무 Step 도 지우지 않는다** ② 만든 것이 없어도 확정된다 ③ 버리기는 만든 것을 지우고 대상을 원본으로 되돌린다 ④ 끝난 트랜잭션에 다시 걸면 `CONFLICT` ⑤ 버리기가 세션을 끝내지 않는다
+- [X] T030 [P] [US2] 같은 파일에 **부분 적용이 남지 않는지** 검사를 쓴다 — 버리기가 하나의 `EditResult` 로 적용된다 (research R7). 중간 상태가 세션에 반영되는 경로가 없어야 한다
+- [X] T031 [P] [US2] AI 가 **대상 Step 을 지운 뒤** 버리기를 눌렀을 때 원래 자리로 되돌아오는지 검사한다 — `restore_step` 의 둘째 경우가 실제 경로에서 쓰이는 자리다
+- [X] T032 [P] [US2] 확정되지 않은 수정이 **디스크에 내려가지 않는지** 검사한다 (FR-024)
 
 ### Implementation for User Story 2
 
@@ -132,16 +132,16 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 
 ### Tests for User Story 3
 
-- [ ] T044 [P] [US3] `backend/tests/test_step_edit_scope.py` 에 권한 검사를 쓴다 — ① 고른 Step 은 고칠 수 있다 ② 이번에 만든 Step 도 고칠 수 있다 ③ **그 밖은 전부 거절** ④ 거절이 예외가 아니라 반환값이다 (016 FR-038 의 성질)
-- [ ] T045 [P] [US3] **FR-014 회귀 검사**를 쓴다 — `step_edit` 이 `None` 인 세션에서 `in_scope` 판정이 016 과 동일하다. 재녹화 세션·일반 AI 작성 세션 둘 다
-- [ ] T046 [P] [US3] 거절문이 **무엇이 허용되는지 말하는지** 검사한다 (FR-016) — 허용 대상의 식별자가 문장에 들어 있어야 한다
-- [ ] T047 [P] [US3] 권한이 **세션 도중 넓어지지 않는지** 검사한다 (FR-017) — 트랜잭션 생성 후 `target_id` 가 바뀌는 경로가 없다
+- [X] T044 [P] [US3] `backend/tests/test_step_edit_scope.py` 에 권한 검사를 쓴다 — ① 고른 Step 은 고칠 수 있다 ② 이번에 만든 Step 도 고칠 수 있다 ③ **그 밖은 전부 거절** ④ 거절이 예외가 아니라 반환값이다 (016 FR-038 의 성질)
+- [X] T045 [P] [US3] **FR-014 회귀 검사**를 쓴다 — `step_edit` 이 `None` 인 세션에서 `in_scope` 판정이 016 과 동일하다. 재녹화 세션·일반 AI 작성 세션 둘 다
+- [X] T046 [P] [US3] 거절문이 **무엇이 허용되는지 말하는지** 검사한다 (FR-016) — 허용 대상의 식별자가 문장에 들어 있어야 한다
+- [X] T047 [P] [US3] 권한이 **세션 도중 넓어지지 않는지** 검사한다 (FR-017) — 트랜잭션 생성 후 `target_id` 가 바뀌는 경로가 없다
 
 ### Implementation for User Story 3
 
-- [ ] T048 [US3] `backend/src/itb/authoring/tools.py` 의 `_editable()` 거절문에 허용 대상을 싣는다. **판정은 여전히 `in_scope` 가 한다** — 도구는 정책을 알지 않는다 (research R1)
-- [ ] T049 [US3] 거절이 사용자에게 보이도록 기존 통로를 확인한다 — 016 FR-038 이 이미 세운 길이며, 새로 만들지 않는다
-- [ ] T050 [US3] 016 의 재녹화 검사 전부를 돌려 **하나도 깨지지 않았는지** 확인한다 (FR-030 · T002 의 목록)
+- [X] T048 [US3] `backend/src/itb/authoring/tools.py` 의 `_editable()` 거절문에 허용 대상을 싣는다. **판정은 여전히 `in_scope` 가 한다** — 도구는 정책을 알지 않는다 (research R1)
+- [X] T049 [US3] 거절이 사용자에게 보이도록 기존 통로를 확인한다 — 016 FR-038 이 이미 세운 길이며, 새로 만들지 않는다
+- [X] T050 [US3] 016 의 재녹화 검사 전부를 돌려 **하나도 깨지지 않았는지** 확인한다 (FR-030 · T002 의 목록)
 
 **Checkpoint**: 경계가 검사로 고정됐다. 넓힌 자리와 넓히지 않은 자리가 둘 다 증명된다.
 
