@@ -144,7 +144,41 @@ class WorkPlan:
         return self.remaining[0] if self.remaining else None
 
     def find(self, item_id: str) -> PlanItem | None:
-        return next((i for i in self.items if i.id == item_id), None)
+        """항목을 찾는다 — **id 로도, 목록에 보이는 번호로도** (2026-09-30 사용자 보고).
+
+        ## 무엇이 문제였나
+
+        보고 문장: 「`mark_item` 은 id 형식(`1`, `item-01`, `todo-01`, `checklist-1` 등)이
+        모두 거부되어 할 일 진행 표시를 남기지 못했습니다.」 — 매 세션 나왔다.
+
+        **모델은 id 를 알 방법이 없었다.** 주입되는 목록(`summary._item_line`)은
+        `  1. ▶ 로그인한다` 처럼 **`order` 만** 적고 `id` 는 어디에도 싣지 않는다. 그런데
+        이 함수는 `id` 정확 일치만 봤고, 실제 값은 `i1`(정제) 또는 `i5-3847`(대화로 추가,
+        해시가 붙는다)이라 추측할 수 있는 형태가 아니다. 모델은 보이는 번호를 넣고,
+        거부되면 흔한 규칙을 차례로 시도하다 포기했다.
+
+        ## 왜 목록에 id 를 적는 쪽이 아닌가
+
+        `renumber` 가 「사용자가 보는 번호와 모델에게 가는 번호가 같아야 한다」고 이미
+        정해 두었다. 목록에 id 를 덧붙이면 **사람이 보는 것과 모델이 쓰는 것이 다시
+        갈라지고**, 줄마다 기계용 문자열이 붙어 주입 예산(`PLAN_BUDGET`)도 먹는다.
+        보이는 것으로 지목할 수 있게 하는 편이 규칙이 하나다.
+
+        ## 번호가 바뀌는 것은 위험하지 않은가
+
+        `renumber` 는 항목이 **빠질 때** 번호를 당긴다. 그런데 목록은 매 턴 새로 주입되고
+        `add` 는 끝에 붙이므로(기존 번호가 밀리지 않는다), 모델이 그 턴에 본 번호는 그
+        턴 안에서 유효하다. id 를 먼저 보므로 **id 를 가진 호출자(프론트의 되돌리기)는
+        영향을 받지 않는다.**
+        """
+        found = next((i for i in self.items if i.id == item_id), None)
+        if found is not None:
+            return found
+        # 목록에 보이는 번호. `id` 는 `i1`·`i5-3847` 형태라 순수 숫자와 겹치지 않는다.
+        text = item_id.strip()
+        if not text.isdigit():
+            return None
+        return next((i for i in self.items if i.order == int(text)), None)
 
     def renumber(self) -> None:
         """순번을 1부터 다시 매긴다.
@@ -174,9 +208,12 @@ class WorkPlan:
         """
         item = self.find(item_id)
         if item is None:
+            # **쓸 수 있는 것을 말한다.** 옛 문면은 「번호와 id 를 확인하세요」였는데,
+            # 목록에 id 가 없으므로 모델은 확인할 것이 없었고 같은 추측을 반복했다.
+            span = f"1~{len(self.items)}" if self.items else "없음"
             msg = (
                 f"그런 항목이 없습니다: {item_id}. "
-                "주어진 할 일 목록의 번호와 id 를 다시 확인하세요."
+                f"[할 일] 목록에 보이는 번호를 그대로 쓰세요 (지금 있는 번호: {span})."
             )
             raise PlanError(msg)
         if status is ItemStatus.PENDING:

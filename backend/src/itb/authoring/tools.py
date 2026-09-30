@@ -838,6 +838,12 @@ class BrowserToolbox:
         표시를 덜 하게 되고, 진척은 다시 비어 간다. 020 이 검증 어긋남을 「성공도 실패도
         아니다」로 둔 것과 같은 판단이다.
 
+        ## 무엇으로 지목하는가 — **목록에 보이는 번호** (2026-09-30 사용자 보고)
+
+        모델에게 주입되는 `[할 일]` 목록은 번호만 적는다. 그래서 `item_id` 도 그 번호를
+        받는다 — 근거는 `WorkPlan.find` 의 머리말에 적었다. 내부 id 도 그대로 통하므로
+        프론트의 되돌리기 경로는 바뀌지 않는다.
+
         ## 상태의 소유자는 제품이다 (FR-025)
 
         표시는 입력이지 최종 판정이 아니다. 규칙에 맞지 않으면 거절하고 **사유를 모델에게
@@ -2209,11 +2215,15 @@ TOOL_SCHEMAS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "mark_item": (
         "할 일 항목 하나를 끝냈음을 표시한다. 이 호출은 예산을 쓰지 않는다. "
+        "item_id 에는 [할 일] 목록에 보이는 번호를 그대로 넣는다 — 3번 항목이면 \"3\". "
         "status 는 done 또는 skipped 이며, skipped 에는 reason 이 필요하다.",
         {
             "type": "object",
             "properties": {
-                "item_id": {"type": "string"},
+                "item_id": {
+                    "type": "string",
+                    "description": "[할 일] 목록에 보이는 번호 (예: \"3\").",
+                },
                 "status": {"type": "string", "enum": ["done", "skipped"]},
                 "reason": {"type": "string"},
             },
