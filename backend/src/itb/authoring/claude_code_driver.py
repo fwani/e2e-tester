@@ -169,7 +169,7 @@ async def claude_code_driver(
     )
 
     # `agent` 는 이 모듈을 지연 임포트해 고른다. 여기서도 지연 임포트해 순환을 피한다.
-    from itb.authoring.agent import SYSTEM_PROMPT  # noqa: PLC0415
+    from itb.authoring.agent import build_system_prompt  # noqa: PLC0415
 
     server = create_sdk_mcp_server(name=MCP_SERVER_NAME, version="1.0.0", tools=tools)
     options = ClaudeAgentOptions(
@@ -183,7 +183,7 @@ async def claude_code_driver(
         # 사용자의 settings·CLAUDE.md·훅을 읽지 않는다. 읽으면 개발자 환경마다 다른
         # 지시가 섞여 들어와 무엇을 보고 있는지 알 수 없게 된다.
         setting_sources=[],
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=build_system_prompt(),
         max_turns=MAX_DRIVER_TURNS,
     )
 

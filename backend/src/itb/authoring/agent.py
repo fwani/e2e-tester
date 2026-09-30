@@ -28,9 +28,11 @@ import contextlib
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
+from itb.authoring.clock import current_time_note
 from itb.authoring.compiler import StepCompiler
 from itb.authoring.fold import fold_stale_observations
 from itb.authoring.journal import fold_old_records
@@ -144,6 +146,20 @@ SYSTEM_PROMPT = """\
 """
 
 
+def build_system_prompt(now: datetime | None = None) -> str:
+    """모델에게 **실제로 가는** 시스템 프롬프트. 드라이버는 이것을 부른다.
+
+    `SYSTEM_PROMPT` 는 언제 돌아도 같은 말이고, 거기에는 **지금이 언제인지**가 없다.
+    지시문이 「게시일은 오늘 날짜로」라고 말하면 모델은 알 길이 없어 화면에 적힌 날짜를
+    가져다 쓰거나 지어낸다 (`itb.authoring.clock`).
+
+    **상수를 직접 넘기지 않는다.** 시각은 호출 시점에 정해져야 하므로 모듈 전역 문자열로는
+    담을 수 없다 — `SYSTEM_PROMPT` 를 그대로 넘기는 드라이버가 하나라도 남으면 그 경로에서만
+    조용히 시각이 빠진다.
+    """
+    return f"{SYSTEM_PROMPT}\n{current_time_note(now)}"
+
+
 class AgentStatus(StrEnum):
     FINISHED = "finished"
     """지시를 끝냈다. 성공한 동작이 Step 으로 남아 있다 (FR-063)."""
@@ -239,7 +255,7 @@ def _sdk_driver(
     runner = client.beta.messages.tool_runner(
         messages=messages,
         tools=tools,
-        system=SYSTEM_PROMPT,
+        system=build_system_prompt(),
         # 두 번째 방어선. 1차는 제품이 세는 도구 호출 상한이고(FR-066), 이것은 모델이
         # 도구를 부르지 않으면서 계속 말하는 경우까지 막는다.
         max_iterations=MAX_TOOL_CALLS,
