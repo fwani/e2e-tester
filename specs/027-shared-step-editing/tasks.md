@@ -47,7 +47,12 @@ description: "027 Step 편집면과 조작 배선을 한 곳으로 — 작업 �
 - [ ] T004 `frontend/src/lib/actionWiring.ts` 를 신설한다 — `ScreenCapabilities`(전부 선택적) · `ACTION_WIRING`(조작 → 능력) · `makeRunAction(caps, fallback?)` (data-model §1~§3). **국면을 인자로 받지 않는다** (contracts/wiring-contract §2). 모듈 docstring 에 「하지 않을 것」 목록과 research R7 의 실패 정의를 적는다
 - [ ] T005 [P] `frontend/tests/ActionWiring.test.ts` 에 모듈 자체의 검사를 쓴다 — ① 능력이 없으면 그 조작이 이어지지 않는다 ② `fallback` 이 있으면 표에 없는 조작이 거기로 간다 ③ **모듈이 국면을 받지 않는다**(시그니처 고정) ④ 같은 조작이 두 능력에 이어지지 않는다
 - [ ] T006 `makeRunAction` 이 **이어 둔 조작 목록을 돌려준다** — 화면이 `data-wired-actions` 로 내보낼 값이다 (data-model §4). 화면이 손으로 적지 않는 것이 요점이다
-- [ ] T007 `frontend/tests/ActionWiringCoverage.test.tsx` 에 **표 ↔ 배선 대조** 검사를 쓴다 (FR-014~FR-016) — 각 국면 화면을 **실제로 그려** `data-wired-actions` 를 읽고, 조작표가 그 국면에서 활성(`enabled`)이라고 말하는 조작이 전부 들어 있는지 본다. **아직 이전 전이므로 실패한다** — 그 실패 목록이 곧 이전할 일감이다
+- [ ] T007 `frontend/tests/ActionWiringCoverage.test.tsx` 에 **표 ↔ 배선 대조** 검사를 쓴다 (FR-014~FR-016) — 각 국면 화면을 **실제로 그려** `data-wired-actions` 를 읽고, 조작표가 그 국면에서 **「해당 없음」(`na`)이 아니라고** 말하는 조작이 전부 들어 있는지 본다. **아직 이전 전이므로 실패한다** — 그 실패 목록이 곧 이전할 일감이다
+
+      > **판정 기준이 `na` 인 것이 요점이다** (analyze A1). 「활성(`enabled`)」으로 잡으면
+      > 검사가 절반만 잡는다 — `cond(...)`·`off(...)` 인 조작도 **배선은 있어야 하기**
+      > 때문이다. 조건이 풀리거나 사유가 해소되면 눌리고, 그때 아무 일도 일어나지 않으면
+      > 그것이 바로 이 기능이 막으려는 결함이다. 「해당 없음」만이 「이을 필요가 없다」다.
 - [ ] T008 T007 의 실패 문구가 **어느 조작이 어느 화면에서 빠졌는지** 말하는지 확인한다 (FR-015). 「어딘가 잘못됐다」로 끝나면 고친다
 
 **Checkpoint**: 배선 모듈이 있고, 무엇이 안 이어졌는지 검사가 목록으로 말해 준다.
@@ -87,6 +92,7 @@ description: "027 Step 편집면과 조작 배선을 한 곳으로 — 작업 �
 - [ ] T018 [US1] 무리 4 검증
 - [ ] T019 [US1] `ResultView` 의 조작 8종도 같은 방식으로 잇는다 — 세 번째 화면이 같은 모양을 쓰는지가 이 설계의 마지막 확인이다
 - [ ] T020 [US1] 어댑터의 `runAction` 에 남은 `case` 가 **그 화면 고유의 것뿐인지** 확인한다 (T003 의 목록과 대조)
+- [ ] T020a [US1] **화면이 자기가 아는 사실로 조작을 더 좁히는 통로가 살아 있는지** 확인하고 검사한다 (FR-007 · analyze D1) — `EditView` 의 `narrowByAiEntry`·`narrowByDeleteSelection`·`narrowByPick` 이 그것이다. 배선 통합은 **조작이 눌렸을 때 무엇을 하는가**를 옮기는 일이고, **언제 누를 수 있는가**는 건드리지 않는다. 이 통로가 끊기면 「고칠 Step 을 고르세요」 같은 잠금 사유가 사라진다 — 026 이 만든 것이 조용히 없어지는 자리다
 
 **Checkpoint**: 13개 조작이 한 자리에서 이어진다. 편집면은 아직 두 벌이다.
 
@@ -151,6 +157,9 @@ description: "027 Step 편집면과 조작 배선을 한 곳으로 — 작업 �
 ## Phase 7: Polish & 회귀
 
 - [ ] T038 `frontend/src/lib/capabilities.ts` 가 여전히 **유일한 권한 판정**인지 확인한다 (FR-006) — `actionWiring.ts` 에 국면·권한 관련 낱말이 없어야 한다
+- [ ] T038a **백엔드가 한 파일도 바뀌지 않았는지** 확인한다 (FR-023 · 헌법 원칙 I · analyze D2) — `git diff --stat backend/` 가 빈 결과여야 한다. 사람·AI 편집이 같은 순수 함수를 지나는 성질은 백엔드가 그대로이면 자동으로 유지되며, **자명한 것을 확인하지 않아 깨지는 것**이 이 저장소가 겪은 패턴이다
+- [ ] T038b [P] 읽기 전용 편집면이 실제로 동작하는지 검사한다 (FR-011 · analyze D3) — `editable={false}` 일 때 모든 입력칸이 잠긴다. 지금 쓰는 곳이 없더라도 **능력이 살아 있어야** 나중에 결과 화면이 쓸 수 있다
+- [ ] T038c [P] 「한 조작에 한 자리」와 「감춰진 조작 0건」이 유지되는지 확인한다 (FR-024·FR-025 · analyze D4) — `LabelUniqueness`·`CapabilityUI` 가 잡지만, 이 증분이 조작의 **자리**를 옮기므로 명시적으로 돌려 본다
 - [ ] T039 [P] `makeRunAction` 의 `fallback` 이 **비어 있는지** 확인한다 (contracts §5) — 이행이 끝났으면 쓰이지 않아야 한다
 - [ ] T040 [P] 새 CSS 클래스를 만들지 않았는지 확인한다 — 이 증분은 겉모습을 바꾸지 않는다
 - [ ] T041 전량 검증을 돌리고 `baseline.md` 의 시작 시점과 비교해 적는다. **백엔드는 글자 그대로 같아야 한다**
