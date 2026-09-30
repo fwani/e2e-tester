@@ -25,6 +25,14 @@ export interface AppActions {
   startRun(testId: string, fromStepIndex?: number): void;
   openBrowserAt(testId: string, stepIndex: number, stepId: string | null, instruction: string | null): void;
   openRerecord(testId: string, stepIds: string[]): void;
+  /**
+   * 026 — 고른 Step **하나**를 AI 가 고치는 세션을 연다 (FR-001·FR-005).
+   *
+   * `openRerecord` 와 갈라 둔다. 그쪽은 「구간을 교체한다」이고 이것은 「Step 하나를
+   * 보존한 채 고친다」이며, 서버에서 다른 모드다. 같은 함수로 묶으면 인자 개수로
+   * 갈래를 판정해야 하고, 그 판정이 화면과 서버 두 곳에 생긴다.
+   */
+  openStepEdit(testId: string, stepId: string): void;
   openSession(sessionId: string): void;
   /**
    * 만들기 국면이 세션을 만드는 중인가 (005 U-06 과 같은 결함).
@@ -179,6 +187,24 @@ export function AppActionsProvider({ children }: { children: ReactNode }) {
         .create({ mode: "rerecord", test_id: testId, rerecord_step_ids: stepIds })
         // 006 FR-204 — 끝나면 출발한 편집 화면으로 돌아온다. 재녹화도 편집의 일이다.
         .then((session) => navigate(paths.session(session.session_id, { stepId: stepIds[0] ?? null })))
+        .catch((exc: unknown) => store.setError(describeError(exc)))
+        .finally(() => setPendingRun(null));
+    },
+
+    /**
+     * 026 — Step 수정 세션을 연다 (FR-001·FR-005).
+     *
+     * `openRerecord` 와 **같은 잠금**(`pendingRun`)을 쓴다. 둘 다 세션을 만드는 조작이고,
+     * 잠금이 갈리면 두 조작을 연달아 눌러 세션이 둘 열린다.
+     */
+    openStepEdit(testId, stepId) {
+      if (pendingRun !== null) return;
+      setPendingRun(testId);
+      store.setError(null);
+      void sessions
+        .create({ mode: "step_edit", test_id: testId, step_edit_step_id: stepId })
+        // 006 FR-204 — 끝나면 출발한 편집 화면으로 돌아온다. 수정도 편집의 일이다.
+        .then((session) => navigate(paths.session(session.session_id, { stepId })))
         .catch((exc: unknown) => store.setError(describeError(exc)))
         .finally(() => setPendingRun(null));
     },

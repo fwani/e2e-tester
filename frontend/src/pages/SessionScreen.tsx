@@ -50,6 +50,7 @@ import { ChatPanel } from "../components/workbench/ChatPanel";
 import type { AuthoringEntry } from "../components/workbench/AiAuthoringPanel";
 import type { WorkPlan } from "../api/client";
 import { RerecordBar, rangeLabelOf } from "../components/workbench/RerecordBar";
+import { StepEditBar, targetLabelOf } from "../components/workbench/StepEditBar";
 import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
 import {
   BrowserPromptPanel,
@@ -343,6 +344,10 @@ export interface SessionWorkbenchProps {
   aiUnavailableReason?: string | null;
   onChat?: (text: string) => void;
   onRerecordCommit?: () => void;
+  /** 026 — Step 수정을 확정한다 (FR-021). **재녹화와 다른 조작이다** */
+  onStepEditCommit?: () => void;
+  /** 026 — 수정을 버리고 원본으로 되돌린다 (FR-022·FR-025) */
+  onStepEditDiscard?: () => void;
   onRerecordDiscard?: () => void;
   /**
    * 009 FR-298·FR-301 — **행에서** 순서를 바꾼다.
@@ -470,6 +475,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     aiUnavailableReason = null,
     onChat,
     onRerecordCommit,
+    onStepEditCommit,
+    onStepEditDiscard,
     onRerecordDiscard,
     onApplyReorder,
     onRunFromHere,
@@ -717,6 +724,9 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     */
     hasRerecord: view.rerecord != null,
     canCommitRerecord: view.rerecord?.can_commit === true,
+    /* 026 — **서버가 판정한 값을 그대로 쓴다** (C16·C17 과 같은 규칙) */
+    hasStepEdit: view.step_edit != null,
+    canCommitStepEdit: view.step_edit?.can_commit === true,
   };
   const capabilities = capabilitiesFor(phase, facts);
 
@@ -1614,10 +1624,16 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
       */
       /* 016 FR-024 — 확정하면 사라질 옛 구간을 목록에서 구분해 보인다 */
       rerecordTargets={view.rerecord?.range_step_ids}
+      /* 026 FR-033 — 고치는 중인 Step 을 목록에서 구분해 보인다 */
+      stepEditTarget={view.step_edit?.target_step_id ?? null}
       /*
         2026-09-11 사용자 보고 — 띠는 머리 **아래 한 줄**이다 (`Workbench` 의 `stepBand`).
         머리 오른쪽(`stepHeaderExtra`)에 걸었을 때 60px 남짓을 받아 확정·버리기가
         보이지 않았고, 확정이 저장의 전제라 사용자에게는 「저장이 안 된다」로 보였다.
+      */
+      /*
+        026 — 두 띠가 **같은 자리**를 쓴다. 동시에 차지 않으므로(세션 모드가 하나다)
+        자리를 다투지 않고, 다른 자리에 두면 사용자가 무엇을 볼지 예측할 수 없다.
       */
       stepBand={
         view.rerecord != null ? (
@@ -1630,6 +1646,18 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
             )}
             onCommit={() => onRerecordCommit?.()}
             onDiscard={() => onRerecordDiscard?.()}
+            onRemedy={onRemedy}
+          />
+        ) : view.step_edit != null ? (
+          <StepEditBar
+            stepEdit={view.step_edit}
+            capabilities={capabilities}
+            targetLabel={targetLabelOf(
+              view.step_edit.target_step_id,
+              view.steps.map((s) => s.id),
+            )}
+            onCommit={() => onStepEditCommit?.()}
+            onDiscard={() => onStepEditDiscard?.()}
             onRemedy={onRemedy}
           />
         ) : null
@@ -2500,6 +2528,10 @@ export function SessionScreen({
           case "rerecord_changed":
             void resync();
             break;
+          /* 026 — 수정 상태가 바뀌었다. 016 과 같은 처리이며 **이름만 다르다** */
+          case "step_edit_changed":
+            void resync();
+            break;
           case "rerecord_realign_failed":
             /*
               **두 사실을 한 자리에서 말한다** (불변식 11 · FR-031c).
@@ -2511,6 +2543,29 @@ export function SessionScreen({
               localError(
                 event.definition_reverted
                   ? `새로 만든 Step 을 되돌렸습니다. 다만 화면을 원래 위치로 되돌리지 못했습니다 (${event.reason}).`
+                  : event.reason,
+                event.definition_reverted
+                  ? "화면과 목록이 어긋나 있으므로 세션을 닫는 것을 권합니다."
+                  : "목록을 확인한 뒤 저장 여부를 정하세요.",
+              ),
+            );
+            void resync();
+            break;
+          /*
+            026 FR-028 — **같은 형태의 실패, 다른 이벤트.**
+
+            정의는 이미 되돌아갔고 화면은 그것과 어긋나 있다. 말이 016 과 같아야 하는
+            것은 사실이 같기 때문이고, 이벤트가 갈려 있어야 하는 것은 화면이 둘을
+            구분해야 하기 때문이다 (data-model §5).
+
+            016 과 다른 한 가지는 **되돌아간 것이 무엇인가**이다 — 그쪽은 「새로 만든
+            Step」이고 이쪽은 「고친 Step 과 새로 만든 Step」이다.
+          */
+          case "step_edit_realign_failed":
+            setAiError(
+              localError(
+                event.definition_reverted
+                  ? `고친 Step 을 원래대로 되돌렸습니다. 다만 화면을 원래 위치로 되돌리지 못했습니다 (${event.reason}).`
                   : event.reason,
                 event.definition_reverted
                   ? "화면과 목록이 어긋나 있으므로 세션을 닫는 것을 권합니다."
@@ -3377,6 +3432,8 @@ export function SessionScreen({
         }}
         onRerecordCommit={() => void act(() => sessions.rerecordCommit(sessionId))}
         onRerecordDiscard={() => void act(() => sessions.rerecordDiscard(sessionId))}
+        onStepEditCommit={() => void act(() => sessions.stepEditCommit(sessionId))}
+        onStepEditDiscard={() => void act(() => sessions.stepEditDiscard(sessionId))}
         onApplyReorder={(order) => void edit(() => sessions.reorderSteps(sessionId, order))}
         onRunFromHere={(stepIndex) => void act(() => sessions.runFrom(sessionId, stepIndex))}
         onRerunAll={() => rerun()}

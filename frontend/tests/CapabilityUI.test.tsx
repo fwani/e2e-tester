@@ -38,7 +38,11 @@ import { AT_BOTTOM, AT_TOP } from "../src/components/workbench/StepRowOps";
 import {
   DISABLED_REASON,
   NO_DELETE_SELECTION,
+  NO_RERECORD_SELECTION,
   NO_STEPS_AFTER,
+  NO_STEP_EDIT_TARGET,
+  ONE_STEP_ONLY_TITLE,
+  RANGE_NOT_CONTIGUOUS,
   RUN_NEEDS_SAVE,
   SAVE_NEEDS_NAME,
   SENSITIVE_NO_VALUE,
@@ -90,6 +94,17 @@ const ALLOWED_REASONS: Set<string> = new Set<string>([
   */
   NO_DELETE_SELECTION,
   NO_STEPS_AFTER,
+  /*
+    026 — 두 AI 입구가 화면에서 좁히는 사실들 (FR-032 · UC-026).
+
+    **넷이 서로 다르다.** 선택 조건이 다르기 때문이다 — 재녹화는 연속 구간이면 되고
+    수정은 하나여야 한다. 위의 둘과 같은 성격이고, 전부 `keep` 이며 체크 한 번으로
+    해소된다.
+  */
+  NO_RERECORD_SELECTION,
+  RANGE_NOT_CONTIGUOUS,
+  NO_STEP_EDIT_TARGET,
+  ONE_STEP_ONLY_TITLE,
 ]);
 
 /**

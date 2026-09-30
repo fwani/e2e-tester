@@ -128,6 +128,8 @@ export interface WorkbenchProps {
   deleteTargets?: Parameters<typeof StepList>[0]["deleteTargets"];
   /** 016 — 교체 대상인 Step id 들 (FR-024). `StepList` 로 그대로 내려간다 */
   rerecordTargets?: Parameters<typeof StepList>[0]["rerecordTargets"];
+  /** 026 FR-033 — 지금 고치는 중인 Step (하나). **통과만 한다** */
+  stepEditTarget?: Parameters<typeof StepList>[0]["stepEditTarget"];
   /** Step 패널 바닥의 조작 블록. **일곱 국면에서 같은 자리다** (FR-235) */
   stepFooter?: ReactNode;
   /**
@@ -207,6 +209,7 @@ export function Workbench({
   stepEmptyNotice,
   deleteTargets,
   rerecordTargets,
+  stepEditTarget,
   stepFooter,
   stepDetailExtra,
   stepDetailOwnFields = true,
@@ -397,6 +400,7 @@ export function Workbench({
           emptyNotice={stepEmptyNotice}
           deleteTargets={deleteTargets}
           rerecordTargets={rerecordTargets}
+          stepEditTarget={stepEditTarget}
           footer={stepFooter}
           footerMax={STEP_FOOTER_MAX_CLASS[model.phase]}
         />

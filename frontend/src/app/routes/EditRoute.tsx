@@ -25,6 +25,8 @@ export function EditRoute() {
         actions.openBrowserAt(id, stepIndex, stepId, instruction ?? null)
       }
       onRerecordRange={(id, stepIds) => actions.openRerecord(id, stepIds)}
+      /* 026 — 「AI 에게 고쳐 달라기」. 재녹화와 **다른 조작**이다 (결과가 정반대다). */
+      onStepEdit={(id, stepId) => actions.openStepEdit(id, stepId)}
       onOpenSession={(sessionId) => actions.openSession(sessionId)}
       /* 007 FR-239 — 편집 ↔ 결과 왕복에서도 보던 Step 을 잃지 않는다. */
       onShowResult={(id, stepId) => void navigate(paths.result(id, stepId ?? null))}

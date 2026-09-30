@@ -135,6 +135,17 @@ const REASON_VISIBILITY: Record<DisabledReasonKey, Visibility> = {
   C16: "hide",
   C17: "hide",
   ALREADY_IN_SESSION: "hide",
+  /* ─── 026 Step 수정 ─── */
+  /** `C16`·`C17` 과 같은 판단이다 — 진행 중인 수정이 없으면 찾을 일이 없는 조작이다 */
+  C18: "hide",
+  C19: "hide",
+  /**
+   * **남긴다.** 사용자가 지금 곧바로 해소할 수 있다 — 체크를 하나만 남기면 된다.
+   *
+   * 감추면 「왜 「AI 로 다시 만들기」만 켜지고 「고쳐 달라기」는 사라졌는가」를 알 수
+   * 없고, 그것이 두 조작을 나란히 둔 뜻을 없앤다 (026 FR-032).
+   */
+  ONE_STEP_ONLY: "keep",
   /**
    * 이 둘은 **남긴다.** 사용자가 지금 곧바로 해소할 수 있고, 감추면 기능의 존재를
    * 알 방법이 없다 (FR-234).
@@ -309,7 +320,9 @@ export type ConditionKey =
   | "C14"
   | "C15"
   | "C16"
-  | "C17";
+  | "C17"
+  | "C18"
+  | "C19";
 
 /**
  * 조건을 평가하는 데 필요한 사실. **화면이 아는 것만** 담는다.
@@ -358,6 +371,15 @@ export interface CapabilityFacts {
   canCommitRerecord?: boolean;
   /** C17 — 진행 중인 교체가 있다 (016). `SessionView.rerecord !== null` */
   hasRerecord?: boolean;
+  /**
+   * C18 — Step 수정을 확정할 수 있다 (026).
+   *
+   * **서버가 판정한 값을 그대로 쓴다** (`SessionView.step_edit.can_commit`) — C16 과
+   * 같은 이유다. 값의 뜻은 016 과 다르다: 만든 것이 없어도 참이다 (research R5).
+   */
+  canCommitStepEdit?: boolean;
+  /** C19 — 진행 중인 Step 수정이 있다 (026). `SessionView.step_edit !== null` */
+  hasStepEdit?: boolean;
 
   /* ─── 전 국면 덮어쓰기 O1~O4 (§3-6) ─── */
   /** O1 — 실행 요청이 진행 중이다 */
@@ -421,6 +443,8 @@ const CONDITION_FACT: Record<ConditionKey, keyof CapabilityFacts> = {
   C15: "aiModeChosen",
   C16: "canCommitRerecord",
   C17: "hasRerecord",
+  C18: "canCommitStepEdit",
+  C19: "hasStepEdit",
 };
 
 /** 조건이 거짓일 때의 해소 방법. 표의 셀이 지정하지 않으면 이것을 쓴다. */
@@ -732,6 +756,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.chat": na("N2"),
     "ai.rerecordCommit": na("N2"),
     "ai.rerecordDiscard": na("N2"),
+    /* 026 — 만들기 국면에는 고칠 Step 도 세션도 없다 */
+    "ai.stepEdit": na("N2"),
+    "ai.stepEditCommit": na("N2"),
+    "ai.stepEditDiscard": na("N2"),
     "run.all": na("N2"),
     "run.from": na("N2"),
     "run.fromHere": na("N2"),
@@ -805,6 +833,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.chat": off("NEEDS_PAUSE", "run.pause"),
     "ai.rerecordCommit": na("N2"),
     "ai.rerecordDiscard": na("N2"),
+    /* 026 — 녹화 중에는 수정을 시작할 수 없다 (016 과 같은 근거) */
+    "ai.stepEdit": na("N1"),
+    "ai.stepEditCommit": na("N2"),
+    "ai.stepEditDiscard": na("N2"),
     "run.all": na("N2"),
     "run.from": na("N2"),
     "run.fromHere": na("N2"),
@@ -866,6 +898,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.chat": off("AI_RUNNING", "run.pause"),
     "ai.rerecordCommit": off("AI_RUNNING", "run.pause"),
     "ai.rerecordDiscard": off("AI_RUNNING", "run.pause"),
+    /* 026 — AI 가 도는 중이다. 016 과 같은 값을 받는다 — 멈춘 뒤에 결말을 고른다 */
+    "ai.stepEdit": off("AI_RUNNING", "run.stop"),
+    "ai.stepEditCommit": off("AI_RUNNING", "run.pause"),
+    "ai.stepEditDiscard": off("AI_RUNNING", "run.pause"),
     "run.all": na("N2"),
     "run.from": na("N2"),
     "run.fromHere": na("N2"),
@@ -926,6 +962,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.chat": off("USE_BLOCKED_ANSWER", "ai.chooseBlocked"),
     "ai.rerecordCommit": off("NEEDS_PAUSE", "run.resume"),
     "ai.rerecordDiscard": off("NEEDS_PAUSE", "run.resume"),
+    /* 026 — 사람이 이어받은 동안이다. 016 과 같은 값을 받는다 */
+    "ai.stepEdit": off("AI_RUNNING", "run.stop"),
+    "ai.stepEditCommit": off("NEEDS_PAUSE", "run.resume"),
+    "ai.stepEditDiscard": off("NEEDS_PAUSE", "run.resume"),
     "run.all": na("N2"),
     "run.from": na("N2"),
     "run.fromHere": na("N2"),
@@ -988,6 +1028,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.chat": off("RUNNING_NO_EDIT", "run.pause"),
     "ai.rerecordCommit": off("RUNNING_NO_EDIT", "run.pause"),
     "ai.rerecordDiscard": off("RUNNING_NO_EDIT", "run.pause"),
+    /* 026 — 실행 중에는 정의를 건드리지 않는다 (016 과 같은 값) */
+    "ai.stepEdit": off("RUNNING_NO_EDIT", "run.pause"),
+    "ai.stepEditCommit": off("RUNNING_NO_EDIT", "run.pause"),
+    "ai.stepEditDiscard": off("RUNNING_NO_EDIT", "run.pause"),
     /*
       T037 대조 — 끝난 실행에서는 **재실행이 실제로 열린다.** `SessionScreen` 의
       `rerun()` 이 세션을 폐기하고 새 세션을 연다. 표가 `○` 로 못박고 있던 것은
@@ -1059,6 +1103,12 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.chat": ON,
     "ai.rerecordCommit": cond("C16"),
     "ai.rerecordDiscard": cond("C17"),
+    /* 026 — **`paused` 가 Step 수정의 집이기도 하다.** 확정·버리기·대화가 여기서
+       일어난다. 시작은 세션을 **만드는** 조작이므로 016 과 같은 이유로 잠긴다 —
+       이미 세션 안이고, 그 안에서는 대화로 진행한다. */
+    "ai.stepEdit": off("ALREADY_IN_SESSION"),
+    "ai.stepEditCommit": cond("C18"),
+    "ai.stepEditDiscard": cond("C19"),
     "run.all": cond("C1"),
     "run.from": cond("C1"),
     "run.fromHere": cond("C2"),
@@ -1161,6 +1211,12 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     */
     "ai.rerecordCommit": cond("C16"),
     "ai.rerecordDiscard": cond("C17"),
+    /* 026 — **확정은 여기서도 된다** (FR-023). 정의만 고치는 편집이므로 브라우저를
+       요구하지 않는다 — 016 FR-026a 가 막다른 길을 없앤 것과 같은 판단이다.
+       버리기도 받는다. 되맞춤은 `paused` 일 때만 돌고, 여기서는 정의만 되돌아간다. */
+    "ai.stepEdit": off("NEEDS_BROWSER", "run.all"),
+    "ai.stepEditCommit": cond("C18"),
+    "ai.stepEditDiscard": cond("C19"),
     /** 저장된 테스트가 있으면 다시 걸 수 있다. 세션은 이미 끝났으므로 C1 은 참이다 */
     "run.all": cond("C1"),
     "run.from": cond("C1"),
@@ -1243,6 +1299,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.chat": off("RUN_FINISHED_NO_EDIT", "save"),
     "ai.rerecordCommit": na("N2"),
     "ai.rerecordDiscard": na("N2"),
+    /* 026 — 실행이 끝난 화면이다. 016 과 같은 값 */
+    "ai.stepEdit": off("RUN_FINISHED_NO_EDIT", "save"),
+    "ai.stepEditCommit": na("N2"),
+    "ai.stepEditDiscard": na("N2"),
     /** 이 국면의 주 조작. 세션이 끝났으므로 새 실행이 열린다 */
     "run.all": ON,
     "run.from": ON,
@@ -1334,6 +1394,10 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.chat": off("RESULT_NO_EDIT", "nav.editStep"),
     "ai.rerecordCommit": na("N2"),
     "ai.rerecordDiscard": na("N2"),
+    /* 026 — 결과 화면이다. 016 과 같은 값 */
+    "ai.stepEdit": off("RESULT_NO_EDIT", "nav.editStep"),
+    "ai.stepEditCommit": na("N2"),
+    "ai.stepEditDiscard": na("N2"),
     "run.all": ON,
     "run.from": ON,
     "run.fromHere": na("N3"),
@@ -1403,6 +1467,17 @@ const PHASE_TABLE: Record<Phase, PhaseRow> = {
     "ai.chat": off("NEEDS_SESSION", "browser.openAt"),
     "ai.rerecordCommit": na("N3"),
     "ai.rerecordDiscard": na("N3"),
+    /* 026 — **두 입구가 나란히 서는 자리다** (FR-031·FR-032).
+
+       `ai.stepEdit` 이 `ai.rerecord` 와 **같은 `cond("C7")`** 인 것이 요점이다:
+       둘 다 세션을 여는 조작이므로 다른 세션이 그 테스트를 잡고 있으면 서버가
+       거절한다. 선택 개수 조건은 표가 아니라 화면이 좁힌다 (`EditView`) — 표는
+       국면을, 화면은 자기가 아는 사실을 본다 (011 이 `STEP_SCOPED` 로 세운 규칙).
+
+       확정·버리기는 세션 안의 조작이므로 여기서는 해당 없음이다. */
+    "ai.stepEdit": cond("C7"),
+    "ai.stepEditCommit": na("N3"),
+    "ai.stepEditDiscard": na("N3"),
     "run.all": ON,
     "run.from": ON,
     "run.fromHere": na("N3"),

@@ -78,14 +78,14 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 - [X] T018 [US1] `backend/src/itb/api/routes/sessions.py` 의 `summary_source` 에 「고쳐 달라고 요구받은 Step」 표시를 넘긴다 (FR-011 · contracts/agent-tools §3) — 016 의 `range_ids` 와 **같은 통로**를 쓴다. 새 통로를 만들지 않는다
 - [X] T019 [US1] 같은 파일에 `StepEditView` 와 `_step_edit_view()` 를 더하고 `SessionView` 에 싣는다 (contracts/api-contract §4)
 - [X] T020 [US1] `step_edit_changed` 이벤트를 발행한다 — 편집이 반영될 때(`_apply_ai_edit` 이후)와 트랜잭션이 끝날 때. **`rerecord_changed` 를 재사용하지 않는다** (data-model §5)
-- [ ] T021 [P] [US1] `frontend/src/api/client.ts` 에 `step_edit` 모드 세션 시작과 `StepEditView` 타입을 더한다
-- [ ] T022 [P] [US1] `frontend/src/api/ws.ts` 에 `step_edit_changed` 이벤트 타입을 더한다
-- [ ] T023 [US1] `frontend/src/lib/actions.ts` 에 `ai.stepEdit` 을 등록한다 (contracts/ui-contract §1)
-- [ ] T024 [US1] `frontend/src/lib/capabilities.ts` 의 **모든 국면**에 `ai.stepEdit` 셀을 채운다. 빈칸을 허용하지 않는 것이 011 이 이 표를 만든 이유다. 다른 세션이 그 테스트를 잡고 있는 국면에서는 그 세션으로 가는 길을 가리킨다 (FR-004 · `ai.rerecord` 의 `off("ALREADY_IN_SESSION")` 과 같은 모양)
-- [ ] T025 [US1] `frontend/src/pages/EditView.tsx` 에 시작 입구를 붙인다 — 고른 것이 **정확히 하나**인지 화면이 먼저 보고, 아니면 시작하지 않고 이유를 말한다 (FR-003 · 016 FR-016 이 세운 규칙). 미저장 편집은 기존 `afterSaving`/`openBrowser` 의 「저장하고 열기」를 그대로 지난다 — **새 확인 대화를 만들지 않는다** (FR-009 · 006 FR-203 · 011)
-- [ ] T026 [US1] `frontend/src/pages/SessionScreen.tsx` 가 `step_edit` 상태를 소유하고 `step_edit_changed` 를 소비한다. **소비하는 코드가 없으면 타입만 있고 아무 일도 일어나지 않는다**. 지시는 기존 `ChatPanel` 로 보낸다 — **새 입력 자리를 만들지 않는다** (FR-010)
-- [ ] T027 [US1] `SessionWorkbench` → `Workbench` 로 `step_edit` 을 통과시킨다 (contracts/ui-contract §6). **가운데 둘은 통과만 하므로 빠뜨려도 타입 검사가 통과한다** — `grep -rn` 으로 쓰이는 곳이 둘 이상인지 확인한다
-- [ ] T028 [US1] 수정 대상 Step 을 목록에서 구분해 그린다 (FR-033). 새 CSS 클래스는 `frontend/src/theme/workspace.css` 정본에 선언한다
+- [X] T021 [P] [US1] `frontend/src/api/client.ts` 에 `step_edit` 모드 세션 시작과 `StepEditView` 타입을 더한다
+- [X] T022 [P] [US1] `frontend/src/api/ws.ts` 에 `step_edit_changed` 이벤트 타입을 더한다
+- [X] T023 [US1] `frontend/src/lib/actions.ts` 에 `ai.stepEdit` 을 등록한다 (contracts/ui-contract §1)
+- [X] T024 [US1] `frontend/src/lib/capabilities.ts` 의 **모든 국면**에 `ai.stepEdit` 셀을 채운다. 빈칸을 허용하지 않는 것이 011 이 이 표를 만든 이유다. 다른 세션이 그 테스트를 잡고 있는 국면에서는 그 세션으로 가는 길을 가리킨다 (FR-004 · `ai.rerecord` 의 `off("ALREADY_IN_SESSION")` 과 같은 모양)
+- [X] T025 [US1] `frontend/src/pages/EditView.tsx` 에 시작 입구를 붙인다 — 고른 것이 **정확히 하나**인지 화면이 먼저 보고, 아니면 시작하지 않고 이유를 말한다 (FR-003 · 016 FR-016 이 세운 규칙). 미저장 편집은 기존 `afterSaving`/`openBrowser` 의 「저장하고 열기」를 그대로 지난다 — **새 확인 대화를 만들지 않는다** (FR-009 · 006 FR-203 · 011)
+- [X] T026 [US1] `frontend/src/pages/SessionScreen.tsx` 가 `step_edit` 상태를 소유하고 `step_edit_changed` 를 소비한다. **소비하는 코드가 없으면 타입만 있고 아무 일도 일어나지 않는다**. 지시는 기존 `ChatPanel` 로 보낸다 — **새 입력 자리를 만들지 않는다** (FR-010)
+- [X] T027 [US1] `SessionWorkbench` → `Workbench` 로 `step_edit` 을 통과시킨다 (contracts/ui-contract §6). **가운데 둘은 통과만 하므로 빠뜨려도 타입 검사가 통과한다** — `grep -rn` 으로 쓰이는 곳이 둘 이상인지 확인한다
+- [X] T028 [US1] 수정 대상 Step 을 목록에서 구분해 그린다 (FR-033). 새 CSS 클래스는 `frontend/src/theme/workspace.css` 정본에 선언한다
 
 **Checkpoint**: Step 하나를 골라 AI 에게 고쳐 달라고 할 수 있다. 되돌릴 수는 아직 없다.
 
@@ -112,12 +112,12 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 - [X] T035 [US2] 버리기 뒤 `_return_to_start()` → `_realign_to_arrival()` 로 화면을 되맞춘다 (FR-025). **016 의 함수를 그대로 부른다** — 새로 만들지 않는다
 - [X] T036 [US2] 되맞춤 실패 시 `step_edit_realign_failed` 를 낸다 — `definition_reverted: true` 와 사유를 함께 싣는다 (FR-028 · contracts/api-contract §3)
 - [X] T037 [US2] `_require_open_step_edit()` 헬퍼를 더한다 — 016 의 `_require_open_rerecord()` 와 같은 모양
-- [ ] T038 [P] [US2] `frontend/src/api/client.ts` 에 확정·버리기 호출을 더한다
-- [ ] T039 [P] [US2] `frontend/src/api/ws.ts` 에 `step_edit_realign_failed` 를 더한다
-- [ ] T040 [US2] `frontend/src/lib/actions.ts`·`capabilities.ts` 에 `ai.stepEditCommit`·`ai.stepEditDiscard` 를 등록하고 모든 국면의 셀을 채운다
-- [ ] T041 [US2] 확정·버리기 자리를 화면에 붙인다 — 016 의 재녹화 확정·버리기와 같은 모양으로, 같은 자리에 (contracts/ui-contract §3)
-- [ ] T042 [US2] 되맞춤 실패를 화면이 **두 사실로** 알린다 — 정의는 되돌아갔고 화면은 어긋나 있다
-- [ ] T043 [US2] 대상 Step 의 **바뀐 자리**를 화면이 보여준다 (FR-034) — 시작 시점 모습을 화면이 들고 있다가 비교한다. 서버가 차이를 계산해 주지 않는다 (data-model §5)
+- [X] T038 [P] [US2] `frontend/src/api/client.ts` 에 확정·버리기 호출을 더한다
+- [X] T039 [P] [US2] `frontend/src/api/ws.ts` 에 `step_edit_realign_failed` 를 더한다
+- [X] T040 [US2] `frontend/src/lib/actions.ts`·`capabilities.ts` 에 `ai.stepEditCommit`·`ai.stepEditDiscard` 를 등록하고 모든 국면의 셀을 채운다
+- [X] T041 [US2] 확정·버리기 자리를 화면에 붙인다 — 016 의 재녹화 확정·버리기와 같은 모양으로, 같은 자리에 (contracts/ui-contract §3)
+- [X] T042 [US2] 되맞춤 실패를 화면이 **두 사실로** 알린다 — 정의는 되돌아갔고 화면은 어긋나 있다
+- [X] T043 [US2] 대상 Step 의 **바뀐 자리**를 화면이 보여준다 (FR-034) — 시작 시점 모습을 화면이 들고 있다가 비교한다. 서버가 차이를 계산해 주지 않는다 (data-model §5)
 
 **Checkpoint**: 되돌릴 수 있다. 이 기능이 실제로 쓸 만해지는 지점이다.
 
@@ -156,15 +156,15 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 
 ### Tests for User Story 4
 
-- [ ] T051 [P] [US4] `frontend/tests/` 에 두 조작의 **잠금 사유가 서로 다른지** 검사한다 (FR-032 · contracts/ui-contract §2) — 같은 문장이면 실패
-- [ ] T052 [P] [US4] 고른 개수별 조작 상태를 검사한다 — 0개 / 1개 / 2개 연속 / 2개 불연속 네 경우에 대해 두 조작의 활성·잠금이 표대로인지
-- [ ] T053 [P] [US4] 기존 편집 흐름이 달라지지 않았는지 검사한다 (FR-035) — 기존 화면 검사가 그대로 통과해야 한다
+- [X] T051 [P] [US4] `frontend/tests/` 에 두 조작의 **잠금 사유가 서로 다른지** 검사한다 (FR-032 · contracts/ui-contract §2) — 같은 문장이면 실패
+- [X] T052 [P] [US4] 고른 개수별 조작 상태를 검사한다 — 0개 / 1개 / 2개 연속 / 2개 불연속 네 경우에 대해 두 조작의 활성·잠금이 표대로인지
+- [X] T053 [P] [US4] 기존 편집 흐름이 달라지지 않았는지 검사한다 (FR-035) — 기존 화면 검사가 그대로 통과해야 한다
 
 ### Implementation for User Story 4
 
-- [ ] T054 [US4] 두 조작의 라벨과 한 줄 설명을 정한다 (contracts/ui-contract §2) — 「고른 Step 을 **버리고** 새로 만든다」 / 「고른 Step 을 **남긴 채** 고친다」
-- [ ] T055 [US4] `frontend/src/lib/capabilities.ts` 의 잠금 사유를 조작별로 다르게 쓴다 — `ai.stepEdit` 의 「둘 이상」 사유를 새로 더한다
-- [ ] T056 [US4] `frontend/src/pages/EditView.tsx` 에서 두 조작을 **나란히** 놓고 설명을 함께 보인다
+- [X] T054 [US4] 두 조작의 라벨과 한 줄 설명을 정한다 (contracts/ui-contract §2) — 「고른 Step 을 **버리고** 새로 만든다」 / 「고른 Step 을 **남긴 채** 고친다」
+- [X] T055 [US4] `frontend/src/lib/capabilities.ts` 의 잠금 사유를 조작별로 다르게 쓴다 — `ai.stepEdit` 의 「둘 이상」 사유를 새로 더한다
+- [X] T056 [US4] `frontend/src/pages/EditView.tsx` 에서 두 조작을 **나란히** 놓고 설명을 함께 보인다
 - [ ] T057 [US4] 편집 국면의 `ai.chat` 해소 조작을 검토한다 — `ai.rerecord` 를 계속 가리킨다 (contracts/ui-contract §4). 바꾸지 않기로 한 결정도 주석으로 남긴다
 
 **Checkpoint**: 네 User Story 가 전부 동작한다.

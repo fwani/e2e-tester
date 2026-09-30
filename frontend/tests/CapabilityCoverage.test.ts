@@ -47,6 +47,7 @@ describe("조작 목록 (T008)", () => {
    * 010 이 `mirror.control`·`mirror.useWindow` 를 더해 38개가 됐다 (FR-316 · 계약 §1).
    * 011 이 복수 삭제 넷을 더해 42개가 됐다 (FR-380~FR-385 · 011 계약 §1).
    * 016 이 AI 조작 넷을 더해 46개가 됐다 (016 계약 §1-1).
+   * 026 이 Step 수정 셋을 더해 49개가 됐다 (026 계약 §1).
    *
    * **미러 조작을 표에 넣는 것이 010 의 설계 결정이다** (research R9). 표 밖에 두면
    * 「각 국면 열이 그 국면 화면의 전부」라는 이 표의 성질이 깨진다. 011 의 복수 삭제도
@@ -57,8 +58,8 @@ describe("조작 목록 (T008)", () => {
    * 바꾸지 않는다 — 같은 체크를 구간 재녹화가 **대상 구간 지정**에도 쓰게 되면서
    * 이름이 뜻을 따라간 것이다 (009 의 `step.reorder → step.moveUp` 과 같은 종류).
    */
-  it("46개다 — 016 계약 §1-1 의 합계와 같아야 한다", () => {
-    expect(ACTION_IDS).toHaveLength(46);
+  it("49개다 — 026 계약 §1 의 합계와 같아야 한다", () => {
+    expect(ACTION_IDS).toHaveLength(49);
   });
 
   it("016 이 더한 넷이 목록에 있다", () => {
@@ -85,13 +86,13 @@ describe("조작 목록 (T008)", () => {
 });
 
 describe("권한표 커버리지 (T012)", () => {
-  it("열 국면 × 46 조작 전부에 답이 있다", () => {
+  it("열 국면 × 49 조작 전부에 답이 있다", () => {
     for (const phase of PHASES) {
       const map = capabilitiesFor(phase);
       for (const action of ACTION_IDS) {
         expect(map[action], `${phase} × ${action} 이 비어 있다`).toBeDefined();
       }
-      expect(Object.keys(map)).toHaveLength(46);
+      expect(Object.keys(map)).toHaveLength(49);
     }
   });
 

@@ -139,7 +139,7 @@ export const TEST_ACTIONS = [
   "edits.revert",
 ] as const;
 
-/** AI (7) — 016 에서 3 → 7 (contracts/ui-contract.md §1-1) */
+/** AI (10) — 016 에서 3 → 7, 026 에서 7 → 10 (contracts/ui-contract.md §1) */
 export const AI_ACTIONS = [
   "ai.compose",
   "ai.start",
@@ -174,6 +174,36 @@ export const AI_ACTIONS = [
    * 일을 하면 사용자는 누를 때마다 차이를 확인하느라 멈춘다.
    */
   "ai.rerecordDiscard",
+  /**
+   * 「AI 에게 고쳐 달라기」 — 고른 Step **하나**를 AI 가 고치는 세션을 시작한다
+   * (026 FR-001·FR-005).
+   *
+   * **`ai.rerecord` 와 결과가 정반대다.** 재녹화는 고른 Step 을 버리고 새로 만들고,
+   * 이것은 남긴 채 고친다. 그래서 한 조작에 담지 않았다 — 선택 개수에 따라 파괴적
+   * 결과가 갈리는 입구는 누르기 전에 결과를 예측할 수 없다 (026 spec 결정 3).
+   *
+   * 011 FR-235(한 조작에 한 자리)와 충돌하지 않는다. 그 규칙이 금지하는 것은 **같은
+   * 일**을 하는 자리가 둘인 것이다. 충돌하는 것은 규칙이 아니라 **닮은 겉모습**이고,
+   * 그래서 두 조작의 문구와 잠금 사유가 서로 달라야 한다 (FR-031·FR-032).
+   *
+   * **누르면 브라우저가 열린다.** `ai.rerecord` 와 같은 이유로 미리 말한다.
+   *
+   * 대상 지정은 `step.toggleSelection` 을 재사용한다 — 새 조작을 만들지 않는다.
+   */
+  "ai.stepEdit",
+  /**
+   * 확정 — 수정을 끝낸다 (026 FR-021·FR-023).
+   *
+   * **아무 Step 도 지우지 않는다.** `ai.rerecordCommit` 과 겉모습은 같고 하는 일이
+   * 다르다 — 그쪽은 옛 구간을 지운다.
+   */
+  "ai.stepEditCommit",
+  /**
+   * 버리기 — 대상을 원본으로 되돌리고 도착점으로 되맞춘다 (026 FR-022·FR-025).
+   *
+   * **세션을 끝내지 않는다** (FR-026). 016 과 같은 규칙이다.
+   */
+  "ai.stepEditDiscard",
 ] as const;
 
 /**

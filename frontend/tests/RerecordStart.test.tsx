@@ -11,7 +11,7 @@ import { revealTool } from "./helpers/toolPanel";
  * 3. **저장하지 않은 편집은 기존 규칙을 받는다** — 006 FR-203 「먼저 저장한 뒤 연다」
  *    이고 011 이 「새 확인을 만들지 않는다」를 명시했다 (FR-022)
  */
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -152,13 +152,27 @@ describe("불연속은 시작하지 않는다 (FR-016)", () => {
 
     await check("st-1");
     await check("st-3");
-    await revealTool(rerecordButton() as HTMLButtonElement);
-    await userEvent.click(rerecordButton() as HTMLButtonElement);
 
+    /*
+      **026 에서 이유를 말하는 시점이 빨라졌다.**
+
+      전에는 눌러야 오류가 떴다. 026 이 두 AI 입구의 잠금 사유를 갈라 붙이면서
+      (FR-032) 이 조건도 표를 좁히는 자리로 옮겼고, 이제 **누르기 전에** 잠긴 채로
+      이유를 말한다 — 011 이 「눌러도 아무 일이 없는 조작을 만들지 않는다」로 세운
+      방향이며 FR-016 이 원한 것(시작하지 않고 이유를 말한다)의 더 이른 형태다.
+    */
+    const button = rerecordButton();
+    expect(button?.disabled, "불연속이면 잠겨야 한다").toBe(true);
+
+    const reason = document.querySelector('[data-disabled-reason="ai.rerecord"]');
+    expect(reason?.textContent).toContain("이어진 Step 을 고르세요");
+
+    // 잠겼으므로 눌러도 시작되지 않는다.
+    if (button !== null && !button.disabled) {
+      await revealTool(button);
+      await userEvent.click(button);
+    }
     expect(onRerecordRange).not.toHaveBeenCalled();
-    await waitFor(() => expect(screen.getByText(/이어져 있지 않습니다/)).toBeTruthy());
-    // 무엇을 하면 되는지도 말한다.
-    expect(screen.getByText(/이어진 Step 을 고르세요/)).toBeTruthy();
   });
 
   it("아무것도 고르지 않으면 아무 일도 일어나지 않는다", async () => {

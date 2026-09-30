@@ -12,7 +12,7 @@
 import type { Step } from "../types/generated/step";
 import type { ErrorBody } from "../types/generated/error-response";
 import type { RunScope } from "../types/generated/run-result";
-import type { RerecordView, RunPacing, SessionState } from "./client";
+import type { RerecordView, RunPacing, SessionState, StepEditView } from "./client";
 
 export interface SessionEventBase {
   type: string;
@@ -246,6 +246,15 @@ export type SessionEvent =
        * 사유만 보내면 화면은 「되돌아갔는가」를 다른 이벤트에서 추론해야 하고,
        * 추론이 틀리면 사용자에게 거짓을 말한다.
        */
+      definition_reverted: boolean;
+    })
+  /* ─── 026 Step 수정 (contracts/api-contract.md §3·§4) ─── */
+  | (SessionEventBase & { type: "step_edit_changed"; step_edit: StepEditView | null })
+  | (SessionEventBase & {
+      type: "step_edit_realign_failed";
+      failed_step_id: string | null;
+      reason: string;
+      /** 016 과 같은 뜻이다 — 두 사실을 한 자리에서 말하게 한다. */
       definition_reverted: boolean;
     })
   | (SessionEventBase & { type: "ai_error"; reason: string })

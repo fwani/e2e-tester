@@ -352,6 +352,13 @@ export interface StepListProps {
    * 화면은 대조만 한다.
    */
   rerecordTargets?: string[];
+  /**
+   * 026 FR-033 — **고치는 중인 Step** 의 id (하나).
+   *
+   * `rerecordTargets` 와 **다른 축이다.** 그쪽은 확정하면 사라지고 이쪽은 남는다 —
+   * 같은 표시를 쓰면 사용자는 확정 뒤에 무엇이 남는지 알 수 없다.
+   */
+  stepEditTarget?: string | null;
   deleteTargets?: {
     /** 지금 고른 Step id 들 */
     selected: string[];
@@ -379,6 +386,7 @@ export function StepList({
   footerMax,
   deleteTargets,
   rerecordTargets,
+  stepEditTarget,
 }: StepListProps) {
   const chosen = new Set(deleteTargets?.selected ?? []);
   /*
@@ -481,6 +489,7 @@ export function StepList({
             onSelect={() => onSelect(s.id)}
             actions={rowActions?.(s)}
             replacing={replacing.has(s.id)}
+            fixing={stepEditTarget != null && s.id === stepEditTarget}
             deleteTarget={
               deleteTargets === undefined || !isShown(deleteTargets.capability)
                 ? undefined
@@ -517,6 +526,7 @@ function StepRow({
   onSelect,
   actions,
   replacing = false,
+  fixing = false,
   deleteTarget,
 }: {
   step: WorkbenchStep;
@@ -525,6 +535,8 @@ function StepRow({
   actions?: ReactNode;
   /** 016 — 확정하면 사라질 옛 구간인가 (FR-024). 판정은 `StepList` 가 했다 */
   replacing?: boolean;
+  /** 026 — 지금 AI 가 고치는 중인가 (FR-033). **확정해도 남는다** */
+  fixing?: boolean;
   /** 칸 0 의 체크 칸 (011). 없으면 그 칸을 그리지 않는다 (UC-011-14) */
   deleteTarget?: {
     chosen: boolean;
@@ -639,6 +651,19 @@ function StepRow({
               {replacing && (
                 <Chip size="sm" data-cell="rerecord-target" tone="ai" layout="flex-[0_0_auto]">
                   교체 대상
+                </Chip>
+              )}
+
+              {/*
+                026 FR-033 — 지금 AI 가 고치는 중인 Step.
+
+                **「교체 대상」과 반대의 운명이다.** 그쪽은 확정하면 사라지고 이쪽은
+                남는다. 같은 `.chip.ai` 계열을 쓰는 이유는 둘 다 AI 가 다루는 Step 이기
+                때문이고(새 색을 만들지 않는다 — 008), 낱말이 운명을 가른다.
+              */}
+              {fixing && (
+                <Chip size="sm" data-cell="step-edit-target" tone="ai" layout="flex-[0_0_auto]">
+                  고치는 중
                 </Chip>
               )}
 

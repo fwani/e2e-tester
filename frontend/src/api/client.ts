@@ -794,6 +794,13 @@ export interface SessionView {
   rerecord?: RerecordView | null;
 
   /**
+   * 진행 중인 Step 수정 (026). 없으면 일반 세션이다.
+   *
+   * **`rerecord` 와 동시에 차지 않는다.** 둘 다 `null` 인 것이 보통 상태다.
+   */
+  step_edit?: StepEditView | null;
+
+  /**
    * AI 가 막혀 있으면 그 내용 (2026-09-11 사용자 보고).
    *
    * **이벤트만으로는 복원되지 않았다.** 사유·질문·선택지는 `ai_blocked` 이벤트로만
@@ -855,6 +862,33 @@ export interface RerecordView {
    *
    * **서버가 판정한 값을 그대로 쓴다.** 화면이 「만든 Step 이 1개 이상인가」를 스스로
    * 세면 서버와 갈리고, 갈리면 활성으로 그린 버튼이 눌린 뒤 거절된다 (005 U-01).
+   */
+  can_commit: boolean;
+}
+
+/**
+ * 진행 중인 Step 수정 (026 · contracts/api-contract.md §4).
+ *
+ * **`RerecordView` 와 따로 둔다.** 화면이 둘을 구분해야 하기 때문이다 (FR-033) — 하나로
+ * 합치면 화면이 값을 보고 어느 쪽인지 판정하게 되고, 그 판정이 곧 프론트에 생긴 두 번째
+ * 모드 구현이다.
+ *
+ * **「무엇이 바뀌었는가」가 없다.** 차이 계산은 표시 문제이며, 서버가 계산하면 「어떤
+ * 필드가 바뀐 것인가」의 정의가 서버에 생긴다. 화면이 시작 시점 모습을 들고 있다가
+ * 비교한다.
+ */
+export interface StepEditView {
+  /** 사용자가 고른 Step. AI 가 고칠 수 있는 유일한 기존 Step 이다 (FR-013). */
+  target_step_id: string;
+  /** 대상의 지금 순번. 앞에 Step 이 끼워지면 밀리므로 서버가 매번 다시 센다. */
+  target_index: number;
+  /** 이번 세션이 만든 Step. 버리기의 대상이며 AI 권한 범위의 나머지 절반이다. */
+  created_step_ids: string[];
+  /**
+   * 확정할 수 있는가.
+   *
+   * **만든 것이 없어도 참이다** — 016 과 갈리는 자리다. 이쪽은 옛 Step 을 교체하지
+   * 않으므로 「빈 것으로 바꾸는」 위험이 없다.
    */
   can_commit: boolean;
 }
@@ -966,8 +1000,13 @@ export const sessions = {
   /** 살아 있는 세션 전부. 새로고침으로 놓친 세션을 되찾는 길이다 (UX U-05). */
   list: () => get<SessionListResponse>("/api/sessions"),
   create: (body: {
-    /** `rerecord` 는 016 의 구간 재녹화 (contracts/api-contract.md §1). */
-    mode: "record" | "replay" | "ai" | "rerecord";
+    /**
+     * `rerecord` 는 016 의 구간 재녹화, `step_edit` 은 026 의 Step 수정이다.
+     *
+     * **결과가 정반대다** — 재녹화는 고른 Step 을 버리고 새로 만들고, 수정은 고른
+     * Step 을 남긴 채 고친다.
+     */
+    mode: "record" | "replay" | "ai" | "rerecord" | "step_edit";
     /**
      * 다시 만들 구간의 Step id (016 FR-015). `rerecord` 모드에서만 쓴다.
      *
@@ -975,6 +1014,13 @@ export const sessions = {
      * 옛 구간의 순번은 계속 밀린다. 받은 순서는 상관없다.
      */
     rerecord_step_ids?: string[];
+    /**
+     * 고칠 Step 하나의 id (026 FR-001). `step_edit` 모드에서만 쓴다.
+     *
+     * **배열이 아니다.** 「한 번에 한 Step」이 이 기능의 경계이고, 타입이 값 하나이면
+     * 「둘 이상」이 여기서 표현조차 되지 않는다.
+     */
+    step_edit_step_id?: string;
     test_id?: string | null;
     start_url?: string | null;
     ai_instruction?: string | null;
@@ -1212,6 +1258,23 @@ export const sessions = {
    */
   rerecordDiscard: (id: string) =>
     post<SessionView>(`/api/sessions/${id}/rerecord/discard`, {}),
+  /**
+   * 확정 — **아무 Step 도 지우지 않는다** (026 FR-021·FR-023).
+   *
+   * 016 의 확정과 정반대다. 수정은 일어나는 즉시 목록에 적용돼 있으므로, 확정이 하는
+   * 일은 「이제 되돌릴 수 없다」를 선언하는 것뿐이다.
+   */
+  stepEditCommit: (id: string) =>
+    post<SessionView>(`/api/sessions/${id}/step-edit/commit`, {}),
+
+  /**
+   * 버리기 — 대상을 원본으로 되돌리고 도착점으로 되맞춘다 (026 FR-022·FR-025).
+   *
+   * **세션을 끝내지 않는다** (FR-026). 끝내려면 `stop` 을 쓴다.
+   */
+  stepEditDiscard: (id: string) =>
+    post<SessionView>(`/api/sessions/${id}/step-edit/discard`, {}),
+
   repick: (id: string, stepId: string, body: { slot?: RepickSlot; selector?: string }) =>
     post<RepickResponse>(`/api/sessions/${id}/steps/${stepId}/repick`, {
       slot: body.slot ?? "target",

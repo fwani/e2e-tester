@@ -19,10 +19,20 @@ import { capabilitiesFor, rawCell } from "../src/lib/capabilities";
 /** 016 이 더한 넷. 이것들만 새로 생겨야 한다. */
 const ADDED = ["ai.rerecord", "ai.chat", "ai.rerecordCommit", "ai.rerecordDiscard"] as const;
 
+/**
+ * 026 이 더한 셋. **016 의 SC-009 는 여전히 참이다** — 기존 42개가 그대로다.
+ *
+ * 여기 적어 두는 이유는 이 검사가 「016 이 아무것도 없애지 않았다」를 재기 때문이다.
+ * 뒤에 온 기능이 더한 것을 빼지 않으면, 이 검사는 016 이 아니라 **그 뒤 전부**를
+ * 재게 되고 기능이 늘 때마다 숫자를 고쳐야 한다.
+ */
+const ADDED_LATER = ["ai.stepEdit", "ai.stepEditCommit", "ai.stepEditDiscard"] as const;
+
 describe("SC-009 — 기존 흐름이 달라지지 않았다", () => {
   it("**기존 조작 42개가 그대로 있다** (개칭 둘 제외)", () => {
     const now = new Set<string>(ACTION_IDS);
     for (const added of ADDED) now.delete(added);
+    for (const added of ADDED_LATER) now.delete(added);
     // 개칭은 수를 바꾸지 않는다 — 42개가 그대로여야 한다.
     expect(now.size).toBe(42);
   });

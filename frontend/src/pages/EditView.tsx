@@ -50,7 +50,11 @@ import {
   DISABLED_REASON,
   EDIT_BLOCKED_BY_RUN,
   NO_DELETE_SELECTION,
+  NO_RERECORD_SELECTION,
   NO_STEPS_AFTER,
+  NO_STEP_EDIT_TARGET,
+  ONE_STEP_ONLY_TITLE,
+  RANGE_NOT_CONTIGUOUS,
   OPEN_RUNNING_SESSION,
   PHASE_LABEL,
   SAVE_BEFORE_OPEN_BROWSER,
@@ -108,6 +112,15 @@ export interface EditViewProps {
    * 묶으면 인자로 갈래를 판정해야 하고, 그 판정이 화면과 서버 두 곳에 생긴다.
    */
   onRerecordRange?: (testId: string, stepIds: string[]) => void;
+  /**
+   * 026 — 고른 Step **하나**를 AI 가 고치는 세션을 연다 (FR-001·FR-005).
+   *
+   * `onRerecordRange` 와 갈라 둔다. **결과가 정반대이기 때문이다** — 재녹화는 고른
+   * Step 을 버리고 새로 만들고, 이것은 남긴 채 고친다. 같은 콜백으로 묶으면 고른
+   * 개수로 갈래를 판정하게 되고, 그러면 사용자가 누르기 전에 결과를 예측할 수 없는
+   * 조작이 된다 (026 spec 결정 3).
+   */
+  onStepEdit?: (testId: string, stepId: string) => void;
   /** 실행 중이라는 안내가 가리킨 세션으로 이동한다 (005 FR-126). */
   onOpenSession?: (sessionId: string) => void;
   /** 결과 국면으로 이동 (FR-239 의 왕복). */
@@ -259,6 +272,7 @@ export function EditView({
   onRun,
   onOpenBrowserAt,
   onRerecordRange,
+  onStepEdit,
   onOpenSession,
   onShowResult,
   runPending = false,
@@ -605,22 +619,38 @@ export function EditView({
    * 011 이 「새 확인을 만들지 않는다」를 명시했다. 재녹화도 세션을 여는 조작이므로
    * 같은 규칙을 받는다. 없던 규칙을 만드는 것보다 있는 규칙을 따르는 쪽이 옳다.
    */
+  /**
+   * 고른 것이 목록에서 **이어져 있는가** (016 FR-016).
+   *
+   * 026 이 함수로 뽑았다 — 시작(`startRerecord`)과 **표 좁히기**(`narrowByAiEntry`)가
+   * 같은 판정을 써야 하기 때문이다. 둘이 갈리면 활성으로 그린 버튼이 눌린 뒤 거절된다
+   * (005 U-01 의 형태).
+   */
+  const selectedPositions = () =>
+    deleteSelection
+      .map((id) => dslSteps.map((s) => s.id).indexOf(id))
+      .filter((i) => i >= 0)
+      .sort((a, b) => a - b);
+
+  const isContiguousSelection = () => {
+    const positions = selectedPositions();
+    const head = positions[0];
+    const tail = positions[positions.length - 1];
+    return (
+      head !== undefined &&
+      tail !== undefined &&
+      positions.length > 0 &&
+      tail - head === positions.length - 1
+    );
+  };
+
   function startRerecord() {
     if (onRerecordRange === undefined) return;
     if (deleteSelection.length === 0) return;
 
     const order = dslSteps.map((s) => s.id);
-    const positions = deleteSelection
-      .map((id) => order.indexOf(id))
-      .filter((i) => i >= 0)
-      .sort((a, b) => a - b);
-    const head = positions[0];
-    const tail = positions[positions.length - 1];
-    const contiguous =
-      head !== undefined &&
-      tail !== undefined &&
-      positions.length > 0 &&
-      tail - head === positions.length - 1;
+    const positions = selectedPositions();
+    const contiguous = isContiguousSelection();
 
     if (!contiguous) {
       // **시작하지 않고 이유를 말한다** (FR-016). 서버까지 갔다 오면 그 사이 브라우저가
@@ -636,6 +666,33 @@ export function EditView({
 
     const ids = positions.map((i) => order[i]).filter((id): id is string => id !== undefined);
     afterSaving(() => onRerecordRange(testId, ids));
+  }
+
+  /**
+   * 026 FR-001·FR-003 — 고른 Step **하나**를 AI 에게 고쳐 달라고 시작한다.
+   *
+   * **개수를 여기서 먼저 본다.** 서버도 거절하지만(api-contract §1), 화면이 먼저 말하면
+   * 브라우저가 떴다 사라지는 것을 보지 않아도 된다 — `startRerecord` 가 연속성에 대해
+   * 하는 것과 같은 판단이며 016 FR-016 이 세운 규칙이다.
+   *
+   * 미저장 편집은 기존 「저장하고 열기」(`afterSaving`)를 그대로 지난다. **새 확인을
+   * 만들지 않는다** (FR-009 · 006 FR-203 · 011).
+   */
+  function startStepEdit() {
+    if (onStepEdit === undefined) return;
+    if (deleteSelection.length !== 1) {
+      setError(
+        localError(
+          ONE_STEP_ONLY_TITLE,
+          "AI 에게 고쳐 달라기는 Step 하나에만 할 수 있습니다. " +
+            "여러 Step 을 한 번에 바꾸려면 「AI 로 다시 만들기」를 쓰세요.",
+        ),
+      );
+      return;
+    }
+    const stepId = deleteSelection[0];
+    if (stepId === undefined) return;
+    afterSaving(() => onStepEdit(testId, stepId));
   }
 
   function runAction(action: ActionId) {
@@ -690,6 +747,22 @@ export function EditView({
       */
       case "ai.rerecord":
         startRerecord();
+        break;
+      /*
+        026 FR-001 — **재녹화와 나란한 자리의 다른 조작이다.**
+
+        하나는 고른 Step 을 버리고 새로 만들고, 하나는 남긴 채 고친다. 결과가 정반대
+        이므로 같은 처리로 보내지 않는다.
+      */
+      case "ai.stepEdit":
+        startStepEdit();
+        break;
+      /*
+        확정·버리기는 **세션 안의 조작이다** (`na("N3")`). 편집 국면에서는 해당 없음
+        이므로 여기 닿지 않는다. 표가 그렇게 말하고 있으므로 아무 일도 하지 않는다.
+      */
+      case "ai.stepEditCommit":
+      case "ai.stepEditDiscard":
         break;
       case "ai.chat":
         // 편집 국면에서는 잠겨 있다 (`off(NEEDS_SESSION)`). 해소 조작이 위를 가리키므로
@@ -747,6 +820,44 @@ export function EditView({
     /* 011 — 「어디 뒤인지」를 알아야 뜻이 있다. `deleteSelected` 는 아래에서 따로 좁힌다 */
     "step.deleteAfter",
   ];
+
+  /**
+   * 026 FR-032 — **두 AI 입구의 잠금 사유를 가른다.**
+   *
+   * 표는 국면을 보고, 이것은 **화면이 아는 사실**(고른 개수·이어져 있는가)을 본다 —
+   * 011 이 `STEP_SCOPED` 로 세운 규칙 그대로다. 선택 조건을 표에 적을 수 없는 이유는
+   * 그것이 국면이 아니라 지금 화면의 상태이기 때문이다.
+   *
+   * **네 사유가 서로 다르다.** 같은 문장이면 사용자는 어느 쪽을 만족시켜야 하는지 알
+   * 수 없고, 그러면 두 조작을 나란히 둔 뜻이 없어진다.
+   *
+   * | 고른 상태 | `ai.rerecord` | `ai.stepEdit` |
+   * |---|---|---|
+   * | 없음 | 「다시 만들 Step 을 고르세요」 | 「고칠 Step 을 고르세요」 |
+   * | 하나 | 가능 | 가능 |
+   * | 여럿·연속 | 가능 | 「한 번에 한 Step 만」 |
+   * | 여럿·불연속 | 「이어진 Step 을 고르세요」 | 「한 번에 한 Step 만」 |
+   *
+   * **`keep` 이다** — 체크 하나로 곧바로 해소되고, 감추면 왜 한쪽만 켜졌는지 알 수 없다.
+   */
+  const narrowByAiEntry = (id: ActionId, base: CapabilityState): CapabilityState => {
+    if (base.kind !== "enabled") return base;
+    const locked = (reason: string): CapabilityState => ({
+      kind: "disabled",
+      reason,
+      remedy: null,
+      visibility: "keep",
+    });
+    if (id === "ai.rerecord") {
+      if (deleteSelection.length === 0) return locked(NO_RERECORD_SELECTION);
+      if (!isContiguousSelection()) return locked(RANGE_NOT_CONTIGUOUS);
+    }
+    if (id === "ai.stepEdit") {
+      if (deleteSelection.length === 0) return locked(NO_STEP_EDIT_TARGET);
+      if (deleteSelection.length > 1) return locked(ONE_STEP_ONLY_TITLE);
+    }
+    return base;
+  };
 
   /** 011 — 고른 것이 없거나 뒤에 아무것도 없으면 잠근다 (FR-385 · UC-011-19). */
   const narrowByDeleteSelection = (id: ActionId, base: CapabilityState): CapabilityState => {
@@ -1105,7 +1216,9 @@ export function EditView({
             capabilities={capabilities}
             onRun={runAction}
             onRemedy={runAction}
-            narrow={(id, base) => narrowByDeleteSelection(id, narrowByPick(id, base))}
+            narrow={(id, base) =>
+              narrowByAiEntry(id, narrowByDeleteSelection(id, narrowByPick(id, base)))
+            }
             /*
               이 국면에서 자리가 다른 둘 — 브라우저 열기는 대상 앱 영역(T079), 충돌
               중의 덮어쓰기는 「다시 읽기」와 짝을 이루는 보조 영역(FR-209)이 갖는다.
