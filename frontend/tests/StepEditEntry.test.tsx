@@ -66,6 +66,23 @@ async function renderEdit(overrides: Partial<Parameters<typeof EditView>[0]> = {
   );
 }
 
+/**
+ * Step 을 **지목한다** — 목록에서 이름을 누른다 (`step.select`).
+ *
+ * 체크 칸(`check`)과 **다른 일이다.** 2026-09-30 사용자 보고로 갈렸다:
+ *
+ * > 「편집 화면에서는 AI 에게 고쳐 달라기 버튼이 전혀 눌리지 않는다」
+ *
+ * 026 은 체크 칸을 대상 지정에 썼고, 그래서 Step 을 눌러 고른 사용자에게도 버튼이
+ * 잠긴 채 「고르세요」라고 말했다. 「이 Step 하나를 고쳐 달라」는 지목이다.
+ */
+async function pick(stepId: string) {
+  const row = document.querySelector(`[data-step-row="${stepId}"]`);
+  const nameButton = row?.querySelector("button") as HTMLButtonElement | null;
+  expect(nameButton, `${stepId} 의 이름 버튼이 없다`).not.toBeNull();
+  await userEvent.click(nameButton as HTMLButtonElement);
+}
+
 async function check(stepId: string) {
   const row = document.querySelector(`[data-step-row="${stepId}"]`);
   const box = row?.querySelector("input[type=checkbox]") as HTMLInputElement | null;
@@ -151,46 +168,63 @@ describe("잠금 사유가 서로 다르다 (FR-032)", () => {
     const stepEdit = reasonOf("ai.stepEdit");
 
     expect(rerecord).toContain("다시 만들 Step");
-    expect(stepEdit).toContain("고칠 Step");
+    // **「목록에서 누르세요」** — 체크 칸이 아니라 지목을 요구한다는 것이 문구에 있어야
+    // 한다. 「고르세요」만 말하면 사용자는 체크를 켜 놓고도 왜 안 풀리는지 모른다.
+    expect(stepEdit).toContain("목록에서 누르세요");
     expect(rerecord).not.toBe(stepEdit);
   });
 
-  it("둘 이상 골랐을 때 — 재녹화는 풀리고 수정은 **「한 번에 한 Step 만」**", async () => {
+  it("**체크만 해서는 고치기가 풀리지 않는다** — 둘은 다른 고르기다", async () => {
     await renderEdit({ onRerecordRange: vi.fn(), onStepEdit: vi.fn() });
 
     await check("st-2");
     await check("st-3");
 
+    // 체크는 **구간**을 정한다 — 재녹화의 것이다.
     expect(rerecordBtn()?.disabled).toBe(false);
-    expect(reasonOf("ai.stepEdit")).toContain("한 번에 한 Step");
+    // 고치기는 지목을 본다. 체크를 몇 개 켜든 지목이 없으면 잠긴 채다.
+    expect(stepEditBtn()?.disabled).toBe(true);
+    expect(reasonOf("ai.stepEdit")).toContain("목록에서 누르세요");
   });
 
-  it("불연속으로 골랐을 때 — 두 사유가 **서로 다른 이유**를 말한다", async () => {
+  it("불연속으로 체크했을 때 — 재녹화가 **이어진 Step** 을 요구한다", async () => {
     await renderEdit({ onRerecordRange: vi.fn(), onStepEdit: vi.fn() });
 
     await check("st-1");
     await check("st-3");
 
     expect(reasonOf("ai.rerecord")).toContain("이어진 Step");
-    expect(reasonOf("ai.stepEdit")).toContain("한 번에 한 Step");
   });
 });
 
 describe("고른 개수별 상태 (FR-003)", () => {
-  it("하나만 고르면 **둘 다 쓸 수 있다**", async () => {
+  it("**Step 을 누르면 고치기가 풀린다** (2026-09-30 사용자 보고)", async () => {
     await renderEdit({ onRerecordRange: vi.fn(), onStepEdit: vi.fn() });
 
-    await check("st-2");
+    expect(stepEditBtn()?.disabled, "누르기 전에는 잠겨 있다").toBe(true);
 
-    expect(rerecordBtn()?.disabled).toBe(false);
-    expect(stepEditBtn()?.disabled).toBe(false);
+    await pick("st-2");
+
+    expect(stepEditBtn()?.disabled, "Step 을 눌렀는데도 잠겨 있다").toBe(false);
   });
 
-  it("하나를 고르고 누르면 **그 id 하나로** 시작한다", async () => {
+  it("지목한 Step 으로 시작한다 — **그 id 하나로**", async () => {
     const onStepEdit = vi.fn();
     await renderEdit({ onRerecordRange: vi.fn(), onStepEdit });
 
-    await check("st-3");
+    await pick("st-3");
+    await revealTool(stepEditBtn() as HTMLButtonElement);
+    await userEvent.click(stepEditBtn() as HTMLButtonElement);
+
+    expect(onStepEdit).toHaveBeenCalledWith("TC-001", "st-3");
+  });
+
+  it("체크와 지목이 다르면 **지목한 것**으로 시작한다", async () => {
+    const onStepEdit = vi.fn();
+    await renderEdit({ onRerecordRange: vi.fn(), onStepEdit });
+
+    await check("st-1"); // 체크는 재녹화의 것
+    await pick("st-3"); // 지목이 고치기의 것
     await revealTool(stepEditBtn() as HTMLButtonElement);
     await userEvent.click(stepEditBtn() as HTMLButtonElement);
 

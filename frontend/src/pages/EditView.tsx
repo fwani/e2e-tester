@@ -53,7 +53,6 @@ import {
   NO_RERECORD_SELECTION,
   NO_STEPS_AFTER,
   NO_STEP_EDIT_TARGET,
-  ONE_STEP_ONLY_TITLE,
   RANGE_NOT_CONTIGUOUS,
   OPEN_RUNNING_SESSION,
   PHASE_LABEL,
@@ -680,19 +679,8 @@ export function EditView({
    */
   function startStepEdit() {
     if (onStepEdit === undefined) return;
-    if (deleteSelection.length !== 1) {
-      setError(
-        localError(
-          ONE_STEP_ONLY_TITLE,
-          "AI 에게 고쳐 달라기는 Step 하나에만 할 수 있습니다. " +
-            "여러 Step 을 한 번에 바꾸려면 「AI 로 다시 만들기」를 쓰세요.",
-        ),
-      );
-      return;
-    }
-    const stepId = deleteSelection[0];
-    if (stepId === undefined) return;
-    afterSaving(() => onStepEdit(testId, stepId));
+    if (current === null) return;
+    afterSaving(() => onStepEdit(testId, current.id));
   }
 
   /**
@@ -882,8 +870,27 @@ export function EditView({
       if (!isContiguousSelection()) return locked(RANGE_NOT_CONTIGUOUS);
     }
     if (id === "ai.stepEdit") {
-      if (deleteSelection.length === 0) return locked(NO_STEP_EDIT_TARGET);
-      if (deleteSelection.length > 1) return locked(ONE_STEP_ONLY_TITLE);
+      /*
+        **체크가 아니라 지목을 본다** (2026-09-30 사용자 보고).
+
+        > 「편집 화면에서는 AI 에게 고쳐 달라기 버튼이 전혀 눌리지 않는다」
+
+        026 은 체크 칸(`step.toggleSelection`)을 대상 지정에 썼다. 그것이 틀렸다 —
+        화면에는 「고르기」가 **둘**이고 뜻이 다르다.
+
+        | | 하는 법 | 무엇의 것인가 |
+        |---|---|---|
+        | 지목 | Step 행을 클릭 | 그 Step 하나를 본다 (상세가 열린다) |
+        | 선택 | 체크 칸 | **여러 개**를 다룬다 (삭제 · 구간 재녹화) |
+
+        「이 Step 하나를 고쳐 달라」는 **지목**이다. 체크 칸을 요구하면 사용자는 Step 을
+        클릭해 골라 놓고도 「고르세요」를 듣는다 — 026 의 「선택하라는데 그런 것도 없음」이
+        그것이었다.
+
+        덤으로 두 AI 조작의 구분이 선명해진다: 재녹화는 **체크로 구간**, 고치기는
+        **클릭으로 하나**.
+      */
+      if (currentIndex < 0) return locked(NO_STEP_EDIT_TARGET);
     }
     return base;
   };

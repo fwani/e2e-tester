@@ -980,8 +980,14 @@ export const NO_DELETE_SELECTION = "지울 Step 을 먼저 고르세요";
 export const NO_RERECORD_SELECTION = "다시 만들 Step 을 고르세요";
 /** 재녹화 — 고른 것이 이어져 있지 않다 (016 FR-016) */
 export const RANGE_NOT_CONTIGUOUS = "이어진 Step 을 고르세요";
-/** 수정 — 고른 것이 없다 */
-export const NO_STEP_EDIT_TARGET = "고칠 Step 을 고르세요";
+/**
+ * 수정 — 지목한 Step 이 없다.
+ *
+ * **「고르세요」가 아니라 「목록에서 누르세요」다** (2026-09-30 사용자 보고). 화면에는
+ * 고르기가 둘이고(행 클릭 · 체크 칸) 이 조작이 보는 것은 앞의 것이다. 「고르세요」만
+ * 말하면 사용자는 체크 칸을 켜 놓고도 왜 안 풀리는지 모른다.
+ */
+export const NO_STEP_EDIT_TARGET = "고칠 Step 을 목록에서 누르세요";
 /** 수정 — 둘 이상 골랐다. `DISABLED_REASON.ONE_STEP_ONLY` 의 짧은 형태다 */
 export const ONE_STEP_ONLY_TITLE = "한 번에 한 Step 만 고칠 수 있습니다";
 
