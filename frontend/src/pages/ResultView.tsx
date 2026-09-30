@@ -428,9 +428,6 @@ function stepShot(
         if (stepId !== undefined) onEditStep?.(testId, stepId);
         break;
       }
-      case "nav.back":
-        onBack();
-        break;
       default:
         break;
     }

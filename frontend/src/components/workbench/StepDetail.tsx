@@ -50,6 +50,7 @@ import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
 import { Checkbox } from "../../ui/Checkbox";
 import { Input } from "../../ui/Input";
+import { StepEditFields } from "../StepEditFields";
 import { DetailPanel, DetailPanelTitle } from "../../ui/OverlayPane";
 import { Disclosure } from "../../ui/Disclosure";
 import { Tooltip } from "../../ui/Tooltip";
@@ -100,7 +101,30 @@ export interface StepDetailProps {
    *
    * FR-231 은 국면에 따라 **읽기·편집을 전환**하는 것을 허용한다. 항목의 순서는 그대로다.
    */
-  ownFields?: boolean;
+  /**
+   * 027 — 민감 변수 이름. **안내 문구를 고르는 데** 쓴다.
+   *
+   * 화면이 알면 주고 모르면 빈 배열이다 — 참조가 읽기 전용인 것은 이 값과 무관하므로
+   * 모른다고 편집이 열리지 않는다 (`StepEditFields`).
+   */
+  sensitiveNames?: string[];
+  /**
+   * 027 FR-004 — **입력이 즉시 반영되어야 하는 화면**이 쓰는 통로.
+   *
+   * 편집 화면은 입력할 때마다 편집 연산을 쌓는다 (006 FR-189 의 변경 건수가 사람이 센
+   * 것과 맞아야 한다). 이 화면은 로컬에 모았다가 「저장」으로 한 번에 보낸다.
+   *
+   * **저장 방식의 차이는 화면의 것이고, 편집면은 하나다.**
+   */
+  onFieldChange?: (patch: {
+    label?: string;
+    value?: string;
+    timeout_ms?: number;
+    tab?: number;
+    url?: string;
+    assertion_value?: string;
+    file_name?: string;
+  }) => void;
   busy?: boolean;
   onSave: (patch: {
     label?: string;
@@ -140,7 +164,8 @@ export function StepDetail({
   detail,
   capabilities,
   shot,
-  ownFields = true,
+  sensitiveNames = [],
+  onFieldChange,
   busy = false,
   onSave,
   onRepick,
@@ -183,6 +208,32 @@ export function StepDetail({
   const hasValueField = step !== null && hasValue(step);
   const hasFileField = step !== null && hasFileName(step);
   const alreadyReference = hasValueField && isReference(value);
+
+  /**
+   * 027 — **로컬 상태를 얹은 Step.**
+   *
+   * `StepEditFields` 는 상태를 갖지 않고 `step` 에서 읽어 그린다. 이 화면은 입력을
+   * 로컬에 모았다가 「저장」으로 보내므로, 모아 둔 값을 얹은 Step 을 넘긴다.
+   */
+  const draftStep =
+    step === null
+      ? null
+      : ({
+          ...step,
+          label,
+          ...(hasValueField ? { value } : {}),
+          ...(hasFileField ? { file_name: fileName } : {}),
+          timeout_ms: timeoutMs,
+        } as typeof step);
+
+  /** 편집면이 알린 변경을 로컬 상태에 반영하고, 원하면 화면에도 즉시 알린다 */
+  const applyFieldChange = (patch: Parameters<NonNullable<typeof onFieldChange>>[0]) => {
+    if (patch.label !== undefined) setLabel(patch.label);
+    if (patch.value !== undefined) setValue(patch.value);
+    if (patch.file_name !== undefined) setFileName(patch.file_name);
+    if (patch.timeout_ms !== undefined) setTimeoutMs(patch.timeout_ms);
+    onFieldChange?.(patch);
+  };
 
   /**
    * 020 — 어긋남은 **검증 Step 에만** 있다 (도메인이 그렇게 정했다).
@@ -303,27 +354,29 @@ export function StepDetail({
           </p>
         ) : (
           <>
-            {ownFields && (
-            <div>
-              <label htmlFor="detail-label">표시 이름</label>
-              <Input
-                id="detail-label"
-                value={label}
-                disabled={!canEdit}
-                onChange={(e) => setLabel(e.target.value)}
+            {/*
+              027 FR-008 — **편집면은 하나다.**
+
+              표시 이름·입력값·올릴 파일·대기 시간 칸이 각각 이 파일에 있었고, 편집
+              화면은 그것을 끄고(`ownFields={false}`) 자기 것을 끼웠다. 편집면이 둘이면
+              한쪽에 칸을 더할 때마다 다른 쪽에 없는 칸이 생기고, 사용자에게는 「이
+              화면에서는 못 고치는 것」으로 보인다.
+
+              **민감 값 지정과 안내는 아래에 남는다** — 그것은 편집칸이 아니라 이
+              화면이 세운 조작이다.
+            */}
+            {draftStep !== null && (
+              <StepEditFields
+                step={draftStep}
+                sensitiveNames={sensitiveNames}
+                editable={canEdit}
+                onChange={applyFieldChange}
               />
-            </div>
             )}
 
-            {ownFields && hasValueField && (
+            {hasValueField && (
               <div>
-                <label htmlFor="detail-value">입력값</label>
-                <Input
-                  id="detail-value"
-                  value={value}
-                  disabled={!canEdit || alreadyReference}
-                  onChange={(e) => setValue(e.target.value)}
-                />
+                {/* 입력칸은 위 편집면이 그린다 (027). 여기 남는 것은 **민감 값 조작**이다 */}
                 {alreadyReference ? (
                   <>
                     <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
@@ -387,15 +440,9 @@ export function StepDetail({
               지금 이름에서 읽히는 확장자를 그대로 보여 주므로, 사용자는 자기가 고친
               이름이 어떤 확장자로 올라가는지 확인할 수 있다.
             */}
-            {ownFields && hasFileField && (
+            {hasFileField && (
               <div>
-                <label htmlFor="detail-file-name">올릴 파일 이름</label>
-                <Input
-                  id="detail-file-name"
-                  value={fileName}
-                  disabled={!canEdit}
-                  onChange={(e) => setFileName(e.target.value)}
-                />
+                {/* 이름 칸은 위 편집면이 그린다 (027). 여기 남는 것은 **확장자 안내**다 */}
                 <p className="font-sans text-[12px] leading-[1.4] font-normal text-ink-3 mt-s1 mx-0 mb-0">
                   {uploadFileNote(fileName)}
                 </p>
@@ -468,20 +515,7 @@ export function StepDetail({
 
             {extraFields}
 
-            {ownFields && (
-            <div>
-              <label htmlFor="detail-timeout">대기 시간 (ms)</label>
-              <Input
-                id="detail-timeout"
-                type="number"
-                min={1}
-                max={60000}
-                value={timeoutMs}
-                disabled={!canEdit}
-                onChange={(e) => setTimeoutMs(Number(e.target.value))}
-              />
-            </div>
-            )}
+
           </>
         )}
 

@@ -157,7 +157,16 @@ export interface WorkbenchProps {
    * 쌓는** 편집면을 넣기 때문에, 둘을 함께 그리면 같은 값에 입력칸이 둘 생기고 커밋
    * 방식이 다른 둘이 한 화면에 놓인다 (006 FR-188~FR-190).
    */
-  stepDetailOwnFields?: boolean;
+  /**
+   * 027 — Step 편집면에 넘길 민감 변수 이름. **통과만 한다**
+   */
+  stepDetailSensitiveNames?: string[];
+  /**
+   * 027 FR-004 — 편집면의 입력을 **즉시** 받는 통로. **통과만 한다**
+   *
+   * 편집 화면은 이것을 주고(연산을 쌓는다), 세션 화면은 주지 않는다(저장으로 모은다).
+   */
+  stepDetailOnFieldChange?: Parameters<typeof StepDetail>[0]["onFieldChange"];
 
   /**
    * 결함 후보 표시를 걷어낸다 (020 FR-027).
@@ -223,7 +232,8 @@ export function Workbench({
   stepEditTarget,
   stepFooter,
   stepDetailExtra,
-  stepDetailOwnFields = true,
+  stepDetailSensitiveNames,
+  stepDetailOnFieldChange,
   onClearMismatch,
   onSelectStep,
   onCloseDetail,
@@ -290,7 +300,8 @@ export function Workbench({
           읽지 않는다 (007 의 소유와 표시 분리). 결과 국면 어댑터만 값을 채운다.
         */
         shot={detailShot}
-        ownFields={stepDetailOwnFields}
+        sensitiveNames={stepDetailSensitiveNames}
+        onFieldChange={stepDetailOnFieldChange}
         busy={busy}
         onSave={onSaveStep ?? (() => undefined)}
         onRepick={onRepick ?? (() => undefined)}

@@ -24,6 +24,16 @@ function isNavigate(step: Step): step is Extract<Step, { url: string }> {
   return step.type === "navigate";
 }
 
+/**
+ * 올릴 파일 이름을 갖는가.
+ *
+ * 027 이 더했다 — 이 항목은 `StepDetail` 의 편집면에만 있었고, 편집 화면에서는 고칠
+ * 수 없었다. **편집면이 둘이면 이런 구멍이 조용히 생긴다** (FR-013).
+ */
+function hasFileName(step: Step): step is Extract<Step, { file_name: string }> {
+  return step.type === "upload";
+}
+
 /** 민감 값은 참조로만 저장된다 (FR-082). 참조는 그대로 보여도 안전하다. */
 function isReference(value: string): boolean {
   return /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(value);
@@ -42,6 +52,7 @@ export interface StepEditFieldsProps {
     tab?: number;
     url?: string;
     assertion_value?: string;
+    file_name?: string;
   }) => void;
 }
 
@@ -55,10 +66,21 @@ export function StepEditFields({
   onChange,
 }: StepEditFieldsProps) {
   const value = hasValue(step) ? step.value : null;
+  /*
+    **참조는 읽기 전용이다** (027).
+
+    027 이전에는 이 판정이 두 편집면에서 달랐다 — 이쪽은 「민감 변수의 참조만」 잠갔고
+    `StepDetail` 은 「참조면 전부」 잠갔다. 합치면서 **보수적인 쪽**을 택했다.
+
+    근거는 참조를 손으로 고치면 **없는 변수를 가리킬 수 있다**는 것이다. 변수를 다루는
+    자리는 따로 있고(비밀 값 화면), 여기서 문자열을 고치는 것은 그 자리를 우회한다.
+
+    `sensitiveNames` 는 이제 **안내 문구**를 고르는 데 쓴다 — 민감한 참조인지 아닌지가
+    사용자에게 다른 뜻이기 때문이다.
+  */
+  const valueIsReference = value !== null && isReference(value);
   const valueIsSecret =
-    value !== null &&
-    isReference(value) &&
-    sensitiveNames.some((n) => value === `{{${n}}}`);
+    valueIsReference && sensitiveNames.some((n) => value === `{{${n}}}`);
 
   return (
     <div>
@@ -85,7 +107,7 @@ export function StepEditFields({
               aria-label="Step 입력값"
               font="mono"
               value={value}
-              disabled={!editable || valueIsSecret}
+              disabled={!editable || valueIsReference}
               maxLength={4000}
               onChange={(e) => onChange({ value: e.target.value })}
             />
@@ -110,6 +132,22 @@ export function StepEditFields({
             disabled={!editable}
             maxLength={2000}
             onChange={(e) => onChange({ url: e.target.value })}
+          />
+        </label>
+      )}
+
+      {hasFileName(step) && (
+        <label className={ROW_CLASS}>
+          <span className="font-sans text-[12px] leading-none font-normal text-ink-3">
+            올릴 파일
+          </span>
+          <Input
+            aria-label="올릴 파일 이름"
+            font="mono"
+            value={step.file_name}
+            disabled={!editable}
+            maxLength={500}
+            onChange={(e) => onChange({ file_name: e.target.value })}
           />
         </label>
       )}

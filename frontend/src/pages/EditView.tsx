@@ -32,7 +32,6 @@ import { makeRunAction, wiredAttribute, type ScreenCapabilities } from "../lib/a
 import { ErrorNotice, describeError, localError } from "../components/ErrorNotice";
 import { ChatPanel } from "../components/workbench/ChatPanel";
 import type { ErrorInfo } from "../components/ErrorNotice";
-import { StepEditFields } from "../components/StepEditFields";
 import { ActionButton } from "../components/workbench/ActionButton";
 import { ActionPalette } from "../components/workbench/ActionPalette";
 import { BulkDeleteConfirm } from "../components/workbench/BulkDeleteConfirm";
@@ -721,6 +720,12 @@ export function EditView({
     },
     insertManual: () => setInsertOpen((v) => !v),
     /*
+      027 — **이 조작이 세션 화면에만 있었다.** 편집 화면은 상세가 늘 열려 있는 구조라
+      필요 없어 보였지만, 조작표는 두 국면 모두에서 쓸 수 있다고 말하고 있었다 —
+      즉 눌릴 수 있는데 아무 일도 일어나지 않았다. 편집면을 합치면서 드러난 자리다.
+    */
+    openStepDetail: () => setDetailOpen(true),
+    /*
       **FR-004·FR-005 의 자리다.** 셋 다 `guard()` 를 지난다 — 저장하지 않은 편집이
       있으면 먼저 확인하는 이 화면의 절차이고, 배선은 그것을 알지 못한다.
     */
@@ -1300,8 +1305,18 @@ export function EditView({
           편집 국면의 나머지 필드(`tab`·`url`·`기대값`)를 상세 **안**에 얹는다.
           자리를 따로 만들면 국면마다 다른 상세가 다시 생긴다 (FR-230).
         */
-        /* 편집면은 `stepDetailExtra` 가 갖는다 — 상세가 자기 입력을 또 그리면 중복이다 */
-        stepDetailOwnFields={false}
+        /*
+           027 — **편집면을 공용에 맡긴다.** 이전에는 상세의 편집면을 끄고
+           (`stepDetailOwnFields={false}`) 자기 것을 `stepDetailExtra` 로 끼웠다.
+           편집면이 둘이면 한쪽에만 칸이 생기고, 실제로 「올릴 파일 이름」이 그랬다.
+
+           `stepDetailExtra` 는 **남는다** — 거기 있는 잠긴 필드 안내는 이 화면이
+           서버에게 받은 것이고, 국면 고유의 것이다 (FR-018).
+         */
+        stepDetailSensitiveNames={sensitiveNames}
+        stepDetailOnFieldChange={(patch) => {
+          if (current !== null) apply({ op: "update", step_id: current.id, ...patch });
+        }}
         /*
           020 FR-027 — 결함 후보 표시 걷어내기. **일반 Step 편집과 같은 줄에 선다** —
           다른 변경과 함께 쌓이고, 함께 저장되고, 함께 되돌려진다. 별도 경로를 두면
@@ -1319,12 +1334,6 @@ export function EditView({
                   lockedReason("steps[].type") ?? "delete_and_insert_instead",
                 )}
               </p>
-              <StepEditFields
-                step={current}
-                sensitiveNames={sensitiveNames}
-                editable={editable}
-                onChange={(patch) => apply({ op: "update", step_id: current.id, ...patch })}
-              />
               {/*
                 006 FR-191 — 잠긴 대상은 **모두** 이유를 밝힌다. 서버가 세 가지를
                 보내는데 화면이 하나만 쓰면 `drag`·`assertion` Step 을 고른 사용자는

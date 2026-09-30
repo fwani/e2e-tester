@@ -104,7 +104,6 @@ describe("Step 상세에서 파일 이름을 고친다", () => {
       <StepDetail
         detail={detail}
         capabilities={capabilitiesFor("paused", ALL_FACTS)}
-        ownFields
         onSave={() => undefined}
         onRepick={() => undefined}
         onClose={() => undefined}
@@ -127,7 +126,6 @@ describe("Step 상세에서 파일 이름을 고친다", () => {
       <StepDetail
         detail={detail}
         capabilities={capabilitiesFor("paused", ALL_FACTS)}
-        ownFields
         onSave={onSave}
         onRepick={() => undefined}
         onClose={() => undefined}

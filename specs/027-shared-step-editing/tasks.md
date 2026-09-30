@@ -91,8 +91,8 @@ description: "027 Step 편집면과 조작 배선을 한 곳으로 — 작업 �
 - [X] T017 [US1] `save` · `step.recordStart` · `step.addNaturalLanguage` 를 옮긴다. `EditView` 의 「먼저 저장하고 열기」가 **능력 구현 안에** 남아야 한다 — 배선이 그것을 알면 안 된다
 - [X] T018 [US1] 무리 4 검증
 - [X] T019 [US1] `ResultView` 의 조작 8종도 같은 방식으로 잇는다 — 세 번째 화면이 같은 모양을 쓰는지가 이 설계의 마지막 확인이다
-- [ ] T020 [US1] 어댑터의 `runAction` 에 남은 `case` 가 **그 화면 고유의 것뿐인지** 확인한다 (T003 의 목록과 대조)
-- [ ] T020a [US1] **화면이 자기가 아는 사실로 조작을 더 좁히는 통로가 살아 있는지** 확인하고 검사한다 (FR-007 · analyze D1) — `EditView` 의 `narrowByAiEntry`·`narrowByDeleteSelection`·`narrowByPick` 이 그것이다. 배선 통합은 **조작이 눌렸을 때 무엇을 하는가**를 옮기는 일이고, **언제 누를 수 있는가**는 건드리지 않는다. 이 통로가 끊기면 「고칠 Step 을 고르세요」 같은 잠금 사유가 사라진다 — 026 이 만든 것이 조용히 없어지는 자리다
+- [X] T020 [US1] 어댑터의 `runAction` 에 남은 `case` 가 **그 화면 고유의 것뿐인지** 확인한다 (T003 의 목록과 대조)
+- [X] T020a [US1] **화면이 자기가 아는 사실로 조작을 더 좁히는 통로가 살아 있는지** 확인하고 검사한다 (FR-007 · analyze D1) — `EditView` 의 `narrowByAiEntry`·`narrowByDeleteSelection`·`narrowByPick` 이 그것이다. 배선 통합은 **조작이 눌렸을 때 무엇을 하는가**를 옮기는 일이고, **언제 누를 수 있는가**는 건드리지 않는다. 이 통로가 끊기면 「고칠 Step 을 고르세요」 같은 잠금 사유가 사라진다 — 026 이 만든 것이 조용히 없어지는 자리다
 
 **Checkpoint**: 13개 조작이 한 자리에서 이어진다. 편집면은 아직 두 벌이다.
 
@@ -113,10 +113,10 @@ description: "027 Step 편집면과 조작 배선을 한 곳으로 — 작업 �
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] `frontend/src/components/workbench/StepDetail.tsx` 의 `ownFields` 갈래를 걷어내고 그 자리에서 `StepEditFields` 를 쓴다 (research R3). **정본은 작은 쪽이다**
-- [ ] T025 [US2] `frontend/src/components/workbench/Workbench.tsx` 에서 `stepDetailOwnFields` · `stepDetailExtra` 를 제거한다. **추상이 줄어드는 자리다** (R7)
-- [ ] T026 [US2] `EditView` 가 `stepDetailOwnFields={false}` · `stepDetailExtra` 로 하던 우회를 걷어낸다 — 이제 공용 편집면이 그 일을 한다
-- [ ] T027 [US2] `step.update` 를 능력 묶음으로 옮긴다 — 지금은 세션 `runAction` 에만 있다
+- [X] T024 [US2] `frontend/src/components/workbench/StepDetail.tsx` 의 `ownFields` 갈래를 걷어내고 그 자리에서 `StepEditFields` 를 쓴다 (research R3). **정본은 작은 쪽이다**
+- [X] T025 [US2] `frontend/src/components/workbench/Workbench.tsx` 에서 `stepDetailOwnFields` · `stepDetailExtra` 를 제거한다. **추상이 줄어드는 자리다** (R7)
+- [X] T026 [US2] `EditView` 가 `stepDetailOwnFields={false}` · `stepDetailExtra` 로 하던 우회를 걷어낸다 — 이제 공용 편집면이 그 일을 한다
+- [X] T027 [US2] `step.update` 를 능력 묶음으로 옮긴다 — 지금은 세션 `runAction` 에만 있다
 - [ ] T028 [US2] 같은 값을 두 화면에서 입력했을 때 **저장 결과가 구별되지 않는지** 검사한다 (FR-012 · SC-005)
 
 **Checkpoint**: 편집면이 하나다. 「어느 편집면을 쓸까」라는 선택지가 없어졌다.
