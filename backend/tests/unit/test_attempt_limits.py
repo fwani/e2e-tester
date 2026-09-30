@@ -21,8 +21,16 @@ from itb.authoring.tools import (
 
 
 def test_declared_limits_match_research_decision() -> None:
-    """research R5 가 정한 값 — 총 40회, 동일 요소 연속 3회."""
-    assert MAX_TOOL_CALLS == 40
+    """총 300회, 동일 요소 연속 3회.
+
+    총 상한은 001 research R5 의 40 에서 **300 으로 옮겼다** (2026-09-30 사용자 지시).
+    40 이 실제로 끊던 것은 헛도는 실행이 아니라 긴 작성이었다 — 헛도는 쪽은 연속 실패
+    상한이 세 번에 끊으며, 그 값은 그대로다.
+
+    **값을 검사로 고정하는 이유는 바뀌지 않았다.** 상한이 조용히 움직이면 「같은 지시가
+    어제는 되고 오늘은 안 된다」가 되고, 사용자는 원인을 지시에서 찾는다.
+    """
+    assert MAX_TOOL_CALLS == 300
     assert MAX_CONSECUTIVE_ELEMENT_FAILURES == 3
 
 
@@ -192,7 +200,7 @@ def test_the_budget_does_not_scale_with_the_rerecord_range() -> None:
     """**구간이 크다고 상한이 늘지 않는다** (FR-042).
 
     늘리면 상한이 뜻을 잃는다 — 사용자가 목록 전체를 골라 재녹화를 걸면 예산이 Step
-    수만큼 늘어나고, 그때 「40회」는 아무것도 막지 못한다.
+    수만큼 늘어나고, 그때 총 상한은 아무것도 막지 못한다.
 
     상한은 `AttemptLimits` 의 기본값 하나이며, 트랜잭션이나 구간을 **알지 못한다.**
     그 무지가 이 성질의 구현이다.
