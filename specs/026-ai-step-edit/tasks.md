@@ -64,7 +64,7 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 
 - [ ] T008 [P] [US1] `backend/tests/test_session_step_edit_start.py` 에 세션 시작 계약 검사를 쓴다 (contracts/api-contract §1) — ① `mode="step_edit"` + `step_edit_step_id` 로 세션이 열린다 ② id 가 없으면 `DEFINITION_INVALID` ③ 정의에 없는 id 면 거절 ④ 대상이 첫 Step 이면 실행 없이 시작 주소만 연다 ⑤ 도착점 실패 시 세션을 열지 않는다
 - [ ] T009 [P] [US1] `backend/tests/test_tool_descriptions_scope.py` 에 **`TOOL_SCHEMAS` 를 직접 보는** 검사를 쓴다 — 편집 도구 넷의 설명문에 「사용자가 고쳐 달라고 지목한 Step」이 들어 있고, 옛 문구(「다른 Step 은 고칠 수 없다 — 사람에게 말하라」)가 남아 있지 않다. **docstring 이 아니라 `TOOL_SCHEMAS` 를 본다** — 그것이 모델이 실제로 받는 것이고 선택 의존성도 필요 없다 (research R8)
-- [ ] T010 [P] [US1] `backend/tests/test_principle_ii_timeline.py` 에 `step_edit` 모드 경우를 더한다 — 도착점 실행 구간에 에이전트 태스크가 살아 있지 않다 (원칙 II · 016 불변식 6)
+- [ ] T010 [P] [US1] `backend/tests/test_principle_ii_timeline.py` 에 `step_edit` 모드 경우를 더한다 — **도착점 실행 구간과 되맞춤 실행 구간 둘 다** 에이전트 태스크가 살아 있지 않다 (원칙 II · FR-006·FR-027 · 016 불변식 6). 되맞춤 쪽을 빠뜨리면 원칙 II 경계의 절반만 검사된다 (analyze D2)
 
 ### Implementation for User Story 1
 
@@ -81,9 +81,9 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 - [ ] T021 [P] [US1] `frontend/src/api/client.ts` 에 `step_edit` 모드 세션 시작과 `StepEditView` 타입을 더한다
 - [ ] T022 [P] [US1] `frontend/src/api/ws.ts` 에 `step_edit_changed` 이벤트 타입을 더한다
 - [ ] T023 [US1] `frontend/src/lib/actions.ts` 에 `ai.stepEdit` 을 등록한다 (contracts/ui-contract §1)
-- [ ] T024 [US1] `frontend/src/lib/capabilities.ts` 의 **모든 국면**에 `ai.stepEdit` 셀을 채운다. 빈칸을 허용하지 않는 것이 011 이 이 표를 만든 이유다
-- [ ] T025 [US1] `frontend/src/pages/EditView.tsx` 에 시작 입구를 붙인다 — 고른 것이 **정확히 하나**인지 화면이 먼저 보고, 아니면 시작하지 않고 이유를 말한다 (FR-003 · 016 FR-016 이 세운 규칙)
-- [ ] T026 [US1] `frontend/src/pages/SessionScreen.tsx` 가 `step_edit` 상태를 소유하고 `step_edit_changed` 를 소비한다. **소비하는 코드가 없으면 타입만 있고 아무 일도 일어나지 않는다**
+- [ ] T024 [US1] `frontend/src/lib/capabilities.ts` 의 **모든 국면**에 `ai.stepEdit` 셀을 채운다. 빈칸을 허용하지 않는 것이 011 이 이 표를 만든 이유다. 다른 세션이 그 테스트를 잡고 있는 국면에서는 그 세션으로 가는 길을 가리킨다 (FR-004 · `ai.rerecord` 의 `off("ALREADY_IN_SESSION")` 과 같은 모양)
+- [ ] T025 [US1] `frontend/src/pages/EditView.tsx` 에 시작 입구를 붙인다 — 고른 것이 **정확히 하나**인지 화면이 먼저 보고, 아니면 시작하지 않고 이유를 말한다 (FR-003 · 016 FR-016 이 세운 규칙). 미저장 편집은 기존 `afterSaving`/`openBrowser` 의 「저장하고 열기」를 그대로 지난다 — **새 확인 대화를 만들지 않는다** (FR-009 · 006 FR-203 · 011)
+- [ ] T026 [US1] `frontend/src/pages/SessionScreen.tsx` 가 `step_edit` 상태를 소유하고 `step_edit_changed` 를 소비한다. **소비하는 코드가 없으면 타입만 있고 아무 일도 일어나지 않는다**. 지시는 기존 `ChatPanel` 로 보낸다 — **새 입력 자리를 만들지 않는다** (FR-010)
 - [ ] T027 [US1] `SessionWorkbench` → `Workbench` 로 `step_edit` 을 통과시킨다 (contracts/ui-contract §6). **가운데 둘은 통과만 하므로 빠뜨려도 타입 검사가 통과한다** — `grep -rn` 으로 쓰이는 곳이 둘 이상인지 확인한다
 - [ ] T028 [US1] 수정 대상 Step 을 목록에서 구분해 그린다 (FR-033). 새 CSS 클래스는 `frontend/src/theme/workspace.css` 정본에 선언한다
 
@@ -174,6 +174,10 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 ## Phase 7: Polish & Cross-Cutting
 
 - [ ] T058 [P] 민감 값이 대화 이력·에이전트 컨텍스트에 나타나지 않는지 검사한다 (FR-041 · SC-008) — 016 의 검사 형식을 따른다
+- [ ] T058a [P] **저장 형식 동일성**을 검사한다 (FR-018 · SC-004 · 헌법 원칙 I) — AI 가 고친 Step 과 사람이 같은 편집을 한 Step 을 각각 저장해 **직렬화 결과가 같은지** 본다. 작성 주체가 저장 형식에 남지 않아야 한다. **원칙 I 은 NON-NEGOTIABLE 이므로 이 검사가 없으면 회귀를 볼 방법이 없다** (analyze D1)
+- [ ] T058b [P] 수정으로 새로 들어가는 값의 **민감 처리**를 검사한다 (FR-040) — AI 가 비밀번호 칸을 고치면 값이 아니라 변수 참조로 남는다. T058 이 보는 것(컨텍스트·대화 이력)과 **다른 경로**다 (analyze D4)
+- [ ] T058c [P] **언어모델 호출이 실패해도** 그때까지의 수정이 보존되는지 검사한다 (FR-038) — T060(도구 호출 상한)과 다른 실패 경로다 (analyze D5)
+- [ ] T058d [P] AI 가 막혔을 때 **브라우저를 닫지 않는지** 검사한다 (FR-036 · 헌법 원칙 III) — `step_edit` 세션에서도 기존 선택지가 그대로 뜬다 (analyze D6)
 - [ ] T059 [P] 세션 유실 시 확정되지 않은 수정의 운명이 명확한지 확인하고 검사한다 (FR-039)
 - [ ] T060 [P] 도구 호출 상한에 닿았을 때 그때까지의 수정이 보존되는지 검사한다 (FR-037)
 - [ ] T061 [P] `test_tool_surface.py` 가 여전히 16종을 고정하는지 확인한다 — 도구가 늘지 않았다
@@ -181,6 +185,7 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 - [ ] T063 새로 만든 프론트 컴포넌트가 **쓰이는 곳이 둘 이상인지** 확인한다 — 하나면 배선이 덜 된 것이다 (contracts/ui-contract §6)
 - [ ] T064 전량 검증을 돌리고 결과를 `baseline.md` 의 시작 시점과 비교해 적는다 — 새로 깨진 것이 없어야 한다
 - [ ] T065 `specs/026-ai-step-edit/quickstart.md` 의 §1~§4 를 실제 모델로 손으로 확인한다. **가짜 드라이버로는 대신할 수 없다** — 「모델이 권한이 넓어진 것을 아는가」는 실제 설명문을 읽을 때만 드러난다
+- [ ] T065a SC-010 을 잰다 — **이 기능을 만들지 않은 사람 5명**에게 두 조작의 라벨과 설명만 보여주고 「어느 쪽이 고른 Step 을 남기는가」를 묻는다. 4명 이상이 맞혀야 한다. 만든 사람은 답을 알고 있으므로 셀 수 없다 (analyze D7)
 - [ ] T066 [P] `README.md`·`PRODUCT.md` 에 이 조작이 설명되어 있는지 확인하고 필요하면 더한다
 
 ---
@@ -213,6 +218,7 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 - T029~T032 (US2 검사 넷)
 - T044~T047 (US3 검사 넷)
 - T051~T053 (US4 검사 셋)
+- T058 · T058a~T058d (Polish 의 안전 검사 다섯)
 - Phase 5 와 Phase 6 전체 — 백엔드와 프론트로 갈린다
 
 ---
@@ -238,6 +244,7 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 - **US2 를 건너뛰지 않는다.** US1 만으로는 기능이 아니라 위험이다.
 - **T015~T017 을 나누지 않는다.** 하나만 고치면 코드는 넓어졌는데 모델은 옛 안내를 따른다.
 - **T007·T050 을 건너뛰지 않는다.** 016 이 그대로 도는지가 이 기능의 전제다 (FR-030).
+- **T058a 를 건너뛰지 않는다.** 헌법 원칙 I 은 NON-NEGOTIABLE 이고, 그것을 지키는지 보는 검사가 이 하나다.
 
 ---
 
