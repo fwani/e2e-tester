@@ -29,9 +29,9 @@ description: "027 Step 편집면과 조작 배선을 한 곳으로 — 작업 �
 
 **Purpose**: 겉모습이 바뀌지 않아야 하는 증분이다. 무엇이 「그대로」인지 먼저 적는다.
 
-- [ ] T001 시작 시점 전량 검증을 돌려 `specs/027-shared-step-editing/baseline.md` 에 적는다 — `cd frontend && npx vitest run` · `npx tsc --noEmit` · `cd backend && bash scripts/test-backend.sh` · `uv run ruff check src/ tests/` · `uv run lint-imports`. **백엔드는 건드리지 않으므로 끝에서 글자 그대로 같아야 한다**
-- [ ] T002 [P] 회귀 확인 대상 검사 목록을 `baseline.md` 에 적는다 — `CapabilityCoverage` · `CapabilityUI` · `ScreenSweep` · `VisualLanguage` · `ClassExistence` · 006·009·011·016·026 의 화면 검사. 각각 **지금 몇 건 통과인지** 함께 적는다 (quickstart §0 의 표가 근거)
-- [ ] T003 [P] 지금 어댑터별 `runAction` 이 처리하는 조작 목록을 `baseline.md` 에 적는다 — 이전이 끝났을 때 **하나도 빠지지 않았는지** 대조할 근거다
+- [X] T001 시작 시점 전량 검증을 돌려 `specs/027-shared-step-editing/baseline.md` 에 적는다 — `cd frontend && npx vitest run` · `npx tsc --noEmit` · `cd backend && bash scripts/test-backend.sh` · `uv run ruff check src/ tests/` · `uv run lint-imports`. **백엔드는 건드리지 않으므로 끝에서 글자 그대로 같아야 한다**
+- [X] T002 [P] 회귀 확인 대상 검사 목록을 `baseline.md` 에 적는다 — `CapabilityCoverage` · `CapabilityUI` · `ScreenSweep` · `VisualLanguage` · `ClassExistence` · 006·009·011·016·026 의 화면 검사. 각각 **지금 몇 건 통과인지** 함께 적는다 (quickstart §0 의 표가 근거)
+- [X] T003 [P] 지금 어댑터별 `runAction` 이 처리하는 조작 목록을 `baseline.md` 에 적는다 — 이전이 끝났을 때 **하나도 빠지지 않았는지** 대조할 근거다
 
 **Checkpoint**: 「그대로여야 하는 것」이 문서로 남았다.
 
