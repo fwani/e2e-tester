@@ -184,8 +184,8 @@ Web app — `backend/src/itb/`, `backend/tests/`, `frontend/src/`, `frontend/tes
 - [X] T062 `frontend/src/theme/workspace.css` 에 새 클래스가 정본으로 선언됐는지 확인한다 — `VisualLanguage.test.tsx`·`ClassExistence.test.ts` 가 잡는다
 - [X] T063 새로 만든 프론트 컴포넌트가 **쓰이는 곳이 둘 이상인지** 확인한다 — 하나면 배선이 덜 된 것이다 (contracts/ui-contract §6)
 - [X] T064 전량 검증을 돌리고 결과를 `baseline.md` 의 시작 시점과 비교해 적는다 — 새로 깨진 것이 없어야 한다
-- [ ] T065 `specs/026-ai-step-edit/quickstart.md` 의 §1~§4 를 실제 모델로 손으로 확인한다. **가짜 드라이버로는 대신할 수 없다** — 「모델이 권한이 넓어진 것을 아는가」는 실제 설명문을 읽을 때만 드러난다
-- [ ] T065a SC-010 을 잰다 — **이 기능을 만들지 않은 사람 5명**에게 두 조작의 라벨과 설명만 보여주고 「어느 쪽이 고른 Step 을 남기는가」를 묻는다. 4명 이상이 맞혀야 한다. 만든 사람은 답을 알고 있으므로 셀 수 없다 (analyze D7)
+- [ ] T065 (→ `docs/PENDING-HUMAN-VERIFICATION.md` §23-1) `specs/026-ai-step-edit/quickstart.md` 의 §1~§4 를 실제 모델로 손으로 확인한다. **가짜 드라이버로는 대신할 수 없다** — 「모델이 권한이 넓어진 것을 아는가」는 실제 설명문을 읽을 때만 드러난다
+- [ ] T065a (→ `docs/PENDING-HUMAN-VERIFICATION.md` §23-2) SC-010 을 잰다 — **이 기능을 만들지 않은 사람 5명**에게 두 조작의 라벨과 설명만 보여주고 「어느 쪽이 고른 Step 을 남기는가」를 묻는다. 4명 이상이 맞혀야 한다. 만든 사람은 답을 알고 있으므로 셀 수 없다 (analyze D7)
 - [X] T066 [P] `README.md`·`PRODUCT.md` 에 이 조작이 설명되어 있는지 확인하고 필요하면 더한다
 
 ---
