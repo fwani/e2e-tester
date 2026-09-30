@@ -111,7 +111,7 @@ description: "028 목록에서 그룹 지정하기 — 작업 목록"
 **Independent Test**: 그룹이 둘 있는 목록에서 행을 끌어 다른 그룹에 놓고, 식별자와 그룹
 건수가 바뀌는지 확인한다.
 
-- [ ] T028 [US2] `frontend/tests/` 에 표적 노출 검증을 먼저 쓴다 — **끌기 전에는 표적이 없고**(FR-014 · 013 SC-627), `dragstart` 후 나타나고, `dragend`·`drop` 후 사라진다
+- [ ] T028 [US2] `frontend/tests/` 에 표적 노출 검증을 먼저 쓴다 — **끌기 전에는 표적이 없고**(FR-014 · SC-005 · 013 SC-627), `dragstart` 후 나타나고, `dragend`·`drop` 후 사라진다
 - [ ] T029 [US2] `frontend/tests/` 에 끌기 대상 규칙 검증을 쓴다 — 체크된 행을 끌면 체크 전부, 체크 밖의 행을 끌면 그 행만이며 체크는 유지된다 (FR-017 · UC-028-03)
 - [ ] T030 [US2] 끌기 표적 띠 부품을 `frontend/src/components/` 에 만든다 — 그룹 전부(테스트 0개인 것 포함) · 「그룹에서 빼기」 · 「새 그룹으로」. 목록 위에 고정되어 스크롤 중에도 닿는다 (FR-015 · FR-022)
 - [ ] T031 [US2] `frontend/src/pages/TestList.tsx` 의 행을 끌 수 있게 하고 끌기 상태를 둔다 — 끌고 있는 대상 · 표적 노출 · 올라와 있는 표적 (data-model §6)
@@ -162,7 +162,7 @@ description: "028 목록에서 그룹 지정하기 — 작업 목록"
 - [ ] T046 [P] `uv run python -m itb.schema.export --check` 로 스키마 드리프트가 없는지 확인한다 (생성물을 커밋했는지)
 - [ ] T047 [P] `uv run ruff check src/ tests/` · `uv run lint-imports` · `npx tsc --noEmit` 을 통과시킨다
 - [ ] T048 `quickstart.md` 의 §2 를 손으로 따라가며 확인한다 — 특히 2-2(옛 자산)와 2-3의 1번(끌기 전 화면이 그대로인가)
-- [ ] T049 [P] `README.md` 의 그룹 설명에 하이픈 접두어를 반영한다 (해당 기술이 있는 경우)
+- [ ] T049 [P] `README.md:258-275` 의 그룹 설명을 고친다 — 「접두어는 영문 대문자·숫자 1~8자」가 **이 변경으로 거짓이 된다.** 새 규칙과 길이 상한 12를 반영하고 `IT-PM` 예시를 넣는다
 
 ---
 
