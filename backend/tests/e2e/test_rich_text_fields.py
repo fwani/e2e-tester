@@ -180,3 +180,68 @@ async def test_label_is_not_borrowed_across_fields() -> None:
     ]
 
     assert not borrowed, f"이름 라벨이 다른 칸까지 번졌다: {borrowed}"
+
+
+# ─── 재실행에서 다시 찾을 수 있는가 (025 FR-051) ────────────────────────────
+
+
+async def _describe(selector: str) -> dict:
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        await page.add_init_script(SCRIPT.read_text())
+        await page.goto(PAGE.as_uri())
+        raw = await page.evaluate("(s) => window.__itbDescribe(s)", selector)
+        await browser.close()
+    assert isinstance(raw, dict), f"요소를 설명하지 못했다: {selector}"
+    return raw
+
+
+async def test_generated_id_stays_out_of_the_css_path() -> None:
+    """**매번 바뀌는 id 는 경로에 넣지 않는다** (2026-09-30 사용자 보고).
+
+    Toast UI 는 마운트할 때마다 `notice-content-editor-<무작위>` 로 id 를 짓는다. 그것이
+    경로에 들어가면 재실행이 **반드시** 실패한다 — 화면은 그대로인데 id 만 달라지기
+    때문이다. 저장된 테스트에서 같은 편집기가 `…-aysr6yz` 와 `…-e6ct2lx` 두 값으로
+    남아 있었고, 녹화하는 동안 이미 달라진 것이었다.
+
+    실패가 저장 시점이 아니라 **재실행 시점에** 드러나는 것이 이 결함의 성질이다.
+    녹화 화면에서는 아무 이상이 보이지 않는다.
+    """
+    described = await _describe(EDITOR)
+
+    assert "notice-content-editor-" not in described["css"], (
+        f"난수 id 가 경로에 들어갔다: {described['css']}"
+    )
+
+
+async def test_stable_id_is_still_used() -> None:
+    """**사람이 지은 id 는 계속 쓴다.**
+
+    난수 판정이 느슨해지면 멀쩡한 id 까지 버리게 되고, 그러면 모든 경로가 위치 기반이
+    되어 형제 하나만 끼어들어도 깨진다. 판정이 좁게 유지되는지 반대편에서 못 박는다.
+    """
+    described = await _describe("#notice-name")
+
+    assert "#notice-name" in described["css"], (
+        f"안정적인 id 를 쓰지 않았다: {described['css']}"
+    )
+
+
+async def test_borrowed_label_is_not_stored_as_the_accessible_name() -> None:
+    """빌려 온 이름은 **후보로 저장되지 않는다** (FR-051).
+
+    옆 라벨에서 얻은 이름은 목록에서 지목하는 데 쓰는 값이다. 그것이 후보로 저장되면
+    재실행이 `getByRole(…, name)` 으로 찾으려 하는데 **그 요소의 실제 접근 이름은 비어
+    있다.** 저장하는 순간 재실행 불가가 되고, 화면에는 아무 이상이 보이지 않는다.
+
+    관찰 목록에는 이름이 **있어야 하고**(FR-050) 후보에는 **없어야 한다** — 한 값이
+    두 곳에서 반대로 쓰인다는 것이 이 검증의 요점이다.
+    """
+    described = await _describe(EDITOR)
+    raw = await _observe()
+
+    assert described["accessibleName"] is None, (
+        f"빌려 온 이름이 후보로 저장됐다: {described['accessibleName']!r}"
+    )
+    assert _named(raw, "공지사항 내용 *"), "관찰 목록에서는 이름이 사라지면 안 된다"

@@ -135,8 +135,26 @@
       if (v) return v;
     }
 
-    // 여기까지 와서 이름이 없는 것은 **사람은 라벨로 부르는데 표식이 없는 칸**이다.
-    return writable ? nearbyLabel(el) : null;
+    return null;
+  };
+
+  /**
+   * **모델이 화면에서 그 칸을 부를 이름** (025 FR-050).
+   *
+   * `accessibleName` 과 갈라 둔다. 그쪽은 **후보 묶음으로 저장되는 값**이고(`role` +
+   * 접근 이름), 이쪽은 관찰 목록에만 실리는 값이다. 섞으면 위험한 쪽은 한 방향뿐이다:
+   * 옆 라벨에서 빌려 온 이름이 후보로 저장되면, 재실행이 `getByRole(…, name)` 으로 그
+   * 요소를 찾으려 하는데 **그 요소의 실제 접근 이름은 비어 있다.** 저장하는 순간
+   * 재실행 불가가 되고, 화면에는 아무 이상이 보이지 않는다.
+   *
+   * 그래서 빌려 온 이름은 **여기까지만** 온다. 목록에서 지목하는 데는 충분하고,
+   * 요소를 다시 찾는 일은 `css` 와 나머지 후보가 한다.
+   */
+  const observedName = (el) => {
+    const real = accessibleName(el);
+    if (real) return real;
+    // 글을 쓰는 칸에만. 버튼·링크는 제 글자가 이름이므로 빌려 올 이유가 없다.
+    return el.isContentEditable === true ? nearbyLabel(el) : null;
   };
 
   /** `nearbyLabel` 이 조상을 올라가는 거리.
@@ -283,6 +301,40 @@
   const cssEscape = (value) =>
     typeof CSS !== "undefined" && CSS.escape ? CSS.escape(value) : value.replace(/"/g, '\\"');
 
+  /**
+   * **매번 새로 만들어지는 id 인가** (2026-09-30 사용자 보고).
+   *
+   * 위젯 라이브러리는 마운트할 때마다 `notice-content-editor-aysr6yz` 처럼 짧은 무작위
+   * 꼬리를 단 id 를 만든다. 그것이 CSS 경로에 들어가면 **재실행이 반드시 실패한다** —
+   * 화면은 그대로인데 id 만 달라지기 때문이다.
+   *
+   * 실제로 한 테스트 안에서 같은 편집기가 `…-aysr6yz` 와 `…-e6ct2lx` 로 저장돼 있었다.
+   * 녹화하는 동안에도 이미 달라진 것이고, 그 Step 들은 저장된 순간부터 재실행 불가였다.
+   *
+   * ## 판정
+   *
+   * 기존 두 규칙(긴 숫자·긴 16진수)에 **「숫자와 글자가 섞인 짧은 토막」**을 더한다.
+   * `aysr6yz`·`e6ct2lx` 가 그 모양이고, 사람이 손으로 짓는 이름은 이렇게 쓰지 않는다.
+   *
+   * ## 틀릴 때 어느 쪽으로 틀릴 것인가
+   *
+   * **의심스러우면 쓰지 않는다.** 난수를 사람이 지은 이름으로 잘못 보면 그 Step 은
+   * 반드시 깨지고, 반대로 잘못 보면 경로가 조금 길어질 뿐이다 (위치로 가른다).
+   * 한쪽은 실패고 다른 쪽은 비용이므로 같은 무게로 다루지 않는다.
+   *
+   * `text-input-example-11` 같은 이름은 토막이 `11` 뿐이라 걸리지 않는다 — 길이
+   * 하한을 둔 이유다.
+   */
+  const looksGenerated = (id) => {
+    if (/\d{4,}|[0-9a-f]{8,}/i.test(id)) return true;
+    return id
+      .split(/[-_.:]/)
+      .some(
+        (part) =>
+          part.length >= 5 && /\d/.test(part) && /[a-z]/i.test(part),
+      );
+  };
+
   /** 누적 경로가 그 요소 **하나만** 가리키는가. */
   const matchesOnly = (selector, el) => {
     try {
@@ -318,7 +370,7 @@
       const name = node.localName || node.tagName.toLowerCase();
       const id = node.getAttribute("id");
       // 난수처럼 보이는 id 는 안정적이지 않으므로 쓰지 않는다.
-      if (id && !/\d{4,}|[0-9a-f]{8,}/i.test(id)) {
+      if (id && !looksGenerated(id)) {
         const byId = `${name}#${cssEscape(id)}`;
         /*
           **id 가 실제로 유일할 때만 멈춘다** (2026-09-11 사용자 보고).
@@ -758,7 +810,8 @@
       out.push({
         tag: described.tag,
         role: described.role,
-        name: described.accessibleName || described.label || described.text,
+        // 025 FR-050 — **후보로 저장되는 이름과 다른 값이다.** `observedName` 의 주석을 보라.
+        name: observedName(el) || described.label || described.text,
         css: described.css,
         visible: rect.width > 0 && rect.height > 0,
         disabled: el.disabled === true,
