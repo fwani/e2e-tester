@@ -51,6 +51,7 @@ import type { AuthoringEntry } from "../components/workbench/AiAuthoringPanel";
 import type { WorkPlan } from "../api/client";
 import { RerecordBar, rangeLabelOf } from "../components/workbench/RerecordBar";
 import { StepEditBar, targetLabelOf } from "../components/workbench/StepEditBar";
+import { makeRunAction, wiredAttribute, type ScreenCapabilities } from "../lib/actionWiring";
 import { LiveConnectionBanner } from "../components/LiveConnectionBanner";
 import {
   BrowserPromptPanel,
@@ -1149,7 +1150,25 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
     runAction(action);
   }
 
-  function runAction(action: ActionId) {
+  /**
+   * 027 — **이 화면이 할 수 있는 일** (FR-002).
+   *
+   * 조작에 잇는 것은 `actionWiring` 이 한다. 구현이 `EditView` 와 다른 것이 정상이며
+   * (FR-004), 배선은 그 차이를 알지 못한다.
+   */
+  const screenCapabilities: ScreenCapabilities = {
+    deleteStep: () => {
+      if (focusedStepId !== null) onDeleteStep?.(focusedStepId);
+    },
+    moveStep: (direction) => {
+      if (selectedIndex >= 0) moveStep(selectedIndex, direction);
+    },
+  };
+
+  const { run: runAction, wired } = makeRunAction(screenCapabilities, fallbackAction);
+
+  /** 아직 옮기지 않은 조작과 이 화면 고유의 조작 (contracts §5) */
+  function fallbackAction(action: ActionId) {
     switch (action) {
       case "run.pause":
         onPause?.();
@@ -1184,12 +1203,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
         팔레트는 `hidden` 으로 행에 양도한다 (계약 §3-3). 여기 남는 것은 표가 요구하는
         경로가 실제로 동작한다는 보장이다.
       */
-      case "step.moveUp":
-        if (selectedIndex >= 0) moveStep(selectedIndex, -1);
-        break;
-      case "step.moveDown":
-        if (selectedIndex >= 0) moveStep(selectedIndex, 1);
-        break;
+
       case "step.addAssertion":
         setAssertOpen((v) => !v);
         break;
@@ -1202,9 +1216,7 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
           setNl("");
         }
         break;
-      case "step.delete":
-        if (focusedStepId !== null) onDeleteStep?.(focusedStepId);
-        break;
+
       /*
         011 — 복수 삭제. **확인은 팔레트가 아니라 이 화면이 세운다** (아래 `pendingBulk`).
         겹침 대화상자를 쓰지 않는 것은 009 FR-302 와 같은 근거다: 대상이 화면에서
@@ -1601,6 +1613,8 @@ export function SessionWorkbench(props: SessionWorkbenchProps) {
   return (
     <Workbench
       model={model}
+      /* 027 — 이 화면이 이어 둔 조작. 검사가 조작표와 대조한다 (FR-014) */
+      wiredActions={wiredAttribute(wired)}
       aiAuthoringSidebar={aiAuthoringSidebar}
       authoringLog={authoringLog}
       workPlan={workPlan}

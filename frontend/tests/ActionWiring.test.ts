@@ -101,8 +101,8 @@ describe("모듈이 하지 않는 일 (contracts §2)", () => {
       없다 — 임포트 한 줄이면 되기 때문이다. 그것이 research R7 의 「실패의 정의」이고,
       실패를 검사가 잡아야 되돌릴 시점을 안다.
     */
-    const source = SOURCE["../src/lib/actionWiring.ts"];
-    expect(source, "모듈 소스를 읽지 못했다").toBeTruthy();
+    const source = SOURCE["../src/lib/actionWiring.ts"] ?? "";
+    expect(source, "모듈 소스를 읽지 못했다").not.toBe("");
 
     // 주석이 「판정하지 않는다」를 설명하므로 **코드 줄만** 본다.
     const code = source

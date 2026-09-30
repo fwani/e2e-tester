@@ -71,10 +71,10 @@ description: "027 Step 편집면과 조작 배선을 한 곳으로 — 작업 �
 
 ### 무리 1 — Step 하나에 대한 편집 (가장 단순)
 
-- [ ] T009 [US1] `SessionScreen`·`EditView` 가 `step.delete` · `step.moveUp` · `step.moveDown` 을 능력 묶음으로 제공하게 고친다. 두 화면의 `runAction` 에서 해당 `case` 를 지운다
-- [ ] T010 [US1] 두 화면이 `makeRunAction` 의 결과를 `ActionPalette` 에 넘기게 한다. **호출부의 모양이 바뀌지 않는다** (FR-021)
-- [ ] T011 [US1] 화면 뿌리에 `data-wired-actions` 를 붙인다 (T006 의 값)
-- [ ] T012 [US1] 무리 1 검증 — `npx vitest run` · `npx tsc --noEmit`. **기준선과 같아야 한다**. T007 의 실패 목록에서 이 셋이 사라졌는지 확인한다
+- [X] T009 [US1] `SessionScreen`·`EditView` 가 `step.delete` · `step.moveUp` · `step.moveDown` 을 능력 묶음으로 제공하게 고친다. 두 화면의 `runAction` 에서 해당 `case` 를 지운다
+- [X] T010 [US1] 두 화면이 `makeRunAction` 의 결과를 `ActionPalette` 에 넘기게 한다. **호출부의 모양이 바뀌지 않는다** (FR-021)
+- [X] T011 [US1] 화면 뿌리에 `data-wired-actions` 를 붙인다 (T006 의 값)
+- [X] T012 [US1] 무리 1 검증 — `npx vitest run` · `npx tsc --noEmit`. **기준선과 같아야 한다**. T007 의 실패 목록에서 이 셋이 사라졌는지 확인한다
 
 ### 무리 2 — 여러 Step · 삽입 (확인 대화가 낀다)
 

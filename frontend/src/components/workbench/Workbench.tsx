@@ -91,6 +91,16 @@ export interface WorkbenchProps {
    */
   stepBand?: ReactNode;
   /**
+   * 027 FR-014 — **이 화면이 실제로 이어 둔 조작들** (쉼표로 이은 문자열).
+   *
+   * 화면이 손으로 적지 않는다 — `actionWiring` 이 능력 묶음에서 도출한 값이다.
+   * 검사가 이것을 조작표와 대조해 「표는 할 수 있다는데 눌러도 아무 일이 없는」 조작을
+   * 잡는다 (contracts/wiring-contract §3).
+   *
+   * **표시에 영향을 주지 않는다.** 머리띠 `div` 의 속성일 뿐이다.
+   */
+  wiredActions?: string;
+  /**
    * 좌측 열 **아래**에 얹는 것 (016).
    *
    * 016 의 대화 패널이 여기 산다. 배치 계약(007 FR-218·008)을 건드리지 않기 위해
@@ -199,6 +209,7 @@ export function Workbench({
   rowActions,
   stepHeaderExtra,
   stepBand,
+  wiredActions,
   leftExtra,
   aiAuthoringSidebar = false,
   authoringLog = [],
@@ -311,7 +322,7 @@ export function Workbench({
       fill
       // 머리띠는 가로 스크롤 영역 밖이다 — 좁은 창에서 본문이 스크롤해도 창 폭에 선다 (017 B-11 · layout-contract-v3 L3).
       header={
-        <div data-shell="header" className="workbench-toolbar">
+        <div data-shell="header" data-wired-actions={wiredActions} className="workbench-toolbar">
           <PhaseBar bar={model.phaseBar} testName={model.testName} rename={phaseName} group={phaseGroup}
             testId={model.testId}
             actions={<>{phaseActions}{aiAuthoringSidebar && <Button layout="ai-steps-switch" onClick={() => { onCloseDetail(); setAiOpen(false); }}>Steps 보기</Button>}{aiAuthoringSidebar && <Button aria-expanded={showAi} aria-controls="ai-authoring-sidebar" onClick={() => { onCloseDetail(); setAiOpen(!showAi); }}>{aiAttention ?? "AI 작성 현황"} · {showAi ? "접기" : "열기"}</Button>}<ToolPanel label="화면 메뉴" triggerSize="md" icon="more"><div>{headerActions}</div></ToolPanel></>} />

@@ -28,6 +28,7 @@ import {
   type EditOp,
   type ManualStepSpec,
 } from "../api/client";
+import { makeRunAction, wiredAttribute, type ScreenCapabilities } from "../lib/actionWiring";
 import { ErrorNotice, describeError, localError } from "../components/ErrorNotice";
 import { ChatPanel } from "../components/workbench/ChatPanel";
 import type { ErrorInfo } from "../components/ErrorNotice";
@@ -695,7 +696,33 @@ export function EditView({
     afterSaving(() => onStepEdit(testId, stepId));
   }
 
-  function runAction(action: ActionId) {
+  /**
+   * 027 — **이 화면이 할 수 있는 일** (FR-002).
+   *
+   * 조작에 잇는 것은 `actionWiring` 이 한다. 여기 있는 것은 「무엇을 할 수 있는가」
+   * 뿐이고, 「언제 누를 수 있는가」는 조작표가 정한다 (FR-006).
+   *
+   * **선행 확인이 여기 산다** (FR-005) — 「먼저 저장하고 열기」 같은 이 화면 고유의
+   * 절차는 능력 구현 안에 있고, 배선은 그것을 알지 못한다.
+   */
+  const capabilities_: ScreenCapabilities = {
+    deleteStep: () => {
+      if (current !== null) apply({ op: "delete", step_id: current.id });
+    },
+    moveStep: (direction) => {
+      if (currentIndex >= 0) move(currentIndex, direction);
+    },
+  };
+
+  const { run: runAction, wired } = makeRunAction(capabilities_, fallbackAction);
+
+  /**
+   * 아직 옮기지 않은 조작 (contracts §5).
+   *
+   * **이 화면 고유의 조작**과 아직 이전하지 않은 것이 함께 있다. 이전이 끝나면 전자만
+   * 남는다.
+   */
+  function fallbackAction(action: ActionId) {
     switch (action) {
       case "run.all":
         guard(() => onRun?.(testId));
@@ -781,21 +808,14 @@ export function EditView({
       case "step.insertManual":
         setInsertOpen((v) => !v);
         break;
-      case "step.delete":
-        if (current !== null) apply({ op: "delete", step_id: current.id });
-        break;
+
       case "step.deleteSelected":
         if (deleteSelection.length > 0) setPendingBulk(deleteSelection);
         break;
       case "step.deleteAfter":
         if (afterTargets.length > 0) setPendingBulk(afterTargets);
         break;
-      case "step.moveUp":
-        if (currentIndex >= 0) move(currentIndex, -1);
-        break;
-      case "step.moveDown":
-        if (currentIndex >= 0) move(currentIndex, 1);
-        break;
+
       default:
         break;
     }
@@ -1129,6 +1149,8 @@ export function EditView({
     <>
       <Workbench
         model={model}
+        /* 027 — 이 화면이 이어 둔 조작. 검사가 조작표와 대조한다 (FR-014) */
+        wiredActions={wiredAttribute(wired)}
         phaseActions={phaseActions}
         /*
           011 UC-011-2 — 이름을 국면 띠 그 자리에서 고친다. 입력할 때마다 `set_name` 연산이

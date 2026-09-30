@@ -54,6 +54,7 @@ import {
 } from "../lib/wording";
 import type { Step } from "../types/generated/step";
 import type { ErrorCode, StepResult } from "../types/generated/run-result";
+import { makeRunAction, wiredAttribute, type ScreenCapabilities } from "../lib/actionWiring";
 
 
 /** 산출물 종류. `trace` 는 서버가 501 을 돌려준다 (001 의 알려진 차이 · DC-007). */
@@ -402,14 +403,26 @@ function stepShot(
 
   /* ─── 조작 ────────────────────────────────────────────────────────────────── */
 
-  function runAction(action: ActionId) {
+  /**
+   * 027 — **이 화면이 할 수 있는 일** (FR-002).
+   *
+   * 결과 화면은 지난 실행의 기록이므로 편집 능력을 주지 않는다 — 그것이 정상이며
+   * 조작표가 이미 「해당 없음」으로 말하고 있다 (FR-003).
+   */
+  const screenCapabilities: ScreenCapabilities = {
+    runAll: () => onRunAll(testId),
+    runFrom: () => {
+      if (targetIndex !== null) onRunFrom(testId, targetIndex);
+    },
+    goBack: onBack,
+  };
+
+  const { run: runAction, wired } = makeRunAction(screenCapabilities, fallbackAction);
+
+  /** 이 화면 고유의 조작 (contracts §5) */
+  function fallbackAction(action: ActionId) {
     switch (action) {
-      case "run.all":
-        onRunAll(testId);
-        break;
-      case "run.from":
-        if (targetIndex !== null) onRunFrom(testId, targetIndex);
-        break;
+
       case "nav.editStep": {
         const stepId = targetIndex !== null ? steps[targetIndex]?.id : undefined;
         if (stepId !== undefined) onEditStep?.(testId, stepId);
@@ -545,6 +558,8 @@ function stepShot(
   return (
     <Workbench
       model={model}
+      /* 027 — 이 화면이 이어 둔 조작. 검사가 조작표와 대조한다 (FR-014) */
+      wiredActions={wiredAttribute(wired)}
       phaseActions={phaseActions}
       headerActions={headerActions}
       stepEmptyNotice="이 실행에는 Step 이 없습니다."

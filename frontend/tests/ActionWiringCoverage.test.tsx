@@ -16,13 +16,25 @@
  *
  * 버튼이 있는데 눌러도 아무 일이 없는 상태를 앞의 것은 잡지 못한다.
  *
- * ## 판정 기준은 「해당 없음이 아닌 것」이다
+ * ## 판정 기준 — 「이 화면에서 활성이 될 수 있는가」
  *
- * **「활성(enabled)」으로 잡으면 절반만 잡는다.** `cond(...)`·`off(...)` 인 조작도
- * 조건이 풀리거나 사유가 해소되면 눌리고, 그때 아무 일도 일어나지 않으면 그것이 바로
- * 이 기능이 막으려는 결함이다.
+ * **「활성(enabled)」으로 잡으면 절반만 잡는다.** 지금 잠겨 있어도 조건이 풀리면 눌리고,
+ * 그때 아무 일도 일어나지 않으면 그것이 바로 이 기능이 막으려는 결함이다.
  *
- * 「해당 없음(`na`)」만이 「이을 필요가 없다」다 — 그 국면에 그 일이 아예 없다는 뜻이다.
+ * **「해당 없음이 아닌 것」으로 잡으면 과하게 잡는다.** 결과 화면의 「Step 지우기」가
+ * 그렇다 — 표는 `off(RESULT_NO_EDIT)` 이고 해소 조작이 **다른 화면으로 가기**다. 그
+ * 화면에서는 영원히 활성이 되지 않으므로 이을 이유가 없다.
+ *
+ * | 셀 | 이어야 하나 | 왜 |
+ * |---|---|---|
+ * | `on` | **그렇다** | 지금 쓸 수 있다 |
+ * | `cond(...)` | **그렇다** | 사실이 바뀌면 활성이 된다 |
+ * | `off(...)` · 사유가 `keep` | **그렇다** | 사용자가 **이 화면에서** 해소할 수 있다 |
+ * | `off(...)` · 사유가 `hide` | 아니다 | 「이 상태의 조작이 아니다」 — 자리도 접힌다 |
+ * | `na` | 아니다 | 그 국면에 그 일이 아예 없다 |
+ *
+ * 넷째 줄의 판정은 `REASON_VISIBILITY` 가 이미 갖고 있다. **검사가 자기 사본을 들지
+ * 않는다** — 표와 갈리면 검사가 통과하면서 화면이 고장 난다.
  *
  * ## 목록을 손으로 적지 않는다
  *
@@ -34,7 +46,7 @@ import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ACTION_IDS, type ActionId } from "../src/lib/actions";
-import { rawCell } from "../src/lib/capabilities";
+import { rawCell, reasonVisibility } from "../src/lib/capabilities";
 import { WIRED_ACTION_IDS } from "../src/lib/actionWiring";
 import { PHASES, type Phase } from "../src/lib/phase";
 import { EditView } from "../src/pages/EditView";
@@ -58,9 +70,20 @@ const STEPS = [clickStep({ id: "st-1" }), clickStep({ id: "st-2" }), clickStep({
  * 조작(AI 대화 등)은 어댑터 고유의 것이므로 세지 않는다.
  */
 function mustBeWired(phase: Phase): ActionId[] {
-  return ACTION_IDS.filter(
-    (id) => WIRED_ACTION_IDS.includes(id) && rawCell(phase, id).t !== "na",
-  );
+  return ACTION_IDS.filter((id) => {
+    if (!WIRED_ACTION_IDS.includes(id)) return false; // 배선이 아직 다루지 않는 조작
+    const cell = rawCell(phase, id);
+    switch (cell.t) {
+      case "on":
+      case "cond":
+        return true;
+      case "off":
+        // 사용자가 **이 화면에서** 해소할 수 있는 것만. 판정은 표가 갖고 있다.
+        return reasonVisibility(cell.reason) === "keep";
+      case "na":
+        return false;
+    }
+  });
 }
 
 /** 화면이 내보낸 「이어 둔 조작」. 화면이 손으로 적은 것이 아니다 */
@@ -135,7 +158,8 @@ async function renderPhase(phase: Phase): Promise<boolean> {
         focusStepId="st-1"
         onBack={() => undefined}
         onEditStep={() => undefined}
-        onRun={() => undefined}
+        onRunAll={() => undefined}
+        onRunFrom={() => undefined}
       />,
     );
     await waitFor(() =>
