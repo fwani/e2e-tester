@@ -6,9 +6,14 @@ import type { GroupSummary } from "../api/client";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { NativeSelect, NativeSelectOption } from "../ui/NativeSelect";
+import { CONSTRAINTS, satisfies } from "../types/generated/constraints";
 
 /** 그룹 선택은 한 칸으로, 생성·변경·해체는 필요할 때 펼친다. */
 const ALL = "__all__";
+
+/** 접두어 규칙의 자리. 값 자체는 생성물이 갖는다 (028). */
+const PREFIX_RULE = "project/TestGroup/prefix" as const;
+const PREFIX_MAX = CONSTRAINTS[PREFIX_RULE].maxLength;
 
 export function TestGroupBar({
   groups,
@@ -139,7 +144,14 @@ function NewGroupForm({
   const [prefix, setPrefix] = useState("");
 
   const cleanPrefix = prefix.trim().toUpperCase();
-  const prefixOk = /^[A-Z][A-Z0-9]{0,7}$/.test(cleanPrefix) && cleanPrefix !== "TC";
+  /*
+    **규칙을 여기에 적지 않는다** (028 · 헌법 Cross-language schema duty).
+
+    예전에는 `/^[A-Z][A-Z0-9]{0,7}$/` 가 이 자리에 손으로 적혀 있었다. 서버의 규칙과
+    두 벌이었고, 우연히 같았기 때문에 드러나지 않았다 — 028 이 접두어에 하이픈을
+    허용하면서 한쪽만 고치면 바로 갈리는 자리였다. 지금은 스키마에서 생성된 것을 읽는다.
+  */
+  const prefixOk = satisfies(PREFIX_RULE, cleanPrefix) && cleanPrefix !== "TC";
   const ready = name.trim() !== "" && prefixOk;
 
   return (
@@ -155,7 +167,7 @@ function NewGroupForm({
       />
       <Input
         aria-label="그룹 접두어"
-        placeholder="USER"
+        placeholder="USER 또는 IT-PM"
         value={prefix}
         disabled={busy}
         onChange={(e) => setPrefix(e.target.value)}
@@ -166,7 +178,7 @@ function NewGroupForm({
         <span className="font-sans text-[14px] leading-[1.4] font-normal text-fail">
           {cleanPrefix === "TC"
             ? "TC 는 그룹 없는 테스트가 씁니다."
-            : "영문 대문자·숫자 1~8자, 첫 글자는 영문입니다."}
+            : `영문 대문자로 시작하는 마디를 하이픈으로 잇습니다 (예: USER, IT-PM). ${PREFIX_MAX}자 이내.`}
         </span>
       )}
       <Button

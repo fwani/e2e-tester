@@ -576,7 +576,7 @@
           "type": "string"
         },
         "original_id": {
-          "pattern": "^[A-Z][A-Z0-9]{0,7}-\\d{3}$",
+          "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*-\\d{3}$",
           "title": "Original Id",
           "type": "string"
         },
@@ -1156,7 +1156,7 @@
       "type": "integer"
     },
     "id": {
-      "pattern": "^[A-Z][A-Z0-9]{0,7}-\\d{3}$",
+      "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*-\\d{3}$",
       "title": "Id",
       "type": "string"
     },

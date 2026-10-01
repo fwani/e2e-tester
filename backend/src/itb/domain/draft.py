@@ -44,6 +44,7 @@ from itb.domain.test_case import (
     MAX_INSTRUCTION_CHARS,
     RESERVED_PREFIX,
     TEST_ID_PATTERN,
+    prefix_of,
 )
 
 DRAFT_ID_PATTERN = r"^D-\d{4}$"
@@ -132,7 +133,7 @@ class Draft(BaseModel):
     @model_validator(mode="after")
     def _check_shape(self) -> Self:
         if self.desired_test_id is not None:
-            wanted_prefix = self.desired_test_id.split("-", 1)[0]
+            wanted_prefix = prefix_of(self.desired_test_id)
             if wanted_prefix != self.group_prefix:
                 msg = (
                     f"희망 식별자의 접두어({wanted_prefix})가 소속 그룹"

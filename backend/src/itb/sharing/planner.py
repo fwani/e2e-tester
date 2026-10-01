@@ -24,6 +24,8 @@ from itb.domain.test_case import (
     Project,
     Test,
     TestGroup,
+    number_of,
+    prefix_of,
 )
 from itb.sharing.bundle import RequiredValue, ValueUsage
 from itb.sharing.limits import SHARE_PLAN_TTL_SECONDS
@@ -241,13 +243,15 @@ def _plan_groups(
 
 
 def _group_prefix(test_id: str) -> str:
-    return test_id.split("-", 1)[0]
+    """식별자에서 접두어를 읽는다. 028 부터 경계는 **마지막 하이픈**이다."""
+    return prefix_of(test_id)
 
 
 def _number(test_id: str) -> int:
+    """식별자의 번호. 형식이 아니면 0 — 이 자리는 계획을 세우는 중이라 멈추지 않는다."""
     try:
-        return int(test_id.split("-", 1)[1])
-    except (IndexError, ValueError):
+        return number_of(test_id)
+    except ValueError:
         return 0
 
 

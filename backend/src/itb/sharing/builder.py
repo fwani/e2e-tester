@@ -18,6 +18,7 @@ from itb.domain.test_case import (
     VARIABLE_VALUE_FIELDS,
     Project,
     Test,
+    prefix_of,
     step_field_text,
 )
 from itb.sharing.bundle import (
@@ -41,8 +42,12 @@ BUNDLE_NOTICE = """\
 
 
 def _group_prefix(test_id: str) -> str:
-    """식별자에서 그룹 접두어를 읽는다. 접두어가 곧 소속이다 (013 data-model §3)."""
-    return test_id.split("-", 1)[0]
+    """식별자에서 그룹 접두어를 읽는다. 접두어가 곧 소속이다 (013 data-model §3).
+
+    028 부터 접두어에 하이픈이 들어갈 수 있어 경계가 **마지막 하이픈**이다. 규칙은
+    도메인이 갖는다.
+    """
+    return prefix_of(test_id)
 
 
 def build_bundle(

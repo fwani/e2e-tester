@@ -54,6 +54,7 @@ from itb.domain.run_pacing import DEFAULT_PACING, RunPacing, auto_pause, delay_m
 from itb.domain.run_result import RunResult, RunScope, StepOutcome, scope_of
 from itb.domain.step import Author, NavigateStep, Step
 from itb.domain.test_case import (
+    GROUP_PREFIX_MAX_LENGTH,
     GROUP_PREFIX_PATTERN,
     MAX_INSTRUCTION_CHARS,
     RESERVED_PREFIX,
@@ -955,7 +956,9 @@ class SaveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=200)
-    group: str | None = Field(default=None, pattern=GROUP_PREFIX_PATTERN)
+    group: str | None = Field(
+        default=None, pattern=GROUP_PREFIX_PATTERN, max_length=GROUP_PREFIX_MAX_LENGTH
+    )
     """어느 그룹에 저장할 것인가 (013 FR-443).
 
     **생략하면 그룹 없음이고 식별자는 지금과 같은 `TC-###` 이다** (FR-445b · SC-627) —

@@ -114,7 +114,23 @@ def test_the_reserved_prefix_is_refused(opened: TestClient) -> None:
     assert opened.get("/api/groups").json()["groups"] == []
 
 
-@pytest.mark.parametrize("bad", ["user", "US ER", "../X", "ABCDEFGHI", "1AB", ""])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "user",
+        "US ER",
+        "../X",
+        # 028: 상한이 12자가 됐다 (FR-003). 9자였던 옛 표본은 이제 통과하는 값이다.
+        "ABCDEFGHIJKLM",
+        "1AB",
+        "",
+        # 하이픈을 허용하면서 새로 생긴 위반 모양 (028 FR-002·FR-004).
+        "IT-",
+        "-PM",
+        "IT--PM",
+        "IT-001",
+    ],
+)
 def test_malformed_prefixes_are_refused(opened: TestClient, bad: str) -> None:
     """FR-444e — 접두어가 파일 이름이 된다. **허용 목록이라** 경로 문자가 통과하지 못한다."""
     resp = opened.post("/api/groups", json={"prefix": bad, "name": "이름"})

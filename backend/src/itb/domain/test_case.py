@@ -18,8 +18,11 @@ from itb.domain.step import Step
 
 DSL_VERSION = 1
 
-GROUP_PREFIX_PATTERN = r"^[A-Z][A-Z0-9]{0,7}$"
-"""그룹의 식별자 접두어 (013 FR-444d·FR-444e).
+GROUP_PREFIX_PATTERN = r"^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*$"
+"""그룹의 식별자 접두어 (013 FR-444d·FR-444e · 028 FR-001~FR-004).
+
+말로 하면 **「하이픈으로 이은 마디들, 각 마디는 영문 대문자로 시작」**이다 — `USER`,
+`IT-PM`, `IT-PM-DM`.
 
 **대문자 ASCII 만 허용한다.** 접두어는 테스트 식별자에 들어가고, 식별자는 **파일 이름과
 디렉터리 이름이 된다** (`tests/USER-001-로그인.yaml`, `.runs/USER-001/`). macOS 의 기본 파일
@@ -29,7 +32,32 @@ GROUP_PREFIX_PATTERN = r"^[A-Z][A-Z0-9]{0,7}$"
 **거절 목록이 아니라 허용 목록이다.** 경로 구분자·상위 이동(`..`)·제어 문자가 애초에 이
 패턴을 통과할 수 없다 (헌법 §보안 — 모든 외부 입력은 경계에서 검증).
 
-8자 상한은 목록에서 이름을 밀어내지 않을 길이다.
+## 왜 마디마다 영문으로 시작해야 하는가 (028)
+
+하이픈을 허용하는 순간 식별자의 경계가 문제가 된다. 접두어에 숫자만의 마디를 허용하면
+`A-001` 이 접두어가 될 수 있고, 그러면 식별자 `A-001-001` 에서 **어디까지가 접두어인지
+정할 근거가 없다.** 마디가 영문으로 시작하게 하면 그런 값이 애초에 만들어지지 않는다
+(028 FR-004 · research R1).
+
+## 길이가 왜 이 패턴 안에 없는가 (028)
+
+Pydantic v2 의 `pattern` 은 Rust regex 로 컴파일되어 **선읽기를 지원하지 않는다.**
+`(?=.{1,12}$)` 를 넣으면 모델 정의 시점에 `SchemaError` 로 죽는다. 그래서 길이는
+:data:`GROUP_PREFIX_MAX_LENGTH` 로 따로 걸고, JSON Schema 에는 `maxLength` 로 실린다 —
+화면도 같은 값을 본다 (헌법 §Cross-language schema duty).
+
+**이 패턴은 028 이전 규칙(`^[A-Z][A-Z0-9]{0,7}$`)의 상위집합이다.** 그래서 저장된
+프로젝트·식별자·파일 이름에 손대지 않는다. 그 사실은 주장이 아니라
+`tests/unit/test_group_prefix_rules.py` 가 지킨다.
+"""
+
+GROUP_PREFIX_MAX_LENGTH = 12
+"""접두어 길이 상한 (028 FR-003).
+
+013 은 8자였다. 식별자가 파일 이름이 되므로 무한정 늘릴 수 없고, `IT-PM`·`IT-PM-DM` 같은
+실제 식별 체계가 들어갈 만큼은 되어야 한다.
+
+**패턴과 이 값을 함께 봐야 규칙이 완성된다.** 한쪽만 보면 13자짜리 접두어가 통과한다.
 """
 
 RESERVED_PREFIX = "TC"
@@ -40,16 +68,106 @@ RESERVED_PREFIX = "TC"
 그 그룹에 나타난다.
 """
 
-TEST_ID_PATTERN = r"^[A-Z][A-Z0-9]{0,7}-\d{3}$"
+TEST_ID_PATTERN = r"^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*-\d{3}$"
 """테스트 식별자 = `<그룹 접두어>-<번호>` (013 FR-444).
 
 `TC-001` 이 이 패턴을 만족한다 — **기존 자산이 그대로 통과한다** (SC-629). 접두어 규칙은
 :data:`GROUP_PREFIX_PATTERN` 과 같고, 번호는 세 자리다 — 상한은
 :data:`MAX_TEST_NUMBER` 하나에서 온다.
 
+**028 부터 접두어에 하이픈이 들어갈 수 있다** (`IT-PM-001`). 그래서 식별자를 자를 때
+**마지막 하이픈**이 경계다. 자르는 일은 :func:`prefix_of` · :func:`number_of` 가 하며,
+그 규칙을 부르는 자리마다 손으로 적지 않는다 — 그것이 028 이 고친 결함이다.
+
 **접두어가 곧 소속이다.** 별도의 그룹 필드를 두지 않는다 — 둘을 다 저장하면 어긋날 수 있고,
 어긋났을 때 어느 쪽이 맞는지 정할 근거가 없다 (013 data-model §3).
 """
+
+TEST_FILE_PATTERN = r"^(?P<id>[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*?-(?P<number>\d{3}))-.*\.yaml$"
+"""정의 파일 이름 = `<식별자>-<이름 slug>.yaml` (028 FR-010).
+
+**접두어를 최소 일치로 읽는다** (`*?`). 이름 slug 에도 하이픈과 숫자가 들어가므로
+(`IT-PM-001-단계-002-확인.yaml`), 욕심내어 길게 읽으면 `IT-PM-001-단계-002` 를 식별자로
+삼는다.
+
+최소 일치가 안전한 이유는 :data:`GROUP_PREFIX_PATTERN` 이 접두어의 모든 마디를 영문으로
+시작하게 만들기 때문이다 — 접두어 안에 3자리 숫자 마디가 존재할 수 없으므로, 왼쪽에서
+처음 만나는 「하이픈 + 3자리」가 언제나 진짜 번호다 (research R4).
+"""
+
+TEST_ID_MAX_LENGTH = GROUP_PREFIX_MAX_LENGTH + 4
+"""식별자 길이 상한 — 접두어 + `-` + 세 자리 (028).
+
+길이가 :data:`TEST_ID_PATTERN` 안에 없으므로(위 주석 참고) **패턴만 보는 자리는 길이를
+놓친다.** 그래서 판정은 :func:`is_valid_test_id` 가 한다. 패턴은 Pydantic 과 JSON Schema
+를 위한 표현이고, 규칙 전체는 그 함수다.
+"""
+
+_PREFIX_RE = re.compile(GROUP_PREFIX_PATTERN)
+_TEST_ID_RE = re.compile(TEST_ID_PATTERN)
+_TEST_FILE_RE = re.compile(TEST_FILE_PATTERN)
+
+
+def is_valid_prefix(value: str) -> bool:
+    """그룹 접두어 규칙 전체 — 모양과 길이를 **함께** 본다 (028 FR-001~FR-003).
+
+    패턴만 보면 13자짜리 접두어가 통과한다. 길이가 패턴 밖에 있는 것은 Pydantic 의
+    Rust regex 가 선읽기를 못 쓰기 때문이지(research R1), 길이가 규칙이 아니어서가 아니다.
+    """
+    return _PREFIX_RE.fullmatch(value) is not None and len(value) <= GROUP_PREFIX_MAX_LENGTH
+
+
+def is_valid_test_id(value: str) -> bool:
+    """테스트 식별자 규칙 전체 — 모양과 길이를 함께 본다 (028).
+
+    **거절 목록이 아니라 허용 목록이다** (헌법 §보안). 식별자는 파일 이름과 디렉터리
+    이름이 되므로 경로 구분자·상위 이동·제어 문자가 애초에 통과하지 못해야 한다.
+
+    **`fullmatch` 여야 한다.** `re.match` 는 `$` 가 문자열 끝의 개행 **앞**에서도
+    매치하므로 `"TC-001\n"` 을 통과시킨다. 그 값이 파일 이름이 된다.
+    """
+    return _TEST_ID_RE.fullmatch(value) is not None and len(value) <= TEST_ID_MAX_LENGTH
+
+
+def prefix_of(test_id: str) -> str:
+    """식별자에서 그룹 접두어를 읽는다 — `IT-PM-001` → `IT-PM` (028 FR-008).
+
+    **경계는 마지막 하이픈이다.** 028 이전에는 이 일을 `test_id.split("-", 1)[0]` 으로
+    열두 곳에서 따로 했고, 접두어에 하이픈이 들어가는 순간 전부 `IT` 를 답하게 됐다.
+    규칙을 자리마다 적는 대신 여기서 한 번 적는 것이 028 의 절반이다 (research R3).
+
+    형식에 맞지 않으면 **예외를 올린다.** 옛 `split` 은 하이픈 없는 문자열을 통째로
+    접두어라고 답해서, 잘못된 값이 그룹 집계에 섞여도 드러나지 않았다.
+    """
+    _require_test_id(test_id)
+    return test_id.rsplit("-", 1)[0]
+
+
+def number_of(test_id: str) -> int:
+    """식별자에서 번호를 읽는다 — `IT-PM-001` → `1` (028 FR-008)."""
+    _require_test_id(test_id)
+    return int(test_id.rsplit("-", 1)[1])
+
+
+def id_from_filename(name: str) -> str | None:
+    """정의 파일 이름에서 식별자를 읽는다 — `IT-PM-001-로그인.yaml` → `IT-PM-001`.
+
+    테스트 디렉터리에는 정의 파일이 아닌 것도 있으므로 **`None` 이 정상 답이다.**
+    「이 파일은 테스트가 아니다」는 오류가 아니라 판정이다.
+
+    이름이 `test_` 로 시작하지 않는 이유는 pytest 가 **어느 모듈에서든** `test_` 로
+    시작하는 호출 가능 객체를 검사 함수로 수집하려 들기 때문이다. 그것을 임포트한 검사
+    모듈이 수집 오류를 낸다.
+    """
+    match = _TEST_FILE_RE.fullmatch(name)
+    return None if match is None else match.group("id")
+
+
+def _require_test_id(test_id: str) -> None:
+    if not is_valid_test_id(test_id):
+        msg = f"테스트 식별자 형식이 아니다: {test_id!r}"
+        raise ValueError(msg)
+
 
 MAX_INSTRUCTION_CHARS = 8000
 """자연어 지시문 길이 상한 (FR-085).
@@ -297,7 +415,7 @@ class TestGroup(BaseModel):
 
     model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
-    prefix: str = Field(pattern=GROUP_PREFIX_PATTERN)
+    prefix: str = Field(pattern=GROUP_PREFIX_PATTERN, max_length=GROUP_PREFIX_MAX_LENGTH)
     name: str = Field(min_length=1, max_length=100)
 
 

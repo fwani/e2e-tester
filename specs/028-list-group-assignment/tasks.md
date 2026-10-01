@@ -31,8 +31,8 @@ description: "028 목록에서 그룹 지정하기 — 작업 목록"
 **Purpose**: 이 저장소에는 028 이전부터 실패하던 검증이 있다. 새로 깨뜨린 것과 원래
 깨져 있던 것을 가르지 못하면 판단이 전부 틀린다.
 
-- [ ] T001 시작 시점 전량 검증을 돌려 `specs/028-list-group-assignment/baseline.md` 에 적는다 — `cd backend && bash scripts/test-backend.sh` · `uv run ruff check src/ tests/` · `uv run lint-imports` · `uv run python -m itb.schema.export --check` · `cd frontend && npx tsc --noEmit` · `npx vitest run`. **실패 건은 이름까지 적는다**
-- [ ] T002 [P] 접두어·식별자를 쓰는 기존 검증 목록을 `baseline.md` 에 적는다 — 그룹·이동·엑셀·공유·저장소 관련. 각각 지금 몇 건 통과인지 함께 적는다. 이것이 회귀 판정의 근거다
+- [X] T001 시작 시점 전량 검증을 돌려 `specs/028-list-group-assignment/baseline.md` 에 적는다 — `cd backend && bash scripts/test-backend.sh` · `uv run ruff check src/ tests/` · `uv run lint-imports` · `uv run python -m itb.schema.export --check` · `cd frontend && npx tsc --noEmit` · `npx vitest run`. **실패 건은 이름까지 적는다**
+- [X] T002 [P] 접두어·식별자를 쓰는 기존 검증 목록을 `baseline.md` 에 적는다 — 그룹·이동·엑셀·공유·저장소 관련. 각각 지금 몇 건 통과인지 함께 적는다. 이것이 회귀 판정의 근거다
 
 **Checkpoint**: 「원래 빨간 것」이 문서로 남았다.
 
@@ -45,12 +45,12 @@ description: "028 목록에서 그룹 지정하기 — 작업 목록"
 
 **⚠️ CRITICAL**: 이 단계가 끝나기 전에는 호출 지점을 하나도 건드리지 않는다.
 
-- [ ] T003 `backend/tests/` 에 접두어 규칙 검증을 먼저 쓴다 — `IT-PM`·`IT-DM`·`A-B-C` 통과, `IT-`·`-PM`·`IT--PM`·`it-pm`·`IT-001`·13자 이상 거부, `TC` 예약. **옛 규칙 상위집합 검증을 포함한다** (옛 패턴을 만족하는 표본이 새 패턴도 만족한다 — R7-1)
-- [ ] T004 `backend/src/itb/domain/test_case.py` 의 `GROUP_PREFIX_PATTERN` 을 `^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*$` 로 바꾸고, 길이 상한 12를 **정규식 밖**에 둔다 (`max_length` — Pydantic 의 Rust regex 는 선읽기를 컴파일하지 못한다, R1)
-- [ ] T005 `backend/src/itb/domain/test_case.py` 의 `TEST_ID_PATTERN` 을 새 접두어에 맞춰 바꾼다 (`<새 접두어>-\d{3}`)
-- [ ] T006 `backend/tests/` 에 읽기 함수 검증을 쓴다 — `prefix_of("IT-PM-001") == "IT-PM"`, `number_of("IT-PM-001") == 1`, `test_id_from_filename("IT-PM-001-로그인.yaml") == "IT-PM-001"`. **옛 식별자 동치**(`USER-001`·`TC-014` 에서 옛 `split("-", 1)` 과 같은 값)와 **형식 위반 시 예외**를 함께 본다 (R7-2)
-- [ ] T007 `backend/src/itb/domain/test_case.py` 에 `prefix_of` · `number_of` · `test_id_from_filename` 을 둔다 — 식별자 패턴이 이미 여기 있으므로 읽는 법도 여기 있어야 갈리지 않는다 (data-model §3)
-- [ ] T008 `backend/src/itb/domain/test_case.py` 의 `TestGroup.prefix` 필드에 새 패턴과 `max_length` 를 반영한다 (JSON Schema 로 흘러가는 지점이다)
+- [X] T003 `backend/tests/` 에 접두어 규칙 검증을 먼저 쓴다 — `IT-PM`·`IT-DM`·`A-B-C` 통과, `IT-`·`-PM`·`IT--PM`·`it-pm`·`IT-001`·13자 이상 거부, `TC` 예약. **옛 규칙 상위집합 검증을 포함한다** (옛 패턴을 만족하는 표본이 새 패턴도 만족한다 — R7-1)
+- [X] T004 `backend/src/itb/domain/test_case.py` 의 `GROUP_PREFIX_PATTERN` 을 `^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*$` 로 바꾸고, 길이 상한 12를 **정규식 밖**에 둔다 (`max_length` — Pydantic 의 Rust regex 는 선읽기를 컴파일하지 못한다, R1)
+- [X] T005 `backend/src/itb/domain/test_case.py` 의 `TEST_ID_PATTERN` 을 새 접두어에 맞춰 바꾼다 (`<새 접두어>-\d{3}`)
+- [X] T006 `backend/tests/` 에 읽기 함수 검증을 쓴다 — `prefix_of("IT-PM-001") == "IT-PM"`, `number_of("IT-PM-001") == 1`, `test_id_from_filename("IT-PM-001-로그인.yaml") == "IT-PM-001"`. **옛 식별자 동치**(`USER-001`·`TC-014` 에서 옛 `split("-", 1)` 과 같은 값)와 **형식 위반 시 예외**를 함께 본다 (R7-2)
+- [X] T007 `backend/src/itb/domain/test_case.py` 에 `prefix_of` · `number_of` · `test_id_from_filename` 을 둔다 — 식별자 패턴이 이미 여기 있으므로 읽는 법도 여기 있어야 갈리지 않는다 (data-model §3)
+- [X] T008 `backend/src/itb/domain/test_case.py` 의 `TestGroup.prefix` 필드에 새 패턴과 `max_length` 를 반영한다 (JSON Schema 로 흘러가는 지점이다)
 
 **Checkpoint**: 규칙과 읽는 법이 한 곳에 있다. 아직 아무 호출 지점도 바뀌지 않았고
 기존 검증은 전부 통과해야 한다 (새 규칙이 옛 규칙의 상위집합이므로).
@@ -67,37 +67,37 @@ description: "028 목록에서 그룹 지정하기 — 작업 목록"
 
 ### 파일 이름 읽기
 
-- [ ] T009 [US1] `backend/tests/` 에 파일 이름 파싱 검증을 쓴다 — `IT-PM-001-단계-002-확인.yaml` · `IT-PM-001-ABC-002.yaml` · `IT-PM-DM-003-x.yaml` 에서 식별자를 정확히 끊고, 옛 이름(`USER-001-로그인.yaml` · `TC-999-a.yaml`)도 옛 정규식과 같은 결과를 낸다 (R4 · R7-3)
-- [ ] T010 [US1] `backend/src/itb/storage/repository.py` 의 `_TEST_FILE_RE` 를 최소 일치 형태로 바꾼다 — 접두어 마디에 3자리 숫자가 올 수 없으므로 왼쪽 첫 「하이픈+3자리」가 언제나 진짜 번호다
+- [X] T009 [US1] `backend/tests/` 에 파일 이름 파싱 검증을 쓴다 — `IT-PM-001-단계-002-확인.yaml` · `IT-PM-001-ABC-002.yaml` · `IT-PM-DM-003-x.yaml` 에서 식별자를 정확히 끊고, 옛 이름(`USER-001-로그인.yaml` · `TC-999-a.yaml`)도 옛 정규식과 같은 결과를 낸다 (R4 · R7-3)
+- [X] T010 [US1] `backend/src/itb/storage/repository.py` 의 `_TEST_FILE_RE` 를 최소 일치 형태로 바꾼다 — 접두어 마디에 3자리 숫자가 올 수 없으므로 왼쪽 첫 「하이픈+3자리」가 언제나 진짜 번호다
 
 ### 호출 지점 17곳 (읽기 함수로 교체)
 
-- [ ] T011 [US1] `backend/src/itb/storage/repository.py:330` (`used_numbers` 의 접두어 비교)와 `backend/src/itb/storage/test_moves.py:162` (번호)를 읽기 함수로 바꾼다
-- [ ] T012 [P] [US1] `backend/src/itb/sharing/planner.py:244·249` · `backend/src/itb/sharing/builder.py:45` 를 읽기 함수로 바꾼다
-- [ ] T013 [P] [US1] `backend/src/itb/portability/importer.py:211·231·372·455·498` 과 `backend/src/itb/portability/exporter.py:85` 를 읽기 함수로 바꾼다
-- [ ] T014 [P] [US1] `backend/src/itb/api/routes/tests.py:519·531` 과 `backend/src/itb/domain/draft.py:135` 를 읽기 함수로 바꾼다
-- [ ] T015 [US1] `backend/src/itb/api/routes/groups.py:81` 을 읽기 함수로 바꾸고, **`:177` 의 파일 이름 손 복원**(`split("-", 2)[0] + "-" + [1]`)을 `test_id_from_filename` 으로 바꾼다 — 여기가 하이픈 접두어에서 그룹 해체를 깨뜨리는 자리다
-- [ ] T016 [US1] `backend/src/itb/api/routes/sharing.py:499` 의 파일 이름 자르기를 `test_id_from_filename` + `prefix_of` 로 바꾼다
-- [ ] T017 [US1] `grep -rn 'split("-"' backend/src` 로 남은 자리가 없는지 확인한다. 남아 있다면 식별자와 무관한 것인지 근거를 남긴다
+- [X] T011 [US1] `backend/src/itb/storage/repository.py:330` (`used_numbers` 의 접두어 비교)와 `backend/src/itb/storage/test_moves.py:162` (번호)를 읽기 함수로 바꾼다
+- [X] T012 [P] [US1] `backend/src/itb/sharing/planner.py:244·249` · `backend/src/itb/sharing/builder.py:45` 를 읽기 함수로 바꾼다
+- [X] T013 [P] [US1] `backend/src/itb/portability/importer.py:211·231·372·455·498` 과 `backend/src/itb/portability/exporter.py:85` 를 읽기 함수로 바꾼다
+- [X] T014 [P] [US1] `backend/src/itb/api/routes/tests.py:519·531` 과 `backend/src/itb/domain/draft.py:135` 를 읽기 함수로 바꾼다
+- [X] T015 [US1] `backend/src/itb/api/routes/groups.py:81` 을 읽기 함수로 바꾸고, **`:177` 의 파일 이름 손 복원**(`split("-", 2)[0] + "-" + [1]`)을 `test_id_from_filename` 으로 바꾼다 — 여기가 하이픈 접두어에서 그룹 해체를 깨뜨리는 자리다
+- [X] T016 [US1] `backend/src/itb/api/routes/sharing.py:499` 의 파일 이름 자르기를 `test_id_from_filename` + `prefix_of` 로 바꾼다
+- [X] T017 [US1] `grep -rn 'split("-"' backend/src` 로 남은 자리가 없는지 확인한다. 남아 있다면 식별자와 무관한 것인지 근거를 남긴다
 
 ### 접두어를 검증하는 자리
 
-- [ ] T018 [US1] `backend/src/itb/portability/importer.py` 의 `validate_prefix()` 가 도메인 규칙을 쓰게 하고, 안내 문구를 하이픈을 쓸 수 있다는 사실이 담기도록 고친다 (FR-006)
-- [ ] T019 [US1] `backend/src/itb/sharing/planner.py:153` 의 **자동 접두어 생성**이 새 규칙을 만족하는 값만 내놓는지 확인하고, 검증을 붙인다 (FR-012)
-- [ ] T020 [P] [US1] `backend/src/itb/api/routes/groups.py` · `tests.py` · `sessions.py` 의 접두어 제약(`StringConstraints` · `Field(pattern=...)`)에 길이 상한이 함께 붙었는지 확인한다
+- [X] T018 [US1] `backend/src/itb/portability/importer.py` 의 `validate_prefix()` 가 도메인 규칙을 쓰게 하고, 안내 문구를 하이픈을 쓸 수 있다는 사실이 담기도록 고친다 (FR-006)
+- [X] T019 [US1] `backend/src/itb/sharing/planner.py:153` 의 **자동 접두어 생성**이 새 규칙을 만족하는 값만 내놓는지 확인하고, 검증을 붙인다 (FR-012)
+- [X] T020 [P] [US1] `backend/src/itb/api/routes/groups.py` · `tests.py` · `sessions.py` 의 접두어 제약(`StringConstraints` · `Field(pattern=...)`)에 길이 상한이 함께 붙었는지 확인한다
 
 ### 규칙을 화면까지 한 벌로 (헌법 Cross-language schema duty)
 
-- [ ] T021 [US1] `cd backend && uv run python -m itb.schema.export` 로 `backend/schema/project.schema.json` 을 갱신한다 (`TestGroup.prefix` 의 `pattern`·`maxLength`)
-- [ ] T022 [US1] `frontend/scripts/gen-types.mjs` 를 확장해 스키마의 접두어 `pattern`·`maxLength` 를 상수 모듈로 뽑는다 — 생성물이므로 손으로 고치지 않는다는 배너를 유지한다 (data-model §5)
-- [ ] T023 [US1] `cd frontend && npm run gen:types` 로 생성하고, `frontend/src/components/TestGroupBar.tsx:142` 의 손으로 적은 `/^[A-Z][A-Z0-9]{0,7}$/` 를 생성 상수로 바꾼다
-- [ ] T024 [US1] `frontend/tests/` 에 검증을 더한다 — 화면이 `IT-PM` 을 받아들이고 `IT-`·`IT-001` 을 거부하며, **정규식이 생성물에서 온다**(파일 안에 정규식 리터럴이 없다)
-- [ ] T025 [US1] `TestGroupBar` 의 접두어 안내 문구를 고친다 — 「영문 대문자·숫자 1~8자」는 이제 거짓이다. 예시도 `IT-PM` 을 보이게 한다 (FR-006)
+- [X] T021 [US1] `cd backend && uv run python -m itb.schema.export` 로 `backend/schema/project.schema.json` 을 갱신한다 (`TestGroup.prefix` 의 `pattern`·`maxLength`)
+- [X] T022 [US1] `frontend/scripts/gen-types.mjs` 를 확장해 스키마의 접두어 `pattern`·`maxLength` 를 상수 모듈로 뽑는다 — 생성물이므로 손으로 고치지 않는다는 배너를 유지한다 (data-model §5)
+- [X] T023 [US1] `cd frontend && npm run gen:types` 로 생성하고, `frontend/src/components/TestGroupBar.tsx:142` 의 손으로 적은 `/^[A-Z][A-Z0-9]{0,7}$/` 를 생성 상수로 바꾼다
+- [X] T024 [US1] `frontend/tests/` 에 검증을 더한다 — 화면이 `IT-PM` 을 받아들이고 `IT-`·`IT-001` 을 거부하며, **정규식이 생성물에서 온다**(파일 안에 정규식 리터럴이 없다)
+- [X] T025 [US1] `TestGroupBar` 의 접두어 안내 문구를 고친다 — 「영문 대문자·숫자 1~8자」는 이제 거짓이다. 예시도 `IT-PM` 을 보이게 한다 (FR-006)
 
 ### 하위 호환 증명
 
-- [ ] T026 [US1] `backend/tests/` 에 028 이전 자산으로 목록·집계·이동·엑셀 왕복이 그대로인지 보는 검증을 더한다 (FR-011 · SC-002). **마이그레이션 단계를 만들지 않는다**
-- [ ] T027 [US1] 엑셀·공유 왕복 검증에 하이픈 접두어 사례를 더한다 (SC-007)
+- [X] T026 [US1] `backend/tests/` 에 028 이전 자산으로 목록·집계·이동·엑셀 왕복이 그대로인지 보는 검증을 더한다 (FR-011 · SC-002). **마이그레이션 단계를 만들지 않는다**
+- [X] T027 [US1] 엑셀·공유 왕복 검증에 하이픈 접두어 사례를 더한다 (SC-007)
 
 **Checkpoint**: `IT-PM` 그룹을 만들고 쓸 수 있다. **이 지점에서 사용자가 겪은 문제의
 절반이 풀린다** — 목록의 「그룹으로 옮기기」가 이제 나타난다.

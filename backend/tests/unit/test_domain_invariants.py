@@ -483,7 +483,9 @@ def test_widened_identifier_accepts_groups_and_legacy(good: str) -> None:
         "US ER-001",
         "../TC-001",  # 상위 이동
         "TC/001",  # 경로 구분자
-        "ABCDEFGHI-001",  # 9자 접두어
+        "ABCDEFGHIJKLM-001",  # 13자 접두어 — 상한은 12다 (028 FR-003)
+        "IT--PM-001",  # 하이픈이 연달아 온다 (028 FR-002)
+        "IT-001-001",  # 숫자만의 마디는 접두어에 올 수 없다 (028 FR-004)
         "-001",
         "1AB-001",  # 숫자로 시작
         "TC-001\n",
@@ -495,9 +497,11 @@ def test_widened_identifier_is_an_allowlist_not_a_denylist(bad: str) -> None:
     식별자는 파일 이름과 디렉터리 이름이 된다. 경로 구분자·상위 이동·제어 문자가 애초에
     패턴을 통과할 수 없어야, 「무엇을 막을지」를 빠짐없이 세는 일이 필요 없어진다.
     """
-    from itb.domain.test_case import TEST_ID_PATTERN
+    from itb.domain.test_case import is_valid_test_id
 
-    assert not re.fullmatch(TEST_ID_PATTERN, bad), bad
+    # **패턴이 아니라 판정 함수를 본다** (028). 길이는 패턴 밖에 있다 — Pydantic 의
+    # Rust regex 가 선읽기를 못 쓰기 때문이다(research R1). 규칙 전체는 이 함수다.
+    assert not is_valid_test_id(bad), bad
 
 
 def test_group_prefix_follows_the_same_rule_as_the_identifier() -> None:

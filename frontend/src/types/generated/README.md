@@ -22,3 +22,4 @@ cd ../frontend && npm run gen:types
 - `share-bundle.d.ts`
 - `step-dsl.d.ts`
 - `step.d.ts`
+- `constraints.ts` — 스키마의 값 제약(정규식·길이). 화면이 규칙을 다시 적지 않게 한다

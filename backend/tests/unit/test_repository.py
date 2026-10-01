@@ -446,7 +446,22 @@ def test_another_prefix_does_not_take_a_number(repo: ProjectRepository) -> None:
 
 
 @pytest.mark.parametrize(
-    "bad", ["tc-001", "TC-1", "TC-0001", "../TC-001", "TC/001", "ABCDEFGHI-001", "-001"]
+    "bad",
+    [
+        "tc-001",
+        "TC-1",
+        "TC-0001",
+        "../TC-001",
+        "TC/001",
+        # 028 이 접두어 상한을 8 → 12 로 넓혔다 (FR-003). 옛 표본 `ABCDEFGHI`(9자)는
+        # 이제 **유효한 접두어**이므로 상한을 넘는 13자로 바꾼다.
+        "ABCDEFGHIJKLM-001",
+        "-001",
+        # 하이픈을 허용하면서 새로 생긴 위반 모양 (028 FR-002).
+        "IT--PM-001",
+        "IT-PM--001",
+        "-IT-PM-001",
+    ],
 )
 def test_paths_still_reject_malformed_identifiers(repo: ProjectRepository, bad: str) -> None:
     """넓혔지만 **없애지 않았다** (헌법 §보안).

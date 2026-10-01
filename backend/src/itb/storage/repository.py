@@ -28,9 +28,11 @@ from itb.domain.run_result import RunResult, RunScope
 from itb.domain.test_case import (
     MAX_TEST_NUMBER,
     RESERVED_PREFIX,
-    TEST_ID_PATTERN,
+    TEST_FILE_PATTERN,
     Project,
     Test,
+    is_valid_test_id,
+    prefix_of,
 )
 from itb.storage import atomic
 from itb.storage.drafts import DRAFTS_DIR, DraftStore
@@ -42,19 +44,16 @@ RUNS_DIR = ".runs"
 SECRETS_FILE = "secrets.local.yaml"
 GITIGNORE_FILE = ".gitignore"
 
-_TEST_FILE_RE = re.compile(r"^(?P<id>[A-Z][A-Z0-9]{0,7}-(?P<number>\d{3}))-.*\.yaml$")
+_TEST_FILE_RE = re.compile(TEST_FILE_PATTERN)
 """정의 파일 이름 = `<식별자>-<이름 slug>.yaml`.
 
 `list_test_paths` 와 `allocate_test_id` 가 **같은 것을 본다.** 파일 이름에서 식별자를 읽는
 방법이 두 곳에서 갈리면, 목록에는 보이는데 번호는 비어 있다고 판단하는 상태가 생긴다.
+
+**패턴은 도메인이 정본이다** (028). 접두어에 하이픈이 들어갈 수 있게 되면서 이 정규식은
+접두어를 최소 일치로 읽어야 하는데, 그 규칙을 여기에 다시 적으면 식별자 패턴과 갈린다.
 """
 
-TEST_ID_RE = re.compile(TEST_ID_PATTERN)
-"""식별자 검증. **패턴은 도메인이 정본이다** (013 T005).
-
-여기에 정규식을 다시 적으면 두 벌이 되고, 갈린 순간 「저장은 되는데 못 읽는」 상태가 된다 —
-`Test.id` 는 도메인 패턴으로 검증되고 파일을 찾는 것은 이쪽이기 때문이다.
-"""
 _SLUG_STRIP = re.compile(r"[^0-9A-Za-z가-힣]+")
 
 GITIGNORE_BODY = """\
@@ -147,7 +146,7 @@ class ProjectPaths:
         return self.root / GITIGNORE_FILE
 
     def run_dir(self, test_id: str) -> pathlib.Path:
-        if not TEST_ID_RE.match(test_id):
+        if not is_valid_test_id(test_id):
             msg = f"테스트 ID 형식이 올바르지 않습니다: {test_id}"
             raise ProjectError(msg)
         return self.runs_dir / test_id
@@ -231,7 +230,7 @@ class ProjectRepository:
         return self.paths.tests_dir / f"{test.id}-{slugify(test.name)}.yaml"
 
     def find_test_path(self, test_id: str) -> pathlib.Path | None:
-        if not TEST_ID_RE.match(test_id):
+        if not is_valid_test_id(test_id):
             msg = f"테스트 ID 형식이 올바르지 않습니다: {test_id}"
             raise ProjectError(msg)
         matches = sorted(self.paths.tests_dir.glob(f"{test_id}-*.yaml"))
@@ -327,7 +326,7 @@ class ProjectRepository:
             int(m.group("number"))
             for p in self.list_test_paths()
             if (m := _TEST_FILE_RE.match(p.name)) is not None
-            and m.group("id").split("-", 1)[0] == prefix
+            and prefix_of(m.group("id")) == prefix
         }
 
     def allocate_test_id(self, prefix: str = RESERVED_PREFIX) -> str:

@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 from itb.domain.run_result import Outcome
 from itb.domain.step import StepType
-from itb.domain.test_case import RESERVED_PREFIX, Project, Test
+from itb.domain.test_case import RESERVED_PREFIX, Project, Test, prefix_of
 from itb.portability.columns import ORDER, Column
 from itb.portability.sheet_name import UNGROUPED_SHEET_NAME, SheetRename, assign
 from itb.portability.workbook import SheetSpec
@@ -78,11 +78,6 @@ def split_steps(test: Test) -> tuple[list[str], list[str]]:
     procedure = [s.label for s in test.steps if s.type != StepType.ASSERTION]
     expectation = [s.label for s in test.steps if s.type == StepType.ASSERTION]
     return procedure, expectation
-
-
-def prefix_of(test_id: str) -> str:
-    """식별자에서 그룹 접두어를 읽는다. 접두어가 곧 소속이다 (013)."""
-    return test_id.split("-", 1)[0]
 
 
 def row_for(test: Test, outcome: Outcome | None) -> list[str]:

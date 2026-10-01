@@ -69,7 +69,7 @@
     "desired_test_id": {
       "anyOf": [
         {
-          "pattern": "^[A-Z][A-Z0-9]{0,7}-\\d{3}$",
+          "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*-\\d{3}$",
           "type": "string"
         },
         {
@@ -99,7 +99,7 @@
     },
     "group_prefix": {
       "default": "TC",
-      "pattern": "^[A-Z][A-Z0-9]{0,7}$",
+      "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*$",
       "title": "Group Prefix",
       "type": "string"
     },

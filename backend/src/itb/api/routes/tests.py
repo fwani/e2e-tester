@@ -19,7 +19,6 @@ from itb.api.errors import (
     not_found,
     not_implemented,
 )
-from itb.api.routes.groups import prefix_of
 from itb.api.state import AppState, get_state
 from itb.domain.manual_step import (
     CloseTabSpec,
@@ -30,6 +29,7 @@ from itb.domain.manual_step import (
 from itb.domain.run_result import Outcome, RunResult, RunScope
 from itb.domain.step import Step
 from itb.domain.test_case import (
+    GROUP_PREFIX_MAX_LENGTH,
     GROUP_PREFIX_PATTERN,
     MAX_TEST_NUMBER,
     RESERVED_PREFIX,
@@ -37,6 +37,8 @@ from itb.domain.test_case import (
     Test,
     Variable,
     derive_variables,
+    number_of,
+    prefix_of,
     undefined_variable_references,
     variable_reference,
 )
@@ -176,7 +178,7 @@ class MoveTestsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     test_ids: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(min_length=1)
-    to_prefix: str = Field(pattern=GROUP_PREFIX_PATTERN)
+    to_prefix: str = Field(pattern=GROUP_PREFIX_PATTERN, max_length=GROUP_PREFIX_MAX_LENGTH)
     """`TC` 를 주면 **그룹에서 뺀다.**"""
 
 
@@ -516,7 +518,7 @@ async def renumber_tests(state: State) -> RenumberTestsResponse:
     # 이하가 되어, 옮기는 도중에 서로의 자리를 뺏지 않는다.
     by_prefix: dict[str, list[Test]] = {}
     for t in tests:
-        by_prefix.setdefault(t.id.split("-", 1)[0], []).append(t)
+        by_prefix.setdefault(prefix_of(t.id), []).append(t)
 
     over = [p for p, group in by_prefix.items() if len(group) > MAX_TEST_NUMBER]
     if over:
@@ -528,7 +530,7 @@ async def renumber_tests(state: State) -> RenumberTestsResponse:
 
     plan: list[tuple[str, str]] = []
     for prefix in sorted(by_prefix):
-        ordered = sorted(by_prefix[prefix], key=lambda t: int(t.id.split("-", 1)[1]))
+        ordered = sorted(by_prefix[prefix], key=lambda t: number_of(t.id))
         plan.extend(
             (t.id, f"{prefix}-{number:03d}") for number, t in enumerate(ordered, start=1)
         )

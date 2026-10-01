@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-import re
 import secrets
 import unicodedata
 from dataclasses import dataclass, field
@@ -18,10 +17,13 @@ from datetime import UTC, datetime
 from enum import StrEnum
 
 from itb.domain.test_case import (
-    GROUP_PREFIX_PATTERN,
+    GROUP_PREFIX_MAX_LENGTH,
     RESERVED_PREFIX,
-    TEST_ID_PATTERN,
     Project,
+    is_valid_prefix,
+    is_valid_test_id,
+    number_of,
+    prefix_of,
 )
 from itb.portability.columns import (
     ORDER,
@@ -34,9 +36,6 @@ from itb.portability.columns import (
 )
 from itb.portability.sheet_name import UNGROUPED_SHEET_NAME
 from itb.portability.workbook import ParsedWorkbook
-
-_TEST_ID_RE = re.compile(TEST_ID_PATTERN)
-_GROUP_PREFIX_RE = re.compile(GROUP_PREFIX_PATTERN)
 
 MAX_TEXT = 2000
 """초안의 긴 텍스트 칸 상한. :class:`itb.domain.draft.Draft` 의 필드 상한과 같아야 한다."""
@@ -206,10 +205,9 @@ def _desired_id(raw: object, prefix: str) -> str | None:
     if text is None:
         return None
     upper = text.upper()
-    if not _TEST_ID_RE.match(upper):
+    if not is_valid_test_id(upper):
         return None
-    number = upper.split("-", 1)[1]
-    return f"{prefix}-{number}"
+    return f"{prefix}-{number_of(upper):03d}"
 
 
 def read_prefix(rows: list[tuple[int, list[object]]], headers: HeaderMap) -> str | None:
@@ -226,9 +224,9 @@ def read_prefix(rows: list[tuple[int, list[object]]], headers: HeaderMap) -> str
         if text is None:
             continue
         upper = text.upper()
-        if not _TEST_ID_RE.match(upper):
+        if not is_valid_test_id(upper):
             continue
-        prefix = upper.split("-", 1)[0]
+        prefix = prefix_of(upper)
         counts[prefix] = counts.get(prefix, 0) + 1
     if not counts:
         return None
@@ -369,10 +367,10 @@ def plan_sheet(
 
     # 한 시트에 접두어가 섞여 있으면 알린다 (FR-023).
     seen = {
-        t.split("-", 1)[0]
+        prefix_of(t)
         for _r, cells in rows
         if (t := (_text(headers.value(cells, Column.TC_ID), 32) or "").upper())
-        and _TEST_ID_RE.match(t)
+        and is_valid_test_id(t)
     }
     if len(seen) > 1:
         warnings.append(
@@ -450,9 +448,8 @@ def resolve_duplicates(plan: ImportPlan, *, taken: set[str]) -> None:
     # 자리이므로 한 통에 넣고 세면 있지도 않은 충돌을 만들어 낸다.
     used: dict[str, set[int]] = {}
     for t in taken:
-        n = _number_of(t)
-        if n is not None:
-            used.setdefault(t.split("-", 1)[0], set()).add(n)
+        if is_valid_test_id(t):
+            used.setdefault(prefix_of(t), set()).add(number_of(t))
 
     for sheet in plan.sheets:
         if sheet.prefix is None:
@@ -492,11 +489,13 @@ def resolve_duplicates(plan: ImportPlan, *, taken: set[str]) -> None:
 
 
 def _number_of(test_id: str) -> int | None:
-    """식별자의 번호 부분. 형식이 아니면 ``None``."""
-    if "-" not in test_id:
-        return None
-    tail = test_id.split("-", 1)[1]
-    return int(tail) if tail.isdigit() else None
+    """식별자의 번호. 형식이 아니면 ``None``.
+
+    도메인의 :func:`number_of` 는 형식 위반에 예외를 올린다. 여기는 **설계서를 읽어
+    계획을 세우는 중**이라 한 행이 이상하다고 멈추면 안 된다 — 그래서 판정을 먼저 하고
+    아니면 ``None`` 을 돌려준다.
+    """
+    return number_of(test_id) if is_valid_test_id(test_id) else None
 
 
 def _next_free(prefix: str, used: set[int]) -> str:
@@ -591,8 +590,11 @@ def validate_columns(raw: dict[str, int], headers: list[str]) -> str | None:
 def validate_prefix(prefix: str) -> str | None:
     """사용자가 준 접두어를 검사한다 (FR-022c). 문제가 없으면 ``None``."""
     upper = prefix.strip().upper()
-    if not _GROUP_PREFIX_RE.match(upper):
-        return "그룹 접두어는 영문 대문자로 시작하는 8자 이내여야 합니다 (예: USER)."
+    if not is_valid_prefix(upper):
+        return (
+            f"그룹 접두어는 영문 대문자로 시작하는 마디를 하이픈으로 이어 "
+            f"{GROUP_PREFIX_MAX_LENGTH}자 이내로 적습니다 (예: USER, IT-PM)."
+        )
     if upper == RESERVED_PREFIX:
         return f"{RESERVED_PREFIX} 는 그룹 없는 테스트가 씁니다. 다른 접두어를 쓰세요."
     return None

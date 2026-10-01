@@ -18,9 +18,12 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 from itb.api.errors import ApiError, ErrorCode, not_found
 from itb.api.state import AppState, get_state
 from itb.domain.test_case import (
+    GROUP_PREFIX_MAX_LENGTH,
     GROUP_PREFIX_PATTERN,
     RESERVED_PREFIX,
     TestGroup,
+    id_from_filename,
+    prefix_of,
 )
 from itb.storage import test_moves
 from itb.storage.repository import ProjectRepository
@@ -29,7 +32,9 @@ router = APIRouter(prefix="/api/groups", tags=["groups"])
 
 State = Annotated[AppState, Depends(get_state)]
 
-Prefix = Annotated[str, StringConstraints(pattern=GROUP_PREFIX_PATTERN)]
+Prefix = Annotated[
+    str, StringConstraints(pattern=GROUP_PREFIX_PATTERN, max_length=GROUP_PREFIX_MAX_LENGTH)
+]
 GroupName = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 ]
@@ -76,9 +81,17 @@ class UngroupedResponse(BaseModel):
     """그룹에서 풀려 `TC-###` 로 돌아간 테스트들 (013 FR-451)."""
 
 
-def prefix_of(test_id: str) -> str:
-    """식별자에서 소속을 읽는다. 접두어가 곧 소속이다 (data-model §3)."""
-    return test_id.split("-", 1)[0]
+def prefix_of_file(name: str) -> str | None:
+    """**정의 파일 이름**에서 소속을 읽는다. 접두어가 곧 소속이다 (data-model §3).
+
+    이름이 `test_id` 였지만 호출자는 전부 `path.name` 을 넘기고 있었다. 옛
+    `split("-", 1)[0]` 은 식별자와 파일 이름 어느 쪽을 받아도 같은 답을 내서 그 혼동이
+    드러나지 않았다 — 028 이 접두어에 하이픈을 허용하면서 드러났다.
+
+    정의 파일이 아니면 ``None``. 테스트 디렉터리에는 그런 파일도 있다.
+    """
+    test_id = id_from_filename(name)
+    return None if test_id is None else prefix_of(test_id)
 
 
 def counts_by_prefix(repo: ProjectRepository) -> dict[str, int]:
@@ -89,7 +102,8 @@ def counts_by_prefix(repo: ProjectRepository) -> dict[str, int]:
     """
     counts: dict[str, int] = {}
     for path in repo.list_test_paths():
-        counts[prefix_of(path.name)] = counts.get(prefix_of(path.name), 0) + 1
+        if (prefix := prefix_of_file(path.name)) is not None:
+            counts[prefix] = counts.get(prefix, 0) + 1
     return counts
 
 
@@ -174,9 +188,10 @@ async def delete_group(prefix: str, state: State) -> UngroupedResponse:
     _require_group(project.groups, prefix)
 
     members = [
-        path.name.split("-", 2)[0] + "-" + path.name.split("-", 2)[1]
+        test_id
         for path in repo.list_test_paths()
-        if prefix_of(path.name) == prefix
+        if (test_id := id_from_filename(path.name)) is not None
+        and prefix_of(test_id) == prefix
     ]
 
     def validate(test_id: str) -> None:

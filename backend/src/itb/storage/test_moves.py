@@ -34,7 +34,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from itb.storage.repository import TEST_ID_RE
+from itb.domain.test_case import is_valid_test_id, number_of
 
 if TYPE_CHECKING:  # pragma: no cover — 순환 임포트를 피한다
     from itb.storage.repository import ProjectRepository
@@ -159,7 +159,7 @@ def target_id(test_id: str, to_prefix: str, *, taken: set[int] | None = None) ->
     """
     from itb.domain.test_case import MAX_TEST_NUMBER
 
-    number = int(test_id.split("-", 1)[1])
+    number = number_of(test_id)
     if taken and number in taken:
         candidate = 1
         while candidate in taken:
@@ -214,7 +214,7 @@ def rename_test_id(repo: ProjectRepository, test_id: str, new_id: str) -> MovedT
         # 바꿀 것이 없다. 파일을 건드리면 mtime 이 흔들리고, 그것을 보고 있는 편집 화면의
         # 충돌 감지가 이유 없이 반응한다 (012 FR-407 과 같은 판단).
         return MovedTest(from_id=test_id, to_id=test_id, name=repo.read_test(test_id).name)
-    if not TEST_ID_RE.match(new_id):
+    if not is_valid_test_id(new_id):
         msg = f"만들 수 없는 식별자입니다: {new_id}"
         raise MoveError(msg)
     if repo.find_test_path(new_id) is not None:

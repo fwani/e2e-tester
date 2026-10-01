@@ -27,7 +27,13 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from itb.api.errors import ApiError, ErrorCode, bad_request, not_found
 from itb.api.routes._download import content_disposition
 from itb.api.state import AppState, get_state
-from itb.domain.test_case import RESERVED_PREFIX, Project, Test
+from itb.domain.test_case import (
+    RESERVED_PREFIX,
+    Project,
+    Test,
+    id_from_filename,
+    prefix_of,
+)
 from itb.secrets.store import SecretStore
 from itb.sharing import applier, builder, planner, reader
 from itb.sharing.applier import ApplyError, ApplyPartialError
@@ -496,7 +502,11 @@ def _build_plan(
         # 직전 검증에서 「이미 있는 식별자」로 전체가 실패한다.
         prefixes = {RESERVED_PREFIX}
         prefixes |= {g.prefix for g in project.groups}
-        prefixes |= {p.name.split("-", 1)[0] for p in repo.list_test_paths()}
+        prefixes |= {
+            prefix_of(test_id)
+            for p in repo.list_test_paths()
+            if (test_id := id_from_filename(p.name)) is not None
+        }
         used = {prefix: repo.used_numbers(prefix) for prefix in prefixes}
 
     # 표시 이름과 디렉터리 이름은 다른 것이다 — 디렉터리 충돌은
