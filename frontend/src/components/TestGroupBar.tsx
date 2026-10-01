@@ -130,8 +130,12 @@ export function TestGroupBar({
  *
  * 그래서 **접두어 칸이 왜 필요한지 그 자리에서 말한다.** 말하지 않으면 사용자는 이름을
  * 두 번 적는 칸으로 읽는다.
+ *
+ * **내보낸다** (028 UC-028-05). 목록에서 끌어 「새 그룹으로」에 놓을 때도 같은 칸을 쓴다 —
+ * 두 자리에서 접두어를 받는데 규칙 안내가 다르면 사용자는 두 기능이 다른 규칙을 갖는다고
+ * 읽는다.
  */
-function NewGroupForm({
+export function NewGroupForm({
   busy,
   onCancel,
   onSubmit,

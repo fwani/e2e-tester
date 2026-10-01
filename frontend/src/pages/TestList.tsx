@@ -50,7 +50,14 @@ import {
   type ImportPlanView,
   type TrashedTest,
 } from "../api/client";
-import { TestGroupBar } from "../components/TestGroupBar";
+import { NewGroupForm, TestGroupBar } from "../components/TestGroupBar";
+import {
+  GroupDropBar,
+  NEW_GROUP,
+  NewGroupDropPrompt,
+  UNGROUPED,
+  type DropTarget,
+} from "../components/TestGroupDrop";
 import { DraftSection } from "./DraftList";
 import { ImportFilePicker } from "./ImportPreview";
 import {
@@ -198,9 +205,28 @@ export function TestList({
    * 않는 정보만 화면에 둔다.
    */
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  /*
+    ─── 끌어 놓기 (028 US2) ─────────────────────────────────────────────────
+
+    **서버에 저장되지 않는 화면 상태다.** `dragging` 이 `null` 이 아닌 동안에만 표적 띠가
+    그려진다 — 끌지 않는 사용자의 화면은 028 이전과 같아야 한다 (FR-014 · 013 SC-627).
+  */
+  const [dragging, setDragging] = useState<string[] | null>(null);
+
+  /** 「새 그룹으로」에 놓았거나 선택 띠에서 고른 뒤, 이름·접두어를 받는 동안의 대상. */
+  const [newGroupFor, setNewGroupFor] = useState<string[] | null>(null);
   const [confirmingBulk, setConfirmingBulk] = useState(false);
   /** 방금 옮긴 것들. **자동으로 사라지지 않는다** (FR-437b · UC-013-05). */
   const [trashed, setTrashed] = useState<TrashedTest[] | null>(null);
+
+  /**
+   * 그룹으로 옮긴 결과 (028 FR-019).
+   *
+   * **무엇이 몇 건 어디로 갔는지 말한다.** 끌어 놓기는 손을 떼는 순간 끝나므로, 아무
+   * 말이 없으면 사용자는 자기가 놓은 것이 들어갔는지 목록을 뒤져 확인해야 한다.
+   */
+  const [moved, setMoved] = useState<{ count: number; where: string } | null>(null);
   /**
    * 번호 정리 (2026-09-10 사용자 보고 2번).
    *
@@ -384,6 +410,36 @@ export function TestList({
    * 선택 자체를 지우지 않고 **읽을 때 거른다** — 검색어를 되돌리면 고른 것이 돌아오는
    * 편이 사용자의 기대에 맞고, 대상이 되는 것은 언제나 이 값이라 안전하다.
    */
+  /**
+   * 고른 것들을 그룹으로 옮긴다 (028 FR-019~FR-021).
+   *
+   * **끌어 놓기와 선택칸이 이 함수 하나를 쓴다.** 두 길이 각자 옮기면 한쪽만 고치는 날이
+   * 오고, 그때 「끌면 되는데 고르면 안 되는」 상태가 된다 — 028 이 고친 결함이 바로 그
+   * 모양(규칙이 두 벌)이었다.
+   */
+  const moveTo = (ids: string[], to: string, groupName?: string) => {
+    if (ids.length === 0) return;
+    void act(() => tests.move(ids, to)).then((res) => {
+      if (res === undefined) return;
+      /*
+        **옮긴 것만 선택에서 뺀다** (UC-028-03).
+
+        옮겨진 테스트는 새 식별자를 갖게 되므로 옛 식별자로 고른 상태는 뜻을 잃는다.
+        반대로 **고르지 않은 행을 끌어 옮겼을 때 선택을 통째로 비우면** 사용자가 고르던
+        일이 날아간다. 선택칸 경로에서는 대상이 곧 선택이므로 결과가 전과 같다.
+      */
+      setSelected((prev) => {
+        const next = new Set(prev);
+        for (const id of ids) next.delete(id);
+        return next;
+      });
+      setMoved({
+        count: ids.length,
+        where: to === UNGROUPED ? "그룹 없음" : (groupName ?? to),
+      });
+    });
+  };
+
   const effectiveSelection = useMemo(
     () => rows.filter((r) => selected.has(r.id)).map((r) => r.id),
     [rows, selected],
@@ -748,6 +804,84 @@ export function TestList({
           )}
         </div>}
 
+        {moved !== null && (
+          <Toast mark="data-group-move-notice" tone="info" onDismiss={() => setMoved(null)}>
+            <div className="font-sans text-[14px] font-semibold leading-none">
+              테스트 {moved.count}개를 「{moved.where}」(으)로 옮겼습니다.
+            </div>
+          </Toast>
+        )}
+
+        {/*
+          ─── 끌어 놓기 표적 (028 UC-028-02) ───────────────────────────────
+
+          **끌고 있을 때만 그린다.** 이것이 013 SC-627 을 지키는 방법이다 — 그룹을 쓰지
+          않는 사용자는 이 띠를 한 번도 보지 않는다.
+        */}
+        {dragging !== null && newGroupFor === null && (
+          <GroupDropBar
+            groups={mergedGroups}
+            busy={busy}
+            count={dragging.length}
+            onDrop={(target: DropTarget) => {
+              const ids = dragging;
+              setDragging(null);
+              if (target === NEW_GROUP) {
+                setNewGroupFor(ids);
+                return;
+              }
+              const named = mergedGroups.find((g) => g.prefix === target);
+              moveTo(ids, target, named?.name ?? undefined);
+            }}
+          />
+        )}
+
+        {/*
+          ─── 새 그룹 만들어 옮기기 (028 UC-028-05 · FR-025·FR-026) ─────────
+
+          **만들기와 옮기기를 이어서 부른다.** 합친 엔드포인트를 두지 않은 이유는
+          `tests.move` 가 이미 전부 되거나 전부 안 되거나를 지켜, 갈릴 수 있는 상태가
+          「그룹은 생겼는데 못 옮겼다」 하나뿐이기 때문이다 (research R6). 그 하나는
+          **되돌리지 않고 알린다** — 되돌리면 사용자가 방금 지은 이름을 다시 쳐야 한다.
+        */}
+        {newGroupFor !== null && (
+          <NewGroupDropPrompt
+            count={newGroupFor.length}
+            form={
+              <NewGroupForm
+                busy={busy}
+                onCancel={() => setNewGroupFor(null)}
+                onSubmit={(prefix, name) => {
+                  const ids = newGroupFor;
+                  setNewGroupFor(null);
+                  void act(() => groupsApi.create(prefix, name)).then((made) => {
+                    if (made === undefined) return;
+                    void reloadGroups();
+                    void act(() => tests.move(ids, prefix)).then((res) => {
+                      if (res === undefined) {
+                        // 그룹은 남는다. 그 사실을 말하지 않으면 사용자는 조용한 실패를 본다.
+                        setError(
+                          localError(
+                            `그룹 「${name}」은(는) 만들어졌지만 테스트를 옮기지 못했습니다.`,
+                            "그룹은 목록에 남아 있습니다. 테스트를 골라 다시 옮겨 주세요.",
+                          ),
+                        );
+                        return;
+                      }
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        for (const id of ids) next.delete(id);
+                        return next;
+                      });
+                      setMoved({ count: ids.length, where: name });
+                    });
+                  });
+                }}
+              />
+            }
+          />
+        )}
+
         {/* ─── 선택·확인·완료 (013 UC-013-02·04·05) ─────────────────────── */}
         {!isEmptyProject && trashed !== null && (
           <TrashedTestsNotice trashed={trashed} onDismiss={() => setTrashed(null)} />
@@ -832,36 +966,52 @@ export function TestList({
             onClear={() => setSelected(new Set())}
             onDelete={() => setConfirmingBulk(true)}
             extra={
-              // 그룹이 하나도 없으면 옮길 곳이 없다 — 그리지 않는다 (SC-627).
-              (data?.groups ?? []).some((g) => g.prefix !== "TC") ? (
-                <NativeSelect
-                  aria-label="그룹으로 옮기기"
-                  disabled={busy}
-                  value=""
-                  onChange={(e) => {
-                    const to = e.target.value;
-                    if (to === "") return;
-                    void act(() => tests.move(effectiveSelection, to)).then(() =>
-                      setSelected(new Set()),
-                    );
-                  }}
-                  /*
-                    닫힌 선택칸은 늘 「그룹으로 옮기기…」만 보인다(값이 늘 빈 문자열이다). 폭을 내용에 맡기면
-                    **보이지 않는 가장 긴 그룹 이름**이 폭을 정해 띠를 차지한다 — 최대 폭을 둔다 (017 B-07).
-                  */
-                  layout="m-0 max-w-[240px]"
-                >
-                  <NativeSelectOption value="">그룹으로 옮기기…</NativeSelectOption>
-                  {(data?.groups ?? [])
-                    .filter((g) => g.name !== null)
-                    .map((g) => (
-                      <NativeSelectOption key={g.prefix} value={g.prefix}>
-                        {g.name}
-                      </NativeSelectOption>
-                    ))}
-                  <NativeSelectOption value="TC">그룹에서 빼기</NativeSelectOption>
-                </NativeSelect>
-              ) : undefined
+              /*
+                **그룹이 0개여도 그린다** (028 FR-023 · UC-028-04).
+
+                013 은 「옮길 곳이 없으면 그리지 않는다」로 정했고 그것은 SC-627 을 지키려는
+                판단이었다. 그런데 그 결과는 **첫 사용자에게 목록에서 그룹에 넣는 길이 아예
+                없는 것**이었다 — 그룹을 만드는 「+ 그룹」은 접힌 패널 안에 있었고, 사용자는
+                「그룹 지정이 안 된다」고 보고했다.
+
+                SC-627 은 여기서 깨지지 않는다. **이 띠 자체가 고른 것이 1개 이상일 때만
+                그려지기 때문이다** — 그룹을 쓰지 않는 사용자는 이 자리를 보지 않는다.
+              */
+              <NativeSelect
+                aria-label="그룹으로 옮기기"
+                disabled={busy}
+                value=""
+                onChange={(e) => {
+                  const to = e.target.value;
+                  if (to === "") return;
+                  if (to === NEW_GROUP) {
+                    // 끌어 놓기와 같은 칸, 같은 규칙으로 간다 (FR-027 · UC-028-05).
+                    setNewGroupFor(effectiveSelection);
+                    return;
+                  }
+                  const named = mergedGroups.find((g) => g.prefix === to);
+                  moveTo(effectiveSelection, to, named?.name ?? undefined);
+                }}
+                /*
+                  닫힌 선택칸은 늘 「그룹으로 옮기기…」만 보인다(값이 늘 빈 문자열이다). 폭을 내용에 맡기면
+                  **보이지 않는 가장 긴 그룹 이름**이 폭을 정해 띠를 차지한다 — 최대 폭을 둔다 (017 B-07).
+                */
+                layout="m-0 max-w-[240px]"
+              >
+                <NativeSelectOption value="">그룹으로 옮기기…</NativeSelectOption>
+                {(data?.groups ?? [])
+                  .filter((g) => g.name !== null)
+                  .map((g) => (
+                    <NativeSelectOption key={g.prefix} value={g.prefix}>
+                      {g.name}
+                    </NativeSelectOption>
+                  ))}
+                {/* 그룹에 든 것이 하나도 없으면 「빼기」는 할 일이 없다. */}
+                {(data?.groups ?? []).some((g) => g.prefix !== UNGROUPED) && (
+                  <NativeSelectOption value={UNGROUPED}>그룹에서 빼기</NativeSelectOption>
+                )}
+                <NativeSelectOption value={NEW_GROUP}>+ 새 그룹 만들어 옮기기</NativeSelectOption>
+              </NativeSelect>
             }
           />
         )}
@@ -983,6 +1133,22 @@ export function TestList({
                             if (res !== undefined) showDeleteOutcome([res]);
                           })
                       }
+                      /*
+                        028 FR-017 · UC-028-03 — **무엇이 끌리는가.**
+
+                        고른 것 중 하나를 끌면 고른 전부가 간다. 고르지 않은 행을 끌면 그
+                        행만 가고 **고른 것은 그대로 둔다** — 끌기가 선택을 지우면 사용자가
+                        고르던 일이 날아간다.
+                      */
+                      onDragStart={(event) => {
+                        const ids = selected.has(row.id) ? effectiveSelection : [row.id];
+                        setDragging(ids);
+                        setMoved(null);
+                        // 브라우저가 끌기를 시작하려면 데이터가 실려 있어야 한다.
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", ids.join(","));
+                      }}
+                      onDragEnd={() => setDragging(null)}
                       onToggleMenu={() => setMenuFor(menuFor === row.id ? null : row.id)}
                       /*
                         **여는 것과 닫는 것을 나눈다.** 메뉴는 목록 밖(`document.body`)에
@@ -1056,11 +1222,16 @@ function Row({
   onRun,
   onOpenResult,
   onOpenDefinition,
+  onDragStart,
+  onDragEnd,
   runPending = false,
   liveSession = null,
 }: {
   row: TestListRow;
   busy: boolean;
+  /** 끌기 시작 (028 FR-013). 무엇이 끌리는지는 목록이 정한다 — UC-028-03. */
+  onDragStart: (event: React.DragEvent) => void;
+  onDragEnd: () => void;
   /** 삭제·이동 대상으로 골랐는가 (013 FR-426). */
   selected: boolean;
   onToggleSelected: () => void;
@@ -1135,6 +1306,15 @@ function Row({
       */
       className={`${rowClasses(rowMark(row.outcome, live))} ${selected ? "shadow-[inset_0_0_0_2px_var(--run)]" : ""}`}
       data-test-row={row.id}
+      /*
+        028 FR-013 — 행을 끌어 그룹에 넣는다.
+
+        **이름을 고치는 중에는 끌 수 없다.** 칸 안의 글자를 드래그해 고르는 일이 행을
+        끄는 일로 바뀌면 이름을 고칠 수 없다.
+      */
+      draggable={!busy && renaming === null}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       data-selected={selected ? "true" : undefined}
       style={{
         display: "grid",

@@ -356,7 +356,19 @@ describe("그룹 정리", () => {
     });
   });
 
-  it("그룹이 없으면 「그룹으로 옮기기」를 그리지 않는다 (SC-627)", async () => {
+  /**
+   * **028 이 이 결정을 뒤집었다** (FR-023 · UC-028-04).
+   *
+   * 013 은 「옮길 곳이 없으면 선택칸을 그리지 않는다」로 정했고, 그것은 SC-627 을 지키려는
+   * 판단이었다. 그런데 결과는 **첫 사용자에게 목록에서 그룹에 넣는 길이 아예 없는 것**
+   * 이었다 — 그룹을 만드는 「+ 그룹」은 접힌 패널 안에 있었고, 사용자는 「그룹 지정이
+   * 안 된다」고 보고했다.
+   *
+   * **SC-627 은 여전히 지켜진다.** 지키는 자리가 「그룹이 있을 때만」에서 **「고른 것이
+   * 있을 때만」**으로 옮겨졌을 뿐이다 — 그룹을 쓰지 않는 사용자는 체크를 하지 않으므로
+   * 이 띠를 보지 않는다. 아래 두 단언이 그 둘을 함께 지킨다.
+   */
+  it("그룹이 없어도 새 그룹으로 옮기는 길이 있다 (028 FR-023)", async () => {
     stub([row({ id: "TC-001", name: "로그인" })], []);
     render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
     await screen.findByText("로그인");
@@ -367,6 +379,18 @@ describe("그룹 정리", () => {
     await waitFor(() =>
       expect(document.querySelector("[data-test-selection-bar]")).not.toBeNull(),
     );
+    const select = screen.getByLabelText("그룹으로 옮기기");
+    expect(within(select).getByRole("option", { name: "+ 새 그룹 만들어 옮기기" })).toBeTruthy();
+    // 그룹에 든 것이 하나도 없으면 「빼기」는 할 일이 없다.
+    expect(within(select).queryByRole("option", { name: "그룹에서 빼기" })).toBeNull();
+  });
+
+  it("고른 것이 없으면 띠 자체가 없다 — SC-627 은 여기서 지켜진다", async () => {
+    stub([row({ id: "TC-001", name: "로그인" })], []);
+    render(<TestList onCreate={noop} onOpenResult={noop} onRun={noop} />);
+    await screen.findByText("로그인");
+
+    expect(document.querySelector("[data-test-selection-bar]")).toBeNull();
     expect(screen.queryByLabelText("그룹으로 옮기기")).toBeNull();
   });
 });
