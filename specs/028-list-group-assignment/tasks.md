@@ -158,11 +158,11 @@ description: "028 목록에서 그룹 지정하기 — 작업 목록"
 
 ## Phase 7: Polish & 교차 관심사
 
-- [ ] T045 전량 검증을 돌리고 `baseline.md` 와 대조한다 — 새로 깨진 것이 있으면 그것만 고친다. **기존 실패를 이 증분의 성과로 세지 않는다**
-- [ ] T046 [P] `uv run python -m itb.schema.export --check` 로 스키마 드리프트가 없는지 확인한다 (생성물을 커밋했는지)
-- [ ] T047 [P] `uv run ruff check src/ tests/` · `uv run lint-imports` · `npx tsc --noEmit` 을 통과시킨다
-- [ ] T048 `quickstart.md` 의 §2 를 손으로 따라가며 확인한다 — 특히 2-2(옛 자산)와 2-3의 1번(끌기 전 화면이 그대로인가)
-- [ ] T049 [P] `README.md:258-275` 의 그룹 설명을 고친다 — 「접두어는 영문 대문자·숫자 1~8자」가 **이 변경으로 거짓이 된다.** 새 규칙과 길이 상한 12를 반영하고 `IT-PM` 예시를 넣는다
+- [X] T045 전량 검증을 돌리고 `baseline.md` 와 대조한다 — 새로 깨진 것이 있으면 그것만 고친다. **기존 실패를 이 증분의 성과로 세지 않는다**
+- [X] T046 [P] `uv run python -m itb.schema.export --check` 로 스키마 드리프트가 없는지 확인한다 (생성물을 커밋했는지)
+- [X] T047 [P] `uv run ruff check src/ tests/` · `uv run lint-imports` · `npx tsc --noEmit` 을 통과시킨다
+- [ ] T048 `quickstart.md` §2 손 확인 — **남겨 둔다.** 자동 검증이 같은 것을 보고 있다: 2-2(옛 자산)는 `test_hyphenated_prefix_compat.py` 의 `BackwardCompatibilityTests`, 2-3의 1번(끌기 전 화면)은 `TestGroupDrag.test.tsx` 의 「끌기 전의 목록」. 실제 브라우저로 끌어 보는 것만 사람이 해야 한다
+- [X] T049 [P] `README.md:258-275` 의 그룹 설명을 고친다 — 「접두어는 영문 대문자·숫자 1~8자」가 **이 변경으로 거짓이 된다.** 새 규칙과 길이 상한 12를 반영하고 `IT-PM` 예시를 넣는다
 
 ---
 
