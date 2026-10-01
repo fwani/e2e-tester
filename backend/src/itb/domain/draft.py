@@ -40,9 +40,11 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from itb.domain.test_case import (
+    GROUP_PREFIX_MAX_LENGTH,
     GROUP_PREFIX_PATTERN,
     MAX_INSTRUCTION_CHARS,
     RESERVED_PREFIX,
+    TEST_ID_MAX_LENGTH,
     TEST_ID_PATTERN,
     prefix_of,
 )
@@ -114,14 +116,20 @@ class Draft(BaseModel):
     expectation: str | None = Field(default=None, max_length=2000)
     """기대 결과. `procedure` 와 같은 성격이다."""
 
-    desired_test_id: str | None = Field(default=None, pattern=TEST_ID_PATTERN)
+    desired_test_id: str | None = Field(
+        default=None, pattern=TEST_ID_PATTERN, max_length=TEST_ID_MAX_LENGTH
+    )
     """원본 행이 적고 있던 TC ID. **희망일 뿐 예약이 아니다** (FR-032).
 
     저장 시점에 이 번호가 비어 있으면 그것을 받고, 이미 쓰였으면 빈 번호를 받은 뒤
     그 사실을 사용자에게 알린다. 조용히 다른 번호를 주지 않는다.
     """
 
-    group_prefix: str = Field(default=RESERVED_PREFIX, pattern=GROUP_PREFIX_PATTERN)
+    group_prefix: str = Field(
+        default=RESERVED_PREFIX,
+        pattern=GROUP_PREFIX_PATTERN,
+        max_length=GROUP_PREFIX_MAX_LENGTH,
+    )
     """소속 그룹의 접두어. :data:`~itb.domain.test_case.RESERVED_PREFIX` 면 그룹 없음이다.
 
     접두어가 곧 소속이라는 013 의 결정을 그대로 따른다.

@@ -211,3 +211,56 @@ def test_filename_reading_returns_none_for_non_test_files(filename: str) -> None
     """테스트 디렉터리에는 정의 파일이 아닌 것도 있다. 예외가 아니라 `None` 이다 —
     「이 파일은 테스트가 아니다」는 오류가 아니라 판정이기 때문이다."""
     assert id_from_filename(filename) is None
+
+
+# ─── 수렴 — 패턴만 보는 자리가 또 생기지 않게 (FR-007) ──────────────────────
+
+
+def test_every_pattern_user_also_checks_length() -> None:
+    """**이 결함이 세 번 났다.**
+
+    028 은 길이를 정규식 밖으로 뺐다 — Pydantic 의 Rust regex 가 선읽기를 못 쓰기
+    때문이다 (research R1). 그 결정의 대가가 이것이다: **패턴만 쓰는 자리는 길이를
+    놓친다.**
+
+    - 처음: API 라우트 셋에 `max_length` 가 없었다 (T020 에서 고침)
+    - 둘째: `sharing/planner.py` 가 `_PREFIX_MAX = 8` 을 복제하고 있었다
+    - 셋째: `domain/draft.py` 의 두 필드에 상한이 없었다
+
+    세 번 같은 모양이면 사람이 다시 세는 대신 검사가 센다. 패턴을 쓰는 자리는 길이도
+    함께 보아야 한다 — `max_length=`, `GROUP_PREFIX_MAX_LENGTH`, `TEST_ID_MAX_LENGTH`
+    중 하나가 **같은 구문 안에** 있어야 한다.
+    """
+    import ast
+    import pathlib
+
+    src = pathlib.Path(__file__).resolve().parents[2] / "src" / "itb"
+    wanted = {"GROUP_PREFIX_PATTERN", "TEST_ID_PATTERN"}
+    allow = ("max_length", "GROUP_PREFIX_MAX_LENGTH", "TEST_ID_MAX_LENGTH")
+    offenders: list[str] = []
+
+    for path in sorted(src.rglob("*.py")):
+        if path.name == "test_case.py":
+            continue  # 정의하는 자리다 — 여기서 길이는 별도 상수로 산다
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        tree = ast.parse(text, filename=str(path))
+        """
+        **구문 나무로 본다.** 글자로 찾으면 임포트 목록과 설명글이 함께 걸린다 — 둘 다
+        값을 쓰는 자리가 아니다. 이름을 **참조**하는 곳만 세려면 `ast.Name` 이다.
+        """
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Name) or node.id not in wanted:
+                continue
+            # 여러 줄에 걸친 `Field(...)` 가 흔하므로 그 구문 둘레를 본다.
+            start = max(0, node.lineno - 4)
+            window = "\n".join(lines[start : node.lineno + 4])
+            if any(token in window for token in allow):
+                continue
+            where = f"{path.relative_to(src)}:{node.lineno}"
+            offenders.append(f"{where}  {lines[node.lineno - 1].strip()}")
+
+    assert offenders == [], (
+        "패턴만 쓰고 길이를 보지 않는 자리가 있다 — 그 자리는 상한을 넘는 값을 "
+        "통과시킨다 (028 수렴):\n" + "\n".join(offenders)
+    )

@@ -69,6 +69,7 @@
     "desired_test_id": {
       "anyOf": [
         {
+          "maxLength": 16,
           "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*-\\d{3}$",
           "type": "string"
         },
@@ -99,6 +100,7 @@
     },
     "group_prefix": {
       "default": "TC",
+      "maxLength": 12,
       "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*$",
       "title": "Group Prefix",
       "type": "string"

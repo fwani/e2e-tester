@@ -58,6 +58,7 @@ from itb.domain.test_case import (
     GROUP_PREFIX_PATTERN,
     MAX_INSTRUCTION_CHARS,
     RESERVED_PREFIX,
+    TEST_ID_MAX_LENGTH,
     TEST_ID_PATTERN,
     AuthoringMode,
     Test,
@@ -550,7 +551,9 @@ class CreateSessionRequest(BaseModel):
     `authoring_mode` 는 세션의 불변 속성이므로(001 DR-020) **만들 때 정해야 하고**,
     그래서 모드가 하나 늘었다.
     """
-    test_id: str | None = Field(default=None, pattern=TEST_ID_PATTERN)
+    test_id: str | None = Field(
+        default=None, pattern=TEST_ID_PATTERN, max_length=TEST_ID_MAX_LENGTH
+    )
     """재실행·편집 대상 테스트.
 
     **패턴을 여기서 다시 쓰지 않는다** (014). 013 이 그룹 접두어를 도입했는데 이 자리는

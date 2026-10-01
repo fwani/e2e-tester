@@ -8,7 +8,12 @@ from __future__ import annotations
 
 from sharing_support import make_test
 
-from itb.domain.test_case import Project, TestGroup
+from itb.domain.test_case import (
+    GROUP_PREFIX_MAX_LENGTH,
+    Project,
+    TestGroup,
+    is_valid_prefix,
+)
 from itb.sharing.builder import build_bundle, dump_bundle
 from itb.sharing.planner import plan_import
 from itb.sharing.reader import read_bundle
@@ -84,12 +89,18 @@ def test_alternative_keeps_walking_until_free() -> None:
 
 
 def test_alternative_respects_the_prefix_length_limit() -> None:
-    """접두어는 8자까지다. 억지로 잘라 넣으면 두 그룹이 같은 접두어를 갖는다."""
-    long_group = TestGroup(prefix="ABCDEFGH", name="긴 접두어")
-    plan = _plan([long_group], [TestGroup(prefix="ABCDEFGH", name="다른 이름")])
+    """억지로 잘라 넣으면 두 그룹이 같은 접두어를 갖는다.
+
+    **상한을 여기에 적지 않는다** (028 수렴). 전에는 `8` 이 두 곳에 — 이 검사와
+    `planner._PREFIX_MAX` 에 — 복제돼 있었고, 028 이 상한을 12로 넓혔을 때 둘 다
+    따라오지 못했다. 규칙은 도메인이 갖는다.
+    """
+    longest = "A" * GROUP_PREFIX_MAX_LENGTH
+    long_group = TestGroup(prefix=longest, name="긴 접두어")
+    plan = _plan([long_group], [TestGroup(prefix=longest, name="다른 이름")])
     (group,) = plan.groups
     assert group.action == "create_renamed_prefix"
-    assert len(group.target_prefix) <= 8
+    assert is_valid_prefix(group.target_prefix), group.target_prefix
 
 
 # ─── 표 4행: 그룹 없는 테스트 ──────────────────────────────────────────────

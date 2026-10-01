@@ -10,7 +10,7 @@
 
 export const CONSTRAINTS = {
   "draft/Draft/draft_id": {"pattern":"^D-\\d{4}$"},
-  "draft/Draft/group_prefix": {"pattern":"^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*$"},
+  "draft/Draft/group_prefix": {"pattern":"^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*$","maxLength":12},
   "draft/Draft/name": {"maxLength":200,"minLength":1},
   "draft/DraftSource/file_name": {"maxLength":200,"minLength":1},
   "draft/DraftSource/sheet_name": {"maxLength":31,"minLength":1},

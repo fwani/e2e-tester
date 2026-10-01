@@ -18,12 +18,13 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from itb.domain.test_case import (
-    GROUP_PREFIX_PATTERN,
+    GROUP_PREFIX_MAX_LENGTH,
     MAX_TEST_NUMBER,
     RESERVED_PREFIX,
     Project,
     Test,
     TestGroup,
+    is_valid_prefix,
     number_of,
     prefix_of,
 )
@@ -35,8 +36,13 @@ Target = Literal["new", "current"]
 GroupAction = Literal["reuse", "create", "create_renamed_prefix", "skip"]
 TestStatus = Literal["create", "skip"]
 
-_PREFIX_MAX = 8
-"""그룹 접두어 길이 상한. :data:`itb.domain.test_case.GROUP_PREFIX_PATTERN` 이 정한 값이다."""
+_PREFIX_MAX = GROUP_PREFIX_MAX_LENGTH
+"""그룹 접두어 길이 상한. 도메인이 정한 값을 **가리킨다**.
+
+028 수렴에서 고쳤다 — 전에는 `8` 이 그대로 적혀 있으면서 주석만 「패턴이 정한 값」이라
+말했다. 028 이 상한을 12로 넓혔을 때 이 자리가 따라오지 못해, 공유 받기의 자동 접두어
+생성이 **옛 상한으로 잘랐다.**
+"""
 
 
 @dataclass(slots=True)
@@ -143,16 +149,15 @@ class SharePlan:
 def _alternative_prefix(base: str, taken: set[str]) -> str | None:
     """접두어가 다른 이름에 쓰이고 있을 때의 대체 이름 (`USER` → `USER2` → …).
 
-    8자 상한 안에서 찾는다. 찾지 못하면 ``None`` — 그 그룹은 건너뛰고 사유를 보고한다.
+    상한 안에서 찾는다. 찾지 못하면 ``None`` — 그 그룹은 건너뛰고 사유를 보고한다.
     억지로 잘라 넣으면 서로 다른 그룹이 같은 접두어를 갖게 된다.
     """
-    import re
-
     for suffix in range(2, 100):
         tail = str(suffix)
         stem = base[: _PREFIX_MAX - len(tail)]
         candidate = f"{stem}{tail}"
-        if candidate not in taken and re.fullmatch(GROUP_PREFIX_PATTERN, candidate):
+        # **규칙 전체로 본다** — 패턴만 보면 길이를 놓친다 (028 R1).
+        if candidate not in taken and is_valid_prefix(candidate):
             return candidate
     return None
 

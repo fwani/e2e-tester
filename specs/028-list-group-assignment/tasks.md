@@ -224,3 +224,16 @@ description: "028 목록에서 그룹 지정하기 — 작업 목록"
 - 새 색·새 입력 부품·새 엔드포인트를 만들지 않는다
 - 전량 검증은 `scripts/test-backend.sh` 와 `npx vitest run` 으로 한다 (`uv run pytest`·`npm test` 는 틀린 결과를 준다 — R8)
 - 작업 단위 또는 논리 묶음마다 커밋한다
+
+---
+
+## Phase 8: Convergence
+
+**왜 생겼나**: T020 이 「접두어 제약에 길이 상한이 붙었는지」를 **라우트 셋만** 보고
+끝냈다. 길이를 정규식 밖으로 뺀 결정(R1) 때문에 **패턴만 쓰는 자리는 길이를 놓치는데**,
+그 자리가 라우트 말고도 있었다.
+
+- [X] T050 `backend/src/itb/sharing/planner.py:37` 의 `_PREFIX_MAX = 8` 을 없애고 `GROUP_PREFIX_MAX_LENGTH` 를 쓴다. `:155` 의 `re.fullmatch(GROUP_PREFIX_PATTERN, …)` 도 `is_valid_prefix` 로 바꾼다 per FR-012 (contradicts) — 주석은 「패턴이 정한 값」이라 말하는데 실제로는 복제된 8이다. 공유 받기의 자동 접두어가 옛 상한으로 잘린다
+- [X] T051 `backend/src/itb/domain/draft.py:124` 의 `group_prefix` 에 `max_length=GROUP_PREFIX_MAX_LENGTH` 를 붙인다 per FR-003 (partial) — 지금은 13자 접두어를 가진 초안이 검증을 통과한다
+- [X] T052 `backend/src/itb/domain/draft.py:116` 의 `desired_test_id` 에 `max_length=TEST_ID_MAX_LENGTH` 를 붙인다 per FR-010 (partial)
+- [X] T053 `backend/tests/` 에 **패턴만 쓰는 자리가 더 없는지** 보는 검증을 더한다 per FR-007 (partial) — `GROUP_PREFIX_PATTERN`·`TEST_ID_PATTERN` 을 쓰는 모든 자리가 길이도 함께 보는지. 이 결함이 세 번째로 같은 모양이다
