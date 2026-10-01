@@ -154,7 +154,34 @@
     const real = accessibleName(el);
     if (real) return real;
     // 글을 쓰는 칸에만. 버튼·링크는 제 글자가 이름이므로 빌려 올 이유가 없다.
-    return el.isContentEditable === true ? nearbyLabel(el) : null;
+    if (el.isContentEditable === true) return nearbyLabel(el);
+    return iconName(el);
+  };
+
+  /**
+   * **글자 없는 아이콘을 부를 이름** (2026-10-01 사용자 보고).
+   *
+   * 아이콘 스프라이트는 `<use href="icons.svg#star-outline">` 로 모양을 끌어 온다. 그
+   * 조각 이름이 개발자가 그 아이콘에 붙인 이름이고, 사람이 「별 아이콘」이라고 부를 때
+   * 모델이 맞춰 볼 수 있는 유일한 단서다. 이름이 비면 목록에 떠도 지목할 근거가 없다.
+   *
+   * `observedName` 과 같은 이유로 **관찰 목록에만 싣는다** — 이것은 그 요소의 접근
+   * 이름이 아니므로, 후보로 저장되면 재실행이 `getByRole(…, name)` 으로 찾지 못한다.
+   */
+  const iconName = (el) => {
+    let svg = null;
+    try {
+      svg = el.localName === "svg" ? el : el.querySelector("svg");
+    } catch {
+      return null;
+    }
+    if (!svg) return null;
+    const use = svg.querySelector("use");
+    const ref = use
+      ? use.getAttribute("href") || use.getAttribute("xlink:href") || ""
+      : "";
+    const fragment = clean(ref.includes("#") ? ref.slice(ref.lastIndexOf("#") + 1) : "");
+    return fragment ? `${fragment} 아이콘` : null;
   };
 
   /** `nearbyLabel` 이 조상을 올라가는 거리.
@@ -658,7 +685,18 @@
       if (nested) continue;
       // 지목할 근거가 있어야 목록에 둘 값이 있다.
       const hasText = (el.innerText || "").trim().length > 0;
-      const hasImage = el.tagName === "IMG" || el.querySelector("img,svg") !== null;
+      /*
+        **요소 자신이 그림인 경우도 센다** (2026-10-01 사용자 보고).
+
+        자손만 보던 동안 `<svg class="icon"><use href="#star-outline"/></svg>` 처럼 **svg
+        자신이** 커서를 바꾸는 아이콘이 빠졌다 — 자손은 `<use>` 뿐이고, SVG 요소에는
+        `innerText` 도 없어서 글자 판정도 거짓이다. 사람에게는 손가락 커서가 뜨는 별
+        아이콘인데 AI 의 목록에는 없었고, 작성이 거기서 멈췄다.
+      */
+      const hasImage =
+        el.localName === "img" ||
+        el.localName === "svg" ||
+        el.querySelector("img,svg") !== null;
       if (!hasText && !hasImage) continue;
       out.push(el);
     }

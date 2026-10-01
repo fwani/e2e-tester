@@ -228,3 +228,49 @@ async def test_find_by_text_carries_what_a_reference_needs() -> None:
         )
     assert isinstance(actionable["unique"], bool)
     assert actionable["visible"] is True
+
+
+async def test_svg_icon_that_is_itself_the_target_is_observed() -> None:
+    """**`<svg>` 자신이 클릭 대상인 아이콘이 목록에 있다** (2026-10-01 사용자 보고).
+
+    `<svg class="icons svg-icon"><use href="…#star-outline"></use></svg>` 를 AI 가 누르지
+    못해 작성이 멈췄다. 관찰은 「글자도 이미지도 없는 것」을 빼는데, 이미지 판정을
+    **자손**에서만 했다 — `svg` 자신은 자손이 `<use>` 뿐이고 `innerText` 도 없어서
+    빠졌다. 사람에게는 커서가 손가락으로 바뀌는 별 아이콘인데 AI 에게는 없는 요소였다.
+
+    이름도 함께 본다. 목록에 떠도 이름이 없으면 모델은 「별 아이콘」을 지목할 근거가
+    없다 — 스프라이트 조각 이름(`star-outline`)이 그 근거다.
+    """
+    raw = await _observe()
+    icons = [e for e in raw["elements"] if e["tag"] == "svg"]
+
+    assert len(icons) == 1, (
+        f"클릭되는 svg 아이콘이 관찰 목록에 없거나 스프라이트 정의까지 실렸다: {icons}"
+    )
+    icon = icons[0]
+    assert icon["actionability"] == "cursor"
+    assert icon["visible"] is True
+    assert icon["unique"] is True
+    assert "star-outline" in (icon.get("name") or ""), (
+        f"아이콘 이름이 비어 있다 — 모델이 지목할 근거가 없다: {icon}"
+    )
+
+
+async def test_observed_svg_icon_path_reaches_the_icon() -> None:
+    """관찰이 준 경로로 **실제로 그 아이콘을 누를 수 있다.**
+
+    목록에 뜨는 것과 조작되는 것은 다른 일이다. SVG 는 태그 대소문자와 네임스페이스가
+    HTML 과 달라 경로가 어긋나기 쉽고, 어긋나면 Step 만 남고 화면은 그대로다.
+    """
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        await page.add_init_script(SCRIPT.read_text())
+        await page.goto(PAGE.as_uri())
+        raw = await page.evaluate("(l) => window.__itbObserve(l)", 200)
+        icon = next(e for e in raw["elements"] if e["tag"] == "svg")
+        await page.click(icon["css"])
+        status = await page.text_content("#status")
+        await browser.close()
+
+    assert status == "즐겨찾기에 추가했습니다."
